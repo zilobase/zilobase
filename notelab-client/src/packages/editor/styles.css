@@ -1,0 +1,464 @@
+@layer components {
+  .tiptap-editor {
+    @apply min-h-[520px] px-20 py-6 text-base leading-7 outline-none sm:px-24;
+  }
+
+  .tiptap-editor .is-editor-empty:first-child::before,
+  .tiptap-editor .is-empty::before {
+    @apply pointer-events-none float-left h-0 text-muted-foreground;
+    content: attr(data-placeholder);
+  }
+
+  .tiptap-editor > * + * {
+    @apply mt-4;
+  }
+
+  .tiptap-editor h1 {
+    @apply text-3xl font-semibold leading-tight;
+  }
+
+  .tiptap-editor h2 {
+    @apply text-2xl font-semibold leading-tight;
+  }
+
+  .tiptap-editor p {
+    @apply text-foreground;
+  }
+
+  .tiptap-editor ul {
+    @apply list-disc pl-6;
+  }
+
+  .tiptap-editor ul[data-type="taskList"] {
+    @apply list-none pl-0;
+  }
+
+  .tiptap-editor ul[data-type="taskList"] li,
+  .tiptap-editor .task-item {
+    @apply flex items-start gap-2;
+  }
+
+  .tiptap-editor .task-item-checkbox {
+    @apply mt-1 flex size-4 shrink-0 items-center justify-center;
+  }
+
+  .tiptap-editor ul[data-type="taskList"] li > div,
+  .tiptap-editor .task-item-content {
+    @apply min-w-0 flex-1;
+  }
+
+  .tiptap-editor ul[data-type="taskList"] li[data-checked="true"] > div,
+  .tiptap-editor .task-item[data-checked="true"] .task-item-content {
+    @apply text-muted-foreground line-through;
+  }
+
+  .tiptap-editor ol {
+    @apply list-decimal pl-6;
+  }
+
+  .tiptap-editor blockquote {
+    @apply border-l-2 pl-4 text-muted-foreground;
+  }
+
+  .tiptap-editor .editor-details {
+    @apply relative py-1;
+  }
+
+  .tiptap-editor .editor-details > button {
+    @apply absolute left-0 top-1.5 flex size-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .tiptap-editor .editor-details > button::before {
+    @apply text-xs transition-transform content-['\25B6'];
+  }
+
+  .tiptap-editor .editor-details.is-open > button::before {
+    @apply rotate-90;
+  }
+
+  .tiptap-editor .editor-details-summary {
+    @apply min-h-7 cursor-text list-none py-0.5 pl-7 font-medium outline-none;
+  }
+
+  .tiptap-editor .editor-details-summary::marker,
+  .tiptap-editor .editor-details-summary::-webkit-details-marker {
+    @apply hidden;
+  }
+
+  .tiptap-editor .editor-details-content {
+    @apply mt-1 pl-7;
+  }
+
+  .tiptap-editor .editor-details-content[hidden] {
+    @apply hidden;
+  }
+
+  .tiptap-editor code {
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-sm;
+  }
+
+  .tiptap-editor pre {
+    @apply overflow-x-auto rounded-md bg-muted p-4;
+  }
+
+  .tiptap-editor pre code {
+    @apply bg-transparent p-0;
+  }
+
+  .tiptap-editor .code-block-shiki {
+    @apply relative min-h-24 overflow-hidden rounded-md pt-10 pb-10;
+  }
+
+  .tiptap-editor .code-block-shiki.shiki {
+    @apply rounded-md;
+  }
+
+  .tiptap-editor .code-block-shiki code {
+    @apply block min-h-10 whitespace-pre;
+  }
+
+  .code-block-controls {
+    @apply absolute right-2 top-2 z-10 flex items-center gap-1 opacity-0 transition-opacity;
+  }
+
+  .tiptap-editor .code-block-shiki:hover .code-block-controls,
+  .tiptap-editor .code-block-shiki:focus-within .code-block-controls {
+    @apply opacity-100;
+  }
+
+  .code-block-copy-button {
+    @apply bg-background/95 shadow-sm;
+  }
+
+  .code-block-language-trigger {
+    @apply h-7 max-w-44 bg-background/95 shadow-sm;
+  }
+
+  .code-block-language-content {
+    @apply z-50 w-64 gap-0 p-0;
+  }
+
+  .dark .tiptap-editor .shiki,
+  .dark .tiptap-editor .shiki span {
+    color: var(--shiki-dark) !important;
+    background-color: var(--shiki-dark-bg) !important;
+  }
+
+  .tiptap-editor hr {
+    @apply my-8 border-border;
+  }
+
+  .tiptap-editor .image-block {
+    @apply my-4;
+  }
+
+  .tiptap-editor .video-block,
+  .tiptap-editor .file-block,
+  .tiptap-editor .bookmark-block {
+    @apply my-4;
+  }
+
+  .image-block-placeholder {
+    @apply flex h-10 w-full items-center gap-2 rounded-md bg-muted/50 px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .media-block-placeholder {
+    @apply flex h-10 w-full items-center gap-2 rounded-md bg-muted/50 px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .image-block[data-src="true"] .image-block-placeholder {
+    @apply hidden;
+  }
+
+  .video-block[data-src="true"] .media-block-placeholder,
+  .file-block[data-src="true"] .media-block-placeholder,
+  .bookmark-block[data-src="true"] .media-block-placeholder {
+    @apply hidden;
+  }
+
+  .image-block-placeholder svg {
+    @apply size-4 shrink-0;
+  }
+
+  .media-block-placeholder svg {
+    @apply size-4 shrink-0;
+  }
+
+  .image-block-preview {
+    @apply relative mx-auto block max-w-full overflow-hidden rounded-md border bg-muted p-0 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .image-block-preview img {
+    @apply block max-h-[520px] w-full object-contain;
+  }
+
+  .video-block-preview {
+    @apply overflow-hidden rounded-md border bg-muted;
+  }
+
+  .video-block-preview video {
+    @apply block max-h-[520px] w-full bg-black;
+  }
+
+  .file-block-preview {
+    @apply flex items-center gap-3 rounded-md border bg-muted/40 px-3 py-2 text-sm text-foreground no-underline transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .file-block-preview svg {
+    @apply size-5 shrink-0 text-muted-foreground;
+  }
+
+  .file-block-title {
+    @apply block truncate font-medium;
+  }
+
+  .file-block-size {
+    @apply block text-xs text-muted-foreground;
+  }
+
+  .bookmark-block-clear {
+    @apply absolute right-2 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .bookmark-block-clear svg {
+    @apply size-4;
+  }
+
+  .bookmark-block-preview {
+    @apply grid grid-cols-[minmax(0,1fr)_7rem] overflow-hidden rounded-md border bg-muted/30 text-foreground no-underline transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .bookmark-block-content {
+    @apply flex min-w-0 flex-col gap-1 p-4;
+  }
+
+  .bookmark-block-title-row {
+    @apply flex min-w-0 items-center gap-2;
+  }
+
+  .bookmark-block-favicon {
+    @apply size-4 shrink-0 rounded-sm;
+  }
+
+  .bookmark-block-favicon-fallback {
+    @apply flex size-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground;
+  }
+
+  .bookmark-block-favicon-fallback svg {
+    @apply size-4;
+  }
+
+  .bookmark-block-title {
+    @apply min-w-0 truncate text-sm font-medium;
+  }
+
+  .bookmark-block-description {
+    @apply line-clamp-2 text-xs text-muted-foreground;
+  }
+
+  .bookmark-block-url {
+    @apply mt-1 truncate text-xs text-muted-foreground;
+  }
+
+  .bookmark-block-thumbnail {
+    @apply flex min-h-24 items-center justify-center overflow-hidden border-l bg-muted text-muted-foreground;
+  }
+
+  .bookmark-block-thumbnail svg {
+    @apply size-6;
+  }
+
+  .bookmark-block-thumbnail img {
+    @apply size-full object-cover;
+  }
+
+  .image-block-resize-handle {
+    @apply absolute top-1/2 z-10 hidden h-14 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center;
+    touch-action: none;
+  }
+
+  .image-block-resize-handle::before {
+    @apply block h-10 w-0.5 rounded-full bg-primary/80 content-[''];
+  }
+
+  .image-block-preview:hover .image-block-resize-handle,
+  .image-block-preview:focus-visible .image-block-resize-handle {
+    @apply flex;
+  }
+
+  .image-block-resize-handle-left {
+    @apply left-1;
+  }
+
+  .image-block-resize-handle-right {
+    @apply right-1;
+  }
+
+  .tiptap-editor .tableWrapper {
+    @apply mt-8 max-w-full overflow-x-auto;
+  }
+
+  .tiptap-editor table {
+    @apply w-full table-fixed border-collapse overflow-hidden;
+    min-width: max(100%, var(--table-min-width, 100%));
+  }
+
+  .tiptap-editor th,
+  .tiptap-editor td {
+    @apply border border-border px-3 py-2 text-left align-top;
+  }
+
+  .tiptap-editor th {
+    @apply bg-muted/70 font-semibold;
+  }
+
+  .tiptap-editor .selectedCell::after {
+    @apply hidden content-[''];
+  }
+
+  .tiptap-editor .selectedCell {
+    @apply relative;
+  }
+
+  .table-selection-line {
+    @apply pointer-events-none fixed z-30 bg-primary;
+  }
+
+  .table-selection-line-vertical {
+    @apply w-px;
+    transform: translateX(-0.5px);
+  }
+
+  .table-selection-line-horizontal {
+    @apply h-px;
+    transform: translateY(-0.5px);
+  }
+
+  .tiptap-editor .column-resize-handle {
+    @apply pointer-events-none absolute bottom-0 right-[-2px] top-0 w-1 bg-primary;
+  }
+
+  .tiptap-editor.resize-cursor {
+    cursor: col-resize;
+  }
+
+  .table-add-control {
+    @apply fixed z-40 flex items-center justify-center border-0 bg-muted/40 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .table-add-control svg {
+    @apply size-4;
+  }
+
+  .table-add-row {
+    @apply border-t-0;
+  }
+
+  .table-add-column {
+    @apply border-l-0;
+  }
+
+  .table-reorder-control {
+    @apply fixed z-40 flex items-center justify-center border-0 bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none active:cursor-grabbing;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .table-reorder-control svg {
+    @apply size-3;
+  }
+
+  .table-reorder-column {
+    @apply cursor-grab rounded-full;
+  }
+
+  .table-reorder-row {
+    @apply cursor-grab rounded-full;
+  }
+
+  .table-reorder-control[data-dragging="true"] {
+    @apply bg-primary text-primary-foreground;
+  }
+
+  .table-drag-source-outline {
+    @apply pointer-events-none fixed z-30 border border-primary;
+  }
+
+  .table-drag-drop-line {
+    @apply pointer-events-none fixed z-40 bg-primary;
+  }
+
+  .table-drag-drop-line-column {
+    @apply w-0.5;
+    transform: translateX(-1px);
+  }
+
+  .table-drag-drop-line-row {
+    @apply h-0.5;
+    transform: translateY(-1px);
+  }
+
+  .drag-handle {
+    @apply z-40 flex h-7 w-14 cursor-grab items-center justify-between bg-transparent text-muted-foreground opacity-100 active:cursor-grabbing;
+    transform: translate3d(0, 0, 0);
+    transition-duration: 160ms;
+    transition-property: top, left, transform, color;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+    will-change: top, left, transform;
+  }
+
+  .drag-handle-plus,
+  .drag-handle-grip {
+    @apply flex size-7 items-center justify-center rounded-sm bg-transparent;
+  }
+
+  .drag-handle-plus {
+    @apply cursor-pointer text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .drag-handle-grip {
+    @apply cursor-grab hover:text-foreground active:cursor-grabbing;
+  }
+
+  .drag-handle svg,
+  .drag-handle-plus svg,
+  .drag-handle-grip svg {
+    @apply size-4;
+  }
+
+  .drag-handle[data-dragging="true"] {
+    transition: none;
+  }
+
+  .plus-block-menu {
+    @apply !absolute left-0 top-8;
+  }
+
+  .selection-toolbar {
+    @apply z-50 flex items-center gap-1 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg;
+  }
+
+  .suggestion {
+    @apply rounded bg-muted px-1;
+  }
+
+  .slash-menu-shell {
+    @apply fixed z-50 w-72 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg;
+  }
+
+  .slash-menu-icon {
+    @apply flex size-8 shrink-0 items-center justify-center rounded-sm border bg-background text-muted-foreground;
+  }
+
+  .slash-menu-icon svg {
+    @apply size-4;
+  }
+
+  .slash-menu-title {
+    @apply block truncate font-medium text-foreground;
+  }
+
+  .slash-menu-description {
+    @apply block truncate text-xs text-muted-foreground;
+  }
+}
