@@ -190,6 +190,47 @@ async function main() {
 
   console.info(`Organization created: ${org.data.id}`);
 
+  const secondOrg = await jsonRequest<{
+    id: string;
+    name: string;
+    slug: string;
+  }>(
+    "/organization/create",
+    {
+      name: "Notelab Flow Second Org",
+      slug: `notelab-flow-second-${stamp}`,
+    },
+    signupJar,
+  );
+
+  console.info(`Second organization created: ${secondOrg.data.id}`);
+
+  const organizations = await authRequest<
+    Array<{ id: string; name: string; slug: string }>
+  >(
+    "/organization/list",
+    {
+      method: "GET",
+    },
+    signupJar,
+  );
+
+  if (organizations.data.length < 2) {
+    throw new Error(
+      `Expected at least 2 organizations, got ${organizations.data.length}`,
+    );
+  }
+
+  await jsonRequest(
+    "/organization/set-active",
+    {
+      organizationId: secondOrg.data.id,
+    },
+    signupJar,
+  );
+
+  console.info(`Active organization set: ${secondOrg.data.id}`);
+
   const team = await jsonRequest<{
     id: string;
     name: string;
