@@ -5,7 +5,7 @@ import type { SlashCommandItem } from "@/packages/editor/extensions/slash-comman
 
 import type { DragHandleTarget } from "./types"
 
-function blockContentForItem(item: SlashCommandItem): Content {
+export function blockContentForItem(item: SlashCommandItem): Content {
   switch (item.title) {
     case "Text":
       return { type: "paragraph" }
