@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useNavigate } from "@tanstack/react-router"
 
 import { NavFavorites } from "@/components/nav-favorites"
 import { NavMain } from "@/components/nav-main"
@@ -15,6 +16,16 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useSession } from "@/features/auth/hooks"
+import { useOrganizations } from "@/features/organizations/hooks"
+import {
+  getWorkspaceEmoji,
+} from "@/features/workspaces/queries"
+import {
+  useCreateWorkspace,
+  useWorkspaces,
+} from "@/features/workspaces/hooks"
+import { useAppStore } from "@/stores/app-store"
 import { SearchIcon, SparklesIcon, HomeIcon, InboxIcon, CalendarIcon, Settings2Icon, BlocksIcon, Trash2Icon, MessageCircleQuestionIcon } from "lucide-react"
 
 // This is sample data.
@@ -149,116 +160,40 @@ const data = {
       emoji: "✅",
     },
   ],
-  workspaces: [
-    {
-      name: "Personal Life Management",
-      emoji: "🏠",
-      pages: [
-        {
-          name: "Daily Journal & Reflection",
-          url: "#",
-          emoji: "📔",
-        },
-        {
-          name: "Health & Wellness Tracker",
-          url: "#",
-          emoji: "🍏",
-        },
-        {
-          name: "Personal Growth & Learning Goals",
-          url: "#",
-          emoji: "🌟",
-        },
-      ],
-    },
-    {
-      name: "Professional Development",
-      emoji: "💼",
-      pages: [
-        {
-          name: "Career Objectives & Milestones",
-          url: "#",
-          emoji: "🎯",
-        },
-        {
-          name: "Skill Acquisition & Training Log",
-          url: "#",
-          emoji: "🧠",
-        },
-        {
-          name: "Networking Contacts & Events",
-          url: "#",
-          emoji: "🤝",
-        },
-      ],
-    },
-    {
-      name: "Creative Projects",
-      emoji: "🎨",
-      pages: [
-        {
-          name: "Writing Ideas & Story Outlines",
-          url: "#",
-          emoji: "✍️",
-        },
-        {
-          name: "Art & Design Portfolio",
-          url: "#",
-          emoji: "🖼️",
-        },
-        {
-          name: "Music Composition & Practice Log",
-          url: "#",
-          emoji: "🎵",
-        },
-      ],
-    },
-    {
-      name: "Home Management",
-      emoji: "🏡",
-      pages: [
-        {
-          name: "Household Budget & Expense Tracking",
-          url: "#",
-          emoji: "💰",
-        },
-        {
-          name: "Home Maintenance Schedule & Tasks",
-          url: "#",
-          emoji: "🔧",
-        },
-        {
-          name: "Family Calendar & Event Planning",
-          url: "#",
-          emoji: "📅",
-        },
-      ],
-    },
-    {
-      name: "Travel & Adventure",
-      emoji: "🧳",
-      pages: [
-        {
-          name: "Trip Planning & Itineraries",
-          url: "#",
-          emoji: "🗺️",
-        },
-        {
-          name: "Travel Bucket List & Inspiration",
-          url: "#",
-          emoji: "🌎",
-        },
-        {
-          name: "Travel Journal & Photo Gallery",
-          url: "#",
-          emoji: "📸",
-        },
-      ],
-    },
-  ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const navigate = useNavigate()
+  const activeOrganizationId = useAppStore((state) => state.activeOrganizationId)
+  const { data: session } = useSession()
+  const { data: organizations = [] } = useOrganizations()
+  const organizationId =
+    activeOrganizationId ??
+    session?.session?.activeOrganizationId ??
+    organizations[0]?.id ??
+    null
+  const { data: workspaceRecords = [] } = useWorkspaces(organizationId)
+  const createWorkspace = useCreateWorkspace()
+  const workspaces = workspaceRecords.map((workspace) => ({
+    id: workspace.id,
+    name: workspace.name,
+    emoji: getWorkspaceEmoji(workspace),
+    pages: [],
+  }))
+
+  const handleCreateWorkspace = async () => {
+    if (!organizationId || createWorkspace.isPending) {
+      return
+    }
+
+    const workspace = await createWorkspace.mutateAsync({ organizationId })
+
+    await navigate({
+      to: "/workspace/$workspaceId",
+      params: { workspaceId: workspace.id },
+    })
+  }
+
   return (
     <Sidebar className="border-r-0" {...props}>
       <SidebarHeader>
@@ -267,7 +202,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavFavorites favorites={data.favorites} />
-        <NavWorkspaces workspaces={data.workspaces} />
+        <NavWorkspaces
+          onCreateWorkspace={handleCreateWorkspace}
+          workspaces={workspaces}
+        />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>

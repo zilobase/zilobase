@@ -17,6 +17,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import {
+  getWorkspaceEmoji,
+} from "@/features/workspaces/queries"
+import { useWorkspace } from "@/features/workspaces/hooks"
 
 export function AppLayout() {
   const location = useLocation()
@@ -47,7 +51,36 @@ export function AppLayout() {
   )
 }
 
+function WorkspaceBreadcrumb({ workspaceId }: { workspaceId: string }) {
+  const { data: workspace } = useWorkspace(workspaceId)
+  const label = workspace ? workspace.name : "Workspace"
+
+  return (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem className="hidden sm:inline-flex">
+          <BreadcrumbLink asChild>
+            <Link to="/dashboard">Dashboard</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator className="hidden sm:inline-flex" />
+        <BreadcrumbItem>
+          <BreadcrumbPage className="line-clamp-1">
+            {workspace ? `${getWorkspaceEmoji(workspace)} ${label}` : label}
+          </BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  )
+}
+
 function AppBreadcrumbs({ pathname }: { pathname: string }) {
+  const workspaceId = getWorkspaceId(pathname)
+
+  if (workspaceId) {
+    return <WorkspaceBreadcrumb workspaceId={workspaceId} />
+  }
+
   if (pathname.startsWith("/settings")) {
     const settingsPageTitle = getSettingsPageTitle(pathname)
 
@@ -83,6 +116,12 @@ function AppBreadcrumbs({ pathname }: { pathname: string }) {
       </BreadcrumbList>
     </Breadcrumb>
   )
+}
+
+function getWorkspaceId(pathname: string) {
+  const match = pathname.match(/^\/workspace\/([^/]+)/)
+
+  return match?.[1] ? decodeURIComponent(match[1]) : null
 }
 
 function getSettingsPageTitle(pathname: string) {

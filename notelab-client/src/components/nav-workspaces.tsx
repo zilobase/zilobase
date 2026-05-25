@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+import { Link, useLocation } from "@tanstack/react-router"
 import {
   Collapsible,
   CollapsibleContent,
@@ -5,6 +7,7 @@ import {
 } from "@/components/ui/collapsible"
 import {
   SidebarGroup,
+  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
@@ -18,30 +21,48 @@ import {
 import { ChevronRightIcon, PlusIcon, MoreHorizontalIcon } from "lucide-react"
 
 export function NavWorkspaces({
+  onCreateWorkspace,
   workspaces,
 }: {
+  onCreateWorkspace: () => void
   workspaces: {
+    id: string
     name: string
-    emoji: React.ReactNode
+    emoji: ReactNode
     pages: {
       name: string
-      emoji: React.ReactNode
+      emoji: ReactNode
     }[]
   }[]
 }) {
+  const location = useLocation()
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Workspaces</SidebarGroupLabel>
+      <SidebarGroupAction
+        aria-label="Create workspace"
+        title="Create workspace"
+        onClick={onCreateWorkspace}
+      >
+        <PlusIcon />
+      </SidebarGroupAction>
       <SidebarGroupContent>
         <SidebarMenu>
           {workspaces.map((workspace) => (
-            <Collapsible key={workspace.name}>
+            <Collapsible key={workspace.id}>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#">
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === `/workspace/${workspace.id}`}
+                >
+                  <Link
+                    to="/workspace/$workspaceId"
+                    params={{ workspaceId: workspace.id }}
+                  >
                     <span>{workspace.emoji}</span>
                     <span>{workspace.name}</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
                 <CollapsibleTrigger asChild>
                   <SidebarMenuAction
@@ -52,10 +73,6 @@ export function NavWorkspaces({
                     />
                   </SidebarMenuAction>
                 </CollapsibleTrigger>
-                <SidebarMenuAction showOnHover>
-                  <PlusIcon
-                  />
-                </SidebarMenuAction>
                 <CollapsibleContent>
                   <SidebarMenuSub>
                     {workspace.pages.map((page) => (

@@ -21,7 +21,6 @@ import Typography from "@tiptap/extension-typography"
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
 import StarterKit from "@tiptap/starter-kit"
 
-import { DocumentSummary } from "@/packages/editor/components/editor/document-summary"
 import {
   DragBlockMenu,
   dragHandleComputePositionConfig,
@@ -55,6 +54,8 @@ const starterContent = `
   </ul>
   <blockquote>Fast notes, structured blocks, zero ceremony.</blockquote>
 `
+
+const emptyContent = "<p></p>"
 
 const dragHandleNestedOptions: NestedOptions = {
   edgeDetection: "none",
@@ -103,7 +104,21 @@ const dragHandleNestedOptions: NestedOptions = {
   ],
 }
 
-export function Editor() {
+type EditorProps = {
+  content?: unknown
+  emoji?: string
+  onEmojiChange?: (emoji: string) => void
+  onTitleChange?: (title: string) => void
+  title?: string
+}
+
+export function Editor({
+  content = starterContent,
+  emoji,
+  onEmojiChange,
+  onTitleChange,
+  title,
+}: EditorProps = {}) {
   const dragHandlePosRef = useRef<number | null>(null)
   const pointerDragTargetRef = useRef<DragHandleTarget | null>(null)
   const [dragHandleTarget, setDragHandleTarget] =
@@ -177,7 +192,7 @@ export function Editor() {
       CharacterCount,
       SlashCommand,
     ],
-    content: starterContent,
+    content: normalizeEditorContent(content),
     editorProps: {
       attributes: {
         class: "tiptap-editor",
@@ -407,26 +422,10 @@ export function Editor() {
     }
   }
 
-  const words = editor?.storage.characterCount.words() ?? 0
-  const characters = editor?.storage.characterCount.characters() ?? 0
-
   return (
-    <div className="flex w-full flex-col gap-5">
-      <header className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Notion-style editor
-          </p>
-          <h1 className="text-2xl font-semibold">Advanced Tiptap workspace</h1>
-        </div>
-        <div className="flex gap-3 text-sm text-muted-foreground">
-          <span>{words} words</span>
-          <span>{characters} chars</span>
-        </div>
-      </header>
-
+    <div className="flex min-h-[calc(100svh-3rem)] w-full flex-col text-foreground">
       <section
-        className="overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm"
+        className="min-h-0 flex-1"
         onPointerLeave={() => {
           pointerDragTargetRef.current = null
         }}
@@ -451,13 +450,28 @@ export function Editor() {
         ) : null}
         <SelectionBubbleMenu editor={editor} runCommand={runCommand} />
         <TableControls editor={editor} />
-        <PageMetadata />
+        <PageMetadata
+          icon={emoji}
+          onIconChange={onEmojiChange}
+          onTitleChange={onTitleChange}
+          title={title}
+        />
         <EditorContent editor={editor} />
       </section>
-
-      <DocumentSummary />
     </div>
   )
 }
 
 export default Editor
+
+function normalizeEditorContent(content: unknown) {
+  if (typeof content === "string") {
+    return content.trim() ? content : emptyContent
+  }
+
+  if (content && typeof content === "object") {
+    return content
+  }
+
+  return emptyContent
+}

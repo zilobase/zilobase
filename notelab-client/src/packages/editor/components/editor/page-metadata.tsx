@@ -17,12 +17,42 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Textarea } from "@/components/ui/textarea"
 
-export function PageMetadata() {
+type PageMetadataProps = {
+  icon?: string
+  onIconChange?: (icon: string) => void
+  onTitleChange?: (title: string) => void
+  title?: string
+}
+
+export function PageMetadata({
+  icon: iconProp,
+  onIconChange,
+  onTitleChange,
+  title: titleProp,
+}: PageMetadataProps) {
   const [comment, setComment] = useState("")
   const [coverVisible, setCoverVisible] = useState(false)
-  const [icon, setIcon] = useState("")
   const [iconOpen, setIconOpen] = useState(false)
-  const [title, setTitle] = useState("")
+  const [localIcon, setLocalIcon] = useState("")
+  const [localTitle, setLocalTitle] = useState("")
+  const icon = iconProp ?? localIcon
+  const title = titleProp ?? localTitle
+
+  const updateIcon = (nextIcon: string) => {
+    onIconChange?.(nextIcon)
+
+    if (iconProp === undefined) {
+      setLocalIcon(nextIcon)
+    }
+  }
+
+  const updateTitle = (nextTitle: string) => {
+    onTitleChange?.(nextTitle)
+
+    if (titleProp === undefined) {
+      setLocalTitle(nextTitle)
+    }
+  }
 
   const iconPicker = icon ? (
     <div className="group/icon relative shrink-0">
@@ -45,7 +75,7 @@ export function PageMetadata() {
         >
           <EmojiPicker
             onEmojiSelect={({ emoji }) => {
-              setIcon(emoji)
+              updateIcon(emoji)
               setIconOpen(false)
             }}
           >
@@ -59,7 +89,7 @@ export function PageMetadata() {
         aria-label="Remove page icon"
         className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none group-hover/icon:flex [&_svg]:size-3"
         onClick={() => {
-          setIcon("")
+          updateIcon("")
           setIconOpen(false)
         }}
         type="button"
@@ -87,7 +117,7 @@ export function PageMetadata() {
       >
         <EmojiPicker
           onEmojiSelect={({ emoji }) => {
-            setIcon(emoji)
+            updateIcon(emoji)
             setIconOpen(false)
           }}
         >
@@ -100,7 +130,7 @@ export function PageMetadata() {
   )
 
   return (
-    <section className="border-b bg-card" contentEditable={false}>
+    <section contentEditable={false}>
       {coverVisible ? (
         <div className="relative h-28 bg-gradient-to-r from-stone-200 via-neutral-300 to-zinc-200 dark:from-stone-800 dark:via-neutral-700 dark:to-zinc-800">
           <button
@@ -134,7 +164,7 @@ export function PageMetadata() {
           <Input
             aria-label="Page title"
             className="h-auto min-w-0 border-0 bg-transparent px-0 py-0 text-3xl font-semibold leading-tight tracking-normal text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-3xl dark:bg-transparent"
-            onChange={(event) => setTitle(event.target.value)}
+            onChange={(event) => updateTitle(event.target.value)}
             placeholder="New page"
             value={title}
           />

@@ -15,6 +15,7 @@ import OrganizationSettingsPage from "@/pages/settings/organization"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
 import SignupPage from "@/pages/signup"
+import WorkspacePage from "@/pages/workspace"
 import { sessionQueryOptions } from "@/features/auth/queries"
 import { organizationsQueryOptions } from "@/features/organizations/queries"
 import { queryClient } from "@/lib/query-client"
@@ -119,6 +120,12 @@ const dashboardRoute = createRoute({
   component: DashboardPage,
 })
 
+const workspaceRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/workspace/$workspaceId",
+  component: WorkspacePage,
+})
+
 const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings",
@@ -153,6 +160,7 @@ const routeTree = rootRoute.addChildren([
   otpRoute,
   appRoute.addChildren([
     dashboardRoute,
+    workspaceRoute,
     settingsRoute,
     profileSettingsRoute,
     organizationSettingsRoute,
