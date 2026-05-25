@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react"
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Clipboard,
   Copy,
@@ -10,19 +10,6 @@ import {
   Type,
 } from "lucide-react"
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import {
   SlashCommandMenu,
@@ -69,6 +56,9 @@ export function DragBlockMenu({
   onOpenChange: (open: boolean) => void
 }) {
   const [actionsOpen, setActionsOpen] = useState(false)
+  const [activeSubmenu, setActiveSubmenu] = useState<"turnInto" | "color" | null>(
+    null
+  )
   const [search, setSearch] = useState("")
   const gripPointerRef = useRef<{
     moved: boolean
@@ -83,6 +73,27 @@ export function DragBlockMenu({
     [search]
   )
   const isPageBlock = target?.node.type.name === "pageBlock"
+
+  useEffect(() => {
+    if (!actionsOpen) {
+      return
+    }
+
+    const close = () => setActionsOpen(false)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        close()
+      }
+    }
+
+    document.addEventListener("mousedown", close)
+    document.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      document.removeEventListener("mousedown", close)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [actionsOpen])
 
   const runTargetCommand = (command: () => void) => {
     if (!target) {
@@ -258,71 +269,62 @@ export function DragBlockMenu({
       >
         <Plus />
       </button>
-      <DropdownMenu open={actionsOpen} onOpenChange={setActionsOpen}>
-        <DropdownMenuTrigger asChild>
-          <button
-            aria-label="Open block actions"
-            className="drag-handle-grip"
-            disabled={!target}
-            onClick={(event) => {
-              if (gripPointerRef.current?.moved) {
-                event.preventDefault()
-                gripPointerRef.current = null
-                return
-              }
+      <span
+        aria-label="Open block actions"
+        className="drag-handle-grip"
+        onClick={(event) => {
+          if (!target || gripPointerRef.current?.moved) {
+            gripPointerRef.current = null
+            return
+          }
 
-              event.stopPropagation()
-              onOpenChange(false)
-              setActionsOpen(true)
-              gripPointerRef.current = null
-            }}
-            onDragStart={(event) => event.preventDefault()}
-            onPointerDownCapture={(event) => {
-              if (event.button !== 0) {
-                return
-              }
+          event.stopPropagation()
+          onOpenChange(false)
+          setActiveSubmenu(null)
+          setActionsOpen(true)
+          gripPointerRef.current = null
+        }}
+        onPointerDown={(event) => {
+          if (event.button !== 0) {
+            return
+          }
 
-              event.preventDefault()
-              gripPointerRef.current = {
-                moved: false,
-                x: event.clientX,
-                y: event.clientY,
-              }
-            }}
-            onPointerMove={(event) => {
-              const pointer = gripPointerRef.current
+          gripPointerRef.current = {
+            moved: false,
+            x: event.clientX,
+            y: event.clientY,
+          }
+        }}
+        onPointerMove={(event) => {
+          const pointer = gripPointerRef.current
 
-              if (!pointer) {
-                return
-              }
+          if (!pointer) {
+            return
+          }
 
-              const deltaX = Math.abs(event.clientX - pointer.x)
-              const deltaY = Math.abs(event.clientY - pointer.y)
+          const deltaX = Math.abs(event.clientX - pointer.x)
+          const deltaY = Math.abs(event.clientY - pointer.y)
 
-              if (deltaX > 4 || deltaY > 4) {
-                pointer.moved = true
-              }
-            }}
-            onPointerUp={() => {
-              window.setTimeout(() => {
-                gripPointerRef.current = null
-              }, 0)
-            }}
-            title="Block actions"
-            type="button"
-          >
-            <GripVertical />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          className="w-72 p-2"
-          onCloseAutoFocus={(event) => event.preventDefault()}
-          onMouseDown={(event) => {
-            event.stopPropagation()
-          }}
-          side="right"
-          sideOffset={8}
+          if (deltaX > 4 || deltaY > 4) {
+            pointer.moved = true
+            setActionsOpen(false)
+          }
+        }}
+        onPointerUp={() => {
+          window.setTimeout(() => {
+            gripPointerRef.current = null
+          }, 0)
+        }}
+        role="button"
+        tabIndex={0}
+        title="Block actions"
+      >
+        <GripVertical />
+      </span>
+      {actionsOpen ? (
+        <div
+          className="absolute left-full top-0 z-50 ml-2 w-72 rounded-lg bg-popover p-2 text-popover-foreground shadow-md ring-1 ring-foreground/10"
+          onMouseDown={(event) => event.stopPropagation()}
         >
           <Input
             autoComplete="off"
@@ -332,85 +334,125 @@ export function DragBlockMenu({
             placeholder="Search actions..."
             value={search}
           />
-          <DropdownMenuLabel>{isPageBlock ? "Page" : "Block"}</DropdownMenuLabel>
-          <DropdownMenuGroup>
+          <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
+            {isPageBlock ? "Page" : "Block"}
+          </div>
+          <div className="grid gap-0.5">
             {!isPageBlock ? (
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
+              <div className="relative" onMouseEnter={() => setActiveSubmenu("turnInto")}>
+                <button
+                  className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
+                  type="button"
+                >
                   <Type />
                   <span>Turn into</span>
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-52">
+                  <span className="ml-auto text-muted-foreground">›</span>
+                </button>
+                {activeSubmenu === "turnInto" ? (
+                  <div className="absolute left-full top-0 z-50 ml-2 w-52 rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10">
                   {filteredTurnIntoItems.map((item) => {
                     const Icon = item.icon
 
                     return (
-                      <DropdownMenuItem
+                      <button
+                        className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
                         key={item.title}
-                        onSelect={() => turnTargetInto(item)}
+                        onClick={() => turnTargetInto(item)}
+                        type="button"
                       >
                         <Icon />
                         <span>{item.title}</span>
-                      </DropdownMenuItem>
+                      </button>
                     )
                   })}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+                  </div>
+                ) : null}
+              </div>
             ) : null}
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
+            <div className="relative" onMouseEnter={() => setActiveSubmenu("color")}>
+              <button
+                className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
+                type="button"
+              >
                 <Palette />
                 <span>Color</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-56">
-                <DropdownMenuLabel>Text color</DropdownMenuLabel>
+                <span className="ml-auto text-muted-foreground">›</span>
+              </button>
+              {activeSubmenu === "color" ? (
+                <div className="absolute left-full top-0 z-50 ml-2 w-56 rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10">
+                <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
+                  Text color
+                </div>
                 {colorTokens.map((token) => (
-                  <DropdownMenuItem
+                  <button
+                    className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
                     key={`text-${token.name}`}
-                    onSelect={() => applyColor(token.value, "text")}
+                    onClick={() => applyColor(token.value, "text")}
+                    type="button"
                   >
                     <span className={`size-4 rounded-sm border bg-card ${token.textClass}`}>
                       A
                     </span>
                     <span>{token.name} text</span>
-                  </DropdownMenuItem>
+                  </button>
                 ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>Background color</DropdownMenuLabel>
+                <div className="-mx-1 my-1 h-px bg-border" />
+                <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
+                  Background color
+                </div>
                 {colorTokens.map((token) => (
-                  <DropdownMenuItem
+                  <button
+                    className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
                     key={`background-${token.name}`}
-                    onSelect={() => applyColor(token.value, "background")}
+                    onClick={() => applyColor(token.value, "background")}
+                    type="button"
                   >
                     <span
                       className={`size-4 rounded-sm border ${token.backgroundClass}`}
                     />
                     <span>{token.name} background</span>
-                  </DropdownMenuItem>
+                  </button>
                 ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem onSelect={copyTarget}>
+              </div>
+              ) : null}
+            </div>
+          </div>
+          <div className="-mx-1 my-1 h-px bg-border" />
+          <div className="grid gap-0.5">
+            <button
+              className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
+              onClick={copyTarget}
+              type="button"
+            >
               <Clipboard />
               <span>Copy</span>
-              <DropdownMenuShortcut>⌘C</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={duplicateTarget}>
+              <span className="ml-auto text-xs tracking-widest text-muted-foreground">
+                ⌘C
+              </span>
+            </button>
+            <button
+              className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
+              onClick={duplicateTarget}
+              type="button"
+            >
               <Copy />
               <span>Duplicate</span>
-              <DropdownMenuShortcut>⌘D</DropdownMenuShortcut>
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={deleteTarget} variant="destructive">
+              <span className="ml-auto text-xs tracking-widest text-muted-foreground">
+                ⌘D
+              </span>
+            </button>
+          </div>
+          <div className="-mx-1 my-1 h-px bg-border" />
+          <button
+            className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm text-destructive outline-none hover:bg-destructive/10 focus-visible:bg-destructive/10"
+            onClick={deleteTarget}
+            type="button"
+          >
             <Trash2 />
             <span>Delete</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </button>
+        </div>
+      ) : null}
       {isOpen && target ? (
         <div
           className="plus-block-menu slash-menu-shell"
