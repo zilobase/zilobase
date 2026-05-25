@@ -1,6 +1,8 @@
 import {
   boolean,
+  index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -116,6 +118,39 @@ export const teamMember = pgTable("teamMember", {
     .references(() => user.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const workspace = pgTable(
+  "workspace",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    createdById: text("created_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    type: text("type").notNull().default("pageblock"),
+    name: text("name").notNull(),
+    url: text("url").notNull().default("#"),
+    content: jsonb("content"),
+    metadata: jsonb("metadata"),
+    deletedById: text("deleted_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("workspace_organization_id_idx").on(table.organizationId),
+    index("workspace_type_idx").on(table.type),
+    index("workspace_deleted_at_idx").on(table.deletedAt),
+  ],
+);
 
 export const rateLimit = pgTable("rateLimit", {
   key: text("key").primaryKey(),
