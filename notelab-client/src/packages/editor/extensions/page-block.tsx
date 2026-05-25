@@ -5,7 +5,7 @@ import {
   type ReactNodeViewProps,
 } from "@tiptap/react"
 import { FileText, LinkIcon, Loader2, Plus } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState, type KeyboardEvent } from "react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -36,6 +36,8 @@ function PageBlockView({
   const pageId = node.attrs.pageId as string | null
   const shouldOpenPicker = Boolean(node.attrs.openPicker)
   const [isOpen, setIsOpen] = useState(shouldOpenPicker)
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const { data: page } = useWorkspace(pageId)
   const title = page?.name.trim() || "Untitled"
   const emoji = page ? getWorkspaceEmoji(page) : null
@@ -44,6 +46,7 @@ function PageBlockView({
   const linkablePages = pages.filter(
     (workspace) => workspace.id !== options.currentPageId
   )
+  const optionCount = linkablePages.length + (options.onCreatePage ? 1 : 0)
 
   useEffect(() => {
     if (!shouldOpenPicker || pageId) {
@@ -55,6 +58,22 @@ function PageBlockView({
       openPicker: false,
     })
   }, [pageId, shouldOpenPicker, updateAttributes])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    setSelectedIndex(0)
+  }, [isOpen, linkablePages.length])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    optionRefs.current[selectedIndex]?.focus()
+  }, [isOpen, selectedIndex])
 
   const createPage = async () => {
     if (!options.onCreatePage || isCreating) {
@@ -86,6 +105,54 @@ function PageBlockView({
   const openPage = () => {
     if (pageId) {
       options.onOpenPage?.(pageId)
+    }
+  }
+
+  const selectOption = (index: number) => {
+    const linkedPage = linkablePages[index]
+
+    if (linkedPage) {
+      linkPage(linkedPage.id)
+      return
+    }
+
+    if (index === linkablePages.length) {
+      void createPage()
+    }
+  }
+
+  const handlePickerKeyDown = (event: KeyboardEvent) => {
+    if (optionCount === 0) {
+      return
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault()
+      setSelectedIndex((index) => (index + 1) % optionCount)
+      return
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault()
+      setSelectedIndex((index) => (index + optionCount - 1) % optionCount)
+      return
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault()
+      setSelectedIndex(0)
+      return
+    }
+
+    if (event.key === "End") {
+      event.preventDefault()
+      setSelectedIndex(optionCount - 1)
+      return
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault()
+      selectOption(selectedIndex)
     }
   }
 
@@ -123,6 +190,7 @@ function PageBlockView({
             avoidCollisions
             className="max-h-[var(--radix-popover-content-available-height)] w-72 overflow-y-auto p-2"
             collisionPadding={8}
+            onKeyDown={handlePickerKeyDown}
             side="bottom"
             sideOffset={6}
           >
@@ -131,15 +199,20 @@ function PageBlockView({
             </div>
             <div className="grid gap-1">
               {linkablePages.length > 0 ? (
-                linkablePages.map((workspace) => {
+                linkablePages.map((workspace, index) => {
                   const workspaceTitle = workspace.name.trim() || "Untitled"
                   const workspaceEmoji = getWorkspaceEmoji(workspace)
 
                   return (
                     <button
-                      className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+                      className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+                      data-selected={selectedIndex === index ? true : undefined}
                       key={workspace.id}
                       onClick={() => linkPage(workspace.id)}
+                      onMouseEnter={() => setSelectedIndex(index)}
+                      ref={(element) => {
+                        optionRefs.current[index] = element
+                      }}
                       type="button"
                     >
                       <span className="page-block-icon">
@@ -160,8 +233,15 @@ function PageBlockView({
                 <div className="my-1 h-px bg-border" />
                 <Button
                   className="page-block-create-option"
+                  data-selected={
+                    selectedIndex === linkablePages.length ? true : undefined
+                  }
                   disabled={isCreating}
                   onClick={createPage}
+                  onMouseEnter={() => setSelectedIndex(linkablePages.length)}
+                  ref={(element) => {
+                    optionRefs.current[linkablePages.length] = element
+                  }}
                   type="button"
                   variant="ghost"
                 >

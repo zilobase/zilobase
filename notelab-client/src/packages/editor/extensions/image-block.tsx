@@ -26,7 +26,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 
 const minImageWidth = 160
-const maxImageWidth = 960
 
 const aiImageOptions = [
   { label: "Photo", icon: ImageIcon },
@@ -36,7 +35,7 @@ const aiImageOptions = [
   { label: "Mockup", icon: FileImage },
 ]
 
-function ImageBlockView({ node, updateAttributes }: ReactNodeViewProps) {
+function ImageBlockView({ editor, node, updateAttributes }: ReactNodeViewProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const resizeStateRef = useRef<{
     startX: number
@@ -116,12 +115,16 @@ function ImageBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       return
     }
 
+    const editorWidth = editor.view.dom.clientWidth
     const delta =
       resizeState.side === "right"
         ? event.clientX - resizeState.startX
         : resizeState.startX - event.clientX
     const nextWidth = Math.round(
-      Math.min(maxImageWidth, Math.max(minImageWidth, resizeState.startWidth + delta))
+      Math.min(
+        editorWidth,
+        Math.max(minImageWidth, resizeState.startWidth + delta)
+      )
     )
 
     updateAttributes({ width: nextWidth })

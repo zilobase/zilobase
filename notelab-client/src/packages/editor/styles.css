@@ -196,7 +196,7 @@
   }
 
   .image-block-preview img {
-    @apply block max-h-[520px] w-full object-contain;
+    @apply block w-full;
   }
 
   .video-block-preview {
@@ -284,7 +284,7 @@
   }
 
   .page-block-create-option {
-    @apply mt-1 flex h-8 w-full justify-start gap-2 px-2 text-xs;
+    @apply mt-1 flex h-8 w-full justify-start gap-2 px-2 text-xs data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground;
   }
 
   .page-block-preview {
