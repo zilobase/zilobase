@@ -25,9 +25,9 @@ import {
   DragBlockMenu,
   dragHandleComputePositionConfig,
 } from "@/packages/editor/components/editor/drag-block-menu"
-import { PageMetadata } from "@/packages/editor/components/editor/page-metadata"
 import { SelectionBubbleMenu } from "@/packages/editor/components/editor/selection-bubble-menu"
 import { TableControls } from "@/packages/editor/components/editor/table-controls"
+import { WorkspaceMetadata } from "@/packages/editor/components/editor/workspace-metadata"
 import type {
   DragHandleTarget,
   ToolbarAction,
@@ -112,6 +112,17 @@ type EditorProps = {
   title?: string
 }
 
+type MobileDragState = {
+  active: boolean
+  pointerId: number
+  pointerY: number
+  source: DragHandleTarget
+  startX: number
+  startY: number
+  target: DragHandleTarget | null
+  timeoutId: number | null
+}
+
 export function Editor({
   content = starterContent,
   emoji,
@@ -120,6 +131,7 @@ export function Editor({
   title,
 }: EditorProps = {}) {
   const dragHandlePosRef = useRef<number | null>(null)
+  const mobileDragRef = useRef<MobileDragState | null>(null)
   const pointerDragTargetRef = useRef<DragHandleTarget | null>(null)
   const [dragHandleTarget, setDragHandleTarget] =
     useState<DragHandleTarget | null>(null)
@@ -242,8 +254,8 @@ export function Editor({
     }
   }, [editor])
 
-  const resolveDragTargetFromPointer = useCallback(
-    (event: ReactPointerEvent<HTMLElement>) => {
+  const resolveDragTargetFromPoint = useCallback(
+    (clientX: number, clientY: number) => {
       if (!editor) {
         return null
       }
@@ -251,8 +263,8 @@ export function Editor({
       const view = editor.view
       const editorElement = view.dom
       const elements = view.root.elementsFromPoint(
-        event.clientX,
-        event.clientY
+        clientX,
+        clientY
       )
       const isInsideEditor = elements.some(
         (element) =>
@@ -268,7 +280,7 @@ export function Editor({
         if (currentDom instanceof HTMLElement) {
           const rect = currentDom.getBoundingClientRect()
 
-          if (event.clientY >= rect.top && event.clientY <= rect.bottom) {
+          if (clientY >= rect.top && clientY <= rect.bottom) {
             return currentTarget
           }
         }
@@ -277,8 +289,8 @@ export function Editor({
       }
 
       const coords = view.posAtCoords({
-        left: event.clientX,
-        top: event.clientY,
+        left: clientX,
+        top: clientY,
       })
 
       if (!coords) {
@@ -329,6 +341,12 @@ export function Editor({
     [editor]
   )
 
+  const resolveDragTargetFromPointer = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) =>
+      resolveDragTargetFromPoint(event.clientX, event.clientY),
+    [resolveDragTargetFromPoint]
+  )
+
   const updateDragTargetFromPointer = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       const nextTarget = resolveDragTargetFromPointer(event)
@@ -364,6 +382,179 @@ export function Editor({
       setPlusMenuOpen(false)
     },
     []
+  )
+
+  const moveBlock = useCallback(
+    (source: DragHandleTarget, target: DragHandleTarget) => {
+      if (!editor || source.pos === target.pos) {
+        return
+      }
+
+      const view = editor.view
+      const sourceEnd = source.pos + source.node.nodeSize
+      const targetDom = view.nodeDOM(target.pos)
+      const targetRect =
+        targetDom instanceof HTMLElement ? targetDom.getBoundingClientRect() : null
+      const dropAfter =
+        targetRect && mobileDragRef.current
+          ? mobileDragRef.current.pointerY >
+            targetRect.top + targetRect.height / 2
+          : target.pos > source.pos
+      const rawInsertPos = dropAfter
+        ? target.pos + target.node.nodeSize
+        : target.pos
+      const insertPos =
+        rawInsertPos > source.pos ? rawInsertPos - source.node.nodeSize : rawInsertPos
+
+      if (insertPos === source.pos || insertPos === sourceEnd) {
+        return
+      }
+
+      const tr = view.state.tr
+        .delete(source.pos, sourceEnd)
+        .insert(insertPos, source.node)
+        .scrollIntoView()
+
+      view.dispatch(tr)
+      view.focus()
+    },
+    [editor]
+  )
+
+  const clearMobileDrag = useCallback(() => {
+    const currentDrag = mobileDragRef.current
+
+    if (currentDrag?.timeoutId) {
+      window.clearTimeout(currentDrag.timeoutId)
+    }
+
+    if (editor && currentDrag?.active) {
+      const sourceDom = editor.view.nodeDOM(currentDrag.source.pos)
+
+      if (sourceDom instanceof HTMLElement) {
+        sourceDom.removeAttribute("data-mobile-dragging")
+      }
+    }
+
+    mobileDragRef.current = null
+  }, [editor])
+
+  useEffect(() => clearMobileDrag, [clearMobileDrag])
+
+  const isMobilePointerDrag = useCallback((event: ReactPointerEvent<HTMLElement>) => {
+    if (event.pointerType === "mouse") {
+      return false
+    }
+
+    return window.matchMedia("(max-width: 767px)").matches
+  }, [])
+
+  const handleMobilePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      if (!editor || !isMobilePointerDrag(event)) {
+        return
+      }
+
+      const targetElement = event.target
+
+      if (
+        !(targetElement instanceof HTMLElement) ||
+        !editor.view.dom.contains(targetElement) ||
+        targetElement.closest("button, input, textarea, select, [role='button']")
+      ) {
+        return
+      }
+
+      const source = resolveDragTargetFromPointer(event)
+
+      if (!source) {
+        return
+      }
+
+      clearMobileDrag()
+
+      const timeoutId = window.setTimeout(() => {
+        const currentDrag = mobileDragRef.current
+
+        if (!currentDrag || currentDrag.pointerId !== event.pointerId) {
+          return
+        }
+
+        currentDrag.active = true
+        currentDrag.target = source
+
+        const sourceDom = editor.view.nodeDOM(source.pos)
+
+        if (sourceDom instanceof HTMLElement) {
+          sourceDom.setAttribute("data-mobile-dragging", "true")
+        }
+      }, 320)
+
+      mobileDragRef.current = {
+        active: false,
+        pointerId: event.pointerId,
+        pointerY: event.clientY,
+        source,
+        startX: event.clientX,
+        startY: event.clientY,
+        target: source,
+        timeoutId,
+      }
+    },
+    [
+      clearMobileDrag,
+      editor,
+      isMobilePointerDrag,
+      resolveDragTargetFromPointer,
+    ]
+  )
+
+  const handleMobilePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      const currentDrag = mobileDragRef.current
+
+      if (!currentDrag || currentDrag.pointerId !== event.pointerId) {
+        return
+      }
+
+      const deltaX = Math.abs(event.clientX - currentDrag.startX)
+      const deltaY = Math.abs(event.clientY - currentDrag.startY)
+
+      if (!currentDrag.active && (deltaX > 8 || deltaY > 8)) {
+        clearMobileDrag()
+        return
+      }
+
+      if (!currentDrag.active) {
+        return
+      }
+
+      event.preventDefault()
+      currentDrag.pointerY = event.clientY
+      currentDrag.target = resolveDragTargetFromPoint(
+        event.clientX,
+        event.clientY
+      )
+    },
+    [clearMobileDrag, resolveDragTargetFromPoint]
+  )
+
+  const handleMobilePointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      const currentDrag = mobileDragRef.current
+
+      if (!currentDrag || currentDrag.pointerId !== event.pointerId) {
+        return
+      }
+
+      if (currentDrag.active && currentDrag.target) {
+        event.preventDefault()
+        moveBlock(currentDrag.source, currentDrag.target)
+      }
+
+      clearMobileDrag()
+    },
+    [clearMobileDrag, moveBlock]
   )
 
   const runCommand = (action: ToolbarAction, attrs?: ToolbarAttrs) => {
@@ -429,7 +620,13 @@ export function Editor({
         onPointerLeave={() => {
           pointerDragTargetRef.current = null
         }}
-        onPointerMoveCapture={updateDragTargetFromPointer}
+        onPointerCancelCapture={clearMobileDrag}
+        onPointerDownCapture={handleMobilePointerDown}
+        onPointerMoveCapture={(event) => {
+          updateDragTargetFromPointer(event)
+          handleMobilePointerMove(event)
+        }}
+        onPointerUpCapture={handleMobilePointerUp}
       >
         {editor ? (
           <DragHandle
@@ -450,7 +647,7 @@ export function Editor({
         ) : null}
         <SelectionBubbleMenu editor={editor} runCommand={runCommand} />
         <TableControls editor={editor} />
-        <PageMetadata
+        <WorkspaceMetadata
           icon={emoji}
           onIconChange={onEmojiChange}
           onTitleChange={onTitleChange}

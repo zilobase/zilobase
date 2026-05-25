@@ -2,7 +2,7 @@
 
 @layer components {
   .tiptap-editor {
-    @apply min-h-[520px] px-20 py-6 text-base leading-7 outline-none sm:px-24;
+    @apply min-h-[520px] px-5 py-5 text-base leading-7 outline-none sm:px-8 md:px-20 md:py-6 lg:px-24;
   }
 
   .tiptap-editor .is-editor-empty:first-child::before,
@@ -60,6 +60,10 @@
 
   .tiptap-editor blockquote {
     @apply border-l-2 pl-4 text-muted-foreground;
+  }
+
+  .tiptap-editor [data-mobile-dragging="true"] {
+    @apply rounded-md bg-muted/40 opacity-80;
   }
 
   .tiptap-editor .editor-details {
@@ -401,7 +405,7 @@
   }
 
   .drag-handle {
-    @apply z-40 flex h-7 w-14 cursor-grab items-center justify-between bg-transparent text-muted-foreground opacity-100 active:cursor-grabbing;
+    @apply z-40 hidden h-7 w-14 cursor-grab items-center justify-between bg-transparent text-muted-foreground opacity-100 active:cursor-grabbing md:flex;
     transform: translate3d(0, 0, 0);
     transition-duration: 160ms;
     transition-property: top, left, transform, color;
