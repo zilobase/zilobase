@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/react"
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   Clipboard,
   Copy,
@@ -70,6 +70,11 @@ export function DragBlockMenu({
 }) {
   const [actionsOpen, setActionsOpen] = useState(false)
   const [search, setSearch] = useState("")
+  const gripPointerRef = useRef<{
+    moved: boolean
+    x: number
+    y: number
+  } | null>(null)
   const filteredTurnIntoItems = useMemo(
     () =>
       turnIntoItems.filter((item) =>
@@ -260,12 +265,48 @@ export function DragBlockMenu({
             className="drag-handle-grip"
             disabled={!target}
             onClick={(event) => {
+              if (gripPointerRef.current?.moved) {
+                event.preventDefault()
+                gripPointerRef.current = null
+                return
+              }
+
               event.stopPropagation()
               onOpenChange(false)
+              setActionsOpen(true)
+              gripPointerRef.current = null
             }}
             onDragStart={(event) => event.preventDefault()}
-            onMouseDown={(event) => {
-              event.stopPropagation()
+            onPointerDownCapture={(event) => {
+              if (event.button !== 0) {
+                return
+              }
+
+              event.preventDefault()
+              gripPointerRef.current = {
+                moved: false,
+                x: event.clientX,
+                y: event.clientY,
+              }
+            }}
+            onPointerMove={(event) => {
+              const pointer = gripPointerRef.current
+
+              if (!pointer) {
+                return
+              }
+
+              const deltaX = Math.abs(event.clientX - pointer.x)
+              const deltaY = Math.abs(event.clientY - pointer.y)
+
+              if (deltaX > 4 || deltaY > 4) {
+                pointer.moved = true
+              }
+            }}
+            onPointerUp={() => {
+              window.setTimeout(() => {
+                gripPointerRef.current = null
+              }, 0)
             }}
             title="Block actions"
             type="button"
