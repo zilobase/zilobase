@@ -29,8 +29,8 @@ export function AppLayout() {
   return (
     <SidebarProvider>
       {isSettingsPage ? <SettingsSidebar /> : <AppSidebar />}
-      <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-2">
+      <SidebarInset className="h-svh overflow-hidden">
+        <header className="relative z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background">
           <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
             <SidebarTrigger />
             <Separator
@@ -45,7 +45,9 @@ export function AppLayout() {
             </div>
           )}
         </header>
-        <Outlet />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <Outlet />
+        </div>
       </SidebarInset>
     </SidebarProvider>
   )
