@@ -68,10 +68,6 @@
     @apply border-l-2 pl-4 text-muted-foreground;
   }
 
-  .tiptap-editor [data-mobile-dragging="true"] {
-    @apply rounded-md bg-muted/40 opacity-80;
-  }
-
   .tiptap-editor .editor-details {
     @apply relative py-1;
   }
