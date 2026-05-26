@@ -19,8 +19,9 @@ import {
 } from "@/components/ui/sidebar"
 import {
   getWorkspaceEmoji,
+  type Workspace,
 } from "@/features/workspaces/queries"
-import { useWorkspace } from "@/features/workspaces/hooks"
+import { useWorkspace, useWorkspaces } from "@/features/workspaces/hooks"
 
 export function AppLayout() {
   const location = useLocation()
@@ -55,8 +56,10 @@ export function AppLayout() {
 
 function WorkspaceBreadcrumb({ workspaceId }: { workspaceId: string }) {
   const { data: workspace } = useWorkspace(workspaceId)
-  const label = workspace ? workspace.name : "Workspace"
-  const emoji = workspace ? getWorkspaceEmoji(workspace) : null
+  const { data: workspaces = [] } = useWorkspaces(workspace?.organizationId)
+  const breadcrumbs = workspace
+    ? buildWorkspaceBreadcrumbs(workspace, workspaces)
+    : []
 
   return (
     <Breadcrumb>
@@ -67,14 +70,86 @@ function WorkspaceBreadcrumb({ workspaceId }: { workspaceId: string }) {
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator className="hidden sm:inline-flex" />
-        <BreadcrumbItem>
-          <BreadcrumbPage className="line-clamp-1">
-            {emoji ? `${emoji} ${label}` : label}
-          </BreadcrumbPage>
-        </BreadcrumbItem>
+        {breadcrumbs.length > 0 ? (
+          breadcrumbs.map((item, index) => {
+            const isCurrent = index === breadcrumbs.length - 1
+            const label = getWorkspaceBreadcrumbLabel(item)
+
+            return (
+              <BreadcrumbFragment
+                isCurrent={isCurrent}
+                item={item}
+                key={item.id}
+                label={label}
+              />
+            )
+          })
+        ) : (
+          <BreadcrumbItem>
+            <BreadcrumbPage className="line-clamp-1">Workspace</BreadcrumbPage>
+          </BreadcrumbItem>
+        )}
       </BreadcrumbList>
     </Breadcrumb>
   )
+}
+
+function BreadcrumbFragment({
+  isCurrent,
+  item,
+  label,
+}: {
+  isCurrent: boolean
+  item: Workspace
+  label: string
+}) {
+  return (
+    <>
+      <BreadcrumbItem className="min-w-0">
+        {isCurrent ? (
+          <BreadcrumbPage className="line-clamp-1">{label}</BreadcrumbPage>
+        ) : (
+          <BreadcrumbLink asChild className="line-clamp-1 max-w-32 sm:max-w-48">
+            <Link to="/workspace/$workspaceId" params={{ workspaceId: item.id }}>
+              {label}
+            </Link>
+          </BreadcrumbLink>
+        )}
+      </BreadcrumbItem>
+      {!isCurrent ? <BreadcrumbSeparator /> : null}
+    </>
+  )
+}
+
+function buildWorkspaceBreadcrumbs(
+  workspace: Workspace,
+  workspaces: Workspace[],
+) {
+  const workspacesById = new Map(
+    [...workspaces, workspace].map((item) => [item.id, item]),
+  )
+  const breadcrumbs: Workspace[] = []
+  const visited = new Set<string>()
+  let current: Workspace | undefined = workspace
+
+  while (current && !visited.has(current.id)) {
+    breadcrumbs.unshift(current)
+    visited.add(current.id)
+
+    const parentWorkspaceId: string | null | undefined =
+      current.metadata?.parentWorkspaceId
+
+    current = parentWorkspaceId ? workspacesById.get(parentWorkspaceId) : undefined
+  }
+
+  return breadcrumbs
+}
+
+function getWorkspaceBreadcrumbLabel(workspace: Workspace) {
+  const label = workspace.name.trim() || "Untitled"
+  const emoji = getWorkspaceEmoji(workspace)
+
+  return emoji ? `${emoji} ${label}` : label
 }
 
 function AppBreadcrumbs({ pathname }: { pathname: string }) {

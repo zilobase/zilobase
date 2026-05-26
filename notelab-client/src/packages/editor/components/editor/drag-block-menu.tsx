@@ -18,6 +18,11 @@ import {
 } from "@/packages/editor/extensions/slash-command"
 
 import { blockContentForItem, insertBlockFromPlus } from "./block-insert"
+import {
+  beginActiveBlockDrag,
+  clearActiveBlockDrag,
+  setDraggedBlockData,
+} from "./block-drag"
 import { colorTokens, colorWithAlpha } from "./toolbar-data"
 import type { DragHandleTarget } from "./types"
 
@@ -50,8 +55,10 @@ export function DragBlockMenu({
   target,
   onOpenChange,
   onCreateDatabase,
+  editorId,
 }: {
   editor: Editor
+  editorId: string
   isOpen: boolean
   target: DragHandleTarget | null
   onOpenChange: (open: boolean) => void
@@ -278,6 +285,7 @@ export function DragBlockMenu({
       <span
         aria-label="Open block actions"
         className="drag-handle-grip"
+        draggable
         onClick={(event) => {
           if (!target || gripPointerRef.current?.moved) {
             gripPointerRef.current = null
@@ -295,10 +303,16 @@ export function DragBlockMenu({
             return
           }
 
+          event.stopPropagation()
+          event.nativeEvent.stopImmediatePropagation()
           gripPointerRef.current = {
             moved: false,
             x: event.clientX,
             y: event.clientY,
+          }
+
+          if (target) {
+            beginActiveBlockDrag(editorId, target)
           }
         }}
         onPointerMove={(event) => {
@@ -316,8 +330,27 @@ export function DragBlockMenu({
             setActionsOpen(false)
           }
         }}
+        onDragStart={(event) => {
+          if (!target) {
+            event.preventDefault()
+            return
+          }
+
+          event.stopPropagation()
+          event.nativeEvent.stopImmediatePropagation()
+          setDraggedBlockData({
+            dataTransfer: event.dataTransfer,
+            editorId,
+            target,
+          })
+        }}
+        onDragEnd={clearActiveBlockDrag}
         onPointerUp={() => {
           window.setTimeout(() => {
+            if (!gripPointerRef.current?.moved) {
+              clearActiveBlockDrag()
+            }
+
             gripPointerRef.current = null
           }, 0)
         }}

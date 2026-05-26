@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
@@ -29,6 +29,11 @@ import {
   DragBlockMenu,
   dragHandleComputePositionConfig,
 } from "@/packages/editor/components/editor/drag-block-menu"
+import {
+  hasDraggedEditorBlock,
+  insertDraggedEditorBlock,
+  registerBlockDragSource,
+} from "@/packages/editor/components/editor/block-drag"
 import { MobileActionBar } from "@/packages/editor/components/editor/mobile-action-bar"
 import { SelectionBubbleMenu } from "@/packages/editor/components/editor/selection-bubble-menu"
 import { TableControls } from "@/packages/editor/components/editor/table-controls"
@@ -210,6 +215,7 @@ export function Editor({
   title,
   workspaceId,
 }: EditorProps = {}) {
+  const editorId = useId()
   const dragHandlePosRef = useRef<number | null>(null)
   const pointerDragTargetRef = useRef<DragHandleTarget | null>(null)
   const [dragHandleTarget, setDragHandleTarget] =
@@ -323,10 +329,14 @@ export function Editor({
         class: "tiptap-editor",
         "aria-label": "Document editor",
       },
-      handleDrop: (view, event) => insertDraggedDatabasePage(view, event),
+      handleDrop: (view, event) =>
+        insertDraggedEditorBlock({ editorId, event, targetView: view }) ||
+        insertDraggedDatabasePage(view, event),
       handleDOMEvents: {
         dragover: (_view, event) => {
-          if (!hasDraggedDatabasePage(event)) {
+          const hasDraggedBlock = hasDraggedEditorBlock(event)
+
+          if (!hasDraggedBlock && !hasDraggedDatabasePage(event)) {
             return false
           }
 
@@ -339,7 +349,7 @@ export function Editor({
 
           if (event.dataTransfer) {
             event.preventDefault()
-            event.dataTransfer.dropEffect = "copy"
+            event.dataTransfer.dropEffect = hasDraggedBlock ? "move" : "copy"
           }
 
           return false
@@ -347,6 +357,14 @@ export function Editor({
       },
     },
   })
+
+  useEffect(() => {
+    if (!editor) {
+      return
+    }
+
+    return registerBlockDragSource(editorId, editor)
+  }, [editor, editorId])
 
   useEffect(() => {
     if (!plusMenuOpen) {
@@ -713,6 +731,7 @@ export function Editor({
           >
             <DragBlockMenu
               editor={editor}
+              editorId={editorId}
               isOpen={plusMenuOpen}
               onCreateDatabase={createEditorDatabase}
               onOpenChange={setPlusMenuOpen}

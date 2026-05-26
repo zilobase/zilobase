@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useNavigate, useParams } from "@tanstack/react-router"
+import { X } from "lucide-react"
+import { useParams } from "@tanstack/react-router"
 
+import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import {
   getWorkspaceEmoji,
@@ -13,9 +15,66 @@ import {
 } from "@/features/workspaces/hooks"
 import { Editor } from "@/packages/editor"
 
+type WorkspaceEditorPaneProps = {
+  className?: string
+  onOpenPage: (pageId: string) => void
+  workspaceId: string
+}
+
 export default function WorkspacePage() {
   const { workspaceId } = useParams({ from: "/app/workspace/$workspaceId" })
-  const navigate = useNavigate()
+  const [sidePaneWorkspaceId, setSidePaneWorkspaceId] = useState<string | null>(
+    null,
+  )
+
+  useEffect(() => {
+    setSidePaneWorkspaceId(null)
+  }, [workspaceId])
+
+  const openPageInSidePane = useCallback((pageId: string) => {
+    setSidePaneWorkspaceId(pageId)
+  }, [])
+
+  return (
+    <main className="flex h-full min-h-[calc(100svh-3rem)] flex-1 overflow-hidden">
+      <WorkspaceEditorPane
+        className="min-w-0 flex-1 overflow-y-auto"
+        key={workspaceId}
+        onOpenPage={openPageInSidePane}
+        workspaceId={workspaceId}
+      />
+      {sidePaneWorkspaceId ? (
+        <aside
+          className="animate-in slide-in-from-right-8 flex w-[min(48rem,48vw)] min-w-[24rem] shrink-0 flex-col border-l bg-background duration-200"
+          key={sidePaneWorkspaceId}
+        >
+          <div className="flex h-10 shrink-0 items-center justify-end border-b px-2">
+            <Button
+              aria-label="Close pane"
+              onClick={() => setSidePaneWorkspaceId(null)}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <X />
+            </Button>
+          </div>
+          <WorkspaceEditorPane
+            className="min-h-0 flex-1 overflow-y-auto"
+            onOpenPage={openPageInSidePane}
+            workspaceId={sidePaneWorkspaceId}
+          />
+        </aside>
+      ) : null}
+    </main>
+  )
+}
+
+function WorkspaceEditorPane({
+  className,
+  onOpenPage,
+  workspaceId,
+}: WorkspaceEditorPaneProps) {
   const { data: workspace, isLoading } = useWorkspace(workspaceId)
   const createWorkspace = useCreateWorkspace()
   const updateWorkspace = useUpdateWorkspace()
@@ -124,34 +183,26 @@ export default function WorkspacePage() {
     })
   }, [createWorkspace, workspace])
 
-  const openPage = useCallback(
-    (pageId: string) => {
-      void navigate({
-        to: "/workspace/$workspaceId",
-        params: { workspaceId: pageId },
-      })
-    },
-    [navigate],
-  )
-
   if (isLoading) {
     return (
-      <main className="flex flex-1 items-center justify-center">
+      <section className={`${className ?? ""} flex items-center justify-center`}>
         <Spinner />
-      </main>
+      </section>
     )
   }
 
   if (!workspace) {
     return (
-      <main className="flex flex-1 items-center justify-center px-4 text-sm text-muted-foreground">
+      <section
+        className={`${className ?? ""} flex items-center justify-center px-4 text-sm text-muted-foreground`}
+      >
         Workspace not found.
-      </main>
+      </section>
     )
   }
 
   return (
-    <main className="flex flex-1 flex-col">
+    <section className={className}>
       <Editor
         key={workspace.id}
         content={workspace.content ?? ""}
@@ -159,12 +210,12 @@ export default function WorkspacePage() {
         onContentChange={updateContent}
         onCreatePage={createNestedPage}
         onEmojiChange={updateEmoji}
-        onOpenPage={openPage}
+        onOpenPage={onOpenPage}
         onTitleChange={setName}
         organizationId={workspace.organizationId}
         title={name}
         workspaceId={workspace.id}
       />
-    </main>
+    </section>
   )
 }
