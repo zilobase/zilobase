@@ -429,6 +429,10 @@
     @apply fixed z-100 w-72 max-w-[calc(100vw-3rem)] overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10;
   }
 
+  .database-select-drawer {
+    @apply max-h-[70vh] w-full max-w-none overflow-y-auto px-1 pb-2 pt-1 text-sm;
+  }
+
   .database-select-search {
     @apply h-8 w-full border-0 bg-transparent px-1.5 py-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0;
   }
