@@ -36,6 +36,7 @@ import {
   databaseColumnMinWidth,
   databaseNameColumnDefaultWidth,
 } from "./constants"
+import { DatabaseInputCell } from "./database-input-cell"
 import { DatabasePageCell } from "./database-page-cell"
 import { DatabasePropertyMenu } from "./database-property-menu"
 import { DatabaseSelectCell } from "./database-select-cell"
@@ -667,20 +668,20 @@ function DatabaseBlockView({ extension, node }: ReactNodeViewProps) {
                               value={value}
                             />
                           ) : (
-                            <textarea
-                              aria-label={`${property.name} value`}
-                              className="database-cell-input"
-                              data-database-cell-input
-                              onBlur={(event) => {
-                                saveCell(
-                                  row.id,
-                                  property.id,
-                                  event.currentTarget.value
-                                )
-                                event.currentTarget.style.height = ""
-                                setActiveCellKey((currentKey) =>
-                                  currentKey === key ? null : currentKey
-                                )
+                            <DatabaseInputCell
+                              label={property.name}
+                              onActivate={(element) => {
+                                setActiveCellKey(key)
+                                resizeCellEditor(element)
+                              }}
+                              onChange={(nextValue) =>
+                                setDraftCells((drafts) => ({
+                                  ...drafts,
+                                  [key]: nextValue,
+                                }))
+                              }
+                              onCommit={() => {
+                                saveCell(row.id, property.id, value)
                                 setDraftCells((drafts) => {
                                   const nextDrafts = { ...drafts }
 
@@ -689,18 +690,12 @@ function DatabaseBlockView({ extension, node }: ReactNodeViewProps) {
                                   return nextDrafts
                                 })
                               }}
-                              onChange={(event) =>
-                                setDraftCells((drafts) => ({
-                                  ...drafts,
-                                  [key]: event.target.value,
-                                }))
+                              onDeactivate={() =>
+                                setActiveCellKey((currentKey) =>
+                                  currentKey === key ? null : currentKey
+                                )
                               }
-                              onFocus={(event) => {
-                                setActiveCellKey(key)
-                                resizeCellEditor(event.currentTarget)
-                              }}
                               onInput={handleCellInput}
-                              rows={1}
                               value={Array.isArray(value) ? value.join(", ") : value}
                             />
                           )}

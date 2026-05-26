@@ -409,12 +409,24 @@
     @apply size-4;
   }
 
-  .database-cell-input {
+  .database-input-cell {
     @apply block h-8 min-h-8 w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-1 text-sm leading-6 shadow-none outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-0;
   }
 
-  .database-value-cell[data-active="true"] .database-cell-input {
+  .database-value-cell[data-active="true"] .database-input-cell {
     @apply absolute top-0 left-0 z-20 h-auto min-h-14 w-72 max-w-[calc(100vw-3rem)] rounded-md border border-border bg-muted px-3 py-2 text-foreground shadow-sm;
+  }
+
+  .database-input-cell-trigger {
+    @apply flex min-h-8 w-full min-w-0 items-center px-3 py-1 text-left text-sm leading-6 text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+
+  .database-input-cell-drawer {
+    @apply max-h-[70vh] w-full max-w-none overflow-y-auto px-1 pb-2 pt-1;
+  }
+
+  .database-input-cell-drawer .database-input-cell {
+    @apply min-h-40 rounded-md bg-transparent px-2 py-2 text-sm leading-6 text-popover-foreground;
   }
 
   .database-select-cell-trigger {
