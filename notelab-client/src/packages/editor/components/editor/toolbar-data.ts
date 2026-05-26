@@ -25,64 +25,107 @@ export const colorTokens: ColorToken[] = [
   {
     name: "Default",
     value: null,
-    textClass: "text-foreground",
-    backgroundClass: "bg-background",
+    textClass: "text-[#37352F] dark:text-white/90",
+    backgroundClass: "bg-white dark:bg-[#2F3437]",
   },
   {
     name: "Gray",
-    value: "#78716c",
-    textClass: "text-stone-500",
-    backgroundClass: "bg-stone-500/20",
+    value: "#9B9A97",
+    textClass: "text-[#9B9A97] dark:text-[rgba(151,154,155,0.95)]",
+    backgroundClass: "bg-[#EBECED] dark:bg-[#454B4E]",
   },
   {
     name: "Brown",
-    value: "#a18072",
-    textClass: "text-[#a18072]",
-    backgroundClass: "bg-[#a18072]/25",
+    value: "#64473A",
+    textClass: "text-[#64473A] dark:text-[#937264]",
+    backgroundClass: "bg-[#E9E5E3] dark:bg-[#434040]",
   },
   {
     name: "Orange",
-    value: "#d9730d",
-    textClass: "text-orange-500",
-    backgroundClass: "bg-orange-500/25",
+    value: "#D9730D",
+    textClass: "text-[#D9730D] dark:text-[#FFA344]",
+    backgroundClass: "bg-[#FAEBDD] dark:bg-[#594A3A]",
   },
   {
     name: "Yellow",
-    value: "#cb912f",
-    textClass: "text-yellow-600",
-    backgroundClass: "bg-yellow-500/25",
+    value: "#DFAB01",
+    textClass: "text-[#DFAB01] dark:text-[#FFDC49]",
+    backgroundClass: "bg-[#FBF3DB] dark:bg-[#59563B]",
   },
   {
     name: "Green",
-    value: "#448361",
-    textClass: "text-emerald-600",
-    backgroundClass: "bg-emerald-500/25",
+    value: "#0F7B6C",
+    textClass: "text-[#0F7B6C] dark:text-[#4DAB9A]",
+    backgroundClass: "bg-[#DDEDEA] dark:bg-[#354C4B]",
   },
   {
     name: "Blue",
-    value: "#337ea9",
-    textClass: "text-blue-500",
-    backgroundClass: "bg-blue-500/25",
+    value: "#0B6E99",
+    textClass: "text-[#0B6E99] dark:text-[#529CCA]",
+    backgroundClass: "bg-[#DDEBF1] dark:bg-[#364954]",
   },
   {
     name: "Purple",
-    value: "#9065b0",
-    textClass: "text-purple-500",
-    backgroundClass: "bg-purple-500/25",
+    value: "#6940A5",
+    textClass: "text-[#6940A5] dark:text-[#9A6DD7]",
+    backgroundClass: "bg-[#EAE4F2] dark:bg-[#443F57]",
   },
   {
     name: "Pink",
-    value: "#c14c8a",
-    textClass: "text-pink-500",
-    backgroundClass: "bg-pink-500/25",
+    value: "#AD1A72",
+    textClass: "text-[#AD1A72] dark:text-[#E255A1]",
+    backgroundClass: "bg-[#F4DFEB] dark:bg-[#533B4C]",
   },
   {
     name: "Red",
-    value: "#d44c47",
-    textClass: "text-red-500",
-    backgroundClass: "bg-red-500/25",
+    value: "#E03E3E",
+    textClass: "text-[#E03E3E] dark:text-[#FF7369]",
+    backgroundClass: "bg-[#FBE4E4] dark:bg-[#594141]",
   },
 ]
+
+export const cyclingColorTokens = colorTokens.filter((token) => token.value)
+
+const legacyColorAliases: Record<string, string> = {
+  "#337ea9": "#0B6E99",
+  "#448361": "#0F7B6C",
+  "#9065b0": "#6940A5",
+  "#a18072": "#64473A",
+  "#c14c8a": "#AD1A72",
+  "#cb912f": "#DFAB01",
+  "#d44c47": "#E03E3E",
+  "#d9730d": "#D9730D",
+  "#78716c": "#9B9A97",
+}
+
+export function getColorToken(color?: string | null) {
+  if (!color || color === "default") {
+    return colorTokens[0]
+  }
+
+  const normalizedColor = color.toLowerCase()
+  const aliasedColor = legacyColorAliases[normalizedColor] ?? color
+
+  return (
+    colorTokens.find(
+      (token) =>
+        token.value?.toLowerCase() === aliasedColor.toLowerCase() ||
+        token.name.toLowerCase() === normalizedColor
+    ) ?? colorTokens[0]
+  )
+}
+
+export function getColorTokenValue(color?: string | null) {
+  return getColorToken(color).value ?? "default"
+}
+
+export function getColorTokenBadgeClassName(color?: string | null) {
+  return `database-select-badge ${getColorToken(color).backgroundClass}`
+}
+
+export function getColorTokenDotClassName(color?: string | null) {
+  return `database-select-badge-dot ${getColorToken(color).textClass}`
+}
 
 export function colorWithAlpha(color: string, alpha: number) {
   if (!color.startsWith("#") || color.length !== 7) {

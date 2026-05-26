@@ -463,7 +463,11 @@
   }
 
   .database-select-badge {
-    @apply inline-flex max-w-full items-center truncate rounded-sm bg-background px-2 py-0.5 text-sm font-medium leading-5 text-foreground;
+    @apply inline-flex max-w-full items-center gap-1.5 truncate rounded-sm bg-background px-2 py-0.5 text-sm font-medium leading-5 text-foreground;
+  }
+
+  .database-select-badge-dot {
+    @apply size-1.5 shrink-0 rounded-full bg-current;
   }
 
   .database-select-popover {

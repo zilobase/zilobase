@@ -11,7 +11,11 @@ import {
 } from "@/components/ui/drawer"
 import { useUpdateDatabaseProperty } from "@/features/databases/hooks"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { colorTokens } from "@/packages/editor/components/editor/toolbar-data"
+import {
+  cyclingColorTokens,
+  getColorTokenBadgeClassName,
+  getColorTokenDotClassName,
+} from "@/packages/editor/components/editor/toolbar-data"
 
 type DatabaseSelectOption = {
   color?: string
@@ -23,23 +27,26 @@ type DatabasePropertyConfig = {
   options?: DatabaseSelectOption[]
 }
 
-function getSelectColorToken(color?: string | null) {
-  if (!color || color === "default") {
-    return colorTokens[0]
-  }
-
+function DatabaseSelectBadge({
+  children,
+  color,
+  showDot = false,
+}: {
+  children: string
+  color?: string
+  showDot?: boolean
+}) {
   return (
-    colorTokens.find(
-      (token) =>
-        token.value === color || token.name.toLowerCase() === color.toLowerCase()
-    ) ?? colorTokens[0]
+    <span className={getColorTokenBadgeClassName(color)}>
+      {showDot ? (
+        <span
+          aria-hidden="true"
+          className={getColorTokenDotClassName(color)}
+        />
+      ) : null}
+      {children}
+    </span>
   )
-}
-
-function getSelectBadgeClassName(color?: string | null) {
-  const token = getSelectColorToken(color)
-
-  return `database-select-badge ${token.backgroundClass}`
 }
 
 function getSelectOptions(config: unknown) {
@@ -72,8 +79,6 @@ function getSelectConfigWithOptions(
   }
 }
 
-const cyclingColorTokens = colorTokens.filter((token) => token.value)
-
 function getNextOptionColor(options: DatabaseSelectOption[]) {
   return cyclingColorTokens[options.length % cyclingColorTokens.length]?.value ?? "default"
 }
@@ -87,6 +92,7 @@ export function DatabaseSelectCell({
   value,
   multiple = false,
   onSelect,
+  showStatusDot = false,
 }: {
   databaseId: string
   defaultOptions?: DatabaseSelectOption[]
@@ -96,6 +102,7 @@ export function DatabaseSelectCell({
   propertyName: string
   value: string | string[]
   onSelect: (value: string | string[]) => void
+  showStatusDot?: boolean
 }) {
   const isMobile = useIsMobile()
   const updateProperty = useUpdateDatabaseProperty()
@@ -233,12 +240,13 @@ export function DatabaseSelectCell({
       type="button"
     >
       {selectedValues.map((selectedValue) => (
-        <span
-          className={getSelectBadgeClassName(getOptionColor(selectedValue))}
+        <DatabaseSelectBadge
+          color={getOptionColor(selectedValue)}
           key={selectedValue}
+          showDot={showStatusDot}
         >
           {selectedValue}
-        </span>
+        </DatabaseSelectBadge>
       ))}
     </button>
   )
@@ -284,11 +292,9 @@ export function DatabaseSelectCell({
               type="button"
             >
               <GripVertical />
-              <span
-                className={getSelectBadgeClassName(option.color)}
-              >
+              <DatabaseSelectBadge color={option.color} showDot={showStatusDot}>
                 {option.name}
-              </span>
+              </DatabaseSelectBadge>
               {isSelected ? (
                 <Check className="database-select-option-check" />
               ) : null}
@@ -302,7 +308,7 @@ export function DatabaseSelectCell({
             type="button"
           >
             <span>Create</span>
-            <span className={getSelectBadgeClassName(getNextOptionColor(selectOptions))}>
+            <span className={getColorTokenBadgeClassName(getNextOptionColor(selectOptions))}>
               {query.trim()}
             </span>
           </button>

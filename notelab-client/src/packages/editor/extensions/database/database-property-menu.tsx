@@ -31,7 +31,13 @@ import {
 } from "@/components/ui/dropdrawer"
 import { Input } from "@/components/ui/input"
 import { useUpdateDatabaseProperty } from "@/features/databases/hooks"
-import { colorTokens } from "@/packages/editor/components/editor/toolbar-data"
+import {
+  colorTokens,
+  cyclingColorTokens,
+  getColorTokenBadgeClassName,
+  getColorTokenDotClassName,
+  getColorTokenValue,
+} from "@/packages/editor/components/editor/toolbar-data"
 
 import { defaultStatusOptions, getDatabasePropertyType } from "./constants"
 
@@ -336,6 +342,7 @@ function StatusPropertyOptions({
               onSetDefaultOption={setDefaultOption}
               onUpdateOption={updateOption}
               option={option}
+              showDot
             />
           ))}
         </div>
@@ -349,17 +356,25 @@ function OptionEditorSubmenu({
   onSetDefaultOption,
   onUpdateOption,
   option,
+  showDot = false,
 }: {
   defaultOptionId?: string
   onSetDefaultOption?: (optionId: string) => void
   onUpdateOption: (optionId: string, patch: Partial<SelectOption>) => void
   option: SelectOption
+  showDot?: boolean
 }) {
   return (
     <DropDrawerSub>
       <DropDrawerSubTrigger>
         <GripVertical />
-        <span className={getStatusBadgeClassName(option.color)}>
+        <span className={getColorTokenBadgeClassName(option.color)}>
+          {showDot ? (
+            <span
+              aria-hidden="true"
+              className={getColorTokenDotClassName(option.color)}
+            />
+          ) : null}
           {option.name}
         </span>
         {option.id === defaultOptionId ? (
@@ -420,7 +435,7 @@ function OptionEditorSubmenu({
               className={`size-4 rounded-sm border border-foreground/10 ${color.backgroundClass}`}
             />
             <span>{color.name}</span>
-            {getStatusColorValue(option.color) === (color.value ?? "default") ? (
+            {getColorTokenValue(option.color) === (color.value ?? "default") ? (
               <Check className="ml-auto" />
             ) : null}
           </DropDrawerItem>
@@ -431,7 +446,6 @@ function OptionEditorSubmenu({
 }
 
 const statusColorOptions = colorTokens
-const cyclingColorTokens = colorTokens.filter((token) => token.value)
 
 function getStatusOptionGroup(option: StatusOption) {
   return (
@@ -441,29 +455,6 @@ function getStatusOptionGroup(option: StatusOption) {
     )?.group ??
     "To-do"
   )
-}
-
-function getStatusColorToken(color?: string | null) {
-  if (!color || color === "default") {
-    return colorTokens[0]
-  }
-
-  return (
-    colorTokens.find(
-      (token) =>
-        token.value === color || token.name.toLowerCase() === color.toLowerCase()
-    ) ?? colorTokens[0]
-  )
-}
-
-function getStatusColorValue(color?: string | null) {
-  return getStatusColorToken(color).value ?? "default"
-}
-
-function getStatusBadgeClassName(color?: string | null) {
-  const token = getStatusColorToken(color)
-
-  return `database-select-badge ${token.backgroundClass}`
 }
 
 function getStatusOptions(config: unknown) {

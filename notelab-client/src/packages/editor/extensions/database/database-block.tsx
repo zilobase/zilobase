@@ -831,6 +831,7 @@ function DatabaseBlockView({ extension, node }: ReactNodeViewProps) {
                               propertyConfig={workspaceProperty.config}
                               propertyId={property.id}
                               propertyName={workspaceProperty.name}
+                              showStatusDot={workspaceProperty.type === "status"}
                               value={value}
                             />
                           ) : (
