@@ -939,9 +939,7 @@ export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
 
         if (
           target instanceof HTMLElement &&
-          target.closest(
-            "[data-database-row-drag-handle], [data-database-cell-input]"
-          )
+          target.closest(".database-block-shell")
         ) {
           return true
         }

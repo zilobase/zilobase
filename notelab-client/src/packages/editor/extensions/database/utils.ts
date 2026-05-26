@@ -2,6 +2,16 @@ import type { DatabaseCell } from "@/features/databases/queries"
 
 export type DatabaseCellValue = string | string[]
 
+export function createDatabaseBlockContent(databaseId: string) {
+  return [
+    {
+      type: "databaseBlock",
+      attrs: createDatabaseBlockAttrs(databaseId),
+    },
+    { type: "paragraph" },
+  ]
+}
+
 export function createDatabaseBlockAttrs(databaseId: string) {
   return {
     databaseId,

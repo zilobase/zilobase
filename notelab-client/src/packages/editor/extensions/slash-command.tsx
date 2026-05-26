@@ -41,7 +41,7 @@ import {
   EmojiPickerFooter,
   EmojiPickerSearch,
 } from "@/components/ui/emoji-picker"
-import { createDatabaseBlockAttrs } from "@/packages/editor/extensions/database"
+import { createDatabaseBlockContent } from "@/packages/editor/extensions/database"
 import type { CreatedPage } from "@/packages/editor/extensions/page-block"
 
 export type SlashCommandOptions = {
@@ -343,10 +343,8 @@ export function createSlashCommandItems(
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContent({
-          type: "databaseBlock",
-          attrs: createDatabaseBlockAttrs(databaseId),
-        })
+        .insertContentAt(range.from, createDatabaseBlockContent(databaseId))
+        .setTextSelection(range.from + 2)
         .run()
     },
   },

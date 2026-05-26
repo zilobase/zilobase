@@ -2,7 +2,7 @@ import type { Content } from "@tiptap/core"
 import type { Editor } from "@tiptap/react"
 
 import type { SlashCommandItem } from "@/packages/editor/extensions/slash-command"
-import { createDatabaseBlockAttrs } from "@/packages/editor/extensions/database"
+import { createDatabaseBlockContent } from "@/packages/editor/extensions/database"
 
 import type { DragHandleTarget } from "./types"
 
@@ -89,7 +89,7 @@ export function blockContentForItem(
       }
     case "Database":
       return attrs?.databaseId
-        ? { type: "databaseBlock", attrs: createDatabaseBlockAttrs(attrs.databaseId) }
+        ? createDatabaseBlockContent(attrs.databaseId)
         : null
     default:
       return { type: "paragraph" }
@@ -97,6 +97,11 @@ export function blockContentForItem(
 }
 
 function selectInsertedBlock(editor: Editor, pos: number, item: SlashCommandItem) {
+  if (item.title === "Database") {
+    editor.chain().focus().setTextSelection(pos + 2).run()
+    return
+  }
+
   if (item.title === "Divider") {
     editor.chain().focus().setTextSelection(pos + 2).run()
     return
