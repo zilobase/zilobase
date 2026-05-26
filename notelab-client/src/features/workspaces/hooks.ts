@@ -3,10 +3,16 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import {
   workspaceQueryKey,
   workspaceQueryOptions,
+  workspaceAccessQueryKey,
+  workspaceAccessQueryOptions,
+  workspaceAccessLevelQueryOptions,
+  workspaceAccessTargetsQueryOptions,
   workspacePropertiesQueryKey,
   workspacePropertiesQueryOptions,
   workspacesQueryKey,
   workspacesQueryOptions,
+  type AccessLevel,
+  type AccessTargetType,
   type Workspace,
   type WorkspaceMetadata,
   type WorkspacePropertiesPayload,
@@ -35,12 +41,35 @@ type UpdateWorkspacePropertyValueInput = {
   workspaceId: string
 }
 
+type UpsertWorkspaceAccessInput = {
+  accessLevel: AccessLevel
+  targetId: string
+  targetType: AccessTargetType
+  workspaceId: string
+}
+
 export function useWorkspaces(organizationId: string | null | undefined) {
   return useQuery(workspacesQueryOptions(organizationId))
 }
 
 export function useWorkspace(workspaceId: string | null | undefined) {
   return useQuery(workspaceQueryOptions(workspaceId))
+}
+
+export function useWorkspaceAccessLevel(
+  workspaceId: string | null | undefined,
+) {
+  return useQuery(workspaceAccessLevelQueryOptions(workspaceId))
+}
+
+export function useWorkspaceAccess(workspaceId: string | null | undefined) {
+  return useQuery(workspaceAccessQueryOptions(workspaceId))
+}
+
+export function useWorkspaceAccessTargets(
+  organizationId: string | null | undefined,
+) {
+  return useQuery(workspaceAccessTargetsQueryOptions(organizationId))
 }
 
 export function useWorkspaceProperties(workspaceId: string | null | undefined) {
@@ -85,6 +114,59 @@ export function useCreateWorkspace() {
       await queryClient.invalidateQueries({
         queryKey: workspacesQueryKey(workspace.organizationId),
       })
+    },
+  })
+}
+
+export function useUpsertWorkspaceAccess() {
+  return useMutation({
+    mutationFn: async ({
+      accessLevel,
+      targetId,
+      targetType,
+      workspaceId,
+    }: UpsertWorkspaceAccessInput) => {
+      const result = await apiFetch<{ access: unknown }>(
+        `/workspaces/${workspaceId}/access`,
+        {
+          method: "PUT",
+          body: JSON.stringify({ accessLevel, targetId, targetType }),
+        },
+      )
+
+      return result.access
+    },
+    onSuccess: async (_access, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workspaceAccessQueryKey(variables.workspaceId),
+        }),
+        queryClient.invalidateQueries({ queryKey: ["workspaces"] }),
+      ])
+    },
+  })
+}
+
+export function useDeleteWorkspaceAccess() {
+  return useMutation({
+    mutationFn: async ({
+      ruleId,
+      workspaceId,
+    }: {
+      ruleId: string
+      workspaceId: string
+    }) =>
+      apiFetch<{ access: unknown }>(
+        `/workspaces/${workspaceId}/access/${ruleId}`,
+        { method: "DELETE" },
+      ),
+    onSuccess: async (_access, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workspaceAccessQueryKey(variables.workspaceId),
+        }),
+        queryClient.invalidateQueries({ queryKey: ["workspaces"] }),
+      ])
     },
   })
 }
