@@ -81,6 +81,16 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    --editor-color-bg-default: var(--color-background);
+    --editor-color-bg-gray: var(--color-zinc-100);
+    --editor-color-bg-brown: var(--color-stone-200);
+    --editor-color-bg-orange: var(--color-orange-100);
+    --editor-color-bg-yellow: var(--color-amber-100);
+    --editor-color-bg-green: var(--color-emerald-100);
+    --editor-color-bg-blue: var(--color-sky-100);
+    --editor-color-bg-purple: var(--color-violet-100);
+    --editor-color-bg-pink: var(--color-pink-100);
+    --editor-color-bg-red: var(--color-rose-100);
 }
 
 .dark {
@@ -115,6 +125,16 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+    --editor-color-bg-default: var(--color-background);
+    --editor-color-bg-gray: color-mix(in oklab, var(--color-zinc-700) 50%, transparent);
+    --editor-color-bg-brown: color-mix(in oklab, var(--color-stone-700) 50%, transparent);
+    --editor-color-bg-orange: color-mix(in oklab, var(--color-orange-900) 40%, transparent);
+    --editor-color-bg-yellow: color-mix(in oklab, var(--color-amber-900) 40%, transparent);
+    --editor-color-bg-green: color-mix(in oklab, var(--color-emerald-900) 40%, transparent);
+    --editor-color-bg-blue: color-mix(in oklab, var(--color-sky-900) 40%, transparent);
+    --editor-color-bg-purple: color-mix(in oklab, var(--color-violet-900) 40%, transparent);
+    --editor-color-bg-pink: color-mix(in oklab, var(--color-pink-900) 40%, transparent);
+    --editor-color-bg-red: color-mix(in oklab, var(--color-rose-900) 40%, transparent);
 }
 
 @layer base {

@@ -25,78 +25,66 @@ export const colorTokens: ColorToken[] = [
   {
     name: "Default",
     value: null,
-    textClass: "text-[#37352F] dark:text-white/90",
-    backgroundClass: "bg-white dark:bg-[#2F3437]",
+    textClass: "text-foreground",
+    backgroundClass: "bg-background",
   },
   {
     name: "Gray",
-    value: "#9B9A97",
-    textClass: "text-[#9B9A97] dark:text-[rgba(151,154,155,0.95)]",
-    backgroundClass: "bg-[#EBECED] dark:bg-[#454B4E]",
+    value: "gray",
+    textClass: "text-zinc-600 dark:text-zinc-300",
+    backgroundClass: "bg-zinc-100 dark:bg-zinc-700/50",
   },
   {
     name: "Brown",
-    value: "#64473A",
-    textClass: "text-[#64473A] dark:text-[#937264]",
-    backgroundClass: "bg-[#E9E5E3] dark:bg-[#434040]",
+    value: "brown",
+    textClass: "text-stone-700 dark:text-stone-300",
+    backgroundClass: "bg-stone-200/70 dark:bg-stone-700/50",
   },
   {
     name: "Orange",
-    value: "#D9730D",
-    textClass: "text-[#D9730D] dark:text-[#FFA344]",
-    backgroundClass: "bg-[#FAEBDD] dark:bg-[#594A3A]",
+    value: "orange",
+    textClass: "text-orange-600 dark:text-orange-300",
+    backgroundClass: "bg-orange-100 dark:bg-orange-900/40",
   },
   {
     name: "Yellow",
-    value: "#DFAB01",
-    textClass: "text-[#DFAB01] dark:text-[#FFDC49]",
-    backgroundClass: "bg-[#FBF3DB] dark:bg-[#59563B]",
+    value: "yellow",
+    textClass: "text-amber-700 dark:text-amber-300",
+    backgroundClass: "bg-amber-100 dark:bg-amber-900/40",
   },
   {
     name: "Green",
-    value: "#0F7B6C",
-    textClass: "text-[#0F7B6C] dark:text-[#4DAB9A]",
-    backgroundClass: "bg-[#DDEDEA] dark:bg-[#354C4B]",
+    value: "green",
+    textClass: "text-emerald-700 dark:text-emerald-300",
+    backgroundClass: "bg-emerald-100 dark:bg-emerald-900/40",
   },
   {
     name: "Blue",
-    value: "#0B6E99",
-    textClass: "text-[#0B6E99] dark:text-[#529CCA]",
-    backgroundClass: "bg-[#DDEBF1] dark:bg-[#364954]",
+    value: "blue",
+    textClass: "text-sky-700 dark:text-sky-300",
+    backgroundClass: "bg-sky-100 dark:bg-sky-900/40",
   },
   {
     name: "Purple",
-    value: "#6940A5",
-    textClass: "text-[#6940A5] dark:text-[#9A6DD7]",
-    backgroundClass: "bg-[#EAE4F2] dark:bg-[#443F57]",
+    value: "purple",
+    textClass: "text-violet-700 dark:text-violet-300",
+    backgroundClass: "bg-violet-100 dark:bg-violet-900/40",
   },
   {
     name: "Pink",
-    value: "#AD1A72",
-    textClass: "text-[#AD1A72] dark:text-[#E255A1]",
-    backgroundClass: "bg-[#F4DFEB] dark:bg-[#533B4C]",
+    value: "pink",
+    textClass: "text-pink-700 dark:text-pink-300",
+    backgroundClass: "bg-pink-100 dark:bg-pink-900/40",
   },
   {
     name: "Red",
-    value: "#E03E3E",
-    textClass: "text-[#E03E3E] dark:text-[#FF7369]",
-    backgroundClass: "bg-[#FBE4E4] dark:bg-[#594141]",
+    value: "red",
+    textClass: "text-rose-700 dark:text-rose-300",
+    backgroundClass: "bg-rose-100 dark:bg-rose-900/40",
   },
 ]
 
 export const cyclingColorTokens = colorTokens.filter((token) => token.value)
-
-const legacyColorAliases: Record<string, string> = {
-  "#337ea9": "#0B6E99",
-  "#448361": "#0F7B6C",
-  "#9065b0": "#6940A5",
-  "#a18072": "#64473A",
-  "#c14c8a": "#AD1A72",
-  "#cb912f": "#DFAB01",
-  "#d44c47": "#E03E3E",
-  "#d9730d": "#D9730D",
-  "#78716c": "#9B9A97",
-}
 
 export function getColorToken(color?: string | null) {
   if (!color || color === "default") {
@@ -104,12 +92,11 @@ export function getColorToken(color?: string | null) {
   }
 
   const normalizedColor = color.toLowerCase()
-  const aliasedColor = legacyColorAliases[normalizedColor] ?? color
 
   return (
     colorTokens.find(
       (token) =>
-        token.value?.toLowerCase() === aliasedColor.toLowerCase() ||
+        token.value === normalizedColor ||
         token.name.toLowerCase() === normalizedColor
     ) ?? colorTokens[0]
   )
@@ -127,7 +114,19 @@ export function getColorTokenDotClassName(color?: string | null) {
   return `database-select-badge-dot ${getColorToken(color).textClass}`
 }
 
+export function getColorTokenBackgroundStyleValue(color?: string | null) {
+  const token = getColorToken(color)
+
+  return token.value ? `var(--editor-color-bg-${token.value})` : null
+}
+
 export function colorWithAlpha(color: string, alpha: number) {
+  const tokenBackground = getColorTokenBackgroundStyleValue(color)
+
+  if (tokenBackground) {
+    return tokenBackground
+  }
+
   if (!color.startsWith("#") || color.length !== 7) {
     return color
   }
