@@ -22,6 +22,7 @@ type UpdateDatabaseInput = {
 }
 
 type AddPropertyInput = {
+  config?: unknown
   databaseId: string
   name?: string
   type?: string

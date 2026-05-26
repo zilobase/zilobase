@@ -300,6 +300,13 @@ function DatabaseBlockView({ extension, node }: ReactNodeViewProps) {
     }
 
     addProperty.mutate({
+      config:
+        type === "status"
+          ? {
+              defaultOptionId: defaultStatusOptions[0]?.id,
+              options: defaultStatusOptions,
+            }
+          : undefined,
       databaseId,
       name: label,
       type,
@@ -734,6 +741,8 @@ function DatabaseBlockView({ extension, node }: ReactNodeViewProps) {
                     <th key={property.id} className="database-property-header">
                       <DatabasePropertyMenu
                         config={property.property.config}
+                        databaseId={payload.database.id}
+                        databasePropertyId={property.id}
                         name={property.property.name}
                         type={property.property.type}
                         onRename={(name) =>

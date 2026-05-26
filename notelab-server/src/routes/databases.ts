@@ -18,6 +18,27 @@ export const databaseRoutes = new Hono<AppBindings>();
 
 const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
 
+const defaultStatusOptions = [
+  {
+    color: "gray",
+    group: "To-do",
+    id: "not-started",
+    name: "Not started",
+  },
+  {
+    color: "blue",
+    group: "In progress",
+    id: "in-progress",
+    name: "In progress",
+  },
+  {
+    color: "green",
+    group: "Complete",
+    id: "done",
+    name: "Done",
+  },
+];
+
 const isOrganizationMember = async (
   organizationId: string,
   userId: string,
@@ -41,6 +62,55 @@ const getDatabaseRecord = async (id: string) => {
     .limit(1);
 
   return record;
+};
+
+type StatusOption = {
+  id: string;
+  name: string;
+};
+
+type StatusPropertyConfig = {
+  defaultOptionId?: unknown;
+  options?: unknown;
+};
+
+const getStatusOptions = (config: unknown) => {
+  const options =
+    config && typeof config === "object" && "options" in config
+      ? (config as StatusPropertyConfig).options
+      : null;
+
+  if (!Array.isArray(options)) {
+    return defaultStatusOptions;
+  }
+
+  const validOptions = options.filter(
+    (option): option is StatusOption =>
+      Boolean(option) &&
+      typeof option === "object" &&
+      typeof (option as StatusOption).id === "string" &&
+      typeof (option as StatusOption).name === "string",
+  );
+
+  return validOptions.length > 0 ? validOptions : defaultStatusOptions;
+};
+
+const getStatusDefaultValue = (config: unknown) => {
+  const options = getStatusOptions(config);
+  const defaultOptionId =
+    config && typeof config === "object" && "defaultOptionId" in config
+      ? (config as StatusPropertyConfig).defaultOptionId
+      : defaultStatusOptions[0]?.id;
+
+  if (typeof defaultOptionId === "string") {
+    const defaultOption = options.find((option) => option.id === defaultOptionId);
+
+    if (defaultOption) {
+      return defaultOption.name;
+    }
+  }
+
+  return options[0]?.name ?? null;
 };
 
 const getDatabasePayload = async (id: string) => {
@@ -549,6 +619,33 @@ databaseRoutes.post("/:id/rows", async (c) => {
     return c.json({ error: "This page is already in this database" }, 409);
   }
 
+  const statusProperties = await db
+    .select({
+      config: workspaceProperty.config,
+      id: workspaceProperty.id,
+    })
+    .from(databaseProperty)
+    .innerJoin(
+      workspaceProperty,
+      eq(databaseProperty.propertyId, workspaceProperty.id),
+    )
+    .where(
+      and(
+        eq(databaseProperty.databaseId, existing.id),
+        eq(workspaceProperty.type, "status"),
+        isNull(workspaceProperty.deletedAt),
+      ),
+    );
+  const defaultStatusValues = statusProperties
+    .map((property) => ({
+      propertyId: property.id,
+      value: getStatusDefaultValue(property.config),
+    }))
+    .filter(
+      (property): property is { propertyId: string; value: string } =>
+        typeof property.value === "string" && property.value.length > 0,
+    );
+
   await db.transaction(async (tx) => {
     if (existingPageId) {
       await tx
@@ -593,6 +690,25 @@ databaseRoutes.post("/:id/rows", async (c) => {
       createdById: user.id,
       lastEditedById: user.id,
     });
+
+    if (defaultStatusValues.length > 0) {
+      await tx
+        .insert(workspacePropertyValue)
+        .values(
+          defaultStatusValues.map((property) => ({
+            id: crypto.randomUUID(),
+            propertyId: property.propertyId,
+            value: property.value,
+            workspaceId: pageId,
+          })),
+        )
+        .onConflictDoNothing({
+          target: [
+            workspacePropertyValue.workspaceId,
+            workspacePropertyValue.propertyId,
+          ],
+        });
+    }
   });
 
   const payload = await getDatabasePayload(existing.id);

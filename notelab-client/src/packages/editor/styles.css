@@ -463,22 +463,7 @@
   }
 
   .database-select-badge {
-    @apply inline-flex max-w-full items-center truncate rounded-sm bg-amber-700 px-2 py-0.5 text-sm font-medium leading-5 text-white;
-  }
-
-  .database-select-badge[data-option-color="gray"],
-  [data-status-color="gray"] {
-    @apply bg-zinc-600;
-  }
-
-  .database-select-badge[data-option-color="blue"],
-  [data-status-color="blue"] {
-    @apply bg-blue-600;
-  }
-
-  .database-select-badge[data-option-color="green"],
-  [data-status-color="green"] {
-    @apply bg-emerald-700;
+    @apply inline-flex max-w-full items-center truncate rounded-sm bg-background px-2 py-0.5 text-sm font-medium leading-5 text-foreground;
   }
 
   .database-select-popover {
@@ -512,10 +497,6 @@
 
   .database-select-option .database-select-option-check {
     @apply ml-auto text-foreground;
-  }
-
-  .database-select-option[data-selected="true"] .database-select-badge {
-    @apply ring-1 ring-white/40;
   }
 
   .database-select-option[data-selected="true"] .database-select-option-check {

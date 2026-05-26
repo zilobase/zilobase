@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/drawer"
 import { useUpdateDatabaseProperty } from "@/features/databases/hooks"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { colorTokens } from "@/packages/editor/components/editor/toolbar-data"
 
 type DatabaseSelectOption = {
   color?: string
@@ -20,6 +21,25 @@ type DatabaseSelectOption = {
 
 type DatabasePropertyConfig = {
   options?: DatabaseSelectOption[]
+}
+
+function getSelectColorToken(color?: string | null) {
+  if (!color || color === "default") {
+    return colorTokens[0]
+  }
+
+  return (
+    colorTokens.find(
+      (token) =>
+        token.value === color || token.name.toLowerCase() === color.toLowerCase()
+    ) ?? colorTokens[0]
+  )
+}
+
+function getSelectBadgeClassName(color?: string | null) {
+  const token = getSelectColorToken(color)
+
+  return `database-select-badge ${token.backgroundClass}`
 }
 
 function getSelectOptions(config: unknown) {
@@ -50,6 +70,12 @@ function getSelectConfigWithOptions(
     ...(config && typeof config === "object" ? config : {}),
     options,
   }
+}
+
+const cyclingColorTokens = colorTokens.filter((token) => token.value)
+
+function getNextOptionColor(options: DatabaseSelectOption[]) {
+  return cyclingColorTokens[options.length % cyclingColorTokens.length]?.value ?? "default"
 }
 
 export function DatabaseSelectCell({
@@ -172,7 +198,7 @@ export function DatabaseSelectCell({
     const nextOptions = [
       ...selectOptions,
       {
-        color: "amber",
+        color: getNextOptionColor(selectOptions),
         id: crypto.randomUUID(),
         name: optionName,
       },
@@ -208,8 +234,7 @@ export function DatabaseSelectCell({
     >
       {selectedValues.map((selectedValue) => (
         <span
-          className="database-select-badge"
-          data-option-color={getOptionColor(selectedValue)}
+          className={getSelectBadgeClassName(getOptionColor(selectedValue))}
           key={selectedValue}
         >
           {selectedValue}
@@ -260,12 +285,11 @@ export function DatabaseSelectCell({
             >
               <GripVertical />
               <span
-                className="database-select-badge"
-                data-option-color={option.color}
+                className={getSelectBadgeClassName(option.color)}
               >
                 {option.name}
               </span>
-              {multiple && isSelected ? (
+              {isSelected ? (
                 <Check className="database-select-option-check" />
               ) : null}
             </button>
@@ -278,7 +302,9 @@ export function DatabaseSelectCell({
             type="button"
           >
             <span>Create</span>
-            <span className="database-select-badge">{query.trim()}</span>
+            <span className={getSelectBadgeClassName(getNextOptionColor(selectOptions))}>
+              {query.trim()}
+            </span>
           </button>
         ) : null}
       </div>

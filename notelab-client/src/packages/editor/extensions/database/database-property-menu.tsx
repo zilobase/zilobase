@@ -2,10 +2,12 @@ import {
   ArrowDownUp,
   ArrowLeftToLine,
   ArrowRightToLine,
+  Check,
   ChevronsUpDown,
   ChevronDown,
   Copy,
   EyeOff,
+  Flag,
   Filter,
   GripVertical,
   Pin,
@@ -28,6 +30,8 @@ import {
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer"
 import { Input } from "@/components/ui/input"
+import { useUpdateDatabaseProperty } from "@/features/databases/hooks"
+import { colorTokens } from "@/packages/editor/components/editor/toolbar-data"
 
 import { defaultStatusOptions, getDatabasePropertyType } from "./constants"
 
@@ -38,25 +42,47 @@ type StatusOption = {
   name: string
 }
 
+type SelectOption = {
+  color?: string
+  id: string
+  name: string
+}
+
 type DatabasePropertyConfig = {
-  options?: StatusOption[]
+  defaultOptionId?: string
+  options?: SelectOption[]
 }
 
 export function DatabasePropertyMenu({
   config,
+  databaseId,
+  databasePropertyId,
   name,
   onRename,
   type,
 }: {
   config?: unknown
+  databaseId: string
+  databasePropertyId: string
   name: string
   onRename: (name: string) => void
   type: string
 }) {
+  const updateProperty = useUpdateDatabaseProperty()
   const propertyType = getDatabasePropertyType(type)
   const PropertyIcon = propertyType.icon
   const isStatusProperty = type === "status"
+  const isSelectProperty = type === "select" || type === "multi_select"
+  const statusDefaultOptionId = getStatusDefaultOptionId(config)
   const statusOptions = getStatusOptions(config)
+  const selectOptions = getSelectOptions(config)
+  const updatePropertyConfig = (nextConfig: DatabasePropertyConfig) => {
+    updateProperty.mutate({
+      config: getStatusConfig(config, nextConfig),
+      databaseId,
+      databasePropertyId,
+    })
+  }
 
   return (
     <DropDrawer>
@@ -102,10 +128,19 @@ export function DatabasePropertyMenu({
             <span>Edit property</span>
           </DropDrawerSubTrigger>
           <DropDrawerSubContent
-            className={isStatusProperty ? "w-72" : undefined}
+            className={isStatusProperty || isSelectProperty ? "w-72" : undefined}
           >
             {isStatusProperty ? (
-              <StatusPropertyOptions options={statusOptions} />
+              <StatusPropertyOptions
+                defaultOptionId={statusDefaultOptionId}
+                onUpdateConfig={updatePropertyConfig}
+                options={statusOptions}
+              />
+            ) : isSelectProperty ? (
+              <SelectPropertyOptions
+                onUpdateConfig={updatePropertyConfig}
+                options={selectOptions}
+              />
             ) : (
               <DropDrawerItem disabled>Property settings</DropDrawerItem>
             )}
@@ -177,9 +212,70 @@ export function DatabasePropertyMenu({
   )
 }
 
-function StatusPropertyOptions({
+function SelectPropertyOptions({
+  onUpdateConfig,
   options,
 }: {
+  onUpdateConfig: (config: DatabasePropertyConfig) => void
+  options: SelectOption[]
+}) {
+  const updateOption = (optionId: string, patch: Partial<SelectOption>) => {
+    onUpdateConfig({
+      options: options.map((option) =>
+        option.id === optionId ? { ...option, ...patch } : option
+      ),
+    })
+  }
+  const addOption = () => {
+    const optionName = getUniqueOptionName(options, "Option")
+
+    onUpdateConfig({
+      options: [
+        ...options,
+        {
+          color: getNextOptionColor(options),
+          id: crypto.randomUUID(),
+          name: optionName,
+        },
+      ],
+    })
+  }
+
+  return (
+    <>
+      <DropDrawerLabel className="flex items-center justify-between pr-1">
+        <span>Options</span>
+        <button
+          aria-label="Add select option"
+          className="-my-1 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          onClick={addOption}
+          type="button"
+        >
+          <Plus className="size-4" />
+        </button>
+      </DropDrawerLabel>
+      {options.length > 0 ? (
+        options.map((option) => (
+          <OptionEditorSubmenu
+            key={option.id}
+            onUpdateOption={updateOption}
+            option={option}
+          />
+        ))
+      ) : (
+        <DropDrawerItem disabled>No options yet</DropDrawerItem>
+      )}
+    </>
+  )
+}
+
+function StatusPropertyOptions({
+  defaultOptionId,
+  onUpdateConfig,
+  options,
+}: {
+  defaultOptionId?: string
+  onUpdateConfig: (config: DatabasePropertyConfig) => void
   options: StatusOption[]
 }) {
   const groups = [
@@ -202,6 +298,21 @@ function StatusPropertyOptions({
       ),
     },
   ]
+  const resolvedDefaultOptionId = defaultOptionId ?? options[0]?.id
+  const updateOption = (optionId: string, patch: Partial<StatusOption>) => {
+    onUpdateConfig({
+      defaultOptionId: resolvedDefaultOptionId,
+      options: options.map((option) =>
+        option.id === optionId ? { ...option, ...patch } : option
+      ),
+    })
+  }
+  const setDefaultOption = (optionId: string) => {
+    onUpdateConfig({
+      defaultOptionId: optionId,
+      options,
+    })
+  }
 
   return (
     <>
@@ -219,29 +330,108 @@ function StatusPropertyOptions({
             </button>
           </DropDrawerLabel>
           {group.options.map((option) => (
-            <DropDrawerItem
+            <OptionEditorSubmenu
+              defaultOptionId={resolvedDefaultOptionId}
               key={option.id}
-              onSelect={(event) => event.preventDefault()}
-            >
-              <GripVertical />
-              <span
-                className="database-select-badge"
-                data-option-color={option.color}
-              >
-                {option.name}
-              </span>
-              {option.name === "Not started" ? (
-                <DropDrawerShortcut>
-                  DEFAULT
-                </DropDrawerShortcut>
-              ) : null}
-            </DropDrawerItem>
+              onSetDefaultOption={setDefaultOption}
+              onUpdateOption={updateOption}
+              option={option}
+            />
           ))}
         </div>
       ))}
     </>
   )
 }
+
+function OptionEditorSubmenu({
+  defaultOptionId,
+  onSetDefaultOption,
+  onUpdateOption,
+  option,
+}: {
+  defaultOptionId?: string
+  onSetDefaultOption?: (optionId: string) => void
+  onUpdateOption: (optionId: string, patch: Partial<SelectOption>) => void
+  option: SelectOption
+}) {
+  return (
+    <DropDrawerSub>
+      <DropDrawerSubTrigger>
+        <GripVertical />
+        <span className={getStatusBadgeClassName(option.color)}>
+          {option.name}
+        </span>
+        {option.id === defaultOptionId ? (
+          <DropDrawerShortcut>DEFAULT</DropDrawerShortcut>
+        ) : null}
+      </DropDrawerSubTrigger>
+      <DropDrawerSubContent className="w-72">
+        <div className="px-1.5 py-1">
+          <Input
+            aria-label={`${option.name} option name`}
+            defaultValue={option.name}
+            onBlur={(event) => {
+              const nextName = event.target.value.trim()
+
+              if (nextName && nextName !== option.name) {
+                onUpdateOption(option.id, { name: nextName })
+              }
+            }}
+            onKeyDown={(event) => {
+              event.stopPropagation()
+
+              if (event.key === "Enter") {
+                event.currentTarget.blur()
+              }
+            }}
+          />
+        </div>
+        <DropDrawerItem disabled>
+          <Trash2 />
+          <span>Delete</span>
+        </DropDrawerItem>
+        {onSetDefaultOption ? (
+          <DropDrawerItem
+            onSelect={(event) => {
+              event.preventDefault()
+              onSetDefaultOption(option.id)
+            }}
+          >
+            <Flag />
+            <span>Set as default</span>
+            {option.id === defaultOptionId ? <Check className="ml-auto" /> : null}
+          </DropDrawerItem>
+        ) : null}
+        <DropDrawerSeparator />
+        <DropDrawerLabel>Colors</DropDrawerLabel>
+        {statusColorOptions.map((color) => (
+          <DropDrawerItem
+            key={color.name}
+            onSelect={(event) => {
+              event.preventDefault()
+              onUpdateOption(option.id, {
+                color: color.value ?? "default",
+              })
+            }}
+          >
+            <span
+              aria-hidden="true"
+              className={`size-4 rounded-sm border border-foreground/10 ${color.backgroundClass}`}
+            />
+            <span>{color.name}</span>
+            {getStatusColorValue(option.color) === (color.value ?? "default") ? (
+              <Check className="ml-auto" />
+            ) : null}
+          </DropDrawerItem>
+        ))}
+      </DropDrawerSubContent>
+    </DropDrawerSub>
+  )
+}
+
+const statusColorOptions = colorTokens
+const cyclingColorTokens = colorTokens.filter((token) => token.value)
 
 function getStatusOptionGroup(option: StatusOption) {
   return (
@@ -251,6 +441,29 @@ function getStatusOptionGroup(option: StatusOption) {
     )?.group ??
     "To-do"
   )
+}
+
+function getStatusColorToken(color?: string | null) {
+  if (!color || color === "default") {
+    return colorTokens[0]
+  }
+
+  return (
+    colorTokens.find(
+      (token) =>
+        token.value === color || token.name.toLowerCase() === color.toLowerCase()
+    ) ?? colorTokens[0]
+  )
+}
+
+function getStatusColorValue(color?: string | null) {
+  return getStatusColorToken(color).value ?? "default"
+}
+
+function getStatusBadgeClassName(color?: string | null) {
+  const token = getStatusColorToken(color)
+
+  return `database-select-badge ${token.backgroundClass}`
 }
 
 function getStatusOptions(config: unknown) {
@@ -272,4 +485,65 @@ function getStatusOptions(config: unknown) {
   )
 
   return validOptions.length > 0 ? validOptions : defaultStatusOptions
+}
+
+function getSelectOptions(config: unknown) {
+  const options =
+    config && typeof config === "object" && "options" in config
+      ? (config as DatabasePropertyConfig).options
+      : null
+
+  if (!Array.isArray(options)) {
+    return []
+  }
+
+  return options.filter(
+    (option): option is SelectOption =>
+      Boolean(option) &&
+      typeof option === "object" &&
+      typeof option.id === "string" &&
+      typeof option.name === "string"
+  )
+}
+
+function getNextOptionColor(options: SelectOption[]) {
+  return cyclingColorTokens[options.length % cyclingColorTokens.length]?.value ?? "default"
+}
+
+function getUniqueOptionName(options: SelectOption[], baseName: string) {
+  const optionNames = new Set(options.map((option) => option.name))
+
+  if (!optionNames.has(baseName)) {
+    return baseName
+  }
+
+  let index = 2
+
+  while (optionNames.has(`${baseName} ${index}`)) {
+    index += 1
+  }
+
+  return `${baseName} ${index}`
+}
+
+function getStatusDefaultOptionId(config: unknown) {
+  if (!config || typeof config !== "object" || !("defaultOptionId" in config)) {
+    return defaultStatusOptions[0]?.id
+  }
+
+  const defaultOptionId = (config as DatabasePropertyConfig).defaultOptionId
+
+  return typeof defaultOptionId === "string"
+    ? defaultOptionId
+    : defaultStatusOptions[0]?.id
+}
+
+function getStatusConfig(
+  config: unknown,
+  nextConfig: DatabasePropertyConfig
+) {
+  return {
+    ...(config && typeof config === "object" ? config : {}),
+    ...nextConfig,
+  }
 }
