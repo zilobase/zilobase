@@ -1,12 +1,12 @@
 "use client"
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerSeparator,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer"
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -41,8 +41,8 @@ export function NavFavorites({
                 <span>{item.name}</span>
               </a>
             </SidebarMenuButton>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <DropDrawer>
+              <DropDrawerTrigger asChild>
                 <SidebarMenuAction
                   showOnHover
                   className="aria-expanded:bg-muted"
@@ -51,32 +51,32 @@ export function NavFavorites({
                   />
                   <span className="sr-only">More</span>
                 </SidebarMenuAction>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
+              </DropDrawerTrigger>
+              <DropDrawerContent
                 className="w-56 rounded-lg"
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
-                <DropdownMenuItem>
+                <DropDrawerItem>
                   <StarOffIcon className="text-muted-foreground" />
                   <span>Remove from Favorites</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                </DropDrawerItem>
+                <DropDrawerSeparator />
+                <DropDrawerItem>
                   <LinkIcon className="text-muted-foreground" />
                   <span>Copy Link</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
+                </DropDrawerItem>
+                <DropDrawerItem>
                   <ArrowUpRightIcon className="text-muted-foreground" />
                   <span>Open in New Tab</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                </DropDrawerItem>
+                <DropDrawerSeparator />
+                <DropDrawerItem>
                   <Trash2Icon className="text-muted-foreground" />
                   <span>Delete</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </DropDrawerItem>
+              </DropDrawerContent>
+            </DropDrawer>
           </SidebarMenuItem>
         ))}
         <SidebarMenuItem>

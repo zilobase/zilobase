@@ -1,15 +1,14 @@
 "use client"
 
 import { useTheme } from "next-themes"
-import { LaptopIcon, MoonIcon, SunIcon } from "lucide-react"
+import { CheckIcon, LaptopIcon, MoonIcon, SunIcon } from "lucide-react"
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -43,8 +42,8 @@ export function ThemeDropdown() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <DropDrawer>
+          <DropDrawerTrigger asChild>
             <SidebarMenuButton tooltip="Theme">
               <ActiveIcon />
               <span>Theme</span>
@@ -52,25 +51,25 @@ export function ThemeDropdown() {
                 {activeTheme.label}
               </span>
             </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start">
-            <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-              {themes.map((themeOption) => {
-                const ThemeIcon = themeOption.icon
+          </DropDrawerTrigger>
+          <DropDrawerContent side="top" align="start">
+            {themes.map((themeOption) => {
+              const ThemeIcon = themeOption.icon
+              const isSelected = themeOption.value === theme
 
-                return (
-                  <DropdownMenuRadioItem
-                    key={themeOption.value}
-                    value={themeOption.value}
-                  >
-                    <ThemeIcon />
-                    {themeOption.label}
-                  </DropdownMenuRadioItem>
-                )
-              })}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              return (
+                <DropDrawerItem
+                  key={themeOption.value}
+                  onSelect={() => setTheme(themeOption.value)}
+                >
+                  <ThemeIcon />
+                  {themeOption.label}
+                  {isSelected ? <CheckIcon className="ml-auto" /> : null}
+                </DropDrawerItem>
+              )
+            })}
+          </DropDrawerContent>
+        </DropDrawer>
       </SidebarMenuItem>
     </SidebarMenu>
   )

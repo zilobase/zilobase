@@ -14,15 +14,15 @@ import {
 } from "lucide-react"
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerSeparator,
+  DropDrawerSub,
+  DropDrawerSubContent,
+  DropDrawerSubTrigger,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer"
 import { Input } from "@/components/ui/input"
 
 import { getDatabasePropertyType } from "./constants"
@@ -40,8 +40,8 @@ export function DatabasePropertyMenu({
   const PropertyIcon = propertyType.icon
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <DropDrawer>
+      <DropDrawerTrigger asChild>
         <button
           aria-label={`${name} property options`}
           className="group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none data-[state=open]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
@@ -51,8 +51,8 @@ export function DatabasePropertyMenu({
           <span className="flex min-w-0 items-center truncate">{name}</span>
           <ChevronDown className="ml-auto self-center opacity-0 transition-opacity group-hover:opacity-100" />
         </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
+      </DropDrawerTrigger>
+      <DropDrawerContent
         className="w-72"
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
@@ -76,78 +76,78 @@ export function DatabasePropertyMenu({
             }}
           />
         </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
+        <DropDrawerSeparator />
+        <DropDrawerSub>
+          <DropDrawerSubTrigger>
             <Settings2 />
             <span>Edit property</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuItem disabled>Property settings</DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
+          </DropDrawerSubTrigger>
+          <DropDrawerSubContent>
+            <DropDrawerItem disabled>Property settings</DropDrawerItem>
+          </DropDrawerSubContent>
+        </DropDrawerSub>
+        <DropDrawerSub>
+          <DropDrawerSubTrigger>
             <ChevronsUpDown />
             <span>Change type</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuItem disabled>
+          </DropDrawerSubTrigger>
+          <DropDrawerSubContent>
+            <DropDrawerItem disabled>
               <PropertyIcon />
               <span>{propertyType.label}</span>
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
+            </DropDrawerItem>
+          </DropDrawerSubContent>
+        </DropDrawerSub>
+        <DropDrawerSub>
+          <DropDrawerSubTrigger>
             <Sparkles />
             <span>AI Autofill</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuItem disabled>Configure autofill</DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
+          </DropDrawerSubTrigger>
+          <DropDrawerSubContent>
+            <DropDrawerItem disabled>Configure autofill</DropDrawerItem>
+          </DropDrawerSubContent>
+        </DropDrawerSub>
+        <DropDrawerSeparator />
+        <DropDrawerItem disabled>
           <Filter />
           <span>Filter</span>
-        </DropdownMenuItem>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
+        </DropDrawerItem>
+        <DropDrawerSub>
+          <DropDrawerSubTrigger>
             <ArrowDownUp />
             <span>Sort</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuItem disabled>Ascending</DropdownMenuItem>
-            <DropdownMenuItem disabled>Descending</DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuItem disabled>
+          </DropDrawerSubTrigger>
+          <DropDrawerSubContent>
+            <DropDrawerItem disabled>Ascending</DropDrawerItem>
+            <DropDrawerItem disabled>Descending</DropDrawerItem>
+          </DropDrawerSubContent>
+        </DropDrawerSub>
+        <DropDrawerItem disabled>
           <Pin />
           <span>Freeze</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled>
+        </DropDrawerItem>
+        <DropDrawerItem disabled>
           <EyeOff />
           <span>Hide</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
+        </DropDrawerItem>
+        <DropDrawerSeparator />
+        <DropDrawerItem disabled>
           <ArrowLeftToLine />
           <span>Insert left</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled>
+        </DropDrawerItem>
+        <DropDrawerItem disabled>
           <ArrowRightToLine />
           <span>Insert right</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled>
+        </DropDrawerItem>
+        <DropDrawerItem disabled>
           <Copy />
           <span>Duplicate property</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled variant="destructive">
+        </DropDrawerItem>
+        <DropDrawerItem disabled variant="destructive">
           <Trash2 />
           <span>Delete property</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+        </DropDrawerItem>
+      </DropDrawerContent>
+    </DropDrawer>
   )
 }

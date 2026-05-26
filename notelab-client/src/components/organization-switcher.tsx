@@ -12,14 +12,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerLabel,
+  DropDrawerSeparator,
+  DropDrawerShortcut,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -71,8 +71,8 @@ export function OrganizationSwitcher() {
     <>
       <SidebarMenu>
         <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <DropDrawer>
+            <DropDrawerTrigger asChild>
               <SidebarMenuButton
                 className="w-fit max-w-full px-1.5"
                 disabled={isLoading}
@@ -95,18 +95,18 @@ export function OrganizationSwitcher() {
                 </span>
                 <ChevronDownIcon className="opacity-50" />
               </SidebarMenuButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
+            </DropDrawerTrigger>
+            <DropDrawerContent
               className="w-64 rounded-lg"
               align="start"
               side="bottom"
               sideOffset={4}
             >
-              <DropdownMenuLabel className="text-xs text-muted-foreground">
+              <DropDrawerLabel className="text-xs text-muted-foreground">
                 Organizations
-              </DropdownMenuLabel>
+              </DropDrawerLabel>
               {organizations.map((organization, index) => (
-                <DropdownMenuItem
+                <DropDrawerItem
                   key={organization.id}
                   onClick={() => setActiveOrganization.mutate(organization.id)}
                   disabled={
@@ -121,11 +121,11 @@ export function OrganizationSwitcher() {
                     </span>
                   </div>
                   <span className="truncate">{organization.name}</span>
-                  <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
-                </DropdownMenuItem>
+                  <DropDrawerShortcut>⌘{index + 1}</DropDrawerShortcut>
+                </DropDrawerItem>
               ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
+              <DropDrawerSeparator />
+              <DropDrawerItem
                 className="gap-2 p-2"
                 onSelect={() => setIsCreateDialogOpen(true)}
               >
@@ -135,9 +135,9 @@ export function OrganizationSwitcher() {
                 <div className="font-medium text-muted-foreground">
                   Add organization
                 </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropDrawerItem>
+            </DropDrawerContent>
+          </DropDrawer>
         </SidebarMenuItem>
       </SidebarMenu>
       <Dialog
