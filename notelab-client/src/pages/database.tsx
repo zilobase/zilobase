@@ -7,10 +7,7 @@ import {
 } from "@/components/app-layout"
 import { Spinner } from "@/components/ui/spinner"
 import { cn } from "@/lib/utils"
-import {
-  getWorkspaceEmoji,
-  type WorkspaceMetadata,
-} from "@/features/workspaces/queries"
+import { getDatabaseEmoji } from "@/features/databases/queries"
 import {
   useUpdateWorkspace,
   useWorkspace,
@@ -107,8 +104,8 @@ function DatabaseMainPane({
   }, [payload?.database.id, payload?.database.name])
 
   useEffect(() => {
-    setEmoji(workspace ? getWorkspaceEmoji(workspace) ?? "" : "")
-  }, [workspace])
+    setEmoji(payload ? getDatabaseEmoji(payload.database) ?? "" : "")
+  }, [payload])
 
   useEffect(() => {
     if (!payload || !editable || title.trim() === payload.database.name) {
@@ -134,14 +131,14 @@ function DatabaseMainPane({
   const updateEmoji = (nextEmoji: string) => {
     setEmoji(nextEmoji)
 
-    if (!workspace || !editable) {
+    if (!payload || !editable) {
       return
     }
 
-    updateWorkspace.mutate({
-      id: workspace.id,
-      metadata: {
-        ...((workspace.metadata ?? {}) as WorkspaceMetadata),
+    updateDatabase.mutate({
+      databaseId: payload.database.id,
+      config: {
+        ...((payload.database.config ?? {}) as Record<string, unknown>),
         emoji: nextEmoji,
       },
     })

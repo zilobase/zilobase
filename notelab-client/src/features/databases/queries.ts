@@ -15,6 +15,20 @@ export type DatabaseRecord = {
   updatedAt: string
 }
 
+export function getDatabaseEmoji(database: Pick<DatabaseRecord, "config">) {
+  if (
+    !database.config ||
+    typeof database.config !== "object" ||
+    Array.isArray(database.config)
+  ) {
+    return null
+  }
+
+  const emoji = (database.config as { emoji?: unknown }).emoji
+
+  return typeof emoji === "string" && emoji.length > 0 ? emoji : null
+}
+
 export type DatabaseProperty = {
   id: string
   databaseId: string

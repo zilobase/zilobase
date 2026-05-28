@@ -26,6 +26,7 @@ import {
   useAddDatabaseRow,
   useSetDatabaseFavorite,
 } from "@/features/databases/hooks"
+import { getDatabaseEmoji } from "@/features/databases/queries"
 import {
   getWorkspaceEmoji,
   type Workspace,
@@ -301,7 +302,7 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
         isFavorite: Boolean(database.isFavorite),
         isTeamspace: Boolean(workspace.isTeamspace),
         name: database.name,
-        emoji: <DatabaseIcon className="size-4" />,
+        emoji: getDatabaseIcon(database),
         workspaceId: database.pageId,
         pages: [],
       }
@@ -453,6 +454,10 @@ function getWorkspaceIcon(workspace: Workspace) {
       <FileIcon className="size-4" />
     ))
   )
+}
+
+function getDatabaseIcon(database: { config?: unknown }) {
+  return getDatabaseEmoji(database) ?? <DatabaseIcon className="size-4" />
 }
 
 function hasWorkspaceContent(content: unknown): boolean {
