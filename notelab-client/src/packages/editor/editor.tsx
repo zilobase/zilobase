@@ -159,6 +159,7 @@ type EditorProps = {
   content?: unknown
   emoji?: string
   editable?: boolean
+  fullWidth?: boolean
   onContentChange?: (content: unknown) => void
   onCreatePage?: () => Promise<CreatedPage>
   onEmojiChange?: (emoji: string) => void
@@ -333,6 +334,7 @@ export function Editor({
   content = starterContent,
   editable = true,
   emoji,
+  fullWidth = true,
   onContentChange,
   onCreatePage,
   onEmojiChange,
@@ -351,6 +353,7 @@ export function Editor({
     useState<DragHandleTarget | null>(null)
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
+  const pageContentClassName = fullWidth ? "" : "mx-auto max-w-3xl"
   const createDatabase = useCreateDatabase()
   const addDatabaseRow = useAddDatabaseRow(organizationId)
   const createEditorDatabase = useCallback(async () => {
@@ -1169,6 +1172,7 @@ export function Editor({
             })()
           : null}
         <WorkspaceMetadata
+          contentClassName={pageContentClassName}
           editable={editable}
           icon={emoji}
           onIconChange={onEmojiChange}
@@ -1176,7 +1180,9 @@ export function Editor({
           title={title}
           workspaceId={workspaceId}
         />
-        <EditorContent editor={editor} />
+        <div className={pageContentClassName}>
+          <EditorContent editor={editor} />
+        </div>
         {mobileNodeTarget ? (
           <MobileActionBar
             canMoveDown={canMoveMobileTarget("down")}

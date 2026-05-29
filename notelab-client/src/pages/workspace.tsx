@@ -210,27 +210,21 @@ export function WorkspaceEditorPane({
 
   return (
     <section className={className}>
-      <div
-        className={cn(
-          "min-h-full",
-          !userSettings?.workspaceFullWidth && "mx-auto max-w-3xl",
-        )}
-      >
-        <Editor
-          key={workspace.id}
-          content={workspace.content ?? ""}
-          editable={accessLevel === "edit" || accessLevel === "full"}
-          emoji={emoji}
-          onContentChange={updateContent}
-          onCreatePage={createNestedPage}
-          onEmojiChange={updateEmoji}
-          onOpenPage={onOpenPage}
-          onTitleChange={setName}
-          organizationId={workspace.organizationId}
-          title={name}
-          workspaceId={workspace.id}
-        />
-      </div>
+      <Editor
+        key={workspace.id}
+        content={workspace.content ?? ""}
+        editable={accessLevel === "edit" || accessLevel === "full"}
+        emoji={emoji}
+        fullWidth={Boolean(userSettings?.workspaceFullWidth)}
+        onContentChange={updateContent}
+        onCreatePage={createNestedPage}
+        onEmojiChange={updateEmoji}
+        onOpenPage={onOpenPage}
+        onTitleChange={setName}
+        organizationId={workspace.organizationId}
+        title={name}
+        workspaceId={workspace.id}
+      />
     </section>
   )
 }

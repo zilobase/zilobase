@@ -25,6 +25,7 @@ import {
 } from "../../extensions/database/utils"
 
 type WorkspaceMetadataProps = {
+  contentClassName?: string
   editable?: boolean
   icon?: string
   onIconChange?: (icon: string) => void
@@ -34,6 +35,7 @@ type WorkspaceMetadataProps = {
 }
 
 export function WorkspaceMetadata({
+  contentClassName,
   editable = true,
   icon: iconProp,
   onIconChange,
@@ -185,7 +187,9 @@ export function WorkspaceMetadata({
         </div>
       ) : null}
 
-      <div className="px-5 py-6 sm:px-8 md:px-20 md:py-8 lg:px-24">
+      <div
+        className={`${contentClassName ?? ""} px-5 py-6 sm:px-8 md:px-20 md:py-8 lg:px-24`}
+      >
         <div className="mb-3 flex flex-wrap items-center gap-2">
           {!icon ? iconPicker : null}
           {!coverVisible ? (
