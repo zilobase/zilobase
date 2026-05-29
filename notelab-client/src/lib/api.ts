@@ -66,6 +66,14 @@ export function authFetch<T>(path: string, body?: unknown, init?: RequestInit) {
   })
 }
 
+export function toApiUrl(path: string) {
+  if (/^https?:\/\//.test(path)) {
+    return path
+  }
+
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`
+}
+
 function parseJson(value: string) {
   try {
     return JSON.parse(value) as unknown

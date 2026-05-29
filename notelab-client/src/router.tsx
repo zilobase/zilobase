@@ -8,8 +8,10 @@ import {
 
 import { AppLayout } from "@/components/app-layout"
 import AcceptInvitationPage from "@/pages/accept-invitation"
+import AiPage from "@/pages/ai"
 import DashboardPage from "@/pages/dashboard"
 import DatabasePage from "@/pages/database"
+import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import LoginPage from "@/pages/login"
 import OnboardingPage from "@/pages/onboarding"
 import OtpPage from "@/pages/otp"
@@ -128,6 +130,12 @@ const dashboardRoute = createRoute({
   component: DashboardPage,
 })
 
+const aiRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/ai",
+  component: AiPage,
+})
+
 const workspaceRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/workspace/$workspaceId",
@@ -160,6 +168,12 @@ const organizationSettingsRoute = createRoute({
   component: OrganizationSettingsPage,
 })
 
+const integrationsSettingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/integrations",
+  component: IntegrationsSettingsPage,
+})
+
 const teamSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/team",
@@ -174,12 +188,14 @@ const routeTree = rootRoute.addChildren([
   otpRoute,
   acceptInvitationRoute,
   appRoute.addChildren([
+    aiRoute,
     dashboardRoute,
     workspaceRoute,
     databaseRoute,
     settingsRoute,
     profileSettingsRoute,
     organizationSettingsRoute,
+    integrationsSettingsRoute,
     teamSettingsRoute,
   ]),
 ])

@@ -394,6 +394,7 @@ function getSettingsPageTitle(pathname: string) {
   }
 
   const titles: Record<string, string> = {
+    integrations: "Integrations",
     organization: "Organization",
     profile: "Profile",
     team: "Team",

@@ -3,6 +3,7 @@ import { useRouterState } from "@tanstack/react-router"
 import {
   ArrowLeftIcon,
   Building2Icon,
+  PlugIcon,
   UserIcon,
   UsersIcon,
 } from "lucide-react"
@@ -33,6 +34,11 @@ const settingsItems = [
     title: "Organization",
     href: "/settings/organization",
     icon: <Building2Icon />,
+  },
+  {
+    title: "Integrations",
+    href: "/settings/integrations",
+    icon: <PlugIcon />,
   },
   {
     title: "Team",

@@ -10,6 +10,14 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       "@": "/src",
+      "@notelab/gmail-connector/ui": "/src/connectors/gmail/src/ui.tsx",
+      "@notelab/github-connector/ui": "/src/connectors/github/src/ui.tsx",
+      "@notelab/google-calendar-connector/ui":
+        "/src/connectors/google-calendar/src/ui.tsx",
+      "@notelab/google-drive-connector/ui":
+        "/src/connectors/google-drive/src/ui.tsx",
+      "@notelab/linear-connector/ui": "/src/connectors/linear/src/ui.tsx",
+      "@notelab/slack-connector/ui": "/src/connectors/slack/src/ui.tsx",
     },
   },
 

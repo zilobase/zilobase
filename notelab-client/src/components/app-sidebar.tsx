@@ -52,7 +52,7 @@ const data = {
     },
     {
       title: "Ask AI",
-      url: "#",
+      url: "/ai",
       icon: (
         <SparklesIcon
         />
