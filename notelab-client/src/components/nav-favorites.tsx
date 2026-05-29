@@ -114,11 +114,7 @@ function FavoriteTreeItem({
     return (
       <Collapsible defaultOpen={isOpen}>
         <SidebarMenuSubItem>
-          <SidebarMenuSubButton
-            asChild
-            className={hasPages ? "pl-7" : undefined}
-            isActive={isActive}
-          >
+          <SidebarMenuSubButton asChild isActive={isActive}>
             {item.isDatabase && item.databaseId ? (
               <Link
                 params={{ databaseId: item.databaseId }}
