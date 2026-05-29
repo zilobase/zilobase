@@ -1358,13 +1358,13 @@ const Chatbot = () => {
     <div
       className={
         hasMessages
-          ? "relative flex min-h-[calc(100svh-3.5rem)] flex-col md:min-h-[calc(100svh-3rem)]"
-          : "relative flex min-h-[calc(100svh-3.5rem)] flex-col justify-center md:min-h-[calc(100svh-3rem)]"
+          ? "relative flex h-full min-h-0 flex-col"
+          : "relative flex h-full min-h-0 flex-col justify-center"
       }
       ref={rootRef}
     >
       <Conversation
-        className={hasMessages ? "overflow-visible" : "flex-none overflow-visible"}
+        className={hasMessages ? "min-h-0" : "flex-none overflow-visible"}
       >
         <ConversationContent className={hasMessages ? "px-0 pb-10 md:px-4" : "px-0 pb-0 md:px-4"}>
           {!hasMessages ? (

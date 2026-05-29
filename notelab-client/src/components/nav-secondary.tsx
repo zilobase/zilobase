@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { Link, useLocation } from "@tanstack/react-router"
 
 import {
   SidebarGroup,
@@ -22,17 +23,29 @@ export function NavSecondary({
     badge?: React.ReactNode
   }[]
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+  const location = useLocation()
+
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild>
-                <a href={item.url}>
-                  {item.icon}
-                  <span>{item.title}</span>
-                </a>
+              <SidebarMenuButton
+                asChild
+                isActive={isNavigationItemActive(item.url, location.pathname)}
+              >
+                {item.url.startsWith("/") ? (
+                  <Link to={item.url as never}>
+                    {item.icon}
+                    <span>{item.title}</span>
+                  </Link>
+                ) : (
+                  <a href={item.url}>
+                    {item.icon}
+                    <span>{item.title}</span>
+                  </a>
+                )}
               </SidebarMenuButton>
               {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
             </SidebarMenuItem>
@@ -41,4 +54,8 @@ export function NavSecondary({
       </SidebarGroupContent>
     </SidebarGroup>
   )
+}
+
+function isNavigationItemActive(url: string, pathname: string) {
+  return url !== "#" && (pathname === url || pathname.startsWith(`${url}/`))
 }

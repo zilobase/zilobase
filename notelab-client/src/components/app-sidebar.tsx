@@ -60,12 +60,11 @@ const data = {
     },
     {
       title: "Home",
-      url: "#",
+      url: "/dashboard",
       icon: (
         <HomeIcon
         />
       ),
-      isActive: true,
     },
     {
       title: "Inbox",
