@@ -164,7 +164,7 @@ function FavoriteTreeItem({
             requireNestedRemoveConfirmation
           />
           <CollapsibleContent>
-            <SidebarMenuSub>
+            <SidebarMenuSub className="mr-0 pr-0">
               {item.pages.map((page) => (
                 <FavoriteTreeItem
                   activeDatabaseId={activeDatabaseId}
@@ -235,7 +235,7 @@ function FavoriteTreeItem({
           requireNestedRemoveConfirmation={false}
         />
         <CollapsibleContent>
-          <SidebarMenuSub>
+          <SidebarMenuSub className="mr-0 pr-0">
             {item.pages.map((page) => (
               <FavoriteTreeItem
                 activeDatabaseId={activeDatabaseId}

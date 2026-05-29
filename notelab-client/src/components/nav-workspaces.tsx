@@ -310,7 +310,7 @@ function WorkspaceTreeItem({
             </CollapsibleTrigger>
           ) : null}
           <CollapsibleContent>
-            <SidebarMenuSub>
+            <SidebarMenuSub className="mr-0 pr-0">
               {item.pages.map((page) => (
                 <WorkspaceTreeItem
                   activeDatabaseId={activeDatabaseId}
@@ -379,7 +379,7 @@ function WorkspaceTreeItem({
           </CollapsibleTrigger>
         ) : null}
         <CollapsibleContent>
-          <SidebarMenuSub>
+          <SidebarMenuSub className="mr-0 pr-0">
             {item.pages.map((page) => (
               <WorkspaceTreeItem
                 activeDatabaseId={activeDatabaseId}
