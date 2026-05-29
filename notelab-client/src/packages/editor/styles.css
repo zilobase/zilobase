@@ -330,7 +330,7 @@
   }
 
   .bookmark-block-preview {
-    @apply grid overflow-hidden rounded-md border bg-card text-card-foreground no-underline transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+    @apply grid overflow-hidden rounded-md bg-muted/50 text-card-foreground no-underline transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
   }
 
   .bookmark-block-preview[data-image="true"] {
@@ -370,7 +370,7 @@
   }
 
   .bookmark-block-thumbnail {
-    @apply flex h-full items-center justify-center overflow-hidden border-l bg-muted;
+    @apply flex h-full items-center justify-center overflow-hidden bg-muted;
   }
 
   .bookmark-block-thumbnail img {
@@ -386,7 +386,7 @@
   }
 
   .page-block-preview {
-    @apply flex h-10 w-full items-center gap-2 rounded-md border bg-muted/30 px-3 text-left text-sm text-foreground transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+    @apply flex h-10 w-full items-center gap-2 rounded-md bg-muted/50 px-3 text-left text-sm text-foreground transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
   }
 
   .page-block-icon {
