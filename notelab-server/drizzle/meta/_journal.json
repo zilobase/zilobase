@@ -43,6 +43,13 @@
       "when": 1780020912830,
       "tag": "0005_tough_violations",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780032353987,
+      "tag": "0006_organization_integrations_ai",
+      "breakpoints": true
     }
   ]
 }

@@ -136,6 +136,76 @@ export const teamMember = pgTable("teamMember", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const organizationIntegration = pgTable(
+  "organization_integration",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    connectedById: text("connected_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    integrationKey: text("integration_key").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    displayName: text("display_name"),
+    status: text("status").notNull().default("connected"),
+    accessToken: text("access_token").notNull(),
+    refreshToken: text("refresh_token"),
+    tokenType: text("token_type"),
+    scopes: text("scopes"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("organization_integration_account_idx").on(
+      table.organizationId,
+      table.integrationKey,
+      table.providerAccountId,
+    ),
+    index("organization_integration_org_idx").on(table.organizationId),
+    index("organization_integration_key_idx").on(
+      table.organizationId,
+      table.integrationKey,
+    ),
+    index("organization_integration_status_idx").on(table.status),
+  ],
+);
+
+export const organizationAiProviderConfig = pgTable(
+  "organization_ai_provider_config",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    providerId: text("provider_id").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    apiKey: text("api_key"),
+    baseUrl: text("base_url"),
+    modelIds: jsonb("model_ids").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("organization_ai_provider_config_provider_idx").on(
+      table.organizationId,
+      table.providerId,
+    ),
+    index("organization_ai_provider_config_org_idx").on(table.organizationId),
+  ],
+);
+
 export const workspace = pgTable(
   "workspace",
   {
