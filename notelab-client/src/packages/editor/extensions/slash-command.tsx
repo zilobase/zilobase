@@ -29,7 +29,6 @@ import {
   useEffect,
   useRef,
   type ComponentType,
-  type RefObject,
   type SVGProps,
 } from "react"
 import { createRoot, type Root } from "react-dom/client"
@@ -47,11 +46,6 @@ import {
   EmojiPickerFooter,
   EmojiPickerSearch,
 } from "@/components/ui/emoji-picker"
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-} from "@/components/ui/popover"
 import { createDatabaseBlockContent } from "@/packages/editor/extensions/database"
 import {
   ExcalidrawIcon,
@@ -445,22 +439,48 @@ export function createSlashCommandItems(
 export const slashCommandItems = createSlashCommandItems()
 
 const SLASH_MENU_HEIGHT = 288
+const SLASH_MENU_WIDTH = 288
 const SLASH_MENU_OFFSET = 6
 const SLASH_MENU_COLLISION_PADDING = 16
 
-function getSlashCommandMenuSide(anchorRect: DOMRect | null) {
+function getSlashCommandMenuPosition(anchorRect: DOMRect | null) {
   if (!anchorRect || typeof window === "undefined") {
-    return "bottom"
+    return {
+      left: SLASH_MENU_COLLISION_PADDING,
+      top: SLASH_MENU_COLLISION_PADDING,
+    }
   }
 
   const spaceBelow =
     window.innerHeight - anchorRect.bottom - SLASH_MENU_COLLISION_PADDING
   const spaceAbove = anchorRect.top - SLASH_MENU_COLLISION_PADDING
-
-  return spaceBelow < SLASH_MENU_HEIGHT + SLASH_MENU_OFFSET &&
+  const shouldOpenAbove =
+    spaceBelow < SLASH_MENU_HEIGHT + SLASH_MENU_OFFSET &&
     spaceAbove > spaceBelow
-    ? "top"
-    : "bottom"
+  const maxLeft = Math.max(
+    SLASH_MENU_COLLISION_PADDING,
+    window.innerWidth - SLASH_MENU_WIDTH - SLASH_MENU_COLLISION_PADDING
+  )
+  const left = Math.min(
+    Math.max(anchorRect.left, SLASH_MENU_COLLISION_PADDING),
+    maxLeft
+  )
+  const preferredTop = shouldOpenAbove
+    ? anchorRect.top - SLASH_MENU_HEIGHT - SLASH_MENU_OFFSET
+    : anchorRect.bottom + SLASH_MENU_OFFSET
+  const maxTop = Math.max(
+    SLASH_MENU_COLLISION_PADDING,
+    window.innerHeight - SLASH_MENU_HEIGHT - SLASH_MENU_COLLISION_PADDING
+  )
+  const top = Math.min(
+    Math.max(preferredTop, SLASH_MENU_COLLISION_PADDING),
+    maxTop
+  )
+
+  return {
+    left,
+    top,
+  }
 }
 
 export function SlashCommandMenu({
@@ -544,38 +564,21 @@ function SlashCommandPopover({
   selectItem: (index: number) => void
   setSelectedIndex: (index: number) => void
 }) {
-  const anchorRectRef = useRef<DOMRect | null>(anchorRect)
-  anchorRectRef.current = anchorRect
-  const virtualRef = useRef({
-    getBoundingClientRect: () => anchorRectRef.current ?? new DOMRect(),
-  })
-  const side = getSlashCommandMenuSide(anchorRect)
+  const position = getSlashCommandMenuPosition(anchorRect)
 
   return (
-    <Popover modal={false} open>
-      <PopoverAnchor
-        virtualRef={
-          virtualRef as RefObject<{ getBoundingClientRect: () => DOMRect }>
-        }
+    <div
+      className="slash-menu-shell w-72 gap-0 p-0"
+      onMouseDown={(event) => event.preventDefault()}
+      style={position}
+    >
+      <SlashCommandMenu
+        items={items}
+        setSelectedIndex={setSelectedIndex}
+        selectedIndex={selectedIndex}
+        selectItem={selectItem}
       />
-      <PopoverContent
-        align="start"
-        avoidCollisions
-        className="slash-menu-shell w-72 gap-0 p-0"
-        collisionPadding={SLASH_MENU_COLLISION_PADDING}
-        onOpenAutoFocus={(event) => event.preventDefault()}
-        onPointerDownOutside={(event) => event.preventDefault()}
-        side={side}
-        sideOffset={SLASH_MENU_OFFSET}
-      >
-        <SlashCommandMenu
-          items={items}
-          setSelectedIndex={setSelectedIndex}
-          selectedIndex={selectedIndex}
-          selectItem={selectItem}
-        />
-      </PopoverContent>
-    </Popover>
+    </div>
   )
 }
 
@@ -698,7 +701,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
               props = nextProps
               selectedIndex = 0
               element = document.createElement("div")
-              element.className = "slash-menu-shell"
+              element.className = "slash-menu-root"
               document.body.appendChild(element)
               root = createRoot(element)
               keydownHandler = (event) => {
