@@ -353,7 +353,7 @@ export function Editor({
     useState<DragHandleTarget | null>(null)
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
-  const pageContentClassName = fullWidth ? "" : "mx-auto max-w-3xl"
+  const pageContentClassName = fullWidth ? "" : "mx-auto max-w-5xl"
   const createDatabase = useCreateDatabase()
   const addDatabaseRow = useAddDatabaseRow(organizationId)
   const createEditorDatabase = useCallback(async () => {
