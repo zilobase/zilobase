@@ -5,7 +5,7 @@ import {
   getWorkspaceSidePaneWidthClass,
   useWorkspaceSidePane,
 } from "@/components/app-layout"
-import { Spinner } from "@/components/ui/spinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import {
   getWorkspaceEmoji,
@@ -192,8 +192,10 @@ export function WorkspaceEditorPane({
 
   if (isLoading) {
     return (
-      <section className={`${className ?? ""} flex items-center justify-center`}>
-        <Spinner />
+      <section className={cn(className, "animate-in fade-in duration-200")}>
+        <WorkspaceEditorSkeleton
+          fullWidth={Boolean(userSettings?.workspaceFullWidth)}
+        />
       </section>
     )
   }
@@ -209,7 +211,7 @@ export function WorkspaceEditorPane({
   }
 
   return (
-    <section className={className}>
+    <section className={cn(className, "animate-in fade-in-0 duration-300")}>
       <Editor
         key={workspace.id}
         content={workspace.content ?? ""}
@@ -226,5 +228,38 @@ export function WorkspaceEditorPane({
         workspaceId={workspace.id}
       />
     </section>
+  )
+}
+
+function WorkspaceEditorSkeleton({ fullWidth }: { fullWidth: boolean }) {
+  return (
+    <div className="flex min-h-full w-full flex-col">
+      <div
+        className={cn(
+          "w-full px-5 py-6 sm:px-8 md:px-20 md:py-8 lg:px-24",
+          fullWidth ? "" : "mx-auto max-w-5xl",
+        )}
+      >
+        <div className="space-y-8">
+          <div className="space-y-5">
+            <Skeleton className="size-12 rounded-xl" />
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-2/3 max-w-md" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-11/12" />
+            <Skeleton className="h-4 w-4/5" />
+          </div>
+          <div className="space-y-3 pt-2">
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

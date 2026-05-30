@@ -5,7 +5,7 @@ import {
   getWorkspaceSidePaneWidthClass,
   useWorkspaceSidePane,
 } from "@/components/app-layout"
-import { Spinner } from "@/components/ui/spinner"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { getDatabaseEmoji } from "@/features/databases/queries"
 import {
@@ -40,8 +40,8 @@ export default function DatabasePage() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center">
-        <Spinner />
+      <main className="min-h-[calc(100svh-3rem)] animate-in fade-in duration-200">
+        <DatabasePageSkeleton />
       </main>
     )
   }
@@ -55,7 +55,7 @@ export default function DatabasePage() {
   }
 
   return (
-    <main className="relative flex h-full min-h-[calc(100svh-3rem)] flex-1 overflow-hidden">
+    <main className="relative flex h-full min-h-[calc(100svh-3rem)] flex-1 overflow-hidden animate-in fade-in-0 duration-300">
       <DatabaseMainPane
         className="min-w-0 flex-1 overflow-y-auto"
         databaseId={databaseId}
@@ -145,7 +145,7 @@ function DatabaseMainPane({
   }
 
   return (
-    <section className={className}>
+    <section className={cn(className, "animate-in fade-in-0 duration-300")}>
       <WorkspaceMetadataView
         editable={editable}
         icon={emoji}
@@ -164,5 +164,61 @@ function DatabaseMainPane({
         />
       </div>
     </section>
+  )
+}
+
+function DatabasePageSkeleton() {
+  return (
+    <div className="flex min-h-[calc(100svh-3rem)] flex-col">
+      <div className="px-5 pb-6 pt-12 sm:px-8 md:px-20 lg:px-24">
+        <div className="w-full space-y-6">
+          <div className="space-y-5">
+            <Skeleton className="size-12 rounded-xl" />
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-72 max-w-full" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 border-y py-3">
+            <Skeleton className="h-8 w-24 rounded-md" />
+            <Skeleton className="h-8 w-28 rounded-md" />
+            <Skeleton className="h-8 w-20 rounded-md" />
+          </div>
+          <div className="overflow-hidden rounded-md border">
+            <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] border-b bg-muted/30">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div className="border-r p-3 last:border-r-0" key={index}>
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
+            {Array.from({ length: 6 }).map((_, rowIndex) => (
+              <div
+                className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] border-b last:border-b-0"
+                key={rowIndex}
+              >
+                {Array.from({ length: 4 }).map((_, columnIndex) => (
+                  <div
+                    className="border-r p-3 last:border-r-0"
+                    key={columnIndex}
+                  >
+                    <Skeleton
+                      className={cn(
+                        "h-4",
+                        columnIndex === 0
+                          ? "w-4/5"
+                          : columnIndex === 3
+                            ? "w-14"
+                            : "w-2/3",
+                      )}
+                    />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
