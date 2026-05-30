@@ -39,6 +39,8 @@ import { DragBlockMenu } from "@/packages/editor/components/editor/drag-block-me
 import {
   hasDraggedEditorBlock,
   deleteDraggedEditorBlockSource,
+  dropDraggedEditorBlockAt,
+  getColumnBlockDragDropTarget,
   getPlaneDragHandleRect,
   getDraggedEditorBlockPayload,
   preparePlaneBlockDrop,
@@ -147,6 +149,12 @@ type NodePlacement = {
   index: number
   parent: ProseMirrorNode | null
   pos: number
+}
+
+type BlockDropLine = {
+  left: number
+  right: number
+  top: number
 }
 
 function insertDraggedDatabasePage(view: EditorView, event: DragEvent) {
@@ -326,6 +334,7 @@ export function Editor({
     useState<{ left: number; top: number } | null>(null)
   const [mobileNodeTarget, setMobileNodeTarget] =
     useState<DragHandleTarget | null>(null)
+  const [blockDropLine, setBlockDropLine] = useState<BlockDropLine | null>(null)
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
   const [tocItems, setTocItems] = useState<TableOfContentDataItem[]>([])
@@ -555,16 +564,32 @@ export function Editor({
       },
       handleDrop: (view, event) =>
         dropPageOnDatabase(event) ||
+        (() => {
+          const target = hasDraggedEditorBlock(event)
+            ? getColumnBlockDragDropTarget(view, event)
+            : null
+
+          setBlockDropLine(null)
+
+          return target
+            ? dropDraggedEditorBlockAt(view, event, target.pos)
+            : false
+        })() ||
         insertDraggedDatabasePage(view, event) ||
         preparePlaneBlockDrop(view, event),
       handlePaste: handleProviderLinkPaste,
-      transformPastedHTML: restoreEmojiTextFromPastedHTML,
+      transformPastedHTML: normalizePastedEditorHTML,
       handleDOMEvents: {
         dragover: (_view, event) => {
           const hasDraggedBlock = hasDraggedEditorBlock(event)
           const isDatabaseDropTarget = Boolean(getDropDatabaseElement(event))
           const hasDraggedPage =
             hasDraggedDatabasePage(event) || hasDraggedPageBlock(event)
+          const columnDropTarget = hasDraggedBlock
+            ? getColumnBlockDragDropTarget(_view, event)
+            : null
+
+          setBlockDropLine(columnDropTarget?.line ?? null)
 
           if (!hasDraggedBlock && !hasDraggedPage) {
             return false
@@ -591,6 +616,21 @@ export function Editor({
             event.dataTransfer.dropEffect = hasDraggedBlock ? "move" : "copy"
           }
 
+          return false
+        },
+        dragend: () => {
+          setBlockDropLine(null)
+          return false
+        },
+        dragleave: (_view, event) => {
+          if (
+            event.relatedTarget instanceof Node &&
+            _view.dom.contains(event.relatedTarget)
+          ) {
+            return false
+          }
+
+          setBlockDropLine(null)
           return false
         },
       },
@@ -999,6 +1039,16 @@ export function Editor({
             />
           </div>
         ) : null}
+        {blockDropLine ? (
+          <div
+            className="block-drag-drop-line"
+            style={{
+              left: blockDropLine.left,
+              top: blockDropLine.top,
+              width: Math.max(0, blockDropLine.right - blockDropLine.left),
+            }}
+          />
+        ) : null}
         <SelectionBubbleMenu editor={editor} runCommand={runCommand} />
         <ColumnControls editor={editor} />
         <TableControls editor={editor} />
@@ -1179,9 +1229,50 @@ function normalizeEditorContent(content: unknown) {
   return emptyContent
 }
 
-function restoreEmojiTextFromPastedHTML(html: string) {
+type EditorTableType = "columns" | "table" | "unknown"
+
+const pastedBlockElementSelector = [
+  "address",
+  "article",
+  "aside",
+  "blockquote",
+  "details",
+  "div",
+  "dl",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "hr",
+  "li",
+  "main",
+  "nav",
+  "ol",
+  "p",
+  "pre",
+  "section",
+  "table",
+  "ul",
+].join(",")
+
+function normalizePastedEditorHTML(html: string) {
   const parser = new DOMParser()
   const document = parser.parseFromString(html, "text/html")
+  const restoredEmoji = restoreEmojiTextFromPastedDocument(document)
+  const transformedTables = transformPastedEditorTables(document)
+
+  return restoredEmoji || transformedTables ? document.body.innerHTML : html
+}
+
+function restoreEmojiTextFromPastedDocument(document: Document) {
   let replaced = false
 
   for (const emojiElement of Array.from(
@@ -1198,7 +1289,100 @@ function restoreEmojiTextFromPastedHTML(html: string) {
     replaced = true
   }
 
-  return replaced ? document.body.innerHTML : html
+  return replaced
+}
+
+function detectEditorTableType(table: HTMLTableElement): EditorTableType {
+  const rows = table.querySelectorAll("tbody > tr")
+  const headers = table.querySelectorAll("th")
+  const colwidthCells = table.querySelectorAll("[colwidth]")
+
+  const hasMultipleRows = rows.length > 1
+  const hasHeaders = headers.length > 0
+  const hasColWidthAttrs = colwidthCells.length > 0
+
+  if (hasHeaders || hasMultipleRows || hasColWidthAttrs) {
+    return "table"
+  }
+
+  const firstRowCells = table.querySelectorAll("tbody > tr:first-child > td")
+
+  if (rows.length === 1 && firstRowCells.length > 1) {
+    return "columns"
+  }
+
+  return "unknown"
+}
+
+function transformPastedEditorTables(document: Document) {
+  let transformed = false
+
+  for (const table of Array.from(document.querySelectorAll("table"))) {
+    if (!table.isConnected || table.parentElement?.closest("table")) {
+      continue
+    }
+
+    if (detectEditorTableType(table) !== "columns") {
+      continue
+    }
+
+    const columnBlock = createColumnBlockFromTable(document, table)
+
+    table.replaceWith(columnBlock)
+    transformed = true
+  }
+
+  return transformed
+}
+
+function createColumnBlockFromTable(
+  document: Document,
+  table: HTMLTableElement
+) {
+  const cells = Array.from(
+    table.querySelectorAll<HTMLTableCellElement>("tbody > tr:first-child > td")
+  )
+  const widths = Array.from({ length: cells.length }, () => 100 / cells.length)
+  const columnBlock = document.createElement("div")
+
+  columnBlock.setAttribute("data-type", "columnBlock")
+  columnBlock.setAttribute("data-column-count", String(cells.length))
+  columnBlock.setAttribute("data-widths", JSON.stringify(widths))
+
+  for (const cell of cells) {
+    const column = document.createElement("div")
+
+    column.setAttribute("data-type", "column")
+    appendTableCellContentToColumn(document, cell, column)
+    columnBlock.appendChild(column)
+  }
+
+  return columnBlock
+}
+
+function appendTableCellContentToColumn(
+  document: Document,
+  cell: HTMLTableCellElement,
+  column: HTMLDivElement
+) {
+  if (!cell.textContent?.trim() && cell.children.length === 0) {
+    column.appendChild(document.createElement("p"))
+    return
+  }
+
+  if (cell.querySelector(pastedBlockElementSelector)) {
+    while (cell.firstChild) {
+      column.appendChild(cell.firstChild)
+    }
+    return
+  }
+
+  const paragraph = document.createElement("p")
+
+  while (cell.firstChild) {
+    paragraph.appendChild(cell.firstChild)
+  }
+  column.appendChild(paragraph)
 }
 
 function getEmojiFromImageSource(image: HTMLImageElement) {
