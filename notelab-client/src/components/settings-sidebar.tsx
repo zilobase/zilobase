@@ -55,7 +55,7 @@ export function SettingsSidebar({
   })
 
   return (
-    <Sidebar className="border-r-0" {...props}>
+    <Sidebar variant="floating" className="border-r-0" {...props}>
       <SidebarHeader>
         <Button
           asChild
