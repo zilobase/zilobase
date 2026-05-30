@@ -80,7 +80,7 @@ export function AppLayout() {
       }
     >
       {isSettingsPage ? <SettingsSidebar /> : <AppSidebar />}
-      <SidebarInset className="h-svh overflow-hidden">
+      <SidebarInset className="h-svh overflow-hidden md:peer-data-[variant=floating]:h-[calc(100svh-1rem)]">
         <AppHeader
           isSettingsPage={isSettingsPage}
           pathname={location.pathname}
