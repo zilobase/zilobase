@@ -221,7 +221,7 @@ export function WorkspaceMetadata({
           {icon ? iconPicker : null}
           <textarea
             aria-label="Workspace title"
-            className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-3xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-3xl dark:bg-transparent"
+            className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus-visible:ring-0 dark:bg-transparent"
             onChange={(event) => updateTitle(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {

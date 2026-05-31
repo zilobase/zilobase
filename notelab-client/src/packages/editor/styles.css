@@ -2,7 +2,7 @@
 
 @layer components {
   .tiptap-editor {
-    @apply min-h-[520px] px-5 py-5 text-base leading-7 outline-none sm:px-8 md:px-20 md:py-6 lg:px-24;
+    @apply min-h-[520px] px-5 py-5 text-base leading-7 text-foreground outline-none sm:px-8 md:px-20 md:py-6 lg:px-24;
   }
 
   .tiptap-editor .is-editor-empty:first-child::before,
@@ -12,23 +12,39 @@
   }
 
   .tiptap-editor > * + * {
-    @apply mt-4;
+    @apply mt-6;
   }
 
   .tiptap-editor h1 {
-    @apply text-3xl font-semibold leading-tight;
+    @apply scroll-m-20 text-4xl font-semibold leading-tight tracking-normal text-balance;
   }
 
   .tiptap-editor h2 {
-    @apply text-2xl font-semibold leading-tight;
+    @apply scroll-m-20 border-b pb-2 text-3xl font-semibold leading-tight tracking-normal first:mt-0;
   }
 
   .tiptap-editor h3 {
-    @apply text-xl font-semibold leading-snug;
+    @apply scroll-m-20 text-2xl font-medium leading-snug tracking-normal;
+  }
+
+  .tiptap-editor h4 {
+    @apply scroll-m-20 text-xl font-medium leading-snug tracking-normal;
+  }
+
+  .tiptap-editor h5 {
+    @apply scroll-m-20 text-lg font-medium leading-snug tracking-normal;
+  }
+
+  .tiptap-editor h6 {
+    @apply scroll-m-20 text-base font-medium leading-snug tracking-normal;
   }
 
   .tiptap-editor p {
-    @apply text-foreground;
+    @apply leading-7 text-foreground;
+  }
+
+  .tiptap-editor :is(p, li, blockquote, td, th) strong {
+    @apply font-semibold;
   }
 
   .tiptap-editor a {
@@ -98,11 +114,15 @@
   }
 
   .tiptap-editor ul {
-    @apply list-disc pl-6;
+    @apply my-6 ml-6 list-disc;
   }
 
   .tiptap-editor ul[data-type="taskList"] {
-    @apply list-none pl-0;
+    @apply ml-0 list-none;
+  }
+
+  .tiptap-editor li {
+    @apply mt-2;
   }
 
   .tiptap-editor ul[data-type="taskList"] li,
@@ -125,11 +145,11 @@
   }
 
   .tiptap-editor ol {
-    @apply list-decimal pl-6;
+    @apply my-6 ml-6 list-decimal;
   }
 
   .tiptap-editor blockquote {
-    @apply border-l-2 pl-4 text-muted-foreground;
+    @apply mt-6 border-l-2 pl-6 italic;
   }
 
   .tiptap-editor .column-block {
@@ -178,7 +198,7 @@
   }
 
   .tiptap-editor code {
-    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-sm;
+    @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
   }
 
   .tiptap-editor pre {
@@ -186,7 +206,7 @@
   }
 
   .tiptap-editor pre code {
-    @apply bg-transparent p-0;
+    @apply block bg-transparent p-0 font-normal;
   }
 
   .tiptap-editor .code-block-shiki {
@@ -428,7 +448,7 @@
   }
 
   .database-title-input {
-    @apply h-auto min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0;
+    @apply h-auto min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-3xl font-medium leading-tight tracking-normal text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0;
   }
 
   .database-new-button {
@@ -773,7 +793,7 @@
   }
 
   .tiptap-editor .tableWrapper {
-    @apply mt-8 max-w-full overflow-x-auto;
+    @apply my-6 w-full max-w-full overflow-x-auto;
   }
 
   .tiptap-editor table {
