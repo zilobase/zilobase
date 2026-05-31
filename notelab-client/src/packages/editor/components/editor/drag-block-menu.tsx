@@ -36,6 +36,7 @@ const turnIntoItems = blockCommandItems.filter((item) =>
     "Text",
     "Heading 1",
     "Heading 2",
+    "Heading 3",
     "Bullet List",
     "Numbered List",
     "Task List",
@@ -150,7 +151,14 @@ export function DragBlockMenu({
             ? { type: "paragraph", content: text ? [{ type: "text", text }] : undefined }
             : {
                 type: "heading",
-                attrs: { level: item.title === "Heading 1" ? 1 : 2 },
+                attrs: {
+                  level:
+                    item.title === "Heading 1"
+                      ? 1
+                      : item.title === "Heading 2"
+                        ? 2
+                        : 3,
+                },
                 content: text ? [{ type: "text", text }] : undefined,
               }
 

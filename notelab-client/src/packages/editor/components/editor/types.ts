@@ -20,7 +20,7 @@ export type ToolbarAction =
   | "setTextAlign"
 
 export type ToolbarAttrs = {
-  level?: 1 | 2
+  level?: 1 | 2 | 3
   align?: "left" | "center" | "right"
 }
 

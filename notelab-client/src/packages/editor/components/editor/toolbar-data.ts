@@ -8,6 +8,7 @@ import {
   Code2,
   Heading1,
   Heading2,
+  Heading3,
   Italic,
   ListCollapse,
   List,
@@ -185,6 +186,13 @@ export const toolbarGroups: ToolbarItem[][] = [
       isActive: () => ({ heading: { level: 2 } }),
       action: "toggleHeading",
       attrs: { level: 2 },
+    },
+    {
+      label: "Heading 3",
+      icon: Heading3,
+      isActive: () => ({ heading: { level: 3 } }),
+      action: "toggleHeading",
+      attrs: { level: 3 },
     },
     {
       label: "Bullet list",

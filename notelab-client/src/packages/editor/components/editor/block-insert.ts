@@ -35,6 +35,8 @@ export function blockContentForItem(
       return { type: "heading", attrs: { level: 1 } }
     case "Heading 2":
       return { type: "heading", attrs: { level: 2 } }
+    case "Heading 3":
+      return { type: "heading", attrs: { level: 3 } }
     case "Bullet List":
       return {
         type: "bulletList",
