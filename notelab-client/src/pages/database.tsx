@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from "react"
-import { useParams } from "@tanstack/react-router"
+import { Link, useParams } from "@tanstack/react-router"
+import { ArrowRight, Maximize2 } from "lucide-react"
 
 import {
+  AppLayout,
   getWorkspaceSidePaneWidthClass,
+  WorkspaceSidePaneProvider,
   useWorkspaceSidePane,
 } from "@/components/app-layout"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { getDatabaseEmoji } from "@/features/databases/queries"
 import {
@@ -17,12 +21,31 @@ import {
   useDatabase,
   useUpdateDatabase,
 } from "@/features/databases/hooks"
+import { useSession } from "@/features/auth/hooks"
 import { WorkspaceMetadata as WorkspaceMetadataView } from "@/packages/editor/components/editor/workspace-metadata"
 import { DatabaseTableView } from "@/packages/editor/extensions/database"
-import { WorkspaceEditorPane } from "@/pages/workspace"
+import {
+  PublicPaneTopbar,
+  PublicWorkspaceBreadcrumb,
+  WorkspaceEditorPane,
+} from "@/pages/workspace"
 
 export default function DatabasePage() {
-  const { databaseId } = useParams({ from: "/app/database/$databaseId" })
+  const { data: session } = useSession()
+
+  if (!session?.user) {
+    return <PublicDatabasePage />
+  }
+
+  return (
+    <AppLayout>
+      <AuthenticatedDatabasePage />
+    </AppLayout>
+  )
+}
+
+function AuthenticatedDatabasePage() {
+  const { databaseId } = useParams({ from: "/database/$databaseId" })
   const { data: payload, isLoading } = useDatabase(databaseId)
   const { closeSidePane, openSidePane, sidePaneWorkspaceId } =
     useWorkspaceSidePane()
@@ -80,14 +103,115 @@ export default function DatabasePage() {
   )
 }
 
+function PublicDatabasePage() {
+  const { databaseId } = useParams({ from: "/database/$databaseId" })
+
+  return (
+    <WorkspaceSidePaneProvider resetKey={databaseId}>
+      <PublicDatabaseContent databaseId={databaseId} />
+    </WorkspaceSidePaneProvider>
+  )
+}
+
+function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
+  const { data: payload, isLoading } = useDatabase(databaseId)
+  const { closeSidePane, openSidePane, sidePaneWorkspaceId } =
+    useWorkspaceSidePane()
+  const sidePaneWidthClass = getWorkspaceSidePaneWidthClass()
+  const databasePageId = payload?.database.pageId ?? null
+  const openPageInSidePane = useCallback((pageId: string) => {
+    if (pageId === databasePageId || pageId === sidePaneWorkspaceId) {
+      closeSidePane()
+      return
+    }
+
+    openSidePane(pageId)
+  }, [closeSidePane, databasePageId, openSidePane, sidePaneWorkspaceId])
+
+  if (isLoading) {
+    return (
+      <main className="min-h-svh animate-in fade-in duration-200 bg-background">
+        <DatabasePageSkeleton />
+      </main>
+    )
+  }
+
+  if (!payload) {
+    return (
+      <main className="flex min-h-svh items-center justify-center bg-background px-4 text-sm text-muted-foreground">
+        Database not found.
+      </main>
+    )
+  }
+
+  return (
+    <main className="relative flex min-h-svh flex-1 overflow-hidden bg-background animate-in fade-in-0 duration-300">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <PublicPaneTopbar workspaceId={databasePageId} />
+        <DatabaseMainPane
+          className="min-h-0 min-w-0 flex-1 overflow-y-auto"
+          databaseId={databaseId}
+          onOpenPage={openPageInSidePane}
+          readOnly
+        />
+      </div>
+      {sidePaneWorkspaceId ? (
+        <aside
+          className={cn(
+            "animate-in slide-in-from-right-8 absolute inset-0 z-10 flex flex-col bg-background duration-200 md:static md:z-auto md:border-l",
+            sidePaneWidthClass,
+          )}
+          key={sidePaneWorkspaceId}
+        >
+          <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                aria-label="Close side pane"
+                onClick={closeSidePane}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <ArrowRight />
+              </Button>
+              <Button
+                aria-label="Open as main page"
+                asChild
+                size="icon-sm"
+                variant="ghost"
+              >
+                <Link
+                  params={{ workspaceId: sidePaneWorkspaceId }}
+                  to="/workspace/$workspaceId"
+                >
+                  <Maximize2 />
+                </Link>
+              </Button>
+            </div>
+            <PublicWorkspaceBreadcrumb workspaceId={sidePaneWorkspaceId} />
+          </div>
+          <WorkspaceEditorPane
+            className="min-h-0 flex-1 overflow-y-auto"
+            onOpenPage={openPageInSidePane}
+            readOnly
+            workspaceId={sidePaneWorkspaceId}
+          />
+        </aside>
+      ) : null}
+    </main>
+  )
+}
+
 function DatabaseMainPane({
   className,
   databaseId,
   onOpenPage,
+  readOnly = false,
 }: {
   className?: string
   databaseId: string
   onOpenPage: (pageId: string) => void
+  readOnly?: boolean
 }) {
   const { data: payload } = useDatabase(databaseId)
   const databasePageId = payload?.database.pageId ?? null
@@ -97,7 +221,7 @@ function DatabaseMainPane({
   const updateWorkspace = useUpdateWorkspace()
   const [title, setTitle] = useState("")
   const [emoji, setEmoji] = useState("")
-  const editable = accessLevel === "edit" || accessLevel === "full"
+  const editable = !readOnly && (accessLevel === "edit" || accessLevel === "full")
 
   useEffect(() => {
     setTitle(payload?.database.name ?? "")

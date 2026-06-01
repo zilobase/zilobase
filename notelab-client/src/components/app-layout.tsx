@@ -49,7 +49,43 @@ const WorkspaceSidePaneContext =
 
 const sidePaneWidthClass = "w-full min-w-0 md:basis-0 md:flex-1"
 
-export function AppLayout() {
+export function WorkspaceSidePaneProvider({
+  children,
+  resetKey,
+}: {
+  children: ReactNode
+  resetKey?: string | null
+}) {
+  const [sidePaneWorkspaceId, setSidePaneWorkspaceId] = useState<string | null>(
+    null,
+  )
+  const closeSidePane = useCallback(() => {
+    setSidePaneWorkspaceId(null)
+  }, [])
+  const openSidePane = useCallback((nextWorkspaceId: string) => {
+    setSidePaneWorkspaceId(nextWorkspaceId)
+  }, [])
+  const sidePaneContext = useMemo<WorkspaceSidePaneContextValue>(
+    () => ({
+      closeSidePane,
+      openSidePane,
+      sidePaneWorkspaceId,
+    }),
+    [closeSidePane, openSidePane, sidePaneWorkspaceId],
+  )
+
+  useEffect(() => {
+    closeSidePane()
+  }, [closeSidePane, resetKey])
+
+  return (
+    <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
+      {children}
+    </WorkspaceSidePaneContext.Provider>
+  )
+}
+
+export function AppLayout({ children }: { children?: ReactNode }) {
   return (
     <SidebarProvider
       style={
@@ -62,13 +98,13 @@ export function AppLayout() {
       }
     >
       <AppSearchProvider>
-        <AppLayoutContent />
+        <AppLayoutContent>{children}</AppLayoutContent>
       </AppSearchProvider>
     </SidebarProvider>
   )
 }
 
-function AppLayoutContent() {
+function AppLayoutContent({ children }: { children?: ReactNode }) {
   const location = useLocation()
   const { open: appSidebarOpen } = useSidebar()
   const isSettingsPage = location.pathname.startsWith("/settings")
@@ -125,7 +161,7 @@ function AppLayoutContent() {
         />
         <div className="min-h-0 flex-1 overflow-y-auto">
           <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
-            <Outlet />
+            {children ?? <Outlet />}
           </WorkspaceSidePaneContext.Provider>
         </div>
       </SidebarInset>
@@ -146,6 +182,10 @@ export function useWorkspaceSidePane() {
   }
 
   return context
+}
+
+export function useOptionalWorkspaceSidePane() {
+  return useContext(WorkspaceSidePaneContext)
 }
 
 export function getWorkspaceSidePaneWidthClass() {

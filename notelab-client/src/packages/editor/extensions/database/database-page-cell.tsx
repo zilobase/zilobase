@@ -1,6 +1,6 @@
 import { ExternalLink, FileText, X } from "lucide-react"
 
-import { useWorkspaceSidePane } from "@/components/app-layout"
+import { useOptionalWorkspaceSidePane } from "@/components/app-layout"
 import { useWorkspace } from "@/features/workspaces/hooks"
 import { getWorkspaceEmoji } from "@/features/workspaces/queries"
 
@@ -11,15 +11,15 @@ export function DatabasePageCell({
   onOpen?: (pageId: string) => void
   pageId: string
 }) {
-  const { closeSidePane, sidePaneWorkspaceId } = useWorkspaceSidePane()
+  const sidePane = useOptionalWorkspaceSidePane()
   const { data: page, isLoading } = useWorkspace(pageId)
-  const isOpen = sidePaneWorkspaceId === pageId
+  const isOpen = sidePane?.sidePaneWorkspaceId === pageId
   const title = page?.name.trim() || "Untitled"
   const emoji = page ? getWorkspaceEmoji(page) : null
   const actionLabel = isOpen ? "Close" : "Open"
   const handleClick = () => {
     if (isOpen) {
-      closeSidePane()
+      sidePane?.closeSidePane()
       return
     }
 

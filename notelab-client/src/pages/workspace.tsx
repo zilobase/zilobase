@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useParams } from "@tanstack/react-router"
+import { Link, useParams } from "@tanstack/react-router"
+import { ArrowRight, Maximize2 } from "lucide-react"
 
 import {
+  AppLayout,
   getWorkspaceSidePaneWidthClass,
+  WorkspaceSidePaneProvider,
   useWorkspaceSidePane,
 } from "@/components/app-layout"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   getWorkspaceEmoji,
@@ -17,17 +21,33 @@ import {
   useWorkspace,
   useWorkspaceAccessLevel,
 } from "@/features/workspaces/hooks"
+import { useSession } from "@/features/auth/hooks"
 import { useUserSettings } from "@/features/user-settings/hooks"
 import { Editor } from "@/packages/editor"
 
 type WorkspaceEditorPaneProps = {
   className?: string
   onOpenPage: (pageId: string) => void
+  readOnly?: boolean
   workspaceId: string
 }
 
 export default function WorkspacePage() {
-  const { workspaceId } = useParams({ from: "/app/workspace/$workspaceId" })
+  const { data: session } = useSession()
+
+  if (!session?.user) {
+    return <PublicWorkspacePage />
+  }
+
+  return (
+    <AppLayout>
+      <AuthenticatedWorkspacePage />
+    </AppLayout>
+  )
+}
+
+function AuthenticatedWorkspacePage() {
+  const { workspaceId } = useParams({ from: "/workspace/$workspaceId" })
   const { closeSidePane, openSidePane, sidePaneWorkspaceId } =
     useWorkspaceSidePane()
   const sidePaneWidthClass = getWorkspaceSidePaneWidthClass()
@@ -68,9 +88,171 @@ export default function WorkspacePage() {
   )
 }
 
+function PublicWorkspacePage() {
+  const { workspaceId } = useParams({ from: "/workspace/$workspaceId" })
+
+  return (
+    <WorkspaceSidePaneProvider resetKey={workspaceId}>
+      <PublicWorkspaceContent workspaceId={workspaceId} />
+    </WorkspaceSidePaneProvider>
+  )
+}
+
+function PublicWorkspaceContent({ workspaceId }: { workspaceId: string }) {
+  const { closeSidePane, openSidePane, sidePaneWorkspaceId } =
+    useWorkspaceSidePane()
+  const sidePaneWidthClass = getWorkspaceSidePaneWidthClass()
+  const openPageInSidePane = useCallback((pageId: string) => {
+    if (pageId === workspaceId || pageId === sidePaneWorkspaceId) {
+      closeSidePane()
+      return
+    }
+
+    openSidePane(pageId)
+  }, [closeSidePane, openSidePane, sidePaneWorkspaceId, workspaceId])
+
+  return (
+    <main className="relative flex h-svh flex-1 overflow-hidden bg-background">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <PublicPaneTopbar workspaceId={workspaceId} />
+        <WorkspaceEditorPane
+          className="min-h-0 min-w-0 flex-1 overflow-y-auto"
+          key={workspaceId}
+          onOpenPage={openPageInSidePane}
+          readOnly
+          workspaceId={workspaceId}
+        />
+      </div>
+      {sidePaneWorkspaceId ? (
+        <aside
+          className={cn(
+            "animate-in slide-in-from-right-8 absolute inset-0 z-10 flex flex-col bg-background duration-200 md:static md:z-auto md:border-l",
+            sidePaneWidthClass,
+          )}
+          key={sidePaneWorkspaceId}
+        >
+          <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                aria-label="Close side pane"
+                onClick={closeSidePane}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <ArrowRight />
+              </Button>
+              <Button
+                aria-label="Open as main page"
+                asChild
+                size="icon-sm"
+                variant="ghost"
+              >
+                <Link
+                  params={{ workspaceId: sidePaneWorkspaceId }}
+                  to="/workspace/$workspaceId"
+                >
+                  <Maximize2 />
+                </Link>
+              </Button>
+            </div>
+            <PublicWorkspaceBreadcrumb workspaceId={sidePaneWorkspaceId} />
+          </div>
+          <WorkspaceEditorPane
+            className="min-h-0 flex-1 overflow-y-auto"
+            onOpenPage={openPageInSidePane}
+            readOnly
+            workspaceId={sidePaneWorkspaceId}
+          />
+        </aside>
+      ) : null}
+    </main>
+  )
+}
+
+export function PublicPaneTopbar({
+  workspaceId,
+}: {
+  workspaceId: string | null
+}) {
+  return (
+    <header className="flex h-12 shrink-0 items-center gap-3 border-b px-3">
+      <PublicWorkspaceBreadcrumb workspaceId={workspaceId} />
+      <PublicLoginButton />
+    </header>
+  )
+}
+
+export function PublicWorkspaceBreadcrumb({
+  workspaceId,
+}: {
+  workspaceId: string | null
+}) {
+  if (!workspaceId) {
+    return null
+  }
+
+  return (
+    <nav className="min-w-0 flex-1 text-sm" aria-label="Breadcrumb">
+      <ol className="flex min-w-0 items-center gap-1 text-muted-foreground">
+        <PublicWorkspaceBreadcrumbAncestors workspaceId={workspaceId} />
+      </ol>
+    </nav>
+  )
+}
+
+function PublicWorkspaceBreadcrumbAncestors({
+  workspaceId,
+}: {
+  workspaceId: string
+}) {
+  const { data: workspace } = useWorkspace(workspaceId)
+  const parentWorkspaceId = workspace?.metadata?.parentWorkspaceId ?? null
+
+  return (
+    <>
+      {parentWorkspaceId ? (
+        <>
+          <PublicWorkspaceBreadcrumbAncestors
+            workspaceId={parentWorkspaceId}
+          />
+          <li className="shrink-0">/</li>
+        </>
+      ) : null}
+      <li className="min-w-0">
+        <Link
+          className="block max-w-48 truncate text-foreground hover:underline sm:max-w-72"
+          params={{ workspaceId }}
+          to="/workspace/$workspaceId"
+        >
+          {workspace ? getWorkspaceBreadcrumbLabel(workspace) : "Workspace"}
+        </Link>
+      </li>
+    </>
+  )
+}
+
+function PublicLoginButton() {
+  return (
+    <Button asChild size="sm" variant="outline">
+      <Link to="/login">Login</Link>
+    </Button>
+  )
+}
+
+function getWorkspaceBreadcrumbLabel(
+  workspace: NonNullable<ReturnType<typeof useWorkspace>["data"]>,
+) {
+  const label = workspace.name.trim() || "Untitled"
+  const emoji = getWorkspaceEmoji(workspace)
+
+  return emoji ? `${emoji} ${label}` : label
+}
+
 export function WorkspaceEditorPane({
   className,
   onOpenPage,
+  readOnly = false,
   workspaceId,
 }: WorkspaceEditorPaneProps) {
   const { data: workspace, isLoading } = useWorkspace(workspaceId)
@@ -125,6 +307,7 @@ export function WorkspaceEditorPane({
 
   useEffect(() => {
     if (
+      readOnly ||
       !workspace ||
       (accessLevel !== "edit" && accessLevel !== "full") ||
       name.trim() === workspace.name
@@ -137,12 +320,16 @@ export function WorkspaceEditorPane({
     }, 600)
 
     return () => window.clearTimeout(timeout)
-  }, [accessLevel, name, updateWorkspace, workspace])
+  }, [accessLevel, name, readOnly, updateWorkspace, workspace])
 
   const updateEmoji = (nextEmoji: string) => {
     setEmoji(nextEmoji)
 
-    if (!workspace || (accessLevel !== "edit" && accessLevel !== "full")) {
+    if (
+      readOnly ||
+      !workspace ||
+      (accessLevel !== "edit" && accessLevel !== "full")
+    ) {
       return
     }
 
@@ -160,7 +347,10 @@ export function WorkspaceEditorPane({
       if (!workspace) {
         return
       }
-      if (accessLevel !== "edit" && accessLevel !== "full") {
+      if (
+        readOnly ||
+        (accessLevel !== "edit" && accessLevel !== "full")
+      ) {
         return
       }
 
@@ -173,11 +363,15 @@ export function WorkspaceEditorPane({
         pendingContentRef.current = null
       }, 800)
     },
-    [accessLevel, clearContentSaveTimeout, updateWorkspace, workspace],
+    [accessLevel, clearContentSaveTimeout, readOnly, updateWorkspace, workspace],
   )
 
   const createNestedPage = useCallback(async () => {
-    if (!workspace || (accessLevel !== "edit" && accessLevel !== "full")) {
+    if (
+      readOnly ||
+      !workspace ||
+      (accessLevel !== "edit" && accessLevel !== "full")
+    ) {
       throw new Error("Workspace is required")
     }
 
@@ -188,7 +382,7 @@ export function WorkspaceEditorPane({
       organizationId: workspace.organizationId,
       parentWorkspaceId: workspace.id,
     })
-  }, [accessLevel, createWorkspace, workspace])
+  }, [accessLevel, createWorkspace, readOnly, workspace])
 
   if (isLoading) {
     return (
@@ -215,7 +409,7 @@ export function WorkspaceEditorPane({
       <Editor
         key={workspace.id}
         content={workspace.content ?? ""}
-        editable={accessLevel === "edit" || accessLevel === "full"}
+        editable={!readOnly && (accessLevel === "edit" || accessLevel === "full")}
         emoji={emoji}
         fullWidth={Boolean(userSettings?.workspaceFullWidth)}
         onContentChange={updateContent}

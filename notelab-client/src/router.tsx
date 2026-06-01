@@ -23,6 +23,7 @@ import SignupPage from "@/pages/signup"
 import WorkspacePage from "@/pages/workspace"
 import { sessionQueryOptions } from "@/features/auth/queries"
 import { organizationsQueryOptions } from "@/features/organizations/queries"
+import { ApiError, apiFetch } from "@/lib/api"
 import { queryClient } from "@/lib/query-client"
 
 const rootRoute = createRootRoute({
@@ -138,14 +139,48 @@ const aiRoute = createRoute({
 })
 
 const workspaceRoute = createRoute({
-  getParentRoute: () => appRoute,
+  getParentRoute: () => rootRoute,
   path: "/workspace/$workspaceId",
+  beforeLoad: async ({ params }) => {
+    const session = await getFreshSession()
+
+    if (session.user) {
+      const organizations = await getOrganizations()
+
+      if (organizations.length === 0) {
+        throw redirect({ to: "/onboarding" })
+      }
+
+      return
+    }
+
+    if (!(await isWorkspacePublished(params.workspaceId))) {
+      throw redirect({ to: "/login" })
+    }
+  },
   component: WorkspacePage,
 })
 
 const databaseRoute = createRoute({
-  getParentRoute: () => appRoute,
+  getParentRoute: () => rootRoute,
   path: "/database/$databaseId",
+  beforeLoad: async ({ params }) => {
+    const session = await getFreshSession()
+
+    if (session.user) {
+      const organizations = await getOrganizations()
+
+      if (organizations.length === 0) {
+        throw redirect({ to: "/onboarding" })
+      }
+
+      return
+    }
+
+    if (!(await isDatabasePublished(params.databaseId))) {
+      throw redirect({ to: "/login" })
+    }
+  },
   component: DatabasePage,
 })
 
@@ -197,8 +232,6 @@ const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
     aiRoute,
     dashboardRoute,
-    workspaceRoute,
-    databaseRoute,
     settingsRoute,
     profileSettingsRoute,
     organizationSettingsRoute,
@@ -206,6 +239,8 @@ const routeTree = rootRoute.addChildren([
     apiKeysSettingsRoute,
     teamSettingsRoute,
   ]),
+  workspaceRoute,
+  databaseRoute,
 ])
 
 export const router = createRouter({ routeTree })
@@ -222,6 +257,40 @@ function getOrganizations() {
     ...organizationsQueryOptions,
     staleTime: 0,
   })
+}
+
+async function isWorkspacePublished(workspaceId: string) {
+  try {
+    const result = await apiFetch<{ published: boolean }>(
+      `/workspaces/${workspaceId}/published`,
+      { auth: false, method: "GET" },
+    )
+
+    return result.published
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return false
+    }
+
+    throw error
+  }
+}
+
+async function isDatabasePublished(databaseId: string) {
+  try {
+    const result = await apiFetch<{ published: boolean }>(
+      `/databases/${databaseId}/published`,
+      { auth: false, method: "GET" },
+    )
+
+    return result.published
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return false
+    }
+
+    throw error
+  }
 }
 
 declare module "@tanstack/react-router" {
