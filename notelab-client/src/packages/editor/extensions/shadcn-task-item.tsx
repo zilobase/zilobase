@@ -8,12 +8,20 @@ import {
 
 import { Checkbox } from "@/components/ui/checkbox"
 
+type ShadcnTaskItemOptions = {
+  editable: boolean
+  nested: boolean
+}
+
 function ShadcnTaskItemView({
   editor,
+  extension,
   node,
   updateAttributes,
 }: NodeViewProps) {
   const checked = Boolean(node.attrs.checked)
+  const options = extension.options as { editable?: boolean }
+  const isEditable = options.editable !== false && editor.isEditable
 
   return (
     <NodeViewWrapper
@@ -26,8 +34,12 @@ function ShadcnTaskItemView({
         <Checkbox
           aria-label={`Task item: ${node.textContent || "empty task item"}`}
           checked={checked}
-          disabled={!editor.isEditable}
+          disabled={!isEditable}
           onCheckedChange={(nextChecked) => {
+            if (!isEditable) {
+              return
+            }
+
             updateAttributes({ checked: nextChecked === true })
           }}
           onMouseDown={(event) => event.preventDefault()}
@@ -38,7 +50,15 @@ function ShadcnTaskItemView({
   )
 }
 
-export const ShadcnTaskItem = TaskItem.extend({
+export const ShadcnTaskItem = TaskItem.extend<ShadcnTaskItemOptions>({
+  addOptions() {
+    return {
+      ...this.parent?.(),
+      editable: true,
+      nested: false,
+    }
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(ShadcnTaskItemView)
   },

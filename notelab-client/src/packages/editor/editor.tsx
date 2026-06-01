@@ -464,6 +464,7 @@ export function Editor({
       }),
       TaskList,
       ShadcnTaskItem.configure({
+        editable,
         nested: true,
       }),
       TextStyle,
@@ -511,6 +512,7 @@ export function Editor({
       LinkMention,
       DatabaseBlock.configure({
         currentPageId: workspaceId,
+        editable,
         onOpenPage,
         organizationId,
       }),
@@ -746,7 +748,12 @@ export function Editor({
     for (const extension of editor.extensionManager.extensions) {
       if (extension.name === "databaseBlock") {
         extension.options.currentPageId = workspaceId
+        extension.options.editable = editable
         extension.options.onOpenPage = onOpenPage
+      }
+
+      if (extension.name === "taskItem") {
+        extension.options.editable = editable
       }
 
       if (extension.name === "pageBlock" || extension.name === "slashCommand") {
@@ -754,7 +761,7 @@ export function Editor({
       }
     }
 
-  }, [editor, onOpenPage, workspaceId])
+  }, [editable, editor, onOpenPage, workspaceId])
 
   useEffect(() => {
     editor?.setEditable(editable)
