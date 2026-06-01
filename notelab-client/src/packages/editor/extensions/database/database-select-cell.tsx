@@ -125,6 +125,7 @@ function getNextOptionColor(options: DatabaseSelectOption[]) {
 export function DatabaseSelectCell({
   allowCreate = true,
   databaseId,
+  editable = true,
   propertyConfig,
   defaultOptions = [],
   propertyId,
@@ -138,6 +139,7 @@ export function DatabaseSelectCell({
   allowCreate?: boolean
   databaseId: string
   defaultOptions?: DatabaseSelectOption[]
+  editable?: boolean
   multiple?: boolean
   propertyConfig?: unknown
   propertyId: string
@@ -179,6 +181,27 @@ export function DatabaseSelectCell({
   )
   const canCreateSelectOption =
     allowCreate && query.trim().length > 0 && !matchingSelectOption
+
+  if (!editable) {
+    return (
+      <span className="database-select-cell-trigger">
+        {selectedValues.map((selectedValue) => {
+          const selectedOption = getSelectedOption(selectedValue)
+
+          return (
+            <DatabaseSelectBadge
+              color={getOptionColor(selectedValue)}
+              key={selectedValue}
+              showDot={showStatusDot}
+              suffix={selectedOption?.suffix}
+            >
+              {selectedOption?.name ?? selectedValue}
+            </DatabaseSelectBadge>
+          )
+        })}
+      </span>
+    )
+  }
 
   useEffect(() => {
     if (!isOpen || isMobile) {

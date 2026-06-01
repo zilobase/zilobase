@@ -153,6 +153,7 @@ function hideNativeDragPreview(dataTransfer: DataTransfer) {
 
 type DatabaseTableViewProps = {
   databaseId: string | null | undefined
+  editable?: boolean
   fullPage?: boolean
   onOpenPage?: (pageId: string) => void
   organizationId?: string | null
@@ -162,6 +163,7 @@ type DatabaseTableViewProps = {
 
 export function DatabaseTableView({
   databaseId,
+  editable = true,
   fullPage = false,
   onOpenPage,
   organizationId,
@@ -209,8 +211,12 @@ export function DatabaseTableView({
     [accessTargets?.members, session?.user?.id]
   )
   const columnKeys = useMemo(
-    () => ["name", ...properties.map((property) => property.id), "add-property"],
-    [properties]
+    () => [
+      "name",
+      ...properties.map((property) => property.id),
+      ...(editable ? ["add-property"] : []),
+    ],
+    [editable, properties]
   )
   const getColumnWidth = (key: string) =>
     columnWidths[key] ??
@@ -324,7 +330,7 @@ export function DatabaseTableView({
   }, [properties, propertyValues, rows])
 
   const addDatabaseRow = () => {
-    if (!databaseId || addRow.isPending) {
+    if (!editable || !databaseId || addRow.isPending) {
       return
     }
 
@@ -335,7 +341,7 @@ export function DatabaseTableView({
   }
 
   const addDatabaseProperty = (type = "text", label = "Property") => {
-    if (!databaseId || addProperty.isPending) {
+    if (!editable || !databaseId || addProperty.isPending) {
       return
     }
 
@@ -359,7 +365,7 @@ export function DatabaseTableView({
     propertyType: string,
     value: DatabasePropertyValue
   ) => {
-    if (!databaseId) {
+    if (!editable || !databaseId) {
       return
     }
 
@@ -384,6 +390,10 @@ export function DatabaseTableView({
     columnKey: string,
     event: PointerEvent<HTMLSpanElement>
   ) => {
+    if (!editable) {
+      return
+    }
+
     event.preventDefault()
     event.stopPropagation()
 
@@ -586,15 +596,17 @@ export function DatabaseTableView({
           ) : (
             <div className="min-w-0 flex-1" />
           )}
-          <Button
-            className="database-new-button"
-            disabled={!databaseId || addRow.isPending}
-            onClick={addDatabaseRow}
-            type="button"
-          >
-            {addRow.isPending ? <Loader2 className="animate-spin" /> : <Plus />}
-            <span>New</span>
-          </Button>
+          {editable ? (
+            <Button
+              className="database-new-button"
+              disabled={!databaseId || addRow.isPending}
+              onClick={addDatabaseRow}
+              type="button"
+            >
+              {addRow.isPending ? <Loader2 className="animate-spin" /> : <Plus />}
+              <span>New</span>
+            </Button>
+          ) : null}
           {showExpandButton && databaseId ? (
             <Button
               aria-label="Expand database"
@@ -684,8 +696,9 @@ export function DatabaseTableView({
               clearRowDrag()
             }}
           >
-            <div className="database-row-drag-rail">
-              {activeDragRow ? (
+            {editable ? (
+              <div className="database-row-drag-rail">
+                {activeDragRow ? (
                 <button
                   aria-label={`Drag ${activeDragRow.page.name.trim() || "Untitled"}`}
                   className="database-row-drag-handle"
@@ -749,8 +762,9 @@ export function DatabaseTableView({
                 >
                   <GripVertical />
                 </button>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            ) : null}
             {rowDragOverlay ? (
               <div
                 aria-hidden="true"
@@ -803,20 +817,26 @@ export function DatabaseTableView({
                   </th>
                   {properties.map((property) => (
                     <th key={property.id} className="database-property-header">
-                      <DatabasePropertyMenu
-                        config={property.property.config}
-                        databaseId={payload.database.id}
-                        databasePropertyId={property.id}
-                        name={property.property.name}
-                        type={property.property.type}
-                        onRename={(name) =>
-                          updateProperty.mutate({
-                            databaseId: payload.database.id,
-                            databasePropertyId: property.id,
-                            name,
-                          })
-                        }
-                      />
+                      {editable ? (
+                        <DatabasePropertyMenu
+                          config={property.property.config}
+                          databaseId={payload.database.id}
+                          databasePropertyId={property.id}
+                          name={property.property.name}
+                          type={property.property.type}
+                          onRename={(name) =>
+                            updateProperty.mutate({
+                              databaseId: payload.database.id,
+                              databasePropertyId: property.id,
+                              name,
+                            })
+                          }
+                        />
+                      ) : (
+                        <span className="database-property-header-label">
+                          {property.property.name}
+                        </span>
+                      )}
                       <span
                         aria-hidden="true"
                         className="database-column-resize-handle"
@@ -826,20 +846,22 @@ export function DatabaseTableView({
                       />
                     </th>
                   ))}
-                  <th className="database-add-property-cell">
-                    <AddDatabasePropertyMenu
-                      disabled={addProperty.isPending}
-                      isPending={addProperty.isPending}
-                      onAdd={addDatabaseProperty}
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="database-column-resize-handle"
-                      onPointerDown={(event) =>
-                        startColumnResize("add-property", event)
-                      }
-                    />
-                  </th>
+                  {editable ? (
+                    <th className="database-add-property-cell">
+                      <AddDatabasePropertyMenu
+                        disabled={addProperty.isPending}
+                        isPending={addProperty.isPending}
+                        onAdd={addDatabaseProperty}
+                      />
+                      <span
+                        aria-hidden="true"
+                        className="database-column-resize-handle"
+                        onPointerDown={(event) =>
+                          startColumnResize("add-property", event)
+                        }
+                      />
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -883,6 +905,7 @@ export function DatabaseTableView({
                             <DatabaseSelectCell
                               allowCreate={!isPersonProperty}
                               databaseId={payload.database.id}
+                              editable={editable}
                               defaultOptions={
                                 workspaceProperty.type === "status"
                                   ? defaultStatusOptions
@@ -909,6 +932,7 @@ export function DatabaseTableView({
                           ) : (
                             <DatabaseInputCell
                               label={workspaceProperty.name}
+                              editable={editable}
                               onActivate={(element) => {
                                 setActiveCellKey(key)
                                 resizeCellEditor(element)
@@ -947,30 +971,32 @@ export function DatabaseTableView({
                         </td>
                       )
                     })}
-                    <td />
+                    {editable ? <td /> : null}
                   </tr>
                 ))}
-                <tr>
-                  <td className="database-page-cell">
-                    <button
-                      className="database-page-create"
-                      disabled={!databaseId || addRow.isPending}
-                      onClick={addDatabaseRow}
-                      type="button"
-                    >
-                      {addRow.isPending ? (
-                        <Loader2 className="animate-spin" />
-                      ) : (
-                        <Plus />
-                      )}
-                      <span>New page</span>
-                    </button>
-                  </td>
-                  {properties.map((property) => (
-                    <td key={property.id} />
-                  ))}
-                  <td />
-                </tr>
+                {editable ? (
+                  <tr>
+                    <td className="database-page-cell">
+                      <button
+                        className="database-page-create"
+                        disabled={!databaseId || addRow.isPending}
+                        onClick={addDatabaseRow}
+                        type="button"
+                      >
+                        {addRow.isPending ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <Plus />
+                        )}
+                        <span>New page</span>
+                      </button>
+                    </td>
+                    {properties.map((property) => (
+                      <td key={property.id} />
+                    ))}
+                    <td />
+                  </tr>
+                ) : null}
               </tbody>
               </table>
             </div>
@@ -992,6 +1018,7 @@ function DatabaseBlockView({ extension, node }: ReactNodeViewProps) {
     >
       <DatabaseTableView
         databaseId={databaseId}
+        editable={options.editable}
         onOpenPage={options.onOpenPage}
         organizationId={options.organizationId}
         showExpandButton

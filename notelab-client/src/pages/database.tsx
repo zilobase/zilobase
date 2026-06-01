@@ -281,6 +281,7 @@ function DatabaseMainPane({
       <div className="tiptap-editor px-5 pb-10 sm:px-8 md:px-20 lg:px-24">
         <DatabaseTableView
           databaseId={databaseId}
+          editable={!readOnly}
           fullPage
           onOpenPage={onOpenPage}
           organizationId={payload?.database.organizationId}

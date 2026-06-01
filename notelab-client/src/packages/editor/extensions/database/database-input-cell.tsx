@@ -17,6 +17,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile"
 
 export function DatabaseInputCell({
+  editable = true,
   label,
   onActivate,
   onChange,
@@ -26,6 +27,7 @@ export function DatabaseInputCell({
   type,
   value,
 }: {
+  editable?: boolean
   label: string
   onActivate: (element: HTMLTextAreaElement) => void
   onChange: (value: string) => void
@@ -50,6 +52,24 @@ export function DatabaseInputCell({
   const errorMessage = hasNumberError ? "Enter a valid number" : null
   const actionHref = getActionHref(type, value)
   const shouldShowActionLink = !isMobile && !popoverPosition && actionHref
+
+  if (!editable) {
+    const displayValue = stripActionScheme(type, value)
+
+    return actionHref ? (
+      <a
+        className="database-input-cell-link"
+        href={actionHref}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {displayValue}
+      </a>
+    ) : (
+      <span className="database-input-cell-trigger">
+        {displayValue || <span className="text-muted-foreground">Empty</span>}
+      </span>
+    )
+  }
 
   const updatePopoverPosition = () => {
     const rect = wrapperRef.current?.getBoundingClientRect()
