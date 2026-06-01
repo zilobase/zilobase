@@ -9,6 +9,7 @@ import {
 import { AppLayout } from "@/components/app-layout"
 import AcceptInvitationPage from "@/pages/accept-invitation"
 import AiPage from "@/pages/ai"
+import ApiKeysSettingsPage from "@/pages/settings/api-keys"
 import DashboardPage from "@/pages/dashboard"
 import DatabasePage from "@/pages/database"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
@@ -174,6 +175,12 @@ const integrationsSettingsRoute = createRoute({
   component: IntegrationsSettingsPage,
 })
 
+const apiKeysSettingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/api-keys",
+  component: ApiKeysSettingsPage,
+})
+
 const teamSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/team",
@@ -196,6 +203,7 @@ const routeTree = rootRoute.addChildren([
     profileSettingsRoute,
     organizationSettingsRoute,
     integrationsSettingsRoute,
+    apiKeysSettingsRoute,
     teamSettingsRoute,
   ]),
 ])

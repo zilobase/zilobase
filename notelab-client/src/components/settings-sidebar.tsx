@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router"
 import { useRouterState } from "@tanstack/react-router"
 import {
   Building2Icon,
+  KeyRoundIcon,
   PlugIcon,
   UserIcon,
   UsersIcon,
@@ -39,6 +40,11 @@ const settingsItems = [
     title: "Integrations",
     href: "/settings/integrations",
     icon: <PlugIcon />,
+  },
+  {
+    title: "API Keys",
+    href: "/settings/api-keys",
+    icon: <KeyRoundIcon />,
   },
   {
     title: "Team",
