@@ -11,6 +11,7 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router"
 import { ArrowRight } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
+import { AppSearchProvider } from "@/components/app-search"
 import { ChatSidebar } from "@/components/chat-sidebar"
 import { NavActions } from "@/components/nav-actions"
 import { SettingsSidebar } from "@/components/settings-sidebar"
@@ -60,7 +61,9 @@ export function AppLayout() {
         } as React.CSSProperties
       }
     >
-      <AppLayoutContent />
+      <AppSearchProvider>
+        <AppLayoutContent />
+      </AppSearchProvider>
     </SidebarProvider>
   )
 }

@@ -15,6 +15,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { useAppSearch } from "@/components/app-search"
 
 const railItems = [
   {
@@ -40,6 +41,7 @@ const railItems = [
 ]
 
 export function AppSidebarRail() {
+  const { openSearch } = useAppSearch()
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -59,7 +61,12 @@ export function AppSidebarRail() {
                   hidden: false,
                 }}
               >
-                {item.url.startsWith("/") ? (
+                {item.title === "Search" ? (
+                  <button onClick={openSearch} type="button">
+                    {item.icon}
+                    <span>{item.title}</span>
+                  </button>
+                ) : item.url.startsWith("/") ? (
                   <Link to={item.url as never}>
                     {item.icon}
                     <span>{item.title}</span>

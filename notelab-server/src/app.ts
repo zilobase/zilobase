@@ -11,6 +11,7 @@ import { healthRoutes } from "./routes/health";
 import { metadataRoutes } from "./routes/metadata";
 import { organizationSettingsRoutes } from "./routes/organization-settings";
 import { organizationRoutes } from "./routes/organizations";
+import { searchRoutes } from "./routes/search";
 import { sessionRoutes } from "./routes/session";
 import { workspaceSettingsRoutes } from "./routes/user-settings";
 import { workspaceRoutes } from "./routes/workspaces";
@@ -54,6 +55,7 @@ export function createApp() {
   app.route("/metadata", metadataRoutes);
   app.route("/organizations", organizationRoutes);
   app.route("/api/organization/settings", organizationSettingsRoutes);
+  app.route("/search", searchRoutes);
   app.route("/session", sessionRoutes);
   app.route("/user-settings", workspaceSettingsRoutes);
   app.route("/workspaces", workspaceRoutes);
