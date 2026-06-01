@@ -2,6 +2,7 @@ import * as React from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
   ChevronsUpDownIcon,
+  Globe2Icon,
   LinkIcon,
   LockIcon,
   MoreHorizontalIcon,
@@ -55,6 +56,7 @@ import {
   useCreateWorkspace,
   useDeleteWorkspaceAccess,
   useSetWorkspaceFavorite,
+  useSetWorkspacePublished,
   useUpsertWorkspaceAccess,
   useWorkspace,
   useWorkspaceAccess,
@@ -73,6 +75,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type {
   AccessLevel,
   AccessTargetType,
@@ -343,6 +346,7 @@ function WorkspaceShareDialog({ workspaceId }: { workspaceId: string }) {
   const { data: targets } = useWorkspaceAccessTargets(workspace?.organizationId)
   const upsertAccess = useUpsertWorkspaceAccess()
   const deleteAccess = useDeleteWorkspaceAccess()
+  const setPublished = useSetWorkspacePublished()
   const [targetValue, setTargetValue] = React.useState<ShareTargetValue | "">("")
   const [targetPickerOpen, setTargetPickerOpen] = React.useState(false)
   const [nextAccessLevel, setNextAccessLevel] =
@@ -368,7 +372,15 @@ function WorkspaceShareDialog({ workspaceId }: { workspaceId: string }) {
     return map
   }, [targets?.members])
   const rules = accessPayload?.access ?? []
+  const isPublished = rules.some(
+    (rule) => rule.targetType === "public" && rule.targetId === "*",
+  )
+  const sharingRules = rules.filter((rule) => rule.targetType !== "public")
   const selectedTarget = targetValue ? targetByKey.get(targetValue) : null
+  const publicUrl =
+    typeof window === "undefined"
+      ? ""
+      : `${window.location.origin}/workspace/${workspaceId}`
 
   const shareWorkspace = () => {
     if (!targetValue || !workspace) {
@@ -400,8 +412,32 @@ function WorkspaceShareDialog({ workspaceId }: { workspaceId: string }) {
   }
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href)
+    await navigator.clipboard.writeText(publicUrl || window.location.href)
     toast.success("Workspace link copied.")
+  }
+
+  const togglePublished = (checked: boolean) => {
+    if (!workspace || !canManage || setPublished.isPending) {
+      return
+    }
+
+    setPublished.mutate(
+      { isPublished: checked, workspaceId: workspace.id },
+      {
+        onSuccess: () => {
+          toast.success(
+            checked ? "Workspace published." : "Workspace unpublished.",
+          )
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Could not update publishing.",
+          )
+        },
+      },
+    )
   }
 
   return (
@@ -420,131 +456,177 @@ function WorkspaceShareDialog({ workspaceId }: { workspaceId: string }) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Popover
-              open={targetPickerOpen}
-              onOpenChange={setTargetPickerOpen}
-            >
-              <PopoverTrigger asChild>
-                <Button
-                  className="min-w-0 flex-1 justify-between"
-                  disabled={!canManage}
-                  role="combobox"
-                  type="button"
-                  variant="outline"
-                >
-                  <span className="min-w-0 truncate text-left">
-                    {selectedTarget?.detail ?? "Search members"}
-                  </span>
-                  <ChevronsUpDownIcon className="opacity-60" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-[min(28rem,calc(100vw-3rem))] p-0">
-                <Command>
-                  <CommandInput placeholder="Search by name or email..." />
-                  <CommandList>
-                    <CommandEmpty>No members found.</CommandEmpty>
-                    <CommandGroup>
-                      {shareableMembers.map((member) => {
-                        const value: ShareTargetValue = `user:${member.id}`
-                        const label = member.name || member.email
+        <Tabs defaultValue="share">
+          <TabsList className="w-full">
+            <TabsTrigger value="share">Share</TabsTrigger>
+            <TabsTrigger value="publish">Publishing</TabsTrigger>
+          </TabsList>
 
-                        return (
-                          <CommandItem
-                            data-checked={targetValue === value}
-                            key={member.id}
-                            onSelect={() => {
-                              setTargetValue(value)
-                              setTargetPickerOpen(false)
-                            }}
-                            value={`${member.email} ${member.name}`}
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate font-medium">{label}</div>
-                              <div className="truncate text-xs text-muted-foreground">
-                                {member.email}
+          <TabsContent className="grid gap-4 pt-2" value="share">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Popover
+                open={targetPickerOpen}
+                onOpenChange={setTargetPickerOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    className="min-w-0 flex-1 justify-between"
+                    disabled={!canManage}
+                    role="combobox"
+                    type="button"
+                    variant="outline"
+                  >
+                    <span className="min-w-0 truncate text-left">
+                      {selectedTarget?.detail ?? "Search members"}
+                    </span>
+                    <ChevronsUpDownIcon className="opacity-60" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[min(28rem,calc(100vw-3rem))] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search by name or email..." />
+                    <CommandList>
+                      <CommandEmpty>No members found.</CommandEmpty>
+                      <CommandGroup>
+                        {shareableMembers.map((member) => {
+                          const value: ShareTargetValue = `user:${member.id}`
+                          const label = member.name || member.email
+
+                          return (
+                            <CommandItem
+                              data-checked={targetValue === value}
+                              key={member.id}
+                              onSelect={() => {
+                                setTargetValue(value)
+                                setTargetPickerOpen(false)
+                              }}
+                              value={`${member.email} ${member.name}`}
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate font-medium">{label}</div>
+                                <div className="truncate text-xs text-muted-foreground">
+                                  {member.email}
+                                </div>
                               </div>
-                            </div>
-                          </CommandItem>
-                        )
-                      })}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            <Select
-              disabled={!canManage}
-              onValueChange={(value) =>
-                setNextAccessLevel(value as AccessLevel)
-              }
-              value={nextAccessLevel}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="view">View</SelectItem>
-                <SelectItem value="edit">Edit</SelectItem>
-                <SelectItem value="full">Full</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              disabled={!canManage || !targetValue || upsertAccess.isPending}
-              onClick={shareWorkspace}
-              type="button"
-            >
-              <Share2Icon />
-              Share
-            </Button>
-          </div>
-
-          <div className="grid gap-2">
-            <AccessRow
-              detail={session?.user?.email}
-              label={session?.user?.name || "You"}
-              level={accessLevel ?? "view"}
-              suffix="You"
-            />
-            {rules.map((rule) => (
-              <RuleRow
-                canManage={canManage}
-                deleteRule={() =>
-                  deleteAccess.mutate(
-                    { ruleId: rule.id, workspaceId },
-                    {
-                      onError: (error) => {
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Could not remove access.",
-                        )
-                      },
-                    },
-                  )
+                            </CommandItem>
+                          )
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <Select
+                disabled={!canManage}
+                onValueChange={(value) =>
+                  setNextAccessLevel(value as AccessLevel)
                 }
-                key={rule.id}
-                rule={rule}
-                target={targetByKey.get(`${rule.targetType}:${rule.targetId}`)}
-              />
-            ))}
-          </div>
-
-          {!canManage ? (
-            <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-              You need full access to manage sharing for this workspace.
+                value={nextAccessLevel}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="view">View</SelectItem>
+                  <SelectItem value="edit">Edit</SelectItem>
+                  <SelectItem value="full">Full</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                disabled={!canManage || !targetValue || upsertAccess.isPending}
+                onClick={shareWorkspace}
+                type="button"
+              >
+                <Share2Icon />
+                Share
+              </Button>
             </div>
-          ) : null}
 
-          <div className="flex items-center gap-2">
-            <Input readOnly value={window.location.href} />
-            <Button onClick={copyLink} type="button" variant="outline">
-              <LinkIcon />
-              Copy link
-            </Button>
-          </div>
-        </div>
+            <div className="grid gap-2">
+              <AccessRow
+                detail={session?.user?.email}
+                label={session?.user?.name || "You"}
+                level={accessLevel ?? "view"}
+                suffix="You"
+              />
+              {sharingRules.map((rule) => (
+                <RuleRow
+                  canManage={canManage}
+                  deleteRule={() =>
+                    deleteAccess.mutate(
+                      { ruleId: rule.id, workspaceId },
+                      {
+                        onError: (error) => {
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Could not remove access.",
+                          )
+                        },
+                      },
+                    )
+                  }
+                  key={rule.id}
+                  rule={rule}
+                  target={targetByKey.get(`${rule.targetType}:${rule.targetId}`)}
+                />
+              ))}
+            </div>
+
+            {!canManage ? (
+              <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                You need full access to manage sharing for this workspace.
+              </div>
+            ) : null}
+
+            <div className="flex items-center gap-2">
+              <Input readOnly value={publicUrl} />
+              <Button onClick={copyLink} type="button" variant="outline">
+                <LinkIcon />
+                Copy link
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent className="grid gap-4 pt-2" value="publish">
+            <div className="flex items-start gap-3 rounded-md border px-3 py-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted">
+                <Globe2Icon className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium">Publish to web</div>
+                <div className="text-xs text-muted-foreground">
+                  Anyone with the link can view this workspace and nested
+                  workspaces. Published pages are read-only.
+                </div>
+              </div>
+              <Switch
+                checked={isPublished}
+                disabled={!canManage || setPublished.isPending}
+                onCheckedChange={togglePublished}
+              />
+            </div>
+
+            {!canManage ? (
+              <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                You need full access to manage publishing for this workspace.
+              </div>
+            ) : null}
+
+            <div className="flex items-center gap-2">
+              <Input readOnly value={publicUrl} />
+              <Button
+                disabled={!isPublished}
+                onClick={copyLink}
+                type="button"
+                variant="outline"
+              >
+                <LinkIcon />
+                Copy link
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

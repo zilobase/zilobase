@@ -133,6 +133,47 @@ export async function getEffectiveWorkspaceAccess(
   }, "none");
 }
 
+export async function isWorkspacePublished(workspaceId: string) {
+  const record = await getWorkspaceRecord(workspaceId);
+
+  if (!record) {
+    return false;
+  }
+
+  const workspaces = await db
+    .select({
+      id: workspace.id,
+      metadata: workspace.metadata,
+    })
+    .from(workspace)
+    .where(
+      and(
+        eq(workspace.organizationId, record.organizationId),
+        isNull(workspace.deletedAt),
+      ),
+    );
+  const ancestorIds = getAncestorIds(workspaceId, workspaces);
+
+  if (ancestorIds.length === 0) {
+    return false;
+  }
+
+  const [rule] = await db
+    .select({ id: workspaceAccess.id })
+    .from(workspaceAccess)
+    .where(
+      and(
+        eq(workspaceAccess.organizationId, record.organizationId),
+        inArray(workspaceAccess.workspaceId, ancestorIds),
+        eq(workspaceAccess.targetType, "public"),
+        eq(workspaceAccess.targetId, "*"),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(rule);
+}
+
 export async function canAccessWorkspace(
   workspaceId: string,
   userId: string,

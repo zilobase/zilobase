@@ -8,6 +8,7 @@ import {
   getMembership,
   getWorkspaceRecord,
   hasAccess,
+  isWorkspacePublished,
   normalizeAccessLevel,
 } from "../access";
 import { rejectMismatchedApiKeyOrganization } from "../api-keys";
@@ -435,37 +436,52 @@ workspaceRoutes.post("/", async (c) => {
 workspaceRoutes.get("/:id", async (c) => {
   const user = requireUser(c);
 
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
   const record = await getWorkspace(c.req.param("id"));
 
   if (!record) {
     return c.json({ error: "Workspace not found" }, 404);
   }
 
-  const accessLevel = await getEffectiveWorkspaceAccess(record.id, user.id);
+  const accessLevel = user
+    ? await getEffectiveWorkspaceAccess(record.id, user.id)
+    : "none";
+  const published = await isWorkspacePublished(record.id);
 
-  if (!hasAccess(accessLevel, "view")) {
+  if (!hasAccess(accessLevel, "view") && !published) {
+    if (!user) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const [favoriteRecord] = await db
-    .select({ id: favorite.id })
-    .from(favorite)
-    .where(
-      and(
-        eq(favorite.userId, user.id),
-        eq(favorite.workspaceId, record.id),
-      ),
-    )
-    .limit(1);
+  const [favoriteRecord] = user
+    ? await db
+        .select({ id: favorite.id })
+        .from(favorite)
+        .where(
+          and(
+            eq(favorite.userId, user.id),
+            eq(favorite.workspaceId, record.id),
+          ),
+        )
+        .limit(1)
+    : [];
 
   return c.json({
-    accessLevel,
+    accessLevel: hasAccess(accessLevel, "view") ? accessLevel : "view",
     workspace: { ...record, isFavorite: Boolean(favoriteRecord) },
   });
+});
+
+workspaceRoutes.get("/:id/published", async (c) => {
+  const record = await getWorkspace(c.req.param("id"));
+
+  if (!record) {
+    return c.json({ published: false }, 404);
+  }
+
+  return c.json({ published: await isWorkspacePublished(record.id) });
 });
 
 workspaceRoutes.put("/:id/favorite", async (c) => {
@@ -695,8 +711,8 @@ workspaceRoutes.put("/:id/access", async (c) => {
   };
   const normalizedAccessLevel = normalizeAccessLevel(accessLevel);
 
-  if (targetType !== "user" && targetType !== "team") {
-    return c.json({ error: "targetType must be user or team" }, 400);
+  if (targetType !== "public" && targetType !== "user" && targetType !== "team") {
+    return c.json({ error: "targetType must be public, user, or team" }, 400);
   }
 
   if (typeof targetId !== "string" || targetId.length === 0) {
@@ -707,8 +723,20 @@ workspaceRoutes.put("/:id/access", async (c) => {
     return c.json({ error: "accessLevel must be view, edit, or full" }, 400);
   }
 
+  if (targetType === "public") {
+    if (targetId !== "*") {
+      return c.json({ error: "public targetId must be *" }, 400);
+    }
+
+    if (normalizedAccessLevel !== "view") {
+      return c.json({ error: "public access must be view" }, 400);
+    }
+  }
+
   const [target] =
-    targetType === "user"
+    targetType === "public"
+      ? [{ id: "*" }]
+      : targetType === "user"
       ? await db
           .select({ id: member.id })
           .from(member)
@@ -758,6 +786,39 @@ workspaceRoutes.put("/:id/access", async (c) => {
     .returning();
 
   return c.json({ access: rule });
+});
+
+workspaceRoutes.delete("/:id/access/public", async (c) => {
+  const requestUser = requireUser(c);
+
+  if (!requestUser) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const record = await getWorkspace(c.req.param("id"));
+
+  if (!record) {
+    return c.json({ error: "Workspace not found" }, 404);
+  }
+
+  const accessLevel = await getEffectiveWorkspaceAccess(record.id, requestUser.id);
+
+  if (!hasAccess(accessLevel, "full")) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const [rule] = await db
+    .delete(workspaceAccess)
+    .where(
+      and(
+        eq(workspaceAccess.workspaceId, record.id),
+        eq(workspaceAccess.targetType, "public"),
+        eq(workspaceAccess.targetId, "*"),
+      ),
+    )
+    .returning();
+
+  return c.json({ access: rule ?? null });
 });
 
 workspaceRoutes.delete("/:id/access/:ruleId", async (c) => {

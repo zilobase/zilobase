@@ -49,6 +49,11 @@ type UpsertWorkspaceAccessInput = {
   workspaceId: string
 }
 
+type SetWorkspacePublishedInput = {
+  isPublished: boolean
+  workspaceId: string
+}
+
 type SetWorkspaceFavoriteInput = {
   isFavorite: boolean
   workspaceId: string
@@ -184,6 +189,47 @@ export function useDeleteWorkspaceAccess() {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: workspaceAccessQueryKey(variables.workspaceId),
+        }),
+        queryClient.invalidateQueries({ queryKey: ["workspaces"] }),
+      ])
+    },
+  })
+}
+
+export function useSetWorkspacePublished() {
+  return useMutation({
+    mutationFn: async ({
+      isPublished,
+      workspaceId,
+    }: SetWorkspacePublishedInput) => {
+      if (isPublished) {
+        const result = await apiFetch<{ access: unknown }>(
+          `/workspaces/${workspaceId}/access`,
+          {
+            method: "PUT",
+            body: JSON.stringify({
+              accessLevel: "view",
+              targetId: "*",
+              targetType: "public",
+            }),
+          },
+        )
+
+        return result.access
+      }
+
+      return apiFetch<{ access: unknown }>(
+        `/workspaces/${workspaceId}/access/public`,
+        { method: "DELETE" },
+      )
+    },
+    onSuccess: async (_access, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workspaceAccessQueryKey(variables.workspaceId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: [...workspaceQueryKey(variables.workspaceId), "access-level"],
         }),
         queryClient.invalidateQueries({ queryKey: ["workspaces"] }),
       ])

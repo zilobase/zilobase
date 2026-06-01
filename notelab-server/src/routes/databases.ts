@@ -1,7 +1,11 @@
 import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { canAccessWorkspace, getAccessibleWorkspaceIds } from "../access";
+import {
+  canAccessWorkspace,
+  getAccessibleWorkspaceIds,
+  isWorkspacePublished,
+} from "../access";
 import { rejectMismatchedApiKeyOrganization } from "../api-keys";
 import { db } from "../db";
 import {
@@ -387,21 +391,36 @@ databaseRoutes.post("/", async (c) => {
 databaseRoutes.get("/:id", async (c) => {
   const user = requireUser(c);
 
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const payload = await getDatabasePayload(c.req.param("id"), user.id);
+  const payload = await getDatabasePayload(c.req.param("id"), user?.id);
 
   if (!payload) {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessWorkspace(payload.database.pageId, user.id, "view"))) {
+  const canView = user
+    ? await canAccessWorkspace(payload.database.pageId, user.id, "view")
+    : false;
+  const published = await isWorkspacePublished(payload.database.pageId);
+
+  if (!canView && !published) {
+    if (!user) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
     return c.json({ error: "Forbidden" }, 403);
   }
 
   return c.json(payload);
+});
+
+databaseRoutes.get("/:id/published", async (c) => {
+  const record = await getDatabaseRecord(c.req.param("id"));
+
+  if (!record) {
+    return c.json({ published: false }, 404);
+  }
+
+  return c.json({ published: await isWorkspacePublished(record.pageId) });
 });
 
 databaseRoutes.put("/:id/favorite", async (c) => {

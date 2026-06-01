@@ -81,7 +81,7 @@ export type WorkspacePropertiesPayload = {
 
 export type AccessLevel = "view" | "edit" | "full"
 
-export type AccessTargetType = "user" | "team"
+export type AccessTargetType = "public" | "user" | "team"
 
 export type WorkspaceAccessRule = {
   id: string
