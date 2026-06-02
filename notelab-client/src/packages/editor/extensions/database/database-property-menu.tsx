@@ -139,7 +139,7 @@ export function DatabasePropertyMenu({
             onBlur={(event) => {
               const nextName = event.target.value.trim()
 
-              if (nextName && nextName !== name) {
+              if (nextName !== name) {
                 onRename(nextName)
               }
             }}
