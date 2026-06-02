@@ -472,6 +472,8 @@ export function Editor({
     extensions: [
       StarterKit.configure({
         codeBlock: false,
+        // The app configures Link below; StarterKit's bundled Link would register a duplicate extension name.
+        link: false,
       }),
       Placeholder.configure({
         placeholder: ({ node }) => {
