@@ -660,6 +660,15 @@
     @apply text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-70;
   }
 
+  .database-page-create-row {
+    @apply mt-1;
+    min-width: max(100%, var(--database-table-min-width, 100%));
+  }
+
+  .database-page-create-full {
+    @apply rounded-md;
+  }
+
   .database-page-link svg,
   .database-page-create svg {
     @apply size-4 shrink-0;

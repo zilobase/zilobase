@@ -1017,31 +1017,32 @@ export function DatabaseTableView({
                     {editable ? <td /> : null}
                   </tr>
                 ))}
-                {editable ? (
-                  <tr>
-                    <td className="database-page-cell">
-                      <button
-                        className="database-page-create"
-                        disabled={!databaseId || addRow.isPending}
-                        onClick={addDatabaseRow}
-                        type="button"
-                      >
-                        {addRow.isPending ? (
-                          <Loader2 className="animate-spin" />
-                        ) : (
-                          <Plus />
-                        )}
-                        <span>New page</span>
-                      </button>
-                    </td>
-                    {properties.map((property) => (
-                      <td key={property.id} />
-                    ))}
-                    <td />
-                  </tr>
-                ) : null}
               </tbody>
               </table>
+              {editable ? (
+                <div
+                  className="database-page-create-row"
+                  style={
+                    {
+                      "--database-table-min-width": `${tableMinWidth}px`,
+                    } as CSSProperties
+                  }
+                >
+                  <button
+                    className="database-page-create database-page-create-full"
+                    disabled={!databaseId || addRow.isPending}
+                    onClick={addDatabaseRow}
+                    type="button"
+                  >
+                    {addRow.isPending ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Plus />
+                    )}
+                    <span>New page</span>
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         )}

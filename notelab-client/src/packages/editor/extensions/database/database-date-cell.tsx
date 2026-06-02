@@ -215,7 +215,9 @@ export function DatabaseDateCell({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 gap-1 p-1" sideOffset={0}>
         <div
-          className={hasTime ? "grid grid-cols-2 gap-1 pt-1" : "grid gap-1 pt-1"}
+          className={
+            hasTime ? "grid grid-cols-2 gap-1 px-2 pt-1" : "grid gap-1 px-2 pt-1"
+          }
         >
           <DateInput
             fieldLabel={isRange ? "Start date" : "Date"}
@@ -290,9 +292,9 @@ export function DatabaseDateCell({
             </>
           ) : null}
         </div>
-        <div className="relative">
-          <button
-            className="absolute top-1 right-10 z-10 inline-flex h-7 items-center justify-center rounded-md px-2 text-xs font-medium text-foreground outline-none select-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40"
+        <div className="relative px-2 [--cell-size:calc((18rem-1.5rem)/7)]">
+          <Button
+            className="absolute top-[calc((var(--cell-size)-1.5rem)/2+0.25rem)] right-11 z-10 h-6 active:not-aria-[haspopup]:translate-y-0"
             onClick={(event) => {
               event.stopPropagation()
               const today = new Date()
@@ -303,13 +305,15 @@ export function DatabaseDateCell({
                 hasTime ? getTimeValueFromDate(today) : ""
               )
             }}
+            size="xs"
             type="button"
+            variant="secondary"
           >
             Today
-          </button>
+          </Button>
           {isRange ? (
             <Calendar
-              className="w-full p-1 [--cell-size:calc((18rem-0.5rem)/7)]"
+              className="w-full py-1"
               classNames={{
                 root: "relative w-full",
                 month: "w-full",
@@ -326,7 +330,7 @@ export function DatabaseDateCell({
             />
           ) : (
             <Calendar
-              className="w-full p-1 [--cell-size:calc((18rem-0.5rem)/7)]"
+              className="w-full py-1"
               classNames={{
                 root: "relative w-full",
                 month: "w-full",
