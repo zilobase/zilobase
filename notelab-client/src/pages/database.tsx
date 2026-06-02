@@ -17,13 +17,11 @@ import {
   useWorkspace,
   useWorkspaceAccessLevel,
 } from "@/features/workspaces/hooks"
-import { resolveWorkspaceFullWidth } from "@/features/workspaces/queries"
 import {
   useDatabase,
   useUpdateDatabase,
 } from "@/features/databases/hooks"
 import { useSession } from "@/features/auth/hooks"
-import { useUserSettings } from "@/features/user-settings/hooks"
 import { WorkspaceMetadata as WorkspaceMetadataView } from "@/packages/editor/components/editor/workspace-metadata"
 import { DatabaseTableView } from "@/packages/editor/extensions/database"
 import {
@@ -219,17 +217,11 @@ function DatabaseMainPane({
   const databasePageId = payload?.database.pageId ?? null
   const { data: workspace } = useWorkspace(databasePageId)
   const { data: accessLevel } = useWorkspaceAccessLevel(databasePageId)
-  const { data: userSettings } = useUserSettings()
   const updateDatabase = useUpdateDatabase()
   const updateWorkspace = useUpdateWorkspace()
   const [title, setTitle] = useState("")
   const [emoji, setEmoji] = useState("")
   const editable = !readOnly && (accessLevel === "edit" || accessLevel === "full")
-  const fullWidth = resolveWorkspaceFullWidth(
-    workspace,
-    userSettings?.workspaceFullWidth,
-  )
-  const contentClassName = fullWidth ? undefined : "mx-auto max-w-5xl"
 
   useEffect(() => {
     setTitle(payload?.database.name ?? "")
@@ -281,18 +273,12 @@ function DatabaseMainPane({
       <WorkspaceMetadataView
         editable={editable}
         icon={emoji}
-        contentClassName={contentClassName}
         onIconChange={updateEmoji}
         onTitleChange={setTitle}
         title={title}
         workspaceId={databasePageId}
       />
-      <div
-        className={cn(
-          "tiptap-editor px-5 pb-10 sm:px-8 md:px-20 lg:px-24",
-          contentClassName,
-        )}
-      >
+      <div className="tiptap-editor px-5 pb-10 sm:px-8 md:px-20 lg:px-24">
         <DatabaseTableView
           databaseId={databaseId}
           editable={!readOnly}
