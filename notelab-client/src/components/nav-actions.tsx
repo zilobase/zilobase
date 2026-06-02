@@ -57,6 +57,7 @@ import {
   useDeleteWorkspaceAccess,
   useSetWorkspaceFavorite,
   useSetWorkspacePublished,
+  useUpdateWorkspace,
   useUpsertWorkspaceAccess,
   useWorkspace,
   useWorkspaceAccess,
@@ -76,11 +77,13 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type {
-  AccessLevel,
-  AccessTargetType,
-  WorkspaceMetadata,
-  WorkspaceAccessRule,
+import {
+  resolveWorkspaceFullWidth,
+  usesUserFullWidthPreference,
+  type AccessLevel,
+  type AccessTargetType,
+  type WorkspaceAccessRule,
+  type WorkspaceMetadata,
 } from "@/features/workspaces/queries"
 
 const moreActions = [
@@ -113,6 +116,7 @@ export function NavActions({
   const { data: workspace } = useWorkspace(actionWorkspaceId)
   const { data: workspaces = [] } = useWorkspaces(workspace?.organizationId)
   const createWorkspace = useCreateWorkspace()
+  const updateWorkspace = useUpdateWorkspace()
   const setFavorite = useSetWorkspaceFavorite()
   const setDatabaseFavorite = useSetDatabaseFavorite()
   const { data: userSettings } = useUserSettings()
@@ -120,6 +124,14 @@ export function NavActions({
   const isMobile = useIsMobile()
   const listWorkspace = workspaces.find((item) => item.id === actionWorkspaceId)
   const isDatabasePage = Boolean(databaseId)
+  const workspaceMetadata = (workspace?.metadata ?? {}) as WorkspaceMetadata
+  const usesUserPreference = usesUserFullWidthPreference(workspaceMetadata)
+  const effectiveFullWidth = resolveWorkspaceFullWidth(
+    workspace,
+    userSettings?.workspaceFullWidth,
+  )
+  const fullWidthUpdatePending =
+    updateUserSettings.isPending || updateWorkspace.isPending
   const isFavorite = isDatabasePage
     ? Boolean(databasePayload?.database.isFavorite)
     : Boolean(workspace?.isFavorite ?? listWorkspace?.isFavorite)
@@ -184,6 +196,7 @@ export function NavActions({
       const duplicate = await createWorkspace.mutateAsync({
         content: cloneWorkspaceContent(workspace.content ?? null),
         emoji: metadata.emoji ?? undefined,
+        metadata,
         name: getDuplicateWorkspaceName(workspace.name),
         organizationId: workspace.organizationId,
         parentWorkspaceId: metadata.parentWorkspaceId ?? undefined,
@@ -215,7 +228,34 @@ export function NavActions({
     }
   }
   const toggleWorkspaceFullWidth = () => {
-    if (isDatabasePage || updateUserSettings.isPending) {
+    if (isDatabasePage || fullWidthUpdatePending) {
+      return
+    }
+
+    if (!usesUserPreference) {
+      if (!workspace) {
+        return
+      }
+
+      updateWorkspace.mutate(
+        {
+          id: workspace.id,
+          metadata: {
+            ...workspaceMetadata,
+            fullWidth: !Boolean(workspaceMetadata.fullWidth),
+            useUserFullWidthPreference: false,
+          },
+        },
+        {
+          onError: (error) => {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Could not update workspace full width.",
+            )
+          },
+        },
+      )
       return
     }
 
@@ -227,6 +267,32 @@ export function NavActions({
             error instanceof Error
               ? error.message
               : "Could not update full width setting.",
+          )
+        },
+      },
+    )
+  }
+  const toggleUseUserFullWidthPreference = () => {
+    if (isDatabasePage || !workspace || fullWidthUpdatePending) {
+      return
+    }
+
+    const nextUsesUserPreference = !usesUserPreference
+
+    updateWorkspace.mutate(
+      {
+        id: workspace.id,
+        metadata: {
+          ...workspaceMetadata,
+          useUserFullWidthPreference: nextUsesUserPreference,
+        },
+      },
+      {
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Could not update workspace full width preference.",
           )
         },
       },
@@ -277,22 +343,40 @@ export function NavActions({
                 <SidebarGroupContent className="gap-0">
                   <SidebarMenu>
                     {!isDatabasePage && !isMobile ? (
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          aria-pressed={Boolean(userSettings?.workspaceFullWidth)}
-                          disabled={updateUserSettings.isPending}
-                          onClick={toggleWorkspaceFullWidth}
-                          type="button"
-                        >
-                          <span>Full Width</span>
-                          <Switch
-                            checked={Boolean(userSettings?.workspaceFullWidth)}
-                            className="ml-auto pointer-events-none"
-                            size="sm"
-                            tabIndex={-1}
-                          />
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
+                      <>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            aria-pressed={effectiveFullWidth}
+                            disabled={!workspace || fullWidthUpdatePending}
+                            onClick={toggleWorkspaceFullWidth}
+                            type="button"
+                          >
+                            <span>Full Width</span>
+                            <Switch
+                              checked={effectiveFullWidth}
+                              className="ml-auto pointer-events-none"
+                              size="sm"
+                              tabIndex={-1}
+                            />
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                        <SidebarMenuItem>
+                          <SidebarMenuButton
+                            aria-pressed={usesUserPreference}
+                            disabled={!workspace || fullWidthUpdatePending}
+                            onClick={toggleUseUserFullWidthPreference}
+                            type="button"
+                          >
+                            <span>Use my preferences</span>
+                            <Switch
+                              checked={usesUserPreference}
+                              className="ml-auto pointer-events-none"
+                              size="sm"
+                              tabIndex={-1}
+                            />
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      </>
                     ) : null}
                     {moreActions.map((label) => (
                       <SidebarMenuItem key={label}>
