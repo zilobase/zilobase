@@ -17,16 +17,12 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="create">
-        <NativeTabs.Trigger.Icon sf="plus.circle.fill" md="add_circle" />
-      </NativeTabs.Trigger>
-
-      <NativeTabs.Trigger name="search" role="search">
-        <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
-      </NativeTabs.Trigger>
-
       <NativeTabs.Trigger name="ai">
         <NativeTabs.Trigger.Icon sf="sparkles" md="auto_awesome" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="create" role="search">
+        <NativeTabs.Trigger.Icon sf="plus.circle.fill" md="add_circle" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );
