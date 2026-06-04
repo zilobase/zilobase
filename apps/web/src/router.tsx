@@ -21,10 +21,11 @@ import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
 import SignupPage from "@/pages/signup"
 import WorkspacePage from "@/pages/workspace"
-import { sessionQueryOptions } from "@/features/auth/queries"
-import { organizationsQueryOptions } from "@/features/organizations/queries"
+import { sessionQueryOptions } from "@notelab/features/auth"
+import { organizationsQueryOptions } from "@notelab/features/organizations"
 import { ApiError, apiFetch } from "@/lib/api"
 import { queryClient } from "@/lib/query-client"
+import { webAuthClient } from "@/providers/features-provider"
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -247,14 +248,14 @@ export const router = createRouter({ routeTree })
 
 function getFreshSession() {
   return queryClient.fetchQuery({
-    ...sessionQueryOptions,
+    ...sessionQueryOptions(webAuthClient),
     staleTime: 0,
   })
 }
 
 function getOrganizations() {
   return queryClient.fetchQuery({
-    ...organizationsQueryOptions,
+    ...organizationsQueryOptions(webAuthClient),
     staleTime: 0,
   })
 }

@@ -34,6 +34,8 @@
       "@notelab/linear-connector/ui": [
         "../../packages/connectors/src/connectors/linear/src/ui.tsx"
       ],
+      "@notelab/features": ["../../packages/features/src/index.ts"],
+      "@notelab/features/*": ["../../packages/features/src/*/index.ts"],
       "@notelab/slack-connector/ui": [
         "../../packages/connectors/src/connectors/slack/src/ui.tsx"
       ]

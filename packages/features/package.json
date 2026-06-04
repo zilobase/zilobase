@@ -1,0 +1,48 @@
+{
+  "name": "@notelab/features",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.100.14",
+    "react": "^19.1.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./api-keys": {
+      "types": "./src/api-keys/index.ts",
+      "default": "./src/api-keys/index.ts"
+    },
+    "./auth": {
+      "types": "./src/auth/index.ts",
+      "default": "./src/auth/index.ts"
+    },
+    "./databases": {
+      "types": "./src/databases/index.ts",
+      "default": "./src/databases/index.ts"
+    },
+    "./integrations": {
+      "types": "./src/integrations/index.ts",
+      "default": "./src/integrations/index.ts"
+    },
+    "./organizations": {
+      "types": "./src/organizations/index.ts",
+      "default": "./src/organizations/index.ts"
+    },
+    "./search": {
+      "types": "./src/search/index.ts",
+      "default": "./src/search/index.ts"
+    },
+    "./user-settings": {
+      "types": "./src/user-settings/index.ts",
+      "default": "./src/user-settings/index.ts"
+    },
+    "./workspaces": {
+      "types": "./src/workspaces/index.ts",
+      "default": "./src/workspaces/index.ts"
+    }
+  }
+}

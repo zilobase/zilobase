@@ -9,6 +9,9 @@ const editorDir = fileURLToPath(new URL("./src/editor", import.meta.url));
 const connectorsDir = fileURLToPath(
   new URL("../../packages/connectors/src/connectors", import.meta.url),
 );
+const featuresDir = fileURLToPath(
+  new URL("../../packages/features/src", import.meta.url),
+);
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
@@ -17,6 +20,11 @@ export default defineConfig(async () => ({
     alias: [
       { find: "@/packages/editor", replacement: editorDir },
       { find: "@", replacement: srcDir },
+      {
+        find: /^@notelab\/features\/(.+)$/,
+        replacement: `${featuresDir}/$1/index.ts`,
+      },
+      { find: /^@notelab\/features$/, replacement: `${featuresDir}/index.ts` },
       {
         find: "@notelab/gmail-connector/ui",
         replacement: `${connectorsDir}/gmail/src/ui.tsx`,
