@@ -19,16 +19,24 @@
       "@/*": ["./src/*"],
       "@/packages/editor": ["./src/editor/index.ts"],
       "@/packages/editor/*": ["./src/editor/*"],
-      "@notelab/gmail-connector/ui": ["./src/connectors/gmail/src/ui.tsx"],
-      "@notelab/github-connector/ui": ["./src/connectors/github/src/ui.tsx"],
+      "@notelab/gmail-connector/ui": [
+        "../../packages/connectors/src/connectors/gmail/src/ui.tsx"
+      ],
+      "@notelab/github-connector/ui": [
+        "../../packages/connectors/src/connectors/github/src/ui.tsx"
+      ],
       "@notelab/google-calendar-connector/ui": [
-        "./src/connectors/google-calendar/src/ui.tsx"
+        "../../packages/connectors/src/connectors/google-calendar/src/ui.tsx"
       ],
       "@notelab/google-drive-connector/ui": [
-        "./src/connectors/google-drive/src/ui.tsx"
+        "../../packages/connectors/src/connectors/google-drive/src/ui.tsx"
       ],
-      "@notelab/linear-connector/ui": ["./src/connectors/linear/src/ui.tsx"],
-      "@notelab/slack-connector/ui": ["./src/connectors/slack/src/ui.tsx"],
+      "@notelab/linear-connector/ui": [
+        "../../packages/connectors/src/connectors/linear/src/ui.tsx"
+      ],
+      "@notelab/slack-connector/ui": [
+        "../../packages/connectors/src/connectors/slack/src/ui.tsx"
+      ]
     },
 
     /* Linting */

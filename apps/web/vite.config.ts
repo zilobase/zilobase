@@ -1,39 +1,45 @@
+import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 const host = process.env.TAURI_DEV_HOST;
+const srcDir = fileURLToPath(new URL("./src", import.meta.url));
+const editorDir = fileURLToPath(new URL("./src/editor", import.meta.url));
+const connectorsDir = fileURLToPath(
+  new URL("../../packages/connectors/src/connectors", import.meta.url),
+);
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: [
-      { find: "@/packages/editor", replacement: "/src/editor" },
-      { find: "@", replacement: "/src" },
+      { find: "@/packages/editor", replacement: editorDir },
+      { find: "@", replacement: srcDir },
       {
         find: "@notelab/gmail-connector/ui",
-        replacement: "/src/connectors/gmail/src/ui.tsx",
+        replacement: `${connectorsDir}/gmail/src/ui.tsx`,
       },
       {
         find: "@notelab/github-connector/ui",
-        replacement: "/src/connectors/github/src/ui.tsx",
+        replacement: `${connectorsDir}/github/src/ui.tsx`,
       },
       {
         find: "@notelab/google-calendar-connector/ui",
-        replacement: "/src/connectors/google-calendar/src/ui.tsx",
+        replacement: `${connectorsDir}/google-calendar/src/ui.tsx`,
       },
       {
         find: "@notelab/google-drive-connector/ui",
-        replacement: "/src/connectors/google-drive/src/ui.tsx",
+        replacement: `${connectorsDir}/google-drive/src/ui.tsx`,
       },
       {
         find: "@notelab/linear-connector/ui",
-        replacement: "/src/connectors/linear/src/ui.tsx",
+        replacement: `${connectorsDir}/linear/src/ui.tsx`,
       },
       {
         find: "@notelab/slack-connector/ui",
-        replacement: "/src/connectors/slack/src/ui.tsx",
+        replacement: `${connectorsDir}/slack/src/ui.tsx`,
       },
     ],
   },
@@ -55,8 +61,8 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell Vite to ignore watching the desktop shell
+      ignored: ["**/src-tauri/**", "../desktop/src-tauri/**"],
     },
   },
 }));

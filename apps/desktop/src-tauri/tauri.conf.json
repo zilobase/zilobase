@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "identifier": "com.notelab.io",
   "build": {
-    "beforeDevCommand": "bun run dev",
+    "beforeDevCommand": "npm run dev --prefix ../web",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build",
-    "frontendDist": "../dist"
+    "beforeBuildCommand": "npm run build --prefix ../web",
+    "frontendDist": "../../web/dist"
   },
   "app": {
     "windows": [
