@@ -51,6 +51,7 @@ export function DragBlockMenu({
   isOpen,
   target,
   onOpenChange,
+  onMenuStateChange,
   onCreateDatabase,
   editorId,
 }: {
@@ -59,6 +60,7 @@ export function DragBlockMenu({
   isOpen: boolean
   target: DragHandleTarget | null
   onOpenChange: (open: boolean) => void
+  onMenuStateChange?: (open: boolean) => void
   onCreateDatabase?: () => Promise<string | null>
 }) {
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -79,6 +81,16 @@ export function DragBlockMenu({
     [search]
   )
   const isPageBlock = target?.node.type.name === "pageBlock"
+
+  useEffect(() => {
+    onMenuStateChange?.(isOpen || actionsOpen)
+  }, [actionsOpen, isOpen, onMenuStateChange])
+
+  useEffect(() => {
+    return () => {
+      onMenuStateChange?.(false)
+    }
+  }, [onMenuStateChange])
 
   useEffect(() => {
     if (!actionsOpen) {
@@ -274,6 +286,8 @@ export function DragBlockMenu({
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
+          setActionsOpen(false)
+          setActiveSubmenu(null)
           onOpenChange(!isOpen)
         }}
         onDragStart={(event) => event.preventDefault()}
