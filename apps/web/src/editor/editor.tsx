@@ -337,6 +337,7 @@ export function Editor({
     useState<DragHandleTarget | null>(null)
   const [blockDropLine, setBlockDropLine] = useState<BlockDropLine | null>(null)
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
+  const [dragHandleMenuOpen, setDragHandleMenuOpen] = useState(false)
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
   const [tocItems, setTocItems] = useState<TableOfContentDataItem[]>([])
   const pageContentClassName = fullWidth ? "" : "mx-auto max-w-5xl"
@@ -816,6 +817,42 @@ export function Editor({
     }
   }, [plusMenuOpen])
 
+  useEffect(() => {
+    if (!dragHandleMenuOpen) {
+      return
+    }
+
+    const { body, documentElement } = document
+    const scrollX = window.scrollX
+    const scrollY = window.scrollY
+    const originalBodyOverflow = body.style.overflow
+    const originalBodyPosition = body.style.position
+    const originalBodyTop = body.style.top
+    const originalBodyLeft = body.style.left
+    const originalBodyRight = body.style.right
+    const originalBodyWidth = body.style.width
+    const originalHtmlOverflow = documentElement.style.overflow
+
+    body.style.overflow = "hidden"
+    body.style.position = "fixed"
+    body.style.top = `-${scrollY}px`
+    body.style.left = `-${scrollX}px`
+    body.style.right = "0"
+    body.style.width = "100%"
+    documentElement.style.overflow = "hidden"
+
+    return () => {
+      body.style.overflow = originalBodyOverflow
+      body.style.position = originalBodyPosition
+      body.style.top = originalBodyTop
+      body.style.left = originalBodyLeft
+      body.style.right = originalBodyRight
+      body.style.width = originalBodyWidth
+      documentElement.style.overflow = originalHtmlOverflow
+      window.scrollTo(scrollX, scrollY)
+    }
+  }, [dragHandleMenuOpen])
+
   const resolveDragTargetFromPoint = useCallback(
     (clientX: number, clientY: number) => {
       if (!editor) {
@@ -840,6 +877,10 @@ export function Editor({
 
   const updateDragTargetFromPointer = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
+      if (dragHandleMenuOpen) {
+        return
+      }
+
       const nextTarget = resolveDragTargetFromPointer(event)
 
       pointerDragTargetRef.current = nextTarget
@@ -859,7 +900,7 @@ export function Editor({
         setDragHandlePosition(getPlaneDragHandleRect(editor.view, nextTarget))
       }
     },
-    [editor, resolveDragTargetFromPointer]
+    [dragHandleMenuOpen, editor, resolveDragTargetFromPointer]
   )
 
   const getTargetPlacement = useCallback(
@@ -1043,6 +1084,10 @@ export function Editor({
       <section
         className="min-h-0 flex-1"
         onPointerLeave={() => {
+          if (dragHandleMenuOpen) {
+            return
+          }
+
           pointerDragTargetRef.current = null
           dragHandlePosRef.current = null
           setDragHandleTarget(null)
@@ -1063,6 +1108,7 @@ export function Editor({
               editor={editor}
               editorId={editorId}
               isOpen={plusMenuOpen}
+              onMenuStateChange={setDragHandleMenuOpen}
               onCreateDatabase={createEditorDatabase}
               onOpenChange={setPlusMenuOpen}
               target={dragHandleTarget}
