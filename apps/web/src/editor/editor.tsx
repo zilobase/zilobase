@@ -158,6 +158,29 @@ type BlockDropLine = {
   top: number
 }
 
+function findScrollLockElement(element: HTMLElement | null) {
+  let current = element?.parentElement ?? null
+
+  while (current) {
+    const styles = window.getComputedStyle(current)
+    const canScrollY =
+      /(auto|scroll|overlay)/.test(styles.overflowY) &&
+      current.scrollHeight > current.clientHeight
+
+    if (canScrollY) {
+      return current
+    }
+
+    current = current.parentElement
+  }
+
+  const scrollingElement = document.scrollingElement
+
+  return scrollingElement instanceof HTMLElement
+    ? scrollingElement
+    : document.documentElement
+}
+
 function insertDraggedDatabasePage(view: EditorView, event: DragEvent) {
   const payload = event.dataTransfer?.getData(DATABASE_PAGE_DRAG_MIME)
 
@@ -327,6 +350,7 @@ export function Editor({
   workspaceId,
 }: EditorProps = {}) {
   const editorId = useId()
+  const editorSurfaceRef = useRef<HTMLElement | null>(null)
   const dragHandlePosRef = useRef<number | null>(null)
   const pointerDragTargetRef = useRef<DragHandleTarget | null>(null)
   const [dragHandleTarget, setDragHandleTarget] =
@@ -822,34 +846,16 @@ export function Editor({
       return
     }
 
-    const { body, documentElement } = document
-    const scrollX = window.scrollX
-    const scrollY = window.scrollY
-    const originalBodyOverflow = body.style.overflow
-    const originalBodyPosition = body.style.position
-    const originalBodyTop = body.style.top
-    const originalBodyLeft = body.style.left
-    const originalBodyRight = body.style.right
-    const originalBodyWidth = body.style.width
-    const originalHtmlOverflow = documentElement.style.overflow
+    const scrollLockElement = findScrollLockElement(editorSurfaceRef.current)
+    const originalOverflowY = scrollLockElement.style.overflowY
+    const originalOverscrollBehavior = scrollLockElement.style.overscrollBehavior
 
-    body.style.overflow = "hidden"
-    body.style.position = "fixed"
-    body.style.top = `-${scrollY}px`
-    body.style.left = `-${scrollX}px`
-    body.style.right = "0"
-    body.style.width = "100%"
-    documentElement.style.overflow = "hidden"
+    scrollLockElement.style.overflowY = "hidden"
+    scrollLockElement.style.overscrollBehavior = "none"
 
     return () => {
-      body.style.overflow = originalBodyOverflow
-      body.style.position = originalBodyPosition
-      body.style.top = originalBodyTop
-      body.style.left = originalBodyLeft
-      body.style.right = originalBodyRight
-      body.style.width = originalBodyWidth
-      documentElement.style.overflow = originalHtmlOverflow
-      window.scrollTo(scrollX, scrollY)
+      scrollLockElement.style.overflowY = originalOverflowY
+      scrollLockElement.style.overscrollBehavior = originalOverscrollBehavior
     }
   }, [dragHandleMenuOpen])
 
@@ -1083,6 +1089,7 @@ export function Editor({
     <div className="flex min-h-[calc(100svh-3rem)] w-full flex-col text-foreground">
       <section
         className="min-h-0 flex-1"
+        ref={editorSurfaceRef}
         onPointerLeave={() => {
           if (dragHandleMenuOpen) {
             return
