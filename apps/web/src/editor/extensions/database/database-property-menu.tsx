@@ -104,12 +104,21 @@ type DatabasePropertyConfig = {
 type DatabaseConfig = {
   emoji?: string
   nameColumn?: DatabaseNameColumnConfig
+  sort?: DatabaseSortConfig
+  sorts?: DatabaseSortConfig[]
 }
 
 type DatabaseNameColumnConfig = {
   label?: string
   showPageIcon?: boolean
   wrapContent?: boolean
+}
+
+export type DatabaseSortDirection = "ascending" | "descending"
+
+export type DatabaseSortConfig = {
+  column: string
+  direction: DatabaseSortDirection
 }
 
 type FilesLimitValue = "one_file" | "no_limit"
@@ -137,11 +146,27 @@ export function DatabaseNamePropertyMenu({
 }) {
   const updateDatabase = useUpdateDatabase()
   const label = getNameColumnLabel(config)
+  const currentSorts = getDatabaseSorts(config)
+  const currentSortDirection = currentSorts.find(
+    (sort) => sort.column === "name"
+  )?.direction
   const showPageIcon = getNameColumnShowPageIcon(config)
   const wrapContent = getNameColumnWrapContent(config)
   const updateNameColumnConfig = (nextConfig: DatabaseNameColumnConfig) => {
     updateDatabase.mutate({
       config: getMergedNameColumnConfig(config, nextConfig),
+      databaseId,
+    })
+  }
+  const updateSort = (direction: DatabaseSortDirection) => {
+    updateDatabase.mutate({
+      config: getMergedDatabaseConfig(config, {
+        sort: undefined,
+        sorts: upsertDatabaseSort(currentSorts, {
+          column: "name",
+          direction,
+        }),
+      }),
       databaseId,
     })
   }
@@ -222,8 +247,28 @@ export function DatabaseNamePropertyMenu({
             <span>Sort</span>
           </DropDrawerSubTrigger>
           <DropDrawerSubContent>
-            <DropDrawerItem disabled>Ascending</DropDrawerItem>
-            <DropDrawerItem disabled>Descending</DropDrawerItem>
+            <DropDrawerItem
+              onSelect={(event) => {
+                event.preventDefault()
+                updateSort("ascending")
+              }}
+            >
+              <span>Ascending</span>
+              {currentSortDirection === "ascending" ? (
+                <Check className="ml-auto" />
+              ) : null}
+            </DropDrawerItem>
+            <DropDrawerItem
+              onSelect={(event) => {
+                event.preventDefault()
+                updateSort("descending")
+              }}
+            >
+              <span>Descending</span>
+              {currentSortDirection === "descending" ? (
+                <Check className="ml-auto" />
+              ) : null}
+            </DropDrawerItem>
           </DropDrawerSubContent>
         </DropDrawerSub>
         <DropDrawerItem disabled>
@@ -252,6 +297,7 @@ export function DatabaseNamePropertyMenu({
 
 export function DatabasePropertyMenu({
   config,
+  databaseConfig,
   databaseId,
   databasePropertyId,
   name,
@@ -260,6 +306,7 @@ export function DatabasePropertyMenu({
   type,
 }: {
   config?: unknown
+  databaseConfig?: unknown
   databaseId: string
   databasePropertyId: string
   name: string
@@ -268,6 +315,7 @@ export function DatabasePropertyMenu({
   type: string
 }) {
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false)
+  const updateDatabase = useUpdateDatabase()
   const updateProperty = useUpdateDatabaseProperty()
   const deleteProperty = useDeleteDatabaseProperty()
   const duplicateProperty = useDuplicateDatabaseProperty()
@@ -279,6 +327,10 @@ export function DatabasePropertyMenu({
   const isFilesProperty = type === "files"
   const isUrlProperty = type === "url"
   const isDateProperty = type === "date"
+  const currentSorts = getDatabaseSorts(databaseConfig)
+  const currentSortDirection = currentSorts.find(
+    (sort) => sort.column === databasePropertyId
+  )?.direction
   const showFullUrl = getShowFullUrl(config)
   const wrapContent = getWrapContent(config)
   const statusDefaultOptionId = getStatusDefaultOptionId(config)
@@ -289,6 +341,18 @@ export function DatabasePropertyMenu({
       config: getMergedPropertyConfig(config, nextConfig),
       databaseId,
       databasePropertyId,
+    })
+  }
+  const updateSort = (direction: DatabaseSortDirection) => {
+    updateDatabase.mutate({
+      config: getMergedDatabaseConfig(databaseConfig, {
+        sort: undefined,
+        sorts: upsertDatabaseSort(currentSorts, {
+          column: databasePropertyId,
+          direction,
+        }),
+      }),
+      databaseId,
     })
   }
   const duplicateDatabaseProperty = (includeValues: boolean) => {
@@ -448,8 +512,28 @@ export function DatabasePropertyMenu({
               <span>Sort</span>
             </DropDrawerSubTrigger>
             <DropDrawerSubContent>
-              <DropDrawerItem disabled>Ascending</DropDrawerItem>
-              <DropDrawerItem disabled>Descending</DropDrawerItem>
+              <DropDrawerItem
+                onSelect={(event) => {
+                  event.preventDefault()
+                  updateSort("ascending")
+                }}
+              >
+                <span>Ascending</span>
+                {currentSortDirection === "ascending" ? (
+                  <Check className="ml-auto" />
+                ) : null}
+              </DropDrawerItem>
+              <DropDrawerItem
+                onSelect={(event) => {
+                  event.preventDefault()
+                  updateSort("descending")
+                }}
+              >
+                <span>Descending</span>
+                {currentSortDirection === "descending" ? (
+                  <Check className="ml-auto" />
+                ) : null}
+              </DropDrawerItem>
             </DropDrawerSubContent>
           </DropDrawerSub>
           <DropDrawerItem disabled>
@@ -1109,6 +1193,64 @@ function isSelectOptionSortValue(
   )
 }
 
+function isDatabaseSortDirection(
+  value: unknown
+): value is DatabaseSortDirection {
+  return value === "ascending" || value === "descending"
+}
+
+function isDatabaseSortConfig(value: unknown): value is DatabaseSortConfig {
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof (value as DatabaseSortConfig).column === "string" &&
+    (value as DatabaseSortConfig).column.length > 0 &&
+    isDatabaseSortDirection((value as DatabaseSortConfig).direction)
+  )
+}
+
+export function getDatabaseSorts(config: unknown): DatabaseSortConfig[] {
+  if (
+    !config ||
+    typeof config !== "object" ||
+    Array.isArray(config)
+  ) {
+    return []
+  }
+
+  const sorts = (config as DatabaseConfig).sorts
+
+  if (Array.isArray(sorts)) {
+    return sorts.filter(isDatabaseSortConfig)
+  }
+
+  const sort = (config as DatabaseConfig).sort
+
+  return isDatabaseSortConfig(sort) ? [sort] : []
+}
+
+export function getDatabaseSort(config: unknown): DatabaseSortConfig | null {
+  return getDatabaseSorts(config)[0] ?? null
+}
+
+function upsertDatabaseSort(
+  sorts: DatabaseSortConfig[],
+  nextSort: DatabaseSortConfig
+) {
+  const existingSortIndex = sorts.findIndex(
+    (sort) => sort.column === nextSort.column
+  )
+
+  if (existingSortIndex === -1) {
+    return [...sorts, nextSort]
+  }
+
+  return sorts.map((sort, index) =>
+    index === existingSortIndex ? nextSort : sort
+  )
+}
+
 function getSortedSelectOptions(
   options: SelectOption[],
   sort: SelectOptionSortValue
@@ -1217,15 +1359,23 @@ function getMergedNameColumnConfig(
   config: unknown,
   nextConfig: DatabaseNameColumnConfig
 ) {
-  const currentConfig =
-    config && typeof config === "object" && !Array.isArray(config) ? config : {}
-
-  return {
-    ...currentConfig,
+  return getMergedDatabaseConfig(config, {
     nameColumn: {
       ...getNameColumnConfig(config),
       ...nextConfig,
     },
+  })
+}
+
+export function getMergedDatabaseConfig(
+  config: unknown,
+  nextConfig: Partial<DatabaseConfig>
+) {
+  return {
+    ...(config && typeof config === "object" && !Array.isArray(config)
+      ? config
+      : {}),
+    ...nextConfig,
   }
 }
 

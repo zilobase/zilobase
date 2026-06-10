@@ -1,5 +1,13 @@
 import { Link } from "@tanstack/react-router"
-import { FileText, GripVertical, Loader2, Maximize2, Plus } from "lucide-react"
+import {
+  ArrowDownUp,
+  FileText,
+  GripVertical,
+  Loader2,
+  Maximize2,
+  Plus,
+  X,
+} from "lucide-react"
 import {
   useCallback,
   useEffect,
@@ -19,7 +27,26 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerSeparator,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer"
 import { Input } from "@/components/ui/input"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useSession } from "@notelab/features/auth"
 import {
   useAddDatabaseProperty,
@@ -39,6 +66,7 @@ import {
   databaseColumnMinWidth,
   databaseNameColumnDefaultWidth,
   defaultStatusOptions,
+  getDatabasePropertyType,
 } from "./constants"
 import { DatabaseInputCell } from "./database-input-cell"
 import { DatabaseDateCell } from "./database-date-cell"
@@ -46,9 +74,13 @@ import { DatabasePageCell } from "./database-page-cell"
 import {
   DatabaseNamePropertyMenu,
   DatabasePropertyMenu,
+  getDatabaseSorts,
+  getMergedDatabaseConfig,
   getNameColumnLabel,
   getNameColumnShowPageIcon,
   getNameColumnWrapContent,
+  type DatabaseSortConfig,
+  type DatabaseSortDirection,
 } from "./database-property-menu"
 import { DatabaseSelectCell } from "./database-select-cell"
 import {
@@ -256,6 +288,22 @@ function getReadOnlyTimePropertyValue(
   return formatTimestamp(value)
 }
 
+function getReadOnlyTimePropertySortValue(
+  row: {
+    createdAt: string
+    page: {
+      createdAt?: string
+      updatedAt?: string
+    }
+    updatedAt: string
+  },
+  type: string
+) {
+  return type === "created_time"
+    ? row.page.createdAt ?? row.createdAt
+    : row.page.updatedAt ?? row.updatedAt
+}
+
 function formatTimestamp(value: string | null | undefined) {
   if (!value) {
     return ""
@@ -271,6 +319,208 @@ function formatTimestamp(value: string | null | undefined) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date)
+}
+
+function isEmptySortValue(value: number | string | null) {
+  return value === null || value === ""
+}
+
+function compareSortValues(
+  firstValue: number | string | null,
+  secondValue: number | string | null,
+  direction: DatabaseSortDirection
+) {
+  const firstIsEmpty = isEmptySortValue(firstValue)
+  const secondIsEmpty = isEmptySortValue(secondValue)
+
+  if (firstIsEmpty || secondIsEmpty) {
+    if (firstIsEmpty && secondIsEmpty) {
+      return 0
+    }
+
+    return firstIsEmpty ? 1 : -1
+  }
+
+  let comparison = 0
+
+  if (typeof firstValue === "number" && typeof secondValue === "number") {
+    comparison = firstValue - secondValue
+  } else {
+    comparison = String(firstValue).localeCompare(String(secondValue), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    })
+  }
+
+  return direction === "descending" ? comparison * -1 : comparison
+}
+
+function getComparableDateValue(
+  value: DatabasePropertyValue | string | null | undefined
+) {
+  const rawValue = Array.isArray(value) ? value[0] ?? "" : value
+  const timestamp = rawValue ? new Date(rawValue).getTime() : Number.NaN
+
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
+function getComparableNumberValue(value: DatabasePropertyValue) {
+  const rawValue = Array.isArray(value) ? value[0] ?? "" : value
+  const parsedValue = rawValue.trim() ? Number(rawValue) : Number.NaN
+
+  return Number.isFinite(parsedValue) ? parsedValue : null
+}
+
+function getComparablePersonValue(
+  value: DatabasePropertyValue,
+  personOptionsById: Map<string, string>
+) {
+  const personIds = Array.isArray(value) ? value : value ? [value] : []
+
+  return personIds
+    .map((personId) => personOptionsById.get(personId) ?? personId)
+    .join(", ")
+}
+
+function getComparablePropertyValue(
+  row: {
+    createdAt: string
+    page: {
+      name: string
+      createdAt?: string
+      updatedAt?: string
+    }
+    pageId: string
+    updatedAt: string
+  },
+  property: {
+    property: {
+      id: string
+      type: string
+    }
+  },
+  cellValues: Record<string, DatabasePropertyValue>,
+  personOptionsById: Map<string, string>
+) {
+  const propertyValue = cellValues[`${row.pageId}:${property.property.id}`] ?? ""
+
+  switch (property.property.type) {
+    case "checkbox":
+      return propertyValue === "true" ? 1 : 0
+    case "created_time":
+    case "last_edited_time":
+      return getComparableDateValue(
+        getReadOnlyTimePropertySortValue(row, property.property.type)
+      )
+    case "date":
+      return getComparableDateValue(propertyValue)
+    case "number":
+      return getComparableNumberValue(propertyValue)
+    case "person":
+      return getComparablePersonValue(propertyValue, personOptionsById)
+    default:
+      return Array.isArray(propertyValue) ? propertyValue.join(", ") : propertyValue
+  }
+}
+
+function getSortedRows(
+  rows: {
+    createdAt: string
+    id: string
+    page: {
+      name: string
+      createdAt?: string
+      updatedAt?: string
+    }
+    pageId: string
+    position: number
+    updatedAt: string
+  }[],
+  properties: {
+    id: string
+    property: {
+      id: string
+      type: string
+    }
+  }[],
+  cellValues: Record<string, DatabasePropertyValue>,
+  sorts: DatabaseSortConfig[],
+  personOptionsById: Map<string, string>
+) {
+  if (sorts.length === 0) {
+    return rows
+  }
+
+  return [...rows].sort((firstRow, secondRow) => {
+    for (const sort of sorts) {
+      const comparison =
+        sort.column === "name"
+          ? compareSortValues(
+              firstRow.page.name.trim(),
+              secondRow.page.name.trim(),
+              sort.direction
+            )
+          : (() => {
+              const sortedProperty = properties.find(
+                (property) => property.id === sort.column
+              )
+
+              if (!sortedProperty) {
+                return 0
+              }
+
+              return compareSortValues(
+                getComparablePropertyValue(
+                  firstRow,
+                  sortedProperty,
+                  cellValues,
+                  personOptionsById
+                ),
+                getComparablePropertyValue(
+                  secondRow,
+                  sortedProperty,
+                  cellValues,
+                  personOptionsById
+                ),
+                sort.direction
+              )
+            })()
+
+      if (comparison !== 0) {
+        return comparison
+      }
+    }
+
+    return firstRow.position - secondRow.position
+  })
+}
+
+type DatabaseSortOption = {
+  icon: ReactNode
+  label: string
+  value: string
+}
+
+const databaseSortDirectionOptions = [
+  {
+    label: "Ascending",
+    value: "ascending",
+  },
+  {
+    label: "Descending",
+    value: "descending",
+  },
+] satisfies {
+  label: string
+  value: DatabaseSortDirection
+}[]
+
+function NameColumnGlyph() {
+  return (
+    <span className="inline-flex size-4 shrink-0 items-center justify-center text-[11px] font-semibold leading-none">
+      Aa
+    </span>
+  )
 }
 
 function areSerializedPropertyValuesEqual(
@@ -327,6 +577,10 @@ export function DatabaseTableView({
   )
   const [pendingInsertProperty, setPendingInsertProperty] =
     useState<PendingInsertProperty | null>(null)
+  const [showSortPill, setShowSortPill] = useState(true)
+  const [sortPickerQuery, setSortPickerQuery] = useState("")
+  const [sortPickerOpen, setSortPickerOpen] = useState(false)
+  const [sortPopoverOpen, setSortPopoverOpen] = useState(false)
   const tableWrapRef = useRef<HTMLDivElement | null>(null)
   const [rowLayout, setRowLayout] = useState<{
     centers: Record<string, number>
@@ -345,14 +599,75 @@ export function DatabaseTableView({
       })),
     [accessTargets?.members, session?.user?.id]
   )
-  const pendingInsertPropertyKey = pendingInsertProperty
-    ? `insert-property-${pendingInsertProperty.sourceColumnKey}-${pendingInsertProperty.side}`
-    : null
+  const personOptionsById = useMemo(
+    () =>
+      new Map(
+        personOptions.map((personOption) => [personOption.id, personOption.name])
+      ),
+    [personOptions]
+  )
   const nameColumnLabel = getNameColumnLabel(payload?.database.config)
   const nameColumnWrapContent = getNameColumnWrapContent(payload?.database.config)
   const nameColumnShowPageIcon = getNameColumnShowPageIcon(
     payload?.database.config
   )
+  const sortColumnOptions = useMemo<DatabaseSortOption[]>(
+    () => [
+      {
+        icon: <NameColumnGlyph />,
+        label: nameColumnLabel,
+        value: "name",
+      },
+      ...properties.map((property) => {
+        const PropertyIcon = getDatabasePropertyType(property.property.type).icon
+
+        return {
+          icon: <PropertyIcon />,
+          label: property.property.name,
+          value: property.id,
+        }
+      }),
+    ],
+    [nameColumnLabel, properties]
+  )
+  const databaseSorts = useMemo(
+    () => getDatabaseSorts(payload?.database.config),
+    [payload?.database.config]
+  )
+  const activeDatabaseSorts = useMemo(
+    () =>
+      databaseSorts.flatMap((sort) => {
+        const option = sortColumnOptions.find(
+          (sortOption) => sortOption.value === sort.column
+        )
+
+        return option
+          ? [
+              {
+                ...sort,
+                label: option.label,
+              },
+            ]
+          : []
+      }),
+    [databaseSorts, sortColumnOptions]
+  )
+  const isTableSorted = activeDatabaseSorts.length > 0
+  const filteredSortColumnOptions = useMemo(() => {
+    const normalizedQuery = sortPickerQuery.trim().toLowerCase()
+
+    if (!normalizedQuery) {
+      return sortColumnOptions
+    }
+
+    return sortColumnOptions.filter((option) =>
+      option.label.toLowerCase().includes(normalizedQuery)
+    )
+  }, [sortColumnOptions, sortPickerQuery])
+  const canAddDatabaseSort = activeDatabaseSorts.length < sortColumnOptions.length
+  const pendingInsertPropertyKey = pendingInsertProperty
+    ? `insert-property-${pendingInsertProperty.sourceColumnKey}-${pendingInsertProperty.side}`
+    : null
   const columnKeys = useMemo(() => {
     const nameKeys =
       pendingInsertProperty?.sourceColumnKey === "name"
@@ -393,6 +708,13 @@ export function DatabaseTableView({
       setDraftTitle(payload.database.name)
     }
   }, [payload?.database.id, payload?.database.name])
+
+  useEffect(() => {
+    if (activeDatabaseSorts.length === 0) {
+      setShowSortPill(false)
+      setSortPopoverOpen(false)
+    }
+  }, [activeDatabaseSorts.length])
 
   const getRowElements = useCallback(() => {
     return Array.from(
@@ -435,10 +757,6 @@ export function DatabaseTableView({
 
     return { centers, dropTops }
   }, [getRowElements])
-
-  useLayoutEffect(() => {
-    measureRows()
-  }, [activeCellKey, measureRows, properties, rows.length])
 
   useEffect(() => {
     if (
@@ -498,6 +816,21 @@ export function DatabaseTableView({
 
     return values
   }, [properties, propertyValues, rows])
+  const sortedRows = useMemo(
+    () =>
+      getSortedRows(
+        rows,
+        properties,
+        cellValues,
+        activeDatabaseSorts,
+        personOptionsById
+      ),
+    [activeDatabaseSorts, cellValues, personOptionsById, properties, rows]
+  )
+
+  useLayoutEffect(() => {
+    measureRows()
+  }, [activeCellKey, measureRows, properties, sortedRows])
 
   const addDatabaseRow = () => {
     if (!editable || !databaseId || addRow.isPending) {
@@ -531,6 +864,74 @@ export function DatabaseTableView({
       name: label,
       position,
       type,
+    })
+  }
+  const saveDatabaseSorts = (nextSorts: DatabaseSortConfig[]) => {
+    if (!databaseId) {
+      return
+    }
+
+    updateDatabase.mutate({
+      config: getMergedDatabaseConfig(payload?.database.config, {
+        sort: undefined,
+        sorts: nextSorts.length > 0 ? nextSorts : undefined,
+      }),
+      databaseId,
+    })
+  }
+  const createDatabaseSort = (column: string) => {
+    saveDatabaseSorts([
+      ...activeDatabaseSorts.map(({ column, direction }) => ({
+        column,
+        direction,
+      })),
+      {
+        column,
+        direction: "ascending",
+      },
+    ])
+    setShowSortPill(true)
+    setSortPickerQuery("")
+    setSortPickerOpen(false)
+  }
+  const addDatabaseSort = () => {
+    const nextSortColumn = sortColumnOptions[0]
+
+    if (!nextSortColumn) {
+      return
+    }
+
+    createDatabaseSort(nextSortColumn.value)
+  }
+  const updateDatabaseSort = (
+    index: number,
+    patch: Partial<DatabaseSortConfig>
+  ) => {
+    saveDatabaseSorts(
+      activeDatabaseSorts.map(({ column, direction }, sortIndex) =>
+        sortIndex === index ? { column, direction, ...patch } : { column, direction }
+      )
+    )
+  }
+  const removeDatabaseSort = (index: number) => {
+    saveDatabaseSorts(
+      activeDatabaseSorts.flatMap(({ column, direction }, sortIndex) =>
+        sortIndex === index ? [] : [{ column, direction }]
+      )
+    )
+  }
+  const clearDatabaseSort = () => {
+    saveDatabaseSorts([])
+  }
+  const toggleSortPillVisibility = () => {
+    setShowSortPill((visible) => {
+      const nextVisible = !visible
+
+      if (!nextVisible) {
+        setSortPopoverOpen(false)
+      }
+
+      return nextVisible
     })
   }
 
@@ -656,7 +1057,7 @@ export function DatabaseTableView({
   }
 
   const moveDraggedRow = () => {
-    if (!databaseId || !draggedRowId || rowDropTargetIndex === null) {
+    if (!databaseId || !draggedRowId || rowDropTargetIndex === null || isTableSorted) {
       return
     }
 
@@ -760,10 +1161,10 @@ export function DatabaseTableView({
       : (rowLayout.dropTops[rowDropTargetIndex] ?? null)
   const activeDragRowId = draggedRowId ?? hoveredRowId
   const activeDragRowIndex = activeDragRowId
-    ? rows.findIndex((row) => row.id === activeDragRowId)
+    ? sortedRows.findIndex((row) => row.id === activeDragRowId)
     : -1
   const activeDragRow =
-    activeDragRowIndex === -1 ? null : rows[activeDragRowIndex]
+    activeDragRowIndex === -1 ? null : sortedRows[activeDragRowIndex]
   const renderInsertPropertyHeader = (
     insertKey: string,
     position: number
@@ -823,40 +1224,214 @@ export function DatabaseTableView({
       >
         <div className="database-toolbar">
           {showTitle ? (
-            <Input
-              aria-label="Database title"
-              className="database-title-input h-auto min-w-0 flex-1 rounded-none border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 md:text-2xl dark:bg-transparent"
-              disabled={!databaseId}
-              onBlur={(event) => {
-                if (
-                  databaseId &&
-                  event.target.value !== payload?.database.name
-                ) {
-                  updateDatabase.mutate({
-                    databaseId,
-                    name: event.target.value,
-                  })
-                }
-              }}
-              onChange={(event) => {
-                setDraftTitle(event.target.value)
-              }}
-              placeholder="New database"
-              value={draftTitle}
-            />
+            <div className="min-w-0 flex flex-1 flex-col items-start gap-2">
+              <Input
+                aria-label="Database title"
+                className="database-title-input h-auto min-w-0 w-full rounded-none border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 md:text-2xl dark:bg-transparent"
+                disabled={!databaseId}
+                onBlur={(event) => {
+                  if (
+                    databaseId &&
+                    event.target.value !== payload?.database.name
+                  ) {
+                    updateDatabase.mutate({
+                      databaseId,
+                      name: event.target.value,
+                    })
+                  }
+                }}
+                onChange={(event) => {
+                  setDraftTitle(event.target.value)
+                }}
+                placeholder="New database"
+                value={draftTitle}
+              />
+              {((activeDatabaseSorts.length > 0 && showSortPill) ||
+                sortPopoverOpen) ? (
+                <Popover open={sortPopoverOpen} onOpenChange={setSortPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      aria-label="Open sort options"
+                      className="group h-8 rounded-full px-3"
+                      type="button"
+                      variant="secondary"
+                    >
+                      <ArrowDownUp className="size-4 self-center shrink-0" />
+                      <span className="self-center truncate">
+                        {activeDatabaseSorts.length === 0
+                          ? "Sort"
+                          : `${activeDatabaseSorts.length} sort${
+                              activeDatabaseSorts.length === 1 ? "" : "s"
+                            }`}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    className="w-fit min-w-0 max-w-[calc(100vw-2rem)] gap-2 p-3"
+                  >
+                    <div className="flex w-fit max-w-full flex-col gap-2">
+                      {activeDatabaseSorts.map((sort, index) => {
+                        const availableSortOptions = sortColumnOptions.filter(
+                          (option) =>
+                            option.value === sort.column ||
+                            !activeDatabaseSorts.some(
+                              (activeSort, activeIndex) =>
+                                activeIndex !== index &&
+                                activeSort.column === option.value
+                            )
+                        )
+
+                        return (
+                          <div
+                            className="flex items-center gap-2"
+                            key={`${sort.column}:${index}`}
+                          >
+                            <ArrowDownUp className="size-4 text-muted-foreground" />
+                            <Select
+                              onValueChange={(column) =>
+                                updateDatabaseSort(index, { column })
+                              }
+                              value={sort.column}
+                            >
+                              <SelectTrigger className="w-56">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent align="start">
+                                {availableSortOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              onValueChange={(direction) =>
+                                updateDatabaseSort(index, {
+                                  direction: direction as DatabaseSortDirection,
+                                })
+                              }
+                              value={sort.direction}
+                            >
+                              <SelectTrigger className="w-48">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent align="start">
+                                <SelectItem value="ascending">Ascending</SelectItem>
+                                <SelectItem value="descending">Descending</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <button
+                              aria-label={`Remove ${sort.label} sort`}
+                              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              onClick={() => removeDatabaseSort(index)}
+                              type="button"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                      {canAddDatabaseSort ? (
+                        <button
+                          className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          onClick={addDatabaseSort}
+                          type="button"
+                        >
+                          <Plus className="size-4" />
+                          <span>Add sort</span>
+                        </button>
+                      ) : null}
+                      <button
+                        className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                        disabled={activeDatabaseSorts.length === 0}
+                        onClick={clearDatabaseSort}
+                        type="button"
+                      >
+                        <X className="size-4" />
+                        <span>Delete sort</span>
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ) : null}
+            </div>
           ) : (
             <div className="min-w-0 flex-1" />
           )}
           {editable ? (
-            <Button
-              className="database-new-button"
-              disabled={!databaseId || addRow.isPending}
-              onClick={addDatabaseRow}
-              type="button"
-            >
-              {addRow.isPending ? <Loader2 className="animate-spin" /> : <Plus />}
-              <span>New</span>
-            </Button>
+            <>
+              {activeDatabaseSorts.length === 0 ? (
+                <DropDrawer open={sortPickerOpen} onOpenChange={setSortPickerOpen}>
+                  <DropDrawerTrigger asChild>
+                    <Button
+                      aria-label="Add sort"
+                      className="text-muted-foreground"
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <ArrowDownUp />
+                    </Button>
+                  </DropDrawerTrigger>
+                  <DropDrawerContent
+                    align="start"
+                    className="w-72"
+                    onCloseAutoFocus={(event) => event.preventDefault()}
+                  >
+                    <div className="flex items-center gap-1.5 px-1.5 py-1">
+                      <ArrowDownUp className="size-4 shrink-0 text-muted-foreground" />
+                      <Input
+                        aria-label="Sort properties"
+                        className="h-auto rounded-none border-0 bg-transparent px-0 py-0 text-sm font-medium shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
+                        onChange={(event) => setSortPickerQuery(event.target.value)}
+                        placeholder="Sort by..."
+                        value={sortPickerQuery}
+                      />
+                    </div>
+                    <DropDrawerSeparator />
+                    {filteredSortColumnOptions.length > 0 ? (
+                      filteredSortColumnOptions.map((option) => (
+                        <DropDrawerItem
+                          key={option.value}
+                          onSelect={(event) => {
+                            event.preventDefault()
+                            createDatabaseSort(option.value)
+                          }}
+                        >
+                          {option.icon}
+                          <span>{option.label}</span>
+                        </DropDrawerItem>
+                      ))
+                    ) : (
+                      <DropDrawerItem disabled>No properties found.</DropDrawerItem>
+                    )}
+                  </DropDrawerContent>
+                </DropDrawer>
+              ) : (
+                <Button
+                  aria-label={showSortPill ? "Hide sort pill" : "Show sort pill"}
+                  className={
+                    showSortPill ? "text-foreground" : "text-muted-foreground"
+                  }
+                  onClick={toggleSortPillVisibility}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                >
+                  <ArrowDownUp />
+                </Button>
+              )}
+              <Button
+                className="database-new-button"
+                disabled={!databaseId || addRow.isPending}
+                onClick={addDatabaseRow}
+                type="button"
+              >
+                {addRow.isPending ? <Loader2 className="animate-spin" /> : <Plus />}
+                <span>New</span>
+              </Button>
+            </>
           ) : null}
           {showExpandButton && databaseId ? (
             <Button
@@ -947,72 +1522,72 @@ export function DatabaseTableView({
               clearRowDrag()
             }}
           >
-            {editable ? (
+            {editable && !isTableSorted ? (
               <div className="database-row-drag-rail">
                 {activeDragRow ? (
-                <button
-                  aria-label={`Drag ${activeDragRow.page.name.trim() || "Untitled"}`}
-                  className="database-row-drag-handle"
-                  data-database-row-drag-handle
-                  data-dragging={
-                    draggedRowId === activeDragRow.id ? "true" : undefined
-                  }
-                  data-visible="true"
-                  draggable
-                  key="database-row-drag-handle"
-                  onClick={(event) => event.preventDefault()}
-                  onDragStart={(event) => {
-                    measureRows()
-                    const rowElement = tableWrapRef.current?.querySelector(
-                      `tr[data-database-row-id="${activeDragRow.id}"]`
-                    )
-                    const rowRect = rowElement?.getBoundingClientRect()
-                    const tableRect = tableWrapRef.current
-                      ?.querySelector(".database-table")
-                      ?.getBoundingClientRect()
-
-                    if (rowRect && tableRect) {
-                      setRowDragOverlay({
-                        height: rowRect.height,
-                        left: rowRect.left,
-                        offsetX: event.clientX - rowRect.left,
-                        offsetY: event.clientY - rowRect.top,
-                        title: activeDragRow.page.name.trim() || "Untitled",
-                        top: rowRect.top,
-                        width: tableRect.width,
-                      })
+                  <button
+                    aria-label={`Drag ${activeDragRow.page.name.trim() || "Untitled"}`}
+                    className="database-row-drag-handle"
+                    data-database-row-drag-handle
+                    data-dragging={
+                      draggedRowId === activeDragRow.id ? "true" : undefined
                     }
+                    data-visible="true"
+                    draggable
+                    key="database-row-drag-handle"
+                    onClick={(event) => event.preventDefault()}
+                    onDragStart={(event) => {
+                      measureRows()
+                      const rowElement = tableWrapRef.current?.querySelector(
+                        `tr[data-database-row-id="${activeDragRow.id}"]`
+                      )
+                      const rowRect = rowElement?.getBoundingClientRect()
+                      const tableRect = tableWrapRef.current
+                        ?.querySelector(".database-table")
+                        ?.getBoundingClientRect()
 
-                    hideNativeDragPreview(event.dataTransfer)
-                    setDraggedRowId(activeDragRow.id)
-                    setRowDropTargetIndex(activeDragRowIndex)
-                    event.dataTransfer.effectAllowed = "copyMove"
-                    event.dataTransfer.setData(
-                      DATABASE_PAGE_DRAG_MIME,
-                      JSON.stringify({
-                        databaseId: payload.database.id,
-                        pageId: activeDragRow.pageId,
-                        rowId: activeDragRow.id,
-                      })
-                    )
-                    event.dataTransfer.setData(
-                      "text/plain",
-                      activeDragRow.page.name.trim() || "Untitled"
-                    )
-                  }}
-                  onDragEnd={clearRowDrag}
-                  onMouseEnter={() => {
-                    measureRows()
-                    setHoveredRowId(activeDragRow.id)
-                  }}
-                  style={{
-                    top: rowLayout.centers[activeDragRow.id] ?? 0,
-                  }}
-                  title="Drag page"
-                  type="button"
-                >
-                  <GripVertical />
-                </button>
+                      if (rowRect && tableRect) {
+                        setRowDragOverlay({
+                          height: rowRect.height,
+                          left: rowRect.left,
+                          offsetX: event.clientX - rowRect.left,
+                          offsetY: event.clientY - rowRect.top,
+                          title: activeDragRow.page.name.trim() || "Untitled",
+                          top: rowRect.top,
+                          width: tableRect.width,
+                        })
+                      }
+
+                      hideNativeDragPreview(event.dataTransfer)
+                      setDraggedRowId(activeDragRow.id)
+                      setRowDropTargetIndex(activeDragRowIndex)
+                      event.dataTransfer.effectAllowed = "copyMove"
+                      event.dataTransfer.setData(
+                        DATABASE_PAGE_DRAG_MIME,
+                        JSON.stringify({
+                          databaseId: payload.database.id,
+                          pageId: activeDragRow.pageId,
+                          rowId: activeDragRow.id,
+                        })
+                      )
+                      event.dataTransfer.setData(
+                        "text/plain",
+                        activeDragRow.page.name.trim() || "Untitled"
+                      )
+                    }}
+                    onDragEnd={clearRowDrag}
+                    onMouseEnter={() => {
+                      measureRows()
+                      setHoveredRowId(activeDragRow.id)
+                    }}
+                    style={{
+                      top: rowLayout.centers[activeDragRow.id] ?? 0,
+                    }}
+                    title="Drag page"
+                    type="button"
+                  >
+                    <GripVertical />
+                  </button>
                 ) : null}
               </div>
             ) : null}
@@ -1102,6 +1677,7 @@ export function DatabaseTableView({
                           {editable ? (
                             <DatabasePropertyMenu
                               config={property.property.config}
+                              databaseConfig={payload.database.config}
                               databaseId={payload.database.id}
                               databasePropertyId={property.id}
                               name={property.property.name}
@@ -1163,7 +1739,7 @@ export function DatabaseTableView({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {sortedRows.map((row) => (
                   <tr
                     data-database-row-id={row.id}
                     key={row.id}
