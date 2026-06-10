@@ -31,7 +31,8 @@ import {
 import { Input } from "@/components/ui/input"
 
 import { getDatabasePropertyType } from "../constants"
-import { type DatabaseSortDirection } from "./database-property-menu"
+import { type DatabaseSortDirection } from "./database-column-config"
+import { NameColumnGlyph } from "./name-column-glyph"
 
 type DatabaseViewProperty = {
   id: string
@@ -45,14 +46,6 @@ type ActiveDatabaseSort = {
   column: string
   direction: DatabaseSortDirection
   label: string
-}
-
-function NameColumnGlyph() {
-  return (
-    <span className="inline-flex size-4 shrink-0 items-center justify-center text-[11px] font-semibold leading-none">
-      Aa
-    </span>
-  )
 }
 
 function ViewSettingsRow({

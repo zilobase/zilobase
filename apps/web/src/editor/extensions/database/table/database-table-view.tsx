@@ -72,16 +72,21 @@ import { DatabaseInputCell } from "./database-input-cell"
 import { DatabaseDateCell } from "./database-date-cell"
 import { DatabasePageCell } from "./database-page-cell"
 import {
-  DatabaseNamePropertyMenu,
-  DatabasePropertyMenu,
   getDatabaseSorts,
   getMergedDatabaseConfig,
   getNameColumnLabel,
   getNameColumnShowPageIcon,
   getNameColumnWrapContent,
+  getPersonLimit,
+  getPropertyWrapContent,
   type DatabaseSortConfig,
   type DatabaseSortDirection,
+} from "./database-column-config"
+import {
+  DatabaseNamePropertyMenu,
+  DatabasePropertyMenu,
 } from "./database-property-menu"
+import { NameColumnGlyph } from "./name-column-glyph"
 import { DatabaseSelectCell } from "./database-select-cell"
 import { DatabaseViewSettingsMenu } from "./database-view-settings-menu"
 import {
@@ -150,16 +155,6 @@ function getDatabasePageDragPayload(
 
 function hasDatabasePageDragPayload(dataTransfer: DataTransfer | null) {
   return Array.from(dataTransfer?.types ?? []).includes(DATABASE_PAGE_DRAG_MIME)
-}
-
-function getPersonLimit(config: unknown) {
-  if (!config || typeof config !== "object" || Array.isArray(config)) {
-    return "no_limit"
-  }
-
-  const personLimit = (config as { personLimit?: unknown }).personLimit
-
-  return personLimit === "one_person" ? "one_person" : "no_limit"
 }
 
 function hideNativeDragPreview(dataTransfer: DataTransfer) {
@@ -254,15 +249,6 @@ function DatabaseCellContent({
     >
       {children}
     </div>
-  )
-}
-
-function getWrapContent(config: unknown) {
-  return (
-    Boolean(config) &&
-    typeof config === "object" &&
-    !Array.isArray(config) &&
-    (config as { wrapContent?: unknown }).wrapContent === true
   )
 }
 
@@ -500,14 +486,6 @@ type DatabaseSortOption = {
   icon: ReactNode
   label: string
   value: string
-}
-
-function NameColumnGlyph() {
-  return (
-    <span className="inline-flex size-4 shrink-0 items-center justify-center text-[11px] font-semibold leading-none">
-      Aa
-    </span>
-  )
 }
 
 function areSerializedPropertyValuesEqual(
@@ -1854,7 +1832,9 @@ export function DatabaseTableView({
                       const workspaceProperty = property.property
                       const key = `${row.pageId}:${workspaceProperty.id}`
                       const value = draftCells[key] ?? cellValues[key] ?? ""
-                      const wrapContent = getWrapContent(workspaceProperty.config)
+                      const wrapContent = getPropertyWrapContent(
+                        workspaceProperty.config
+                      )
                       const isSelectProperty =
                         workspaceProperty.type === "select" ||
                         workspaceProperty.type === "multi_select" ||
