@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test": "node test/run-tests.mjs",
     "preview": "vite preview",
     "deploy": "wrangler deploy"
   },
@@ -83,6 +84,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "esbuild": "^0.27.7",
     "typescript": "~5.8.3",
     "vite": "^7.0.4"
   }
