@@ -1,11 +1,9 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
   type DragEvent as ReactDragEvent,
 } from "react"
-import { toast } from "sonner"
 
 import { useSession } from "@notelab/features/auth"
 import {
@@ -20,27 +18,13 @@ import {
 } from "@notelab/features/databases"
 import { useWorkspacePersonAccessTargets } from "@notelab/features/workspaces"
 
-import { defaultStatusOptions } from "../constants"
-import {
-  getMergedDatabaseConfig,
-  getPropertyHidden,
-  getViewHiddenPropertyIds,
-  type DatabaseSortConfig,
-} from "./database-view-config"
 import {
   getDatabasePageDragPayload,
   hasDatabasePageDragPayload,
-  type DatabasePageDragPayload,
 } from "./database-page-drop"
 import type { DatabaseViewContextValue } from "./database-view-context"
-import {
-  areSerializedPropertyValuesEqual,
-  hasViewHiddenPropertyIds,
-} from "./database-item-utils"
-import {
-  serializePropertyValue,
-  type DatabasePropertyValue,
-} from "../utils"
+import { type DatabasePropertyValue } from "../utils"
+import { getDatabaseViewCommands } from "./database-view-commands"
 import { getDatabaseViewModel } from "./database-view-model"
 
 export type DatabaseViewProps = {
@@ -143,410 +127,29 @@ export function useDatabaseViewController({
     }
   }, [activeDatabaseSorts.length])
 
-  const addTableView = useCallback(() => {
-    if (!databaseId || addDatabaseView.isPending) {
-      return
-    }
-
-    const existingViewIds = new Set((payload?.views ?? []).map((view) => view.id))
-
-    addDatabaseView.mutate(
-      {
-        databaseId,
-        name: "Table",
-        type: "table",
-      },
-      {
-        onSuccess: (nextPayload) => {
-          const addedView =
-            nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
-            nextPayload.views.at(-1)
-
-          setActiveViewId(addedView?.id ?? null)
-        },
-        onError: () => {
-          toast.error("Couldn't add table view")
-        },
-      }
-    )
-  }, [addDatabaseView, databaseId, payload?.views])
-
-  const addKanbanView = useCallback(() => {
-    if (!databaseId || addDatabaseView.isPending || addProperty.isPending) {
-      return
-    }
-
-    const existingViewIds = new Set((payload?.views ?? []).map((view) => view.id))
-    const currentProperties = payload?.properties ?? []
-    const groupProperty =
-      currentProperties.find((property) => property.property.type === "status") ??
-      currentProperties.find((property) => property.property.type === "select")
-    const addView = (
-      groupPropertyId: string,
-      hiddenPropertyIds: string[],
-      onViewAdded?: (nextPayload: { rows: { id: string }[] }) => void
-    ) => {
-      addDatabaseView.mutate(
-        {
-          config: { groupPropertyId, hiddenPropertyIds },
-          databaseId,
-          name: "Kanban",
-          type: "kanban",
-        },
-        {
-          onSuccess: (nextPayload) => {
-            const addedView =
-              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
-              nextPayload.views.at(-1)
-
-            setActiveViewId(addedView?.id ?? null)
-            onViewAdded?.(nextPayload)
-          },
-          onError: () => {
-            toast.error("Couldn't add kanban view")
-          },
-        }
-      )
-    }
-
-    if (groupProperty) {
-      addView(
-        groupProperty.property.id,
-        currentProperties.map((property) => property.id)
-      )
-      return
-    }
-
-    const existingPropertyIds = new Set(
-      currentProperties.map((property) => property.property.id)
-    )
-
-    addProperty.mutate(
-      {
-        config: {
-          defaultOptionId: defaultStatusOptions[0]?.id,
-          options: defaultStatusOptions,
-        },
-        databaseId,
-        name: "Status",
-        type: "status",
-      },
-      {
-        onSuccess: (nextPayload) => {
-          const addedProperty =
-            nextPayload.properties.find(
-              (property) =>
-                !existingPropertyIds.has(property.property.id) &&
-                property.property.type === "status"
-            ) ??
-            nextPayload.properties.find(
-              (property) => property.property.type === "status"
-            )
-
-          if (!addedProperty) {
-            toast.error("Couldn't create status property")
-            return
-          }
-
-          addView(
-            addedProperty.property.id,
-            nextPayload.properties.map((property) => property.id),
-            (viewPayload) => {
-              for (const row of viewPayload.rows) {
-                updateValue.mutate({
-                  databaseId,
-                  propertyId: addedProperty.property.id,
-                  rowId: row.id,
-                  value: defaultStatusOptions[0]?.name ?? "Not started",
-                })
-              }
-            }
-          )
-        },
-        onError: () => {
-          toast.error("Couldn't create status property")
-        },
-      }
-    )
-  }, [
-    addDatabaseView,
-    addProperty,
+  const commands = getDatabaseViewCommands({
+    activeDatabaseSorts,
+    activeView,
     databaseId,
-    payload?.properties,
-    payload?.views,
-    updateValue,
-  ])
-
-  const addDatabaseRow = (groupValue?: string) => {
-    if (!editable || !databaseId || addRow.isPending) {
-      return
-    }
-
-    const existingItemIds = new Set(items.map((row) => row.id))
-    const defaultStatusValue = defaultStatusOptions[0]?.name ?? "Not started"
-    const nextGroupValue =
-      groupValue ??
-      (isKanbanView && kanbanGroupProperty?.property.type === "status"
-        ? defaultStatusValue
-        : null)
-
-    addRow.mutate(
-      {
-        databaseId,
-        title: "Untitled",
-      },
-      {
-        onSuccess: (nextPayload) => {
-          if (!nextGroupValue || !kanbanGroupProperty) {
-            return
-          }
-
-          const addedItem =
-            nextPayload.rows.find((row) => !existingItemIds.has(row.id)) ??
-            nextPayload.rows.at(-1)
-
-          if (!addedItem) {
-            return
-          }
-
-          updateValue.mutate({
-            databaseId,
-            propertyId: kanbanGroupProperty.property.id,
-            rowId: addedItem.id,
-            value: serializePropertyValue(
-              kanbanGroupProperty.property.type,
-              nextGroupValue
-            ),
-          })
-        },
-      }
-    )
-  }
-
-  const addDatabaseProperty = (
-    type = "text",
-    label = "Property",
-    position?: number
-  ) => {
-    if (!editable || !databaseId || addProperty.isPending) {
-      return
-    }
-
-    addProperty.mutate({
-      config:
-        type === "status"
-          ? {
-              defaultOptionId: defaultStatusOptions[0]?.id,
-              options: defaultStatusOptions,
-            }
-          : undefined,
-      databaseId,
-      name: label,
-      position,
-      type,
-    })
-  }
-  const updateDatabasePropertyConfig = (
-    databasePropertyId: string,
-    config: unknown
-  ) => {
-    if (!databaseId) {
-      return Promise.resolve()
-    }
-
-    return updateProperty.mutateAsync({
-      config,
-      databaseId,
-      databasePropertyId,
-    })
-  }
-  const renameDatabaseProperty = (databasePropertyId: string, name: string) => {
-    if (!databaseId) {
-      return
-    }
-
-    updateProperty.mutate({
-      databaseId,
-      databasePropertyId,
-      name,
-    })
-  }
-  const saveDatabaseSorts = (nextSorts: DatabaseSortConfig[]) => {
-    if (!databaseId || !activeView?.id) {
-      return
-    }
-
-    updateDatabaseView.mutate({
-      config: getMergedDatabaseConfig(activeView.config, {
-        sort: undefined,
-        sorts: nextSorts.length > 0 ? nextSorts : undefined,
-      }),
-      databaseId,
-      databaseViewId: activeView.id,
-    })
-  }
-  const createDatabaseSort = (field: string) => {
-    saveDatabaseSorts([
-      ...activeDatabaseSorts.map(({ column, direction }) => ({
-        column,
-        direction,
-      })),
-      {
-        column: field,
-        direction: "ascending",
-      },
-    ])
-    setShowSortPill(true)
-    setSortPickerOpen(false)
-  }
-  const updateDatabaseSort = (
-    index: number,
-    patch: Partial<DatabaseSortConfig>
-  ) => {
-    saveDatabaseSorts(
-      activeDatabaseSorts.map(({ column, direction }, sortIndex) =>
-        sortIndex === index ? { column, direction, ...patch } : { column, direction }
-      )
-    )
-  }
-  const removeDatabaseSort = (index: number) => {
-    saveDatabaseSorts(
-      activeDatabaseSorts.flatMap(({ column, direction }, sortIndex) =>
-        sortIndex === index ? [] : [{ column, direction }]
-      )
-    )
-  }
-  const clearDatabaseSort = () => {
-    saveDatabaseSorts([])
-  }
-  const togglePropertyVisibility = (propertyId: string) => {
-    if (!databaseId || !activeView?.id) {
-      return
-    }
-
-    const hiddenPropertyIds = new Set(
-      hasViewHiddenPropertyIds(activeView.config)
-        ? getViewHiddenPropertyIds(activeView.config)
-        : isKanbanView
-          ? properties.map((property) => property.id)
-        : properties
-            .filter((property) => getPropertyHidden(property.property.config))
-            .map((property) => property.id)
-    )
-
-    if (hiddenPropertyIds.has(propertyId)) {
-      hiddenPropertyIds.delete(propertyId)
-    } else {
-      hiddenPropertyIds.add(propertyId)
-    }
-
-    updateDatabaseView.mutate({
-      config: getMergedDatabaseConfig(activeView.config, {
-        hiddenPropertyIds: [...hiddenPropertyIds],
-      }),
-      databaseId,
-      databaseViewId: activeView.id,
-    })
-  }
-  const toggleSortPillVisibility = () => {
-    setShowSortPill((visible) => !visible)
-  }
-  const saveDatabaseTitle = useCallback(
-    (nextTitle: string) => {
-      if (!databaseId || nextTitle === payload?.database.name) {
-        return
-      }
-
-      updateDatabase.mutate({
-        databaseId,
-        name: nextTitle,
-      })
+    editable,
+    isKanbanView,
+    items,
+    kanbanGroupProperty,
+    mutations: {
+      addDatabaseView,
+      addProperty,
+      addRow,
+      updateDatabase,
+      updateDatabaseView,
+      updateProperty,
+      updateValue,
     },
-    [databaseId, payload?.database.name, updateDatabase]
-  )
-  const saveDatabaseViewTitle = useCallback(
-    (nextTitle: string) => {
-      if (
-        !databaseId ||
-        !activeView?.id ||
-        nextTitle === activeView.name
-      ) {
-        return
-      }
-
-      updateDatabaseView.mutate({
-        databaseId,
-        databaseViewId: activeView.id,
-        name: nextTitle,
-      })
-    },
-    [activeView?.id, activeView?.name, databaseId, updateDatabaseView]
-  )
-  const copyDatabaseViewLink = useCallback(() => {
-    if (!databaseId || typeof window === "undefined") {
-      return
-    }
-
-    void navigator.clipboard
-      .writeText(`${window.location.origin}/database/${databaseId}`)
-      .then(() => {
-        toast.success("Copied link to view")
-      })
-      .catch(() => {
-        toast.error("Couldn't copy link to view")
-      })
-  }, [databaseId])
-
-  const savePropertyValue = (
-    rowId: string,
-    propertyId: string,
-    propertyType: string,
-    currentValue: DatabasePropertyValue,
-    nextValue: DatabasePropertyValue
-  ) => {
-    if (!editable || !databaseId) {
-      return
-    }
-
-    if (
-      areSerializedPropertyValuesEqual(propertyType, currentValue, nextValue)
-    ) {
-      return
-    }
-
-    updateValue.mutate({
-      databaseId,
-      propertyId,
-      rowId,
-      value: serializePropertyValue(propertyType, nextValue),
-    })
-  }
-
-  const addDraggedPageRow = (
-    dragPayload: DatabasePageDragPayload,
-    position: number
-  ) => {
-    if (!databaseId || addRow.isPending) {
-      return
-    }
-
-    if (dragPayload.pageId === payload?.database.pageId) {
-      toast.error("You can't nest a page inside itself.")
-      return
-    }
-
-    if (items.some((row) => row.pageId === dragPayload.pageId)) {
-      toast.error("This page is already in this database.")
-      return
-    }
-
-    addRow.mutate({
-      databaseId,
-      pageId: dragPayload.pageId,
-      position,
-      title: dragPayload.title,
-    })
-  }
+    payload,
+    properties,
+    setActiveViewId,
+    setShowSortPill,
+    setSortPickerOpen,
+  })
 
   const handleDatabaseBlockDragOver = (
     event: ReactDragEvent<HTMLDivElement>
@@ -568,7 +171,7 @@ export function useDatabaseViewController({
 
     event.preventDefault()
     event.stopPropagation()
-    addDraggedPageRow(dragPayload, items.length)
+    commands.addDraggedPageRow(dragPayload, items.length)
   }
 
   const databaseViewContext: DatabaseViewContextValue = {
@@ -577,16 +180,16 @@ export function useDatabaseViewController({
     activeView,
     activeVisibilityConfig,
     addableSortFieldOptions,
-    addDatabaseProperty,
-    addDraggedPageRow,
-    addKanbanView,
-    addDatabaseRow,
-    addTableView,
+    addDatabaseProperty: commands.addDatabaseProperty,
+    addDraggedPageRow: commands.addDraggedPageRow,
+    addKanbanView: commands.addKanbanView,
+    addDatabaseRow: commands.addDatabaseRow,
+    addTableView: commands.addTableView,
     canAddDatabaseSort,
     propertyValuesByKey,
-    clearDatabaseSort,
-    copyDatabaseViewLink,
-    createDatabaseSort,
+    clearDatabaseSort: commands.clearDatabaseSort,
+    copyDatabaseViewLink: commands.copyDatabaseViewLink,
+    createDatabaseSort: commands.createDatabaseSort,
     databaseConfig: payload?.database.config,
     databaseId,
     databaseName: payload?.database.name,
@@ -608,13 +211,13 @@ export function useDatabaseViewController({
     organizationId,
     personOptions,
     properties,
-    removeDatabaseSort,
-    renameDatabaseProperty,
+    removeDatabaseSort: commands.removeDatabaseSort,
+    renameDatabaseProperty: commands.renameDatabaseProperty,
     items,
-    savePropertyValue,
-    saveDatabaseTitle,
-    saveDatabaseSorts,
-    saveDatabaseViewTitle,
+    savePropertyValue: commands.savePropertyValue,
+    saveDatabaseTitle: commands.saveDatabaseTitle,
+    saveDatabaseSorts: commands.saveDatabaseSorts,
+    saveDatabaseViewTitle: commands.saveDatabaseViewTitle,
     setActivePropertyValueKey,
     setActiveViewId,
     setDraftPropertyValues,
@@ -627,10 +230,10 @@ export function useDatabaseViewController({
     sortFieldOptions,
     sortPickerOpen,
     sortedItems,
-    togglePropertyVisibility,
-    toggleSortPillVisibility,
-    updateDatabasePropertyConfig,
-    updateDatabaseSort,
+    togglePropertyVisibility: commands.togglePropertyVisibility,
+    toggleSortPillVisibility: commands.toggleSortPillVisibility,
+    updateDatabasePropertyConfig: commands.updateDatabasePropertyConfig,
+    updateDatabaseSort: commands.updateDatabaseSort,
     visibleProperties,
     visiblePropertyCount,
     views: payload?.views ?? [],
