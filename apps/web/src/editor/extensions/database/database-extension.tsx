@@ -65,7 +65,7 @@ export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
 
   atom: true,
 
-  draggable: true,
+  draggable: false,
 
   selectable: true,
 
