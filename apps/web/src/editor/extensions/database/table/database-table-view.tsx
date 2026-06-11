@@ -6,7 +6,7 @@ import {
   Loader2,
   Maximize2,
   Plus,
-  X,
+  Table2,
 } from "lucide-react"
 import {
   useCallback,
@@ -33,6 +33,7 @@ import {
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import { useSession } from "@notelab/features/auth"
 import {
   useAddDatabaseProperty,
@@ -40,6 +41,7 @@ import {
   useDatabase,
   useReorderDatabaseRows,
   useUpdateDatabase,
+  useUpdateDatabaseView,
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
 } from "@notelab/features/databases"
@@ -498,6 +500,7 @@ export function DatabaseTableView({
     Record<string, DatabasePropertyValue>
   >({})
   const updateDatabase = useUpdateDatabase()
+  const updateDatabaseView = useUpdateDatabaseView()
   const addProperty = useAddDatabaseProperty()
   const updateProperty = useUpdateDatabaseProperty()
   const addRow = useAddDatabaseRow(organizationId)
@@ -508,7 +511,8 @@ export function DatabaseTableView({
   const { data: accessTargets } = useWorkspacePersonAccessTargets(
     payload?.database.pageId
   )
-  const [draftTitle, setDraftTitle] = useState("New database")
+  const [draftDatabaseTitle, setDraftDatabaseTitle] = useState("New database")
+  const [draftViewTitle, setDraftViewTitle] = useState("Table")
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [activeCellKey, setActiveCellKey] = useState<string | null>(null)
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
@@ -559,6 +563,7 @@ export function DatabaseTableView({
   const nameColumnShowPageIcon = getNameColumnShowPageIcon(
     payload?.database.config
   )
+  const activeView = payload?.views[0] ?? null
   const sortColumnOptions = useMemo<DatabaseSearchableMenuOption[]>(
     () => [
       {
@@ -652,9 +657,15 @@ export function DatabaseTableView({
 
   useEffect(() => {
     if (payload?.database.name) {
-      setDraftTitle(payload.database.name)
+      setDraftDatabaseTitle(payload.database.name)
     }
   }, [payload?.database.id, payload?.database.name])
+
+  useEffect(() => {
+    if (activeView?.name) {
+      setDraftViewTitle(activeView.name)
+    }
+  }, [activeView?.id, activeView?.name])
 
   useEffect(() => {
     if (activeDatabaseSorts.length === 0) {
@@ -892,6 +903,24 @@ export function DatabaseTableView({
       })
     },
     [databaseId, payload?.database.name, updateDatabase]
+  )
+  const saveDatabaseViewTitle = useCallback(
+    (nextTitle: string) => {
+      if (
+        !databaseId ||
+        !activeView?.id ||
+        nextTitle === activeView.name
+      ) {
+        return
+      }
+
+      updateDatabaseView.mutate({
+        databaseId,
+        databaseViewId: activeView.id,
+        name: nextTitle,
+      })
+    },
+    [activeView?.id, activeView?.name, databaseId, updateDatabaseView]
   )
   const copyDatabaseViewLink = useCallback(() => {
     if (!databaseId || typeof window === "undefined") {
@@ -1197,18 +1226,40 @@ export function DatabaseTableView({
       >
         <div className="database-toolbar">
           {showTitle ? (
-            <div className="min-w-0 flex flex-1 flex-col items-start gap-2">
-              <Input
-                aria-label="Database title"
-                className="database-title-input h-auto min-w-0 w-full rounded-none border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 md:text-2xl dark:bg-transparent"
-                disabled={!databaseId}
-                onBlur={(event) => saveDatabaseTitle(event.target.value)}
-                onChange={(event) => {
-                  setDraftTitle(event.target.value)
-                }}
-                placeholder="New database"
-                value={draftTitle}
-              />
+            <Input
+              aria-label="Database title"
+              className="database-title-input h-auto min-w-0 w-full rounded-none border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 md:text-2xl dark:bg-transparent"
+              disabled={!databaseId}
+              onBlur={(event) => saveDatabaseTitle(event.target.value)}
+              onChange={(event) => {
+                setDraftDatabaseTitle(event.target.value)
+              }}
+              placeholder="New database"
+              value={draftDatabaseTitle}
+            />
+          ) : null}
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+              {(payload?.views ?? []).map((view, index) => {
+                const isActiveView = index === 0
+
+                return (
+                  <div
+                    className={cn(
+                      "inline-flex h-8 shrink-0 items-center rounded-full px-3 text-sm font-medium",
+                      isActiveView
+                        ? "bg-secondary text-secondary-foreground"
+                        : "bg-muted/50 text-muted-foreground"
+                    )}
+                    key={view.id}
+                  >
+                    <Table2 className="mr-2 size-4 shrink-0" />
+                    <span className="truncate">
+                      {isActiveView ? draftViewTitle : view.name}
+                    </span>
+                  </div>
+                )
+              })}
               {activeDatabaseSorts.length > 0 && showSortPill ? (
                 <DatabaseSortPopover
                   activeDatabaseSorts={activeDatabaseSorts}
@@ -1222,7 +1273,7 @@ export function DatabaseTableView({
                 >
                   <Button
                     aria-label="Open sort options"
-                    className="group h-8 rounded-full px-3"
+                    className="group h-8 shrink-0 rounded-full px-3"
                     type="button"
                     variant="secondary"
                   >
@@ -1238,101 +1289,117 @@ export function DatabaseTableView({
                 </DatabaseSortPopover>
               ) : null}
             </div>
-          ) : (
-            <div className="min-w-0 flex-1" />
-          )}
-          {editable ? (
-            <>
-              {activeDatabaseSorts.length === 0 ? (
-                <DropDrawer open={sortPickerOpen} onOpenChange={setSortPickerOpen}>
-                  <DropDrawerTrigger asChild>
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              {editable ? (
+                <>
+                  {activeDatabaseSorts.length === 0 ? (
+                    <DropDrawer open={sortPickerOpen} onOpenChange={setSortPickerOpen}>
+                      <DropDrawerTrigger asChild>
+                        <Button
+                          aria-label="Add sort"
+                          className="text-muted-foreground"
+                          size="icon"
+                          type="button"
+                          variant="ghost"
+                        >
+                          <ArrowDownUp />
+                        </Button>
+                      </DropDrawerTrigger>
+                      <DropDrawerContent
+                        align="start"
+                        className="w-72"
+                        onCloseAutoFocus={(event) => event.preventDefault()}
+                      >
+                        <DatabaseSearchableMenuItems
+                          inputAriaLabel="Sort properties"
+                          inputIcon={<ArrowDownUp className="size-4" />}
+                          inputPlaceholder="Sort by..."
+                          onSelect={createDatabaseSort}
+                          open={sortPickerOpen}
+                          options={sortColumnOptions}
+                        />
+                      </DropDrawerContent>
+                    </DropDrawer>
+                  ) : (
                     <Button
-                      aria-label="Add sort"
-                      className="text-muted-foreground"
+                      aria-label={showSortPill ? "Hide sort pill" : "Show sort pill"}
+                      className={
+                        showSortPill ? "text-foreground" : "text-muted-foreground"
+                      }
+                      onClick={toggleSortPillVisibility}
                       size="icon"
                       type="button"
                       variant="ghost"
                     >
                       <ArrowDownUp />
                     </Button>
-                  </DropDrawerTrigger>
-                  <DropDrawerContent
-                    align="start"
-                    className="w-72"
-                    onCloseAutoFocus={(event) => event.preventDefault()}
+                  )}
+                  <DatabaseViewSettingsMenu
+                    activeDatabaseSorts={activeDatabaseSorts}
+                    databaseId={databaseId ?? undefined}
+                    databaseName={draftDatabaseTitle}
+                    dataSources={
+                      payload?.database.id
+                        ? [
+                            {
+                              id: payload.database.id,
+                              name: draftDatabaseTitle || payload.database.name,
+                              viewCount: payload.views.length,
+                            },
+                          ]
+                        : []
+                    }
+                    draftViewTitle={draftViewTitle}
+                    nameColumnLabel={nameColumnLabel}
+                    organizationId={payload?.database.organizationId ?? organizationId ?? undefined}
+                    onCopyDatabaseViewLink={copyDatabaseViewLink}
+                    onClearDatabaseSort={clearDatabaseSort}
+                    onCreateDatabaseSort={createDatabaseSort}
+                    onDraftViewTitleChange={setDraftViewTitle}
+                    onRemoveDatabaseSort={removeDatabaseSort}
+                    onSaveDatabaseViewTitle={saveDatabaseViewTitle}
+                    onUpdateDatabaseSort={updateDatabaseSort}
+                    properties={properties}
+                    sortColumnOptions={sortColumnOptions}
+                    addableSortColumnOptions={addableSortColumnOptions}
+                    canAddDatabaseSort={canAddDatabaseSort}
+                    visiblePropertyCount={visiblePropertyCount}
+                  />
+                  <Button
+                    className="database-new-button"
+                    disabled={!databaseId || addRow.isPending}
+                    onClick={addDatabaseRow}
+                    type="button"
                   >
-                    <DatabaseSearchableMenuItems
-                      inputAriaLabel="Sort properties"
-                      inputIcon={<ArrowDownUp className="size-4" />}
-                      inputPlaceholder="Sort by..."
-                      onSelect={createDatabaseSort}
-                      open={sortPickerOpen}
-                      options={sortColumnOptions}
-                    />
-                  </DropDrawerContent>
-                </DropDrawer>
-              ) : (
+                    {addRow.isPending ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Plus />
+                    )}
+                    <span>New</span>
+                  </Button>
+                </>
+              ) : null}
+              {showExpandButton && databaseId ? (
                 <Button
-                  aria-label={showSortPill ? "Hide sort pill" : "Show sort pill"}
-                  className={
-                    showSortPill ? "text-foreground" : "text-muted-foreground"
-                  }
-                  onClick={toggleSortPillVisibility}
+                  aria-label="Expand database"
+                  asChild
+                  className="database-expand-button"
                   size="icon"
                   type="button"
                   variant="ghost"
                 >
-                  <ArrowDownUp />
+                  <Link
+                    params={{ databaseId }}
+                    title="Expand database"
+                    to="/database/$databaseId"
+                  >
+                    <Maximize2 />
+                  </Link>
                 </Button>
-              )}
-              <DatabaseViewSettingsMenu
-                activeDatabaseSorts={activeDatabaseSorts}
-                databaseId={databaseId ?? undefined}
-                databaseName={payload?.database.name}
-                draftTitle={draftTitle}
-                nameColumnLabel={nameColumnLabel}
-                onCopyDatabaseViewLink={copyDatabaseViewLink}
-                onClearDatabaseSort={clearDatabaseSort}
-                onCreateDatabaseSort={createDatabaseSort}
-                onDraftTitleChange={setDraftTitle}
-                onRemoveDatabaseSort={removeDatabaseSort}
-                onSaveDatabaseTitle={saveDatabaseTitle}
-                onUpdateDatabaseSort={updateDatabaseSort}
-                properties={properties}
-                sortColumnOptions={sortColumnOptions}
-                addableSortColumnOptions={addableSortColumnOptions}
-                canAddDatabaseSort={canAddDatabaseSort}
-                visiblePropertyCount={visiblePropertyCount}
-              />
-              <Button
-                className="database-new-button"
-                disabled={!databaseId || addRow.isPending}
-                onClick={addDatabaseRow}
-                type="button"
-              >
-                {addRow.isPending ? <Loader2 className="animate-spin" /> : <Plus />}
-                <span>New</span>
-              </Button>
-            </>
-          ) : null}
-          {showExpandButton && databaseId ? (
-            <Button
-              aria-label="Expand database"
-              asChild
-              className="database-expand-button"
-              size="icon"
-              type="button"
-              variant="ghost"
-            >
-              <Link
-                params={{ databaseId }}
-                title="Expand database"
-                to="/database/$databaseId"
-              >
-                <Maximize2 />
-              </Link>
-            </Button>
-          ) : null}
+              ) : null}
+            </div>
+          </div>
         </div>
         {!databaseId ? (
           <div className="database-empty-state">
