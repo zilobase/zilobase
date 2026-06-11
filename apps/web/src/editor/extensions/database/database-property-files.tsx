@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type FilesLimitValue = "one_file" | "no_limit"
 
-export function DatabaseFilesCell({
+export function DatabasePropertyFiles({
   editable = true,
   label,
   onOpenChange,
@@ -250,6 +250,8 @@ export function DatabaseFilesCell({
     </Popover>
   )
 }
+
+export { DatabasePropertyFiles as DatabaseFilesCell }
 
 function getFilesLimit(config: unknown): FilesLimitValue {
   if (

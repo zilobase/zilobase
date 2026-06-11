@@ -6,22 +6,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { useUpdateDatabaseProperty } from "@notelab/features/databases"
 import {
   cyclingColorTokens,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
 } from "@/packages/editor/components/editor/toolbar-data"
+import type { DatabaseSelectOption } from "./table/database-column-config"
 
-type DatabaseSelectOption = {
-  color?: string
-  id: string
-  name: string
+type DatabasePropertySelectOption = DatabaseSelectOption & {
   suffix?: string
 }
 
 type DatabasePropertyConfig = {
-  options?: DatabaseSelectOption[]
+  options?: DatabasePropertySelectOption[]
 }
 
 function DatabaseSelectBadge({
@@ -79,39 +76,40 @@ function getSelectConfigWithOptions(
   }
 }
 
-function getNextOptionColor(options: DatabaseSelectOption[]) {
+function getNextOptionColor(options: DatabasePropertySelectOption[]) {
   return cyclingColorTokens[options.length % cyclingColorTokens.length]?.value ?? "default"
 }
 
-export function DatabaseSelectCell({
+export function DatabasePropertySelect({
   allowCreate = true,
-  databaseId,
   editable = true,
   propertyConfig,
   defaultOptions = [],
-  propertyId,
-  propertyName,
+  label,
   value,
   multiple = false,
   onSelect,
+  onPropertyConfigChange,
   showStatusDot = false,
   valueKey = "name",
 }: {
   allowCreate?: boolean
-  databaseId: string
-  defaultOptions?: DatabaseSelectOption[]
+  defaultOptions?: DatabasePropertySelectOption[]
   editable?: boolean
+  label: string
   multiple?: boolean
+  onPropertyConfigChange?: (
+    config: unknown,
+    createdOption: DatabaseSelectOption
+  ) => Promise<unknown> | unknown
   propertyConfig?: unknown
-  propertyId: string
-  propertyName: string
   value: string | string[]
   onSelect: (value: string | string[]) => void
   showStatusDot?: boolean
   valueKey?: "id" | "name"
 }) {
-  const updateProperty = useUpdateDatabaseProperty()
   const [isOpen, setIsOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
   const [query, setQuery] = useState("")
   const configuredOptions = getSelectOptions(propertyConfig)
   const selectOptions =
@@ -134,7 +132,10 @@ export function DatabaseSelectCell({
     (option) => option.name.toLowerCase() === normalizedQuery
   )
   const canCreateSelectOption =
-    allowCreate && query.trim().length > 0 && !matchingSelectOption
+    allowCreate &&
+    Boolean(onPropertyConfigChange) &&
+    query.trim().length > 0 &&
+    !matchingSelectOption
 
   if (!editable) {
     return (
@@ -185,10 +186,10 @@ export function DatabaseSelectCell({
     onSelect(nextValues)
   }
 
-  const createSelectOption = () => {
+  const createSelectOption = async () => {
     const optionName = query.trim()
 
-    if (!optionName) {
+    if (!optionName || !onPropertyConfigChange) {
       return
     }
 
@@ -200,37 +201,34 @@ export function DatabaseSelectCell({
         name: optionName,
       },
     ]
+    const createdOption = nextOptions[nextOptions.length - 1]
+    const optionValue = valueKey === "id" ? createdOption?.id : optionName
 
-    updateProperty.mutate(
-      {
-        config: getSelectConfigWithOptions(propertyConfig, nextOptions),
-        databaseId,
-        databasePropertyId: propertyId,
-      },
-      {
-        onSuccess: () => {
-          const createdOption = nextOptions[nextOptions.length - 1]
-          const optionValue = valueKey === "id" ? createdOption?.id : optionName
+    setIsCreating(true)
 
-          if (multiple) {
-            onSelect(
-              optionValue ? [...selectedValues, optionValue] : selectedValues
-            )
-            setQuery("")
-            return
-          }
+    try {
+      await onPropertyConfigChange(
+        getSelectConfigWithOptions(propertyConfig, nextOptions),
+        createdOption
+      )
 
-          if (optionValue) {
-            selectOption(optionValue)
-          }
-        },
+      if (multiple) {
+        onSelect(optionValue ? [...selectedValues, optionValue] : selectedValues)
+        setQuery("")
+        return
       }
-    )
+
+      if (optionValue) {
+        selectOption(optionValue)
+      }
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   const trigger = (
     <button
-      aria-label={`${propertyName} value`}
+      aria-label={`${label} value`}
       className="database-select-cell-trigger"
       type="button"
     >
@@ -261,7 +259,7 @@ export function DatabaseSelectCell({
             event.preventDefault()
 
             if (canCreateSelectOption) {
-              createSelectOption()
+              void createSelectOption()
             } else if (filteredSelectOptions[0]) {
               selectOption(getOptionValue(filteredSelectOptions[0]))
             }
@@ -313,10 +311,11 @@ export function DatabaseSelectCell({
         {canCreateSelectOption ? (
           <button
             className="database-select-create"
-            onClick={createSelectOption}
+            disabled={isCreating}
+            onClick={() => void createSelectOption()}
             type="button"
           >
-            <span>Create</span>
+            <span>{isCreating ? "Creating" : "Create"}</span>
             <span className={getColorTokenBadgeClassName(getNextOptionColor(selectOptions))}>
               {query.trim()}
             </span>
@@ -335,3 +334,5 @@ export function DatabaseSelectCell({
     </Popover>
   )
 }
+
+export { DatabasePropertySelect as DatabaseSelectCell }

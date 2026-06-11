@@ -15,22 +15,22 @@ import {
 export function DatabaseInputCell({
   editable = true,
   label,
-  onActivate,
+  onActivate = () => {},
   onChange,
   onCommit,
-  onDeactivate,
-  onInput,
+  onDeactivate = () => {},
+  onInput = () => {},
   propertyConfig,
   type,
   value,
 }: {
   editable?: boolean
   label: string
-  onActivate: (element: HTMLTextAreaElement) => void
+  onActivate?: (element: HTMLTextAreaElement) => void
   onChange: (value: string) => void
   onCommit: () => void
-  onDeactivate: () => void
-  onInput: (event: FormEvent<HTMLTextAreaElement>) => void
+  onDeactivate?: () => void
+  onInput?: (event: FormEvent<HTMLTextAreaElement>) => void
   propertyConfig?: unknown
   type: string
   value: string
@@ -192,6 +192,8 @@ export function DatabaseInputCell({
     </Popover>
   )
 }
+
+export { DatabaseInputCell as DatabasePropertyInput }
 
 function isValidNumber(value: string) {
   return /^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value.trim())

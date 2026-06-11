@@ -5,21 +5,31 @@ import {
   X,
 } from "lucide-react"
 
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   EmojiPicker,
   EmojiPickerContent,
   EmojiPickerFooter,
   EmojiPickerSearch,
 } from "@/components/ui/emoji-picker"
-import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useSession } from "@notelab/features/auth"
 import {
   useUpdateWorkspacePropertyValue,
+  useWorkspacePersonAccessTargets,
   useWorkspaceProperties,
 } from "@notelab/features/workspaces"
 
+import { DatabasePropertyDate } from "../../extensions/database/database-property-date"
+import { DatabasePropertyFiles } from "../../extensions/database/database-property-files"
+import { DatabasePropertyInput } from "../../extensions/database/database-property-input"
+import { DatabasePropertySelect } from "../../extensions/database/database-property-select"
 import { getDatabasePropertyType } from "../../extensions/database/constants"
+import { defaultStatusOptions } from "../../extensions/database/constants"
+import { formatDatabaseDateValue } from "../../extensions/database/table/database-date-config"
+import { getPersonLimit } from "../../extensions/database/table/database-column-config"
 import {
+  type DatabasePropertyValue,
   parsePropertyValue,
   serializePropertyValue,
 } from "../../extensions/database/utils"
@@ -47,28 +57,69 @@ export function WorkspaceMetadata({
   const [iconOpen, setIconOpen] = useState(false)
   const [localIcon, setLocalIcon] = useState("")
   const [localTitle, setLocalTitle] = useState("")
-  const [draftValues, setDraftValues] = useState<Record<string, string>>({})
+  const [draftValues, setDraftValues] = useState<Record<string, DatabasePropertyValue>>({})
   const titleRef = useRef<HTMLTextAreaElement | null>(null)
   const { data: propertyPayload } = useWorkspaceProperties(workspaceId)
+  const { data: accessTargets } = useWorkspacePersonAccessTargets(workspaceId)
+  const { data: session } = useSession()
   const updatePropertyValue = useUpdateWorkspacePropertyValue()
   const icon = iconProp ?? localIcon
   const title = titleProp ?? localTitle
   const propertyValues = useMemo(() => {
-    const values: Record<string, string> = {}
+    const values: Record<string, DatabasePropertyValue> = {}
 
     for (const value of propertyPayload?.values ?? []) {
       const property = propertyPayload?.properties.find(
         (item) => item.id === value.propertyId
       )
-      const parsedValue = parsePropertyValue(value.value, property?.type)
-
-      values[value.propertyId] = Array.isArray(parsedValue)
-        ? parsedValue.join(", ")
-        : parsedValue
+      values[value.propertyId] = parsePropertyValue(value.value, property?.type)
     }
 
     return values
   }, [propertyPayload?.properties, propertyPayload?.values])
+  const personOptions = useMemo(
+    () =>
+      (accessTargets?.members ?? []).map((member) => ({
+        id: member.id,
+        name: member.name || member.email,
+        suffix: member.id === session?.user?.id ? "(you)" : undefined,
+      })),
+    [accessTargets?.members, session?.user?.id]
+  )
+
+  const commitPropertyValue = (
+    propertyId: string,
+    propertyType: string,
+    value: DatabasePropertyValue
+  ) => {
+    if (!workspaceId || !editable) {
+      return
+    }
+
+    setDraftValues((drafts) => ({
+      ...drafts,
+      [propertyId]: value,
+    }))
+
+    updatePropertyValue.mutate(
+      {
+        propertyId,
+        value: serializePropertyValue(propertyType, value),
+        workspaceId,
+      },
+      {
+        onSuccess: () => {
+          setDraftValues((drafts) => {
+            const nextDrafts = { ...drafts }
+
+            delete nextDrafts[propertyId]
+
+            return nextDrafts
+          })
+        },
+      }
+    )
+  }
 
   const updateIcon = (nextIcon: string) => {
     if (!editable) {
@@ -251,6 +302,20 @@ export function WorkspaceMetadata({
               const PropertyIcon = getDatabasePropertyType(property.type).icon
               const value =
                 draftValues[property.id] ?? propertyValues[property.id] ?? ""
+              const isSelectProperty =
+                property.type === "select" ||
+                property.type === "multi_select" ||
+                property.type === "status"
+              const isCheckboxProperty = property.type === "checkbox"
+              const isDateProperty = property.type === "date"
+              const isFilesProperty = property.type === "files"
+              const isPersonProperty = property.type === "person"
+              const isReadOnlyTimeProperty =
+                property.type === "created_time" || property.type === "edited_time"
+              const isMultiSelectProperty =
+                property.type === "multi_select" ||
+                (isPersonProperty && getPersonLimit(property.config) !== "one_person")
+              const inputValue = Array.isArray(value) ? value.join(", ") : value
 
               return (
                 <div
@@ -261,37 +326,88 @@ export function WorkspaceMetadata({
                     <PropertyIcon />
                     <span className="truncate">{property.name}</span>
                   </span>
-                  <Input
-                    aria-label={property.name}
-                    className="h-8 min-w-0 rounded-md border-0 bg-transparent px-2 py-1 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:bg-muted focus-visible:ring-0 dark:bg-transparent"
-                    onBlur={() => {
-                      if (!workspaceId || !editable) {
-                        return
-                      }
-
-                      updatePropertyValue.mutate({
-                        propertyId: property.id,
-                        value: serializePropertyValue(property.type, value),
-                        workspaceId,
-                      })
-                    }}
-                    onChange={(event) =>
-                      editable
-                        ? setDraftValues((drafts) => ({
+                  <div className="min-w-0">
+                    {isReadOnlyTimeProperty ? (
+                      <span className="database-date-cell-trigger">
+                        {formatDatabaseDateValue(value, property.config) || (
+                          <span className="text-muted-foreground">Empty</span>
+                        )}
+                      </span>
+                    ) : isCheckboxProperty ? (
+                      <div className="database-checkbox-cell px-0">
+                        <Checkbox
+                          aria-label={`${property.name} value`}
+                          checked={value === "true"}
+                          disabled={!editable}
+                          onCheckedChange={(nextChecked) =>
+                            commitPropertyValue(
+                              property.id,
+                              property.type,
+                              nextChecked === true ? "true" : "false"
+                            )
+                          }
+                        />
+                      </div>
+                    ) : isSelectProperty || isPersonProperty ? (
+                      <DatabasePropertySelect
+                        allowCreate={false}
+                        defaultOptions={
+                          property.type === "status"
+                            ? defaultStatusOptions
+                            : isPersonProperty
+                              ? personOptions
+                              : undefined
+                        }
+                        editable={editable}
+                        label={property.name}
+                        multiple={isMultiSelectProperty}
+                        onSelect={(nextValue) =>
+                          commitPropertyValue(property.id, property.type, nextValue)
+                        }
+                        propertyConfig={property.config}
+                        showStatusDot={property.type === "status"}
+                        value={value}
+                        valueKey={isPersonProperty ? "id" : "name"}
+                      />
+                    ) : isDateProperty ? (
+                      <DatabasePropertyDate
+                        editable={editable}
+                        label={property.name}
+                        onSelect={(nextValue) =>
+                          commitPropertyValue(property.id, property.type, nextValue)
+                        }
+                        propertyConfig={property.config}
+                        value={value}
+                      />
+                    ) : isFilesProperty ? (
+                      <DatabasePropertyFiles
+                        editable={editable}
+                        label={property.name}
+                        onSelect={(nextValue) =>
+                          commitPropertyValue(property.id, property.type, nextValue)
+                        }
+                        propertyConfig={property.config}
+                        value={value}
+                      />
+                    ) : (
+                      <DatabasePropertyInput
+                        editable={editable}
+                        label={property.name}
+                        onChange={(nextValue) =>
+                          setDraftValues((drafts) => ({
                             ...drafts,
-                            [property.id]: event.target.value,
+                            [property.id]: nextValue,
                           }))
-                        : undefined
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.currentTarget.blur()
-                      }
-                    }}
-                    placeholder="Empty"
-                    readOnly={!editable}
-                    value={value}
-                  />
+                        }
+                        onCommit={() =>
+                          commitPropertyValue(property.id, property.type, inputValue)
+                        }
+                        propertyConfig={property.config}
+                        type={property.type}
+                        value={inputValue}
+                      />
+                    )}
+                  </div>
                 </div>
               )
             })}

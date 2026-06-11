@@ -11,7 +11,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
-import { useUpdateDatabaseProperty } from "@notelab/features/databases"
 import {
   dateFormatOptions,
   formatDatabaseDateValueWithFormats,
@@ -23,30 +22,27 @@ import {
   type DatabaseDatePropertyConfig,
   type DateFormatValue,
   type TimeFormatValue,
-} from "./database-date-config"
+} from "./table/database-date-config"
 
-type DatabaseDateCellProps = {
-  databaseId: string
+type DatabasePropertyDateProps = {
   editable?: boolean
   label: string
   onOpenChange?: (open: boolean) => void
+  onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown
   onSelect: (value: string | string[]) => void
   propertyConfig?: unknown
-  propertyId: string
   value: string | string[]
 }
 
-export function DatabaseDateCell({
-  databaseId,
+export function DatabasePropertyDate({
   editable = true,
   label,
   onOpenChange,
+  onPropertyConfigChange,
   onSelect,
   propertyConfig,
-  propertyId,
   value,
-}: DatabaseDateCellProps) {
-  const updateProperty = useUpdateDatabaseProperty()
+}: DatabasePropertyDateProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isRange, setIsRange] = useState(Array.isArray(value) && value.length > 1)
   const [draftStartValue, setDraftStartValue] = useState(getStartValue(value))
@@ -135,20 +131,24 @@ export function DatabaseDateCell({
     commitRange(startValue, endValue)
   }
 
-  const updateDateFormat = (dateFormat: DateFormatValue) => {
-    updateProperty.mutate({
-      config: getDateConfigWithFormat(propertyConfig, { dateFormat }),
-      databaseId,
-      databasePropertyId: propertyId,
-    })
+  const updateDateFormat = async (dateFormat: DateFormatValue) => {
+    if (!onPropertyConfigChange) {
+      return
+    }
+
+    await onPropertyConfigChange(
+      getDateConfigWithFormat(propertyConfig, { dateFormat })
+    )
   }
 
-  const updateTimeFormat = (timeFormat: TimeFormatValue) => {
-    updateProperty.mutate({
-      config: getDateConfigWithFormat(propertyConfig, { timeFormat }),
-      databaseId,
-      databasePropertyId: propertyId,
-    })
+  const updateTimeFormat = async (timeFormat: TimeFormatValue) => {
+    if (!onPropertyConfigChange) {
+      return
+    }
+
+    await onPropertyConfigChange(
+      getDateConfigWithFormat(propertyConfig, { timeFormat })
+    )
   }
 
   if (!editable) {
@@ -310,21 +310,25 @@ export function DatabaseDateCell({
               }
             }}
           />
-          <DatabaseDateFormatOption
-            label="Date format"
-            onSelect={updateDateFormat}
-            options={dateFormatOptions}
-            selectedValue={dateFormat}
-            value={dateFormatLabel}
-          />
-          <DatabaseDateFormatOption
-            label="Time format"
-            onSelect={updateTimeFormat}
-            options={timeFormatOptions}
-            selectedValue={timeFormat}
-            value={timeFormatLabel}
-          />
-          <DatabaseDateOption label="Remind" value="None" />
+          {onPropertyConfigChange ? (
+            <>
+              <DatabaseDateFormatOption
+                label="Date format"
+                onSelect={(nextValue) => void updateDateFormat(nextValue)}
+                options={dateFormatOptions}
+                selectedValue={dateFormat}
+                value={dateFormatLabel}
+              />
+              <DatabaseDateFormatOption
+                label="Time format"
+                onSelect={(nextValue) => void updateTimeFormat(nextValue)}
+                options={timeFormatOptions}
+                selectedValue={timeFormat}
+                value={timeFormatLabel}
+              />
+              <DatabaseDateOption label="Remind" value="None" />
+            </>
+          ) : null}
         </div>
         <Button
           className="h-8 w-full justify-start rounded-md border-t px-2 py-1"
@@ -348,6 +352,8 @@ export function DatabaseDateCell({
     </Popover>
   )
 }
+
+export { DatabasePropertyDate as DatabaseDateCell }
 
 function getDateConfigWithFormat(
   config: unknown,

@@ -54,9 +54,10 @@ import {
   defaultStatusOptions,
   getDatabasePropertyType,
 } from "../constants"
-import { DatabaseInputCell } from "./database-input-cell"
-import { DatabaseDateCell } from "./database-date-cell"
-import { DatabaseFilesCell } from "./database-files-cell"
+import { DatabasePropertyDate } from "../database-property-date"
+import { DatabasePropertyFiles } from "../database-property-files"
+import { DatabasePropertyInput } from "../database-property-input"
+import { DatabasePropertySelect } from "../database-property-select"
 import { DatabasePageCell } from "./database-page-cell"
 import {
   getDatabaseSorts,
@@ -84,7 +85,6 @@ import {
   type DatabaseActiveSort,
 } from "./database-sort-menu"
 import { NameColumnGlyph } from "./name-column-glyph"
-import { DatabaseSelectCell } from "./database-select-cell"
 import { DatabaseViewSettingsMenu } from "./database-view-settings-menu"
 import {
   getPropertyValue,
@@ -1728,9 +1728,8 @@ export function DatabaseTableView({
                               </DatabaseCellContent>
                             ) : isSelectProperty || isPersonProperty ? (
                               <DatabaseCellContent wrapContent={wrapContent}>
-                                <DatabaseSelectCell
+                                <DatabasePropertySelect
                                   allowCreate={!isPersonProperty}
-                                  databaseId={payload.database.id}
                                   editable={editable}
                                   defaultOptions={
                                     workspaceProperty.type === "status"
@@ -1739,6 +1738,7 @@ export function DatabaseTableView({
                                         ? personOptions
                                       : undefined
                                   }
+                                  label={workspaceProperty.name}
                                   multiple={isMultiSelectProperty}
                                   onSelect={(optionValue) =>
                                     saveCell(
@@ -1749,9 +1749,14 @@ export function DatabaseTableView({
                                       optionValue
                                     )
                                   }
+                                  onPropertyConfigChange={(config) =>
+                                    updateProperty.mutateAsync({
+                                      config,
+                                      databaseId: payload.database.id,
+                                      databasePropertyId: property.id,
+                                    })
+                                  }
                                   propertyConfig={workspaceProperty.config}
-                                  propertyId={property.id}
-                                  propertyName={workspaceProperty.name}
                                   showStatusDot={
                                     workspaceProperty.type === "status"
                                   }
@@ -1761,12 +1766,18 @@ export function DatabaseTableView({
                               </DatabaseCellContent>
                             ) : isDateProperty ? (
                               <DatabaseCellContent wrapContent={wrapContent}>
-                                <DatabaseDateCell
-                                  databaseId={payload.database.id}
+                                <DatabasePropertyDate
                                   editable={editable}
                                   label={workspaceProperty.name}
                                   onOpenChange={(open) =>
                                     setActiveCellKey(open ? key : null)
+                                  }
+                                  onPropertyConfigChange={(config) =>
+                                    updateProperty.mutateAsync({
+                                      config,
+                                      databaseId: payload.database.id,
+                                      databasePropertyId: property.id,
+                                    })
                                   }
                                   onSelect={(nextValue) =>
                                     saveCell(
@@ -1778,13 +1789,12 @@ export function DatabaseTableView({
                                     )
                                   }
                                   propertyConfig={workspaceProperty.config}
-                                  propertyId={property.id}
                                   value={value}
                                 />
                               </DatabaseCellContent>
                             ) : isFilesProperty ? (
                               <DatabaseCellContent wrapContent={wrapContent}>
-                                <DatabaseFilesCell
+                                <DatabasePropertyFiles
                                   editable={editable}
                                   label={workspaceProperty.name}
                                   onOpenChange={(open) =>
@@ -1805,7 +1815,7 @@ export function DatabaseTableView({
                               </DatabaseCellContent>
                             ) : (
                               <DatabaseCellContent wrapContent={wrapContent}>
-                                <DatabaseInputCell
+                                <DatabasePropertyInput
                                   label={workspaceProperty.name}
                                   editable={editable}
                                   onActivate={(element) => {
