@@ -37,6 +37,7 @@ import {
   getPropertyHidden,
 } from "./database-column-config"
 import { DatabasePropertyEditSubmenu } from "./database-property-menu"
+import { hasDatabasePropertyEditSettings } from "./database-property-edit-submenu"
 import {
   DatabaseSearchableMenuItems,
   type DatabaseSearchableMenuOption,
@@ -320,17 +321,21 @@ export function DatabaseViewSettingsMenu({
               inputIcon={<Settings2 className="size-4" />}
               inputPlaceholder="Edit property..."
               open={open}
-              options={properties.map((property) => {
-                const PropertyIcon = getDatabasePropertyType(
-                  property.property.type
-                ).icon
+              options={properties
+                .filter((property) =>
+                  hasDatabasePropertyEditSettings(property.property.type)
+                )
+                .map((property) => {
+                  const PropertyIcon = getDatabasePropertyType(
+                    property.property.type
+                  ).icon
 
-                return {
-                  icon: <PropertyIcon />,
-                  label: property.property.name,
-                  value: property.id,
-                }
-              })}
+                  return {
+                    icon: <PropertyIcon />,
+                    label: property.property.name,
+                    value: property.id,
+                  }
+                })}
               renderOption={(option) => {
                 const property = properties.find(
                   (candidate) => candidate.id === option.value
