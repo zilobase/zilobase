@@ -18,6 +18,7 @@ import {
   Plus,
 } from "lucide-react"
 import { useReorderDatabaseRows } from "@notelab/features/databases"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
@@ -212,6 +213,9 @@ export function DatabaseTableView() {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null)
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(
+    () => new Set()
+  )
   const [rowDragOverlay, setRowDragOverlay] =
     useState<TableRowDragOverlay | null>(null)
   const [rowDropTargetIndex, setRowDropTargetIndex] = useState<number | null>(
@@ -241,6 +245,7 @@ export function DatabaseTableView() {
     [personOptions]
   )
   const activeInsertProperty = pendingInsertProperty
+  const canReorderRows = editable && !isTableSorted && !isTableGrouped
   const pendingInsertPropertyKey = activeInsertProperty
     ? `insert-property-${activeInsertProperty.sourceColumnKey}-${activeInsertProperty.side}`
     : null
@@ -463,13 +468,6 @@ export function DatabaseTableView() {
     isTableGrouped || rowDropTargetIndex === null
       ? null
       : (rowLayout.dropTops[rowDropTargetIndex] ?? null)
-  const activeDragRowId = draggedRowId ?? hoveredRowId
-  const activeDragRowIndex = activeDragRowId
-    ? sortedRows.findIndex((row: any) => row.id === activeDragRowId)
-    : -1
-  const activeDragRow =
-    activeDragRowIndex === -1 ? null : sortedRows[activeDragRowIndex]
-
   useEffect(() => {
     if (
       activeEditingPropertyKey &&
@@ -627,6 +625,67 @@ export function DatabaseTableView() {
 
   const togglePropertyGrouping = (propertyId: string, isGrouped: boolean) => {
     setViewGroupProperty(isGrouped ? null : propertyId)
+  }
+
+  const visibleRows = isTableGrouped
+    ? groupedSections.flatMap((section) =>
+        collapsedGroups[section.id] === true ? [] : section.rows
+      )
+    : sortedRows
+
+  const toggleSelectedRow = (rowId: string, checked: boolean) => {
+    setSelectedRowIds((current) => {
+      const next = new Set(current)
+
+      if (checked) {
+        next.add(rowId)
+      } else {
+        next.delete(rowId)
+      }
+
+      return next
+    })
+  }
+
+  const startRowDrag = (row: any, event: ReactDragEvent<HTMLButtonElement>) => {
+    if (!canReorderRows) {
+      return
+    }
+
+    measureRows()
+    const rowElement = tableWrapRef.current?.querySelector(
+      `tr[data-database-row-id="${row.id}"]`
+    )
+    const rowRect = rowElement?.getBoundingClientRect()
+    const tableRect = tableWrapRef.current
+      ?.querySelector(".database-table")
+      ?.getBoundingClientRect()
+
+    if (rowRect && tableRect) {
+      setRowDragOverlay({
+        height: rowRect.height,
+        left: rowRect.left,
+        offsetX: event.clientX - rowRect.left,
+        offsetY: event.clientY - rowRect.top,
+        title: row.page.name.trim() || "Untitled",
+        top: rowRect.top,
+        width: tableRect.width,
+      })
+    }
+
+    hideNativeTableRowDragPreview(event.dataTransfer)
+    setDraggedRowId(row.id)
+    setRowDropTargetIndex(sortedRows.findIndex((item: any) => item.id === row.id))
+    event.dataTransfer.effectAllowed = "copyMove"
+    event.dataTransfer.setData(
+      DATABASE_PAGE_DRAG_MIME,
+      JSON.stringify({
+        databaseId: loadedDatabaseId,
+        pageId: row.pageId,
+        rowId: row.id,
+      })
+    )
+    event.dataTransfer.setData("text/plain", row.page.name.trim() || "Untitled")
   }
 
   const renderInsertPropertyHeader = (insertKey: string, position: number) => (
@@ -926,69 +985,64 @@ export function DatabaseTableView() {
         clearRowDrag()
       }}
     >
-      {editable && !isTableSorted && !isTableGrouped ? (
+      {editable ? (
         <div className="database-row-drag-rail">
-          {activeDragRow ? (
-            <button
-              aria-label={`Drag ${activeDragRow.page.name.trim() || "Untitled"}`}
-              className="database-row-drag-handle"
-              data-database-row-drag-handle
-              data-dragging={draggedRowId === activeDragRow.id ? "true" : undefined}
-              data-visible="true"
-              draggable
-              key="database-row-drag-handle"
-              onClick={(event) => event.preventDefault()}
-              onDragStart={(event) => {
-                measureRows()
-                const rowElement = tableWrapRef.current?.querySelector(
-                  `tr[data-database-row-id="${activeDragRow.id}"]`
-                )
-                const rowRect = rowElement?.getBoundingClientRect()
-                const tableRect = tableWrapRef.current
-                  ?.querySelector(".database-table")
-                  ?.getBoundingClientRect()
+          {visibleRows.map((row: any) => {
+            const rowCenter = rowLayout.centers[row.id]
 
-                if (rowRect && tableRect) {
-                  setRowDragOverlay({
-                    height: rowRect.height,
-                    left: rowRect.left,
-                    offsetX: event.clientX - rowRect.left,
-                    offsetY: event.clientY - rowRect.top,
-                    title: activeDragRow.page.name.trim() || "Untitled",
-                    top: rowRect.top,
-                    width: tableRect.width,
-                  })
-                }
+            if (rowCenter === undefined) {
+              return null
+            }
 
-                hideNativeTableRowDragPreview(event.dataTransfer)
-                setDraggedRowId(activeDragRow.id)
-                setRowDropTargetIndex(activeDragRowIndex)
-                event.dataTransfer.effectAllowed = "copyMove"
-                event.dataTransfer.setData(
-                  DATABASE_PAGE_DRAG_MIME,
-                  JSON.stringify({
-                    databaseId: loadedDatabaseId,
-                    pageId: activeDragRow.pageId,
-                    rowId: activeDragRow.id,
-                  })
-                )
-                event.dataTransfer.setData(
-                  "text/plain",
-                  activeDragRow.page.name.trim() || "Untitled"
-                )
-              }}
-              onDragEnd={clearRowDrag}
-              onMouseEnter={() => {
-                measureRows()
-                setHoveredRowId(activeDragRow.id)
-              }}
-              style={{ top: rowLayout.centers[activeDragRow.id] ?? 0 }}
-              title="Drag page"
-              type="button"
-            >
-              <GripVertical />
-            </button>
-          ) : null}
+            const isRowHandleVisible =
+              hoveredRowId === row.id || draggedRowId === row.id
+
+            return (
+              <div
+                className="database-row-controls"
+                data-visible={isRowHandleVisible ? "true" : undefined}
+                key={row.id}
+                onMouseEnter={() => {
+                  measureRows()
+                  setHoveredRowId(row.id)
+                }}
+                onMouseLeave={() => {
+                  if (!draggedRowId) {
+                    setHoveredRowId(null)
+                  }
+                }}
+                style={{ top: rowCenter }}
+              >
+                <Checkbox
+                  aria-label={`Select ${row.page.name.trim() || "Untitled"}`}
+                  checked={selectedRowIds.has(row.id)}
+                  className="database-row-checkbox"
+                  onCheckedChange={(checked) =>
+                    toggleSelectedRow(row.id, checked === true)
+                  }
+                />
+                <button
+                  aria-label={`Drag ${row.page.name.trim() || "Untitled"}`}
+                  className="database-row-drag-handle"
+                  data-database-row-drag-handle
+                  data-dragging={draggedRowId === row.id ? "true" : undefined}
+                  disabled={!canReorderRows}
+                  draggable={canReorderRows}
+                  onClick={(event) => event.preventDefault()}
+                  onDragEnd={clearRowDrag}
+                  onDragStart={(event) => startRowDrag(row, event)}
+                  title={
+                    canReorderRows
+                      ? "Drag page"
+                      : "Manual row sorting is disabled while this view is sorted or grouped"
+                  }
+                  type="button"
+                >
+                  <GripVertical />
+                </button>
+              </div>
+            )
+          })}
         </div>
       ) : null}
       {rowDragOverlay ? (

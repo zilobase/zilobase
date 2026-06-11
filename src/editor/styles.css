@@ -764,21 +764,29 @@
 
   .database-row-drag-rail {
     @apply pointer-events-none absolute bottom-0 left-0 top-0 z-40 hidden md:block;
-    transform: translateX(-2.23rem);
+    transform: translateX(-3.5rem);
+  }
+
+  .database-row-controls {
+    @apply pointer-events-none absolute flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity;
+  }
+
+  .database-row-controls::after {
+    @apply absolute inset-y-0 left-0 content-[''];
+    right: -0.75rem;
+  }
+
+  .database-row-controls[data-visible="true"],
+  .database-row-controls:focus-within {
+    @apply pointer-events-auto opacity-100;
   }
 
   .database-row-drag-handle {
-    @apply pointer-events-auto absolute flex size-7 -translate-y-1/2 cursor-grab items-center justify-center rounded-sm bg-transparent text-muted-foreground opacity-0 outline-none hover:text-foreground active:cursor-grabbing focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/40;
+    @apply relative z-10 flex size-7 shrink-0 cursor-grab items-center justify-center bg-transparent text-muted-foreground outline-none transition-colors hover:text-foreground active:cursor-grabbing focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-default disabled:opacity-30 disabled:hover:text-muted-foreground;
   }
 
-  .database-row-drag-handle::after {
-    @apply absolute inset-y-0 left-0 content-[''];
-    width: 4rem;
-  }
-
-  .database-row-drag-handle[data-visible="true"],
-  .database-row-drag-handle:focus-visible {
-    @apply opacity-100;
+  .database-row-checkbox {
+    @apply relative z-10 border-muted-foreground/35 bg-background;
   }
 
   .database-row-drag-handle[data-dragging="true"] {
@@ -847,7 +855,7 @@
   }
 
   body:has(.tiptap-editor .database-table th:hover) .drag-handle,
-  body:has(.database-row-drag-handle[data-visible="true"]) .drag-handle,
+  body:has(.database-row-drag-rail:hover) .drag-handle,
   body:has(.database-row-drag-handle:focus-visible) .drag-handle,
   body:has(.database-column-resize-handle:active) .drag-handle,
   body.database-resize-cursor .drag-handle {
