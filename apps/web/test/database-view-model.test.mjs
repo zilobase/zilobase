@@ -258,6 +258,95 @@ export function register({ assert, loadModule, test }) {
       ["row-1", "row-3"]
     )
   })
+
+  test("database view model derives conditional color settings", async () => {
+    const { getDatabaseViewModel } = await loadModule(
+      "/src/editor/extensions/database/shared/database-view-model.tsx"
+    )
+    const statusProperty = createProperty(
+      "database-property-status",
+      "property-status",
+      "Status",
+      "status"
+    )
+    const payload = {
+      database: {
+        config: {},
+        id: "database-1",
+        name: "Roadmap",
+      },
+      properties: [statusProperty],
+      rows: [createRow("row-1", "page-1", "Alpha", 0)],
+      values: [],
+      views: [
+        {
+          config: {
+            conditionalColors: [
+              {
+                applyTo: "this-property",
+                color: "green",
+                filter: {
+                  id: "conditional-filter-status",
+                  operator: "is",
+                  propertyId: "database-property-status",
+                  values: ["Done"],
+                },
+                id: "conditional-color-status",
+                style: "page-background",
+              },
+              {
+                color: "red",
+                filter: {
+                  id: "conditional-filter-missing",
+                  operator: "is",
+                  propertyId: "missing-property",
+                  values: ["Blocked"],
+                },
+                id: "conditional-color-missing",
+              },
+            ],
+          },
+          id: "view-table",
+          name: "Table",
+          type: "table",
+        },
+      ],
+    }
+
+    const model = getDatabaseViewModel({
+      activeViewId: "view-table",
+      payload,
+    })
+
+    assert.deepEqual(
+      model.activeConditionalColors.map(({ applyTo, color, filter, id }) => ({
+        applyTo,
+        color,
+        filter: {
+          label: filter.label,
+          operator: filter.operator,
+          propertyId: filter.propertyId,
+          propertyType: filter.propertyType,
+          values: filter.values,
+        },
+        id,
+      })),
+      [
+        {
+          applyTo: "this-property",
+          color: "green",
+          filter: {
+            label: "Status",
+            operator: "is",
+            propertyId: "database-property-status",
+            propertyType: "status",
+            values: ["Done"],
+          },
+          id: "conditional-color-status",
+        },
+      ]
+    )
+  })
 }
 
 function createProperty(id, propertyId, name, type, config = {}) {

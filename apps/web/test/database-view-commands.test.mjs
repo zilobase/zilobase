@@ -328,6 +328,88 @@ export function register({ assert, loadModule, test }) {
     ])
   })
 
+  test("database view commands save conditional color config", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/shared/database-view-commands.ts"
+    )
+    const updateDatabaseView = createMutation()
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: { emoji: "pin" },
+        id: "view-1",
+        name: "Table",
+        type: "table",
+      },
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ updateDatabaseView }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    })
+
+    commands.saveDatabaseConditionalColors([
+      {
+        applyTo: "entire-row",
+        color: "green",
+        filter: {
+          id: "conditional-filter-name",
+          operator: "contains",
+          propertyId: "name",
+          values: ["launch"],
+        },
+        id: "conditional-color-name",
+        style: "page-background",
+      },
+    ])
+    commands.saveDatabaseConditionalColors([])
+
+    assert.deepEqual(updateDatabaseView.calls, [
+      [
+        {
+          config: {
+            conditionalColors: [
+              {
+                applyTo: "entire-row",
+                color: "green",
+                filter: {
+                  id: "conditional-filter-name",
+                  operator: "contains",
+                  propertyId: "name",
+                  values: ["launch"],
+                },
+                id: "conditional-color-name",
+                style: "page-background",
+              },
+            ],
+            emoji: "pin",
+          },
+          databaseId,
+          databaseViewId: "view-1",
+        },
+      ],
+      [
+        {
+          config: {
+            conditionalColors: undefined,
+            emoji: "pin",
+          },
+          databaseId,
+          databaseViewId: "view-1",
+        },
+      ],
+    ])
+  })
+
   test("database view commands update active view type", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/editor/extensions/database/shared/database-view-commands.ts"
