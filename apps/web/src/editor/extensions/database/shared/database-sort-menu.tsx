@@ -1,9 +1,11 @@
-import { ArrowDownUp, Plus, X } from "lucide-react"
+import { ArrowDownUp, Check, Plus, X } from "lucide-react"
 import { useState, type ReactNode } from "react"
 
 import {
   DropDrawer,
   DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerSeparator,
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
@@ -161,6 +163,110 @@ function DatabaseSortMenuContent({
   )
 }
 
+function getSortDirectionLabel(direction: DatabaseSortDirection) {
+  return direction === "ascending" ? "Ascending" : "Descending"
+}
+
+function DatabaseSortNestedMenuContent({
+  activeDatabaseSorts,
+  addableSortFieldOptions,
+  canAddDatabaseSort,
+  onCreateDatabaseSort,
+  onRemoveDatabaseSort,
+  onUpdateDatabaseSort,
+  sortFieldOptions,
+}: DatabaseSortMenuProps) {
+  return (
+    <>
+      {activeDatabaseSorts.length > 0 ? (
+        activeDatabaseSorts.map((sort, index) => {
+          const availableSortOptions = sortFieldOptions.filter(
+            (option) =>
+              option.value === sort.column ||
+              !activeDatabaseSorts.some(
+                (activeSort, activeIndex) =>
+                  activeIndex !== index && activeSort.column === option.value
+              )
+          )
+
+          return (
+            <DropDrawerSub key={`${sort.column}:${index}`}>
+              <DropDrawerSubTrigger>
+                <ArrowDownUp />
+                <span className="truncate">{sort.label}</span>
+                <span className="ml-auto shrink-0 text-muted-foreground">
+                  {getSortDirectionLabel(sort.direction)}
+                </span>
+              </DropDrawerSubTrigger>
+              <DropDrawerSubContent className="w-72">
+                <DatabaseSearchableMenuItems
+                  inputAriaLabel={`${sort.label} sort property`}
+                  inputIcon={<ArrowDownUp className="size-4" />}
+                  inputPlaceholder="Sort by..."
+                  options={availableSortOptions}
+                  renderOption={(option) => (
+                    <DropDrawerItem
+                      onSelect={() =>
+                        onUpdateDatabaseSort(index, { column: option.value })
+                      }
+                    >
+                      {option.icon}
+                      <span>{option.label}</span>
+                      {option.value === sort.column ? (
+                        <Check className="ml-auto text-foreground" />
+                      ) : null}
+                    </DropDrawerItem>
+                  )}
+                />
+                <DropDrawerSeparator />
+                {(["ascending", "descending"] as const).map((direction) => (
+                  <DropDrawerItem
+                    key={direction}
+                    onSelect={() => onUpdateDatabaseSort(index, { direction })}
+                  >
+                    <span>{getSortDirectionLabel(direction)}</span>
+                    {sort.direction === direction ? (
+                      <Check className="ml-auto text-foreground" />
+                    ) : null}
+                  </DropDrawerItem>
+                ))}
+                <DropDrawerSeparator />
+                <DropDrawerItem onSelect={() => onRemoveDatabaseSort(index)}>
+                  <X />
+                  <span>Remove sort</span>
+                </DropDrawerItem>
+              </DropDrawerSubContent>
+            </DropDrawerSub>
+          )
+        })
+      ) : (
+        <DropDrawerItem disabled>No sorts yet</DropDrawerItem>
+      )}
+      {canAddDatabaseSort ? (
+        <>
+          <DropDrawerSeparator />
+          <DropDrawerSub>
+            <DropDrawerSubTrigger>
+              <Plus />
+              <span>Add sort</span>
+            </DropDrawerSubTrigger>
+            <DropDrawerSubContent className="w-72">
+              <DatabaseSearchableMenuItems
+                emptyMessage="No properties available."
+                inputAriaLabel="Add sort property"
+                inputIcon={<ArrowDownUp className="size-4" />}
+                inputPlaceholder="Sort by..."
+                onSelect={onCreateDatabaseSort}
+                options={addableSortFieldOptions}
+              />
+            </DropDrawerSubContent>
+          </DropDrawerSub>
+        </>
+      ) : null}
+    </>
+  )
+}
+
 export function DatabaseSortPopover({
   activeDatabaseSorts,
   addableSortFieldOptions,
@@ -212,8 +318,8 @@ export function DatabaseSortSubmenu({
   return (
     <DropDrawerSub>
       <DropDrawerSubTrigger>{children}</DropDrawerSubTrigger>
-      <DropDrawerSubContent className="w-fit min-w-0 max-w-[calc(100vw-2rem)] p-3">
-        <DatabaseSortMenuContent
+      <DropDrawerSubContent className="w-72">
+        <DatabaseSortNestedMenuContent
           activeDatabaseSorts={activeDatabaseSorts}
           addableSortFieldOptions={addableSortFieldOptions}
           canAddDatabaseSort={canAddDatabaseSort}

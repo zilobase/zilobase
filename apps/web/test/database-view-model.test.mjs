@@ -74,7 +74,7 @@ export function register({ assert, loadModule, test }) {
     assert.equal(model.activeView?.id, "view-kanban")
     assert.equal(model.isKanbanView, true)
     assert.equal(model.titlePropertyLabel, "Task")
-    assert.equal(model.showPageIconInTitle, false)
+    assert.equal(model.showPageIconInWHENTitle, false)
     assert.deepEqual(
       model.activeDatabaseSorts.map(({ column, direction, label }) => ({
         column,
