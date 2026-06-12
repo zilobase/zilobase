@@ -89,6 +89,45 @@ export function getFilteredReorderedRowIds(
     : rowIds
 }
 
+export function getGroupedReorderedRowIds({
+  allRows,
+  draggedRowId,
+  groupRows,
+  targetIndex,
+  visibleRows,
+}: {
+  allRows: RowIdItem[]
+  draggedRowId: string
+  groupRows: RowIdItem[]
+  targetIndex: number
+  visibleRows: RowIdItem[]
+}) {
+  const groupRowIds = new Set(groupRows.map((row) => row.id))
+
+  if (!groupRowIds.has(draggedRowId)) {
+    return null
+  }
+
+  const groupStartIndex = visibleRows.findIndex((row) => groupRowIds.has(row.id))
+
+  if (groupStartIndex === -1) {
+    return null
+  }
+
+  const groupEndIndex = groupStartIndex + groupRows.length
+
+  if (targetIndex < groupStartIndex || targetIndex > groupEndIndex) {
+    return null
+  }
+
+  return getFilteredReorderedRowIds(
+    allRows,
+    groupRows,
+    draggedRowId,
+    targetIndex - groupStartIndex
+  )
+}
+
 export function hideNativeTableRowDragPreview(dataTransfer: DataTransfer) {
   const dragImage = document.createElement("span")
 

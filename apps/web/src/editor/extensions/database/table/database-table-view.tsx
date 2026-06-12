@@ -61,6 +61,7 @@ import { useInlineDatabaseScroll } from "../shared/use-inline-database-scroll"
 import { databaseItemMatchesFilter } from "../shared/database-item-utils"
 import {
   getFilteredReorderedRowIds,
+  getGroupedReorderedRowIds,
   getReorderedRowIds,
   hideNativeTableRowDragPreview,
   type TableRowDragOverlay,
@@ -277,16 +278,34 @@ export function DatabaseTableView() {
     [personOptions]
   )
   const activeInsertProperty = pendingInsertProperty
-  const canReorderRows = editable && !isTableGrouped
-  const rowDragTitle = !canReorderRows
-    ? "Manual row sorting is disabled while this view is grouped"
-    : isTableSorted && isTableFiltered
-      ? "Drag page. Clear sorting to save the new order; hidden rows keep their relative order."
-      : isTableSorted
-        ? "Drag page. Clear sorting to save the new order."
-        : isTableFiltered
-          ? "Drag page. Hidden rows keep their relative order."
-          : "Drag page"
+  const canReorderRows = editable
+  const rowDragTitle = (() => {
+    if (!canReorderRows) {
+      return "Manual row sorting is disabled"
+    }
+
+    if (isTableGrouped && isTableSorted) {
+      return "Drag within this group. Clear sorting to save the new order."
+    }
+
+    if (isTableGrouped) {
+      return "Drag within this group"
+    }
+
+    if (isTableSorted && isTableFiltered) {
+      return "Drag page. Clear sorting to save the new order; hidden rows keep their relative order."
+    }
+
+    if (isTableSorted) {
+      return "Drag page. Clear sorting to save the new order."
+    }
+
+    if (isTableFiltered) {
+      return "Drag page. Hidden rows keep their relative order."
+    }
+
+    return "Drag page"
+  })()
   const pendingInsertPropertyKey = activeInsertProperty
     ? `insert-property-${activeInsertProperty.sourceColumnKey}-${activeInsertProperty.side}`
     : null
@@ -417,6 +436,11 @@ export function DatabaseTableView() {
     propertyValuesByKey,
     sortedRows,
   ])
+  const visibleRows = isTableGrouped
+    ? groupedSections.flatMap((section) =>
+        collapsedGroups[section.id] === true ? [] : section.rows
+      )
+    : sortedRows
   const getRowElements = useCallback(() => {
     return Array.from(
       tableWrapRef.current?.querySelectorAll<HTMLTableRowElement>(
@@ -476,9 +500,65 @@ export function DatabaseTableView() {
 
     return targetIndex === -1 ? rowElements.length : targetIndex
   }
-  const getDraggedRowReorderIds = () => {
-    if (!draggedRowId || rowDropTargetIndex === null || isTableGrouped) {
+  const getDraggedRowGroupSection = () => {
+    if (!draggedRowId || !isTableGrouped) {
       return null
+    }
+
+    return (
+      groupedSections.find((section) =>
+        section.rows.some((row: any) => row.id === draggedRowId)
+      ) ?? null
+    )
+  }
+  const getDraggedRowGroupDropTarget = () => {
+    if (!draggedRowId || rowDropTargetIndex === null || !isTableGrouped) {
+      return null
+    }
+
+    const groupSection = getDraggedRowGroupSection()
+
+    if (!groupSection) {
+      return null
+    }
+
+    const groupRowIds = new Set(groupSection.rows.map((row: any) => row.id))
+    const groupStartIndex = visibleRows.findIndex((row: any) =>
+      groupRowIds.has(row.id)
+    )
+
+    if (groupStartIndex === -1) {
+      return null
+    }
+
+    const groupEndIndex = groupStartIndex + groupSection.rows.length
+
+    if (
+      rowDropTargetIndex < groupStartIndex ||
+      rowDropTargetIndex > groupEndIndex
+    ) {
+      return null
+    }
+
+    return groupSection
+  }
+  const getDraggedRowReorderIds = () => {
+    if (!draggedRowId || rowDropTargetIndex === null) {
+      return null
+    }
+
+    if (isTableGrouped) {
+      const groupSection = getDraggedRowGroupDropTarget()
+
+      return groupSection
+        ? getGroupedReorderedRowIds({
+            allRows: rows,
+            draggedRowId,
+            groupRows: groupSection.rows,
+            targetIndex: rowDropTargetIndex,
+            visibleRows,
+          })
+        : null
     }
 
     if (isTableFiltered) {
@@ -530,7 +610,8 @@ export function DatabaseTableView() {
     setRowDropTargetIndex(null)
   }
   const rowDropLineTop =
-    isTableGrouped || rowDropTargetIndex === null
+    rowDropTargetIndex === null ||
+    (isTableGrouped && !getDraggedRowGroupDropTarget())
       ? null
       : (rowLayout.dropTops[rowDropTargetIndex] ?? null)
   const getRowConditionalColors = useCallback(
@@ -726,11 +807,6 @@ export function DatabaseTableView() {
     setViewGroupProperty(isGrouped ? null : propertyId)
   }
 
-  const visibleRows = isTableGrouped
-    ? groupedSections.flatMap((section) =>
-        collapsedGroups[section.id] === true ? [] : section.rows
-      )
-    : sortedRows
   const toggleSelectedRow = (rowId: string, checked: boolean) => {
     setSelectedRowIds((current) => {
       const next = new Set(current)
@@ -773,7 +849,7 @@ export function DatabaseTableView() {
 
     hideNativeTableRowDragPreview(event.dataTransfer)
     setDraggedRowId(row.id)
-    setRowDropTargetIndex(sortedRows.findIndex((item: any) => item.id === row.id))
+    setRowDropTargetIndex(visibleRows.findIndex((item: any) => item.id === row.id))
     event.dataTransfer.effectAllowed = "copyMove"
     event.dataTransfer.setData(
       DATABASE_PAGE_DRAG_MIME,
@@ -1056,11 +1132,8 @@ export function DatabaseTableView() {
           }
         }}
         onDragOver={(event: ReactDragEvent<HTMLDivElement>) => {
-          if (isTableGrouped) {
-            return
-          }
-
-          const hasDragPayload = hasDatabasePageDragPayload(event.dataTransfer)
+          const hasDragPayload =
+            !isTableGrouped && hasDatabasePageDragPayload(event.dataTransfer)
 
           if (!draggedRowId && !hasDragPayload) {
             return
@@ -1084,7 +1157,7 @@ export function DatabaseTableView() {
           setRowDropTargetIndex(getRowDropTargetIndex(event.clientY))
         }}
         onDrop={(event) => {
-          if (isTableGrouped) {
+          if (isTableGrouped && !draggedRowId) {
             return
           }
 

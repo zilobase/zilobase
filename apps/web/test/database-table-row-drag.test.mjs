@@ -66,4 +66,38 @@ export function register({ assert, loadModule, test }) {
       null
     )
   })
+
+  test("database table row drag reorders inside the dragged group", async () => {
+    const { getGroupedReorderedRowIds } = await loadModule(
+      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+    )
+
+    assert.deepEqual(
+      getGroupedReorderedRowIds({
+        allRows: rows(["A", "B", "C", "D", "E", "F"]),
+        draggedRowId: "F",
+        groupRows: rows(["D", "E", "F"]),
+        targetIndex: 3,
+        visibleRows: rows(["A", "B", "C", "D", "E", "F"]),
+      }),
+      ["A", "B", "C", "F", "D", "E"]
+    )
+  })
+
+  test("database table row drag rejects cross-group drops", async () => {
+    const { getGroupedReorderedRowIds } = await loadModule(
+      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+    )
+
+    assert.equal(
+      getGroupedReorderedRowIds({
+        allRows: rows(["A", "B", "C", "D", "E", "F"]),
+        draggedRowId: "F",
+        groupRows: rows(["D", "E", "F"]),
+        targetIndex: 1,
+        visibleRows: rows(["A", "B", "C", "D", "E", "F"]),
+      }),
+      null
+    )
+  })
 }
