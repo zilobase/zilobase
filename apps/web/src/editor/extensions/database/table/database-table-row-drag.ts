@@ -89,6 +89,50 @@ export function getFilteredReorderedRowIds(
     : rowIds
 }
 
+export function getAnchoredReorderedRowIds(
+  allRows: RowIdItem[],
+  draggedRowId: string,
+  anchorRows: RowIdItem[],
+  targetIndex: number
+) {
+  const draggedRow = allRows.find((row) => row.id === draggedRowId)
+
+  if (!draggedRow) {
+    return null
+  }
+
+  const nextAnchorId = anchorRows[targetIndex]?.id
+  const previousAnchorId = anchorRows[targetIndex - 1]?.id
+  const nextRows = allRows.filter((row) => row.id !== draggedRowId)
+  let insertIndex = 0
+
+  if (nextAnchorId) {
+    insertIndex = nextRows.findIndex((row) => row.id === nextAnchorId)
+
+    if (insertIndex === -1) {
+      return null
+    }
+  } else if (previousAnchorId) {
+    const previousAnchorIndex = nextRows.findIndex(
+      (row) => row.id === previousAnchorId
+    )
+
+    if (previousAnchorIndex === -1) {
+      return null
+    }
+
+    insertIndex = previousAnchorIndex + 1
+  }
+
+  nextRows.splice(insertIndex, 0, draggedRow)
+
+  const rowIds = nextRows.map((row) => row.id)
+
+  return rowIds.every((rowId, index) => rowId === allRows[index]?.id)
+    ? null
+    : rowIds
+}
+
 export function getGroupedReorderedRowIds({
   allRows,
   draggedRowId,

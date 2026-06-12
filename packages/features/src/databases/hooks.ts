@@ -66,6 +66,14 @@ type ReorderRowsInput = {
   rowIds: string[]
 }
 
+type MoveRowInput = {
+  databaseId: string
+  groupPropertyId?: string
+  groupValue?: unknown
+  rowId: string
+  rowIds: string[]
+}
+
 type UpdatePropertyValueInput = {
   databaseId: string
   propertyId: string
@@ -267,6 +275,25 @@ export function useReorderDatabaseRows() {
       apiFetch<DatabasePayload>(`/databases/${databaseId}/rows/reorder`, {
         method: "PATCH",
         body: JSON.stringify({ rowIds }),
+      }),
+    onSuccess: (payload) => setDatabasePayload(queryClient, payload),
+  })
+}
+
+export function useMoveDatabaseRow() {
+  const { apiFetch, queryClient } = useNotelabFeatures()
+
+  return useMutation({
+    mutationFn: async ({
+      databaseId,
+      rowId,
+      rowIds,
+      groupPropertyId,
+      groupValue,
+    }: MoveRowInput) =>
+      apiFetch<DatabasePayload>(`/databases/${databaseId}/rows/${rowId}/move`, {
+        method: "PATCH",
+        body: JSON.stringify({ groupPropertyId, groupValue, rowIds }),
       }),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
   })

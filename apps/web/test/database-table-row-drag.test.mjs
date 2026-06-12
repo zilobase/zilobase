@@ -100,4 +100,20 @@ export function register({ assert, loadModule, test }) {
       null
     )
   })
+
+  test("database table row drag anchors cross-group moves into the target group", async () => {
+    const { getAnchoredReorderedRowIds } = await loadModule(
+      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+    )
+
+    assert.deepEqual(
+      getAnchoredReorderedRowIds(
+        rows(["A", "B", "C", "D", "E", "F"]),
+        "B",
+        rows(["D", "E", "F"]),
+        1
+      ),
+      ["A", "C", "D", "B", "E", "F"]
+    )
+  })
 }

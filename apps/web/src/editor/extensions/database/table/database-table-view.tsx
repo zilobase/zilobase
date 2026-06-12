@@ -18,7 +18,10 @@ import {
   Plus,
 } from "lucide-react"
 import { toast } from "sonner"
-import { useReorderDatabaseRows } from "@notelab/features/databases"
+import {
+  useMoveDatabaseRow,
+  useReorderDatabaseRows,
+} from "@notelab/features/databases"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +56,10 @@ import {
 } from "../shared/database-property-menu"
 import { DatabasePropertyValue } from "../shared/database-property-value"
 import {
+  serializePropertyValue,
+  type DatabasePropertyValue as DatabaseCellValue,
+} from "../utils"
+import {
   getNameColumnWrapContent,
   getPropertyWrapContent,
 } from "../shared/database-view-config"
@@ -60,6 +67,7 @@ import { useDatabaseViewContext } from "../shared/database-view-context"
 import { useInlineDatabaseScroll } from "../shared/use-inline-database-scroll"
 import { databaseItemMatchesFilter } from "../shared/database-item-utils"
 import {
+  getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
   getGroupedReorderedRowIds,
   getReorderedRowIds,
@@ -76,8 +84,13 @@ type PendingInsertProperty = {
 }
 
 type PendingSortedRowReorder = {
+  groupPropertyId?: string
+  groupValue?: unknown
+  rowId: string
   rowIds: string[]
 }
+
+type RowMove = PendingSortedRowReorder
 
 type GroupSection = {
   color?: string
@@ -202,6 +215,46 @@ function getRowGroupValue(row: any, groupProperty: any, propertyValuesByKey: any
   return getRawGroupValue(value)
 }
 
+function getTableGroupMoveValue({
+  currentValue,
+  propertyType,
+  sourceGroupValue,
+  targetGroupValue,
+}: {
+  currentValue: DatabaseCellValue
+  propertyType: string
+  sourceGroupValue: string
+  targetGroupValue: string
+}): DatabaseCellValue {
+  if (sourceGroupValue === targetGroupValue) {
+    return currentValue
+  }
+
+  if (propertyType !== "multi_select") {
+    return targetGroupValue
+  }
+
+  if (!targetGroupValue) {
+    return []
+  }
+
+  const currentValues = Array.isArray(currentValue)
+    ? currentValue
+    : currentValue
+      ? [currentValue]
+      : []
+  const nextValues =
+    sourceGroupValue && currentValues.includes(sourceGroupValue)
+      ? currentValues.map((value) =>
+          value === sourceGroupValue ? targetGroupValue : value
+        )
+      : [...currentValues, targetGroupValue]
+
+  return nextValues.filter(
+    (value, index, values) => values.indexOf(value) === index
+  )
+}
+
 export function DatabaseTableView() {
   const {
     activeConditionalColors,
@@ -237,6 +290,7 @@ export function DatabaseTableView() {
     updateDatabasePropertyConfig,
     visibleProperties,
   } = useDatabaseViewContext()
+  const moveRow = useMoveDatabaseRow()
   const reorderRows = useReorderDatabaseRows()
   const loadedDatabaseId = requireDatabaseId(databaseId)
   const nameColumnWrapContent = getNameColumnWrapContent(databaseConfig)
@@ -500,92 +554,172 @@ export function DatabaseTableView() {
 
     return targetIndex === -1 ? rowElements.length : targetIndex
   }
-  const getDraggedRowGroupSection = () => {
-    if (!draggedRowId || !isTableGrouped) {
+  const getGroupSectionForRowId = (rowId: string) => {
+    if (!isTableGrouped) {
       return null
     }
 
     return (
       groupedSections.find((section) =>
-        section.rows.some((row: any) => row.id === draggedRowId)
+        section.rows.some((row: any) => row.id === rowId)
       ) ?? null
     )
+  }
+  const getGroupSectionRange = (section: GroupSection) => {
+    const groupRowIds = new Set(section.rows.map((row: any) => row.id))
+    const start = visibleRows.findIndex((row: any) => groupRowIds.has(row.id))
+
+    return start === -1 ? null : { end: start + section.rows.length, start }
   }
   const getDraggedRowGroupDropTarget = () => {
     if (!draggedRowId || rowDropTargetIndex === null || !isTableGrouped) {
       return null
     }
 
-    const groupSection = getDraggedRowGroupSection()
+    const sourceSection = getGroupSectionForRowId(draggedRowId)
 
-    if (!groupSection) {
+    if (!sourceSection) {
       return null
     }
 
-    const groupRowIds = new Set(groupSection.rows.map((row: any) => row.id))
-    const groupStartIndex = visibleRows.findIndex((row: any) =>
-      groupRowIds.has(row.id)
-    )
+    const sourceRange = getGroupSectionRange(sourceSection)
 
-    if (groupStartIndex === -1) {
+    if (!sourceRange) {
       return null
     }
-
-    const groupEndIndex = groupStartIndex + groupSection.rows.length
 
     if (
-      rowDropTargetIndex < groupStartIndex ||
-      rowDropTargetIndex > groupEndIndex
+      rowDropTargetIndex >= sourceRange.start &&
+      rowDropTargetIndex <= sourceRange.end
     ) {
-      return null
+      return {
+        isCrossGroup: false,
+        localTargetIndex: rowDropTargetIndex - sourceRange.start,
+        section: sourceSection,
+        sourceSection,
+      }
     }
 
-    return groupSection
+    for (const section of groupedSections) {
+      if (section.id === sourceSection.id) {
+        continue
+      }
+
+      const range = getGroupSectionRange(section)
+
+      if (
+        range &&
+        rowDropTargetIndex >= range.start &&
+        rowDropTargetIndex <= range.end
+      ) {
+        return {
+          isCrossGroup: true,
+          localTargetIndex: rowDropTargetIndex - range.start,
+          section,
+          sourceSection,
+        }
+      }
+    }
+
+    return null
   }
-  const getDraggedRowReorderIds = () => {
+  const getDraggedRowMove = (): RowMove | null => {
     if (!draggedRowId || rowDropTargetIndex === null) {
       return null
     }
 
     if (isTableGrouped) {
-      const groupSection = getDraggedRowGroupDropTarget()
+      const groupTarget = getDraggedRowGroupDropTarget()
 
-      return groupSection
-        ? getGroupedReorderedRowIds({
-            allRows: rows,
-            draggedRowId,
-            groupRows: groupSection.rows,
-            targetIndex: rowDropTargetIndex,
-            visibleRows,
-          })
-        : null
+      if (!groupTarget) {
+        return null
+      }
+
+      if (!groupTarget.isCrossGroup) {
+        const rowIds = getGroupedReorderedRowIds({
+          allRows: rows,
+          draggedRowId,
+          groupRows: groupTarget.section.rows,
+          targetIndex: rowDropTargetIndex,
+          visibleRows,
+        })
+
+        return rowIds ? { rowId: draggedRowId, rowIds } : null
+      }
+
+      if (!groupProperty || groupProperty.id === "name") {
+        return null
+      }
+
+      const draggedRow = rows.find((row: any) => row.id === draggedRowId)
+
+      if (!draggedRow) {
+        return null
+      }
+
+      const rowIds =
+        getAnchoredReorderedRowIds(
+          rows,
+          draggedRowId,
+          groupTarget.section.rows,
+          groupTarget.localTargetIndex
+        ) ?? rows.map((row: any) => row.id)
+      const key = `${draggedRow.pageId}:${groupProperty.property.id}`
+      const currentValue = propertyValuesByKey[key] ?? ""
+      const nextValue = getTableGroupMoveValue({
+        currentValue,
+        propertyType: groupProperty.property.type,
+        sourceGroupValue: groupTarget.sourceSection.groupValue,
+        targetGroupValue: groupTarget.section.groupValue,
+      })
+
+      return {
+        groupPropertyId: groupProperty.property.id,
+        groupValue: serializePropertyValue(
+          groupProperty.property.type,
+          nextValue
+        ),
+        rowId: draggedRowId,
+        rowIds,
+      }
     }
 
     if (isTableFiltered) {
-      return getFilteredReorderedRowIds(
+      const rowIds = getFilteredReorderedRowIds(
         rows,
         sortedRows,
         draggedRowId,
         rowDropTargetIndex
       )
+
+      return rowIds ? { rowId: draggedRowId, rowIds } : null
     }
 
-    return getReorderedRowIds(
+    const rowIds = getReorderedRowIds(
       isTableSorted ? sortedRows : rows,
       draggedRowId,
       rowDropTargetIndex
     )
+
+    return rowIds ? { rowId: draggedRowId, rowIds } : null
   }
-  const moveDraggedRow = () => {
+  const applyRowMove = (nextMove: RowMove) => {
     if (!databaseId) {
       return
     }
 
-    const rowIds = getDraggedRowReorderIds()
-
-    if (rowIds) {
-      reorderRows.mutate({ databaseId, rowIds })
+    if (nextMove.groupPropertyId) {
+      moveRow.mutate({
+        databaseId,
+        groupPropertyId: nextMove.groupPropertyId,
+        groupValue: nextMove.groupValue,
+        rowId: nextMove.rowId,
+        rowIds: nextMove.rowIds,
+      })
+      return
     }
+
+    reorderRows.mutate({ databaseId, rowIds: nextMove.rowIds })
   }
   const confirmSortedRowReorder = () => {
     if (!databaseId || !pendingSortedRowReorder) {
@@ -593,12 +727,12 @@ export function DatabaseTableView() {
       return
     }
 
-    const { rowIds } = pendingSortedRowReorder
+    const nextMove = pendingSortedRowReorder
 
     setPendingSortedRowReorder(null)
     void saveDatabaseSorts([])
       .then(() => {
-        reorderRows.mutate({ databaseId, rowIds })
+        applyRowMove(nextMove)
       })
       .catch(() => {
         toast.error("Couldn't clear sort")
@@ -611,7 +745,7 @@ export function DatabaseTableView() {
   }
   const rowDropLineTop =
     rowDropTargetIndex === null ||
-    (isTableGrouped && !getDraggedRowGroupDropTarget())
+    (draggedRowId && !getDraggedRowMove())
       ? null
       : (rowLayout.dropTops[rowDropTargetIndex] ?? null)
   const getRowConditionalColors = useCallback(
@@ -1170,14 +1304,14 @@ export function DatabaseTableView() {
           event.preventDefault()
           event.stopPropagation()
           if (draggedRowId) {
-            const rowIds = getDraggedRowReorderIds()
+            const nextMove = getDraggedRowMove()
 
             if (isTableSorted) {
-              if (rowIds) {
-                setPendingSortedRowReorder({ rowIds })
+              if (nextMove) {
+                setPendingSortedRowReorder(nextMove)
               }
-            } else {
-              moveDraggedRow()
+            } else if (nextMove) {
+              applyRowMove(nextMove)
             }
           } else if (dragPayload) {
             addDraggedPageRow(dragPayload, rowDropTargetIndex)
