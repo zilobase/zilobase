@@ -156,8 +156,9 @@ export function DatabaseViewToolbar() {
       : draftDatabaseTitle || hostDatabaseName || "Untitled"
   const databaseEmoji = getDatabaseEmoji({ config: databaseConfig })
   const canEditDatabaseEmoji = editable && Boolean(databaseId)
+  const databaseTitleInputValue = draftDatabaseTitle || "New database"
   const databaseTitleInputSize = Math.min(
-    Math.max((draftDatabaseTitle || "New database").length + 1, 12),
+    Math.max(databaseTitleInputValue.length, 1),
     44
   )
   const focusDatabaseTitleInput = () => {
@@ -240,7 +241,7 @@ export function DatabaseViewToolbar() {
   return (
     <div className="database-toolbar">
       {showTitle ? (
-        <div className="group/title flex min-w-0 items-center gap-2">
+        <div className="group/title flex min-w-0 items-center gap-1">
           {databaseEmojiPicker}
           {activeViewTab?.isLinked ? (
             <ArrowUpRightIcon
@@ -263,13 +264,15 @@ export function DatabaseViewToolbar() {
           />
           <DropDrawer open={titleActionsOpen} onOpenChange={setTitleActionsOpen}>
             <DropDrawerTrigger asChild>
-              <button
+              <Button
                 aria-label="Open database title actions"
-                className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted/70 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none group-focus-within/title:opacity-100 group-hover/title:opacity-100 data-[state=open]:opacity-100 [&_svg]:size-4"
+                className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/title:opacity-100 group-hover/title:opacity-100 data-[state=open]:opacity-100"
+                size="icon-sm"
                 type="button"
+                variant="ghost"
               >
                 <MoreHorizontal />
-              </button>
+              </Button>
             </DropDrawerTrigger>
             <DropDrawerContent align="start" className="w-64">
               <DropDrawerItem
