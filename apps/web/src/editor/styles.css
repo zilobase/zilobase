@@ -570,15 +570,23 @@
   }
 
   .database-kanban-cards {
-    @apply flex flex-1 flex-col gap-2 p-2;
+    @apply relative flex flex-1 flex-col gap-2 p-2;
   }
 
   .database-kanban-card {
-    @apply overflow-hidden rounded-md border bg-background shadow-xs transition-opacity;
+    @apply relative overflow-hidden rounded-md border bg-background shadow-xs transition-opacity;
   }
 
   .database-kanban-card[data-dragging="true"] {
     @apply opacity-50;
+  }
+
+  .database-kanban-card[data-drop-before="true"]::before {
+    @apply pointer-events-none absolute inset-x-0 top-0 z-40 h-0.5 bg-primary content-[''];
+  }
+
+  .database-kanban-card-drop-line {
+    @apply pointer-events-none h-0.5 shrink-0 rounded-full bg-primary;
   }
 
   .database-kanban-card-title {

@@ -57,7 +57,6 @@ import {
 import { DatabasePropertyValue } from "../shared/database-property-value"
 import {
   serializePropertyValue,
-  type DatabasePropertyValue as DatabaseCellValue,
 } from "../utils"
 import {
   getNameColumnWrapContent,
@@ -67,13 +66,17 @@ import { useDatabaseViewContext } from "../shared/database-view-context"
 import { useInlineDatabaseScroll } from "../shared/use-inline-database-scroll"
 import { databaseItemMatchesFilter } from "../shared/database-item-utils"
 import {
+  getDatabaseGroupMoveValue,
+  getRawDatabaseGroupValue,
+} from "../shared/database-group-values"
+import {
   getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
   getGroupedReorderedRowIds,
   getReorderedRowIds,
-  hideNativeTableRowDragPreview,
-  type TableRowDragOverlay,
-} from "./database-table-row-drag"
+  hideNativeDatabaseRowDragPreview,
+  type DatabaseRowDragOverlay,
+} from "../shared/database-row-drag"
 
 type InsertPropertySide = "left" | "right"
 
@@ -200,10 +203,6 @@ function getConfiguredPropertyOptions(config: unknown) {
     : []
 }
 
-function getRawGroupValue(value: any) {
-  return Array.isArray(value) ? (value[0] ?? "") : value
-}
-
 function getRowGroupValue(row: any, groupProperty: any, propertyValuesByKey: any) {
   if (groupProperty.id === "name") {
     return row.page.name?.trim() ?? ""
@@ -212,47 +211,7 @@ function getRowGroupValue(row: any, groupProperty: any, propertyValuesByKey: any
   const key = `${row.pageId}:${groupProperty.property.id}`
   const value = propertyValuesByKey[key] ?? ""
 
-  return getRawGroupValue(value)
-}
-
-function getTableGroupMoveValue({
-  currentValue,
-  propertyType,
-  sourceGroupValue,
-  targetGroupValue,
-}: {
-  currentValue: DatabaseCellValue
-  propertyType: string
-  sourceGroupValue: string
-  targetGroupValue: string
-}): DatabaseCellValue {
-  if (sourceGroupValue === targetGroupValue) {
-    return currentValue
-  }
-
-  if (propertyType !== "multi_select") {
-    return targetGroupValue
-  }
-
-  if (!targetGroupValue) {
-    return []
-  }
-
-  const currentValues = Array.isArray(currentValue)
-    ? currentValue
-    : currentValue
-      ? [currentValue]
-      : []
-  const nextValues =
-    sourceGroupValue && currentValues.includes(sourceGroupValue)
-      ? currentValues.map((value) =>
-          value === sourceGroupValue ? targetGroupValue : value
-        )
-      : [...currentValues, targetGroupValue]
-
-  return nextValues.filter(
-    (value, index, values) => values.indexOf(value) === index
-  )
+  return getRawDatabaseGroupValue(value)
 }
 
 export function DatabaseTableView() {
@@ -301,7 +260,7 @@ export function DatabaseTableView() {
     () => new Set()
   )
   const [rowDragOverlay, setRowDragOverlay] =
-    useState<TableRowDragOverlay | null>(null)
+    useState<DatabaseRowDragOverlay | null>(null)
   const [rowDropTargetIndex, setRowDropTargetIndex] = useState<number | null>(
     null
   )
@@ -668,7 +627,7 @@ export function DatabaseTableView() {
         ) ?? rows.map((row: any) => row.id)
       const key = `${draggedRow.pageId}:${groupProperty.property.id}`
       const currentValue = propertyValuesByKey[key] ?? ""
-      const nextValue = getTableGroupMoveValue({
+      const nextValue = getDatabaseGroupMoveValue({
         currentValue,
         propertyType: groupProperty.property.type,
         sourceGroupValue: groupTarget.sourceSection.groupValue,
@@ -983,7 +942,7 @@ export function DatabaseTableView() {
       })
     }
 
-    hideNativeTableRowDragPreview(event.dataTransfer)
+    hideNativeDatabaseRowDragPreview(event.dataTransfer)
     setDraggedRowId(row.id)
     setRowDropTargetIndex(visibleRows.findIndex((item: any) => item.id === row.id))
     event.dataTransfer.effectAllowed = "copyMove"

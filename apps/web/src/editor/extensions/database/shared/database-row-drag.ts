@@ -1,4 +1,4 @@
-export type TableRowDragOverlay = {
+export type DatabaseRowDragOverlay = {
   height: number
   left: number
   offsetX: number
@@ -10,6 +10,10 @@ export type TableRowDragOverlay = {
 
 type RowIdItem = {
   id: string
+}
+
+function areRowIdsEqual(leftRows: RowIdItem[], rowIds: string[]) {
+  return rowIds.every((rowId, index) => rowId === leftRows[index]?.id)
 }
 
 export function getReorderedRowIds(
@@ -34,9 +38,7 @@ export function getReorderedRowIds(
 
   const rowIds = nextRows.map((row) => row.id)
 
-  return rowIds.every((rowId, index) => rowId === sourceRows[index]?.id)
-    ? null
-    : rowIds
+  return areRowIdsEqual(sourceRows, rowIds) ? null : rowIds
 }
 
 export function getFilteredReorderedRowIds(
@@ -84,9 +86,7 @@ export function getFilteredReorderedRowIds(
 
   const rowIds = nextRows.map((row) => row.id)
 
-  return rowIds.every((rowId, index) => rowId === allRows[index]?.id)
-    ? null
-    : rowIds
+  return areRowIdsEqual(allRows, rowIds) ? null : rowIds
 }
 
 export function getAnchoredReorderedRowIds(
@@ -128,9 +128,7 @@ export function getAnchoredReorderedRowIds(
 
   const rowIds = nextRows.map((row) => row.id)
 
-  return rowIds.every((rowId, index) => rowId === allRows[index]?.id)
-    ? null
-    : rowIds
+  return areRowIdsEqual(allRows, rowIds) ? null : rowIds
 }
 
 export function getGroupedReorderedRowIds({
@@ -172,7 +170,7 @@ export function getGroupedReorderedRowIds({
   )
 }
 
-export function hideNativeTableRowDragPreview(dataTransfer: DataTransfer) {
+export function hideNativeDatabaseRowDragPreview(dataTransfer: DataTransfer) {
   const dragImage = document.createElement("span")
 
   dragImage.style.position = "fixed"

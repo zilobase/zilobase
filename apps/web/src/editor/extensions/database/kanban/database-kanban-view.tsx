@@ -8,10 +8,24 @@ import {
 import { GripVertical, Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
 import {
+  useMoveDatabaseRow,
+  useReorderDatabaseRows,
+} from "@notelab/features/databases"
+import {
   cyclingColorTokens,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
 } from "@/packages/editor/components/editor/toolbar-data"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 import {
   DATABASE_PAGE_DRAG_MIME,
@@ -20,7 +34,10 @@ import {
 import { DatabasePropertyInput } from "../database-property-input"
 import { DatabasePageLink } from "../shared/database-page-link"
 import { DatabasePropertyValue } from "../shared/database-property-value"
-import type { DatabasePropertyValue as DatabaseCellValue } from "../utils"
+import {
+  serializePropertyValue,
+  type DatabasePropertyValue as DatabaseCellValue,
+} from "../utils"
 import {
   getMergedPropertyConfig,
   type DatabasePropertyConfig,
@@ -33,6 +50,20 @@ import {
   type DatabaseSelectOption,
 } from "./database-kanban-config"
 import { useDatabaseViewContext } from "../shared/database-view-context"
+import { getDatabaseGroupMoveValue } from "../shared/database-group-values"
+import {
+  getAnchoredReorderedRowIds,
+  getFilteredReorderedRowIds,
+} from "../shared/database-row-drag"
+
+type SelectOptionSortValue = "manual" | "alphabetical" | "reverse_alphabetical"
+
+type DraggedKanbanCard = {
+  pageId: string
+  rowId: string
+  sourceOptionId: string
+  sourceGroupValue: string
+}
 
 type DatabaseRow = {
   createdAt: string
@@ -46,12 +77,16 @@ type DatabaseRow = {
   updatedAt: string
 }
 
-type SelectOptionSortValue = "manual" | "alphabetical" | "reverse_alphabetical"
+type KanbanCardDropTarget = {
+  optionId: string
+  targetIndex: number
+}
 
-type DraggedKanbanCard = {
-  pageId: string
+type KanbanCardMove = {
+  groupPropertyId?: string
+  groupValue?: unknown
   rowId: string
-  sourceGroupValue: string
+  rowIds: string[]
 }
 
 function getKanbanBoardContentWidth(boardElement: HTMLDivElement) {
@@ -160,44 +195,10 @@ function isInteractiveKanbanDragTarget(target: EventTarget | null) {
   )
 }
 
-function getKanbanMoveValue({
-  currentValue,
-  propertyType,
-  sourceGroupValue,
-  targetGroupValue,
-}: {
-  currentValue: DatabaseCellValue
-  propertyType: string
-  sourceGroupValue: string
-  targetGroupValue: string
-}): DatabaseCellValue {
-  if (sourceGroupValue === targetGroupValue) {
-    return currentValue
-  }
-
-  if (propertyType !== "multi_select") {
-    return targetGroupValue
-  }
-
-  if (!targetGroupValue) {
-    return []
-  }
-
-  const currentValues = getKanbanGroupValues(currentValue, propertyType)
-  const nextValues =
-    sourceGroupValue && currentValues.includes(sourceGroupValue)
-      ? currentValues.map((value) =>
-          value === sourceGroupValue ? targetGroupValue : value
-        )
-      : [...currentValues, targetGroupValue]
-
-  return nextValues.filter(
-    (value, index, values) => values.indexOf(value) === index
-  )
-}
-
 export function DatabaseKanbanView() {
   const {
+    activeDatabaseFilters,
+    activeDatabaseSorts,
     propertyValuesByKey,
     databaseId,
     draftPropertyValues,
@@ -208,14 +209,18 @@ export function DatabaseKanbanView() {
     addDatabaseRow,
     onOpenPage,
     personOptions,
-    filteredItems: items,
+    items: allRows,
     savePropertyValue,
     setActivePropertyValueKey,
     setDraftPropertyValues,
+    saveDatabaseSorts,
+    sortedItems: items,
     updateDatabasePropertyConfig,
     visibleProperties,
     options,
   } = useDatabaseViewContext()
+  const moveRow = useMoveDatabaseRow()
+  const reorderRows = useReorderDatabaseRows()
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const boardRef = useRef<HTMLDivElement | null>(null)
@@ -225,6 +230,27 @@ export function DatabaseKanbanView() {
     useState<DraggedKanbanCard | null>(null)
   const [dragOverKanbanOptionId, setDragOverKanbanOptionId] =
     useState<string | null>(null)
+  const [kanbanCardDropTarget, setKanbanCardDropTarget] =
+    useState<KanbanCardDropTarget | null>(null)
+  const [pendingSortedKanbanCardMove, setPendingSortedKanbanCardMove] =
+    useState<KanbanCardMove | null>(null)
+  const isKanbanSorted = activeDatabaseSorts.length > 0
+  const isKanbanFiltered = activeDatabaseFilters.length > 0
+  const kanbanCardDragTitle = (() => {
+    if (isKanbanSorted && isKanbanFiltered) {
+      return "Drag page. Clear sorting to save the new order; hidden cards keep their relative order."
+    }
+
+    if (isKanbanSorted) {
+      return "Drag page. Clear sorting to save the new order."
+    }
+
+    if (isKanbanFiltered) {
+      return "Drag page. Hidden cards keep their relative order."
+    }
+
+    return "Drag page"
+  })()
   const kanbanOptions = useMemo(() => {
     if (!groupProperty) {
       return []
@@ -340,6 +366,125 @@ export function DatabaseKanbanView() {
   const clearKanbanCardDrag = () => {
     setDraggedKanbanCard(null)
     setDragOverKanbanOptionId(null)
+    setKanbanCardDropTarget(null)
+  }
+  const getKanbanCardDropTargetIndex = (
+    columnElement: HTMLElement,
+    clientY: number
+  ) => {
+    const cardElements = Array.from(
+      columnElement.querySelectorAll<HTMLElement>(
+        ".database-kanban-card[data-database-row-id]"
+      )
+    )
+
+    if (cardElements.length === 0) {
+      return 0
+    }
+
+    const targetIndex = cardElements.findIndex((cardElement) => {
+      const rect = cardElement.getBoundingClientRect()
+
+      return clientY < rect.top + rect.height / 2
+    })
+
+    return targetIndex === -1 ? cardElements.length : targetIndex
+  }
+  const getDraggedKanbanCardMove = (
+    dropTarget = kanbanCardDropTarget
+  ): KanbanCardMove | null => {
+    if (!draggedKanbanCard || !dropTarget || !groupProperty) {
+      return null
+    }
+
+    const targetOption =
+      kanbanOptions.find((option) => option.id === dropTarget.optionId) ?? null
+
+    if (!targetOption) {
+      return null
+    }
+
+    const targetOptionItems = getKanbanOptionItems(targetOption)
+
+    if (draggedKanbanCard.sourceOptionId === targetOption.id) {
+      const rowIds = getFilteredReorderedRowIds(
+        allRows,
+        targetOptionItems,
+        draggedKanbanCard.rowId,
+        dropTarget.targetIndex
+      )
+
+      return rowIds
+        ? { rowId: draggedKanbanCard.rowId, rowIds }
+        : null
+    }
+
+    const draggedRow = allRows.find((row) => row.id === draggedKanbanCard.rowId)
+
+    if (!draggedRow) {
+      return null
+    }
+
+    const rowIds =
+      getAnchoredReorderedRowIds(
+        allRows,
+        draggedKanbanCard.rowId,
+        targetOptionItems,
+        dropTarget.targetIndex
+      ) ?? allRows.map((row) => row.id)
+    const key = `${draggedRow.pageId}:${groupProperty.property.id}`
+    const currentValue = propertyValuesByKey[key] ?? ""
+    const nextValue = getDatabaseGroupMoveValue({
+      currentValue,
+      propertyType: groupProperty.property.type,
+      sourceGroupValue: draggedKanbanCard.sourceGroupValue,
+      targetGroupValue: getKanbanOptionGroupValue(targetOption),
+    })
+
+    return {
+      groupPropertyId: groupProperty.property.id,
+      groupValue: serializePropertyValue(
+        groupProperty.property.type,
+        nextValue
+      ),
+      rowId: draggedKanbanCard.rowId,
+      rowIds,
+    }
+  }
+  const applyKanbanCardMove = (nextMove: KanbanCardMove) => {
+    if (!databaseId) {
+      return
+    }
+
+    if (nextMove.groupPropertyId) {
+      moveRow.mutate({
+        databaseId,
+        groupPropertyId: nextMove.groupPropertyId,
+        groupValue: nextMove.groupValue,
+        rowId: nextMove.rowId,
+        rowIds: nextMove.rowIds,
+      })
+      return
+    }
+
+    reorderRows.mutate({ databaseId, rowIds: nextMove.rowIds })
+  }
+  const confirmSortedKanbanCardMove = () => {
+    if (!databaseId || !pendingSortedKanbanCardMove) {
+      setPendingSortedKanbanCardMove(null)
+      return
+    }
+
+    const nextMove = pendingSortedKanbanCardMove
+
+    setPendingSortedKanbanCardMove(null)
+    void saveDatabaseSorts([])
+      .then(() => {
+        applyKanbanCardMove(nextMove)
+      })
+      .catch(() => {
+        toast.error("Couldn't clear sort")
+      })
   }
   const startKanbanCardDrag = (
     row: DatabaseRow,
@@ -360,6 +505,7 @@ export function DatabaseKanbanView() {
     const payload = {
       pageId: row.pageId,
       rowId: row.id,
+      sourceOptionId: option.id,
       sourceGroupValue: getKanbanOptionGroupValue(option),
     }
 
@@ -375,8 +521,16 @@ export function DatabaseKanbanView() {
       })
     )
     event.dataTransfer.setData("text/plain", title)
+
     setDraggedKanbanCard(payload)
     setDragOverKanbanOptionId(option.id)
+    setKanbanCardDropTarget({
+      optionId: option.id,
+      targetIndex: Math.max(
+        0,
+        getKanbanOptionItems(option).findIndex((item) => item.id === row.id)
+      ),
+    })
   }
   const handleKanbanColumnDragOver = (
     option: DatabaseSelectOption,
@@ -390,6 +544,13 @@ export function DatabaseKanbanView() {
     event.stopPropagation()
     event.dataTransfer.dropEffect = "move"
     setDragOverKanbanOptionId(option.id)
+    setKanbanCardDropTarget({
+      optionId: option.id,
+      targetIndex: getKanbanCardDropTargetIndex(
+        event.currentTarget,
+        event.clientY
+      ),
+    })
   }
   const handleKanbanColumnDrop = (
     option: DatabaseSelectOption,
@@ -402,21 +563,23 @@ export function DatabaseKanbanView() {
     event.preventDefault()
     event.stopPropagation()
 
-    const key = `${draggedKanbanCard.pageId}:${groupProperty.property.id}`
-    const currentValue = propertyValuesByKey[key] ?? ""
-    const nextValue = getKanbanMoveValue({
-      currentValue,
-      propertyType: groupProperty.property.type,
-      sourceGroupValue: draggedKanbanCard.sourceGroupValue,
-      targetGroupValue: getKanbanOptionGroupValue(option),
-    })
-    savePropertyValue(
-      draggedKanbanCard.rowId,
-      groupProperty.property.id,
-      groupProperty.property.type,
-      currentValue,
-      nextValue
-    )
+    const dropTarget = kanbanCardDropTarget ?? {
+      optionId: option.id,
+      targetIndex: getKanbanCardDropTargetIndex(
+        event.currentTarget,
+        event.clientY
+      ),
+    }
+    const nextMove = getDraggedKanbanCardMove(dropTarget)
+
+    if (isKanbanSorted) {
+      if (nextMove) {
+        setPendingSortedKanbanCardMove(nextMove)
+      }
+    } else if (nextMove) {
+      applyKanbanCardMove(nextMove)
+    }
+
     clearKanbanCardDrag()
   }
   const renderCardProperty = (
@@ -454,12 +617,13 @@ export function DatabaseKanbanView() {
     )
   }
   return (
-    <div
-      className="database-kanban-wrap database-inline-scroll-wrap"
-      data-inline-scroll={isInlineKanbanScrollEnabled ? "true" : undefined}
-      ref={wrapRef}
-      style={kanbanWrapStyle}
-    >
+    <>
+      <div
+        className="database-kanban-wrap database-inline-scroll-wrap"
+        data-inline-scroll={isInlineKanbanScrollEnabled ? "true" : undefined}
+        ref={wrapRef}
+        style={kanbanWrapStyle}
+      >
       {groupProperty ? (
         <div
           className="database-kanban-scroll database-inline-scroll"
@@ -470,6 +634,11 @@ export function DatabaseKanbanView() {
               {kanbanOptions.map((option) => {
                 const isEmptyOption = option.id === "empty"
                 const optionItems = getKanbanOptionItems(option)
+                const activeCardDropTarget =
+                  kanbanCardDropTarget?.optionId === option.id &&
+                  getDraggedKanbanCardMove(kanbanCardDropTarget)
+                    ? kanbanCardDropTarget
+                    : null
 
                 return (
                   <section
@@ -487,6 +656,11 @@ export function DatabaseKanbanView() {
                         )
                       ) {
                         setDragOverKanbanOptionId(null)
+                        setKanbanCardDropTarget((currentTarget) =>
+                          currentTarget?.optionId === option.id
+                            ? null
+                            : currentTarget
+                        )
                       }
                     }}
                     onDragOver={(event) =>
@@ -507,9 +681,15 @@ export function DatabaseKanbanView() {
                       </span>
                     </div>
                     <div className="database-kanban-cards">
-                      {optionItems.map((item: DatabaseRow) => (
+                      {optionItems.map((item: DatabaseRow, index: number) => (
                         <article
                           className="database-kanban-card"
+                          data-database-row-id={item.id}
+                          data-drop-before={
+                            activeCardDropTarget?.targetIndex === index
+                              ? "true"
+                              : undefined
+                          }
                           data-dragging={
                             draggedKanbanCard?.rowId === item.id
                               ? "true"
@@ -542,7 +722,7 @@ export function DatabaseKanbanView() {
                                 onPointerDown={(event) =>
                                   event.stopPropagation()
                                 }
-                                title="Drag page"
+                                title={kanbanCardDragTitle}
                                 type="button"
                               >
                                 <GripVertical />
@@ -571,6 +751,10 @@ export function DatabaseKanbanView() {
                           ) : null}
                         </article>
                       ))}
+                      {activeCardDropTarget?.targetIndex ===
+                      optionItems.length ? (
+                        <div className="database-kanban-card-drop-line" />
+                      ) : null}
                       {editable && !isEmptyOption ? (
                         <button
                           className="database-kanban-new-card"
@@ -638,6 +822,31 @@ export function DatabaseKanbanView() {
           <span>Add a select, multi-select, or status property to use Kanban.</span>
         </div>
       )}
-    </div>
+      </div>
+      <AlertDialog
+        open={pendingSortedKanbanCardMove !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingSortedKanbanCardMove(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear sorting to reorder?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Row order is manual. To save this move, Notelab needs to clear the
+              active sorting first.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmSortedKanbanCardMove}>
+              Clear sorting
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

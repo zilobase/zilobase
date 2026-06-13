@@ -5,7 +5,7 @@ function rows(ids) {
 export function register({ assert, loadModule, test }) {
   test("database table row drag reorders a visible subset before the next visible anchor", async () => {
     const { getFilteredReorderedRowIds } = await loadModule(
-      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+      "/src/editor/extensions/database/shared/database-row-drag.ts"
     )
 
     assert.deepEqual(
@@ -21,7 +21,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database table row drag reorders a visible subset after the previous visible anchor", async () => {
     const { getFilteredReorderedRowIds } = await loadModule(
-      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+      "/src/editor/extensions/database/shared/database-row-drag.ts"
     )
 
     assert.deepEqual(
@@ -37,7 +37,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database table row drag keeps hidden rows in place when moving within a filtered gap", async () => {
     const { getFilteredReorderedRowIds } = await loadModule(
-      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+      "/src/editor/extensions/database/shared/database-row-drag.ts"
     )
 
     assert.deepEqual(
@@ -53,7 +53,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database table row drag does not reorder hidden rows when the visible order is unchanged", async () => {
     const { getFilteredReorderedRowIds } = await loadModule(
-      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+      "/src/editor/extensions/database/shared/database-row-drag.ts"
     )
 
     assert.equal(
@@ -69,7 +69,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database table row drag reorders inside the dragged group", async () => {
     const { getGroupedReorderedRowIds } = await loadModule(
-      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+      "/src/editor/extensions/database/shared/database-row-drag.ts"
     )
 
     assert.deepEqual(
@@ -86,7 +86,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database table row drag rejects cross-group drops", async () => {
     const { getGroupedReorderedRowIds } = await loadModule(
-      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+      "/src/editor/extensions/database/shared/database-row-drag.ts"
     )
 
     assert.equal(
@@ -103,7 +103,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database table row drag anchors cross-group moves into the target group", async () => {
     const { getAnchoredReorderedRowIds } = await loadModule(
-      "/src/editor/extensions/database/table/database-table-row-drag.ts"
+      "/src/editor/extensions/database/shared/database-row-drag.ts"
     )
 
     assert.deepEqual(
