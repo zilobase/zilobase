@@ -16,7 +16,10 @@ import type {
 } from "@notelab/features/databases"
 
 import { defaultStatusOptions } from "../constants"
-import type { DatabasePropertyListItem } from "../kanban/database-kanban-config"
+import {
+  canUpdateKanbanGroupProperty,
+  type DatabasePropertyListItem,
+} from "../kanban/database-kanban-config"
 import { serializePropertyValue, type DatabasePropertyValue } from "../utils"
 import {
   areSerializedPropertyValuesEqual,
@@ -232,7 +235,7 @@ export function getDatabaseViewCommands({
             if (
               !nextGroupValue ||
               !nextGroupProperty ||
-              nextGroupProperty.id === "name"
+              !canUpdateKanbanGroupProperty(nextGroupProperty)
             ) {
               return
             }
@@ -284,7 +287,7 @@ export function getDatabaseViewCommands({
       })
     },
     addKanbanView: () => {
-      if (!databaseId || addDatabaseView.isPending || addProperty.isPending) {
+      if (!databaseId || addDatabaseView.isPending) {
         return
       }
 
@@ -297,7 +300,9 @@ export function getDatabaseViewCommands({
         currentProperties.find((property) => property.property.type === "select") ??
         currentProperties.find(
           (property) => property.property.type === "multi_select"
-        )
+        ) ??
+        currentProperties[0] ??
+        null
       const addView = (
         groupPropertyId: string,
         hiddenPropertyIds: string[],
@@ -334,57 +339,7 @@ export function getDatabaseViewCommands({
         return
       }
 
-      const existingPropertyIds = new Set(
-        currentProperties.map((property) => property.property.id)
-      )
-
-      addProperty.mutate(
-        {
-          config: {
-            defaultOptionId: defaultStatusOptions[0]?.id,
-            options: defaultStatusOptions,
-          },
-          databaseId,
-          name: "Status",
-          type: "status",
-        },
-        {
-          onSuccess: (nextPayload) => {
-            const addedProperty =
-              nextPayload.properties.find(
-                (property) =>
-                  !existingPropertyIds.has(property.property.id) &&
-                  property.property.type === "status"
-              ) ??
-              nextPayload.properties.find(
-                (property) => property.property.type === "status"
-              )
-
-            if (!addedProperty) {
-              toast.error("Couldn't create status property")
-              return
-            }
-
-            addView(
-              addedProperty.property.id,
-              nextPayload.properties.map((property) => property.id),
-              (viewPayload) => {
-                for (const row of viewPayload.rows) {
-                  updateValue.mutate({
-                    databaseId,
-                    propertyId: addedProperty.property.id,
-                    rowId: row.id,
-                    value: defaultStatusOptions[0]?.name ?? "Not started",
-                  })
-                }
-              }
-            )
-          },
-          onError: () => {
-            toast.error("Couldn't create status property")
-          },
-        }
-      )
+      addView("name", [])
     },
     addTableView: () => {
       if (!databaseId || addDatabaseView.isPending) {
@@ -548,9 +503,11 @@ export function getDatabaseViewCommands({
 
       updateDatabaseView.mutate({
         config:
-          type === "kanban" && kanbanGroupProperty
+          type === "kanban"
             ? getMergedDatabaseConfig(activeView.config, {
-                groupPropertyId: kanbanGroupProperty.property.id,
+                groupPropertyId:
+                  kanbanGroupProperty?.property.id ??
+                  (properties.length === 0 ? "name" : undefined),
               })
             : activeView.config,
         databaseId,

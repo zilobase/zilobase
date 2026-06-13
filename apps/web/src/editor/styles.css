@@ -590,7 +590,7 @@
   }
 
   .database-kanban-card-title {
-    @apply relative;
+    @apply relative min-w-0 overflow-hidden;
   }
 
   .database-kanban-card-title[data-can-drag="true"] .database-page-link {
@@ -612,7 +612,15 @@
   }
 
   .database-kanban-card .database-page-link {
-    @apply min-h-10 border-b border-border px-3 py-2;
+    @apply min-h-10 overflow-hidden border-b border-border px-3 py-2 pr-24;
+  }
+
+  .database-kanban-card .database-page-main {
+    @apply overflow-hidden;
+  }
+
+  .database-kanban-card .database-page-title {
+    @apply block max-w-full truncate;
   }
 
   .database-kanban-card-properties {
@@ -628,7 +636,11 @@
   }
 
   .database-kanban-property-value {
-    @apply min-w-0;
+    @apply relative min-w-0 overflow-hidden;
+  }
+
+  .database-kanban-property-value .database-input-cell-link {
+    @apply max-w-full px-0 py-0;
   }
 
   .database-kanban-property-value

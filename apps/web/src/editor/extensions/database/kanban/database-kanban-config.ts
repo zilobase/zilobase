@@ -22,10 +22,58 @@ type DatabaseViewConfig = {
 }
 
 export function isKanbanGroupProperty(property: DatabasePropertyListItem) {
+  return Boolean(property.property.id)
+}
+
+export function isOptionBackedKanbanGroupProperty(
+  property: DatabasePropertyListItem
+) {
   return (
     property.property.type === "status" ||
     property.property.type === "select" ||
     property.property.type === "multi_select"
+  )
+}
+
+export function isReadOnlyKanbanGroupProperty(
+  property: DatabasePropertyListItem
+) {
+  return (
+    property.property.type === "created_time" ||
+    property.property.type === "edited_time"
+  )
+}
+
+export function canUpdateKanbanGroupProperty(
+  property: DatabasePropertyListItem
+) {
+  return property.id !== "name" && !isReadOnlyKanbanGroupProperty(property)
+}
+
+export function canMoveRowsAcrossKanbanGroups(
+  property: DatabasePropertyListItem
+) {
+  return property.id === "name" || canUpdateKanbanGroupProperty(property)
+}
+
+export function canCreateRowInKanbanGroup(
+  property: DatabasePropertyListItem
+) {
+  return property.id === "name" || canUpdateKanbanGroupProperty(property)
+}
+
+export function canCreateKanbanGroup(property: DatabasePropertyListItem) {
+  return (
+    property.id === "name" ||
+    isOptionBackedKanbanGroupProperty(property) ||
+    [
+      "date",
+      "email",
+      "number",
+      "phone",
+      "text",
+      "url",
+    ].includes(property.property.type)
   )
 }
 
@@ -92,6 +140,7 @@ export function getKanbanGroupProperty(
     properties.find((property) => property.property.type === "status") ??
     properties.find((property) => property.property.type === "select") ??
     properties.find((property) => property.property.type === "multi_select") ??
+    properties[0] ??
     null
   )
 }

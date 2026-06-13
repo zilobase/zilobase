@@ -494,6 +494,92 @@ export function register({ assert, loadModule, test }) {
     ])
   })
 
+  test("database view commands add kanban view grouped by name without properties", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/shared/database-view-commands.ts"
+    )
+    const addDatabaseView = createMutation()
+    const addProperty = createMutation()
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: null,
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addDatabaseView, addProperty }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    })
+
+    commands.addKanbanView()
+
+    assert.deepEqual(addProperty.calls, [])
+    assert.deepEqual(addDatabaseView.calls.map(([input]) => input), [
+      {
+        config: { groupPropertyId: "name", hiddenPropertyIds: [] },
+        databaseId,
+        name: "Kanban",
+        type: "kanban",
+      },
+    ])
+  })
+
+  test("database view commands avoid writing read-only group values", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/shared/database-view-commands.ts"
+    )
+    const addRow = createMutation()
+    const updateValue = createMutation()
+    const createdProperty = createProperty(
+      "database-property-created",
+      "property-created",
+      "Created",
+      "created_time"
+    )
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: { groupPropertyId: "property-created" },
+        id: "view-1",
+        name: "Kanban",
+        type: "kanban",
+      },
+      databaseId,
+      editable: true,
+      isKanbanView: true,
+      items: [],
+      kanbanGroupProperty: createdProperty,
+      mutations: createMutations({ addRow, updateValue }),
+      payload: createPayload({ properties: [createdProperty] }),
+      properties: [createdProperty],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    })
+
+    commands.addDatabaseRow("2026-01-01T00:00:00.000Z")
+    addRow.calls[0][1].onSuccess({
+      rows: [{ id: "row-1" }],
+    })
+
+    assert.deepEqual(addRow.calls[0][0], {
+      databaseId,
+      title: "Untitled",
+    })
+    assert.deepEqual(updateValue.calls, [])
+  })
+
   test("database view commands update active view type", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/editor/extensions/database/shared/database-view-commands.ts"

@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -11,6 +12,7 @@ import {
   useMoveDatabaseRow,
   useReorderDatabaseRows,
 } from "@notelab/features/databases"
+import { useUpdateWorkspace } from "@notelab/features/workspaces"
 import {
   cyclingColorTokens,
   getColorTokenBadgeClassName,
@@ -48,6 +50,10 @@ import {
 import {
   type DatabasePropertyListItem,
   type DatabaseSelectOption,
+  canCreateKanbanGroup,
+  canCreateRowInKanbanGroup,
+  canMoveRowsAcrossKanbanGroups,
+  isOptionBackedKanbanGroupProperty,
 } from "./database-kanban-config"
 import { useDatabaseViewContext } from "../shared/database-view-context"
 import { getDatabaseGroupMoveValue } from "../shared/database-group-values"
@@ -55,6 +61,7 @@ import {
   getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
 } from "../shared/database-row-drag"
+import { formatDatabaseDateValue } from "../shared/database-date-config"
 
 type SelectOptionSortValue = "manual" | "alphabetical" | "reverse_alphabetical"
 
@@ -85,8 +92,16 @@ type KanbanCardDropTarget = {
 type KanbanCardMove = {
   groupPropertyId?: string
   groupValue?: unknown
+  pageId?: string
+  pageTitle?: string
   rowId: string
   rowIds: string[]
+}
+
+type KanbanGroupOption = DatabaseSelectOption & {
+  groupValue: string
+  isEmpty?: boolean
+  isTemporary?: boolean
 }
 
 function getKanbanBoardContentWidth(boardElement: HTMLDivElement) {
@@ -147,10 +162,41 @@ function getSortedSelectOptions(
     : sortedOptions
 }
 
-function getKanbanGroupValues(
-  value: DatabaseCellValue,
-  propertyType: string
-) {
+function getReadOnlyTimeGroupValue(row: DatabaseRow, propertyType: string) {
+  return propertyType === "created_time"
+    ? row.page.createdAt ?? row.createdAt
+    : row.page.updatedAt ?? row.updatedAt
+}
+
+function getKanbanGroupValues({
+  property,
+  propertyValuesByKey,
+  row,
+}: {
+  property: DatabasePropertyListItem
+  propertyValuesByKey: Record<string, DatabaseCellValue>
+  row: DatabaseRow
+}) {
+  if (property.id === "name") {
+    return row.page.name?.trim() ? [row.page.name.trim()] : []
+  }
+
+  if (
+    property.property.type === "created_time" ||
+    property.property.type === "edited_time"
+  ) {
+    const value = getReadOnlyTimeGroupValue(row, property.property.type)
+
+    return value?.trim() ? [value] : []
+  }
+
+  const key = `${row.pageId}:${property.property.id}`
+  const value = propertyValuesByKey[key] ?? ""
+
+  if (property.property.type === "checkbox") {
+    return [value === "true" ? "true" : "false"]
+  }
+
   const values = Array.isArray(value) ? value : value ? [value] : []
   const groupValues = values.map((item) => item.trim()).filter(Boolean)
 
@@ -158,13 +204,56 @@ function getKanbanGroupValues(
     return groupValues
   }
 
-  return propertyType === "status"
+  return property.property.type === "status"
     ? [defaultStatusOptions[0]?.name ?? "Not started"].filter(Boolean)
     : []
 }
 
-function getKanbanOptionGroupValue(option: DatabaseSelectOption) {
-  return option.id === "empty" ? "" : option.name
+function getKanbanGroupLabel({
+  groupValue,
+  personOptionsById,
+  property,
+}: {
+  groupValue: string
+  personOptionsById: Map<string, string>
+  property: DatabasePropertyListItem
+}) {
+  if (!groupValue) {
+    return "Empty"
+  }
+
+  if (property.property.type === "checkbox") {
+    return groupValue === "true" ? "Checked" : "Unchecked"
+  }
+
+  if (property.property.type === "date") {
+    return (
+      formatDatabaseDateValue(groupValue, property.property.config) || groupValue
+    )
+  }
+
+  if (
+    property.property.type === "created_time" ||
+    property.property.type === "edited_time"
+  ) {
+    return (
+      formatDatabaseDateValue(groupValue, property.property.config) || groupValue
+    )
+  }
+
+  if (property.property.type === "person") {
+    return personOptionsById.get(groupValue) ?? groupValue
+  }
+
+  return groupValue
+}
+
+function getDerivedKanbanGroupId(groupValue: string, propertyType: string) {
+  return groupValue ? `${propertyType}:${groupValue}` : "empty"
+}
+
+function getKanbanOptionGroupValue(option: KanbanGroupOption) {
+  return option.groupValue
 }
 
 function isInteractiveKanbanDragTarget(target: EventTarget | null) {
@@ -221,10 +310,14 @@ export function DatabaseKanbanView() {
   } = useDatabaseViewContext()
   const moveRow = useMoveDatabaseRow()
   const reorderRows = useReorderDatabaseRows()
+  const updateWorkspace = useUpdateWorkspace()
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const boardRef = useRef<HTMLDivElement | null>(null)
   const [newKanbanOptionName, setNewKanbanOptionName] = useState("")
+  const [temporaryKanbanOptions, setTemporaryKanbanOptions] = useState<
+    KanbanGroupOption[]
+  >([])
   const [isCreatingKanbanOption, setIsCreatingKanbanOption] = useState(false)
   const [draggedKanbanCard, setDraggedKanbanCard] =
     useState<DraggedKanbanCard | null>(null)
@@ -236,6 +329,10 @@ export function DatabaseKanbanView() {
     useState<KanbanCardMove | null>(null)
   const isKanbanSorted = activeDatabaseSorts.length > 0
   const isKanbanFiltered = activeDatabaseFilters.length > 0
+  const personOptionsById = useMemo(
+    () => new Map(personOptions.map((person) => [person.id, person.name])),
+    [personOptions]
+  )
   const kanbanCardDragTitle = (() => {
     if (isKanbanSorted && isKanbanFiltered) {
       return "Drag page. Clear sorting to save the new order; hidden cards keep their relative order."
@@ -256,22 +353,97 @@ export function DatabaseKanbanView() {
       return []
     }
 
-    const hasEmptyColumn = items.some((item: DatabaseRow) => {
-      const key = `${item.pageId}:${groupProperty.property.id}`
-      const value = propertyValuesByKey[key] ?? ""
-      const groupValues = getKanbanGroupValues(
-        value,
-        groupProperty.property.type
-      )
+    const nextOptions: KanbanGroupOption[] = []
+    const optionsByGroupValue = new Map<string, KanbanGroupOption>()
+    const addOption = (option: KanbanGroupOption) => {
+      if (optionsByGroupValue.has(option.groupValue)) {
+        return
+      }
 
-      return groupProperty.property.type !== "status" && groupValues.length === 0
+      optionsByGroupValue.set(option.groupValue, option)
+      nextOptions.push(option)
+    }
+
+    if (groupProperty.property.type === "checkbox") {
+      addOption({
+        color: "green",
+        groupValue: "true",
+        id: "checkbox-true",
+        name: "Checked",
+      })
+      addOption({
+        color: "gray",
+        groupValue: "false",
+        id: "checkbox-false",
+        name: "Unchecked",
+      })
+    } else {
+      options.forEach((option) =>
+        addOption({
+          ...option,
+          groupValue: option.name,
+        })
+      )
+    }
+
+    temporaryKanbanOptions.forEach(addOption)
+
+    let hasEmptyColumn = false
+
+    items.forEach((item: DatabaseRow) => {
+      const groupValues = getKanbanGroupValues({
+        property: groupProperty,
+        propertyValuesByKey,
+        row: item,
+      })
+
+      if (groupValues.length === 0) {
+        hasEmptyColumn = true
+        return
+      }
+
+      groupValues.forEach((groupValue) => {
+        addOption({
+          groupValue,
+          id: getDerivedKanbanGroupId(
+            groupValue,
+            groupProperty.property.type
+          ),
+          name: getKanbanGroupLabel({
+            groupValue,
+            personOptionsById,
+            property: groupProperty,
+          }),
+        })
+      })
     })
 
-    return [
-      ...options,
-      ...(hasEmptyColumn ? [{ color: "gray", id: "empty", name: "Empty" }] : []),
-    ]
-  }, [groupProperty, items, options, propertyValuesByKey])
+    if (
+      hasEmptyColumn &&
+      groupProperty.property.type !== "status" &&
+      groupProperty.property.type !== "checkbox"
+    ) {
+      addOption({
+        color: "gray",
+        groupValue: "",
+        id: "empty",
+        isEmpty: true,
+        name: "Empty",
+      })
+    }
+
+    return nextOptions
+  }, [
+    groupProperty,
+    items,
+    options,
+    personOptionsById,
+    propertyValuesByKey,
+    temporaryKanbanOptions,
+  ])
+  useEffect(() => {
+    setTemporaryKanbanOptions([])
+  }, [groupProperty?.id])
   const getInlineKanbanContentWidth = useCallback(() => {
     const boardElement = boardRef.current
 
@@ -292,16 +464,42 @@ export function DatabaseKanbanView() {
   const createKanbanOption = async () => {
     const optionName = newKanbanOptionName.trim()
 
-    if (!groupProperty || !optionName || isCreatingKanbanOption) {
+    if (
+      !groupProperty ||
+      !optionName ||
+      !canCreateKanbanGroup(groupProperty) ||
+      isCreatingKanbanOption
+    ) {
       setNewKanbanOptionName("")
       return
     }
 
-    const hasMatchingOption = options.some(
-      (option) => option.name.toLowerCase() === optionName.toLowerCase()
+    const normalizedOptionName = optionName.toLowerCase()
+    const hasMatchingOption = kanbanOptions.some(
+      (option) =>
+        option.name.toLowerCase() === normalizedOptionName ||
+        option.groupValue.toLowerCase() === normalizedOptionName
     )
 
     if (hasMatchingOption) {
+      setNewKanbanOptionName("")
+      return
+    }
+
+    if (!isOptionBackedKanbanGroupProperty(groupProperty)) {
+      setTemporaryKanbanOptions((currentOptions) => [
+        ...currentOptions,
+        {
+          groupValue: optionName,
+          id: `temporary-${crypto.randomUUID()}`,
+          isTemporary: true,
+          name: getKanbanGroupLabel({
+            groupValue: optionName,
+            personOptionsById,
+            property: groupProperty,
+          }),
+        },
+      ])
       setNewKanbanOptionName("")
       return
     }
@@ -329,7 +527,6 @@ export function DatabaseKanbanView() {
           options: sortedOptions,
         })
       )
-      addDatabaseRow(createdOption.name, groupProperty)
       setNewKanbanOptionName("")
     } catch {
       toast.error("Couldn't create group")
@@ -341,24 +538,21 @@ export function DatabaseKanbanView() {
   const onPropertyConfigChange = (databasePropertyId: string, config: unknown) =>
     updateDatabasePropertyConfig(databasePropertyId, config)
   const getKanbanOptionItems = useCallback(
-    (option: DatabaseSelectOption) => {
+    (option: KanbanGroupOption) => {
       if (!groupProperty) {
         return []
       }
 
-      const isEmptyOption = option.id === "empty"
-
       return items.filter((item: DatabaseRow) => {
-        const key = `${item.pageId}:${groupProperty.property.id}`
-        const value = propertyValuesByKey[key] ?? ""
-        const groupValues = getKanbanGroupValues(
-          value,
-          groupProperty.property.type
-        )
+        const groupValues = getKanbanGroupValues({
+          property: groupProperty,
+          propertyValuesByKey,
+          row: item,
+        })
 
-        return isEmptyOption
+        return option.isEmpty
           ? groupValues.length === 0
-          : groupValues.includes(option.name)
+          : groupValues.includes(option.groupValue)
       })
     },
     [groupProperty, items, propertyValuesByKey]
@@ -419,6 +613,10 @@ export function DatabaseKanbanView() {
         : null
     }
 
+    if (!canMoveRowsAcrossKanbanGroups(groupProperty)) {
+      return null
+    }
+
     const draggedRow = allRows.find((row) => row.id === draggedKanbanCard.rowId)
 
     if (!draggedRow) {
@@ -434,11 +632,22 @@ export function DatabaseKanbanView() {
       ) ?? allRows.map((row) => row.id)
     const key = `${draggedRow.pageId}:${groupProperty.property.id}`
     const currentValue = propertyValuesByKey[key] ?? ""
+    const targetGroupValue = getKanbanOptionGroupValue(targetOption)
+
+    if (groupProperty.id === "name") {
+      return {
+        pageId: draggedRow.pageId,
+        pageTitle: targetGroupValue,
+        rowId: draggedKanbanCard.rowId,
+        rowIds,
+      }
+    }
+
     const nextValue = getDatabaseGroupMoveValue({
       currentValue,
       propertyType: groupProperty.property.type,
       sourceGroupValue: draggedKanbanCard.sourceGroupValue,
-      targetGroupValue: getKanbanOptionGroupValue(targetOption),
+      targetGroupValue,
     })
 
     return {
@@ -453,6 +662,24 @@ export function DatabaseKanbanView() {
   }
   const applyKanbanCardMove = (nextMove: KanbanCardMove) => {
     if (!databaseId) {
+      return
+    }
+
+    if (nextMove.pageId && typeof nextMove.pageTitle === "string") {
+      updateWorkspace.mutate(
+        {
+          id: nextMove.pageId,
+          name: nextMove.pageTitle,
+        },
+        {
+          onSuccess: () => {
+            reorderRows.mutate({ databaseId, rowIds: nextMove.rowIds })
+          },
+          onError: () => {
+            toast.error("Couldn't rename page")
+          },
+        }
+      )
       return
     }
 
@@ -488,7 +715,7 @@ export function DatabaseKanbanView() {
   }
   const startKanbanCardDrag = (
     row: DatabaseRow,
-    option: DatabaseSelectOption,
+    option: KanbanGroupOption,
     event: ReactDragEvent<HTMLElement>
   ) => {
     if (!editable || !databaseId || !groupProperty) {
@@ -533,7 +760,7 @@ export function DatabaseKanbanView() {
     })
   }
   const handleKanbanColumnDragOver = (
-    option: DatabaseSelectOption,
+    option: KanbanGroupOption,
     event: ReactDragEvent<HTMLElement>
   ) => {
     if (!editable || !groupProperty || !draggedKanbanCard) {
@@ -553,7 +780,7 @@ export function DatabaseKanbanView() {
     })
   }
   const handleKanbanColumnDrop = (
-    option: DatabaseSelectOption,
+    option: KanbanGroupOption,
     event: ReactDragEvent<HTMLElement>
   ) => {
     if (!editable || !databaseId || !groupProperty || !draggedKanbanCard) {
@@ -632,8 +859,10 @@ export function DatabaseKanbanView() {
           <div className="database-kanban-scroll-content database-inline-scroll-content">
             <div className="database-kanban-board" ref={boardRef}>
               {kanbanOptions.map((option) => {
-                const isEmptyOption = option.id === "empty"
+                const isEmptyOption = option.isEmpty === true
                 const optionItems = getKanbanOptionItems(option)
+                const canAddPageToOption =
+                  !isEmptyOption && canCreateRowInKanbanGroup(groupProperty)
                 const activeCardDropTarget =
                   kanbanCardDropTarget?.optionId === option.id &&
                   getDraggedKanbanCardMove(kanbanCardDropTarget)
@@ -670,10 +899,12 @@ export function DatabaseKanbanView() {
                   >
                     <div className="database-kanban-column-header">
                       <span className={getColorTokenBadgeClassName(option.color)}>
-                        <span
-                          aria-hidden="true"
-                          className={getColorTokenDotClassName(option.color)}
-                        />
+                        {option.color ? (
+                          <span
+                            aria-hidden="true"
+                            className={getColorTokenDotClassName(option.color)}
+                          />
+                        ) : null}
                         {option.name}
                       </span>
                       <span className="database-kanban-count">
@@ -755,11 +986,13 @@ export function DatabaseKanbanView() {
                       optionItems.length ? (
                         <div className="database-kanban-card-drop-line" />
                       ) : null}
-                      {editable && !isEmptyOption ? (
+                      {editable && canAddPageToOption ? (
                         <button
                           className="database-kanban-new-card"
                           disabled={!databaseId || isAddingDatabaseRow}
-                          onClick={() => addDatabaseRow(option.name)}
+                          onClick={() =>
+                            addDatabaseRow(option.groupValue, groupProperty)
+                          }
                           type="button"
                         >
                           {isAddingDatabaseRow ? (
@@ -774,7 +1007,7 @@ export function DatabaseKanbanView() {
                   </section>
                 )
               })}
-              {editable ? (
+              {editable && canCreateKanbanGroup(groupProperty) ? (
                 <section className="database-kanban-column database-kanban-new-column">
                   <div className="database-kanban-column-header database-kanban-new-column-header">
                     <div
@@ -819,7 +1052,7 @@ export function DatabaseKanbanView() {
         </div>
       ) : (
         <div className="database-empty-state">
-          <span>Add a select, multi-select, or status property to use Kanban.</span>
+          <span>Choose a property to group this Kanban view.</span>
         </div>
       )}
       </div>

@@ -259,6 +259,88 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
+  test("database view model keeps name and date kanban group properties", async () => {
+    const { getDatabaseViewModel } = await loadModule(
+      "/src/editor/extensions/database/shared/database-view-model.tsx"
+    )
+    const dueProperty = createProperty(
+      "database-property-due",
+      "property-due",
+      "Due",
+      "date"
+    )
+    const createdProperty = createProperty(
+      "database-property-created",
+      "property-created",
+      "Created",
+      "created_time"
+    )
+    const payload = {
+      database: {
+        config: {
+          nameColumn: { label: "Task" },
+        },
+        id: "database-1",
+        name: "Roadmap",
+      },
+      properties: [dueProperty, createdProperty],
+      rows: [createRow("row-1", "page-1", "Alpha", 0)],
+      values: [
+        {
+          propertyId: "property-due",
+          value: "2026-01-01",
+          workspaceId: "page-1",
+        },
+      ],
+      views: [
+        {
+          config: { groupPropertyId: "name" },
+          id: "view-name-kanban",
+          name: "By name",
+          type: "kanban",
+        },
+        {
+          config: { groupPropertyId: "property-due" },
+          id: "view-date-kanban",
+          name: "By due date",
+          type: "kanban",
+        },
+        {
+          config: { groupPropertyId: "property-created" },
+          id: "view-created-kanban",
+          name: "By created time",
+          type: "kanban",
+        },
+      ],
+    }
+
+    const nameModel = getDatabaseViewModel({
+      activeViewId: "view-name-kanban",
+      payload,
+    })
+    const dateModel = getDatabaseViewModel({
+      activeViewId: "view-date-kanban",
+      payload,
+    })
+    const createdModel = getDatabaseViewModel({
+      activeViewId: "view-created-kanban",
+      payload,
+    })
+
+    assert.equal(nameModel.groupProperty?.id, "name")
+    assert.equal(nameModel.kanbanGroupProperty?.id, "name")
+    assert.deepEqual(nameModel.kanbanOptions, [])
+    assert.equal(dateModel.groupProperty?.property.type, "date")
+    assert.equal(dateModel.kanbanGroupProperty?.property.type, "date")
+    assert.deepEqual(dateModel.kanbanOptions, [])
+    assert.equal(createdModel.groupProperty?.property.type, "created_time")
+    assert.equal(createdModel.kanbanGroupProperty?.property.type, "created_time")
+    assert.deepEqual(
+      createdModel.groupableProperties.map((property) => property.property.id),
+      ["name", "property-due", "property-created"]
+    )
+  })
+
   test("database view model derives conditional color settings", async () => {
     const { getDatabaseViewModel } = await loadModule(
       "/src/editor/extensions/database/shared/database-view-model.tsx"

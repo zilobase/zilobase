@@ -77,6 +77,10 @@ import {
   hideNativeDatabaseRowDragPreview,
   type DatabaseRowDragOverlay,
 } from "../shared/database-row-drag"
+import {
+  canCreateRowInKanbanGroup,
+  canUpdateKanbanGroupProperty,
+} from "../kanban/database-kanban-config"
 
 type InsertPropertySide = "left" | "right"
 
@@ -608,7 +612,7 @@ export function DatabaseTableView() {
         return rowIds ? { rowId: draggedRowId, rowIds } : null
       }
 
-      if (!groupProperty || groupProperty.id === "name") {
+      if (!groupProperty || !canUpdateKanbanGroupProperty(groupProperty)) {
         return null
       }
 
@@ -1416,7 +1420,10 @@ export function DatabaseTableView() {
                           {renderTableHeader(section.id)}
                           {renderTableRows(section.rows)}
                         </table>
-                        {editable && !section.isEmpty ? (
+                        {editable &&
+                        !section.isEmpty &&
+                        groupProperty &&
+                        canCreateRowInKanbanGroup(groupProperty) ? (
                           <div
                             className="database-page-create-row"
                             style={

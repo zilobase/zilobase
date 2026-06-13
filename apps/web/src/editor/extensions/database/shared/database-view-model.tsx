@@ -112,7 +112,9 @@ export function getDatabaseViewModel({
       ? nameGroupProperty
       : getConfiguredGroupProperty(properties, activeViewConfig)
   const groupOptions = getGroupOptions(groupProperty)
-  const kanbanGroupProperty = getKanbanGroupProperty(properties, activeViewConfig)
+  const kanbanGroupProperty = isKanbanView
+    ? groupProperty
+    : groupProperty ?? getKanbanGroupProperty(properties, activeViewConfig)
   const kanbanOptions = getKanbanOptions(kanbanGroupProperty)
   const activeDatabaseSorts = getActiveDatabaseSorts(
     databaseSorts,
