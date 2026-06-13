@@ -93,6 +93,8 @@ export type DatabaseViewContextValue = {
   databaseId: string | null | undefined
   databaseName?: string
   databaseOrganizationId?: string
+  deleteDatabaseView: (view: DatabaseViewTab) => void
+  duplicateDatabaseView: (view: DatabaseViewTab) => void
   draftDatabaseTitle: string
   draftPropertyValues: Record<string, DatabasePropertyValue>
   draftViewTitle: string

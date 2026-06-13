@@ -11,6 +11,7 @@ import {
   useAddDatabaseProperty,
   useAddDatabaseRow,
   useDatabase,
+  useDeleteDatabaseView,
   useUpdateDatabase,
   useUpdateDatabaseView,
   useUpdateDatabaseProperty,
@@ -60,6 +61,7 @@ export function useDatabaseViewController({
   const updateDatabase = useUpdateDatabase()
   const updateDatabaseView = useUpdateDatabaseView()
   const addDatabaseView = useAddDatabaseView()
+  const deleteDatabaseView = useDeleteDatabaseView()
   const addProperty = useAddDatabaseProperty()
   const updateProperty = useUpdateDatabaseProperty()
   const addRow = useAddDatabaseRow(organizationId)
@@ -231,6 +233,121 @@ export function useDatabaseViewController({
     )
   }
 
+  const duplicateDatabaseView = (view: DatabaseViewContextValue["viewTabs"][number]) => {
+    if (!databaseId || addDatabaseView.isPending || updateDatabase.isPending) {
+      return
+    }
+
+    if (view.isLinked) {
+      const sourceLinkedView = linkedDatabaseViews.find(
+        (linkedView) => getDatabaseLinkedViewKey(linkedView) === view.id
+      )
+
+      if (!sourceLinkedView) {
+        return
+      }
+
+      const linkedViewId =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${sourceLinkedView.databaseId}-${sourceLinkedView.viewId}-${Date.now()}`
+
+      updateDatabase.mutate(
+        {
+          config: getMergedDatabaseConfig(payload?.database.config, {
+            linkedDatabaseViews: [
+              ...linkedDatabaseViews,
+              {
+                ...sourceLinkedView,
+                linkedViewId,
+                viewName: `${sourceLinkedView.viewName} copy`,
+              },
+            ],
+          }),
+          databaseId,
+        },
+        {
+          onSuccess: () => setActiveViewId(`linked:${linkedViewId}`),
+        }
+      )
+      return
+    }
+
+    const sourceView = (payload?.views ?? []).find(
+      (databaseView) => databaseView.id === view.id
+    )
+
+    if (!sourceView) {
+      return
+    }
+
+    const existingViewIds = new Set(
+      (payload?.views ?? []).map((databaseView) => databaseView.id)
+    )
+
+    addDatabaseView.mutate(
+      {
+        config: sourceView.config,
+        databaseId,
+        name: `${sourceView.name} copy`,
+        type: sourceView.type,
+      },
+      {
+        onSuccess: (nextPayload) => {
+          const addedView =
+            nextPayload.views.find((databaseView) => !existingViewIds.has(databaseView.id)) ??
+            nextPayload.views.at(-1)
+
+          setActiveViewId(addedView?.id ?? null)
+        },
+      }
+    )
+  }
+
+  const deleteDatabaseViewByTab = (
+    view: DatabaseViewContextValue["viewTabs"][number]
+  ) => {
+    if (!databaseId || deleteDatabaseView.isPending || updateDatabase.isPending) {
+      return
+    }
+
+    if (viewTabs.length <= 1) {
+      return
+    }
+
+    const nextActiveViewId =
+      activeViewTabId === view.id
+        ? viewTabs.find((viewTab) => viewTab.id !== view.id)?.id ?? null
+        : activeViewTabId
+
+    if (view.isLinked) {
+      updateDatabase.mutate(
+        {
+          config: getMergedDatabaseConfig(payload?.database.config, {
+            linkedDatabaseViews: linkedDatabaseViews.filter(
+              (linkedView) => getDatabaseLinkedViewKey(linkedView) !== view.id
+            ),
+          }),
+          databaseId,
+        },
+        {
+          onSuccess: () => setActiveViewId(nextActiveViewId),
+        }
+      )
+      return
+    }
+
+    deleteDatabaseView.mutate(
+      {
+        databaseId,
+        databaseViewId: view.id,
+      },
+      {
+        onSuccess: () => setActiveViewId(nextActiveViewId),
+      }
+    )
+  }
+
   const commands = getDatabaseViewCommands({
     activeDatabaseFilters,
     activeDatabaseSorts,
@@ -309,6 +426,8 @@ export function useDatabaseViewController({
     databaseId: activeDatabaseId,
     databaseName: activePayload?.database.name,
     databaseOrganizationId: activePayload?.database.organizationId,
+    deleteDatabaseView: deleteDatabaseViewByTab,
+    duplicateDatabaseView,
     draftPropertyValues,
     draftDatabaseTitle,
     draftViewTitle,

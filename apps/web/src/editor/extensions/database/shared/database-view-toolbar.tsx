@@ -1,4 +1,10 @@
-import { useRef, useState, type ReactNode } from "react"
+import {
+  useRef,
+  useState,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import {
   ArrowDownUp,
@@ -78,6 +84,7 @@ export function DatabaseViewToolbar() {
   const databaseTitleInputRef = useRef<HTMLInputElement | null>(null)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   const [titleActionsOpen, setTitleActionsOpen] = useState(false)
+  const [openViewMenuId, setOpenViewMenuId] = useState<string | null>(null)
   const [viewSettingsOpen, setViewSettingsOpen] = useState(false)
   const {
     activeConditionalColors,
@@ -102,8 +109,10 @@ export function DatabaseViewToolbar() {
     databaseConfig,
     databaseId,
     databaseOrganizationId,
+    deleteDatabaseView,
     draftDatabaseTitle,
     draftViewTitle,
+    duplicateDatabaseView,
     editable,
     filterFieldOptions,
     filterPickerOpen,
@@ -353,9 +362,42 @@ export function DatabaseViewToolbar() {
                 setDraftViewTitle(nextTitle)
                 window.setTimeout(() => saveDatabaseViewTitle(nextTitle), 0)
               }
+              const handleViewPointerDown = (
+                event: PointerEvent<HTMLButtonElement>
+              ) => {
+                if (!isActiveView && event.button === 0) {
+                  event.preventDefault()
+                  setOpenViewMenuId(null)
+                  setActiveViewId(view.id)
+                }
+              }
+              const handleViewClick = (event: MouseEvent<HTMLButtonElement>) => {
+                if (!isActiveView) {
+                  event.preventDefault()
+                  setOpenViewMenuId(null)
+                  setActiveViewId(view.id)
+                }
+              }
+              const handleViewContextMenu = (
+                event: MouseEvent<HTMLButtonElement>
+              ) => {
+                event.preventDefault()
+                setActiveViewId(view.id)
+                setOpenViewMenuId(view.id)
+              }
 
               return (
-                <DropDrawer key={view.id}>
+                <DropDrawer
+                  key={view.id}
+                  onOpenChange={(open) => {
+                    setOpenViewMenuId(open ? view.id : null)
+
+                    if (open) {
+                      setActiveViewId(view.id)
+                    }
+                  }}
+                  open={openViewMenuId === view.id}
+                >
                   <DropDrawerTrigger asChild>
                     <button
                       aria-pressed={isActiveView}
@@ -365,7 +407,9 @@ export function DatabaseViewToolbar() {
                           ? "bg-secondary text-secondary-foreground"
                           : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                       )}
-                      onClick={() => setActiveViewId(view.id)}
+                      onClick={handleViewClick}
+                      onContextMenu={handleViewContextMenu}
+                      onPointerDown={handleViewPointerDown}
                       type="button"
                     >
                       <ViewIcon className="mr-2 size-4 shrink-0" />
@@ -484,16 +528,25 @@ export function DatabaseViewToolbar() {
                           : "Open as full page"}
                       </span>
                     </DropDrawerItem>
-                    <DropDrawerItem disabled>
+                    <DropDrawerItem
+                      disabled={!editable || !onShowTitleChange}
+                      onSelect={() => onShowTitleChange?.(false)}
+                    >
                       <EyeOff />
                       <span>Hide data source titles</span>
                     </DropDrawerItem>
                     <DropDrawerSeparator />
-                    <DropDrawerItem disabled>
+                    <DropDrawerItem
+                      disabled={!editable || !databaseId}
+                      onSelect={() => duplicateDatabaseView(view)}
+                    >
                       <CopyPlus />
                       <span>Duplicate view</span>
                     </DropDrawerItem>
-                    <DropDrawerItem disabled>
+                    <DropDrawerItem
+                      disabled={!editable || !databaseId || viewTabs.length <= 1}
+                      onSelect={() => deleteDatabaseView(view)}
+                    >
                       <Trash2 />
                       <span>Delete view</span>
                     </DropDrawerItem>

@@ -30,6 +30,7 @@ export type DatabaseConditionalColorConfig = {
 export type DatabaseLinkedViewConfig = {
   databaseId: string
   databaseName: string
+  linkedViewId?: string
   viewId: string
   viewName: string
   viewType: string
@@ -310,6 +311,10 @@ export function getDatabaseLinkedViews(
 }
 
 export function getDatabaseLinkedViewKey(view: DatabaseLinkedViewConfig) {
+  if (view.linkedViewId) {
+    return `linked:${view.linkedViewId}`
+  }
+
   return `linked:${view.databaseId}:${view.viewId}`
 }
 
@@ -508,6 +513,11 @@ function normalizeDatabaseLinkedView(
       linkedView.databaseName.trim().length > 0
         ? linkedView.databaseName
         : "Untitled database",
+    linkedViewId:
+      typeof linkedView.linkedViewId === "string" &&
+      linkedView.linkedViewId.length > 0
+        ? linkedView.linkedViewId
+        : undefined,
     viewId: linkedView.viewId,
     viewName:
       typeof linkedView.viewName === "string" &&

@@ -35,6 +35,11 @@ type AddDatabaseViewInput = {
   type?: string
 }
 
+type DeleteDatabaseViewInput = {
+  databaseId: string
+  databaseViewId: string
+}
+
 type AddPropertyInput = {
   config?: unknown
   databaseId: string
@@ -179,6 +184,22 @@ export function useAddDatabaseView() {
         method: "POST",
         body: JSON.stringify(input),
       }),
+    onSuccess: (payload) => setDatabasePayload(queryClient, payload),
+  })
+}
+
+export function useDeleteDatabaseView() {
+  const { apiFetch, queryClient } = useNotelabFeatures()
+
+  return useMutation({
+    mutationFn: async ({
+      databaseId,
+      databaseViewId,
+    }: DeleteDatabaseViewInput) =>
+      apiFetch<DatabasePayload>(
+        `/databases/${databaseId}/views/${databaseViewId}`,
+        { method: "DELETE" }
+      ),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
   })
 }
