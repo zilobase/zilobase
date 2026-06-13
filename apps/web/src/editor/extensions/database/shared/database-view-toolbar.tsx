@@ -533,10 +533,14 @@ export function DatabaseViewToolbar() {
                     </DropDrawerItem>
                     <DropDrawerItem
                       disabled={!editable || !onShowTitleChange}
-                      onSelect={() => onShowTitleChange?.(false)}
+                      onSelect={() => onShowTitleChange?.(!showTitle)}
                     >
                       <EyeOff />
-                      <span>Hide data source titles</span>
+                      <span>
+                        {showTitle
+                          ? "Hide data source titles"
+                          : "Show data source title"}
+                      </span>
                     </DropDrawerItem>
                     <DropDrawerSeparator />
                     <DropDrawerItem
