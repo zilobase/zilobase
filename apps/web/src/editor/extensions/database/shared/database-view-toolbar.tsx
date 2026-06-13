@@ -247,7 +247,7 @@ export function DatabaseViewToolbar() {
   return (
     <div className="database-toolbar">
       {showTitle ? (
-        <div className="group/title flex min-w-0 items-center gap-0.5">
+        <div className="group/title flex min-w-0 items-center gap-0">
           {databaseEmojiPicker}
           {activeViewTab?.isLinked ? (
             <ArrowUpRightIcon
@@ -255,7 +255,7 @@ export function DatabaseViewToolbar() {
               className="size-5 shrink-0 text-muted-foreground"
             />
           ) : null}
-          <span className="grid min-w-[1ch] max-w-[44ch] shrink overflow-hidden">
+          <span className="inline-grid w-fit min-w-[1ch] max-w-[44ch] shrink-0 overflow-hidden">
             <span
               aria-hidden="true"
               className="invisible col-start-1 row-start-1 max-w-[44ch] overflow-hidden text-ellipsis whitespace-pre text-2xl font-semibold leading-tight md:text-2xl"
@@ -279,7 +279,7 @@ export function DatabaseViewToolbar() {
             <DropDrawerTrigger asChild>
               <Button
                 aria-label="Open database title actions"
-                className="-ml-1 shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/title:opacity-100 group-hover/title:opacity-100 data-[state=open]:opacity-100"
+                className="-ml-0.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/title:opacity-100 group-hover/title:opacity-100 data-[state=open]:opacity-100"
                 size="icon-xs"
                 type="button"
                 variant="ghost"
