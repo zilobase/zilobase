@@ -166,11 +166,7 @@ export function DatabaseViewToolbar() {
       : draftDatabaseTitle || hostDatabaseName || "Untitled"
   const databaseEmoji = getDatabaseEmoji({ config: databaseConfig })
   const canEditDatabaseEmoji = editable && Boolean(databaseId)
-  const databaseTitleInputValue = draftDatabaseTitle || "New database"
-  const databaseTitleInputSize = Math.min(
-    Math.max(databaseTitleInputValue.length, 1),
-    44
-  )
+  const databaseTitleMeasureValue = draftDatabaseTitle || "New database"
   const focusDatabaseTitleInput = () => {
     window.setTimeout(() => {
       databaseTitleInputRef.current?.focus()
@@ -259,19 +255,26 @@ export function DatabaseViewToolbar() {
               className="size-5 shrink-0 text-muted-foreground"
             />
           ) : null}
-          <Input
-            aria-label="Database title"
-            className="h-auto w-auto min-w-0 max-w-[44ch] shrink rounded-none border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight truncate text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 md:text-2xl dark:bg-transparent"
-            disabled={!databaseId}
-            onBlur={(event) => saveDatabaseTitle(event.target.value)}
-            onChange={(event) => {
-              setDraftDatabaseTitle(event.target.value)
-            }}
-            placeholder="New database"
-            ref={databaseTitleInputRef}
-            size={databaseTitleInputSize}
-            value={draftDatabaseTitle}
-          />
+          <span className="grid min-w-[1ch] max-w-[44ch] shrink overflow-hidden">
+            <span
+              aria-hidden="true"
+              className="invisible col-start-1 row-start-1 max-w-[44ch] overflow-hidden text-ellipsis whitespace-pre text-2xl font-semibold leading-tight md:text-2xl"
+            >
+              {databaseTitleMeasureValue}
+            </span>
+            <Input
+              aria-label="Database title"
+              className="col-start-1 row-start-1 h-auto w-full min-w-[1ch] max-w-[44ch] rounded-none border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight truncate text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 md:text-2xl dark:bg-transparent"
+              disabled={!databaseId}
+              onBlur={(event) => saveDatabaseTitle(event.target.value)}
+              onChange={(event) => {
+                setDraftDatabaseTitle(event.target.value)
+              }}
+              placeholder="New database"
+              ref={databaseTitleInputRef}
+              value={draftDatabaseTitle}
+            />
+          </span>
           <DropDrawer open={titleActionsOpen} onOpenChange={setTitleActionsOpen}>
             <DropDrawerTrigger asChild>
               <Button
