@@ -1165,7 +1165,6 @@ export function DatabaseViewSettingsMenu({
 
                         return (
                           <DropDrawerItem
-                            disabled={alreadyLinked}
                             key={viewOption.value}
                             onSelect={(event) => {
                               event.preventDefault()
