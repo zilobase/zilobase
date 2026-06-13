@@ -156,10 +156,10 @@ export function DatabaseViewToolbar() {
       : draftDatabaseTitle || hostDatabaseName || "Untitled"
   const databaseEmoji = getDatabaseEmoji({ config: databaseConfig })
   const canEditDatabaseEmoji = editable && Boolean(databaseId)
-  const databaseTitleInputWidth = `${Math.max(
-    (draftDatabaseTitle || "New database").length + 1,
-    12
-  )}ch`
+  const databaseTitleInputSize = Math.min(
+    Math.max((draftDatabaseTitle || "New database").length + 1, 12),
+    44
+  )
   const focusDatabaseTitleInput = () => {
     window.setTimeout(() => {
       databaseTitleInputRef.current?.focus()
@@ -250,7 +250,7 @@ export function DatabaseViewToolbar() {
           ) : null}
           <Input
             aria-label="Database title"
-            className="database-title-input h-auto min-w-0 max-w-full rounded-none border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 md:text-2xl dark:bg-transparent"
+            className="h-auto w-auto min-w-0 max-w-[44ch] shrink rounded-none border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight truncate text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:border-transparent focus-visible:ring-0 md:text-2xl dark:bg-transparent"
             disabled={!databaseId}
             onBlur={(event) => saveDatabaseTitle(event.target.value)}
             onChange={(event) => {
@@ -258,7 +258,7 @@ export function DatabaseViewToolbar() {
             }}
             placeholder="New database"
             ref={databaseTitleInputRef}
-            style={{ width: databaseTitleInputWidth }}
+            size={databaseTitleInputSize}
             value={draftDatabaseTitle}
           />
           <DropDrawer open={titleActionsOpen} onOpenChange={setTitleActionsOpen}>

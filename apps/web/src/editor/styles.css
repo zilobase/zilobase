@@ -448,7 +448,7 @@
   }
 
   .database-title-input {
-    @apply h-auto min-w-0 border-0 bg-transparent px-0 py-0 text-3xl font-medium leading-tight tracking-normal text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0;
+    @apply h-auto min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-3xl font-medium leading-tight tracking-normal text-foreground shadow-none placeholder:text-muted-foreground/40 focus-visible:ring-0;
   }
 
   .database-new-button {
