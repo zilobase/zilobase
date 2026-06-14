@@ -50,6 +50,7 @@ import {
   DATABASE_PAGE_DRAG_MIME,
 } from "../constants"
 import { DatabasePageLink } from "../shared/database-page-link"
+import { DatabaseFormulaDialog } from "../formula"
 import {
   DatabaseNamePropertyMenu,
   DatabasePropertyMenu,
@@ -88,6 +89,10 @@ type PendingInsertProperty = {
   position: number
   side: InsertPropertySide
   sourceColumnKey: string
+}
+
+type PendingFormulaSetup = {
+  existingPropertyIds: string[]
 }
 
 type PendingSortedRowReorder = {
@@ -270,6 +275,11 @@ export function DatabaseTableView() {
   )
   const [pendingInsertProperty, setPendingInsertProperty] =
     useState<PendingInsertProperty | null>(null)
+  const [pendingFormulaSetup, setPendingFormulaSetup] =
+    useState<PendingFormulaSetup | null>(null)
+  const [formulaSetupPropertyId, setFormulaSetupPropertyId] = useState<
+    string | null
+  >(null)
   const [pendingSortedRowReorder, setPendingSortedRowReorder] =
     useState<PendingSortedRowReorder | null>(null)
   const [editingPropertyKey, setEditingPropertyKey] = useState<string | null>(
@@ -760,6 +770,26 @@ export function DatabaseTableView() {
   }, [activeEditingPropertyKey, renderedProperties])
 
   useEffect(() => {
+    if (!pendingFormulaSetup) {
+      return
+    }
+
+    const existingPropertyIds = new Set(pendingFormulaSetup.existingPropertyIds)
+    const formulaProperty = properties.find(
+      (property: any) =>
+        !existingPropertyIds.has(property.id) &&
+        property.property.type === "formula"
+    )
+
+    if (!formulaProperty) {
+      return
+    }
+
+    setFormulaSetupPropertyId(formulaProperty.id)
+    setPendingFormulaSetup(null)
+  }, [pendingFormulaSetup, properties])
+
+  useEffect(() => {
     if (
       pendingInsertProperty &&
       pendingInsertProperty.sourceColumnKey !== "name" &&
@@ -885,13 +915,27 @@ export function DatabaseTableView() {
     })
   }
 
+  const addDatabasePropertyAndMaybeOpenFormula = (
+    type = "text",
+    label = "Property",
+    position?: number
+  ) => {
+    if (type === "formula") {
+      setPendingFormulaSetup({
+        existingPropertyIds: properties.map((property: any) => property.id),
+      })
+    }
+
+    addDatabaseProperty(type, label, position)
+  }
+
   const addInsertedDatabaseProperty = (
     type: string,
     label: string,
     position: number,
     insertKey: string
   ) => {
-    addDatabaseProperty(type, label, position)
+    addDatabasePropertyAndMaybeOpenFormula(type, label, position)
     clearPendingInsertProperty(insertKey)
   }
 
@@ -1067,6 +1111,7 @@ export function DatabaseTableView() {
                     onInsertProperty={(side) =>
                       openInsertPropertyMenu(property.id, property.position, side)
                     }
+                    onEditFormula={() => setFormulaSetupPropertyId(property.id)}
                     onRename={(name) => renameDatabaseProperty(property.id, name)}
                     onToggleGroup={() =>
                       togglePropertyGrouping(
@@ -1105,7 +1150,7 @@ export function DatabaseTableView() {
             <AddDatabasePropertyMenu
               disabled={isAddingDatabaseProperty}
               isPending={isAddingDatabaseProperty}
-              onAdd={addDatabaseProperty}
+              onAdd={addDatabasePropertyAndMaybeOpenFormula}
             />
             <span
               aria-hidden="true"
@@ -1184,6 +1229,8 @@ export function DatabaseTableView() {
                       <DatabasePropertyValue
                         draftValues={draftPropertyValues}
                         editable={editable}
+                        properties={properties}
+                        propertyValuesByKey={propertyValuesByKey}
                         onActiveValueChange={setActivePropertyValueKey}
                         onDraftValuesChange={setDraftPropertyValues}
                         onPropertyConfigChange={(databasePropertyId, config) =>
@@ -1194,6 +1241,7 @@ export function DatabaseTableView() {
                         personOptions={personOptions}
                         property={property}
                         row={row}
+                        titlePropertyLabel={nameColumnLabel}
                         value={value}
                       />
                     </DatabaseTableCellContent>
@@ -1505,6 +1553,15 @@ export function DatabaseTableView() {
         </div>
       </div>
       </div>
+      <DatabaseFormulaDialog
+        databasePropertyId={formulaSetupPropertyId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFormulaSetupPropertyId(null)
+          }
+        }}
+        open={formulaSetupPropertyId !== null}
+      />
       <AlertDialog
         open={pendingSortedRowReorder !== null}
         onOpenChange={(open) => {

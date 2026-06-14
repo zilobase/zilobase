@@ -40,6 +40,7 @@ export type DatabasePropertyConfig = {
   dateFormat?: DateFormatValue
   defaultOptionId?: string
   filesLimit?: FilesLimitValue
+  formula?: string
   hidden?: boolean
   personDefault?: PersonDefaultValue
   personLimit?: PersonLimitValue

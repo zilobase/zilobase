@@ -190,13 +190,7 @@ export function getDatabaseViewCommands({
       }
 
       addProperty.mutate({
-        config:
-          type === "status"
-            ? {
-                defaultOptionId: defaultStatusOptions[0]?.id,
-                options: defaultStatusOptions,
-              }
-            : undefined,
+        config: getDefaultDatabasePropertyConfig(type),
         databaseId,
         name: label,
         position,
@@ -643,6 +637,21 @@ export function getDatabaseViewCommands({
       )
     },
   }
+}
+
+function getDefaultDatabasePropertyConfig(type: string) {
+  if (type === "status") {
+    return {
+      defaultOptionId: defaultStatusOptions[0]?.id,
+      options: defaultStatusOptions,
+    }
+  }
+
+  if (type === "formula") {
+    return { formula: "" }
+  }
+
+  return undefined
 }
 
 function createDatabaseFilterId() {

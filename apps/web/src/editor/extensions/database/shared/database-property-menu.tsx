@@ -12,6 +12,7 @@ import {
   Pin,
   Plus,
   Settings2,
+  Sigma,
   Sparkles,
   TextWrap,
   Trash2,
@@ -78,6 +79,7 @@ export function DatabasePropertyMenu({
   name,
   onOpenChange,
   onInsertProperty,
+  onEditFormula,
   onRename,
   open,
   onToggleGroup,
@@ -92,6 +94,7 @@ export function DatabasePropertyMenu({
   name: string
   onOpenChange?: (open: boolean) => void
   onInsertProperty: (side: "left" | "right") => void
+  onEditFormula?: () => void
   onRename: (name: string) => void
   onToggleGroup?: () => void
   open?: boolean
@@ -110,6 +113,7 @@ export function DatabasePropertyMenu({
     (sort) => sort.column === databasePropertyId
   )?.direction
   const isButtonProperty = type === "button"
+  const isFormulaProperty = type === "formula"
   const wrapContent = getPropertyWrapContent(config)
   const updatePropertyConfig = (nextConfig: DatabasePropertyConfig) => {
     updateProperty.mutate({
@@ -182,6 +186,14 @@ export function DatabasePropertyMenu({
               <Sparkles />
               <span>Edit automation</span>
             </DropDrawerItem>
+          ) : isFormulaProperty ? (
+            <DropDrawerItem
+              disabled={!onEditFormula}
+              onSelect={() => onEditFormula?.()}
+            >
+              <Sigma />
+              <span>Edit formula</span>
+            </DropDrawerItem>
           ) : (
             <DatabasePropertyEditSubmenu
               config={config}
@@ -215,15 +227,17 @@ export function DatabasePropertyMenu({
               </DropDrawerItem>
             </DropDrawerSubContent>
           </DropDrawerSub>
-          <DropDrawerSub>
-            <DropDrawerSubTrigger>
-              <Sparkles />
-              <span>AI Autofill</span>
-            </DropDrawerSubTrigger>
-            <DropDrawerSubContent>
-              <DropDrawerItem disabled>Configure autofill</DropDrawerItem>
-            </DropDrawerSubContent>
-          </DropDrawerSub>
+          {isFormulaProperty ? null : (
+            <DropDrawerSub>
+              <DropDrawerSubTrigger>
+                <Sparkles />
+                <span>AI Autofill</span>
+              </DropDrawerSubTrigger>
+              <DropDrawerSubContent>
+                <DropDrawerItem disabled>Configure autofill</DropDrawerItem>
+              </DropDrawerSubContent>
+            </DropDrawerSub>
+          )}
           <DropDrawerSeparator />
           <DropDrawerItem disabled>
             <Filter />

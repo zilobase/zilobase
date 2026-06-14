@@ -1,6 +1,7 @@
 import { type FormEvent } from "react"
 
 import { Checkbox } from "@/components/ui/checkbox"
+import type { DatabaseProperty } from "@notelab/features/databases"
 
 import { defaultStatusOptions } from "../constants"
 import { DatabasePropertyButton } from "../database-property-button"
@@ -8,6 +9,7 @@ import { DatabasePropertyDate } from "../database-property-date"
 import { DatabasePropertyFiles } from "../database-property-files"
 import { DatabasePropertyInput } from "../database-property-input"
 import { DatabasePropertySelect } from "../database-property-select"
+import { DatabaseFormulaValue } from "../formula"
 import { type DatabasePropertyValue } from "../utils"
 import { formatDatabaseDateValue } from "./database-date-config"
 import { getPersonLimit } from "./database-view-config"
@@ -34,6 +36,8 @@ type DatabasePropertyValueProps = {
   disabledSelect?: boolean
   draftValues: Record<string, DatabasePropertyValue>
   editable: boolean
+  properties: DatabaseProperty[]
+  propertyValuesByKey: Record<string, DatabasePropertyValue>
   onActiveValueChange: (key: string | null) => void
   onDraftValuesChange: (
     updater: (
@@ -55,6 +59,7 @@ type DatabasePropertyValueProps = {
   personOptions: PersonOption[]
   property: DatabasePropertyListItem
   row: DatabaseRow
+  titlePropertyLabel: string
   value: DatabasePropertyValue
 }
 
@@ -88,6 +93,8 @@ export function DatabasePropertyValue({
   disabledSelect = false,
   draftValues,
   editable,
+  properties,
+  propertyValuesByKey,
   onActiveValueChange,
   onDraftValuesChange,
   onPropertyConfigChange,
@@ -96,6 +103,7 @@ export function DatabasePropertyValue({
   personOptions,
   property,
   row,
+  titlePropertyLabel,
   value,
 }: DatabasePropertyValueProps) {
   const workspaceProperty = property.property
@@ -108,6 +116,7 @@ export function DatabasePropertyValue({
   const isButtonProperty = workspaceProperty.type === "button"
   const isDateProperty = workspaceProperty.type === "date"
   const isFilesProperty = workspaceProperty.type === "files"
+  const isFormulaProperty = workspaceProperty.type === "formula"
   const isPersonProperty = workspaceProperty.type === "person"
   const isReadOnlyTimeCell = isReadOnlyTimeProperty(workspaceProperty.type)
   const isMultiSelectProperty =
@@ -148,6 +157,15 @@ export function DatabasePropertyValue({
       editable={editable}
       label={workspaceProperty.name}
       value={value}
+    />
+  ) : isFormulaProperty ? (
+    <DatabaseFormulaValue
+      currentPropertyId={workspaceProperty.id}
+      properties={properties}
+      propertyConfig={workspaceProperty.config}
+      propertyValuesByKey={propertyValuesByKey}
+      row={row}
+      titlePropertyLabel={titlePropertyLabel}
     />
   ) : isSelectProperty || isPersonProperty ? (
     <DatabasePropertySelect

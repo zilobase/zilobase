@@ -302,12 +302,14 @@ export function DatabaseKanbanView() {
     addDatabaseRow,
     onOpenPage,
     personOptions,
+    properties,
     items: allRows,
     savePropertyValue,
     setActivePropertyValueKey,
     setDraftPropertyValues,
     saveDatabaseSorts,
     sortedItems: items,
+    titlePropertyLabel,
     updateDatabasePropertyConfig,
     visibleProperties,
     options,
@@ -843,6 +845,8 @@ export function DatabaseKanbanView() {
             disabledSelect={disabledSelect}
             draftValues={draftPropertyValues}
             editable={editable}
+            properties={properties}
+            propertyValuesByKey={propertyValuesByKey}
             onActiveValueChange={setActivePropertyValueKey}
             onDraftValuesChange={setDraftPropertyValues}
             onPropertyConfigChange={onPropertyConfigChange}
@@ -851,6 +855,7 @@ export function DatabaseKanbanView() {
             personOptions={personOptions}
             property={property}
             row={row}
+            titlePropertyLabel={titlePropertyLabel}
             value={value}
           />
         </div>
