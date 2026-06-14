@@ -1,11 +1,38 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import {
+  ArrowUp,
+  AtSign,
+  Check,
   ImagePlus,
+  MessageSquare,
+  MoreHorizontal,
+  Paperclip,
+  Pencil,
   SmilePlus,
+  Trash2,
   X,
 } from "lucide-react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   EmojiPicker,
   EmojiPickerContent,
@@ -13,11 +40,23 @@ import {
   EmojiPickerSearch,
 } from "@/components/ui/emoji-picker"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Textarea } from "@/components/ui/textarea"
 import { useSession } from "@notelab/features/auth"
 import {
+  useAddWorkspaceCommentReaction,
+  useCreateWorkspaceComment,
+  useDeleteWorkspaceComment,
+  useRemoveWorkspaceCommentReaction,
+  useResolveWorkspaceCommentThread,
+  useUpdateWorkspaceComment,
   useUpdateWorkspacePropertyValue,
+  useWorkspaceComments,
   useWorkspacePersonAccessTargets,
   useWorkspaceProperties,
+  type CommentAuthor,
+  type WorkspaceCommentMessage,
 } from "@notelab/features/workspaces"
 
 import { DatabasePropertyDate } from "../../extensions/database/database-property-date"
@@ -58,14 +97,39 @@ export function WorkspaceMetadata({
   const [iconOpen, setIconOpen] = useState(false)
   const [localIcon, setLocalIcon] = useState("")
   const [localTitle, setLocalTitle] = useState("")
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [newCommentBody, setNewCommentBody] = useState("")
+  const [editingComment, setEditingComment] = useState<{
+    body: string
+    id: string
+  } | null>(null)
   const [draftValues, setDraftValues] = useState<Record<string, DatabasePropertyValue>>({})
   const titleRef = useRef<HTMLTextAreaElement | null>(null)
   const { data: propertyPayload } = useWorkspaceProperties(workspaceId)
   const { data: accessTargets } = useWorkspacePersonAccessTargets(workspaceId)
   const { data: session } = useSession()
+  const commentsEnabled = Boolean(workspaceId && session?.user)
+  const { data: commentsPayload, isLoading: commentsLoading } =
+    useWorkspaceComments(workspaceId, commentsEnabled)
+  const createWorkspaceComment = useCreateWorkspaceComment()
+  const updateWorkspaceComment = useUpdateWorkspaceComment()
+  const deleteWorkspaceComment = useDeleteWorkspaceComment()
+  const addWorkspaceCommentReaction = useAddWorkspaceCommentReaction()
+  const removeWorkspaceCommentReaction = useRemoveWorkspaceCommentReaction()
+  const resolveWorkspaceCommentThread = useResolveWorkspaceCommentThread()
   const updatePropertyValue = useUpdateWorkspacePropertyValue()
   const icon = iconProp ?? localIcon
   const title = titleProp ?? localTitle
+  const comments = commentsPayload?.comments ?? []
+  const activeCommentCount = comments.length
+  const totalCommentCount = comments.length
+  const commentsMutating =
+    createWorkspaceComment.isPending ||
+    updateWorkspaceComment.isPending ||
+    deleteWorkspaceComment.isPending ||
+    addWorkspaceCommentReaction.isPending ||
+    removeWorkspaceCommentReaction.isPending ||
+    resolveWorkspaceCommentThread.isPending
   const propertyValues = useMemo(() => {
     const values: Record<string, DatabasePropertyValue> = {}
 
@@ -117,6 +181,87 @@ export function WorkspaceMetadata({
 
             return nextDrafts
           })
+        },
+      }
+    )
+  }
+
+  const createComment = () => {
+    const body = newCommentBody.trim()
+
+    if (!workspaceId || !editable || !body) {
+      return
+    }
+
+    createWorkspaceComment.mutate(
+      { body, workspaceId },
+      {
+        onSuccess: () => {
+          setNewCommentBody("")
+          setCommentsOpen(true)
+        },
+      }
+    )
+  }
+
+  const saveEditedComment = () => {
+    const body = editingComment?.body.trim()
+
+    if (!workspaceId || !editingComment || !body) {
+      return
+    }
+
+    updateWorkspaceComment.mutate(
+      { body, messageId: editingComment.id, workspaceId },
+      {
+        onSuccess: () => setEditingComment(null),
+      }
+    )
+  }
+
+  const removeComment = (commentId: string) => {
+    if (!workspaceId) {
+      return
+    }
+
+    deleteWorkspaceComment.mutate({ messageId: commentId, workspaceId })
+  }
+
+  const addCommentReaction = (commentId: string, emoji: string) => {
+    if (!workspaceId) {
+      return
+    }
+
+    addWorkspaceCommentReaction.mutate({
+      emoji,
+      messageId: commentId,
+      workspaceId,
+    })
+  }
+
+  const removeCommentReaction = (commentId: string, emoji: string) => {
+    if (!workspaceId) {
+      return
+    }
+
+    removeWorkspaceCommentReaction.mutate({
+      emoji,
+      messageId: commentId,
+      workspaceId,
+    })
+  }
+
+  const resolveCommentThread = () => {
+    if (!workspaceId || !commentsPayload?.thread) {
+      return
+    }
+
+    resolveWorkspaceCommentThread.mutate(
+      { workspaceId },
+      {
+        onSuccess: () => {
+          setCommentsOpen(false)
+          setEditingComment(null)
         },
       }
     )
@@ -239,15 +384,17 @@ export function WorkspaceMetadata({
     <section contentEditable={false}>
       {coverVisible ? (
         <div className="relative h-40 bg-gradient-to-r from-stone-200 via-neutral-300 to-zinc-200 dark:from-stone-800 dark:via-neutral-700 dark:to-zinc-800">
-          <button
+          <Button
             aria-label="Remove cover"
-            className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md bg-background/80 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none [&_svg]:size-4"
-            onClick={() => setCoverVisible(false)}
+            className="absolute right-3 top-3 bg-background/80 shadow-sm backdrop-blur"
             disabled={!editable}
+            onClick={() => setCoverVisible(false)}
+            size="icon-sm"
             type="button"
+            variant="outline"
           >
             <X />
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -257,15 +404,34 @@ export function WorkspaceMetadata({
         <div className="mb-3 flex flex-wrap items-center gap-2">
           {!icon ? iconPicker : null}
           {!coverVisible && editable ? (
-            <button
-              className="inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none [&_svg]:size-4"
-              onClick={() => setCoverVisible(true)}
+            <Button
+              className="text-muted-foreground"
               disabled={!editable}
+              onClick={() => setCoverVisible(true)}
+              size="sm"
               type="button"
+              variant="ghost"
             >
               <ImagePlus />
               Add cover
-            </button>
+            </Button>
+          ) : null}
+          {commentsEnabled && (editable || totalCommentCount > 0) ? (
+            <Button
+              className="text-muted-foreground"
+              onClick={() => {
+                setCommentsOpen((open) => !open)
+                if (totalCommentCount === 0) {
+                  setCommentsOpen(true)
+                }
+              }}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              <MessageSquare />
+              {formatCommentButtonLabel(activeCommentCount)}
+            </Button>
           ) : null}
         </div>
 
@@ -296,6 +462,144 @@ export function WorkspaceMetadata({
             value={title}
           />
         </div>
+
+        {commentsEnabled && (commentsOpen || totalCommentCount > 0) ? (
+          <div className="mt-6 pb-3">
+            <div className="relative">
+              {!commentsLoading && comments.length > 0 ? (
+                <Separator
+                  className="absolute left-3 top-3 bottom-4 h-auto"
+                  orientation="vertical"
+                />
+              ) : null}
+              {commentsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-9 w-2/3" />
+                  <Skeleton className="h-9 w-1/2" />
+                </div>
+              ) : comments.length > 0 ? (
+                <div className="relative z-10 space-y-0">
+                  {comments.map((comment, index) => (
+                    <CommentItem
+                    canEdit={
+                      editable &&
+                      Boolean(
+                        comment.authorId &&
+                          comment.authorId === session?.user?.id
+                      )
+                    }
+                    canReact={editable}
+                    canResolve={
+                      editable &&
+                      index === 0 &&
+                        Boolean(commentsPayload?.thread)
+                      }
+                      comment={comment}
+                      editingBody={
+                        editingComment?.id === comment.id
+                          ? editingComment.body
+                          : null
+                      }
+                    isMutating={commentsMutating}
+                    key={comment.id}
+                    onCancelEdit={() => setEditingComment(null)}
+                    onAddReaction={(emoji) => addCommentReaction(comment.id, emoji)}
+                    onDelete={() => removeComment(comment.id)}
+                    onEdit={() => {
+                      if (comment.body) {
+                          setEditingComment({
+                            body: comment.body,
+                            id: comment.id,
+                          })
+                        }
+                      }}
+                      onEditingBodyChange={(body) =>
+                        setEditingComment((current) =>
+                          current?.id === comment.id
+                            ? { ...current, body }
+                            : current
+                        )
+                      }
+                    onResolve={resolveCommentThread}
+                    onRemoveReaction={(emoji) =>
+                      removeCommentReaction(comment.id, emoji)
+                    }
+                    onSaveEdit={saveEditedComment}
+                  />
+                  ))}
+                </div>
+              ) : null}
+
+              {editable ? (
+                <form
+                  className="group/comment-composer relative z-10 flex min-h-8 gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    createComment()
+                  }}
+                >
+                  <div className="flex w-6 shrink-0 justify-center pt-1.5">
+                    <CommentAvatar author={session?.user ?? null} small />
+                  </div>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <Textarea
+                      aria-label="Add a comment"
+                      className="min-h-8 flex-1 resize-none overflow-hidden rounded-none border-0 bg-transparent px-0 py-1 text-sm leading-6 shadow-none focus-visible:ring-0 md:text-sm dark:bg-transparent"
+                      disabled={commentsMutating}
+                      onChange={(event) => setNewCommentBody(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (
+                          event.key === "Enter" &&
+                          !event.shiftKey &&
+                          !event.nativeEvent.isComposing
+                        ) {
+                          event.preventDefault()
+                          createComment()
+                        }
+                      }}
+                      placeholder="Add a comment..."
+                      rows={1}
+                      value={newCommentBody}
+                    />
+                    <div className="flex shrink-0 items-center gap-1 text-muted-foreground">
+                      <Button
+                        aria-label="Attach file"
+                        className="text-muted-foreground"
+                        disabled={commentsMutating}
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Paperclip />
+                      </Button>
+                      <Button
+                        aria-label="Mention person"
+                        className="text-muted-foreground"
+                        disabled={commentsMutating}
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <AtSign />
+                      </Button>
+                      <Button
+                        aria-label="Post comment"
+                        className="rounded-full"
+                        disabled={commentsMutating || !newCommentBody.trim()}
+                        size="icon-sm"
+                        type="submit"
+                        variant="secondary"
+                      >
+                        <ArrowUp />
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              ) : null}
+            </div>
+            <Separator className="mt-3" />
+          </div>
+        ) : null}
 
         {propertyPayload?.properties.length ? (
           <div className="mt-6 grid gap-1 border-y py-2">
@@ -424,4 +728,376 @@ export function WorkspaceMetadata({
       </div>
     </section>
   )
+}
+
+type CommentAvatarAuthor =
+  | Pick<CommentAuthor, "email" | "image" | "name">
+  | { email?: string | null; image?: string | null; name?: string | null }
+  | null
+
+function CommentAvatar({
+  author,
+  small = false,
+}: {
+  author: CommentAvatarAuthor
+  small?: boolean
+}) {
+  const label = getCommentAuthorName(author)
+
+  return (
+    <Avatar aria-hidden size={small ? "sm" : "default"}>
+      {author?.image ? <AvatarImage alt={label} src={author.image} /> : null}
+      <AvatarFallback className="font-medium">
+        {getCommentInitials(label)}
+      </AvatarFallback>
+    </Avatar>
+  )
+}
+
+function CommentItem({
+  canEdit,
+  canReact,
+  canResolve,
+  comment,
+  editingBody,
+  isMutating,
+  onCancelEdit,
+  onAddReaction,
+  onDelete,
+  onEdit,
+  onEditingBodyChange,
+  onResolve,
+  onRemoveReaction,
+  onSaveEdit,
+}: {
+  canEdit: boolean
+  canReact: boolean
+  canResolve: boolean
+  comment: WorkspaceCommentMessage
+  editingBody: string | null
+  isMutating: boolean
+  onCancelEdit: () => void
+  onAddReaction: (emoji: string) => void
+  onDelete: () => void
+  onEdit: () => void
+  onEditingBodyChange: (body: string) => void
+  onResolve: () => void
+  onRemoveReaction: (emoji: string) => void
+  onSaveEdit: () => void
+}) {
+  const isEditing = editingBody !== null
+  const reactions = comment.reactions ?? []
+
+  return (
+    <article className="group/comment relative flex min-h-16 gap-2 pb-3">
+      <div className="relative flex w-6 shrink-0 justify-center">
+        <CommentAvatar author={comment.author ?? null} small />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-1.5 pr-28 text-sm leading-5">
+          <span className="truncate font-semibold text-foreground">
+            {getCommentAuthorName(comment.author ?? null)}
+          </span>
+          <span className="shrink-0 text-xs font-medium text-muted-foreground">
+            {formatCommentTime(comment.createdAt)}
+          </span>
+          {comment.editedAt ? (
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">
+              (edited)
+            </span>
+          ) : null}
+          {(canReact || canEdit || canResolve) && !isEditing ? (
+            <AlertDialog>
+              <span className="absolute right-0 top-0 flex shrink-0 items-center gap-1 rounded-xl border bg-background p-1 opacity-0 shadow-sm transition-opacity group-hover/comment:opacity-100 group-focus-within/comment:opacity-100">
+                {canReact ? (
+                  <CommentReactionPicker
+                    align="end"
+                    disabled={isMutating}
+                    onSelect={onAddReaction}
+                  >
+                    <Button
+                      aria-label="Add reaction"
+                      className="text-muted-foreground"
+                      disabled={isMutating}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <SmilePlus />
+                    </Button>
+                  </CommentReactionPicker>
+                ) : null}
+                {canResolve ? (
+                  <Button
+                    aria-label="Resolve thread"
+                    className="text-muted-foreground"
+                    disabled={isMutating}
+                    onClick={onResolve}
+                    size="icon-sm"
+                    title="Resolve"
+                    type="button"
+                    variant="secondary"
+                  >
+                    <Check />
+                  </Button>
+                ) : null}
+                {canEdit ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        aria-label="More comment actions"
+                        className="text-muted-foreground"
+                        disabled={isMutating}
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="min-w-28"
+                      sideOffset={6}
+                    >
+                      <DropdownMenuItem disabled={isMutating} onClick={onEdit}>
+                        <Pencil className="size-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <AlertDialogTrigger asChild>
+                        <DropdownMenuItem
+                          disabled={isMutating}
+                          onSelect={(event) => event.preventDefault()}
+                          variant="destructive"
+                        >
+                          <Trash2 className="size-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </AlertDialogTrigger>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+              </span>
+              <AlertDialogContent size="sm">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete comment?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the comment.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isMutating}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isMutating}
+                    onClick={onDelete}
+                    variant="destructive"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
+        </div>
+
+        {isEditing ? (
+          <div className="mt-1">
+            <Textarea
+              aria-label="Edit comment"
+              className="min-h-16 resize-y text-sm md:text-sm"
+              disabled={isMutating}
+              onChange={(event) => onEditingBodyChange(event.target.value)}
+              onKeyDown={(event) => {
+                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                  event.preventDefault()
+                  onSaveEdit()
+                }
+
+                if (event.key === "Escape") {
+                  event.preventDefault()
+                  onCancelEdit()
+                }
+              }}
+              value={editingBody}
+            />
+            <div className="mt-1.5 flex justify-end gap-1.5">
+              <Button
+                disabled={isMutating}
+                onClick={onCancelEdit}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+              <Button
+                aria-label="Save edited comment"
+                disabled={isMutating || !editingBody.trim()}
+                onClick={onSaveEdit}
+                size="sm"
+                type="button"
+              >
+                <Check />
+                Save
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-foreground">
+              {comment.body}
+            </p>
+            {reactions.length > 0 ? (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {reactions.map((reaction) => (
+                  <Button
+                    aria-label={`${reaction.emoji} reaction, ${reaction.count}`}
+                    className={
+                      reaction.reactedByMe
+                        ? "h-7 gap-1 rounded-full border-transparent bg-primary/15 px-2 text-primary hover:bg-primary/20 dark:bg-primary/25 dark:hover:bg-primary/30"
+                        : "h-7 gap-1 rounded-full bg-muted px-2 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    }
+                    disabled={isMutating}
+                    key={reaction.emoji}
+                    onClick={() =>
+                      reaction.reactedByMe
+                        ? onRemoveReaction(reaction.emoji)
+                        : onAddReaction(reaction.emoji)
+                    }
+                    size="sm"
+                    type="button"
+                    variant={reaction.reactedByMe ? "secondary" : "ghost"}
+                  >
+                    <span className="text-base leading-none">
+                      {reaction.emoji}
+                    </span>
+                    <span className="text-sm tabular-nums">
+                      {reaction.count}
+                    </span>
+                  </Button>
+                ))}
+                {canReact ? (
+                  <CommentReactionPicker
+                    disabled={isMutating}
+                    onSelect={onAddReaction}
+                  >
+                    <Button
+                      aria-label="Add another reaction"
+                      className="h-7 rounded-full bg-muted px-2 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                      disabled={isMutating}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <SmilePlus className="size-4" />
+                    </Button>
+                  </CommentReactionPicker>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    </article>
+  )
+}
+
+function CommentReactionPicker({
+  align = "start",
+  children,
+  disabled,
+  onSelect,
+}: {
+  align?: "center" | "end" | "start"
+  children: ReactNode
+  disabled: boolean
+  onSelect: (emoji: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={(nextOpen) => setOpen(nextOpen && !disabled)}>
+      <PopoverTrigger asChild>{children}</PopoverTrigger>
+      <PopoverContent
+        align={align}
+        className="w-auto gap-0 overflow-hidden p-0"
+        onMouseDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+        sideOffset={6}
+      >
+        <EmojiPicker
+          onEmojiSelect={({ emoji }) => {
+            onSelect(emoji)
+            setOpen(false)
+          }}
+        >
+          <EmojiPickerSearch autoFocus placeholder="Search emoji..." />
+          <EmojiPickerContent />
+          <EmojiPickerFooter />
+        </EmojiPicker>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function formatCommentButtonLabel(commentCount: number) {
+  if (commentCount === 0) {
+    return "Add comment"
+  }
+
+  return `${commentCount} ${commentCount === 1 ? "comment" : "comments"}`
+}
+
+function getCommentAuthorName(author: CommentAvatarAuthor) {
+  return author?.name?.trim() || author?.email?.trim() || "Unknown"
+}
+
+function getCommentInitials(label: string) {
+  const parts = label
+    .split(/\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  if (parts.length === 0) {
+    return "?"
+  }
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+}
+
+function formatCommentTime(value: string) {
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ""
+  }
+
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
+
+  if (seconds < 60) {
+    return "Just now"
+  }
+
+  const minutes = Math.floor(seconds / 60)
+
+  if (minutes < 60) {
+    return `${minutes}m ago`
+  }
+
+  const hours = Math.floor(minutes / 60)
+
+  if (hours < 24) {
+    return `${hours}h ago`
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
+  }).format(date)
 }
