@@ -21,7 +21,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 
@@ -89,7 +88,6 @@ export function SettingsSidebar({
       <SidebarFooter>
         <ThemeDropdown />
       </SidebarFooter>
-      <SidebarRail />
     </AppSidebarShell>
   )
 }

@@ -92,9 +92,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
       style={
         {
           "--app-sidebar-panel-width": "18rem",
-          "--app-sidebar-rail-gap": "0.5rem",
-          "--sidebar-width":
-            "calc(var(--sidebar-width-icon) + var(--app-sidebar-rail-gap) + var(--app-sidebar-panel-width))",
+          "--sidebar-width": "var(--app-sidebar-panel-width)",
         } as React.CSSProperties
       }
     >
@@ -154,7 +152,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   return (
     <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
       {isSettingsPage ? <SettingsSidebar /> : <AppSidebar />}
-      <SidebarInset className="h-svh overflow-hidden md:peer-data-[variant=floating]:ml-0! md:peer-data-[variant=floating]:h-[calc(100svh-1rem)] md:peer-data-[variant=floating]:rounded-l-none md:peer-data-[variant=floating]:rounded-r-xl md:peer-data-[variant=floating]:border-l-0">
+      <SidebarInset className="h-svh overflow-hidden">
         {embeddedMobileViewer ? 
        null : (
           <AppHeader

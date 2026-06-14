@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router"
 import { toast } from "sonner"
 
 import { AppSidebarShell } from "@/components/app-sidebar-shell"
+import { useAppSearch } from "@/components/app-search"
 import { NavFavorites } from "@/components/nav-favorites"
 import { NavSecondary } from "@/components/nav-secondary"
 import {
@@ -17,8 +18,12 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
   SidebarHeader,
-  SidebarRail,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { useSession } from "@notelab/features/auth"
@@ -44,11 +49,27 @@ import {
   DatabaseIcon,
   FileIcon,
   FileTextIcon,
+  HomeIcon,
   MessageCircleQuestionIcon,
+  SearchIcon,
+  Settings2Icon,
+  SparklesIcon,
   Trash2Icon,
 } from "lucide-react"
 
 const data = {
+  navMain: [
+    {
+      title: "Home",
+      url: "/dashboard",
+      icon: <HomeIcon />,
+    },
+    {
+      title: "Ask AI",
+      url: "/ai",
+      icon: <SparklesIcon />,
+    },
+  ],
   navSecondary: [
     {
       title: "Calendar",
@@ -87,6 +108,10 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate()
+  const { openSearch } = useAppSearch()
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
   const activeOrganizationId = useAppStore((state) => state.activeOrganizationId)
   const { data: session } = useSession()
   const { data: organizations = [] } = useOrganizations()
@@ -211,6 +236,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </div>
       </SidebarHeader>
       <SidebarContent>
+        <NavMain
+          items={data.navMain}
+          onOpenSearch={openSearch}
+          pathname={pathname}
+        />
         <NavFavorites
           favorites={favorites}
           onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite}
@@ -225,11 +255,69 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === "/settings" || pathname.startsWith("/settings/")}
+            >
+              <Link to="/settings/profile">
+                <Settings2Icon />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <ThemeDropdown />
       </SidebarFooter>
-      <SidebarRail />
     </AppSidebarShell>
   )
+}
+
+function NavMain({
+  items,
+  onOpenSearch,
+  pathname,
+}: {
+  items: {
+    title: string
+    url: string
+    icon: React.ReactNode
+  }[]
+  onOpenSearch: () => void
+  pathname: string
+}) {
+  return (
+    <SidebarGroup>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={onOpenSearch} type="button">
+              <SearchIcon />
+              <span>Search</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          {items.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton
+                asChild
+                isActive={isNavigationItemActive(item.url, pathname)}
+              >
+                <Link to={item.url as never}>
+                  {item.icon}
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  )
+}
+
+function isNavigationItemActive(url: string, pathname: string) {
+  return url !== "#" && (pathname === url || pathname.startsWith(`${url}/`))
 }
 
 function buildWorkspaceTreeSections(workspaces: Workspace[]) {

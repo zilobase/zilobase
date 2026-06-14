@@ -31,7 +31,7 @@ export function ChatSidebar({
       <aside
         aria-label="Chat sidebar"
         className={cn(
-          "fixed inset-y-0 right-0 z-40 flex w-[min(100vw,26rem)] flex-col border-l border-sidebar-border bg-background text-foreground shadow-xl transition-transform duration-200 ease-linear md:relative md:inset-auto md:z-20 md:my-2 md:mr-2 md:h-[calc(100svh-1rem)] md:w-[24rem] md:shrink-0 md:rounded-lg md:border md:shadow-sm",
+          "fixed inset-y-0 right-0 z-40 flex w-[min(100vw,26rem)] flex-col border-l border-sidebar-border bg-background text-foreground transition-transform duration-200 ease-linear md:relative md:inset-auto md:z-20 md:h-svh md:w-[24rem] md:shrink-0",
           open ? "translate-x-0" : "translate-x-full md:hidden",
         )}
       >
