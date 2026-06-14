@@ -5,6 +5,7 @@ import {
   Globe2Icon,
   LinkIcon,
   LockIcon,
+  MessageSquareIcon,
   MoreHorizontalIcon,
   Share2Icon,
   StarIcon,
@@ -104,10 +105,12 @@ type ShareTargetValue = `${AccessTargetType}:${string}`
 
 export function NavActions({
   databaseId,
+  onOpenDiscussions,
   pathname,
   workspaceId,
 }: {
   databaseId?: string | null
+  onOpenDiscussions?: () => void
   pathname?: string
   workspaceId?: string | null
 }) {
@@ -337,6 +340,20 @@ export function NavActions({
           >
             <StarIcon className={isFavorite ? "fill-current" : undefined} />
           </Button>
+          {!isDatabasePage ? (
+            <Button
+              aria-label="Open discussions"
+              className="h-7 w-7"
+              disabled={!onOpenDiscussions}
+              onClick={() => onOpenDiscussions?.()}
+              size="icon"
+              title="Discussions"
+              type="button"
+              variant="ghost"
+            >
+              <MessageSquareIcon />
+            </Button>
+          ) : null}
           <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
               <Button

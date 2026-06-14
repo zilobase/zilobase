@@ -13,6 +13,8 @@ import { ArrowRight } from "lucide-react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppSearchProvider } from "@/components/app-search"
 import { ChatSidebar } from "@/components/chat-sidebar"
+import { DiscussionsSidebar } from "@/components/discussions-sidebar"
+import { WorkspaceEditorCommentsProvider } from "@/components/workspace-editor-comments"
 import { NavActions } from "@/components/nav-actions"
 import { SettingsSidebar } from "@/components/settings-sidebar"
 import { Button } from "@/components/ui/button"
@@ -109,16 +111,20 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   const { open: appSidebarOpen } = useSidebar()
   const isSettingsPage = location.pathname.startsWith("/settings")
   const workspaceId = getWorkspaceId(location.pathname)
+  const databaseId = getDatabaseId(location.pathname)
+  const discussionsEnabled = Boolean(workspaceId && !databaseId)
   const [sidePaneWorkspaceId, setSidePaneWorkspaceId] = useState<string | null>(
     null,
   )
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false)
+  const [discussionsSidebarOpen, setDiscussionsSidebarOpen] = useState(false)
   const closeSidePane = useCallback(() => {
     setSidePaneWorkspaceId(null)
   }, [])
   const openSidePane = useCallback((nextWorkspaceId: string) => {
     if (appSidebarOpen) {
       setChatSidebarOpen(false)
+      setDiscussionsSidebarOpen(false)
     }
 
     setSidePaneWorkspaceId(nextWorkspaceId)
@@ -127,8 +133,15 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
     if (appSidebarOpen) {
       closeSidePane()
     }
-
+    setDiscussionsSidebarOpen(false)
     setChatSidebarOpen(true)
+  }, [appSidebarOpen, closeSidePane])
+  const openDiscussionsSidebar = useCallback(() => {
+    if (appSidebarOpen) {
+      closeSidePane()
+    }
+    setChatSidebarOpen(false)
+    setDiscussionsSidebarOpen(true)
   }, [appSidebarOpen, closeSidePane])
   const sidePaneContext = useMemo<WorkspaceSidePaneContextValue>(
     () => ({
@@ -144,22 +157,45 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   }, [closeSidePane, workspaceId])
 
   useEffect(() => {
+    if (databaseId) {
+      setDiscussionsSidebarOpen(false)
+    }
+  }, [databaseId])
+
+  // Close other side panels when discussions or chat opens in some flows
+  useEffect(() => {
+    if (discussionsSidebarOpen && chatSidebarOpen) {
+      setChatSidebarOpen(false)
+    }
+  }, [discussionsSidebarOpen, chatSidebarOpen])
+
+  useEffect(() => {
     if (appSidebarOpen && sidePaneWorkspaceId && chatSidebarOpen) {
       setChatSidebarOpen(false)
     }
   }, [appSidebarOpen, chatSidebarOpen, sidePaneWorkspaceId])
 
+  useEffect(() => {
+    if (appSidebarOpen && sidePaneWorkspaceId && discussionsSidebarOpen) {
+      setDiscussionsSidebarOpen(false)
+    }
+  }, [appSidebarOpen, discussionsSidebarOpen, sidePaneWorkspaceId])
+
   return (
-    <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
-      {isSettingsPage ? <SettingsSidebar /> : <AppSidebar />}
-      <SidebarInset className="h-svh overflow-hidden">
+    <WorkspaceEditorCommentsProvider>
+      <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
+        {isSettingsPage ? <SettingsSidebar /> : <AppSidebar />}
+        <SidebarInset className="h-svh overflow-hidden">
         {embeddedMobileViewer ? 
        null : (
           <AppHeader
             isSettingsPage={isSettingsPage}
+            onCloseSidePane={closeSidePane}
+            onOpenDiscussions={
+              discussionsEnabled ? openDiscussionsSidebar : undefined
+            }
             pathname={location.pathname}
             sidePaneWorkspaceId={sidePaneWorkspaceId}
-            onCloseSidePane={closeSidePane}
           />
         )}
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -171,7 +207,16 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
         onOpen={openChatSidebar}
         open={chatSidebarOpen}
       />
-    </WorkspaceSidePaneContext.Provider>
+        {discussionsEnabled ? (
+          <DiscussionsSidebar
+            workspaceId={workspaceId}
+            onClose={() => setDiscussionsSidebarOpen(false)}
+            onOpen={openDiscussionsSidebar}
+            open={discussionsSidebarOpen}
+          />
+        ) : null}
+      </WorkspaceSidePaneContext.Provider>
+    </WorkspaceEditorCommentsProvider>
   )
 }
 
@@ -196,11 +241,13 @@ export function getWorkspaceSidePaneWidthClass() {
 function AppHeader({
   isSettingsPage,
   onCloseSidePane,
+  onOpenDiscussions,
   pathname,
   sidePaneWorkspaceId,
 }: {
   isSettingsPage: boolean
   onCloseSidePane: () => void
+  onOpenDiscussions?: () => void
   pathname: string
   sidePaneWorkspaceId: string | null
 }) {
@@ -209,6 +256,7 @@ function AppHeader({
       <PaneHeaderContent
         className="min-w-0 flex-1"
         leadingControl={null}
+        onOpenDiscussions={onOpenDiscussions}
         pathname={pathname}
         showActions={!isSettingsPage}
       />
@@ -229,6 +277,7 @@ function AppHeader({
               <ArrowRight />
             </Button>
           }
+          onOpenDiscussions={onOpenDiscussions}
           pathname={`/workspace/${encodeURIComponent(sidePaneWorkspaceId)}`}
           showActions
         />
@@ -240,11 +289,13 @@ function AppHeader({
 function PaneHeaderContent({
   className,
   leadingControl,
+  onOpenDiscussions,
   pathname,
   showActions,
 }: {
   className?: string
   leadingControl: ReactNode | null
+  onOpenDiscussions?: () => void
   pathname: string
   showActions: boolean
 }) {
@@ -264,20 +315,21 @@ function PaneHeaderContent({
       </div>
       {showActions ? (
         <div className="ml-auto px-3">
-          <PaneNavActions pathname={pathname} />
+          <PaneNavActions onOpenDiscussions={onOpenDiscussions} pathname={pathname} />
         </div>
       ) : null}
     </div>
   )
 }
 
-function PaneNavActions({ pathname }: { pathname: string }) {
+function PaneNavActions({ onOpenDiscussions, pathname }: { onOpenDiscussions?: () => void; pathname: string }) {
   const workspaceId = getWorkspaceId(pathname)
   const databaseId = getDatabaseId(pathname)
 
   return (
     <NavActions
       databaseId={databaseId}
+      onOpenDiscussions={onOpenDiscussions}
       pathname={pathname}
       workspaceId={workspaceId}
     />
