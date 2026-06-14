@@ -272,6 +272,7 @@ function DatabaseMainPane({
     <section className={cn(className, "animate-in fade-in-0 duration-300")}>
       <WorkspaceMetadataView
         editable={editable}
+        enableComments={false}
         icon={emoji}
         onIconChange={updateEmoji}
         onTitleChange={setTitle}
