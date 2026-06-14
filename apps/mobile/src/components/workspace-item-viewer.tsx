@@ -6,6 +6,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { authClient } from '@/lib/auth-client';
 import { THEME } from '@/lib/theme';
 import type { MobileViewerItem } from '@/providers/mobile-viewer-provider';
+import React from 'react';
 
 function createMobileWebViewBootstrap(cookie: string | undefined) {
   const serializedCookie = JSON.stringify(cookie ?? '');
