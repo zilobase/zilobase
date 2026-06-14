@@ -1,4 +1,5 @@
 import {
+  type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
   useMemo,
   useRef,
@@ -6,8 +7,10 @@ import {
   type ReactNode,
 } from "react"
 import { Copy, HelpCircle, Sigma } from "lucide-react"
+import type { ThemedToken } from "shiki"
 import { toast } from "sonner"
 
+import { highlightCode } from "@/components/ai-elements/code-block"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -51,6 +54,12 @@ type FormulaReferenceItem = {
   propertyType?: string
   snippets: string[]
   type: string
+}
+
+type HighlightedFormulaCode = {
+  bg: string
+  fg: string
+  tokens: ThemedToken[][]
 }
 
 const builtInReferences: FormulaReferenceItem[] = [
@@ -325,11 +334,10 @@ export function DatabaseFormulaDialog({
             <label className="sr-only" htmlFor="database-formula-input">
               Your formula
             </label>
-            <Textarea
-              aria-label="Formula"
-              className="min-h-24 resize-none font-mono text-sm leading-6"
+            <FormulaEditor
+              draftFormula={draftFormula}
               id="database-formula-input"
-              onChange={(event) => setDraftFormula(event.target.value)}
+              onChange={setDraftFormula}
               onKeyDown={(event) => {
                 if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
                   event.preventDefault()
@@ -337,9 +345,7 @@ export function DatabaseFormulaDialog({
                 }
               }}
               placeholder="Your formula"
-              ref={textareaRef}
-              spellCheck={false}
-              value={draftFormula}
+              textareaRef={textareaRef}
             />
           </section>
 
@@ -479,6 +485,144 @@ export function DatabaseFormulaDialog({
       </DialogContent>
     </Dialog>
   )
+}
+
+function FormulaEditor({
+  draftFormula,
+  id,
+  onChange,
+  onKeyDown,
+  placeholder,
+  textareaRef,
+}: {
+  draftFormula: string
+  id: string
+  onChange: (value: string) => void
+  onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
+  placeholder: string
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+}) {
+  const [asyncHighlightedCode, setAsyncHighlightedCode] =
+    useState<HighlightedFormulaCode | null>(null)
+  const highlightedCode = useMemo(
+    () =>
+      (highlightCode(draftFormula, "js") as HighlightedFormulaCode | null) ??
+      createRawHighlightedFormulaCode(draftFormula),
+    [draftFormula]
+  )
+  const activeHighlightedCode = asyncHighlightedCode ?? highlightedCode
+  const highlightOverlayRef = useRef<HTMLPreElement | null>(null)
+
+  useEffect(() => {
+    setAsyncHighlightedCode(null)
+
+    highlightCode(draftFormula, "js", (result) => {
+      setAsyncHighlightedCode(result as HighlightedFormulaCode)
+    })
+  }, [draftFormula])
+
+  const syncScroll = (target: HTMLTextAreaElement) => {
+    const highlightOverlay = highlightOverlayRef.current
+
+    if (!highlightOverlay) {
+      return
+    }
+
+    highlightOverlay.scrollTop = target.scrollTop
+    highlightOverlay.scrollLeft = target.scrollLeft
+  }
+
+  return (
+    <div className="relative">
+      <pre
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 m-0 overflow-auto rounded-lg border border-input px-2.5 py-2 font-mono text-sm leading-6 whitespace-pre-wrap break-words"
+        ref={highlightOverlayRef}
+        style={{
+          backgroundColor: activeHighlightedCode.bg,
+          color: activeHighlightedCode.fg,
+        }}
+      >
+        <code>
+          {draftFormula ? (
+            activeHighlightedCode.tokens.map((line, lineIndex) => (
+              <span className="block" key={`formula-line-${lineIndex}`}>
+                {line.length === 0
+                  ? "\n"
+                  : line.map((token, tokenIndex) => (
+                      <span
+                        className="dark:!bg-[var(--shiki-dark-bg)] dark:!text-[var(--shiki-dark)]"
+                        key={`formula-line-${lineIndex}-token-${tokenIndex}`}
+                        style={{
+                          backgroundColor: token.bgColor,
+                          color: token.color,
+                          fontStyle:
+                            token.fontStyle && token.fontStyle & 1
+                              ? "italic"
+                              : undefined,
+                          fontWeight:
+                            token.fontStyle && token.fontStyle & 2
+                              ? "bold"
+                              : undefined,
+                          textDecoration:
+                            token.fontStyle && token.fontStyle & 4
+                              ? "underline"
+                              : undefined,
+                          ...token.htmlStyle,
+                        }}
+                      >
+                        {token.content}
+                      </span>
+                    ))}
+              </span>
+            ))
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </code>
+      </pre>
+
+      <Textarea
+        aria-label="Formula"
+        className="relative z-10 min-h-24 resize-none border-transparent bg-transparent font-mono text-sm leading-6 text-transparent caret-foreground selection:bg-primary/20 focus-visible:border-ring/60"
+        id={id}
+        onChange={(event) => {
+          onChange(event.target.value)
+          syncScroll(event.target)
+        }}
+        onInput={(event) => {
+          syncScroll(event.currentTarget)
+        }}
+        onKeyDown={onKeyDown}
+        onScroll={(event) => {
+          syncScroll(event.currentTarget)
+        }}
+        placeholder={placeholder}
+        ref={textareaRef}
+        spellCheck={false}
+        value={draftFormula}
+      />
+    </div>
+  )
+}
+
+function createRawHighlightedFormulaCode(
+  code: string
+): HighlightedFormulaCode {
+  return {
+    bg: "transparent",
+    fg: "inherit",
+    tokens: code.split("\n").map((line) =>
+      line === ""
+        ? []
+        : [
+            {
+              color: "inherit",
+              content: line,
+            } as ThemedToken,
+          ]
+    ),
+  }
 }
 
 function FormulaSidebarSection({
