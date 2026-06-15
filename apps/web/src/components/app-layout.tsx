@@ -211,7 +211,6 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
           <DiscussionsSidebar
             workspaceId={workspaceId}
             onClose={() => setDiscussionsSidebarOpen(false)}
-            onOpen={openDiscussionsSidebar}
             open={discussionsSidebarOpen}
           />
         ) : null}

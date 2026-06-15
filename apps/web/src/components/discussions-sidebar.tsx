@@ -3,7 +3,6 @@
 import {
   BellIcon,
   FilterIcon,
-  MessageSquare,
   PanelRightCloseIcon,
 } from "lucide-react"
 
@@ -16,29 +15,13 @@ import { useMemo } from "react"
 export function DiscussionsSidebar({
   workspaceId,
   onClose,
-  onOpen,
   open,
 }: {
   workspaceId?: string | null
   onClose: () => void
-  onOpen: () => void
   open: boolean
 }) {
   return (
-    <>
-      {!open ? (
-        <Button
-          aria-label="Open discussions sidebar"
-          className="fixed bottom-4 right-20 z-40 h-10 rounded-full border-sidebar-border bg-sidebar px-3 text-sidebar-foreground shadow-lg ring-1 ring-foreground/10 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          onClick={onOpen}
-          type="button"
-          variant="outline"
-        >
-          <MessageSquare className="size-4" />
-          <span>Discuss</span>
-        </Button>
-      ) : null}
-
       <aside
         aria-label="Discussions sidebar"
         className={cn(
@@ -83,7 +66,6 @@ export function DiscussionsSidebar({
           <DiscussionsThreads workspaceId={workspaceId} />
         </div>
       </aside>
-    </>
   )
 }
 
