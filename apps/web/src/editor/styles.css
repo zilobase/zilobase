@@ -702,6 +702,24 @@
     @apply z-20;
   }
 
+  .database-cell-presence {
+    @apply pointer-events-none absolute inset-0 z-10;
+  }
+
+  .database-cell-presence-border {
+    @apply absolute -inset-px rounded-[3px] border-2;
+    border-color: var(--database-presence-color);
+  }
+
+  .database-cell-presence-stack {
+    @apply absolute right-1 top-1 flex items-center;
+  }
+
+  .database-cell-presence-dot {
+    @apply -ml-1 size-2.5 rounded-full border border-background;
+    background-color: var(--database-presence-color);
+  }
+
   .database-cell-scroll {
     @apply min-h-8 w-full min-w-0 overflow-x-auto overflow-y-hidden;
     overscroll-behavior-x: contain;

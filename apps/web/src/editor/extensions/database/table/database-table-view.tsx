@@ -231,6 +231,7 @@ export function DatabaseTableView() {
     activeDatabaseSorts,
     addDatabaseProperty,
     addDraggedPageRow,
+    cellPresenceByKey,
     propertyValuesByKey,
     databaseConfig,
     databaseId,
@@ -1206,6 +1207,8 @@ export function DatabaseTableView() {
               const showRightInsert = pendingInsertPropertyKey === rightInsertKey
               const workspaceProperty = property.property
               const key = `${row.pageId}:${workspaceProperty.id}`
+              const presenceKey = `${row.id}:${workspaceProperty.id}`
+              const cellPresence = cellPresenceByKey[presenceKey] ?? []
               const persistedValue = propertyValuesByKey[key] ?? ""
               const value = draftPropertyValues[key] ?? persistedValue
               const wrapContent = getPropertyWrapContent(workspaceProperty.config)
@@ -1223,8 +1226,44 @@ export function DatabaseTableView() {
                     data-active={
                       activePropertyValueKey === key ? "true" : undefined
                     }
+                    data-presence={
+                      cellPresence.length > 0 ? "true" : undefined
+                    }
                     data-wrap-content={wrapContent ? "true" : undefined}
                   >
+                    {cellPresence.length > 0 ? (
+                      <div
+                        aria-hidden="true"
+                        className="database-cell-presence"
+                        title={cellPresence
+                          .map((collaborator) => collaborator.user.name)
+                          .join(", ")}
+                      >
+                        <span
+                          className="database-cell-presence-border"
+                          style={
+                            {
+                              "--database-presence-color":
+                                cellPresence[0]?.color,
+                            } as CSSProperties
+                          }
+                        />
+                        <span className="database-cell-presence-stack">
+                          {cellPresence.slice(0, 3).map((collaborator) => (
+                            <span
+                              className="database-cell-presence-dot"
+                              key={collaborator.sessionId}
+                              style={
+                                {
+                                  "--database-presence-color":
+                                    collaborator.color,
+                                } as CSSProperties
+                              }
+                            />
+                          ))}
+                        </span>
+                      </div>
+                    ) : null}
                     <DatabaseTableCellContent wrapContent={wrapContent}>
                       <DatabasePropertyValue
                         draftValues={draftPropertyValues}

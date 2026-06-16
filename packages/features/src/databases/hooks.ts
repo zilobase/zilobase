@@ -6,21 +6,29 @@ import {
   databaseQueryOptions,
   type DatabasePayload,
 } from "./queries"
+import {
+  createDatabaseClientMutationId,
+  rememberDatabaseClientMutationId,
+} from "./mutation-tracker"
 import { workspacesQueryKey } from "../workspaces/queries"
 
-type CreateDatabaseInput = {
+type DatabaseMutationInput = {
+  clientMutationId?: string
+}
+
+type CreateDatabaseInput = DatabaseMutationInput & {
   name?: string
   organizationId: string
   pageId: string
 }
 
-type UpdateDatabaseInput = {
+type UpdateDatabaseInput = DatabaseMutationInput & {
   databaseId: string
   name?: string
   config?: unknown
 }
 
-type UpdateDatabaseViewInput = {
+type UpdateDatabaseViewInput = DatabaseMutationInput & {
   config?: unknown
   databaseId: string
   databaseViewId: string
@@ -28,19 +36,19 @@ type UpdateDatabaseViewInput = {
   type?: string
 }
 
-type AddDatabaseViewInput = {
+type AddDatabaseViewInput = DatabaseMutationInput & {
   config?: unknown
   databaseId: string
   name?: string
   type?: string
 }
 
-type DeleteDatabaseViewInput = {
+type DeleteDatabaseViewInput = DatabaseMutationInput & {
   databaseId: string
   databaseViewId: string
 }
 
-type AddPropertyInput = {
+type AddPropertyInput = DatabaseMutationInput & {
   config?: unknown
   databaseId: string
   name?: string
@@ -48,7 +56,7 @@ type AddPropertyInput = {
   type?: string
 }
 
-type UpdatePropertyInput = {
+type UpdatePropertyInput = DatabaseMutationInput & {
   databaseId: string
   databasePropertyId: string
   config?: unknown
@@ -58,7 +66,7 @@ type UpdatePropertyInput = {
   width?: number | null
 }
 
-type AddRowInput = {
+type AddRowInput = DatabaseMutationInput & {
   databaseId: string
   pageId?: string
   parentRowId?: string | null
@@ -66,12 +74,12 @@ type AddRowInput = {
   title?: string
 }
 
-type ReorderRowsInput = {
+type ReorderRowsInput = DatabaseMutationInput & {
   databaseId: string
   rowIds: string[]
 }
 
-type MoveRowInput = {
+type MoveRowInput = DatabaseMutationInput & {
   databaseId: string
   groupPropertyId?: string
   groupValue?: unknown
@@ -79,19 +87,19 @@ type MoveRowInput = {
   rowIds: string[]
 }
 
-type UpdatePropertyValueInput = {
+type UpdatePropertyValueInput = DatabaseMutationInput & {
   databaseId: string
   propertyId: string
   rowId: string
   value: unknown
 }
 
-type DeletePropertyInput = {
+type DeletePropertyInput = DatabaseMutationInput & {
   databaseId: string
   databasePropertyId: string
 }
 
-type DuplicatePropertyInput = {
+type DuplicatePropertyInput = DatabaseMutationInput & {
   databaseId: string
   databasePropertyId: string
   includeValues?: boolean
@@ -113,6 +121,20 @@ function setDatabasePayload(
   queryClient.setQueryData(databaseQueryKey(payload.database.id), payload)
 }
 
+function createMutationBody(input: Record<string, unknown>) {
+  const clientMutationId =
+    typeof input.clientMutationId === "string" && input.clientMutationId.length > 0
+      ? input.clientMutationId
+      : createDatabaseClientMutationId()
+
+  rememberDatabaseClientMutationId(clientMutationId)
+
+  return JSON.stringify({
+    ...input,
+    clientMutationId,
+  })
+}
+
 export function useDatabase(databaseId: string | null | undefined) {
   const { apiFetch } = useNotelabFeatures()
 
@@ -126,7 +148,7 @@ export function useCreateDatabase() {
     mutationFn: async (input: CreateDatabaseInput) =>
       apiFetch<DatabasePayload>("/databases", {
         method: "POST",
-        body: JSON.stringify(input),
+        body: createMutationBody(input),
       }),
     onSuccess: async (payload) => {
       setDatabasePayload(queryClient, payload)
@@ -144,7 +166,7 @@ export function useUpdateDatabase() {
     mutationFn: async ({ databaseId, ...patch }: UpdateDatabaseInput) =>
       apiFetch<DatabasePayload>(`/databases/${databaseId}`, {
         method: "PATCH",
-        body: JSON.stringify(patch),
+        body: createMutationBody(patch),
       }),
     onSuccess: async (payload) => {
       setDatabasePayload(queryClient, payload)
@@ -168,7 +190,7 @@ export function useUpdateDatabaseView() {
         `/databases/${databaseId}/views/${databaseViewId}`,
         {
           method: "PATCH",
-          body: JSON.stringify(patch),
+          body: createMutationBody(patch),
         }
       ),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
@@ -182,7 +204,7 @@ export function useAddDatabaseView() {
     mutationFn: async ({ databaseId, ...input }: AddDatabaseViewInput) =>
       apiFetch<DatabasePayload>(`/databases/${databaseId}/views`, {
         method: "POST",
-        body: JSON.stringify(input),
+        body: createMutationBody(input),
       }),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
   })
@@ -211,7 +233,7 @@ export function useAddDatabaseProperty() {
     mutationFn: async ({ databaseId, ...input }: AddPropertyInput) =>
       apiFetch<DatabasePayload>(`/databases/${databaseId}/properties`, {
         method: "POST",
-        body: JSON.stringify(input),
+        body: createMutationBody(input),
       }),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
   })
@@ -230,7 +252,7 @@ export function useUpdateDatabaseProperty() {
         `/databases/${databaseId}/properties/${databasePropertyId}`,
         {
           method: "PATCH",
-          body: JSON.stringify(patch),
+          body: createMutationBody(patch),
         }
       ),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
@@ -241,10 +263,17 @@ export function useDeleteDatabaseProperty() {
   const { apiFetch, queryClient } = useNotelabFeatures()
 
   return useMutation({
-    mutationFn: async ({ databaseId, databasePropertyId }: DeletePropertyInput) =>
+    mutationFn: async ({
+      clientMutationId,
+      databaseId,
+      databasePropertyId,
+    }: DeletePropertyInput) =>
       apiFetch<DatabasePayload>(
         `/databases/${databaseId}/properties/${databasePropertyId}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+          body: createMutationBody({ clientMutationId }),
+        }
       ),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
   })
@@ -263,7 +292,7 @@ export function useDuplicateDatabaseProperty() {
         `/databases/${databaseId}/properties/${databasePropertyId}/duplicate`,
         {
           method: "POST",
-          body: JSON.stringify({ includeValues }),
+          body: createMutationBody({ includeValues }),
         }
       ),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
@@ -277,7 +306,7 @@ export function useAddDatabaseRow(organizationId: string | null | undefined) {
     mutationFn: async ({ databaseId, ...input }: AddRowInput) =>
       apiFetch<DatabasePayload>(`/databases/${databaseId}/rows`, {
         method: "POST",
-        body: JSON.stringify(input),
+        body: createMutationBody(input),
       }),
     onSuccess: async (payload) => {
       setDatabasePayload(queryClient, payload)
@@ -295,7 +324,7 @@ export function useReorderDatabaseRows() {
     mutationFn: async ({ databaseId, rowIds }: ReorderRowsInput) =>
       apiFetch<DatabasePayload>(`/databases/${databaseId}/rows/reorder`, {
         method: "PATCH",
-        body: JSON.stringify({ rowIds }),
+        body: createMutationBody({ rowIds }),
       }),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
   })
@@ -314,7 +343,7 @@ export function useMoveDatabaseRow() {
     }: MoveRowInput) =>
       apiFetch<DatabasePayload>(`/databases/${databaseId}/rows/${rowId}/move`, {
         method: "PATCH",
-        body: JSON.stringify({ groupPropertyId, groupValue, rowIds }),
+        body: createMutationBody({ groupPropertyId, groupValue, rowIds }),
       }),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),
   })
@@ -334,7 +363,7 @@ export function useUpdateDatabasePropertyValue() {
         `/databases/${databaseId}/rows/${rowId}/properties/${propertyId}`,
         {
           method: "PUT",
-          body: JSON.stringify({ value }),
+          body: createMutationBody({ value }),
         }
       ),
     onSuccess: (payload) => setDatabasePayload(queryClient, payload),

@@ -8,6 +8,7 @@ export type DatabaseRecord = {
   pageId: string
   name: string
   config?: unknown
+  version: number
   isFavorite?: boolean
   deletedById?: string | null
   deletedAt?: string | null
@@ -95,7 +96,9 @@ export type WorkspacePropertyValue = {
 }
 
 export type DatabasePayload = {
+  clientMutationId?: string
   database: DatabaseRecord
+  mutationId?: string
   properties: DatabaseProperty[]
   views: DatabaseView[]
   rows: DatabaseRow[]

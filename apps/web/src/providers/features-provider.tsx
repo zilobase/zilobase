@@ -16,7 +16,7 @@ import type {
   VerifyEmailOtpInput,
 } from "@notelab/features/auth"
 
-import { apiFetch, authFetch } from "@/lib/api"
+import { API_BASE_URL, apiFetch, authFetch } from "@/lib/api"
 import { queryClient } from "@/lib/query-client"
 import { useAppStore } from "@/stores/app-store"
 
@@ -92,10 +92,27 @@ export function WebFeaturesProvider({
         auth: webAuthClient,
         preferredActiveOrganizationId,
         queryClient,
+        realtimeBaseUrl: resolveRealtimeBaseUrl(),
         setPreferredActiveOrganizationId,
       }}
     >
       {children}
     </NotelabFeaturesProvider>
   )
+}
+
+function resolveRealtimeBaseUrl() {
+  if (API_BASE_URL) {
+    return API_BASE_URL
+  }
+
+  if (
+    import.meta.env.DEV &&
+    typeof window !== "undefined" &&
+    ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
+  ) {
+    return `${window.location.protocol}//${window.location.hostname}:3000`
+  }
+
+  return undefined
 }

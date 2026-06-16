@@ -12,6 +12,7 @@ import {
   useAddDatabaseRow,
   useDatabase,
   useDeleteDatabaseView,
+  useDatabaseRealtime,
   useUpdateDatabase,
   useUpdateDatabaseView,
   useUpdateDatabaseProperty,
@@ -160,6 +161,33 @@ export function useDatabaseViewController({
     visibleProperties,
     visiblePropertyCount,
   } = viewModel
+  const activePresenceCell = useMemo(() => {
+    if (!activePropertyValueKey) {
+      return { activePropertyId: null, activeRowId: null }
+    }
+
+    const separatorIndex = activePropertyValueKey.indexOf(":")
+
+    if (separatorIndex === -1) {
+      return { activePropertyId: null, activeRowId: null }
+    }
+
+    const pageId = activePropertyValueKey.slice(0, separatorIndex)
+    const propertyId = activePropertyValueKey.slice(separatorIndex + 1)
+    const row = activePayload?.rows.find((row) => row.pageId === pageId)
+
+    return {
+      activePropertyId: propertyId || null,
+      activeRowId: row?.id ?? null,
+    }
+  }, [activePayload?.rows, activePropertyValueKey])
+  const { cellPresenceByKey } = useDatabaseRealtime(activeDatabaseId, {
+    activePropertyId: activePresenceCell.activePropertyId,
+    activeRowId: activePresenceCell.activeRowId,
+    activeViewId: activeView?.id ?? null,
+    enabled: Boolean(activeDatabaseId && activePayload),
+    localVersion: activePayload?.database.version ?? null,
+  })
   useEffect(() => {
     const nextDatabaseTitle =
       activePayload?.database.name ?? activeLinkedDatabaseView?.databaseName
@@ -416,6 +444,7 @@ export function useDatabaseViewController({
     addTableView: commands.addTableView,
     canAddDatabaseFilter,
     canAddDatabaseSort,
+    cellPresenceByKey,
     propertyValuesByKey,
     clearDatabaseFilter: commands.clearDatabaseFilter,
     clearDatabaseSort: commands.clearDatabaseSort,

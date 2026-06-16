@@ -7,6 +7,7 @@ import {
 } from "react"
 
 import type {
+  DatabasePresenceCollaborator,
   DatabaseProperty,
   DatabaseRow,
   DatabaseView,
@@ -84,6 +85,7 @@ export type DatabaseViewContextValue = {
   addTableView: () => void
   canAddDatabaseFilter: boolean
   canAddDatabaseSort: boolean
+  cellPresenceByKey: Record<string, DatabasePresenceCollaborator[]>
   clearDatabaseFilter: () => void
   clearDatabaseSort: () => void
   copyDatabaseViewLink: () => void
