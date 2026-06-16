@@ -189,6 +189,7 @@ export function DatabasePropertyValue({
           optionValue
         )
       }
+      onOpenChange={(open) => onActiveValueChange(open ? key : null)}
       onPropertyConfigChange={(config) =>
         onPropertyConfigChange(property.id, config)
       }

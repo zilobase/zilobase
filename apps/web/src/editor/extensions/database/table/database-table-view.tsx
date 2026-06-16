@@ -1040,6 +1040,40 @@ export function DatabaseTableView() {
       key={insertKey}
     />
   )
+  const renderCellPresence = (
+    cellPresence: NonNullable<(typeof cellPresenceByKey)[string]>
+  ) =>
+    cellPresence.length > 0 ? (
+      <div
+        aria-hidden="true"
+        className="database-cell-presence"
+        title={cellPresence
+          .map((collaborator) => collaborator.user.name)
+          .join(", ")}
+      >
+        <span
+          className="database-cell-presence-border"
+          style={
+            {
+              "--database-presence-color": cellPresence[0]?.color,
+            } as CSSProperties
+          }
+        />
+        <span className="database-cell-presence-stack">
+          {cellPresence.slice(0, 3).map((collaborator) => (
+            <span
+              className="database-cell-presence-dot"
+              key={collaborator.sessionId}
+              style={
+                {
+                  "--database-presence-color": collaborator.color,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </span>
+      </div>
+    ) : null
 
   const renderTableHeader = (headerScope = "default") => (
     <thead>
@@ -1168,6 +1202,8 @@ export function DatabaseTableView() {
     <tbody>
       {tableRows.map((row: any) => {
         const conditionalColors = getRowConditionalColors(row)
+        const nameCellKey = `${row.pageId}:name`
+        const nameCellPresence = cellPresenceByKey[`${row.id}:name`] ?? []
 
         return (
           <tr
@@ -1187,10 +1223,20 @@ export function DatabaseTableView() {
                 "database-page-cell",
                 getConditionalColorClassName(conditionalColors.propertyColors.name)
               )}
+              data-active={
+                activePropertyValueKey === nameCellKey ? "true" : undefined
+              }
+              data-presence={
+                nameCellPresence.length > 0 ? "true" : undefined
+              }
             >
+              {renderCellPresence(nameCellPresence)}
               <DatabaseTableCellContent wrapContent={nameColumnWrapContent}>
                 <DatabasePageLink
                   editable={editable}
+                  onActiveChange={(active) =>
+                    setActivePropertyValueKey(active ? nameCellKey : null)
+                  }
                   onOpen={onOpenPage}
                   pageId={row.pageId}
                   showPageIcon={nameColumnShowPageIcon}
@@ -1231,39 +1277,7 @@ export function DatabaseTableView() {
                     }
                     data-wrap-content={wrapContent ? "true" : undefined}
                   >
-                    {cellPresence.length > 0 ? (
-                      <div
-                        aria-hidden="true"
-                        className="database-cell-presence"
-                        title={cellPresence
-                          .map((collaborator) => collaborator.user.name)
-                          .join(", ")}
-                      >
-                        <span
-                          className="database-cell-presence-border"
-                          style={
-                            {
-                              "--database-presence-color":
-                                cellPresence[0]?.color,
-                            } as CSSProperties
-                          }
-                        />
-                        <span className="database-cell-presence-stack">
-                          {cellPresence.slice(0, 3).map((collaborator) => (
-                            <span
-                              className="database-cell-presence-dot"
-                              key={collaborator.sessionId}
-                              style={
-                                {
-                                  "--database-presence-color":
-                                    collaborator.color,
-                                } as CSSProperties
-                              }
-                            />
-                          ))}
-                        </span>
-                      </div>
-                    ) : null}
+                    {renderCellPresence(cellPresence)}
                     <DatabaseTableCellContent wrapContent={wrapContent}>
                       <DatabasePropertyValue
                         draftValues={draftPropertyValues}

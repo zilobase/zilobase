@@ -15,11 +15,13 @@ import {
 
 export function DatabasePageLink({
   editable = false,
+  onActiveChange,
   onOpen,
   pageId,
   showPageIcon = true,
 }: {
   editable?: boolean
+  onActiveChange?: (active: boolean) => void
   onOpen?: (pageId: string) => void
   pageId: string
   showPageIcon?: boolean
@@ -73,11 +75,13 @@ export function DatabasePageLink({
 
     setDraftTitle(page.name)
     titleEditFinishedRef.current = false
+    onActiveChange?.(true)
     setIsEditingTitle(true)
   }
   const cancelTitleEdit = () => {
     titleEditFinishedRef.current = true
     setDraftTitle(page?.name ?? "")
+    onActiveChange?.(false)
     setIsEditingTitle(false)
   }
   const commitTitleEdit = () => {
@@ -88,12 +92,14 @@ export function DatabasePageLink({
     titleEditFinishedRef.current = true
 
     if (!page) {
+      onActiveChange?.(false)
       setIsEditingTitle(false)
       return
     }
 
     const nextTitle = draftTitle.trim()
 
+    onActiveChange?.(false)
     setIsEditingTitle(false)
 
     if (nextTitle === page.name) {
@@ -125,6 +131,7 @@ export function DatabasePageLink({
             onBlur={commitTitleEdit}
             onChange={(event) => setDraftTitle(event.target.value)}
             onClick={(event) => event.stopPropagation()}
+            onFocus={() => onActiveChange?.(true)}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 event.preventDefault()

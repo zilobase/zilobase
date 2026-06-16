@@ -694,10 +694,12 @@
     @apply p-0;
   }
 
+  .tiptap-editor .database-table tbody td.database-page-cell,
   .tiptap-editor .database-table tbody td.database-value-cell {
     @apply relative overflow-visible;
   }
 
+  .tiptap-editor .database-table tbody td.database-page-cell[data-active="true"],
   .tiptap-editor .database-table tbody td.database-value-cell[data-active="true"] {
     @apply z-20;
   }

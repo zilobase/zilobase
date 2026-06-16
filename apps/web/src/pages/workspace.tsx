@@ -20,6 +20,7 @@ import {
 import {
   useUpdateWorkspace,
   useCreateWorkspace,
+  useWorkspaceRealtime,
   useWorkspace,
   useWorkspaceAccessLevel,
 } from "@notelab/features/workspaces"
@@ -261,6 +262,7 @@ export function WorkspaceEditorPane({
   readOnly = false,
   workspaceId,
 }: WorkspaceEditorPaneProps) {
+  const { data: session } = useSession()
   const { data: workspace, isLoading } = useWorkspace(workspaceId)
   const { data: accessLevel } = useWorkspaceAccessLevel(workspaceId)
   const { data: userSettings } = useUserSettings()
@@ -274,6 +276,11 @@ export function WorkspaceEditorPane({
     workspace,
     userSettings?.workspaceFullWidth,
   )
+
+  useWorkspaceRealtime(workspaceId, {
+    enabled: Boolean(session?.user && workspace),
+    organizationId: workspace?.organizationId,
+  })
 
   const flushContentSaveTimeout = useCallback(() => {
     if (contentSaveTimeoutRef.current === null) {

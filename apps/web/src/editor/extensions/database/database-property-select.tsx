@@ -88,6 +88,7 @@ export function DatabasePropertySelect({
   label,
   value,
   multiple = false,
+  onOpenChange,
   onSelect,
   onPropertyConfigChange,
   showStatusDot = false,
@@ -98,6 +99,7 @@ export function DatabasePropertySelect({
   editable?: boolean
   label: string
   multiple?: boolean
+  onOpenChange?: (open: boolean) => void
   onPropertyConfigChange?: (
     config: unknown,
     createdOption: DatabaseSelectOption
@@ -164,6 +166,8 @@ export function DatabasePropertySelect({
   }
 
   const setOpen = (open: boolean) => {
+    onOpenChange?.(open)
+
     if (open) {
       setIsOpen(true)
       return

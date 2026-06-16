@@ -94,6 +94,14 @@ export function register({ assert, loadModule, test }) {
         userId: "user-c",
       }),
     )
+    const collaboratorOnNameCell = addCollaboratorColor(
+      createCollaborator({
+        activePropertyId: "name",
+        activeRowId: "row-2",
+        sessionId: "session-d",
+        userId: "user-d",
+      }),
+    )
 
     assert.deepEqual(
       Object.fromEntries(
@@ -102,6 +110,7 @@ export function register({ assert, loadModule, test }) {
             collaboratorA,
             collaboratorB,
             collaboratorWithoutCell,
+            collaboratorOnNameCell,
           ]),
         ).map(([key, collaborators]) => [
           key,
@@ -110,6 +119,7 @@ export function register({ assert, loadModule, test }) {
       ),
       {
         "row-1:property-1": ["session-a", "session-b"],
+        "row-2:name": ["session-d"],
       },
     )
     assert.match(collaboratorA.color, /^#[0-9a-f]{6}$/)

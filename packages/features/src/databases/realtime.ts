@@ -76,9 +76,12 @@ export function useDatabaseRealtime(
       }
 
       refetchTimeoutRef.current = window.setTimeout(() => {
-        void queryClient.invalidateQueries({
-          queryKey: databaseQueryKey(databaseId),
-        })
+        void Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: databaseQueryKey(databaseId),
+          }),
+          queryClient.invalidateQueries({ queryKey: ["workspace"] }),
+        ])
       }, refetchDebounceMs)
     }
 
