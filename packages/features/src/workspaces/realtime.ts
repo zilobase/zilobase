@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react"
 
 import { useNotelabFeatures } from "../context"
 import {
+  workspaceCommentsQueryKey,
   workspaceQueryKey,
+  workspaceThreadsQueryKey,
   workspacesQueryKey,
 } from "./queries"
 import {
@@ -26,7 +28,8 @@ export function useWorkspaceRealtime(
     "connected" | "connecting" | "disconnected" | "offline"
   >("offline")
   const socketRef = useRef<WebSocket | null>(null)
-  const refetchTimeoutRef = useRef<number | null>(null)
+  const workspaceRefetchTimeoutRef = useRef<number | null>(null)
+  const commentsRefetchTimeoutRef = useRef<number | null>(null)
   const reconnectTimeoutRef = useRef<number | null>(null)
   const reconnectAttemptRef = useRef(0)
 
@@ -38,12 +41,12 @@ export function useWorkspaceRealtime(
 
     let disposed = false
 
-    const scheduleRefetch = (eventOrganizationId?: string | null) => {
-      if (refetchTimeoutRef.current !== null) {
-        window.clearTimeout(refetchTimeoutRef.current)
+    const scheduleWorkspaceRefetch = (eventOrganizationId?: string | null) => {
+      if (workspaceRefetchTimeoutRef.current !== null) {
+        window.clearTimeout(workspaceRefetchTimeoutRef.current)
       }
 
-      refetchTimeoutRef.current = window.setTimeout(() => {
+      workspaceRefetchTimeoutRef.current = window.setTimeout(() => {
         void Promise.all([
           queryClient.invalidateQueries({
             queryKey: workspaceQueryKey(workspaceId),
@@ -53,6 +56,33 @@ export function useWorkspaceRealtime(
           }),
           queryClient.invalidateQueries({ queryKey: ["database"] }),
         ])
+      }, refetchDebounceMs)
+    }
+
+    const scheduleCommentsRefetch = (threadId?: string | null) => {
+      if (commentsRefetchTimeoutRef.current !== null) {
+        window.clearTimeout(commentsRefetchTimeoutRef.current)
+      }
+
+      commentsRefetchTimeoutRef.current = window.setTimeout(() => {
+        const invalidations = [
+          queryClient.invalidateQueries({
+            queryKey: workspaceCommentsQueryKey(workspaceId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: workspaceThreadsQueryKey(workspaceId),
+          }),
+        ]
+
+        if (threadId) {
+          invalidations.push(
+            queryClient.invalidateQueries({
+              queryKey: workspaceCommentsQueryKey(workspaceId, threadId),
+            }),
+          )
+        }
+
+        void Promise.all(invalidations)
       }, refetchDebounceMs)
     }
 
@@ -81,7 +111,8 @@ export function useWorkspaceRealtime(
         setStatus("connected")
 
         if (reconnectAttemptRef.current > 0) {
-          scheduleRefetch()
+          scheduleWorkspaceRefetch()
+          scheduleCommentsRefetch()
         }
 
         reconnectAttemptRef.current = 0
@@ -95,7 +126,12 @@ export function useWorkspaceRealtime(
         }
 
         if (message.type === "workspace.changed") {
-          scheduleRefetch(message.organizationId)
+          scheduleWorkspaceRefetch(message.organizationId)
+          return
+        }
+
+        if (message.type === "comments.changed") {
+          scheduleCommentsRefetch(message.threadId)
         }
       })
 
@@ -124,8 +160,12 @@ export function useWorkspaceRealtime(
       disposed = true
       setStatus("offline")
 
-      if (refetchTimeoutRef.current !== null) {
-        window.clearTimeout(refetchTimeoutRef.current)
+      if (workspaceRefetchTimeoutRef.current !== null) {
+        window.clearTimeout(workspaceRefetchTimeoutRef.current)
+      }
+
+      if (commentsRefetchTimeoutRef.current !== null) {
+        window.clearTimeout(commentsRefetchTimeoutRef.current)
       }
 
       if (reconnectTimeoutRef.current !== null) {

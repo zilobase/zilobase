@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 
 import { ThreadAvatar, ThreadLine } from "@/components/ui/thread-line"
 import {
@@ -30,6 +30,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -45,6 +52,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  filterCommentMentionMembers,
+  getCommentMentionLabels,
+  getCommentMentionTrigger,
+  insertCommentMention,
+  tokenizeCommentMentions,
+  type CommentMentionMember,
+} from "@/components/workspace-comment-mentions"
 import { useOptionalWorkspaceEditorComments } from "@/components/workspace-editor-comments"
 import { useSession } from "@notelab/features/auth"
 import {
@@ -56,6 +71,7 @@ import {
   useUnresolveWorkspaceCommentThread,
   useUpdateWorkspaceComment,
   useWorkspaceComments,
+  useWorkspacePersonAccessTargets,
 } from "@notelab/features/workspaces"
 import type {
   CommentAuthor,
@@ -94,6 +110,7 @@ export function CommentItem({
   comment,
   editingBody,
   isMutating,
+  mentionLabels,
   onCancelEdit,
   onAddReaction,
   onDelete,
@@ -112,6 +129,7 @@ export function CommentItem({
   comment: WorkspaceCommentMessage
   editingBody: string | null
   isMutating: boolean
+  mentionLabels?: string[]
   onCancelEdit: () => void
   onAddReaction: (emoji: string) => void
   onDelete: () => void
@@ -125,6 +143,10 @@ export function CommentItem({
 }) {
   const isEditing = editingBody !== null
   const reactions = comment.reactions ?? []
+  const commentTextParts = useMemo(
+    () => tokenizeCommentMentions(comment.body, mentionLabels ?? []),
+    [comment.body, mentionLabels],
+  )
 
   return (
     <article className={`group/comment relative flex min-h-16 gap-2 pb-3 ${className || ""}`}>
@@ -302,7 +324,7 @@ export function CommentItem({
         ) : (
           <>
             <p className="mt-1 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-foreground">
-              {comment.body}
+              <CommentMentionText parts={commentTextParts} />
             </p>
             {reactions.length > 0 ? (
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -397,6 +419,95 @@ function CommentReactionPicker({
   )
 }
 
+function CommentMentionMenu({
+  members,
+  onSelect,
+  selectedIndex,
+  setSelectedIndex,
+}: {
+  members: CommentMentionMember[]
+  onSelect: (member: CommentMentionMember) => void
+  selectedIndex: number
+  setSelectedIndex: (index: number) => void
+}) {
+  const selectedItemRef = useRef<HTMLDivElement | null>(null)
+  const selectedMember = members[selectedIndex]
+
+  useEffect(() => {
+    selectedItemRef.current?.scrollIntoView({ block: "nearest" })
+  }, [selectedIndex])
+
+  return (
+    <div className="absolute left-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-4rem))] overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
+      <Command
+        shouldFilter={false}
+        value={selectedMember?.id ?? ""}
+        onValueChange={(value) => {
+          const nextIndex = members.findIndex((member) => member.id === value)
+
+          if (nextIndex >= 0) {
+            setSelectedIndex(nextIndex)
+          }
+        }}
+      >
+        <CommandList className="max-h-60">
+          <CommandEmpty>No people found.</CommandEmpty>
+          <CommandGroup>
+            {members.map((member, index) => {
+              const label = member.name || member.email
+
+              return (
+                <CommandItem
+                  aria-selected={index === selectedIndex}
+                  className={
+                    index === selectedIndex ? "bg-muted text-foreground" : ""
+                  }
+                  key={member.id}
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                    onSelect(member)
+                  }}
+                  onSelect={() => onSelect(member)}
+                  ref={index === selectedIndex ? selectedItemRef : undefined}
+                  value={member.id}
+                >
+                  <CommentAvatar author={member} small />
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{label}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {member.email}
+                    </span>
+                  </span>
+                </CommandItem>
+              )
+            })}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </div>
+  )
+}
+
+function CommentMentionText({
+  parts,
+}: {
+  parts: Array<{ isMention: boolean; text: string }>
+}) {
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.isMention ? (
+          <span className="text-muted-foreground" key={`${part.text}-${index}`}>
+            {part.text}
+          </span>
+        ) : (
+          <span key={`${part.text}-${index}`}>{part.text}</span>
+        ),
+      )}
+    </>
+  )
+}
+
 export function formatCommentButtonLabel(commentCount: number) {
   if (commentCount === 0) {
     return "Add comment"
@@ -486,14 +597,23 @@ export function WorkspaceCommentThread({
 }) {
   const editorComments = useOptionalWorkspaceEditorComments()
   const { data: session } = useSession()
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const commentsEnabled = Boolean(workspaceId && session?.user)
   const { data: commentsPayload, isLoading: commentsLoading } =
     useWorkspaceComments(workspaceId ?? null, threadId ?? undefined, commentsEnabled)
+  const { data: accessTargets } = useWorkspacePersonAccessTargets(
+    workspaceId ?? null
+  )
 
   const comments = commentsPayload?.comments ?? []
   const thread = commentsPayload?.thread ?? null
 
   const [newCommentBody, setNewCommentBody] = useState("")
+  const [newCommentCursor, setNewCommentCursor] = useState(0)
+  const [dismissedMentionKey, setDismissedMentionKey] = useState<string | null>(
+    null
+  )
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
   const [threadExpanded, setThreadExpanded] = useState(false)
   const [editingComment, setEditingComment] = useState<{
     body: string
@@ -503,6 +623,54 @@ export function WorkspaceCommentThread({
   useEffect(() => {
     setThreadExpanded(false)
   }, [threadId, comments.length])
+
+  const mentionTrigger = useMemo(
+    () => getCommentMentionTrigger(newCommentBody, newCommentCursor),
+    [newCommentBody, newCommentCursor],
+  )
+  const mentionKey = mentionTrigger
+    ? `${mentionTrigger.start}:${mentionTrigger.query}`
+    : null
+  const activeMentionTrigger =
+    mentionTrigger && mentionKey !== dismissedMentionKey ? mentionTrigger : null
+  const mentionMembers = useMemo(
+    () =>
+      filterCommentMentionMembers(
+        accessTargets?.members ?? [],
+        session?.user?.id,
+        activeMentionTrigger?.query ?? "",
+      ),
+    [accessTargets?.members, activeMentionTrigger?.query, session?.user?.id],
+  )
+  const mentionMenuOpen = Boolean(activeMentionTrigger)
+  const mentionLabels = useMemo(
+    () => getCommentMentionLabels(accessTargets?.members ?? []),
+    [accessTargets?.members],
+  )
+  const newCommentTextParts = useMemo(
+    () => tokenizeCommentMentions(newCommentBody, mentionLabels),
+    [mentionLabels, newCommentBody],
+  )
+
+  useEffect(() => {
+    setSelectedMentionIndex(0)
+  }, [activeMentionTrigger?.query, mentionMembers.length])
+
+  const focusCommentInput = (cursor: number) => {
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus()
+      inputRef.current?.setSelectionRange(cursor, cursor)
+      setNewCommentCursor(cursor)
+    })
+  }
+
+  const syncCommentInputCursor = () => {
+    const input = inputRef.current
+
+    if (input) {
+      setNewCommentCursor(input.selectionStart ?? input.value.length)
+    }
+  }
 
   const createWorkspaceComment = useCreateWorkspaceComment()
   const updateWorkspaceComment = useUpdateWorkspaceComment()
@@ -535,9 +703,56 @@ export function WorkspaceCommentThread({
     createWorkspaceComment.mutate(
       { body, workspaceId },
       {
-        onSuccess: () => setNewCommentBody(""),
+        onSuccess: () => {
+          setNewCommentBody("")
+          setNewCommentCursor(0)
+          setDismissedMentionKey(null)
+        },
       }
     )
+  }
+
+  const selectMentionMember = (member: CommentMentionMember) => {
+    if (!activeMentionTrigger) {
+      return
+    }
+
+    const label = member.name || member.email
+    const next = insertCommentMention(
+      newCommentBody,
+      activeMentionTrigger,
+      label,
+    )
+
+    setNewCommentBody(next.value)
+    setDismissedMentionKey(null)
+    focusCommentInput(next.cursor)
+  }
+
+  const openMentionPicker = () => {
+    const input = inputRef.current
+    const cursor = input?.selectionStart ?? newCommentBody.length
+    const existingTrigger = getCommentMentionTrigger(newCommentBody, cursor)
+
+    if (existingTrigger) {
+      setNewCommentCursor(cursor)
+      setDismissedMentionKey(null)
+      focusCommentInput(cursor)
+      return
+    }
+
+    const needsSeparator =
+      cursor > 0 && !/\s/.test(newCommentBody.charAt(cursor - 1))
+    const insertedText = `${needsSeparator ? " " : ""}@`
+    const nextValue =
+      newCommentBody.slice(0, cursor) +
+      insertedText +
+      newCommentBody.slice(cursor)
+    const nextCursor = cursor + insertedText.length
+
+    setNewCommentBody(nextValue)
+    setDismissedMentionKey(null)
+    focusCommentInput(nextCursor)
   }
 
   const saveEditedComment = () => {
@@ -612,6 +827,7 @@ export function WorkspaceCommentThread({
           editingComment?.id === comment.id ? editingComment.body : null
         }
         isMutating={isMutating}
+        mentionLabels={mentionLabels}
         onAddReaction={(emoji) => addCommentReaction(comment.id, emoji)}
         onCancelEdit={() => setEditingComment(null)}
         onDelete={() => removeComment(comment.id)}
@@ -685,19 +901,98 @@ export function WorkspaceCommentThread({
                 <ThreadAvatar>
                   <CommentAvatar author={session?.user ?? null} small />
                 </ThreadAvatar>
-                <input
-                  className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
-                  disabled={isMutating}
-                  onChange={(event) => setNewCommentBody(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                      event.preventDefault()
-                      createComment()
-                    }
-                  }}
-                  placeholder={placeholder}
-                  value={newCommentBody}
-                />
+                <div className="relative min-w-0 flex-1">
+                  {newCommentBody && !mentionMenuOpen ? (
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre text-sm text-foreground"
+                    >
+                      <CommentMentionText parts={newCommentTextParts} />
+                    </div>
+                  ) : null}
+                  <input
+                    className={`relative w-full bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none ${
+                      newCommentBody && !mentionMenuOpen
+                        ? "text-transparent caret-foreground"
+                        : "text-foreground"
+                    }`}
+                    disabled={isMutating}
+                    onChange={(event) => {
+                      setNewCommentBody(event.target.value)
+                      setNewCommentCursor(
+                        event.target.selectionStart ?? event.target.value.length,
+                      )
+                      setDismissedMentionKey(null)
+                    }}
+                    onClick={syncCommentInputCursor}
+                    onKeyDown={(event) => {
+                      if (mentionMenuOpen) {
+                        if (event.key === "ArrowDown") {
+                          event.preventDefault()
+                          setSelectedMentionIndex((index) =>
+                            mentionMembers.length
+                              ? (index + 1) % mentionMembers.length
+                              : 0,
+                          )
+                          return
+                        }
+
+                        if (event.key === "ArrowUp") {
+                          event.preventDefault()
+                          setSelectedMentionIndex((index) =>
+                            mentionMembers.length
+                              ? (index - 1 + mentionMembers.length) %
+                                mentionMembers.length
+                              : 0,
+                          )
+                          return
+                        }
+
+                        if (event.key === "Escape") {
+                          event.preventDefault()
+                          setDismissedMentionKey(mentionKey)
+                          return
+                        }
+
+                        if (
+                          (event.key === "Enter" || event.key === "Tab") &&
+                          !event.nativeEvent.isComposing
+                        ) {
+                          event.preventDefault()
+
+                          const selectedMember =
+                            mentionMembers[selectedMentionIndex]
+
+                          if (selectedMember) {
+                            selectMentionMember(selectedMember)
+                          } else {
+                            setDismissedMentionKey(mentionKey)
+                          }
+
+                          return
+                        }
+                      }
+
+                      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                        event.preventDefault()
+                        createComment()
+                      }
+                    }}
+                    onKeyUp={syncCommentInputCursor}
+                    onSelect={syncCommentInputCursor}
+                    placeholder={placeholder}
+                    ref={inputRef}
+                    value={newCommentBody}
+                  />
+                  {mentionMenuOpen ? (
+                    <CommentMentionMenu
+                      members={mentionMembers}
+                      onSelect={selectMentionMember}
+                      selectedIndex={selectedMentionIndex}
+                      setSelectedIndex={setSelectedMentionIndex}
+                    />
+                  ) : null}
+                </div>
                 <div className="flex shrink-0 items-center gap-0.5 text-muted-foreground">
                   <Button
                     aria-label="Attach file"
@@ -713,6 +1008,7 @@ export function WorkspaceCommentThread({
                     aria-label="Mention person"
                     className="text-muted-foreground"
                     disabled={isMutating}
+                    onClick={openMentionPicker}
                     size="icon-sm"
                     type="button"
                     variant="ghost"

@@ -50,5 +50,25 @@ export function register({ assert, loadModule, test }) {
     assert.equal(parseWorkspaceRealtimeEvent("{bad json"), null)
     assert.equal(parseWorkspaceRealtimeEvent(new ArrayBuffer(0)), null)
   })
-}
 
+  test("workspace realtime parses comment change events", async () => {
+    const { parseWorkspaceRealtimeEvent } = await loadModule(
+      featuresRealtimeUtilsPath,
+    )
+    const event = {
+      actorId: "user-1",
+      changed: ["message.created"],
+      committedAt: "2026-06-17T00:00:00.000Z",
+      mutationId: "mutation-1",
+      organizationId: "organization-1",
+      threadId: "thread-1",
+      type: "comments.changed",
+      workspaceId: "workspace-1",
+    }
+
+    assert.deepEqual(
+      parseWorkspaceRealtimeEvent(JSON.stringify(event)),
+      event,
+    )
+  })
+}

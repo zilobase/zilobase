@@ -8,7 +8,29 @@ export type WorkspaceChangedEvent = {
   workspaceId: string
 }
 
-export type WorkspaceRealtimeEvent = WorkspaceChangedEvent
+export type WorkspaceCommentsChangedKind =
+  | "message.created"
+  | "message.updated"
+  | "message.deleted"
+  | "reaction.created"
+  | "reaction.deleted"
+  | "thread.resolved"
+  | "thread.unresolved"
+
+export type WorkspaceCommentsChangedEvent = {
+  type: "comments.changed"
+  actorId: string
+  changed: WorkspaceCommentsChangedKind[]
+  committedAt: string
+  mutationId: string
+  organizationId: string
+  threadId: string
+  workspaceId: string
+}
+
+export type WorkspaceRealtimeEvent =
+  | WorkspaceChangedEvent
+  | WorkspaceCommentsChangedEvent
 
 export function getWorkspaceRealtimeUrl(
   workspaceId: string,
@@ -42,4 +64,3 @@ export function parseWorkspaceRealtimeEvent(
     return null
   }
 }
-
