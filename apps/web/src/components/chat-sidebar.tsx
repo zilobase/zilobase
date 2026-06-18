@@ -1,8 +1,10 @@
 "use client"
 
+import { AiChatThreadsPanel } from "@/components/ai-elements/ai-chat-threads-panel"
 import Chatbot from "@/components/ai-elements/chatbot"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
 import { PanelRightCloseIcon, SparklesIcon } from "lucide-react"
 
 export function ChatSidebar({
@@ -14,6 +16,9 @@ export function ChatSidebar({
   onOpen: () => void
   open: boolean
 }) {
+  const { activeThreadId, isBootstrapping, setActiveThreadId } =
+    useAiChatThreadState()
+
   return (
     <>
       {!open ? (
@@ -49,11 +54,24 @@ export function ChatSidebar({
             <h2 className="truncate font-medium text-sm">Chat sidebar</h2>
           </div>
         </header>
+        <div className="max-h-48 min-h-0 shrink-0 border-b">
+          <AiChatThreadsPanel
+            activeThreadId={activeThreadId}
+            compact
+            onSelectThread={setActiveThreadId}
+          />
+        </div>
         <div
           className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
           data-ai-scroll-shell
         >
-          <Chatbot isSidebar />
+          {isBootstrapping || !activeThreadId ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+              Loading chat...
+            </div>
+          ) : (
+            <Chatbot isSidebar key={activeThreadId} threadId={activeThreadId} />
+          )}
         </div>
       </aside>
     </>

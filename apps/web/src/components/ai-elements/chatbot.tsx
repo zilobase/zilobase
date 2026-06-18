@@ -46,7 +46,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  aiChatThreadMessagesQueryKey,
+  type AiChatThreadMessagesResponse,
+} from "@notelab/features/ai-chat";
 import { useSession } from "@notelab/features/auth";
+import { useNotelabFeatures } from "@notelab/features";
 import {
   useActiveOrganizationId,
   useIntegrations,
@@ -1115,7 +1120,13 @@ const EmptyState = () => (
   </div>
 );
 
-const Chatbot = ({ isSidebar = false }: { isSidebar?: boolean }) => {
+const Chatbot = ({
+  isSidebar = false,
+  threadId,
+}: {
+  isSidebar?: boolean;
+  threadId: string;
+}) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
   const showGenerativeToolUi = useGenerativeToolUiEnabled();
@@ -1176,14 +1187,15 @@ const Chatbot = ({ isSidebar = false }: { isSidebar?: boolean }) => {
     );
   }, [enabledSources]);
 
+  const { apiFetch, queryClient } = useNotelabFeatures();
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
-  const isAgentReady = Boolean(organizationId && userId);
+  const isAgentReady = Boolean(organizationId && userId && threadId);
   const query = organizationId ? { organizationId } : undefined;
   const agent = useAgent({
     agent: "ChatAgent",
     name: isAgentReady
-      ? `org-${organizationId}-user-${userId}`
+      ? `org-${organizationId}-user-${userId}-thread-${threadId}`
       : "chat-not-ready",
     query,
   });
@@ -1200,9 +1212,32 @@ const Chatbot = ({ isSidebar = false }: { isSidebar?: boolean }) => {
     body: () => ({
       model,
       sources: selectedSources,
+      threadId,
       ...(organizationId ? { organizationId } : {}),
       ...(userId ? { userId } : {}),
     }),
+    getInitialMessages: async () => {
+      if (!organizationId || !threadId) {
+        return [];
+      }
+
+      const cached = queryClient.getQueryData<AiChatThreadMessagesResponse>(
+        aiChatThreadMessagesQueryKey(organizationId, threadId),
+      );
+
+      if (cached?.messages) {
+        return cached.messages;
+      }
+
+      const response = await apiFetch<AiChatThreadMessagesResponse>(
+        `/api/ai/threads/${encodeURIComponent(threadId)}/messages`,
+        organizationId
+          ? { headers: { "x-notelab-organization-id": organizationId } }
+          : undefined,
+      );
+
+      return response.messages;
+    },
     onError: (chatError) => {
       toast.error("Ask AI failed", {
         description: chatError.message,

@@ -143,6 +143,12 @@ const canvasRoute = createRoute({
 const aiRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/ai",
+  validateSearch: (search: Record<string, unknown>) => ({
+    thread:
+      typeof search.thread === "string" && search.thread.trim()
+        ? search.thread.trim()
+        : undefined,
+  }),
   component: AiPage,
 })
 
