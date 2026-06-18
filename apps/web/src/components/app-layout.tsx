@@ -16,6 +16,7 @@ import { ChatSidebar } from "@/components/chat-sidebar"
 import { DiscussionsSidebar } from "@/components/discussions-sidebar"
 import { WorkspaceEditorCommentsProvider } from "@/components/workspace-editor-comments"
 import { NavActions } from "@/components/nav-actions"
+import { HistorySidebar } from "@/components/history-sidebar"
 import { SettingsSidebar } from "@/components/settings-sidebar"
 import { Button } from "@/components/ui/button"
 import {
@@ -110,6 +111,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   const embeddedMobileViewer = isEmbeddedMobileViewer()
   const { open: appSidebarOpen } = useSidebar()
   const isSettingsPage = location.pathname.startsWith("/settings")
+  const isAiPage = location.pathname === "/ai"
   const workspaceId = getWorkspaceId(location.pathname)
   const databaseId = getDatabaseId(location.pathname)
   const discussionsEnabled = Boolean(workspaceId && !databaseId)
@@ -184,12 +186,18 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   return (
     <WorkspaceEditorCommentsProvider>
       <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
-        {isSettingsPage ? <SettingsSidebar /> : <AppSidebar />}
+        {isSettingsPage ? (
+          <SettingsSidebar />
+        ) : isAiPage ? (
+          <HistorySidebar />
+        ) : (
+          <AppSidebar />
+        )}
         <SidebarInset className="h-svh overflow-hidden">
         {embeddedMobileViewer ? 
        null : (
           <AppHeader
-            isSettingsPage={isSettingsPage}
+            isSettingsPage={isSettingsPage || isAiPage}
             onCloseSidePane={closeSidePane}
             onOpenDiscussions={
               discussionsEnabled ? openDiscussionsSidebar : undefined

@@ -71,6 +71,33 @@ export function useRenameAiChatThread() {
   })
 }
 
+export function useArchiveAiChatThread() {
+  const { apiFetch } = useNotelabFeatures()
+  const organizationId = useActiveOrganizationId()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (threadId: string) =>
+      apiFetch<{ success: boolean }>(
+        `/api/ai/threads/${encodeURIComponent(threadId)}/archive`,
+        {
+          method: "POST",
+          headers: organizationId
+            ? { "x-notelab-organization-id": organizationId }
+            : undefined,
+        },
+      ),
+    onSuccess: (_result, threadId) => {
+      queryClient.invalidateQueries({
+        queryKey: aiChatThreadsQueryKey(organizationId),
+      })
+      queryClient.removeQueries({
+        queryKey: aiChatThreadMessagesQueryKey(organizationId, threadId),
+      })
+    },
+  })
+}
+
 export function useDeleteAiChatThread() {
   const { apiFetch } = useNotelabFeatures()
   const organizationId = useActiveOrganizationId()

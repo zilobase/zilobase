@@ -1,11 +1,20 @@
 "use client"
 
-import { AiChatThreadsPanel } from "@/components/ai-elements/ai-chat-threads-panel"
+import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list"
 import Chatbot from "@/components/ai-elements/chatbot"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions"
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
-import { PanelRightCloseIcon, SparklesIcon } from "lucide-react"
+import {
+  HistoryIcon,
+  PanelRightCloseIcon,
+  PlusIcon,
+  SparklesIcon,
+} from "lucide-react"
+import { useCallback, useState } from "react"
+
+type ChatSidebarView = "chat" | "history"
 
 export function ChatSidebar({
   onClose,
@@ -18,6 +27,28 @@ export function ChatSidebar({
 }) {
   const { activeThreadId, isBootstrapping, setActiveThreadId } =
     useAiChatThreadState()
+  const { createThread, handleCreateThread } = useAiChatThreadActions({
+    activeThreadId,
+    onSelectThread: setActiveThreadId,
+  })
+  const [view, setView] = useState<ChatSidebarView>("chat")
+
+  const handleNewChat = useCallback(async () => {
+    setView("chat")
+    await handleCreateThread()
+  }, [handleCreateThread])
+
+  const handleSelectThread = useCallback(
+    (threadId: string) => {
+      setActiveThreadId(threadId)
+      setView("chat")
+    },
+    [setActiveThreadId],
+  )
+
+  const handleHistoryToggle = useCallback(() => {
+    setView((current) => (current === "history" ? "chat" : "history"))
+  }, [])
 
   return (
     <>
@@ -40,7 +71,7 @@ export function ChatSidebar({
           open ? "translate-x-0" : "translate-x-full md:hidden",
         )}
       >
-        <header className="flex h-12 shrink-0 items-center gap-2 px-3">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
           <Button
             aria-label="Close chat sidebar"
             onClick={onClose}
@@ -50,29 +81,53 @@ export function ChatSidebar({
           >
             <PanelRightCloseIcon />
           </Button>
-          <div className="min-w-0">
-            <h2 className="truncate font-medium text-sm">Chat sidebar</h2>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate font-medium text-sm">
+              {view === "history" ? "Chat history" : "Chat sidebar"}
+            </h2>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <Button
+              aria-label="New chat"
+              disabled={createThread.isPending}
+              onClick={() => void handleNewChat()}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <PlusIcon className="size-4" />
+            </Button>
+            <Button
+              aria-label="Chat history"
+              aria-pressed={view === "history"}
+              onClick={handleHistoryToggle}
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <HistoryIcon className="size-4" />
+            </Button>
           </div>
         </header>
-        <div className="max-h-48 min-h-0 shrink-0 border-b">
-          <AiChatThreadsPanel
+        {view === "history" ? (
+          <AiChatHistoryList
             activeThreadId={activeThreadId}
-            compact
-            onSelectThread={setActiveThreadId}
+            onSelectThread={handleSelectThread}
           />
-        </div>
-        <div
-          className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
-          data-ai-scroll-shell
-        >
-          {isBootstrapping || !activeThreadId ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-              Loading chat...
-            </div>
-          ) : (
-            <Chatbot isSidebar key={activeThreadId} threadId={activeThreadId} />
-          )}
-        </div>
+        ) : (
+          <div
+            className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
+            data-ai-scroll-shell
+          >
+            {isBootstrapping || !activeThreadId ? (
+              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+                Loading chat...
+              </div>
+            ) : (
+              <Chatbot isSidebar key={activeThreadId} threadId={activeThreadId} />
+            )}
+          </div>
+        )}
       </aside>
     </>
   )
