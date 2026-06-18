@@ -19,6 +19,8 @@ import {
   workspacePropertiesQueryOptions,
   workspaceThreadsQueryKey,
   workspaceThreadsQueryOptions,
+  notelabAiWorkspacesQueryKey,
+  notelabAiWorkspacesQueryOptions,
   workspacesQueryKey,
   workspacesQueryOptions,
   type AccessLevel,
@@ -99,6 +101,14 @@ export function useWorkspaces(organizationId: string | null | undefined) {
   const { apiFetch } = useNotelabFeatures()
 
   return useQuery(workspacesQueryOptions(apiFetch, organizationId))
+}
+
+export function useNotelabAiWorkspaces(
+  organizationId: string | null | undefined,
+) {
+  const { apiFetch } = useNotelabFeatures()
+
+  return useQuery(notelabAiWorkspacesQueryOptions(apiFetch, organizationId))
 }
 
 export function useWorkspace(workspaceId: string | null | undefined) {
@@ -352,6 +362,9 @@ export function useUpdateWorkspace() {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: workspacesQueryKey(workspace.organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: notelabAiWorkspacesQueryKey(workspace.organizationId),
         }),
         queryClient.invalidateQueries({ queryKey: ["database"] }),
       ])

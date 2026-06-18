@@ -64,6 +64,18 @@ export type Workspace = {
   updatedAt: string
 }
 
+export type NotelabAiWorkspaceSummary = {
+  id: string
+  name: string
+  organizationId: string
+  updatedAt: string
+  url: string
+  metadata: {
+    emoji?: string | null
+    notelabai: NotelabAiMode | null
+  }
+}
+
 export function usesUserFullWidthPreference(
   metadata: WorkspaceMetadata | null | undefined,
 ) {
@@ -200,6 +212,10 @@ export type WorkspacePersonAccessTargetsPayload = {
 export const workspacesQueryKey = (organizationId: string | null | undefined) =>
   ["workspaces", organizationId ?? "none"] as const
 
+export const notelabAiWorkspacesQueryKey = (
+  organizationId: string | null | undefined,
+) => ["workspaces", "notelab-ai", organizationId ?? "none"] as const
+
 export const workspaceQueryKey = (workspaceId: string | null | undefined) =>
   ["workspace", workspaceId ?? "none"] as const
 
@@ -243,6 +259,45 @@ export const workspacesQueryOptions = (
       try {
         const result = await apiFetch<{ workspaces: Workspace[] }>(
           `/workspaces?organizationId=${encodeURIComponent(organizationId)}`,
+          { method: "GET" },
+        )
+
+        return result.workspaces
+      } catch (error) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "status" in error &&
+          error.status === 401
+        ) {
+          return []
+        }
+
+        throw error
+      }
+    },
+  })
+
+export const notelabAiWorkspacesQueryOptions = (
+  apiFetch: ApiFetcher,
+  organizationId: string | null | undefined,
+) =>
+  queryOptions({
+    queryKey: notelabAiWorkspacesQueryKey(organizationId),
+    enabled: Boolean(organizationId),
+    queryFn: async () => {
+      if (!organizationId) {
+        return []
+      }
+
+      try {
+        const params = new URLSearchParams({
+          fields: "summary",
+          notelabai: "instruction,skill",
+          organizationId,
+        })
+        const result = await apiFetch<{ workspaces: NotelabAiWorkspaceSummary[] }>(
+          `/workspaces?${params.toString()}`,
           { method: "GET" },
         )
 
