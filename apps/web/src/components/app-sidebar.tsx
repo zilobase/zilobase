@@ -335,6 +335,7 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
         name: workspace.name,
         emoji: getWorkspaceIcon(workspace),
         isFavorite: Boolean(workspace.isFavorite),
+        notelabai: workspace.metadata?.notelabai ?? null,
         workspaceId: workspace.id,
         pages: [] as WorkspaceNavItem[],
       },

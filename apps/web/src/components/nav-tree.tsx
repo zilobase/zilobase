@@ -17,6 +17,7 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
+import { type NotelabAiMode } from "@notelab/features/workspaces"
 
 export type WorkspaceNavItem = {
   databaseId?: string | null
@@ -27,6 +28,7 @@ export type WorkspaceNavItem = {
   isTeamspace: boolean
   name: string
   emoji: ReactNode
+  notelabai?: NotelabAiMode | null
   workspaceId: string
   pages: WorkspaceNavItem[]
 }
@@ -125,8 +127,12 @@ function NavTreeItem({
                 {...linkProps}
               >
                 <LeadingItemIcon hasPages={hasPages} icon={item.emoji} />
-                <span>{displayName}</span>
-                <LinkedIndicator isLinked={item.isLinked} />
+                <span className="min-w-0 truncate">{displayName}</span>
+                <TrailingIndicators
+                  isDatabase={item.isDatabase}
+                  isLinked={item.isLinked}
+                  notelabai={item.notelabai}
+                />
               </Link>
             ) : (
               <Link
@@ -136,8 +142,12 @@ function NavTreeItem({
                 {...linkProps}
               >
                 <LeadingItemIcon hasPages={hasPages} icon={item.emoji} />
-                <span>{displayName}</span>
-                <LinkedIndicator isLinked={item.isLinked} />
+                <span className="min-w-0 truncate">{displayName}</span>
+                <TrailingIndicators
+                  isDatabase={item.isDatabase}
+                  isLinked={item.isLinked}
+                  notelabai={item.notelabai}
+                />
               </Link>
             )}
           </Button>
@@ -192,16 +202,33 @@ function LeadingItemIcon({
   )
 }
 
-function LinkedIndicator({ isLinked }: { isLinked?: boolean }) {
-  if (!isLinked) {
+function TrailingIndicators({
+  isDatabase,
+  isLinked,
+  notelabai,
+}: {
+  isDatabase?: boolean
+  isLinked?: boolean
+  notelabai?: NotelabAiMode | null
+}) {
+  const showNotelabai = notelabai && !isDatabase
+
+  if (!showNotelabai && !isLinked) {
     return null
   }
 
   return (
-    <ArrowUpRightIcon
-      aria-label="Linked from another parent"
-      className="ml-auto size-3 text-sidebar-foreground/45"
-    />
+    <span className="ml-auto flex shrink-0 items-center gap-1.5">
+      {showNotelabai ? (
+        <span className="text-xs text-sidebar-foreground/60">{notelabai}</span>
+      ) : null}
+      {isLinked ? (
+        <ArrowUpRightIcon
+          aria-label="Linked from another parent"
+          className="size-3 text-sidebar-foreground/45"
+        />
+      ) : null}
+    </span>
   )
 }
 

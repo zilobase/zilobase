@@ -1,6 +1,7 @@
 import * as React from "react"
 import { useNavigate } from "@tanstack/react-router"
 import {
+  CheckIcon,
   ChevronsUpDownIcon,
   Globe2Icon,
   LinkIcon,
@@ -8,6 +9,7 @@ import {
   MessageSquareIcon,
   MoreHorizontalIcon,
   Share2Icon,
+  SparklesIcon,
   StarIcon,
   Trash2Icon,
 } from "lucide-react"
@@ -32,6 +34,15 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerSub,
+  DropDrawerSubContent,
+  DropDrawerSubTrigger,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer"
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -43,15 +54,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
 import { useSession } from "@notelab/features/auth"
 import {
   useCreateWorkspace,
@@ -79,13 +81,17 @@ import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  notelabAiModeLabels,
   resolveWorkspaceFullWidth,
   usesUserFullWidthPreference,
   type AccessLevel,
   type AccessTargetType,
+  type NotelabAiMode,
   type WorkspaceAccessRule,
   type WorkspaceMetadata,
 } from "@notelab/features/workspaces"
+
+const notelabAiModes: NotelabAiMode[] = ["instruction", "skill"]
 
 const moreActions = [
   "Customize Page",
@@ -304,6 +310,32 @@ export function NavActions({
       },
     )
   }
+  const notelabAiMode = workspaceMetadata.notelabai ?? null
+
+  const setNotelabAiMode = (mode: NotelabAiMode) => {
+    if (!workspace || updateWorkspace.isPending) {
+      return
+    }
+
+    updateWorkspace.mutate(
+      {
+        id: workspace.id,
+        metadata: {
+          ...workspaceMetadata,
+          notelabai: notelabAiMode === mode ? null : mode,
+        },
+      },
+      {
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Could not update Notelab AI setting.",
+          )
+        },
+      },
+    )
+  }
 
   return (
     <div className="flex items-center gap-2 text-sm">
@@ -354,8 +386,8 @@ export function NavActions({
               <MessageSquareIcon />
             </Button>
           ) : null}
-          <Popover open={isOpen} onOpenChange={setIsOpen}>
-            <PopoverTrigger asChild>
+          <DropDrawer open={isOpen} onOpenChange={setIsOpen}>
+            <DropDrawerTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
@@ -363,81 +395,104 @@ export function NavActions({
               >
                 <MoreHorizontalIcon />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-56 overflow-hidden rounded-lg p-0"
-              align="end"
-            >
-              <Sidebar collapsible="none" className="bg-transparent">
-                <SidebarContent>
-                  <SidebarGroup>
-                    <SidebarGroupContent className="gap-0">
-                      <SidebarMenu>
-                        {!isDatabasePage && !isMobile ? (
-                          <>
-                            <SidebarMenuItem>
-                              <SidebarMenuButton
-                                aria-pressed={effectiveFullWidth}
-                                disabled={!workspace || fullWidthUpdatePending}
-                                onClick={toggleWorkspaceFullWidth}
-                                type="button"
-                              >
-                                <span>Full Width</span>
-                                <Switch
-                                  checked={effectiveFullWidth}
-                                  className="ml-auto pointer-events-none"
-                                  size="sm"
-                                  tabIndex={-1}
-                                />
-                              </SidebarMenuButton>
-                            </SidebarMenuItem>
-                            <SidebarMenuItem>
-                              <SidebarMenuButton
-                                aria-pressed={usesUserPreference}
-                                disabled={!workspace || fullWidthUpdatePending}
-                                onClick={toggleUseUserFullWidthPreference}
-                                type="button"
-                              >
-                                <span>Use my preferences</span>
-                                <Switch
-                                  checked={usesUserPreference}
-                                  className="ml-auto pointer-events-none"
-                                  size="sm"
-                                  tabIndex={-1}
-                                />
-                              </SidebarMenuButton>
-                            </SidebarMenuItem>
-                          </>
-                        ) : null}
-                        {moreActions.map((label) => (
-                          <SidebarMenuItem key={label}>
-                            <SidebarMenuButton
-                              disabled={
-                                (label === "Copy Link" &&
-                                  !workspaceId &&
-                                  !databaseId) ||
-                                (label === "Duplicate" &&
-                                  (isDatabasePage ||
-                                    !workspace ||
-                                    createWorkspace.isPending))
-                              }
-                              onClick={() => runMoreAction(label)}
-                              type="button"
-                            >
-                              <span>{label}</span>
-                            </SidebarMenuButton>
-                          </SidebarMenuItem>
-                        ))}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </SidebarGroup>
-                </SidebarContent>
-              </Sidebar>
-            </PopoverContent>
-          </Popover>
+            </DropDrawerTrigger>
+            <DropDrawerContent align="end" className="w-64 overflow-hidden rounded-lg p-1">
+              {!isDatabasePage && !isMobile ? (
+                <>
+                  <DropDrawerItem
+                    disabled={!workspace || fullWidthUpdatePending}
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      toggleWorkspaceFullWidth()
+                    }}
+                  >
+                    <span>Full Width</span>
+                    <Switch
+                      checked={effectiveFullWidth}
+                      className="ml-auto pointer-events-none"
+                      size="sm"
+                      tabIndex={-1}
+                    />
+                  </DropDrawerItem>
+                  <DropDrawerItem
+                    disabled={!workspace || fullWidthUpdatePending}
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      toggleUseUserFullWidthPreference()
+                    }}
+                  >
+                    <span>Use my preferences</span>
+                    <Switch
+                      checked={usesUserPreference}
+                      className="ml-auto pointer-events-none"
+                      size="sm"
+                      tabIndex={-1}
+                    />
+                  </DropDrawerItem>
+                </>
+              ) : null}
+              {!isDatabasePage ? (
+                <NotelabAiSubmenu
+                  disabled={!workspace || updateWorkspace.isPending}
+                  mode={notelabAiMode}
+                  onSelect={setNotelabAiMode}
+                />
+              ) : null}
+              {moreActions.map((label) => (
+                <DropDrawerItem
+                  key={label}
+                  disabled={
+                    (label === "Copy Link" && !workspaceId && !databaseId) ||
+                    (label === "Duplicate" &&
+                      (isDatabasePage || !workspace || createWorkspace.isPending))
+                  }
+                  onSelect={() => runMoreAction(label)}
+                >
+                  <span>{label}</span>
+                </DropDrawerItem>
+              ))}
+            </DropDrawerContent>
+          </DropDrawer>
         </>
       ) : null}
     </div>
+  )
+}
+
+function NotelabAiSubmenu({
+  disabled,
+  mode,
+  onSelect,
+}: {
+  disabled: boolean
+  mode: NotelabAiMode | null
+  onSelect: (mode: NotelabAiMode) => void
+}) {
+  return (
+    <DropDrawerSub>
+      <DropDrawerSubTrigger disabled={disabled}>
+        <SparklesIcon />
+        <span className="flex-1">Notelab AI</span>
+        {mode ? (
+          <span className="text-muted-foreground">{mode}</span>
+        ) : null}
+      </DropDrawerSubTrigger>
+      <DropDrawerSubContent className="w-64">
+        {notelabAiModes.map((value) => (
+          <DropDrawerItem
+            key={value}
+            disabled={disabled}
+            onSelect={(event) => {
+              event.preventDefault()
+              onSelect(value)
+            }}
+          >
+            <span>{notelabAiModeLabels[value]}</span>
+            {mode === value ? <CheckIcon className="ml-auto" /> : null}
+          </DropDrawerItem>
+        ))}
+      </DropDrawerSubContent>
+    </DropDrawerSub>
   )
 }
 

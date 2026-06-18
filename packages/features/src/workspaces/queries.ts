@@ -2,10 +2,18 @@ import { queryOptions } from "@tanstack/react-query"
 
 import type { ApiFetcher } from "../context"
 
+export type NotelabAiMode = "instruction" | "skill"
+
+export const notelabAiModeLabels: Record<NotelabAiMode, string> = {
+  instruction: "Use as instruction",
+  skill: "Use as skill",
+}
+
 export type WorkspaceMetadata = {
   cover?: string | null
   emoji?: string | null
   fullWidth?: boolean | null
+  notelabai?: NotelabAiMode | null
   parentWorkspaceId?: string | null
   useUserFullWidthPreference?: boolean | null
 }
