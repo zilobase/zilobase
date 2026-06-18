@@ -4,6 +4,7 @@ import {
   Building2Icon,
   KeyRoundIcon,
   PlugIcon,
+  SparklesIcon,
   UserIcon,
   UsersIcon,
 } from "lucide-react"
@@ -39,6 +40,11 @@ const settingsItems = [
     title: "Integrations",
     href: "/settings/integrations",
     icon: <PlugIcon />,
+  },
+  {
+    title: "Notelab AI",
+    href: "/settings/notelab-ai",
+    icon: <SparklesIcon />,
   },
   {
     title: "API Keys",

@@ -564,6 +564,7 @@ function getSettingsPageTitle(pathname: string) {
 
   const titles: Record<string, string> = {
     integrations: "Integrations",
+    "notelab-ai": "Notelab AI",
     organization: "Organization",
     profile: "Profile",
     team: "Team",

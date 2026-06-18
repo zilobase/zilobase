@@ -235,9 +235,14 @@ export function useCreateWorkspace() {
           isTeamspace: workspace.isTeamspace ?? current?.isTeamspace,
         }),
       )
-      await queryClient.invalidateQueries({
-        queryKey: workspacesQueryKey(workspace.organizationId),
-      })
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workspacesQueryKey(workspace.organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: notelabAiWorkspacesQueryKey(workspace.organizationId),
+        }),
+      ])
     },
   })
 }

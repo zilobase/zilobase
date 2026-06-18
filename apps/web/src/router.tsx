@@ -17,6 +17,7 @@ import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import LoginPage from "@/pages/login"
 import OnboardingPage from "@/pages/onboarding"
 import OtpPage from "@/pages/otp"
+import NotelabAiSettingsPage from "@/pages/settings/notelab-ai"
 import OrganizationSettingsPage from "@/pages/settings/organization"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
@@ -230,6 +231,12 @@ const apiKeysSettingsRoute = createRoute({
   component: ApiKeysSettingsPage,
 })
 
+const notelabAiSettingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/notelab-ai",
+  component: NotelabAiSettingsPage,
+})
+
 const teamSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/team",
@@ -252,6 +259,7 @@ const routeTree = rootRoute.addChildren([
     organizationSettingsRoute,
     integrationsSettingsRoute,
     apiKeysSettingsRoute,
+    notelabAiSettingsRoute,
     teamSettingsRoute,
   ]),
   workspaceRoute,
