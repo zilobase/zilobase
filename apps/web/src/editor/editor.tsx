@@ -65,8 +65,9 @@ export function Editor({
   const [dragHandleMenuOpen, setDragHandleMenuOpen] = useState(false)
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
   const [tocItems, setTocItems] = useState<TableOfContentDataItem[]>([])
-  const pageContentClassName = fullWidth ? "" : "mx-auto max-w-5xl"
-  const pageContentMode = fullWidth ? "full" : "narrow"
+  const pageContentLayout = fullWidth
+    ? { className: "", mode: "full" as const }
+    : { className: "mx-auto max-w-5xl", mode: "narrow" as const }
 
   const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(editable)
   const createDatabase = useCreateDatabase()
@@ -154,27 +155,25 @@ export function Editor({
     workspaceUpdatedAt,
   })
 
-  const collaborationReady = Boolean(
-    collaboration.provider && collaboration.user && collaboration.ydoc
-  )
+  const { provider, user, ydoc } = collaboration
+  const collaborationReady = Boolean(provider && user && ydoc)
 
   const editorExtensions = useMemo<Extensions>(() => {
-    if (!collaboration.provider || !collaboration.user || !collaboration.ydoc) {
+    if (!collaborationReady || !provider || !user || !ydoc) {
       return baseExtensions
     }
     return [
       ...baseExtensions,
-      Collaboration.configure({ document: collaboration.ydoc }),
+      Collaboration.configure({ document: ydoc }),
       CollaborationCaret.configure({
-        provider: collaboration.provider,
-        user: collaboration.user,
+        provider,
+        user,
         render: renderCollaborationCaret,
         selectionRender: renderCollaborationSelection,
       }),
     ]
-  }, [baseExtensions, collaboration.provider, collaboration.user, collaboration.ydoc])
+  }, [baseExtensions, collaborationReady, provider, user, ydoc])
 
-  const editorEditable = editable
   const editorLifecycleKey = `${workspaceId ?? "draft"}:${
     collaborationReady ? "collaboration" : "plain"
   }`
@@ -200,9 +199,9 @@ export function Editor({
     {
       extensions: editorExtensions,
       content: collaborationReady ? undefined : normalizeEditorContent(content),
-      editable: editorEditable,
+      editable,
       onUpdate: ({ editor: currentEditor }) => {
-        if (editorEditable) onContentChangeRef.current?.(currentEditor.getJSON())
+        if (editable) onContentChangeRef.current?.(currentEditor.getJSON())
       },
       editorProps: {
         attributes: { class: "tiptap-editor", "aria-label": "Document editor" },
@@ -228,12 +227,12 @@ export function Editor({
     if (!editor || editor.isDestroyed || !editor.extensionManager) return
     syncExtensionOptions(editor, {
       databaseEditorRuntime,
-      editorEditable,
+      editorEditable: editable,
       editorRuntimeRef,
       onOpenPage,
       workspaceId,
     })
-  }, [databaseEditorRuntime, editor, editorEditable, editorRuntimeRef, onOpenPage, workspaceId])
+  }, [databaseEditorRuntime, editor, editable, editorRuntimeRef, onOpenPage, workspaceId])
 
   useEffect(() => {
     if (!editor) return
@@ -336,7 +335,7 @@ export function Editor({
           />
         ) : null}
         <WorkspaceMetadata
-          contentClassName={pageContentClassName}
+          contentClassName={pageContentLayout.className}
           cover={cover}
           editable={editable}
           icon={emoji}
@@ -348,8 +347,8 @@ export function Editor({
           workspaceId={workspaceId}
         />
         <div
-          className={pageContentClassName}
-          data-editor-page-content={pageContentMode}
+          className={pageContentLayout.className}
+          data-editor-page-content={pageContentLayout.mode}
         >
           <EditorContent editor={editor} />
         </div>

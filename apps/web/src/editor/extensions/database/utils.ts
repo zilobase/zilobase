@@ -2,6 +2,10 @@ import type { WorkspacePropertyValue } from "@notelab/features/databases"
 
 export type DatabasePropertyValue = string | string[]
 
+export function toStringArray(value: DatabasePropertyValue): string[] {
+  return Array.isArray(value) ? value : value ? [value] : []
+}
+
 export function createDatabaseBlockContent(databaseId: string) {
   return [
     {
@@ -100,7 +104,7 @@ export function serializePropertyValue(
   value: DatabasePropertyValue
 ) {
   if (propertyType === "multi_select") {
-    return Array.isArray(value) ? value : value ? [value] : []
+    return toStringArray(value)
   }
 
   if (propertyType === "person") {

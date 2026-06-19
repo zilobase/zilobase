@@ -47,6 +47,7 @@ import { DatabasePageLink } from "../shared/database-page-link"
 import { DatabasePropertyValue } from "../shared/database-property-value"
 import {
   serializePropertyValue,
+  toStringArray,
   type DatabasePropertyValue as DatabaseCellValue,
 } from "../utils"
 import {
@@ -210,7 +211,7 @@ function getKanbanGroupValues({
     return [value === "true" ? "true" : "false"]
   }
 
-  const values = Array.isArray(value) ? value : value ? [value] : []
+  const values = toStringArray(value)
   const groupValues = values.map((item) => item.trim()).filter(Boolean)
 
   if (groupValues.length > 0) {

@@ -46,6 +46,12 @@ const turnIntoItems = blockCommandItems.filter((item) =>
   ].includes(item.title)
 )
 
+const headingLevelByTitle: Record<string, 1 | 2 | 3> = {
+  "Heading 1": 1,
+  "Heading 2": 2,
+  "Heading 3": 3,
+}
+
 export function DragBlockMenu({
   editor,
   isOpen,
@@ -178,20 +184,14 @@ export function DragBlockMenu({
           : ""
 
       if (item.title === "Text" || item.title.startsWith("Heading")) {
+        const textContent = text ? [{ type: "text", text }] : undefined
         const node =
           item.title === "Text"
-            ? { type: "paragraph", content: text ? [{ type: "text", text }] : undefined }
+            ? { type: "paragraph", content: textContent }
             : {
                 type: "heading",
-                attrs: {
-                  level:
-                    item.title === "Heading 1"
-                      ? 1
-                      : item.title === "Heading 2"
-                        ? 2
-                        : 3,
-                },
-                content: text ? [{ type: "text", text }] : undefined,
+                attrs: { level: headingLevelByTitle[item.title] ?? 3 },
+                content: textContent,
               }
 
         editor

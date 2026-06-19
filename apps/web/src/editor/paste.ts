@@ -6,6 +6,9 @@ import {
 import { pastedBlockElementSelector } from "./constants"
 import type { EditorTableType, PasteChoiceState } from "./types"
 
+const getEmbedProvider = (embedAttrs: Record<string, unknown>): EmbedProvider | null =>
+  "provider" in embedAttrs ? (embedAttrs.provider as EmbedProvider) : null
+
 export const looksLikeUrl = (value: string) =>
   /^(https?:\/\/|www\.|[^\s]+\.[^\s]{2,})/i.test(value.trim())
 
@@ -54,14 +57,14 @@ const restoreEmojiTextFromPastedDocument = (document: Document) => {
 const detectEditorTableType = (table: HTMLTableElement): EditorTableType => {
   const rows = table.querySelectorAll("tbody > tr")
   const firstRowCells = table.querySelectorAll("tbody > tr:first-child > td")
-  if (
+  const isDataTable =
     table.querySelectorAll("th").length > 0 ||
     rows.length > 1 ||
     table.querySelectorAll("[colwidth]").length > 0
-  ) {
-    return "table"
-  }
-  return rows.length === 1 && firstRowCells.length > 1 ? "columns" : "unknown"
+
+  if (isDataTable) return "table"
+  if (rows.length === 1 && firstRowCells.length > 1) return "columns"
+  return "unknown"
 }
 
 const appendTableCellContentToColumn = (
@@ -135,8 +138,7 @@ export const createProviderLinkPasteChoice = (
     },
     embedAttrs,
     from,
-    provider:
-      "provider" in embedAttrs ? (embedAttrs.provider as EmbedProvider) : null,
+    provider: getEmbedProvider(embedAttrs),
     to: insertedTo,
     url: normalizePastedUrl(pastedText) ?? pastedText,
   }

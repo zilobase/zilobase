@@ -30,9 +30,8 @@ export const useMobileNodeActions = (
       if (!editor || !mobileNodeTarget) return false
       const placement = getTargetPlacement(editor, mobileNodeTarget)
       if (!placement?.parent) return false
-      return direction === "up"
-        ? placement.index > 0
-        : placement.index < placement.parent.childCount - 1
+      if (direction === "up") return placement.index > 0
+      return placement.index < placement.parent.childCount - 1
     },
     [editor, mobileNodeTarget]
   )
@@ -46,19 +45,18 @@ export const useMobileNodeActions = (
       const source = editor.state.doc.nodeAt(placement.pos)
       if (!source) return setMobileNodeTarget(null)
 
-      const sourceEnd = placement.pos + source.nodeSize
-      const tr = editor.state.tr
-      let nextPos = placement.pos
+      const siblingIndex =
+        direction === "up" ? placement.index - 1 : placement.index + 1
+      if (siblingIndex < 0 || siblingIndex >= placement.parent.childCount) return
 
-      if (direction === "up") {
-        if (placement.index === 0) return
-        nextPos = placement.pos - placement.parent.child(placement.index - 1).nodeSize
-        tr.delete(placement.pos, sourceEnd).insert(nextPos, source)
-      } else {
-        if (placement.index >= placement.parent.childCount - 1) return
-        nextPos = placement.pos + placement.parent.child(placement.index + 1).nodeSize
-        tr.delete(placement.pos, sourceEnd).insert(nextPos, source)
-      }
+      const sibling = placement.parent.child(siblingIndex)
+      const sourceEnd = placement.pos + source.nodeSize
+      const nextPos =
+        direction === "up"
+          ? placement.pos - sibling.nodeSize
+          : placement.pos + sibling.nodeSize
+
+      const tr = editor.state.tr.delete(placement.pos, sourceEnd).insert(nextPos, source)
 
       editor.view.dispatch(tr.scrollIntoView())
       editor.view.focus()

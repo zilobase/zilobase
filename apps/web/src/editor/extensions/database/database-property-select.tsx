@@ -12,6 +12,7 @@ import {
   getColorTokenDotClassName,
 } from "@/packages/editor/components/editor/toolbar-data"
 import type { DatabaseSelectOption } from "./shared/database-view-config"
+import { toStringArray } from "./utils"
 
 type DatabasePropertySelectOption = DatabaseSelectOption & {
   suffix?: string
@@ -116,7 +117,7 @@ export function DatabasePropertySelect({
   const configuredOptions = getSelectOptions(propertyConfig)
   const selectOptions =
     configuredOptions.length > 0 ? configuredOptions : defaultOptions
-  const selectedValues = Array.isArray(value) ? value : value ? [value] : []
+  const selectedValues = toStringArray(value)
   const getOptionValue = (option: DatabasePropertySelectOption) => option[valueKey]
   const getSelectedOption = (optionValue: string) =>
     selectOptions.find((option) => getOptionValue(option) === optionValue)

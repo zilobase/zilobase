@@ -283,7 +283,7 @@ export function preparePlaneBlockDrop(view: EditorView, event: DragEvent) {
   }
 
   if (!isDroppedInsideList) {
-    const listType = getClosestListType(view, droppedNode)
+    const listType = getClosestListType(view)
     const listNodeType =
       listType === "orderedList"
         ? view.state.schema.nodes.orderedList
@@ -741,7 +741,7 @@ function firstDraggableDescendant(
   return target
 }
 
-function getClosestListType(view: EditorView, node: ProseMirrorNode) {
+function getClosestListType(view: EditorView) {
   const { from } = view.state.selection
   const $pos = view.state.doc.resolve(from)
 
@@ -753,7 +753,7 @@ function getClosestListType(view: EditorView, node: ProseMirrorNode) {
     }
   }
 
-  return node.type.name === "taskItem" ? "bulletList" : "bulletList"
+  return "bulletList"
 }
 
 function flattenListStructure(fragment: Fragment, schema: Schema) {

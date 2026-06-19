@@ -1,5 +1,6 @@
 import {
   serializePropertyValue,
+  toStringArray,
   type DatabasePropertyValue,
 } from "../utils"
 import type {
@@ -113,7 +114,7 @@ function getComparablePersonValue(
   value: DatabasePropertyValue,
   personOptionsById: Map<string, string>
 ) {
-  const personIds = Array.isArray(value) ? value : value ? [value] : []
+  const personIds = toStringArray(value)
 
   return personIds
     .map((personId) => personOptionsById.get(personId) ?? personId)
@@ -214,9 +215,9 @@ function getFilterRowValues({
   }
 
   if (property.property.type === "person") {
-    const personIds = Array.isArray(value) ? value : value ? [value] : []
-
-    return personIds.map((personId) => personOptionsById.get(personId) ?? personId)
+    return toStringArray(value).map(
+      (personId) => personOptionsById.get(personId) ?? personId
+    )
   }
 
   return Array.isArray(value) ? value : value.trim() ? [value] : []

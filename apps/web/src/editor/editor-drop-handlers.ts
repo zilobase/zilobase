@@ -18,6 +18,20 @@ import type { BlockDropLine } from "./types"
 const isListBlock = (typeName?: string) =>
   typeName === "listItem" || typeName === "taskItem"
 
+const resolveBlockDropTarget = (
+  view: EditorView,
+  event: DragEvent,
+  draggedBlock: ReturnType<typeof getDraggedEditorBlockPayload>
+) => {
+  if (!draggedBlock) return null
+
+  const columnTarget = getColumnBlockDragDropTarget(view, event)
+  if (columnTarget) return columnTarget
+
+  if (isListBlock(draggedBlock.typeName)) return null
+  return getPlaneBlockDragDropTarget(view, event)
+}
+
 export const createEditorDropHandler = (
   dropPageOnDatabase: (event: DragEvent) => boolean,
   setBlockDropLine: (line: BlockDropLine | null) => void
@@ -26,16 +40,10 @@ export const createEditorDropHandler = (
   if (dropPageOnDatabase(event)) return true
 
   const draggedBlock = getDraggedEditorBlockPayload(event.dataTransfer)
-  const target = draggedBlock
-    ? getColumnBlockDragDropTarget(view, event) ||
-      (!isListBlock(draggedBlock.typeName)
-        ? getPlaneBlockDragDropTarget(view, event)
-        : null)
-    : null
+  const target = resolveBlockDropTarget(view, event, draggedBlock)
 
-  return target
-    ? dropDraggedEditorBlockAt(view, event, target.pos)
-    : insertDraggedDatabasePage(view, event) || preparePlaneBlockDrop(view, event)
+  if (target) return dropDraggedEditorBlockAt(view, event, target.pos)
+  return insertDraggedDatabasePage(view, event) || preparePlaneBlockDrop(view, event)
 }
 
 export const createEditorDragHandlers = (
@@ -44,15 +52,11 @@ export const createEditorDragHandlers = (
   dragover: (view: EditorView, event: DragEvent) => {
     const draggedBlock = getDraggedEditorBlockPayload(event.dataTransfer)
     const hasDraggedBlock = hasDraggedEditorBlock(event)
-    const columnDropTarget = hasDraggedBlock
-      ? getColumnBlockDragDropTarget(view, event)
+    const dropTarget = hasDraggedBlock
+      ? resolveBlockDropTarget(view, event, draggedBlock)
       : null
-    const planeDropTarget =
-      hasDraggedBlock && !columnDropTarget && !isListBlock(draggedBlock?.typeName)
-        ? getPlaneBlockDragDropTarget(view, event)
-        : null
 
-    setBlockDropLine(columnDropTarget?.line ?? planeDropTarget?.line ?? null)
+    setBlockDropLine(dropTarget?.line ?? null)
 
     const hasDraggedPage =
       hasDraggedDatabasePage(event) || hasDraggedPageBlock(event)

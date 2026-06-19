@@ -38,6 +38,12 @@ export const createCollaborationSeedUpdate = (
   }
 }
 
+const getCollaborationUserColor = (user: Record<string, unknown>) =>
+  typeof user.color === "string" ? user.color : "#2563eb"
+
+const getCollaborationUserName = (user: Record<string, unknown>) =>
+  typeof user.name === "string" ? user.name : "Collaborator"
+
 const toTransparentColor = (color: string, alpha: number) => {
   if (!/^#[0-9a-f]{6}$/i.test(color)) return color
   const red = Number.parseInt(color.slice(1, 3), 16)
@@ -47,8 +53,8 @@ const toTransparentColor = (color: string, alpha: number) => {
 }
 
 export const renderCollaborationCaret = (user: Record<string, unknown>) => {
-  const color = typeof user.color === "string" ? user.color : "#2563eb"
-  const name = typeof user.name === "string" ? user.name : "Collaborator"
+  const color = getCollaborationUserColor(user)
+  const name = getCollaborationUserName(user)
   const cursor = document.createElement("span")
   const label = document.createElement("span")
 
@@ -80,7 +86,7 @@ export const renderCollaborationCaret = (user: Record<string, unknown>) => {
 export const renderCollaborationSelection = (user: Record<string, unknown>) => ({
   nodeName: "span",
   style: `background-color: ${toTransparentColor(
-    typeof user.color === "string" ? user.color : "#2563eb",
+    getCollaborationUserColor(user),
     0.22
   )}`,
 })
