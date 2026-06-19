@@ -18,10 +18,16 @@ import {
   ModelSelectorName,
   ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
+import { ContextAttachChips } from "@/components/ai-elements/context-attach-chips";
+import {
+  ContextAttachMenu,
+  getAttachmentKey,
+  parseMentionState,
+} from "@/components/ai-elements/context-attach-menu";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
+import { useWorkspaceAiContext } from "@/hooks/use-workspace-ai-context";
 import {
   PromptInput,
-  PromptInputBody,
   PromptInputButton,
   PromptInputFooter,
   PromptInputSubmit,
@@ -90,6 +96,12 @@ import {
   type UIMessage,
   isToolUIPart,
 } from "ai";
+import {
+  logWorkspaceContextSent,
+  logWorkspaceContextRebuild,
+  type ContextAttachment,
+  type ContextSourceRef,
+} from "@notelab/workspace-context";
 import { ArrowDownIcon, CheckIcon, InboxIcon, PlusIcon, XIcon } from "lucide-react";
 import {
   useGenerativeToolUiEnabled,
@@ -1121,11 +1133,15 @@ const EmptyState = () => (
 );
 
 const Chatbot = ({
+  databaseId = null,
   isSidebar = false,
   threadId,
+  workspaceId = null,
 }: {
+  databaseId?: string | null;
   isSidebar?: boolean;
   threadId: string;
+  workspaceId?: string | null;
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
@@ -1135,7 +1151,35 @@ const Chatbot = ({
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [selectedSources, setSelectedSources] = useState<SourceId[]>([]);
   const [text, setText] = useState<string>("");
+  const [textCursor, setTextCursor] = useState(0);
+  const [attachments, setAttachments] = useState<ContextAttachment[]>([]);
+  const [dismissedMentionKey, setDismissedMentionKey] = useState<string | null>(
+    null,
+  );
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [mentionCandidates, setMentionCandidates] = useState<ContextAttachment[]>(
+    [],
+  );
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const organizationId = useActiveOrganizationId();
+  const primarySource = useMemo<ContextSourceRef | null>(() => {
+    if (workspaceId) {
+      return { type: "page", id: workspaceId, role: "primary" };
+    }
+
+    if (databaseId) {
+      return { type: "database", id: databaseId, role: "primary" };
+    }
+
+    return null;
+  }, [databaseId, workspaceId]);
+  const { error: contextError, isLoading: isContextLoading, markdown: workspaceContext } =
+    useWorkspaceAiContext({
+      attachments,
+      enabled: isSidebar && Boolean(organizationId),
+      organizationId,
+      primarySource,
+    });
   const integrationsQuery = useIntegrations();
   const aiModelsQuery = useOrganizationAiModels();
   const models = useMemo(() => {
@@ -1178,6 +1222,40 @@ const Chatbot = ({
   }, [models]);
 
   useEffect(() => {
+    setAttachments([]);
+    setDismissedMentionKey(null);
+    setSelectedMentionIndex(0);
+    setTextCursor(0);
+  }, [databaseId, workspaceId]);
+
+  const mentionTrigger = useMemo(
+    () => parseMentionState(text, textCursor),
+    [text, textCursor],
+  );
+  const mentionKey = mentionTrigger
+    ? `${mentionTrigger.mentionStart}:${mentionTrigger.mentionQuery}`
+    : null;
+  const activeMentionTrigger =
+    mentionTrigger && mentionKey !== dismissedMentionKey ? mentionTrigger : null;
+  const mentionMenuOpen = Boolean(activeMentionTrigger);
+
+  useEffect(() => {
+    setSelectedMentionIndex(0);
+  }, [activeMentionTrigger?.mentionQuery]);
+
+  useEffect(() => {
+    if (!isSidebar || isContextLoading) {
+      return;
+    }
+
+    logWorkspaceContextRebuild({
+      attachmentCount: attachments.length,
+      charCount: workspaceContext.length,
+      buildMs: 0,
+    });
+  }, [attachments.length, isContextLoading, isSidebar, workspaceContext]);
+
+  useEffect(() => {
     if (!enabledSources) {
       return;
     }
@@ -1215,6 +1293,14 @@ const Chatbot = ({
       threadId,
       ...(organizationId ? { organizationId } : {}),
       ...(userId ? { userId } : {}),
+      ...(workspaceContext ? { workspaceContext } : {}),
+      workspaceContextMeta: workspaceContext
+        ? {
+            attachmentIds: attachments.map((item) => item.id),
+            charCount: workspaceContext.length,
+            primaryId: primarySource?.id ?? null,
+          }
+        : undefined,
     }),
     getInitialMessages: async () => {
       if (!organizationId || !threadId) {
@@ -1273,12 +1359,19 @@ const Chatbot = ({
         return;
       }
 
+      logWorkspaceContextSent({
+        attachmentCount: attachments.length,
+        charCount: workspaceContext.length,
+      });
+
       void sendMessage({
         text: content.trim(),
       });
       setText("");
+      setTextCursor(0);
+      setDismissedMentionKey(null);
     },
-    [sendMessage, setText, isAgentReady]
+    [attachments.length, isAgentReady, sendMessage, workspaceContext]
   );
 
   const handleSubmit = useCallback(
@@ -1288,12 +1381,130 @@ const Chatbot = ({
     [submitText]
   );
 
+  const existingAttachmentKeys = useMemo(() => {
+    const keys = new Set(attachments.map((item) => getAttachmentKey(item)));
+
+    if (primarySource) {
+      keys.add(getAttachmentKey(primarySource));
+    }
+
+    return keys;
+  }, [attachments, primarySource]);
+
+  const syncTextCursor = useCallback(() => {
+    const cursor = textareaRef.current?.selectionStart ?? text.length;
+    setTextCursor(cursor);
+  }, [text.length]);
+
   const handleTextChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setText(event.target.value);
+      const nextValue = event.target.value;
+      const caretPosition = event.target.selectionStart ?? nextValue.length;
+
+      setText(nextValue);
+      setTextCursor(caretPosition);
+      setDismissedMentionKey(null);
     },
-    [setText]
+    []
   );
+
+  const clearMentionTrigger = useCallback(() => {
+    if (!activeMentionTrigger) {
+      return;
+    }
+
+    const before = text.slice(0, activeMentionTrigger.mentionStart);
+    const after = text.slice(
+      activeMentionTrigger.mentionStart +
+        1 +
+        activeMentionTrigger.mentionQuery.length,
+    );
+    const nextValue = `${before}${after}`.trimStart();
+
+    setText(nextValue);
+    setTextCursor(before.length);
+    setDismissedMentionKey(null);
+  }, [activeMentionTrigger, text]);
+
+  const handleAttachContext = useCallback(
+    (attachment: ContextAttachment) => {
+      const key = getAttachmentKey(attachment);
+
+      if (existingAttachmentKeys.has(key)) {
+        clearMentionTrigger();
+        return;
+      }
+
+      setAttachments((current) => [...current, attachment]);
+      clearMentionTrigger();
+      textareaRef.current?.focus();
+    },
+    [clearMentionTrigger, existingAttachmentKeys]
+  );
+
+  const handleTextareaKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!mentionMenuOpen) {
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSelectedMentionIndex((index) =>
+          mentionCandidates.length
+            ? (index + 1) % mentionCandidates.length
+            : 0,
+        );
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSelectedMentionIndex((index) =>
+          mentionCandidates.length
+            ? (index - 1 + mentionCandidates.length) % mentionCandidates.length
+            : 0,
+        );
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setDismissedMentionKey(mentionKey);
+        return;
+      }
+
+      if (
+        (event.key === "Enter" || event.key === "Tab") &&
+        !event.shiftKey
+      ) {
+        event.preventDefault();
+
+        const selectedAttachment = mentionCandidates[selectedMentionIndex];
+
+        if (selectedAttachment) {
+          handleAttachContext(selectedAttachment);
+        } else {
+          setDismissedMentionKey(mentionKey);
+        }
+      }
+    },
+    [
+      handleAttachContext,
+      mentionCandidates,
+      mentionKey,
+      mentionMenuOpen,
+      selectedMentionIndex,
+    ]
+  );
+
+  const handleRemoveAttachment = useCallback((attachment: ContextAttachment) => {
+    setAttachments((current) =>
+      current.filter(
+        (item) => getAttachmentKey(item) !== getAttachmentKey(attachment),
+      ),
+    );
+  }, []);
 
   const handleModelSelect = useCallback((modelId: string) => {
     setModel(modelId);
@@ -1381,14 +1592,48 @@ const Chatbot = ({
       >
         <ShellScrollButton targetRef={rootRef} />
         <div className="mx-auto w-full max-w-3xl">
-          <PromptInput onSubmit={handleSubmit}>
-            <PromptInputBody>
+          {isSidebar ? (
+            <div className="mb-2 px-1 text-xs text-muted-foreground">
+              {isContextLoading
+                ? "Loading workspace context..."
+                : contextError
+                  ? "Workspace context failed"
+                  : workspaceContext
+                    ? "Workspace context ready"
+                    : null}
+            </div>
+          ) : null}
+          <PromptInput
+            inputGroupClassName="h-auto items-stretch overflow-visible"
+            onSubmit={handleSubmit}
+          >
+            <ContextAttachChips
+              attachments={attachments}
+              onRemove={handleRemoveAttachment}
+            />
+            <div className="relative w-full min-w-0 flex-1 self-stretch">
+              {mentionMenuOpen ? (
+                <ContextAttachMenu
+                  existingAttachmentKeys={existingAttachmentKeys}
+                  onItemsChange={setMentionCandidates}
+                  onSelect={handleAttachContext}
+                  open={mentionMenuOpen}
+                  query={activeMentionTrigger?.mentionQuery ?? ""}
+                  selectedIndex={selectedMentionIndex}
+                  setSelectedIndex={setSelectedMentionIndex}
+                />
+              ) : null}
               <PromptInputTextarea
+                className="w-full"
                 onChange={handleTextChange}
-                placeholder="Ask Gmail, GitHub, Calendar, Slack, or Linear about project updates, blockers, timelines..."
+                onClick={syncTextCursor}
+                onKeyDown={handleTextareaKeyDown}
+                onSelect={syncTextCursor}
+                placeholder="Ask about your workspace, or type @ to attach pages and databases..."
+                ref={textareaRef}
                 value={text}
               />
-            </PromptInputBody>
+            </div>
             <PromptInputFooter>
               <PromptInputTools>
                 <SourceSelector

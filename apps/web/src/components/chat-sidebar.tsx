@@ -17,13 +17,17 @@ import { useCallback, useState } from "react"
 type ChatSidebarView = "chat" | "history"
 
 export function ChatSidebar({
+  databaseId,
   onClose,
   onOpen,
   open,
+  workspaceId,
 }: {
+  databaseId?: string | null
   onClose: () => void
   onOpen: () => void
   open: boolean
+  workspaceId?: string | null
 }) {
   const { activeThreadId, isBootstrapping, setActiveThreadId } =
     useAiChatThreadState()
@@ -124,7 +128,13 @@ export function ChatSidebar({
                 Loading chat...
               </div>
             ) : (
-              <Chatbot isSidebar key={activeThreadId} threadId={activeThreadId} />
+              <Chatbot
+                databaseId={databaseId}
+                isSidebar
+                key={activeThreadId}
+                threadId={activeThreadId}
+                workspaceId={workspaceId}
+              />
             )}
           </div>
         )}

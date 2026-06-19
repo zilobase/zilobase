@@ -27,6 +27,7 @@ import {
 } from "@notelab/features/workspaces"
 import { useSession } from "@notelab/features/auth"
 import { useUserSettings } from "@notelab/features/user-settings"
+import { useWorkspaceEditorRegistry } from "@/contexts/workspace-editor-registry"
 import { Editor } from "@/packages/editor"
 import { useWorkspaceContentSnapshot } from "@/packages/editor/use-workspace-content-snapshot"
 
@@ -273,6 +274,7 @@ export function WorkspaceEditorPane({
   const contentSaveTimeoutRef = useRef<number | null>(null)
   const pendingContentRef = useRef<unknown>(null)
   const editorContentRef = useRef<(() => unknown) | null>(null)
+  const { registerEditor, unregisterEditor } = useWorkspaceEditorRegistry()
   const [collaborationReady, setCollaborationReady] = useState(false)
   const [name, setName] = useState("")
   const [cover, setCover] = useState("")
@@ -336,6 +338,14 @@ export function WorkspaceEditorPane({
   useEffect(() => {
     return flushContentSaveTimeout
   }, [flushContentSaveTimeout, workspaceId])
+
+  useEffect(() => {
+    registerEditor(workspaceId, () => editorContentRef.current?.() ?? null)
+
+    return () => {
+      unregisterEditor(workspaceId)
+    }
+  }, [registerEditor, unregisterEditor, workspaceId])
 
   useEffect(() => {
     if (

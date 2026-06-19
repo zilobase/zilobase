@@ -116,28 +116,42 @@ export type DatabasePayload = {
   properties: DatabaseProperty[]
   views: DatabaseView[]
   rows: DatabaseRow[]
+  rowCount?: number
   values: WorkspacePropertyValue[]
 }
 
-export const databaseQueryKey = (databaseId: string | null | undefined) =>
-  ["database", databaseId ?? "none"] as const
+export const databaseQueryKey = (
+  databaseId: string | null | undefined,
+  options?: { schemaOnly?: boolean },
+) =>
+  [
+    "database",
+    databaseId ?? "none",
+    options?.schemaOnly ? "schema" : "full",
+  ] as const
 
 export const databaseQueryOptions = (
   apiFetch: ApiFetcher,
   databaseId: string | null | undefined,
+  options?: { schemaOnly?: boolean },
 ) =>
   queryOptions({
-    queryKey: databaseQueryKey(databaseId),
+    queryKey: databaseQueryKey(databaseId, options),
     enabled: Boolean(databaseId),
     queryFn: async () => {
       if (!databaseId) {
         throw new Error("databaseId is required")
       }
 
+      const params = options?.schemaOnly ? "?schemaOnly=1" : ""
+
       try {
-        return await apiFetch<DatabasePayload>(`/databases/${databaseId}`, {
-          method: "GET",
-        })
+        return await apiFetch<DatabasePayload>(
+          `/databases/${databaseId}${params}`,
+          {
+            method: "GET",
+          },
+        )
       } catch (error) {
         if (
           typeof error === "object" &&

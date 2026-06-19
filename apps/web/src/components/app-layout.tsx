@@ -13,6 +13,7 @@ import { ArrowRight } from "lucide-react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppSearchProvider } from "@/components/app-search"
 import { ChatSidebar } from "@/components/chat-sidebar"
+import { WorkspaceEditorRegistryProvider } from "@/contexts/workspace-editor-registry"
 import { DiscussionsSidebar } from "@/components/discussions-sidebar"
 import { WorkspaceEditorCommentsProvider } from "@/components/workspace-editor-comments"
 import { NavActions } from "@/components/nav-actions"
@@ -184,6 +185,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   }, [appSidebarOpen, discussionsSidebarOpen, sidePaneWorkspaceId])
 
   return (
+    <WorkspaceEditorRegistryProvider>
     <WorkspaceEditorCommentsProvider>
       <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
         {isSettingsPage ? (
@@ -211,9 +213,11 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
         </div>
       </SidebarInset>
       <ChatSidebar
+        databaseId={databaseId}
         onClose={() => setChatSidebarOpen(false)}
         onOpen={openChatSidebar}
         open={chatSidebarOpen}
+        workspaceId={workspaceId}
       />
         {discussionsEnabled ? (
           <DiscussionsSidebar
@@ -224,6 +228,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
         ) : null}
       </WorkspaceSidePaneContext.Provider>
     </WorkspaceEditorCommentsProvider>
+    </WorkspaceEditorRegistryProvider>
   )
 }
 
