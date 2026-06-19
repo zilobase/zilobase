@@ -35,6 +35,8 @@ import {
 import { getDatabaseEmoji } from "@notelab/features/databases"
 import {
   getWorkspaceEmoji,
+  readLinkedItems,
+  readParentItemId,
   type Workspace,
 } from "@notelab/features/workspaces"
 import {
@@ -48,7 +50,6 @@ import {
   CalendarIcon,
   DatabaseIcon,
   FileIcon,
-  FileTextIcon,
   HomeIcon,
   MessageCircleQuestionIcon,
   SearchIcon,
@@ -329,7 +330,7 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
     orderedWorkspaces.map((workspace) => [
       workspace.id,
       {
-        databaseId: getWorkspaceDatabaseId(workspace),
+        databaseId: workspace.databases?.[0]?.id,
         id: workspace.id,
         isTeamspace: Boolean(workspace.isTeamspace),
         name: workspace.name,
@@ -394,8 +395,8 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
       continue
     }
 
-    const parentWorkspaceId = workspace.metadata?.parentWorkspaceId
-    const parent = parentWorkspaceId ? nodesById.get(parentWorkspaceId) : null
+    const parentItemId = readParentItemId(workspace.metadata)
+    const parent = parentItemId ? nodesById.get(parentItemId) : null
 
     if (rowPageIds.has(workspace.id)) {
       continue
@@ -417,23 +418,24 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
 
     const existingChildIds = new Set(node.pages.map((page) => page.id))
 
-    for (const pageId of findPageBlockIds(workspace.content)) {
-      const linkedPage = nodesById.get(pageId)
+    for (const linkedItem of readLinkedItems(workspace.metadata)) {
+      if (linkedItem.kind === "workspace") {
+        const linkedPage = nodesById.get(linkedItem.id)
 
-      if (
-        !linkedPage ||
-        linkedPage.id === node.id ||
-        existingChildIds.has(linkedPage.id)
-      ) {
+        if (
+          !linkedPage ||
+          linkedPage.id === node.id ||
+          existingChildIds.has(linkedPage.id)
+        ) {
+          continue
+        }
+
+        node.pages.push(cloneLinkedTreeNode(linkedPage, new Set([node.id])))
+        existingChildIds.add(linkedPage.id)
         continue
       }
 
-      node.pages.push(cloneLinkedTreeNode(linkedPage, new Set([node.id])))
-      existingChildIds.add(linkedPage.id)
-    }
-
-    for (const databaseId of findDatabaseBlockIds(workspace.content)) {
-      const linkedDatabase = databaseNodesById.get(databaseId)
+      const linkedDatabase = databaseNodesById.get(linkedItem.id)
 
       if (!linkedDatabase || existingChildIds.has(linkedDatabase.id)) {
         continue
@@ -512,61 +514,12 @@ function getWorkspaceCreatedTime(workspace: Workspace) {
   return Number.isFinite(time) ? time : 0
 }
 
-function getWorkspaceDatabaseId(workspace: Workspace) {
-  return findDatabaseBlockId(workspace.content)
-}
-
 function getWorkspaceIcon(workspace: Workspace) {
-  return (
-    getWorkspaceEmoji(workspace) ??
-    (hasWorkspaceContent(workspace.content) ? (
-      <FileTextIcon className="size-4" />
-    ) : (
-      <FileIcon className="size-4" />
-    ))
-  )
+  return getWorkspaceEmoji(workspace) ?? <FileIcon className="size-4" />
 }
 
 function getDatabaseIcon(database: { config?: unknown }) {
   return getDatabaseEmoji(database) ?? <DatabaseIcon className="size-4" />
-}
-
-function hasWorkspaceContent(content: unknown): boolean {
-  if (content === null || content === undefined) {
-    return false
-  }
-
-  if (typeof content === "string") {
-    return content.trim().length > 0
-  }
-
-  if (Array.isArray(content)) {
-    return content.some(hasWorkspaceContent)
-  }
-
-  if (typeof content !== "object") {
-    return true
-  }
-
-  const node = content as {
-    attrs?: unknown
-    content?: unknown
-    text?: unknown
-    type?: unknown
-  }
-
-  if (typeof node.text === "string" && node.text.trim().length > 0) {
-    return true
-  }
-
-  if (
-    typeof node.type === "string" &&
-    !["doc", "paragraph", "text"].includes(node.type)
-  ) {
-    return true
-  }
-
-  return hasWorkspaceContent(node.content)
 }
 
 function cloneLinkedTreeNode(
@@ -588,102 +541,4 @@ function cloneLinkedTreeNode(
   }
 }
 
-function findPageBlockIds(content: unknown): string[] {
-  const pageIds: string[] = []
 
-  collectBlockIds(content, "pageBlock", "pageId", pageIds)
-
-  return pageIds
-}
-
-function findDatabaseBlockIds(content: unknown): string[] {
-  const databaseIds: string[] = []
-
-  collectBlockIds(content, "databaseBlock", "databaseId", databaseIds)
-
-  return databaseIds
-}
-
-function collectBlockIds(
-  content: unknown,
-  blockType: string,
-  attrName: string,
-  ids: string[],
-) {
-  if (typeof content === "string") {
-    const attrPattern =
-      attrName === "databaseId" ? "data-database-id" : "data-page-id"
-    const regex = new RegExp(`${attrPattern}=["']([^"']+)["']`, "g")
-
-    for (const match of content.matchAll(regex)) {
-      if (match[1]) {
-        ids.push(match[1])
-      }
-    }
-
-    return
-  }
-
-  if (!content || typeof content !== "object") {
-    return
-  }
-
-  if (Array.isArray(content)) {
-    for (const child of content) {
-      collectBlockIds(child, blockType, attrName, ids)
-    }
-
-    return
-  }
-
-  const node = content as {
-    attrs?: Record<string, unknown>
-    content?: unknown
-    type?: unknown
-  }
-
-  if (node.type === blockType && typeof node.attrs?.[attrName] === "string") {
-    ids.push(node.attrs[attrName])
-  }
-
-  collectBlockIds(node.content, blockType, attrName, ids)
-}
-
-function findDatabaseBlockId(content: unknown): string | null {
-  if (typeof content === "string") {
-    const match = content.match(/data-database-id=["']([^"']+)["']/)
-
-    return match?.[1] ?? null
-  }
-
-  if (!content || typeof content !== "object") {
-    return null
-  }
-
-  if (Array.isArray(content)) {
-    for (const child of content) {
-      const databaseId = findDatabaseBlockId(child)
-
-      if (databaseId) {
-        return databaseId
-      }
-    }
-
-    return null
-  }
-
-  const node = content as {
-    attrs?: { databaseId?: unknown }
-    content?: unknown
-    type?: unknown
-  }
-
-  if (
-    node.type === "databaseBlock" &&
-    typeof node.attrs?.databaseId === "string"
-  ) {
-    return node.attrs.databaseId
-  }
-
-  return findDatabaseBlockId(node.content)
-}

@@ -1,7 +1,13 @@
 import { getDatabaseEmoji } from '@notelab/features/databases';
 import { useOrganizations } from '@notelab/features/organizations';
 import { useSession } from '@notelab/features/auth';
-import { getWorkspaceEmoji, useWorkspaces, type Workspace } from '@notelab/features/workspaces';
+import {
+  getWorkspaceEmoji,
+  readLinkedItems,
+  readParentItemId,
+  useWorkspaces,
+  type Workspace,
+} from '@notelab/features/workspaces';
 import { SymbolView } from 'expo-symbols';
 import * as React from 'react';
 import {
@@ -284,7 +290,7 @@ function buildWorkspaceSections(workspaces: Workspace[]) {
         id: workspace.id,
         label: workspace.name,
         emoji: getWorkspaceEmoji(workspace),
-        icon: hasWorkspaceContent(workspace.content) ? ('page-filled' as const) : ('page' as const),
+        icon: 'page' as const,
         children: [] as TreeItem[],
         section: workspace.isTeamspace ? ('teamspace' as const) : ('private' as const),
         targetPath: `/workspace/${workspace.id}`,
@@ -338,8 +344,8 @@ function buildWorkspaceSections(workspaces: Workspace[]) {
       continue;
     }
 
-    const parentWorkspaceId = workspace.metadata?.parentWorkspaceId;
-    const parent = parentWorkspaceId ? nodesById.get(parentWorkspaceId) : null;
+    const parentItemId = readParentItemId(workspace.metadata);
+    const parent = parentItemId ? nodesById.get(parentItemId) : null;
 
     if (rowPageIds.has(workspace.id)) {
       continue;
@@ -361,19 +367,20 @@ function buildWorkspaceSections(workspaces: Workspace[]) {
 
     const existingChildIds = new Set(node.children.map((page) => page.id));
 
-    for (const pageId of findPageBlockIds(workspace.content)) {
-      const linkedPage = nodesById.get(pageId);
+    for (const linkedItem of readLinkedItems(workspace.metadata)) {
+      if (linkedItem.kind === 'workspace') {
+        const linkedPage = nodesById.get(linkedItem.id);
 
-      if (!linkedPage || linkedPage.id === node.id || existingChildIds.has(linkedPage.id)) {
+        if (!linkedPage || linkedPage.id === node.id || existingChildIds.has(linkedPage.id)) {
+          continue;
+        }
+
+        node.children.push(cloneLinkedTreeNode(linkedPage, new Set([node.id])));
+        existingChildIds.add(linkedPage.id);
         continue;
       }
 
-      node.children.push(cloneLinkedTreeNode(linkedPage, new Set([node.id])));
-      existingChildIds.add(linkedPage.id);
-    }
-
-    for (const databaseId of findDatabaseBlockIds(workspace.content)) {
-      const linkedDatabase = databaseNodesById.get(databaseId);
+      const linkedDatabase = databaseNodesById.get(linkedItem.id);
 
       if (!linkedDatabase || existingChildIds.has(linkedDatabase.id)) {
         continue;
@@ -407,92 +414,6 @@ function cloneLinkedTreeNode(node: TreeItem, visitedIds: Set<string>): TreeItem 
 function getWorkspaceCreatedTime(workspace: Workspace) {
   const time = new Date(workspace.createdAt).getTime();
   return Number.isFinite(time) ? time : 0;
-}
-
-function hasWorkspaceContent(content: unknown): boolean {
-  if (content === null || content === undefined) {
-    return false;
-  }
-
-  if (typeof content === 'string') {
-    return content.trim().length > 0;
-  }
-
-  if (Array.isArray(content)) {
-    return content.some(hasWorkspaceContent);
-  }
-
-  if (typeof content !== 'object') {
-    return true;
-  }
-
-  const node = content as {
-    attrs?: unknown;
-    content?: unknown;
-    text?: unknown;
-    type?: unknown;
-  };
-
-  if (typeof node.text === 'string' && node.text.trim().length > 0) {
-    return true;
-  }
-
-  if (typeof node.type === 'string' && !['doc', 'paragraph', 'text'].includes(node.type)) {
-    return true;
-  }
-
-  return hasWorkspaceContent(node.content);
-}
-
-function findPageBlockIds(content: unknown): string[] {
-  const pageIds: string[] = [];
-  collectBlockIds(content, 'pageBlock', 'pageId', pageIds);
-  return pageIds;
-}
-
-function findDatabaseBlockIds(content: unknown): string[] {
-  const databaseIds: string[] = [];
-  collectBlockIds(content, 'databaseBlock', 'databaseId', databaseIds);
-  return databaseIds;
-}
-
-function collectBlockIds(
-  content: unknown,
-  blockType: string,
-  attributeName: string,
-  ids: string[]
-) {
-  if (!content) {
-    return;
-  }
-
-  if (Array.isArray(content)) {
-    for (const entry of content) {
-      collectBlockIds(entry, blockType, attributeName, ids);
-    }
-
-    return;
-  }
-
-  if (typeof content !== 'object') {
-    return;
-  }
-
-  const node = content as {
-    attrs?: { [key: string]: unknown };
-    content?: unknown;
-    type?: unknown;
-  };
-
-  if (node.type === blockType) {
-    const id = node.attrs?.[attributeName];
-
-    if (typeof id === 'string' && id.length > 0) {
-      ids.push(id);
-    }
-  }
-
-  collectBlockIds(node.content, blockType, attributeName, ids);
 }
 
 function getItemSymbol(icon: TreeItem['icon']): React.ComponentProps<typeof SymbolView>['name'] {

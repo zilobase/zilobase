@@ -16,6 +16,7 @@ import { getApiErrorMessage } from "@/lib/api"
 import { WorkspacePageIcon } from "@/lib/workspace-icon"
 import { useNotelabFeatures } from "@notelab/features"
 import {
+  readParentItemId,
   useCreateWorkspace,
   useUpdateWorkspace,
   useWorkspaces,
@@ -68,13 +69,13 @@ function buildWorkspacePath(
     visited.add(current.id)
     parts.unshift(current.name.trim() || "Untitled")
 
-    const parentWorkspaceId = current.metadata?.parentWorkspaceId
+    const parentItemId = readParentItemId(current.metadata)
 
-    if (!parentWorkspaceId) {
+    if (!parentItemId) {
       break
     }
 
-    current = workspacesById.get(parentWorkspaceId)
+    current = workspacesById.get(parentItemId)
   }
 
   return parts.join(" / ")

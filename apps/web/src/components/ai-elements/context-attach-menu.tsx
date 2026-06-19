@@ -21,7 +21,11 @@ import {
 import { WorkspacePageIcon } from "@/lib/workspace-icon"
 import { useActiveOrganizationId } from "@notelab/features/integrations"
 import type { AppSearchResult } from "@notelab/features/search"
-import { useWorkspaces, type Workspace } from "@notelab/features/workspaces"
+import {
+  readParentItemId,
+  useWorkspaces,
+  type Workspace,
+} from "@notelab/features/workspaces"
 import type {
   ContextAttachment,
   ContextSourceRef,
@@ -61,13 +65,13 @@ export function buildWorkspacePath(
     visited.add(current.id)
     parts.unshift(current.name.trim() || "Untitled")
 
-    const parentWorkspaceId = current.metadata?.parentWorkspaceId
+    const parentItemId = readParentItemId(current.metadata)
 
-    if (!parentWorkspaceId) {
+    if (!parentItemId) {
       break
     }
 
-    current = workspacesById.get(parentWorkspaceId)
+    current = workspacesById.get(parentItemId)
   }
 
   return parts.join(" / ")
@@ -562,7 +566,7 @@ export const ContextAttachMenu = forwardRef<
     data: workspaces = [],
     isFetching,
     isLoading,
-  } = useWorkspaces(organizationId)
+  } = useWorkspaces(organizationId, { enabled: open })
   const selectedItemRef = useRef<HTMLDivElement | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<
     Set<AttachMenuCategory>

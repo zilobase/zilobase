@@ -20,6 +20,7 @@ import { WorkspaceEditorRegistryProvider } from "@/contexts/workspace-editor-reg
 import { DiscussionsSidebarPanel } from "@/components/discussions-sidebar"
 import { RightSidebars } from "@/components/right-sidebars"
 import { WorkspaceEditorCommentsProvider } from "@/components/workspace-editor-comments"
+import { useActiveOrganizationId } from "@notelab/features/integrations"
 import { NavActions } from "@/components/nav-actions"
 import { HistorySidebar } from "@/components/history-sidebar"
 import { SettingsSidebar } from "@/components/settings-sidebar"
@@ -42,9 +43,10 @@ import { cn } from "@/lib/utils"
 import { isEmbeddedMobileViewer } from "@/lib/embedded-view"
 import {
   getWorkspaceEmoji,
+  readParentItemId,
   type Workspace,
 } from "@notelab/features/workspaces"
-import { useWorkspace, useWorkspaces } from "@notelab/features/workspaces"
+import { useWorkspaces } from "@notelab/features/workspaces"
 import { useDatabase } from "@notelab/features/databases"
 
 type WorkspaceSidePaneContextValue = {
@@ -230,7 +232,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
         discussionsEnabled={discussionsEnabled}
         discussionsOpen={discussionsSidebarOpen}
         discussionsPanel={
-          discussionsEnabled ? (
+          discussionsEnabled && discussionsSidebarOpen ? (
             <DiscussionsSidebarPanel
               onClose={() => setDiscussionsSidebarOpen(false)}
               workspaceId={workspaceId}
@@ -361,8 +363,9 @@ function PaneNavActions({ onOpenDiscussions, pathname }: { onOpenDiscussions?: (
 }
 
 function WorkspaceBreadcrumb({ workspaceId }: { workspaceId: string }) {
-  const { data: workspace } = useWorkspace(workspaceId)
-  const { data: workspaces = [] } = useWorkspaces(workspace?.organizationId)
+  const organizationId = useActiveOrganizationId()
+  const { data: workspaces = [] } = useWorkspaces(organizationId)
+  const workspace = workspaces.find((item) => item.id === workspaceId)
   const breadcrumbs = workspace
     ? buildWorkspaceBreadcrumbs(workspace, workspaces)
     : []
@@ -446,10 +449,9 @@ function buildWorkspaceBreadcrumbs(
     breadcrumbs.unshift(current)
     visited.add(current.id)
 
-    const parentWorkspaceId: string | null | undefined =
-      current.metadata?.parentWorkspaceId
+    const parentItemId = readParentItemId(current.metadata)
 
-    current = parentWorkspaceId ? workspacesById.get(parentWorkspaceId) : undefined
+    current = parentItemId ? workspacesById.get(parentItemId) : undefined
   }
 
   return breadcrumbs
@@ -536,10 +538,13 @@ function getDatabaseId(pathname: string) {
 }
 
 function DatabaseBreadcrumb({ databaseId }: { databaseId: string }) {
+  const organizationId = useActiveOrganizationId()
   const { data: payload } = useDatabase(databaseId)
   const databasePageId = payload?.database.pageId
-  const { data: workspace } = useWorkspace(databasePageId)
-  const { data: workspaces = [] } = useWorkspaces(workspace?.organizationId)
+  const { data: workspaces = [] } = useWorkspaces(organizationId)
+  const workspace = databasePageId
+    ? workspaces.find((item) => item.id === databasePageId)
+    : undefined
   const breadcrumbs = workspace
     ? buildWorkspaceBreadcrumbs(workspace, workspaces)
     : []
