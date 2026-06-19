@@ -22,11 +22,10 @@ import { TopBar, TopBarInset } from '@/components/top-bar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Fonts, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { type ThemePalette, useThemedStyles } from '@/hooks/use-app-theme';
 import { getApiErrorMessage } from '@/lib/api';
-import { THEME } from '@/lib/theme';
 
-type WorkspaceAuthPalette = (typeof THEME)['light'] | (typeof THEME)['dark'];
+type WorkspaceAuthPalette = ThemePalette;
 type WorkspaceStep = 'select' | 'create';
 
 export function WorkspaceAuthScreen({
@@ -34,12 +33,7 @@ export function WorkspaceAuthScreen({
 }: {
   onComplete: () => void;
 }) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { palette, styles } = useThemedStyles(createStyles);
   const session = useSession();
   const { data: organizations = [], isPending: isOrganizationsPending } = useOrganizations();
   const createOrganization = useCreateOrganization();
@@ -242,12 +236,7 @@ function WorkspaceCard({
   onPress: () => void;
   organization: Organization;
 }) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <Pressable
@@ -270,34 +259,19 @@ function WorkspaceCard({
 }
 
 function FieldLabel({ label }: { label: string }) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { styles } = useThemedStyles(createStyles);
 
   return <Text style={styles.fieldLabel}>{label}</Text>;
 }
 
 function Field({ children }: React.PropsWithChildren) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { styles } = useThemedStyles(createStyles);
 
   return <View style={styles.field}>{children}</View>;
 }
 
 function Input({ style, ...props }: React.ComponentProps<typeof TextInput>) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { palette, styles } = useThemedStyles(createStyles);
   const [isFocused, setIsFocused] = React.useState(false);
 
   return (

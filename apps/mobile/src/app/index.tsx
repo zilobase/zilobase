@@ -22,12 +22,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopBarInset } from '@/components/top-bar';
 import { Text } from '@/components/ui/text';
 import { BottomTabInset, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { type ThemePalette, useThemedStyles } from '@/hooks/use-app-theme';
 import { WEB_APP_BASE_URL } from '@/lib/api-base-url';
-import { THEME } from '@/lib/theme';
 import { useMobileViewer } from '@/providers/mobile-viewer-provider';
 
-type Palette = (typeof THEME)['light'] | (typeof THEME)['dark'];
+type Palette = ThemePalette;
 const LIST_GAP = 12;
 const LEADING_SLOT = 24;
 const NESTED_INDENT = LIST_GAP * 2.5;
@@ -43,12 +42,7 @@ type TreeItem = {
 };
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { palette, styles } = useThemedStyles(createStyles);
   const { openItem } = useMobileViewer();
   const insets = useSafeAreaInsets();
   const session = useSession();

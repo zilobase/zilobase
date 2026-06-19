@@ -2,9 +2,8 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 import { Text } from '@/components/ui/text';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { authClient } from '@/lib/auth-client';
-import { THEME } from '@/lib/theme';
 import type { MobileViewerItem } from '@/providers/mobile-viewer-provider';
 import React from 'react';
 
@@ -59,10 +58,9 @@ function createMobileWebViewBootstrap(cookie: string | undefined) {
 }
 
 export function WorkspaceItemViewer({ item }: { item: MobileViewerItem }) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+  const { isDark, palette } = useAppTheme();
   const cookie = authClient.getCookie();
-  const webViewBackground = colorScheme === 'dark' ? '#09090B' : palette.background;
+  const webViewBackground = isDark ? '#09090B' : palette.background;
   const bootstrapScript = React.useMemo(() => createMobileWebViewBootstrap(cookie), [cookie]);
   const source = {
     uri: item.url,

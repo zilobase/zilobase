@@ -22,10 +22,9 @@ import { TopBar, TopBarInset } from '@/components/top-bar';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { Fonts, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { type ThemePalette, useThemedStyles } from '@/hooks/use-app-theme';
 import { getApiErrorMessage } from '@/lib/api';
 import { API_BASE_URL } from '@/lib/api-base-url';
-import { THEME } from '@/lib/theme';
 
 type AuthStep = 'landing' | 'login' | 'signup';
 type OtpPurpose = 'sign-in' | 'email-verification';
@@ -35,15 +34,10 @@ type OtpState = {
   purpose: OtpPurpose;
 };
 
-type AuthPalette = (typeof THEME)['light'] | (typeof THEME)['dark'];
+type AuthPalette = ThemePalette;
 
 export function AuthScreen() {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { palette, styles } = useThemedStyles(createStyles);
   const [step, setStep] = React.useState<AuthStep>('landing');
   const [otpState, setOtpState] = React.useState<OtpState | null>(null);
   const [loginEmail, setLoginEmail] = React.useState('');
@@ -426,23 +420,13 @@ export function AuthScreen() {
 }
 
 function FieldLabel({ label }: { label: string }) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { styles } = useThemedStyles(createStyles);
 
   return <Text style={styles.fieldLabel}>{label}</Text>;
 }
 
 function Field({ children }: React.PropsWithChildren) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { styles } = useThemedStyles(createStyles);
 
   return <View style={styles.field}>{children}</View>;
 }
@@ -456,12 +440,7 @@ function OtpInput({
   onChange: (value: string) => void;
   value: string;
 }) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { styles } = useThemedStyles(createStyles);
   const digits = Array.from({ length: 6 }, (_, index) => value[index] ?? '');
   const activeIndex = Math.min(value.length, 5);
 
@@ -504,12 +483,7 @@ function Input({
   style,
   ...props
 }: React.ComponentProps<typeof TextInput>) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { palette, styles } = useThemedStyles(createStyles);
   const [isFocused, setIsFocused] = React.useState(false);
 
   return (

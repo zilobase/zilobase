@@ -19,8 +19,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { THEME } from '@/lib/theme';
+import { type ThemePalette, useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import type { SessionResponse } from '@notelab/features/auth';
 
 const CONTROL_SIZE = 44;
@@ -46,12 +45,7 @@ type AuthBackConfig = {
 
 export function TopBar({ authBack, user }: { authBack?: AuthBackConfig; user?: User }) {
   const pathname = usePathname();
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { styles } = useThemedStyles(createStyles);
 
   return (
     <SafeAreaView edges={['top']} pointerEvents="box-none" style={styles.overlay}>
@@ -69,12 +63,7 @@ export function TopBar({ authBack, user }: { authBack?: AuthBackConfig; user?: U
 }
 
 function AuthTopBar({ authBack }: { authBack: AuthBackConfig }) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { palette, styles } = useThemedStyles(createStyles);
 
   if (!authBack.visible) {
     return <View style={styles.authRow} />;
@@ -92,12 +81,7 @@ function AuthTopBar({ authBack }: { authBack: AuthBackConfig }) {
 }
 
 function ScreenTitle({ pathname }: { pathname: string }) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+  const { styles } = useThemedStyles(createStyles);
 
   const title =
     pathname === '/create' ? 'New Note' : pathname === '/ai' ? 'AI' : pathname === '/explore' ? 'Explore' : '';
@@ -115,18 +99,13 @@ function ScreenTitle({ pathname }: { pathname: string }) {
 
 function HomeTopBarControl({ user }: { user: User }) {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+  const { isDark, palette, styles } = useThemedStyles(createStyles);
   const searchIconColor =
-    colorScheme === 'dark' ? 'rgba(255,255,255,0.72)' : palette.mutedForeground;
+    isDark ? 'rgba(255,255,255,0.72)' : palette.mutedForeground;
   const searchPlaceholderColor =
-    colorScheme === 'dark' ? 'rgba(255,255,255,0.56)' : palette.mutedForeground;
+    isDark ? 'rgba(255,255,255,0.56)' : palette.mutedForeground;
   const searchSelectionColor =
-    colorScheme === 'dark' ? '#FFFFFF' : palette.foreground;
-  const styles = React.useMemo(
-    () => createStyles(palette, colorScheme === 'dark'),
-    [colorScheme, palette]
-  );
+    isDark ? '#FFFFFF' : palette.foreground;
   const useGlass = Platform.OS === 'ios' && isGlassEffectAPIAvailable();
   const { width } = useWindowDimensions();
   const inputRef = React.useRef<TextInput>(null);
@@ -255,8 +234,7 @@ function IconCircleButton({
   onPress: () => void;
   tintColor: string;
 }) {
-  const colorScheme = useColorScheme();
-  const palette = THEME[colorScheme === 'dark' ? 'dark' : 'light'];
+  const { isDark, palette } = useAppTheme();
   const useGlass = Platform.OS === 'ios' && isGlassEffectAPIAvailable();
   const surfaceStyle = [
     stylesStatic.circleButtonGlass,
@@ -264,7 +242,7 @@ function IconCircleButton({
       borderWidth: 1,
       borderColor: palette.border,
       backgroundColor:
-        colorScheme === 'dark' ? 'rgba(24,24,27,0.92)' : 'rgba(255,255,255,0.88)',
+        isDark ? 'rgba(24,24,27,0.92)' : 'rgba(255,255,255,0.88)',
     },
   ] as const;
   const buttonContent = (
@@ -278,7 +256,7 @@ function IconCircleButton({
       {useGlass ? (
         <GlassView
           glassEffectStyle="regular"
-          colorScheme={colorScheme === 'dark' ? 'dark' : 'light'}
+          colorScheme={isDark ? 'dark' : 'light'}
           isInteractive
           style={surfaceStyle}>
           {buttonContent}
@@ -300,13 +278,13 @@ function GlassSurface({
   style: object;
   useGlass: boolean;
 }>) {
-  const colorScheme = useColorScheme();
+  const { isDark } = useAppTheme();
 
   if (useGlass) {
     return (
       <GlassView
         glassEffectStyle="regular"
-        colorScheme={colorScheme === 'dark' ? 'dark' : 'light'}
+        colorScheme={isDark ? 'dark' : 'light'}
         isInteractive
         style={style}>
         {children}
@@ -331,7 +309,7 @@ function getInitials(name?: string | null, email?: string | null) {
     .slice(0, 2);
 }
 
-function createStyles(palette: (typeof THEME)['light'] | (typeof THEME)['dark'], isDark: boolean) {
+function createStyles(palette: ThemePalette, isDark: boolean) {
   return StyleSheet.create({
     overlay: {
       position: 'absolute',
