@@ -1440,6 +1440,26 @@
     @apply border-t pt-2;
   }
 
+  .selection-ai-preview-deleted {
+    @apply rounded-sm bg-red-500/15 text-red-700 line-through decoration-red-700 decoration-2 dark:text-red-300;
+  }
+
+  .selection-ai-preview-inserted {
+    @apply mx-1 inline whitespace-pre-wrap rounded-sm bg-emerald-500/15 px-1 text-emerald-700 no-underline dark:text-emerald-300;
+  }
+
+  .selection-ai-preview-inserted[data-streaming="true"] {
+    @apply opacity-80;
+  }
+
+  .selection-ai-diff-dock {
+    @apply pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4;
+  }
+
+  .selection-ai-diff-dock-inner {
+    @apply pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-border bg-background/95 p-1.5 shadow-lg backdrop-blur;
+  }
+
   .suggestion {
     @apply rounded bg-muted px-1;
   }

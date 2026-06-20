@@ -15,6 +15,14 @@ export type PasteChoiceState = {
   url: string
 }
 
+export type SelectionAiDiffPreview = {
+  from: number
+  generatedMarkdown: string
+  isStreaming: boolean
+  originalText: string
+  to: number
+}
+
 export type EditorProps = {
   content?: unknown
   cover?: string

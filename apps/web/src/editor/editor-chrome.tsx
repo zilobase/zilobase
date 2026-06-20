@@ -7,7 +7,12 @@ import { TableControls } from "@/packages/editor/components/editor/table-control
 import { EditorTableOfContents } from "./editor-table-of-contents"
 import { PasteChoiceMenu } from "./paste-choice-menu"
 import { runToolbarCommand } from "./run-toolbar-command"
-import type { BlockDropLine, DragHandleState, PasteChoiceState } from "./types"
+import type {
+  BlockDropLine,
+  DragHandleState,
+  PasteChoiceState,
+  SelectionAiDiffPreview,
+} from "./types"
 
 type EditorChromeProps = {
   blockDropLine: BlockDropLine | null
@@ -17,6 +22,7 @@ type EditorChromeProps = {
   editor: TiptapEditor | null
   editorId: string
   onClosePasteChoice: () => void
+  onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
   organizationId?: string | null
   pasteChoice: PasteChoiceState | null
   plusMenuOpen: boolean
@@ -33,6 +39,7 @@ export function EditorChrome({
   editor,
   editorId,
   onClosePasteChoice,
+  onSelectionAiPreviewChange,
   organizationId,
   pasteChoice,
   plusMenuOpen,
@@ -75,6 +82,7 @@ export function EditorChrome({
         <>
           <SelectionBubbleMenu
             editor={editor}
+            onSelectionAiPreviewChange={onSelectionAiPreviewChange}
             organizationId={organizationId}
             runCommand={(action, attrs) =>
               runToolbarCommand(editor, action, attrs)

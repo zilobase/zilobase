@@ -15,7 +15,7 @@ export function parseMarkdownContent(
   options?: ParseMarkdownContentOptions,
 ) {
   const normalizedMarkdown = options?.unwrapPlainFencedBlock
-    ? unwrapPlainFencedBlock(markdown)
+    ? normalizeSelectionReplacementMarkdown(markdown)
     : markdown
   const trimmedMarkdown = normalizeUnsupportedMarkdown(normalizedMarkdown).trim()
 
@@ -68,6 +68,10 @@ export function nextPaint() {
   return new Promise<void>((resolve) => {
     requestAnimationFrame(() => resolve())
   })
+}
+
+export function normalizeSelectionReplacementMarkdown(markdown: string) {
+  return unwrapPlainFencedBlock(markdown)
 }
 
 function sanitizeMarkdownContent(content: JSONContent[]) {

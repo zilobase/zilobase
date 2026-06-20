@@ -10,15 +10,18 @@ import { ColorMenu } from "./color-menu"
 import { SelectionAiMenu } from "./selection-ai-menu"
 import { toolbarGroups } from "./toolbar-data"
 import { ToolbarButton } from "./toolbar-button"
+import type { SelectionAiDiffPreview } from "@/packages/editor/types"
 import type { EditorControlProps, RunToolbarCommand } from "./types"
 
 const SELECTION_BUBBLE_MENU_PLUGIN_KEY = "selectionBubbleMenu"
 
 export function SelectionBubbleMenu({
   editor,
+  onSelectionAiPreviewChange,
   organizationId,
   runCommand,
 }: EditorControlProps & {
+  onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
   organizationId?: string | null
   runCommand: RunToolbarCommand
 }) {
@@ -102,7 +105,11 @@ export function SelectionBubbleMenu({
           />
         ))}
         <ButtonGroupSeparator />
-        <SelectionAiMenu editor={editor} organizationId={organizationId} />
+        <SelectionAiMenu
+          editor={editor}
+          onPreviewChange={onSelectionAiPreviewChange}
+          organizationId={organizationId}
+        />
         <ButtonGroupSeparator />
         <ColorMenu editor={editor} />
         <ButtonGroupSeparator />

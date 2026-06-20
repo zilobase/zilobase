@@ -11,22 +11,24 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import {
+  normalizeSelectionReplacementMarkdown,
   nextPaint,
-  parseMarkdownContent,
   readStreamError,
-  type GeneratedRange,
 } from "@/packages/editor/editor-ai-utils"
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import type { SelectionAiDiffPreview } from "@/packages/editor/types"
 import { useNotelabAiWorkspaces } from "@notelab/features/workspaces"
 
 type SelectionAiMenuProps = {
   editor: Editor
+  onPreviewChange: (preview: SelectionAiDiffPreview | null) => void
   organizationId?: string | null
 }
 
 export function SelectionAiMenu({
   editor,
+  onPreviewChange,
   organizationId,
 }: SelectionAiMenuProps) {
   const { data: aiWorkspaces = [], isLoading } =
@@ -45,7 +47,6 @@ export function SelectionAiMenu({
     null,
   )
   const abortControllerRef = React.useRef<AbortController | null>(null)
-  const generatedRangeRef = React.useRef<GeneratedRange | null>(null)
   const latestMarkdownRef = React.useRef("")
   const selectedRangeRef = React.useRef<Range | null>(null)
   const selectedTextRef = React.useRef("")
@@ -74,47 +75,6 @@ export function SelectionAiMenu({
     selectedTextRef.current = editor.state.doc.textBetween(from, to, "\n\n", "\n")
   }
 
-  const replaceSelectedContent = (markdown: string) => {
-    const parsed = parseMarkdownContent(editor, markdown, {
-      unwrapPlainFencedBlock: true,
-    })
-
-    if (!parsed) {
-      return
-    }
-
-    const currentRange =
-      generatedRangeRef.current ?? selectedRangeRef.current
-
-    if (!currentRange) {
-      return
-    }
-
-    editor
-      .chain()
-      .focus()
-      .insertContentAt(currentRange, parsed.content, {
-        updateSelection: false,
-      })
-      .run()
-
-    generatedRangeRef.current = {
-      from: currentRange.from,
-      to: currentRange.from + parsed.size,
-    }
-  }
-
-  const finishStreaming = () => {
-    const range = generatedRangeRef.current ?? selectedRangeRef.current
-
-    if (range) {
-      editor.chain().focus().setTextSelection(range.to).run()
-      return
-    }
-
-    editor.chain().focus().run()
-  }
-
   const submitPrompt = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -127,8 +87,14 @@ export function SelectionAiMenu({
 
     setIsStreaming(true)
     latestMarkdownRef.current = ""
-    generatedRangeRef.current = null
     abortControllerRef.current = new AbortController()
+    onPreviewChange({
+      from: selectedRange.from,
+      generatedMarkdown: "",
+      isStreaming: true,
+      originalText: selectedTextRef.current,
+      to: selectedRange.to,
+    })
 
     try {
       const headers = getApiRequestHeaders({
@@ -163,6 +129,19 @@ export function SelectionAiMenu({
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
+      const updatePreview = (isStreamingPreview: boolean) => {
+        const generatedMarkdown = isStreamingPreview
+          ? latestMarkdownRef.current
+          : normalizeSelectionReplacementMarkdown(latestMarkdownRef.current)
+
+        onPreviewChange({
+          from: selectedRange.from,
+          generatedMarkdown,
+          isStreaming: isStreamingPreview,
+          originalText: selectedTextRef.current,
+          to: selectedRange.to,
+        })
+      }
 
       while (true) {
         const { done, value } = await reader.read()
@@ -172,7 +151,7 @@ export function SelectionAiMenu({
         }
 
         latestMarkdownRef.current += decoder.decode(value, { stream: true })
-        replaceSelectedContent(latestMarkdownRef.current)
+        updatePreview(true)
         await nextPaint()
       }
 
@@ -180,11 +159,12 @@ export function SelectionAiMenu({
 
       if (flushed) {
         latestMarkdownRef.current += flushed
-        replaceSelectedContent(latestMarkdownRef.current)
+        updatePreview(true)
         await nextPaint()
       }
 
-      finishStreaming()
+      updatePreview(false)
+      editor.chain().focus().setTextSelection(selectedRange).run()
       setPrompt("")
     } catch (streamError) {
       if (streamError instanceof DOMException && streamError.name === "AbortError") {
@@ -197,6 +177,7 @@ export function SelectionAiMenu({
           : "AI generation failed. Try again."
 
       toast.error("Selection AI failed", { description: message })
+      onPreviewChange(null)
     } finally {
       setIsStreaming(false)
       abortControllerRef.current = null

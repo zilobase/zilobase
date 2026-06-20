@@ -39,6 +39,7 @@ import {
   type CreatedPage,
 } from "@/packages/editor/extensions/page-block"
 import { ShadcnTaskItem } from "@/packages/editor/extensions/shadcn-task-item"
+import { SelectionAiPreview } from "@/packages/editor/extensions/selection-ai-preview"
 import { SlashCommand } from "@/packages/editor/extensions/slash-command"
 import { VideoBlock } from "@/packages/editor/extensions/video-block"
 
@@ -135,6 +136,7 @@ export const createBaseExtensions = ({
     markedOptions: { gfm: true },
   }),
   CharacterCount,
+  SelectionAiPreview,
   AskAiBlock.configure({ organizationId }),
   SlashCommand.configure({
     onCreateDatabase: createEditorDatabase,
