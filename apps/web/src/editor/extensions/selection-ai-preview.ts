@@ -1,8 +1,14 @@
-import { Extension } from "@tiptap/core"
+import { Extension, type JSONContent } from "@tiptap/core"
+import {
+  DOMSerializer,
+  type Node as ProseMirrorNode,
+  type Schema,
+} from "@tiptap/pm/model"
 import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state"
 import { Decoration, DecorationSet } from "@tiptap/pm/view"
 
 export type SelectionAiPreviewState = {
+  generatedContent?: JSONContent[]
   from: number
   generatedMarkdown: string
   isStreaming: boolean
@@ -72,8 +78,8 @@ export const SelectionAiPreview = Extension.create({
                 class: "selection-ai-preview-deleted",
               }),
               Decoration.widget(
-                preview.to,
-                () => createInsertedPreview(preview),
+                getPreviewPosition(state.doc, preview.to),
+                () => createInsertedPreview(preview, state.schema),
                 {
                   key: [
                     "selection-ai-preview",
@@ -95,14 +101,44 @@ export const SelectionAiPreview = Extension.create({
   },
 })
 
-function createInsertedPreview(preview: SelectionAiPreviewState) {
-  const node = document.createElement("span")
+function createInsertedPreview(
+  preview: SelectionAiPreviewState,
+  schema: Schema,
+) {
+  const generatedContent = preview.generatedContent ?? []
+  const hasParsedContent = generatedContent.length > 0
+  const node = document.createElement("div")
   node.className = "selection-ai-preview-inserted"
-  node.textContent = preview.generatedMarkdown.trim() || "Writing..."
+  node.contentEditable = "false"
+
+  if (hasParsedContent) {
+    const parsedDoc = schema.nodeFromJSON({
+      type: "doc",
+      content: generatedContent,
+    })
+
+    node.appendChild(
+      DOMSerializer.fromSchema(schema).serializeFragment(
+        parsedDoc.content,
+      ) as Node,
+    )
+  } else {
+    node.textContent = preview.generatedMarkdown.trim() || "Writing..."
+  }
 
   if (preview.isStreaming) {
     node.dataset.streaming = "true"
   }
 
   return node
+}
+
+function getPreviewPosition(doc: ProseMirrorNode, position: number) {
+  const $position = doc.resolve(position)
+
+  if ($position.parent.inlineContent && $position.depth > 0) {
+    return $position.after($position.depth)
+  }
+
+  return position
 }

@@ -1445,7 +1445,20 @@
   }
 
   .selection-ai-preview-inserted {
-    @apply mx-1 inline whitespace-pre-wrap rounded-sm bg-emerald-500/15 px-1 text-emerald-700 no-underline dark:text-emerald-300;
+    @apply my-6 block border-l-2 border-emerald-500/60 bg-emerald-500/10 py-1 pl-4 text-emerald-700 no-underline dark:text-emerald-300;
+  }
+
+  .selection-ai-preview-inserted :is(p, li, blockquote, h1, h2, h3, h4, h5, h6) {
+    @apply text-emerald-700 dark:text-emerald-300;
+  }
+
+  .selection-ai-preview-inserted > * + * {
+    @apply mt-6;
+  }
+
+  .selection-ai-preview-inserted > :first-child,
+  .selection-ai-preview-inserted > :last-child {
+    @apply my-0;
   }
 
   .selection-ai-preview-inserted[data-streaming="true"] {

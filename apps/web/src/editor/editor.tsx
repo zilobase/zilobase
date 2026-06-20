@@ -114,12 +114,19 @@ export function Editor({
       return
     }
 
+    const parsedPreview = selectionAiPreview
+      ? parseMarkdownContent(editor, selectionAiPreview.generatedMarkdown, {
+          unwrapPlainFencedBlock: true,
+        })
+      : null
+
     editor.view.dispatch(
       setSelectionAiPreviewMeta(
         editor.state.tr,
         selectionAiPreview
           ? {
               from: selectionAiPreview.from,
+              generatedContent: parsedPreview?.content,
               generatedMarkdown: selectionAiPreview.generatedMarkdown,
               isStreaming: selectionAiPreview.isStreaming,
               to: selectionAiPreview.to,
