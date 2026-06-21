@@ -92,6 +92,7 @@ function buildPageSection(section: PageContextSection) {
 
   return [
     `## [${roleLabel}] ${section.title} (page)`,
+    `Page ID: ${section.id}`,
     `Path: ${section.path}`,
     pageMarkdown || "_Empty page_",
     databaseSections.length > 0 ? "### Databases on this page" : "",
