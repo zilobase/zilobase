@@ -19,7 +19,6 @@ export type SelectionAiDiffPreview = {
   from: number
   generatedMarkdown: string
   isStreaming: boolean
-  originalText: string
   to: number
 }
 

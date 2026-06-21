@@ -1,9 +1,10 @@
 import { Extension, type JSONContent } from "@tiptap/core"
-import {
-  DOMSerializer,
-  type Node as ProseMirrorNode,
-  type Schema,
-} from "@tiptap/pm/model"
+import DiffMatchPatch, {
+  DIFF_DELETE,
+  DIFF_EQUAL,
+  DIFF_INSERT,
+} from "diff-match-patch"
+import { type Node as ProseMirrorNode, type Schema } from "@tiptap/pm/model"
 import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state"
 import { Decoration, DecorationSet } from "@tiptap/pm/view"
 
@@ -21,6 +22,17 @@ type SelectionAiPreviewMeta =
 
 export const selectionAiPreviewPluginKey =
   new PluginKey<SelectionAiPreviewState | null>("selectionAiPreview")
+
+const diffMatchPatch = new DiffMatchPatch()
+const blockSeparator = "\n\n"
+const leafText = "\n"
+
+type TextPositionSegment = {
+  from: number
+  textEnd: number
+  textStart: number
+  to: number
+}
 
 export function setSelectionAiPreviewMeta(
   tr: Transaction,
@@ -73,27 +85,10 @@ export const SelectionAiPreview = Extension.create({
               return null
             }
 
-            const decorations: Decoration[] = [
-              Decoration.inline(preview.from, preview.to, {
-                class: "selection-ai-preview-deleted",
-              }),
-              Decoration.widget(
-                getPreviewPosition(state.doc, preview.to),
-                () => createInsertedPreview(preview, state.schema),
-                {
-                  key: [
-                    "selection-ai-preview",
-                    preview.from,
-                    preview.to,
-                    preview.isStreaming ? "streaming" : "done",
-                    preview.generatedMarkdown,
-                  ].join(":"),
-                  side: 1,
-                },
-              ),
-            ]
-
-            return DecorationSet.create(state.doc, decorations)
+            return DecorationSet.create(
+              state.doc,
+              createInlineDiffDecorations(preview, state.doc, state.schema),
+            )
           },
         },
       }),
@@ -101,44 +96,239 @@ export const SelectionAiPreview = Extension.create({
   },
 })
 
-function createInsertedPreview(
+function createInlineDiffDecorations(
+  preview: SelectionAiPreviewState,
+  doc: ProseMirrorNode,
+  schema: Schema,
+) {
+  const sourceText = createTextPositionMap(doc, preview.from, preview.to)
+  const generatedText = getGeneratedPreviewText(preview, schema)
+  const decorations: Decoration[] = []
+
+  if (!generatedText) {
+    if (preview.isStreaming) {
+      decorations.push(
+        Decoration.widget(
+          preview.to,
+          () => createInsertionWidget("Writing..."),
+          { key: "selection-ai-preview-writing", side: 1 },
+        ),
+      )
+    }
+
+    return decorations
+  }
+
+  const diffs = diffMatchPatch.diff_main(
+    sourceText.text,
+    generatedText,
+    true,
+  )
+  diffMatchPatch.diff_cleanupSemantic(diffs)
+  let originalOffset = 0
+
+  diffs.forEach(([operation, text], index) => {
+    if (!text) {
+      return
+    }
+
+    if (operation === DIFF_DELETE) {
+      decorations.push(
+        ...getRangesForTextSpan(
+          sourceText.segments,
+          originalOffset,
+          originalOffset + text.length,
+        ).map((range) =>
+          Decoration.inline(range.from, range.to, {
+            class: "selection-ai-preview-diff-deleted",
+          }),
+        ),
+      )
+      originalOffset += text.length
+      return
+    }
+
+    if (operation === DIFF_INSERT) {
+      decorations.push(
+        Decoration.widget(
+          getPositionForTextOffset(
+            sourceText.segments,
+            originalOffset,
+            preview,
+          ),
+          () => createInsertionWidget(text, preview.isStreaming),
+          {
+            key: [
+              "selection-ai-preview-insert",
+              index,
+              originalOffset,
+              text,
+              preview.isStreaming ? "streaming" : "done",
+            ].join(":"),
+            side: 1,
+          },
+        ),
+      )
+      return
+    }
+
+    if (operation === DIFF_EQUAL) {
+      originalOffset += text.length
+    }
+  })
+
+  return decorations
+}
+
+function createInsertionWidget(text: string, isStreaming = false) {
+  const part = document.createElement("span")
+  part.className = "selection-ai-preview-diff-inserted"
+  part.contentEditable = "false"
+  part.textContent = text
+
+  if (isStreaming) {
+    part.dataset.streaming = "true"
+  }
+
+  return part
+}
+
+function getGeneratedPreviewText(
   preview: SelectionAiPreviewState,
   schema: Schema,
 ) {
   const generatedContent = preview.generatedContent ?? []
-  const hasParsedContent = generatedContent.length > 0
-  const node = document.createElement("div")
-  node.className = "selection-ai-preview-inserted"
-  node.contentEditable = "false"
 
-  if (hasParsedContent) {
-    const parsedDoc = schema.nodeFromJSON({
-      type: "doc",
-      content: generatedContent,
-    })
-
-    node.appendChild(
-      DOMSerializer.fromSchema(schema).serializeFragment(
-        parsedDoc.content,
-      ) as Node,
-    )
-  } else {
-    node.textContent = preview.generatedMarkdown.trim() || "Writing..."
+  if (generatedContent.length === 0) {
+    return preview.generatedMarkdown.trim()
   }
 
-  if (preview.isStreaming) {
-    node.dataset.streaming = "true"
-  }
+  const parsedDoc = schema.nodeFromJSON({
+    type: "doc",
+    content: generatedContent,
+  })
 
-  return node
+  return parsedDoc
+    .textBetween(0, parsedDoc.content.size, blockSeparator, leafText)
+    .trim()
 }
 
-function getPreviewPosition(doc: ProseMirrorNode, position: number) {
-  const $position = doc.resolve(position)
+function createTextPositionMap(
+  doc: ProseMirrorNode,
+  from: number,
+  to: number,
+) {
+  let text = ""
+  let firstBlock = true
+  const segments: TextPositionSegment[] = []
 
-  if ($position.parent.inlineContent && $position.depth > 0) {
-    return $position.after($position.depth)
+  doc.nodesBetween(from, to, (node, position) => {
+    const nodeText = getNodeText(node, position, from, to)
+
+    if (node.isBlock && (node.isTextblock || (node.isLeaf && nodeText))) {
+      if (firstBlock) {
+        firstBlock = false
+      } else {
+        text += blockSeparator
+      }
+    }
+
+    if (!nodeText) {
+      return
+    }
+
+    const textStart = text.length
+    text += nodeText
+
+    if (node.isText) {
+      const textFrom = Math.max(from, position)
+      const textTo = textFrom + nodeText.length
+      segments.push({
+        from: textFrom,
+        textEnd: text.length,
+        textStart,
+        to: textTo,
+      })
+      return
+    }
+
+    if (node.isLeaf) {
+      segments.push({
+        from: position,
+        textEnd: text.length,
+        textStart,
+        to: position + node.nodeSize,
+      })
+    }
+  })
+
+  if (segments.length === 0 && text.length === 0) {
+    segments.push({ from, textEnd: 0, textStart: 0, to })
   }
 
-  return position
+  return { segments, text }
+}
+
+function getNodeText(
+  node: ProseMirrorNode,
+  position: number,
+  from: number,
+  to: number,
+) {
+  if (node.isText) {
+    return (
+      node.text?.slice(Math.max(from, position) - position, to - position) ??
+      ""
+    )
+  }
+
+  if (node.isLeaf) {
+    return leafText
+  }
+
+  return ""
+}
+
+function getRangesForTextSpan(
+  segments: TextPositionSegment[],
+  fromOffset: number,
+  toOffset: number,
+) {
+  return segments.flatMap((segment) => {
+    const from = Math.max(fromOffset, segment.textStart)
+    const to = Math.min(toOffset, segment.textEnd)
+
+    if (from >= to) {
+      return []
+    }
+
+    return {
+      from: segment.from + from - segment.textStart,
+      to: segment.from + to - segment.textStart,
+    }
+  })
+}
+
+function getPositionForTextOffset(
+  segments: TextPositionSegment[],
+  offset: number,
+  preview: SelectionAiPreviewState,
+) {
+  const containingSegment = segments.find(
+    (segment) => offset >= segment.textStart && offset <= segment.textEnd,
+  )
+
+  if (containingSegment) {
+    return containingSegment.from + offset - containingSegment.textStart
+  }
+
+  const previousSegment = [...segments]
+    .reverse()
+    .find((segment) => segment.textEnd <= offset)
+
+  if (previousSegment) {
+    return previousSegment.to
+  }
+
+  return segments[0]?.from ?? preview.from
 }

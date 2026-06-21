@@ -92,7 +92,6 @@ export function SelectionAiMenu({
       from: selectedRange.from,
       generatedMarkdown: "",
       isStreaming: true,
-      originalText: selectedTextRef.current,
       to: selectedRange.to,
     })
 
@@ -138,7 +137,6 @@ export function SelectionAiMenu({
           from: selectedRange.from,
           generatedMarkdown,
           isStreaming: isStreamingPreview,
-          originalText: selectedTextRef.current,
           to: selectedRange.to,
         })
       }
