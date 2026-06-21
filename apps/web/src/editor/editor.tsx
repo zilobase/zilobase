@@ -4,13 +4,18 @@ import { SelectionAiDiffDock } from "@/packages/editor/components/editor/selecti
 import { MobileActionBar } from "@/packages/editor/components/editor/mobile-action-bar"
 import { WorkspaceMetadata } from "@/packages/editor/components/editor/workspace-metadata"
 import { starterContent } from "./constants"
-import { parseMarkdownContent } from "./editor-ai-utils"
+import {
+  getFullDocumentPreviewRange,
+  parseMarkdownContent,
+} from "./editor-ai-utils"
 import { EditorChrome } from "./editor-chrome"
 import { setSelectionAiPreviewMeta } from "./extensions/selection-ai-preview"
 import type {
   EditorProps,
   PasteChoiceState,
   SelectionAiDiffPreview,
+  WorkspaceEditPreviewControls,
+  WorkspaceEditPreviewRequest,
 } from "./types"
 import { useEditorDatabaseActions } from "./use-editor-database-actions"
 import { useEditorDragHandle } from "./use-editor-drag-handle"
@@ -32,11 +37,13 @@ export function Editor({
   onCoverChange,
   onCreatePage,
   onEmbedPage,
+  onEditorReady,
   onEmojiChange,
   onOpenPage,
   onTitleChange,
   organizationId,
   title,
+  workspaceEditPreviewRef,
   workspaceId,
   workspaceUpdatedAt,
 }: EditorProps = {}) {
@@ -47,6 +54,7 @@ export function Editor({
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
   const [selectionAiPreview, setSelectionAiPreview] =
     useState<SelectionAiDiffPreview | null>(null)
+  const pendingWorkspaceEditRef = useRef<WorkspaceEditPreviewRequest | null>(null)
   const pageContentLayout = fullWidth
     ? { className: "", mode: "full" as const }
     : { className: "mx-auto max-w-5xl", mode: "narrow" as const }
@@ -81,6 +89,7 @@ export function Editor({
     editorRuntimeRef,
     initialContent,
     onContentChange,
+    onEditorReady,
     onOpenPage,
     setPasteChoice,
     workspaceId,
@@ -109,6 +118,124 @@ export function Editor({
 
   const handleClosePasteChoice = useCallback(() => setPasteChoice(null), [])
 
+  const clearWorkspaceEditPreview = useCallback(
+    (options?: { silent?: boolean }) => {
+      if (!options?.silent && pendingWorkspaceEditRef.current) {
+        pendingWorkspaceEditRef.current.onDeclined?.()
+      }
+
+      pendingWorkspaceEditRef.current = null
+      setSelectionAiPreview((current) =>
+        current?.source === "workspace-edit" ? null : current,
+      )
+    },
+    [],
+  )
+
+  const clearSelectionAiPreview = useCallback(() => {
+    if (pendingWorkspaceEditRef.current) {
+      clearWorkspaceEditPreview()
+      return
+    }
+
+    setSelectionAiPreview(null)
+  }, [clearWorkspaceEditPreview])
+
+  const handleSelectionAiPreviewChange = useCallback(
+    (preview: SelectionAiDiffPreview | null) => {
+      if (preview && preview.source !== "workspace-edit") {
+        pendingWorkspaceEditRef.current = null
+      }
+
+      setSelectionAiPreview(preview)
+    },
+    [],
+  )
+
+  const showWorkspaceEditPreview = useCallback(
+    (request: WorkspaceEditPreviewRequest) => {
+      if (!editor || editor.isDestroyed || !editable) {
+        return false
+      }
+
+      const parsedPreview = parseMarkdownContent(editor, request.afterMarkdown, {
+        unwrapPlainFencedBlock: true,
+      })
+
+      if (!parsedPreview) {
+        return false
+      }
+
+      const range = getFullDocumentPreviewRange(editor)
+      pendingWorkspaceEditRef.current = request
+      setSelectionAiPreview({
+        baselineMarkdown: request.beforeMarkdown,
+        from: range.from,
+        generatedMarkdown: request.afterMarkdown,
+        isStreaming: false,
+        source: "workspace-edit",
+        to: range.to,
+        toolCallId: request.toolCallId,
+        useBeforeBaseline: request.useBeforeBaseline,
+      })
+
+      return true
+    },
+    [editable, editor],
+  )
+
+  const acceptWorkspaceEditPreview = useCallback(() => {
+    const pendingEdit = pendingWorkspaceEditRef.current
+
+    if (!editor || !pendingEdit || editor.isDestroyed) {
+      return false
+    }
+
+    const parsed = parseMarkdownContent(editor, pendingEdit.afterMarkdown, {
+      unwrapPlainFencedBlock: true,
+    })
+
+    if (!parsed) {
+      return false
+    }
+
+    editor.view.dispatch(setSelectionAiPreviewMeta(editor.state.tr, null))
+    editor.commands.setContent({
+      type: "doc",
+      content: parsed.content,
+    })
+    onContentChange?.(editor.getJSON())
+    pendingEdit.onAccepted?.()
+    pendingWorkspaceEditRef.current = null
+    setSelectionAiPreview(null)
+    return true
+  }, [editor, onContentChange])
+
+  useEffect(() => {
+    if (!workspaceEditPreviewRef) {
+      return
+    }
+
+    const controls: WorkspaceEditPreviewControls = {
+      accept: () => acceptWorkspaceEditPreview(),
+      clear: (options) => clearWorkspaceEditPreview(options),
+      isActive: () => pendingWorkspaceEditRef.current != null,
+      show: (request) => showWorkspaceEditPreview(request),
+      toolCallId: () => pendingWorkspaceEditRef.current?.toolCallId ?? null,
+    }
+
+    workspaceEditPreviewRef.current = controls
+
+    return () => {
+      workspaceEditPreviewRef.current = null
+    }
+  }, [
+    acceptWorkspaceEditPreview,
+    clearWorkspaceEditPreview,
+    showWorkspaceEditPreview,
+    workspaceEditPreviewRef,
+  ])
+
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return
@@ -119,28 +246,37 @@ export function Editor({
           unwrapPlainFencedBlock: true,
         })
       : null
+    const parsedBaseline = selectionAiPreview?.baselineMarkdown
+      ? parseMarkdownContent(editor, selectionAiPreview.baselineMarkdown, {
+          unwrapPlainFencedBlock: true,
+        })
+      : null
 
     editor.view.dispatch(
       setSelectionAiPreviewMeta(
         editor.state.tr,
         selectionAiPreview
           ? {
+              baselineContent: parsedBaseline?.content,
+              baselineMarkdown: selectionAiPreview.baselineMarkdown,
               from: selectionAiPreview.from,
               generatedContent: parsedPreview?.content,
               generatedMarkdown: selectionAiPreview.generatedMarkdown,
               isStreaming: selectionAiPreview.isStreaming,
               to: selectionAiPreview.to,
+              useBeforeBaseline: selectionAiPreview.useBeforeBaseline,
             }
           : null,
       ),
     )
   }, [editor, selectionAiPreview])
 
-  const clearSelectionAiPreview = useCallback(() => {
-    setSelectionAiPreview(null)
-  }, [])
-
   const acceptSelectionAiPreview = useCallback(() => {
+    if (pendingWorkspaceEditRef.current) {
+      acceptWorkspaceEditPreview()
+      return
+    }
+
     if (!editor || !selectionAiPreview || selectionAiPreview.isStreaming) {
       return
     }
@@ -166,7 +302,12 @@ export function Editor({
       )
       .run()
     clearSelectionAiPreview()
-  }, [clearSelectionAiPreview, editor, selectionAiPreview])
+  }, [
+    acceptWorkspaceEditPreview,
+    clearSelectionAiPreview,
+    editor,
+    selectionAiPreview,
+  ])
 
   return (
     <div className="flex min-h-[calc(100svh-3rem)] w-full flex-col text-foreground">
@@ -186,7 +327,7 @@ export function Editor({
           editor={editor}
           editorId={editorId}
           onClosePasteChoice={handleClosePasteChoice}
-          onSelectionAiPreviewChange={setSelectionAiPreview}
+          onSelectionAiPreviewChange={handleSelectionAiPreviewChange}
           organizationId={organizationId}
           pasteChoice={pasteChoice}
           plusMenuOpen={plusMenuOpen}
@@ -220,7 +361,9 @@ export function Editor({
             onMoveUp={() => moveMobileTarget("up")}
           />
         ) : null}
-        {editable && selectionAiPreview ? (
+        {editable &&
+        selectionAiPreview &&
+        selectionAiPreview.source !== "workspace-edit" ? (
           <SelectionAiDiffDock
             isStreaming={selectionAiPreview.isStreaming}
             onAccept={acceptSelectionAiPreview}

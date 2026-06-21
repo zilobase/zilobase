@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type MutableRefObject } from "react"
 import { useEditor } from "@tiptap/react"
-import type { Content, Extensions } from "@tiptap/core"
+import type { Content, Editor, Extensions } from "@tiptap/core"
 import type { DatabaseBlockEditorRuntime } from "@/packages/editor/extensions/database"
 import { registerBlockDragSource } from "@/packages/editor/components/editor/block-drag"
 import {
@@ -26,6 +26,7 @@ type UseEditorInstanceOptions = {
   }>
   initialContent: Content | undefined
   onContentChange?: (content: unknown) => void
+  onEditorReady?: (editor: Editor | null) => void
   onOpenPage?: (pageId: string) => void
   setPasteChoice: (choice: PasteChoiceState | null) => void
   workspaceId?: string | null
@@ -42,6 +43,7 @@ export const useEditorInstance = ({
   editorRuntimeRef,
   initialContent,
   onContentChange,
+  onEditorReady,
   onOpenPage,
   setPasteChoice,
   workspaceId,
@@ -96,6 +98,13 @@ export const useEditorInstance = ({
       editorContentRef.current = null
     }
   }, [editor, editorContentRef])
+
+  useEffect(() => {
+    onEditorReady?.(editor ?? null)
+    return () => {
+      onEditorReady?.(null)
+    }
+  }, [editor, onEditorReady])
 
   useEffect(() => {
     if (!editor || editor.isDestroyed || !editor.extensionManager) return

@@ -9,11 +9,14 @@ import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state"
 import { Decoration, DecorationSet } from "@tiptap/pm/view"
 
 export type SelectionAiPreviewState = {
+  baselineContent?: JSONContent[]
+  baselineMarkdown?: string
   generatedContent?: JSONContent[]
   from: number
   generatedMarkdown: string
   isStreaming: boolean
   to: number
+  useBeforeBaseline?: boolean
 }
 
 type SelectionAiPreviewMeta =
@@ -101,6 +104,18 @@ function createInlineDiffDecorations(
   doc: ProseMirrorNode,
   schema: Schema,
 ) {
+  if (preview.useBeforeBaseline && preview.baselineMarkdown) {
+    return createBaselineAnchoredDiffDecorations(preview, doc, schema)
+  }
+
+  return createDocumentAnchoredDiffDecorations(preview, doc, schema)
+}
+
+function createDocumentAnchoredDiffDecorations(
+  preview: SelectionAiPreviewState,
+  doc: ProseMirrorNode,
+  schema: Schema,
+) {
   const sourceText = createTextPositionMap(doc, preview.from, preview.to)
   const generatedText = getGeneratedPreviewText(preview, schema)
   const decorations: Decoration[] = []
@@ -180,9 +195,86 @@ function createInlineDiffDecorations(
   return decorations
 }
 
-function createInsertionWidget(text: string, isStreaming = false) {
+function createBaselineAnchoredDiffDecorations(
+  preview: SelectionAiPreviewState,
+  doc: ProseMirrorNode,
+  schema: Schema,
+) {
+  const generatedTextMap = createTextPositionMap(doc, preview.from, preview.to)
+  const baselineText = getBaselinePreviewText(preview, schema)
+  const generatedText = getGeneratedPreviewText(preview, schema)
+  const decorations: Decoration[] = []
+
+  if (!baselineText || !generatedText) {
+    return decorations
+  }
+
+  const diffs = diffMatchPatch.diff_main(baselineText, generatedText, true)
+  diffMatchPatch.diff_cleanupSemantic(diffs)
+  let generatedOffset = 0
+
+  diffs.forEach(([operation, text], index) => {
+    if (!text) {
+      return
+    }
+
+    if (operation === DIFF_DELETE) {
+      decorations.push(
+        Decoration.widget(
+          getPositionForTextOffset(
+            generatedTextMap.segments,
+            generatedOffset,
+            preview,
+          ),
+          () => createDiffWidget(text, "deleted", preview.isStreaming),
+          {
+            key: [
+              "selection-ai-preview-baseline-delete",
+              index,
+              generatedOffset,
+              text,
+            ].join(":"),
+            side: -1,
+          },
+        ),
+      )
+      return
+    }
+
+    if (operation === DIFF_INSERT) {
+      decorations.push(
+        ...getRangesForTextSpan(
+          generatedTextMap.segments,
+          generatedOffset,
+          generatedOffset + text.length,
+        ).map((range) =>
+          Decoration.inline(range.from, range.to, {
+            class: "selection-ai-preview-diff-inserted",
+          }),
+        ),
+      )
+      generatedOffset += text.length
+      return
+    }
+
+    if (operation === DIFF_EQUAL) {
+      generatedOffset += text.length
+    }
+  })
+
+  return decorations
+}
+
+function createDiffWidget(
+  text: string,
+  variant: "deleted" | "inserted",
+  isStreaming = false,
+) {
   const part = document.createElement("span")
-  part.className = "selection-ai-preview-diff-inserted"
+  part.className =
+    variant === "deleted"
+      ? "selection-ai-preview-diff-deleted"
+      : "selection-ai-preview-diff-inserted"
   part.contentEditable = "false"
   part.textContent = text
 
@@ -191,6 +283,30 @@ function createInsertionWidget(text: string, isStreaming = false) {
   }
 
   return part
+}
+
+function createInsertionWidget(text: string, isStreaming = false) {
+  return createDiffWidget(text, "inserted", isStreaming)
+}
+
+function getBaselinePreviewText(
+  preview: SelectionAiPreviewState,
+  schema: Schema,
+) {
+  const baselineContent = preview.baselineContent ?? []
+
+  if (baselineContent.length > 0) {
+    const parsedDoc = schema.nodeFromJSON({
+      type: "doc",
+      content: baselineContent,
+    })
+
+    return parsedDoc
+      .textBetween(0, parsedDoc.content.size, blockSeparator, leafText)
+      .trim()
+  }
+
+  return preview.baselineMarkdown?.trim() ?? ""
 }
 
 function getGeneratedPreviewText(
