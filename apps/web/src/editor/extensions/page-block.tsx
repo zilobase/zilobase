@@ -343,6 +343,9 @@ export const PageBlock = Node.create<PageBlockOptions>({
     return {
       pageId: {
         default: null,
+        parseHTML: (element) => element.getAttribute("data-page-id"),
+        renderHTML: (attributes) =>
+          attributes.pageId ? { "data-page-id": attributes.pageId } : {},
       },
       textColor: {
         default: null,

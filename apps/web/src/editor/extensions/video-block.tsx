@@ -153,9 +153,16 @@ export const VideoBlock = Node.create({
     return {
       src: {
         default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-src") ?? element.getAttribute("src"),
+        renderHTML: (attributes) =>
+          attributes.src ? { "data-src": attributes.src } : {},
       },
       title: {
         default: null,
+        parseHTML: (element) => element.getAttribute("data-title"),
+        renderHTML: (attributes) =>
+          attributes.title ? { "data-title": attributes.title } : {},
       },
     }
   },

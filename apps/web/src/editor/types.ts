@@ -1,3 +1,4 @@
+import type { Editor } from "@tiptap/core"
 import type { MutableRefObject } from "react"
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
 import type { EmbedProvider } from "@/packages/editor/extensions/embed-block"
@@ -16,16 +17,42 @@ export type PasteChoiceState = {
 }
 
 export type SelectionAiDiffPreview = {
+  baselineMarkdown?: string
   from: number
   generatedMarkdown: string
   isStreaming: boolean
+  source?: "selection" | "workspace-edit"
   to: number
+  toolCallId?: string
+  useBeforeBaseline?: boolean
+}
+
+export type WorkspaceEditPreviewRequest = {
+  afterMarkdown: string
+  beforeMarkdown?: string
+  onAccepted?: () => void
+  onDeclined?: () => void
+  toolCallId: string
+  useBeforeBaseline?: boolean
+}
+
+export type WorkspaceEditPreviewClearOptions = {
+  silent?: boolean
+}
+
+export type WorkspaceEditPreviewControls = {
+  accept: () => boolean
+  clear: (options?: WorkspaceEditPreviewClearOptions) => void
+  isActive: () => boolean
+  show: (request: WorkspaceEditPreviewRequest) => boolean
+  toolCallId: () => string | null
 }
 
 export type EditorProps = {
   content?: unknown
   cover?: string
   editorContentRef?: MutableRefObject<(() => unknown) | null>
+  onEditorReady?: (editor: Editor | null) => void
   emoji?: string
   editable?: boolean
   fullWidth?: boolean
@@ -39,6 +66,7 @@ export type EditorProps = {
   onTitleChange?: (title: string) => void
   organizationId?: string | null
   title?: string
+  workspaceEditPreviewRef?: MutableRefObject<WorkspaceEditPreviewControls | null>
   workspaceId?: string | null
   workspaceUpdatedAt?: string | null
 }

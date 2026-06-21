@@ -181,12 +181,23 @@ export const ImageBlock = Node.create<ImageBlockOptions>({
     return {
       src: {
         default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-src") ?? element.getAttribute("src"),
+        renderHTML: (attributes) =>
+          attributes.src ? { "data-src": attributes.src } : {},
       },
       alt: {
         default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-alt") ?? element.getAttribute("alt"),
+        renderHTML: (attributes) =>
+          attributes.alt ? { "data-alt": attributes.alt } : {},
       },
       title: {
         default: null,
+        parseHTML: (element) => element.getAttribute("data-title"),
+        renderHTML: (attributes) =>
+          attributes.title ? { "data-title": attributes.title } : {},
       },
       width: {
         default: null,

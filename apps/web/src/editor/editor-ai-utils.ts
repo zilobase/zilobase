@@ -1,8 +1,23 @@
 import type { Editor, JSONContent } from "@tiptap/core"
+import {
+  isStructuralBlockMarkerLine,
+  preprocessStructuralBlockMarkdown,
+  restoreStructuralBlocksInMarkdownContent,
+} from "@notelab/workspace-context"
 
 export type GeneratedRange = {
   from: number
   to: number
+}
+
+export function getFullDocumentPreviewRange(editor: Editor): GeneratedRange {
+  const doc = editor.state.doc
+
+  if (doc.childCount === 0) {
+    return { from: 0, to: 0 }
+  }
+
+  return { from: 0, to: doc.content.size }
 }
 
 type ParseMarkdownContentOptions = {
@@ -23,12 +38,18 @@ export function parseMarkdownContent(
     return null
   }
 
+  const markdownForParse = preprocessStructuralBlockMarkdown(trimmedMarkdown)
+
   try {
-    const doc = editor.markdown?.parse(trimmedMarkdown)
+    const doc = editor.markdown?.parse(markdownForParse)
     const content =
       doc?.content && doc.content.length > 0
-        ? sanitizeMarkdownContent(doc.content)
-        : [{ type: "paragraph", content: [{ type: "text", text: trimmedMarkdown }] }]
+        ? restoreStructuralBlocksInMarkdownContent(
+            sanitizeMarkdownContent(doc.content),
+          )
+        : restoreStructuralBlocksInMarkdownContent(
+            splitStructuralMarkdownLines(trimmedMarkdown),
+          )
     const size = editor.schema.nodeFromJSON({
       type: "doc",
       content,
@@ -36,12 +57,7 @@ export function parseMarkdownContent(
 
     return { content, size }
   } catch {
-    const content: JSONContent[] = [
-      {
-        type: "paragraph",
-        content: [{ type: "text", text: trimmedMarkdown }],
-      },
-    ]
+    const content = splitStructuralMarkdownLines(trimmedMarkdown)
     const size = editor.schema.nodeFromJSON({ type: "doc", content }).content.size
 
     return { content, size }
@@ -72,6 +88,49 @@ export function nextPaint() {
 
 export function normalizeSelectionReplacementMarkdown(markdown: string) {
   return unwrapPlainFencedBlock(markdown)
+}
+
+function splitStructuralMarkdownLines(markdown: string): JSONContent[] {
+  const lines = markdown.split("\n")
+  const blocks: JSONContent[] = []
+  let paragraphLines: string[] = []
+
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) {
+      return
+    }
+
+    blocks.push({
+      type: "paragraph",
+      content: [{ type: "text", text: paragraphLines.join("\n") }],
+    })
+    paragraphLines = []
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const isStructuralMarker = isStructuralBlockMarkerLine(trimmed)
+
+    if (isStructuralMarker) {
+      flushParagraph()
+      blocks.push({
+        type: "paragraph",
+        content: [{ type: "text", text: trimmed }],
+      })
+      continue
+    }
+
+    if (!trimmed) {
+      flushParagraph()
+      continue
+    }
+
+    paragraphLines.push(line)
+  }
+
+  flushParagraph()
+
+  return restoreStructuralBlocksInMarkdownContent(blocks)
 }
 
 function sanitizeMarkdownContent(content: JSONContent[]) {

@@ -181,12 +181,19 @@ export const FileBlock = Node.create({
     return {
       href: {
         default: null,
+        parseHTML: (element) =>
+          element.getAttribute("data-href") ?? element.getAttribute("href"),
+        renderHTML: (attributes) =>
+          attributes.href ? { "data-href": attributes.href } : {},
       },
       size: {
         default: null,
       },
       title: {
         default: null,
+        parseHTML: (element) => element.getAttribute("data-title"),
+        renderHTML: (attributes) =>
+          attributes.title ? { "data-title": attributes.title } : {},
       },
     }
   },
