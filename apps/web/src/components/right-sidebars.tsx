@@ -1,37 +1,107 @@
 "use client"
 
+import { useCallback, useEffect, useRef } from "react"
 import type { ReactNode } from "react"
 
+import {
+  ResizableHandle,
+  ResizablePanel,
+} from "@/components/ui/resizable"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 
-function RightSidebarDesktopSlot({
+export const RIGHT_SIDEBAR_SINGLE_MAX_SIZE = 100 / 3
+export const RIGHT_SIDEBAR_SPLIT_MAX_SIZE = 25
+export const RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE = 28
+export const RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE = 22
+
+const RIGHT_SIDEBAR_MIN_SIZE = 18
+const panelPercentage = (size: number) => `${size}%`
+
+export function getRightSidebarEditorMinSize(openPanelCount: number) {
+  if (openPanelCount >= 2) {
+    return panelPercentage(100 - RIGHT_SIDEBAR_SPLIT_MAX_SIZE * 2)
+  }
+
+  if (openPanelCount === 1) {
+    return panelPercentage(100 - RIGHT_SIDEBAR_SINGLE_MAX_SIZE)
+  }
+
+  return "0%"
+}
+
+export function getRightSidebarEditorDefaultSize(openPanelCount: number) {
+  if (openPanelCount >= 2) {
+    return panelPercentage(100 - RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE * 2)
+  }
+
+  if (openPanelCount === 1) {
+    return panelPercentage(100 - RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE)
+  }
+
+  return "100%"
+}
+
+function RightSidebarDesktopPanel({
   ariaLabel,
   children,
-  open,
+  onWidthChange,
+  openPanelCount,
+  panelId,
 }: {
   ariaLabel: string
   children: ReactNode
-  open: boolean
+  onWidthChange?: (width: number) => void
+  openPanelCount: number
+  panelId: string
 }) {
+  const panelRef = useRef<HTMLDivElement | null>(null)
+  const maxSize =
+    openPanelCount >= 2
+      ? RIGHT_SIDEBAR_SPLIT_MAX_SIZE
+      : RIGHT_SIDEBAR_SINGLE_MAX_SIZE
+  const defaultSize =
+    openPanelCount >= 2
+      ? RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE
+      : RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE
+
+  useEffect(() => {
+    if (!onWidthChange || !panelRef.current) {
+      return
+    }
+
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry) {
+        onWidthChange(entry.contentRect.width)
+      }
+    })
+
+    observer.observe(panelRef.current)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [onWidthChange])
+
   return (
-    <div
-      className={cn(
-        "relative h-full shrink-0 overflow-hidden transition-[width] duration-200 ease-linear",
-        open ? "w-(--right-sidebar-panel-width)" : "w-0",
-      )}
-    >
-      <aside
-        aria-hidden={!open}
-        aria-label={ariaLabel}
-        className={cn(
-          "flex h-full w-(--right-sidebar-panel-width) flex-col bg-background text-foreground",
-          open ? "border-l border-sidebar-border" : "border-0",
-        )}
-        inert={open ? undefined : true}
+    <>
+      <ResizableHandle withHandle />
+      <ResizablePanel
+        className="min-w-0"
+        defaultSize={panelPercentage(defaultSize)}
+        elementRef={panelRef}
+        id={panelId}
+        maxSize={panelPercentage(maxSize)}
+        minSize={panelPercentage(RIGHT_SIDEBAR_MIN_SIZE)}
       >
-        {children}
-      </aside>
-    </div>
+        <aside
+          aria-label={ariaLabel}
+          className="flex h-full min-w-0 flex-col bg-background text-foreground"
+        >
+          {children}
+        </aside>
+      </ResizablePanel>
+    </>
   )
 }
 
@@ -71,71 +141,102 @@ function RightSidebarMobilePanel({
 export function RightSidebars({
   chatOpen,
   chatPanel,
-  chatTrigger,
   discussionsEnabled,
   discussionsOpen,
   discussionsPanel,
 }: {
   chatOpen: boolean
   chatPanel: ReactNode
-  chatTrigger?: ReactNode
   discussionsEnabled: boolean
   discussionsOpen: boolean
   discussionsPanel?: ReactNode
 }) {
+  const isMobile = useIsMobile()
   const openPanelCount =
     (chatOpen ? 1 : 0) + (discussionsEnabled && discussionsOpen ? 1 : 0)
+  const updateDiscussionsPanelWidth = useCallback((width: number) => {
+    document.documentElement.style.setProperty(
+      "--right-sidebar-discussions-panel-width",
+      `${width}px`,
+    )
+  }, [])
+
+  useEffect(() => {
+    if (!discussionsOpen) {
+      document.documentElement.style.removeProperty(
+        "--right-sidebar-discussions-panel-width",
+      )
+    }
+  }, [discussionsOpen])
+
+  if (isMobile) {
+    return null
+  }
 
   return (
     <>
-      {chatTrigger}
-      <div
-        className="relative shrink-0"
-        data-state={openPanelCount > 0 ? "expanded" : "collapsed"}
-      >
-        <div
-          aria-hidden
-          className={cn(
-            "relative hidden bg-transparent transition-[width] duration-200 ease-linear md:block",
-            openPanelCount === 0 && "w-0",
-            openPanelCount === 1 && "w-(--right-sidebar-panel-width)",
-            openPanelCount === 2 &&
-              "w-[calc(2*var(--right-sidebar-panel-width))]",
-          )}
-        />
+      {discussionsEnabled && discussionsOpen && discussionsPanel ? (
+        <RightSidebarDesktopPanel
+          ariaLabel="Discussions sidebar"
+          onWidthChange={updateDiscussionsPanelWidth}
+          openPanelCount={openPanelCount}
+          panelId="right-sidebar-discussions"
+        >
+          {discussionsPanel}
+        </RightSidebarDesktopPanel>
+      ) : null}
 
-        <div className="absolute inset-y-0 right-0 hidden h-svh md:flex">
-          {discussionsEnabled && discussionsPanel ? (
-            <RightSidebarDesktopSlot
-              ariaLabel="Discussions sidebar"
-              open={discussionsOpen}
-            >
-              {discussionsPanel}
-            </RightSidebarDesktopSlot>
-          ) : null}
-          <RightSidebarDesktopSlot ariaLabel="Chat sidebar" open={chatOpen}>
-            {chatPanel}
-          </RightSidebarDesktopSlot>
-        </div>
+      {chatOpen ? (
+        <RightSidebarDesktopPanel
+          ariaLabel="Chat sidebar"
+          openPanelCount={openPanelCount}
+          panelId="right-sidebar-chat"
+        >
+          {chatPanel}
+        </RightSidebarDesktopPanel>
+      ) : null}
+    </>
+  )
+}
 
-        <div className="md:hidden">
-          {discussionsEnabled && discussionsPanel ? (
-            <RightSidebarMobilePanel
-              ariaLabel="Discussions sidebar"
-              open={discussionsOpen}
-              rightOffset={chatOpen}
-            >
-              {discussionsPanel}
-            </RightSidebarMobilePanel>
-          ) : null}
+export function RightSidebarMobilePanels({
+  chatOpen,
+  chatPanel,
+  discussionsEnabled,
+  discussionsOpen,
+  discussionsPanel,
+}: {
+  chatOpen: boolean
+  chatPanel: ReactNode
+  discussionsEnabled: boolean
+  discussionsOpen: boolean
+  discussionsPanel?: ReactNode
+}) {
+  const isMobile = useIsMobile()
+
+  if (!isMobile) {
+    return null
+  }
+
+  return (
+    <>
+      <div className="md:hidden">
+        {discussionsEnabled && discussionsPanel ? (
           <RightSidebarMobilePanel
-            ariaLabel="Chat sidebar"
-            open={chatOpen}
-            zIndexClassName="z-50"
+            ariaLabel="Discussions sidebar"
+            open={discussionsOpen}
+            rightOffset={chatOpen}
           >
-            {chatPanel}
+            {discussionsPanel}
           </RightSidebarMobilePanel>
-        </div>
+        ) : null}
+        <RightSidebarMobilePanel
+          ariaLabel="Chat sidebar"
+          open={chatOpen}
+          zIndexClassName="z-50"
+        >
+          {chatPanel}
+        </RightSidebarMobilePanel>
       </div>
     </>
   )

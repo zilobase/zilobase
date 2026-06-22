@@ -29,7 +29,7 @@ export function ChatSidebarTrigger({
       className={cn(
         "fixed bottom-4 z-40 h-10 rounded-full border-sidebar-border bg-sidebar px-3 text-sidebar-foreground shadow-lg ring-1 ring-foreground/10 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
         discussionsSidebarOpen
-          ? "right-[calc(var(--right-sidebar-panel-width)+1rem)] max-md:right-4"
+          ? "right-[calc(var(--right-sidebar-discussions-panel-width,var(--right-sidebar-panel-width))+1rem)] max-md:right-4"
           : "right-4",
       )}
       onClick={onOpen}

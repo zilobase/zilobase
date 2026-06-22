@@ -21,7 +21,12 @@ import {
   type WorkspaceSidePaneContextValue,
 } from "@/contexts/workspace-side-pane"
 import { DiscussionsSidebarPanel } from "@/components/discussions-sidebar"
-import { RightSidebars } from "@/components/right-sidebars"
+import {
+  getRightSidebarEditorDefaultSize,
+  getRightSidebarEditorMinSize,
+  RightSidebarMobilePanels,
+  RightSidebars,
+} from "@/components/right-sidebars"
 import { WorkspaceEditorCommentsProvider } from "@/components/workspace-editor-comments"
 import { useActiveOrganizationId } from "@notelab/features/integrations"
 import { NavActions } from "@/components/nav-actions"
@@ -37,6 +42,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
+import {
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable"
 import {
   SidebarInset,
   SidebarProvider,
@@ -73,7 +82,7 @@ export function AppLayout({ children }: { children?: ReactNode }) {
 function AppLayoutContent({ children }: { children?: ReactNode }) {
   const location = useLocation()
   const embeddedMobileViewer = isEmbeddedMobileViewer()
-  const { open: appSidebarOpen } = useSidebar()
+  const { isMobile, open: appSidebarOpen } = useSidebar()
   const isSettingsPage = location.pathname.startsWith("/settings")
   const isAiPage = location.pathname === "/ai"
   const workspaceId = getWorkspaceId(location.pathname)
@@ -84,6 +93,10 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   )
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false)
   const [discussionsSidebarOpen, setDiscussionsSidebarOpen] = useState(false)
+  const openRightPanelCount =
+    (chatSidebarOpen ? 1 : 0) +
+    (discussionsEnabled && discussionsSidebarOpen ? 1 : 0)
+  const desktopRightPanelCount = isMobile ? 0 : openRightPanelCount
   const closeSidePane = useCallback(() => {
     setSidePaneWorkspaceId(null)
   }, [])
@@ -140,65 +153,97 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
 
   return (
     <WorkspaceEditorRegistryProvider>
-    <WorkspaceEditorCommentsProvider>
-      <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
-        {isSettingsPage ? (
-          <SettingsSidebar />
-        ) : isAiPage ? (
-          <HistorySidebar />
-        ) : (
-          <AppSidebar />
-        )}
-        <SidebarInset className="h-svh overflow-hidden">
-        {embeddedMobileViewer ? 
-       null : (
-          <AppHeader
-            isSettingsPage={isSettingsPage || isAiPage}
-            onCloseSidePane={closeSidePane}
-            onOpenDiscussions={
-              discussionsEnabled ? openDiscussionsSidebar : undefined
+      <WorkspaceEditorCommentsProvider>
+        <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
+          {isSettingsPage ? (
+            <SettingsSidebar />
+          ) : isAiPage ? (
+            <HistorySidebar />
+          ) : (
+            <AppSidebar />
+          )}
+          <ResizablePanelGroup
+            className="min-w-0 flex-1"
+            orientation="horizontal"
+          >
+            <ResizablePanel
+              className="min-w-0"
+              defaultSize={getRightSidebarEditorDefaultSize(
+                desktopRightPanelCount,
+              )}
+              id="app-editor-pane"
+              minSize={getRightSidebarEditorMinSize(desktopRightPanelCount)}
+            >
+              <SidebarInset className="h-svh overflow-hidden">
+                {embeddedMobileViewer ? null : (
+                  <AppHeader
+                    isSettingsPage={isSettingsPage || isAiPage}
+                    onCloseSidePane={closeSidePane}
+                    onOpenDiscussions={
+                      discussionsEnabled ? openDiscussionsSidebar : undefined
+                    }
+                    pathname={location.pathname}
+                    sidePaneWorkspaceId={sidePaneWorkspaceId}
+                  />
+                )}
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {children ?? <Outlet />}
+                </div>
+              </SidebarInset>
+            </ResizablePanel>
+            <RightSidebars
+              chatOpen={chatSidebarOpen}
+              chatPanel={
+                <ChatSidebarPanel
+                  databaseId={databaseId}
+                  onClose={() => setChatSidebarOpen(false)}
+                  workspaceId={workspaceId}
+                />
+              }
+              discussionsEnabled={discussionsEnabled}
+              discussionsOpen={discussionsSidebarOpen}
+              discussionsPanel={
+                discussionsEnabled ? (
+                  <DiscussionsSidebarPanel
+                    onClose={() => setDiscussionsSidebarOpen(false)}
+                    open={discussionsSidebarOpen}
+                    workspaceId={workspaceId}
+                  />
+                ) : undefined
+              }
+            />
+          </ResizablePanelGroup>
+          <RightSidebarMobilePanels
+            chatOpen={chatSidebarOpen}
+            chatPanel={
+              <ChatSidebarPanel
+                databaseId={databaseId}
+                onClose={() => setChatSidebarOpen(false)}
+                workspaceId={workspaceId}
+              />
             }
-            pathname={location.pathname}
-            sidePaneWorkspaceId={sidePaneWorkspaceId}
+            discussionsEnabled={discussionsEnabled}
+            discussionsOpen={discussionsSidebarOpen}
+            discussionsPanel={
+              discussionsEnabled ? (
+                <DiscussionsSidebarPanel
+                  onClose={() => setDiscussionsSidebarOpen(false)}
+                  open={discussionsSidebarOpen}
+                  workspaceId={workspaceId}
+                />
+              ) : undefined
+            }
           />
-        )}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {children ?? <Outlet />}
-        </div>
-      </SidebarInset>
-      <RightSidebars
-        chatOpen={chatSidebarOpen}
-        chatPanel={
-          <ChatSidebarPanel
-            databaseId={databaseId}
-            onClose={() => setChatSidebarOpen(false)}
-            workspaceId={workspaceId}
-          />
-        }
-        chatTrigger={
-          chatSidebarOpen ? null : (
+          {chatSidebarOpen ? null : (
             <ChatSidebarTrigger
               discussionsSidebarOpen={
                 discussionsEnabled && discussionsSidebarOpen
               }
               onOpen={openChatSidebar}
             />
-          )
-        }
-        discussionsEnabled={discussionsEnabled}
-        discussionsOpen={discussionsSidebarOpen}
-        discussionsPanel={
-          discussionsEnabled ? (
-            <DiscussionsSidebarPanel
-              onClose={() => setDiscussionsSidebarOpen(false)}
-              open={discussionsSidebarOpen}
-              workspaceId={workspaceId}
-            />
-          ) : undefined
-        }
-      />
-      </WorkspaceSidePaneContext.Provider>
-    </WorkspaceEditorCommentsProvider>
+          )}
+        </WorkspaceSidePaneContext.Provider>
+      </WorkspaceEditorCommentsProvider>
     </WorkspaceEditorRegistryProvider>
   )
 }
