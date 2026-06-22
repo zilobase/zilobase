@@ -30,7 +30,8 @@ import {
 import { useSession } from "@notelab/features/auth"
 import { useUserSettings } from "@notelab/features/user-settings"
 import { useWorkspaceEditorRegistry } from "@/contexts/workspace-editor-registry"
-import { Editor } from "@/packages/editor"
+import { createWorkspaceEditorHandle } from "@/hooks/use-workspace-edit-applier"
+import { Editor, type WorkspaceEditPreviewControls } from "@/packages/editor"
 import { useWorkspaceContentSnapshot } from "@/packages/editor/use-workspace-content-snapshot"
 
 type WorkspaceEditorPaneProps = {
@@ -279,6 +280,9 @@ export function WorkspaceEditorPane({
   const contentSaveTimeoutRef = useRef<number | null>(null)
   const pendingContentRef = useRef<unknown>(null)
   const editorContentRef = useRef<(() => unknown) | null>(null)
+  const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null)
+  const workspaceEditPreviewRef =
+    useRef<WorkspaceEditPreviewControls | null>(null)
   const { registerEditor, unregisterEditor } = useWorkspaceEditorRegistry()
   const [collaborationReady, setCollaborationReady] = useState(false)
   const [name, setName] = useState("")
@@ -344,13 +348,8 @@ export function WorkspaceEditorPane({
     return flushContentSaveTimeout
   }, [flushContentSaveTimeout, workspaceId])
 
-  useEffect(() => {
-    registerEditor(workspaceId, () => editorContentRef.current?.() ?? null)
-
-    return () => {
-      unregisterEditor(workspaceId)
-    }
-  }, [registerEditor, unregisterEditor, workspaceId])
+  const pageEditable =
+    !readOnly && (accessLevel === "edit" || accessLevel === "full")
 
   useEffect(() => {
     if (
@@ -446,6 +445,28 @@ export function WorkspaceEditorPane({
     ],
   )
 
+  useEffect(() => {
+    registerEditor(
+      workspaceId,
+      createWorkspaceEditorHandle({
+        editable: pageEditable,
+        getEditor: () => editorInstanceRef.current,
+        onContentChange: updateContent,
+        workspaceEditPreviewRef,
+      }),
+    )
+
+    return () => {
+      unregisterEditor(workspaceId)
+    }
+  }, [
+    pageEditable,
+    registerEditor,
+    unregisterEditor,
+    updateContent,
+    workspaceId,
+  ])
+
   const embedLinkedPage = useCallback(
     async (pageId: string) => {
       if (!workspace) {
@@ -506,7 +527,10 @@ export function WorkspaceEditorPane({
         content={workspace.content ?? ""}
         cover={cover}
         editorContentRef={editorContentRef}
-        editable={!readOnly && (accessLevel === "edit" || accessLevel === "full")}
+        editable={pageEditable}
+        onEditorReady={(editor) => {
+          editorInstanceRef.current = editor
+        }}
         emoji={emoji}
         fullWidth={fullWidth}
         onCollaborationReadyChange={setCollaborationReady}
@@ -519,6 +543,7 @@ export function WorkspaceEditorPane({
         onTitleChange={setName}
         organizationId={workspace.organizationId}
         title={name}
+        workspaceEditPreviewRef={workspaceEditPreviewRef}
         workspaceId={workspace.id}
         workspaceUpdatedAt={workspace.updatedAt}
       />

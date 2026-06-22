@@ -70,7 +70,7 @@ async function resolveWorkspaceForContext(
   workspaceId: string,
   queryClient: QueryClient,
   apiFetch: ReturnType<typeof useNotelabFeatures>["apiFetch"],
-  getEditorContent: (workspaceId: string) => unknown,
+  getEditorContent: (workspaceId: string) => unknown | null,
 ) {
   const cached = getWorkspaceFromDetail(
     queryClient.getQueryData<WorkspaceDetail | null>(
@@ -198,7 +198,11 @@ export function useWorkspaceAiContext({
 }: UseWorkspaceAiContextOptions) {
   const { apiFetch } = useNotelabFeatures()
   const queryClient = useQueryClient()
-  const { getEditorContent } = useWorkspaceEditorRegistry()
+  const { getEditorHandle } = useWorkspaceEditorRegistry()
+  const getEditorContent = useCallback(
+    (workspaceId: string) => getEditorHandle(workspaceId)?.getContentJson() ?? null,
+    [getEditorHandle],
+  )
   const [markdown, setMarkdown] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
