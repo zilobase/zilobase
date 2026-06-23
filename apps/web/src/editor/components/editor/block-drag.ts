@@ -156,6 +156,15 @@ export function resolvePlaneDragTargetFromPoint({
   return null
 }
 
+function getBlockPaddingInset(domNode: HTMLElement) {
+  const style = window.getComputedStyle(domNode)
+
+  return {
+    left: Number.parseFloat(style.paddingLeft) || 0,
+    top: Number.parseFloat(style.paddingTop) || 0,
+  }
+}
+
 export function getPlaneDragHandleRect(
   view: EditorView,
   target: DragHandleTarget,
@@ -168,15 +177,17 @@ export function getPlaneDragHandleRect(
 
   const nodeRect = domNode.getBoundingClientRect()
   const editorRect = view.dom.getBoundingClientRect()
-  const anchorRect = getDragHandleAnchorRect(domNode) ?? nodeRect
+  const inset = getBlockPaddingInset(domNode)
+  const contentLeft = nodeRect.left + inset.left
+  const contentTop = nodeRect.top + inset.top
   const railLeft = Math.max(
     editorRect.left + 4,
-    anchorRect.left - DRAG_HANDLE_WIDTH - DRAG_HANDLE_GAP,
+    contentLeft - DRAG_HANDLE_WIDTH - DRAG_HANDLE_GAP,
   )
 
   return {
     left: railLeft,
-    top: nodeRect.top,
+    top: contentTop,
   }
 }
 
