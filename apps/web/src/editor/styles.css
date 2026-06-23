@@ -44,7 +44,10 @@
     @apply leading-7 text-foreground;
   }
 
-
+  /* Horizontal inset inside blocks so selection fills padded area, not just text. */
+  .tiptap-editor > :is(p, h1, h2, h3, h4, h5, h6) {
+    @apply px-3;
+  }
 
   /* Spacing hierarchy via padding inside each block (included in selection). */
   .tiptap-editor > :is(
@@ -137,7 +140,7 @@
     color: inherit !important;
   }
 
-  /* Block selection: full-width highlights with system selection colors. */
+  /* Select-all block selection: full-width blocks, gaps between blocks. */
   .tiptap-editor :is(
       p,
       h1,
@@ -164,10 +167,28 @@
     ).editor-block-selection {
     background-color: color-mix(in srgb, #0078d7 35%, transparent);
     background-color: Highlight;
-    border-radius: 2px;
+    background-clip: border-box;
+    border-radius: 4px;
+    box-sizing: border-box;
     color: inherit;
     display: block;
     width: 100%;
+  }
+
+  .tiptap-editor
+    :is(
+      p,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      li,
+      blockquote,
+      .editor-details
+    ).editor-block-selection {
+    @apply px-3;
   }
 
   .dark .tiptap-editor .editor-block-selection {
@@ -256,12 +277,14 @@
     @apply ml-6 list-disc;
   }
 
+
+
   .tiptap-editor ul[data-type="taskList"] {
     @apply ml-0 list-none;
   }
 
   .tiptap-editor li {
-    @apply pb-0.5;
+    @apply px-3 pb-0.5;
   }
 
   .tiptap-editor li + li {
@@ -292,7 +315,7 @@
   }
 
   .tiptap-editor blockquote {
-    @apply border-l-2 pl-6 italic;
+    @apply border-l-2 pr-3 pl-6 italic;
   }
 
   .tiptap-editor .column-block {
@@ -305,6 +328,10 @@
 
   .tiptap-editor .column > * + * {
     @apply mt-4;
+  }
+
+  .tiptap-editor > .editor-details {
+    @apply px-3;
   }
 
   .tiptap-editor .editor-details {
@@ -385,10 +412,6 @@
 
   .tiptap-editor hr {
     @apply border-border;
-  }
-
-  .tiptap-editor > hr {
-    @apply pb-4;
   }
 
   .tiptap-editor > :is(
@@ -1358,6 +1381,8 @@
   .tiptap-editor .tableWrapper {
     @apply w-full max-w-full overflow-x-auto;
   }
+
+
 
   .tiptap-editor table {
     @apply w-full table-fixed border-collapse overflow-hidden;
