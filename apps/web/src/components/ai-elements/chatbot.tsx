@@ -64,6 +64,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   aiChatThreadMessagesQueryKey,
+  aiChatThreadMessagesQueryOptions,
   buildWorkspaceEditSnapshotMap,
   dedupeChatMessagesById,
   isProposePageContentUpdateToolName,
@@ -87,6 +88,7 @@ import {
   useWorkspaces,
 } from "@notelab/features/workspaces";
 import type { OrganizationAiChatModel } from "@notelab/features/integrations";
+import { useQuery } from "@tanstack/react-query";
 import { integrationIcons } from "@/lib/integration-icons";
 import { useAgent } from "agents/react";
 import { useAgentChat } from "@cloudflare/ai-chat/react";
@@ -151,6 +153,122 @@ const fallbackModels: OrganizationAiChatModel[] = [
     providers: ["openai"],
   },
 ];
+
+function areMessagesEquivalent(
+  leftMessages: UIMessage[],
+  rightMessages: UIMessage[],
+) {
+  if (leftMessages === rightMessages) {
+    return true;
+  }
+
+  if (leftMessages.length !== rightMessages.length) {
+    return false;
+  }
+
+  return leftMessages.every((leftMessage, index) => {
+    const rightMessage = rightMessages[index];
+
+    if (
+      leftMessage === rightMessage ||
+      (leftMessage.id === rightMessage.id &&
+        leftMessage.role === rightMessage.role &&
+        leftMessage.parts === rightMessage.parts)
+    ) {
+      return true;
+    }
+
+    return JSON.stringify(leftMessage) === JSON.stringify(rightMessage);
+  });
+}
+
+type AiChatDebugEvent = {
+  at: string;
+  context: Record<string, unknown>;
+  source: string;
+};
+
+type AiChatDebugGlobal = typeof globalThis & {
+  __notelabAiChatDebugEvents?: AiChatDebugEvent[];
+};
+
+const AI_CHAT_DEBUG_EVENT_LIMIT = 80;
+const emptyAgentChatMessages: UIMessage[] = [];
+
+function getAiChatDebugGlobal() {
+  return globalThis as AiChatDebugGlobal;
+}
+
+function getErrorDetails(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      cause: error.cause,
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+    };
+  }
+
+  return {
+    message: String(error),
+    name: typeof error,
+  };
+}
+
+function summarizeMessagesForDebug(messages: UIMessage[]) {
+  const lastMessage = messages.at(-1);
+
+  return {
+    count: messages.length,
+    lastMessage: lastMessage
+      ? {
+          id: lastMessage.id,
+          partTypes: lastMessage.parts.map((part) => part.type),
+          role: lastMessage.role,
+        }
+      : null,
+    roles: messages.map((message) => message.role),
+  };
+}
+
+function recordAiChatDebugEvent(
+  source: string,
+  context: Record<string, unknown>,
+) {
+  const event: AiChatDebugEvent = {
+    at: new Date().toISOString(),
+    context,
+    source,
+  };
+  const debugGlobal = getAiChatDebugGlobal();
+  const events = debugGlobal.__notelabAiChatDebugEvents ?? [];
+
+  events.push(event);
+
+  if (events.length > AI_CHAT_DEBUG_EVENT_LIMIT) {
+    events.splice(0, events.length - AI_CHAT_DEBUG_EVENT_LIMIT);
+  }
+
+  debugGlobal.__notelabAiChatDebugEvents = events;
+  console.debug("[notelab ai chat]", source, context);
+}
+
+function logAiChatError(
+  source: string,
+  error: unknown,
+  context: Record<string, unknown>,
+) {
+  const recentEvents = getAiChatDebugGlobal().__notelabAiChatDebugEvents ?? [];
+
+  console.groupCollapsed(
+    `[notelab ai chat] ${source}: ${getErrorDetails(error).message}`,
+  );
+  console.error(error);
+  console.info("error details", getErrorDetails(error));
+  console.info("context", context);
+  console.info("recent debug events", recentEvents.slice(-20));
+  console.groupEnd();
+}
 
 type SourceId =
   | "gmail"
@@ -1175,16 +1293,86 @@ const EmptyState = () => (
   </div>
 );
 
-const Chatbot = ({
-  databaseId = null,
-  isSidebar = false,
-  threadId,
-  workspaceId = null,
-}: {
+type ChatbotProps = {
   databaseId?: string | null;
   isSidebar?: boolean;
   threadId: string;
   workspaceId?: string | null;
+};
+
+type SeededInitialMessages = {
+  key: string;
+  messages: UIMessage[];
+  ready: boolean;
+};
+
+const Chatbot = (props: ChatbotProps) => {
+  const { apiFetch } = useNotelabFeatures();
+  const organizationId = useActiveOrganizationId();
+  const threadMessagesQuery = useQuery(
+    aiChatThreadMessagesQueryOptions(apiFetch, organizationId, props.threadId),
+  );
+  const initialMessagesKey = `${organizationId ?? "no-org"}:${props.threadId}`;
+  const queriedInitialMessages =
+    threadMessagesQuery.data?.messages ?? emptyAgentChatMessages;
+  const [seededInitialMessages, setSeededInitialMessages] =
+    useState<SeededInitialMessages>(() => ({
+      key: initialMessagesKey,
+      messages: emptyAgentChatMessages,
+      ready: false,
+    }));
+
+  useEffect(() => {
+    if (threadMessagesQuery.isLoading) {
+      return;
+    }
+
+    setSeededInitialMessages((current) => {
+      if (current.ready && current.key === initialMessagesKey) {
+        return current;
+      }
+
+      return {
+        key: initialMessagesKey,
+        messages: queriedInitialMessages,
+        ready: true,
+      };
+    });
+  }, [
+    initialMessagesKey,
+    queriedInitialMessages,
+    threadMessagesQuery.isLoading,
+  ]);
+
+  if (
+    threadMessagesQuery.isLoading ||
+    !seededInitialMessages.ready ||
+    seededInitialMessages.key !== initialMessagesKey
+  ) {
+    return (
+      <div className="flex min-h-40 items-center justify-center text-muted-foreground text-sm">
+        Loading chat...
+      </div>
+    );
+  }
+
+  return (
+    <ChatbotInner
+      {...props}
+      initialMessages={seededInitialMessages.messages}
+      key={initialMessagesKey}
+    />
+  );
+};
+
+const ChatbotInner = ({
+  databaseId = null,
+  initialMessages,
+  isSidebar = false,
+  threadId,
+  workspaceId = null,
+}: ChatbotProps & {
+  initialMessages: UIMessage[];
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
@@ -1354,7 +1542,7 @@ const Chatbot = ({
     );
   }, [enabledSources]);
 
-  const { apiFetch, queryClient } = useNotelabFeatures();
+  const { queryClient } = useNotelabFeatures();
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
   const isAgentReady = Boolean(organizationId && userId && threadId);
@@ -1371,9 +1559,6 @@ const Chatbot = ({
   const { getEditorHandle } = useWorkspaceEditorRegistry();
   const { commitPageEdit, undoPageEdit } = useWorkspaceEditApplier();
   const [visibleDiffToolCallId, setVisibleDiffToolCallId] = useState<string | null>(
-    null,
-  );
-  const [hydratingMessagesKey, setHydratingMessagesKey] = useState<string | null>(
     null,
   );
 
@@ -1399,9 +1584,6 @@ const Chatbot = ({
       (workspaceAccessLevel === "edit" || workspaceAccessLevel === "full"),
   );
 
-  const threadMessagesKey = organizationId && threadId
-    ? `${organizationId}:${threadId}`
-    : null;
   const threadMessagesQueryKey = useMemo(
     () =>
       organizationId && threadId
@@ -1409,30 +1591,6 @@ const Chatbot = ({
         : null,
     [organizationId, threadId],
   );
-
-  const loadThreadMessages = useCallback(async () => {
-    if (!organizationId || !threadId || !threadMessagesQueryKey) {
-      return [];
-    }
-
-    const cached =
-      queryClient.getQueryData<AiChatThreadMessagesResponse>(
-        threadMessagesQueryKey,
-      );
-
-    if (cached?.messages) {
-      return cached.messages;
-    }
-
-    const response = await apiFetch<AiChatThreadMessagesResponse>(
-      `/api/ai/threads/${encodeURIComponent(threadId)}/messages`,
-      { headers: { "x-notelab-organization-id": organizationId } },
-    );
-
-    queryClient.setQueryData(threadMessagesQueryKey, response);
-
-    return response.messages;
-  }, [apiFetch, organizationId, queryClient, threadId, threadMessagesQueryKey]);
 
   const {
     clearError,
@@ -1461,8 +1619,21 @@ const Chatbot = ({
           }
         : undefined,
     }),
+    experimental_throttle: 50,
     getInitialMessages: null,
+    messages: initialMessages,
     onError: (chatError) => {
+      logAiChatError("useAgentChat onError", chatError, {
+        agentName,
+        canEditWorkspacePages,
+        isAgentReady,
+        isSidebar,
+        organizationId,
+        threadId,
+        userId,
+        workspaceContextChars: workspaceContext.length,
+        workspaceId,
+      });
       toast.error("Ask AI failed", {
         description: chatError.message,
       });
@@ -1470,11 +1641,68 @@ const Chatbot = ({
     resume: true,
   });
 
-  const setMessagesRef = useRef(setMessages);
+  const debugContextRef = useRef<Record<string, unknown>>({});
 
   useEffect(() => {
-    setMessagesRef.current = setMessages;
-  }, [setMessages]);
+    debugContextRef.current = {
+      agentName,
+      databaseId,
+      isAgentReady,
+      isSidebar,
+      messageSummary: summarizeMessagesForDebug(messages),
+      organizationId,
+      status,
+      threadId,
+      userId,
+      workspaceContextChars: workspaceContext.length,
+      workspaceId,
+    };
+  }, [
+    agentName,
+    databaseId,
+    isAgentReady,
+    isSidebar,
+    messages,
+    organizationId,
+    status,
+    threadId,
+    userId,
+    workspaceContext.length,
+    workspaceId,
+  ]);
+
+  const recordChatDebug = useCallback(
+    (source: string, context: Record<string, unknown> = {}) => {
+      recordAiChatDebugEvent(source, {
+        ...debugContextRef.current,
+        ...context,
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const handleWindowError = (event: ErrorEvent) => {
+      logAiChatError("window error", event.error ?? event.message, {
+        ...debugContextRef.current,
+        colno: event.colno,
+        filename: event.filename,
+        lineno: event.lineno,
+        message: event.message,
+      });
+    };
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      logAiChatError("unhandled rejection", event.reason, debugContextRef.current);
+    };
+
+    window.addEventListener("error", handleWindowError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", handleWindowError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
+  }, []);
 
   useEffect(() => {
     setText("");
@@ -1487,65 +1715,6 @@ const Chatbot = ({
     setVisibleDiffToolCallId(null);
     previousMessageCountRef.current = 0;
   }, [threadId]);
-
-  useEffect(() => {
-    if (!threadMessagesKey) {
-      setMessagesRef.current([]);
-      setHydratingMessagesKey(null);
-      return;
-    }
-
-    const cached =
-      threadMessagesQueryKey
-        ? queryClient.getQueryData<AiChatThreadMessagesResponse>(
-            threadMessagesQueryKey,
-          )
-        : null;
-
-    if (cached?.messages) {
-      setMessagesRef.current(cached.messages);
-      setHydratingMessagesKey(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    setMessagesRef.current([]);
-    setHydratingMessagesKey(threadMessagesKey);
-
-    void loadThreadMessages()
-      .then((nextMessages) => {
-        if (cancelled) {
-          return;
-        }
-
-        setMessagesRef.current(nextMessages);
-      })
-      .catch((hydrationError) => {
-        if (cancelled) {
-          return;
-        }
-
-        toast.error("Failed to load chat", {
-          description:
-            hydrationError instanceof Error ? hydrationError.message : "Try again.",
-        });
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setHydratingMessagesKey(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    loadThreadMessages,
-    queryClient,
-    threadMessagesKey,
-    threadMessagesQueryKey,
-  ]);
 
   useEffect(() => {
     if (!isSidebar) {
@@ -1611,12 +1780,12 @@ const Chatbot = ({
       ),
     [messages],
   );
-  const isThreadMessagesHydrating = hydratingMessagesKey === threadMessagesKey;
 
   useEffect(() => {
     if (
       !threadMessagesQueryKey ||
-      isThreadMessagesHydrating ||
+      status === "submitted" ||
+      status === "streaming" ||
       messages.length === 0
     ) {
       return;
@@ -1624,12 +1793,32 @@ const Chatbot = ({
 
     queryClient.setQueryData<AiChatThreadMessagesResponse>(
       threadMessagesQueryKey,
-      (current) => (current ? { ...current, messages } : current),
+      (current) => {
+        if (!current) {
+          recordChatDebug("threadMessages:skip-cache-sync:no-current");
+          return current;
+        }
+
+        if (areMessagesEquivalent(current.messages, messages)) {
+          recordChatDebug("threadMessages:skip-cache-sync:equivalent", {
+            cachedMessages: summarizeMessagesForDebug(current.messages),
+          });
+          return current;
+        }
+
+        recordChatDebug("threadMessages:cache-sync", {
+          cachedMessages: summarizeMessagesForDebug(current.messages),
+          nextMessages: summarizeMessagesForDebug(messages),
+        });
+
+        return { ...current, messages };
+      },
     );
   }, [
-    isThreadMessagesHydrating,
     messages,
     queryClient,
+    recordChatDebug,
+    status,
     threadMessagesQueryKey,
   ]);
 
@@ -1857,6 +2046,8 @@ const Chatbot = ({
       return;
     }
 
+    logAiChatError("useAgentChat error state", error, debugContextRef.current);
+
     const timeout = window.setTimeout(() => {
       clearError();
     }, 100);
@@ -1883,6 +2074,11 @@ const Chatbot = ({
         attachmentCount: attachments.length,
         charCount: workspaceContext.length,
       });
+      recordChatDebug("submit", {
+        attachmentCount: attachments.length,
+        contentLength: content.trim().length,
+        selectedSources,
+      });
 
       void sendMessage({
         text: content.trim(),
@@ -1891,7 +2087,14 @@ const Chatbot = ({
       setTextCursor(0);
       setDismissedMentionKey(null);
     },
-    [attachments.length, isAgentReady, sendMessage, workspaceContext]
+    [
+      attachments.length,
+      isAgentReady,
+      recordChatDebug,
+      selectedSources,
+      sendMessage,
+      workspaceContext,
+    ]
   );
 
   const handleSubmit = useCallback(
@@ -2058,7 +2261,7 @@ const Chatbot = ({
 
   const hasMessages = visibleMessages.length > 0;
   const showPendingAssistant =
-    !isThreadMessagesHydrating && shouldShowPendingAssistant(messages, status);
+    shouldShowPendingAssistant(messages, status);
 
   useEffect(() => {
     const previousMessageCount = previousMessageCountRef.current;
@@ -2101,11 +2304,7 @@ const Chatbot = ({
               : "px-0 pb-0 md:px-4"
           }
         >
-          {isThreadMessagesHydrating ? (
-            <div className="flex min-h-40 items-center justify-center text-muted-foreground text-sm">
-              Loading chat...
-            </div>
-          ) : !hasMessages ? (
+          {!hasMessages ? (
             <EmptyState />
           ) : (
             visibleMessages.map((message) => (
