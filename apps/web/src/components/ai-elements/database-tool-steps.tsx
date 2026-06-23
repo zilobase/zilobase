@@ -6,14 +6,7 @@ import {
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
 } from "@/components/ai-elements/chain-of-thought";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-  type ToolPart,
-} from "@/components/ai-elements/tool";
+import type { ToolPart } from "@/components/ai-elements/tool";
 import {
   type DatabaseConfigToolName,
   type DatabaseConfigToolOutput,
@@ -279,10 +272,8 @@ const DatabaseToolStep = ({
 
 export const DatabaseToolStepsGroup = ({
   parts,
-  showToolOutputUi,
 }: {
   parts: ToolPart[];
-  showToolOutputUi: boolean;
 }) => {
   const hasActiveStep = parts.some(
     (part) =>
@@ -321,93 +312,9 @@ export const DatabaseToolStepsGroup = ({
           })}
         </ChainOfThoughtContent>
       </ChainOfThought>
-      {showToolOutputUi
-        ? parts.map((part) => {
-            const toolName = getToolName(part);
-            const title = isDatabaseConfigToolName(toolName)
-              ? databaseToolStepConfig[toolName].completeLabel
-              : toolName;
-
-            return (
-              <Tool
-                defaultOpen={part.state !== "output-available"}
-                key={part.toolCallId}
-              >
-                {part.type === "dynamic-tool" ? (
-                  <ToolHeader
-                    state={part.state}
-                    title={title}
-                    toolName={part.toolName}
-                    type={part.type}
-                  />
-                ) : (
-                  <ToolHeader state={part.state} title={title} type={part.type} />
-                )}
-                <ToolContent>
-                  <ToolInput input={part.input} />
-                  <ToolOutput errorText={part.errorText} output={part.output} />
-                </ToolContent>
-              </Tool>
-            );
-          })
-        : null}
     </div>
   );
 };
-
-export type MessagePartGroup =
-  | {
-      index: number;
-      part: UIMessage["parts"][number];
-      type: "part";
-    }
-  | {
-      parts: ToolPart[];
-      startIndex: number;
-      type: "database-tools";
-    };
-
-export function buildMessagePartGroups(
-  parts: UIMessage["parts"],
-): MessagePartGroup[] {
-  const groups: MessagePartGroup[] = [];
-
-  for (let index = 0; index < parts.length; index += 1) {
-    const part = parts[index];
-
-    if (isToolUIPart(part) && isDatabaseToolPart(part)) {
-      const databaseParts: ToolPart[] = [part];
-      let nextIndex = index + 1;
-
-      while (nextIndex < parts.length) {
-        const nextPart = parts[nextIndex];
-
-        if (!(isToolUIPart(nextPart) && isDatabaseToolPart(nextPart))) {
-          break;
-        }
-
-        databaseParts.push(nextPart);
-        nextIndex += 1;
-      }
-
-      groups.push({
-        type: "database-tools",
-        startIndex: index,
-        parts: databaseParts,
-      });
-      index = nextIndex - 1;
-      continue;
-    }
-
-    groups.push({
-      type: "part",
-      index,
-      part,
-    });
-  }
-
-  return groups;
-}
 
 export function isDatabaseConfigToolPart(part: UIMessage["parts"][number]) {
   return isToolUIPart(part) && isDatabaseToolPart(part);

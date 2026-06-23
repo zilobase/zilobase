@@ -37,6 +37,11 @@ import {
   useWorkspaceEditAutoApply,
 } from "@/hooks/use-workspace-edit-auto-apply";
 import { useWorkspaceEditApplier } from "@/hooks/use-workspace-edit-applier";
+import { DatabaseToolStepsGroup } from "@/components/ai-elements/database-tool-steps";
+import {
+  buildMessagePartGroups,
+  IntegrationToolTaskGroup,
+} from "@/components/ai-elements/integration-tool-task";
 import { WorkspaceEditCard } from "@/components/ai-elements/workspace-edit-card";
 import {
   PromptInput,
@@ -47,14 +52,7 @@ import {
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-  type ToolPart,
-} from "@/components/ai-elements/tool";
+import type { ToolPart } from "@/components/ai-elements/tool";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -131,10 +129,7 @@ import {
   type ContextSourceRef,
 } from "@notelab/workspace-context";
 import { ArrowDownIcon, CheckIcon, InboxIcon, PlusIcon, XIcon } from "lucide-react";
-import {
-  useGenerativeToolUiEnabled,
-  useToolOutputUiEnabled,
-} from "@/lib/debug-settings";
+import { useGenerativeToolUiEnabled } from "@/lib/debug-settings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -552,12 +547,6 @@ const toolPhrases: Record<string, string[]> = {
   ],
 };
 
-const toolFinishedPhrases: Partial<Record<ToolPart["state"], string>> = {
-  "output-available": "Completed",
-  "output-denied": "Denied",
-  "output-error": "Error",
-};
-
 const pendingPhrases = [
   "Thinking through your question",
   "Analyzing workspace context",
@@ -767,68 +756,6 @@ const SourceSelector = ({
   );
 };
 
-const IntegrationToolPart = ({
-  part,
-  showGenerativeToolUi,
-  showToolOutputUi,
-}: {
-  part: ToolPart;
-  showGenerativeToolUi: boolean;
-  showToolOutputUi: boolean;
-}) => {
-  const staticToolName =
-    part.type === "dynamic-tool" ? part.toolName : part.type.replace(/^tool-/, "");
-  const title = toolTitles[staticToolName] ?? staticToolName;
-  const hasRichToolOutput =
-    showGenerativeToolUi &&
-    part.state === "output-available" &&
-    !part.errorText &&
-    Boolean(part.output) &&
-    (isGmailToolName(staticToolName) ||
-      isGithubToolName(staticToolName) ||
-      isGoogleCalendarToolName(staticToolName) ||
-      isGoogleDriveToolName(staticToolName) ||
-      isLinearToolName(staticToolName) ||
-      isSlackToolName(staticToolName));
-
-  return (
-    <div className="not-prose mb-3 space-y-2">
-      {hasRichToolOutput ? null : (
-        <IntegrationToolStatus
-          state={part.state}
-          title={title}
-          toolName={staticToolName}
-        />
-      )}
-      <GenerativeToolOutput
-        errorText={part.errorText}
-        input={part.input}
-        output={part.output}
-        showGenerativeToolUi={showGenerativeToolUi}
-        toolName={staticToolName}
-      />
-      {showToolOutputUi ? (
-        <Tool defaultOpen={part.state !== "output-available"}>
-          {part.type === "dynamic-tool" ? (
-            <ToolHeader
-              state={part.state}
-              title={title}
-              toolName={part.toolName}
-              type={part.type}
-            />
-          ) : (
-            <ToolHeader state={part.state} title={title} type={part.type} />
-          )}
-          <ToolContent>
-            <ToolInput input={part.input} />
-            <ToolOutput errorText={part.errorText} output={part.output} />
-          </ToolContent>
-        </Tool>
-      ) : null}
-    </div>
-  );
-};
-
 const GenerativeToolOutput = ({
   errorText,
   input,
@@ -904,69 +831,6 @@ const GenerativeToolOutput = ({
   }
 
   return null;
-};
-
-const IntegrationToolStatus = ({
-  state,
-  title,
-  toolName,
-}: {
-  state: ToolPart["state"];
-  title: string;
-  toolName: string;
-}) => {
-  const phrases = toolPhrases[toolName] ?? [
-    `Running ${title}`,
-    "Thinking through the tool call",
-    "Analyzing tool output",
-  ];
-  const [phraseIndex, setPhraseIndex] = useState(0);
-  const source = toolSources[toolName];
-  const finishedPhrase = toolFinishedPhrases[state];
-  const phrase = finishedPhrase
-    ? `${finishedPhrase}: ${title}`
-    : phrases[phraseIndex % phrases.length];
-
-  useEffect(() => {
-    if (finishedPhrase || phrases.length < 2) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      setPhraseIndex((index) => (index + 1) % phrases.length);
-    }, 1700);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [finishedPhrase, phrases.length]);
-
-  return (
-    <div className="not-prose mb-1.5 flex w-fit max-w-full items-center gap-2 text-muted-foreground">
-      {source ? (
-        <img
-          alt=""
-          aria-hidden="true"
-          className="size-4 shrink-0"
-          src={integrationIcons[source]}
-        />
-      ) : (
-        <span className="size-2 shrink-0 rounded-full bg-muted-foreground/60" />
-      )}
-      {finishedPhrase ? (
-        <span className="truncate font-medium text-sm">{phrase}</span>
-      ) : (
-        <Shimmer
-          as="span"
-          className="truncate font-medium text-sm"
-          duration={1.35}
-          spread={1.1}
-        >
-          {phrase}
-        </Shimmer>
-      )}
-    </div>
-  );
 };
 
 const PendingAssistantStatus = () => {
@@ -1123,7 +987,6 @@ const ChatMessage = ({
   onToggleWorkspaceEditChanges,
   onUndoWorkspaceEdit,
   showGenerativeToolUi,
-  showToolOutputUi,
   snapshotByToolCallId,
   visibleDiffToolCallId,
 }: {
@@ -1140,7 +1003,6 @@ const ChatMessage = ({
   onToggleWorkspaceEditChanges: (toolCallId: string) => void;
   onUndoWorkspaceEdit: (toolCallId: string) => void | Promise<void>;
   showGenerativeToolUi: boolean;
-  showToolOutputUi: boolean;
   snapshotByToolCallId: Map<string, WorkspaceEditSnapshotPart>;
   visibleDiffToolCallId: string | null;
 }) => {
@@ -1148,23 +1010,88 @@ const ChatMessage = ({
     return null;
   }
 
-  const slackAccessErrors = message.parts
-    .filter(isToolUIPart)
-    .filter(isSlackNotInChannelToolPart);
-  const firstSlackAccessError = slackAccessErrors[0];
-  const firstSlackAccessErrorIndex = firstSlackAccessError
-    ? message.parts.indexOf(firstSlackAccessError)
-    : -1;
-  const slackAccessChannels = slackAccessErrors
-    .map((part) => getToolInputChannel(part.input))
-    .filter((channel): channel is string => Boolean(channel));
+  const partGroups = buildMessagePartGroups(message.parts);
 
   return (
     <Message from={message.role}>
       <MessageContent>
-        {message.parts.map((part, index) => {
+        {partGroups.map((group) => {
+          if (group.type === "database-tools") {
+            return (
+              <DatabaseToolStepsGroup
+                key={`${message.id}-db-${group.startIndex}`}
+                parts={group.parts}
+              />
+            );
+          }
+
+          if (group.type === "integration-tools") {
+            const slackAccessErrors = group.parts.filter(isSlackNotInChannelToolPart);
+            const slackAccessChannels = slackAccessErrors
+              .map((part) => getToolInputChannel(part.input))
+              .filter((channel): channel is string => Boolean(channel));
+
+            return (
+              <IntegrationToolTaskGroup
+                getToolPhrases={(toolName) => {
+                  const title = toolTitles[toolName] ?? toolName;
+                  return (
+                    toolPhrases[toolName] ?? [
+                      `Running ${title}`,
+                      "Thinking through the tool call",
+                      "Analyzing tool output",
+                    ]
+                  );
+                }}
+                getToolSource={(toolName) => toolSources[toolName]}
+                getToolTitle={(toolName) => toolTitles[toolName] ?? toolName}
+                key={`${message.id}-integration-${group.startIndex}`}
+                parts={group.parts}
+                renderGenerativeOutput={
+                  showGenerativeToolUi
+                    ? (part, toolName) => {
+                        if (
+                          isSlackNotInChannelToolPart(part) &&
+                          isSlackToolName(toolName)
+                        ) {
+                          if (part !== slackAccessErrors[0]) {
+                            return null;
+                          }
+
+                          return (
+                            <SlackToolOutput
+                              channels={slackAccessChannels}
+                              errorText={part.errorText}
+                              input={part.input}
+                              toolName={toolName}
+                            />
+                          );
+                        }
+
+                        return (
+                          <GenerativeToolOutput
+                            errorText={part.errorText}
+                            input={part.input}
+                            output={part.output}
+                            showGenerativeToolUi={showGenerativeToolUi}
+                            toolName={toolName}
+                          />
+                        );
+                      }
+                    : undefined
+                }
+              />
+            );
+          }
+
+          const { index, part } = group;
+
           if (part.type === "text") {
-            return <MessageResponse key={`${message.id}-${index}`}>{part.text}</MessageResponse>;
+            return (
+              <MessageResponse key={`${message.id}-${index}`}>
+                {part.text}
+              </MessageResponse>
+            );
           }
 
           if (part.type === "reasoning") {
@@ -1202,46 +1129,7 @@ const ChatMessage = ({
               );
             }
 
-            if (
-              showGenerativeToolUi &&
-              !showToolOutputUi &&
-              isSlackNotInChannelToolPart(part)
-            ) {
-              if (index !== firstSlackAccessErrorIndex) {
-                return null;
-              }
-
-              const staticToolName =
-                part.type === "dynamic-tool"
-                  ? part.toolName
-                  : part.type.replace(/^tool-/, "");
-              return (
-                <div
-                  className="not-prose mb-3 space-y-2"
-                  key={`${message.id}-${index}`}
-                >
-                  {isSlackToolName(staticToolName) ? (
-                    <div className="w-full">
-                      <SlackToolOutput
-                        channels={slackAccessChannels}
-                        errorText={part.errorText}
-                        input={part.input}
-                        toolName={staticToolName}
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              );
-            }
-
-            return (
-              <IntegrationToolPart
-                key={`${message.id}-${index}`}
-                part={part}
-                showGenerativeToolUi={showGenerativeToolUi}
-                showToolOutputUi={showToolOutputUi}
-              />
-            );
+            return null;
           }
 
           return null;
@@ -1301,7 +1189,7 @@ const Chatbot = ({
   const rootRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
   const showGenerativeToolUi = useGenerativeToolUiEnabled();
-  const showToolOutputUi = useToolOutputUiEnabled();
+
   const [model, setModel] = useState<string>(fallbackModels[0].id);
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [selectedSources, setSelectedSources] = useState<SourceId[]>([]);
@@ -2111,7 +1999,6 @@ const Chatbot = ({
                 onToggleWorkspaceEditChanges={handleToggleWorkspaceEditChanges}
                 onUndoWorkspaceEdit={handleUndoWorkspaceEdit}
                 showGenerativeToolUi={showGenerativeToolUi}
-                showToolOutputUi={showToolOutputUi}
                 snapshotByToolCallId={snapshotByToolCallId}
                 visibleDiffToolCallId={visibleDiffToolCallId}
               />

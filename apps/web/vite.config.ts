@@ -21,6 +21,7 @@ const backendTarget = process.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://12
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: [
       { find: "@/packages/editor", replacement: editorDir },
       { find: "@", replacement: srcDir },
