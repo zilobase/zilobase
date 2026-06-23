@@ -62,7 +62,7 @@ export function useWorkspaceRealtime(
       socketRef.current = socket
 
       socket.addEventListener("open", () => {
-        if (disposed) {
+        if (disposed || socketRef.current !== socket) {
           return
         }
 
@@ -76,11 +76,15 @@ export function useWorkspaceRealtime(
       })
 
       socket.addEventListener("message", (event) => {
+        if (disposed || socketRef.current !== socket) {
+          return
+        }
+
         void handleRealtimeSocketMessage(event.data, subscription)
       })
 
       socket.addEventListener("close", () => {
-        if (disposed) {
+        if (disposed || socketRef.current !== socket) {
           return
         }
 
@@ -94,7 +98,9 @@ export function useWorkspaceRealtime(
       })
 
       socket.addEventListener("error", () => {
-        socket.close()
+        if (socketRef.current === socket) {
+          socket.close()
+        }
       })
     }
 

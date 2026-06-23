@@ -1,5 +1,5 @@
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -16,6 +16,51 @@ const workspaceContextDir = fileURLToPath(
   new URL("../../packages/workspace-context/src", import.meta.url),
 );
 const backendTarget = process.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:3000";
+const expectedWsProxyErrorCodes = new Set(["ECONNRESET", "EPIPE"]);
+
+function createBackendProxy(options: { ws?: boolean } = {}): ProxyOptions {
+  return {
+    target: backendTarget,
+    changeOrigin: true,
+    ...options,
+    ...(options.ws ? { configure: suppressExpectedWsProxyErrors } : {}),
+  };
+}
+
+function suppressExpectedWsProxyErrors(
+  proxy: Parameters<NonNullable<ProxyOptions["configure"]>>[0],
+) {
+  const emit = proxy.emit.bind(proxy);
+
+  proxy.emit = ((eventName: string | symbol, ...args: unknown[]) => {
+    if (eventName === "error" && isExpectedWsProxyError(args[0])) {
+      return false;
+    }
+
+    return emit(eventName, ...args);
+  }) as typeof proxy.emit;
+
+  proxy.on("proxyReqWs", (_proxyReq, _req, socket) => {
+    const socketEmit = socket.emit.bind(socket);
+
+    socket.emit = ((eventName: string | symbol, ...args: unknown[]) => {
+      if (eventName === "error" && isExpectedWsProxyError(args[0])) {
+        return false;
+      }
+
+      return socketEmit(eventName, ...args);
+    }) as typeof socket.emit;
+  });
+}
+
+function isExpectedWsProxyError(error: unknown) {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    typeof error.code === "string" &&
+    expectedWsProxyErrorCodes.has(error.code)
+  );
+}
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
@@ -71,61 +116,19 @@ export default defineConfig(async () => ({
     strictPort: true,
     host: host || process.env.VITE_DEV_HOST || "0.0.0.0",
     proxy: {
-      "/api": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
-      "/agents": {
-        target: backendTarget,
-        changeOrigin: true,
-        ws: true,
-      },
-      "/session": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
-      "/sign-in": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
-      "/sign-up": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
-      "/sign-out": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
-      "/email-otp": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
-      "/organization": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
-      "/search": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
-      "/workspaces": {
-        target: backendTarget,
-        changeOrigin: true,
-        ws: true,
-      },
-      "/databases": {
-        target: backendTarget,
-        changeOrigin: true,
-        ws: true,
-      },
-      "/images": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
-      "/user-settings": {
-        target: backendTarget,
-        changeOrigin: true,
-      },
+      "/api": createBackendProxy(),
+      "/agents": createBackendProxy({ ws: true }),
+      "/session": createBackendProxy(),
+      "/sign-in": createBackendProxy(),
+      "/sign-up": createBackendProxy(),
+      "/sign-out": createBackendProxy(),
+      "/email-otp": createBackendProxy(),
+      "/organization": createBackendProxy(),
+      "/search": createBackendProxy(),
+      "/workspaces": createBackendProxy({ ws: true }),
+      "/databases": createBackendProxy({ ws: true }),
+      "/images": createBackendProxy(),
+      "/user-settings": createBackendProxy(),
     },
     hmr: host
       ? {

@@ -98,7 +98,7 @@ export function useDatabaseRealtime(
       socketRef.current = socket
 
       socket.addEventListener("open", () => {
-        if (disposed) {
+        if (disposed || socketRef.current !== socket) {
           return
         }
 
@@ -124,6 +124,10 @@ export function useDatabaseRealtime(
       })
 
       socket.addEventListener("message", (event) => {
+        if (disposed || socketRef.current !== socket) {
+          return
+        }
+
         void handleDatabaseRealtimeSocketMessage(event.data, databaseId, {
           currentVersion: latestVersionRef.current,
           onPresenceClear: (sessionId) => {
@@ -159,7 +163,7 @@ export function useDatabaseRealtime(
       })
 
       socket.addEventListener("close", () => {
-        if (disposed) {
+        if (disposed || socketRef.current !== socket) {
           return
         }
 
@@ -173,7 +177,9 @@ export function useDatabaseRealtime(
       })
 
       socket.addEventListener("error", () => {
-        socket.close()
+        if (socketRef.current === socket) {
+          socket.close()
+        }
       })
     }
 
