@@ -15,16 +15,14 @@ export const blockSelectionPluginKey = new PluginKey("blockSelection")
 
 type BlockRange = { from: number; to: number }
 
-type BlockSelectionMode = "none" | "single" | "all"
+type BlockSelectionMode = "none" | "all"
 
 type BlockSelectionPluginState = {
   decorations: DecorationSet
   mode: BlockSelectionMode
 }
 
-type BlockSelectionMeta =
-  | { nodeFrom: number; nodeTo: number; type: "select-block" }
-  | { type: "select-all" }
+type BlockSelectionMeta = { type: "select-all" }
 
 const emptyPluginState = (): BlockSelectionPluginState => ({
   decorations: DecorationSet.empty,
@@ -47,21 +45,6 @@ const getActiveBlockContentRange = ($pos: ResolvedPos): BlockRange | null => {
     if (node.isTextblock) {
       return { from: $pos.start(depth), to: $pos.end(depth) }
     }
-  }
-
-  return null
-}
-
-const getActiveBlockNodeRange = ($pos: ResolvedPos): BlockRange | null => {
-  for (let depth = $pos.depth; depth > 0; depth--) {
-    const node = $pos.node(depth)
-    if (node.type.name === "listItem" || node.type.name === "taskItem") {
-      return { from: $pos.before(depth), to: $pos.after(depth) }
-    }
-  }
-
-  if ($pos.parent.isTextblock) {
-    return { from: $pos.before($pos.depth), to: $pos.after($pos.depth) }
   }
 
   return null
@@ -124,17 +107,6 @@ const buildAllBlockDecorations = (doc: ProseMirrorNode, selection: Selection) =>
     createBlockSelectionDecorations(doc, selection.from, selection.to),
   )
 
-const buildSingleBlockDecorations = (
-  doc: ProseMirrorNode,
-  nodeFrom: number,
-  nodeTo: number,
-) =>
-  DecorationSet.create(doc, [
-    Decoration.node(nodeFrom, nodeTo, {
-      class: "editor-block-selection",
-    }),
-  ])
-
 export const BlockSelection = Extension.create({
   name: "blockSelection",
   priority: 1000,
@@ -150,9 +122,8 @@ export const BlockSelection = Extension.create({
         }
 
         const contentRange = getActiveBlockContentRange(selection.$anchor)
-        const nodeRange = getActiveBlockNodeRange(selection.$anchor)
 
-        if (!contentRange || !nodeRange) {
+        if (!contentRange) {
           const tr = state.tr.setSelection(new AllSelection(doc))
           tr.setMeta(blockSelectionPluginKey, { type: "select-all" } satisfies BlockSelectionMeta)
           editor.view.dispatch(tr.scrollIntoView())
@@ -172,11 +143,6 @@ export const BlockSelection = Extension.create({
         const tr = state.tr.setSelection(
           TextSelection.create(doc, contentRange.from, contentRange.to),
         )
-        tr.setMeta(blockSelectionPluginKey, {
-          nodeFrom: nodeRange.from,
-          nodeTo: nodeRange.to,
-          type: "select-block",
-        } satisfies BlockSelectionMeta)
         editor.view.dispatch(tr.scrollIntoView())
         return true
       },
@@ -197,17 +163,6 @@ export const BlockSelection = Extension.create({
             const meta = tr.getMeta(blockSelectionPluginKey) as
               | BlockSelectionMeta
               | undefined
-
-            if (meta?.type === "select-block") {
-              return {
-                mode: "single",
-                decorations: buildSingleBlockDecorations(
-                  newState.doc,
-                  meta.nodeFrom,
-                  meta.nodeTo,
-                ),
-              }
-            }
 
             if (meta?.type === "select-all") {
               return {
@@ -244,8 +199,7 @@ export const BlockSelection = Extension.create({
         view(view) {
           const syncNativeSelectionVisibility = () => {
             const pluginState = blockSelectionPluginKey.getState(view.state)
-            const useBlockHighlight =
-              pluginState?.mode === "single" || pluginState?.mode === "all"
+            const useBlockHighlight = pluginState?.mode === "all"
 
             view.dom.classList.toggle(
               "ProseMirror-hideselection",

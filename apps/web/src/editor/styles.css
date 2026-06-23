@@ -127,7 +127,7 @@
     @apply pt-1;
   }
 
-  /* Hide native text selection during Ctrl/Cmd+A block selection. */
+  /* Hide native text selection only during Ctrl/Cmd+A select-all. */
   .tiptap-editor.ProseMirror-hideselection ::selection,
   .tiptap-editor.ProseMirror-hideselection *::selection {
     background: transparent !important;
