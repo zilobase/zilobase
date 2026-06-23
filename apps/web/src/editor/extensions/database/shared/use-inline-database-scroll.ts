@@ -72,7 +72,8 @@ export function useInlineDatabaseScroll({
     const offset = Math.max(0, wrapperRect.left - surfaceRect.left)
     const trailingOffset = Math.max(0, surfaceRect.right - wrapperRect.right)
     const viewportWidth = Math.max(wrapperRect.width, surfaceRect.width)
-    const viewWidth = Math.max(wrapperRect.width, getContentWidth())
+    const contentWidthValue = getContentWidth()
+    const viewWidth = Math.max(wrapperRect.width, contentWidthValue)
     const contentWidth = offset + viewWidth + trailingOffset
     const nextLayout = {
       contentWidth,

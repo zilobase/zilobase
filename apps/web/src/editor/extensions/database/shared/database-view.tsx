@@ -32,20 +32,24 @@ export function DatabaseView(props: DatabaseViewProps) {
         onDragOver={handleDatabaseBlockDragOver}
         onDrop={handleDatabaseBlockDrop}
       >
-        <DatabaseViewToolbar />
-        <DatabaseRealtimeStatusBanner />
-        {!databaseId ? (
-          <div className="database-empty-state">
-            <span>Database reference missing.</span>
-          </div>
-        ) : isLoading || !payload ? (
-          <div className="database-empty-state">
-            <Loader2 className="animate-spin" />
-            <span>Loading database...</span>
-          </div>
-        ) : (
-          <DatabaseViewContent viewType={viewType} />
-        )}
+        <div className="database-toolbar-section">
+          <DatabaseViewToolbar />
+          <DatabaseRealtimeStatusBanner />
+        </div>
+        <div className="database-scroll-section">
+          {!databaseId ? (
+            <div className="database-empty-state">
+              <span>Database reference missing.</span>
+            </div>
+          ) : isLoading || !payload ? (
+            <div className="database-empty-state">
+              <Loader2 className="animate-spin" />
+              <span>Loading database...</span>
+            </div>
+          ) : (
+            <DatabaseViewContent viewType={viewType} />
+          )}
+        </div>
       </div>
     </DatabaseViewProvider>
   )

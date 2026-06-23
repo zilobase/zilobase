@@ -137,6 +137,7 @@ export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
 
   addNodeView() {
     return ReactNodeViewRenderer(DatabaseBlockView, {
+      className: "database-block",
       stopEvent: ({ event }) => {
         const target = event.target
 

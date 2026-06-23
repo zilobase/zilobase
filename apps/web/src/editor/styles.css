@@ -117,7 +117,7 @@
       .file-block,
       .bookmark-block,
       .ask-ai-block,
-      .database-block,
+      .node-databaseBlock,
       .page-block
     ) {
     @apply pt-4;
@@ -159,7 +159,6 @@
       .embed-block,
       .file-block,
       .bookmark-block,
-      .database-block,
       .page-block,
       .ask-ai-block,
       .editor-details,
@@ -190,6 +189,113 @@
       .editor-details
     ).editor-block-selection {
     @apply px-3;
+  }
+
+  /* Database blocks split into toolbar + scroll sections for separate highlights. */
+  .tiptap-editor .node-databaseBlock.editor-block-selection {
+    background: transparent !important;
+    color: inherit;
+  }
+
+  .tiptap-editor .node-databaseBlock .database-toolbar-section {
+    @apply box-border px-3 pb-0.5;
+  }
+
+  .tiptap-editor .node-databaseBlock .database-scroll-section {
+    @apply relative mt-1 min-w-0 overflow-visible pb-0.5 pt-1;
+  }
+
+  .tiptap-editor
+    .node-databaseBlock.editor-block-selection
+    .database-toolbar-section {
+    background-color: color-mix(in srgb, #0078d7 35%, transparent);
+    background-color: Highlight;
+    background-clip: border-box;
+    border-radius: 4px;
+    box-sizing: border-box;
+    color: inherit;
+    display: block;
+    width: 100%;
+  }
+
+  .tiptap-editor
+    .node-databaseBlock.editor-block-selection
+    .database-scroll-section:has(
+      .database-inline-scroll-wrap:not([data-inline-scroll="true"])
+    ) {
+    background-color: color-mix(in srgb, #0078d7 35%, transparent);
+    background-color: Highlight;
+    border-radius: 4px;
+  }
+
+  .tiptap-editor
+    .node-databaseBlock.editor-block-selection
+    .database-inline-scroll-wrap[data-inline-scroll="true"]
+    :is(.database-table, .database-page-create-row, .database-kanban-board) {
+    isolation: isolate;
+    position: relative;
+  }
+
+  .tiptap-editor
+    .node-databaseBlock.editor-block-selection
+    .database-inline-scroll-wrap[data-inline-scroll="true"]
+    :is(.database-table, .database-page-create-row, .database-kanban-board)::before {
+    background-color: color-mix(in srgb, #0078d7 35%, transparent);
+    background-color: Highlight;
+    border-radius: 4px;
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: -1;
+  }
+
+  @supports (background-color: Highlight) {
+    .tiptap-editor
+      .node-databaseBlock.editor-block-selection
+      .database-toolbar-section,
+    .tiptap-editor
+      .node-databaseBlock.editor-block-selection
+      .database-scroll-section:has(
+        .database-inline-scroll-wrap:not([data-inline-scroll="true"])
+      ),
+    .tiptap-editor
+      .node-databaseBlock.editor-block-selection
+      .database-inline-scroll-wrap[data-inline-scroll="true"]
+      :is(.database-table, .database-page-create-row, .database-kanban-board) {
+      color: HighlightText;
+    }
+  }
+
+  .dark
+    .tiptap-editor
+    .node-databaseBlock.editor-block-selection
+    .database-toolbar-section {
+    background-color: color-mix(in srgb, #4b9fff 42%, transparent);
+    background-color: Highlight;
+  }
+
+  .dark
+    .tiptap-editor
+    .node-databaseBlock.editor-block-selection
+    .database-scroll-section:has(
+      .database-inline-scroll-wrap:not([data-inline-scroll="true"])
+    ) {
+    background-color: color-mix(in srgb, #4b9fff 42%, transparent);
+    background-color: Highlight;
+  }
+
+  .dark
+    .tiptap-editor
+    .node-databaseBlock.editor-block-selection
+    .database-inline-scroll-wrap[data-inline-scroll="true"]
+    :is(.database-table, .database-page-create-row, .database-kanban-board)::before {
+    background-color: color-mix(in srgb, #4b9fff 42%, transparent);
+    background-color: Highlight;
+  }
+
+  .tiptap-editor .node-databaseBlock.editor-block-selection .database-block-shell {
+    background-color: transparent;
   }
 
   .dark .tiptap-editor .editor-block-selection {
@@ -422,7 +528,7 @@
       .file-block,
       .bookmark-block,
       .ask-ai-block,
-      .database-block,
+      .node-databaseBlock,
       .page-block,
       hr
     ) {
@@ -663,6 +769,18 @@
 
   .database-block-shell {
     @apply w-full overflow-visible bg-background;
+  }
+
+  .tiptap-editor .node-databaseBlock {
+    @apply min-w-0;
+  }
+
+  .tiptap-editor .node-databaseBlock .database-block-shell {
+    @apply min-w-0 overflow-visible bg-transparent;
+  }
+
+  .tiptap-editor .node-databaseBlock .database-toolbar-section .database-toolbar {
+    @apply px-0;
   }
 
   .database-toolbar {
