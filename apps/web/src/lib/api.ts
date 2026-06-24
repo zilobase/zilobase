@@ -101,6 +101,13 @@ function resolveApiBaseUrl() {
     return configuredBaseUrl
   }
 
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname === "app.notelab.io"
+  ) {
+    return "https://api.notelab.io"
+  }
+
   return ""
 }
 

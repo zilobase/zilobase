@@ -1,7 +1,7 @@
 name = "notelab-client"
 main = "worker.js"
 compatibility_date = "2026-05-28"
-assets = { directory = "dist", binding = "ASSETS" }
+assets = { directory = "dist", binding = "ASSETS", html_handling = "none", not_found_handling = "single-page-application" }
 routes = [
   { pattern = "app.notelab.io", custom_domain = true }
 ]
