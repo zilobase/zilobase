@@ -106,7 +106,7 @@ export function HistorySidebar({
     <AppSidebarShell {...props}>
       <SidebarHeader>
         <div className="flex justify-end">
-          <SidebarTrigger className="shrink-0 group-data-[collapsible=icon]:hidden" />
+          <SidebarTrigger className="shrink-0" />
         </div>
       </SidebarHeader>
       <SidebarContent>

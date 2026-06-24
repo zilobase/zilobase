@@ -48,6 +48,7 @@ import {
 import {
   SidebarInset,
   SidebarProvider,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
@@ -315,6 +316,25 @@ function AppHeader({
   )
 }
 
+function CollapsedSidebarTrigger() {
+  const { isMobile, open, openMobile } = useSidebar()
+  const isCollapsed = isMobile ? !openMobile : !open
+
+  if (!isCollapsed) {
+    return null
+  }
+
+  return (
+    <>
+      <SidebarTrigger className="shrink-0" />
+      <Separator
+        orientation="vertical"
+        className="data-[orientation=vertical]:h-4"
+      />
+    </>
+  )
+}
+
 function PaneHeaderContent({
   className,
   leadingControl,
@@ -339,7 +359,9 @@ function PaneHeaderContent({
               className="mr-2 data-[orientation=vertical]:h-4"
             />
           </>
-        ) : null}
+        ) : (
+          <CollapsedSidebarTrigger />
+        )}
         <AppBreadcrumbs pathname={pathname} />
       </div>
       {showActions ? (

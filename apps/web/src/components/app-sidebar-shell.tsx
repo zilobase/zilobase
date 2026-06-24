@@ -9,7 +9,7 @@ export function AppSidebarShell({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" className="overflow-hidden" {...props}>
+    <Sidebar collapsible="offcanvas" className="overflow-hidden" {...props}>
       {children}
     </Sidebar>
   )

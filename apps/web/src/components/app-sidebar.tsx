@@ -239,7 +239,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <div className="min-w-0 flex-1">
             <OrganizationSwitcher />
           </div>
-          <SidebarTrigger className="shrink-0 group-data-[collapsible=icon]:hidden" />
+          <SidebarTrigger className="shrink-0" />
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -353,7 +353,7 @@ function AiSidebarHistory() {
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
-      <SidebarGroup className="min-h-0 flex-1 overflow-hidden pt-0 group-data-[collapsible=icon]:hidden">
+      <SidebarGroup className="min-h-0 flex-1 overflow-hidden pt-0">
         <SidebarGroupLabel>History</SidebarGroupLabel>
         <SidebarGroupContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <AiChatHistoryList

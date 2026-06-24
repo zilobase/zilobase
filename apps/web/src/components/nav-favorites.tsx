@@ -56,7 +56,7 @@ export function NavFavorites({
   const activeDatabaseId = getActiveDatabaseId(location.pathname)
 
   return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+    <SidebarGroup>
       <SidebarGroupLabel>Favorites</SidebarGroupLabel>
       <SidebarMenu>
         <NavTree
