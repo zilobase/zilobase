@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 
 import { useNotelabFeatures } from "../context"
+import {
+  bindVisibilityOnHidden,
+  getReconnectDelayMs,
+  shouldReconnectRealtimeSocket,
+  type RealtimeSocketStatus,
+} from "../realtime/socket-lifecycle"
 import { createWorkspaceRealtimeSubscription } from "./realtime-subscription"
 import {
   getWorkspaceRealtimeUrl,
@@ -22,9 +28,7 @@ export function useWorkspaceRealtime(
   }: WorkspaceRealtimeOptions = {},
 ) {
   const { queryClient, realtimeBaseUrl } = useNotelabFeatures()
-  const [status, setStatus] = useState<
-    "connected" | "connecting" | "disconnected" | "offline"
-  >("offline")
+  const [status, setStatus] = useState<RealtimeSocketStatus>("offline")
   const socketRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<number | null>(null)
   const reconnectAttemptRef = useRef(0)
@@ -42,6 +46,13 @@ export function useWorkspaceRealtime(
     })
 
     let disposed = false
+
+    const clearReconnectTimeout = () => {
+      if (reconnectTimeoutRef.current !== null) {
+        window.clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
+    }
 
     const connect = () => {
       if (disposed) {
@@ -90,10 +101,15 @@ export function useWorkspaceRealtime(
 
         setStatus("disconnected")
         socketRef.current = null
+
+        if (!shouldReconnectRealtimeSocket()) {
+          return
+        }
+
         reconnectAttemptRef.current += 1
         reconnectTimeoutRef.current = window.setTimeout(
           connect,
-          Math.min(10_000, 500 * 2 ** reconnectAttemptRef.current),
+          getReconnectDelayMs(reconnectAttemptRef.current),
         )
       })
 
@@ -104,17 +120,29 @@ export function useWorkspaceRealtime(
       })
     }
 
+    const unbindVisibility = bindVisibilityOnHidden({
+      isDisposed: () => disposed,
+      onHidden: () => {
+        clearReconnectTimeout()
+        socketRef.current?.close()
+        socketRef.current = null
+        setStatus("offline")
+      },
+      onVisible: () => {
+        if (!socketRef.current) {
+          connect()
+        }
+      },
+    })
+
     connect()
 
     return () => {
       disposed = true
       setStatus("offline")
       subscription.dispose()
-
-      if (reconnectTimeoutRef.current !== null) {
-        window.clearTimeout(reconnectTimeoutRef.current)
-      }
-
+      unbindVisibility()
+      clearReconnectTimeout()
       socketRef.current?.close()
       socketRef.current = null
     }
