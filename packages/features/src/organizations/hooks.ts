@@ -122,7 +122,11 @@ export function useSetActiveOrganization() {
     mutationFn: (organizationId: string) => auth.setActiveOrganization(organizationId),
     onSuccess: async (_result, organizationId) => {
       setPreferredActiveOrganizationId?.(organizationId)
-      await queryClient.invalidateQueries({ queryKey: sessionQueryKey })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ["workspace"] }),
+        queryClient.invalidateQueries({ queryKey: ["workspaces"] }),
+      ])
       await queryClient.fetchQuery({
         ...sessionQueryOptions(auth),
         staleTime: 0,
