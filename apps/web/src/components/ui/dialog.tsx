@@ -102,10 +102,14 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
+  hideMobileDragHandle = false,
   showCloseButton = true,
+  unstyledContent = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  hideMobileDragHandle?: boolean
   showCloseButton?: boolean
+  unstyledContent?: boolean
 }) {
   const { isMobile } = useDialogContext()
 
@@ -124,7 +128,11 @@ function DialogContent({
         )}
         {...drawerContentProps}
       >
-        <div className="grid gap-4 overflow-y-auto pt-4">{children}</div>
+        {unstyledContent ? (
+          children
+        ) : (
+          <div className="grid gap-4 overflow-y-auto pt-4">{children}</div>
+        )}
         {showCloseButton && (
           <DrawerClose data-slot="dialog-close" asChild>
             <Button
@@ -152,7 +160,9 @@ function DialogContent({
         )}
         {...props}
       >
-        <div className="mx-auto -mt-1 h-1 w-[100px] shrink-0 rounded-full bg-muted sm:hidden" />
+        {hideMobileDragHandle ? null : (
+          <div className="mx-auto -mt-1 h-1 w-[100px] shrink-0 rounded-full bg-muted sm:hidden" />
+        )}
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>

@@ -17,7 +17,14 @@ export type OpenWorkspaceSidePaneOptions = {
 }
 
 export type WorkspaceSidePaneContextValue = {
+  closeEmbeddedPageDialog: () => void
   closeSidePane: () => void
+  dialogDatabaseId: string | null
+  dialogWorkspaceId: string | null
+  openEmbeddedPageDialog: (
+    workspaceId: string,
+    options?: OpenWorkspaceSidePaneOptions,
+  ) => void
   openSidePane: (
     workspaceId: string,
     options?: OpenWorkspaceSidePaneOptions,
@@ -250,6 +257,10 @@ export function useWorkspaceSidePaneState(
   const [sidePaneDatabaseId, setSidePaneDatabaseId] = useState<string | null>(
     null,
   )
+  const [dialogWorkspaceId, setDialogWorkspaceId] = useState<string | null>(
+    null,
+  )
+  const [dialogDatabaseId, setDialogDatabaseId] = useState<string | null>(null)
   const [renderedSidePaneWorkspaceId, setRenderedSidePaneWorkspaceId] =
     useState<string | null>(null)
   const [sidePaneAnimatedOpen, setSidePaneAnimatedOpen] = useState(false)
@@ -259,12 +270,25 @@ export function useWorkspaceSidePaneState(
     setSidePaneWorkspaceId(null)
     setSidePaneDatabaseId(null)
   }, [])
+  const closeEmbeddedPageDialog = useCallback(() => {
+    setDialogWorkspaceId(null)
+    setDialogDatabaseId(null)
+  }, [])
   const openSidePane = useCallback(
     (nextWorkspaceId: string, options?: OpenWorkspaceSidePaneOptions) => {
+      closeEmbeddedPageDialog()
       setSidePaneWorkspaceId(nextWorkspaceId)
       setSidePaneDatabaseId(options?.databaseId ?? null)
     },
-    [],
+    [closeEmbeddedPageDialog],
+  )
+  const openEmbeddedPageDialog = useCallback(
+    (nextWorkspaceId: string, options?: OpenWorkspaceSidePaneOptions) => {
+      closeSidePane()
+      setDialogWorkspaceId(nextWorkspaceId)
+      setDialogDatabaseId(options?.databaseId ?? null)
+    },
+    [closeSidePane],
   )
 
   useEffect(() => {
@@ -324,11 +348,16 @@ export function useWorkspaceSidePaneState(
 
   useEffect(() => {
     closeSidePane()
-  }, [closeSidePane, resetKey])
+    closeEmbeddedPageDialog()
+  }, [closeEmbeddedPageDialog, closeSidePane, resetKey])
 
   return useMemo<WorkspaceSidePaneContextValue>(
     () => ({
+      closeEmbeddedPageDialog,
       closeSidePane,
+      dialogDatabaseId,
+      dialogWorkspaceId,
+      openEmbeddedPageDialog,
       openSidePane,
       renderedSidePaneWorkspaceId,
       sidePaneAnimatedOpen,
@@ -337,7 +366,11 @@ export function useWorkspaceSidePaneState(
       sidePaneWorkspaceId,
     }),
     [
+      closeEmbeddedPageDialog,
       closeSidePane,
+      dialogDatabaseId,
+      dialogWorkspaceId,
+      openEmbeddedPageDialog,
       openSidePane,
       renderedSidePaneWorkspaceId,
       sidePaneAnimatedOpen,

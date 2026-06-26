@@ -5,8 +5,7 @@ import {
   useState,
 } from "react"
 import type { ReactNode } from "react"
-import { Link, Outlet, useRouterState } from "@tanstack/react-router"
-import { ArrowRight } from "lucide-react"
+import { Outlet, useRouterState } from "@tanstack/react-router"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppSearchProvider } from "@/components/app-search"
@@ -29,18 +28,13 @@ import {
   RightSidebars,
 } from "@/components/right-sidebars"
 import { WorkspaceEditorCommentsProvider } from "@/components/workspace-editor-comments"
-import { useActiveOrganizationId } from "@notelab/features/integrations"
-import { NavActions } from "@/components/nav-actions"
-import { SettingsSidebar } from "@/components/settings-sidebar"
-import { Button } from "@/components/ui/button"
+
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
+  getDatabaseId,
+  getWorkspaceId,
+  WorkspacePaneHeader,
+} from "@/components/workspace-pane-header"
+import { SettingsSidebar } from "@/components/settings-sidebar"
 import { Separator } from "@/components/ui/separator"
 import {
   ResizablePanel,
@@ -53,13 +47,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { isEmbeddedMobileViewer } from "@/lib/embedded-view"
-import {
-  getWorkspaceEmoji,
-  readParentItemId,
-  type Workspace,
-} from "@notelab/features/workspaces"
-import { useWorkspaces } from "@notelab/features/workspaces"
 import { useDatabase } from "@notelab/features/databases"
+import { useWorkspace } from "@notelab/features/workspaces"
+import { useUserSettings } from "@notelab/features/user-settings"
+import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
+import {
+  useOpenEmbeddedPage,
+  useResolvedOpenPagesAs,
+} from "@/hooks/use-open-embedded-page"
 
 export function AppLayout({ children }: { children?: ReactNode }) {
   return (
@@ -90,6 +85,14 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   const isAiPage = pathname === "/ai"
   const workspaceId = getWorkspaceId(pathname)
   const databaseId = getDatabaseId(pathname)
+  const { data: databasePayload } = useDatabase(databaseId)
+  const hostWorkspaceId =
+    workspaceId ?? databasePayload?.database.pageId ?? null
+  const { data: hostWorkspace } = useWorkspace(hostWorkspaceId, {
+    refetchOnMount: false,
+  })
+  const { data: userSettings } = useUserSettings()
+  const openPagesAs = useResolvedOpenPagesAs(hostWorkspace, userSettings)
   const discussionsEnabled = Boolean(workspaceId && !databaseId)
   const sidePaneState = useWorkspaceSidePaneState(workspaceId)
   const {
@@ -125,12 +128,6 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
     }
     setChatSidebarOpen(true)
   }, [appSidebarOpen, closeSidePane])
-  const openDiscussionsSidebar = useCallback(() => {
-    if (appSidebarOpen) {
-      closeSidePane()
-    }
-    setDiscussionsSidebarOpen(true)
-  }, [appSidebarOpen, closeSidePane])
   const sidePaneContext = useMemo(
     () => ({
       ...sidePaneState,
@@ -157,10 +154,25 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
     }
   }, [appSidebarOpen, discussionsSidebarOpen, sidePaneWorkspaceId])
 
+  useEffect(() => {
+    if (openPagesAs === "dialog" && sidePaneWorkspaceId) {
+      closeSidePane()
+    }
+  }, [closeSidePane, openPagesAs, sidePaneWorkspaceId])
+
+  const showSidePaneLayout =
+    openPagesAs === "sidepanel" && renderedSidePaneWorkspaceId !== null
+
   return (
     <WorkspaceEditorRegistryProvider>
       <WorkspaceEditorCommentsProvider>
         <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
+          <EmbeddedPageDialogHost
+            contextWorkspaceId={hostWorkspaceId}
+            databaseId={databaseId}
+            hostWorkspace={hostWorkspace}
+            userSettings={userSettings}
+          />
           {isSettingsPage ? (
             <SettingsSidebar />
           ) : (
@@ -193,17 +205,20 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
                       <AppHeader
                         isSettingsPage={isSettingsPage || isAiPage}
                         onCloseSidePane={closeSidePane}
-                        onOpenDiscussions={
-                          discussionsEnabled ? openDiscussionsSidebar : undefined
-                        }
                         pathname={pathname}
-                        renderedSidePaneWorkspaceId={renderedSidePaneWorkspaceId}
-                        sidePaneAnimatedOpen={sidePaneAnimatedOpen}
+                        renderedSidePaneWorkspaceId={
+                          showSidePaneLayout
+                            ? renderedSidePaneWorkspaceId
+                            : null
+                        }
+                        sidePaneAnimatedOpen={
+                          showSidePaneLayout && sidePaneAnimatedOpen
+                        }
                       />
                     )
                   }
-                  open={sidePaneAnimatedOpen}
-                  visible={renderedSidePaneWorkspaceId !== null}
+                  open={showSidePaneLayout && sidePaneAnimatedOpen}
+                  visible={showSidePaneLayout}
                 />
               </SidebarInset>
             </ResizablePanel>
@@ -264,17 +279,36 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   )
 }
 
+function EmbeddedPageDialogHost({
+  contextWorkspaceId,
+  databaseId,
+  hostWorkspace,
+  userSettings,
+}: {
+  contextWorkspaceId: string | null
+  databaseId: string | null
+  hostWorkspace: ReturnType<typeof useWorkspace>["data"]
+  userSettings: ReturnType<typeof useUserSettings>["data"]
+}) {
+  const { openPage } = useOpenEmbeddedPage({
+    contextWorkspaceId,
+    databaseId,
+    userSettings,
+    workspace: hostWorkspace,
+  })
+
+  return <EmbeddedPageDialog onOpenPage={openPage} />
+}
+
 function AppHeader({
   isSettingsPage,
   onCloseSidePane,
-  onOpenDiscussions,
   pathname,
   renderedSidePaneWorkspaceId,
   sidePaneAnimatedOpen,
 }: {
   isSettingsPage: boolean
   onCloseSidePane: () => void
-  onOpenDiscussions?: () => void
   pathname: string
   renderedSidePaneWorkspaceId: string | null
   sidePaneAnimatedOpen: boolean
@@ -289,12 +323,12 @@ function AppHeader({
         side="main"
         splitActive={splitActive}
       >
-        <PaneHeaderContent
+        <WorkspacePaneHeader
+          bordered={false}
           className="min-w-0 flex-1"
           leadingControl={
             <MainPaneHeaderLeadingControl splitActive={splitActive} />
           }
-          onOpenDiscussions={onOpenDiscussions}
           pathname={pathname}
           showActions={!isSettingsPage}
         />
@@ -305,22 +339,11 @@ function AppHeader({
           side="side"
           splitActive={splitActive}
         >
-          <PaneHeaderContent
+          <WorkspacePaneHeader
+            bordered={false}
             className="min-w-0 flex-1"
-            leadingControl={
-              <Button
-                aria-label="Close side pane"
-                onClick={onCloseSidePane}
-                size="icon-sm"
-                type="button"
-                variant="ghost"
-              >
-                <ArrowRight />
-              </Button>
-            }
-            onOpenDiscussions={onOpenDiscussions}
+            onClose={onCloseSidePane}
             pathname={`/workspace/${encodeURIComponent(renderedSidePaneWorkspaceId ?? "")}`}
-            showActions
           />
         </WorkspaceSidePaneHeaderCell>
       ) : null}
@@ -366,287 +389,4 @@ function CollapsedSidebarTrigger() {
   )
 }
 
-function PaneHeaderContent({
-  className,
-  leadingControl,
-  onOpenDiscussions,
-  pathname,
-  showActions,
-}: {
-  className?: string
-  leadingControl: ReactNode | null
-  onOpenDiscussions?: () => void
-  pathname: string
-  showActions: boolean
-}) {
-  return (
-    <div className={`${className ?? ""} flex items-center gap-2`}>
-      <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-        {leadingControl ? (
-          <>
-            {leadingControl}
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-          </>
-        ) : (
-          <CollapsedSidebarTrigger />
-        )}
-        <AppBreadcrumbs pathname={pathname} />
-      </div>
-      {showActions ? (
-        <div className="ml-auto px-3">
-          <PaneNavActions onOpenDiscussions={onOpenDiscussions} pathname={pathname} />
-        </div>
-      ) : null}
-    </div>
-  )
-}
 
-function PaneNavActions({ onOpenDiscussions, pathname }: { onOpenDiscussions?: () => void; pathname: string }) {
-  const workspaceId = getWorkspaceId(pathname)
-  const databaseId = getDatabaseId(pathname)
-
-  return (
-    <NavActions
-      databaseId={databaseId}
-      onOpenDiscussions={onOpenDiscussions}
-      pathname={pathname}
-      workspaceId={workspaceId}
-    />
-  )
-}
-
-function WorkspaceBreadcrumb({ workspaceId }: { workspaceId: string }) {
-  const organizationId = useActiveOrganizationId()
-  const { data: workspaces = [] } = useWorkspaces(organizationId)
-  const workspace = workspaces.find((item) => item.id === workspaceId)
-  const breadcrumbs = workspace
-    ? buildWorkspaceBreadcrumbs(workspace, workspaces)
-    : []
-
-  return (
-    <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap">
-        <BreadcrumbItem className="hidden sm:inline-flex">
-          <BreadcrumbLink asChild>
-            <Link to="/dashboard">Dashboard</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator className="hidden sm:inline-flex" />
-        {breadcrumbs.length > 0 ? (
-          breadcrumbs.map((item, index) => {
-            const isCurrent = index === breadcrumbs.length - 1
-            const label = getWorkspaceBreadcrumbLabel(item)
-
-            return (
-              <BreadcrumbFragment
-                isCurrent={isCurrent}
-                item={item}
-                key={item.id}
-                label={label}
-              />
-            )
-          })
-        ) : (
-          <BreadcrumbItem className="min-w-0">
-            <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
-              Workspace
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        )}
-      </BreadcrumbList>
-    </Breadcrumb>
-  )
-}
-
-function BreadcrumbFragment({
-  isCurrent,
-  item,
-  label,
-}: {
-  isCurrent: boolean
-  item: Workspace
-  label: string
-}) {
-  return (
-    <>
-      <BreadcrumbItem className="min-w-0">
-        {isCurrent ? (
-          <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
-            {label}
-          </BreadcrumbPage>
-        ) : (
-          <BreadcrumbLink asChild className="block max-w-32 truncate sm:max-w-48">
-            <Link to="/workspace/$workspaceId" params={{ workspaceId: item.id }}>
-              {label}
-            </Link>
-          </BreadcrumbLink>
-        )}
-      </BreadcrumbItem>
-      {!isCurrent ? <BreadcrumbSeparator /> : null}
-    </>
-  )
-}
-
-function buildWorkspaceBreadcrumbs(
-  workspace: Workspace,
-  workspaces: Workspace[],
-) {
-  const workspacesById = new Map(
-    [...workspaces, workspace].map((item) => [item.id, item]),
-  )
-  const breadcrumbs: Workspace[] = []
-  const visited = new Set<string>()
-  let current: Workspace | undefined = workspace
-
-  while (current && !visited.has(current.id)) {
-    breadcrumbs.unshift(current)
-    visited.add(current.id)
-
-    const parentItemId = readParentItemId(current.metadata)
-
-    current = parentItemId ? workspacesById.get(parentItemId) : undefined
-  }
-
-  return breadcrumbs
-}
-
-function getWorkspaceBreadcrumbLabel(workspace: Workspace) {
-  const label = workspace.name.trim() || "Untitled"
-  const emoji = getWorkspaceEmoji(workspace)
-
-  return emoji ? `${emoji} ${label}` : label
-}
-
-function AppBreadcrumbs({ pathname }: { pathname: string }) {
-  const workspaceId = getWorkspaceId(pathname)
-  const databaseId = getDatabaseId(pathname)
-
-  if (workspaceId) {
-    return <WorkspaceBreadcrumb workspaceId={workspaceId} />
-  }
-
-  if (databaseId) {
-    return <DatabaseBreadcrumb databaseId={databaseId} />
-  }
-
-  if (pathname.startsWith("/settings")) {
-    const settingsPageTitle = getSettingsPageTitle(pathname)
-
-    return (
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem className="hidden sm:inline-flex">
-            <BreadcrumbLink asChild>
-              <Link to="/settings">Settings</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          {settingsPageTitle && (
-            <>
-              <BreadcrumbSeparator className="hidden sm:inline-flex" />
-              <BreadcrumbItem>
-                <BreadcrumbPage className="line-clamp-1">
-                  {settingsPageTitle}
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </>
-          )}
-        </BreadcrumbList>
-      </Breadcrumb>
-    )
-  }
-
-  if (pathname === "/canvas") {
-    return (
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage className="line-clamp-1">Canvas</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-    )
-  }
-
-  return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbPage className="line-clamp-1">Dashboard</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-  )
-}
-
-function getWorkspaceId(pathname: string) {
-  const match = pathname.match(/^\/workspace\/([^/]+)/)
-
-  return match?.[1] ? decodeURIComponent(match[1]) : null
-}
-
-function getDatabaseId(pathname: string) {
-  const match = pathname.match(/^\/database\/([^/]+)/)
-
-  return match?.[1] ? decodeURIComponent(match[1]) : null
-}
-
-function DatabaseBreadcrumb({ databaseId }: { databaseId: string }) {
-  const organizationId = useActiveOrganizationId()
-  const { data: payload } = useDatabase(databaseId)
-  const databasePageId = payload?.database.pageId
-  const { data: workspaces = [] } = useWorkspaces(organizationId)
-  const workspace = databasePageId
-    ? workspaces.find((item) => item.id === databasePageId)
-    : undefined
-  const breadcrumbs = workspace
-    ? buildWorkspaceBreadcrumbs(workspace, workspaces)
-    : []
-
-  return (
-    <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap">
-        <BreadcrumbItem className="hidden sm:inline-flex">
-          <BreadcrumbLink asChild>
-            <Link to="/dashboard">Dashboard</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator className="hidden sm:inline-flex" />
-        {breadcrumbs.map((item) => (
-          <BreadcrumbFragment
-            isCurrent={false}
-            item={item}
-            key={item.id}
-            label={getWorkspaceBreadcrumbLabel(item)}
-          />
-        ))}
-        <BreadcrumbItem className="min-w-0">
-          <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
-            {payload?.database.name.trim() || "Database"}
-          </BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-  )
-}
-
-function getSettingsPageTitle(pathname: string) {
-  const pathParts = pathname.split("/").filter(Boolean)
-  const page = pathParts[1]
-
-  if (!page) {
-    return null
-  }
-
-  const titles: Record<string, string> = {
-    integrations: "Integrations",
-    "notelab-ai": "Notelab AI",
-    organization: "Organization",
-    profile: "Profile",
-    team: "Team",
-  }
-
-  return titles[page] ?? null
-}

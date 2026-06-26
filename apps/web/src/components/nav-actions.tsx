@@ -6,10 +6,11 @@ import {
   Globe2Icon,
   LinkIcon,
   LockIcon,
-  MessageSquareIcon,
   MoreHorizontalIcon,
   Share2Icon,
+  PanelRightIcon,
   SparklesIcon,
+  SquareIcon,
   StarIcon,
   Trash2Icon,
 } from "lucide-react"
@@ -77,16 +78,22 @@ import {
   useUpdateUserSettings,
   useUserSettings,
 } from "@notelab/features/user-settings"
+import { useOptionalWorkspaceSidePane } from "@/contexts/workspace-side-pane"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  embeddedItemsOpenAsLabels,
+  embeddedItemsOpenAsModes,
   notelabAiModeLabels,
+  resolveEmbeddedItemsOpenAs,
   resolveWorkspaceFullWidth,
+  usesUserEmbeddedItemsPreference,
   usesUserFullWidthPreference,
   type AccessLevel,
   type AccessTargetType,
+  type EmbeddedItemsOpenAs,
   type NotelabAiMode,
   type WorkspaceAccessRule,
   type WorkspaceMetadata,
@@ -112,12 +119,10 @@ type ShareTargetValue = `${AccessTargetType}:${string}`
 
 export function NavActions({
   databaseId,
-  onOpenDiscussions,
   pathname,
   workspaceId,
 }: {
   databaseId?: string | null
-  onOpenDiscussions?: () => void
   pathname?: string
   workspaceId?: string | null
 }) {
@@ -136,17 +141,26 @@ export function NavActions({
   const setDatabaseFavorite = useSetDatabaseFavorite()
   const { data: userSettings } = useUserSettings()
   const updateUserSettings = useUpdateUserSettings()
+  const sidePane = useOptionalWorkspaceSidePane()
   const isMobile = useIsMobile()
   const listWorkspace = workspaces.find((item) => item.id === actionWorkspaceId)
   const isDatabasePage = Boolean(databaseId)
   const hasPageActions = Boolean(actionWorkspaceId || databaseId)
   const workspaceMetadata = (workspace?.metadata ?? {}) as WorkspaceMetadata
   const usesUserPreference = usesUserFullWidthPreference(workspaceMetadata)
+  const usesUserEmbeddedItemsPref =
+    usesUserEmbeddedItemsPreference(workspaceMetadata)
   const effectiveFullWidth = resolveWorkspaceFullWidth(
     workspace,
     userSettings?.workspaceFullWidth,
   )
+  const effectiveEmbeddedItemsOpenAs = resolveEmbeddedItemsOpenAs(
+    workspace,
+    userSettings?.embeddedItemsOpenAs,
+  )
   const fullWidthUpdatePending =
+    updateUserSettings.isPending || updateWorkspace.isPending
+  const embeddedItemsUpdatePending =
     updateUserSettings.isPending || updateWorkspace.isPending
   const isFavorite = isDatabasePage
     ? Boolean(databasePayload?.database.isFavorite)
@@ -314,6 +328,81 @@ export function NavActions({
       },
     )
   }
+  const setEmbeddedItemsOpenAs = (mode: EmbeddedItemsOpenAs) => {
+    if (isDatabasePage || embeddedItemsUpdatePending) {
+      return
+    }
+
+    if (mode === "dialog") {
+      sidePane?.closeSidePane()
+    }
+
+    if (!usesUserEmbeddedItemsPref) {
+      if (!workspace) {
+        return
+      }
+
+      updateWorkspace.mutate(
+        {
+          id: workspace.id,
+          metadata: {
+            ...workspaceMetadata,
+            embeddedItemsOpenAs: mode,
+            useUserEmbeddedItemsPreference: false,
+          },
+        },
+        {
+          onError: (error) => {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Could not update open pages setting.",
+            )
+          },
+        },
+      )
+      return
+    }
+
+    updateUserSettings.mutate(
+      { embeddedItemsOpenAs: mode },
+      {
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Could not update open pages setting.",
+          )
+        },
+      },
+    )
+  }
+  const toggleUseUserEmbeddedItemsPreference = () => {
+    if (isDatabasePage || !workspace || embeddedItemsUpdatePending) {
+      return
+    }
+
+    const nextUsesUserPreference = !usesUserEmbeddedItemsPref
+
+    updateWorkspace.mutate(
+      {
+        id: workspace.id,
+        metadata: {
+          ...workspaceMetadata,
+          useUserEmbeddedItemsPreference: nextUsesUserPreference,
+        },
+      },
+      {
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Could not update open pages preference.",
+          )
+        },
+      },
+    )
+  }
   const notelabAiMode = workspaceMetadata.notelabai ?? null
 
   const setNotelabAiMode = (mode: NotelabAiMode) => {
@@ -376,20 +465,6 @@ export function NavActions({
           >
             <StarIcon className={isFavorite ? "fill-current" : undefined} />
           </Button>
-          {!isDatabasePage ? (
-            <Button
-              aria-label="Open discussions"
-              className="h-7 w-7"
-              disabled={!onOpenDiscussions}
-              onClick={() => onOpenDiscussions?.()}
-              size="icon"
-              title="Discussions"
-              type="button"
-              variant="ghost"
-            >
-              <MessageSquareIcon />
-            </Button>
-          ) : null}
           <DropDrawer open={isOpen} onOpenChange={setIsOpen}>
             <DropDrawerTrigger asChild>
               <Button
@@ -435,6 +510,30 @@ export function NavActions({
                   </DropDrawerItem>
                 </>
               ) : null}
+              {!isDatabasePage && !isMobile ? (
+                <>
+                  <EmbeddedItemsOpenAsSubmenu
+                    disabled={!workspace || embeddedItemsUpdatePending}
+                    mode={effectiveEmbeddedItemsOpenAs}
+                    onSelect={setEmbeddedItemsOpenAs}
+                  />
+                  <DropDrawerItem
+                    disabled={!workspace || embeddedItemsUpdatePending}
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      toggleUseUserEmbeddedItemsPreference()
+                    }}
+                  >
+                    <span>Use my preferences</span>
+                    <Switch
+                      checked={usesUserEmbeddedItemsPref}
+                      className="ml-auto pointer-events-none"
+                      size="sm"
+                      tabIndex={-1}
+                    />
+                  </DropDrawerItem>
+                </>
+              ) : null}
               {!isDatabasePage ? (
                 <NotelabAiSubmenu
                   disabled={!workspace || updateWorkspace.isPending}
@@ -460,6 +559,44 @@ export function NavActions({
         </>
       ) : null}
     </div>
+  )
+}
+
+function EmbeddedItemsOpenAsSubmenu({
+  disabled,
+  mode,
+  onSelect,
+}: {
+  disabled: boolean
+  mode: EmbeddedItemsOpenAs
+  onSelect: (mode: EmbeddedItemsOpenAs) => void
+}) {
+  return (
+    <DropDrawerSub>
+      <DropDrawerSubTrigger disabled={disabled}>
+        <PanelRightIcon />
+        <span className="flex-1">Open pages as</span>
+        <span className="text-muted-foreground">
+          {embeddedItemsOpenAsLabels[mode]}
+        </span>
+      </DropDrawerSubTrigger>
+      <DropDrawerSubContent className="w-64">
+        {embeddedItemsOpenAsModes.map((value) => (
+          <DropDrawerItem
+            key={value}
+            disabled={disabled}
+            onSelect={(event) => {
+              event.preventDefault()
+              onSelect(value)
+            }}
+          >
+            {value === "sidepanel" ? <PanelRightIcon /> : <SquareIcon />}
+            <span>{embeddedItemsOpenAsLabels[value]}</span>
+            {mode === value ? <CheckIcon className="ml-auto" /> : null}
+          </DropDrawerItem>
+        ))}
+      </DropDrawerSubContent>
+    </DropDrawerSub>
   )
 }
 
@@ -652,7 +789,7 @@ function WorkspaceShareDialogContent({
         </DialogHeader>
 
         <Tabs defaultValue="share">
-          <TabsList className="w-full">
+          <TabsList variant="pill">
             <TabsTrigger value="share">Share</TabsTrigger>
             <TabsTrigger value="publish">Publishing</TabsTrigger>
           </TabsList>
