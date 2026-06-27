@@ -32,11 +32,13 @@ import { useSession } from "@notelab/features/auth"
 import { useOrganizations } from "@notelab/features/organizations"
 import {
   useAddDatabaseRow,
+  useCreateDatabase,
   useSetDatabaseFavorite,
 } from "@notelab/features/databases"
 import { getDatabaseEmoji } from "@notelab/features/databases"
 import {
   getWorkspaceEmoji,
+  readDatabaseParentItemId,
   readLinkedItems,
   readParentItemId,
   type Workspace,
@@ -55,11 +57,13 @@ import {
   DatabaseIcon,
   FileIcon,
   HomeIcon,
+  Kanban,
   MessageCircleQuestionIcon,
   PlusIcon,
   SearchIcon,
   Settings2Icon,
   SparklesIcon,
+  Table2,
   Trash2Icon,
 } from "lucide-react"
 
@@ -135,8 +139,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     null
   const { data: workspaceRecords = [] } = useWorkspaces(organizationId)
   const createWorkspace = useCreateWorkspace()
+  const createDatabase = useCreateDatabase()
   const setFavorite = useSetWorkspaceFavorite()
-  const addDatabaseRow = useAddDatabaseRow(organizationId)
+  const addDatabaseRow = useAddDatabaseRow()
   const setDatabaseFavorite = useSetDatabaseFavorite()
   const workspaceSections = buildWorkspaceTreeSections(workspaceRecords)
   const favorites = buildFavoriteTreeItems([
@@ -155,6 +160,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     await navigate({
       to: "/workspace/$workspaceId",
       params: { workspaceId: workspace.id },
+    })
+  }
+
+  const handleCreateDatabase = async () => {
+    if (
+      !organizationId ||
+      createWorkspace.isPending ||
+      createDatabase.isPending
+    ) {
+      return
+    }
+
+    const workspace = await createWorkspace.mutateAsync({ organizationId })
+    const payload = await createDatabase.mutateAsync({
+      organizationId,
+      pageId: workspace.id,
+      standalone: true,
+    })
+
+    await navigate({
+      to: "/database/$databaseId",
+      params: { databaseId: payload.database.id },
     })
   }
 
@@ -258,6 +285,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               onRemoveFavorite={handleRemoveFavorite}
             />
             <NavWorkspaces
+              onCreateDatabase={handleCreateDatabase}
               onCreateWorkspace={handleCreateWorkspace}
               onDropPageOnDatabase={handleDropPageOnDatabase}
               privateWorkspaces={workspaceSections.privateWorkspaces}
@@ -394,13 +422,8 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
   )
   const roots: WorkspaceNavItem[] = []
   const databaseNodesById = new Map<string, WorkspaceNavItem>()
-  const rowPageIds = new Set(
-    orderedWorkspaces.flatMap((workspace) =>
-      (workspace.databases ?? []).flatMap((database) =>
-        database.rows.map((row) => row.pageId),
-      ),
-    ),
-  )
+  const standaloneDatabaseHostPageIds = new Set<string>()
+  const standaloneDatabaseNodes: WorkspaceNavItem[] = []
 
   for (const workspace of orderedWorkspaces) {
     const parentNode = nodesById.get(workspace.id)
@@ -424,14 +447,28 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
 
       databaseNodesById.set(database.id, databaseNode)
 
-      for (const row of [...database.rows].sort(
+      for (const view of [...(database.views ?? [])].sort(
         (first, second) => first.position - second.position,
       )) {
-        const rowNode = nodesById.get(row.pageId)
+        databaseNode.pages.push({
+          databaseId: database.id,
+          databaseViewId: view.id,
+          id: `database-view:${view.id}`,
+          isDatabaseView: true,
+          isTeamspace: Boolean(workspace.isTeamspace),
+          name: view.name,
+          emoji: getDatabaseViewIcon(view),
+          workspaceId: database.pageId,
+          pages: [],
+        })
+      }
 
-        if (rowNode && rowNode.id !== parentNode.id) {
-          databaseNode.pages.push(rowNode)
-        }
+      const databaseParentItemId = readDatabaseParentItemId(database.config)
+
+      if (!databaseParentItemId) {
+        standaloneDatabaseHostPageIds.add(workspace.id)
+        standaloneDatabaseNodes.push(databaseNode)
+        continue
       }
 
       parentNode.pages.push(databaseNode)
@@ -445,12 +482,12 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
       continue
     }
 
-    const parentItemId = readParentItemId(workspace.metadata)
-    const parent = parentItemId ? nodesById.get(parentItemId) : null
-
-    if (rowPageIds.has(workspace.id)) {
+    if (standaloneDatabaseHostPageIds.has(workspace.id)) {
       continue
     }
+
+    const parentItemId = readParentItemId(workspace.metadata)
+    const parent = parentItemId ? nodesById.get(parentItemId) : null
 
     if (parent && parent.id !== node.id) {
       parent.pages.push(node)
@@ -458,6 +495,8 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
       roots.push(node)
     }
   }
+
+  roots.push(...standaloneDatabaseNodes)
 
   for (const workspace of orderedWorkspaces) {
     const node = nodesById.get(workspace.id)
@@ -570,6 +609,14 @@ function getWorkspaceIcon(workspace: Workspace) {
 
 function getDatabaseIcon(database: { config?: unknown }) {
   return getDatabaseEmoji(database) ?? <DatabaseIcon className="size-4" />
+}
+
+function getDatabaseViewIcon(view: { type?: string | null }) {
+  return view.type === "kanban" ? (
+    <Kanban className="size-4" />
+  ) : (
+    <Table2 className="size-4" />
+  )
 }
 
 function cloneLinkedTreeNode(

@@ -1,9 +1,8 @@
 import type { EditorView } from "@tiptap/pm/view"
 import {
   dropDraggedEditorBlockAt,
-  getColumnBlockDragDropTarget,
   getDraggedEditorBlockPayload,
-  getPlaneBlockDragDropTarget,
+  getEditorInsertDropTarget,
   hasDraggedEditorBlock,
   preparePlaneBlockDrop,
 } from "@/packages/editor/components/editor/block-drag"
@@ -23,18 +22,22 @@ const resolveBlockDropTarget = (
   event: DragEvent,
   draggedBlock: ReturnType<typeof getDraggedEditorBlockPayload>
 ) => {
-  if (!draggedBlock) return null
+  if (!draggedBlock || isListBlock(draggedBlock.typeName)) return null
+  return getEditorInsertDropTarget(view, event)
+}
 
-  const columnTarget = getColumnBlockDragDropTarget(view, event)
-  if (columnTarget) return columnTarget
-
-  if (isListBlock(draggedBlock.typeName)) return null
-  return getPlaneBlockDragDropTarget(view, event)
+const resolveDatabasePageDropTarget = (
+  view: EditorView,
+  event: DragEvent
+) => {
+  if (getDropDatabaseElement(event)) return null
+  return getEditorInsertDropTarget(view, event)
 }
 
 export const createEditorDropHandler = (
   dropPageOnDatabase: (event: DragEvent) => boolean,
-  setBlockDropLine: (line: BlockDropLine | null) => void
+  setBlockDropLine: (line: BlockDropLine | null) => void,
+  onEmbedPage?: (pageId: string) => void | Promise<void>,
 ) => (view: EditorView, event: DragEvent) => {
   setBlockDropLine(null)
   if (dropPageOnDatabase(event)) return true
@@ -43,7 +46,10 @@ export const createEditorDropHandler = (
   const target = resolveBlockDropTarget(view, event, draggedBlock)
 
   if (target) return dropDraggedEditorBlockAt(view, event, target.pos)
-  return insertDraggedDatabasePage(view, event) || preparePlaneBlockDrop(view, event)
+  return (
+    insertDraggedDatabasePage(view, event, onEmbedPage) ||
+    preparePlaneBlockDrop(view, event)
+  )
 }
 
 export const createEditorDragHandlers = (
@@ -52,14 +58,15 @@ export const createEditorDragHandlers = (
   dragover: (view: EditorView, event: DragEvent) => {
     const draggedBlock = getDraggedEditorBlockPayload(event.dataTransfer)
     const hasDraggedBlock = hasDraggedEditorBlock(event)
-    const dropTarget = hasDraggedBlock
-      ? resolveBlockDropTarget(view, event, draggedBlock)
-      : null
-
-    setBlockDropLine(dropTarget?.line ?? null)
-
     const hasDraggedPage =
       hasDraggedDatabasePage(event) || hasDraggedPageBlock(event)
+    const dropTarget = hasDraggedBlock
+      ? resolveBlockDropTarget(view, event, draggedBlock)
+      : hasDraggedPage
+        ? resolveDatabasePageDropTarget(view, event)
+        : null
+
+    setBlockDropLine(dropTarget?.line ?? null)
     if (!hasDraggedBlock && !hasDraggedPage) return false
 
     if (getDropDatabaseElement(event) && hasDraggedPage) {

@@ -2,6 +2,8 @@ import { useState, type DragEvent } from "react"
 import { useLocation } from "@tanstack/react-router"
 import {
   ArrowUpRightIcon,
+  DatabaseIcon,
+  FileIcon,
   LinkIcon,
   MoreHorizontalIcon,
   PlusIcon,
@@ -43,11 +45,13 @@ type DatabaseDropInput = {
 }
 
 export function NavWorkspaces({
+  onCreateDatabase,
   onCreateWorkspace,
   onDropPageOnDatabase,
   privateWorkspaces,
   teamspaceWorkspaces,
 }: {
+  onCreateDatabase?: () => void
   onCreateWorkspace: () => void
   onDropPageOnDatabase?: (input: DatabaseDropInput) => void
   privateWorkspaces: WorkspaceNavItem[]
@@ -67,6 +71,7 @@ export function NavWorkspaces({
         activeWorkspaceId={activeWorkspaceId}
         databaseDropTargetId={databaseDropTargetId}
         label="Private"
+        onCreateDatabase={onCreateDatabase}
         onCreateWorkspace={onCreateWorkspace}
         onDatabaseDropTargetChange={setDatabaseDropTargetId}
         onDropPageOnDatabase={onDropPageOnDatabase}
@@ -91,6 +96,7 @@ function WorkspaceSection({
   activeWorkspaceId,
   databaseDropTargetId,
   label,
+  onCreateDatabase,
   onCreateWorkspace,
   onDatabaseDropTargetChange,
   onDropPageOnDatabase,
@@ -101,6 +107,7 @@ function WorkspaceSection({
   activeWorkspaceId: string | null
   databaseDropTargetId: string | null
   label: string
+  onCreateDatabase?: () => void
   onCreateWorkspace?: () => void
   onDatabaseDropTargetChange: (workspaceId: string | null) => void
   onDropPageOnDatabase?: (input: DatabaseDropInput) => void
@@ -114,7 +121,9 @@ function WorkspaceSection({
     displayName: string
     item: WorkspaceNavItem
   }) => {
-    const canDropOnDatabase = Boolean(item.databaseId && onDropPageOnDatabase)
+    const canDropOnDatabase = Boolean(
+      item.isDatabase && item.databaseId && onDropPageOnDatabase,
+    )
     const handleDatabaseDragOver = (event: DragEvent<HTMLAnchorElement>) => {
       if (!canDropOnDatabase || !hasDraggedPagePayload(event)) {
         return
@@ -151,7 +160,7 @@ function WorkspaceSection({
       })
     }
     const handlePageDragStart = (event: DragEvent<HTMLAnchorElement>) => {
-      if (item.isDatabase) {
+      if (item.isDatabase || item.isDatabaseView) {
         return
       }
 
@@ -171,7 +180,7 @@ function WorkspaceSection({
         databaseDropTargetId === item.id
           ? "bg-sidebar-accent text-sidebar-accent-foreground ring-1 ring-sidebar-ring"
           : undefined,
-      draggable: !item.isDatabase,
+      draggable: !item.isDatabase && !item.isDatabaseView,
       onDragEnter: handleDatabaseDragOver,
       onDragLeave: handleDatabaseDragLeave,
       onDragOver: handleDatabaseDragOver,
@@ -184,13 +193,31 @@ function WorkspaceSection({
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       {showCreateAction ? (
-        <SidebarGroupAction
-          aria-label="Create workspace"
-          title="Create workspace"
-          onClick={onCreateWorkspace}
-        >
-          <PlusIcon />
-        </SidebarGroupAction>
+        <DropDrawer>
+          <DropDrawerTrigger asChild>
+            <SidebarGroupAction aria-label="Create" title="Create">
+              <PlusIcon />
+            </SidebarGroupAction>
+          </DropDrawerTrigger>
+          <DropDrawerContent align="end" className="w-44 rounded-lg">
+            <DropDrawerItem
+              onSelect={() => {
+                onCreateWorkspace?.()
+              }}
+            >
+              <FileIcon className="text-muted-foreground" />
+              <span>Page</span>
+            </DropDrawerItem>
+            <DropDrawerItem
+              onSelect={() => {
+                onCreateDatabase?.()
+              }}
+            >
+              <DatabaseIcon className="text-muted-foreground" />
+              <span>Database</span>
+            </DropDrawerItem>
+          </DropDrawerContent>
+        </DropDrawer>
       ) : null}
       <SidebarGroupContent>
         <SidebarMenu>
@@ -199,9 +226,11 @@ function WorkspaceSection({
             activeWorkspaceId={activeWorkspaceId}
             getLinkProps={getLinkProps}
             items={workspaces}
-            renderItemMenu={({ item, nested }) => (
-              <WorkspaceItemMenu item={item} nested={nested} />
-            )}
+            renderItemMenu={({ item, nested }) =>
+              item.isDatabaseView ? null : (
+                <WorkspaceItemMenu item={item} nested={nested} />
+              )
+            }
           />
           {workspaces.length === 0 ? (
             <SidebarMenuItem>
@@ -233,7 +262,7 @@ function WorkspaceItemMenu({
 }) {
   const { isMobile } = useSidebar()
   const linkPath =
-    item.isDatabase && item.databaseId
+    (item.isDatabase || item.isDatabaseView) && item.databaseId
       ? `/database/${item.databaseId}`
       : `/workspace/${item.workspaceId}`
   const hoverClassName = nested

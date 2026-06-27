@@ -165,6 +165,62 @@ function getBlockPaddingInset(domNode: HTMLElement) {
   }
 }
 
+function getDatabaseBlockDragHandleAnchor(domNode: HTMLElement) {
+  const block = domNode.matches(".database-block, .node-databaseBlock")
+    ? domNode
+    : domNode.closest<HTMLElement>(".database-block, .node-databaseBlock")
+
+  if (!block) {
+    return null
+  }
+
+  const toolbarSection = block.querySelector<HTMLElement>(
+    ".database-toolbar-section",
+  )
+  const toolbar = block.querySelector<HTMLElement>(".database-toolbar")
+  const verticalAnchor =
+    toolbar?.firstElementChild instanceof HTMLElement
+      ? toolbar.firstElementChild
+      : toolbarSection
+
+  if (!(verticalAnchor instanceof HTMLElement)) {
+    return null
+  }
+
+  return {
+    horizontalAnchor: toolbarSection ?? block,
+    verticalAnchor,
+  }
+}
+
+function getFixedContainingBlockOffset(element: HTMLElement) {
+  const container = element.closest('[data-slot="dialog-content"]')
+
+  if (!(container instanceof HTMLElement)) {
+    return { left: 0, top: 0 }
+  }
+
+  const rect = container.getBoundingClientRect()
+
+  return {
+    left: rect.left,
+    top: rect.top,
+  }
+}
+
+function adjustDropLineForFixedOverlay(
+  view: EditorView,
+  line: BlockDragDropTarget["line"],
+) {
+  const offset = getFixedContainingBlockOffset(view.dom)
+
+  return {
+    left: line.left - offset.left,
+    right: line.right - offset.left,
+    top: line.top - offset.top,
+  }
+}
+
 export function getPlaneDragHandleRect(
   view: EditorView,
   target: DragHandleTarget,
@@ -175,19 +231,27 @@ export function getPlaneDragHandleRect(
     return null
   }
 
-  const nodeRect = domNode.getBoundingClientRect()
   const editorRect = view.dom.getBoundingClientRect()
-  const inset = getBlockPaddingInset(domNode)
-  const contentLeft = nodeRect.left + inset.left
-  const contentTop = nodeRect.top + inset.top
+  const databaseAnchor =
+    target.node.type.name === "databaseBlock"
+      ? getDatabaseBlockDragHandleAnchor(domNode)
+      : null
+  const anchorNode = databaseAnchor?.horizontalAnchor ?? domNode
+  const anchorRect = anchorNode.getBoundingClientRect()
+  const inset = getBlockPaddingInset(anchorNode)
+  const contentLeft = anchorRect.left + inset.left
+  const contentTop = databaseAnchor
+    ? databaseAnchor.verticalAnchor.getBoundingClientRect().top
+    : anchorRect.top + inset.top
   const railLeft = Math.max(
     editorRect.left + 4,
     contentLeft - DRAG_HANDLE_WIDTH - DRAG_HANDLE_GAP,
   )
+  const offset = getFixedContainingBlockOffset(view.dom)
 
   return {
-    left: railLeft,
-    top: contentTop,
+    left: railLeft - offset.left,
+    top: contentTop - offset.top,
   }
 }
 
@@ -371,27 +435,28 @@ export function getColumnBlockDragDropTarget(
   const columnStyle = window.getComputedStyle(columnElement)
   const paddingLeft = Number.parseFloat(columnStyle.paddingLeft) || 0
   const paddingRight = Number.parseFloat(columnStyle.paddingRight) || 0
-  const paddingTop = Number.parseFloat(columnStyle.paddingTop) || 0
-  let top = columnRect.top + paddingTop
-
-  if (children.length > 0) {
-    if (insertIndex === 0) {
-      top = children[0].top
-    } else if (insertIndex >= children.length) {
-      top = children[children.length - 1].bottom
-    } else {
-      top = (children[insertIndex - 1].bottom + children[insertIndex].top) / 2
-    }
-  }
 
   return {
-    line: {
+    line: adjustDropLineForFixedOverlay(view, {
       left: columnRect.left + paddingLeft,
       right: columnRect.right - paddingRight,
-      top,
-    },
+      top: view.coordsAtPos(pos).top,
+    }),
     pos,
   }
+}
+
+export function getEditorInsertDropTarget(
+  view: EditorView,
+  event: DragEvent,
+): BlockDragDropTarget | null {
+  const columnTarget = getColumnBlockDragDropTarget(view, event)
+
+  if (columnTarget) {
+    return columnTarget
+  }
+
+  return getPlaneBlockDragDropTarget(view, event)
 }
 
 export function getPlaneBlockDragDropTarget(
@@ -422,14 +487,15 @@ export function getPlaneBlockDragDropTarget(
   const rect = targetDOM.getBoundingClientRect()
   const anchorRect = getDragHandleAnchorRect(targetDOM) ?? rect
   const placeBefore = event.clientY < rect.top + rect.height / 2
+  const pos = placeBefore ? target.pos : target.pos + target.node.nodeSize
 
   return {
-    line: {
+    line: adjustDropLineForFixedOverlay(view, {
       left: anchorRect.left,
       right: anchorRect.right,
-      top: placeBefore ? rect.top : rect.bottom,
-    },
-    pos: placeBefore ? target.pos : target.pos + target.node.nodeSize,
+      top: view.coordsAtPos(pos).top,
+    }),
+    pos,
   }
 }
 

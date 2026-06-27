@@ -21,8 +21,10 @@ import { type NotelabAiMode } from "@notelab/features/workspaces"
 
 export type WorkspaceNavItem = {
   databaseId?: string | null
+  databaseViewId?: string | null
   id: string
   isDatabase?: boolean
+  isDatabaseView?: boolean
   isFavorite?: boolean
   isLinked?: boolean
   isTeamspace: boolean
@@ -99,7 +101,10 @@ function NavTreeItem({
   item: WorkspaceNavItem
   renderItemMenu: NavTreeItemMenuRender
 }) {
-  const isActive = item.isDatabase
+  const isDatabaseRouteItem = Boolean(
+    (item.isDatabase || item.isDatabaseView) && item.databaseId,
+  )
+  const isActive = isDatabaseRouteItem
     ? activeDatabaseId === item.databaseId
     : activeWorkspaceId === item.id
   const hasPages = item.pages.length > 0
@@ -119,7 +124,7 @@ function NavTreeItem({
       <Container>
         <div className="group/nav-row relative">
           <Button asChild className={buttonClassName} isActive={isActive}>
-            {item.isDatabase && item.databaseId ? (
+            {isDatabaseRouteItem && item.databaseId ? (
               <Link
                 params={{ databaseId: item.databaseId } as never}
                 title={displayName}
@@ -240,6 +245,7 @@ export function hasActiveDescendant(
   return item.pages.some(
     (page) =>
       (page.isDatabase
+        || page.isDatabaseView
         ? activeDatabaseId === page.databaseId
         : activeWorkspaceId === page.id) ||
       hasActiveDescendant(page, activeDatabaseId, activeWorkspaceId),

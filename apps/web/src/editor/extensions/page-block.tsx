@@ -19,8 +19,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { useWorkspaces } from "@notelab/features/workspaces"
-import { getWorkspaceEmoji } from "@notelab/features/workspaces"
+import {
+  getWorkspaceEmoji,
+  useWorkspace,
+  useWorkspaces,
+} from "@notelab/features/workspaces"
 import { colorWithAlpha } from "@/packages/editor/components/editor/toolbar-data"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database/constants"
 
@@ -56,10 +59,22 @@ function PageBlockView({
       enabled: Boolean(pageId) || isOpen,
     },
   )
-  const page = pageId ? pages.find((workspace) => workspace.id === pageId) : undefined
+  const navPage = pageId
+    ? pages.find((workspace) => workspace.id === pageId)
+    : undefined
+  const shouldFetchPage =
+    Boolean(pageId) && !navPage && !isLoadingPages
+  const { data: fetchedPage, isLoading: isLoadingFetchedPage } = useWorkspace(
+    shouldFetchPage ? pageId : null,
+  )
+  const page = navPage ?? fetchedPage ?? undefined
   const title = page?.name.trim() || "Untitled"
   const emoji = page ? getWorkspaceEmoji(page) : null
-  const isPageLoading = Boolean(pageId) && isLoadingPages && !page
+  const isPageLoading =
+    Boolean(pageId) &&
+    ((isLoadingPages && !navPage) ||
+      (shouldFetchPage && isLoadingFetchedPage && !fetchedPage))
+  const isAccessDenied = Boolean(pageId) && !isPageLoading && !page
   const linkablePages = pages.filter(
     (workspace) => workspace.id !== options.currentPageId
   )
@@ -204,7 +219,7 @@ function PageBlockView({
       data-page-id={pageId ?? undefined}
       data-src={pageId ? "true" : "false"}
     >
-      {pageId && !isPageLoading && !page ? (
+      {isAccessDenied ? (
         <div
           className="page-block-preview text-muted-foreground"
           contentEditable={false}

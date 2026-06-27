@@ -10,6 +10,18 @@ import {
   Type,
 } from "lucide-react"
 
+import {
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerLabel,
+  DropDrawerSeparator,
+  DropDrawerShortcut,
+  DropDrawerSub,
+  DropDrawerSubContent,
+  DropDrawerSubTrigger,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer"
 import { Input } from "@/components/ui/input"
 import {
   slashCommandItems,
@@ -71,14 +83,17 @@ export function DragBlockMenu({
 }) {
   const menuRootRef = useRef<HTMLDivElement | null>(null)
   const [actionsOpen, setActionsOpen] = useState(false)
-  const [activeSubmenu, setActiveSubmenu] = useState<"turnInto" | "color" | null>(
-    null
-  )
   const [search, setSearch] = useState("")
   const gripPointerRef = useRef<{
     moved: boolean
     x: number
     y: number
+  } | null>(null)
+  const suppressGripMenuOpenRef = useRef(false)
+  const gripPointerListenersRef = useRef<{
+    onPointerCancel: (event: PointerEvent) => void
+    onPointerMove: (event: PointerEvent) => void
+    onPointerUp: (event: PointerEvent) => void
   } | null>(null)
   const filteredTurnIntoItems = useMemo(
     () =>
@@ -100,6 +115,21 @@ export function DragBlockMenu({
   }, [onMenuStateChange])
 
   useEffect(() => {
+    return () => {
+      const listeners = gripPointerListenersRef.current
+
+      if (!listeners) {
+        return
+      }
+
+      document.removeEventListener("pointermove", listeners.onPointerMove)
+      document.removeEventListener("pointerup", listeners.onPointerUp)
+      document.removeEventListener("pointercancel", listeners.onPointerCancel)
+      gripPointerListenersRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
     if (!isOpen) {
       return
     }
@@ -112,7 +142,6 @@ export function DragBlockMenu({
         return
       }
 
-      setActiveSubmenu(null)
       onOpenChange(false)
     }
 
@@ -123,26 +152,106 @@ export function DragBlockMenu({
     }
   }, [isOpen, onOpenChange])
 
-  useEffect(() => {
-    if (!actionsOpen) {
+  const handleActionsOpenChange = (open: boolean) => {
+    if (open) {
+      if (!target || suppressGripMenuOpenRef.current) {
+        return
+      }
+
+      onOpenChange(false)
+    } else {
+      setSearch("")
+    }
+
+    setActionsOpen(open)
+  }
+
+  const openGripActionsMenu = () => {
+    if (!target || suppressGripMenuOpenRef.current) {
       return
     }
 
-    const close = () => setActionsOpen(false)
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        close()
+    onOpenChange(false)
+    setActionsOpen(true)
+  }
+
+  const markGripDragInteraction = () => {
+    suppressGripMenuOpenRef.current = true
+    const pointer = gripPointerRef.current
+
+    if (pointer) {
+      pointer.moved = true
+    }
+
+    setActionsOpen(false)
+  }
+
+  const unbindGripPointerTracking = () => {
+    const listeners = gripPointerListenersRef.current
+
+    if (!listeners) {
+      return
+    }
+
+    document.removeEventListener("pointermove", listeners.onPointerMove)
+    document.removeEventListener("pointerup", listeners.onPointerUp)
+    document.removeEventListener("pointercancel", listeners.onPointerCancel)
+    gripPointerListenersRef.current = null
+  }
+
+  const bindGripPointerTracking = () => {
+    unbindGripPointerTracking()
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const pointer = gripPointerRef.current
+
+      if (!pointer) {
+        return
+      }
+
+      const deltaX = Math.abs(event.clientX - pointer.x)
+      const deltaY = Math.abs(event.clientY - pointer.y)
+
+      if (deltaX > 4 || deltaY > 4) {
+        markGripDragInteraction()
       }
     }
 
-    document.addEventListener("mousedown", close)
-    document.addEventListener("keydown", handleKeyDown)
+    const handlePointerUp = (event: PointerEvent) => {
+      if (event.button !== 0) {
+        return
+      }
 
-    return () => {
-      document.removeEventListener("mousedown", close)
-      document.removeEventListener("keydown", handleKeyDown)
+      const pointer = gripPointerRef.current
+
+      if (!pointer) {
+        unbindGripPointerTracking()
+        return
+      }
+
+      window.setTimeout(() => {
+        if (!pointer.moved && !suppressGripMenuOpenRef.current) {
+          openGripActionsMenu()
+        } else if (!pointer.moved) {
+          endPlaneBlockDrag(editor.view)
+        }
+
+        gripPointerRef.current = null
+      }, 0)
+
+      unbindGripPointerTracking()
     }
-  }, [actionsOpen])
+
+    gripPointerListenersRef.current = {
+      onPointerCancel: handlePointerUp,
+      onPointerMove: handlePointerMove,
+      onPointerUp: handlePointerUp,
+    }
+
+    document.addEventListener("pointermove", handlePointerMove)
+    document.addEventListener("pointerup", handlePointerUp)
+    document.addEventListener("pointercancel", handlePointerUp)
+  }
 
   const runTargetCommand = (command: () => void) => {
     if (!target) {
@@ -150,7 +259,7 @@ export function DragBlockMenu({
     }
 
     command()
-    setActionsOpen(false)
+    handleActionsOpenChange(false)
   }
 
   const selectTarget = () => {
@@ -311,8 +420,7 @@ export function DragBlockMenu({
         onClick={(event) => {
           event.preventDefault()
           event.stopPropagation()
-          setActionsOpen(false)
-          setActiveSubmenu(null)
+          handleActionsOpenChange(false)
           onOpenChange(!isOpen)
         }}
         onDragStart={(event) => event.preventDefault()}
@@ -325,234 +433,203 @@ export function DragBlockMenu({
       >
         <Plus />
       </button>
-      <span
-        aria-label="Open block actions"
-        className="drag-handle-grip"
-        draggable
-        onClick={(event) => {
-          if (!target || gripPointerRef.current?.moved) {
-            gripPointerRef.current = null
-            return
-          }
-
-          event.stopPropagation()
-          onOpenChange(false)
-          setActiveSubmenu(null)
-          setActionsOpen(true)
-          gripPointerRef.current = null
-        }}
-        onPointerDown={(event) => {
-          if (event.button !== 0) {
-            return
-          }
-
-          event.stopPropagation()
-          event.nativeEvent.stopImmediatePropagation()
-          gripPointerRef.current = {
-            moved: false,
-            x: event.clientX,
-            y: event.clientY,
-          }
-
-          if (target) {
-            beginActiveBlockDrag(editorId, target)
-          }
-        }}
-        onPointerMove={(event) => {
-          const pointer = gripPointerRef.current
-
-          if (!pointer) {
-            return
-          }
-
-          const deltaX = Math.abs(event.clientX - pointer.x)
-          const deltaY = Math.abs(event.clientY - pointer.y)
-
-          if (deltaX > 4 || deltaY > 4) {
-            pointer.moved = true
-            setActionsOpen(false)
-          }
-        }}
-        onDragStart={(event) => {
-          if (!target) {
-            event.preventDefault()
-            return
-          }
-
-          event.stopPropagation()
-          event.nativeEvent.stopImmediatePropagation()
-          const didStartDrag = startPlaneBlockDrag({
-            editorId,
-            event: event.nativeEvent,
-            target,
-            view: editor.view,
-          })
-
-          if (!didStartDrag) {
-            event.preventDefault()
-            return
-          }
-
-          const pageId = target.node.attrs.pageId
-
-          if (target.node.type.name === "pageBlock" && typeof pageId === "string") {
-            event.dataTransfer.setData(
-              DATABASE_PAGE_DRAG_MIME,
-              JSON.stringify({
-                pageId,
-                title: target.node.textContent || "Untitled",
-              })
-            )
-          }
-        }}
-        onDragEnd={() => endPlaneBlockDrag(editor.view)}
-        onPointerUp={() => {
-          window.setTimeout(() => {
-            if (!gripPointerRef.current?.moved) {
+      <DropDrawer onOpenChange={handleActionsOpenChange} open={actionsOpen}>
+        <div className="drag-handle-grip relative">
+          <DropDrawerTrigger asChild>
+            <span
+              aria-hidden
+              className="absolute inset-0 pointer-events-none"
+              tabIndex={-1}
+            />
+          </DropDrawerTrigger>
+          <span
+            aria-expanded={actionsOpen}
+            aria-haspopup="menu"
+            aria-label="Open block actions"
+            className="absolute inset-0 flex cursor-grab items-center justify-center active:cursor-grabbing"
+            draggable
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            onDragEnd={() => {
               endPlaneBlockDrag(editor.view)
-            }
+              markGripDragInteraction()
+              window.setTimeout(() => {
+                suppressGripMenuOpenRef.current = false
+              }, 300)
+            }}
+            onDragStart={(event) => {
+              if (!target) {
+                event.preventDefault()
+                return
+              }
 
-            gripPointerRef.current = null
-          }, 0)
-        }}
-        role="button"
-        tabIndex={0}
-        title="Block actions"
-      >
-        <GripVertical />
-      </span>
-      {actionsOpen ? (
-        <div
-          className="absolute left-full top-0 z-50 ml-2 w-72 rounded-lg bg-popover p-2 text-popover-foreground shadow-md ring-1 ring-foreground/10"
-          onMouseDown={(event) => event.stopPropagation()}
+              event.stopPropagation()
+              event.nativeEvent.stopImmediatePropagation()
+              const didStartDrag = startPlaneBlockDrag({
+                editorId,
+                event: event.nativeEvent,
+                target,
+                view: editor.view,
+              })
+
+              if (!didStartDrag) {
+                event.preventDefault()
+                return
+              }
+
+              markGripDragInteraction()
+
+              const pageId = target.node.attrs.pageId
+
+              if (
+                target.node.type.name === "pageBlock" &&
+                typeof pageId === "string"
+              ) {
+                event.dataTransfer.setData(
+                  DATABASE_PAGE_DRAG_MIME,
+                  JSON.stringify({
+                    pageId,
+                    title: target.node.textContent || "Untitled",
+                  })
+                )
+              }
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") {
+                return
+              }
+
+              event.preventDefault()
+              openGripActionsMenu()
+            }}
+            onPointerDown={(event) => {
+              if (event.button !== 0) {
+                return
+              }
+
+              event.stopPropagation()
+              event.nativeEvent.stopImmediatePropagation()
+              suppressGripMenuOpenRef.current = false
+              gripPointerRef.current = {
+                moved: false,
+                x: event.clientX,
+                y: event.clientY,
+              }
+              bindGripPointerTracking()
+
+              if (target) {
+                beginActiveBlockDrag(editorId, target)
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            title="Block actions"
+          >
+            <GripVertical />
+          </span>
+        </div>
+        <DropDrawerContent
+          align="start"
+          className="w-72"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          side="right"
+          sideOffset={8}
         >
-          <Input
-            autoComplete="off"
-            className="mb-2 h-9"
-            onChange={(event) => setSearch(event.target.value)}
-            onKeyDown={(event) => event.stopPropagation()}
-            placeholder="Search actions..."
-            value={search}
-          />
-          <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
-            {isPageBlock ? "Page" : "Block"}
+          <div className="flex items-center gap-1.5 px-1.5 py-1">
+            <Input
+              aria-label="Search block actions"
+              autoComplete="off"
+              className="h-auto rounded-none border-0 bg-transparent px-0 py-0 text-sm font-medium shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => event.stopPropagation()}
+              placeholder="Search actions..."
+              value={search}
+            />
           </div>
-          <div className="grid gap-0.5">
-            {!isPageBlock ? (
-              <div className="relative" onMouseEnter={() => setActiveSubmenu("turnInto")}>
-                <button
-                  className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
-                  type="button"
-                >
-                  <Type />
-                  <span>Turn into</span>
-                  <span className="ml-auto text-muted-foreground">›</span>
-                </button>
-                {activeSubmenu === "turnInto" ? (
-                  <div className="absolute left-full top-0 z-50 ml-2 w-52 rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10">
-                  {filteredTurnIntoItems.map((item) => {
+          <DropDrawerSeparator />
+          <DropDrawerLabel>{isPageBlock ? "Page" : "Block"}</DropDrawerLabel>
+          {!isPageBlock ? (
+            <DropDrawerSub>
+              <DropDrawerSubTrigger>
+                <Type />
+                <span>Turn into</span>
+              </DropDrawerSubTrigger>
+              <DropDrawerSubContent>
+                {filteredTurnIntoItems.length > 0 ? (
+                  filteredTurnIntoItems.map((item) => {
                     const Icon = item.icon
 
                     return (
-                      <button
-                        className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
+                      <DropDrawerItem
                         key={item.title}
-                        onClick={() => turnTargetInto(item)}
-                        type="button"
+                        onSelect={() => turnTargetInto(item)}
                       >
                         <Icon />
                         <span>{item.title}</span>
-                      </button>
+                      </DropDrawerItem>
                     )
-                  })}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            <div className="relative" onMouseEnter={() => setActiveSubmenu("color")}>
-              <button
-                className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
-                type="button"
-              >
-                <Palette />
-                <span>Color</span>
-                <span className="ml-auto text-muted-foreground">›</span>
-              </button>
-              {activeSubmenu === "color" ? (
-                <div className="absolute left-full top-0 z-50 ml-2 w-56 rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10">
-                <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
-                  Text color
-                </div>
-                {colorTokens.map((token) => (
-                  <button
-                    className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
-                    key={`text-${token.name}`}
-                    onClick={() => applyColor(token.value, "text")}
-                    type="button"
+                  })
+                ) : (
+                  <DropDrawerItem disabled>No matching block types.</DropDrawerItem>
+                )}
+              </DropDrawerSubContent>
+            </DropDrawerSub>
+          ) : null}
+          <DropDrawerSub>
+            <DropDrawerSubTrigger>
+              <Palette />
+              <span>Color</span>
+            </DropDrawerSubTrigger>
+            <DropDrawerSubContent>
+              <DropDrawerLabel>Text color</DropDrawerLabel>
+              {colorTokens.map((token) => (
+                <DropDrawerItem
+                  key={`text-${token.name}`}
+                  onSelect={() => applyColor(token.value, "text")}
+                >
+                  <span
+                    className={`size-4 rounded-sm border bg-card ${token.textClass}`}
                   >
-                    <span className={`size-4 rounded-sm border bg-card ${token.textClass}`}>
-                      A
-                    </span>
-                    <span>{token.name} text</span>
-                  </button>
-                ))}
-                <div className="-mx-1 my-1 h-px bg-border" />
-                <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
-                  Background color
-                </div>
-                {colorTokens.map((token) => (
-                  <button
-                    className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
-                    key={`background-${token.name}`}
-                    onClick={() => applyColor(token.value, "background")}
-                    type="button"
-                  >
-                    <span
-                      className={`size-4 rounded-sm border ${token.backgroundClass}`}
-                    />
-                    <span>{token.name} background</span>
-                  </button>
-                ))}
-              </div>
-              ) : null}
-            </div>
-          </div>
-          <div className="-mx-1 my-1 h-px bg-border" />
-          <div className="grid gap-0.5">
-            <button
-              className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
-              onClick={copyTarget}
-              type="button"
-            >
-              <Clipboard />
-              <span>Copy</span>
-              <span className="ml-auto text-xs tracking-widest text-muted-foreground">
-                ⌘C
-              </span>
-            </button>
-            <button
-              className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent"
-              onClick={duplicateTarget}
-              type="button"
-            >
-              <Copy />
-              <span>Duplicate</span>
-              <span className="ml-auto text-xs tracking-widest text-muted-foreground">
-                ⌘D
-              </span>
-            </button>
-          </div>
-          <div className="-mx-1 my-1 h-px bg-border" />
-          <button
-            className="flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm text-destructive outline-none hover:bg-destructive/10 focus-visible:bg-destructive/10"
-            onClick={deleteTarget}
-            type="button"
-          >
+                    A
+                  </span>
+                  <span>{token.name} text</span>
+                </DropDrawerItem>
+              ))}
+              <DropDrawerSeparator />
+              <DropDrawerLabel>Background color</DropDrawerLabel>
+              {colorTokens.map((token) => (
+                <DropDrawerItem
+                  key={`background-${token.name}`}
+                  onSelect={() => applyColor(token.value, "background")}
+                >
+                  <span
+                    className={`size-4 rounded-sm border ${token.backgroundClass}`}
+                  />
+                  <span>{token.name} background</span>
+                </DropDrawerItem>
+              ))}
+            </DropDrawerSubContent>
+          </DropDrawerSub>
+          <DropDrawerSeparator />
+          <DropDrawerItem onSelect={copyTarget}>
+            <Clipboard />
+            <span>Copy</span>
+            <DropDrawerShortcut>⌘C</DropDrawerShortcut>
+          </DropDrawerItem>
+          <DropDrawerItem onSelect={duplicateTarget}>
+            <Copy />
+            <span>Duplicate</span>
+            <DropDrawerShortcut>⌘D</DropDrawerShortcut>
+          </DropDrawerItem>
+          <DropDrawerSeparator />
+          <DropDrawerItem onSelect={deleteTarget} variant="destructive">
             <Trash2 />
             <span>Delete</span>
-          </button>
-        </div>
-      ) : null}
+          </DropDrawerItem>
+        </DropDrawerContent>
+      </DropDrawer>
       {isOpen && target ? (
         <div
           className="plus-block-menu slash-menu-shell"

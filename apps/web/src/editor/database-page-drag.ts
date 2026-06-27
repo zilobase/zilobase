@@ -2,6 +2,7 @@ import type { EditorView } from "@tiptap/pm/view"
 import {
   deleteDraggedEditorBlockSource,
   getDraggedEditorBlockPayload,
+  getEditorInsertDropTarget,
   type BlockDragPayload,
 } from "@/packages/editor/components/editor/block-drag"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
@@ -16,36 +17,47 @@ const parsePageId = (payload: string) => {
   }
 }
 
-const insertPageBlockAt = (view: EditorView, event: DragEvent, pageId: string) => {
-  const coords = view.posAtCoords({ left: event.clientX, top: event.clientY })
+const insertPageBlockAt = (
+  view: EditorView,
+  event: DragEvent,
+  pageId: string,
+  pos: number,
+  onEmbedPage?: (pageId: string) => void | Promise<void>,
+) => {
   const pageBlockType = view.state.schema.nodes.pageBlock
-  if (!coords || !pageBlockType) return false
+
+  if (!pageBlockType) {
+    return false
+  }
 
   const pageBlock = pageBlockType.create({ pageId })
-  const tryInsert = (pos: number) => {
+
+  try {
     view.dispatch(view.state.tr.insert(pos, pageBlock).scrollIntoView())
     view.focus()
     event.preventDefault()
+    void Promise.resolve(onEmbedPage?.(pageId))
     return true
-  }
-
-  try {
-    return tryInsert(coords.pos)
   } catch {
-    const $pos = view.state.doc.resolve(coords.pos)
-    try {
-      return tryInsert($pos.depth > 0 ? $pos.after(1) : coords.pos)
-    } catch {
-      return false
-    }
+    return false
   }
 }
 
-export const insertDraggedDatabasePage = (view: EditorView, event: DragEvent) => {
+export const insertDraggedDatabasePage = (
+  view: EditorView,
+  event: DragEvent,
+  onEmbedPage?: (pageId: string) => void | Promise<void>,
+) => {
   const payload = event.dataTransfer?.getData(DATABASE_PAGE_DRAG_MIME)
   if (!payload) return false
+
   const pageId = parsePageId(payload)
-  return pageId ? insertPageBlockAt(view, event, pageId) : false
+  if (!pageId) return false
+
+  const target = getEditorInsertDropTarget(view, event)
+  if (!target) return false
+
+  return insertPageBlockAt(view, event, pageId, target.pos, onEmbedPage)
 }
 
 export const getDraggedDatabasePagePayload = (
