@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "test": "node test/run-tests.mjs",
     "preview": "vite preview",
-    "deploy": "wrangler deploy"
+    "deploy": "npm run build && npx --prefix ../../../notelab-server wrangler deploy"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -30,8 +30,6 @@
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@tiptap/extension-character-count": "^3.23.6",
-    "@tiptap/extension-collaboration": "^3.23.6",
-    "@tiptap/extension-collaboration-caret": "^3.23.6",
     "@tiptap/extension-details": "^3.23.6",
     "@tiptap/extension-link": "^3.23.6",
     "@tiptap/extension-placeholder": "^3.23.6",
@@ -50,7 +48,6 @@
     "@tiptap/react": "^3.23.6",
     "@tiptap/starter-kit": "^3.23.6",
     "@tiptap/suggestion": "^3.23.6",
-    "@tiptap/y-tiptap": "^3.0.5",
     "@xyflow/react": "^12.11.0",
     "agents": "^0.12.1",
     "ai": "^6.0.193",
@@ -85,8 +82,6 @@
     "tw-animate-css": "^1.4.0",
     "use-stick-to-bottom": "^1.1.4",
     "vaul": "^1.1.2",
-    "y-websocket": "^3.0.0",
-    "yjs": "^13.6.31",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
