@@ -22,14 +22,14 @@ import {
 } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { useSession } from "@notelab/features/auth"
-import { useAcceptOrganizationInvitation } from "@notelab/features/organizations"
+import { useAcceptWorkspaceInvitation } from "@notelab/features/workspaces"
 import { getApiErrorMessage } from "@/lib/api"
 
 export default function AcceptInvitationPage() {
   const navigate = useNavigate()
   const invitationId = new URLSearchParams(window.location.search).get("id")
   const { data: session, isLoading: isLoadingSession } = useSession()
-  const acceptInvitation = useAcceptOrganizationInvitation()
+  const acceptInvitation = useAcceptWorkspaceInvitation()
   const isSignedIn = Boolean(session?.user)
   const hasAccepted = acceptInvitation.isSuccess
 
@@ -151,7 +151,7 @@ function getDescription({
   }
 
   if (hasAccepted) {
-    return "You have joined the organization."
+    return "You have joined the workspace."
   }
 
   if (isSignedIn) {

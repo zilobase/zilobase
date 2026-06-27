@@ -47,23 +47,23 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/components/ui/spinner"
 import { useSession } from "@notelab/features/auth"
 import {
-  useInviteOrganizationMember,
-  useOrganizationAccessTargets,
-  useOrganizationInvitations,
-} from "@notelab/features/organizations"
+  useInviteWorkspaceMember,
+  useWorkspaceAccessTargets,
+  useWorkspaceInvitations,
+} from "@notelab/features/workspaces"
 import type {
-  OrganizationInvitation,
-  OrganizationMember,
-  OrganizationRole,
-} from "@notelab/features/organizations"
+  WorkspaceInvitation,
+  WorkspaceMember,
+  WorkspaceRole,
+} from "@notelab/features/workspaces"
 import { useAppStore } from "@/stores/app-store"
 
 export default function TeamSettingsPage() {
-  const activeOrganizationId = useActiveOrganizationId()
+  const activeWorkspaceId = useActiveWorkspaceId()
   const { data: accessTargets, isLoading: isLoadingAccessTargets } =
-    useOrganizationAccessTargets(activeOrganizationId)
+    useWorkspaceAccessTargets(activeWorkspaceId)
   const { data: invitations, isLoading: isLoadingInvitations } =
-    useOrganizationInvitations(activeOrganizationId)
+    useWorkspaceInvitations(activeWorkspaceId)
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">
@@ -73,13 +73,13 @@ export default function TeamSettingsPage() {
       />
 
       <div className="mx-auto grid w-full max-w-4xl gap-4">
-        <InviteMemberCard organizationId={activeOrganizationId} />
+        <InviteMemberCard workspaceId={activeWorkspaceId} />
 
         <Card>
           <CardHeader>
             <CardTitle>Members</CardTitle>
             <CardDescription>
-              People with access to this organization.
+              People with access to this workspace.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -112,22 +112,22 @@ export default function TeamSettingsPage() {
 }
 
 function InviteMemberCard({
-  organizationId,
+  workspaceId,
 }: {
-  organizationId: string | null | undefined
+  workspaceId: string | null | undefined
 }) {
-  const inviteMember = useInviteOrganizationMember()
+  const inviteMember = useInviteWorkspaceMember()
   const [email, setEmail] = React.useState("")
-  const [role, setRole] = React.useState<OrganizationRole>("member")
+  const [role, setRole] = React.useState<WorkspaceRole>("member")
   const [emailError, setEmailError] = React.useState("")
   const trimmedEmail = email.trim()
-  const canSubmit = Boolean(organizationId && trimmedEmail)
+  const canSubmit = Boolean(workspaceId && trimmedEmail)
 
   const invite = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (!organizationId) {
-      toast.error("Select an organization before inviting a teammate.")
+    if (!workspaceId) {
+      toast.error("Select an workspace before inviting a teammate.")
       return
     }
 
@@ -140,7 +140,7 @@ function InviteMemberCard({
     inviteMember.mutate(
       {
         email: trimmedEmail,
-        organizationId,
+        workspaceId,
         role,
       },
       {
@@ -173,7 +173,7 @@ function InviteMemberCard({
               <FieldLabel htmlFor="team-invite-email">Email</FieldLabel>
               <Input
                 autoComplete="email"
-                disabled={!organizationId || inviteMember.isPending}
+                disabled={!workspaceId || inviteMember.isPending}
                 id="team-invite-email"
                 onChange={(event) => {
                   setEmail(event.target.value)
@@ -191,8 +191,8 @@ function InviteMemberCard({
             <Field>
               <FieldLabel>Role</FieldLabel>
               <Select
-                disabled={!organizationId || inviteMember.isPending}
-                onValueChange={(value) => setRole(value as OrganizationRole)}
+                disabled={!workspaceId || inviteMember.isPending}
+                onValueChange={(value) => setRole(value as WorkspaceRole)}
                 value={role}
               >
                 <SelectTrigger className="w-full">
@@ -204,7 +204,7 @@ function InviteMemberCard({
                 </SelectContent>
               </Select>
               <FieldDescription>
-                Admins can manage organization settings and invitations.
+                Admins can manage workspace settings and invitations.
               </FieldDescription>
             </Field>
           </FieldGroup>
@@ -228,7 +228,7 @@ function MemberList({
   members,
 }: {
   isLoading: boolean
-  members: OrganizationMember[]
+  members: WorkspaceMember[]
 }) {
   if (isLoading) {
     return <RowsSkeleton />
@@ -263,7 +263,7 @@ function InvitationList({
   invitations,
   isLoading,
 }: {
-  invitations: OrganizationInvitation[]
+  invitations: WorkspaceInvitation[]
   isLoading: boolean
 }) {
   if (isLoading) {
@@ -295,7 +295,7 @@ function InvitationList({
   )
 }
 
-function MemberRow({ member }: { member: OrganizationMember }) {
+function MemberRow({ member }: { member: WorkspaceMember }) {
   return (
     <Item className="min-h-12" variant="outline">
       <ItemMedia className="size-8 rounded-lg bg-muted text-xs font-medium uppercase">
@@ -315,7 +315,7 @@ function MemberRow({ member }: { member: OrganizationMember }) {
 function InvitationRow({
   invitation,
 }: {
-  invitation: OrganizationInvitation
+  invitation: WorkspaceInvitation
 }) {
   return (
     <Item className="min-h-12" variant="outline">
@@ -364,13 +364,13 @@ function RowsSkeleton() {
   )
 }
 
-function useActiveOrganizationId() {
+function useActiveWorkspaceId() {
   const { data: sessionData } = useSession()
-  const storedActiveOrganizationId = useAppStore(
-    (state) => state.activeOrganizationId,
+  const storedActiveWorkspaceId = useAppStore(
+    (state) => state.activeWorkspaceId,
   )
 
-  return sessionData?.session?.activeOrganizationId ?? storedActiveOrganizationId
+  return sessionData?.session?.activeWorkspaceId ?? storedActiveWorkspaceId
 }
 
 function isValidEmail(value: string) {

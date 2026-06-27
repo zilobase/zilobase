@@ -13,9 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import type {
   NotelabAiMode,
-  NotelabAiWorkspaceSummary,
-  Workspace,
-} from "@notelab/features/workspaces"
+  NotelabAiPageSummary,
+  Page,
+} from "@notelab/features/pages"
 
 import { NotelabAiCreateMenu } from "./notelab-ai-create-menu"
 import { NotelabAiItem, NotelabAiItemList } from "./notelab-ai-item"
@@ -35,7 +35,7 @@ const sectionConfig: Record<
     description: "Pages the AI reads as persistent context.",
     emptyTitle: "No instructions",
     emptyDescription:
-      "Create a new instruction or add an existing workspace page.",
+      "Create a new instruction or add an existing page.",
     icon: <BookOpenIcon />,
   },
   skill: {
@@ -43,7 +43,7 @@ const sectionConfig: Record<
     description: "Pages the AI can invoke as specialized capabilities.",
     emptyTitle: "No skills",
     emptyDescription:
-      "Create a new skill or add an existing workspace page.",
+      "Create a new skill or add an existing page.",
     icon: <WandSparklesIcon />,
   },
 }
@@ -52,17 +52,17 @@ export function NotelabAiSection({
   isLoading,
   items,
   mode,
-  organizationId,
-  workspacesById,
+  workspaceId,
+  pagesById,
 }: {
   isLoading: boolean
-  items: NotelabAiWorkspaceSummary[]
+  items: NotelabAiPageSummary[]
   mode: NotelabAiMode
-  organizationId: string | null
-  workspacesById: Map<string, Workspace>
+  workspaceId: string | null
+  pagesById: Map<string, Page>
 }) {
   const config = sectionConfig[mode]
-  const existingWorkspaceIds = items.map((workspace) => workspace.id)
+  const existingPageIds = items.map((page) => page.id)
   const isEmpty = items.length === 0
   const showList = !isLoading && !isEmpty
 
@@ -77,9 +77,9 @@ export function NotelabAiSection({
         </div>
         {!isLoading ? (
           <NotelabAiCreateMenu
-            existingWorkspaceIds={existingWorkspaceIds}
+            existingPageIds={existingPageIds}
             mode={mode}
-            organizationId={organizationId}
+            workspaceId={workspaceId}
           />
         ) : null}
       </div>
@@ -98,14 +98,14 @@ export function NotelabAiSection({
             </Empty>
           ) : (
             <NotelabAiItemList>
-              {items.map((workspace, index) => (
+              {items.map((page, index) => (
                 <NotelabAiItem
-                  key={workspace.id}
+                  key={page.id}
                   isFirst={index === 0}
                   isLast={index === items.length - 1}
                   mode={mode}
-                  workspace={workspace}
-                  workspaceRecord={workspacesById.get(workspace.id)}
+                  page={page}
+                  pageRecord={pagesById.get(page.id)}
                 />
               ))}
             </NotelabAiItemList>

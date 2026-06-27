@@ -77,8 +77,8 @@ import {
   useUpdateApiKey,
 } from "@notelab/features/api-keys"
 import type { ApiKeyRecord, CreatedApiKeyRecord } from "@notelab/features/api-keys"
-import { useActiveOrganizationId } from "@notelab/features/integrations"
-import { useOrganizations } from "@notelab/features/organizations"
+import { useActiveWorkspaceId } from "@notelab/features/integrations"
+import { useWorkspaces } from "@notelab/features/workspaces"
 import { getApiErrorMessage } from "@/lib/api"
 
 const expirationOptions = [
@@ -89,21 +89,21 @@ const expirationOptions = [
 ] as const
 
 export default function ApiKeysSettingsPage() {
-  const activeOrganizationId = useActiveOrganizationId()
-  const { data: organizations = [] } = useOrganizations()
-  const [selectedOrganizationId, setSelectedOrganizationId] = React.useState<
+  const activeWorkspaceId = useActiveWorkspaceId()
+  const { data: workspaces = [] } = useWorkspaces()
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState<
     string | null
-  >(activeOrganizationId ?? null)
+  >(activeWorkspaceId ?? null)
 
   React.useEffect(() => {
-    if (!selectedOrganizationId && activeOrganizationId) {
-      setSelectedOrganizationId(activeOrganizationId)
+    if (!selectedWorkspaceId && activeWorkspaceId) {
+      setSelectedWorkspaceId(activeWorkspaceId)
     }
-  }, [activeOrganizationId, selectedOrganizationId])
+  }, [activeWorkspaceId, selectedWorkspaceId])
 
-  const apiKeys = useApiKeys(selectedOrganizationId)
-  const selectedOrganization = organizations.find(
-    (organization) => organization.id === selectedOrganizationId,
+  const apiKeys = useApiKeys(selectedWorkspaceId)
+  const selectedWorkspace = workspaces.find(
+    (workspace) => workspace.id === selectedWorkspaceId,
   )
 
   return (
@@ -119,42 +119,42 @@ export default function ApiKeysSettingsPage() {
             <div className="space-y-1">
               <CardTitle>Keys</CardTitle>
               <CardDescription>
-                Keys inherit your current permissions in the selected organization.
+                Keys inherit your current permissions in the selected workspace.
               </CardDescription>
             </div>
             <CreateApiKeyDialog
-              disabled={!selectedOrganizationId}
-              organizationId={selectedOrganizationId}
+              disabled={!selectedWorkspaceId}
+              workspaceId={selectedWorkspaceId}
             />
           </CardHeader>
           <CardContent className="grid gap-4">
             <Field>
-              <FieldLabel>Organization</FieldLabel>
+              <FieldLabel>Workspace</FieldLabel>
               <Select
-                disabled={organizations.length === 0}
-                onValueChange={setSelectedOrganizationId}
-                value={selectedOrganizationId ?? undefined}
+                disabled={workspaces.length === 0}
+                onValueChange={setSelectedWorkspaceId}
+                value={selectedWorkspaceId ?? undefined}
               >
                 <SelectTrigger className="w-full sm:max-w-sm">
-                  <SelectValue placeholder="Select organization" />
+                  <SelectValue placeholder="Select workspace" />
                 </SelectTrigger>
                 <SelectContent>
-                  {organizations.map((organization) => (
-                    <SelectItem key={organization.id} value={organization.id}>
-                      {organization.name}
+                  {workspaces.map((workspace) => (
+                    <SelectItem key={workspace.id} value={workspace.id}>
+                      {workspace.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <FieldDescription>
-                External requests made with a key stay pinned to this organization.
+                External requests made with a key stay pinned to this workspace.
               </FieldDescription>
             </Field>
 
             <ApiKeyList
               isLoading={apiKeys.isLoading}
               keys={apiKeys.data?.keys ?? []}
-              organizationName={selectedOrganization?.name ?? "this organization"}
+              workspaceName={selectedWorkspace?.name ?? "this workspace"}
             />
           </CardContent>
         </Card>
@@ -165,10 +165,10 @@ export default function ApiKeysSettingsPage() {
 
 function CreateApiKeyDialog({
   disabled,
-  organizationId,
+  workspaceId,
 }: {
   disabled: boolean
-  organizationId: string | null
+  workspaceId: string | null
 }) {
   const createApiKey = useCreateApiKey()
   const [open, setOpen] = React.useState(false)
@@ -182,8 +182,8 @@ function CreateApiKeyDialog({
   const createKey = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (!organizationId) {
-      toast.error("Select an organization before creating a key.")
+    if (!workspaceId) {
+      toast.error("Select an workspace before creating a key.")
       return
     }
 
@@ -191,7 +191,7 @@ function CreateApiKeyDialog({
       {
         expiresIn: expiration === "none" ? null : Number(expiration),
         name: trimmedName,
-        organizationId,
+        workspaceId,
       },
       {
         onSuccess: (result) => {
@@ -308,11 +308,11 @@ function CreatedKeyPanel({ apiKey }: { apiKey: CreatedApiKeyRecord }) {
 function ApiKeyList({
   isLoading,
   keys,
-  organizationName,
+  workspaceName,
 }: {
   isLoading: boolean
   keys: ApiKeyRecord[]
-  organizationName: string
+  workspaceName: string
 }) {
   if (isLoading) {
     return <RowsSkeleton />
@@ -327,7 +327,7 @@ function ApiKeyList({
           </EmptyMedia>
           <EmptyTitle>No API keys</EmptyTitle>
           <EmptyDescription>
-            Create a key to access {organizationName} from external services.
+            Create a key to access {workspaceName} from external services.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -353,7 +353,7 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
   const isBusy = updateApiKey.isPending || deleteApiKey.isPending
 
   const toggleEnabled = () => {
-    if (!apiKey.organizationId) {
+    if (!apiKey.workspaceId) {
       return
     }
 
@@ -361,7 +361,7 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
       {
         enabled: !apiKey.enabled,
         id: apiKey.id,
-        organizationId: apiKey.organizationId,
+        workspaceId: apiKey.workspaceId,
       },
       {
         onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -370,14 +370,14 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
   }
 
   const revoke = () => {
-    if (!apiKey.organizationId) {
+    if (!apiKey.workspaceId) {
       return
     }
 
     deleteApiKey.mutate(
       {
         id: apiKey.id,
-        organizationId: apiKey.organizationId,
+        workspaceId: apiKey.workspaceId,
       },
       {
         onSuccess: () => {

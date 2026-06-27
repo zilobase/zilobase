@@ -165,7 +165,7 @@ function ProfileDetailsCard({
               value={email}
             />
             <FieldDescription>
-              This address is used for sign-in and workspace invitations.
+              This address is used for sign-in and page invitations.
             </FieldDescription>
             <FieldError>{error}</FieldError>
           </Field>

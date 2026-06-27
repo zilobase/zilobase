@@ -22,31 +22,31 @@ export type NotelabAuthClient = {
   requestEmailVerificationOtp: (email: string) => Promise<{ success: boolean }>
   verifyEmailOtp: (input: VerifyEmailOtpInput) => Promise<{ user: unknown }>
   signOut: () => Promise<unknown>
-  createOrganization: <TOrganization>(input: {
+  createWorkspace: <TWorkspace>(input: {
     name: string
     slug: string
-  }) => Promise<TOrganization>
-  setActiveOrganization: (organizationId: string) => Promise<unknown>
-  inviteOrganizationMember: (input: {
+  }) => Promise<TWorkspace>
+  setActiveWorkspace: (workspaceId: string) => Promise<unknown>
+  inviteWorkspaceMember: (input: {
     email: string
-    organizationId: string
+    workspaceId: string
     role: string
   }) => Promise<unknown>
-  acceptOrganizationInvitation: <TResponse>(input: {
+  acceptWorkspaceInvitation: <TResponse>(input: {
     invitationId: string
   }) => Promise<TResponse>
-  listOrganizations: <TOrganization>() => Promise<TOrganization[]>
-  listOrganizationInvitations: <TInvitation>(
-    organizationId: string,
+  listWorkspaces: <TWorkspace>() => Promise<TWorkspace[]>
+  listWorkspaceInvitations: <TInvitation>(
+    workspaceId: string,
   ) => Promise<TInvitation[]>
 }
 
 export type NotelabFeaturesConfig = {
   apiFetch: ApiFetcher
   auth: NotelabAuthClient
-  preferredActiveOrganizationId?: string | null
+  preferredActiveWorkspaceId?: string | null
   queryClient: QueryClient
-  setPreferredActiveOrganizationId?: (organizationId: string | null) => void
+  setPreferredActiveWorkspaceId?: (workspaceId: string | null) => void
 }
 
 const NotelabFeaturesContext = createContext<NotelabFeaturesConfig | null>(null)

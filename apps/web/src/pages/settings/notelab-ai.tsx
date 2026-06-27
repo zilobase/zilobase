@@ -1,45 +1,45 @@
 import * as React from "react"
 
 import { SettingsHeader } from "@/components/settings-header"
-import { useActiveOrganizationId } from "@notelab/features/integrations"
+import { useActiveWorkspaceId } from "@notelab/features/integrations"
 import {
-  useNotelabAiWorkspaces,
-  useWorkspaces,
-} from "@notelab/features/workspaces"
+  useNotelabAiPages,
+  usePages,
+} from "@notelab/features/pages"
 
 import { NotelabAiSection } from "./notelab-ai/components/notelab-ai-section"
 
 export default function NotelabAiSettingsPage() {
-  const organizationId = useActiveOrganizationId()
-  const { data: aiWorkspaces = [], isLoading } =
-    useNotelabAiWorkspaces(organizationId)
-  const { data: workspaces = [] } = useWorkspaces(organizationId)
-  const workspacesById = React.useMemo(
-    () => new Map(workspaces.map((workspace) => [workspace.id, workspace])),
-    [workspaces],
+  const workspaceId = useActiveWorkspaceId()
+  const { data: aiPages = [], isLoading } =
+    useNotelabAiPages(workspaceId)
+  const { data: pages = [] } = usePages(workspaceId)
+  const pagesById = React.useMemo(
+    () => new Map(pages.map((page) => [page.id, page])),
+    [pages],
   )
 
   const instructions = React.useMemo(
     () =>
-      aiWorkspaces.filter(
-        (workspace) => workspace.metadata.notelabai === "instruction",
+      aiPages.filter(
+        (page) => page.metadata.notelabai === "instruction",
       ),
-    [aiWorkspaces],
+    [aiPages],
   )
 
   const skills = React.useMemo(
     () =>
-      aiWorkspaces.filter(
-        (workspace) => workspace.metadata.notelabai === "skill",
+      aiPages.filter(
+        (page) => page.metadata.notelabai === "skill",
       ),
-    [aiWorkspaces],
+    [aiPages],
   )
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">
       <SettingsHeader
         title="Notelab AI"
-        description="Manage workspace pages used as AI instructions and skills."
+        description="Manage pages used as AI instructions and skills."
       />
 
       <div className="mx-auto grid w-full max-w-4xl gap-4">
@@ -47,15 +47,15 @@ export default function NotelabAiSettingsPage() {
           isLoading={isLoading}
           items={instructions}
           mode="instruction"
-          organizationId={organizationId ?? null}
-          workspacesById={workspacesById}
+          workspaceId={workspaceId ?? null}
+          pagesById={pagesById}
         />
         <NotelabAiSection
           isLoading={isLoading}
           items={skills}
           mode="skill"
-          organizationId={organizationId ?? null}
-          workspacesById={workspacesById}
+          workspaceId={workspaceId ?? null}
+          pagesById={pagesById}
         />
       </div>
     </main>

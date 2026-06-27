@@ -13,17 +13,17 @@ import {
 import { Input } from "@/components/ui/input"
 
 import { getApiErrorMessage } from "@/lib/api"
-import { WorkspacePageIcon } from "@/lib/workspace-icon"
+import { PageIcon } from "@/lib/page-icon"
 import { useNotelabFeatures } from "@notelab/features"
 import {
   readParentItemId,
-  useCreateWorkspace,
-  useUpdateWorkspace,
-  useWorkspaces,
-  workspaceQueryKey,
+  useCreatePage,
+  useUpdatePage,
+  usePages,
+  pageQueryKey,
   type NotelabAiMode,
-  type Workspace,
-} from "@notelab/features/workspaces"
+  type Page,
+} from "@notelab/features/pages"
 
 const modeConfig: Record<
   NotelabAiMode,
@@ -50,16 +50,16 @@ type LinkablePageOption = {
   path: string
   searchText: string
   value: string
-  workspace: Workspace
+  page: Page
 }
 
-function buildWorkspacePath(
-  workspacesById: Map<string, Workspace>,
-  workspaceId: string,
+function buildPagePath(
+  pagesById: Map<string, Page>,
+  pageId: string,
 ) {
   const parts: string[] = []
   const visited = new Set<string>()
-  let current = workspacesById.get(workspaceId)
+  let current = pagesById.get(pageId)
 
   while (current) {
     if (visited.has(current.id)) {
@@ -75,59 +75,59 @@ function buildWorkspacePath(
       break
     }
 
-    current = workspacesById.get(parentItemId)
+    current = pagesById.get(parentItemId)
   }
 
   return parts.join(" / ")
 }
 
 function buildLinkablePageOptions(
-  workspaces: Workspace[],
-  excludedWorkspaceIds: Set<string>,
+  pages: Page[],
+  excludedPageIds: Set<string>,
 ) {
-  const workspacesById = new Map(workspaces.map((workspace) => [workspace.id, workspace]))
+  const pagesById = new Map(pages.map((page) => [page.id, page]))
 
-  return workspaces
-    .filter((workspace) => !excludedWorkspaceIds.has(workspace.id))
-    .map<LinkablePageOption>((workspace) => {
-      const label = workspace.name.trim() || "Untitled"
-      const path = buildWorkspacePath(workspacesById, workspace.id)
+  return pages
+    .filter((page) => !excludedPageIds.has(page.id))
+    .map<LinkablePageOption>((page) => {
+      const label = page.name.trim() || "Untitled"
+      const path = buildPagePath(pagesById, page.id)
 
       return {
         label,
         path,
         searchText: `${label} ${path}`.trim(),
-        value: workspace.id,
-        workspace,
+        value: page.id,
+        page,
       }
     })
 }
 
 export function NotelabAiCreateMenu({
-  existingWorkspaceIds,
+  existingPageIds,
   mode,
-  organizationId,
+  workspaceId,
 }: {
-  existingWorkspaceIds: string[]
+  existingPageIds: string[]
   mode: NotelabAiMode
-  organizationId: string | null
+  workspaceId: string | null
 }) {
   const navigate = useNavigate()
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const createWorkspace = useCreateWorkspace()
-  const updateWorkspace = useUpdateWorkspace()
-  const { data: workspaces = [], isLoading: isLoadingWorkspaces } =
-    useWorkspaces(organizationId)
+  const createPage = useCreatePage()
+  const updatePage = useUpdatePage()
+  const { data: pages = [], isLoading: isLoadingPages } =
+    usePages(workspaceId)
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const config = modeConfig[mode]
   const excludedIds = React.useMemo(
-    () => new Set(existingWorkspaceIds),
-    [existingWorkspaceIds],
+    () => new Set(existingPageIds),
+    [existingPageIds],
   )
   const pageOptions = React.useMemo(
-    () => buildLinkablePageOptions(workspaces, excludedIds),
-    [excludedIds, workspaces],
+    () => buildLinkablePageOptions(pages, excludedIds),
+    [excludedIds, pages],
   )
   const normalizedQuery = query.trim().toLowerCase()
   const filteredPageOptions = React.useMemo(() => {
@@ -139,7 +139,7 @@ export function NotelabAiCreateMenu({
       option.searchText.toLowerCase().includes(normalizedQuery),
     )
   }, [normalizedQuery, pageOptions])
-  const isBusy = createWorkspace.isPending || updateWorkspace.isPending
+  const isBusy = createPage.isPending || updatePage.isPending
 
   React.useEffect(() => {
     if (!open) {
@@ -151,41 +151,41 @@ export function NotelabAiCreateMenu({
     setOpen(false)
   }
 
-  const openWorkspace = (workspaceId: string) => {
+  const openPage = (pageId: string) => {
     closeMenu()
     void navigate({
-      params: { workspaceId },
-      to: "/workspace/$workspaceId",
+      params: { pageId },
+      to: "/page/$pageId",
     })
   }
 
-  const resolveWorkspaceMetadata = async (workspaceId: string) => {
-    const cached = queryClient.getQueryData<Workspace | null>(
-      workspaceQueryKey(workspaceId),
+  const resolvePageMetadata = async (pageId: string) => {
+    const cached = queryClient.getQueryData<Page | null>(
+      pageQueryKey(pageId),
     )
 
     if (cached?.metadata) {
       return cached.metadata
     }
 
-    const result = await apiFetch<{ workspace: Workspace }>(
-      `/workspaces/${workspaceId}`,
+    const result = await apiFetch<{ page: Page }>(
+      `/pages/${pageId}`,
       { method: "GET" },
     )
 
-    return result.workspace.metadata ?? {}
+    return result.page.metadata ?? {}
   }
 
-  const assignExistingPage = async (workspaceId: string) => {
-    if (!organizationId || isBusy) {
+  const assignExistingPage = async (pageId: string) => {
+    if (!workspaceId || isBusy) {
       return
     }
 
     try {
-      const metadata = await resolveWorkspaceMetadata(workspaceId)
+      const metadata = await resolvePageMetadata(pageId)
 
-      await updateWorkspace.mutateAsync({
-        id: workspaceId,
+      await updatePage.mutateAsync({
+        id: pageId,
         metadata: {
           ...metadata,
           notelabai: mode,
@@ -193,26 +193,26 @@ export function NotelabAiCreateMenu({
       })
 
       toast.success(`Added as ${mode}.`)
-      openWorkspace(workspaceId)
+      openPage(pageId)
     } catch (error) {
       toast.error(getApiErrorMessage(error))
     }
   }
 
   const createNewPage = async () => {
-    if (!organizationId || isBusy) {
+    if (!workspaceId || isBusy) {
       return
     }
 
     try {
-      const workspace = await createWorkspace.mutateAsync({
+      const page = await createPage.mutateAsync({
         metadata: { notelabai: mode },
         name: config.newPageTitle,
-        organizationId,
+        workspaceId,
       })
 
       toast.success(`Created ${mode}.`)
-      openWorkspace(workspace.id)
+      openPage(page.id)
     } catch (error) {
       toast.error(getApiErrorMessage(error))
     }
@@ -221,7 +221,7 @@ export function NotelabAiCreateMenu({
   return (
     <DropDrawer onOpenChange={setOpen} open={open}>
       <DropDrawerTrigger asChild>
-        <Button disabled={!organizationId || isBusy} size="sm" type="button">
+        <Button disabled={!workspaceId || isBusy} size="sm" type="button">
           {isBusy ? <Loader2Icon className="animate-spin" /> : <PlusIcon />}
           {config.buttonLabel}
         </Button>
@@ -246,7 +246,7 @@ export function NotelabAiCreateMenu({
           </div>
 
           <div className="h-56 overflow-y-auto overscroll-contain">
-            {isLoadingWorkspaces ? (
+            {isLoadingPages ? (
               <DropDrawerItem disabled>Loading pages...</DropDrawerItem>
             ) : !normalizedQuery ? (
               <div className="px-3 py-6 text-center text-sm text-muted-foreground">
@@ -265,7 +265,7 @@ export function NotelabAiCreateMenu({
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-2">
                     <span className="flex size-4 shrink-0 items-center justify-center">
-                      <WorkspacePageIcon workspace={pageOption.workspace} />
+                      <PageIcon page={pageOption.page} />
                     </span>
                     <div className="min-w-0">
                       <div className="truncate">{pageOption.label}</div>

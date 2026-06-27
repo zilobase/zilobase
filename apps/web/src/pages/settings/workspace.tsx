@@ -14,36 +14,36 @@ import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { getApiErrorMessage } from "@/lib/api"
-import { useActiveOrganizationId } from "@notelab/features/integrations"
+import { useActiveWorkspaceId } from "@notelab/features/integrations"
 import {
-  useOrganizations,
-  useUpdateOrganization,
-} from "@notelab/features/organizations"
+  useWorkspaces,
+  useUpdateWorkspace,
+} from "@notelab/features/workspaces"
 
-export default function OrganizationSettingsPage() {
-  const activeOrganizationId = useActiveOrganizationId()
-  const { data: organizations = [] } = useOrganizations()
-  const organization =
-    organizations.find((item) => item.id === activeOrganizationId) ?? null
+export default function WorkspaceSettingsPage() {
+  const activeWorkspaceId = useActiveWorkspaceId()
+  const { data: workspaces = [] } = useWorkspaces()
+  const workspace =
+    workspaces.find((item) => item.id === activeWorkspaceId) ?? null
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">
       <SettingsHeader
-        title="Organization"
-        description="Manage workspace details, billing identity, and defaults."
+        title="Workspace"
+        description="Manage page details, billing identity, and defaults."
       />
 
       <div className="mx-auto grid w-full max-w-4xl gap-6">
-        <OrganizationDetailsSection organization={organization} />
+        <WorkspaceDetailsSection workspace={workspace} />
       </div>
     </main>
   )
 }
 
-function OrganizationDetailsSection({
-  organization,
+function WorkspaceDetailsSection({
+  workspace,
 }: {
-  organization: {
+  workspace: {
     id: string
     logo?: string | null
     metadata?: string | null
@@ -51,31 +51,31 @@ function OrganizationDetailsSection({
     slug: string
   } | null
 }) {
-  const updateOrganization = useUpdateOrganization()
-  const [name, setName] = React.useState(organization?.name ?? "")
-  const [slug, setSlug] = React.useState(organization?.slug ?? "")
-  const [logo, setLogo] = React.useState(organization?.logo ?? "")
-  const [metadata, setMetadata] = React.useState(organization?.metadata ?? "")
+  const updateWorkspace = useUpdateWorkspace()
+  const [name, setName] = React.useState(workspace?.name ?? "")
+  const [slug, setSlug] = React.useState(workspace?.slug ?? "")
+  const [logo, setLogo] = React.useState(workspace?.logo ?? "")
+  const [metadata, setMetadata] = React.useState(workspace?.metadata ?? "")
   const [error, setError] = React.useState("")
 
   React.useEffect(() => {
-    setName(organization?.name ?? "")
-    setSlug(organization?.slug ?? "")
-    setLogo(organization?.logo ?? "")
-    setMetadata(organization?.metadata ?? "")
-  }, [organization])
+    setName(workspace?.name ?? "")
+    setSlug(workspace?.slug ?? "")
+    setLogo(workspace?.logo ?? "")
+    setMetadata(workspace?.metadata ?? "")
+  }, [workspace])
 
   const hasChanges =
-    name.trim() !== (organization?.name ?? "").trim() ||
-    slug.trim().toLowerCase() !== (organization?.slug ?? "").trim().toLowerCase() ||
-    logo.trim() !== (organization?.logo ?? "").trim() ||
-    metadata.trim() !== (organization?.metadata ?? "").trim()
+    name.trim() !== (workspace?.name ?? "").trim() ||
+    slug.trim().toLowerCase() !== (workspace?.slug ?? "").trim().toLowerCase() ||
+    logo.trim() !== (workspace?.logo ?? "").trim() ||
+    metadata.trim() !== (workspace?.metadata ?? "").trim()
 
-  const saveOrganization = (event: React.FormEvent<HTMLFormElement>) => {
+  const saveWorkspace = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (!organization) {
-      setError("Select an organization before updating settings.")
+    if (!workspace) {
+      setError("Select an workspace before updating settings.")
       return
     }
 
@@ -85,7 +85,7 @@ function OrganizationDetailsSection({
     const trimmedMetadata = metadata.trim()
 
     if (!trimmedName) {
-      setError("Organization name is required.")
+      setError("Workspace name is required.")
       return
     }
 
@@ -100,9 +100,9 @@ function OrganizationDetailsSection({
     }
 
     setError("")
-    updateOrganization.mutate(
+    updateWorkspace.mutate(
       {
-        organizationId: organization.id,
+        workspaceId: workspace.id,
         logo: trimmedLogo || null,
         metadata: trimmedMetadata || null,
         name: trimmedName,
@@ -110,7 +110,7 @@ function OrganizationDetailsSection({
       },
       {
         onSuccess: () => {
-          toast.success("Organization updated.")
+          toast.success("Workspace updated.")
         },
         onError: (mutationError) => {
           setError(getApiErrorMessage(mutationError))
@@ -124,33 +124,33 @@ function OrganizationDetailsSection({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
           <h3 className="font-heading text-base leading-snug font-medium">
-            Workspace details
+            Page details
           </h3>
           <p className="text-sm text-muted-foreground">
-            Update the fields used to identify this organization across Notelab.
+            Update the fields used to identify this workspace across Notelab.
           </p>
         </div>
         <Button
           className="shrink-0"
-          disabled={!organization || !hasChanges || updateOrganization.isPending}
-          form="organization-details-form"
+          disabled={!workspace || !hasChanges || updateWorkspace.isPending}
+          form="workspace-details-form"
           type="submit"
         >
-          {updateOrganization.isPending ? <Spinner /> : null}
-          Save organization
+          {updateWorkspace.isPending ? <Spinner /> : null}
+          Save workspace
         </Button>
       </div>
       <form
         className="grid gap-4"
-        id="organization-details-form"
-        onSubmit={saveOrganization}
+        id="workspace-details-form"
+        onSubmit={saveWorkspace}
       >
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="organization-name">Organization name</FieldLabel>
+            <FieldLabel htmlFor="workspace-name">Workspace name</FieldLabel>
             <Input
-              disabled={!organization || updateOrganization.isPending}
-              id="organization-name"
+              disabled={!workspace || updateWorkspace.isPending}
+              id="workspace-name"
               onChange={(event) => {
                 setName(event.target.value)
                 if (error) {
@@ -163,10 +163,10 @@ function OrganizationDetailsSection({
           </Field>
 
           <Field data-invalid={Boolean(error)}>
-            <FieldLabel htmlFor="organization-slug">Slug</FieldLabel>
+            <FieldLabel htmlFor="workspace-slug">Slug</FieldLabel>
             <Input
-              disabled={!organization || updateOrganization.isPending}
-              id="organization-slug"
+              disabled={!workspace || updateWorkspace.isPending}
+              id="workspace-slug"
               onChange={(event) => {
                 setSlug(event.target.value)
                 if (error) {
@@ -182,10 +182,10 @@ function OrganizationDetailsSection({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="organization-logo">Logo URL</FieldLabel>
+            <FieldLabel htmlFor="workspace-logo">Logo URL</FieldLabel>
             <Input
-              disabled={!organization || updateOrganization.isPending}
-              id="organization-logo"
+              disabled={!workspace || updateWorkspace.isPending}
+              id="workspace-logo"
               onChange={(event) => {
                 setLogo(event.target.value)
                 if (error) {
@@ -199,22 +199,22 @@ function OrganizationDetailsSection({
           </Field>
 
           <Field data-invalid={Boolean(error)}>
-            <FieldLabel htmlFor="organization-metadata">Metadata</FieldLabel>
+            <FieldLabel htmlFor="workspace-metadata">Metadata</FieldLabel>
             <Textarea
-              disabled={!organization || updateOrganization.isPending}
-              id="organization-metadata"
+              disabled={!workspace || updateWorkspace.isPending}
+              id="workspace-metadata"
               onChange={(event) => {
                 setMetadata(event.target.value)
                 if (error) {
                   setError("")
                 }
               }}
-              placeholder="Add any organization-specific notes or identifiers."
+              placeholder="Add any workspace-specific notes or identifiers."
               rows={5}
               value={metadata}
             />
             <FieldDescription>
-              Optional notes or internal descriptors for this workspace.
+              Optional notes or internal descriptors for this page.
             </FieldDescription>
             <FieldError>{error}</FieldError>
           </Field>

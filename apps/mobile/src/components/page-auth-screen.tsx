@@ -1,10 +1,10 @@
 import { useSession, useSignOut } from '@notelab/features/auth';
 import {
-  type Organization,
-  useCreateOrganization,
-  useOrganizations,
-  useSetActiveOrganization,
-} from '@notelab/features/organizations';
+  type Workspace,
+  useCreateWorkspace,
+  useWorkspaces,
+  useSetActiveWorkspace,
+} from '@notelab/features/workspaces';
 import * as React from 'react';
 import {
   ActivityIndicator,
@@ -26,91 +26,92 @@ import { Fonts, Spacing } from '@/constants/theme';
 import { type ThemePalette, useThemedStyles } from '@/hooks/use-app-theme';
 import { getApiErrorMessage } from '@/lib/api';
 
-type WorkspaceAuthPalette = ThemePalette;
-type WorkspaceStep = 'select' | 'create';
+type PageAuthPalette = ThemePalette;
+type PageStep = 'select' | 'create';
 
-export function WorkspaceAuthScreen({
+export function PageAuthScreen({
   onComplete,
 }: {
   onComplete: () => void;
 }) {
   const { palette, styles } = useThemedStyles(createStyles);
   const session = useSession();
-  const { data: organizations = [], isPending: isOrganizationsPending } = useOrganizations();
-  const createOrganization = useCreateOrganization();
-  const setActiveOrganization = useSetActiveOrganization();
+  const { data: rawWorkspaces = [], isPending: isWorkspacesPending } = useWorkspaces();
+  const workspaces = rawWorkspaces.filter(Boolean);
+  const createWorkspace = useCreateWorkspace();
+  const setActiveWorkspace = useSetActiveWorkspace();
   const signOut = useSignOut();
-  const [workspaceName, setWorkspaceName] = React.useState('');
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState<string | null>(null);
+  const [pageName, setPageName] = React.useState('');
+  const [selectedPageId, setSelectedPageId] = React.useState<string | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
-  const activeWorkspaceId = session.data?.session?.activeOrganizationId ?? null;
-  const hasExistingWorkspaces = organizations.length > 0;
-  const [stepOverride, setStepOverride] = React.useState<WorkspaceStep | null>(null);
-  const step = hasExistingWorkspaces ? stepOverride ?? 'select' : 'create';
-  const resolvedSelectedWorkspaceId =
-    selectedWorkspaceId ??
-    (activeWorkspaceId && organizations.some((organization) => organization.id === activeWorkspaceId)
-      ? activeWorkspaceId
-      : organizations[0]?.id ?? null);
-  const isCreating = createOrganization.isPending;
-  const isSelecting = setActiveOrganization.isPending;
+  const activePageId = session.data?.session?.activeWorkspaceId ?? null;
+  const hasExistingPages = workspaces.length > 0;
+  const [stepOverride, setStepOverride] = React.useState<PageStep | null>(null);
+  const step = hasExistingPages ? stepOverride ?? 'select' : 'create';
+  const resolvedSelectedPageId =
+    selectedPageId ??
+    (activePageId && workspaces.some((workspace) => workspace.id === activePageId)
+      ? activePageId
+      : workspaces[0]?.id ?? null);
+  const isCreating = createWorkspace.isPending;
+  const isSelecting = setActiveWorkspace.isPending;
   const isBusy = isCreating || isSelecting || signOut.isPending;
   const activeError =
     formError ??
-    (createOrganization.error
-      ? getApiErrorMessage(createOrganization.error)
-      : setActiveOrganization.error
-        ? getApiErrorMessage(setActiveOrganization.error)
+    (createWorkspace.error
+      ? getApiErrorMessage(createWorkspace.error)
+      : setActiveWorkspace.error
+        ? getApiErrorMessage(setActiveWorkspace.error)
         : signOut.error
           ? getApiErrorMessage(signOut.error)
           : null);
 
-  const handleCreateWorkspace = React.useCallback(async () => {
-    const name = workspaceName.trim();
+  const handleCreatePage = React.useCallback(async () => {
+    const name = pageName.trim();
 
     if (!name) {
-      setFormError('Name your workspace to continue.');
+      setFormError('Name your page to continue.');
       return;
     }
 
     setFormError(null);
 
     try {
-      await createOrganization.mutateAsync(name);
-      setWorkspaceName('');
+      await createWorkspace.mutateAsync(name);
+      setPageName('');
       onComplete();
     } catch {
       // React Query owns the visible error state.
     }
-  }, [createOrganization, onComplete, workspaceName]);
+  }, [createWorkspace, onComplete, pageName]);
 
   const handleContinue = React.useCallback(async () => {
-    if (!resolvedSelectedWorkspaceId) {
-      setFormError('Select a workspace to continue.');
+    if (!resolvedSelectedPageId) {
+      setFormError('Select a page to continue.');
       return;
     }
 
     setFormError(null);
 
     try {
-      if (resolvedSelectedWorkspaceId !== activeWorkspaceId) {
-        await setActiveOrganization.mutateAsync(resolvedSelectedWorkspaceId);
+      if (resolvedSelectedPageId !== activePageId) {
+        await setActiveWorkspace.mutateAsync(resolvedSelectedPageId);
       }
 
       onComplete();
     } catch {
       // React Query owns the visible error state.
     }
-  }, [activeWorkspaceId, onComplete, resolvedSelectedWorkspaceId, setActiveOrganization]);
+  }, [activePageId, onComplete, resolvedSelectedPageId, setActiveWorkspace]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <TopBar
         authBack={{
-          visible: hasExistingWorkspaces && step === 'create',
+          visible: hasExistingPages && step === 'create',
           onPress: () => {
             setFormError(null);
-            setWorkspaceName('');
+            setPageName('');
             setStepOverride('select');
           },
         }}
@@ -120,58 +121,58 @@ export function WorkspaceAuthScreen({
         style={styles.keyboardView}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.shell}>
-            {isOrganizationsPending ? (
+            {isWorkspacesPending ? (
               <View style={styles.loadingRow}>
                 <ActivityIndicator color={palette.foreground} />
-                <Text style={styles.loadingText}>Loading your workspaces...</Text>
+                <Text style={styles.loadingText}>Loading your pages...</Text>
               </View>
             ) : (
               <>
             <View style={styles.header}>
               <Text variant="h1" style={styles.title}>
-                {step === 'create' ? 'Create your workspace' : 'Choose your workspace'}
+                {step === 'create' ? 'Create your page' : 'Choose your page'}
               </Text>
               <Text style={styles.subtitle}>
                 {step === 'create'
-                  ? hasExistingWorkspaces
-                    ? 'Set up a new workspace, then come right back into the app.'
-                    : 'Your account is ready. Create the first workspace to land inside the app.'
-                  : 'Pick the workspace you want to open right now, or head to a dedicated page to create another one.'}
+                  ? hasExistingPages
+                    ? 'Set up a new page, then come right back into the app.'
+                    : 'Your account is ready. Create the first page to land inside the app.'
+                  : 'Pick the page you want to open right now, or head to a dedicated page to create another one.'}
               </Text>
             </View>
 
             {step === 'select' ? (
               <View style={styles.form}>
-                <View style={styles.workspaceList}>
-                  {organizations.map((organization) => {
-                    const isSelected = organization.id === resolvedSelectedWorkspaceId;
+                <View style={styles.pageList}>
+                  {workspaces.map((workspace) => {
+                    const isSelected = workspace.id === resolvedSelectedPageId;
 
                     return (
-                      <WorkspaceCard
-                        key={organization.id}
+                      <PageCard
+                        key={workspace.id}
                         isSelected={isSelected}
                         onPress={() => {
                           setFormError(null);
-                          setSelectedWorkspaceId(organization.id);
+                          setSelectedPageId(workspace.id);
                         }}
-                        organization={organization}
+                        workspace={workspace}
                       />
                     );
                   })}
                 </View>
 
                 <PrimaryButton
-                  disabled={isSelecting || !resolvedSelectedWorkspaceId}
-                  label={isSelecting ? 'Opening workspace...' : 'Continue'}
+                  disabled={isSelecting || !resolvedSelectedPageId}
+                  label={isSelecting ? 'Opening page...' : 'Continue'}
                   onPress={handleContinue}
                 />
 
                 <SecondaryButton
                   disabled={isBusy}
-                  label="Create new workspace"
+                  label="Create new page"
                   onPress={() => {
                     setFormError(null);
-                    setWorkspaceName('');
+                    setPageName('');
                     setStepOverride('create');
                   }}
                 />
@@ -179,21 +180,21 @@ export function WorkspaceAuthScreen({
             ) : (
               <View style={styles.form}>
                 <AuthField>
-                  <AuthFieldLabel label="Workspace name" />
+                  <AuthFieldLabel label="Page name" />
                   <AuthInput
                     autoCapitalize="words"
-                    autoComplete="organization"
+                    autoComplete="workspace"
                     editable={!isBusy}
-                    onChangeText={setWorkspaceName}
+                    onChangeText={setPageName}
                     placeholder="Acme Design"
-                    value={workspaceName}
+                    value={pageName}
                   />
                 </AuthField>
 
                 <PrimaryButton
                   disabled={isCreating}
-                  label={isCreating ? 'Creating workspace...' : 'Create workspace'}
-                  onPress={handleCreateWorkspace}
+                  label={isCreating ? 'Creating page...' : 'Create page'}
+                  onPress={handleCreatePage}
                 />
               </View>
             )}
@@ -215,7 +216,7 @@ export function WorkspaceAuthScreen({
               <View style={styles.loadingRow}>
                 <ActivityIndicator color={palette.foreground} />
                 <Text style={styles.loadingText}>
-                  {isSelecting ? 'Opening your workspace...' : 'Saving your workspace...'}
+                  {isSelecting ? 'Opening your page...' : 'Saving your page...'}
                 </Text>
               </View>
             )}
@@ -228,30 +229,30 @@ export function WorkspaceAuthScreen({
   );
 }
 
-function WorkspaceCard({
+function PageCard({
   isSelected,
   onPress,
-  organization,
+  workspace,
 }: {
   isSelected: boolean;
   onPress: () => void;
-  organization: Organization;
+  workspace: Workspace;
 }) {
   const { styles } = useThemedStyles(createStyles);
 
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.workspaceCard, isSelected && styles.workspaceCardSelected]}>
-      <View style={[styles.workspaceBadge, isSelected && styles.workspaceBadgeSelected]}>
-        <Text style={[styles.workspaceBadgeText, isSelected && styles.workspaceBadgeTextSelected]}>
-          {getWorkspaceInitials(organization.name)}
+      style={[styles.pageCard, isSelected && styles.pageCardSelected]}>
+      <View style={[styles.pageBadge, isSelected && styles.pageBadgeSelected]}>
+        <Text style={[styles.pageBadgeText, isSelected && styles.pageBadgeTextSelected]}>
+          {getPageInitials(workspace.name)}
         </Text>
       </View>
 
-      <View style={styles.workspaceCopy}>
-        <Text style={styles.workspaceName}>{organization.name}</Text>
-        <Text style={styles.workspaceSlug}>{organization.slug}</Text>
+      <View style={styles.pageCopy}>
+        <Text style={styles.pageName}>{workspace.name}</Text>
+        <Text style={styles.pageSlug}>{workspace.slug}</Text>
       </View>
 
       <View style={[styles.selectionDot, isSelected && styles.selectionDotActive]} />
@@ -291,7 +292,7 @@ function SecondaryButton({
   );
 }
 
-function getWorkspaceInitials(name: string) {
+function getPageInitials(name: string) {
   const initials = name
     .trim()
     .split(/\s+/)
@@ -304,7 +305,7 @@ function getWorkspaceInitials(name: string) {
 }
 
 function createStyles(
-  palette: WorkspaceAuthPalette,
+  palette: PageAuthPalette,
   isDark: boolean
 ) {
   return StyleSheet.create({
@@ -348,10 +349,10 @@ function createStyles(
     form: {
       gap: 16,
     },
-    workspaceList: {
+    pageList: {
       gap: 12,
     },
-    workspaceCard: {
+    pageCard: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 14,
@@ -362,7 +363,7 @@ function createStyles(
       paddingHorizontal: 16,
       paddingVertical: 16,
     },
-    workspaceCardSelected: {
+    pageCardSelected: {
       borderColor: palette.foreground,
       backgroundColor: palette.secondary,
       shadowColor: palette.foreground,
@@ -370,7 +371,7 @@ function createStyles(
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 2 },
     },
-    workspaceBadge: {
+    pageBadge: {
       width: 42,
       height: 42,
       borderRadius: 14,
@@ -380,29 +381,29 @@ function createStyles(
       borderWidth: 1,
       borderColor: palette.border,
     },
-    workspaceBadgeSelected: {
+    pageBadgeSelected: {
       backgroundColor: palette.foreground,
       borderColor: palette.foreground,
     },
-    workspaceBadgeText: {
+    pageBadgeText: {
       color: palette.foreground,
       fontWeight: '700',
       fontSize: 13,
     },
-    workspaceBadgeTextSelected: {
+    pageBadgeTextSelected: {
       color: palette.background,
     },
-    workspaceCopy: {
+    pageCopy: {
       flex: 1,
       gap: 2,
     },
-    workspaceName: {
+    pageName: {
       color: palette.foreground,
       fontSize: 16,
       lineHeight: 20,
       fontWeight: '600',
     },
-    workspaceSlug: {
+    pageSlug: {
       color: palette.mutedForeground,
       fontSize: 13,
       lineHeight: 18,

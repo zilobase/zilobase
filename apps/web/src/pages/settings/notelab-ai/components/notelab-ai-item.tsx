@@ -16,16 +16,16 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { getApiErrorMessage } from "@/lib/api"
-import { WorkspacePageIcon } from "@/lib/workspace-icon"
+import { PageIcon } from "@/lib/page-icon"
 import { useNotelabFeatures } from "@notelab/features"
 import {
-  useUpdateWorkspace,
-  workspaceQueryKey,
+  useUpdatePage,
+  pageQueryKey,
   type NotelabAiMode,
-  type NotelabAiWorkspaceSummary,
-  type Workspace,
-  type WorkspaceMetadata,
-} from "@notelab/features/workspaces"
+  type NotelabAiPageSummary,
+  type Page,
+  type PageMetadata,
+} from "@notelab/features/pages"
 
 const modeLabels: Record<NotelabAiMode, string> = {
   instruction: "instruction",
@@ -36,48 +36,48 @@ export function NotelabAiItem({
   isFirst,
   isLast,
   mode,
-  workspace,
-  workspaceRecord,
+  page,
+  pageRecord,
 }: {
   isFirst: boolean
   isLast: boolean
   mode: NotelabAiMode
-  workspace: NotelabAiWorkspaceSummary
-  workspaceRecord?: Workspace
+  page: NotelabAiPageSummary
+  pageRecord?: Page
 }) {
   const navigate = useNavigate()
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const updateWorkspace = useUpdateWorkspace()
+  const updatePage = useUpdatePage()
   const [confirmOpen, setConfirmOpen] = React.useState(false)
-  const isRemoving = updateWorkspace.isPending
+  const isRemoving = updatePage.isPending
 
-  const openWorkspace = () => {
+  const openPage = () => {
     void navigate({
-      params: { workspaceId: workspace.id },
-      to: "/workspace/$workspaceId",
+      params: { pageId: page.id },
+      to: "/page/$pageId",
     })
   }
 
   const remove = async () => {
-    let metadata: WorkspaceMetadata = {}
+    let metadata: PageMetadata = {}
 
-    const cached = queryClient.getQueryData<Workspace | null>(
-      workspaceQueryKey(workspace.id),
+    const cached = queryClient.getQueryData<Page | null>(
+      pageQueryKey(page.id),
     )
 
     if (cached?.metadata) {
       metadata = cached.metadata
     } else {
-      const result = await apiFetch<{ workspace: Workspace }>(
-        `/workspaces/${workspace.id}`,
+      const result = await apiFetch<{ page: Page }>(
+        `/pages/${page.id}`,
         { method: "GET" },
       )
-      metadata = result.workspace.metadata ?? {}
+      metadata = result.page.metadata ?? {}
     }
 
-    updateWorkspace.mutate(
+    updatePage.mutate(
       {
-        id: workspace.id,
+        id: page.id,
         metadata: {
           ...metadata,
           notelabai: null,
@@ -103,28 +103,28 @@ export function NotelabAiItem({
           isFirst && "rounded-t-none",
           isLast && "rounded-b-none",
         )}
-        onClick={openWorkspace}
+        onClick={openPage}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault()
-            openWorkspace()
+            openPage()
           }
         }}
         role="link"
         tabIndex={0}
       >
         <span className="flex size-5 shrink-0 items-center justify-center">
-          <WorkspacePageIcon
-            workspace={
-              workspaceRecord ?? {
+          <PageIcon
+            page={
+              pageRecord ?? {
                 content: undefined,
-                metadata: workspace.metadata,
+                metadata: page.metadata,
               }
             }
           />
         </span>
         <span className="min-w-0 flex-1 truncate font-medium">
-          {workspace.name || "Untitled"}
+          {page.name || "Untitled"}
         </span>
         <Button
           aria-label={`Remove as ${modeLabels[mode]}`}
@@ -152,7 +152,7 @@ export function NotelabAiItem({
             <AlertDialogTitle>Remove {modeLabels[mode]}</AlertDialogTitle>
             <AlertDialogDescription>
               Remove as {modeLabels[mode]}? This page will become a normal
-              workspace.
+              page.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -33,8 +33,8 @@ const settingsItems = [
     icon: <UserIcon />,
   },
   {
-    title: "Organization",
-    href: "/settings/organization",
+    title: "Workspace",
+    href: "/settings/workspace",
     icon: <Building2Icon />,
   },
   {

@@ -30,48 +30,49 @@ import { Input } from "@/components/ui/input"
 import { useNavigate } from "@tanstack/react-router"
 import { useSession } from "@notelab/features/auth"
 import {
-  useCreateOrganization,
-  useOrganizations,
-  useSetActiveOrganization,
-} from "@notelab/features/organizations"
+  useCreateWorkspace,
+  useWorkspaces,
+  useSetActiveWorkspace,
+} from "@notelab/features/workspaces"
 import { getApiErrorMessage } from "@/lib/api"
 import { useAppStore } from "@/stores/app-store"
 import { Building2Icon, ChevronDownIcon, PlusIcon } from "lucide-react"
 
-export function OrganizationSwitcher() {
+export function WorkspaceSwitcher() {
   const navigate = useNavigate()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
   const { data: sessionData } = useSession()
-  const { data: organizations = [], isError, isLoading } = useOrganizations()
-  const createOrganization = useCreateOrganization()
-  const setActiveOrganization = useSetActiveOrganization()
-  const storedActiveOrganizationId = useAppStore((state) => state.activeOrganizationId)
+  const { data: rawWorkspaces = [], isError, isLoading } = useWorkspaces()
+  const workspaces = rawWorkspaces.filter(Boolean)
+  const createWorkspace = useCreateWorkspace()
+  const setActiveWorkspace = useSetActiveWorkspace()
+  const storedActiveWorkspaceId = useAppStore((state) => state.activeWorkspaceId)
 
-  const activeOrganizationId =
-    sessionData?.session?.activeOrganizationId ?? storedActiveOrganizationId
-  const activeOrganization =
-    organizations.find((organization) => organization.id === activeOrganizationId) ??
-    organizations[0]
+  const activeWorkspaceId =
+    sessionData?.session?.activeWorkspaceId ?? storedActiveWorkspaceId
+  const activeWorkspace =
+    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
+    workspaces[0]
 
   React.useEffect(() => {
     if (
-      storedActiveOrganizationId &&
-      organizations.length > 0 &&
-      !organizations.some((organization) => organization.id === storedActiveOrganizationId)
+      storedActiveWorkspaceId &&
+      workspaces.length > 0 &&
+      !workspaces.some((workspace) => workspace.id === storedActiveWorkspaceId)
     ) {
-      useAppStore.getState().setActiveOrganizationId(null)
+      useAppStore.getState().setActiveWorkspaceId(null)
     }
-  }, [organizations, storedActiveOrganizationId])
+  }, [workspaces, storedActiveWorkspaceId])
 
-  async function handleCreateOrganization(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateWorkspace(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const form = event.currentTarget
     const formData = new FormData(form)
-    const organizationName = String(formData.get("organizationName") ?? "").trim()
+    const workspaceName = String(formData.get("workspaceName") ?? "").trim()
 
     try {
-      await createOrganization.mutateAsync(organizationName)
+      await createWorkspace.mutateAsync(workspaceName)
       form.reset()
       setIsCreateDialogOpen(false)
       void navigate({ to: "/dashboard" })
@@ -91,9 +92,9 @@ export function OrganizationSwitcher() {
                 disabled={isLoading}
               >
                 <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                  {activeOrganization ? (
+                  {activeWorkspace ? (
                     <span className="text-[10px] font-semibold">
-                      {getOrganizationInitials(activeOrganization.name)}
+                      {getWorkspaceInitials(activeWorkspace.name)}
                     </span>
                   ) : (
                     <Building2Icon className="size-3.5" />
@@ -101,7 +102,7 @@ export function OrganizationSwitcher() {
                 </div>
                 <span className="truncate font-medium">
                   {readTriggerLabel({
-                    activeOrganizationName: activeOrganization?.name,
+                    activeWorkspaceName: activeWorkspace?.name,
                     isError,
                     isLoading,
                   })}
@@ -116,27 +117,27 @@ export function OrganizationSwitcher() {
               sideOffset={4}
             >
               <DropDrawerLabel className="text-xs text-muted-foreground">
-                Organizations
+                Workspaces
               </DropDrawerLabel>
-              {organizations.map((organization, index) => (
+              {workspaces.map((workspace, index) => (
                 <DropDrawerItem
-                  key={organization.id}
+                  key={workspace.id}
                   onClick={() => {
                     void navigate({ to: "/dashboard" })
-                    setActiveOrganization.mutate(organization.id)
+                    setActiveWorkspace.mutate(workspace.id)
                   }}
                   disabled={
-                    organization.id === activeOrganization?.id ||
-                    setActiveOrganization.isPending
+                    workspace.id === activeWorkspace?.id ||
+                    setActiveWorkspace.isPending
                   }
                   className="gap-2 p-2"
                 >
                   <div className="flex size-6 items-center justify-center rounded-xs border">
                     <span className="text-xs font-medium">
-                      {getOrganizationInitials(organization.name)}
+                      {getWorkspaceInitials(workspace.name)}
                     </span>
                   </div>
-                  <span className="truncate">{organization.name}</span>
+                  <span className="truncate">{workspace.name}</span>
                   <DropDrawerShortcut>⌘{index + 1}</DropDrawerShortcut>
                 </DropDrawerItem>
               ))}
@@ -149,7 +150,7 @@ export function OrganizationSwitcher() {
                   <PlusIcon className="size-4" />
                 </div>
                 <div className="font-medium text-muted-foreground">
-                  Add organization
+                  Add workspace
                 </div>
               </DropDrawerItem>
             </DropDrawerContent>
@@ -160,34 +161,34 @@ export function OrganizationSwitcher() {
         open={isCreateDialogOpen}
         onOpenChange={(open) => {
           setIsCreateDialogOpen(open)
-          createOrganization.reset()
+          createWorkspace.reset()
         }}
       >
         <DialogContent>
-          <form onSubmit={handleCreateOrganization}>
+          <form onSubmit={handleCreateWorkspace}>
             <DialogHeader>
-              <DialogTitle>Add organization</DialogTitle>
+              <DialogTitle>Add workspace</DialogTitle>
               <DialogDescription className="sr-only">
-                Create a new organization and switch to it.
+                Create a new workspace and switch to it.
               </DialogDescription>
             </DialogHeader>
             <FieldGroup className="py-4">
               <Field>
-                <FieldLabel htmlFor="new-organization-name">
-                  Organization name
+                <FieldLabel htmlFor="new-workspace-name">
+                  Workspace name
                 </FieldLabel>
                 <Input
-                  id="new-organization-name"
-                  name="organizationName"
+                  id="new-workspace-name"
+                  name="workspaceName"
                   placeholder="Acme Inc."
-                  autoComplete="organization"
-                  disabled={createOrganization.isPending}
+                  autoComplete="workspace"
+                  disabled={createWorkspace.isPending}
                   required
                 />
               </Field>
-              {createOrganization.isError && (
+              {createWorkspace.isError && (
                 <FieldError>
-                  {getApiErrorMessage(createOrganization.error)}
+                  {getApiErrorMessage(createWorkspace.error)}
                 </FieldError>
               )}
             </FieldGroup>
@@ -195,13 +196,13 @@ export function OrganizationSwitcher() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={createOrganization.isPending}
+                disabled={createWorkspace.isPending}
                 onClick={() => setIsCreateDialogOpen(false)}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createOrganization.isPending}>
-                {createOrganization.isPending ? "Creating..." : "Create"}
+              <Button type="submit" disabled={createWorkspace.isPending}>
+                {createWorkspace.isPending ? "Creating..." : "Create"}
               </Button>
             </DialogFooter>
           </form>
@@ -212,11 +213,11 @@ export function OrganizationSwitcher() {
 }
 
 function readTriggerLabel({
-  activeOrganizationName,
+  activeWorkspaceName,
   isError,
   isLoading,
 }: {
-  activeOrganizationName?: string
+  activeWorkspaceName?: string
   isError: boolean
   isLoading: boolean
 }) {
@@ -228,10 +229,10 @@ function readTriggerLabel({
     return "Unable to load"
   }
 
-  return activeOrganizationName ?? "No organizations"
+  return activeWorkspaceName ?? "No workspaces"
 }
 
-function getOrganizationInitials(name: string) {
+function getWorkspaceInitials(name: string) {
   const initials = name
     .trim()
     .split(/\s+/)

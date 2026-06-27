@@ -11,10 +11,10 @@ import type {
   VerifyEmailOtpInput,
 } from '@notelab/features/auth';
 import type {
-  Organization,
-  OrganizationInvitation,
-  OrganizationRole,
-} from '@notelab/features/organizations';
+  Workspace,
+  WorkspaceInvitation,
+  WorkspaceRole,
+} from '@notelab/features/workspaces';
 import * as React from 'react';
 
 import { apiFetch } from '@/lib/api';
@@ -60,40 +60,40 @@ const mobileAuthClient: NotelabAuthClient = {
     authClient.$fetch('/sign-out', {
       method: 'POST',
     }),
-  createOrganization: <TOrganization,>(input: { name: string; slug: string }) =>
-    authClient.$fetch('/organization/create', {
+  createWorkspace: <TWorkspace,>(input: { name: string; slug: string }) =>
+    authClient.$fetch('/workspace/create', {
       method: 'POST',
       body: input,
-    }) as Promise<TOrganization>,
-  setActiveOrganization: (organizationId: string) =>
-    authClient.$fetch('/organization/set-active', {
+    }) as Promise<TWorkspace>,
+  setActiveWorkspace: (workspaceId: string) =>
+    authClient.$fetch('/workspace/set-active', {
       method: 'POST',
-      body: { organizationId },
+      body: { workspaceId },
     }),
-  inviteOrganizationMember: (input: {
+  inviteWorkspaceMember: (input: {
     email: string;
-    organizationId: string;
+    workspaceId: string;
     role: string;
   }) =>
-    authClient.$fetch('/organization/invite-member', {
+    authClient.$fetch('/workspace/invite-member', {
       method: 'POST',
       body: {
         ...input,
-        role: input.role as OrganizationRole,
+        role: input.role as WorkspaceRole,
       },
     }),
-  acceptOrganizationInvitation: <TResponse,>(input: { invitationId: string }) =>
-    authClient.$fetch('/organization/accept-invitation', {
+  acceptWorkspaceInvitation: <TResponse,>(input: { invitationId: string }) =>
+    authClient.$fetch('/workspace/accept-invitation', {
       method: 'POST',
       body: input,
     }) as Promise<TResponse>,
-  listOrganizations: <TOrganization,>() =>
-    apiFetch<Organization[]>('/api/auth/organization/list', {
+  listWorkspaces: <TWorkspace,>() =>
+    apiFetch<Workspace[]>('/api/auth/workspace/list', {
       method: 'GET',
-    }) as Promise<TOrganization[]>,
-  listOrganizationInvitations: <TInvitation,>(organizationId: string) =>
-    apiFetch<OrganizationInvitation[]>(
-      `/api/auth/organization/list-invitations?organizationId=${encodeURIComponent(organizationId)}`,
+    }) as Promise<TWorkspace[]>,
+  listWorkspaceInvitations: <TInvitation,>(workspaceId: string) =>
+    apiFetch<WorkspaceInvitation[]>(
+      `/api/auth/workspace/list-invitations?workspaceId=${encodeURIComponent(workspaceId)}`,
       {
         method: 'GET',
       }

@@ -14,23 +14,23 @@ import {
 import { Input } from "@/components/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import { useCreateOrganization } from "@notelab/features/organizations"
+import { useCreateWorkspace } from "@notelab/features/workspaces"
 
 export function OnboardingForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const navigate = useNavigate()
-  const createOrganization = useCreateOrganization()
+  const createWorkspace = useCreateWorkspace()
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     const formData = new FormData(event.currentTarget)
-    const organizationName = String(formData.get("organizationName") ?? "").trim()
+    const workspaceName = String(formData.get("workspaceName") ?? "").trim()
 
     try {
-      await createOrganization.mutateAsync(organizationName)
+      await createWorkspace.mutateAsync(workspaceName)
       void navigate({ to: "/dashboard" })
     } catch {
       // React Query owns the visible error state.
@@ -51,31 +51,31 @@ export function OnboardingForm({
               </div>
               <span className="sr-only">Notelab</span>
             </a>
-            <h1 className="text-xl font-bold">Set up your workspace</h1>
+            <h1 className="text-xl font-bold">Set up your page</h1>
             <FieldDescription>
-              Tell us what to call your organization.
+              Tell us what to call your workspace.
             </FieldDescription>
           </div>
           <Field>
-            <FieldLabel htmlFor="organization-name">
-              Organization name
+            <FieldLabel htmlFor="workspace-name">
+              Workspace name
             </FieldLabel>
             <Input
-              id="organization-name"
-              name="organizationName"
+              id="workspace-name"
+              name="workspaceName"
               type="text"
               placeholder="Acme Inc."
-              autoComplete="organization"
-              disabled={createOrganization.isPending}
+              autoComplete="workspace"
+              disabled={createWorkspace.isPending}
               required
             />
           </Field>
-          {createOrganization.isError && (
-            <FieldError>{getApiErrorMessage(createOrganization.error)}</FieldError>
+          {createWorkspace.isError && (
+            <FieldError>{getApiErrorMessage(createWorkspace.error)}</FieldError>
           )}
           <Field>
-            <Button type="submit" disabled={createOrganization.isPending}>
-              {createOrganization.isPending ? "Creating workspace..." : "Continue"}
+            <Button type="submit" disabled={createWorkspace.isPending}>
+              {createWorkspace.isPending ? "Creating page..." : "Continue"}
             </Button>
           </Field>
         </FieldGroup>

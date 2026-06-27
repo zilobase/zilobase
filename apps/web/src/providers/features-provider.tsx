@@ -3,11 +3,11 @@ import {
   type NotelabAuthClient,
 } from "@notelab/features"
 import type {
-  AcceptOrganizationInvitationResponse,
-  Organization,
-  OrganizationInvitation,
-  OrganizationRole,
-} from "@notelab/features/organizations"
+  AcceptWorkspaceInvitationResponse,
+  Workspace,
+  WorkspaceInvitation,
+  WorkspaceRole,
+} from "@notelab/features/workspaces"
 import type {
   SessionResponse,
   SignInWithOtpInput,
@@ -44,31 +44,31 @@ export const webAuthClient: NotelabAuthClient = {
   verifyEmailOtp: (input: VerifyEmailOtpInput) =>
     authFetch<{ user: unknown }>("/email-otp/verify-email", input),
   signOut: () => authFetch("/sign-out"),
-  createOrganization: <TOrganization,>(input: { name: string; slug: string }) =>
-    authFetch<Organization>("/organization/create", input) as Promise<TOrganization>,
-  setActiveOrganization: (organizationId: string) =>
-    authFetch("/organization/set-active", { organizationId }),
-  inviteOrganizationMember: (input: {
+  createWorkspace: <TWorkspace,>(input: { name: string; slug: string }) =>
+    authFetch<Workspace>("/workspace/create", input) as Promise<TWorkspace>,
+  setActiveWorkspace: (workspaceId: string) =>
+    authFetch("/workspace/set-active", { workspaceId }),
+  inviteWorkspaceMember: (input: {
     email: string
-    organizationId: string
+    workspaceId: string
     role: string
   }) =>
-    authFetch("/organization/invite-member", {
+    authFetch("/workspace/invite-member", {
       ...input,
-      role: input.role as OrganizationRole,
+      role: input.role as WorkspaceRole,
     }),
-  acceptOrganizationInvitation: <TResponse,>(input: { invitationId: string }) =>
-    authFetch<AcceptOrganizationInvitationResponse>(
-      "/organization/accept-invitation",
+  acceptWorkspaceInvitation: <TResponse,>(input: { invitationId: string }) =>
+    authFetch<AcceptWorkspaceInvitationResponse>(
+      "/workspace/accept-invitation",
       input,
     ) as Promise<TResponse>,
-  listOrganizations: <TOrganization,>() =>
-    apiFetch<Organization[]>("/api/auth/organization/list", {
+  listWorkspaces: <TWorkspace,>() =>
+    apiFetch<Workspace[]>("/api/auth/workspace/list", {
       method: "GET",
-    }) as Promise<TOrganization[]>,
-  listOrganizationInvitations: <TInvitation,>(organizationId: string) =>
-    apiFetch<OrganizationInvitation[]>(
-      `/api/auth/organization/list-invitations?organizationId=${encodeURIComponent(organizationId)}`,
+    }) as Promise<TWorkspace[]>,
+  listWorkspaceInvitations: <TInvitation,>(workspaceId: string) =>
+    apiFetch<WorkspaceInvitation[]>(
+      `/api/auth/workspace/list-invitations?workspaceId=${encodeURIComponent(workspaceId)}`,
       {
         method: "GET",
       },
@@ -78,11 +78,11 @@ export const webAuthClient: NotelabAuthClient = {
 export function WebFeaturesProvider({
   children,
 }: React.PropsWithChildren) {
-  const preferredActiveOrganizationId = useAppStore(
-    (state) => state.activeOrganizationId,
+  const preferredActiveWorkspaceId = useAppStore(
+    (state) => state.activeWorkspaceId,
   )
-  const setPreferredActiveOrganizationId = useAppStore(
-    (state) => state.setActiveOrganizationId,
+  const setPreferredActiveWorkspaceId = useAppStore(
+    (state) => state.setActiveWorkspaceId,
   )
 
   return (
@@ -90,9 +90,9 @@ export function WebFeaturesProvider({
       value={{
         apiFetch,
         auth: webAuthClient,
-        preferredActiveOrganizationId,
+        preferredActiveWorkspaceId,
         queryClient,
-        setPreferredActiveOrganizationId,
+        setPreferredActiveWorkspaceId,
       }}
     >
       {children}

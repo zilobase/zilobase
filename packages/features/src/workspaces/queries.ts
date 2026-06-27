@@ -1,249 +1,18 @@
-import { type QueryClient, queryOptions } from "@tanstack/react-query"
+import { queryOptions } from "@tanstack/react-query"
 
-import {
-  ACTIVE_ORGANIZATION_MISMATCH_CODE,
-  ActiveOrganizationMismatchError,
-} from "../api-errors"
-import type { ApiFetcher } from "../context"
-import type { EmbeddedItemsOpenAs, WorkspaceMetadata } from "./item-relationships"
-
-export type {
-  EmbeddedItemsOpenAs,
-  ItemRef,
-  NavItemKind,
-  WorkspaceMetadata,
-} from "./item-relationships"
-export { readLinkedItems, readParentItemId } from "./item-relationships"
-
-export type NotelabAiMode = "instruction" | "skill"
-
-export const notelabAiModeLabels: Record<NotelabAiMode, string> = {
-  instruction: "Use as instruction",
-  skill: "Use as skill",
-}
-
-export const embeddedItemsOpenAsLabels: Record<EmbeddedItemsOpenAs, string> = {
-  dialog: "Dialog",
-  sidepanel: "Side panel",
-}
-
-export const embeddedItemsOpenAsModes: EmbeddedItemsOpenAs[] = [
-  "sidepanel",
-  "dialog",
-]
-
-export type WorkspaceDatabaseView = {
-  id: string
-  databaseId: string
-  position: number
-  name: string
-  type: string
-  config?: unknown
-  createdAt: string
-  updatedAt: string
-}
-
-export type WorkspaceDatabase = {
-  id: string
-  organizationId: string
-  pageId: string
-  name: string
-  config?: unknown
-  createdBy?: WorkspaceCreator | null
-  deletedBy?: WorkspaceCreator | null
-  isFavorite?: boolean
-  lastVisitedAt?: string | null
-  views: WorkspaceDatabaseView[]
-  deletedById?: string | null
-  deletedAt?: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-export type WorkspaceItemPlacement = {
-  id: string
-  organizationId: string
-  parentKind: "workspace" | "database"
-  parentId: string
-  itemKind: "workspace" | "database"
-  itemId: string
-  placementKind: "primary" | "linked" | "database_row"
-  sourceRowId?: string | null
-  position: number
-}
+import type { NotelabAuthClient } from "../context"
 
 export type Workspace = {
   id: string
-  databases?: WorkspaceDatabase[]
-  createdBy?: WorkspaceCreator | null
-  deletedBy?: WorkspaceCreator | null
-  isFavorite?: boolean
-  isTeamspace?: boolean
-  lastVisitedAt?: string | null
-  navigationPlacements?: WorkspaceItemPlacement[]
-  organizationId: string
-  createdById?: string | null
-  type: string
   name: string
-  url: string
-  content?: unknown
-  metadata?: WorkspaceMetadata | null
-  deletedById?: string | null
-  deletedAt?: string | null
-  createdAt: string
-  updatedAt: string
+  slug: string
+  logo?: string | null
+  metadata?: string | null
 }
 
-export type WorkspaceCreator = {
-  email: string
-  id: string
-  image?: string | null
-  name: string
-}
+export type WorkspaceRole = "admin" | "member"
 
-export type NotelabAiWorkspaceSummary = {
-  id: string
-  name: string
-  organizationId: string
-  updatedAt: string
-  url: string
-  metadata: {
-    emoji?: string | null
-    notelabai: NotelabAiMode | null
-  }
-}
-
-export function usesUserFullWidthPreference(
-  metadata: WorkspaceMetadata | null | undefined,
-) {
-  return metadata?.useUserFullWidthPreference !== false
-}
-
-export function resolveWorkspaceFullWidth(
-  workspace: { metadata?: WorkspaceMetadata | null } | null | undefined,
-  userFullWidthPreference: boolean | null | undefined,
-) {
-  const metadata = workspace?.metadata ?? null
-
-  if (usesUserFullWidthPreference(metadata)) {
-    return Boolean(userFullWidthPreference)
-  }
-
-  return Boolean(metadata?.fullWidth)
-}
-
-export function usesUserEmbeddedItemsPreference(
-  metadata: WorkspaceMetadata | null | undefined,
-) {
-  return metadata?.useUserEmbeddedItemsPreference !== false
-}
-
-export function resolveEmbeddedItemsOpenAs(
-  workspace: { metadata?: WorkspaceMetadata | null } | null | undefined,
-  userEmbeddedItemsPreference: EmbeddedItemsOpenAs | null | undefined,
-) {
-  const metadata = workspace?.metadata ?? null
-
-  if (usesUserEmbeddedItemsPreference(metadata)) {
-    return userEmbeddedItemsPreference ?? "sidepanel"
-  }
-
-  return metadata?.embeddedItemsOpenAs ?? "sidepanel"
-}
-
-export type WorkspaceProperty = {
-  id: string
-  organizationId: string
-  name: string
-  type: string
-  config?: unknown
-  deletedById?: string | null
-  deletedAt?: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-export type WorkspacePropertyValue = {
-  id: string
-  workspaceId: string
-  propertyId: string
-  value: unknown
-  createdAt: string
-  updatedAt: string
-}
-
-export type WorkspacePropertiesPayload = {
-  properties: WorkspaceProperty[]
-  values: WorkspacePropertyValue[]
-}
-
-export type CommentAuthor = {
-  email: string
-  id: string
-  image?: string | null
-  name: string
-}
-
-export type WorkspaceCommentThread = {
-  id: string
-  organizationId: string
-  workspaceId: string
-  createdById?: string | null
-  resolvedAt?: string | null
-  resolvedById?: string | null
-  deletedAt?: string | null
-  createdAt: string
-  updatedAt: string
-  lastActivityAt: string
-}
-
-export type WorkspaceCommentReaction = {
-  count: number
-  emoji: string
-  reactedByMe: boolean
-}
-
-export type WorkspaceCommentMessage = {
-  id: string
-  threadId: string
-  authorId?: string | null
-  author?: CommentAuthor | null
-  body: string
-  editedAt?: string | null
-  reactions: WorkspaceCommentReaction[]
-  createdAt: string
-  updatedAt: string
-}
-
-export type WorkspaceCommentsPayload = {
-  comments: WorkspaceCommentMessage[]
-  thread: WorkspaceCommentThread | null
-}
-
-export type WorkspaceThreadsPayload = {
-  threads: WorkspaceCommentsPayload[]
-}
-
-export type AccessLevel = "view" | "edit" | "full"
-
-export type AccessTargetType = "public" | "user" | "team"
-
-export type WorkspaceAccessRule = {
-  id: string
-  organizationId: string
-  workspaceId: string
-  targetType: AccessTargetType
-  targetId: string
-  accessLevel: AccessLevel
-  createdAt: string
-  updatedAt: string
-}
-
-export type WorkspaceAccessPayload = {
-  access: WorkspaceAccessRule[]
-}
-
-export type WorkspaceAccessTargetMember = {
+export type WorkspaceMember = {
   email: string
   id: string
   memberId: string
@@ -251,119 +20,55 @@ export type WorkspaceAccessTargetMember = {
   role: string
 }
 
-export type WorkspaceAccessTargetTeam = {
+export type WorkspaceTeam = {
   id: string
   name: string
 }
 
 export type WorkspaceAccessTargetsPayload = {
-  members: WorkspaceAccessTargetMember[]
-  teams: WorkspaceAccessTargetTeam[]
+  members: WorkspaceMember[]
+  teams: WorkspaceTeam[]
 }
 
-export type WorkspacePersonAccessTargetsPayload = {
-  members: WorkspaceAccessTargetMember[]
+export type WorkspaceInvitation = {
+  id: string
+  workspaceId: string
+  email: string
+  role: WorkspaceRole | string
+  status: string
+  inviterId: string
+  expiresAt: string
+  createdAt: string
+  teamId?: string
 }
 
-export type WorkspacesDeletedFilter = "active" | "only"
-
-export const workspacesQueryKey = (
-  organizationId: string | null | undefined,
-  deleted: WorkspacesDeletedFilter = "active",
-) => ["workspaces", organizationId ?? "none", "nav", deleted] as const
-
-export const workspacesRootQueryKey = () => ["workspaces"] as const
-
-export const workspacesNavRootQueryKey = (
-  organizationId: string | null | undefined,
-) => ["workspaces", organizationId ?? "none", "nav"] as const
-
-export const notelabAiWorkspacesQueryKey = (
-  organizationId: string | null | undefined,
-) => ["workspaces", organizationId ?? "none", "notelab-ai"] as const
-
-export const workspaceQueryKey = (workspaceId: string | null | undefined) =>
-  ["workspace", workspaceId ?? "none"] as const
-
-export const workspaceRootQueryKey = () => ["workspace"] as const
-
-export type WorkspaceDetail = {
-  accessLevel?: AccessLevel | null
-  workspace: Workspace
-}
-
-export function getWorkspaceFromDetail(
-  detail: WorkspaceDetail | Workspace | null | undefined,
-) {
-  if (!detail || typeof detail !== "object") {
-    return null
+export type AcceptWorkspaceInvitationResponse = {
+  invitation: WorkspaceInvitation
+  member: {
+    id: string
+    workspaceId: string
+    userId: string
+    role: string
+    createdAt: string
   }
-
-  if ("workspace" in detail) {
-    return detail.workspace
-  }
-
-  return detail as Workspace
 }
 
-export const workspacePropertiesQueryKey = (
-  workspaceId: string | null | undefined,
-) => ["workspace", workspaceId ?? "none", "properties"] as const
-
-export const workspaceCommentsQueryKey = (
-  workspaceId: string | null | undefined,
-  threadId?: string | null,
-) =>
-  ["workspace", workspaceId ?? "none", "comments", threadId ?? "active"] as const
-
-export const workspaceThreadsQueryKey = (
-  workspaceId: string | null | undefined,
-) => ["workspace", workspaceId ?? "none", "threads"] as const
-
-export const workspaceAccessQueryKey = (
-  workspaceId: string | null | undefined,
-) => ["workspace", workspaceId ?? "none", "access"] as const
-
+export const workspacesQueryKey = ["workspaces"] as const
 export const workspaceAccessTargetsQueryKey = (
-  organizationId: string | null | undefined,
-) => ["workspaces", organizationId ?? "none", "access-targets"] as const
-
-export const workspacePersonAccessTargetsQueryKey = (
   workspaceId: string | null | undefined,
-) => ["workspace", workspaceId ?? "none", "access-targets"] as const
+) => ["workspaces", workspaceId ?? "none", "access-targets"] as const
+export const workspaceInvitationsQueryKey = (
+  workspaceId: string | null | undefined,
+) => ["workspaces", workspaceId ?? "none", "invitations"] as const
 
-export const workspacesQueryOptions = (
-  apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
-  options?: { deleted?: WorkspacesDeletedFilter },
-) =>
+export const workspacesQueryOptions = (auth: NotelabAuthClient) =>
   queryOptions({
-    queryKey: workspacesQueryKey(organizationId, options?.deleted ?? "active"),
-    enabled: Boolean(organizationId),
-    queryFn: async ({ signal }) => {
-      if (!organizationId) {
-        return []
-      }
-
+    queryKey: workspacesQueryKey,
+    queryFn: async () => {
       try {
-        const params = new URLSearchParams({
-          fields: "nav",
-          organizationId,
-        })
+        const workspaces = await auth.listWorkspaces<Workspace | null>()
 
-        if (options?.deleted === "only") {
-          params.set("deleted", "only")
-        }
-
-        const result = await apiFetch<{
-          placements?: WorkspaceItemPlacement[]
-          workspaces: Workspace[]
-        }>(`/workspaces?${params.toString()}`, { method: "GET", signal })
-
-        return result.workspaces.map((workspace) => ({
-          ...workspace,
-          navigationPlacements: result.placements ?? [],
-        }))
+        return workspaces.filter(isWorkspace)
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -379,263 +84,46 @@ export const workspacesQueryOptions = (
     },
   })
 
-export const notelabAiWorkspacesQueryOptions = (
-  apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
-) =>
-  queryOptions({
-    queryKey: notelabAiWorkspacesQueryKey(organizationId),
-    enabled: Boolean(organizationId),
-    queryFn: async ({ signal }) => {
-      if (!organizationId) {
-        return []
-      }
-
-      try {
-        const params = new URLSearchParams({
-          fields: "summary",
-          notelabai: "instruction,skill",
-          organizationId,
-        })
-        const result = await apiFetch<{ workspaces: NotelabAiWorkspaceSummary[] }>(
-          `/workspaces?${params.toString()}`,
-          { method: "GET", signal },
-        )
-
-        return result.workspaces
-      } catch (error) {
-        if (
-          typeof error === "object" &&
-          error !== null &&
-          "status" in error &&
-          error.status === 401
-        ) {
-          return []
-        }
-
-        throw error
-      }
-    },
-  })
-
-export const workspaceQueryOptions = (
-  apiFetch: ApiFetcher,
-  workspaceId: string | null | undefined,
-) =>
-  queryOptions({
-    queryKey: workspaceQueryKey(workspaceId),
-    enabled: Boolean(workspaceId),
-    staleTime: 30_000,
-    queryFn: async ({ signal }): Promise<WorkspaceDetail | null> => {
-      if (!workspaceId) {
-        throw new Error("workspaceId is required")
-      }
-
-      try {
-        const result = await apiFetch<{
-          accessLevel?: AccessLevel
-          workspace: Workspace
-        }>(
-          `/workspaces/${workspaceId}`,
-          { method: "GET", signal },
-        )
-
-        return {
-          accessLevel: result.accessLevel ?? null,
-          workspace: result.workspace,
-        }
-      } catch (error) {
-        if (
-          typeof error === "object" &&
-          error !== null &&
-          "status" in error &&
-          error.status === 409 &&
-          "body" in error &&
-          error.body &&
-          typeof error.body === "object" &&
-          "code" in error.body &&
-          error.body.code === ACTIVE_ORGANIZATION_MISMATCH_CODE &&
-          "organizationId" in error.body &&
-          typeof error.body.organizationId === "string"
-        ) {
-          const mismatchBody = error.body as {
-            error?: unknown
-            organizationId: string
-          }
-          const message =
-            typeof mismatchBody.error === "string"
-              ? mismatchBody.error
-              : undefined
-
-          throw new ActiveOrganizationMismatchError(
-            mismatchBody.organizationId,
-            message,
-          )
-        }
-
-        if (
-          typeof error === "object" &&
-          error !== null &&
-          "status" in error &&
-          (error.status === 401 ||
-            error.status === 403 ||
-            error.status === 404)
-        ) {
-          return null
-        }
-
-        throw error
-      }
-    },
-  })
-
-export async function ensureWorkspaceDetail(
-  queryClient: QueryClient,
-  apiFetch: ApiFetcher,
-  workspaceId: string,
-) {
-  return queryClient.ensureQueryData(
-    workspaceQueryOptions(apiFetch, workspaceId),
+function isWorkspace(value: Workspace | null): value is Workspace {
+  return Boolean(
+    value &&
+      typeof value.id === "string" &&
+      typeof value.name === "string" &&
+      typeof value.slug === "string",
   )
 }
 
-export const workspaceAccessQueryOptions = (
-  apiFetch: ApiFetcher,
+export const workspaceAccessTargetsQueryOptions = (
+  apiFetch: <T>(path: string, init?: RequestInit) => Promise<T>,
   workspaceId: string | null | undefined,
 ) =>
   queryOptions({
-    queryKey: workspaceAccessQueryKey(workspaceId),
+    queryKey: workspaceAccessTargetsQueryKey(workspaceId),
     enabled: Boolean(workspaceId),
     queryFn: async ({ signal }) => {
       if (!workspaceId) {
-        return { access: [] }
-      }
-
-      try {
-        return await apiFetch<WorkspaceAccessPayload>(
-          `/workspaces/${workspaceId}/access`,
-          { method: "GET", signal },
-        )
-      } catch (error) {
-        if (
-          typeof error === "object" &&
-          error !== null &&
-          "status" in error &&
-          error.status === 403
-        ) {
-          return { access: [] }
-        }
-
-        throw error
-      }
-    },
-  })
-
-export const workspaceAccessTargetsQueryOptions = (
-  apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
-) =>
-  queryOptions({
-    queryKey: workspaceAccessTargetsQueryKey(organizationId),
-    enabled: Boolean(organizationId),
-    queryFn: async ({ signal }) => {
-      if (!organizationId) {
         return { members: [], teams: [] }
       }
 
       return apiFetch<WorkspaceAccessTargetsPayload>(
-        `/organizations/${organizationId}/access-targets`,
-        { method: "GET", signal },
-      )
-    },
-  })
-
-export const workspacePersonAccessTargetsQueryOptions = (
-  apiFetch: ApiFetcher,
-  workspaceId: string | null | undefined,
-) =>
-  queryOptions({
-    queryKey: workspacePersonAccessTargetsQueryKey(workspaceId),
-    enabled: Boolean(workspaceId),
-    queryFn: async ({ signal }) => {
-      if (!workspaceId) {
-        return { members: [] }
-      }
-
-      return apiFetch<WorkspacePersonAccessTargetsPayload>(
         `/workspaces/${workspaceId}/access-targets`,
         { method: "GET", signal },
       )
     },
   })
 
-
-
-export const workspacePropertiesQueryOptions = (
-  apiFetch: ApiFetcher,
+export const workspaceInvitationsQueryOptions = (
+  auth: NotelabAuthClient,
   workspaceId: string | null | undefined,
 ) =>
   queryOptions({
-    queryKey: workspacePropertiesQueryKey(workspaceId),
+    queryKey: workspaceInvitationsQueryKey(workspaceId),
     enabled: Boolean(workspaceId),
-    queryFn: async ({ signal }) => {
+    queryFn: async () => {
       if (!workspaceId) {
-        throw new Error("workspaceId is required")
+        return []
       }
 
-      return apiFetch<WorkspacePropertiesPayload>(
-        `/workspaces/${workspaceId}/properties`,
-        { method: "GET", signal },
-      )
+      return auth.listWorkspaceInvitations<WorkspaceInvitation>(workspaceId)
     },
   })
-
-export const workspaceCommentsQueryOptions = (
-  apiFetch: ApiFetcher,
-  workspaceId: string | null | undefined,
-  threadId?: string | null,
-  enabled = true,
-) =>
-  queryOptions({
-    queryKey: workspaceCommentsQueryKey(workspaceId, threadId),
-    enabled: Boolean(workspaceId) && enabled,
-    queryFn: async ({ signal }) => {
-      if (!workspaceId) {
-        return { comments: [], thread: null }
-      }
-
-      const url = threadId
-        ? `/workspaces/${workspaceId}/comments?threadId=${encodeURIComponent(threadId)}`
-        : `/workspaces/${workspaceId}/comments`
-
-      return apiFetch<WorkspaceCommentsPayload>(url, { method: "GET", signal })
-    },
-  })
-
-export const workspaceThreadsQueryOptions = (
-  apiFetch: ApiFetcher,
-  workspaceId: string | null | undefined,
-  enabled = true,
-) =>
-  queryOptions({
-    queryKey: workspaceThreadsQueryKey(workspaceId),
-    enabled: Boolean(workspaceId) && enabled,
-    queryFn: async ({ signal }) => {
-      if (!workspaceId) {
-        return { threads: [] }
-      }
-
-      return apiFetch<WorkspaceThreadsPayload>(
-        `/workspaces/${workspaceId}/threads`,
-        { method: "GET", signal },
-      )
-    },
-  })
-
-export function getWorkspaceEmoji(workspace: Pick<Workspace, "metadata">) {
-  return workspace.metadata?.emoji ?? null
-}
-
-export function getWorkspaceCover(workspace: Pick<Workspace, "metadata">) {
-  return workspace.metadata?.cover ?? null
-}
