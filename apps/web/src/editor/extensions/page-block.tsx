@@ -8,6 +8,7 @@ import { FileText, LinkIcon, Loader2, Plus } from "lucide-react"
 import {
   useEffect,
   useRef,
+  useSyncExternalStore,
   useState,
   type DragEvent,
   type KeyboardEvent,
@@ -21,9 +22,11 @@ import {
 } from "@/components/ui/popover"
 import {
   getWorkspaceEmoji,
-  useWorkspace,
   useWorkspaces,
+  type Workspace,
 } from "@notelab/features/workspaces"
+import { useNotelabFeatures } from "@notelab/features"
+import type { DatabasePayload } from "@notelab/features/databases"
 import { colorWithAlpha } from "@/packages/editor/components/editor/toolbar-data"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database/constants"
 
@@ -37,6 +40,39 @@ export type PageBlockOptions = {
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string) => void
   organizationId?: string | null
+}
+
+type PageSummary = Pick<Workspace, "id" | "metadata" | "name">
+
+function findCachedDatabaseRowPage(
+  queryClient: ReturnType<typeof useNotelabFeatures>["queryClient"],
+  pageId: string | null,
+): PageSummary | null {
+  if (!pageId) {
+    return null
+  }
+
+  for (const [, data] of queryClient.getQueriesData<DatabasePayload>({
+    queryKey: ["database"],
+  })) {
+    const row = data?.rows.find((item) => item.pageId === pageId)
+
+    if (row) {
+      return row.page as PageSummary
+    }
+  }
+
+  return null
+}
+
+function useCachedDatabaseRowPage(pageId: string | null) {
+  const { queryClient } = useNotelabFeatures()
+
+  return useSyncExternalStore(
+    (onStoreChange) => queryClient.getQueryCache().subscribe(onStoreChange),
+    () => findCachedDatabaseRowPage(queryClient, pageId),
+    () => null,
+  )
 }
 
 function PageBlockView({
@@ -53,7 +89,7 @@ function PageBlockView({
   const [selectedIndex, setSelectedIndex] = useState(0)
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const options = extension.options as PageBlockOptions
-  const { data: pages = [], isLoading: isLoadingPages } = useWorkspaces(
+  const { data: pages = [] } = useWorkspaces(
     options.organizationId,
     {
       enabled: Boolean(pageId) || isOpen,
@@ -62,19 +98,10 @@ function PageBlockView({
   const navPage = pageId
     ? pages.find((workspace) => workspace.id === pageId)
     : undefined
-  const shouldFetchPage =
-    Boolean(pageId) && !navPage && !isLoadingPages
-  const { data: fetchedPage, isLoading: isLoadingFetchedPage } = useWorkspace(
-    shouldFetchPage ? pageId : null,
-  )
-  const page = navPage ?? fetchedPage ?? undefined
+  const rowPage = useCachedDatabaseRowPage(pageId)
+  const page = navPage ?? rowPage ?? undefined
   const title = page?.name.trim() || "Untitled"
   const emoji = page ? getWorkspaceEmoji(page) : null
-  const isPageLoading =
-    Boolean(pageId) &&
-    ((isLoadingPages && !navPage) ||
-      (shouldFetchPage && isLoadingFetchedPage && !fetchedPage))
-  const isAccessDenied = Boolean(pageId) && !isPageLoading && !page
   const linkablePages = pages.filter(
     (workspace) => workspace.id !== options.currentPageId
   )
@@ -219,20 +246,7 @@ function PageBlockView({
       data-page-id={pageId ?? undefined}
       data-src={pageId ? "true" : "false"}
     >
-      {isAccessDenied ? (
-        <div
-          className="page-block-preview text-muted-foreground"
-          contentEditable={false}
-          style={cardStyle}
-        >
-          <span className="page-block-icon">
-            <FileText />
-          </span>
-          <span className="page-block-title">
-            You don't have access to this block
-          </span>
-        </div>
-      ) : pageId ? (
+      {pageId ? (
         <button
           className="page-block-preview"
           contentEditable={false}
