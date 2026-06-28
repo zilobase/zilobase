@@ -97,7 +97,7 @@ export type DatabaseViewContextValue = {
   databaseConfig?: unknown
   databaseId: string | null | undefined
   databaseName?: string
-  databaseOrganizationId?: string
+  databaseWorkspaceId?: string
   deleteDatabaseView: (view: DatabaseViewTab) => void
   duplicateDatabaseView: (view: DatabaseViewTab) => void
   draftDatabaseTitle: string
@@ -120,7 +120,7 @@ export type DatabaseViewContextValue = {
   headerMenusEnabled?: boolean
   hostDatabaseId: string | null | undefined
   hostDatabaseName?: string
-  hostDatabaseOrganizationId?: string
+  hostDatabaseWorkspaceId?: string
   hostViews: DatabaseView[]
   isAddingDatabaseProperty: boolean
   isAddingDatabaseRow: boolean
@@ -131,7 +131,7 @@ export type DatabaseViewContextValue = {
   linkedDatabaseViews: DatabaseLinkedViewConfig[]
   onOpenPage?: (pageId: string) => void
   options: DatabaseSelectOption[]
-  organizationId?: string | null
+  workspaceId?: string | null
   personOptions: Array<{ id: string; name: string; suffix?: string }>
   properties: DatabaseProperty[]
   propertyValuesByKey: Record<string, DatabasePropertyValue>

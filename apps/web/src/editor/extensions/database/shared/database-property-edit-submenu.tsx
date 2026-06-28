@@ -12,6 +12,7 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react"
+import { Reorder, useDragControls } from "framer-motion"
 import { useState, type ReactNode } from "react"
 
 import {
@@ -547,6 +548,11 @@ function SelectPropertyOptions({
   options: DatabaseSelectOption[]
   sort: SelectOptionSortValue
 }) {
+  const [showCreateInput, setShowCreateInput] = useState(false)
+  const optionIds = options.map((option) => option.id)
+  const [draftOptionIds, setDraftOptionIds] = useState<string[] | null>(null)
+  const renderedOptionIds = draftOptionIds ?? optionIds
+  const renderedOptions = reorderOptionsByIds(options, renderedOptionIds)
   const updateOption = (
     optionId: string,
     patch: Partial<DatabaseSelectOption>
@@ -559,14 +565,13 @@ function SelectPropertyOptions({
       options: getSortedSelectOptions(nextOptions, sort),
     })
   }
-  const addOption = () => {
-    const optionName = getUniqueOptionName(options, "Option")
+  const addOption = (name: string) => {
     const nextOptions = [
       ...options,
       {
         color: getNextOptionColor(options),
         id: crypto.randomUUID(),
-        name: optionName,
+        name,
       },
     ]
 
@@ -581,6 +586,23 @@ function SelectPropertyOptions({
           ? options
           : getSortedSelectOptions(options, selectOptionSort),
       selectOptionSort,
+    })
+  }
+  const commitOptionReorder = () => {
+    if (!draftOptionIds) {
+      return
+    }
+
+    const nextOptionIds = draftOptionIds
+    setDraftOptionIds(null)
+
+    if (areSameOrderedIds(nextOptionIds, optionIds)) {
+      return
+    }
+
+    onUpdateConfig({
+      options: reorderOptionsByIds(options, nextOptionIds),
+      selectOptionSort: "manual",
     })
   }
 
@@ -599,20 +621,41 @@ function SelectPropertyOptions({
         <button
           aria-label="Add select option"
           className="-my-1 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-          onClick={addOption}
+          onClick={() => setShowCreateInput(true)}
           type="button"
         >
           <Plus className="size-4" />
         </button>
       </DropDrawerLabel>
+      {showCreateInput ? (
+        <OptionCreateInput
+          ariaLabel="New select option name"
+          onCancel={() => setShowCreateInput(false)}
+          onCreate={(name) => {
+            addOption(name)
+            setShowCreateInput(false)
+          }}
+          placeholder="New option"
+        />
+      ) : null}
       {options.length > 0 ? (
-        options.map((option) => (
-          <OptionEditorSubmenu
-            key={option.id}
-            onUpdateOption={updateOption}
-            option={option}
-          />
-        ))
+        <Reorder.Group
+          as="div"
+          axis="y"
+          layoutScroll
+          values={renderedOptionIds}
+          onReorder={setDraftOptionIds}
+        >
+          {renderedOptions.map((option) => (
+            <OptionEditorSubmenu
+              draggable
+              key={option.id}
+              onDragEnd={commitOptionReorder}
+              onUpdateOption={updateOption}
+              option={option}
+            />
+          ))}
+        </Reorder.Group>
       ) : (
         <DropDrawerItem disabled>No options yet</DropDrawerItem>
       )}
@@ -650,6 +693,10 @@ function StatusPropertyOptions({
     },
   ]
   const resolvedDefaultOptionId = defaultOptionId ?? options[0]?.id
+  const [creatingGroupName, setCreatingGroupName] = useState<string | null>(null)
+  const [draftGroupOptionIdsByName, setDraftGroupOptionIdsByName] = useState<
+    Record<string, string[]>
+  >({})
   const updateOption = (optionId: string, patch: Partial<StatusOption>) => {
     onUpdateConfig({
       defaultOptionId: resolvedDefaultOptionId,
@@ -664,46 +711,181 @@ function StatusPropertyOptions({
       options,
     })
   }
+  const addOption = (groupName: string, name: string) => {
+    onUpdateConfig({
+      defaultOptionId: resolvedDefaultOptionId,
+      options: [
+        ...options,
+        {
+          color: getNextOptionColor(options),
+          group: groupName,
+          id: crypto.randomUUID(),
+          name,
+        },
+      ],
+    })
+  }
+  const setDraftGroupOptionIds = (groupName: string, optionIds: string[]) => {
+    setDraftGroupOptionIdsByName((drafts) => ({
+      ...drafts,
+      [groupName]: optionIds,
+    }))
+  }
+  const commitGroupOptionReorder = (
+    groupName: string,
+    groupOptions: StatusOption[]
+  ) => {
+    const draftOptionIds = draftGroupOptionIdsByName[groupName]
+
+    if (!draftOptionIds) {
+      return
+    }
+
+    setDraftGroupOptionIdsByName((drafts) => {
+      const nextDrafts = { ...drafts }
+      delete nextDrafts[groupName]
+
+      return nextDrafts
+    })
+
+    if (
+      areSameOrderedIds(
+        draftOptionIds,
+        groupOptions.map((option) => option.id)
+      )
+    ) {
+      return
+    }
+
+    onUpdateConfig({
+      defaultOptionId: resolvedDefaultOptionId,
+      options: reorderStatusGroupOptions(options, groupName, draftOptionIds),
+    })
+  }
 
   return (
     <>
-      {groups.map((group, groupIndex) => (
-        <div key={group.name}>
-          {groupIndex > 0 ? <DropDrawerSeparator /> : null}
-          <DropDrawerLabel className="flex items-center justify-between pr-1">
-            <span>{group.name}</span>
-            <button
-              aria-label={`Add ${group.name} status`}
-              className="-my-1 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              type="button"
-            >
-              <Plus className="size-4" />
-            </button>
-          </DropDrawerLabel>
-          {group.options.map((option) => (
-            <OptionEditorSubmenu
-              defaultOptionId={resolvedDefaultOptionId}
-              key={option.id}
-              onSetDefaultOption={setDefaultOption}
-              onUpdateOption={updateOption}
-              option={option}
-              showDot
+      {groups.map((group, groupIndex) => {
+        const groupOptionIds = group.options.map((option) => option.id)
+        const renderedOptionIds =
+          draftGroupOptionIdsByName[group.name] ?? groupOptionIds
+        const renderedOptions = reorderOptionsByIds(
+          group.options,
+          renderedOptionIds
+        )
+
+        return (
+          <div key={group.name}>
+            {groupIndex > 0 ? <DropDrawerSeparator /> : null}
+            <DropDrawerLabel className="flex items-center justify-between pr-1">
+              <span>{group.name}</span>
+              <button
+                aria-label={`Add ${group.name} status`}
+                className="-my-1 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                onClick={() => setCreatingGroupName(group.name)}
+                type="button"
+              >
+                <Plus className="size-4" />
+              </button>
+            </DropDrawerLabel>
+          <Reorder.Group
+            as="div"
+            axis="y"
+            layoutScroll
+            values={renderedOptionIds}
+            onReorder={(optionIds) =>
+              setDraftGroupOptionIds(group.name, optionIds)
+            }
+          >
+            {renderedOptions.map((option) => (
+              <OptionEditorSubmenu
+                defaultOptionId={resolvedDefaultOptionId}
+                draggable
+                key={option.id}
+                onDragEnd={() =>
+                  commitGroupOptionReorder(group.name, group.options)
+                }
+                onSetDefaultOption={setDefaultOption}
+                onUpdateOption={updateOption}
+                option={option}
+                showDot
+              />
+            ))}
+          </Reorder.Group>
+          {creatingGroupName === group.name ? (
+            <OptionCreateInput
+              ariaLabel={`New ${group.name} status name`}
+              onCancel={() => setCreatingGroupName(null)}
+              onCreate={(name) => {
+                addOption(group.name, name)
+                setCreatingGroupName(null)
+              }}
+              placeholder="New status"
             />
-          ))}
-        </div>
-      ))}
+          ) : null}
+          </div>
+        )
+      })}
     </>
+  )
+}
+
+function OptionCreateInput({
+  ariaLabel,
+  onCancel,
+  onCreate,
+  placeholder,
+}: {
+  ariaLabel: string
+  onCancel: () => void
+  onCreate: (name: string) => void
+  placeholder: string
+}) {
+  const [name, setName] = useState("")
+
+  return (
+    <div className="px-1.5 py-1">
+      <Input
+        aria-label={ariaLabel}
+        autoFocus
+        onChange={(event) => setName(event.target.value)}
+        onKeyDown={(event) => {
+          event.stopPropagation()
+
+          if (event.key === "Enter") {
+            event.preventDefault()
+
+            const nextName = name.trim()
+
+            if (nextName) {
+              onCreate(nextName)
+            }
+          }
+
+          if (event.key === "Escape") {
+            event.preventDefault()
+            onCancel()
+          }
+        }}
+        placeholder={placeholder}
+        value={name}
+      />
+    </div>
   )
 }
 
 function OptionEditorSubmenu({
   defaultOptionId,
+  draggable = false,
+  onDragEnd,
   onSetDefaultOption,
   onUpdateOption,
   option,
   showDot = false,
 }: {
   defaultOptionId?: string
+  draggable?: boolean
+  onDragEnd?: () => void
   onSetDefaultOption?: (optionId: string) => void
   onUpdateOption: (
     optionId: string,
@@ -712,10 +894,27 @@ function OptionEditorSubmenu({
   option: DatabaseSelectOption
   showDot?: boolean
 }) {
-  return (
+  const dragControls = useDragControls()
+  const content = (
     <DropDrawerSub>
       <DropDrawerSubTrigger>
-        <GripVertical />
+        <span
+          aria-label={`Drag ${option.name} option`}
+          className="inline-flex size-4 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+          onPointerDown={(event) => {
+            if (!draggable) {
+              return
+            }
+
+            event.preventDefault()
+            event.stopPropagation()
+            dragControls.start(event)
+          }}
+          role="button"
+          tabIndex={-1}
+        >
+          <GripVertical />
+        </span>
         <span className={getColorTokenBadgeClassName(option.color)}>
           {showDot ? (
             <span
@@ -790,6 +989,24 @@ function OptionEditorSubmenu({
         ))}
       </DropDrawerSubContent>
     </DropDrawerSub>
+  )
+
+  if (!draggable) {
+    return content
+  }
+
+  return (
+    <Reorder.Item
+      as="div"
+      className="rounded-md"
+      dragControls={dragControls}
+      dragListener={false}
+      onDragEnd={onDragEnd}
+      value={option.id}
+      whileDrag={{ scale: 0.995 }}
+    >
+      {content}
+    </Reorder.Item>
   )
 }
 
@@ -1169,25 +1386,53 @@ function getSortedSelectOptions(
     : sortedOptions
 }
 
-function getNextOptionColor(options: DatabaseSelectOption[]) {
-  return cyclingColorTokens[options.length % cyclingColorTokens.length]?.value ?? "default"
+function reorderOptionsByIds<TOption extends { id: string }>(
+  options: TOption[],
+  optionIds: string[]
+) {
+  const optionsById = new Map(options.map((option) => [option.id, option]))
+  const orderedOptions = optionIds.flatMap((optionId) => {
+    const option = optionsById.get(optionId)
+
+    return option ? [option] : []
+  })
+  const remainingOptions = options.filter(
+    (option) => !optionIds.includes(option.id)
+  )
+
+  return [...orderedOptions, ...remainingOptions]
 }
 
-function getUniqueOptionName(
-  options: DatabaseSelectOption[],
-  baseName: string
+function reorderStatusGroupOptions(
+  options: StatusOption[],
+  groupName: string,
+  optionIds: string[]
 ) {
-  const optionNames = new Set(options.map((option) => option.name))
+  const reorderedGroupOptions = reorderOptionsByIds(
+    options.filter((option) => getStatusOptionGroup(option) === groupName),
+    optionIds
+  )
+  let nextGroupIndex = 0
 
-  if (!optionNames.has(baseName)) {
-    return baseName
-  }
+  return options.map((option) => {
+    if (getStatusOptionGroup(option) !== groupName) {
+      return option
+    }
 
-  let index = 2
+    const nextOption = reorderedGroupOptions[nextGroupIndex]
+    nextGroupIndex += 1
 
-  while (optionNames.has(`${baseName} ${index}`)) {
-    index += 1
-  }
+    return nextOption ?? option
+  })
+}
 
-  return `${baseName} ${index}`
+function areSameOrderedIds(firstIds: string[], secondIds: string[]) {
+  return (
+    firstIds.length === secondIds.length &&
+    firstIds.every((id, index) => id === secondIds[index])
+  )
+}
+
+function getNextOptionColor(options: DatabaseSelectOption[]) {
+  return cyclingColorTokens[options.length % cyclingColorTokens.length]?.value ?? "default"
 }

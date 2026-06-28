@@ -38,9 +38,9 @@ import {
 import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,
-  getActiveWorkspaceId,
+  getActivePageId,
   NavTree,
-  type WorkspaceNavItem,
+  type PageNavItem,
 } from "@/components/nav-tree"
 
 export function NavFavorites({
@@ -48,12 +48,12 @@ export function NavFavorites({
   onRemoveDatabaseFavorite,
   onRemoveFavorite,
 }: {
-  favorites: WorkspaceNavItem[]
+  favorites: PageNavItem[]
   onRemoveDatabaseFavorite: (databaseId: string) => void
-  onRemoveFavorite: (workspaceId: string) => void
+  onRemoveFavorite: (pageId: string) => void
 }) {
   const location = useLocation()
-  const activeWorkspaceId = getActiveWorkspaceId(location.pathname)
+  const activePageId = getActivePageId(location.pathname)
   const activeDatabaseId = getActiveDatabaseId(location.pathname)
   const activeDatabaseViewId = getActiveDatabaseViewId(location.search)
 
@@ -64,7 +64,7 @@ export function NavFavorites({
         <NavTree
           activeDatabaseId={activeDatabaseId}
           activeDatabaseViewId={activeDatabaseViewId}
-          activeWorkspaceId={activeWorkspaceId}
+          activePageId={activePageId}
           items={favorites}
           renderItemMenu={({ item, nested }) => (
             <FavoriteItemMenu
@@ -93,9 +93,9 @@ function FavoriteItemMenu({
   onRemoveFavorite,
   requireRemoveConfirmation,
 }: {
-  item: WorkspaceNavItem
+  item: PageNavItem
   onRemoveDatabaseFavorite: (databaseId: string) => void
-  onRemoveFavorite: (workspaceId: string) => void
+  onRemoveFavorite: (pageId: string) => void
   requireRemoveConfirmation: boolean
 }) {
   const { isMobile } = useSidebar()
@@ -103,7 +103,7 @@ function FavoriteItemMenu({
   const linkPath =
     item.isDatabase && item.databaseId
       ? `/database/${item.databaseId}`
-      : `/workspace/${item.workspaceId}`
+      : `/page/${item.pageId}`
   const displayName = item.name.trim() || "Untitled"
   const removeFavorite = () => {
     if (item.isDatabase && item.databaseId) {
@@ -111,7 +111,7 @@ function FavoriteItemMenu({
       return
     }
 
-    onRemoveFavorite(item.workspaceId)
+    onRemoveFavorite(item.pageId)
   }
 
   return (

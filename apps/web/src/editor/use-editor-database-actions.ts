@@ -4,21 +4,21 @@ import { toast } from "sonner"
 import { dropPageOnDatabase } from "./database-page-drag"
 
 export const useEditorDatabaseActions = (
-  organizationId?: string | null,
-  workspaceId?: string | null
+  workspaceId?: string | null,
+  pageId?: string | null
 ) => {
   const createDatabase = useCreateDatabase()
   const addDatabaseRow = useAddDatabaseRow()
 
   const createEditorDatabase = useCallback(async () => {
-    if (!organizationId || !workspaceId) return null
+    if (!workspaceId || !pageId) return null
     const payload = await createDatabase.mutateAsync({
       name: "New database",
-      organizationId,
-      pageId: workspaceId,
+      workspaceId,
+      pageId: pageId,
     })
     return payload.database.id
-  }, [createDatabase, organizationId, workspaceId])
+  }, [createDatabase, workspaceId, pageId])
 
   const handleDatabasePageDrop = useCallback(
     (event: DragEvent) =>

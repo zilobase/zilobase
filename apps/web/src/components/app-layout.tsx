@@ -14,13 +14,13 @@ import {
   ChatSidebarPanel,
   ChatSidebarTrigger,
 } from "@/components/chat-sidebar"
-import { WorkspaceEditorRegistryProvider } from "@/contexts/workspace-editor-registry"
+import { PageEditorRegistryProvider } from "@/contexts/page-editor-registry"
 import {
-  useWorkspaceSidePaneState,
-  WorkspaceSidePaneContext,
-  WorkspaceSidePaneHeaderCell,
-  WorkspaceSidePaneShell,
-} from "@/contexts/workspace-side-pane"
+  usePageSidePaneState,
+  PageSidePaneContext,
+  PageSidePaneHeaderCell,
+  PageSidePaneShell,
+} from "@/contexts/page-side-pane"
 import { DiscussionsSidebarPanel } from "@/components/discussions-sidebar"
 import {
   getRightSidebarEditorDefaultSize,
@@ -28,13 +28,13 @@ import {
   RightSidebarMobilePanels,
   RightSidebars,
 } from "@/components/right-sidebars"
-import { WorkspaceEditorCommentsProvider } from "@/components/workspace-editor-comments"
+import { PageEditorCommentsProvider } from "@/components/page-editor-comments"
 
 import {
   getDatabaseId,
-  getWorkspaceId,
-  WorkspacePaneHeader,
-} from "@/components/workspace-pane-header"
+  getPageId,
+  PagePaneHeader,
+} from "@/components/page-pane-header"
 import { SettingsSidebar } from "@/components/settings-sidebar"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -51,8 +51,8 @@ import { isEmbeddedMobileViewer } from "@/lib/embedded-view"
 import { useDatabase } from "@notelab/features/databases"
 import {
   useRecordItemVisit,
-  useWorkspace,
-} from "@notelab/features/workspaces"
+  usePage,
+} from "@notelab/features/pages"
 import { useUserSettings } from "@notelab/features/user-settings"
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
 import {
@@ -87,26 +87,26 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   const { isMobile, open: appSidebarOpen } = useSidebar()
   const isSettingsPage = pathname.startsWith("/settings")
   const isAiPage = pathname === "/ai"
-  const workspaceId = getWorkspaceId(pathname)
+  const pageId = getPageId(pathname)
   const databaseId = getDatabaseId(pathname)
   const { data: databasePayload } = useDatabase(databaseId)
-  const hostWorkspaceId =
-    workspaceId ?? databasePayload?.database.pageId ?? null
-  const { data: hostWorkspace } = useWorkspace(hostWorkspaceId, {
+  const hostPageId =
+    pageId ?? databasePayload?.database.pageId ?? null
+  const { data: hostPage } = usePage(hostPageId, {
     refetchOnMount: false,
   })
   const recordItemVisit = useRecordItemVisit()
   const recordedVisitKeyRef = useRef<string | null>(null)
   const { data: userSettings } = useUserSettings()
-  const openPagesAs = useResolvedOpenPagesAs(hostWorkspace, userSettings)
-  const discussionsEnabled = Boolean(workspaceId && !databaseId)
-  const sidePaneState = useWorkspaceSidePaneState(workspaceId)
+  const openPagesAs = useResolvedOpenPagesAs(hostPage, userSettings)
+  const discussionsEnabled = Boolean(pageId && !databaseId)
+  const sidePaneState = usePageSidePaneState(pageId)
   const {
     closeSidePane,
     openSidePane: openSidePaneBase,
-    renderedSidePaneWorkspaceId,
+    renderedSidePanePageId,
     sidePaneAnimatedOpen,
-    sidePaneWorkspaceId,
+    sidePanePageId,
   } = sidePaneState
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false)
   const [discussionsSidebarOpen, setDiscussionsSidebarOpen] = useState(false)
@@ -116,7 +116,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   const desktopRightPanelCount = isMobile ? 0 : openRightPanelCount
   const openSidePane = useCallback(
     (
-      nextWorkspaceId: string,
+      nextPageId: string,
       options?: { databaseId?: string | null },
     ) => {
       if (appSidebarOpen) {
@@ -124,7 +124,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
         setDiscussionsSidebarOpen(false)
       }
 
-      openSidePaneBase(nextWorkspaceId, options)
+      openSidePaneBase(nextPageId, options)
     },
     [appSidebarOpen, openSidePaneBase],
   )
@@ -149,18 +149,18 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   }, [databaseId])
 
   useEffect(() => {
-    const itemKind = databaseId ? "database" : workspaceId ? "workspace" : null
-    const itemId = databaseId ?? workspaceId
-    const organizationId =
+    const itemKind = databaseId ? "database" : pageId ? "page" : null
+    const itemId = databaseId ?? pageId
+    const workspaceId =
       databaseId
-        ? databasePayload?.database.organizationId
-        : hostWorkspace?.organizationId
+        ? databasePayload?.database.workspaceId
+        : hostPage?.workspaceId
 
-    if (!itemKind || !itemId || !organizationId) {
+    if (!itemKind || !itemId || !workspaceId) {
       return
     }
 
-    const visitKey = `${itemKind}:${itemId}:${organizationId}`
+    const visitKey = `${itemKind}:${itemId}:${workspaceId}`
 
     if (recordedVisitKeyRef.current === visitKey) {
       return
@@ -170,45 +170,45 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
     recordItemVisit.mutate({
       itemId,
       itemKind,
-      organizationId,
+      workspaceId,
     })
   }, [
     databaseId,
-    databasePayload?.database.organizationId,
-    hostWorkspace?.organizationId,
+    databasePayload?.database.workspaceId,
+    hostPage?.workspaceId,
     recordItemVisit.mutate,
-    workspaceId,
+    pageId,
   ])
 
   useEffect(() => {
-    if (appSidebarOpen && sidePaneWorkspaceId && chatSidebarOpen) {
+    if (appSidebarOpen && sidePanePageId && chatSidebarOpen) {
       setChatSidebarOpen(false)
     }
-  }, [appSidebarOpen, chatSidebarOpen, sidePaneWorkspaceId])
+  }, [appSidebarOpen, chatSidebarOpen, sidePanePageId])
 
   useEffect(() => {
-    if (appSidebarOpen && sidePaneWorkspaceId && discussionsSidebarOpen) {
+    if (appSidebarOpen && sidePanePageId && discussionsSidebarOpen) {
       setDiscussionsSidebarOpen(false)
     }
-  }, [appSidebarOpen, discussionsSidebarOpen, sidePaneWorkspaceId])
+  }, [appSidebarOpen, discussionsSidebarOpen, sidePanePageId])
 
   useEffect(() => {
-    if (openPagesAs === "dialog" && sidePaneWorkspaceId) {
+    if (openPagesAs === "dialog" && sidePanePageId) {
       closeSidePane()
     }
-  }, [closeSidePane, openPagesAs, sidePaneWorkspaceId])
+  }, [closeSidePane, openPagesAs, sidePanePageId])
 
   const showSidePaneLayout =
-    openPagesAs === "sidepanel" && renderedSidePaneWorkspaceId !== null
+    openPagesAs === "sidepanel" && renderedSidePanePageId !== null
 
   return (
-    <WorkspaceEditorRegistryProvider>
-      <WorkspaceEditorCommentsProvider>
-        <WorkspaceSidePaneContext.Provider value={sidePaneContext}>
+    <PageEditorRegistryProvider>
+      <PageEditorCommentsProvider>
+        <PageSidePaneContext.Provider value={sidePaneContext}>
           <EmbeddedPageDialogHost
-            contextWorkspaceId={hostWorkspaceId}
+            contextPageId={hostPageId}
             databaseId={databaseId}
-            hostWorkspace={hostWorkspace}
+            hostPage={hostPage}
             userSettings={userSettings}
           />
           {isSettingsPage ? (
@@ -236,7 +236,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
               }}
             >
               <SidebarInset className="flex h-full min-h-0 flex-col overflow-hidden">
-                <WorkspaceSidePaneShell
+                <PageSidePaneShell
                   body={children ?? <Outlet />}
                   header={
                     embeddedMobileViewer ? undefined : (
@@ -244,9 +244,9 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
                         isSettingsPage={isSettingsPage || isAiPage}
                         onCloseSidePane={closeSidePane}
                         pathname={pathname}
-                        renderedSidePaneWorkspaceId={
+                        renderedSidePanePageId={
                           showSidePaneLayout
-                            ? renderedSidePaneWorkspaceId
+                            ? renderedSidePanePageId
                             : null
                         }
                         sidePaneAnimatedOpen={
@@ -266,7 +266,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
                 <ChatSidebarPanel
                   databaseId={databaseId}
                   onClose={() => setChatSidebarOpen(false)}
-                  workspaceId={workspaceId}
+                  pageId={pageId}
                 />
               }
               discussionsEnabled={discussionsEnabled}
@@ -276,7 +276,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
                   <DiscussionsSidebarPanel
                     onClose={() => setDiscussionsSidebarOpen(false)}
                     open={discussionsSidebarOpen}
-                    workspaceId={workspaceId}
+                    pageId={pageId}
                   />
                 ) : undefined
               }
@@ -288,7 +288,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
               <ChatSidebarPanel
                 databaseId={databaseId}
                 onClose={() => setChatSidebarOpen(false)}
-                workspaceId={workspaceId}
+                pageId={pageId}
               />
             }
             discussionsEnabled={discussionsEnabled}
@@ -298,7 +298,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
                 <DiscussionsSidebarPanel
                   onClose={() => setDiscussionsSidebarOpen(false)}
                   open={discussionsSidebarOpen}
-                  workspaceId={workspaceId}
+                  pageId={pageId}
                 />
               ) : undefined
             }
@@ -311,28 +311,28 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
               onOpen={openChatSidebar}
             />
           )}
-        </WorkspaceSidePaneContext.Provider>
-      </WorkspaceEditorCommentsProvider>
-    </WorkspaceEditorRegistryProvider>
+        </PageSidePaneContext.Provider>
+      </PageEditorCommentsProvider>
+    </PageEditorRegistryProvider>
   )
 }
 
 function EmbeddedPageDialogHost({
-  contextWorkspaceId,
+  contextPageId,
   databaseId,
-  hostWorkspace,
+  hostPage,
   userSettings,
 }: {
-  contextWorkspaceId: string | null
+  contextPageId: string | null
   databaseId: string | null
-  hostWorkspace: ReturnType<typeof useWorkspace>["data"]
+  hostPage: ReturnType<typeof usePage>["data"]
   userSettings: ReturnType<typeof useUserSettings>["data"]
 }) {
   const { openPage } = useOpenEmbeddedPage({
-    contextWorkspaceId,
+    contextPageId,
     databaseId,
     userSettings,
-    workspace: hostWorkspace,
+    page: hostPage,
   })
 
   return <EmbeddedPageDialog onOpenPage={openPage} />
@@ -342,26 +342,26 @@ function AppHeader({
   isSettingsPage,
   onCloseSidePane,
   pathname,
-  renderedSidePaneWorkspaceId,
+  renderedSidePanePageId,
   sidePaneAnimatedOpen,
 }: {
   isSettingsPage: boolean
   onCloseSidePane: () => void
   pathname: string
-  renderedSidePaneWorkspaceId: string | null
+  renderedSidePanePageId: string | null
   sidePaneAnimatedOpen: boolean
 }) {
-  const showSidePaneHeader = renderedSidePaneWorkspaceId !== null
+  const showSidePaneHeader = renderedSidePanePageId !== null
   const splitActive = showSidePaneHeader && sidePaneAnimatedOpen
 
   return (
     <>
-      <WorkspaceSidePaneHeaderCell
+      <PageSidePaneHeaderCell
         className="z-20"
         side="main"
         splitActive={splitActive}
       >
-        <WorkspacePaneHeader
+        <PagePaneHeader
           bordered={false}
           className="min-w-0 flex-1"
           leadingControl={
@@ -370,20 +370,20 @@ function AppHeader({
           pathname={pathname}
           showActions={!isSettingsPage}
         />
-      </WorkspaceSidePaneHeaderCell>
+      </PageSidePaneHeaderCell>
       {showSidePaneHeader ? (
-        <WorkspaceSidePaneHeaderCell
+        <PageSidePaneHeaderCell
           className="z-20"
           side="side"
           splitActive={splitActive}
         >
-          <WorkspacePaneHeader
+          <PagePaneHeader
             bordered={false}
             className="min-w-0 flex-1"
             onClose={onCloseSidePane}
-            pathname={`/workspace/${encodeURIComponent(renderedSidePaneWorkspaceId ?? "")}`}
+            pathname={`/page/${encodeURIComponent(renderedSidePanePageId ?? "")}`}
           />
-        </WorkspaceSidePaneHeaderCell>
+        </PageSidePaneHeaderCell>
       ) : null}
     </>
   )

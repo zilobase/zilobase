@@ -26,16 +26,16 @@ export type AiChatThreadMessagesResponse = {
 }
 
 export const aiChatThreadsQueryKey = (
-  organizationId: string | null | undefined,
-) => ["organizations", organizationId ?? "none", "ai-chat", "threads"] as const
+  workspaceId: string | null | undefined,
+) => ["workspaces", workspaceId ?? "none", "ai-chat", "threads"] as const
 
 export const aiChatThreadMessagesQueryKey = (
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
   threadId: string | null | undefined,
 ) =>
   [
-    "organizations",
-    organizationId ?? "none",
+    "workspaces",
+    workspaceId ?? "none",
     "ai-chat",
     "threads",
     threadId ?? "none",
@@ -44,29 +44,29 @@ export const aiChatThreadMessagesQueryKey = (
 
 export const aiChatThreadsQueryOptions = (
   apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
 ) =>
   queryOptions({
-    queryKey: aiChatThreadsQueryKey(organizationId),
-    enabled: Boolean(organizationId),
+    queryKey: aiChatThreadsQueryKey(workspaceId),
+    enabled: Boolean(workspaceId),
     queryFn: ({ signal }) =>
       apiFetch<AiChatThreadsResponse>(
         "/api/ai/threads",
-        integrationRequestOptions(organizationId, { signal }),
+        integrationRequestOptions(workspaceId, { signal }),
       ),
   })
 
 export const aiChatThreadMessagesQueryOptions = (
   apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
   threadId: string | null | undefined,
 ) =>
   queryOptions({
-    queryKey: aiChatThreadMessagesQueryKey(organizationId, threadId),
-    enabled: Boolean(organizationId && threadId),
+    queryKey: aiChatThreadMessagesQueryKey(workspaceId, threadId),
+    enabled: Boolean(workspaceId && threadId),
     queryFn: ({ signal }) =>
       apiFetch<AiChatThreadMessagesResponse>(
         `/api/ai/threads/${encodeURIComponent(threadId!)}/messages`,
-        integrationRequestOptions(organizationId, { signal }),
+        integrationRequestOptions(workspaceId, { signal }),
       ),
   })

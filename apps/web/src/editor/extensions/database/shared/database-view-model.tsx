@@ -2,7 +2,7 @@ import type {
   DatabasePayload,
   DatabaseProperty,
   DatabaseRow,
-  WorkspacePropertyValue,
+  PagePropertyValue,
 } from "@notelab/features/databases"
 
 import {
@@ -43,7 +43,7 @@ import {
   hasViewHiddenPropertyIds,
 } from "./database-item-utils"
 
-type WorkspacePersonAccessTargets = {
+type PagePersonAccessTargets = {
   members?: Array<{
     email: string
     id: string
@@ -59,7 +59,7 @@ export function getDatabaseViewModel({
   currentUserId,
   payload,
 }: {
-  accessTargets?: WorkspacePersonAccessTargets
+  accessTargets?: PagePersonAccessTargets
   activeViewId: string | null
   currentUserId?: string
   payload: DatabasePayload | null | undefined
@@ -219,7 +219,7 @@ export function getDatabaseViewModel({
 }
 
 function getPersonOptions(
-  accessTargets: WorkspacePersonAccessTargets | undefined,
+  accessTargets: PagePersonAccessTargets | undefined,
   currentUserId: string | undefined
 ) {
   return (accessTargets?.members ?? []).map((member) => ({
@@ -455,7 +455,7 @@ function getPropertyValuesByKey({
 }: {
   items: DatabaseRow[]
   properties: DatabaseProperty[]
-  propertyValues: WorkspacePropertyValue[]
+  propertyValues: PagePropertyValue[]
 }) {
   const values: Record<string, DatabasePropertyValue> = {}
 

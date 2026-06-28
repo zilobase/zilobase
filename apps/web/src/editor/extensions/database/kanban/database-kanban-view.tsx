@@ -12,7 +12,7 @@ import {
   useMoveDatabaseRow,
   useReorderDatabaseRows,
 } from "@notelab/features/databases"
-import { useUpdateWorkspace } from "@notelab/features/workspaces"
+import { useUpdatePage } from "@notelab/features/pages"
 import {
   cyclingColorTokens,
   getColorTokenBadgeClassName,
@@ -333,7 +333,7 @@ export function DatabaseKanbanView() {
   } = useDatabaseViewContext()
   const moveRow = useMoveDatabaseRow()
   const reorderRows = useReorderDatabaseRows()
-  const updateWorkspace = useUpdateWorkspace()
+  const updatePage = useUpdatePage()
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const boardRef = useRef<HTMLDivElement | null>(null)
@@ -705,7 +705,7 @@ export function DatabaseKanbanView() {
     }
 
     if (nextMove.pageId && typeof nextMove.pageTitle === "string") {
-      updateWorkspace.mutate(
+      updatePage.mutate(
         {
           id: nextMove.pageId,
           name: nextMove.pageTitle,
@@ -853,15 +853,15 @@ export function DatabaseKanbanView() {
     property: DatabasePropertyListItem,
     disabledSelect = false
   ) => {
-    const workspaceProperty = property.property
-    const key = `${row.pageId}:${workspaceProperty.id}`
+    const pageProperty = property.property
+    const key = `${row.pageId}:${pageProperty.id}`
     const persistedValue = propertyValuesByKey[key] ?? ""
     const value = draftPropertyValues[key] ?? persistedValue
 
     return (
       <div className="database-kanban-property" key={property.id}>
         <div className="database-kanban-property-label">
-          {workspaceProperty.name}
+          {pageProperty.name}
         </div>
         <div className="database-kanban-property-value">
           <DatabasePropertyValue

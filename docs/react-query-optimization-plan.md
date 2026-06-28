@@ -26,12 +26,12 @@ Optimize TanStack Query usage across Notelab by standardizing query-client defau
    - Prefer targeted invalidation only when server-side cascades cannot be derived locally.
 
 4. Cache contracts
-   - Consolidate workspace nav/detail cache writes behind helpers.
+   - Consolidate page nav/detail cache writes behind helpers.
    - Consolidate database payload writes behind helpers.
    - Document each mutation as optimistic write, direct reconciliation, targeted invalidation, or query removal.
 
 5. Freshness and performance
-   - Tune stale times by domain: auth/session, workspace nav/detail, database full/schema, comments, chat, search, integrations, settings.
+   - Tune stale times by domain: auth/session, page nav/detail, database full/schema, comments, chat, search, integrations, settings.
    - Add intent prefetching for sidebar items, search results, and database links.
    - Use `select` for consumers that only need small slices of large payloads.
 
@@ -47,10 +47,10 @@ Optimize TanStack Query usage across Notelab by standardizing query-client defau
 ## Test Plan
 
 - Query-key tests for stable full and partial keys.
-- Cache-helper tests for workspace nav/detail updates.
+- Cache-helper tests for page nav/detail updates.
 - Cache-helper tests for database payload updates.
 - Optimistic mutation tests for success reconciliation and error rollback.
-- Manual regression scenarios for workspace create/update/favorite/delete, database create/update/favorite/row edits, comments/reactions, org switch, and sign in/out.
+- Manual regression scenarios for page create/update/favorite/delete, database create/update/favorite/row edits, comments/reactions, org switch, and sign in/out.
 
 ## Assumptions
 

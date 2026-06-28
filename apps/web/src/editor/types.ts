@@ -21,13 +21,13 @@ export type SelectionAiDiffPreview = {
   from: number
   generatedMarkdown: string
   isStreaming: boolean
-  source?: "selection" | "workspace-edit"
+  source?: "selection" | "page-edit"
   to: number
   toolCallId?: string
   useBeforeBaseline?: boolean
 }
 
-export type WorkspaceEditPreviewRequest = {
+export type PageEditPreviewRequest = {
   afterMarkdown: string
   beforeMarkdown?: string
   onAccepted?: () => void
@@ -36,15 +36,15 @@ export type WorkspaceEditPreviewRequest = {
   useBeforeBaseline?: boolean
 }
 
-export type WorkspaceEditPreviewClearOptions = {
+export type PageEditPreviewClearOptions = {
   silent?: boolean
 }
 
-export type WorkspaceEditPreviewControls = {
+export type PageEditPreviewControls = {
   accept: () => boolean
-  clear: (options?: WorkspaceEditPreviewClearOptions) => void
+  clear: (options?: PageEditPreviewClearOptions) => void
   isActive: () => boolean
-  show: (request: WorkspaceEditPreviewRequest) => boolean
+  show: (request: PageEditPreviewRequest) => boolean
   toolCallId: () => string | null
 }
 
@@ -65,10 +65,10 @@ export type EditorProps = {
   onEmojiChange?: (emoji: string) => void
   onOpenPage?: (pageId: string) => void
   onTitleChange?: (title: string) => void
-  organizationId?: string | null
-  title?: string
-  workspaceEditPreviewRef?: MutableRefObject<WorkspaceEditPreviewControls | null>
   workspaceId?: string | null
+  title?: string
+  pageEditPreviewRef?: MutableRefObject<PageEditPreviewControls | null>
+  pageId?: string | null
 }
 
 export type UseEditorExtensionsOptions = {
@@ -79,8 +79,8 @@ export type UseEditorExtensionsOptions = {
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string) => void
-  organizationId?: string | null
   workspaceId?: string | null
+  pageId?: string | null
 }
 
 export type NodePlacement = {

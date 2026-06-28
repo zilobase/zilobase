@@ -45,11 +45,11 @@ export function ChatSidebarTrigger({
 export function ChatSidebarPanel({
   databaseId,
   onClose,
-  workspaceId,
+  pageId,
 }: {
   databaseId?: string | null
   onClose: () => void
-  workspaceId?: string | null
+  pageId?: string | null
 }) {
   const { activeThreadId, isBootstrapping, setActiveThreadId } =
     useAiChatThreadState()
@@ -135,7 +135,7 @@ export function ChatSidebarPanel({
               databaseId={databaseId}
               isSidebar
               threadId={activeThreadId}
-              workspaceId={workspaceId}
+              pageId={pageId}
             />
           )}
         </div>

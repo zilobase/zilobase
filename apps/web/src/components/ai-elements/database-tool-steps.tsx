@@ -34,9 +34,9 @@ type DatabaseToolStepConfig = {
 
 const databaseToolStepConfig: Record<DatabaseConfigToolName, DatabaseToolStepConfig> =
   {
-    createWorkspace: {
-      activeLabel: "Creating workspace",
-      completeLabel: "Created workspace",
+    createPage: {
+      activeLabel: "Creating page",
+      completeLabel: "Created page",
       icon: FilePlusIcon,
     },
     createDatabase: {
@@ -49,7 +49,7 @@ const databaseToolStepConfig: Record<DatabaseConfigToolName, DatabaseToolStepCon
       completeLabel: "Embedded database in page",
       icon: LayoutTemplateIcon,
     },
-    linkDatabaseInWorkspace: {
+    linkDatabaseInPage: {
       activeLabel: "Linking database in sidebar",
       completeLabel: "Linked database in sidebar",
       icon: LinkIcon,
@@ -131,9 +131,9 @@ function buildDatabaseToolInputDescription(
   input: ToolPart["input"],
 ) {
   switch (toolName) {
-    case "createWorkspace": {
+    case "createPage": {
       const name = readStringField(input, "name");
-      return name ? `Workspace name: ${name}` : null;
+      return name ? `Page name: ${name}` : null;
     }
     case "createDatabase": {
       const name = readStringField(input, "name");

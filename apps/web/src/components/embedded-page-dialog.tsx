@@ -6,10 +6,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { useWorkspaceSidePane } from "@/contexts/workspace-side-pane"
-import { WorkspaceOrganizationGate } from "@/components/workspace-organization-gate"
-import { WorkspacePaneHeader } from "@/components/workspace-pane-header"
-import { WorkspaceEditorPane } from "@/pages/workspace"
+import { usePageSidePane } from "@/contexts/page-side-pane"
+import { PageWorkspaceGate } from "@/components/page-workspace-gate"
+import { PagePaneHeader } from "@/components/page-pane-header"
+import { PageEditorPane } from "@/pages/page"
 
 export function EmbeddedPageDialog({
   onOpenPage,
@@ -19,10 +19,10 @@ export function EmbeddedPageDialog({
   const {
     closeEmbeddedPageDialog,
     dialogDatabaseId,
-    dialogWorkspaceId,
-  } = useWorkspaceSidePane()
-  const dialogPathname = dialogWorkspaceId
-    ? `/workspace/${encodeURIComponent(dialogWorkspaceId)}`
+    dialogPageId,
+  } = usePageSidePane()
+  const dialogPathname = dialogPageId
+    ? `/page/${encodeURIComponent(dialogPageId)}`
     : "/dashboard"
 
   return (
@@ -32,7 +32,7 @@ export function EmbeddedPageDialog({
           closeEmbeddedPageDialog()
         }
       }}
-      open={dialogWorkspaceId !== null}
+      open={dialogPageId !== null}
     >
       <DialogContent
         className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-h-[90vh] sm:max-w-4xl"
@@ -47,7 +47,7 @@ export function EmbeddedPageDialog({
           aria-hidden
           className="mx-auto mt-3 h-1 w-[100px] shrink-0 rounded-full bg-muted sm:hidden"
         />
-        <WorkspacePaneHeader
+        <PagePaneHeader
           leadingControl={
             <Button
               aria-label="Close"
@@ -62,15 +62,15 @@ export function EmbeddedPageDialog({
           pathname={dialogPathname}
         />
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {dialogWorkspaceId ? (
-            <WorkspaceOrganizationGate workspaceId={dialogWorkspaceId}>
-              <WorkspaceEditorPane
+          {dialogPageId ? (
+            <PageWorkspaceGate pageId={dialogPageId}>
+              <PageEditorPane
                 databaseId={dialogDatabaseId}
-                key={dialogWorkspaceId}
+                key={dialogPageId}
                 onOpenPage={onOpenPage}
-                workspaceId={dialogWorkspaceId}
+                pageId={dialogPageId}
               />
-            </WorkspaceOrganizationGate>
+            </PageWorkspaceGate>
           ) : null}
         </div>
       </DialogContent>

@@ -43,7 +43,7 @@ type UseEditorInstanceOptions = {
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string) => void
   setPasteChoice: (choice: PasteChoiceState | null) => void
-  workspaceId?: string | null
+  pageId?: string | null
 }
 
 export const useEditorInstance = ({
@@ -62,7 +62,7 @@ export const useEditorInstance = ({
   onEmbedPage,
   onOpenPage,
   setPasteChoice,
-  workspaceId,
+  pageId,
 }: UseEditorInstanceOptions) => {
   const [blockDropLine, setBlockDropLine] = useState<BlockDropLine | null>(null)
   const editorRef = useRef<Editor | null>(null)
@@ -146,9 +146,9 @@ export const useEditorInstance = ({
       editable,
       editorRuntimeRef,
       onOpenPage,
-      workspaceId,
+      pageId,
     })
-  }, [databaseEditorRuntime, editor, editable, editorRuntimeRef, onOpenPage, workspaceId])
+  }, [databaseEditorRuntime, editor, editable, editorRuntimeRef, onOpenPage, pageId])
 
   useEffect(() => {
     if (!editor) return

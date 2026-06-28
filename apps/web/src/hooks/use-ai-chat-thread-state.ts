@@ -1,4 +1,4 @@
-import { useActiveOrganizationId } from "@notelab/features/integrations";
+import { useActiveWorkspaceId } from "@notelab/features/integrations";
 import {
   useAiChatThreads,
   useCreateAiChatThread,
@@ -13,7 +13,7 @@ type StoredAiChatThreadState = {
 };
 
 type AiChatThreadStore = {
-  threadStateByOrganizationId: Record<
+  threadStateByWorkspaceId: Record<
     string,
     StoredAiChatThreadState | undefined
   >;
@@ -25,16 +25,16 @@ const emptyThreadState: StoredAiChatThreadState = {
 };
 
 const useAiChatThreadStore = create<AiChatThreadStore>()(() => ({
-  threadStateByOrganizationId: {},
+  threadStateByWorkspaceId: {},
 }));
 
 function updateStoredThreadState(
-  organizationId: string,
+  workspaceId: string,
   getNext: (current: StoredAiChatThreadState) => StoredAiChatThreadState,
 ) {
   useAiChatThreadStore.setState((state) => {
     const current =
-      state.threadStateByOrganizationId[organizationId] ?? emptyThreadState;
+      state.threadStateByWorkspaceId[workspaceId] ?? emptyThreadState;
     const next = getNext(current);
 
     if (next === current) {
@@ -42,60 +42,60 @@ function updateStoredThreadState(
     }
 
     return {
-      threadStateByOrganizationId: {
-        ...state.threadStateByOrganizationId,
-        [organizationId]: next,
+      threadStateByWorkspaceId: {
+        ...state.threadStateByWorkspaceId,
+        [workspaceId]: next,
       },
     };
   });
 }
 
 function initializeActiveThreadId(
-  organizationId: string,
+  workspaceId: string,
   threadId: string | null,
 ) {
   useAiChatThreadStore.setState((state) => {
-    if (state.threadStateByOrganizationId[organizationId]) {
+    if (state.threadStateByWorkspaceId[workspaceId]) {
       return state;
     }
 
     return {
-      threadStateByOrganizationId: {
-        ...state.threadStateByOrganizationId,
-        [organizationId]: { activeThreadId: threadId, bootstrapped: false },
+      threadStateByWorkspaceId: {
+        ...state.threadStateByWorkspaceId,
+        [workspaceId]: { activeThreadId: threadId, bootstrapped: false },
       },
     };
   });
 }
 
 function setStoredActiveThreadId(
-  organizationId: string,
+  workspaceId: string,
   threadId: string | null,
 ) {
-  updateStoredThreadState(organizationId, (current) =>
+  updateStoredThreadState(workspaceId, (current) =>
     current.activeThreadId === threadId
       ? current
       : { ...current, activeThreadId: threadId },
   );
 }
 
-function clearBootstrapped(organizationId: string) {
-  updateStoredThreadState(organizationId, (current) =>
+function clearBootstrapped(workspaceId: string) {
+  updateStoredThreadState(workspaceId, (current) =>
     current.bootstrapped ? { ...current, bootstrapped: false } : current,
   );
 }
 
-function markBootstrapped(organizationId: string) {
+function markBootstrapped(workspaceId: string) {
   const current =
-    useAiChatThreadStore.getState().threadStateByOrganizationId[
-      organizationId
+    useAiChatThreadStore.getState().threadStateByWorkspaceId[
+      workspaceId
     ] ?? emptyThreadState;
 
   if (current.bootstrapped) {
     return false;
   }
 
-  updateStoredThreadState(organizationId, (latest) => ({
+  updateStoredThreadState(workspaceId, (latest) => ({
     ...latest,
     bootstrapped: true,
   }));
@@ -103,8 +103,8 @@ function markBootstrapped(organizationId: string) {
   return true;
 }
 
-function getStorageKey(organizationId: string) {
-  return `ai-chat-thread:${organizationId}`;
+function getStorageKey(workspaceId: string) {
+  return `ai-chat-thread:${workspaceId}`;
 }
 
 function getCurrentUrlThreadId() {
@@ -141,12 +141,12 @@ export function useAiChatThreadState() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-  const organizationId = useActiveOrganizationId();
+  const workspaceId = useActiveWorkspaceId();
   const threadsQuery = useAiChatThreads();
   const createThread = useCreateAiChatThread();
   const threadState = useAiChatThreadStore((state) =>
-    organizationId
-      ? state.threadStateByOrganizationId[organizationId]
+    workspaceId
+      ? state.threadStateByWorkspaceId[workspaceId]
       : undefined,
   );
 
@@ -156,46 +156,46 @@ export function useAiChatThreadState() {
 
   const setActiveThreadId = useCallback(
     (threadId: string | null) => {
-      if (!organizationId) {
+      if (!workspaceId) {
         return;
       }
 
-      setStoredActiveThreadId(organizationId, threadId);
+      setStoredActiveThreadId(workspaceId, threadId);
 
       if (threadId) {
-        sessionStorage.setItem(getStorageKey(organizationId), threadId);
+        sessionStorage.setItem(getStorageKey(workspaceId), threadId);
       } else {
-        sessionStorage.removeItem(getStorageKey(organizationId));
+        sessionStorage.removeItem(getStorageKey(workspaceId));
       }
 
       if (pathname === "/ai") {
         replaceAiThreadSearchParam(threadId);
       }
     },
-    [organizationId, pathname],
+    [workspaceId, pathname],
   );
 
   useEffect(() => {
-    if (!organizationId || hasInitializedActiveThread) {
+    if (!workspaceId || hasInitializedActiveThread) {
       return;
     }
 
-    const storedThreadId = sessionStorage.getItem(getStorageKey(organizationId));
+    const storedThreadId = sessionStorage.getItem(getStorageKey(workspaceId));
     const initialThreadId =
       pathname === "/ai"
         ? getCurrentUrlThreadId() ?? storedThreadId
         : storedThreadId;
 
-    initializeActiveThreadId(organizationId, initialThreadId);
+    initializeActiveThreadId(workspaceId, initialThreadId);
 
     if (initialThreadId) {
-      sessionStorage.setItem(getStorageKey(organizationId), initialThreadId);
+      sessionStorage.setItem(getStorageKey(workspaceId), initialThreadId);
     }
-  }, [hasInitializedActiveThread, organizationId, pathname]);
+  }, [hasInitializedActiveThread, workspaceId, pathname]);
 
   useEffect(() => {
     if (
-      !organizationId ||
+      !workspaceId ||
       !hasInitializedActiveThread ||
       hasBootstrappedActiveThread ||
       threadsQuery.isLoading
@@ -209,19 +209,19 @@ export function useAiChatThreadState() {
       activeThreadId &&
       threads.some((thread) => thread.id === activeThreadId)
     ) {
-      markBootstrapped(organizationId);
+      markBootstrapped(workspaceId);
       return;
     }
 
     if (threads.length > 0) {
-      if (markBootstrapped(organizationId)) {
+      if (markBootstrapped(workspaceId)) {
         setActiveThreadId(threads[0].id);
       }
 
       return;
     }
 
-    if (createThread.isPending || !markBootstrapped(organizationId)) {
+    if (createThread.isPending || !markBootstrapped(workspaceId)) {
       return;
     }
 
@@ -231,14 +231,14 @@ export function useAiChatThreadState() {
         setActiveThreadId(response.thread.id);
       })
       .catch(() => {
-        clearBootstrapped(organizationId);
+        clearBootstrapped(workspaceId);
       });
   }, [
     activeThreadId,
     createThread,
     hasBootstrappedActiveThread,
     hasInitializedActiveThread,
-    organizationId,
+    workspaceId,
     setActiveThreadId,
     threadsQuery.data?.threads,
     threadsQuery.isLoading,
@@ -247,7 +247,7 @@ export function useAiChatThreadState() {
   return {
     activeThreadId,
     isBootstrapping:
-      !organizationId ||
+      !workspaceId ||
       !hasInitializedActiveThread ||
       !hasBootstrappedActiveThread ||
       threadsQuery.isLoading ||

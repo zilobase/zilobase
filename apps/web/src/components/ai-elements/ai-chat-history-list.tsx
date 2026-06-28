@@ -158,7 +158,7 @@ export function AiChatHistoryList({
         <p className="px-1 py-3 text-muted-foreground">Loading chats...</p>
       ) : threads.length === 0 ? (
         <p className="px-1 py-3 text-muted-foreground">
-          Start a new chat to ask about your workspace.
+          Start a new chat to ask about your page.
         </p>
       ) : (
         <div className="-mx-3">

@@ -8,8 +8,8 @@ A Database view is the editor surface for viewing and changing a Database as a T
 
 ### Database
 
-A Database is a workspace-backed collection of pages with properties, rows, views, and property values.
+A Database is a page-backed collection of pages with properties, rows, views, and property values.
 
 ### Page
 
-A Page is the workspace item represented by a Database row and opened from the editor.
+A Page is the page item represented by a Database row and opened from the editor.

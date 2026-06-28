@@ -14,7 +14,7 @@ export type SessionUser = {
 export type Session = {
   id: string
   userId: string
-  activeOrganizationId?: string | null
+  activeWorkspaceId?: string | null
   activeTeamId?: string | null
   expiresAt: string
 }

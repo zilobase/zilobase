@@ -4,7 +4,7 @@ import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
-import { uploadWorkspaceImage } from "@/lib/image-upload"
+import { uploadPageImage } from "@/lib/image-upload"
 import {
   Popover,
   PopoverContent,
@@ -19,10 +19,10 @@ export function DatabasePropertyFiles({
   label,
   onOpenChange,
   onSelect,
-  organizationId,
+  workspaceId,
   propertyConfig,
   value,
-  workspaceId,
+  pageId,
   databaseId,
 }: {
   databaseId?: string | null
@@ -30,10 +30,10 @@ export function DatabasePropertyFiles({
   label: string
   onOpenChange?: (open: boolean) => void
   onSelect: (value: string | string[]) => void
-  organizationId?: string | null
+  workspaceId?: string | null
   propertyConfig?: unknown
   value: string | string[]
-  workspaceId?: string | null
+  pageId?: string | null
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [isOpen, setIsOpen] = useState(false)
@@ -85,15 +85,15 @@ export function DatabasePropertyFiles({
 
     setUploadError(null)
 
-    if (file.type.startsWith("image/") && organizationId && workspaceId) {
+    if (file.type.startsWith("image/") && workspaceId && pageId) {
       setIsUploading(true)
 
       try {
-        const uploaded = await uploadWorkspaceImage({
+        const uploaded = await uploadPageImage({
           databaseId,
           file,
-          organizationId,
           workspaceId,
+          pageId,
         })
 
         addFile(uploaded.url)

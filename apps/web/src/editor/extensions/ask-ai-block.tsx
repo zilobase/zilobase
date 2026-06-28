@@ -34,7 +34,7 @@ import {
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
 
 export type AskAiBlockOptions = {
-  organizationId?: string | null
+  workspaceId?: string | null
 }
 
 type AskAiAnchorRect = {
@@ -49,7 +49,7 @@ type AskAiPopoverProps = {
   editor: Editor
   insertPos: number
   onDone: () => void
-  organizationId?: string | null
+  workspaceId?: string | null
 }
 
 function AskAiPopover({
@@ -57,7 +57,7 @@ function AskAiPopover({
   editor,
   insertPos,
   onDone,
-  organizationId,
+  workspaceId,
 }: AskAiPopoverProps) {
   const [error, setError] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(true)
@@ -149,8 +149,8 @@ function AskAiPopover({
         "content-type": "application/json",
       })
 
-      if (organizationId) {
-        headers.set("x-notelab-organization-id", organizationId)
+      if (workspaceId) {
+        headers.set("x-notelab-workspace-id", workspaceId)
       }
 
       const response = await fetch(toApiUrl("/api/ai/editor"), {
@@ -283,11 +283,11 @@ function AskAiPopover({
 
 export function openAskAiPopover({
   editor,
-  organizationId,
+  workspaceId,
   range,
 }: {
   editor: Editor
-  organizationId?: string | null
+  workspaceId?: string | null
   range: Range
 }) {
   const coords = editor.view.coordsAtPos(range.from)
@@ -317,7 +317,7 @@ export function openAskAiPopover({
       editor={editor}
       insertPos={insertPos}
       onDone={cleanup}
-      organizationId={organizationId}
+      workspaceId={workspaceId}
     />
   )
 }
@@ -329,9 +329,9 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
   const abortControllerRef = useRef<AbortController | null>(null)
   const generatedRangeRef = useRef<GeneratedRange | null>(null)
   const latestMarkdownRef = useRef("")
-  const organizationId = editor.extensionManager.extensions.find(
+  const workspaceId = editor.extensionManager.extensions.find(
     (extension) => extension.name === "askAiBlock",
-  )?.options.organizationId as string | null | undefined
+  )?.options.workspaceId as string | null | undefined
 
   useEffect(() => {
     return () => {
@@ -444,8 +444,8 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
         "content-type": "application/json",
       })
 
-      if (organizationId) {
-        headers.set("x-notelab-organization-id", organizationId)
+      if (workspaceId) {
+        headers.set("x-notelab-workspace-id", workspaceId)
       }
 
       const response = await fetch(toApiUrl("/api/ai/editor"), {
@@ -583,7 +583,7 @@ export const AskAiBlock = Node.create<AskAiBlockOptions>({
 
   addOptions() {
     return {
-      organizationId: null,
+      workspaceId: null,
     }
   },
 

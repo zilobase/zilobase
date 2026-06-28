@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 const testDir = dirname(fileURLToPath(import.meta.url))
 const mentionHelpersPath = join(
   testDir,
-  "../src/components/workspace-comment-mentions.ts",
+  "../src/components/page-comment-mentions.ts",
 )
 
 export function register({ assert, loadModule, test }) {

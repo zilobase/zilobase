@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getApiErrorMessage } from "@/lib/api"
-import { uploadWorkspaceImage } from "@/lib/image-upload"
+import { uploadPageImage } from "@/lib/image-upload"
 
 const aiImageOptions = [
   { label: "Photo", icon: ImageIcon },
@@ -30,8 +30,8 @@ type ImageSourcePickerProps = {
   databaseId?: string | null
   initialLinkUrl?: string
   onSelect: (url: string) => void
-  organizationId?: string | null
   workspaceId?: string | null
+  pageId?: string | null
 }
 
 export function ImageSourcePicker({
@@ -39,8 +39,8 @@ export function ImageSourcePicker({
   databaseId,
   initialLinkUrl = "",
   onSelect,
-  organizationId,
   workspaceId,
+  pageId,
 }: ImageSourcePickerProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [linkUrl, setLinkUrl] = useState(initialLinkUrl)
@@ -55,15 +55,15 @@ export function ImageSourcePicker({
 
     setUploadError(null)
 
-    if (organizationId && workspaceId) {
+    if (workspaceId && pageId) {
       setIsUploading(true)
 
       try {
-        const uploaded = await uploadWorkspaceImage({
+        const uploaded = await uploadPageImage({
           databaseId,
           file,
-          organizationId,
           workspaceId,
+          pageId,
         })
 
         onSelect(uploaded.url)

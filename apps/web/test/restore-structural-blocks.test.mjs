@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 
 const restoreModulePath = join(
   dirname(fileURLToPath(import.meta.url)),
-  "../../../packages/workspace-context/src/restore-structural-blocks-from-markdown.ts",
+  "../../../packages/page-context/src/restore-structural-blocks-from-markdown.ts",
 )
 
 const DATABASE_ID = "bf51b30e-1234-5678-9abc-def012345678"

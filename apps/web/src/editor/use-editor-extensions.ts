@@ -15,8 +15,8 @@ export const useEditorExtensions = ({
   onCreatePage,
   onEmbedPage,
   onOpenPage,
-  organizationId,
   workspaceId,
+  pageId,
 }: UseEditorExtensionsOptions) => {
   const [tocItems, setTocItems] = useState<TableOfContentDataItem[]>([])
 
@@ -30,8 +30,8 @@ export const useEditorExtensions = ({
         onEmbedPage,
         onOpenPage,
         onTocUpdate: setTocItems,
-        organizationId,
         workspaceId,
+        pageId,
       }),
     [
       createEditorDatabase,
@@ -40,12 +40,12 @@ export const useEditorExtensions = ({
       onCreatePage,
       onEmbedPage,
       onOpenPage,
-      organizationId,
       workspaceId,
+      pageId,
     ],
   )
 
-  const editorLifecycleKey = workspaceId ?? "draft"
+  const editorLifecycleKey = pageId ?? "draft"
   const initialContent = normalizeEditorContent(content) as Content
 
   return {

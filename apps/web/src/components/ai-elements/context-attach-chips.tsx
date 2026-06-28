@@ -1,11 +1,11 @@
 import { DatabaseIcon, XIcon } from "lucide-react"
 
-import { WorkspaceIconDisplay, WorkspacePageIcon } from "@/lib/workspace-icon"
-import type { ContextAttachment } from "@notelab/workspace-context"
+import { PageIconDisplay, PageIcon } from "@/lib/page-icon"
+import type { ContextAttachment } from "@notelab/page-context"
 
 function AttachmentIcon({ attachment }: { attachment: ContextAttachment }) {
   if (attachment.emoji) {
-    return <WorkspaceIconDisplay size="sm" value={attachment.emoji} />
+    return <PageIconDisplay size="sm" value={attachment.emoji} />
   }
 
   if (attachment.type === "database") {
@@ -13,8 +13,8 @@ function AttachmentIcon({ attachment }: { attachment: ContextAttachment }) {
   }
 
   return (
-    <WorkspacePageIcon
-      workspace={{
+    <PageIcon
+      page={{
         content: null,
         metadata: { emoji: attachment.emoji },
       }}

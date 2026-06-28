@@ -2,9 +2,9 @@ import { useEffect, useRef } from "react"
 import { getToolName, isToolUIPart, type UIMessage } from "ai"
 
 import { readDatabaseConfigToolIds } from "@notelab/features/ai-chat"
-import { insertDatabaseBlockInContent } from "@notelab/workspace-context"
+import { insertDatabaseBlockInContent } from "@notelab/page-context"
 
-import { useWorkspaceEditorRegistry } from "@/contexts/workspace-editor-registry"
+import { usePageEditorRegistry } from "@/contexts/page-editor-registry"
 
 const EMBED_DATABASE_IN_PAGE_TOOL = "embedDatabaseInPage"
 
@@ -29,7 +29,7 @@ export function useDatabaseEmbedAutoApply({
   enabled = true,
   messages,
 }: UseDatabaseEmbedAutoApplyOptions) {
-  const { getEditorHandle } = useWorkspaceEditorRegistry()
+  const { getEditorHandle } = usePageEditorRegistry()
   const handledToolCallIds = useRef(new Set<string>())
 
   useEffect(() => {
@@ -56,16 +56,16 @@ export function useDatabaseEmbedAutoApply({
         }
 
         const ids = readDatabaseConfigToolIds(part.output)
-        const workspaceId = ids?.workspaceId
+        const pageId = ids?.pageId
         const databaseId = ids?.databaseId
 
-        if (!workspaceId || !databaseId) {
+        if (!pageId || !databaseId) {
           continue
         }
 
         handledToolCallIds.current.add(part.toolCallId)
 
-        const handle = getEditorHandle(workspaceId)
+        const handle = getEditorHandle(pageId)
 
         if (!handle?.isEditable()) {
           continue

@@ -7,8 +7,8 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { WorkspaceCommentThread } from "@/components/workspace-comments"
-import { useWorkspaceThreads } from "@notelab/features/workspaces"
+import { PageCommentThread } from "@/components/page-comments"
+import { usePageThreads } from "@notelab/features/pages"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 
@@ -16,11 +16,11 @@ const THREADS_PAGE_SIZE = 8
 
 export function DiscussionsSidebarPanel({
   open,
-  workspaceId,
+  pageId,
   onClose,
 }: {
   open: boolean
-  workspaceId?: string | null
+  pageId?: string | null
   onClose: () => void
 }) {
   return (
@@ -62,7 +62,7 @@ export function DiscussionsSidebarPanel({
         className="min-h-0 flex-1 overflow-y-auto px-3 py-3 text-sm"
         data-discussions-scroll-shell
       >
-        <DiscussionsThreads open={open} workspaceId={workspaceId} />
+        <DiscussionsThreads open={open} pageId={pageId} />
       </div>
     </div>
   )
@@ -70,17 +70,17 @@ export function DiscussionsSidebarPanel({
 
 function DiscussionsThreads({
   open,
-  workspaceId,
+  pageId,
 }: {
   open: boolean
-  workspaceId?: string | null
+  pageId?: string | null
 }) {
   const scrollShellRef = useRef<HTMLDivElement | null>(null)
   const [visiblePastCount, setVisiblePastCount] = useState(THREADS_PAGE_SIZE)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const { data: threadsData, isLoading } = useWorkspaceThreads(
-    workspaceId,
-    Boolean(workspaceId && open),
+  const { data: threadsData, isLoading } = usePageThreads(
+    pageId,
+    Boolean(pageId && open),
   )
 
   const threadItems = threadsData?.threads ?? []
@@ -122,7 +122,7 @@ function DiscussionsThreads({
   useEffect(() => {
     setVisiblePastCount(THREADS_PAGE_SIZE)
     setIsLoadingMore(false)
-  }, [workspaceId, open])
+  }, [pageId, open])
 
   const loadMorePastThreads = useCallback(() => {
     if (!hasMorePast || isLoadingMore) {
@@ -174,7 +174,7 @@ function DiscussionsThreads({
     }
   }, [hasMorePast, isLoadingMore, loadMorePastThreads, open])
 
-  if (!workspaceId) {
+  if (!pageId) {
     return (
       <div className="px-3 py-8 text-center text-muted-foreground">
         Open a page to view its discussions.
@@ -195,9 +195,9 @@ function DiscussionsThreads({
       {showActiveDiscussion ? (
         <div className="-mx-3">
           <div className="px-3 py-3 hover:bg-sidebar hover:text-sidebar-foreground">
-            <WorkspaceCommentThread
+            <PageCommentThread
               collapseLongThreads
-              workspaceId={workspaceId}
+              pageId={pageId}
             />
           </div>
         </div>
@@ -216,10 +216,10 @@ function DiscussionsThreads({
                     {label}
                   </div>
                 ) : null}
-                <WorkspaceCommentThread
+                <PageCommentThread
                   collapseLongThreads
                   threadId={item.thread!.id}
-                  workspaceId={workspaceId}
+                  pageId={pageId}
                 />
               </div>
             ))}

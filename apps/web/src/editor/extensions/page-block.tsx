@@ -21,10 +21,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import {
-  getWorkspaceEmoji,
-  useWorkspaces,
-  type Workspace,
-} from "@notelab/features/workspaces"
+  getPageEmoji,
+  usePages,
+  type Page,
+} from "@notelab/features/pages"
 import { useNotelabFeatures } from "@notelab/features"
 import {
   databaseRootQueryKey,
@@ -42,10 +42,10 @@ export type PageBlockOptions = {
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string) => void
-  organizationId?: string | null
+  workspaceId?: string | null
 }
 
-type PageSummary = Pick<Workspace, "id" | "metadata" | "name">
+type PageSummary = Pick<Page, "id" | "metadata" | "name">
 
 function findCachedDatabaseRowPage(
   queryClient: ReturnType<typeof useNotelabFeatures>["queryClient"],
@@ -92,21 +92,21 @@ function PageBlockView({
   const [selectedIndex, setSelectedIndex] = useState(0)
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const options = extension.options as PageBlockOptions
-  const { data: pages = [] } = useWorkspaces(
-    options.organizationId,
+  const { data: pages = [] } = usePages(
+    options.workspaceId,
     {
       enabled: Boolean(pageId) || isOpen,
     },
   )
   const navPage = pageId
-    ? pages.find((workspace) => workspace.id === pageId)
+    ? pages.find((page) => page.id === pageId)
     : undefined
   const rowPage = useCachedDatabaseRowPage(pageId)
   const page = navPage ?? rowPage ?? undefined
   const title = page?.name.trim() || "Untitled"
-  const emoji = page ? getWorkspaceEmoji(page) : null
+  const emoji = page ? getPageEmoji(page) : null
   const linkablePages = pages.filter(
-    (workspace) => workspace.id !== options.currentPageId
+    (page) => page.id !== options.currentPageId
   )
   const optionCount = linkablePages.length + (options.onCreatePage ? 1 : 0)
   const cardStyle = {
@@ -290,16 +290,16 @@ function PageBlockView({
             </div>
             <div className="grid gap-1">
               {linkablePages.length > 0 ? (
-                linkablePages.map((workspace, index) => {
-                  const workspaceTitle = workspace.name.trim() || "Untitled"
-                  const workspaceEmoji = getWorkspaceEmoji(workspace)
+                linkablePages.map((page, index) => {
+                  const pageTitle = page.name.trim() || "Untitled"
+                  const pageEmoji = getPageEmoji(page)
 
                   return (
                     <button
                       className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
                       data-selected={selectedIndex === index ? true : undefined}
-                      key={workspace.id}
-                      onClick={() => linkPage(workspace.id)}
+                      key={page.id}
+                      onClick={() => linkPage(page.id)}
                       onMouseEnter={() => setSelectedIndex(index)}
                       ref={(element) => {
                         optionRefs.current[index] = element
@@ -307,9 +307,9 @@ function PageBlockView({
                       type="button"
                     >
                       <span className="page-block-icon">
-                        {workspaceEmoji || <FileText />}
+                        {pageEmoji || <FileText />}
                       </span>
-                      <span className="min-w-0 truncate">{workspaceTitle}</span>
+                      <span className="min-w-0 truncate">{pageTitle}</span>
                     </button>
                   )
                 })
@@ -367,7 +367,7 @@ export const PageBlock = Node.create<PageBlockOptions>({
       onCreatePage: undefined,
       onEmbedPage: undefined,
       onOpenPage: undefined,
-      organizationId: null,
+      workspaceId: null,
     }
   },
 

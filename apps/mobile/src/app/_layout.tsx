@@ -11,8 +11,8 @@ import { AuthScreen } from '@/components/auth-screen';
 import AppTabs from '@/components/app-tabs';
 import { LoadingScreen } from '@/components/loading-screen';
 import { TopBar } from '@/components/top-bar';
-import { WorkspaceItemViewer } from '@/components/workspace-item-viewer';
-import { WorkspaceAuthScreen } from '@/components/workspace-auth-screen';
+import { PageItemViewer } from '@/components/page-item-viewer';
+import { PageAuthScreen } from '@/components/page-auth-screen';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { NAV_THEME } from '@/lib/theme';
 import { MobileFeaturesProvider } from '@/providers/mobile-features-provider';
@@ -52,27 +52,27 @@ function AuthenticatedApp() {
     return <AuthScreen />;
   }
 
-  return <WorkspaceResolvedApp key={user.id} />;
+  return <PageResolvedApp key={user.id} />;
 }
 
-function WorkspaceResolvedApp() {
+function PageResolvedApp() {
   const session = useSession();
   const { closeItem, selectedItem } = useMobileViewer();
-  const [isWorkspaceReady, setIsWorkspaceReady] = React.useState(false);
+  const [isPageReady, setIsPageReady] = React.useState(false);
   const user = session.data?.user;
 
   if (!user) {
     return <LoadingScreen />;
   }
 
-  if (!isWorkspaceReady) {
-    return <WorkspaceAuthScreen onComplete={() => setIsWorkspaceReady(true)} />;
+  if (!isPageReady) {
+    return <PageAuthScreen onComplete={() => setIsPageReady(true)} />;
   }
 
   if (selectedItem) {
     return (
       <View style={{ flex: 1 }}>
-        <WorkspaceItemViewer item={selectedItem} />
+        <PageItemViewer item={selectedItem} />
         <TopBar authBack={{ visible: true, onPress: closeItem }} />
       </View>
     );

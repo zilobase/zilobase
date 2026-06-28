@@ -118,7 +118,7 @@ export function AiChatThreadsPanel({
           <p className="px-2 py-3 text-muted-foreground text-sm">Loading chats...</p>
         ) : threads.length === 0 ? (
           <p className="px-2 py-3 text-muted-foreground text-sm">
-            Start a new chat to ask about your workspace.
+            Start a new chat to ask about your page.
           </p>
         ) : (
           <ul className="grid gap-1">

@@ -6,19 +6,19 @@ import {
 import { DatabaseIcon, ExternalLink, FileText, X } from "lucide-react"
 import { toast } from "sonner"
 
-import { useOptionalWorkspaceSidePane } from "@/contexts/workspace-side-pane"
+import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
 import {
-  getWorkspaceEmoji,
-  useUpdateWorkspace,
-  type WorkspaceMetadata,
-} from "@notelab/features/workspaces"
-import { WorkspaceIconDisplay } from "@/lib/workspace-icon"
+  getPageEmoji,
+  useUpdatePage,
+  type PageMetadata,
+} from "@notelab/features/pages"
+import { PageIconDisplay } from "@/lib/page-icon"
 
 type DatabasePageSummary = {
   iconKind?: "database" | "page"
   id?: string
   name?: string
-  metadata?: WorkspaceMetadata | null | unknown
+  metadata?: PageMetadata | null | unknown
 }
 
 export function DatabasePageLink({
@@ -36,24 +36,24 @@ export function DatabasePageLink({
   pageSummary?: DatabasePageSummary | null
   showPageIcon?: boolean
 }) {
-  const sidePane = useOptionalWorkspaceSidePane()
-  const updateWorkspace = useUpdateWorkspace()
+  const sidePane = useOptionalPageSidePane()
+  const updatePage = useUpdatePage()
   const inputRef = useRef<HTMLInputElement | null>(null)
   const titleEditFinishedRef = useRef(false)
   const [draftTitle, setDraftTitle] = useState("")
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const isOpen =
-    sidePane?.sidePaneWorkspaceId === pageId ||
-    sidePane?.dialogWorkspaceId === pageId
+    sidePane?.sidePanePageId === pageId ||
+    sidePane?.dialogPageId === pageId
   const title = pageSummary?.name?.trim() || "Untitled"
   const emoji = pageSummary
-    ? getWorkspaceEmoji({
-        metadata: pageSummary.metadata as WorkspaceMetadata | null | undefined,
+    ? getPageEmoji({
+        metadata: pageSummary.metadata as PageMetadata | null | undefined,
       })
     : null
   const icon =
     emoji ? (
-      <WorkspaceIconDisplay size="sm" value={emoji} />
+      <PageIconDisplay size="sm" value={emoji} />
     ) : pageSummary?.iconKind === "database" ? (
       <DatabaseIcon />
     ) : (
@@ -85,7 +85,7 @@ export function DatabasePageLink({
 
   const handleClick = () => {
     if (isOpen) {
-      if (sidePane?.dialogWorkspaceId === pageId) {
+      if (sidePane?.dialogPageId === pageId) {
         sidePane.closeEmbeddedPageDialog()
       } else {
         sidePane?.closeSidePane()
@@ -136,7 +136,7 @@ export function DatabasePageLink({
       return
     }
 
-    updateWorkspace.mutate(
+    updatePage.mutate(
       { id: pageId, name: nextTitle },
       {
         onError: () => {

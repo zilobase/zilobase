@@ -12,8 +12,8 @@ const connectorsDir = fileURLToPath(
 const featuresDir = fileURLToPath(
   new URL("../../packages/features/src", import.meta.url),
 );
-const workspaceContextDir = fileURLToPath(
-  new URL("../../packages/workspace-context/src", import.meta.url),
+const pageContextDir = fileURLToPath(
+  new URL("../../packages/page-context/src", import.meta.url),
 );
 const backendTarget = process.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:3000";
 const expectedWsProxyErrorCodes = new Set(["ECONNRESET", "EPIPE"]);
@@ -76,8 +76,8 @@ export default defineConfig(async () => ({
       },
       { find: /^@notelab\/features$/, replacement: `${featuresDir}/index.ts` },
       {
-        find: "@notelab/workspace-context",
-        replacement: `${workspaceContextDir}/index.ts`,
+        find: "@notelab/page-context",
+        replacement: `${pageContextDir}/index.ts`,
       },
       {
         find: "@notelab/gmail-connector/ui",
@@ -123,9 +123,9 @@ export default defineConfig(async () => ({
       "/sign-up": createBackendProxy(),
       "/sign-out": createBackendProxy(),
       "/email-otp": createBackendProxy(),
-      "/organization": createBackendProxy(),
+      "/workspace": createBackendProxy(),
       "/search": createBackendProxy(),
-      "/workspaces": createBackendProxy({ ws: true }),
+      "/pages": createBackendProxy({ ws: true }),
       "/databases": createBackendProxy({ ws: true }),
       "/images": createBackendProxy(),
       "/user-settings": createBackendProxy(),

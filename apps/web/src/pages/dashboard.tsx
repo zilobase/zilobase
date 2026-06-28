@@ -23,19 +23,19 @@ import {
   type DatabaseSortConfig,
 } from "@/packages/editor/extensions/database/shared/database-view-config"
 import { getDatabaseEmoji, useCreateDatabase } from "@notelab/features/databases"
-import { useActiveOrganizationId } from "@notelab/features/integrations"
+import { useActiveWorkspaceId } from "@notelab/features/integrations"
 import {
-  useCreateWorkspace,
-  useWorkspaces,
-  type Workspace,
-  type WorkspaceDatabase,
-  type WorkspaceItemPlacement,
-} from "@notelab/features/workspaces"
+  useCreatePage,
+  usePages,
+  type Page,
+  type PageDatabase,
+  type PageItemPlacement,
+} from "@notelab/features/pages"
 import type {
   DatabasePayload,
   DatabaseProperty,
   DatabaseView,
-  WorkspacePropertyValue,
+  PagePropertyValue,
 } from "@notelab/features/databases"
 
 type HomepageView = "recents" | "favourites" | "shared" | "private"
@@ -53,9 +53,9 @@ type HomepageRow = {
   isFavorite: boolean
   isTeamspace: boolean
   itemId: string
-  itemKind: "database" | "workspace"
+  itemKind: "database" | "page"
   lastVisitedAt: string | null
-  metadata: Workspace["metadata"] | null
+  metadata: Page["metadata"] | null
   name: string
   source: string
   sourcePage: HomepageSourcePage | null
@@ -65,7 +65,7 @@ type HomepageRow = {
 type HomepageSourcePage = {
   iconKind: "database" | "page"
   id: string
-  metadata: Workspace["metadata"] | null
+  metadata: Page["metadata"] | null
   name: string
 }
 
@@ -93,11 +93,11 @@ const emptyAsync = async () => undefined
 
 export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode }) {
   const navigate = useNavigate()
-  const organizationId = useActiveOrganizationId()
-  const { data: workspaces = [], isLoading } = useWorkspaces(organizationId, {
+  const workspaceId = useActiveWorkspaceId()
+  const { data: pages = [], isLoading } = usePages(workspaceId, {
     deleted: mode === "trash" ? "only" : "active",
   })
-  const createWorkspace = useCreateWorkspace()
+  const createPageMutation = useCreatePage()
   const createDatabase = useCreateDatabase()
   const [activeViewId, setActiveViewId] = useState<string | null>("recents")
   const [databaseConfig, setDatabaseConfig] = useState<unknown>({
@@ -112,7 +112,7 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
       sorts: [{ column: "lastVisitedAt", direction: "descending" }],
     },
   })
-  const rows = useMemo(() => buildHomepageRows(workspaces, mode), [workspaces, mode])
+  const rows = useMemo(() => buildHomepageRows(pages, mode), [pages, mode])
   const pageTitle = mode === "trash" ? "Trash" : "Home"
   const emptyLabel = mode === "trash" ? "Loading trash..." : "Loading pages..."
   const payload = useMemo(
@@ -121,7 +121,7 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
         activeViewId: activeViewId ?? "recents",
         databaseConfig,
         mode,
-        organizationId,
+        workspaceId,
         propertyConfigs,
         rows,
         viewConfigs,
@@ -130,7 +130,7 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
       activeViewId,
       databaseConfig,
       mode,
-      organizationId,
+      workspaceId,
       propertyConfigs,
       rows,
       viewConfigs,
@@ -187,19 +187,19 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
       getMergedNameColumnConfig(current, config as DatabaseNameColumnConfig),
     )
   }
-  const isCreating = createWorkspace.isPending || createDatabase.isPending
+  const isCreating = createPageMutation.isPending || createDatabase.isPending
 
   const createPage = async () => {
-    if (!organizationId || createWorkspace.isPending) {
+    if (!workspaceId || createPageMutation.isPending) {
       return
     }
 
     try {
-      const workspace = await createWorkspace.mutateAsync({ organizationId })
+      const page = await createPageMutation.mutateAsync({ workspaceId })
 
       await navigate({
-        params: { workspaceId: workspace.id },
-        to: "/workspace/$workspaceId",
+        params: { pageId: page.id },
+        to: "/page/$pageId",
       })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not create page.")
@@ -207,15 +207,15 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
   }
 
   const createStandaloneDatabase = async () => {
-    if (!organizationId || createWorkspace.isPending || createDatabase.isPending) {
+    if (!workspaceId || createPageMutation.isPending || createDatabase.isPending) {
       return
     }
 
     try {
-      const workspace = await createWorkspace.mutateAsync({ organizationId })
+      const page = await createPageMutation.mutateAsync({ workspaceId })
       const payload = await createDatabase.mutateAsync({
-        organizationId,
-        pageId: workspace.id,
+        workspaceId,
+        pageId: page.id,
         standalone: true,
       })
 
@@ -246,8 +246,8 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
     }
 
     void navigate({
-      params: { workspaceId: id },
-      to: "/workspace/$workspaceId",
+      params: { pageId: id },
+      to: "/page/$pageId",
     })
   }
 
@@ -279,7 +279,7 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
               databaseConfig: payload.database.config,
               databaseId: payload.database.id,
               databaseName: payload.database.name,
-              databaseOrganizationId: organizationId ?? undefined,
+              databaseWorkspaceId: workspaceId ?? undefined,
               deleteDatabaseView: () => {},
               draftDatabaseTitle: pageTitle,
               draftPropertyValues: {},
@@ -296,7 +296,7 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
               headerMenusEnabled: true,
               hostDatabaseId: payload.database.id,
               hostDatabaseName: payload.database.name,
-              hostDatabaseOrganizationId: organizationId ?? undefined,
+              hostDatabaseWorkspaceId: workspaceId ?? undefined,
               hostViews: payload.views,
               isAddingDatabaseProperty: false,
               isAddingDatabaseRow: false,
@@ -306,7 +306,7 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
               onOpenPage: openHomepagePage,
               onShowTitleChange: undefined,
               options: viewModel.kanbanOptions,
-              organizationId,
+              workspaceId,
               removeDatabaseFilter: () => {},
               removeDatabaseSort: () => {},
               renameDatabaseProperty: () => {},
@@ -361,7 +361,7 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
                       <DropdownMenuTrigger asChild>
                         <Button
                           className="database-new-button mt-2 shrink-0"
-                          disabled={!organizationId || isCreating}
+                          disabled={!workspaceId || isCreating}
                           type="button"
                         >
                           {isCreating ? (
@@ -411,7 +411,7 @@ function buildHomepagePayload({
   activeViewId,
   databaseConfig,
   mode,
-  organizationId,
+  workspaceId,
   propertyConfigs,
   rows,
   viewConfigs,
@@ -419,7 +419,7 @@ function buildHomepagePayload({
   activeViewId: string
   databaseConfig: unknown
   mode: DashboardMode
-  organizationId: string | null | undefined
+  workspaceId: string | null | undefined
   propertyConfigs: Record<string, unknown>
   rows: HomepageRow[]
   viewConfigs: Record<string, unknown>
@@ -455,7 +455,7 @@ function buildHomepagePayload({
           createdAt: "",
           id: definition.id,
           name: definition.name,
-          organizationId: organizationId ?? "homepage",
+          workspaceId: workspaceId ?? "homepage",
           type: definition.type,
           updatedAt: "",
         },
@@ -466,14 +466,14 @@ function buildHomepagePayload({
       }
     },
   )
-  const values: WorkspacePropertyValue[] = filteredRows.flatMap((row) =>
+  const values: PagePropertyValue[] = filteredRows.flatMap((row) =>
     propertyDefinitions.map((definition) => ({
       createdAt: row.createdAt,
       id: `${row.id}:${definition.id}`,
       propertyId: definition.id,
       updatedAt: row.updatedAt,
       value: row[definition.id] ?? "",
-      workspaceId: row.id,
+      pageId: row.id,
     })),
   )
 
@@ -483,7 +483,7 @@ function buildHomepagePayload({
       createdAt: "",
       id: homepageDatabaseId,
       name: mode === "trash" ? "Trash" : "Home",
-      organizationId: organizationId ?? homepageDatabaseId,
+      workspaceId: workspaceId ?? homepageDatabaseId,
       pageId: homepageDatabaseId,
       updatedAt: "",
     },
@@ -518,100 +518,100 @@ function buildHomepagePayload({
   }
 }
 
-function buildHomepageRows(workspaces: Workspace[], mode: DashboardMode): HomepageRow[] {
-  const workspacesById = new Map(workspaces.map((workspace) => [workspace.id, workspace]))
-  const databases = workspaces.flatMap((workspace) =>
-    (workspace.databases ?? []).map((database) => ({ database, workspace })),
+function buildHomepageRows(pages: Page[], mode: DashboardMode): HomepageRow[] {
+  const pagesById = new Map(pages.map((page) => [page.id, page]))
+  const databases = pages.flatMap((page) =>
+    (page.databases ?? []).map((database) => ({ database, page })),
   )
   const showTrash = mode === "trash"
-  const includeWorkspace = (workspace: Workspace) =>
-    showTrash ? Boolean(workspace.deletedAt) : !workspace.deletedAt
-  const includeDatabase = (database: WorkspaceDatabase, workspace: Workspace) =>
+  const includePage = (page: Page) =>
+    showTrash ? Boolean(page.deletedAt) : !page.deletedAt
+  const includeDatabase = (database: PageDatabase, page: Page) =>
     showTrash
-      ? Boolean(database.deletedAt ?? workspace.deletedAt)
-      : !database.deletedAt && !workspace.deletedAt
+      ? Boolean(database.deletedAt ?? page.deletedAt)
+      : !database.deletedAt && !page.deletedAt
   const databasesById = new Map(
-    databases.map(({ database, workspace }) => [database.id, { database, workspace }]),
+    databases.map(({ database, page }) => [database.id, { database, page }]),
   )
   const standaloneDatabasePageIds = new Set(
     databases
       .filter(({ database }) => isStandaloneDatabase(database))
       .map(({ database }) => database.pageId),
   )
-  const placements = workspaces.flatMap(
-    (workspace) => workspace.navigationPlacements ?? [],
+  const placements = pages.flatMap(
+    (page) => page.navigationPlacements ?? [],
   )
   const parentKeys = new Set(
     placements.map((placement) => `${placement.parentKind}:${placement.parentId}`),
   )
 
   return [
-    ...workspaces
+    ...pages
       .filter(
-        (workspace) =>
-          includeWorkspace(workspace) && !standaloneDatabasePageIds.has(workspace.id),
+        (page) =>
+          includePage(page) && !standaloneDatabasePageIds.has(page.id),
       )
-      .map((workspace) => ({
-        createdAt: workspace.createdAt,
-        createdBy: formatCreator(workspace.createdBy),
-        deletedAt: workspace.deletedAt ?? "",
-        deletedBy: formatCreator(workspace.deletedBy),
+      .map((page) => ({
+        createdAt: page.createdAt,
+        createdBy: formatCreator(page.createdBy),
+        deletedAt: page.deletedAt ?? "",
+        deletedBy: formatCreator(page.deletedBy),
         iconKind: "page" as const,
-        id: `workspace:${workspace.id}`,
+        id: `page:${page.id}`,
         isDatabase: false,
-        isFavorite: Boolean(workspace.isFavorite),
-        isTeamspace: Boolean(workspace.isTeamspace),
-        itemId: workspace.id,
-        itemKind: "workspace" as const,
-        lastVisitedAt: workspace.lastVisitedAt ?? null,
-        metadata: workspace.metadata ?? null,
-        name: workspace.name || "Untitled",
-        source: parentKeys.has(`workspace:${workspace.id}`)
+        isFavorite: Boolean(page.isFavorite),
+        isTeamspace: Boolean(page.isTeamspace),
+        itemId: page.id,
+        itemKind: "page" as const,
+        lastVisitedAt: page.lastVisitedAt ?? null,
+        metadata: page.metadata ?? null,
+        name: page.name || "Untitled",
+        source: parentKeys.has(`page:${page.id}`)
           ? ""
           : resolveSourcePage(
               placements,
-              workspacesById,
+              pagesById,
               databasesById,
-              "workspace",
-              workspace.id,
+              "page",
+              page.id,
             )?.id ?? "",
-        sourcePage: parentKeys.has(`workspace:${workspace.id}`)
+        sourcePage: parentKeys.has(`page:${page.id}`)
           ? null
           : resolveSourcePage(
               placements,
-              workspacesById,
+              pagesById,
               databasesById,
-              "workspace",
-              workspace.id,
+              "page",
+              page.id,
             ),
-        updatedAt: workspace.updatedAt,
+        updatedAt: page.updatedAt,
       })),
     ...databases
-      .filter(({ database, workspace }) => includeDatabase(database, workspace))
-      .map(({ database, workspace }) => {
+      .filter(({ database, page }) => includeDatabase(database, page))
+      .map(({ database, page }) => {
         const databaseEmoji = getDatabaseEmoji(database)
         const sourcePage = parentKeys.has(`database:${database.id}`)
           ? null
           : resolveSourcePage(
               placements,
-              workspacesById,
+              pagesById,
               databasesById,
               "database",
               database.id,
-            ) ?? getWorkspaceSourcePage(workspace)
+            ) ?? getPageSourcePage(page)
 
         return {
           createdAt: database.createdAt,
-          createdBy: formatCreator(database.createdBy ?? workspace.createdBy),
-          deletedAt: database.deletedAt ?? workspace.deletedAt ?? "",
+          createdBy: formatCreator(database.createdBy ?? page.createdBy),
+          deletedAt: database.deletedAt ?? page.deletedAt ?? "",
           deletedBy: formatCreator(
-            database.deletedBy ?? workspace.deletedBy,
+            database.deletedBy ?? page.deletedBy,
           ),
           iconKind: "database" as const,
           id: `database:${database.id}`,
           isDatabase: true,
           isFavorite: Boolean(database.isFavorite),
-          isTeamspace: Boolean(workspace.isTeamspace),
+          isTeamspace: Boolean(page.isTeamspace),
           itemId: database.id,
           itemKind: "database" as const,
           lastVisitedAt: database.lastVisitedAt ?? null,
@@ -626,10 +626,10 @@ function buildHomepageRows(workspaces: Workspace[], mode: DashboardMode): Homepa
 }
 
 function resolveSourcePage(
-  placements: WorkspaceItemPlacement[],
-  workspacesById: Map<string, Workspace>,
-  databasesById: Map<string, { database: WorkspaceDatabase; workspace: Workspace }>,
-  itemKind: "database" | "workspace",
+  placements: PageItemPlacement[],
+  pagesById: Map<string, Page>,
+  databasesById: Map<string, { database: PageDatabase; page: Page }>,
+  itemKind: "database" | "page",
   itemId: string,
 ): HomepageSourcePage | null {
   const placement = placements.find(
@@ -644,10 +644,10 @@ function resolveSourcePage(
     return null
   }
 
-  if (placement.parentKind === "workspace") {
-    const parentWorkspace = workspacesById.get(placement.parentId)
+  if (placement.parentKind === "page") {
+    const parentPage = pagesById.get(placement.parentId)
 
-    return parentWorkspace ? getWorkspaceSourcePage(parentWorkspace) : null
+    return parentPage ? getPageSourcePage(parentPage) : null
   }
 
   if (placement.parentKind === "database") {
@@ -659,16 +659,16 @@ function resolveSourcePage(
   return null
 }
 
-function getWorkspaceSourcePage(workspace: Workspace): HomepageSourcePage {
+function getPageSourcePage(page: Page): HomepageSourcePage {
   return {
     iconKind: "page",
-    id: `workspace:${workspace.id}`,
-    metadata: workspace.metadata ?? null,
-    name: workspace.name?.trim() || "Untitled",
+    id: `page:${page.id}`,
+    metadata: page.metadata ?? null,
+    name: page.name?.trim() || "Untitled",
   }
 }
 
-function getDatabaseSourcePage(database: WorkspaceDatabase): HomepageSourcePage {
+function getDatabaseSourcePage(database: PageDatabase): HomepageSourcePage {
   const emoji = getDatabaseEmoji(database)
 
   return {
@@ -683,7 +683,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
 
-function isStandaloneDatabase(database: WorkspaceDatabase) {
+function isStandaloneDatabase(database: PageDatabase) {
   if (!database.config || typeof database.config !== "object") {
     return true
   }
@@ -706,7 +706,7 @@ function applyHomepageView(rows: HomepageRow[], view: HomepageView) {
 }
 
 function formatCreator(
-  creator: Workspace["createdBy"] | WorkspaceDatabase["createdBy"] | undefined,
+  creator: Page["createdBy"] | PageDatabase["createdBy"] | undefined,
 ) {
   return creator?.name?.trim() || creator?.email?.trim() || "Unknown"
 }

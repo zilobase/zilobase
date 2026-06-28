@@ -28,21 +28,21 @@ import {
   type ContextAttachMenuHandle,
 } from "@/components/ai-elements/context-attach-menu";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
-import { useWorkspaceEditorRegistry } from "@/contexts/workspace-editor-registry";
-import { useWorkspaceAiContext } from "@/hooks/use-workspace-ai-context";
+import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
+import { usePageAiContext } from "@/hooks/use-page-ai-context";
 import { useDatabaseEmbedAutoApply } from "@/hooks/use-database-embed-auto-apply";
 import { useDatabaseToolCacheSync } from "@/hooks/use-database-tool-cache-sync";
 import {
-  updateWorkspaceEditSnapshotStatus,
-  useWorkspaceEditAutoApply,
-} from "@/hooks/use-workspace-edit-auto-apply";
-import { useWorkspaceEditApplier } from "@/hooks/use-workspace-edit-applier";
+  updatePageEditSnapshotStatus,
+  usePageEditAutoApply,
+} from "@/hooks/use-page-edit-auto-apply";
+import { usePageEditApplier } from "@/hooks/use-page-edit-applier";
 import { DatabaseToolStepsGroup } from "@/components/ai-elements/database-tool-steps";
 import {
   buildMessagePartGroups,
   IntegrationToolTaskGroup,
 } from "@/components/ai-elements/integration-tool-task";
-import { WorkspaceEditCard } from "@/components/ai-elements/workspace-edit-card";
+import { PageEditCard } from "@/components/ai-elements/page-edit-card";
 import {
   PromptInput,
   PromptInputButton,
@@ -65,29 +65,29 @@ import {
 import {
   aiChatThreadMessagesQueryKey,
   aiChatThreadMessagesQueryOptions,
-  buildWorkspaceEditSnapshotMap,
+  buildPageEditSnapshotMap,
   dedupeChatMessagesById,
   isProposePageContentUpdateToolName,
-  isWorkspaceEditBaselineCurrent,
-  isWorkspaceEditReviewAvailable,
-  logWorkspaceEdit,
+  isPageEditBaselineCurrent,
+  isPageEditReviewAvailable,
+  logPageEdit,
   type AiChatThreadMessagesResponse,
   type ProposePageContentUpdateOutput,
-  type WorkspaceEditSnapshotPart,
+  type PageEditSnapshotPart,
 } from "@notelab/features/ai-chat";
 import { useSession } from "@notelab/features/auth";
 import { useNotelabFeatures } from "@notelab/features";
 import { useDatabase } from "@notelab/features/databases";
 import {
-  useActiveOrganizationId,
+  useActiveWorkspaceId,
   useIntegrations,
-  useOrganizationAiModels,
+  useWorkspaceAiModels,
 } from "@notelab/features/integrations";
 import {
-  useWorkspaceAccessLevel,
-  useWorkspaces,
-} from "@notelab/features/workspaces";
-import type { OrganizationAiChatModel } from "@notelab/features/integrations";
+  usePageAccessLevel,
+  usePages,
+} from "@notelab/features/pages";
+import type { WorkspaceAiChatModel } from "@notelab/features/integrations";
 import { useQuery } from "@tanstack/react-query";
 import { integrationIcons } from "@/lib/integration-icons";
 import { useAgent } from "agents/react";
@@ -124,18 +124,18 @@ import {
 } from "ai";
 import {
   extractPageMarkdownFromContext,
-  logWorkspaceContextSent,
-  logWorkspaceContextRebuild,
+  logPageContextSent,
+  logPageContextRebuild,
   prosemirrorToMarkdown,
   type ContextAttachment,
   type ContextSourceRef,
-} from "@notelab/workspace-context";
+} from "@notelab/page-context";
 import { ArrowDownIcon, CheckIcon, InboxIcon, PlusIcon, XIcon } from "lucide-react";
 import { useGenerativeToolUiEnabled } from "@/lib/debug-settings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-const fallbackModels: OrganizationAiChatModel[] = [
+const fallbackModels: WorkspaceAiChatModel[] = [
   {
     chef: "OpenAI",
     chefSlug: "openai",
@@ -266,7 +266,7 @@ const availableSources: Array<{
     label: "Drive",
   },
   {
-    description: "Workspace channels, threads, canvases, and files.",
+    description: "Page channels, threads, canvases, and files.",
     id: "slack",
     label: "Slack",
   },
@@ -326,10 +326,10 @@ const toolTitles: Record<string, string> = {
   searchLinearIssues: "Search Linear issues",
   searchSlackMessages: "Search Slack",
   proposePageContentUpdate: "Update page content",
-  createWorkspace: "Create workspace",
+  createPage: "Create page",
   createDatabase: "Create database",
   embedDatabaseInPage: "Embed database in page",
-  linkDatabaseInWorkspace: "Link database in sidebar",
+  linkDatabaseInPage: "Link database in sidebar",
   createDatabaseProperty: "Add database property",
   updateDatabaseProperty: "Update database property",
   createDatabaseView: "Create database view",
@@ -551,7 +551,7 @@ const toolPhrases: Record<string, string[]> = {
     "Analyzing comment context",
   ],
   getLinearProfile: [
-    "Checking the Linear workspace",
+    "Checking the Linear page",
     "Reading Linear profile details",
     "Confirming Linear access",
   ],
@@ -586,7 +586,7 @@ const toolPhrases: Record<string, string[]> = {
     "Analyzing file context",
   ],
   getSlackProfile: [
-    "Checking the Slack workspace",
+    "Checking the Slack page",
     "Reading Slack profile details",
     "Confirming Slack access",
   ],
@@ -629,7 +629,7 @@ const toolPhrases: Record<string, string[]> = {
 
 const pendingPhrases = [
   "Thinking through your question",
-  "Analyzing workspace context",
+  "Analyzing page context",
   "Searching connected sources",
   "Preparing tool calls",
 ];
@@ -711,7 +711,7 @@ const ModelItem = ({
   isSelected,
   onSelect,
 }: {
-  m: OrganizationAiChatModel;
+  m: WorkspaceAiChatModel;
   isSelected: boolean;
   onSelect: (id: string) => void;
 }) => {
@@ -994,7 +994,7 @@ function shouldShowPendingAssistant(
   );
 }
 
-const WorkspaceEditToolPart = ({
+const PageEditToolPart = ({
   isApplying,
   isBaselineCurrent,
   isDiffVisible,
@@ -1015,7 +1015,7 @@ const WorkspaceEditToolPart = ({
   onToggleChanges: (toolCallId: string) => void;
   onUndo: (toolCallId: string) => void | Promise<void>;
   part: ToolPart;
-  snapshot: WorkspaceEditSnapshotPart | null;
+  snapshot: PageEditSnapshotPart | null;
 }) => {
   const output = part.output as ProposePageContentUpdateOutput | undefined;
   const summary =
@@ -1025,7 +1025,7 @@ const WorkspaceEditToolPart = ({
     "summary" in part.input &&
     typeof part.input.summary === "string"
       ? part.input.summary
-      : "Updated the page in workspace context.");
+      : "Updated the page in page context.");
   const toolError =
     part.state === "output-error" || part.errorText
       ? part.errorText ?? "The page update tool failed."
@@ -1041,7 +1041,7 @@ const WorkspaceEditToolPart = ({
   }
 
   return (
-    <WorkspaceEditCard
+    <PageEditCard
       isApplying={isApplying}
       isBaselineCurrent={isBaselineCurrent}
       isDiffVisible={isDiffVisible}
@@ -1059,31 +1059,31 @@ const WorkspaceEditToolPart = ({
 
 const ChatMessage = ({
   applyingToolCallIds,
-  getWorkspaceEditBaselineCurrent,
-  getWorkspaceEditReviewAvailable,
+  getPageEditBaselineCurrent,
+  getPageEditReviewAvailable,
   message,
-  onApplyWorkspaceEdit,
-  onDiscardWorkspaceEdit,
-  onToggleWorkspaceEditChanges,
-  onUndoWorkspaceEdit,
+  onApplyPageEdit,
+  onDiscardPageEdit,
+  onTogglePageEditChanges,
+  onUndoPageEdit,
   showGenerativeToolUi,
   snapshotByToolCallId,
   visibleDiffToolCallId,
 }: {
   applyingToolCallIds: readonly string[];
-  getWorkspaceEditBaselineCurrent: (
-    snapshot: WorkspaceEditSnapshotPart,
+  getPageEditBaselineCurrent: (
+    snapshot: PageEditSnapshotPart,
   ) => boolean;
-  getWorkspaceEditReviewAvailable: (
-    snapshot: WorkspaceEditSnapshotPart,
+  getPageEditReviewAvailable: (
+    snapshot: PageEditSnapshotPart,
   ) => boolean;
   message: UIMessage;
-  onApplyWorkspaceEdit: (toolCallId: string) => void | Promise<void>;
-  onDiscardWorkspaceEdit: (toolCallId: string) => void | Promise<void>;
-  onToggleWorkspaceEditChanges: (toolCallId: string) => void;
-  onUndoWorkspaceEdit: (toolCallId: string) => void | Promise<void>;
+  onApplyPageEdit: (toolCallId: string) => void | Promise<void>;
+  onDiscardPageEdit: (toolCallId: string) => void | Promise<void>;
+  onTogglePageEditChanges: (toolCallId: string) => void;
+  onUndoPageEdit: (toolCallId: string) => void | Promise<void>;
   showGenerativeToolUi: boolean;
-  snapshotByToolCallId: Map<string, WorkspaceEditSnapshotPart>;
+  snapshotByToolCallId: Map<string, PageEditSnapshotPart>;
   visibleDiffToolCallId: string | null;
 }) => {
   if (message.role === "system" || (message.role as string) === "data") {
@@ -1186,23 +1186,23 @@ const ChatMessage = ({
                 snapshotByToolCallId.get(part.toolCallId) ?? null;
 
               return (
-                <WorkspaceEditToolPart
+                <PageEditToolPart
                   isApplying={
                     applyingToolCallIds.includes(part.toolCallId) &&
                     !snapshotByToolCallId.has(part.toolCallId)
                   }
                   isBaselineCurrent={
-                    snapshot ? getWorkspaceEditBaselineCurrent(snapshot) : false
+                    snapshot ? getPageEditBaselineCurrent(snapshot) : false
                   }
                   isDiffVisible={visibleDiffToolCallId === part.toolCallId}
                   isReviewAvailable={
-                    snapshot ? getWorkspaceEditReviewAvailable(snapshot) : false
+                    snapshot ? getPageEditReviewAvailable(snapshot) : false
                   }
                   key={`${message.id}-${index}`}
-                  onApply={onApplyWorkspaceEdit}
-                  onDiscard={onDiscardWorkspaceEdit}
-                  onToggleChanges={onToggleWorkspaceEditChanges}
-                  onUndo={onUndoWorkspaceEdit}
+                  onApply={onApplyPageEdit}
+                  onDiscard={onDiscardPageEdit}
+                  onToggleChanges={onTogglePageEditChanges}
+                  onUndo={onUndoPageEdit}
                   part={part}
                   snapshot={snapshot}
                 />
@@ -1246,7 +1246,7 @@ const EmptyState = () => (
       <InboxIcon className="size-6 text-muted-foreground" />
     </div>
     <div className="space-y-2">
-      <h2 className="font-semibold text-xl">Ask AI about your workspace</h2>
+      <h2 className="font-semibold text-xl">Ask AI about your page</h2>
       <p className="mx-auto max-w-xl text-muted-foreground text-sm">
         The assistant can search connected Gmail, GitHub, Google Calendar,
         Slack, and Linear context, then answer with project details and insights.
@@ -1259,7 +1259,7 @@ type ChatbotProps = {
   databaseId?: string | null;
   isSidebar?: boolean;
   threadId: string;
-  workspaceId?: string | null;
+  pageId?: string | null;
 };
 
 type SeededInitialMessages = {
@@ -1270,11 +1270,11 @@ type SeededInitialMessages = {
 
 const Chatbot = (props: ChatbotProps) => {
   const { apiFetch } = useNotelabFeatures();
-  const organizationId = useActiveOrganizationId();
+  const workspaceId = useActiveWorkspaceId();
   const threadMessagesQuery = useQuery(
-    aiChatThreadMessagesQueryOptions(apiFetch, organizationId, props.threadId),
+    aiChatThreadMessagesQueryOptions(apiFetch, workspaceId, props.threadId),
   );
-  const initialMessagesKey = `${organizationId ?? "no-org"}:${props.threadId}`;
+  const initialMessagesKey = `${workspaceId ?? "no-workspace"}:${props.threadId}`;
   const queriedInitialMessages =
     threadMessagesQuery.data?.messages ?? emptyAgentChatMessages;
   const [seededInitialMessages, setSeededInitialMessages] =
@@ -1332,7 +1332,7 @@ const ChatbotInner = ({
   initialMessages,
   isSidebar = false,
   threadId,
-  workspaceId = null,
+  pageId = null,
 }: ChatbotProps & {
   initialMessages: UIMessage[];
 }) => {
@@ -1356,10 +1356,10 @@ const ChatbotInner = ({
   >([]);
   const mentionMenuRef = useRef<ContextAttachMenuHandle | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const organizationId = useActiveOrganizationId();
+  const workspaceId = useActiveWorkspaceId();
   const primarySource = useMemo<ContextSourceRef | null>(() => {
-    if (workspaceId) {
-      return { type: "page", id: workspaceId, role: "primary" };
+    if (pageId) {
+      return { type: "page", id: pageId, role: "primary" };
     }
 
     if (databaseId) {
@@ -1367,13 +1367,13 @@ const ChatbotInner = ({
     }
 
     return null;
-  }, [databaseId, workspaceId]);
+  }, [databaseId, pageId]);
   const effectivePrimarySource = primaryDismissed ? null : primarySource;
-  const { data: workspaces = [] } = useWorkspaces(organizationId, {
-    enabled: isSidebar && Boolean(organizationId),
+  const { data: pages = [] } = usePages(workspaceId, {
+    enabled: isSidebar && Boolean(workspaceId),
   });
-  const { data: workspaceAccessLevel } = useWorkspaceAccessLevel(
-    isSidebar ? workspaceId : null,
+  const { data: pageAccessLevel } = usePageAccessLevel(
+    isSidebar ? pageId : null,
     {
       refetchOnMount: false,
     },
@@ -1398,7 +1398,7 @@ const ChatbotInner = ({
         databaseEmoji,
         databaseName: databasePayload?.database.name,
         primarySource: effectivePrimarySource,
-        workspaces,
+        pages,
       }) ?? {
         emoji: databaseEmoji,
         id: effectivePrimarySource.id,
@@ -1410,16 +1410,16 @@ const ChatbotInner = ({
         type: effectivePrimarySource.type,
       }
     );
-  }, [databasePayload, effectivePrimarySource, workspaces]);
-  const { error: contextError, isLoading: isContextLoading, markdown: workspaceContext } =
-    useWorkspaceAiContext({
+  }, [databasePayload, effectivePrimarySource, pages]);
+  const { error: contextError, isLoading: isContextLoading, markdown: pageContext } =
+    usePageAiContext({
       attachments,
-      enabled: isSidebar && Boolean(organizationId),
-      organizationId,
+      enabled: isSidebar && Boolean(workspaceId),
+      workspaceId,
       primarySource: effectivePrimarySource,
     });
   const integrationsQuery = useIntegrations();
-  const aiModelsQuery = useOrganizationAiModels();
+  const aiModelsQuery = useWorkspaceAiModels();
   const models = useMemo(() => {
     const queryModels = aiModelsQuery.data?.models ?? [];
 
@@ -1465,7 +1465,7 @@ const ChatbotInner = ({
     setPrimaryDismissed(false);
     setSelectedMentionIndex(0);
     setTextCursor(0);
-  }, [databaseId, workspaceId]);
+  }, [databaseId, pageId]);
 
   const mentionTrigger = useMemo(
     () => parseMentionState(text, textCursor),
@@ -1487,12 +1487,12 @@ const ChatbotInner = ({
       return;
     }
 
-    logWorkspaceContextRebuild({
+    logPageContextRebuild({
       attachmentCount: attachments.length,
-      charCount: workspaceContext.length,
+      charCount: pageContext.length,
       buildMs: 0,
     });
-  }, [attachments.length, isContextLoading, isSidebar, workspaceContext]);
+  }, [attachments.length, isContextLoading, isSidebar, pageContext]);
 
   useEffect(() => {
     if (!enabledSources) {
@@ -1507,10 +1507,10 @@ const ChatbotInner = ({
   const { queryClient } = useNotelabFeatures();
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
-  const isAgentReady = Boolean(organizationId && userId && threadId);
-  const query = organizationId ? { organizationId } : undefined;
+  const isAgentReady = Boolean(workspaceId && userId && threadId);
+  const query = workspaceId ? { workspaceId } : undefined;
   const agentName = isAgentReady
-    ? `org-${organizationId}-user-${userId}-thread-${threadId}`
+    ? `org-${workspaceId}-user-${userId}-thread-${threadId}`
     : "chat-not-ready";
   const agent = useAgent({
     agent: "ChatAgent",
@@ -1518,13 +1518,13 @@ const ChatbotInner = ({
     query,
   });
 
-  const { getEditorHandle } = useWorkspaceEditorRegistry();
-  const { commitPageEdit, undoPageEdit } = useWorkspaceEditApplier();
+  const { getEditorHandle } = usePageEditorRegistry();
+  const { commitPageEdit, undoPageEdit } = usePageEditApplier();
   const [visibleDiffToolCallId, setVisibleDiffToolCallId] = useState<string | null>(
     null,
   );
 
-  const allowedWorkspaceIds = useMemo(() => {
+  const allowedPageIds = useMemo(() => {
     const ids = new Set<string>();
 
     if (effectivePrimarySource?.type === "page") {
@@ -1540,18 +1540,18 @@ const ChatbotInner = ({
     return [...ids];
   }, [attachments, effectivePrimarySource]);
 
-  const canEditWorkspacePages = Boolean(
+  const canEditPages = Boolean(
     isSidebar &&
-      workspaceId &&
-      (workspaceAccessLevel === "edit" || workspaceAccessLevel === "full"),
+      pageId &&
+      (pageAccessLevel === "edit" || pageAccessLevel === "full"),
   );
 
   const threadMessagesQueryKey = useMemo(
     () =>
-      organizationId && threadId
-        ? aiChatThreadMessagesQueryKey(organizationId, threadId)
+      workspaceId && threadId
+        ? aiChatThreadMessagesQueryKey(workspaceId, threadId)
         : null,
-    [organizationId, threadId],
+    [workspaceId, threadId],
   );
 
   const {
@@ -1568,15 +1568,15 @@ const ChatbotInner = ({
       model,
       sources: selectedSources,
       threadId,
-      ...(organizationId ? { organizationId } : {}),
+      ...(workspaceId ? { workspaceId } : {}),
       ...(userId ? { userId } : {}),
-      ...(workspaceContext ? { workspaceContext } : {}),
-      allowedWorkspaceIds,
-      canEditWorkspacePages,
-      workspaceContextMeta: workspaceContext
+      ...(pageContext ? { pageContext } : {}),
+      allowedPageIds,
+      canEditPages,
+      pageContextMeta: pageContext
         ? {
             attachmentIds: attachments.map((item) => item.id),
-            charCount: workspaceContext.length,
+            charCount: pageContext.length,
             primaryId: effectivePrimarySource?.id ?? null,
           }
         : undefined,
@@ -1587,14 +1587,14 @@ const ChatbotInner = ({
     onError: (chatError) => {
       logAiChatError("useAgentChat onError", chatError, {
         agentName,
-        canEditWorkspacePages,
+        canEditPages,
         isAgentReady,
         isSidebar,
-        organizationId,
+        workspaceId,
         threadId,
         userId,
-        workspaceContextChars: workspaceContext.length,
-        workspaceId,
+        pageContextChars: pageContext.length,
+        pageId,
       });
       toast.error("Ask AI failed", {
         description: chatError.message,
@@ -1612,12 +1612,12 @@ const ChatbotInner = ({
       isAgentReady,
       isSidebar,
       messageSummary: summarizeMessagesForDebug(messages),
-      organizationId,
+      workspaceId,
       status,
       threadId,
       userId,
-      workspaceContextChars: workspaceContext.length,
-      workspaceId,
+      pageContextChars: pageContext.length,
+      pageId,
     };
   }, [
     agentName,
@@ -1625,12 +1625,12 @@ const ChatbotInner = ({
     isAgentReady,
     isSidebar,
     messages,
-    organizationId,
+    workspaceId,
     status,
     threadId,
     userId,
-    workspaceContext.length,
-    workspaceId,
+    pageContext.length,
+    pageId,
   ]);
 
   useEffect(() => {
@@ -1673,53 +1673,53 @@ const ChatbotInner = ({
       return;
     }
 
-    logWorkspaceEdit("chat:workspace-edit-config", {
-      allowedWorkspaceIds,
-      canEditWorkspacePages,
-      primaryWorkspaceId: effectivePrimarySource?.type === "page"
+    logPageEdit("chat:page-edit-config", {
+      allowedPageIds,
+      canEditPages,
+      primaryPageId: effectivePrimarySource?.type === "page"
         ? effectivePrimarySource.id
         : null,
-      workspaceAccessLevel: workspaceAccessLevel ?? null,
-      workspaceContextChars: workspaceContext.length,
-      workspaceId,
+      pageAccessLevel: pageAccessLevel ?? null,
+      pageContextChars: pageContext.length,
+      pageId,
     });
   }, [
-    allowedWorkspaceIds,
-    canEditWorkspacePages,
+    allowedPageIds,
+    canEditPages,
     effectivePrimarySource,
     isSidebar,
-    workspaceAccessLevel,
-    workspaceContext.length,
-    workspaceId,
+    pageAccessLevel,
+    pageContext.length,
+    pageId,
   ]);
 
   const getContextPageMarkdown = useCallback(
-    (targetWorkspaceId: string) =>
-      workspaceContext
-        ? extractPageMarkdownFromContext(workspaceContext, targetWorkspaceId)
+    (targetPageId: string) =>
+      pageContext
+        ? extractPageMarkdownFromContext(pageContext, targetPageId)
         : null,
-    [workspaceContext],
+    [pageContext],
   );
 
-  const { applyingToolCallIds } = useWorkspaceEditAutoApply({
-    enabled: isSidebar && canEditWorkspacePages,
+  const { applyingToolCallIds } = usePageEditAutoApply({
+    enabled: isSidebar && canEditPages,
     getContextPageMarkdown,
     messages,
     setMessages,
   });
 
   useDatabaseToolCacheSync({
-    enabled: isSidebar && canEditWorkspacePages,
+    enabled: isSidebar && canEditPages,
     messages,
   });
 
   useDatabaseEmbedAutoApply({
-    enabled: isSidebar && canEditWorkspacePages,
+    enabled: isSidebar && canEditPages,
     messages,
   });
 
   const snapshotByToolCallId = useMemo(
-    () => buildWorkspaceEditSnapshotMap(messages),
+    () => buildPageEditSnapshotMap(messages),
     [messages],
   );
 
@@ -1764,12 +1764,12 @@ const ChatbotInner = ({
     threadMessagesQueryKey,
   ]);
 
-  const getWorkspaceEditBaselineCurrent = useCallback(
-    (snapshot: WorkspaceEditSnapshotPart) => {
-      const handle = getEditorHandle(snapshot.workspaceId);
+  const getPageEditBaselineCurrent = useCallback(
+    (snapshot: PageEditSnapshotPart) => {
+      const handle = getEditorHandle(snapshot.pageId);
       const currentContentJson = handle?.getContentJson() ?? null;
 
-      return isWorkspaceEditBaselineCurrent(
+      return isPageEditBaselineCurrent(
         snapshot.beforeContentJson,
         currentContentJson,
         {
@@ -1783,12 +1783,12 @@ const ChatbotInner = ({
     [getEditorHandle],
   );
 
-  const getWorkspaceEditReviewAvailable = useCallback(
-    (snapshot: WorkspaceEditSnapshotPart) => {
-      const handle = getEditorHandle(snapshot.workspaceId);
+  const getPageEditReviewAvailable = useCallback(
+    (snapshot: PageEditSnapshotPart) => {
+      const handle = getEditorHandle(snapshot.pageId);
       const currentContentJson = handle?.getContentJson() ?? null;
 
-      return isWorkspaceEditReviewAvailable(
+      return isPageEditReviewAvailable(
         snapshot,
         currentContentJson,
         currentContentJson
@@ -1799,7 +1799,7 @@ const ChatbotInner = ({
     [getEditorHandle],
   );
 
-  const handleDiscardWorkspaceEdit = useCallback(
+  const handleDiscardPageEdit = useCallback(
     (toolCallId: string) => {
       const snapshot = snapshotByToolCallId.get(toolCallId);
 
@@ -1807,7 +1807,7 @@ const ChatbotInner = ({
         return;
       }
 
-      getEditorHandle(snapshot.workspaceId)?.clearEditDiffPreview({
+      getEditorHandle(snapshot.pageId)?.clearEditDiffPreview({
         silent: true,
       });
 
@@ -1816,7 +1816,7 @@ const ChatbotInner = ({
       }
 
       setMessages((currentMessages) =>
-        updateWorkspaceEditSnapshotStatus(currentMessages, toolCallId, "declined"),
+        updatePageEditSnapshotStatus(currentMessages, toolCallId, "declined"),
       );
     },
     [
@@ -1827,7 +1827,7 @@ const ChatbotInner = ({
     ],
   );
 
-  const handleApplyWorkspaceEdit = useCallback(
+  const handleApplyPageEdit = useCallback(
     async (toolCallId: string) => {
       const snapshot = snapshotByToolCallId.get(toolCallId);
 
@@ -1838,7 +1838,7 @@ const ChatbotInner = ({
         return;
       }
 
-      if (!getWorkspaceEditReviewAvailable(snapshot)) {
+      if (!getPageEditReviewAvailable(snapshot)) {
         toast.error("This update is no longer available", {
           description: "The page has changed since this suggestion was created.",
         });
@@ -1847,7 +1847,7 @@ const ChatbotInner = ({
 
       const result = commitPageEdit({
         afterMarkdown: snapshot.afterMarkdown,
-        workspaceId: snapshot.workspaceId,
+        pageId: snapshot.pageId,
       });
 
       if (!result.success) {
@@ -1857,7 +1857,7 @@ const ChatbotInner = ({
         return;
       }
 
-      getEditorHandle(snapshot.workspaceId)?.clearEditDiffPreview({
+      getEditorHandle(snapshot.pageId)?.clearEditDiffPreview({
         silent: true,
       });
 
@@ -1866,10 +1866,10 @@ const ChatbotInner = ({
       }
 
       const afterContentJson =
-        getEditorHandle(snapshot.workspaceId)?.getContentJson() ?? null;
+        getEditorHandle(snapshot.pageId)?.getContentJson() ?? null;
 
       setMessages((currentMessages) =>
-        updateWorkspaceEditSnapshotStatus(currentMessages, toolCallId, "applied", {
+        updatePageEditSnapshotStatus(currentMessages, toolCallId, "applied", {
           afterContentJson,
         }),
       );
@@ -1877,14 +1877,14 @@ const ChatbotInner = ({
     [
       commitPageEdit,
       getEditorHandle,
-      getWorkspaceEditReviewAvailable,
+      getPageEditReviewAvailable,
       setMessages,
       snapshotByToolCallId,
       visibleDiffToolCallId,
     ],
   );
 
-  const handleToggleWorkspaceEditChanges = useCallback(
+  const handleTogglePageEditChanges = useCallback(
     (toolCallId: string) => {
       const snapshot = snapshotByToolCallId.get(toolCallId);
 
@@ -1892,14 +1892,14 @@ const ChatbotInner = ({
         return;
       }
 
-      const handle = getEditorHandle(snapshot.workspaceId);
+      const handle = getEditorHandle(snapshot.pageId);
 
       if (!handle) {
         toast.error("Open the page in the editor to review this change.");
         return;
       }
 
-      if (!getWorkspaceEditReviewAvailable(snapshot)) {
+      if (!getPageEditReviewAvailable(snapshot)) {
         toast.error("This update is no longer available", {
           description: "The page has changed since this suggestion was created.",
         });
@@ -1936,13 +1936,13 @@ const ChatbotInner = ({
     },
     [
       getEditorHandle,
-      getWorkspaceEditReviewAvailable,
+      getPageEditReviewAvailable,
       snapshotByToolCallId,
       visibleDiffToolCallId,
     ],
   );
 
-  const handleUndoWorkspaceEdit = useCallback(
+  const handleUndoPageEdit = useCallback(
     async (toolCallId: string) => {
       const snapshot = snapshotByToolCallId.get(toolCallId);
 
@@ -1952,7 +1952,7 @@ const ChatbotInner = ({
 
       const result = await undoPageEdit({
         beforeContentJson: snapshot.beforeContentJson,
-        workspaceId: snapshot.workspaceId,
+        pageId: snapshot.pageId,
       });
 
       if (!result.success) {
@@ -1962,7 +1962,7 @@ const ChatbotInner = ({
         return;
       }
 
-      getEditorHandle(snapshot.workspaceId)?.clearEditDiffPreview({
+      getEditorHandle(snapshot.pageId)?.clearEditDiffPreview({
         silent: true,
       });
 
@@ -1971,7 +1971,7 @@ const ChatbotInner = ({
       }
 
       setMessages((currentMessages) =>
-        updateWorkspaceEditSnapshotStatus(currentMessages, toolCallId, "undone"),
+        updatePageEditSnapshotStatus(currentMessages, toolCallId, "undone"),
       );
     },
     [
@@ -2007,14 +2007,14 @@ const ChatbotInner = ({
 
       if (!isAgentReady) {
         toast.error("Ask AI failed", {
-          description: "Sign in and select an active organization before using AI.",
+          description: "Sign in and select an active workspace before using AI.",
         });
         return;
       }
 
-      logWorkspaceContextSent({
+      logPageContextSent({
         attachmentCount: attachments.length,
-        charCount: workspaceContext.length,
+        charCount: pageContext.length,
       });
 
       void sendMessage({
@@ -2028,7 +2028,7 @@ const ChatbotInner = ({
       attachments.length,
       isAgentReady,
       sendMessage,
-      workspaceContext,
+      pageContext,
     ]
   );
 
@@ -2245,14 +2245,14 @@ const ChatbotInner = ({
             visibleMessages.map((message) => (
               <ChatMessage
                 applyingToolCallIds={applyingToolCallIds}
-                getWorkspaceEditBaselineCurrent={getWorkspaceEditBaselineCurrent}
-                getWorkspaceEditReviewAvailable={getWorkspaceEditReviewAvailable}
+                getPageEditBaselineCurrent={getPageEditBaselineCurrent}
+                getPageEditReviewAvailable={getPageEditReviewAvailable}
                 key={message.id}
                 message={message}
-                onApplyWorkspaceEdit={handleApplyWorkspaceEdit}
-                onDiscardWorkspaceEdit={handleDiscardWorkspaceEdit}
-                onToggleWorkspaceEditChanges={handleToggleWorkspaceEditChanges}
-                onUndoWorkspaceEdit={handleUndoWorkspaceEdit}
+                onApplyPageEdit={handleApplyPageEdit}
+                onDiscardPageEdit={handleDiscardPageEdit}
+                onTogglePageEditChanges={handleTogglePageEditChanges}
+                onUndoPageEdit={handleUndoPageEdit}
                 showGenerativeToolUi={showGenerativeToolUi}
                 snapshotByToolCallId={snapshotByToolCallId}
                 visibleDiffToolCallId={visibleDiffToolCallId}
@@ -2274,11 +2274,11 @@ const ChatbotInner = ({
           {isSidebar ? (
             <div className="mb-2 px-1 text-xs text-muted-foreground">
               {isContextLoading
-                ? "Loading workspace context..."
+                ? "Loading page context..."
                 : contextError
-                  ? "Workspace context failed"
-                  : workspaceContext
-                    ? "Workspace context ready"
+                  ? "Page context failed"
+                  : pageContext
+                    ? "Page context ready"
                     : null}
             </div>
           ) : null}
@@ -2296,7 +2296,7 @@ const ChatbotInner = ({
               {mentionMenuOpen ? (
                 <ContextAttachMenu
                   currentDatabaseId={databaseId}
-                  currentPageId={workspaceId}
+                  currentPageId={pageId}
                   existingAttachmentKeys={existingAttachmentKeys}
                   onEntriesChange={setMentionMenuEntries}
                   onSelect={handleAttachContext}
@@ -2313,7 +2313,7 @@ const ChatbotInner = ({
                 onClick={syncTextCursor}
                 onKeyDown={handleTextareaKeyDown}
                 onSelect={syncTextCursor}
-                placeholder="Ask about your workspace, or type @ to attach pages and databases..."
+                placeholder="Ask about your page, or type @ to attach pages and databases..."
                 ref={textareaRef}
                 value={text}
               />

@@ -1,8 +1,8 @@
 export const DATABASE_CONFIG_TOOL_NAMES = [
-  "createWorkspace",
+  "createPage",
   "createDatabase",
   "embedDatabaseInPage",
-  "linkDatabaseInWorkspace",
+  "linkDatabaseInPage",
   "createDatabaseProperty",
   "updateDatabaseProperty",
   "createDatabaseView",

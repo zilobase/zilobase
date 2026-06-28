@@ -2,37 +2,37 @@ import type { QueryClient } from "@tanstack/react-query"
 
 import type { ApiFetcher } from "./context"
 import { databaseQueryKey } from "./databases/queries"
-import { applyWorkspaceFavoriteToNav } from "./workspaces/nav-delta"
+import { applyPageFavoriteToNav } from "./pages/nav-delta"
 import {
-  notelabAiWorkspacesQueryKey,
-  workspacesNavRootQueryKey,
-  workspaceQueryKey,
-  workspacesRootQueryKey,
-  workspacesQueryKey,
-  type Workspace,
-  type WorkspaceDetail,
-} from "./workspaces/queries"
+  notelabAiPagesQueryKey,
+  pagesNavRootQueryKey,
+  pageQueryKey,
+  pagesRootQueryKey,
+  pagesQueryKey,
+  type Page,
+  type PageDetail,
+} from "./pages/queries"
 
 export type DeletedItemIds = {
   deletedDatabaseIds: string[]
-  deletedWorkspaceIds: string[]
+  deletedPageIds: string[]
 }
 
-export function isWorkspaceFavoriteInCache(
+export function isPageFavoriteInCache(
   queryClient: QueryClient,
-  workspaceId: string,
-  organizationId?: string | null,
+  pageId: string,
+  workspaceId?: string | null,
 ) {
-  return Boolean(getWorkspaceFromCache(queryClient, workspaceId, organizationId)?.isFavorite)
+  return Boolean(getPageFromCache(queryClient, pageId, workspaceId)?.isFavorite)
 }
 
-export async function favoriteWorkspacePages({
+export async function favoritePages({
   apiFetch,
   pageIds,
   queryClient,
 }: {
   apiFetch: ApiFetcher
-  organizationId: string
+  workspaceId: string
   pageIds: string[]
   queryClient: QueryClient
 }) {
@@ -44,43 +44,43 @@ export async function favoriteWorkspacePages({
 
   const results = await Promise.all(
     uniquePageIds.map((pageId) =>
-      apiFetch<{ workspace: Workspace }>(`/workspaces/${pageId}/favorite`, {
+      apiFetch<{ page: Page }>(`/pages/${pageId}/favorite`, {
         method: "PUT",
       }),
     ),
   )
 
-  for (const { workspace } of results) {
-    setWorkspaceDetailCache(queryClient, workspace)
-    queryClient.setQueriesData<Workspace[] | undefined>(
-      { queryKey: workspacesNavRootQueryKey(workspace.organizationId) },
-      (current) => applyWorkspaceFavoriteToNav(current, workspace),
+  for (const { page } of results) {
+    setPageDetailCache(queryClient, page)
+    queryClient.setQueriesData<Page[] | undefined>(
+      { queryKey: pagesNavRootQueryKey(page.workspaceId) },
+      (current) => applyPageFavoriteToNav(current, page),
     )
   }
 }
 
 export async function invalidateDeletedItems({
   includeNotelabAi = false,
-  organizationId,
+  workspaceId,
   queryClient,
   result,
 }: {
   includeNotelabAi?: boolean
-  organizationId: string | null | undefined
+  workspaceId: string | null | undefined
   queryClient: QueryClient
   result: DeletedItemIds
 }) {
-  if (!organizationId) {
+  if (!workspaceId) {
     return
   }
 
   await Promise.all([
     queryClient.invalidateQueries({
-      queryKey: workspacesNavRootQueryKey(organizationId),
+      queryKey: pagesNavRootQueryKey(workspaceId),
     }),
     includeNotelabAi
       ? queryClient.invalidateQueries({
-          queryKey: notelabAiWorkspacesQueryKey(organizationId),
+          queryKey: notelabAiPagesQueryKey(workspaceId),
         })
       : Promise.resolve(),
   ])
@@ -89,57 +89,57 @@ export async function invalidateDeletedItems({
     queryClient.removeQueries({ queryKey: databaseQueryKey(databaseId) })
   }
 
-  for (const workspaceId of result.deletedWorkspaceIds) {
-    queryClient.removeQueries({ queryKey: workspaceQueryKey(workspaceId) })
+  for (const pageId of result.deletedPageIds) {
+    queryClient.removeQueries({ queryKey: pageQueryKey(pageId) })
   }
 }
 
-export function setWorkspaceDetailCache(
+export function setPageDetailCache(
   queryClient: QueryClient,
-  workspace: Workspace,
+  page: Page,
 ) {
-  queryClient.setQueryData<WorkspaceDetail | null>(
-    workspaceQueryKey(workspace.id),
+  queryClient.setQueryData<PageDetail | null>(
+    pageQueryKey(page.id),
     (current) => ({
       accessLevel: current?.accessLevel ?? null,
-      workspace,
+      page,
     }),
   )
 }
 
-function getWorkspaceFromCache(
+function getPageFromCache(
   queryClient: QueryClient,
-  workspaceId: string,
-  organizationId?: string | null,
+  pageId: string,
+  workspaceId?: string | null,
 ) {
-  const detail = queryClient.getQueryData<WorkspaceDetail | null>(
-    workspaceQueryKey(workspaceId),
+  const detail = queryClient.getQueryData<PageDetail | null>(
+    pageQueryKey(pageId),
   )
 
-  if (detail?.workspace.id === workspaceId) {
-    return detail.workspace
+  if (detail?.page.id === pageId) {
+    return detail.page
   }
 
-  const organizationWorkspaces = organizationId
-    ? queryClient.getQueryData<Workspace[]>(workspacesQueryKey(organizationId))
+  const workspacePages = workspaceId
+    ? queryClient.getQueryData<Page[]>(pagesQueryKey(workspaceId))
     : null
-  const workspace = organizationWorkspaces?.find(
-    (candidate) => candidate.id === workspaceId,
+  const page = workspacePages?.find(
+    (candidate) => candidate.id === pageId,
   )
 
-  if (workspace) {
-    return workspace
+  if (page) {
+    return page
   }
 
-  for (const [, workspaces] of queryClient.getQueriesData<Workspace[]>({
-    queryKey: workspacesRootQueryKey(),
+  for (const [, pages] of queryClient.getQueriesData<Page[]>({
+    queryKey: pagesRootQueryKey(),
   })) {
-    const workspace = workspaces?.find(
-      (candidate) => candidate.id === workspaceId,
+    const page = pages?.find(
+      (candidate) => candidate.id === pageId,
     )
 
-    if (workspace) {
-      return workspace
+    if (page) {
+      return page
     }
   }
 

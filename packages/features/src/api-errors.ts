@@ -1,27 +1,27 @@
 export const ACTIVE_ORGANIZATION_MISMATCH_CODE = "ACTIVE_ORGANIZATION_MISMATCH"
 
-export class ActiveOrganizationMismatchError extends Error {
+export class ActiveWorkspaceMismatchError extends Error {
   readonly code = ACTIVE_ORGANIZATION_MISMATCH_CODE
   readonly status = 409
-  readonly organizationId: string
+  readonly workspaceId: string
 
-  constructor(organizationId: string, message?: string) {
-    super(message ?? "Switch to the workspace organization to continue.")
-    this.name = "ActiveOrganizationMismatchError"
-    this.organizationId = organizationId
+  constructor(workspaceId: string, message?: string) {
+    super(message ?? "Switch to the page workspace to continue.")
+    this.name = "ActiveWorkspaceMismatchError"
+    this.workspaceId = workspaceId
   }
 }
 
-export function isActiveOrganizationMismatchError(
+export function isActiveWorkspaceMismatchError(
   error: unknown,
-): error is ActiveOrganizationMismatchError {
-  return error instanceof ActiveOrganizationMismatchError
+): error is ActiveWorkspaceMismatchError {
+  return error instanceof ActiveWorkspaceMismatchError
 }
 
-export function parseActiveOrganizationMismatchError(
+export function parseActiveWorkspaceMismatchError(
   error: unknown,
-): ActiveOrganizationMismatchError | null {
-  if (isActiveOrganizationMismatchError(error)) {
+): ActiveWorkspaceMismatchError | null {
+  if (isActiveWorkspaceMismatchError(error)) {
     return error
   }
 
@@ -43,13 +43,13 @@ export function parseActiveOrganizationMismatchError(
   const record = body as {
     code?: unknown
     error?: unknown
-    organizationId?: unknown
+    workspaceId?: unknown
   }
 
   if (
     record.code !== ACTIVE_ORGANIZATION_MISMATCH_CODE ||
-    typeof record.organizationId !== "string" ||
-    record.organizationId.length === 0
+    typeof record.workspaceId !== "string" ||
+    record.workspaceId.length === 0
   ) {
     return null
   }
@@ -57,7 +57,7 @@ export function parseActiveOrganizationMismatchError(
   const message =
     typeof record.error === "string"
       ? record.error
-      : "Switch to the workspace organization to continue."
+      : "Switch to the page workspace to continue."
 
-  return new ActiveOrganizationMismatchError(record.organizationId, message)
+  return new ActiveWorkspaceMismatchError(record.workspaceId, message)
 }

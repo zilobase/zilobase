@@ -21,11 +21,11 @@ const SELECTION_BUBBLE_MENU_PLUGIN_KEY = "selectionBubbleMenu"
 export function SelectionBubbleMenu({
   editor,
   onSelectionAiPreviewChange,
-  organizationId,
+  workspaceId,
   runCommand,
 }: EditorControlProps & {
   onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
-  organizationId?: string | null
+  workspaceId?: string | null
   runCommand: RunToolbarCommand
 }) {
   useEffect(() => {
@@ -115,7 +115,7 @@ export function SelectionBubbleMenu({
         <SelectionAiMenu
           editor={editor}
           onPreviewChange={onSelectionAiPreviewChange}
-          organizationId={organizationId}
+          workspaceId={workspaceId}
         />
         <ButtonGroupSeparator />
         <ColorMenu editor={editor} />

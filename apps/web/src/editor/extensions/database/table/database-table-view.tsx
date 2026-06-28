@@ -1247,11 +1247,11 @@ export function DatabaseTableView() {
               const rightInsertKey = `insert-property-${property.id}-right`
               const showLeftInsert = pendingInsertPropertyKey === leftInsertKey
               const showRightInsert = pendingInsertPropertyKey === rightInsertKey
-              const workspaceProperty = property.property
-              const key = `${row.pageId}:${workspaceProperty.id}`
+              const pageProperty = property.property
+              const key = `${row.pageId}:${pageProperty.id}`
               const persistedValue = propertyValuesByKey[key] ?? ""
               const value = draftPropertyValues[key] ?? persistedValue
-              const wrapContent = getPropertyWrapContent(workspaceProperty.config)
+              const wrapContent = getPropertyWrapContent(pageProperty.config)
 
               return (
                 <Fragment key={property.id}>

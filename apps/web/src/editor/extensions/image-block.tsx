@@ -120,8 +120,8 @@ function ImageBlockView({
           <ImageSourcePicker
             initialLinkUrl={src ?? ""}
             onSelect={setImageSrc}
-            organizationId={options.organizationId}
             workspaceId={options.workspaceId}
+            pageId={options.pageId}
           />
         </PopoverContent>
       </Popover>
@@ -155,8 +155,8 @@ function ImageBlockView({
 }
 
 type ImageBlockOptions = {
-  organizationId?: string | null
   workspaceId?: string | null
+  pageId?: string | null
 }
 
 export const ImageBlock = Node.create<ImageBlockOptions>({
@@ -172,8 +172,8 @@ export const ImageBlock = Node.create<ImageBlockOptions>({
 
   addOptions() {
     return {
-      organizationId: null,
       workspaceId: null,
+      pageId: null,
     }
   },
 

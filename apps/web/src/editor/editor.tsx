@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { EditorContent } from "@tiptap/react"
 import { SelectionAiDiffDock } from "@/packages/editor/components/editor/selection-ai-diff-dock"
 import { MobileActionBar } from "@/packages/editor/components/editor/mobile-action-bar"
-import { WorkspaceMetadata } from "@/packages/editor/components/editor/workspace-metadata"
+import { PageMetadata } from "@/packages/editor/components/editor/page-metadata"
 import { starterContent } from "./constants"
 import {
   getFullDocumentPreviewRange,
@@ -14,8 +14,8 @@ import type {
   EditorProps,
   PasteChoiceState,
   SelectionAiDiffPreview,
-  WorkspaceEditPreviewControls,
-  WorkspaceEditPreviewRequest,
+  PageEditPreviewControls,
+  PageEditPreviewRequest,
 } from "./types"
 import { useEditorDatabaseActions } from "./use-editor-database-actions"
 import { useEditorDragHandle } from "./use-editor-drag-handle"
@@ -42,10 +42,10 @@ export function Editor({
   onEmojiChange,
   onOpenPage,
   onTitleChange,
-  organizationId,
-  title,
-  workspaceEditPreviewRef,
   workspaceId,
+  title,
+  pageEditPreviewRef,
+  pageId,
 }: EditorProps = {}) {
   const editorId = useId()
   const editorSurfaceRef = useRef<HTMLElement | null>(null)
@@ -54,14 +54,14 @@ export function Editor({
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
   const [selectionAiPreview, setSelectionAiPreview] =
     useState<SelectionAiDiffPreview | null>(null)
-  const pendingWorkspaceEditRef = useRef<WorkspaceEditPreviewRequest | null>(null)
+  const pendingPageEditRef = useRef<PageEditPreviewRequest | null>(null)
   const pageContentLayout = fullWidth
     ? { className: "", mode: "full" as const }
     : { className: "mx-auto max-w-5xl", mode: "narrow" as const }
 
   const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(editable)
   const { createEditorDatabase, handleDatabasePageDrop } =
-    useEditorDatabaseActions(organizationId, workspaceId)
+    useEditorDatabaseActions(workspaceId, pageId)
 
   const { editorExtensions, editorLifecycleKey, initialContent, tocItems } =
     useEditorExtensions({
@@ -72,8 +72,8 @@ export function Editor({
       onCreatePage,
       onEmbedPage,
       onOpenPage,
-      organizationId,
       workspaceId,
+      pageId,
     })
 
   const { blockDropLine, editor, surfaceDragHandlers } = useEditorInstance({
@@ -92,7 +92,7 @@ export function Editor({
     onEmbedPage,
     onOpenPage,
     setPasteChoice,
-    workspaceId,
+    pageId,
   })
 
   useEditorMenuEffects({
@@ -118,33 +118,33 @@ export function Editor({
 
   const handleClosePasteChoice = useCallback(() => setPasteChoice(null), [])
 
-  const clearWorkspaceEditPreview = useCallback(
+  const clearPageEditPreview = useCallback(
     (options?: { silent?: boolean }) => {
-      if (!options?.silent && pendingWorkspaceEditRef.current) {
-        pendingWorkspaceEditRef.current.onDeclined?.()
+      if (!options?.silent && pendingPageEditRef.current) {
+        pendingPageEditRef.current.onDeclined?.()
       }
 
-      pendingWorkspaceEditRef.current = null
+      pendingPageEditRef.current = null
       setSelectionAiPreview((current) =>
-        current?.source === "workspace-edit" ? null : current,
+        current?.source === "page-edit" ? null : current,
       )
     },
     [],
   )
 
   const clearSelectionAiPreview = useCallback(() => {
-    if (pendingWorkspaceEditRef.current) {
-      clearWorkspaceEditPreview()
+    if (pendingPageEditRef.current) {
+      clearPageEditPreview()
       return
     }
 
     setSelectionAiPreview(null)
-  }, [clearWorkspaceEditPreview])
+  }, [clearPageEditPreview])
 
   const handleSelectionAiPreviewChange = useCallback(
     (preview: SelectionAiDiffPreview | null) => {
-      if (preview && preview.source !== "workspace-edit") {
-        pendingWorkspaceEditRef.current = null
+      if (preview && preview.source !== "page-edit") {
+        pendingPageEditRef.current = null
       }
 
       setSelectionAiPreview(preview)
@@ -152,8 +152,8 @@ export function Editor({
     [],
   )
 
-  const showWorkspaceEditPreview = useCallback(
-    (request: WorkspaceEditPreviewRequest) => {
+  const showPageEditPreview = useCallback(
+    (request: PageEditPreviewRequest) => {
       if (!editor || editor.isDestroyed || !editable) {
         return false
       }
@@ -167,13 +167,13 @@ export function Editor({
       }
 
       const range = getFullDocumentPreviewRange(editor)
-      pendingWorkspaceEditRef.current = request
+      pendingPageEditRef.current = request
       setSelectionAiPreview({
         baselineMarkdown: request.beforeMarkdown,
         from: range.from,
         generatedMarkdown: request.afterMarkdown,
         isStreaming: false,
-        source: "workspace-edit",
+        source: "page-edit",
         to: range.to,
         toolCallId: request.toolCallId,
         useBeforeBaseline: request.useBeforeBaseline,
@@ -184,8 +184,8 @@ export function Editor({
     [editable, editor],
   )
 
-  const acceptWorkspaceEditPreview = useCallback(() => {
-    const pendingEdit = pendingWorkspaceEditRef.current
+  const acceptPageEditPreview = useCallback(() => {
+    const pendingEdit = pendingPageEditRef.current
 
     if (!editor || !pendingEdit || editor.isDestroyed) {
       return false
@@ -206,34 +206,34 @@ export function Editor({
     })
     onContentChange?.(editor.getJSON())
     pendingEdit.onAccepted?.()
-    pendingWorkspaceEditRef.current = null
+    pendingPageEditRef.current = null
     setSelectionAiPreview(null)
     return true
   }, [editor, onContentChange])
 
   useEffect(() => {
-    if (!workspaceEditPreviewRef) {
+    if (!pageEditPreviewRef) {
       return
     }
 
-    const controls: WorkspaceEditPreviewControls = {
-      accept: () => acceptWorkspaceEditPreview(),
-      clear: (options) => clearWorkspaceEditPreview(options),
-      isActive: () => pendingWorkspaceEditRef.current != null,
-      show: (request) => showWorkspaceEditPreview(request),
-      toolCallId: () => pendingWorkspaceEditRef.current?.toolCallId ?? null,
+    const controls: PageEditPreviewControls = {
+      accept: () => acceptPageEditPreview(),
+      clear: (options) => clearPageEditPreview(options),
+      isActive: () => pendingPageEditRef.current != null,
+      show: (request) => showPageEditPreview(request),
+      toolCallId: () => pendingPageEditRef.current?.toolCallId ?? null,
     }
 
-    workspaceEditPreviewRef.current = controls
+    pageEditPreviewRef.current = controls
 
     return () => {
-      workspaceEditPreviewRef.current = null
+      pageEditPreviewRef.current = null
     }
   }, [
-    acceptWorkspaceEditPreview,
-    clearWorkspaceEditPreview,
-    showWorkspaceEditPreview,
-    workspaceEditPreviewRef,
+    acceptPageEditPreview,
+    clearPageEditPreview,
+    showPageEditPreview,
+    pageEditPreviewRef,
   ])
 
   useEffect(() => {
@@ -272,8 +272,8 @@ export function Editor({
   }, [editor, selectionAiPreview])
 
   const acceptSelectionAiPreview = useCallback(() => {
-    if (pendingWorkspaceEditRef.current) {
-      acceptWorkspaceEditPreview()
+    if (pendingPageEditRef.current) {
+      acceptPageEditPreview()
       return
     }
 
@@ -303,7 +303,7 @@ export function Editor({
       .run()
     clearSelectionAiPreview()
   }, [
-    acceptWorkspaceEditPreview,
+    acceptPageEditPreview,
     clearSelectionAiPreview,
     editor,
     selectionAiPreview,
@@ -332,14 +332,14 @@ export function Editor({
           editorId={editorId}
           onClosePasteChoice={handleClosePasteChoice}
           onSelectionAiPreviewChange={handleSelectionAiPreviewChange}
-          organizationId={organizationId}
+          workspaceId={workspaceId}
           pasteChoice={pasteChoice}
           plusMenuOpen={plusMenuOpen}
           setDragHandleMenuOpen={setDragHandleMenuOpen}
           setPlusMenuOpen={setPlusMenuOpen}
           tocItems={tocItems}
         />
-        <WorkspaceMetadata
+        <PageMetadata
           contentClassName={pageContentLayout.className}
           cover={cover}
           databaseId={databaseId}
@@ -349,9 +349,9 @@ export function Editor({
           onCoverChange={onCoverChange}
           onIconChange={onEmojiChange}
           onTitleChange={onTitleChange}
-          organizationId={organizationId}
-          title={title}
           workspaceId={workspaceId}
+          title={title}
+          pageId={pageId}
         />
         <div
           className={pageContentLayout.className}
@@ -369,7 +369,7 @@ export function Editor({
         ) : null}
         {editable &&
         selectionAiPreview &&
-        selectionAiPreview.source !== "workspace-edit" ? (
+        selectionAiPreview.source !== "page-edit" ? (
           <SelectionAiDiffDock
             isStreaming={selectionAiPreview.isStreaming}
             onAccept={acceptSelectionAiPreview}

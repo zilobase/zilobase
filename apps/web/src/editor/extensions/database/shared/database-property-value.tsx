@@ -114,46 +114,46 @@ export function DatabasePropertyValue({
   value,
 }: DatabasePropertyValueProps) {
   const databaseContext = useDatabaseViewContext()
-  const workspaceProperty = property.property
-  const key = `${row.pageId}:${workspaceProperty.id}`
+  const pageProperty = property.property
+  const key = `${row.pageId}:${pageProperty.id}`
   const isSelectProperty =
-    workspaceProperty.type === "select" ||
-    workspaceProperty.type === "multi_select" ||
-    workspaceProperty.type === "status"
-  const isCheckboxProperty = workspaceProperty.type === "checkbox"
-  const isButtonProperty = workspaceProperty.type === "button"
-  const isDateProperty = workspaceProperty.type === "date"
-  const isFilesProperty = workspaceProperty.type === "files"
-  const isFormulaProperty = workspaceProperty.type === "formula"
-  const isPersonProperty = workspaceProperty.type === "person"
-  const isRelationProperty = workspaceProperty.type === "relation"
-  const isReadOnlyTimeCell = isReadOnlyTimeProperty(workspaceProperty.type)
+    pageProperty.type === "select" ||
+    pageProperty.type === "multi_select" ||
+    pageProperty.type === "status"
+  const isCheckboxProperty = pageProperty.type === "checkbox"
+  const isButtonProperty = pageProperty.type === "button"
+  const isDateProperty = pageProperty.type === "date"
+  const isFilesProperty = pageProperty.type === "files"
+  const isFormulaProperty = pageProperty.type === "formula"
+  const isPersonProperty = pageProperty.type === "person"
+  const isRelationProperty = pageProperty.type === "relation"
+  const isReadOnlyTimeCell = isReadOnlyTimeProperty(pageProperty.type)
   const isMultiSelectProperty =
-    workspaceProperty.type === "multi_select" ||
-    (isPersonProperty && getPersonLimit(workspaceProperty.config) !== "one_person")
+    pageProperty.type === "multi_select" ||
+    (isPersonProperty && getPersonLimit(pageProperty.config) !== "one_person")
   const displayValue =
-    workspaceProperty.type === "status" && !persistedValue
+    pageProperty.type === "status" && !persistedValue
       ? defaultStatusOptions[0]?.name ?? "Not started"
       : value
   const content = isReadOnlyTimeCell ? (
     <span className="database-input-cell-trigger">
       {formatReadOnlyTimePropertyValue(
         row,
-        workspaceProperty.config,
-        workspaceProperty.type
+        pageProperty.config,
+        pageProperty.type
       ) || <span className="text-muted-foreground">Empty</span>}
     </span>
   ) : isCheckboxProperty ? (
     <div className="database-checkbox-cell">
       <Checkbox
-        aria-label={`${workspaceProperty.name} value`}
+        aria-label={`${pageProperty.name} value`}
         checked={value === "true"}
         disabled={!editable}
         onCheckedChange={(nextChecked) =>
           onSaveValue(
             row.id,
-            workspaceProperty.id,
-            workspaceProperty.type,
+            pageProperty.id,
+            pageProperty.type,
             persistedValue,
             nextChecked === true ? "true" : "false"
           )
@@ -164,14 +164,14 @@ export function DatabasePropertyValue({
     <DatabasePropertyButton
       className="px-3 py-1"
       editable={editable}
-      label={workspaceProperty.name}
+      label={pageProperty.name}
       value={value}
     />
   ) : isFormulaProperty ? (
     <DatabaseFormulaValue
-      currentPropertyId={workspaceProperty.id}
+      currentPropertyId={pageProperty.id}
       properties={properties}
-      propertyConfig={workspaceProperty.config}
+      propertyConfig={pageProperty.config}
       propertyValuesByKey={propertyValuesByKey}
       row={row}
       titlePropertyLabel={titlePropertyLabel}
@@ -181,19 +181,19 @@ export function DatabasePropertyValue({
       allowCreate={!isPersonProperty}
       editable={editable && !disabledSelect}
       defaultOptions={
-        workspaceProperty.type === "status"
+        pageProperty.type === "status"
           ? defaultStatusOptions
           : isPersonProperty
             ? personOptions
             : undefined
       }
-      label={workspaceProperty.name}
+      label={pageProperty.name}
       multiple={isMultiSelectProperty}
       onSelect={(optionValue) =>
         onSaveValue(
           row.id,
-          workspaceProperty.id,
-          workspaceProperty.type,
+          pageProperty.id,
+          pageProperty.type,
           persistedValue,
           optionValue
         )
@@ -202,15 +202,15 @@ export function DatabasePropertyValue({
       onPropertyConfigChange={(config) =>
         onPropertyConfigChange(property.id, config)
       }
-      propertyConfig={workspaceProperty.config}
-      showStatusDot={workspaceProperty.type === "status"}
+      propertyConfig={pageProperty.config}
+      showStatusDot={pageProperty.type === "status"}
       value={displayValue}
       valueKey={isPersonProperty ? "id" : "name"}
     />
   ) : isDateProperty ? (
     <DatabasePropertyDate
       editable={editable}
-      label={workspaceProperty.name}
+      label={pageProperty.name}
       onOpenChange={(open) => onActiveValueChange(open ? key : null)}
       onPropertyConfigChange={(config) =>
         onPropertyConfigChange(property.id, config)
@@ -218,49 +218,49 @@ export function DatabasePropertyValue({
       onSelect={(nextValue) =>
         onSaveValue(
           row.id,
-          workspaceProperty.id,
-          workspaceProperty.type,
+          pageProperty.id,
+          pageProperty.type,
           persistedValue,
           nextValue
         )
       }
-      propertyConfig={workspaceProperty.config}
+      propertyConfig={pageProperty.config}
       value={value}
     />
   ) : isFilesProperty ? (
     <DatabasePropertyFiles
       databaseId={databaseContext.databaseId}
       editable={editable}
-      label={workspaceProperty.name}
+      label={pageProperty.name}
       onOpenChange={(open) => onActiveValueChange(open ? key : null)}
       onSelect={(nextValue) =>
         onSaveValue(
           row.id,
-          workspaceProperty.id,
-          workspaceProperty.type,
+          pageProperty.id,
+          pageProperty.type,
           persistedValue,
           nextValue
         )
       }
-      organizationId={
-        databaseContext.organizationId ??
-        databaseContext.databaseOrganizationId ??
-        databaseContext.hostDatabaseOrganizationId
+      workspaceId={
+        databaseContext.workspaceId ??
+        databaseContext.databaseWorkspaceId ??
+        databaseContext.hostDatabaseWorkspaceId
       }
-      propertyConfig={workspaceProperty.config}
+      propertyConfig={pageProperty.config}
       value={value}
-      workspaceId={row.pageId}
+      pageId={row.pageId}
     />
   ) : isRelationProperty ? (
     <DatabaseRelationPropertyValue
       onOpen={databaseContext.onOpenPage}
-      propertyConfig={workspaceProperty.config}
+      propertyConfig={pageProperty.config}
       value={value}
     />
   ) : (
     <DatabasePropertyInput
       editable={editable}
-      label={workspaceProperty.name}
+      label={pageProperty.name}
       onActivate={(element) => {
         onActiveValueChange(key)
         resizeCellEditor(element)
@@ -276,8 +276,8 @@ export function DatabasePropertyValue({
 
         onSaveValue(
           row.id,
-          workspaceProperty.id,
-          workspaceProperty.type,
+          pageProperty.id,
+          pageProperty.type,
           persistedValue,
           nextValue
         )
@@ -291,8 +291,8 @@ export function DatabasePropertyValue({
       }}
       onDeactivate={() => onActiveValueChange(null)}
       onInput={handleCellInput}
-      propertyConfig={workspaceProperty.config}
-      type={workspaceProperty.type}
+      propertyConfig={pageProperty.config}
+      type={pageProperty.type}
       value={Array.isArray(value) ? value.join(", ") : value}
       wrapContent
     />

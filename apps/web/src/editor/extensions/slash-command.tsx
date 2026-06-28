@@ -53,7 +53,7 @@ export type SlashCommandOptions = {
   onCreateDatabase?: () => Promise<string | null>
   onCreatePage?: () => Promise<CreatedPage>
   onOpenPage?: (pageId: string) => void
-  organizationId?: string | null
+  workspaceId?: string | null
 }
 
 export type SlashCommandItem = {
@@ -139,7 +139,7 @@ export function createSlashCommandItems(
     command: ({ editor, range }) => {
       openAskAiPopover({
         editor,
-        organizationId: options.organizationId,
+        workspaceId: options.workspaceId,
         range,
       })
     },
@@ -383,7 +383,7 @@ export function createSlashCommandItems(
   },
   {
     title: "Page",
-    description: "Nested workspace page",
+    description: "Nested page",
     icon: NotebookTabs,
     command: async ({ editor, range }) => {
       if (!options.onCreatePage) {
@@ -409,7 +409,7 @@ export function createSlashCommandItems(
   },
   {
     title: "Link to page",
-    description: "Link an existing workspace page",
+    description: "Link an existing page",
     icon: LinkIcon,
     command: ({ editor, range }) => {
       editor
@@ -584,7 +584,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
       onCreateDatabase: undefined,
       onCreatePage: undefined,
       onOpenPage: undefined,
-      organizationId: undefined,
+      workspaceId: undefined,
     }
   },
 

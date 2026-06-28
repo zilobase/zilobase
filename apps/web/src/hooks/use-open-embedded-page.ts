@@ -1,6 +1,6 @@
 import { useCallback } from "react"
 
-import { useWorkspaceSidePane } from "@/contexts/workspace-side-pane"
+import { usePageSidePane } from "@/contexts/page-side-pane"
 import { useNotelabFeatures } from "@notelab/features"
 import {
   defaultUserSettings,
@@ -8,55 +8,55 @@ import {
   type UserSettings,
 } from "@notelab/features/user-settings"
 import {
-  getWorkspaceFromDetail,
+  getPageFromDetail,
   resolveEmbeddedItemsOpenAs,
-  workspaceQueryKey,
+  pageQueryKey,
   type EmbeddedItemsOpenAs,
-  type Workspace,
-} from "@notelab/features/workspaces"
+  type Page,
+} from "@notelab/features/pages"
 
 function resolveOpenPagesAsFromCache(
   queryClient: ReturnType<typeof useNotelabFeatures>["queryClient"],
-  hostWorkspaceId: string | null | undefined,
-  fallbackWorkspace: Workspace | null | undefined,
+  hostPageId: string | null | undefined,
+  fallbackPage: Page | null | undefined,
 ) {
   const userSettings =
     queryClient.getQueryData<UserSettings>(userSettingsQueryKey) ??
     defaultUserSettings
-  const workspace =
-    getWorkspaceFromDetail(
-      queryClient.getQueryData(workspaceQueryKey(hostWorkspaceId)),
-    ) ?? fallbackWorkspace
+  const page =
+    getPageFromDetail(
+      queryClient.getQueryData(pageQueryKey(hostPageId)),
+    ) ?? fallbackPage
 
   return resolveEmbeddedItemsOpenAs(
-    workspace,
+    page,
     userSettings.embeddedItemsOpenAs,
   )
 }
 
 export function useOpenEmbeddedPage({
-  contextWorkspaceId,
+  contextPageId,
   databaseId,
   userSettings,
-  workspace,
+  page,
 }: {
-  contextWorkspaceId: string | null
+  contextPageId: string | null
   databaseId?: string | null
   userSettings: UserSettings | null | undefined
-  workspace: Workspace | null | undefined
+  page: Page | null | undefined
 }) {
   const { queryClient } = useNotelabFeatures()
   const {
     closeEmbeddedPageDialog,
     closeSidePane,
-    dialogWorkspaceId,
+    dialogPageId,
     openEmbeddedPageDialog,
     openSidePane,
-    sidePaneWorkspaceId,
-  } = useWorkspaceSidePane()
+    sidePanePageId,
+  } = usePageSidePane()
 
   const embeddedItemsOpenAs: EmbeddedItemsOpenAs = resolveEmbeddedItemsOpenAs(
-    workspace,
+    page,
     userSettings?.embeddedItemsOpenAs,
   )
 
@@ -64,14 +64,14 @@ export function useOpenEmbeddedPage({
     (pageId: string) => {
       const mode = resolveOpenPagesAsFromCache(
         queryClient,
-        contextWorkspaceId,
-        workspace,
+        contextPageId,
+        page,
       )
       const usesDialog = mode === "dialog"
-      const activePageId = usesDialog ? dialogWorkspaceId : sidePaneWorkspaceId
+      const activePageId = usesDialog ? dialogPageId : sidePanePageId
       const isCurrentlyOpen = activePageId === pageId
 
-      if (pageId === contextWorkspaceId || isCurrentlyOpen) {
+      if (pageId === contextPageId || isCurrentlyOpen) {
         if (usesDialog) {
           closeEmbeddedPageDialog()
         } else {
@@ -90,14 +90,14 @@ export function useOpenEmbeddedPage({
     [
       closeEmbeddedPageDialog,
       closeSidePane,
-      contextWorkspaceId,
+      contextPageId,
       databaseId,
-      dialogWorkspaceId,
+      dialogPageId,
       openEmbeddedPageDialog,
       openSidePane,
       queryClient,
-      sidePaneWorkspaceId,
-      workspace,
+      sidePanePageId,
+      page,
     ],
   )
 
@@ -105,11 +105,11 @@ export function useOpenEmbeddedPage({
 }
 
 export function useResolvedOpenPagesAs(
-  workspace: Workspace | null | undefined,
+  page: Page | null | undefined,
   userSettings: UserSettings | null | undefined,
 ) {
   return resolveEmbeddedItemsOpenAs(
-    workspace,
+    page,
     userSettings?.embeddedItemsOpenAs,
   )
 }

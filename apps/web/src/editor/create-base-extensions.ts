@@ -52,8 +52,8 @@ export type BaseExtensionsOptions = {
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string) => void
   onTocUpdate: (items: TableOfContentDataItem[]) => void
-  organizationId?: string | null
   workspaceId?: string | null
+  pageId?: string | null
 }
 
 export function normalizeEditorContent(content: unknown) {
@@ -82,8 +82,8 @@ export const createBaseExtensions = ({
   onEmbedPage,
   onOpenPage,
   onTocUpdate,
-  organizationId,
   workspaceId,
+  pageId,
 }: BaseExtensionsOptions): Extensions => [
   StarterKit.configure({
     codeBlock: false,
@@ -113,25 +113,25 @@ export const createBaseExtensions = ({
   Details.configure({ HTMLAttributes: { class: "editor-details" }, persist: true }),
   DetailsSummary.configure({ HTMLAttributes: { class: "editor-details-summary" } }),
   DetailsContent.configure({ HTMLAttributes: { class: "editor-details-content" } }),
-  ImageBlock.configure({ organizationId, workspaceId }),
+  ImageBlock.configure({ workspaceId, pageId }),
   VideoBlock,
   EmbedBlock,
   FileBlock,
   BookmarkBlock,
   LinkMention,
   DatabaseBlock.configure({
-    currentPageId: workspaceId,
+    currentPageId: pageId,
     editable,
     editorRuntime: databaseEditorRuntime,
     onOpenPage,
-    organizationId,
+    workspaceId,
   }),
   PageBlock.configure({
-    currentPageId: workspaceId,
+    currentPageId: pageId,
     onCreatePage,
     onEmbedPage,
     onOpenPage,
-    organizationId,
+    workspaceId,
   }),
   EmojiExtension,
   CodeBlockShiki.configure({
@@ -155,11 +155,11 @@ export const createBaseExtensions = ({
   CharacterCount,
   BlockSelection,
   SelectionAiPreview,
-  AskAiBlock.configure({ organizationId }),
+  AskAiBlock.configure({ workspaceId }),
   SlashCommand.configure({
     onCreateDatabase: createEditorDatabase,
     onCreatePage,
     onOpenPage,
-    organizationId,
+    workspaceId,
   }),
 ]

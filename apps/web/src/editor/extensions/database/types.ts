@@ -8,5 +8,5 @@ export type DatabaseBlockOptions = {
   editable?: boolean
   editorRuntime?: DatabaseBlockEditorRuntime
   onOpenPage?: (pageId: string) => void
-  organizationId?: string | null
+  workspaceId?: string | null
 }

@@ -4,19 +4,19 @@ import { ArrowRight, Maximize2 } from "lucide-react"
 
 import { AppLayout } from "@/components/app-layout"
 import {
-  WorkspaceSidePaneLayout,
-  WorkspaceSidePaneProvider,
-  useWorkspaceSidePane,
-} from "@/contexts/workspace-side-pane"
+  PageSidePaneLayout,
+  PageSidePaneProvider,
+  usePageSidePane,
+} from "@/contexts/page-side-pane"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { getDatabaseCover, getDatabaseEmoji } from "@notelab/features/databases"
 import {
-  useUpdateWorkspace,
-  useWorkspace,
-  useWorkspaceAccessLevel,
-} from "@notelab/features/workspaces"
+  useUpdatePage,
+  usePage,
+  usePageAccessLevel,
+} from "@notelab/features/pages"
 import {
   useDatabase,
   useUpdateDatabase,
@@ -25,13 +25,13 @@ import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
 import { useSession } from "@notelab/features/auth"
 import { useUserSettings } from "@notelab/features/user-settings"
-import { WorkspaceMetadata as WorkspaceMetadataView } from "@/packages/editor/components/editor/workspace-metadata"
+import { PageMetadata as PageMetadataView } from "@/packages/editor/components/editor/page-metadata"
 import { DatabaseView } from "@/packages/editor/extensions/database"
 import {
   PublicPaneTopbar,
-  PublicWorkspaceBreadcrumb,
-  WorkspaceEditorPane,
-} from "@/pages/workspace"
+  PublicPageBreadcrumb,
+  PageEditorPane,
+} from "@/pages/page"
 
 export default function DatabasePage() {
   const { data: session } = useSession()
@@ -54,21 +54,21 @@ function AuthenticatedDatabasePage() {
   })
   const { data: payload, isLoading } = useDatabase(databaseId)
   const databasePageId = payload?.database.pageId ?? null
-  const { data: workspace } = useWorkspace(databasePageId, {
+  const { data: page } = usePage(databasePageId, {
     refetchOnMount: false,
   })
   const { data: userSettings } = useUserSettings()
   const {
-    renderedSidePaneWorkspaceId,
+    renderedSidePanePageId,
     sidePaneAnimatedOpen,
     sidePaneContentReady,
     sidePaneDatabaseId,
-  } = useWorkspaceSidePane()
+  } = usePageSidePane()
   const { embeddedItemsOpenAs, openPage } = useOpenEmbeddedPage({
-    contextWorkspaceId: databasePageId,
+    contextPageId: databasePageId,
     databaseId,
     userSettings,
-    workspace,
+    page,
   })
 
   if (isLoading) {
@@ -88,7 +88,7 @@ function AuthenticatedDatabasePage() {
   }
 
   return (
-    <WorkspaceSidePaneLayout
+    <PageSidePaneLayout
       className="animate-in fade-in-0 duration-300"
       main={
         <DatabaseMainPane
@@ -100,20 +100,20 @@ function AuthenticatedDatabasePage() {
       sidePane={
         embeddedItemsOpenAs === "sidepanel" &&
         sidePaneContentReady &&
-        renderedSidePaneWorkspaceId ? (
-          <WorkspaceEditorPane
+        renderedSidePanePageId ? (
+          <PageEditorPane
             databaseId={sidePaneDatabaseId ?? databaseId}
             enableComments={false}
-            key={renderedSidePaneWorkspaceId}
+            key={renderedSidePanePageId}
             onOpenPage={openPage}
-            workspaceId={renderedSidePaneWorkspaceId}
+            pageId={renderedSidePanePageId}
           />
         ) : null
       }
       sidePaneOpen={sidePaneAnimatedOpen}
       sidePaneVisible={
         embeddedItemsOpenAs === "sidepanel" &&
-        renderedSidePaneWorkspaceId !== null
+        renderedSidePanePageId !== null
       }
     />
   )
@@ -123,9 +123,9 @@ function PublicDatabasePage() {
   const { databaseId } = useParams({ from: "/database/$databaseId" })
 
   return (
-    <WorkspaceSidePaneProvider resetKey={databaseId}>
+    <PageSidePaneProvider resetKey={databaseId}>
       <PublicDatabaseContent databaseId={databaseId} />
-    </WorkspaceSidePaneProvider>
+    </PageSidePaneProvider>
   )
 }
 
@@ -135,22 +135,22 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
   })
   const { data: payload, isLoading } = useDatabase(databaseId)
   const databasePageId = payload?.database.pageId ?? null
-  const { data: workspace } = useWorkspace(databasePageId, {
+  const { data: page } = usePage(databasePageId, {
     refetchOnMount: false,
   })
   const { data: userSettings } = useUserSettings()
   const {
     closeSidePane,
-    renderedSidePaneWorkspaceId,
+    renderedSidePanePageId,
     sidePaneAnimatedOpen,
     sidePaneContentReady,
     sidePaneDatabaseId,
-  } = useWorkspaceSidePane()
+  } = usePageSidePane()
   const { embeddedItemsOpenAs, openPage } = useOpenEmbeddedPage({
-    contextWorkspaceId: databasePageId,
+    contextPageId: databasePageId,
     databaseId,
     userSettings,
-    workspace,
+    page,
   })
 
   if (isLoading) {
@@ -171,13 +171,13 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
 
   return (
     <>
-    <WorkspaceSidePaneLayout
+    <PageSidePaneLayout
       className="bg-background animate-in fade-in-0 duration-300"
       standalone
       viewportHeightClass="h-svh"
       main={
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <PublicPaneTopbar workspaceId={databasePageId} />
+          <PublicPaneTopbar pageId={databasePageId} />
           <DatabaseMainPane
             activeDatabaseViewId={activeDatabaseViewId}
             className="min-h-0 min-w-0 flex-1 overflow-y-auto"
@@ -188,7 +188,7 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
         </div>
       }
       sidePane={
-        embeddedItemsOpenAs === "sidepanel" && renderedSidePaneWorkspaceId ? (
+        embeddedItemsOpenAs === "sidepanel" && renderedSidePanePageId ? (
           <div className="flex h-full min-h-0 flex-col">
             <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
               <div className="flex shrink-0 items-center gap-1">
@@ -208,26 +208,26 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
                   variant="ghost"
                 >
                   <Link
-                    params={{ workspaceId: renderedSidePaneWorkspaceId }}
-                    to="/workspace/$workspaceId"
+                    params={{ pageId: renderedSidePanePageId }}
+                    to="/page/$pageId"
                   >
                     <Maximize2 />
                   </Link>
                 </Button>
               </div>
-              <PublicWorkspaceBreadcrumb
-                workspaceId={renderedSidePaneWorkspaceId}
+              <PublicPageBreadcrumb
+                pageId={renderedSidePanePageId}
               />
             </div>
             {sidePaneContentReady ? (
-              <WorkspaceEditorPane
+              <PageEditorPane
                 className="min-h-0 flex-1"
                 databaseId={sidePaneDatabaseId ?? databaseId}
                 enableComments={false}
-                key={renderedSidePaneWorkspaceId}
+                key={renderedSidePanePageId}
                 onOpenPage={openPage}
                 readOnly
-                workspaceId={renderedSidePaneWorkspaceId}
+                pageId={renderedSidePanePageId}
               />
             ) : null}
           </div>
@@ -236,7 +236,7 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
       sidePaneOpen={sidePaneAnimatedOpen}
       sidePaneVisible={
         embeddedItemsOpenAs === "sidepanel" &&
-        renderedSidePaneWorkspaceId !== null
+        renderedSidePanePageId !== null
       }
     />
     <EmbeddedPageDialog onOpenPage={openPage} />
@@ -260,10 +260,10 @@ function DatabaseMainPane({
   const navigate = useNavigate()
   const { data: payload } = useDatabase(databaseId)
   const databasePageId = payload?.database.pageId ?? null
-  const { data: workspace } = useWorkspace(databasePageId)
-  const { data: accessLevel } = useWorkspaceAccessLevel(databasePageId)
+  const { data: page } = usePage(databasePageId)
+  const { data: accessLevel } = usePageAccessLevel(databasePageId)
   const updateDatabase = useUpdateDatabase()
-  const updateWorkspace = useUpdateWorkspace()
+  const updatePage = useUpdatePage()
   const [title, setTitle] = useState("")
   const [cover, setCover] = useState("")
   const [emoji, setEmoji] = useState("")
@@ -297,13 +297,13 @@ function DatabaseMainPane({
         name: nextTitle,
       })
 
-      if (workspace && workspace.name !== nextTitle) {
-        updateWorkspace.mutate({ id: workspace.id, name: nextTitle })
+      if (page && page.name !== nextTitle) {
+        updatePage.mutate({ id: page.id, name: nextTitle })
       }
     }, 600)
 
     return () => window.clearTimeout(timeout)
-  }, [editable, payload, title, updateDatabase, updateWorkspace, workspace])
+  }, [editable, payload, title, updateDatabase, updatePage, page])
 
   const updateCover = (nextCover: string) => {
     setCover(nextCover)
@@ -349,7 +349,7 @@ function DatabaseMainPane({
 
   return (
     <section className={cn(className, "animate-in fade-in-0 duration-300")}>
-      <WorkspaceMetadataView
+      <PageMetadataView
         cover={cover}
         databaseId={databaseId}
         editable={editable}
@@ -358,9 +358,9 @@ function DatabaseMainPane({
         onCoverChange={updateCover}
         onIconChange={updateEmoji}
         onTitleChange={setTitle}
-        organizationId={payload?.database.organizationId}
+        workspaceId={payload?.database.workspaceId}
         title={title}
-        workspaceId={databasePageId}
+        pageId={databasePageId}
       />
       <div className="tiptap-editor px-5 pb-10 sm:px-8 md:px-20 lg:px-24">
         <DatabaseView
@@ -370,7 +370,7 @@ function DatabaseMainPane({
           fullPage
           onActiveViewIdChange={updateActiveViewSearch}
           onOpenPage={onOpenPage}
-          organizationId={payload?.database.organizationId}
+          workspaceId={payload?.database.workspaceId}
           showTitle={false}
         />
       </div>

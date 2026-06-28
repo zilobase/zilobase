@@ -4,11 +4,11 @@ import { useNotelabFeatures } from "../context"
 import { appSearchQueryOptions } from "./queries"
 
 export function useAppSearchResults(
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
   query: string,
   enabled?: boolean,
 ) {
   const { apiFetch } = useNotelabFeatures()
 
-  return useQuery(appSearchQueryOptions(apiFetch, organizationId, query, enabled))
+  return useQuery(appSearchQueryOptions(apiFetch, workspaceId, query, enabled))
 }

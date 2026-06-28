@@ -18,18 +18,18 @@ import {
   PromptInputCommandItem,
   PromptInputCommandList,
 } from "@/components/ai-elements/prompt-input"
-import { WorkspaceIconDisplay, WorkspacePageIcon } from "@/lib/workspace-icon"
-import { useActiveOrganizationId } from "@notelab/features/integrations"
+import { PageIconDisplay, PageIcon } from "@/lib/page-icon"
+import { useActiveWorkspaceId } from "@notelab/features/integrations"
 import type { AppSearchResult } from "@notelab/features/search"
 import {
   readParentItemId,
-  useWorkspaces,
-  type Workspace,
-} from "@notelab/features/workspaces"
+  usePages,
+  type Page,
+} from "@notelab/features/pages"
 import type {
   ContextAttachment,
   ContextSourceRef,
-} from "@notelab/workspace-context"
+} from "@notelab/page-context"
 
 const MAX_VISIBLE_PER_GROUP = 3
 
@@ -49,13 +49,13 @@ const categoryOrder: AttachMenuCategory[] = [
   "databases",
 ]
 
-export function buildWorkspacePath(
-  workspacesById: Map<string, Workspace>,
-  workspaceId: string,
+export function buildPagePath(
+  pagesById: Map<string, Page>,
+  pageId: string,
 ) {
   const parts: string[] = []
   const visited = new Set<string>()
-  let current = workspacesById.get(workspaceId)
+  let current = pagesById.get(pageId)
 
   while (current) {
     if (visited.has(current.id)) {
@@ -71,7 +71,7 @@ export function buildWorkspacePath(
       break
     }
 
-    current = workspacesById.get(parentItemId)
+    current = pagesById.get(parentItemId)
   }
 
   return parts.join(" / ")
@@ -179,16 +179,16 @@ function buildAttachMenuItems({
   currentPageId,
   existingAttachmentKeys,
   query,
-  workspaces,
+  pages,
 }: {
   currentDatabaseId?: string | null
   currentPageId?: string | null
   existingAttachmentKeys: Set<string>
   query: string
-  workspaces: Workspace[]
+  pages: Page[]
 }): AttachMenuItem[] {
-  const workspacesById = new Map(
-    workspaces.map((workspace) => [workspace.id, workspace]),
+  const pagesById = new Map(
+    pages.map((page) => [page.id, page]),
   )
   const items: AttachMenuItem[] = []
 
@@ -211,18 +211,18 @@ function buildAttachMenuItems({
   }
 
   if (currentPageId) {
-    const workspace = workspacesById.get(currentPageId)
+    const page = pagesById.get(currentPageId)
 
-    if (workspace) {
-      const title = workspace.name.trim() || "Untitled"
-      const path = buildWorkspacePath(workspacesById, workspace.id)
+    if (page) {
+      const title = page.name.trim() || "Untitled"
+      const path = buildPagePath(pagesById, page.id)
       const searchText = `${title} ${path}`
 
       if (matchesQuery(searchText, query)) {
         pushItem(
           {
-            emoji: workspace.metadata?.emoji ?? null,
-            id: workspace.id,
+            emoji: page.metadata?.emoji ?? null,
+            id: page.id,
             path,
             title,
             type: "page",
@@ -232,8 +232,8 @@ function buildAttachMenuItems({
       }
     }
   } else if (currentDatabaseId) {
-    for (const workspace of workspaces) {
-      const database = workspace.databases?.find(
+    for (const page of pages) {
+      const database = page.databases?.find(
         (item) => item.id === currentDatabaseId,
       )
 
@@ -241,7 +241,7 @@ function buildAttachMenuItems({
         continue
       }
 
-      const path = `${buildWorkspacePath(workspacesById, workspace.id)} / ${database.name.trim() || "Database"}`
+      const path = `${buildPagePath(pagesById, page.id)} / ${database.name.trim() || "Database"}`
       const title = database.name.trim() || "Database"
       const searchText = `${title} ${path}`
 
@@ -266,17 +266,17 @@ function buildAttachMenuItems({
   const linkPages: AppSearchResult[] = []
   const databases: AppSearchResult[] = []
 
-  for (const workspace of workspaces) {
-    const title = workspace.name.trim() || "Untitled"
-    const path = buildWorkspacePath(workspacesById, workspace.id)
+  for (const page of pages) {
+    const title = page.name.trim() || "Untitled"
+    const path = buildPagePath(pagesById, page.id)
     const pageSearchText = `${title} ${path}`
-    const isCurrentPage = workspace.id === currentPageId
-    const isSkill = workspace.metadata?.notelabai === "skill"
+    const isCurrentPage = page.id === currentPageId
+    const isSkill = page.metadata?.notelabai === "skill"
 
     if (!isCurrentPage && matchesQuery(pageSearchText, query)) {
       const result: AppSearchResult = {
-        emoji: workspace.metadata?.emoji ?? null,
-        id: workspace.id,
+        emoji: page.metadata?.emoji ?? null,
+        id: page.id,
         path,
         title,
         type: "page",
@@ -289,7 +289,7 @@ function buildAttachMenuItems({
       }
     }
 
-    for (const database of workspace.databases ?? []) {
+    for (const database of page.databases ?? []) {
       if (database.id === currentDatabaseId) {
         continue
       }
@@ -329,20 +329,20 @@ export function buildPrimaryAttachment({
   databaseEmoji,
   databaseName,
   primarySource,
-  workspaces,
+  pages,
 }: {
   databaseEmoji?: string | null
   databaseName?: string | null
   primarySource: ContextSourceRef
-  workspaces: Workspace[]
+  pages: Page[]
 }): ContextAttachment | null {
   if (primarySource.type === "database") {
     if (!databaseName) {
       return null
     }
 
-    for (const workspace of workspaces) {
-      const database = workspace.databases?.find(
+    for (const page of pages) {
+      const database = page.databases?.find(
         (item) => item.id === primarySource.id,
       )
 
@@ -350,14 +350,14 @@ export function buildPrimaryAttachment({
         continue
       }
 
-      const workspacesById = new Map(
-        workspaces.map((item) => [item.id, item]),
+      const pagesById = new Map(
+        pages.map((item) => [item.id, item]),
       )
 
       return {
         emoji: databaseEmoji ?? readDatabaseEmoji(database.config),
         id: primarySource.id,
-        path: `${buildWorkspacePath(workspacesById, workspace.id)} / ${databaseName}`,
+        path: `${buildPagePath(pagesById, page.id)} / ${databaseName}`,
         title: databaseName,
         type: "database",
       }
@@ -372,18 +372,18 @@ export function buildPrimaryAttachment({
     }
   }
 
-  const workspacesById = new Map(workspaces.map((item) => [item.id, item]))
-  const workspace = workspacesById.get(primarySource.id)
+  const pagesById = new Map(pages.map((item) => [item.id, item]))
+  const page = pagesById.get(primarySource.id)
 
-  if (!workspace) {
+  if (!page) {
     return null
   }
 
   return {
-    emoji: workspace.metadata?.emoji ?? null,
+    emoji: page.metadata?.emoji ?? null,
     id: primarySource.id,
-    path: buildWorkspacePath(workspacesById, primarySource.id),
-    title: workspace.name.trim() || "Untitled",
+    path: buildPagePath(pagesById, primarySource.id),
+    title: page.name.trim() || "Untitled",
     type: "page",
   }
 }
@@ -395,7 +395,7 @@ function AttachMenuItemIcon({
 }) {
   if (item.result.type === "database") {
     if (item.result.emoji) {
-      return <WorkspaceIconDisplay size="sm" value={item.result.emoji} />
+      return <PageIconDisplay size="sm" value={item.result.emoji} />
     }
 
     return <DatabaseIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -405,7 +405,7 @@ function AttachMenuItemIcon({
     return <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
   }
 
-  const workspace = {
+  const page = {
     content: null,
     metadata: {
       emoji: item.result.emoji,
@@ -414,7 +414,7 @@ function AttachMenuItemIcon({
 
   return (
     <span className="flex size-4 shrink-0 items-center justify-center">
-      <WorkspacePageIcon workspace={workspace} />
+      <PageIcon page={page} />
     </span>
   )
 }
@@ -561,12 +561,12 @@ export const ContextAttachMenu = forwardRef<
   },
   ref,
 ) {
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
   const {
-    data: workspaces = [],
+    data: pages = [],
     isFetching,
     isLoading,
-  } = useWorkspaces(organizationId, { enabled: open })
+  } = usePages(workspaceId, { enabled: open })
   const selectedItemRef = useRef<HTMLDivElement | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<
     Set<AttachMenuCategory>
@@ -580,7 +580,7 @@ export const ContextAttachMenu = forwardRef<
             currentPageId,
             existingAttachmentKeys,
             query,
-            workspaces,
+            pages,
           })
         : [],
     [
@@ -589,7 +589,7 @@ export const ContextAttachMenu = forwardRef<
       existingAttachmentKeys,
       open,
       query,
-      workspaces,
+      pages,
     ],
   )
 
@@ -618,7 +618,7 @@ export const ContextAttachMenu = forwardRef<
   )
 
   const selectedEntry = menuEntries[selectedIndex]
-  const isLoadingResults = (isLoading || isFetching) && workspaces.length === 0
+  const isLoadingResults = (isLoading || isFetching) && pages.length === 0
 
   const handleExpandCategory = useCallback((category: AttachMenuCategory) => {
     setExpandedCategories((current) => {

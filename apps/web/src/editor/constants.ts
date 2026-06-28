@@ -1,5 +1,5 @@
 export const starterContent = `
-  <h1>Draft your next workspace doc</h1>
+  <h1>Draft your next page doc</h1>
   <p>
     Type <code>/</code> on a new line to open the block menu. Use Markdown-style
     shortcuts, checklists, quotes, code blocks, and rich inline formatting.

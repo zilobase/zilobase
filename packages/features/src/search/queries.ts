@@ -11,27 +11,27 @@ export type AppSearchResult = {
 }
 
 export const appSearchQueryKey = (
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
   query: string,
-) => ["search", organizationId ?? "none", query] as const
+) => ["search", workspaceId ?? "none", query] as const
 
 export const appSearchQueryOptions = (
   apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
   query: string,
   enabled = true,
 ) =>
   queryOptions({
-    queryKey: appSearchQueryKey(organizationId, query),
-    enabled: Boolean(organizationId) && enabled,
+    queryKey: appSearchQueryKey(workspaceId, query),
+    enabled: Boolean(workspaceId) && enabled,
     staleTime: 15_000,
     queryFn: async ({ signal }) => {
-      if (!organizationId) {
+      if (!workspaceId) {
         return []
       }
 
       const params = new URLSearchParams({
-        organizationId,
+        workspaceId,
         q: query,
       })
 

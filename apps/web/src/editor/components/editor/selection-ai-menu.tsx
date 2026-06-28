@@ -18,27 +18,27 @@ import {
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import type { SelectionAiDiffPreview } from "@/packages/editor/types"
-import { useNotelabAiWorkspaces } from "@notelab/features/workspaces"
+import { useNotelabAiPages } from "@notelab/features/pages"
 
 type SelectionAiMenuProps = {
   editor: Editor
   onPreviewChange: (preview: SelectionAiDiffPreview | null) => void
-  organizationId?: string | null
+  workspaceId?: string | null
 }
 
 export function SelectionAiMenu({
   editor,
   onPreviewChange,
-  organizationId,
+  workspaceId,
 }: SelectionAiMenuProps) {
-  const { data: aiWorkspaces = [], isLoading } =
-    useNotelabAiWorkspaces(organizationId)
+  const { data: aiPages = [], isLoading } =
+    useNotelabAiPages(workspaceId)
   const skills = React.useMemo(
     () =>
-      aiWorkspaces.filter(
-        (workspace) => workspace.metadata.notelabai === "skill",
+      aiPages.filter(
+        (page) => page.metadata.notelabai === "skill",
       ),
-    [aiWorkspaces],
+    [aiPages],
   )
   const [isOpen, setIsOpen] = React.useState(false)
   const [isStreaming, setIsStreaming] = React.useState(false)
@@ -100,15 +100,15 @@ export function SelectionAiMenu({
         "content-type": "application/json",
       })
 
-      if (organizationId) {
-        headers.set("x-notelab-organization-id", organizationId)
+      if (workspaceId) {
+        headers.set("x-notelab-workspace-id", workspaceId)
       }
 
       const response = await fetch(toApiUrl("/api/ai/editor"), {
         body: JSON.stringify({
           prompt: trimmedPrompt,
           selectedText: selectedTextRef.current,
-          skillWorkspaceId: selectedSkill?.id,
+          skillPageId: selectedSkill?.id,
         }),
         credentials: "include",
         headers,

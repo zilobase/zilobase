@@ -2,16 +2,16 @@ import { queryOptions } from "@tanstack/react-query"
 
 import type { ApiFetcher } from "../context"
 
-import type { EmbeddedItemsOpenAs } from "../workspaces/queries"
+import type { EmbeddedItemsOpenAs } from "../pages/queries"
 
 export type UserSettings = {
   embeddedItemsOpenAs: EmbeddedItemsOpenAs
-  workspaceFullWidth: boolean
+  pageFullWidth: boolean
 }
 
 export const defaultUserSettings: UserSettings = {
   embeddedItemsOpenAs: "sidepanel",
-  workspaceFullWidth: false,
+  pageFullWidth: false,
 }
 
 export const userSettingsQueryKey = ["user-settings"] as const

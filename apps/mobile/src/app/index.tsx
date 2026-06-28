@@ -1,11 +1,11 @@
 import { getDatabaseEmoji } from '@notelab/features/databases';
-import { useOrganizations } from '@notelab/features/organizations';
+import { useWorkspaces } from '@notelab/features/workspaces';
 import { useSession } from '@notelab/features/auth';
 import {
-  getWorkspaceEmoji,
-  useWorkspaces,
-  type Workspace,
-} from '@notelab/features/workspaces';
+  getPageEmoji,
+  usePages,
+  type Page,
+} from '@notelab/features/pages';
 import { SymbolView } from 'expo-symbols';
 import * as React from 'react';
 import {
@@ -48,14 +48,15 @@ export default function HomeScreen() {
   const { openItem } = useMobileViewer();
   const insets = useSafeAreaInsets();
   const session = useSession();
-  const { data: organizations = [], isPending: isOrganizationsPending } = useOrganizations();
-  const activeOrganizationId = session.data?.session?.activeOrganizationId ?? null;
-  const organizationId =
-    organizations.find((organization) => organization.id === activeOrganizationId)?.id ??
-    organizations[0]?.id ??
+  const { data: rawWorkspaces = [], isPending: isWorkspacesPending } = useWorkspaces();
+  const workspaces = rawWorkspaces.filter(Boolean);
+  const activeWorkspaceId = session.data?.session?.activeWorkspaceId ?? null;
+  const workspaceId =
+    workspaces.find((workspace) => workspace.id === activeWorkspaceId)?.id ??
+    workspaces[0]?.id ??
     null;
-  const { data: workspaces = [], isPending: isWorkspacesPending } = useWorkspaces(organizationId);
-  const sections = React.useMemo(() => buildWorkspaceSections(workspaces), [workspaces]);
+  const { data: pages = [], isPending: isPagesPending } = usePages(workspaceId);
+  const sections = React.useMemo(() => buildPageSections(pages), [pages]);
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
 
   const toggleExpanded = React.useCallback((id: string) => {
@@ -81,7 +82,7 @@ export default function HomeScreen() {
     [insets.bottom]
   );
 
-  const isLoading = session.isPending || isOrganizationsPending || isWorkspacesPending;
+  const isLoading = session.isPending || isWorkspacesPending || isPagesPending;
   const hasItems = sections.privateItems.length > 0 || sections.teamspaceItems.length > 0;
 
   return (
@@ -93,7 +94,7 @@ export default function HomeScreen() {
         {isLoading ? (
           <View style={styles.loadingState}>
             <ActivityIndicator color={palette.foreground} />
-            <Text style={styles.loadingText}>Loading your workspace tree...</Text>
+            <Text style={styles.loadingText}>Loading your page tree...</Text>
           </View>
         ) : hasItems ? (
           <View style={styles.sections}>
@@ -122,7 +123,7 @@ export default function HomeScreen() {
               No pages yet
             </Text>
             <Text style={styles.emptyText}>
-              Create a workspace page on web or from another device, then it will appear here with
+              Create a page on web or from another device, then it will appear here with
               the same emoji and nesting structure.
             </Text>
           </View>
@@ -249,7 +250,7 @@ function TreeRow({
             onOpenItem({
               id: item.id,
               title: item.label,
-              url: resolveWorkspaceItemUrl(item.targetPath),
+              url: resolvePageItemUrl(item.targetPath),
             })
           }>
           <Text style={styles.rowTitle}>{item.label}</Text>
@@ -275,27 +276,27 @@ function TreeRow({
   );
 }
 
-function buildWorkspaceSections(workspaces: Workspace[]) {
-  const orderedWorkspaces = [...workspaces].sort(
-    (first, second) => getWorkspaceCreatedTime(first) - getWorkspaceCreatedTime(second)
+function buildPageSections(pages: Page[]) {
+  const orderedPages = [...pages].sort(
+    (first, second) => getPageCreatedTime(first) - getPageCreatedTime(second)
   );
   const baseNodesById = new Map(
-    orderedWorkspaces.map((workspace) => [
-      workspace.id,
+    orderedPages.map((page) => [
+      page.id,
       {
-        id: workspace.id,
-        label: workspace.name,
-        emoji: getWorkspaceEmoji(workspace),
+        id: page.id,
+        label: page.name,
+        emoji: getPageEmoji(page),
         icon: 'page' as const,
         children: [] as TreeItem[],
-        section: workspace.isTeamspace ? ('teamspace' as const) : ('private' as const),
-        targetPath: `/workspace/${workspace.id}`,
+        section: page.isTeamspace ? ('teamspace' as const) : ('private' as const),
+        targetPath: `/page/${page.id}`,
       },
     ])
   );
-  const placements = workspaces[0]?.navigationPlacements ?? [];
-  const placementsByWorkspaceParent = groupPlacements(
-    placements.filter((placement) => placement.parentKind === 'workspace')
+  const placements = pages[0]?.navigationPlacements ?? [];
+  const placementsByPageParent = groupPlacements(
+    placements.filter((placement) => placement.parentKind === 'page')
   );
   const placementsByDatabaseParent = groupPlacements(
     placements.filter((placement) => placement.parentKind === 'database')
@@ -304,54 +305,54 @@ function buildWorkspaceSections(workspaces: Workspace[]) {
   const databasePlacementIds = new Set(
     placements
       .filter(
-        (placement) => placement.itemKind === 'database' && placement.parentKind === 'workspace'
+        (placement) => placement.itemKind === 'database' && placement.parentKind === 'page'
       )
       .map((placement) => placement.itemId)
   );
   const standaloneDatabaseHostPageIds = new Set<string>();
 
-  for (const workspace of orderedWorkspaces) {
-    for (const database of workspace.databases ?? []) {
+  for (const page of orderedPages) {
+    for (const database of page.databases ?? []) {
       databaseNodesById.set(database.id, {
         id: `database:${database.id}`,
         label: database.name,
         emoji: getDatabaseEmoji(database),
         icon: 'database',
         children: [],
-        section: workspace.isTeamspace ? 'teamspace' : 'private',
+        section: page.isTeamspace ? 'teamspace' : 'private',
         targetPath: `/database/${database.id}`,
       });
 
       if (!databasePlacementIds.has(database.id)) {
-        standaloneDatabaseHostPageIds.add(workspace.id);
+        standaloneDatabaseHostPageIds.add(page.id);
       }
     }
   }
 
-  const buildWorkspaceNode = (
-    workspaceId: string,
+  const buildPageNode = (
+    pageId: string,
     nodeId: string,
     visitedIds: Set<string>
   ): TreeItem | null => {
-    const baseNode = baseNodesById.get(workspaceId);
+    const baseNode = baseNodesById.get(pageId);
 
     if (!baseNode) {
       return null;
     }
 
-    if (visitedIds.has(workspaceId)) {
+    if (visitedIds.has(pageId)) {
       return { ...baseNode, id: nodeId, children: [] };
     }
 
     const nextVisitedIds = new Set(visitedIds);
-    nextVisitedIds.add(workspaceId);
+    nextVisitedIds.add(pageId);
 
     return {
       ...baseNode,
       id: nodeId,
-      children: (placementsByWorkspaceParent.get(workspaceId) ?? []).flatMap((placement) => {
-        if (placement.itemKind === 'workspace') {
-          const child = buildWorkspaceNode(
+      children: (placementsByPageParent.get(pageId) ?? []).flatMap((placement) => {
+        if (placement.itemKind === 'page') {
+          const child = buildPageNode(
             placement.itemId,
             placement.id,
             nextVisitedIds
@@ -382,34 +383,34 @@ function buildWorkspaceSections(workspaces: Workspace[]) {
       ...baseNode,
       id: nodeId,
       children: (placementsByDatabaseParent.get(databaseId) ?? []).flatMap((placement) => {
-        if (placement.itemKind !== 'workspace') {
+        if (placement.itemKind !== 'page') {
           return [];
         }
 
-        const child = buildWorkspaceNode(placement.itemId, placement.id, visitedIds);
+        const child = buildPageNode(placement.itemId, placement.id, visitedIds);
 
         return child ? [child] : [];
       }),
     };
   };
 
-  const placedWorkspaceIds = new Set(
+  const placedPageIds = new Set(
     placements
-      .filter((placement) => placement.itemKind === 'workspace')
+      .filter((placement) => placement.itemKind === 'page')
       .map((placement) => placement.itemId)
   );
-  const roots = orderedWorkspaces.flatMap((workspace) => {
-    if (placedWorkspaceIds.has(workspace.id) || standaloneDatabaseHostPageIds.has(workspace.id)) {
+  const roots = orderedPages.flatMap((page) => {
+    if (placedPageIds.has(page.id) || standaloneDatabaseHostPageIds.has(page.id)) {
       return [];
     }
 
-    const node = buildWorkspaceNode(workspace.id, workspace.id, new Set());
+    const node = buildPageNode(page.id, page.id, new Set());
 
     return node ? [node] : [];
   });
 
-  for (const workspace of orderedWorkspaces) {
-    for (const database of workspace.databases ?? []) {
+  for (const page of orderedPages) {
+    for (const database of page.databases ?? []) {
       if (databasePlacementIds.has(database.id)) {
         continue;
       }
@@ -432,7 +433,7 @@ function buildWorkspaceSections(workspaces: Workspace[]) {
   return { privateItems, teamspaceItems };
 }
 
-function groupPlacements(placements: NonNullable<Workspace['navigationPlacements']>) {
+function groupPlacements(placements: NonNullable<Page['navigationPlacements']>) {
   const grouped = new Map<string, typeof placements>();
 
   for (const placement of placements) {
@@ -456,8 +457,8 @@ function groupPlacements(placements: NonNullable<Workspace['navigationPlacements
   return grouped;
 }
 
-function getWorkspaceCreatedTime(workspace: Workspace) {
-  const time = new Date(workspace.createdAt).getTime();
+function getPageCreatedTime(page: Page) {
+  const time = new Date(page.createdAt).getTime();
   return Number.isFinite(time) ? time : 0;
 }
 
@@ -473,7 +474,7 @@ function getItemSymbol(icon: TreeItem['icon']): React.ComponentProps<typeof Symb
   return { ios: 'doc', android: 'insert_drive_file', web: 'insert_drive_file' };
 }
 
-function resolveWorkspaceItemUrl(targetPath: string) {
+function resolvePageItemUrl(targetPath: string) {
   const url = new URL(targetPath, WEB_APP_BASE_URL);
   url.searchParams.set('mobileViewer', '1');
   return url.toString();

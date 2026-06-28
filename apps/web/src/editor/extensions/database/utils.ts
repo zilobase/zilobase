@@ -1,4 +1,4 @@
-import type { WorkspacePropertyValue } from "@notelab/features/databases"
+import type { PagePropertyValue } from "@notelab/features/databases"
 
 export type DatabasePropertyValue = string | string[]
 
@@ -54,13 +54,13 @@ export function createDatabaseSetupBlockAttrs(databaseId: string) {
 }
 
 export function getPropertyValue(
-  values: WorkspacePropertyValue[],
-  workspaceId: string,
+  values: PagePropertyValue[],
+  pageId: string,
   propertyId: string,
   propertyType = "text"
 ): DatabasePropertyValue {
   const value = values.find(
-    (item) => item.workspaceId === workspaceId && item.propertyId === propertyId
+    (item) => item.pageId === pageId && item.propertyId === propertyId
   )?.value
 
   return parsePropertyValue(value, propertyType)

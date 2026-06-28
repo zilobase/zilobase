@@ -23,7 +23,7 @@ type EditorChromeProps = {
   editorId: string
   onClosePasteChoice: () => void
   onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
-  organizationId?: string | null
+  workspaceId?: string | null
   pasteChoice: PasteChoiceState | null
   plusMenuOpen: boolean
   setDragHandleMenuOpen: (open: boolean) => void
@@ -40,7 +40,7 @@ export function EditorChrome({
   editorId,
   onClosePasteChoice,
   onSelectionAiPreviewChange,
-  organizationId,
+  workspaceId,
   pasteChoice,
   plusMenuOpen,
   setDragHandleMenuOpen,
@@ -83,7 +83,7 @@ export function EditorChrome({
           <SelectionBubbleMenu
             editor={editor}
             onSelectionAiPreviewChange={onSelectionAiPreviewChange}
-            organizationId={organizationId}
+            workspaceId={workspaceId}
             runCommand={(action, attrs) =>
               runToolbarCommand(editor, action, attrs)
             }

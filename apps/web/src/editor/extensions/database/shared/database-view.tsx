@@ -21,11 +21,11 @@ export function DatabaseView(props: DatabaseViewProps) {
     isLoading,
     onDismissSetup,
     onSetupComplete,
-    organizationId,
+    workspaceId,
     payload,
     setupMode,
     viewType,
-    workspaceId,
+    pageId,
   } = useDatabaseViewController(props)
 
   return (
@@ -57,8 +57,8 @@ export function DatabaseView(props: DatabaseViewProps) {
               databaseId={databaseId}
               onComplete={onSetupComplete ?? (() => {})}
               onDismiss={onDismissSetup ?? (() => {})}
-              organizationId={organizationId}
               workspaceId={workspaceId}
+              pageId={pageId}
             />
           ) : null}
         </div>

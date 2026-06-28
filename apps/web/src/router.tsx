@@ -18,13 +18,13 @@ import LoginPage from "@/pages/login"
 import OnboardingPage from "@/pages/onboarding"
 import OtpPage from "@/pages/otp"
 import NotelabAiSettingsPage from "@/pages/settings/notelab-ai"
-import OrganizationSettingsPage from "@/pages/settings/organization"
+import WorkspaceSettingsPage from "@/pages/settings/workspace"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
 import SignupPage from "@/pages/signup"
-import WorkspacePage from "@/pages/workspace"
+import Page from "@/pages/page"
 import { sessionQueryOptions } from "@notelab/features/auth"
-import { organizationsQueryOptions } from "@notelab/features/organizations"
+import { workspacesQueryOptions } from "@notelab/features/workspaces"
 import { ApiError, apiFetch } from "@/lib/api"
 import { queryClient } from "@/lib/query-client"
 import { webAuthClient } from "@/providers/features-provider"
@@ -45,9 +45,9 @@ const indexRoute = createRoute({
       throw redirect({ to: "/login" })
     }
 
-    const organizations = await getOrganizations()
+    const workspaces = await getWorkspaces()
 
-    throw redirect({ to: organizations.length > 0 ? "/dashboard" : "/onboarding" })
+    throw redirect({ to: workspaces.length > 0 ? "/dashboard" : "/onboarding" })
   },
 })
 
@@ -58,9 +58,9 @@ const loginRoute = createRoute({
     const session = await getFreshSession()
 
     if (session.user) {
-      const organizations = await getOrganizations()
+      const workspaces = await getWorkspaces()
 
-      throw redirect({ to: organizations.length > 0 ? "/dashboard" : "/onboarding" })
+      throw redirect({ to: workspaces.length > 0 ? "/dashboard" : "/onboarding" })
     }
   },
   component: LoginPage,
@@ -73,9 +73,9 @@ const signupRoute = createRoute({
     const session = await getFreshSession()
 
     if (session.user) {
-      const organizations = await getOrganizations()
+      const workspaces = await getWorkspaces()
 
-      throw redirect({ to: organizations.length > 0 ? "/dashboard" : "/onboarding" })
+      throw redirect({ to: workspaces.length > 0 ? "/dashboard" : "/onboarding" })
     }
   },
   component: SignupPage,
@@ -91,9 +91,9 @@ const onboardingRoute = createRoute({
       throw redirect({ to: "/login" })
     }
 
-    const organizations = await getOrganizations()
+    const workspaces = await getWorkspaces()
 
-    if (organizations.length > 0) {
+    if (workspaces.length > 0) {
       throw redirect({ to: "/dashboard" })
     }
   },
@@ -122,9 +122,9 @@ const appRoute = createRoute({
       throw redirect({ to: "/login" })
     }
 
-    const organizations = await getOrganizations()
+    const workspaces = await getWorkspaces()
 
-    if (organizations.length === 0) {
+    if (workspaces.length === 0) {
       throw redirect({ to: "/onboarding" })
     }
   },
@@ -161,27 +161,27 @@ const aiRoute = createRoute({
   component: AiPage,
 })
 
-const workspaceRoute = createRoute({
+const pageRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/workspace/$workspaceId",
+  path: "/page/$pageId",
   beforeLoad: async ({ params }) => {
     const session = await getFreshSession()
 
     if (session.user) {
-      const organizations = await getOrganizations()
+      const workspaces = await getWorkspaces()
 
-      if (organizations.length === 0) {
+      if (workspaces.length === 0) {
         throw redirect({ to: "/onboarding" })
       }
 
       return
     }
 
-    if (!(await isWorkspacePublished(params.workspaceId))) {
+    if (!(await isPagePublished(params.pageId))) {
       throw redirect({ to: "/login" })
     }
   },
-  component: WorkspacePage,
+  component: Page,
 })
 
 const databaseRoute = createRoute({
@@ -197,9 +197,9 @@ const databaseRoute = createRoute({
     const session = await getFreshSession()
 
     if (session.user) {
-      const organizations = await getOrganizations()
+      const workspaces = await getWorkspaces()
 
-      if (organizations.length === 0) {
+      if (workspaces.length === 0) {
         throw redirect({ to: "/onboarding" })
       }
 
@@ -227,10 +227,10 @@ const profileSettingsRoute = createRoute({
   component: ProfileSettingsPage,
 })
 
-const organizationSettingsRoute = createRoute({
+const workspaceSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
-  path: "/settings/organization",
-  component: OrganizationSettingsPage,
+  path: "/settings/workspace",
+  component: WorkspaceSettingsPage,
 })
 
 const integrationsSettingsRoute = createRoute({
@@ -271,13 +271,13 @@ const routeTree = rootRoute.addChildren([
     trashRoute,
     settingsRoute,
     profileSettingsRoute,
-    organizationSettingsRoute,
+    workspaceSettingsRoute,
     integrationsSettingsRoute,
     apiKeysSettingsRoute,
     notelabAiSettingsRoute,
     teamSettingsRoute,
   ]),
-  workspaceRoute,
+  pageRoute,
   databaseRoute,
 ])
 
@@ -290,17 +290,17 @@ function getFreshSession() {
   })
 }
 
-function getOrganizations() {
+function getWorkspaces() {
   return queryClient.fetchQuery({
-    ...organizationsQueryOptions(webAuthClient),
+    ...workspacesQueryOptions(webAuthClient),
     staleTime: NAVIGATION_AUTH_STALE_TIME,
   })
 }
 
-async function isWorkspacePublished(workspaceId: string) {
+async function isPagePublished(pageId: string) {
   try {
     const result = await apiFetch<{ published: boolean }>(
-      `/workspaces/${workspaceId}/published`,
+      `/pages/${pageId}/published`,
       { auth: false, method: "GET" },
     )
 

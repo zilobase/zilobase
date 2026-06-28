@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { useNotelabFeatures } from "../context"
-import { useActiveOrganizationId } from "../integrations/hooks"
+import { useActiveWorkspaceId } from "../integrations/hooks"
 import {
   aiChatThreadMessagesQueryKey,
   aiChatThreadsQueryKey,
@@ -13,14 +13,14 @@ import {
 
 export function useAiChatThreads() {
   const { apiFetch } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
-  return useQuery(aiChatThreadsQueryOptions(apiFetch, organizationId))
+  return useQuery(aiChatThreadsQueryOptions(apiFetch, workspaceId))
 }
 
 export function useCreateAiChatThread() {
   const { apiFetch } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -29,15 +29,15 @@ export function useCreateAiChatThread() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(organizationId
-            ? { "x-notelab-organization-id": organizationId }
+          ...(workspaceId
+            ? { "x-notelab-workspace-id": workspaceId }
             : {}),
         },
         body: JSON.stringify(input ?? {}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: aiChatThreadsQueryKey(organizationId),
+        queryKey: aiChatThreadsQueryKey(workspaceId),
       })
     },
   })
@@ -45,7 +45,7 @@ export function useCreateAiChatThread() {
 
 export function useRenameAiChatThread() {
   const { apiFetch } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -56,8 +56,8 @@ export function useRenameAiChatThread() {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            ...(organizationId
-              ? { "x-notelab-organization-id": organizationId }
+            ...(workspaceId
+              ? { "x-notelab-workspace-id": workspaceId }
               : {}),
           },
           body: JSON.stringify({ title: input.title }),
@@ -65,7 +65,7 @@ export function useRenameAiChatThread() {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: aiChatThreadsQueryKey(organizationId),
+        queryKey: aiChatThreadsQueryKey(workspaceId),
       })
     },
   })
@@ -73,7 +73,7 @@ export function useRenameAiChatThread() {
 
 export function useArchiveAiChatThread() {
   const { apiFetch } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -82,17 +82,17 @@ export function useArchiveAiChatThread() {
         `/api/ai/threads/${encodeURIComponent(threadId)}/archive`,
         {
           method: "POST",
-          headers: organizationId
-            ? { "x-notelab-organization-id": organizationId }
+          headers: workspaceId
+            ? { "x-notelab-workspace-id": workspaceId }
             : undefined,
         },
       ),
     onSuccess: (_result, threadId) => {
       queryClient.invalidateQueries({
-        queryKey: aiChatThreadsQueryKey(organizationId),
+        queryKey: aiChatThreadsQueryKey(workspaceId),
       })
       queryClient.removeQueries({
-        queryKey: aiChatThreadMessagesQueryKey(organizationId, threadId),
+        queryKey: aiChatThreadMessagesQueryKey(workspaceId, threadId),
       })
     },
   })
@@ -100,7 +100,7 @@ export function useArchiveAiChatThread() {
 
 export function useDeleteAiChatThread() {
   const { apiFetch } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -109,17 +109,17 @@ export function useDeleteAiChatThread() {
         `/api/ai/threads/${encodeURIComponent(threadId)}`,
         {
           method: "DELETE",
-          headers: organizationId
-            ? { "x-notelab-organization-id": organizationId }
+          headers: workspaceId
+            ? { "x-notelab-workspace-id": workspaceId }
             : undefined,
         },
       ),
     onSuccess: (_result, threadId) => {
       queryClient.invalidateQueries({
-        queryKey: aiChatThreadsQueryKey(organizationId),
+        queryKey: aiChatThreadsQueryKey(workspaceId),
       })
       queryClient.removeQueries({
-        queryKey: aiChatThreadMessagesQueryKey(organizationId, threadId),
+        queryKey: aiChatThreadMessagesQueryKey(workspaceId, threadId),
       })
     },
   })
@@ -127,11 +127,11 @@ export function useDeleteAiChatThread() {
 
 export function upsertAiChatThreadInCache(
   queryClient: ReturnType<typeof useQueryClient>,
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
   thread: AiChatThread,
 ) {
   queryClient.setQueryData<AiChatThreadsResponse>(
-    aiChatThreadsQueryKey(organizationId),
+    aiChatThreadsQueryKey(workspaceId),
     (current) => {
       const threads = current?.threads ?? []
       const nextThreads = [

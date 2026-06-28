@@ -7,7 +7,7 @@ import {
   readDatabaseConfigToolIds,
 } from "@notelab/features/ai-chat"
 import { databaseQueryKey } from "@notelab/features/databases"
-import { workspaceQueryKey } from "@notelab/features/workspaces"
+import { pageQueryKey } from "@notelab/features/pages"
 
 type UseDatabaseToolCacheSyncOptions = {
   enabled?: boolean
@@ -16,7 +16,7 @@ type UseDatabaseToolCacheSyncOptions = {
 
 function collectInvalidationTargets(ids: Record<string, string>) {
   const databaseIds = new Set<string>()
-  const workspaceIds = new Set<string>()
+  const pageIds = new Set<string>()
 
   for (const [key, value] of Object.entries(ids)) {
     if (!value) {
@@ -28,17 +28,17 @@ function collectInvalidationTargets(ids: Record<string, string>) {
     }
 
     if (
-      key === "workspaceId" ||
       key === "pageId" ||
-      key === "hostWorkspaceId" ||
+      key === "pageId" ||
+      key === "hostPageId" ||
       key === "rowPageId" ||
-      key.endsWith("WorkspaceId")
+      key.endsWith("PageId")
     ) {
-      workspaceIds.add(value)
+      pageIds.add(value)
     }
   }
 
-  return { databaseIds, workspaceIds }
+  return { databaseIds, pageIds }
 }
 
 export function useDatabaseToolCacheSync({
@@ -81,7 +81,7 @@ export function useDatabaseToolCacheSync({
 
         handledToolCallIds.current.add(part.toolCallId)
 
-        const { databaseIds, workspaceIds } = collectInvalidationTargets(ids)
+        const { databaseIds, pageIds } = collectInvalidationTargets(ids)
 
         for (const databaseId of databaseIds) {
           void queryClient.invalidateQueries({
@@ -89,9 +89,9 @@ export function useDatabaseToolCacheSync({
           })
         }
 
-        for (const workspaceId of workspaceIds) {
+        for (const pageId of pageIds) {
           void queryClient.invalidateQueries({
-            queryKey: workspaceQueryKey(workspaceId),
+            queryKey: pageQueryKey(pageId),
           })
         }
       }

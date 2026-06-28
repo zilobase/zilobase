@@ -64,11 +64,11 @@ function DatabaseBlockView({
         onShowTitleChange={(nextShowTitle) =>
           updateAttributes({ showTitle: nextShowTitle })
         }
-        organizationId={options.organizationId}
+        workspaceId={options.workspaceId}
         setupMode={setupMode}
         showExpandButton
         showTitle={showTitle}
-        workspaceId={options.currentPageId}
+        pageId={options.currentPageId}
       />
     </NodeViewWrapper>
   )
@@ -103,7 +103,7 @@ export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
     return {
       currentPageId: null,
       onOpenPage: undefined,
-      organizationId: null,
+      workspaceId: null,
     }
   },
 

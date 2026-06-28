@@ -20,7 +20,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command"
 import { useSession } from "@notelab/features/auth"
-import { useOrganizations } from "@notelab/features/organizations"
+import { useWorkspaces } from "@notelab/features/workspaces"
 import { useAppSearchResults } from "@notelab/features/search"
 import type { AppSearchResult } from "@notelab/features/search"
 import { useAppStore } from "@/stores/app-store"
@@ -36,9 +36,9 @@ export function AppSearchProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const debouncedQuery = useDebouncedValue(query, 250)
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
   const { data: results = [], isFetching } = useAppSearchResults(
-    organizationId,
+    workspaceId,
     debouncedQuery,
     open,
   )
@@ -72,8 +72,8 @@ export function AppSearchProvider({ children }: { children: ReactNode }) {
     }
 
     void navigate({
-      to: "/workspace/$workspaceId",
-      params: { workspaceId: result.id },
+      to: "/page/$pageId",
+      params: { pageId: result.id },
     })
   }
 
@@ -154,22 +154,23 @@ function useDebouncedValue<T>(value: T, delay: number) {
   return debouncedValue
 }
 
-function useActiveOrganizationId() {
-  const activeOrganizationId = useAppStore((state) => state.activeOrganizationId)
+function useActiveWorkspaceId() {
+  const activeWorkspaceId = useAppStore((state) => state.activeWorkspaceId)
   const { data: session } = useSession()
-  const { data: organizations = [] } = useOrganizations()
-  const sessionOrganizationId = session?.session?.activeOrganizationId ?? null
-  const storedOrganization =
-    organizations.find((organization) => organization.id === activeOrganizationId) ??
+  const { data: rawWorkspaces = [] } = useWorkspaces()
+  const workspaces = rawWorkspaces.filter(Boolean)
+  const sessionWorkspaceId = session?.session?.activeWorkspaceId ?? null
+  const storedWorkspace =
+    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
     null
-  const sessionOrganization =
-    organizations.find((organization) => organization.id === sessionOrganizationId) ??
+  const sessionWorkspace =
+    workspaces.find((workspace) => workspace.id === sessionWorkspaceId) ??
     null
 
   return (
-    storedOrganization?.id ??
-    sessionOrganization?.id ??
-    organizations[0]?.id ??
+    storedWorkspace?.id ??
+    sessionWorkspace?.id ??
+    workspaces[0]?.id ??
     null
   )
 }

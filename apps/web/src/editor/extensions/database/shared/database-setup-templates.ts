@@ -130,7 +130,7 @@ Write a concise summary of the release, the customer problem it solves, and the 
 ## Release note draft
 - Headline: Improved database templates with richer starter content
 - Summary: Users can create useful databases faster because templates now include rows, properties, and page content
-- Impact: Reduces setup time and gives each row a useful starting workspace
+- Impact: Reduces setup time and gives each row a useful starting page
 
 ## Links
 - Announcement draft
@@ -204,28 +204,28 @@ Refresh the marketing website to improve clarity, conversion, and product storyt
         content: `# Mobile onboarding
 
 ## Objective
-Design and ship a clearer first-run mobile experience that helps new users understand the core workflow and create their first useful workspace.
+Design and ship a clearer first-run mobile experience that helps new users understand the core workflow and create their first useful page.
 
 ## Target users
 - New users arriving from web signup
 - Existing users opening the mobile app for the first time
-- Team members joining an invited workspace
+- Team members joining an invited page
 
 ## Activation events
 - User signs in successfully
-- User opens their first workspace
+- User opens their first page
 - User creates or edits a note
 - User returns within seven days
 
 ## Proposed flow
-- Welcome screen with workspace context
+- Welcome screen with page context
 - Permission prompts only when needed
 - First note or database creation shortcut
 - Lightweight education through empty states
 
 ## Experiment ideas
 - Compare checklist onboarding against a single guided action
-- Test default workspace examples for personal and team use
+- Test default page examples for personal and team use
 - Measure whether template suggestions increase first-session completion
 
 ## Implementation checklist
@@ -252,19 +252,19 @@ Synthesize recent feedback into themes, decisions, and follow-up work that can b
 
 ## Themes
 - Users want templates to create useful starter data
-- Row pages need enough content to demonstrate how nested workspaces behave
+- Row pages need enough content to demonstrate how nested pages behave
 - Database setup should feel immediate and not require manual cleanup
 
 ## Decisions
 - Seed rows only when the database is empty
 - Keep sample content editable and realistic
-- Use generic example links and names until organization-specific generation exists
+- Use generic example links and names until workspace-specific generation exists
 
 ## Follow-up
 - [x] Group feedback themes
 - [x] Pick first improvement area
 - [ ] Add deeper template content
-- [ ] Re-test with a new workspace
+- [ ] Re-test with a new page
 - [ ] Capture screenshots for the changelog`,
         emoji: "💬",
         title: "Customer feedback review",
@@ -335,7 +335,7 @@ Users can create a database from a template, but the resulting row pages feel em
 - Content should be editable immediately after creation
 
 ## Non-goals
-- Generating organization-specific content
+- Generating workspace-specific content
 - Importing external documents
 - Adding a template marketplace in this iteration
 
@@ -371,7 +371,7 @@ What makes a database template feel useful immediately after creation?
 - Checklists are useful because they invite immediate editing
 
 ## Next steps
-- [ ] Validate new sample content with a clean workspace
+- [ ] Validate new sample content with a clean page
 - [ ] Capture before and after screenshots
 - [ ] Identify which templates need additional properties later`,
         emoji: "🔎",
@@ -402,7 +402,7 @@ Announce the release in a way that clearly explains the customer value, shows th
 
 ## Message pillars
 - Templates now create useful starter content, not only columns
-- Every sample row includes an editable workspace page
+- Every sample row includes an editable page
 - Teams can understand the intended workflow faster
 
 ## Channels
@@ -434,7 +434,7 @@ Start with the problem: blank templates still leave setup work for the user. The
         content: `# Customer story
 
 ## Story angle
-Show how a team moved from scattered project notes to a structured workspace where tasks, docs, and decisions stay connected.
+Show how a team moved from scattered project notes to a structured page where tasks, docs, and decisions stay connected.
 
 ## Customer profile
 - Growing product team
@@ -479,12 +479,12 @@ Help readers discover practical ways to organize work with database templates an
 - Resource link: getting started with database templates
 
 ## Draft intro
-This month, we focused on making new workspaces useful faster. Database templates now create realistic starter rows and detailed row pages, so you can see how the workflow fits together before replacing the examples with your own work.
+This month, we focused on making new pages useful faster. Database templates now create realistic starter rows and detailed row pages, so you can see how the workflow fits together before replacing the examples with your own work.
 
 ## Links to include
 - Feature announcement
 - Template guide
-- Example workspace
+- Example page
 - Feedback form
 
 ## Send checklist
@@ -586,7 +586,7 @@ The team shipped a template setup improvement that creates database structure, s
 - Build and test coverage caught type issues quickly
 
 ## What was difficult
-- Row pages are created indirectly through database rows, so content seeding needed to update the workspace page after row creation
+- Row pages are created indirectly through database rows, so content seeding needed to update the page after row creation
 - The template content needed enough detail to be useful without becoming too specific
 - Markdown-like content needed conversion into editor JSON
 
@@ -621,7 +621,7 @@ The team shipped a template setup improvement that creates database structure, s
         content: `# Acme Co.
 
 ## Account summary
-Acme Co. is evaluating a shared workspace for project tracking, customer research, and executive status updates.
+Acme Co. is evaluating a shared page for project tracking, customer research, and executive status updates.
 
 ## Opportunity
 - Use case: centralize product planning and customer feedback
@@ -674,7 +674,7 @@ Northstar Labs is exploring a lightweight system for research notes, experiment 
 - How many existing research notes need migration?
 - Which templates would the team use first?
 - Does leadership need read-only dashboards?
-- Who owns workspace hygiene after rollout?
+- Who owns page hygiene after rollout?
 
 ## Follow-up email outline
 - Recap the research workflow discussed
@@ -685,7 +685,7 @@ Northstar Labs is exploring a lightweight system for research notes, experiment 
 ## Next steps
 - [ ] Send recap email
 - [ ] Confirm evaluation owner
-- [ ] Share example workspace
+- [ ] Share example page
 - [ ] Schedule workflow mapping session`,
         emoji: "🧪",
         title: "Northstar Labs",
@@ -700,7 +700,7 @@ Bright Market completed the initial rollout and is ready for a customer success 
 ## Implementation notes
 - Started with project and meeting notes templates
 - Created shared databases for campaign planning and customer feedback
-- Assigned workspace owners for each department
+- Assigned page owners for each department
 - Requested a follow-up session on advanced database views
 
 ## Success criteria
@@ -712,7 +712,7 @@ Bright Market completed the initial rollout and is ready for a customer success 
 ## Expansion ideas
 - CRM template for partnership tracking
 - Document hub for campaign assets
-- Quarterly planning workspace
+- Quarterly planning page
 
 ## Handoff checklist
 - [x] Confirm rollout completion

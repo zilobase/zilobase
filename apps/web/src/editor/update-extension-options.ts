@@ -12,12 +12,12 @@ export const updateExtensionOptions = (
       listeners: Set<() => void>
     }>
     onOpenPage?: (pageId: string) => void
-    workspaceId?: string | null
+    pageId?: string | null
   }
 ) => {
   for (const extension of editor.extensionManager.extensions) {
     if (extension.name === "databaseBlock") {
-      extension.options.currentPageId = options.workspaceId
+      extension.options.currentPageId = options.pageId
       extension.options.editable = options.editable
       extension.options.editorRuntime = options.databaseEditorRuntime
       extension.options.onOpenPage = options.onOpenPage

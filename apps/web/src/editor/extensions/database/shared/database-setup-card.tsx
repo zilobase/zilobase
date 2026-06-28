@@ -38,7 +38,7 @@ import {
   useUpdateDatabasePropertyValue,
   type DatabaseProperty,
 } from "@notelab/features/databases"
-import { useUpdateWorkspace, useWorkspaces } from "@notelab/features/workspaces"
+import { useUpdatePage, usePages } from "@notelab/features/pages"
 
 import {
   getDatabaseSetupTemplate,
@@ -62,8 +62,8 @@ type DatabaseSetupCardProps = {
   databaseId: string
   onComplete: () => void
   onDismiss: () => void
-  organizationId?: string | null
   workspaceId?: string | null
+  pageId?: string | null
 }
 
 type TextNode = {
@@ -236,7 +236,7 @@ function createSampleRowContent(markdown: string) {
   }
 }
 
-function getWorkspaceMetadataWithEmoji(metadata: unknown, emoji: string) {
+function getPageMetadataWithEmoji(metadata: unknown, emoji: string) {
   return {
     ...(metadata && typeof metadata === "object" && !Array.isArray(metadata)
       ? metadata
@@ -325,7 +325,7 @@ export function DatabaseSetupCard({
   databaseId,
   onComplete,
   onDismiss,
-  organizationId,
+  workspaceId,
 }: DatabaseSetupCardProps) {
   const [view, setView] = useState<SetupView>("main")
   const [prompt, setPrompt] = useState("")
@@ -340,10 +340,10 @@ export function DatabaseSetupCard({
   const addRow = useAddDatabaseRow()
   const updateDatabase = useUpdateDatabase()
   const updateValue = useUpdateDatabasePropertyValue()
-  const updateWorkspace = useUpdateWorkspace()
+  const updatePage = useUpdatePage()
   const { data: databasePayload } = useDatabase(databaseId)
-  const { data: workspaces = [], isLoading: isLoadingWorkspaces } =
-    useWorkspaces(organizationId, {
+  const { data: pages = [], isLoading: isLoadingPages } =
+    usePages(workspaceId, {
       enabled: view === "link",
     })
   const { data: selectedLinkDatabasePayload, isLoading: isLoadingLinkViews } =
@@ -363,15 +363,15 @@ export function DatabaseSetupCard({
 
   const linkableDatabases = useMemo(
     () =>
-      workspaces.flatMap((workspace) =>
-        (workspace.databases ?? [])
+      pages.flatMap((page) =>
+        (page.databases ?? [])
           .filter((database) => database.id !== databaseId)
           .map((database) => ({
             database,
-            workspaceName: workspace.name.trim() || "Untitled",
+            pageName: page.name.trim() || "Untitled",
           })),
       ),
-    [databaseId, workspaces],
+    [databaseId, pages],
   )
 
   const filteredLinkableDatabases = useMemo(() => {
@@ -381,8 +381,8 @@ export function DatabaseSetupCard({
       return linkableDatabases
     }
 
-    return linkableDatabases.filter(({ database, workspaceName }) =>
-      `${database.name} ${workspaceName}`.toLowerCase().includes(query),
+    return linkableDatabases.filter(({ database, pageName }) =>
+      `${database.name} ${pageName}`.toLowerCase().includes(query),
     )
   }, [linkSearch, linkableDatabases])
 
@@ -458,10 +458,10 @@ export function DatabaseSetupCard({
 
         knownRowIds.add(addedRow.id)
 
-        await updateWorkspace.mutateAsync({
+        await updatePage.mutateAsync({
           content: createSampleRowContent(sampleRow.content),
           id: addedRow.pageId,
-          metadata: getWorkspaceMetadataWithEmoji(
+          metadata: getPageMetadataWithEmoji(
             addedRow.page.metadata,
             sampleRow.emoji,
           ),
@@ -483,7 +483,7 @@ export function DatabaseSetupCard({
         }
       }
     },
-    [addRow, databasePayload?.rows, updateValue, updateWorkspace],
+    [addRow, databasePayload?.rows, updateValue, updatePage],
   )
 
   const finishSetup = useCallback(
@@ -822,7 +822,7 @@ export function DatabaseSetupCard({
             />
           </div>
         </div>
-        {isLoadingWorkspaces ? (
+        {isLoadingPages ? (
           <div className="flex items-center justify-center gap-2 px-2 py-8 text-muted-foreground text-sm">
             <Loader2 className="size-4 animate-spin" />
             Loading databases...
@@ -832,7 +832,7 @@ export function DatabaseSetupCard({
             No databases available.
           </div>
         ) : (
-          filteredLinkableDatabases.map(({ database, workspaceName }) => (
+          filteredLinkableDatabases.map(({ database, pageName }) => (
             <SetupOptionButton
               disabled={isSubmitting}
               icon={
@@ -846,7 +846,7 @@ export function DatabaseSetupCard({
               <span className="flex min-w-0 flex-col">
                 <span className="truncate">{database.name}</span>
                 <span className="truncate text-muted-foreground text-xs">
-                  {workspaceName}
+                  {pageName}
                 </span>
               </span>
             </SetupOptionButton>

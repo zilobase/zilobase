@@ -18,7 +18,7 @@ import {
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
 } from "@notelab/features/databases"
-import { useWorkspacePersonAccessTargets } from "@notelab/features/workspaces"
+import { usePagePersonAccessTargets } from "@notelab/features/pages"
 
 import {
   getDatabasePageDragPayload,
@@ -46,11 +46,11 @@ export type DatabaseViewProps = {
   onDismissSetup?: () => void
   onSetupComplete?: () => void
   onShowTitleChange?: (showTitle: boolean) => void
-  organizationId?: string | null
+  workspaceId?: string | null
   setupMode?: boolean
   showExpandButton?: boolean
   showTitle?: boolean
-  workspaceId?: string | null
+  pageId?: string | null
 }
 
 export function useDatabaseViewController({
@@ -63,11 +63,11 @@ export function useDatabaseViewController({
   onDismissSetup,
   onSetupComplete,
   onShowTitleChange,
-  organizationId,
+  workspaceId,
   setupMode = false,
   showExpandButton = false,
   showTitle = true,
-  workspaceId = null,
+  pageId = null,
 }: DatabaseViewProps) {
   const [draftPropertyValues, setDraftPropertyValues] = useState<
     Record<string, DatabasePropertyValue>
@@ -146,7 +146,7 @@ export function useDatabaseViewController({
       ),
     [activePayload?.properties],
   )
-  const { data: accessTargets } = useWorkspacePersonAccessTargets(
+  const { data: accessTargets } = usePagePersonAccessTargets(
     activePayload?.database.pageId,
     { enabled: needsPersonAccessTargets },
   )
@@ -520,7 +520,7 @@ export function useDatabaseViewController({
     databaseConfig: activePayload?.database.config,
     databaseId: activeDatabaseId,
     databaseName: activePayload?.database.name,
-    databaseOrganizationId: activePayload?.database.organizationId,
+    databaseWorkspaceId: activePayload?.database.workspaceId,
     deleteDatabaseView: deleteDatabaseViewByTab,
     duplicateDatabaseView,
     draftPropertyValues,
@@ -541,7 +541,7 @@ export function useDatabaseViewController({
     headerMenusEnabled: editable,
     hostDatabaseId: databaseId,
     hostDatabaseName: payload?.database.name,
-    hostDatabaseOrganizationId: payload?.database.organizationId,
+    hostDatabaseWorkspaceId: payload?.database.workspaceId,
     hostViews: payload?.views ?? [],
     isAddingDatabaseProperty: addProperty.isPending,
     isAddingDatabaseRow: addRow.isPending,
@@ -553,7 +553,7 @@ export function useDatabaseViewController({
     showPageIconInTitle,
     onOpenPage,
     options: kanbanOptions,
-    organizationId,
+    workspaceId,
     personOptions,
     properties,
     removeDatabaseFilter: commands.removeDatabaseFilter,
@@ -611,10 +611,10 @@ export function useDatabaseViewController({
     isLoading: isLoading || Boolean(activeLinkedDatabaseView && isLoadingLinkedPayload),
     onDismissSetup,
     onSetupComplete,
-    organizationId,
+    workspaceId,
     payload: activePayload,
     setupMode: effectiveSetupMode,
     viewType: activeView?.type,
-    workspaceId,
+    pageId,
   }
 }

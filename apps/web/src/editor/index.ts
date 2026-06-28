@@ -1,5 +1,5 @@
 export { Editor, default } from "./editor"
 export type {
-  WorkspaceEditPreviewControls,
-  WorkspaceEditPreviewRequest,
+  PageEditPreviewControls,
+  PageEditPreviewRequest,
 } from "./types"

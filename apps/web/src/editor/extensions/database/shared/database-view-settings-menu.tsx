@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { useDatabase } from "@notelab/features/databases"
-import { useWorkspaces } from "@notelab/features/workspaces"
+import { usePages } from "@notelab/features/pages"
 import {
   cyclingColorTokens,
   getColorToken,
@@ -100,7 +100,7 @@ type DatabaseSourceMenuItem = {
 }
 
 type LinkableDatabaseOption = DatabaseSearchableMenuOption & {
-  workspaceName: string
+  pageName: string
 }
 
 type LinkableDatabaseViewOption = DatabaseSearchableMenuOption & {
@@ -625,7 +625,7 @@ export function DatabaseViewSettingsMenu({
   linkedViews = [],
   titlePropertyLabel,
   open: controlledOpen,
-  organizationId,
+  workspaceId,
   onAddLinkedDatabaseView,
   onCopyDatabaseViewLink,
   onOpenChange,
@@ -672,7 +672,7 @@ export function DatabaseViewSettingsMenu({
   linkedViews?: DatabaseLinkedViewConfig[]
   titlePropertyLabel: string
   open?: boolean
-  organizationId?: string
+  workspaceId?: string
   onAddLinkedDatabaseView: (view: DatabaseLinkedViewConfig) => void
   onCopyDatabaseViewLink: () => void
   onOpenChange?: (open: boolean) => void
@@ -718,8 +718,8 @@ export function DatabaseViewSettingsMenu({
     data: selectedLinkDatabasePayload,
     isLoading: isLoadingSelectedLinkDatabase,
   } = useDatabase(selectedLinkDatabaseId)
-  const { data: workspaces = [], isLoading: isLoadingWorkspaces } =
-    useWorkspaces(organizationId, {
+  const { data: pages = [], isLoading: isLoadingPages } =
+    usePages(workspaceId, {
       enabled: manageDataSourcesOpen || showLinkExistingPicker,
     })
   const isKanbanView = activeViewType === "kanban"
@@ -741,15 +741,15 @@ export function DatabaseViewSettingsMenu({
     (property) => property.property.id === groupPropertyId
   )
 
-  const linkableDatabaseOptions = workspaces.flatMap((workspace) =>
-    (workspace.databases ?? [])
+  const linkableDatabaseOptions = pages.flatMap((page) =>
+    (page.databases ?? [])
       .filter((database) => database.id !== sourceDatabaseId)
       .map<LinkableDatabaseOption>((database) => ({
         icon: <Database />,
         label: database.name,
-        searchText: `${database.name} ${workspace.name}`.trim(),
+        searchText: `${database.name} ${page.name}`.trim(),
         value: database.id,
-        workspaceName: workspace.name,
+        pageName: page.name,
       }))
   )
   const selectedDatabaseOption = selectedLinkDatabaseId
@@ -1262,7 +1262,7 @@ export function DatabaseViewSettingsMenu({
                   ) : (
                     <DropDrawerItem disabled>Database unavailable.</DropDrawerItem>
                   )
-                ) : isLoadingWorkspaces ? (
+                ) : isLoadingPages ? (
                   <DropDrawerItem disabled>Loading databases...</DropDrawerItem>
                 ) : (
                   <DatabaseSearchableMenuItems
@@ -1292,7 +1292,7 @@ export function DatabaseViewSettingsMenu({
                             <div className="min-w-0">
                               <div className="truncate">{databaseOption.label}</div>
                               <div className="truncate text-xs text-muted-foreground">
-                                {databaseOption.workspaceName}
+                                {databaseOption.pageName}
                               </div>
                             </div>
                           </div>

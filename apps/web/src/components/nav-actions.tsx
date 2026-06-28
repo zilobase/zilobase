@@ -56,20 +56,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useSession } from "@notelab/features/auth"
-import { useActiveOrganizationId } from "@notelab/features/integrations"
+import { useActiveWorkspaceId } from "@notelab/features/integrations"
 import {
-  useCreateWorkspace,
-  useDeleteWorkspaceAccess,
-  useSetWorkspaceFavorite,
-  useSetWorkspacePublished,
-  useUpdateWorkspace,
-  useUpsertWorkspaceAccess,
-  useWorkspace,
-  useWorkspaceAccess,
-  useWorkspaceAccessLevel,
-  useWorkspaceAccessTargets,
-  useWorkspaces,
-} from "@notelab/features/workspaces"
+  useCreatePage,
+  useDeletePageAccess,
+  useSetPageFavorite,
+  useSetPagePublished,
+  useUpdatePage,
+  useUpsertPageAccess,
+  usePage,
+  usePageAccess,
+  usePageAccessLevel,
+  usePageAccessTargets,
+  usePages,
+} from "@notelab/features/pages"
 import {
   useDatabase,
   useSetDatabaseFavorite,
@@ -78,7 +78,7 @@ import {
   useUpdateUserSettings,
   useUserSettings,
 } from "@notelab/features/user-settings"
-import { useOptionalWorkspaceSidePane } from "@/contexts/workspace-side-pane"
+import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
@@ -88,16 +88,16 @@ import {
   embeddedItemsOpenAsModes,
   notelabAiModeLabels,
   resolveEmbeddedItemsOpenAs,
-  resolveWorkspaceFullWidth,
+  resolvePageFullWidth,
   usesUserEmbeddedItemsPreference,
   usesUserFullWidthPreference,
   type AccessLevel,
   type AccessTargetType,
   type EmbeddedItemsOpenAs,
   type NotelabAiMode,
-  type WorkspaceAccessRule,
-  type WorkspaceMetadata,
-} from "@notelab/features/workspaces"
+  type PageAccessRule,
+  type PageMetadata,
+} from "@notelab/features/pages"
 
 const notelabAiModes: NotelabAiMode[] = ["instruction", "skill"]
 
@@ -120,51 +120,51 @@ type ShareTargetValue = `${AccessTargetType}:${string}`
 export function NavActions({
   databaseId,
   pathname,
-  workspaceId,
+  pageId,
 }: {
   databaseId?: string | null
   pathname?: string
-  workspaceId?: string | null
+  pageId?: string | null
 }) {
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = React.useState(false)
   const { data: databasePayload } = useDatabase(databaseId)
-  const organizationId = useActiveOrganizationId()
-  const actionWorkspaceId = workspaceId ?? databasePayload?.database.pageId
-  const { data: workspace } = useWorkspace(actionWorkspaceId, {
+  const workspaceId = useActiveWorkspaceId()
+  const actionPageId = pageId ?? databasePayload?.database.pageId
+  const { data: page } = usePage(actionPageId, {
     refetchOnMount: false,
   })
-  const { data: workspaces = [] } = useWorkspaces(organizationId)
-  const createWorkspace = useCreateWorkspace()
-  const updateWorkspace = useUpdateWorkspace()
-  const setFavorite = useSetWorkspaceFavorite()
+  const { data: pages = [] } = usePages(workspaceId)
+  const createPage = useCreatePage()
+  const updatePage = useUpdatePage()
+  const setFavorite = useSetPageFavorite()
   const setDatabaseFavorite = useSetDatabaseFavorite()
   const { data: userSettings } = useUserSettings()
   const updateUserSettings = useUpdateUserSettings()
-  const sidePane = useOptionalWorkspaceSidePane()
+  const sidePane = useOptionalPageSidePane()
   const isMobile = useIsMobile()
-  const listWorkspace = workspaces.find((item) => item.id === actionWorkspaceId)
+  const listPage = pages.find((item) => item.id === actionPageId)
   const isDatabasePage = Boolean(databaseId)
-  const hasPageActions = Boolean(actionWorkspaceId || databaseId)
-  const workspaceMetadata = (workspace?.metadata ?? {}) as WorkspaceMetadata
-  const usesUserPreference = usesUserFullWidthPreference(workspaceMetadata)
+  const hasPageActions = Boolean(actionPageId || databaseId)
+  const pageMetadata = (page?.metadata ?? {}) as PageMetadata
+  const usesUserPreference = usesUserFullWidthPreference(pageMetadata)
   const usesUserEmbeddedItemsPref =
-    usesUserEmbeddedItemsPreference(workspaceMetadata)
-  const effectiveFullWidth = resolveWorkspaceFullWidth(
-    workspace,
-    userSettings?.workspaceFullWidth,
+    usesUserEmbeddedItemsPreference(pageMetadata)
+  const effectiveFullWidth = resolvePageFullWidth(
+    page,
+    userSettings?.pageFullWidth,
   )
   const effectiveEmbeddedItemsOpenAs = resolveEmbeddedItemsOpenAs(
-    workspace,
+    page,
     userSettings?.embeddedItemsOpenAs,
   )
   const fullWidthUpdatePending =
-    updateUserSettings.isPending || updateWorkspace.isPending
+    updateUserSettings.isPending || updatePage.isPending
   const embeddedItemsUpdatePending =
-    updateUserSettings.isPending || updateWorkspace.isPending
+    updateUserSettings.isPending || updatePage.isPending
   const isFavorite = isDatabasePage
     ? Boolean(databasePayload?.database.isFavorite)
-    : Boolean(workspace?.isFavorite ?? listWorkspace?.isFavorite)
+    : Boolean(page?.isFavorite ?? listPage?.isFavorite)
   const toggleFavorite = () => {
     if (databaseId) {
       if (setDatabaseFavorite.isPending) {
@@ -186,12 +186,12 @@ export function NavActions({
       return
     }
 
-    if (!workspaceId || setFavorite.isPending) {
+    if (!pageId || setFavorite.isPending) {
       return
     }
 
     setFavorite.mutate(
-      { isFavorite: !isFavorite, workspaceId },
+      { isFavorite: !isFavorite, pageId },
       {
         onError: (error) => {
           toast.error(
@@ -204,45 +204,45 @@ export function NavActions({
     )
   }
   const copyLink = async () => {
-    if (!workspaceId && !databaseId) {
+    if (!pageId && !databaseId) {
       return
     }
 
     await navigator.clipboard.writeText(
       databaseId
         ? `${window.location.origin}/database/${databaseId}`
-        : `${window.location.origin}/workspace/${workspaceId}`,
+        : `${window.location.origin}/page/${pageId}`,
     )
     setIsOpen(false)
-    toast.success(`${databaseId ? "Database" : "Workspace"} link copied.`)
+    toast.success(`${databaseId ? "Database" : "Page"} link copied.`)
   }
-  const duplicateWorkspace = async () => {
-    if (!workspace || createWorkspace.isPending) {
+  const duplicatePage = async () => {
+    if (!page || createPage.isPending) {
       return
     }
 
-    const metadata = (workspace.metadata ?? {}) as WorkspaceMetadata
+    const metadata = (page.metadata ?? {}) as PageMetadata
     try {
-      const duplicate = await createWorkspace.mutateAsync({
-        content: cloneWorkspaceContent(workspace.content ?? null),
+      const duplicate = await createPage.mutateAsync({
+        content: clonePageContent(page.content ?? null),
         emoji: metadata.emoji ?? undefined,
         metadata,
-        name: getDuplicateWorkspaceName(workspace.name),
-        organizationId: workspace.organizationId,
+        name: getDuplicatePageName(page.name),
+        workspaceId: page.workspaceId,
         parentItemId: metadata.parentItemId ?? undefined,
       })
 
       setIsOpen(false)
-      toast.success("Workspace duplicated.")
+      toast.success("Page duplicated.")
       await navigate({
-        to: "/workspace/$workspaceId",
-        params: { workspaceId: duplicate.id },
+        to: "/page/$pageId",
+        params: { pageId: duplicate.id },
       })
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Could not duplicate workspace.",
+          : "Could not duplicate page.",
       )
     }
   }
@@ -253,26 +253,26 @@ export function NavActions({
     }
 
     if (label === "Duplicate") {
-      void duplicateWorkspace()
+      void duplicatePage()
       return
     }
   }
-  const toggleWorkspaceFullWidth = () => {
+  const togglePageFullWidth = () => {
     if (isDatabasePage || fullWidthUpdatePending) {
       return
     }
 
     if (!usesUserPreference) {
-      if (!workspace) {
+      if (!page) {
         return
       }
 
-      updateWorkspace.mutate(
+      updatePage.mutate(
         {
-          id: workspace.id,
+          id: page.id,
           metadata: {
-            ...workspaceMetadata,
-            fullWidth: !Boolean(workspaceMetadata.fullWidth),
+            ...pageMetadata,
+            fullWidth: !Boolean(pageMetadata.fullWidth),
             useUserFullWidthPreference: false,
           },
         },
@@ -281,7 +281,7 @@ export function NavActions({
             toast.error(
               error instanceof Error
                 ? error.message
-                : "Could not update workspace full width.",
+                : "Could not update page full width.",
             )
           },
         },
@@ -290,7 +290,7 @@ export function NavActions({
     }
 
     updateUserSettings.mutate(
-      { workspaceFullWidth: !userSettings?.workspaceFullWidth },
+      { pageFullWidth: !userSettings?.pageFullWidth },
       {
         onError: (error) => {
           toast.error(
@@ -303,17 +303,17 @@ export function NavActions({
     )
   }
   const toggleUseUserFullWidthPreference = () => {
-    if (isDatabasePage || !workspace || fullWidthUpdatePending) {
+    if (isDatabasePage || !page || fullWidthUpdatePending) {
       return
     }
 
     const nextUsesUserPreference = !usesUserPreference
 
-    updateWorkspace.mutate(
+    updatePage.mutate(
       {
-        id: workspace.id,
+        id: page.id,
         metadata: {
-          ...workspaceMetadata,
+          ...pageMetadata,
           useUserFullWidthPreference: nextUsesUserPreference,
         },
       },
@@ -322,7 +322,7 @@ export function NavActions({
           toast.error(
             error instanceof Error
               ? error.message
-              : "Could not update workspace full width preference.",
+              : "Could not update page full width preference.",
           )
         },
       },
@@ -338,15 +338,15 @@ export function NavActions({
     }
 
     if (!usesUserEmbeddedItemsPref) {
-      if (!workspace) {
+      if (!page) {
         return
       }
 
-      updateWorkspace.mutate(
+      updatePage.mutate(
         {
-          id: workspace.id,
+          id: page.id,
           metadata: {
-            ...workspaceMetadata,
+            ...pageMetadata,
             embeddedItemsOpenAs: mode,
             useUserEmbeddedItemsPreference: false,
           },
@@ -378,17 +378,17 @@ export function NavActions({
     )
   }
   const toggleUseUserEmbeddedItemsPreference = () => {
-    if (isDatabasePage || !workspace || embeddedItemsUpdatePending) {
+    if (isDatabasePage || !page || embeddedItemsUpdatePending) {
       return
     }
 
     const nextUsesUserPreference = !usesUserEmbeddedItemsPref
 
-    updateWorkspace.mutate(
+    updatePage.mutate(
       {
-        id: workspace.id,
+        id: page.id,
         metadata: {
-          ...workspaceMetadata,
+          ...pageMetadata,
           useUserEmbeddedItemsPreference: nextUsesUserPreference,
         },
       },
@@ -403,18 +403,18 @@ export function NavActions({
       },
     )
   }
-  const notelabAiMode = workspaceMetadata.notelabai ?? null
+  const notelabAiMode = pageMetadata.notelabai ?? null
 
   const setNotelabAiMode = (mode: NotelabAiMode) => {
-    if (!workspace || updateWorkspace.isPending) {
+    if (!page || updatePage.isPending) {
       return
     }
 
-    updateWorkspace.mutate(
+    updatePage.mutate(
       {
-        id: workspace.id,
+        id: page.id,
         metadata: {
-          ...workspaceMetadata,
+          ...pageMetadata,
           notelabai: notelabAiMode === mode ? null : mode,
         },
       },
@@ -446,8 +446,8 @@ export function NavActions({
       </Button>
       {hasPageActions ? (
         <>
-          {actionWorkspaceId ? (
-            <WorkspaceShareDialog workspaceId={actionWorkspaceId} />
+          {actionPageId ? (
+            <PageShareDialog pageId={actionPageId} />
           ) : null}
           <Button
             aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
@@ -455,7 +455,7 @@ export function NavActions({
             disabled={
               databaseId
                 ? !databasePayload || setDatabaseFavorite.isPending
-                : !workspaceId || setFavorite.isPending
+                : !pageId || setFavorite.isPending
             }
             onClick={toggleFavorite}
             size="icon"
@@ -479,10 +479,10 @@ export function NavActions({
               {!isDatabasePage && !isMobile ? (
                 <>
                   <DropDrawerItem
-                    disabled={!workspace || fullWidthUpdatePending}
+                    disabled={!page || fullWidthUpdatePending}
                     onSelect={(event) => {
                       event.preventDefault()
-                      toggleWorkspaceFullWidth()
+                      togglePageFullWidth()
                     }}
                   >
                     <span>Full Width</span>
@@ -494,7 +494,7 @@ export function NavActions({
                     />
                   </DropDrawerItem>
                   <DropDrawerItem
-                    disabled={!workspace || fullWidthUpdatePending}
+                    disabled={!page || fullWidthUpdatePending}
                     onSelect={(event) => {
                       event.preventDefault()
                       toggleUseUserFullWidthPreference()
@@ -513,12 +513,12 @@ export function NavActions({
               {!isDatabasePage && !isMobile ? (
                 <>
                   <EmbeddedItemsOpenAsSubmenu
-                    disabled={!workspace || embeddedItemsUpdatePending}
+                    disabled={!page || embeddedItemsUpdatePending}
                     mode={effectiveEmbeddedItemsOpenAs}
                     onSelect={setEmbeddedItemsOpenAs}
                   />
                   <DropDrawerItem
-                    disabled={!workspace || embeddedItemsUpdatePending}
+                    disabled={!page || embeddedItemsUpdatePending}
                     onSelect={(event) => {
                       event.preventDefault()
                       toggleUseUserEmbeddedItemsPreference()
@@ -536,7 +536,7 @@ export function NavActions({
               ) : null}
               {!isDatabasePage ? (
                 <NotelabAiSubmenu
-                  disabled={!workspace || updateWorkspace.isPending}
+                  disabled={!page || updatePage.isPending}
                   mode={notelabAiMode}
                   onSelect={setNotelabAiMode}
                 />
@@ -545,9 +545,9 @@ export function NavActions({
                 <DropDrawerItem
                   key={label}
                   disabled={
-                    (label === "Copy Link" && !workspaceId && !databaseId) ||
+                    (label === "Copy Link" && !pageId && !databaseId) ||
                     (label === "Duplicate" &&
-                      (isDatabasePage || !workspace || createWorkspace.isPending))
+                      (isDatabasePage || !page || createPage.isPending))
                   }
                   onSelect={() => runMoreAction(label)}
                 >
@@ -637,13 +637,13 @@ function NotelabAiSubmenu({
   )
 }
 
-function getDuplicateWorkspaceName(name: string) {
+function getDuplicatePageName(name: string) {
   const trimmedName = name.trim() || "Untitled"
 
   return `${trimmedName} copy`
 }
 
-function cloneWorkspaceContent(content: unknown) {
+function clonePageContent(content: unknown) {
   if (typeof structuredClone === "function") {
     return structuredClone(content)
   }
@@ -651,7 +651,7 @@ function cloneWorkspaceContent(content: unknown) {
   return JSON.parse(JSON.stringify(content)) as unknown
 }
 
-function WorkspaceShareDialog({ workspaceId }: { workspaceId: string }) {
+function PageShareDialog({ pageId }: { pageId: string }) {
   const [open, setOpen] = React.useState(false)
 
   return (
@@ -663,26 +663,26 @@ function WorkspaceShareDialog({ workspaceId }: { workspaceId: string }) {
         </Button>
       </DialogTrigger>
       {open ? (
-        <WorkspaceShareDialogContent workspaceId={workspaceId} />
+        <PageShareDialogContent pageId={pageId} />
       ) : null}
     </Dialog>
   )
 }
 
-function WorkspaceShareDialogContent({
-  workspaceId,
+function PageShareDialogContent({
+  pageId,
 }: {
-  workspaceId: string
+  pageId: string
 }) {
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
   const { data: session } = useSession()
-  const { data: workspace } = useWorkspace(workspaceId)
-  const { data: accessLevel } = useWorkspaceAccessLevel(workspaceId)
-  const { data: accessPayload } = useWorkspaceAccess(workspaceId)
-  const { data: targets } = useWorkspaceAccessTargets(organizationId)
-  const upsertAccess = useUpsertWorkspaceAccess()
-  const deleteAccess = useDeleteWorkspaceAccess()
-  const setPublished = useSetWorkspacePublished()
+  const { data: page } = usePage(pageId)
+  const { data: accessLevel } = usePageAccessLevel(pageId)
+  const { data: accessPayload } = usePageAccess(pageId)
+  const { data: targets } = usePageAccessTargets(workspaceId)
+  const upsertAccess = useUpsertPageAccess()
+  const deleteAccess = useDeletePageAccess()
+  const setPublished = useSetPagePublished()
   const [targetValue, setTargetValue] = React.useState<ShareTargetValue | "">("")
   const [targetPickerOpen, setTargetPickerOpen] = React.useState(false)
   const [nextAccessLevel, setNextAccessLevel] =
@@ -716,10 +716,10 @@ function WorkspaceShareDialogContent({
   const publicUrl =
     typeof window === "undefined"
       ? ""
-      : `${window.location.origin}/workspace/${workspaceId}`
+      : `${window.location.origin}/page/${pageId}`
 
-  const shareWorkspace = () => {
-    if (!targetValue || !workspace) {
+  const sharePage = () => {
+    if (!targetValue || !page) {
       return
     }
 
@@ -733,12 +733,12 @@ function WorkspaceShareDialogContent({
         accessLevel: nextAccessLevel,
         targetId,
         targetType,
-        workspaceId: workspace.id,
+        pageId: page.id,
       },
       {
         onSuccess: () => {
           setTargetValue("")
-          toast.success("Workspace access updated.")
+          toast.success("Page access updated.")
         },
         onError: (error) => {
           toast.error(error instanceof Error ? error.message : "Could not share.")
@@ -749,20 +749,20 @@ function WorkspaceShareDialogContent({
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(publicUrl || window.location.href)
-    toast.success("Workspace link copied.")
+    toast.success("Page link copied.")
   }
 
   const togglePublished = (checked: boolean) => {
-    if (!workspace || !canManage || setPublished.isPending) {
+    if (!page || !canManage || setPublished.isPending) {
       return
     }
 
     setPublished.mutate(
-      { isPublished: checked, workspaceId: workspace.id },
+      { isPublished: checked, pageId: page.id },
       {
         onSuccess: () => {
           toast.success(
-            checked ? "Workspace published." : "Workspace unpublished.",
+            checked ? "Page published." : "Page unpublished.",
           )
         },
         onError: (error) => {
@@ -782,9 +782,9 @@ function WorkspaceShareDialogContent({
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Share workspace</DialogTitle>
+          <DialogTitle>Share page</DialogTitle>
           <DialogDescription>
-            Access applies to this workspace and nested workspaces.
+            Access applies to this page and nested pages.
           </DialogDescription>
         </DialogHeader>
 
@@ -866,7 +866,7 @@ function WorkspaceShareDialogContent({
               </Select>
               <Button
                 disabled={!canManage || !targetValue || upsertAccess.isPending}
-                onClick={shareWorkspace}
+                onClick={sharePage}
                 type="button"
               >
                 <Share2Icon />
@@ -886,7 +886,7 @@ function WorkspaceShareDialogContent({
                   canManage={canManage}
                   deleteRule={() =>
                     deleteAccess.mutate(
-                      { ruleId: rule.id, workspaceId },
+                      { ruleId: rule.id, pageId },
                       {
                         onError: (error) => {
                           toast.error(
@@ -907,7 +907,7 @@ function WorkspaceShareDialogContent({
 
             {!canManage ? (
               <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                You need full access to manage sharing for this workspace.
+                You need full access to manage sharing for this page.
               </div>
             ) : null}
 
@@ -928,8 +928,8 @@ function WorkspaceShareDialogContent({
               <div className="min-w-0 flex-1">
                 <div className="text-sm font-medium">Publish to web</div>
                 <div className="text-xs text-muted-foreground">
-                  Anyone with the link can view this workspace and nested
-                  workspaces. Published pages are read-only.
+                  Anyone with the link can view this page and nested
+                  pages. Published pages are read-only.
                 </div>
               </div>
               <Switch
@@ -941,7 +941,7 @@ function WorkspaceShareDialogContent({
 
             {!canManage ? (
               <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                You need full access to manage publishing for this workspace.
+                You need full access to manage publishing for this page.
               </div>
             ) : null}
 
@@ -971,7 +971,7 @@ function RuleRow({
 }: {
   canManage: boolean
   deleteRule: () => void
-  rule: WorkspaceAccessRule
+  rule: PageAccessRule
   target?: { detail?: string; label: string }
 }) {
   return (

@@ -10,10 +10,10 @@ import { useAppSearch } from "@/components/app-search"
 import { NavFavorites } from "@/components/nav-favorites"
 import { NavSecondary } from "@/components/nav-secondary"
 import {
-  NavWorkspaces,
-  type WorkspaceNavItem,
-} from "@/components/nav-workspaces"
-import { OrganizationSwitcher } from "@/components/organization-switcher"
+  NavPages,
+  type PageNavItem,
+} from "@/components/nav-pages"
+import { WorkspaceSwitcher } from "@/components/workspace-switcher"
 import { ThemeDropdown } from "@/components/theme-dropdown"
 import {
   Sidebar,
@@ -29,22 +29,22 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { useSession } from "@notelab/features/auth"
-import { useOrganizations } from "@notelab/features/organizations"
+import { useWorkspaces } from "@notelab/features/workspaces"
 import {
   useAddDatabaseRow,
   useCreateDatabase,
   useSetDatabaseFavorite,
 } from "@notelab/features/databases"
-import type { Workspace } from "@notelab/features/workspaces"
+import type { Page } from "@notelab/features/pages"
 import {
   getDatabaseIconNode,
-  getWorkspaceIconNode,
-} from "@/lib/workspace-icon"
+  getPageIconNode,
+} from "@/lib/page-icon"
 import {
-  useCreateWorkspace,
-  useSetWorkspaceFavorite,
-  useWorkspaces,
-} from "@notelab/features/workspaces"
+  useCreatePage,
+  useSetPageFavorite,
+  usePages,
+} from "@notelab/features/pages"
 import { useAppStore } from "@/stores/app-store"
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions"
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
@@ -118,66 +118,67 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
-  const activeOrganizationId = useAppStore((state) => state.activeOrganizationId)
+  const activeWorkspaceId = useAppStore((state) => state.activeWorkspaceId)
   const { data: session } = useSession()
-  const { data: organizations = [] } = useOrganizations()
-  const sessionOrganizationId = session?.session?.activeOrganizationId ?? null
-  const storedOrganization =
-    organizations.find((organization) => organization.id === activeOrganizationId) ??
+  const { data: rawWorkspaces = [] } = useWorkspaces()
+  const workspaces = rawWorkspaces.filter(Boolean)
+  const sessionWorkspaceId = session?.session?.activeWorkspaceId ?? null
+  const storedWorkspace =
+    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
     null
-  const sessionOrganization =
-    organizations.find((organization) => organization.id === sessionOrganizationId) ??
+  const sessionWorkspace =
+    workspaces.find((workspace) => workspace.id === sessionWorkspaceId) ??
     null
-  const organizationId =
-    storedOrganization?.id ??
-    sessionOrganization?.id ??
-    organizations[0]?.id ??
+  const workspaceId =
+    storedWorkspace?.id ??
+    sessionWorkspace?.id ??
+    workspaces[0]?.id ??
     null
-  const { data: workspaceRecords = [] } = useWorkspaces(organizationId)
-  const createWorkspace = useCreateWorkspace()
+  const { data: pageRecords = [] } = usePages(workspaceId)
+  const createPage = useCreatePage()
   const createDatabase = useCreateDatabase()
-  const setFavorite = useSetWorkspaceFavorite()
+  const setFavorite = useSetPageFavorite()
   const addDatabaseRow = useAddDatabaseRow()
   const setDatabaseFavorite = useSetDatabaseFavorite()
-  const activeWorkspaceRecords = workspaceRecords
-    .filter((workspace) => !workspace.deletedAt)
-    .map((workspace) => ({
-      ...workspace,
-      databases: workspace.databases?.filter((database) => !database.deletedAt),
+  const activePageRecords = pageRecords
+    .filter((page) => !page.deletedAt)
+    .map((page) => ({
+      ...page,
+      databases: page.databases?.filter((database) => !database.deletedAt),
     }))
-  const workspaceSections = buildWorkspaceTreeSections(activeWorkspaceRecords)
+  const pageSections = buildPageTreeSections(activePageRecords)
   const favorites = buildFavoriteTreeItems([
-    ...workspaceSections.privateWorkspaces,
-    ...workspaceSections.teamspaceWorkspaces,
+    ...pageSections.privatePages,
+    ...pageSections.teamspacePages,
   ])
   const isAiPage = pathname === "/ai"
 
-  const handleCreateWorkspace = async () => {
-    if (!organizationId || createWorkspace.isPending) {
+  const handleCreatePage = async () => {
+    if (!workspaceId || createPage.isPending) {
       return
     }
 
-    const workspace = await createWorkspace.mutateAsync({ organizationId })
+    const page = await createPage.mutateAsync({ workspaceId })
 
     await navigate({
-      to: "/workspace/$workspaceId",
-      params: { workspaceId: workspace.id },
+      to: "/page/$pageId",
+      params: { pageId: page.id },
     })
   }
 
   const handleCreateDatabase = async () => {
     if (
-      !organizationId ||
-      createWorkspace.isPending ||
+      !workspaceId ||
+      createPage.isPending ||
       createDatabase.isPending
     ) {
       return
     }
 
-    const workspace = await createWorkspace.mutateAsync({ organizationId })
+    const page = await createPage.mutateAsync({ workspaceId })
     const payload = await createDatabase.mutateAsync({
-      organizationId,
-      pageId: workspace.id,
+      workspaceId,
+      pageId: page.id,
       standalone: true,
     })
 
@@ -224,13 +225,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     )
   }
 
-  const handleRemoveFavorite = (workspaceId: string) => {
+  const handleRemoveFavorite = (pageId: string) => {
     if (setFavorite.isPending) {
       return
     }
 
     setFavorite.mutate(
-      { isFavorite: false, workspaceId },
+      { isFavorite: false, pageId },
       {
         onError: (error) => {
           toast.error(
@@ -267,7 +268,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <div className="flex items-center gap-1">
           <div className="min-w-0 flex-1">
-            <OrganizationSwitcher />
+            <WorkspaceSwitcher />
           </div>
           <SidebarTrigger className="shrink-0" />
         </div>
@@ -287,12 +288,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite}
               onRemoveFavorite={handleRemoveFavorite}
             />
-            <NavWorkspaces
+            <NavPages
               onCreateDatabase={handleCreateDatabase}
-              onCreateWorkspace={handleCreateWorkspace}
+              onCreatePage={handleCreatePage}
               onDropPageOnDatabase={handleDropPageOnDatabase}
-              privateWorkspaces={workspaceSections.privateWorkspaces}
-              teamspaceWorkspaces={workspaceSections.teamspaceWorkspaces}
+              privatePages={pageSections.privatePages}
+              teamspacePages={pageSections.teamspacePages}
             />
             <NavSecondary items={data.navSecondary} className="mt-auto" />
           </>
@@ -402,61 +403,61 @@ function isNavigationItemActive(url: string, pathname: string) {
   return url !== "#" && (pathname === url || pathname.startsWith(`${url}/`))
 }
 
-function buildWorkspaceTreeSections(workspaces: Workspace[]) {
-  const orderedWorkspaces = [...workspaces].sort(
+function buildPageTreeSections(pages: Page[]) {
+  const orderedPages = [...pages].sort(
     (first, second) =>
-      getWorkspaceCreatedTime(first) - getWorkspaceCreatedTime(second),
+      getPageCreatedTime(first) - getPageCreatedTime(second),
   )
   const baseNodesById = new Map(
-    orderedWorkspaces.map((workspace) => [
-      workspace.id,
+    orderedPages.map((page) => [
+      page.id,
       {
-        databaseId: workspace.databases?.[0]?.id,
-        id: workspace.id,
-        isTeamspace: Boolean(workspace.isTeamspace),
-        name: workspace.name,
-        emoji: getWorkspaceIconNode(workspace),
-        isFavorite: Boolean(workspace.isFavorite),
-        notelabai: workspace.metadata?.notelabai ?? null,
-        workspaceId: workspace.id,
-        pages: [] as WorkspaceNavItem[],
+        databaseId: page.databases?.[0]?.id,
+        id: page.id,
+        isTeamspace: Boolean(page.isTeamspace),
+        name: page.name,
+        emoji: getPageIconNode(page),
+        isFavorite: Boolean(page.isFavorite),
+        notelabai: page.metadata?.notelabai ?? null,
+        pageId: page.id,
+        pages: [] as PageNavItem[],
       },
     ]),
   )
-  const placements = workspaces[0]?.navigationPlacements ?? []
-  const placementsByWorkspaceParent = groupPlacements(
-    placements.filter((placement) => placement.parentKind === "workspace"),
+  const placements = pages[0]?.navigationPlacements ?? []
+  const placementsByPageParent = groupPlacements(
+    placements.filter((placement) => placement.parentKind === "page"),
   )
-  const databaseNodesById = new Map<string, WorkspaceNavItem>()
+  const databaseNodesById = new Map<string, PageNavItem>()
   const standaloneDatabaseHostPageIds = new Set<string>()
-  const standaloneDatabaseNodes: WorkspaceNavItem[] = []
+  const standaloneDatabaseNodes: PageNavItem[] = []
   const databasePlacementIds = new Set(
     placements
       .filter(
         (placement) =>
-          placement.itemKind === "database" && placement.parentKind === "workspace",
+          placement.itemKind === "database" && placement.parentKind === "page",
       )
       .map((placement) => placement.itemId),
   )
-  const databaseRowWorkspaceIds = new Set(
+  const databaseRowPageIds = new Set(
     placements
       .filter(
         (placement) =>
-          placement.itemKind === "workspace" &&
+          placement.itemKind === "page" &&
           placement.placementKind === "database_row",
       )
       .map((placement) => placement.itemId),
   )
 
-  for (const workspace of orderedWorkspaces) {
-    for (const database of workspace.databases ?? []) {
-      databaseNodesById.set(database.id, createDatabaseNode(database, workspace))
+  for (const page of orderedPages) {
+    for (const database of page.databases ?? []) {
+      databaseNodesById.set(database.id, createDatabaseNode(database, page))
 
       if (
         !databasePlacementIds.has(database.id) &&
-        !hasWorkspaceChildPlacements(placementsByWorkspaceParent, workspace.id)
+        !hasPageChildPlacements(placementsByPageParent, page.id)
       ) {
-        standaloneDatabaseHostPageIds.add(workspace.id)
+        standaloneDatabaseHostPageIds.add(page.id)
       }
     }
   }
@@ -465,7 +466,7 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
     databaseId: string,
     navNodeId: string,
     isLinked = false,
-  ): WorkspaceNavItem | null => {
+  ): PageNavItem | null => {
     const baseNode = databaseNodesById.get(databaseId)
 
     if (!baseNode) {
@@ -480,42 +481,42 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
     }
   }
 
-  const buildWorkspaceNode = (
-    workspaceId: string,
+  const buildPageNode = (
+    pageId: string,
     navNodeId: string,
     visitedIds: Set<string>,
     isLinked = false,
-  ): WorkspaceNavItem | null => {
-    const baseNode = baseNodesById.get(workspaceId)
+  ): PageNavItem | null => {
+    const baseNode = baseNodesById.get(pageId)
 
     if (!baseNode) {
       return null
     }
 
-    if (visitedIds.has(workspaceId)) {
+    if (visitedIds.has(pageId)) {
       return { ...baseNode, isLinked: true, navNodeId, pages: [] }
     }
 
     const nextVisitedIds = new Set(visitedIds)
-    nextVisitedIds.add(workspaceId)
-    const childPlacements = placementsByWorkspaceParent.get(workspaceId) ?? []
+    nextVisitedIds.add(pageId)
+    const childPlacements = placementsByPageParent.get(pageId) ?? []
 
     return {
       ...baseNode,
       isLinked,
       navNodeId,
       pages: childPlacements.flatMap((placement) => {
-        if (placement.itemKind === "workspace") {
-          if (placement.itemId === workspaceId) {
+        if (placement.itemKind === "page") {
+          if (placement.itemId === pageId) {
             return []
           }
 
-          const child = buildWorkspaceNode(
+          const child = buildPageNode(
             placement.itemId,
             placement.id,
             nextVisitedIds,
             placement.placementKind !== "primary" ||
-              databaseRowWorkspaceIds.has(placement.itemId),
+              databaseRowPageIds.has(placement.itemId),
           )
 
           return child ? [child] : []
@@ -532,8 +533,8 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
     }
   }
 
-  for (const workspace of orderedWorkspaces) {
-    for (const database of workspace.databases ?? []) {
+  for (const page of orderedPages) {
+    for (const database of page.databases ?? []) {
       if (databasePlacementIds.has(database.id)) {
         continue
       }
@@ -549,20 +550,20 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
     }
   }
 
-  const placedWorkspaceIds = new Set(
+  const placedPageIds = new Set(
     placements
-      .filter((placement) => placement.itemKind === "workspace")
+      .filter((placement) => placement.itemKind === "page")
       .map((placement) => placement.itemId),
   )
-  const roots = orderedWorkspaces.flatMap((workspace) => {
+  const roots = orderedPages.flatMap((page) => {
     if (
-      placedWorkspaceIds.has(workspace.id) ||
-      standaloneDatabaseHostPageIds.has(workspace.id)
+      placedPageIds.has(page.id) ||
+      standaloneDatabaseHostPageIds.has(page.id)
     ) {
       return []
     }
 
-    const node = buildWorkspaceNode(workspace.id, workspace.id, new Set())
+    const node = buildPageNode(page.id, page.id, new Set())
 
     return node ? [node] : []
   })
@@ -570,24 +571,24 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
   roots.push(...standaloneDatabaseNodes)
 
   return {
-    privateWorkspaces: roots.filter((workspace) => !workspace.isTeamspace),
-    teamspaceWorkspaces: roots.filter((workspace) => workspace.isTeamspace),
+    privatePages: roots.filter((page) => !page.isTeamspace),
+    teamspacePages: roots.filter((page) => page.isTeamspace),
   }
 }
 
 function createDatabaseNode(
-  database: NonNullable<Workspace["databases"]>[number],
-  workspace: Workspace,
-): WorkspaceNavItem {
+  database: NonNullable<Page["databases"]>[number],
+  page: Page,
+): PageNavItem {
   return {
     databaseId: database.id,
     id: `database:${database.id}`,
     isDatabase: true,
     isFavorite: Boolean(database.isFavorite),
-    isTeamspace: Boolean(workspace.isTeamspace),
+    isTeamspace: Boolean(page.isTeamspace),
     name: database.name,
     emoji: getDatabaseIconNode(database) ?? <DatabaseIcon className="size-4" />,
-    workspaceId: database.pageId,
+    pageId: database.pageId,
     pages: [...(database.views ?? [])]
       .sort((first, second) => first.position - second.position)
       .map((view) => ({
@@ -595,10 +596,10 @@ function createDatabaseNode(
         databaseViewId: view.id,
         id: `database-view:${view.id}`,
         isDatabaseView: true,
-        isTeamspace: Boolean(workspace.isTeamspace),
+        isTeamspace: Boolean(page.isTeamspace),
         name: view.name,
         emoji: getDatabaseViewIcon(view),
-        workspaceId: database.pageId,
+        pageId: database.pageId,
         navNodeId: `database-view:${database.id}:${view.id}`,
         pages: [],
       })),
@@ -606,7 +607,7 @@ function createDatabaseNode(
 }
 
 function groupPlacements(
-  placements: NonNullable<Workspace["navigationPlacements"]>,
+  placements: NonNullable<Page["navigationPlacements"]>,
 ) {
   const grouped = new Map<string, typeof placements>()
 
@@ -633,19 +634,19 @@ function groupPlacements(
   return grouped
 }
 
-function hasWorkspaceChildPlacements(
-  placementsByWorkspaceParent: Map<
+function hasPageChildPlacements(
+  placementsByPageParent: Map<
     string,
-    NonNullable<Workspace["navigationPlacements"]>
+    NonNullable<Page["navigationPlacements"]>
   >,
-  workspaceId: string,
+  pageId: string,
 ) {
-  return (placementsByWorkspaceParent.get(workspaceId) ?? []).some(
-    (placement) => placement.itemKind === "workspace",
+  return (placementsByPageParent.get(pageId) ?? []).some(
+    (placement) => placement.itemKind === "page",
   )
 }
 
-function buildFavoriteTreeItems(items: WorkspaceNavItem[]) {
+function buildFavoriteTreeItems(items: PageNavItem[]) {
   const favoriteItems = items.flatMap((item) =>
     cloneFavoriteTreeItems(item, false),
   )
@@ -659,9 +660,9 @@ function buildFavoriteTreeItems(items: WorkspaceNavItem[]) {
 }
 
 function cloneFavoriteTreeItems(
-  item: WorkspaceNavItem,
+  item: PageNavItem,
   hasFavoriteAncestor: boolean,
-): WorkspaceNavItem[] {
+): PageNavItem[] {
   if (item.isDatabaseView) {
     return []
   }
@@ -685,12 +686,12 @@ function cloneFavoriteTreeItems(
   return favoritePages
 }
 
-function getFavoriteDescendantPages(item: WorkspaceNavItem): WorkspaceNavItem[] {
+function getFavoriteDescendantPages(item: PageNavItem): PageNavItem[] {
   return item.pages.flatMap((page) => cloneFavoriteTreeItems(page, false))
 }
 
 function collectFavoriteDescendantIds(
-  item: WorkspaceNavItem,
+  item: PageNavItem,
   ids: Set<string>,
 ) {
   for (const page of item.pages) {
@@ -699,8 +700,8 @@ function collectFavoriteDescendantIds(
   }
 }
 
-function getWorkspaceCreatedTime(workspace: Workspace) {
-  const time = new Date(workspace.createdAt).getTime()
+function getPageCreatedTime(page: Page) {
+  const time = new Date(page.createdAt).getTime()
 
   return Number.isFinite(time) ? time : 0
 }

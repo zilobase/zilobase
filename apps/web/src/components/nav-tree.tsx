@@ -17,9 +17,9 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
-import { type NotelabAiMode } from "@notelab/features/workspaces"
+import { type NotelabAiMode } from "@notelab/features/pages"
 
-export type WorkspaceNavItem = {
+export type PageNavItem = {
   databaseId?: string | null
   databaseViewId?: string | null
   id: string
@@ -32,8 +32,8 @@ export type WorkspaceNavItem = {
   navNodeId?: string
   emoji: ReactNode
   notelabai?: NotelabAiMode | null
-  workspaceId: string
-  pages: WorkspaceNavItem[]
+  pageId: string
+  pages: PageNavItem[]
 }
 
 type NavTreeLinkProps = Partial<
@@ -41,13 +41,13 @@ type NavTreeLinkProps = Partial<
 >
 
 type NavTreeItemMenuRender = (input: {
-  item: WorkspaceNavItem
+  item: PageNavItem
   nested: boolean
 }) => ReactNode
 
 type NavTreeLinkPropsGetter = (input: {
   displayName: string
-  item: WorkspaceNavItem
+  item: PageNavItem
 }) => NavTreeLinkProps | undefined
 
 const rowHoverClassName =
@@ -63,16 +63,16 @@ const treeSubClassName =
 export function NavTree({
   activeDatabaseId,
   activeDatabaseViewId,
-  activeWorkspaceId,
+  activePageId,
   getLinkProps,
   items,
   renderItemMenu,
 }: {
   activeDatabaseId: string | null
   activeDatabaseViewId?: string | null
-  activeWorkspaceId: string | null
+  activePageId: string | null
   getLinkProps?: NavTreeLinkPropsGetter
-  items: WorkspaceNavItem[]
+  items: PageNavItem[]
   renderItemMenu: NavTreeItemMenuRender
 }) {
   const defaultDatabaseViewIds = useMemo(
@@ -84,7 +84,7 @@ export function NavTree({
     <NavTreeItem
       activeDatabaseId={activeDatabaseId}
       activeDatabaseViewId={activeDatabaseViewId ?? null}
-      activeWorkspaceId={activeWorkspaceId}
+      activePageId={activePageId}
       defaultDatabaseViewIds={defaultDatabaseViewIds}
       getLinkProps={getLinkProps}
       isRoot
@@ -98,7 +98,7 @@ export function NavTree({
 function NavTreeItem({
   activeDatabaseId,
   activeDatabaseViewId,
-  activeWorkspaceId,
+  activePageId,
   defaultDatabaseViewIds,
   getLinkProps,
   isRoot = false,
@@ -107,11 +107,11 @@ function NavTreeItem({
 }: {
   activeDatabaseId: string | null
   activeDatabaseViewId: string | null
-  activeWorkspaceId: string | null
+  activePageId: string | null
   defaultDatabaseViewIds: Map<string, string>
   getLinkProps?: NavTreeLinkPropsGetter
   isRoot?: boolean
-  item: WorkspaceNavItem
+  item: PageNavItem
   renderItemMenu: NavTreeItemMenuRender
 }) {
   const isDatabaseRouteItem = Boolean(
@@ -120,7 +120,7 @@ function NavTreeItem({
   const isActive = getIsActiveNavItem({
     activeDatabaseId,
     activeDatabaseViewId,
-    activeWorkspaceId,
+    activePageId,
     defaultDatabaseViewIds,
     item,
   })
@@ -131,7 +131,7 @@ function NavTreeItem({
       item,
       activeDatabaseId,
       activeDatabaseViewId,
-      activeWorkspaceId,
+      activePageId,
       defaultDatabaseViewIds,
     )
   const displayName = item.name.trim() || "Untitled"
@@ -173,9 +173,9 @@ function NavTreeItem({
               </Link>
             ) : (
               <Link
-                params={{ workspaceId: item.workspaceId } as never}
+                params={{ pageId: item.pageId } as never}
                 title={displayName}
-                to="/workspace/$workspaceId"
+                to="/page/$pageId"
                 {...linkProps}
               >
                 <LeadingItemIcon hasPages={hasPages} icon={item.emoji} />
@@ -207,7 +207,7 @@ function NavTreeItem({
                 <NavTreeItem
                   activeDatabaseId={activeDatabaseId}
                   activeDatabaseViewId={activeDatabaseViewId}
-                  activeWorkspaceId={activeWorkspaceId}
+                  activePageId={activePageId}
                   defaultDatabaseViewIds={defaultDatabaseViewIds}
                   getLinkProps={getLinkProps}
                   item={page}
@@ -228,7 +228,7 @@ function LeadingItemIcon({
   icon,
 }: {
   hasPages: boolean
-  icon: WorkspaceNavItem["emoji"]
+  icon: PageNavItem["emoji"]
 }) {
   return (
     <span
@@ -274,10 +274,10 @@ function TrailingIndicators({
 }
 
 export function hasActiveDescendant(
-  item: WorkspaceNavItem,
+  item: PageNavItem,
   activeDatabaseId: string | null,
   activeDatabaseViewId: string | null,
-  activeWorkspaceId: string | null,
+  activePageId: string | null,
   defaultDatabaseViewIds: Map<string, string>,
 ): boolean {
   return item.pages.some(
@@ -285,7 +285,7 @@ export function hasActiveDescendant(
       getIsActiveNavItem({
         activeDatabaseId,
         activeDatabaseViewId,
-        activeWorkspaceId,
+        activePageId,
         defaultDatabaseViewIds,
         item: page,
       }) ||
@@ -293,7 +293,7 @@ export function hasActiveDescendant(
         page,
         activeDatabaseId,
         activeDatabaseViewId,
-        activeWorkspaceId,
+        activePageId,
         defaultDatabaseViewIds,
       ),
   )
@@ -302,15 +302,15 @@ export function hasActiveDescendant(
 function getIsActiveNavItem({
   activeDatabaseId,
   activeDatabaseViewId,
-  activeWorkspaceId,
+  activePageId,
   defaultDatabaseViewIds,
   item,
 }: {
   activeDatabaseId: string | null
   activeDatabaseViewId: string | null
-  activeWorkspaceId: string | null
+  activePageId: string | null
   defaultDatabaseViewIds: Map<string, string>
-  item: WorkspaceNavItem
+  item: PageNavItem
 }) {
   if (item.isDatabaseView) {
     return (
@@ -325,10 +325,10 @@ function getIsActiveNavItem({
     return activeDatabaseId === item.databaseId && item.pages.length === 0
   }
 
-  return activeWorkspaceId === item.workspaceId
+  return activePageId === item.pageId
 }
 
-function getDefaultDatabaseViewIds(items: WorkspaceNavItem[]) {
+function getDefaultDatabaseViewIds(items: PageNavItem[]) {
   const defaultViewIds = new Map<string, string>()
 
   for (const item of items) {
@@ -339,7 +339,7 @@ function getDefaultDatabaseViewIds(items: WorkspaceNavItem[]) {
 }
 
 function collectDefaultDatabaseViewIds(
-  item: WorkspaceNavItem,
+  item: PageNavItem,
   defaultViewIds: Map<string, string>,
 ) {
   if (item.isDatabase && item.databaseId) {
@@ -355,8 +355,8 @@ function collectDefaultDatabaseViewIds(
   }
 }
 
-export function getActiveWorkspaceId(pathname: string) {
-  const match = pathname.match(/^\/workspace\/([^/?#]+)/)
+export function getActivePageId(pathname: string) {
+  const match = pathname.match(/^\/page\/([^/?#]+)/)
 
   if (!match) {
     return null
