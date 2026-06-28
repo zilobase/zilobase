@@ -174,7 +174,7 @@ function WorkspaceSection({
       event.dataTransfer.setData(
         DATABASE_PAGE_DRAG_MIME,
         JSON.stringify({
-          pageId: item.id,
+          pageId: item.workspaceId,
           title: displayName,
         }),
       )

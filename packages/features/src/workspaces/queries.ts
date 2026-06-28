@@ -57,11 +57,24 @@ export type WorkspaceDatabase = {
   updatedAt: string
 }
 
+export type WorkspaceItemPlacement = {
+  id: string
+  organizationId: string
+  parentKind: "workspace" | "database"
+  parentId: string
+  itemKind: "workspace" | "database"
+  itemId: string
+  placementKind: "primary" | "linked" | "database_row"
+  sourceRowId?: string | null
+  position: number
+}
+
 export type Workspace = {
   id: string
   databases?: WorkspaceDatabase[]
   isFavorite?: boolean
   isTeamspace?: boolean
+  navigationPlacements?: WorkspaceItemPlacement[]
   organizationId: string
   createdById?: string | null
   type: string
@@ -306,12 +319,18 @@ export const workspacesQueryOptions = (
       }
 
       try {
-        const result = await apiFetch<{ workspaces: Workspace[] }>(
+        const result = await apiFetch<{
+          placements?: WorkspaceItemPlacement[]
+          workspaces: Workspace[]
+        }>(
           `/workspaces?organizationId=${encodeURIComponent(organizationId)}&fields=nav`,
           { method: "GET" },
         )
 
-        return result.workspaces
+        return result.workspaces.map((workspace) => ({
+          ...workspace,
+          navigationPlacements: result.placements ?? [],
+        }))
       } catch (error) {
         if (
           typeof error === "object" &&

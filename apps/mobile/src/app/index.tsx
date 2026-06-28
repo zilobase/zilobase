@@ -3,8 +3,6 @@ import { useOrganizations } from '@notelab/features/organizations';
 import { useSession } from '@notelab/features/auth';
 import {
   getWorkspaceEmoji,
-  readLinkedItems,
-  readParentItemId,
   useWorkspaces,
   type Workspace,
 } from '@notelab/features/workspaces';
@@ -277,7 +275,7 @@ function buildWorkspaceSections(workspaces: Workspace[]) {
   const orderedWorkspaces = [...workspaces].sort(
     (first, second) => getWorkspaceCreatedTime(first) - getWorkspaceCreatedTime(second)
   );
-  const nodesById = new Map(
+  const baseNodesById = new Map(
     orderedWorkspaces.map((workspace) => [
       workspace.id,
       {
@@ -291,97 +289,136 @@ function buildWorkspaceSections(workspaces: Workspace[]) {
       },
     ])
   );
-  const roots: TreeItem[] = [];
-  const databaseNodesById = new Map<string, TreeItem>();
-  const rowPageIds = new Set(
-    orderedWorkspaces.flatMap((workspace) =>
-      (workspace.databases ?? []).flatMap((database) => database.rows.map((row) => row.pageId))
-    )
+  const placements = workspaces[0]?.navigationPlacements ?? [];
+  const placementsByWorkspaceParent = groupPlacements(
+    placements.filter((placement) => placement.parentKind === 'workspace')
   );
+  const placementsByDatabaseParent = groupPlacements(
+    placements.filter((placement) => placement.parentKind === 'database')
+  );
+  const databaseNodesById = new Map<string, TreeItem>();
+  const databasePlacementIds = new Set(
+    placements
+      .filter(
+        (placement) => placement.itemKind === 'database' && placement.parentKind === 'workspace'
+      )
+      .map((placement) => placement.itemId)
+  );
+  const standaloneDatabaseHostPageIds = new Set<string>();
 
   for (const workspace of orderedWorkspaces) {
-    const parentNode = nodesById.get(workspace.id);
-
-    if (!parentNode) {
-      continue;
-    }
-
     for (const database of workspace.databases ?? []) {
-      const databaseNode: TreeItem = {
+      databaseNodesById.set(database.id, {
         id: `database:${database.id}`,
         label: database.name,
         emoji: getDatabaseEmoji(database),
         icon: 'database',
         children: [],
-        section: parentNode.section,
+        section: workspace.isTeamspace ? 'teamspace' : 'private',
         targetPath: `/database/${database.id}`,
-      };
+      });
 
-      databaseNodesById.set(database.id, databaseNode);
-
-      for (const row of [...database.rows].sort((first, second) => first.position - second.position)) {
-        const rowNode = nodesById.get(row.pageId);
-
-        if (rowNode && rowNode.id !== parentNode.id) {
-          databaseNode.children.push(rowNode);
-        }
+      if (!databasePlacementIds.has(database.id)) {
+        standaloneDatabaseHostPageIds.add(workspace.id);
       }
-
-      parentNode.children.push(databaseNode);
     }
   }
 
-  for (const workspace of orderedWorkspaces) {
-    const node = nodesById.get(workspace.id);
+  const buildWorkspaceNode = (
+    workspaceId: string,
+    nodeId: string,
+    visitedIds: Set<string>
+  ): TreeItem | null => {
+    const baseNode = baseNodesById.get(workspaceId);
 
-    if (!node) {
-      continue;
+    if (!baseNode) {
+      return null;
     }
 
-    const parentItemId = readParentItemId(workspace.metadata);
-    const parent = parentItemId ? nodesById.get(parentItemId) : null;
-
-    if (rowPageIds.has(workspace.id)) {
-      continue;
+    if (visitedIds.has(workspaceId)) {
+      return { ...baseNode, id: nodeId, children: [] };
     }
 
-    if (parent && parent.id !== node.id) {
-      parent.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
+    const nextVisitedIds = new Set(visitedIds);
+    nextVisitedIds.add(workspaceId);
 
-  for (const workspace of orderedWorkspaces) {
-    const node = nodesById.get(workspace.id);
+    return {
+      ...baseNode,
+      id: nodeId,
+      children: (placementsByWorkspaceParent.get(workspaceId) ?? []).flatMap((placement) => {
+        if (placement.itemKind === 'workspace') {
+          const child = buildWorkspaceNode(
+            placement.itemId,
+            placement.id,
+            nextVisitedIds
+          );
 
-    if (!node) {
-      continue;
-    }
-
-    const existingChildIds = new Set(node.children.map((page) => page.id));
-
-    for (const linkedItem of readLinkedItems(workspace.metadata)) {
-      if (linkedItem.kind === 'workspace') {
-        const linkedPage = nodesById.get(linkedItem.id);
-
-        if (!linkedPage || linkedPage.id === node.id || existingChildIds.has(linkedPage.id)) {
-          continue;
+          return child ? [child] : [];
         }
 
-        node.children.push(cloneLinkedTreeNode(linkedPage, new Set([node.id])));
-        existingChildIds.add(linkedPage.id);
+        const child = buildDatabaseNode(placement.itemId, placement.id, nextVisitedIds);
+
+        return child ? [child] : [];
+      }),
+    };
+  };
+
+  const buildDatabaseNode = (
+    databaseId: string,
+    nodeId: string,
+    visitedIds: Set<string>
+  ): TreeItem | null => {
+    const baseNode = databaseNodesById.get(databaseId);
+
+    if (!baseNode) {
+      return null;
+    }
+
+    return {
+      ...baseNode,
+      id: nodeId,
+      children: (placementsByDatabaseParent.get(databaseId) ?? []).flatMap((placement) => {
+        if (placement.itemKind !== 'workspace') {
+          return [];
+        }
+
+        const child = buildWorkspaceNode(placement.itemId, placement.id, visitedIds);
+
+        return child ? [child] : [];
+      }),
+    };
+  };
+
+  const placedWorkspaceIds = new Set(
+    placements
+      .filter((placement) => placement.itemKind === 'workspace')
+      .map((placement) => placement.itemId)
+  );
+  const roots = orderedWorkspaces.flatMap((workspace) => {
+    if (placedWorkspaceIds.has(workspace.id) || standaloneDatabaseHostPageIds.has(workspace.id)) {
+      return [];
+    }
+
+    const node = buildWorkspaceNode(workspace.id, workspace.id, new Set());
+
+    return node ? [node] : [];
+  });
+
+  for (const workspace of orderedWorkspaces) {
+    for (const database of workspace.databases ?? []) {
+      if (databasePlacementIds.has(database.id)) {
         continue;
       }
 
-      const linkedDatabase = databaseNodesById.get(linkedItem.id);
+      const node = buildDatabaseNode(
+        database.id,
+        `standalone-database:${database.id}`,
+        new Set()
+      );
 
-      if (!linkedDatabase || existingChildIds.has(linkedDatabase.id)) {
-        continue;
+      if (node) {
+        roots.push(node);
       }
-
-      node.children.push(cloneLinkedTreeNode(linkedDatabase, new Set([node.id])));
-      existingChildIds.add(linkedDatabase.id);
     }
   }
 
@@ -391,18 +428,28 @@ function buildWorkspaceSections(workspaces: Workspace[]) {
   return { privateItems, teamspaceItems };
 }
 
-function cloneLinkedTreeNode(node: TreeItem, visitedIds: Set<string>): TreeItem {
-  if (visitedIds.has(node.id)) {
-    return { ...node, children: [] };
+function groupPlacements(placements: NonNullable<Workspace['navigationPlacements']>) {
+  const grouped = new Map<string, typeof placements>();
+
+  for (const placement of placements) {
+    grouped.set(placement.parentId, [
+      ...(grouped.get(placement.parentId) ?? []),
+      placement,
+    ]);
   }
 
-  const nextVisitedIds = new Set(visitedIds);
-  nextVisitedIds.add(node.id);
+  for (const [parentId, parentPlacements] of grouped) {
+    grouped.set(
+      parentId,
+      [...parentPlacements].sort((first, second) =>
+        first.position === second.position
+          ? first.id.localeCompare(second.id)
+          : first.position - second.position
+      )
+    );
+  }
 
-  return {
-    ...node,
-    children: node.children.map((child) => cloneLinkedTreeNode(child, nextVisitedIds)),
-  };
+  return grouped;
 }
 
 function getWorkspaceCreatedTime(workspace: Workspace) {

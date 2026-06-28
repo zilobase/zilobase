@@ -38,9 +38,6 @@ import {
 import { getDatabaseEmoji } from "@notelab/features/databases"
 import {
   getWorkspaceEmoji,
-  readDatabaseParentItemId,
-  readLinkedItems,
-  readParentItemId,
   type Workspace,
 } from "@notelab/features/workspaces"
 import {
@@ -405,7 +402,7 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
     (first, second) =>
       getWorkspaceCreatedTime(first) - getWorkspaceCreatedTime(second),
   )
-  const nodesById = new Map(
+  const baseNodesById = new Map(
     orderedWorkspaces.map((workspace) => [
       workspace.id,
       {
@@ -421,125 +418,226 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
       },
     ]),
   )
-  const roots: WorkspaceNavItem[] = []
+  const placements = workspaces[0]?.navigationPlacements ?? []
+  const placementsByWorkspaceParent = groupPlacements(
+    placements.filter((placement) => placement.parentKind === "workspace"),
+  )
   const databaseNodesById = new Map<string, WorkspaceNavItem>()
   const standaloneDatabaseHostPageIds = new Set<string>()
   const standaloneDatabaseNodes: WorkspaceNavItem[] = []
+  const databasePlacementIds = new Set(
+    placements
+      .filter(
+        (placement) =>
+          placement.itemKind === "database" && placement.parentKind === "workspace",
+      )
+      .map((placement) => placement.itemId),
+  )
+  const databaseRowWorkspaceIds = new Set(
+    placements
+      .filter(
+        (placement) =>
+          placement.itemKind === "workspace" &&
+          placement.placementKind === "database_row",
+      )
+      .map((placement) => placement.itemId),
+  )
 
   for (const workspace of orderedWorkspaces) {
-    const parentNode = nodesById.get(workspace.id)
-
-    if (!parentNode) {
-      continue
-    }
-
     for (const database of workspace.databases ?? []) {
-      const databaseNode: WorkspaceNavItem = {
-        databaseId: database.id,
-        id: `database:${database.id}`,
-        isDatabase: true,
-        isFavorite: Boolean(database.isFavorite),
-        isTeamspace: Boolean(workspace.isTeamspace),
-        name: database.name,
-        emoji: getDatabaseIcon(database),
-        workspaceId: database.pageId,
-        pages: [],
-      }
+      databaseNodesById.set(database.id, createDatabaseNode(database, workspace))
 
-      databaseNodesById.set(database.id, databaseNode)
-
-      for (const view of [...(database.views ?? [])].sort(
-        (first, second) => first.position - second.position,
-      )) {
-        databaseNode.pages.push({
-          databaseId: database.id,
-          databaseViewId: view.id,
-          id: `database-view:${view.id}`,
-          isDatabaseView: true,
-          isTeamspace: Boolean(workspace.isTeamspace),
-          name: view.name,
-          emoji: getDatabaseViewIcon(view),
-          workspaceId: database.pageId,
-          pages: [],
-        })
-      }
-
-      const databaseParentItemId = readDatabaseParentItemId(database.config)
-
-      if (!databaseParentItemId) {
+      if (
+        !databasePlacementIds.has(database.id) &&
+        !hasWorkspaceChildPlacements(placementsByWorkspaceParent, workspace.id)
+      ) {
         standaloneDatabaseHostPageIds.add(workspace.id)
-        standaloneDatabaseNodes.push(databaseNode)
-        continue
       }
-
-      parentNode.pages.push(databaseNode)
     }
   }
 
-  for (const workspace of orderedWorkspaces) {
-    const node = nodesById.get(workspace.id)
+  const buildDatabaseNode = (
+    databaseId: string,
+    navNodeId: string,
+    isLinked = false,
+  ): WorkspaceNavItem | null => {
+    const baseNode = databaseNodesById.get(databaseId)
 
-    if (!node) {
-      continue
+    if (!baseNode) {
+      return null
     }
 
-    if (standaloneDatabaseHostPageIds.has(workspace.id)) {
-      continue
-    }
-
-    const parentItemId = readParentItemId(workspace.metadata)
-    const parent = parentItemId ? nodesById.get(parentItemId) : null
-
-    if (parent && parent.id !== node.id) {
-      parent.pages.push(node)
-    } else {
-      roots.push(node)
+    return {
+      ...baseNode,
+      isLinked,
+      navNodeId,
+      pages: baseNode.pages,
     }
   }
 
-  roots.push(...standaloneDatabaseNodes)
+  const buildWorkspaceNode = (
+    workspaceId: string,
+    navNodeId: string,
+    visitedIds: Set<string>,
+    isLinked = false,
+  ): WorkspaceNavItem | null => {
+    const baseNode = baseNodesById.get(workspaceId)
 
-  for (const workspace of orderedWorkspaces) {
-    const node = nodesById.get(workspace.id)
-
-    if (!node) {
-      continue
+    if (!baseNode) {
+      return null
     }
 
-    const existingChildIds = new Set(node.pages.map((page) => page.id))
+    if (visitedIds.has(workspaceId)) {
+      return { ...baseNode, isLinked: true, navNodeId, pages: [] }
+    }
 
-    for (const linkedItem of readLinkedItems(workspace.metadata)) {
-      if (linkedItem.kind === "workspace") {
-        const linkedPage = nodesById.get(linkedItem.id)
+    const nextVisitedIds = new Set(visitedIds)
+    nextVisitedIds.add(workspaceId)
+    const childPlacements = placementsByWorkspaceParent.get(workspaceId) ?? []
 
-        if (
-          !linkedPage ||
-          linkedPage.id === node.id ||
-          existingChildIds.has(linkedPage.id)
-        ) {
-          continue
+    return {
+      ...baseNode,
+      isLinked,
+      navNodeId,
+      pages: childPlacements.flatMap((placement) => {
+        if (placement.itemKind === "workspace") {
+          if (placement.itemId === workspaceId) {
+            return []
+          }
+
+          const child = buildWorkspaceNode(
+            placement.itemId,
+            placement.id,
+            nextVisitedIds,
+            placement.placementKind !== "primary" ||
+              databaseRowWorkspaceIds.has(placement.itemId),
+          )
+
+          return child ? [child] : []
         }
 
-        node.pages.push(cloneLinkedTreeNode(linkedPage, new Set([node.id])))
-        existingChildIds.add(linkedPage.id)
-        continue
-      }
+        const child = buildDatabaseNode(
+          placement.itemId,
+          placement.id,
+          placement.placementKind !== "primary",
+        )
 
-      const linkedDatabase = databaseNodesById.get(linkedItem.id)
-
-      if (!linkedDatabase || existingChildIds.has(linkedDatabase.id)) {
-        continue
-      }
-
-      node.pages.push(cloneLinkedTreeNode(linkedDatabase, new Set([node.id])))
-      existingChildIds.add(linkedDatabase.id)
+        return child ? [child] : []
+      }),
     }
   }
+
+  for (const workspace of orderedWorkspaces) {
+    for (const database of workspace.databases ?? []) {
+      if (databasePlacementIds.has(database.id)) {
+        continue
+      }
+
+      const databaseNode = buildDatabaseNode(
+        database.id,
+        `standalone-database:${database.id}`,
+      )
+
+      if (databaseNode) {
+        standaloneDatabaseNodes.push(databaseNode)
+      }
+    }
+  }
+
+  const placedWorkspaceIds = new Set(
+    placements
+      .filter((placement) => placement.itemKind === "workspace")
+      .map((placement) => placement.itemId),
+  )
+  const roots = orderedWorkspaces.flatMap((workspace) => {
+    if (
+      placedWorkspaceIds.has(workspace.id) ||
+      standaloneDatabaseHostPageIds.has(workspace.id)
+    ) {
+      return []
+    }
+
+    const node = buildWorkspaceNode(workspace.id, workspace.id, new Set())
+
+    return node ? [node] : []
+  })
+
+  roots.push(...standaloneDatabaseNodes)
 
   return {
     privateWorkspaces: roots.filter((workspace) => !workspace.isTeamspace),
     teamspaceWorkspaces: roots.filter((workspace) => workspace.isTeamspace),
   }
+}
+
+function createDatabaseNode(
+  database: NonNullable<Workspace["databases"]>[number],
+  workspace: Workspace,
+): WorkspaceNavItem {
+  return {
+    databaseId: database.id,
+    id: `database:${database.id}`,
+    isDatabase: true,
+    isFavorite: Boolean(database.isFavorite),
+    isTeamspace: Boolean(workspace.isTeamspace),
+    name: database.name,
+    emoji: getDatabaseIcon(database),
+    workspaceId: database.pageId,
+    pages: [...(database.views ?? [])]
+      .sort((first, second) => first.position - second.position)
+      .map((view) => ({
+        databaseId: database.id,
+        databaseViewId: view.id,
+        id: `database-view:${view.id}`,
+        isDatabaseView: true,
+        isTeamspace: Boolean(workspace.isTeamspace),
+        name: view.name,
+        emoji: getDatabaseViewIcon(view),
+        workspaceId: database.pageId,
+        navNodeId: `database-view:${database.id}:${view.id}`,
+        pages: [],
+      })),
+  }
+}
+
+function groupPlacements(
+  placements: NonNullable<Workspace["navigationPlacements"]>,
+) {
+  const grouped = new Map<string, typeof placements>()
+
+  for (const placement of placements) {
+    grouped.set(placement.parentId, [
+      ...(grouped.get(placement.parentId) ?? []),
+      placement,
+    ])
+  }
+
+  for (const [parentId, parentPlacements] of grouped) {
+    grouped.set(
+      parentId,
+      [...parentPlacements].sort((first, second) => {
+        if (first.position !== second.position) {
+          return first.position - second.position
+        }
+
+        return first.id.localeCompare(second.id)
+      }),
+    )
+  }
+
+  return grouped
+}
+
+function hasWorkspaceChildPlacements(
+  placementsByWorkspaceParent: Map<
+    string,
+    NonNullable<Workspace["navigationPlacements"]>
+  >,
+  workspaceId: string,
+) {
+  return (placementsByWorkspaceParent.get(workspaceId) ?? []).some(
+    (placement) => placement.itemKind === "workspace",
+  )
 }
 
 function buildFavoriteTreeItems(items: WorkspaceNavItem[]) {
@@ -618,23 +716,4 @@ function getDatabaseViewIcon(view: { type?: string | null }) {
   ) : (
     <Table2 className="size-4" />
   )
-}
-
-function cloneLinkedTreeNode(
-  node: WorkspaceNavItem,
-  visitedIds: Set<string>,
-): WorkspaceNavItem {
-  if (visitedIds.has(node.id)) {
-    return { ...node, isLinked: true, pages: [] }
-  }
-
-  const nextVisitedIds = new Set(visitedIds)
-
-  nextVisitedIds.add(node.id)
-
-  return {
-    ...node,
-    isLinked: true,
-    pages: node.pages.map((page) => cloneLinkedTreeNode(page, nextVisitedIds)),
-  }
 }

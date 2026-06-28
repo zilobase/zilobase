@@ -29,6 +29,7 @@ export type WorkspaceNavItem = {
   isLinked?: boolean
   isTeamspace: boolean
   name: string
+  navNodeId?: string
   emoji: ReactNode
   notelabai?: NotelabAiMode | null
   workspaceId: string
@@ -89,7 +90,7 @@ export function NavTree({
       getLinkProps={getLinkProps}
       isRoot
       item={item}
-      key={item.id}
+      key={item.navNodeId ?? item.id}
       renderItemMenu={renderItemMenu}
     />
   ))
@@ -211,7 +212,7 @@ function NavTreeItem({
                   defaultDatabaseViewIds={defaultDatabaseViewIds}
                   getLinkProps={getLinkProps}
                   item={page}
-                  key={page.id}
+                  key={page.navNodeId ?? page.id}
                   renderItemMenu={renderItemMenu}
                 />
               ))}
@@ -325,7 +326,7 @@ function getIsActiveNavItem({
     return activeDatabaseId === item.databaseId && item.pages.length === 0
   }
 
-  return activeWorkspaceId === item.id
+  return activeWorkspaceId === item.workspaceId
 }
 
 function getDefaultDatabaseViewIds(items: WorkspaceNavItem[]) {
