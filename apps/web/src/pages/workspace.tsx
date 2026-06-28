@@ -24,6 +24,7 @@ import {
   useUpdateWorkspace,
   useCreateWorkspace,
   useEmbedWorkspaceItem,
+  useRemoveWorkspaceEmbed,
   useWorkspace,
   useWorkspaceAccessLevel,
 } from "@notelab/features/workspaces"
@@ -309,9 +310,11 @@ export function WorkspaceEditorPane({
   const { data: userSettings } = useUserSettings()
   const createWorkspace = useCreateWorkspace()
   const embedWorkspaceItem = useEmbedWorkspaceItem()
+  const removeWorkspaceEmbed = useRemoveWorkspaceEmbed()
   const updateWorkspace = useUpdateWorkspace()
   const contentSaveTimeoutRef = useRef<number | null>(null)
   const lastSavedContentRef = useRef<string | null>(null)
+  const lastPageBlockIdsRef = useRef<Set<string>>(new Set())
   const pendingContentRef = useRef<unknown>(null)
   const editorContentRef = useRef<(() => unknown) | null>(null)
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null)
@@ -455,6 +458,20 @@ export function WorkspaceEditorPane({
         lastSavedContentRef.current = serializedContent
       }
 
+      const nextPageBlockIds = extractPageBlockIds(content)
+      const removedPageBlockIds = [...lastPageBlockIdsRef.current].filter(
+        (pageId) => !nextPageBlockIds.has(pageId),
+      )
+
+      lastPageBlockIdsRef.current = nextPageBlockIds
+      for (const pageId of removedPageBlockIds) {
+        removeWorkspaceEmbed.mutate({
+          hostWorkspaceId: workspace.id,
+          itemId: pageId,
+          kind: "workspace",
+        })
+      }
+
       clearContentSaveTimeout()
       pendingContentRef.current = content
 
@@ -468,6 +485,7 @@ export function WorkspaceEditorPane({
       accessLevel,
       clearContentSaveTimeout,
       readOnly,
+      removeWorkspaceEmbed,
       updateWorkspace,
       workspace,
     ],
@@ -563,6 +581,9 @@ export function WorkspaceEditorPane({
           lastSavedContentRef.current = editor
             ? serializeWorkspaceContent(editor.getJSON())
             : null
+          lastPageBlockIdsRef.current = editor
+            ? extractPageBlockIds(editor.getJSON())
+            : new Set()
         }}
         emoji={emoji}
         fullWidth={fullWidth}
@@ -621,4 +642,39 @@ function serializeWorkspaceContent(content: unknown) {
   } catch {
     return null
   }
+}
+
+function extractPageBlockIds(content: unknown) {
+  const pageIds = new Set<string>()
+  collectPageBlockIds(content, pageIds)
+  return pageIds
+}
+
+function collectPageBlockIds(value: unknown, pageIds: Set<string>) {
+  if (!value || typeof value !== "object") {
+    return
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectPageBlockIds(item, pageIds)
+    }
+    return
+  }
+
+  const record = value as {
+    attrs?: { pageId?: unknown }
+    content?: unknown
+    type?: unknown
+  }
+
+  if (
+    record.type === "pageBlock" &&
+    typeof record.attrs?.pageId === "string" &&
+    record.attrs.pageId.length > 0
+  ) {
+    pageIds.add(record.attrs.pageId)
+  }
+
+  collectPageBlockIds(record.content, pageIds)
 }
