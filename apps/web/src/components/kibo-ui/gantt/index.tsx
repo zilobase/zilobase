@@ -101,11 +101,13 @@ export type GanttContextProps = {
   sidebarWidth: number;
   headerHeight: number;
   rowHeight: number;
+  hideHeaderTitle: boolean;
   onAddItem: ((date: Date) => void) | undefined;
   placeholderLength: number;
   timelineData: TimelineData;
   ref: RefObject<HTMLDivElement | null> | null;
   scrollToFeature?: (feature: GanttFeature) => void;
+  scrollToDate?: (date: Date) => void;
 };
 
 const getsDaysIn = (range: Range) => {
@@ -169,20 +171,26 @@ const getAddRange = (range: Range) => {
   return fn;
 };
 
-const getDateByMousePosition = (context: GanttContextProps, mouseX: number) => {
+export const getDateByTimelinePosition = (
+  context: GanttContextProps,
+  timelineX: number
+) => {
   const timelineStartDate = new Date(context.timelineData[0].year, 0, 1);
   const columnWidth = (context.columnWidth * context.zoom) / 100;
-  const offset = Math.floor(mouseX / columnWidth);
+  const offset = Math.floor(timelineX / columnWidth);
   const daysIn = getsDaysIn(context.range);
   const addRange = getAddRange(context.range);
   const month = addRange(timelineStartDate, offset);
   const daysInMonth = daysIn(month);
   const pixelsPerDay = Math.round(columnWidth / daysInMonth);
-  const dayOffset = Math.floor((mouseX % columnWidth) / pixelsPerDay);
+  const dayOffset = Math.floor((timelineX % columnWidth) / pixelsPerDay);
   const actualDate = addDays(month, dayOffset);
 
   return actualDate;
 };
+
+const getDateByMousePosition = (context: GanttContextProps, mouseX: number) =>
+  getDateByTimelinePosition(context, mouseX);
 
 const createInitialTimelineData = (today: Date) => {
   const data: TimelineData = [];
@@ -290,18 +298,20 @@ const calculateInnerOffset = (
   return (dayOfMonth / totalRangeDays) * columnWidth;
 };
 
-const GanttContext = createContext<GanttContextProps>({
+export const GanttContext = createContext<GanttContextProps>({
   zoom: 100,
   range: "monthly",
   columnWidth: 50,
   headerHeight: 60,
   sidebarWidth: 300,
   rowHeight: 36,
+  hideHeaderTitle: false,
   onAddItem: undefined,
   placeholderLength: 2,
   timelineData: [],
   ref: null,
   scrollToFeature: undefined,
+  scrollToDate: undefined,
 });
 
 export type GanttContentHeaderProps = {
@@ -316,31 +326,34 @@ export const GanttContentHeader: FC<GanttContentHeaderProps> = ({
   renderHeaderItem,
 }) => {
   const id = useId();
+  const gantt = useContext(GanttContext);
 
   return (
     <div
-      className="sticky top-0 z-20 grid w-full shrink-0 bg-backdrop/90 backdrop-blur-sm"
+      className="gantt-content-header sticky top-0 z-20 flex w-full shrink-0 flex-col border-border/50 border-b bg-background"
       style={{ height: "var(--gantt-header-height)" }}
     >
-      <div>
-        <div
-          className="sticky inline-flex whitespace-nowrap px-3 py-2 text-muted-foreground text-xs"
-          style={{
-            left: "var(--gantt-sidebar-width)",
-          }}
-        >
-          <p>{title}</p>
+      {!gantt.hideHeaderTitle ? (
+        <div className="gantt-content-header-title shrink-0">
+          <div
+            className="sticky inline-flex whitespace-nowrap px-3 py-2 text-muted-foreground text-xs"
+            style={{
+              left: "var(--gantt-sidebar-width)",
+            }}
+          >
+            <p>{title}</p>
+          </div>
         </div>
-      </div>
+      ) : null}
       <div
-        className="grid w-full"
+        className="grid h-full min-h-0 w-full flex-1"
         style={{
           gridTemplateColumns: `repeat(${columns}, var(--gantt-column-width))`,
         }}
       >
         {Array.from({ length: columns }).map((_, index) => (
           <div
-            className="shrink-0 border-border/50 border-b py-1 text-center text-xs"
+            className="flex h-full shrink-0 items-center justify-center border-border/50 border-r py-0 text-center text-xs last:border-r-0"
             key={`${id}-${index}`}
           >
             {renderHeaderItem(index)}
@@ -351,49 +364,86 @@ export const GanttContentHeader: FC<GanttContentHeaderProps> = ({
   );
 };
 
-const DailyHeader: FC = () => {
+type GanttHeaderVariant = "full" | "dates" | "grid";
+
+const DailyHeader: FC<{ variant?: GanttHeaderVariant }> = ({
+  variant = "full",
+}) => {
   const gantt = useContext(GanttContext);
+  const showDates = variant === "full" || variant === "dates";
+  const showGrid = variant === "full" || variant === "grid";
 
   return gantt.timelineData.map((year) =>
     year.quarters
       .flatMap((quarter) => quarter.months)
       .map((month, index) => (
-        <div className="relative flex flex-col" key={`${year.year}-${index}`}>
-          <GanttContentHeader
-            columns={month.days}
-            renderHeaderItem={(item: number) => (
-              <div className="flex items-center justify-center gap-1">
-                <p>
-                  {format(addDays(new Date(year.year, index, 1), item), "d")}
-                </p>
-                <p className="text-muted-foreground">
-                  {format(
-                    addDays(new Date(year.year, index, 1), item),
-                    "EEEEE"
-                  )}
-                </p>
-              </div>
-            )}
-            title={format(new Date(year.year, index, 1), "MMMM yyyy")}
-          />
-          <GanttColumns
-            columns={month.days}
-            isColumnSecondary={(item: number) =>
-              [0, 6].includes(
-                addDays(new Date(year.year, index, 1), item).getDay()
-              )
-            }
-          />
+        <div
+          className={cn(
+            "relative flex min-h-0 flex-col",
+            variant === "dates" ? "shrink-0" : "flex-1"
+          )}
+          key={`${year.year}-${index}`}
+          style={
+            variant === "dates"
+              ? { height: "var(--gantt-header-height)" }
+              : undefined
+          }
+        >
+          {showDates ? (
+            <GanttContentHeader
+              columns={month.days}
+              renderHeaderItem={(item: number) => (
+                <div className="flex items-center justify-center gap-1">
+                  <p>
+                    {format(addDays(new Date(year.year, index, 1), item), "d")}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {format(
+                      addDays(new Date(year.year, index, 1), item),
+                      "EEEEE"
+                    )}
+                  </p>
+                </div>
+              )}
+              title={format(new Date(year.year, index, 1), "MMMM yyyy")}
+            />
+          ) : null}
+          {showGrid ? (
+            <GanttColumns
+              columns={month.days}
+              isColumnSecondary={(item: number) =>
+                [0, 6].includes(
+                  addDays(new Date(year.year, index, 1), item).getDay()
+                )
+              }
+            />
+          ) : null}
         </div>
       ))
   );
 };
 
-const MonthlyHeader: FC = () => {
+const MonthlyHeader: FC<{ variant?: GanttHeaderVariant }> = ({
+  variant = "full",
+}) => {
   const gantt = useContext(GanttContext);
+  const showDates = variant === "full" || variant === "dates";
+  const showGrid = variant === "full" || variant === "grid";
 
   return gantt.timelineData.map((year) => (
-    <div className="relative flex flex-col" key={year.year}>
+    <div
+      className={cn(
+        "relative flex min-h-0 flex-col",
+        variant === "dates" ? "shrink-0" : "flex-1"
+      )}
+      key={year.year}
+      style={
+        variant === "dates"
+          ? { height: "var(--gantt-header-height)" }
+          : undefined
+      }
+    >
+      {showDates ? (
       <GanttContentHeader
         columns={year.quarters.flatMap((quarter) => quarter.months).length}
         renderHeaderItem={(item: number) => (
@@ -401,22 +451,38 @@ const MonthlyHeader: FC = () => {
         )}
         title={`${year.year}`}
       />
+      ) : null}
+      {showGrid ? (
       <GanttColumns
         columns={year.quarters.flatMap((quarter) => quarter.months).length}
       />
+      ) : null}
     </div>
   ));
 };
 
-const QuarterlyHeader: FC = () => {
+const QuarterlyHeader: FC<{ variant?: GanttHeaderVariant }> = ({
+  variant = "full",
+}) => {
   const gantt = useContext(GanttContext);
+  const showDates = variant === "full" || variant === "dates";
+  const showGrid = variant === "full" || variant === "grid";
 
   return gantt.timelineData.map((year) =>
     year.quarters.map((quarter, quarterIndex) => (
       <div
-        className="relative flex flex-col"
+        className={cn(
+          "relative flex min-h-0 flex-col",
+          variant === "dates" ? "shrink-0" : "flex-1"
+        )}
         key={`${year.year}-${quarterIndex}`}
+        style={
+          variant === "dates"
+            ? { height: "var(--gantt-header-height)" }
+            : undefined
+        }
       >
+        {showDates ? (
         <GanttContentHeader
           columns={quarter.months.length}
           renderHeaderItem={(item: number) => (
@@ -426,13 +492,14 @@ const QuarterlyHeader: FC = () => {
           )}
           title={`Q${quarterIndex + 1} ${year.year}`}
         />
-        <GanttColumns columns={quarter.months.length} />
+        ) : null}
+        {showGrid ? <GanttColumns columns={quarter.months.length} /> : null}
       </div>
     ))
   );
 };
 
-const headers: Record<Range, FC> = {
+const headers: Record<Range, FC<{ variant?: GanttHeaderVariant }>> = {
   daily: DailyHeader,
   monthly: MonthlyHeader,
   quarterly: QuarterlyHeader,
@@ -440,20 +507,25 @@ const headers: Record<Range, FC> = {
 
 export type GanttHeaderProps = {
   className?: string;
+  variant?: GanttHeaderVariant;
 };
 
-export const GanttHeader: FC<GanttHeaderProps> = ({ className }) => {
+export const GanttHeader: FC<GanttHeaderProps> = ({
+  className,
+  variant = "full",
+}) => {
   const gantt = useContext(GanttContext);
   const Header = headers[gantt.range];
 
   return (
     <div
       className={cn(
-        "-space-x-px flex h-full w-max divide-x divide-border/50",
+        "-space-x-px flex w-max divide-x divide-border/50",
+        variant === "dates" ? "h-[var(--gantt-header-height)] shrink-0" : "h-full",
         className
       )}
     >
-      <Header />
+      <Header variant={variant} />
     </div>
   );
 };
@@ -683,7 +755,7 @@ export const GanttColumns: FC<GanttColumnsProps> = ({
 
   return (
     <div
-      className="divide grid h-full w-full divide-x divide-border/50"
+      className="gantt-columns grid min-h-0 w-full flex-1 divide-x divide-border/50"
       style={{
         gridTemplateColumns: `repeat(${columns}, var(--gantt-column-width))`,
       }}
@@ -838,12 +910,14 @@ export type GanttFeatureItemProps = GanttFeature & {
   onMove?: (id: string, startDate: Date, endDate: Date | null) => void;
   children?: ReactNode;
   className?: string;
+  stacked?: boolean;
 };
 
 export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
   onMove,
   children,
   className,
+  stacked = false,
   ...feature
 }) => {
   const [scrollX] = useGanttScrollX();
@@ -923,13 +997,20 @@ export const GanttFeatureItem: FC<GanttFeatureItemProps> = ({
 
   return (
     <div
-      className={cn("relative flex w-max min-w-full py-0.5", className)}
-      style={{ height: "var(--gantt-row-height)" }}
+      className={cn(
+        "relative w-max min-w-full",
+        stacked ? "h-full" : "flex py-0.5",
+        className
+      )}
+      style={stacked ? undefined : { height: "var(--gantt-row-height)" }}
     >
       <div
-        className="pointer-events-auto absolute top-0.5"
+        className={cn(
+          "pointer-events-auto absolute",
+          stacked ? "inset-y-0" : "top-0.5"
+        )}
         style={{
-          height: "calc(var(--gantt-row-height) - 4px)",
+          height: stacked ? "100%" : "calc(var(--gantt-row-height) - 4px)",
           width: Math.round(width),
           left: Math.round(offset),
         }}
@@ -1073,15 +1154,22 @@ export const GanttFeatureRow: FC<GanttFeatureRowProps> = ({
 export type GanttFeatureListProps = {
   className?: string;
   children: ReactNode;
+  stacked?: boolean;
 };
 
 export const GanttFeatureList: FC<GanttFeatureListProps> = ({
   className,
   children,
+  stacked = false,
 }) => (
   <div
-    className={cn("absolute top-0 left-0 h-full w-max space-y-4", className)}
-    style={{ marginTop: "var(--gantt-header-height)" }}
+    className={cn(
+      stacked
+        ? "relative z-10 flex w-max min-w-full flex-col"
+        : "absolute top-0 left-0 h-full w-max space-y-4",
+      className
+    )}
+    style={stacked ? undefined : { marginTop: "var(--gantt-header-height)" }}
   >
     {children}
   </div>
@@ -1164,17 +1252,29 @@ GanttMarker.displayName = "GanttMarker";
 export type GanttProviderProps = {
   range?: Range;
   zoom?: number;
+  headerHeight?: number;
+  rowHeight?: number;
+  hideHeaderTitle?: boolean;
   onAddItem?: (date: Date) => void;
   children: ReactNode;
   className?: string;
+  scrollClassName?: string;
+  style?: CSSProperties;
+  toolbar?: ReactNode;
 };
 
 export const GanttProvider: FC<GanttProviderProps> = ({
   zoom = 100,
   range = "monthly",
+  headerHeight = 60,
+  rowHeight = 36,
+  hideHeaderTitle = false,
   onAddItem,
   children,
   className,
+  scrollClassName,
+  style,
+  toolbar,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [timelineData, setTimelineData] = useState<TimelineData>(
@@ -1182,9 +1282,6 @@ export const GanttProvider: FC<GanttProviderProps> = ({
   );
   const [, setScrollX] = useGanttScrollX();
   const [sidebarWidth, setSidebarWidth] = useState(0);
-
-  const headerHeight = 60;
-  const rowHeight = 36;
   let columnWidth = 50;
 
   if (range === "monthly") {
@@ -1201,9 +1298,10 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         "--gantt-column-width": `${(zoom / 100) * columnWidth}px`,
         "--gantt-header-height": `${headerHeight}px`,
         "--gantt-row-height": `${rowHeight}px`,
-        "--gantt-sidebar-width": `${sidebarWidth}px`,
+        "--gantt-sidebar-width":
+          sidebarWidth > 0 ? `${sidebarWidth}px` : undefined,
       }) as CSSProperties,
-    [zoom, columnWidth, sidebarWidth]
+    [zoom, columnWidth, headerHeight, rowHeight, sidebarWidth]
   );
 
   useEffect(() => {
@@ -1220,8 +1318,16 @@ export const GanttProvider: FC<GanttProviderProps> = ({
       const sidebarElement = scrollRef.current?.querySelector(
         '[data-roadmap-ui="gantt-sidebar"]'
       );
-      const newWidth = sidebarElement ? 300 : 0;
-      setSidebarWidth(newWidth);
+      const measuredWidth = sidebarElement
+        ? Math.round(sidebarElement.getBoundingClientRect().width)
+        : 0;
+      setSidebarWidth((current) => {
+        if (measuredWidth > 0) {
+          return measuredWidth;
+        }
+
+        return current > 0 ? current : 0;
+      });
     };
 
     // Update immediately
@@ -1324,39 +1430,55 @@ export const GanttProvider: FC<GanttProviderProps> = ({
     };
   }, [handleScroll]);
 
-  const scrollToFeature = useCallback(
-    (feature: GanttFeature) => {
+  const scrollToDate = useCallback(
+    (date: Date) => {
       const scrollElement = scrollRef.current;
       if (!scrollElement) {
         return;
       }
 
-      // Calculate timeline start date from timelineData
       const timelineStartDate = new Date(timelineData[0].year, 0, 1);
-
-      // Calculate the horizontal offset for the feature's start date
-      const offset = getOffset(feature.startAt, timelineStartDate, {
+      const offset = getOffset(date, timelineStartDate, {
         zoom,
         range,
         columnWidth,
         sidebarWidth,
         headerHeight,
         rowHeight,
+        hideHeaderTitle,
         onAddItem,
         placeholderLength: 2,
         timelineData,
         ref: scrollRef,
       });
-
-      // Scroll to align the feature's start with the right side of the sidebar
-      const targetScrollLeft = Math.max(0, offset);
+      const targetScrollLeft = Math.max(
+        0,
+        offset - scrollElement.clientWidth / 3
+      );
 
       scrollElement.scrollTo({
         left: targetScrollLeft,
         behavior: "smooth",
       });
     },
-    [timelineData, zoom, range, columnWidth, sidebarWidth, onAddItem]
+    [
+      timelineData,
+      zoom,
+      range,
+      columnWidth,
+      sidebarWidth,
+      headerHeight,
+      rowHeight,
+      hideHeaderTitle,
+      onAddItem,
+    ]
+  );
+
+  const scrollToFeature = useCallback(
+    (feature: GanttFeature) => {
+      scrollToDate(feature.startAt);
+    },
+    [scrollToDate]
   );
 
   return (
@@ -1368,26 +1490,37 @@ export const GanttProvider: FC<GanttProviderProps> = ({
         columnWidth,
         sidebarWidth,
         rowHeight,
+        hideHeaderTitle,
         onAddItem,
         timelineData,
         placeholderLength: 2,
         ref: scrollRef,
         scrollToFeature,
+        scrollToDate,
       }}
     >
       <div
         className={cn(
-          "gantt relative isolate grid h-full w-full flex-none select-none overflow-auto rounded-sm bg-secondary",
+          "gantt flex h-full w-full min-h-0 flex-col rounded-sm bg-secondary",
           range,
           className
         )}
-        ref={scrollRef}
-        style={{
-          ...cssVariables,
-          gridTemplateColumns: "var(--gantt-sidebar-width) 1fr",
-        }}
+        style={cssVariables}
       >
-        {children}
+        {toolbar}
+        <div
+          className={cn(
+            "gantt-scroll relative isolate grid min-h-0 w-full flex-1 select-none overflow-auto",
+            scrollClassName
+          )}
+          ref={scrollRef}
+          style={{
+            gridTemplateColumns: "var(--gantt-sidebar-width) 1fr",
+            ...style,
+          }}
+        >
+          {children}
+        </div>
       </div>
     </GanttContext.Provider>
   );
