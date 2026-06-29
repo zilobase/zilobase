@@ -154,7 +154,7 @@ function buildViewSection(
     lines.push(`  - ${property.property.name} (${getPropertyTypeHint(property)})`)
   }
 
-  if (descriptor.viewType === "kanban") {
+  if (descriptor.viewType === "kanban" || descriptor.viewType === "timeline") {
     const groupPropertyId =
       activeViewConfig &&
       typeof activeViewConfig === "object" &&
@@ -166,6 +166,22 @@ function buildViewSection(
     if (typeof groupPropertyId === "string" && groupPropertyId.length > 0) {
       lines.push(
         `- Group by: ${getPropertyLabel(descriptor.schema, groupPropertyId)}`,
+      )
+    }
+  }
+
+  if (descriptor.viewType === "timeline") {
+    const datePropertyId =
+      activeViewConfig &&
+      typeof activeViewConfig === "object" &&
+      !Array.isArray(activeViewConfig) &&
+      "datePropertyId" in activeViewConfig
+        ? (activeViewConfig as { datePropertyId?: unknown }).datePropertyId
+        : undefined
+
+    if (typeof datePropertyId === "string" && datePropertyId.length > 0) {
+      lines.push(
+        `- Date by: ${getPropertyLabel(descriptor.schema, datePropertyId)}`,
       )
     }
   }

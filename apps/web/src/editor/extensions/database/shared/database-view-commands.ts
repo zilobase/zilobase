@@ -18,8 +18,13 @@ import type {
 import { defaultStatusOptions } from "../constants"
 import {
   canUpdateKanbanGroupProperty,
+  getKanbanGroupPropertyId,
   type DatabasePropertyListItem,
 } from "../kanban/database-kanban-config"
+import {
+  ganttMoveToDateValue,
+  getTimelineDateProperty,
+} from "../timeline/database-timeline-config"
 import { serializePropertyValue, type DatabasePropertyValue } from "../utils"
 import {
   areSerializedPropertyValuesEqual,
@@ -59,6 +64,7 @@ export function getDatabaseViewCommands({
   isKanbanView,
   items,
   kanbanGroupProperty,
+  timelineDateProperty = null,
   mutations,
   payload,
   properties,
@@ -76,6 +82,7 @@ export function getDatabaseViewCommands({
   isKanbanView: boolean
   items: DatabaseRow[]
   kanbanGroupProperty: DatabasePropertyListItem | null
+  timelineDateProperty: DatabasePropertyListItem | null
   mutations: DatabaseMutations
   payload: DatabasePayload | null | undefined
   properties: DatabaseProperty[]
@@ -94,6 +101,14 @@ export function getDatabaseViewCommands({
     updateProperty,
     updateValue,
   } = mutations
+  const { ensureTimelineDatePropertyId } = getDatabaseViewCommandsContext({
+    addProperty,
+    databaseId,
+    editable,
+    payload,
+    properties,
+    timelineDateProperty,
+  })
 
   const saveDatabaseSorts = (nextSorts: DatabaseSortConfig[]) => {
     if (!databaseId || !activeView?.id) {
@@ -335,6 +350,81 @@ export function getDatabaseViewCommands({
 
       addView("name", [])
     },
+    addTimelineRow: (startAt: Date) => {
+      if (
+        !editable ||
+        !databaseId ||
+        !timelineDateProperty ||
+        addRow.isPending
+      ) {
+        return
+      }
+
+      const existingItemIds = new Set(items.map((row) => row.id))
+
+      addRow.mutate(
+        {
+          databaseId,
+          title: "Untitled",
+        },
+        {
+          onSuccess: (nextPayload) => {
+            const addedItem =
+              nextPayload.rows.find((row) => !existingItemIds.has(row.id)) ??
+              nextPayload.rows.at(-1)
+
+            if (!addedItem) {
+              return
+            }
+
+            updateValue.mutate({
+              databaseId,
+              propertyId: timelineDateProperty.property.id,
+              rowId: addedItem.id,
+              value: ganttMoveToDateValue(startAt, null),
+            })
+          },
+        }
+      )
+    },
+    addTimelineView: () => {
+      if (!databaseId || addDatabaseView.isPending || addProperty.isPending) {
+        return
+      }
+
+      const existingViewIds = new Set(
+        (payload?.views ?? []).map((view) => view.id)
+      )
+
+      ensureTimelineDatePropertyId((datePropertyId) => {
+        const currentProperties = payload?.properties ?? properties
+        const groupPropertyId = getTimelineGroupPropertyId(currentProperties)
+
+        addDatabaseView.mutate(
+          {
+            config: {
+              datePropertyId,
+              ...(groupPropertyId ? { groupPropertyId } : {}),
+            },
+            databaseId,
+            name: "Timeline",
+            type: "timeline",
+          },
+          {
+            onSuccess: (nextPayload) => {
+              const addedView =
+                nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
+                nextPayload.views.at(-1)
+
+              setActiveViewId(addedView?.id ?? null)
+            },
+            onError: () => {
+              toast.error("Couldn't add timeline view")
+            },
+          }
+        )
+      })
+    },
     addTableView: () => {
       if (!databaseId || addDatabaseView.isPending) {
         return
@@ -392,6 +482,19 @@ export function getDatabaseViewCommands({
       updateDatabaseView.mutate({
         config: getMergedDatabaseConfig(activeView.config, {
           groupPropertyId: groupPropertyId ?? undefined,
+        }),
+        databaseId,
+        databaseViewId: activeView.id,
+      })
+    },
+    setViewDateProperty: (datePropertyId: string | null) => {
+      if (!databaseId || !activeView?.id) {
+        return
+      }
+
+      updateDatabaseView.mutate({
+        config: getMergedDatabaseConfig(activeView.config, {
+          datePropertyId: datePropertyId ?? undefined,
         }),
         databaseId,
         databaseViewId: activeView.id,
@@ -502,8 +605,28 @@ export function getDatabaseViewCommands({
         name: nextTitle,
       })
     },
-    setViewType: (type: "table" | "kanban") => {
+    setViewType: (type: "table" | "kanban" | "timeline") => {
       if (!databaseId || !activeView?.id || type === activeView.type) {
+        return
+      }
+
+      if (type === "timeline") {
+        ensureTimelineDatePropertyId((datePropertyId) => {
+          const groupPropertyId =
+            getKanbanGroupPropertyId(activeView.config) ??
+            getTimelineGroupPropertyId(properties) ??
+            undefined
+
+          updateDatabaseView.mutate({
+            config: getMergedDatabaseConfig(activeView.config, {
+              datePropertyId,
+              ...(groupPropertyId ? { groupPropertyId } : {}),
+            }),
+            databaseId,
+            databaseViewId: activeView.id,
+            type,
+          })
+        })
         return
       }
 
@@ -634,6 +757,81 @@ export function getDatabaseViewCommands({
             values: patch.values ?? filter.values,
           }
         })
+      )
+    },
+  }
+}
+
+function getTimelineGroupPropertyId(currentProperties: DatabaseProperty[]) {
+  const groupProperty =
+    currentProperties.find((property) => property.property.type === "status") ??
+    currentProperties.find((property) => property.property.type === "select") ??
+    currentProperties.find(
+      (property) => property.property.type === "multi_select"
+    ) ??
+    currentProperties[0] ??
+    null
+
+  return groupProperty?.property.id
+}
+
+function getDatabaseViewCommandsContext({
+  addProperty,
+  databaseId,
+  editable,
+  payload,
+  properties,
+  timelineDateProperty,
+}: {
+  addProperty: DatabaseMutations["addProperty"]
+  databaseId: string | null | undefined
+  editable: boolean
+  payload: DatabasePayload | null | undefined
+  properties: DatabaseProperty[]
+  timelineDateProperty: DatabasePropertyListItem | null
+}) {
+  return {
+    ensureTimelineDatePropertyId: (
+      onResolved: (datePropertyId: string) => void
+    ) => {
+      const currentProperties = payload?.properties ?? properties
+      const existingDateProperty =
+        timelineDateProperty ??
+        getTimelineDateProperty(currentProperties, null)
+
+      if (existingDateProperty) {
+        onResolved(existingDateProperty.property.id)
+        return
+      }
+
+      if (!editable || !databaseId || addProperty.isPending) {
+        return
+      }
+
+      addProperty.mutate(
+        {
+          databaseId,
+          name: "Date",
+          type: "date",
+        },
+        {
+          onSuccess: (nextPayload) => {
+            const createdDateProperty =
+              nextPayload.properties.find(
+                (property) => property.property.type === "date"
+              ) ?? nextPayload.properties.at(-1)
+
+            if (!createdDateProperty) {
+              toast.error("Couldn't add date property")
+              return
+            }
+
+            onResolved(createdDateProperty.property.id)
+          },
+          onError: () => {
+            toast.error("Couldn't add date property")
+          },
+        }
       )
     },
   }

@@ -62,6 +62,7 @@ export type DatabasePropertyConfig = {
 
 type DatabaseConfig = {
   conditionalColors?: DatabaseConditionalColorConfig[]
+  datePropertyId?: string
   emoji?: string
   filter?: DatabaseFilterItemConfig | DatabaseFilterItemConfig[]
   filters?: DatabaseFilterItemConfig[]

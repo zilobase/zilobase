@@ -626,6 +626,120 @@ export function register({ assert, loadModule, test }) {
       ],
     ])
   })
+
+  test("database view commands add timeline view with existing date property", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/shared/database-view-commands.ts"
+    )
+    const addDatabaseView = createMutation()
+    const addProperty = createMutation()
+    const dateProperty = createProperty(
+      "database-property-date",
+      "property-date",
+      "Due date",
+      "date"
+    )
+    const statusProperty = createProperty(
+      "database-property-status",
+      "property-status",
+      "Status",
+      "status"
+    )
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: null,
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addDatabaseView, addProperty }),
+      payload: createPayload({ properties: [dateProperty, statusProperty] }),
+      properties: [dateProperty, statusProperty],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    })
+
+    commands.addTimelineView()
+
+    assert.deepEqual(addProperty.calls, [])
+    assert.deepEqual(addDatabaseView.calls.map(([input]) => input), [
+      {
+        config: {
+          datePropertyId: "property-date",
+          groupPropertyId: "property-status",
+        },
+        databaseId,
+        name: "Timeline",
+        type: "timeline",
+      },
+    ])
+  })
+
+  test("database view commands add timeline view creates date property", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/shared/database-view-commands.ts"
+    )
+    const addDatabaseView = createMutation()
+    const addProperty = createMutation()
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: null,
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addDatabaseView, addProperty }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    })
+
+    commands.addTimelineView()
+    addProperty.calls[0][1].onSuccess({
+      properties: [
+        createProperty("database-property-date", "property-date", "Date", "date"),
+      ],
+      views: [],
+    })
+    addDatabaseView.calls[0][1].onSuccess({
+      properties: [
+        createProperty("database-property-date", "property-date", "Date", "date"),
+      ],
+      views: [
+        {
+          config: { datePropertyId: "property-date" },
+          id: "view-timeline",
+          name: "Timeline",
+          type: "timeline",
+        },
+      ],
+    })
+
+    assert.deepEqual(addProperty.calls[0][0], {
+      databaseId,
+      name: "Date",
+      type: "date",
+    })
+    assert.deepEqual(addDatabaseView.calls.map(([input]) => input), [
+      {
+        config: { datePropertyId: "property-date" },
+        databaseId,
+        name: "Timeline",
+        type: "timeline",
+      },
+    ])
+  })
 }
 
 function createMutation() {
