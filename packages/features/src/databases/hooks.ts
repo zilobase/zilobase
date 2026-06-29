@@ -11,7 +11,10 @@ import {
   type DatabasePayload,
 } from "./queries"
 import type { DatabaseMutationResponse } from "./mutation-types"
-import { workspacesQueryKey } from "../workspaces/queries"
+import {
+  workspaceQueryKey,
+  workspacesQueryKey,
+} from "../workspaces/queries"
 
 type CreateDatabaseInput = {
   name?: string
@@ -225,6 +228,42 @@ export function useAddDatabaseView() {
       )
 
       return commitDatabaseMutation(queryClient, databaseId, response)
+    },
+  })
+}
+
+type DeleteDatabaseResult = {
+  database: DatabasePayload["database"] | null
+  deletedDatabaseIds: string[]
+  deletedWorkspaceIds: string[]
+}
+
+export function useDeleteDatabase() {
+  const { apiFetch, queryClient } = useNotelabFeatures()
+
+  return useMutation({
+    mutationFn: async (databaseId: string) =>
+      apiFetch<DeleteDatabaseResult>(`/databases/${databaseId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: async (result) => {
+      const organizationId = result.database?.organizationId
+
+      if (!organizationId) {
+        return
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: workspacesQueryKey(organizationId),
+      })
+
+      for (const databaseId of result.deletedDatabaseIds) {
+        queryClient.removeQueries({ queryKey: databaseQueryKey(databaseId) })
+      }
+
+      for (const workspaceId of result.deletedWorkspaceIds) {
+        queryClient.removeQueries({ queryKey: workspaceQueryKey(workspaceId) })
+      }
     },
   })
 }

@@ -643,6 +643,43 @@ export function useUpdateWorkspace() {
   })
 }
 
+type DeleteWorkspaceResult = {
+  deletedDatabaseIds: string[]
+  deletedWorkspaceIds: string[]
+  workspace: Workspace | null
+}
+
+export function useDeleteWorkspace() {
+  const { apiFetch, queryClient } = useNotelabFeatures()
+
+  return useMutation({
+    mutationFn: async (workspaceId: string) =>
+      apiFetch<DeleteWorkspaceResult>(`/workspaces/${workspaceId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: async (result) => {
+      const organizationId = result.workspace?.organizationId
+
+      if (!organizationId) {
+        return
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workspacesQueryKey(organizationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: notelabAiWorkspacesQueryKey(organizationId),
+        }),
+      ])
+
+      for (const workspaceId of result.deletedWorkspaceIds) {
+        queryClient.removeQueries({ queryKey: workspaceQueryKey(workspaceId) })
+      }
+    },
+  })
+}
+
 export function useSetWorkspaceFavorite() {
   const { apiFetch, queryClient } = useNotelabFeatures()
 
