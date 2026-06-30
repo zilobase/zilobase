@@ -18,7 +18,7 @@ import {
   PromptInputCommandItem,
   PromptInputCommandList,
 } from "@/components/ai-elements/prompt-input"
-import { WorkspacePageIcon } from "@/lib/workspace-icon"
+import { WorkspaceIconDisplay, WorkspacePageIcon } from "@/lib/workspace-icon"
 import { useActiveOrganizationId } from "@notelab/features/integrations"
 import type { AppSearchResult } from "@notelab/features/search"
 import {
@@ -395,7 +395,7 @@ function AttachMenuItemIcon({
 }) {
   if (item.result.type === "database") {
     if (item.result.emoji) {
-      return <span className="text-base leading-none">{item.result.emoji}</span>
+      return <WorkspaceIconDisplay size="sm" value={item.result.emoji} />
     }
 
     return <DatabaseIcon className="size-4 shrink-0 text-muted-foreground" />

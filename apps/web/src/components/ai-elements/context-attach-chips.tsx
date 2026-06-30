@@ -1,7 +1,26 @@
 import { DatabaseIcon, XIcon } from "lucide-react"
 
-import { WorkspacePageIcon } from "@/lib/workspace-icon"
+import { WorkspaceIconDisplay, WorkspacePageIcon } from "@/lib/workspace-icon"
 import type { ContextAttachment } from "@notelab/workspace-context"
+
+function AttachmentIcon({ attachment }: { attachment: ContextAttachment }) {
+  if (attachment.emoji) {
+    return <WorkspaceIconDisplay size="sm" value={attachment.emoji} />
+  }
+
+  if (attachment.type === "database") {
+    return <DatabaseIcon className="size-3.5 shrink-0" />
+  }
+
+  return (
+    <WorkspacePageIcon
+      workspace={{
+        content: null,
+        metadata: { emoji: attachment.emoji },
+      }}
+    />
+  )
+}
 
 function AttachmentChip({
   attachment,
@@ -12,22 +31,7 @@ function AttachmentChip({
 }) {
   return (
     <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-full border bg-background px-2 text-foreground text-xs">
-      {attachment.type === "database" ? (
-        attachment.emoji ? (
-          <span className="text-sm leading-none">{attachment.emoji}</span>
-        ) : (
-          <DatabaseIcon className="size-3.5 shrink-0" />
-        )
-      ) : attachment.emoji ? (
-        <span className="text-sm leading-none">{attachment.emoji}</span>
-      ) : (
-        <WorkspacePageIcon
-          workspace={{
-            content: null,
-            metadata: { emoji: attachment.emoji },
-          }}
-        />
-      )}
+      <AttachmentIcon attachment={attachment} />
       <span className="truncate">{attachment.title}</span>
       <button
         aria-label={`Remove ${attachment.title}`}
