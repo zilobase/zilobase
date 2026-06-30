@@ -52,8 +52,7 @@ type NavTreeLinkPropsGetter = (input: {
 
 const rowHoverClassName =
   "group-hover/nav-row:bg-sidebar-accent group-hover/nav-row:text-sidebar-accent-foreground group-has-[>[data-nav-menu-action=more][aria-expanded=true]]/nav-row:bg-sidebar-accent group-has-[>[data-nav-menu-action=more][aria-expanded=true]]/nav-row:text-sidebar-accent-foreground"
-const inactiveRowClassName =
-  "data-[active=false]:text-sidebar-foreground/70 data-[active=false]:[&_svg]:text-sidebar-foreground/70"
+const inactiveRowClassName = "data-[active=false]:text-sidebar-foreground/70"
 const disclosureActionClassName =
   "left-2 opacity-0 text-sidebar-foreground/70 data-[state=open]:rotate-90 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground peer-data-[active=false]/menu-button:text-sidebar-foreground/70 group-hover/nav-row:opacity-100 group-hover/nav-row:text-sidebar-accent-foreground hover:bg-transparent hover:text-sidebar-accent-foreground focus-visible:opacity-100"
 const leadingIconClassName =
