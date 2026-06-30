@@ -2,7 +2,7 @@ import type { Content } from "@tiptap/core"
 import type { Editor } from "@tiptap/react"
 
 import type { SlashCommandItem } from "@/packages/editor/extensions/slash-command"
-import { createDatabaseBlockContent } from "@/packages/editor/extensions/database"
+import { createDatabaseSetupBlockContent } from "@/packages/editor/extensions/database"
 
 import type { DragHandleTarget } from "./types"
 
@@ -119,7 +119,7 @@ export function blockContentForItem(
       }
     case "Database":
       return attrs?.databaseId
-        ? createDatabaseBlockContent(attrs.databaseId)
+        ? createDatabaseSetupBlockContent(attrs.databaseId)
         : null
     default:
       return { type: "paragraph" }
@@ -144,7 +144,7 @@ export async function insertBlockFromPlus(
   editor: Editor,
   target: DragHandleTarget,
   item: SlashCommandItem,
-  options: { onCreateDatabase?: () => Promise<string | null> } = {}
+  options: { onCreateDatabase?: () => Promise<string | null> } = {},
 ) {
   const isEmptyTextBlock = target.node.isTextblock && target.node.content.size === 0
   const databaseId =
@@ -153,9 +153,9 @@ export async function insertBlockFromPlus(
       : undefined
   const content =
     item.title === "Database"
-      ? blockContentForItem(item, {
-          databaseId: databaseId ?? undefined,
-        })
+      ? databaseId
+        ? blockContentForItem(item, { databaseId })
+        : null
       : blockContentForItem(item)
 
   if (!content) {

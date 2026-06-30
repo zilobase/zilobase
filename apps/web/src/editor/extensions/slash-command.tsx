@@ -37,7 +37,7 @@ import {
   EmojiPickerFooter,
   EmojiPickerSearch,
 } from "@/components/ui/emoji-picker"
-import { createDatabaseBlockContent } from "@/packages/editor/extensions/database"
+import { createDatabaseSetupBlockContent } from "@/packages/editor/extensions/database"
 import {
   ExcalidrawIcon,
   FigmaIcon,
@@ -472,7 +472,7 @@ export function createSlashCommandItems(
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContentAt(range.from, createDatabaseBlockContent(databaseId))
+        .insertContentAt(range.from, createDatabaseSetupBlockContent(databaseId))
         .setTextSelection(range.from + 2)
         .run()
     },
