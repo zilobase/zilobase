@@ -4,6 +4,11 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { useNotelabFeatures } from "../context"
 import { useDatabase } from "../databases/hooks"
 import {
+  invalidateDeletedItems,
+  isWorkspaceFavoriteInCache,
+  setWorkspaceDetailCache,
+} from "../item-action-cache"
+import {
   buildWorkspacePropertiesPayloadFromDatabase,
   findDatabaseIdForRowPage,
   patchDatabaseCacheWorkspacePage,
@@ -344,6 +349,10 @@ export function useCreateWorkspace() {
         metadata.parentItemKind = "workspace"
       }
 
+      const shouldInheritFavorite = parentItemId
+        ? isWorkspaceFavoriteInCache(queryClient, parentItemId, organizationId)
+        : false
+
       const result = await apiFetch<{ workspace: Workspace }>("/workspaces", {
         method: "POST",
         body: JSON.stringify({
@@ -356,7 +365,16 @@ export function useCreateWorkspace() {
         }),
       })
 
-      return result.workspace
+      if (!shouldInheritFavorite || result.workspace.isFavorite) {
+        return result.workspace
+      }
+
+      const favoriteResult = await apiFetch<{ workspace: Workspace }>(
+        `/workspaces/${result.workspace.id}/favorite`,
+        { method: "PUT" },
+      )
+
+      return favoriteResult.workspace
     },
     onSuccess: async (workspace) => {
       const parentItemId = readParentItemId(workspace.metadata)
@@ -663,26 +681,13 @@ export function useDeleteWorkspace() {
       apiFetch<DeleteWorkspaceResult>(`/workspaces/${workspaceId}`, {
         method: "DELETE",
       }),
-    onSuccess: async (result) => {
-      const organizationId = result.workspace?.organizationId
-
-      if (!organizationId) {
-        return
-      }
-
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: workspacesQueryKey(organizationId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: notelabAiWorkspacesQueryKey(organizationId),
-        }),
-      ])
-
-      for (const workspaceId of result.deletedWorkspaceIds) {
-        queryClient.removeQueries({ queryKey: workspaceQueryKey(workspaceId) })
-      }
-    },
+    onSuccess: async (result) =>
+      invalidateDeletedItems({
+        includeNotelabAi: true,
+        organizationId: result.workspace?.organizationId,
+        queryClient,
+        result,
+      }),
   })
 }
 
@@ -702,13 +707,7 @@ export function useSetWorkspaceFavorite() {
       return result.workspace
     },
     onSuccess: async (workspace) => {
-      queryClient.setQueryData<WorkspaceDetail | null>(
-        workspaceQueryKey(workspace.id),
-        (current) => ({
-          accessLevel: current?.accessLevel ?? null,
-          workspace,
-        }),
-      )
+      setWorkspaceDetailCache(queryClient, workspace)
       await queryClient.invalidateQueries({
         queryKey: workspacesQueryKey(workspace.organizationId),
       })

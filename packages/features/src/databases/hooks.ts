@@ -2,6 +2,11 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { useCallback } from "react"
 
 import { useNotelabFeatures } from "../context"
+import {
+  favoriteWorkspacePages,
+  invalidateDeletedItems,
+  isWorkspaceFavoriteInCache,
+} from "../item-action-cache"
 
 import { applyMutationToCache } from "./mutation-cache"
 import { setDatabasePayloadQueryData } from "./query-cache"
@@ -11,10 +16,7 @@ import {
   type DatabasePayload,
 } from "./queries"
 import type { DatabaseMutationResponse } from "./mutation-types"
-import {
-  workspaceQueryKey,
-  workspacesQueryKey,
-} from "../workspaces/queries"
+import { workspacesQueryKey } from "../workspaces/queries"
 
 type CreateDatabaseInput = {
   name?: string
@@ -149,11 +151,26 @@ export function useCreateDatabase() {
   const { apiFetch, queryClient } = useNotelabFeatures()
 
   return useMutation({
-    mutationFn: async (input: CreateDatabaseInput) =>
-      apiFetch<DatabasePayload>("/databases", {
+    mutationFn: async (input: CreateDatabaseInput) => {
+      const shouldInheritFavorite = isWorkspaceFavoriteInCache(
+        queryClient,
+        input.pageId,
+        input.organizationId,
+      )
+      const payload = await apiFetch<DatabasePayload>("/databases", {
         method: "POST",
         body: JSON.stringify(input),
-      }),
+      })
+
+      if (!shouldInheritFavorite || payload.database.isFavorite) {
+        return payload
+      }
+
+      return apiFetch<DatabasePayload>(
+        `/databases/${payload.database.id}/favorite`,
+        { method: "PUT" },
+      )
+    },
     onSuccess: async (payload) => {
       setDatabasePayloadQueryData(queryClient, payload.database.id, payload)
       await queryClient.invalidateQueries({
@@ -246,25 +263,12 @@ export function useDeleteDatabase() {
       apiFetch<DeleteDatabaseResult>(`/databases/${databaseId}`, {
         method: "DELETE",
       }),
-    onSuccess: async (result) => {
-      const organizationId = result.database?.organizationId
-
-      if (!organizationId) {
-        return
-      }
-
-      await queryClient.invalidateQueries({
-        queryKey: workspacesQueryKey(organizationId),
-      })
-
-      for (const databaseId of result.deletedDatabaseIds) {
-        queryClient.removeQueries({ queryKey: databaseQueryKey(databaseId) })
-      }
-
-      for (const workspaceId of result.deletedWorkspaceIds) {
-        queryClient.removeQueries({ queryKey: workspaceQueryKey(workspaceId) })
-      }
-    },
+    onSuccess: async (result) =>
+      invalidateDeletedItems({
+        organizationId: result.database?.organizationId,
+        queryClient,
+        result,
+      }),
   })
 }
 
@@ -368,6 +372,13 @@ export function useAddDatabaseRow() {
 
   return useMutation({
     mutationFn: async ({ databaseId, ...input }: AddRowInput) => {
+      const current = queryClient.getQueryData<DatabasePayload | null>(
+        databaseQueryKey(databaseId),
+      )
+      const existingRowIds = new Set(
+        current?.rows.map((row) => row.id) ?? [],
+      )
+      const shouldInheritFavorite = Boolean(current?.database.isFavorite)
       const response = await apiFetch<DatabaseMutationResponse>(
         `/databases/${databaseId}/rows`,
         {
@@ -376,7 +387,28 @@ export function useAddDatabaseRow() {
         },
       )
 
-      return commitDatabaseMutation(queryClient, databaseId, response)
+      const payload = await commitDatabaseMutation(
+        queryClient,
+        databaseId,
+        response,
+      )
+
+      if (shouldInheritFavorite) {
+        const inheritedPageIds = input.pageId
+          ? [input.pageId]
+          : payload.rows
+              .filter((row) => !existingRowIds.has(row.id))
+              .map((row) => row.pageId)
+
+        await favoriteWorkspacePages({
+          apiFetch,
+          organizationId: payload.database.organizationId,
+          pageIds: inheritedPageIds,
+          queryClient,
+        })
+      }
+
+      return payload
     },
   })
 }
