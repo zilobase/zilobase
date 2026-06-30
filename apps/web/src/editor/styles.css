@@ -795,6 +795,78 @@
     @apply w-full overflow-visible bg-background;
   }
 
+  .database-scroll-section:has(.database-setup-overlay) {
+    @apply min-h-[24rem];
+  }
+
+  .database-setup-overlay {
+    @apply absolute inset-0 z-20 flex items-center justify-center bg-background/60 p-4 backdrop-blur-[2px];
+  }
+
+  .database-setup-card {
+    @apply relative mx-auto w-full max-w-3xl overflow-hidden rounded-xl border bg-card text-card-foreground shadow-lg;
+  }
+
+  .database-setup-close {
+    @apply absolute top-2 right-2 z-10 text-muted-foreground hover:text-foreground;
+  }
+
+  .database-setup-columns {
+    @apply grid min-h-[18rem] grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] items-stretch;
+  }
+
+  .database-setup-column-primary {
+    @apply flex min-w-0 flex-col border-r;
+  }
+
+  .database-setup-column-suggested {
+    @apply flex min-w-0 flex-col;
+  }
+
+  .database-setup-prompt {
+    @apply flex flex-1 flex-col px-5 pt-5 pb-4;
+  }
+
+  .database-setup-prompt-label {
+    @apply mb-2.5 flex items-center gap-2 font-medium text-muted-foreground text-xs tracking-wide;
+  }
+
+  .database-setup-prompt-form {
+    @apply w-full;
+  }
+
+  .database-setup-prompt-textarea {
+    @apply min-h-[7.5rem] w-full px-2 text-sm focus-visible:border-transparent focus-visible:ring-0;
+  }
+
+  .database-setup-actions {
+    @apply space-y-0.5 border-t px-3 py-2.5;
+  }
+
+  .database-setup-section-label {
+    @apply px-4 pt-4 pr-10 pb-2 font-medium text-muted-foreground text-xs tracking-wide;
+  }
+
+  .database-setup-suggested-list {
+    @apply flex-1 space-y-0.5 px-2.5 pb-2;
+  }
+
+  .database-setup-link-action {
+    @apply mt-auto border-t px-2.5 py-2;
+  }
+
+  .database-setup-option {
+    @apply flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-muted/60 disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .database-setup-option-subtle {
+    @apply text-muted-foreground;
+  }
+
+  .database-setup-option-icon {
+    @apply flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/30 text-muted-foreground;
+  }
+
   .tiptap-editor .node-databaseBlock {
     @apply min-w-0;
   }
