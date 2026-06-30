@@ -29,6 +29,10 @@ const LIST_GAP = 12;
 const LEADING_SLOT = 24;
 const NESTED_INDENT = LIST_GAP * 2.5;
 
+function isDisplayableEmoji(value: string | null | undefined) {
+  return Boolean(value && !value.trim().startsWith('<svg'));
+}
+
 type TreeItem = {
   id: string;
   label: string;
@@ -213,7 +217,7 @@ function TreeRow({
           </Pressable>
         ) : (
           <View style={styles.leadingIcon}>
-            {item.emoji ? (
+            {isDisplayableEmoji(item.emoji) ? (
               <Text style={styles.emoji}>{item.emoji}</Text>
             ) : (
               <SymbolView
@@ -227,7 +231,7 @@ function TreeRow({
 
         {hasChildren ? (
           <View style={styles.leadingIcon}>
-            {item.emoji ? (
+            {isDisplayableEmoji(item.emoji) ? (
               <Text style={styles.emoji}>{item.emoji}</Text>
             ) : (
               <SymbolView
