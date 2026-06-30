@@ -32,7 +32,7 @@ import {
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
   getColorTokenValue,
-} from "@/packages/editor/components/editor/toolbar-data"
+} from "@/lib/color-tokens"
 
 import { defaultStatusOptions } from "../constants"
 import {

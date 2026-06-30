@@ -10,7 +10,7 @@ import {
   cyclingColorTokens,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
-} from "@/packages/editor/components/editor/toolbar-data"
+} from "@/lib/color-tokens"
 import type { DatabaseSelectOption } from "./shared/database-view-config"
 import { toStringArray } from "./utils"
 

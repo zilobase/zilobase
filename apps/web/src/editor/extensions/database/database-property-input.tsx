@@ -12,7 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { getColorToken } from "@/packages/editor/components/editor/toolbar-data"
+import { getColorToken } from "@/lib/color-tokens"
 
 import {
   getNumberDecimalPlaces,

@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Loader2, Plus } from "lucide-react"
 import {
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
-} from "@/packages/editor/components/editor/toolbar-data"
+} from "@/lib/color-tokens"
 
 import { databaseNameColumnDefaultWidth } from "../constants"
 import { canCreateRowInKanbanGroup } from "../kanban/database-kanban-config"

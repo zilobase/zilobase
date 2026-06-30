@@ -6,6 +6,8 @@ import {
   SquareIcon,
 } from "lucide-react"
 
+import { getPaletteColor } from "@/lib/color-tokens"
+
 import type {
   CanvasNodeColorId,
   CanvasShape,
@@ -14,60 +16,46 @@ import type {
   CanvasTool,
 } from "./types"
 
+function canvasColorOption(
+  id: CanvasNodeColorId,
+  label: string,
+): {
+  fill: string
+  id: CanvasNodeColorId
+  label: string
+  stroke: string
+} {
+  if (id === "default") {
+    return {
+      id,
+      label,
+      fill: "transparent",
+      stroke: "var(--color-foreground)",
+    }
+  }
+
+  return {
+    id,
+    label,
+    fill: getPaletteColor(id) ?? "transparent",
+    stroke: getPaletteColor(id) ?? "var(--color-foreground)",
+  }
+}
+
 export const canvasColorOptions: Array<{
   fill: string
   id: CanvasNodeColorId
   label: string
   stroke: string
 }> = [
-  {
-    id: "default",
-    label: "Default",
-    fill: "transparent",
-    stroke: "var(--color-foreground)",
-  },
-  {
-    id: "yellow",
-    label: "Yellow",
-    fill: "var(--color-event-yellow-bg)",
-    stroke: "var(--color-event-yellow-border)",
-  },
-  {
-    id: "red",
-    label: "Red",
-    fill: "var(--color-event-red-bg)",
-    stroke: "var(--color-event-red-border)",
-  },
-  {
-    id: "green",
-    label: "Green",
-    fill: "var(--color-event-green-bg)",
-    stroke: "var(--color-event-green-border)",
-  },
-  {
-    id: "blue",
-    label: "Blue",
-    fill: "var(--color-event-blue-bg)",
-    stroke: "var(--color-event-blue-border)",
-  },
-  {
-    id: "purple",
-    label: "Purple",
-    fill: "var(--color-event-purple-bg)",
-    stroke: "var(--color-event-purple-border)",
-  },
-  {
-    id: "orange",
-    label: "Orange",
-    fill: "var(--color-event-orange-bg)",
-    stroke: "var(--color-event-orange-border)",
-  },
-  {
-    id: "gray",
-    label: "Gray",
-    fill: "var(--color-event-gray-bg)",
-    stroke: "var(--color-event-gray-border)",
-  },
+  canvasColorOption("default", "Default"),
+  canvasColorOption("yellow", "Yellow"),
+  canvasColorOption("red", "Red"),
+  canvasColorOption("green", "Green"),
+  canvasColorOption("blue", "Blue"),
+  canvasColorOption("purple", "Purple"),
+  canvasColorOption("orange", "Orange"),
+  canvasColorOption("gray", "Gray"),
 ]
 
 export const canvasStrokeWidthOptions: Array<{

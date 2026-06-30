@@ -28,6 +28,7 @@ import {
 } from "@/components/ai-elements/prompt-input"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { getColorToken } from "@/lib/color-tokens"
 import { cn } from "@/lib/utils"
 import {
   useAddDatabaseProperty,
@@ -99,17 +100,17 @@ function SetupOptionButton({
 }
 
 function TemplateIcon({
-  className,
+  colorId,
   icon,
 }: {
-  className: string
+  colorId: DatabaseSetupTemplate["colorId"]
   icon: ReactNode
 }) {
   return (
     <span
       className={cn(
-        "flex size-7 shrink-0 items-center justify-center rounded-md text-white",
-        className,
+        "flex size-7 shrink-0 items-center justify-center rounded-md",
+        getColorToken(colorId).solidClass,
       )}
     >
       {icon}
@@ -324,7 +325,7 @@ export function DatabaseSetupCard({
       disabled={isSubmitting}
       icon={
         <TemplateIcon
-          className={template.iconClassName}
+          colorId={template.colorId}
           icon={getTemplateGlyph(template)}
         />
       }

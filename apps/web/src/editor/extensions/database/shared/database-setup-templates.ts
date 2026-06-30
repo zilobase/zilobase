@@ -1,3 +1,5 @@
+import type { ColorTokenId } from "@/lib/color-tokens"
+
 import { defaultStatusOptions } from "../constants"
 
 export type DatabaseSetupTemplateId =
@@ -15,7 +17,7 @@ export type DatabaseSetupTemplateProperty = {
 }
 
 export type DatabaseSetupTemplate = {
-  iconClassName: string
+  colorId: ColorTokenId
   id: DatabaseSetupTemplateId
   name: string
   properties: DatabaseSetupTemplateProperty[]
@@ -34,7 +36,7 @@ function getDefaultPropertyConfig(type: string) {
 
 export const databaseSetupSuggestedTemplates: DatabaseSetupTemplate[] = [
   {
-    iconClassName: "bg-emerald-600",
+    colorId: "green",
     id: "tasks-tracker",
     name: "Tasks Tracker",
     properties: [
@@ -44,7 +46,7 @@ export const databaseSetupSuggestedTemplates: DatabaseSetupTemplate[] = [
     ],
   },
   {
-    iconClassName: "bg-blue-600",
+    colorId: "blue",
     id: "projects",
     name: "Projects",
     properties: [
@@ -54,7 +56,7 @@ export const databaseSetupSuggestedTemplates: DatabaseSetupTemplate[] = [
     ],
   },
   {
-    iconClassName: "bg-amber-700",
+    colorId: "yellow",
     id: "document-hub",
     name: "Document Hub",
     properties: [
@@ -67,7 +69,7 @@ export const databaseSetupSuggestedTemplates: DatabaseSetupTemplate[] = [
 
 export const databaseSetupMoreTemplates: DatabaseSetupTemplate[] = [
   {
-    iconClassName: "bg-violet-600",
+    colorId: "purple",
     id: "content-calendar",
     name: "Content Calendar",
     properties: [
@@ -77,7 +79,7 @@ export const databaseSetupMoreTemplates: DatabaseSetupTemplate[] = [
     ],
   },
   {
-    iconClassName: "bg-yellow-500",
+    colorId: "orange",
     id: "meeting-notes",
     name: "Meeting Notes",
     properties: [
@@ -87,7 +89,7 @@ export const databaseSetupMoreTemplates: DatabaseSetupTemplate[] = [
     ],
   },
   {
-    iconClassName: "bg-rose-700",
+    colorId: "red",
     id: "crm",
     name: "CRM",
     properties: [

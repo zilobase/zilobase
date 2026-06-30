@@ -53,7 +53,7 @@ import { useWorkspaces } from "@notelab/features/workspaces"
 import {
   cyclingColorTokens,
   getColorToken,
-} from "@/packages/editor/components/editor/toolbar-data"
+} from "@/lib/color-tokens"
 
 import { getDatabasePropertyType } from "../constants"
 import {

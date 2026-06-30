@@ -17,7 +17,7 @@ import {
   cyclingColorTokens,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
-} from "@/packages/editor/components/editor/toolbar-data"
+} from "@/lib/color-tokens"
 import {
   AlertDialog,
   AlertDialogAction,

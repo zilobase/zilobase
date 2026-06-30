@@ -38,7 +38,7 @@ import {
   getColorToken,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
-} from "@/packages/editor/components/editor/toolbar-data"
+} from "@/lib/color-tokens"
 
 import { AddDatabasePropertyMenu } from "../shared/add-database-property-menu"
 import { DatabaseTableCellContent } from "./database-table-cell-content"

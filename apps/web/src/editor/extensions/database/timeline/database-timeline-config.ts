@@ -2,6 +2,8 @@ import { addDays } from "date-fns"
 
 import type { GanttFeature, GanttStatus } from "@/components/kibo-ui/gantt"
 
+import { getPaletteColor } from "@/lib/color-tokens"
+
 import { defaultStatusOptions } from "../constants"
 import {
   getSelectOptions,
@@ -15,20 +17,8 @@ import {
 
 export const UNSCHEDULED_GROUP_NAME = "Unscheduled"
 
-const colorTokenToHex: Record<string, string> = {
-  blue: "#3B82F6",
-  brown: "#92400E",
-  gray: "#6B7280",
-  green: "#10B981",
-  orange: "#F59E0B",
-  pink: "#EC4899",
-  purple: "#8B5CF6",
-  red: "#EF4444",
-  yellow: "#EAB308",
-}
-
 const defaultGanttStatus: GanttStatus = {
-  color: colorTokenToHex.gray,
+  color: getPaletteColor("gray")!,
   id: "unscheduled",
   name: "Unscheduled",
 }
@@ -165,14 +155,14 @@ export function getGanttStatusForValue(
 
   if (!matchedOption) {
     return {
-      color: colorTokenToHex.gray,
+      color: getPaletteColor("gray")!,
       id: normalizedValue,
       name: normalizedValue,
     }
   }
 
   return {
-    color: colorTokenToHex[matchedOption.color ?? "gray"] ?? colorTokenToHex.gray,
+    color: getPaletteColor(matchedOption.color ?? "gray")!,
     id: matchedOption.id,
     name: matchedOption.name,
   }
