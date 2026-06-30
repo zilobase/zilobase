@@ -35,11 +35,11 @@ import {
   useCreateDatabase,
   useSetDatabaseFavorite,
 } from "@notelab/features/databases"
-import { getDatabaseEmoji } from "@notelab/features/databases"
+import type { Workspace } from "@notelab/features/workspaces"
 import {
-  getWorkspaceEmoji,
-  type Workspace,
-} from "@notelab/features/workspaces"
+  getDatabaseIconNode,
+  getWorkspaceIconNode,
+} from "@/lib/workspace-icon"
 import {
   useCreateWorkspace,
   useSetWorkspaceFavorite,
@@ -52,7 +52,6 @@ import {
   BlocksIcon,
   CalendarIcon,
   DatabaseIcon,
-  FileIcon,
   HomeIcon,
   Kanban,
   MessageCircleQuestionIcon,
@@ -410,7 +409,7 @@ function buildWorkspaceTreeSections(workspaces: Workspace[]) {
         id: workspace.id,
         isTeamspace: Boolean(workspace.isTeamspace),
         name: workspace.name,
-        emoji: getWorkspaceIcon(workspace),
+        emoji: getWorkspaceIconNode(workspace),
         isFavorite: Boolean(workspace.isFavorite),
         notelabai: workspace.metadata?.notelabai ?? null,
         workspaceId: workspace.id,
@@ -581,7 +580,7 @@ function createDatabaseNode(
     isFavorite: Boolean(database.isFavorite),
     isTeamspace: Boolean(workspace.isTeamspace),
     name: database.name,
-    emoji: getDatabaseIcon(database),
+    emoji: getDatabaseIconNode(database) ?? <DatabaseIcon className="size-4" />,
     workspaceId: database.pageId,
     pages: [...(database.views ?? [])]
       .sort((first, second) => first.position - second.position)
@@ -700,14 +699,6 @@ function getWorkspaceCreatedTime(workspace: Workspace) {
   const time = new Date(workspace.createdAt).getTime()
 
   return Number.isFinite(time) ? time : 0
-}
-
-function getWorkspaceIcon(workspace: Workspace) {
-  return getWorkspaceEmoji(workspace) ?? <FileIcon className="size-4" />
-}
-
-function getDatabaseIcon(database: { config?: unknown }) {
-  return getDatabaseEmoji(database) ?? <DatabaseIcon className="size-4" />
 }
 
 function getDatabaseViewIcon(view: { type?: string | null }) {

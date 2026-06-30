@@ -15,8 +15,8 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { useActiveOrganizationId } from "@notelab/features/integrations"
 import { useDatabase } from "@notelab/features/databases"
+import { formatWorkspaceBreadcrumbLabel } from "@/lib/workspace-icon"
 import {
-  getWorkspaceEmoji,
   readParentItemId,
   useWorkspaces,
   type Workspace,
@@ -279,10 +279,7 @@ function buildWorkspaceBreadcrumbs(
 }
 
 function getWorkspaceBreadcrumbLabel(workspace: Workspace) {
-  const label = workspace.name.trim() || "Untitled"
-  const emoji = getWorkspaceEmoji(workspace)
-
-  return emoji ? `${emoji} ${label}` : label
+  return formatWorkspaceBreadcrumbLabel(workspace)
 }
 
 function getSettingsPageTitle(pathname: string) {

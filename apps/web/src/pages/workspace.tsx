@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { isEmbeddedMobileViewer } from "@/lib/embedded-view"
 import { cn } from "@/lib/utils"
+import { formatWorkspaceBreadcrumbLabel } from "@/lib/workspace-icon"
 import {
   getWorkspaceCover,
   getWorkspaceEmoji,
@@ -289,10 +290,7 @@ function PublicLoginButton() {
 function getWorkspaceBreadcrumbLabel(
   workspace: NonNullable<ReturnType<typeof useWorkspace>["data"]>,
 ) {
-  const label = workspace.name.trim() || "Untitled"
-  const emoji = getWorkspaceEmoji(workspace)
-
-  return emoji ? `${emoji} ${label}` : label
+  return formatWorkspaceBreadcrumbLabel(workspace)
 }
 
 export function WorkspaceEditorPane({
