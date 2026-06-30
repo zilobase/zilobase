@@ -83,10 +83,7 @@ function VideoBlockView({ node, updateAttributes }: ReactNodeViewProps) {
           sideOffset={8}
         >
           <Tabs defaultValue="upload">
-            <TabsList
-              className="w-full justify-start rounded-none border-b px-2"
-              variant="line"
-            >
+            <TabsList className="w-full justify-start rounded-none border-b px-2">
               <TabsTrigger value="upload">Upload</TabsTrigger>
               <TabsTrigger value="link">Link</TabsTrigger>
             </TabsList>

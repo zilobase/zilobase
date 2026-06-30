@@ -97,7 +97,7 @@ export function ImageSourcePicker({
 
   return (
     <Tabs className={className ?? "gap-4"} defaultValue="add">
-      <TabsList variant="line">
+      <TabsList>
         <TabsTrigger value="add">Add</TabsTrigger>
         <TabsTrigger value="link">Link</TabsTrigger>
         <TabsTrigger value="unsplash">

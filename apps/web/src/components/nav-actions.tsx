@@ -789,7 +789,7 @@ function WorkspaceShareDialogContent({
         </DialogHeader>
 
         <Tabs defaultValue="share">
-          <TabsList variant="pill">
+          <TabsList>
             <TabsTrigger value="share">Share</TabsTrigger>
             <TabsTrigger value="publish">Publishing</TabsTrigger>
           </TabsList>
