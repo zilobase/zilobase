@@ -22,7 +22,7 @@ import {
   type DatabasePropertyConfig,
   type DatabaseSortConfig,
 } from "@/packages/editor/extensions/database/shared/database-view-config"
-import { useCreateDatabase } from "@notelab/features/databases"
+import { getDatabaseEmoji, useCreateDatabase } from "@notelab/features/databases"
 import { useActiveOrganizationId } from "@notelab/features/integrations"
 import {
   useCreateWorkspace,
@@ -43,6 +43,7 @@ type HomepageView = "recents" | "favourites" | "shared" | "private"
 type HomepageRow = {
   createdAt: string
   createdBy: string
+  iconKind: "database" | "page"
   id: string
   isDatabase: boolean
   isFavorite: boolean
@@ -50,6 +51,7 @@ type HomepageRow = {
   itemId: string
   itemKind: "database" | "workspace"
   lastVisitedAt: string | null
+  metadata: Workspace["metadata"] | null
   name: string
   source: string
   updatedAt: string
@@ -445,8 +447,9 @@ function buildHomepagePayload({
       id: row.id,
       page: {
         createdAt: row.createdAt,
+        iconKind: row.iconKind,
         id: row.id,
-        metadata: row.isDatabase ? { emoji: "database" } : null,
+        metadata: row.metadata,
         name: row.name,
         updatedAt: row.updatedAt,
       },
@@ -491,6 +494,7 @@ function buildHomepageRows(workspaces: Workspace[]): HomepageRow[] {
       .map((workspace) => ({
         createdAt: workspace.createdAt,
         createdBy: formatCreator(workspace.createdBy),
+        iconKind: "page" as const,
         id: `workspace:${workspace.id}`,
         isDatabase: false,
         isFavorite: Boolean(workspace.isFavorite),
@@ -498,6 +502,7 @@ function buildHomepageRows(workspaces: Workspace[]): HomepageRow[] {
         itemId: workspace.id,
         itemKind: "workspace" as const,
         lastVisitedAt: workspace.lastVisitedAt ?? null,
+        metadata: workspace.metadata ?? null,
         name: workspace.name || "Untitled",
         source: resolveSourceLabel(
           placements,
@@ -508,27 +513,33 @@ function buildHomepageRows(workspaces: Workspace[]): HomepageRow[] {
         ),
         updatedAt: workspace.updatedAt,
       })),
-    ...databases.map(({ database, workspace }) => ({
-      createdAt: database.createdAt,
-      createdBy: formatCreator(database.createdBy ?? workspace.createdBy),
-      id: `database:${database.id}`,
-      isDatabase: true,
-      isFavorite: Boolean(database.isFavorite),
-      isTeamspace: Boolean(workspace.isTeamspace),
-      itemId: database.id,
-      itemKind: "database" as const,
-      lastVisitedAt: database.lastVisitedAt ?? null,
-      name: database.name || "Untitled",
-      source:
-        resolveSourceLabel(
-          placements,
-          workspacesById,
-          databasesById,
-          "database",
-          database.id,
-        ) || workspace.name || "Workspace",
-      updatedAt: database.updatedAt,
-    })),
+    ...databases.map(({ database, workspace }) => {
+      const databaseEmoji = getDatabaseEmoji(database)
+
+      return {
+        createdAt: database.createdAt,
+        createdBy: formatCreator(database.createdBy ?? workspace.createdBy),
+        iconKind: "database" as const,
+        id: `database:${database.id}`,
+        isDatabase: true,
+        isFavorite: Boolean(database.isFavorite),
+        isTeamspace: Boolean(workspace.isTeamspace),
+        itemId: database.id,
+        itemKind: "database" as const,
+        lastVisitedAt: database.lastVisitedAt ?? null,
+        metadata: databaseEmoji ? { emoji: databaseEmoji } : null,
+        name: database.name || "Untitled",
+        source:
+          resolveSourceLabel(
+            placements,
+            workspacesById,
+            databasesById,
+            "database",
+            database.id,
+          ) || workspace.name || "Workspace",
+        updatedAt: database.updatedAt,
+      }
+    }),
   ]
 }
 

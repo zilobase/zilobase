@@ -3,7 +3,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { ExternalLink, FileText, X } from "lucide-react"
+import { DatabaseIcon, ExternalLink, FileText, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { useOptionalWorkspaceSidePane } from "@/contexts/workspace-side-pane"
@@ -15,6 +15,7 @@ import {
 import { WorkspaceIconDisplay } from "@/lib/workspace-icon"
 
 type DatabasePageSummary = {
+  iconKind?: "database" | "page"
   id?: string
   name?: string
   metadata?: WorkspaceMetadata | null | unknown
@@ -50,6 +51,14 @@ export function DatabasePageLink({
         metadata: pageSummary.metadata as WorkspaceMetadata | null | undefined,
       })
     : null
+  const icon =
+    emoji ? (
+      <WorkspaceIconDisplay size="sm" value={emoji} />
+    ) : pageSummary?.iconKind === "database" ? (
+      <DatabaseIcon />
+    ) : (
+      <FileText />
+    )
   const actionLabel = isOpen ? "Close" : "Open"
   const canEditTitle = editable && Boolean(pageSummary)
 
@@ -143,7 +152,7 @@ export function DatabasePageLink({
       <span className="database-page-main">
         {showPageIcon ? (
           <span className="database-page-icon">
-            {emoji ? <WorkspaceIconDisplay size="sm" value={emoji} /> : <FileText />}
+            {icon}
           </span>
         ) : null}
         {isEditingTitle ? (
