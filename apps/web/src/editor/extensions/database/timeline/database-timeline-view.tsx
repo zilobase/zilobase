@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import {
   GanttFeatureItem,
   GanttHeader,
@@ -16,7 +16,6 @@ import {
 import { getDatabasePropertyType } from "../constants"
 import { getRawDatabaseGroupValue } from "../shared/database-group-values"
 import { useDatabaseViewContext } from "../shared/database-view-context"
-import { useInlineDatabaseScroll } from "../shared/use-inline-database-scroll"
 import {
   buildTimelineRowItem,
   getGanttStatusForValue,
@@ -115,9 +114,6 @@ export function DatabaseTimelineView() {
   )
   const [timelineRange, setTimelineRange] = useState<Range>("daily")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const contentRef = useRef<HTMLDivElement>(null)
 
   const statusProperty =
     properties.find((property) => property.property.type === "status") ?? null
@@ -209,32 +205,6 @@ export function DatabaseTimelineView() {
       ].join(" "),
     [bodyEntries]
   )
-  const getInlineTimelineContentWidth = useCallback(() => {
-    const wrapper = wrapRef.current
-
-    if (!wrapper) {
-      return 0
-    }
-
-    const editorSurface = wrapper.closest<HTMLElement>("[data-editor-surface]")
-
-    if (editorSurface) {
-      return editorSurface.getBoundingClientRect().width
-    }
-
-    return wrapper.getBoundingClientRect().width
-  }, [])
-  const {
-    isInlineScrollEnabled: isInlineTimelineScrollEnabled,
-    style: timelineWrapStyle,
-  } = useInlineDatabaseScroll({
-    contentRef,
-    enabled: !sidebarCollapsed,
-    getContentWidth: getInlineTimelineContentWidth,
-    measureKey: `${sidebarCollapsed}:${timelineRange}:${bodyEntries.length}`,
-    scrollRef,
-    wrapperRef: wrapRef,
-  })
 
   const handleSelectRow = (rowId: string) => {
     const row = sortedItems.find((item) => item.id === rowId)
@@ -318,94 +288,77 @@ export function DatabaseTimelineView() {
 
   return (
     <div
-      className="database-timeline-wrap database-inline-scroll-wrap"
-      data-inline-scroll={isInlineTimelineScrollEnabled ? "true" : undefined}
-      ref={wrapRef}
-      style={timelineWrapStyle}
+      className="database-timeline-view min-h-0 flex-1 overflow-hidden"
+      data-sidebar-collapsed={sidebarCollapsed ? "true" : undefined}
     >
-      <div
-        className="database-timeline-scroll database-inline-scroll"
-        ref={scrollRef}
+      <GanttProvider
+        className="database-timeline-gantt h-full min-h-[28rem]"
+        headerHeight={32}
+        hideHeaderTitle
+        onAddItem={addTimelineRow}
+        range={timelineRange}
+        rowHeight={32}
+        scrollClassName="database-timeline-gantt-scroll"
+        style={{ gridTemplateRows }}
+        toolbar={
+          <DatabaseTimelineToolbarChrome
+            onRangeChange={setTimelineRange}
+            onSidebarCollapsedChange={setSidebarCollapsed}
+            range={timelineRange}
+            sidebarCollapsed={sidebarCollapsed}
+          />
+        }
+        zoom={100}
       >
-        <div
-          className="database-timeline-scroll-content database-inline-scroll-content"
-          ref={contentRef}
-        >
-          <div
-            className="database-timeline-view min-h-0 flex-1 overflow-hidden"
-            data-sidebar-collapsed={sidebarCollapsed ? "true" : undefined}
-          >
-            <GanttProvider
-              className="database-timeline-gantt h-full min-h-[28rem]"
-              headerHeight={32}
-              hideHeaderTitle
-              onAddItem={addTimelineRow}
-              range={timelineRange}
-              rowHeight={32}
-              scrollClassName="database-timeline-gantt-scroll"
-              style={{ gridTemplateRows }}
-              toolbar={
-                <DatabaseTimelineToolbarChrome
-                  onRangeChange={setTimelineRange}
-                  onSidebarCollapsedChange={setSidebarCollapsed}
-                  range={timelineRange}
-                  sidebarCollapsed={sidebarCollapsed}
-                />
-              }
-              zoom={100}
-            >
-              <div className="database-timeline-gantt-grid-overlay">
-                <GanttHeader
-                  className="database-timeline-gantt-grid h-full"
-                  variant="grid"
-                />
-              </div>
-
-              {isGrouped ? (
-                <div
-                  aria-hidden
-                  className="database-timeline-sidebar-cell database-timeline-sidebar-header-cell database-timeline-header-spacer"
-                  data-roadmap-ui="gantt-sidebar"
-                  style={timelineTableStyle}
-                />
-              ) : (
-                <div
-                  className="database-timeline-sidebar-cell database-timeline-sidebar-header-cell"
-                  data-roadmap-ui="gantt-sidebar"
-                  style={timelineTableStyle}
-                >
-                  <TimelineNameHeaderRow label={titlePropertyLabel} />
-                </div>
-              )}
-              <div className="database-timeline-gantt-header-cell">
-                <GanttHeader
-                  className="database-timeline-gantt-dates"
-                  variant="dates"
-                />
-              </div>
-
-              {bodyEntries.flatMap((entry, index) => {
-                const key = getTimelineEntryKey(entry, index)
-
-                return [
-                  <TimelineSidebarEntryCell
-                    {...sidebarCellProps}
-                    entry={entry}
-                    key={`sidebar-${key}`}
-                  />,
-                  <TimelineGanttEntryCell
-                    entry={entry}
-                    key={`gantt-${key}`}
-                    onMoveFeature={handleMoveFeature}
-                    onSelectRow={handleSelectRow}
-                    timelineRowById={timelineRowById}
-                  />,
-                ]
-              })}
-            </GanttProvider>
-          </div>
+        <div className="database-timeline-gantt-grid-overlay">
+          <GanttHeader
+            className="database-timeline-gantt-grid h-full"
+            variant="grid"
+          />
         </div>
-      </div>
+
+        {isGrouped ? (
+          <div
+            aria-hidden
+            className="database-timeline-sidebar-cell database-timeline-sidebar-header-cell database-timeline-header-spacer"
+            data-roadmap-ui="gantt-sidebar"
+            style={timelineTableStyle}
+          />
+        ) : (
+          <div
+            className="database-timeline-sidebar-cell database-timeline-sidebar-header-cell"
+            data-roadmap-ui="gantt-sidebar"
+            style={timelineTableStyle}
+          >
+            <TimelineNameHeaderRow label={titlePropertyLabel} />
+          </div>
+        )}
+        <div className="database-timeline-gantt-header-cell">
+          <GanttHeader
+            className="database-timeline-gantt-dates"
+            variant="dates"
+          />
+        </div>
+
+        {bodyEntries.flatMap((entry, index) => {
+          const key = getTimelineEntryKey(entry, index)
+
+          return [
+            <TimelineSidebarEntryCell
+              {...sidebarCellProps}
+              entry={entry}
+              key={`sidebar-${key}`}
+            />,
+            <TimelineGanttEntryCell
+              entry={entry}
+              key={`gantt-${key}`}
+              onMoveFeature={handleMoveFeature}
+              onSelectRow={handleSelectRow}
+              timelineRowById={timelineRowById}
+            />,
+          ]
+        })}
+      </GanttProvider>
     </div>
   )
 }
