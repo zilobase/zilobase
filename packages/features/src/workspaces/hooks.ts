@@ -636,7 +636,7 @@ export function useUpdateWorkspace() {
       queryClient.setQueryData<WorkspaceDetail | null>(
         workspaceQueryKey(workspace.id),
         (current) => ({
-          accessLevel: current?.accessLevel ?? null,
+          accessLevel: current?.accessLevel ?? "full",
           workspace,
         }),
       )
