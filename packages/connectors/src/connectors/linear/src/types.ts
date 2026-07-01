@@ -19,7 +19,7 @@ export type LinearOAuthTokenResponse = {
   token_type?: string;
 };
 
-export type LinearOrganizationSummary = {
+export type LinearWorkspaceSummary = {
   id: string;
   name?: string;
   urlKey?: string;

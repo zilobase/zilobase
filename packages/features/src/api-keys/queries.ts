@@ -9,7 +9,7 @@ export type ApiKeyRecord = {
   id: string
   lastRequest: string | null
   name: string
-  organizationId: string | null
+  workspaceId: string | null
   prefix: string | null
   requestCount: number
   start: string | null
@@ -25,22 +25,22 @@ export type CreatedApiKeyRecord = ApiKeyRecord & {
 }
 
 export const apiKeysQueryKey = (
-  organizationId: string | null | undefined,
-) => ["organizations", organizationId ?? "none", "api-keys"] as const
+  workspaceId: string | null | undefined,
+) => ["workspaces", workspaceId ?? "none", "api-keys"] as const
 
 export const apiKeysQueryOptions = (
   apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
 ) => queryOptions({
-  queryKey: apiKeysQueryKey(organizationId),
-  enabled: Boolean(organizationId),
+  queryKey: apiKeysQueryKey(workspaceId),
+  enabled: Boolean(workspaceId),
   queryFn: ({ signal }) => {
-    if (!organizationId) {
-      throw new Error("Select an organization before loading API keys.")
+    if (!workspaceId) {
+      throw new Error("Select an workspace before loading API keys.")
     }
 
     return apiFetch<ApiKeysResponse>(
-      `/api/keys?organizationId=${encodeURIComponent(organizationId)}`,
+      `/api/keys?workspaceId=${encodeURIComponent(workspaceId)}`,
       { signal },
     )
   },

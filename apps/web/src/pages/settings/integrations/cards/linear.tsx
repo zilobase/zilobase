@@ -9,35 +9,35 @@ import {
   IntegrationSectionCard,
   IntegrationSectionHeader,
   IntegrationSectionLayout,
-  IntegrationWorkspaceActions,
-  IntegrationWorkspacePendingAlert,
+  IntegrationPageActions,
+  IntegrationPagePendingAlert,
   isIntegrationConnectBlocked,
 } from "../integration-card-sections";
 import { useIntegrationConnectionState } from "../use-integration-connection-state";
 
 export function LinearIntegrationCard({
-  canManageWorkspace,
+  canManagePage,
   isBusy,
   onConnectPersonal,
-  onConnectWorkspace,
+  onConnectPage,
   onDisconnectPersonal,
-  onDisconnectWorkspace,
+  onDisconnectPage,
   onToggleEmailMatch,
   status,
 }: {
-  canManageWorkspace: boolean;
+  canManagePage: boolean;
   isBusy: boolean;
   onConnectPersonal: () => void;
-  onConnectWorkspace: (enforceEmailMatch: boolean) => void;
+  onConnectPage: (enforceEmailMatch: boolean) => void;
   onDisconnectPersonal: () => void;
-  onDisconnectWorkspace: () => void;
+  onDisconnectPage: () => void;
   onToggleEmailMatch: (enabled: boolean) => void;
   status: LinearIntegrationStatus | null;
 }) {
   const {
     enforceEmailMatch,
     isPersonalConnected,
-    isWorkspaceConnected,
+    isPageConnected,
     setPendingEmailMatch,
   } = useIntegrationConnectionState(status);
 
@@ -46,31 +46,31 @@ export function LinearIntegrationCard({
       <IntegrationSectionCard>
         <IntegrationSectionLayout
           actions={
-            <IntegrationWorkspaceActions
-              canManageWorkspace={canManageWorkspace}
+            <IntegrationPageActions
+              canManagePage={canManagePage}
               connectDisabled={isIntegrationConnectBlocked(status)}
-              connectLabel="Connect workspace"
+              connectLabel="Connect page"
               isBusy={isBusy}
-              isWorkspaceConnected={isWorkspaceConnected}
-              onConnectWorkspace={() => onConnectWorkspace(enforceEmailMatch)}
-              onDisconnectWorkspace={onDisconnectWorkspace}
+              isPageConnected={isPageConnected}
+              onConnectPage={() => onConnectPage(enforceEmailMatch)}
+              onDisconnectPage={onDisconnectPage}
             />
           }
           footer={
             <>
               <IntegrationEmailMatchSetting
-                canManageWorkspace={canManageWorkspace}
+                canManagePage={canManagePage}
                 checked={enforceEmailMatch}
                 disabled={isBusy}
                 integrationName="Linear"
-                isWorkspaceConnected={isWorkspaceConnected}
+                isPageConnected={isPageConnected}
                 onApply={onToggleEmailMatch}
                 onPendingChange={setPendingEmailMatch}
               />
-              <IntegrationWorkspacePendingAlert
-                canManageWorkspace={canManageWorkspace}
-                isWorkspaceConnected={isWorkspaceConnected}
-                memberMessage="Linear workspace is not connected. Ask an admin to connect it before linking your Linear account."
+              <IntegrationPagePendingAlert
+                canManagePage={canManagePage}
+                isPageConnected={isPageConnected}
+                memberMessage="Linear page is not connected. Ask an admin to connect it before linking your Linear account."
               />
               <IntegrationOAuthNotConfiguredAlert
                 message="Linear OAuth is not configured on the backend."
@@ -80,17 +80,17 @@ export function LinearIntegrationCard({
           }
         >
           <IntegrationSectionHeader
-            connected={status?.workspace.connected}
-            description="Admin-managed Linear organization connection. Members can connect their own Linear account after this workspace is connected."
+            connected={status?.page.connected}
+            description="Admin-managed Linear workspace connection. Members can connect their own Linear account after this page is connected."
             details={
               <>
                 <IntegrationDetail
-                  label="Workspace"
-                  value={status?.workspace.organizationName || "Not connected"}
+                  label="Page"
+                  value={status?.page.workspaceName || "Not connected"}
                 />
                 <IntegrationDetail
-                  label="Workspace ID"
-                  value={status?.workspace.organizationId || "Not connected"}
+                  label="Page ID"
+                  value={status?.page.workspaceId || "Not connected"}
                 />
                 <IntegrationDetail
                   label="Email matching"
@@ -103,7 +103,7 @@ export function LinearIntegrationCard({
               </>
             }
             iconSrc={integrationIcons.linear}
-            title="Linear workspace"
+            title="Linear page"
           />
         </IntegrationSectionLayout>
       </IntegrationSectionCard>
@@ -125,10 +125,10 @@ export function LinearIntegrationCard({
               value={status?.personal.email || "Not connected"}
             />
             <IntegrationDetail
-              label="Workspace"
+              label="Page"
               value={
-                status?.workspace.organizationName ||
-                "Workspace not connected"
+                status?.page.workspaceName ||
+                "Page not connected"
               }
             />
             <IntegrationDetail
@@ -138,10 +138,10 @@ export function LinearIntegrationCard({
           </>
         }
         iconSrc={integrationIcons.linear}
-        integrationName="Linear workspace"
+        integrationName="Linear page"
         isBusy={isBusy}
         isPersonalConnected={isPersonalConnected}
-        isWorkspaceConnected={isWorkspaceConnected}
+        isPageConnected={isPageConnected}
         onConnectPersonal={onConnectPersonal}
         onDisconnectPersonal={onDisconnectPersonal}
         status={status}

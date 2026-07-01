@@ -5,11 +5,11 @@ import * as React from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SettingsHeader } from "@/components/settings-header";
 import {
-  useActiveOrganizationId,
+  useActiveWorkspaceId,
   useIntegrations,
 } from "@notelab/features/integrations";
 import { useSession } from "@notelab/features/auth";
-import { useOrganizationAccessTargets } from "@notelab/features/organizations";
+import { useWorkspaceAccessTargets } from "@notelab/features/workspaces";
 import { getApiErrorMessage } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -31,11 +31,11 @@ import {
 } from "./oauth-messages";
 import type { IntegrationId, IntegrationSummary } from "./types";
 
-export default function OrganizationIntegrationsSettingsPage() {
+export default function WorkspaceIntegrationsSettingsPage() {
   const isActive = true;
-  const activeOrganizationId = useActiveOrganizationId();
+  const activeWorkspaceId = useActiveWorkspaceId();
   const { data: sessionData } = useSession();
-  const { data: accessTargets } = useOrganizationAccessTargets(activeOrganizationId);
+  const { data: accessTargets } = useWorkspaceAccessTargets(activeWorkspaceId);
   const integrationsQuery = useIntegrations();
   const gmailStatus = integrationsQuery.data?.gmail ?? null;
   const githubStatus = integrationsQuery.data?.github ?? null;
@@ -59,13 +59,13 @@ export default function OrganizationIntegrationsSettingsPage() {
       (sessionData?.user?.email &&
         member.email.toLowerCase() === sessionData.user.email.toLowerCase()),
   );
-  const canManageLinearWorkspace =
+  const canManageLinearPage =
     currentMember?.role === "admin" || currentMember?.role === "owner";
-  const canManageSlackWorkspace = canManageLinearWorkspace;
-  const canManageGithubWorkspace = canManageLinearWorkspace;
-  const canManageGoogleDriveWorkspace = canManageLinearWorkspace;
-  const canManageGoogleCalendarWorkspace = canManageLinearWorkspace;
-  const canManageGmailWorkspace = canManageLinearWorkspace;
+  const canManageSlackPage = canManageLinearPage;
+  const canManageGithubPage = canManageLinearPage;
+  const canManageGoogleDrivePage = canManageLinearPage;
+  const canManageGoogleCalendarPage = canManageLinearPage;
+  const canManageGmailPage = canManageLinearPage;
   const controllerContext = {
     isLoadingIntegrations,
     setIntegrationsError,
@@ -73,32 +73,32 @@ export default function OrganizationIntegrationsSettingsPage() {
   };
   const gmailIntegration = useGmailIntegrationController({
     ...controllerContext,
-    canManageWorkspace: canManageGmailWorkspace,
+    canManagePage: canManageGmailPage,
     status: gmailStatus,
   });
   const githubIntegration = useGithubIntegrationController({
     ...controllerContext,
-    canManageWorkspace: canManageGithubWorkspace,
+    canManagePage: canManageGithubPage,
     status: githubStatus,
   });
   const googleCalendarIntegration = useGoogleCalendarIntegrationController({
     ...controllerContext,
-    canManageWorkspace: canManageGoogleCalendarWorkspace,
+    canManagePage: canManageGoogleCalendarPage,
     status: googleCalendarStatus,
   });
   const googleDriveIntegration = useGoogleDriveIntegrationController({
     ...controllerContext,
-    canManageWorkspace: canManageGoogleDriveWorkspace,
+    canManagePage: canManageGoogleDrivePage,
     status: googleDriveStatus,
   });
   const slackIntegration = useSlackIntegrationController({
     ...controllerContext,
-    canManageWorkspace: canManageSlackWorkspace,
+    canManagePage: canManageSlackPage,
     status: slackStatus,
   });
   const linearIntegration = useLinearIntegrationController({
     ...controllerContext,
-    canManageWorkspace: canManageLinearWorkspace,
+    canManagePage: canManageLinearPage,
     status: linearStatus,
   });
 
@@ -169,7 +169,7 @@ export default function OrganizationIntegrationsSettingsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">
       <SettingsHeader
-        description="Connect organization tools that Notelab can use for workspace context."
+        description="Connect workspace tools that Notelab can use for page context."
         title="Integrations"
       />
       <div className="mx-auto grid w-full max-w-4xl gap-4">
@@ -212,7 +212,7 @@ export default function OrganizationIntegrationsSettingsPage() {
         ) : null}
         {selectedIntegration ? null : (
           <IntegrationSection
-            description="Connect organization tools for AI workspace research."
+            description="Connect workspace tools for AI page research."
             title="AI enterprise search"
           >
             {integrationSummaries

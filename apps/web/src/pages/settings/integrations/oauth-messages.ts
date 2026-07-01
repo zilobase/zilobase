@@ -9,45 +9,45 @@ type OAuthCallbackResult = {
 const oauthMessages: Record<IntegrationId, Record<string, string>> = {
   gmail: {
     admin_required:
-      "Only organization admins can connect the Gmail workspace.",
+      "Only workspace admins can connect the Gmail page.",
     connected: "Gmail connected.",
     consumer_google_account:
-      "Use a paid Google Workspace account, not Gmail.com.",
+      "Use a paid Google Page account, not Gmail.com.",
     email_mismatch:
-      "Use the Gmail account with the same email as your Notelab organization account.",
+      "Use the Gmail account with the same email as your Notelab workspace account.",
     email_not_allowed:
-      "The connected Google email must be a member or pending invite in this organization.",
-    email_not_in_organization:
-      "The connected Google email must be a member or pending invite in this organization.",
-    gmail_workspace_mismatch:
-      "Use a Gmail account from the connected Google Workspace domain.",
-    gmail_workspace_not_connected: "Ask an admin to connect Gmail first.",
+      "The connected Google email must be a member or pending invite in this workspace.",
+    email_not_in_workspace:
+      "The connected Google email must be a member or pending invite in this workspace.",
+    gmail_page_mismatch:
+      "Use a Gmail account from the connected Google Page domain.",
+    gmail_page_not_connected: "Ask an admin to connect Gmail first.",
     invalid_id_token: "Google could not verify the connected account.",
     invalid_oauth_state: "The Gmail connection expired. Try connecting again.",
     google_oauth_not_configured: "Google OAuth is not configured.",
-    google_workspace_domain_required:
-      "Use a Google Workspace account with a hosted domain.",
+    google_page_domain_required:
+      "Use a Google Page account with a hosted domain.",
     missing_hosted_domain:
-      "Use a Google Workspace account with a hosted organization domain.",
+      "Use a Google Page account with a hosted workspace domain.",
     unauthorized: "Sign in again before connecting Gmail.",
   },
   github: {
     admin_required:
-      "Only organization admins can connect the GitHub organization.",
+      "Only workspace admins can connect the GitHub workspace.",
     connected: "GitHub connected.",
     email_mismatch:
-      "Use the GitHub account with the same email as your Notelab organization account.",
+      "Use the GitHub account with the same email as your Notelab workspace account.",
     github_admin_required:
-      "Use a GitHub account that can administer this organization.",
+      "Use a GitHub account that can administer this workspace.",
     github_membership_required:
-      "Use a GitHub account that belongs to the connected GitHub organization.",
+      "Use a GitHub account that belongs to the connected GitHub workspace.",
     github_not_configured: "GitHub OAuth is not configured.",
-    github_organization_required:
-      "Enter the GitHub organization login before connecting.",
-    github_workspace_mismatch:
-      "Use a GitHub account from the connected GitHub organization.",
-    github_workspace_not_connected:
-      "Ask an admin to connect the GitHub organization first.",
+    github_workspace_required:
+      "Enter the GitHub workspace login before connecting.",
+    github_page_mismatch:
+      "Use a GitHub account from the connected GitHub workspace.",
+    github_page_not_connected:
+      "Ask an admin to connect the GitHub workspace first.",
     invalid_oauth_state: "The GitHub connection expired. Try connecting again.",
     missing_access_token: "GitHub did not return an access token.",
     oauth_callback_failed: "GitHub connection failed during OAuth.",
@@ -55,17 +55,17 @@ const oauthMessages: Record<IntegrationId, Record<string, string>> = {
   },
   googleCalendar: {
     admin_required:
-      "Only organization admins can connect the Google Calendar workspace.",
+      "Only workspace admins can connect the Google Calendar page.",
     connected: "Google Calendar connected.",
     email_mismatch:
-      "Use the Google account with the same email as your Notelab organization account.",
-    google_calendar_workspace_mismatch:
-      "Use a Google account from the connected Google Workspace domain.",
-    google_calendar_workspace_not_connected:
+      "Use the Google account with the same email as your Notelab workspace account.",
+    google_calendar_page_mismatch:
+      "Use a Google account from the connected Google Page domain.",
+    google_calendar_page_not_connected:
       "Ask an admin to connect Google Calendar first.",
     google_oauth_not_configured: "Google OAuth is not configured.",
-    google_workspace_domain_required:
-      "Use a Google Workspace account with a hosted domain.",
+    google_page_domain_required:
+      "Use a Google Page account with a hosted domain.",
     invalid_id_token: "Google could not verify the connected account.",
     invalid_oauth_state:
       "The Google Calendar connection expired. Try connecting again.",
@@ -76,17 +76,17 @@ const oauthMessages: Record<IntegrationId, Record<string, string>> = {
   },
   googleDrive: {
     admin_required:
-      "Only organization admins can connect the Google Drive workspace.",
+      "Only workspace admins can connect the Google Drive page.",
     connected: "Google Drive connected.",
     email_mismatch:
-      "Use the Google account with the same email as your Notelab organization account.",
-    google_drive_workspace_mismatch:
-      "Use a Google account from the connected Google Workspace domain.",
-    google_drive_workspace_not_connected:
+      "Use the Google account with the same email as your Notelab workspace account.",
+    google_drive_page_mismatch:
+      "Use a Google account from the connected Google Page domain.",
+    google_drive_page_not_connected:
       "Ask an admin to connect Google Drive first.",
     google_oauth_not_configured: "Google OAuth is not configured.",
-    google_workspace_domain_required:
-      "Use a Google Workspace account with a hosted domain.",
+    google_page_domain_required:
+      "Use a Google Page account with a hosted domain.",
     invalid_id_token: "Google could not verify the connected account.",
     invalid_oauth_state:
       "The Google Drive connection expired. Try connecting again.",
@@ -96,31 +96,31 @@ const oauthMessages: Record<IntegrationId, Record<string, string>> = {
     unverified_email: "Google could not verify the connected email.",
   },
   slack: {
-    admin_required: "Only organization admins can connect the Slack workspace.",
+    admin_required: "Only workspace admins can connect the Slack page.",
     connected: "Slack connected.",
     email_mismatch:
-      "Use the Slack account with the same email as your Notelab organization account.",
+      "Use the Slack account with the same email as your Notelab workspace account.",
     invalid_oauth_state: "The Slack connection expired. Try connecting again.",
     missing_access_token: "Slack did not return an app access token.",
     oauth_callback_failed: "Slack connection failed during OAuth.",
     slack_not_configured: "Slack OAuth is not configured.",
-    slack_workspace_mismatch:
-      "Use a Slack account from the connected Slack workspace.",
-    slack_workspace_not_connected:
-      "Ask an admin to connect the Slack workspace first.",
+    slack_page_mismatch:
+      "Use a Slack account from the connected Slack page.",
+    slack_page_not_connected:
+      "Ask an admin to connect the Slack page first.",
     unauthorized: "Sign in again before connecting Slack.",
   },
   linear: {
-    admin_required: "Only organization admins can connect the Linear workspace.",
+    admin_required: "Only workspace admins can connect the Linear page.",
     connected: "Linear connected.",
     email_mismatch:
-      "Use the Linear account with the same email as your Notelab organization account.",
+      "Use the Linear account with the same email as your Notelab workspace account.",
     invalid_oauth_state: "The Linear connection expired. Try connecting again.",
     linear_not_configured: "Linear OAuth is not configured.",
-    linear_workspace_mismatch:
-      "Use a Linear account from the connected Linear workspace.",
-    linear_workspace_not_connected:
-      "Ask an admin to connect the Linear workspace first.",
+    linear_page_mismatch:
+      "Use a Linear account from the connected Linear page.",
+    linear_page_not_connected:
+      "Ask an admin to connect the Linear page first.",
     missing_access_token: "Linear did not return an access token.",
     oauth_callback_failed: "Linear connection failed during OAuth.",
     unauthorized: "Sign in again before connecting Linear.",

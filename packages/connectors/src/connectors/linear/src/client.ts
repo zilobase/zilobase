@@ -1,7 +1,7 @@
 import { LinearClient } from "@linear/sdk";
 
 import type {
-  LinearOrganizationSummary,
+  LinearWorkspaceSummary,
   LinearViewerSummary,
 } from "./types.js";
 
@@ -27,13 +27,13 @@ export class LinearReadonlyClient {
     };
   }
 
-  async getOrganization(): Promise<LinearOrganizationSummary> {
-    const organization = await this.client.organization;
+  async getOrganization(): Promise<LinearWorkspaceSummary> {
+    const workspace = await this.client.organization;
 
     return {
-      id: organization.id,
-      name: organization.name ?? undefined,
-      urlKey: organization.urlKey ?? undefined,
+      id: workspace.id,
+      name: workspace.name ?? undefined,
+      urlKey: workspace.urlKey ?? undefined,
     };
   }
 }

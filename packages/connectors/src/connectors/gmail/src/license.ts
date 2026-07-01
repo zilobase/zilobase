@@ -4,8 +4,8 @@ import {
 } from "./constants.js";
 import { resolveFetch, type GmailFetch } from "./fetch.js";
 import type {
-  GoogleWorkspaceLicenseAssignment,
-  GoogleWorkspaceLicenseVerificationResult,
+  GooglePageLicenseAssignment,
+  GooglePageLicenseVerificationResult,
 } from "./types.js";
 
 const licensingBaseUrls = [
@@ -13,7 +13,7 @@ const licensingBaseUrls = [
   "https://www.googleapis.com",
 ] as const;
 
-export type VerifyGoogleWorkspaceLicenseOptions = {
+export type VerifyGooglePageLicenseOptions = {
   accessToken: string;
   fetch?: GmailFetch;
   productId?: string;
@@ -21,18 +21,18 @@ export type VerifyGoogleWorkspaceLicenseOptions = {
   userEmail: string;
 };
 
-export async function verifyGoogleWorkspacePaidLicense({
+export async function verifyGooglePagePaidLicense({
   accessToken,
   fetch: fetchImpl,
   productId = GOOGLE_WORKSPACE_PRODUCT_ID,
   skuIds = GOOGLE_WORKSPACE_PAID_SKU_IDS,
   userEmail,
-}: VerifyGoogleWorkspaceLicenseOptions): Promise<GoogleWorkspaceLicenseVerificationResult> {
+}: VerifyGooglePageLicenseOptions): Promise<GooglePageLicenseVerificationResult> {
   if (skuIds.length === 0) {
     return { ok: false, status: "not_configured" };
   }
 
-  let badRequest: GoogleWorkspaceLicenseVerificationResult | undefined;
+  let badRequest: GooglePageLicenseVerificationResult | undefined;
   const safeFetch = resolveFetch(fetchImpl);
 
   for (const baseUrl of licensingBaseUrls) {
@@ -49,7 +49,7 @@ export async function verifyGoogleWorkspacePaidLicense({
       if (response.ok) {
         return {
           ok: true,
-          assignment: (await response.json()) as GoogleWorkspaceLicenseAssignment,
+          assignment: (await response.json()) as GooglePageLicenseAssignment,
           status: "verified",
         };
       }

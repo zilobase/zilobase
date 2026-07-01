@@ -9,35 +9,35 @@ import {
   IntegrationSectionCard,
   IntegrationSectionHeader,
   IntegrationSectionLayout,
-  IntegrationWorkspaceActions,
-  IntegrationWorkspacePendingAlert,
+  IntegrationPageActions,
+  IntegrationPagePendingAlert,
   isIntegrationConnectBlocked,
 } from "../integration-card-sections";
 import { useIntegrationConnectionState } from "../use-integration-connection-state";
 
 export function GmailIntegrationCard({
-  canManageWorkspace,
+  canManagePage,
   isBusy,
   onConnectPersonal,
-  onConnectWorkspace,
+  onConnectPage,
   onDisconnectPersonal,
-  onDisconnectWorkspace,
+  onDisconnectPage,
   onToggleEmailMatch,
   status,
 }: {
-  canManageWorkspace: boolean;
+  canManagePage: boolean;
   isBusy: boolean;
   onConnectPersonal: () => void;
-  onConnectWorkspace: (enforceEmailMatch: boolean) => void;
+  onConnectPage: (enforceEmailMatch: boolean) => void;
   onDisconnectPersonal: () => void;
-  onDisconnectWorkspace: () => void;
+  onDisconnectPage: () => void;
   onToggleEmailMatch: (enabled: boolean) => void;
   status: GmailIntegrationStatus | null;
 }) {
   const {
     enforceEmailMatch,
     isPersonalConnected,
-    isWorkspaceConnected,
+    isPageConnected,
     setPendingEmailMatch,
   } = useIntegrationConnectionState(status);
 
@@ -46,31 +46,31 @@ export function GmailIntegrationCard({
       <IntegrationSectionCard>
         <IntegrationSectionLayout
           actions={
-            <IntegrationWorkspaceActions
-              canManageWorkspace={canManageWorkspace}
+            <IntegrationPageActions
+              canManagePage={canManagePage}
               connectDisabled={isIntegrationConnectBlocked(status)}
-              connectLabel="Connect workspace"
+              connectLabel="Connect page"
               isBusy={isBusy}
-              isWorkspaceConnected={isWorkspaceConnected}
-              onConnectWorkspace={() => onConnectWorkspace(enforceEmailMatch)}
-              onDisconnectWorkspace={onDisconnectWorkspace}
+              isPageConnected={isPageConnected}
+              onConnectPage={() => onConnectPage(enforceEmailMatch)}
+              onDisconnectPage={onDisconnectPage}
             />
           }
           footer={
             <>
               <IntegrationEmailMatchSetting
-                canManageWorkspace={canManageWorkspace}
+                canManagePage={canManagePage}
                 checked={enforceEmailMatch}
                 disabled={isBusy}
                 integrationName="Gmail"
-                isWorkspaceConnected={isWorkspaceConnected}
+                isPageConnected={isPageConnected}
                 onApply={onToggleEmailMatch}
                 onPendingChange={setPendingEmailMatch}
               />
-              <IntegrationWorkspacePendingAlert
-                canManageWorkspace={canManageWorkspace}
-                isWorkspaceConnected={isWorkspaceConnected}
-                memberMessage="Gmail workspace is not connected. Ask an admin to connect it before linking your Gmail account."
+              <IntegrationPagePendingAlert
+                canManagePage={canManagePage}
+                isPageConnected={isPageConnected}
+                memberMessage="Gmail page is not connected. Ask an admin to connect it before linking your Gmail account."
               />
               <IntegrationOAuthNotConfiguredAlert
                 message="Google OAuth is not configured on the backend."
@@ -80,17 +80,17 @@ export function GmailIntegrationCard({
           }
         >
           <IntegrationSectionHeader
-            connected={status?.workspace.connected}
-            description="Admin-managed Google Workspace domain used to validate which Gmail accounts may connect."
+            connected={status?.page.connected}
+            description="Admin-managed Google Page domain used to validate which Gmail accounts may connect."
             details={
               <>
                 <IntegrationDetail
                   label="Domain"
-                  value={status?.workspace.hostedDomain || "Not connected"}
+                  value={status?.page.hostedDomain || "Not connected"}
                 />
                 <IntegrationDetail
                   label="Admin account"
-                  value={status?.workspace.email || "Not connected"}
+                  value={status?.page.email || "Not connected"}
                 />
                 <IntegrationDetail
                   label="Email matching"
@@ -99,15 +99,15 @@ export function GmailIntegrationCard({
                 <IntegrationDetail
                   label="Access"
                   value={
-                    isWorkspaceConnected
-                      ? "Workspace domain verified"
+                    isPageConnected
+                      ? "Page domain verified"
                       : "Not connected"
                   }
                 />
               </>
             }
             iconSrc={integrationIcons.gmail}
-            title="Gmail workspace"
+            title="Gmail page"
           />
         </IntegrationSectionLayout>
       </IntegrationSectionCard>
@@ -125,9 +125,9 @@ export function GmailIntegrationCard({
               value={status?.personal.hostedDomain || "Not verified"}
             />
             <IntegrationDetail
-              label="Workspace"
+              label="Page"
               value={
-                status?.workspace.hostedDomain || "Workspace not connected"
+                status?.page.hostedDomain || "Page not connected"
               }
             />
             <IntegrationDetail
@@ -139,10 +139,10 @@ export function GmailIntegrationCard({
           </>
         }
         iconSrc={integrationIcons.gmail}
-        integrationName="Gmail workspace"
+        integrationName="Gmail page"
         isBusy={isBusy}
         isPersonalConnected={isPersonalConnected}
-        isWorkspaceConnected={isWorkspaceConnected}
+        isPageConnected={isPageConnected}
         onConnectPersonal={onConnectPersonal}
         onDisconnectPersonal={onDisconnectPersonal}
         status={status}

@@ -1,6 +1,6 @@
 import type {
-  GmailWorkspaceEligibilityInput,
-  GmailWorkspaceEligibilityResult,
+  GmailPageEligibilityInput,
+  GmailPageEligibilityResult,
   GoogleIdTokenClaims,
 } from "./types.js";
 
@@ -18,13 +18,13 @@ export function isConsumerGmailAddress(email: string) {
   return domain === "gmail.com" || domain === "googlemail.com";
 }
 
-export function evaluateGmailWorkspaceEligibility({
+export function evaluateGmailPageEligibility({
   allowedEmails,
   connectedEmail,
   hostedDomain,
   licenseVerified = false,
-  requirePaidWorkspaceLicense = true,
-}: GmailWorkspaceEligibilityInput): GmailWorkspaceEligibilityResult {
+  requirePaidPageLicense = true,
+}: GmailPageEligibilityInput): GmailPageEligibilityResult {
   const normalizedConnectedEmail = normalizeEmail(connectedEmail);
   const normalizedHostedDomain = normalizeDomain(hostedDomain);
   const allowedEmailSet = new Set(allowedEmails.map(normalizeEmail));
@@ -48,12 +48,12 @@ export function evaluateGmailWorkspaceEligibility({
     };
   }
 
-  if (requirePaidWorkspaceLicense && !licenseVerified) {
+  if (requirePaidPageLicense && !licenseVerified) {
     return {
       ok: false,
       connectedEmail: normalizedConnectedEmail,
       hostedDomain: normalizedHostedDomain,
-      reason: "paid_workspace_license_required",
+      reason: "paid_page_license_required",
     };
   }
 

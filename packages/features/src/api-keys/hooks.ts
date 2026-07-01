@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { useNotelabFeatures } from "../context"
-import { useActiveOrganizationId } from "../integrations/hooks"
+import { useActiveWorkspaceId } from "../integrations/hooks"
 import {
   apiKeysQueryKey,
   apiKeysQueryOptions,
@@ -9,11 +9,11 @@ import {
   type CreatedApiKeyRecord,
 } from "./queries"
 
-export function useApiKeys(organizationId?: string | null) {
+export function useApiKeys(workspaceId?: string | null) {
   const { apiFetch } = useNotelabFeatures()
-  const activeOrganizationId = useActiveOrganizationId()
+  const activeWorkspaceId = useActiveWorkspaceId()
 
-  return useQuery(apiKeysQueryOptions(apiFetch, organizationId ?? activeOrganizationId))
+  return useQuery(apiKeysQueryOptions(apiFetch, workspaceId ?? activeWorkspaceId))
 }
 
 export function useCreateApiKey() {
@@ -23,7 +23,7 @@ export function useCreateApiKey() {
     mutationFn: (input: {
       expiresIn?: number | null
       name: string
-      organizationId: string
+      workspaceId: string
     }) =>
       apiFetch<{ key: CreatedApiKeyRecord }>("/api/keys", {
         method: "POST",
@@ -31,7 +31,7 @@ export function useCreateApiKey() {
       }),
     onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({
-        queryKey: apiKeysQueryKey(variables.organizationId),
+        queryKey: apiKeysQueryKey(variables.workspaceId),
       })
     },
   })
@@ -48,7 +48,7 @@ export function useUpdateApiKey() {
       enabled?: boolean
       id: string
       name?: string
-      organizationId: string
+      workspaceId: string
     }) =>
       apiFetch<{ key: ApiKeyRecord }>(`/api/keys/${encodeURIComponent(id)}`, {
         method: "PATCH",
@@ -56,7 +56,7 @@ export function useUpdateApiKey() {
       }),
     onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({
-        queryKey: apiKeysQueryKey(variables.organizationId),
+        queryKey: apiKeysQueryKey(variables.workspaceId),
       })
     },
   })
@@ -70,14 +70,14 @@ export function useDeleteApiKey() {
       id,
     }: {
       id: string
-      organizationId: string
+      workspaceId: string
     }) =>
       apiFetch<{ deleted: boolean }>(`/api/keys/${encodeURIComponent(id)}`, {
         method: "DELETE",
       }),
     onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({
-        queryKey: apiKeysQueryKey(variables.organizationId),
+        queryKey: apiKeysQueryKey(variables.workspaceId),
       })
     },
   })

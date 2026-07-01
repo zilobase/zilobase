@@ -14,7 +14,7 @@ import {
 import type { IntegrationControllerContext } from "./types";
 
 export function useGithubIntegrationController({
-  canManageWorkspace,
+  canManagePage,
   isLoadingIntegrations,
   setIntegrationsError,
   setSelectedIntegrationId,
@@ -23,13 +23,13 @@ export function useGithubIntegrationController({
   status: GithubIntegrationStatus | null;
 }) {
   const updateSettings = useUpdateGithubIntegrationSettings();
-  const [organizationLogin, setOrganizationLogin] = React.useState("");
+  const [workspaceLogin, setWorkspaceLogin] = React.useState("");
   const {
     connectPersonal,
-    connectWorkspace,
+    connectPage,
     disconnectIntegration,
     disconnectPersonal,
-    disconnectWorkspace,
+    disconnectPage,
     endpointId,
     runWithIntegrationError,
     startOAuth,
@@ -46,10 +46,10 @@ export function useGithubIntegrationController({
   });
 
   React.useEffect(() => {
-    if (status?.workspace.organizationLogin) {
-      setOrganizationLogin(status.workspace.organizationLogin);
+    if (status?.page.workspaceLogin) {
+      setWorkspaceLogin(status.page.workspaceLogin);
     }
-  }, [status?.workspace.organizationLogin]);
+  }, [status?.page.workspaceLogin]);
 
   const toggleEmailMatch = React.useCallback(
     async (enforceEmailMatch: boolean) => {
@@ -80,8 +80,8 @@ export function useGithubIntegrationController({
       isBusy || status?.configured === false || status?.needsMigration === true,
     connectLabel: "Connect GitHub",
     detail:
-      status?.workspace.organizationLogin ||
-      status?.workspace.organizationName ||
+      status?.page.workspaceLogin ||
+      status?.page.workspaceName ||
       status?.personal.login ||
       "Read code and project activity for AI research.",
     id: "github",
@@ -94,23 +94,23 @@ export function useGithubIntegrationController({
 
   const card = (
     <GithubIntegrationCard
-      canManageWorkspace={canManageWorkspace}
-      githubOrganizationLogin={organizationLogin}
+      canManagePage={canManagePage}
+      githubWorkspaceLogin={workspaceLogin}
       isBusy={isBusy}
       onConnectPersonal={() => void connectPersonal()}
-      onConnectWorkspace={(input) =>
-        void connectWorkspace({
+      onConnectPage={(input) =>
+        void connectPage({
           enforceEmailMatch: input.enforceEmailMatch,
-          githubOrganizationLogin: input.organizationLogin,
+          githubWorkspaceLogin: input.workspaceLogin,
         })
       }
       onDisconnectPersonal={() =>
         void disconnectPersonal("GitHub account disconnected.")
       }
-      onDisconnectWorkspace={() =>
-        void disconnectWorkspace("GitHub organization disconnected.")
+      onDisconnectPage={() =>
+        void disconnectPage("GitHub workspace disconnected.")
       }
-      onOrganizationLoginChange={setOrganizationLogin}
+      onWorkspaceLoginChange={setWorkspaceLogin}
       onToggleEmailMatch={(enabled) => void toggleEmailMatch(enabled)}
       status={status}
     />

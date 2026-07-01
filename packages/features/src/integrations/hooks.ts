@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { useNotelabFeatures } from "../context"
 import { useSession } from "../auth/hooks"
-import { organizationsQueryOptions } from "../organizations/queries"
+import { workspacesQueryOptions } from "../workspaces/queries"
 import {
   aiModelsQueryKey,
   aiModelsQueryOptions,
@@ -16,7 +16,7 @@ import {
   type GoogleDriveIntegrationStatus,
   type GithubIntegrationStatus,
   type LinearIntegrationStatus,
-  type OrganizationAiProvidersResponse,
+  type WorkspaceAiProvidersResponse,
   type SlackIntegrationStatus,
 } from "./queries"
 
@@ -27,24 +27,24 @@ type OAuthStart = {
 export function useIntegrations() {
   const { apiFetch } = useNotelabFeatures()
 
-  return useQuery(integrationsQueryOptions(apiFetch, useActiveOrganizationId()))
+  return useQuery(integrationsQueryOptions(apiFetch, useActiveWorkspaceId()))
 }
 
-export function useOrganizationAiModels() {
+export function useWorkspaceAiModels() {
   const { apiFetch } = useNotelabFeatures()
 
-  return useQuery(aiModelsQueryOptions(apiFetch, useActiveOrganizationId()))
+  return useQuery(aiModelsQueryOptions(apiFetch, useActiveWorkspaceId()))
 }
 
-export function useOrganizationAiProviders() {
+export function useWorkspaceAiProviders() {
   const { apiFetch } = useNotelabFeatures()
 
-  return useQuery(aiProvidersQueryOptions(apiFetch, useActiveOrganizationId()))
+  return useQuery(aiProvidersQueryOptions(apiFetch, useActiveWorkspaceId()))
 }
 
 export function useStartIntegrationOAuth() {
   const { apiFetch } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
   return useMutation({
     mutationFn: ({
@@ -55,9 +55,9 @@ export function useStartIntegrationOAuth() {
       input?: unknown
     }) =>
       apiFetch<OAuthStart>(
-        `/api/organization/settings/integrations/${id}/start`,
+        `/api/workspace/settings/integrations/${id}/start`,
         {
-          ...integrationRequestOptions(organizationId),
+          ...integrationRequestOptions(workspaceId),
           method: "POST",
           body: JSON.stringify(input ?? {}),
         },
@@ -67,22 +67,22 @@ export function useStartIntegrationOAuth() {
 
 export function useDisconnectIntegration() {
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
   return useMutation({
     mutationFn: (
       input:
         | IntegrationEndpoint
-        | { id: IntegrationEndpoint; mode?: "personal" | "workspace" },
+        | { id: IntegrationEndpoint; mode?: "personal" | "page" },
     ) => {
       const id = typeof input === "string" ? input : input.id
       const body =
-        typeof input === "string" ? {} : { mode: input.mode ?? "workspace" }
+        typeof input === "string" ? {} : { mode: input.mode ?? "page" }
 
       return apiFetch<{ connected: false; deleted: boolean }>(
-        `/api/organization/settings/integrations/${id}/disconnect`,
+        `/api/workspace/settings/integrations/${id}/disconnect`,
         {
-          ...integrationRequestOptions(organizationId),
+          ...integrationRequestOptions(workspaceId),
           method: "POST",
           body: JSON.stringify(body),
         },
@@ -90,7 +90,7 @@ export function useDisconnectIntegration() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: integrationsQueryKey(organizationId),
+        queryKey: integrationsQueryKey(workspaceId),
       })
     },
   })
@@ -98,21 +98,21 @@ export function useDisconnectIntegration() {
 
 export function useUpdateLinearIntegrationSettings() {
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
   return useMutation({
     mutationFn: (input: { enforceEmailMatch: boolean }) =>
       apiFetch<{
         removedPersonalConnections: number
         status: LinearIntegrationStatus
-      }>("/api/organization/settings/integrations/linear/settings", {
-        ...integrationRequestOptions(organizationId),
+      }>("/api/workspace/settings/integrations/linear/settings", {
+        ...integrationRequestOptions(workspaceId),
         method: "PATCH",
         body: JSON.stringify(input),
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: integrationsQueryKey(organizationId),
+        queryKey: integrationsQueryKey(workspaceId),
       })
     },
   })
@@ -120,21 +120,21 @@ export function useUpdateLinearIntegrationSettings() {
 
 export function useUpdateSlackIntegrationSettings() {
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
   return useMutation({
     mutationFn: (input: { enforceEmailMatch: boolean }) =>
       apiFetch<{
         removedPersonalConnections: number
         status: SlackIntegrationStatus
-      }>("/api/organization/settings/integrations/slack/settings", {
-        ...integrationRequestOptions(organizationId),
+      }>("/api/workspace/settings/integrations/slack/settings", {
+        ...integrationRequestOptions(workspaceId),
         method: "PATCH",
         body: JSON.stringify(input),
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: integrationsQueryKey(organizationId),
+        queryKey: integrationsQueryKey(workspaceId),
       })
     },
   })
@@ -142,21 +142,21 @@ export function useUpdateSlackIntegrationSettings() {
 
 export function useUpdateGithubIntegrationSettings() {
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
   return useMutation({
     mutationFn: (input: { enforceEmailMatch: boolean }) =>
       apiFetch<{
         removedPersonalConnections: number
         status: GithubIntegrationStatus
-      }>("/api/organization/settings/integrations/github/settings", {
-        ...integrationRequestOptions(organizationId),
+      }>("/api/workspace/settings/integrations/github/settings", {
+        ...integrationRequestOptions(workspaceId),
         method: "PATCH",
         body: JSON.stringify(input),
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: integrationsQueryKey(organizationId),
+        queryKey: integrationsQueryKey(workspaceId),
       })
     },
   })
@@ -164,21 +164,21 @@ export function useUpdateGithubIntegrationSettings() {
 
 export function useUpdateGmailIntegrationSettings() {
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
   return useMutation({
     mutationFn: (input: { enforceEmailMatch: boolean }) =>
       apiFetch<{
         removedPersonalConnections: number
         status: GmailIntegrationStatus
-      }>("/api/organization/settings/integrations/gmail/settings", {
-        ...integrationRequestOptions(organizationId),
+      }>("/api/workspace/settings/integrations/gmail/settings", {
+        ...integrationRequestOptions(workspaceId),
         method: "PATCH",
         body: JSON.stringify(input),
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: integrationsQueryKey(organizationId),
+        queryKey: integrationsQueryKey(workspaceId),
       })
     },
   })
@@ -186,21 +186,21 @@ export function useUpdateGmailIntegrationSettings() {
 
 export function useUpdateGoogleDriveIntegrationSettings() {
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
   return useMutation({
     mutationFn: (input: { enforceEmailMatch: boolean }) =>
       apiFetch<{
         removedPersonalConnections: number
         status: GoogleDriveIntegrationStatus
-      }>("/api/organization/settings/integrations/google-drive/settings", {
-        ...integrationRequestOptions(organizationId),
+      }>("/api/workspace/settings/integrations/google-drive/settings", {
+        ...integrationRequestOptions(workspaceId),
         method: "PATCH",
         body: JSON.stringify(input),
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: integrationsQueryKey(organizationId),
+        queryKey: integrationsQueryKey(workspaceId),
       })
     },
   })
@@ -208,7 +208,7 @@ export function useUpdateGoogleDriveIntegrationSettings() {
 
 export function useUpdateGoogleCalendarIntegrationSettings() {
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
   return useMutation({
     mutationFn: (input: {
@@ -218,22 +218,22 @@ export function useUpdateGoogleCalendarIntegrationSettings() {
       apiFetch<{
         removedPersonalConnections: number
         status: GoogleCalendarIntegrationStatus
-      }>("/api/organization/settings/integrations/google-calendar/settings", {
-        ...integrationRequestOptions(organizationId),
+      }>("/api/workspace/settings/integrations/google-calendar/settings", {
+        ...integrationRequestOptions(workspaceId),
         method: "PATCH",
         body: JSON.stringify(input),
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: integrationsQueryKey(organizationId),
+        queryKey: integrationsQueryKey(workspaceId),
       })
     },
   })
 }
 
-export function useUpdateOrganizationAiProvider() {
+export function useUpdateWorkspaceAiProvider() {
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const organizationId = useActiveOrganizationId()
+  const workspaceId = useActiveWorkspaceId()
 
   return useMutation({
     mutationFn: ({
@@ -248,10 +248,10 @@ export function useUpdateOrganizationAiProvider() {
         modelIds?: string[]
       }
     }) =>
-      apiFetch<OrganizationAiProvidersResponse>(
-        `/api/organization/settings/ai/providers/${encodeURIComponent(providerId)}`,
+      apiFetch<WorkspaceAiProvidersResponse>(
+        `/api/workspace/settings/ai/providers/${encodeURIComponent(providerId)}`,
         {
-          ...integrationRequestOptions(organizationId),
+          ...integrationRequestOptions(workspaceId),
           method: "PUT",
           body: JSON.stringify(input),
         },
@@ -259,10 +259,10 @@ export function useUpdateOrganizationAiProvider() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: aiProvidersQueryKey(organizationId),
+          queryKey: aiProvidersQueryKey(workspaceId),
         }),
         queryClient.invalidateQueries({
-          queryKey: aiModelsQueryKey(organizationId),
+          queryKey: aiModelsQueryKey(workspaceId),
         }),
       ])
     },
@@ -277,23 +277,23 @@ export type IntegrationEndpoint =
   | "linear"
   | "slack"
 
-export function useActiveOrganizationId() {
-  const { auth, preferredActiveOrganizationId } = useNotelabFeatures()
+export function useActiveWorkspaceId() {
+  const { auth, preferredActiveWorkspaceId } = useNotelabFeatures()
   const { data: sessionData } = useSession()
-  const { data: organizations = [] } = useQuery(organizationsQueryOptions(auth))
-  const sessionOrganizationId = sessionData?.session?.activeOrganizationId ?? null
-  const storedOrganization = organizations.find(
-    (organization) => organization.id === preferredActiveOrganizationId,
+  const { data: workspaces = [] } = useQuery(workspacesQueryOptions(auth))
+  const sessionWorkspaceId = sessionData?.session?.activeWorkspaceId ?? null
+  const storedWorkspace = workspaces.find(
+    (workspace) => workspace.id === preferredActiveWorkspaceId,
   )
-  const sessionOrganization = organizations.find(
-    (organization) => organization.id === sessionOrganizationId,
+  const sessionWorkspace = workspaces.find(
+    (workspace) => workspace.id === sessionWorkspaceId,
   )
 
   return (
-    storedOrganization?.id ??
-    sessionOrganization?.id ??
-    organizations[0]?.id ??
-    sessionOrganizationId ??
-    preferredActiveOrganizationId
+    storedWorkspace?.id ??
+    sessionWorkspace?.id ??
+    workspaces[0]?.id ??
+    sessionWorkspaceId ??
+    preferredActiveWorkspaceId
   )
 }

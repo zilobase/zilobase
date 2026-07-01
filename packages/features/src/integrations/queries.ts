@@ -13,10 +13,10 @@ export type GmailIntegrationStatus = {
     email?: string
     hostedDomain?: string
     providerAccountId?: string
-    providerOrganizationId?: string
+    providerWorkspaceId?: string
     updatedAt?: string
   }
-  workspace: {
+  page: {
     connected: boolean
     connectedAt?: string
     email?: string
@@ -39,16 +39,16 @@ export type GithubIntegrationStatus = {
     login?: string
     name?: string
     providerAccountId?: string
-    providerOrganizationId?: string
+    providerWorkspaceId?: string
     updatedAt?: string
   }
-  workspace: {
+  page: {
     connected: boolean
     connectedAt?: string
     enforceEmailMatch: boolean
-    organizationId?: string
-    organizationLogin?: string
-    organizationName?: string
+    workspaceId?: string
+    workspaceLogin?: string
+    workspaceName?: string
     updatedAt?: string
   }
 }
@@ -64,10 +64,10 @@ export type GoogleCalendarIntegrationStatus = {
     email?: string
     hostedDomain?: string
     providerAccountId?: string
-    providerOrganizationId?: string
+    providerWorkspaceId?: string
     updatedAt?: string
   }
-  workspace: {
+  page: {
     connected: boolean
     connectedAt?: string
     coworkerCalendarAccessEnabled: boolean
@@ -91,10 +91,10 @@ export type GoogleDriveIntegrationStatus = {
     email?: string
     hostedDomain?: string
     providerAccountId?: string
-    providerOrganizationId?: string
+    providerWorkspaceId?: string
     updatedAt?: string
   }
-  workspace: {
+  page: {
     connected: boolean
     connectedAt?: string
     email?: string
@@ -116,18 +116,18 @@ export type SlackIntegrationStatus = {
     email?: string
     name?: string
     providerAccountId?: string
-    providerOrganizationId?: string
+    providerWorkspaceId?: string
     updatedAt?: string
   }
-  workspace: {
+  page: {
     connected: boolean
     connectedAt?: string
     enforceEmailMatch: boolean
     enterpriseId?: string
     enterpriseName?: string
     isEnterpriseInstall?: boolean
-    organizationId?: string
-    organizationName?: string
+    workspaceId?: string
+    workspaceName?: string
     teamId?: string
     teamName?: string
     updatedAt?: string
@@ -145,16 +145,16 @@ export type LinearIntegrationStatus = {
     email?: string
     name?: string
     providerAccountId?: string
-    providerOrganizationId?: string
+    providerWorkspaceId?: string
     updatedAt?: string
   }
-  workspace: {
+  page: {
     connected: boolean
     connectedAt?: string
     enforceEmailMatch: boolean
-    organizationId?: string
-    organizationName?: string
-    organizationUrlKey?: string
+    workspaceId?: string
+    workspaceName?: string
+    workspaceUrlKey?: string
     updatedAt?: string
   }
 }
@@ -182,7 +182,7 @@ export type AiProviderCatalogItem = {
   requiresApiKey: boolean
 }
 
-export type OrganizationAiProviderConfig = {
+export type WorkspaceAiProviderConfig = {
   apiKeyConfigured: boolean
   baseUrl: string
   enabled: boolean
@@ -192,11 +192,11 @@ export type OrganizationAiProviderConfig = {
   updatedAt?: string
 }
 
-export type OrganizationAiProvidersResponse = {
-  providers: OrganizationAiProviderConfig[]
+export type WorkspaceAiProvidersResponse = {
+  providers: WorkspaceAiProviderConfig[]
 }
 
-export type OrganizationAiChatModel = {
+export type WorkspaceAiChatModel = {
   chef: string
   chefSlug: string
   gatewayId: string
@@ -205,53 +205,53 @@ export type OrganizationAiChatModel = {
   providers: string[]
 }
 
-export type OrganizationAiModelsResponse = {
-  models: OrganizationAiChatModel[]
+export type WorkspaceAiModelsResponse = {
+  models: WorkspaceAiChatModel[]
 }
 
-export const integrationsQueryKey = (organizationId: string | null | undefined) =>
-  ["organizations", organizationId ?? "none", "integrations"] as const
-export const aiModelsQueryKey = (organizationId: string | null | undefined) =>
-  ["organizations", organizationId ?? "none", "ai-models"] as const
-export const aiProvidersQueryKey = (organizationId: string | null | undefined) =>
-  ["organizations", organizationId ?? "none", "ai-providers"] as const
+export const integrationsQueryKey = (workspaceId: string | null | undefined) =>
+  ["workspaces", workspaceId ?? "none", "integrations"] as const
+export const aiModelsQueryKey = (workspaceId: string | null | undefined) =>
+  ["workspaces", workspaceId ?? "none", "ai-models"] as const
+export const aiProvidersQueryKey = (workspaceId: string | null | undefined) =>
+  ["workspaces", workspaceId ?? "none", "ai-providers"] as const
 
 export const integrationsQueryOptions = (
   apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
 ) => queryOptions({
-  queryKey: integrationsQueryKey(organizationId),
-  enabled: Boolean(organizationId),
+  queryKey: integrationsQueryKey(workspaceId),
+  enabled: Boolean(workspaceId),
   queryFn: async ({ signal }): Promise<IntegrationStatuses> => {
-    if (!organizationId) {
-      throw new Error("Select an organization before loading integrations.")
+    if (!workspaceId) {
+      throw new Error("Select an workspace before loading integrations.")
     }
 
     const [gmail, github, googleCalendar, googleDrive, slack, linear] =
       await Promise.all([
         apiFetch<GmailIntegrationStatus>(
-          "/api/organization/settings/integrations/gmail",
-          integrationRequestOptions(organizationId, { signal }),
+          "/api/workspace/settings/integrations/gmail",
+          integrationRequestOptions(workspaceId, { signal }),
         ),
         apiFetch<GithubIntegrationStatus>(
-          "/api/organization/settings/integrations/github",
-          integrationRequestOptions(organizationId, { signal }),
+          "/api/workspace/settings/integrations/github",
+          integrationRequestOptions(workspaceId, { signal }),
         ),
         apiFetch<GoogleCalendarIntegrationStatus>(
-          "/api/organization/settings/integrations/google-calendar",
-          integrationRequestOptions(organizationId, { signal }),
+          "/api/workspace/settings/integrations/google-calendar",
+          integrationRequestOptions(workspaceId, { signal }),
         ),
         apiFetch<GoogleDriveIntegrationStatus>(
-          "/api/organization/settings/integrations/google-drive",
-          integrationRequestOptions(organizationId, { signal }),
+          "/api/workspace/settings/integrations/google-drive",
+          integrationRequestOptions(workspaceId, { signal }),
         ),
         apiFetch<SlackIntegrationStatus>(
-          "/api/organization/settings/integrations/slack",
-          integrationRequestOptions(organizationId, { signal }),
+          "/api/workspace/settings/integrations/slack",
+          integrationRequestOptions(workspaceId, { signal }),
         ),
         apiFetch<LinearIntegrationStatus>(
-          "/api/organization/settings/integrations/linear",
-          integrationRequestOptions(organizationId, { signal }),
+          "/api/workspace/settings/integrations/linear",
+          integrationRequestOptions(workspaceId, { signal }),
         ),
       ])
 
@@ -261,40 +261,40 @@ export const integrationsQueryOptions = (
 
 export const aiModelsQueryOptions = (
   apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
 ) => queryOptions({
-  queryKey: aiModelsQueryKey(organizationId),
-  enabled: Boolean(organizationId),
+  queryKey: aiModelsQueryKey(workspaceId),
+  enabled: Boolean(workspaceId),
   queryFn: ({ signal }) =>
-    apiFetch<OrganizationAiModelsResponse>(
-      "/api/organization/settings/ai/models",
-      integrationRequestOptions(organizationId, { signal }),
+    apiFetch<WorkspaceAiModelsResponse>(
+      "/api/workspace/settings/ai/models",
+      integrationRequestOptions(workspaceId, { signal }),
     ),
 })
 
 export const aiProvidersQueryOptions = (
   apiFetch: ApiFetcher,
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
 ) => queryOptions({
-  queryKey: aiProvidersQueryKey(organizationId),
-  enabled: Boolean(organizationId),
+  queryKey: aiProvidersQueryKey(workspaceId),
+  enabled: Boolean(workspaceId),
   queryFn: ({ signal }) =>
-    apiFetch<OrganizationAiProvidersResponse>(
-      "/api/organization/settings/ai",
-      integrationRequestOptions(organizationId, { signal }),
+    apiFetch<WorkspaceAiProvidersResponse>(
+      "/api/workspace/settings/ai",
+      integrationRequestOptions(workspaceId, { signal }),
     ),
 })
 
 export function integrationRequestOptions(
-  organizationId: string | null | undefined,
+  workspaceId: string | null | undefined,
   init?: RequestInit,
 ): RequestInit {
-  if (!organizationId) {
+  if (!workspaceId) {
     return init ?? {}
   }
 
   const headers = new Headers(init?.headers)
-  headers.set("x-notelab-organization-id", organizationId)
+  headers.set("x-notelab-workspace-id", workspaceId)
 
   return { ...init, headers }
 }

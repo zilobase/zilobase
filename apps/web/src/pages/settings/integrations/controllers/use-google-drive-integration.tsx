@@ -14,7 +14,7 @@ import {
 import type { IntegrationControllerContext } from "./types";
 
 export function useGoogleDriveIntegrationController({
-  canManageWorkspace,
+  canManagePage,
   isLoadingIntegrations,
   setIntegrationsError,
   setSelectedIntegrationId,
@@ -25,10 +25,10 @@ export function useGoogleDriveIntegrationController({
   const updateSettings = useUpdateGoogleDriveIntegrationSettings();
   const {
     connectPersonal,
-    connectWorkspace,
+    connectPage,
     disconnectIntegration,
     disconnectPersonal,
-    disconnectWorkspace,
+    disconnectPage,
     endpointId,
     runWithIntegrationError,
     startOAuth,
@@ -60,24 +60,24 @@ export function useGoogleDriveIntegrationController({
 
   const summary: IntegrationSummary = {
     about:
-      "Google Drive lets Notelab read visible Drive files, Docs, Sheets, and Slides using read-only access for AI workspace research.",
+      "Google Drive lets Notelab read visible Drive files, Docs, Sheets, and Slides using read-only access for AI page research.",
     category: "AI enterprise search",
-    connected: status?.workspace.connected,
+    connected: status?.page.connected,
     connectDisabled:
       isBusy || status?.configured === false || status?.needsMigration === true,
     connectLabel: "Connect Drive",
     detail:
-      status?.workspace.hostedDomain ||
+      status?.page.hostedDomain ||
       status?.personal.email ||
-      "Read files and docs for AI workspace research.",
+      "Read files and docs for AI page research.",
     id: "googleDrive",
     icon: integrationIcons.googleDrive,
     isBusy,
     name: "Google Drive",
     onConnect: () =>
-      canManageWorkspace
-        ? void connectWorkspace({
-            enforceEmailMatch: status?.workspace.enforceEmailMatch ?? true,
+      canManagePage
+        ? void connectPage({
+            enforceEmailMatch: status?.page.enforceEmailMatch ?? true,
           })
         : void connectPersonal(),
     onManage: () => setSelectedIntegrationId("googleDrive"),
@@ -85,17 +85,17 @@ export function useGoogleDriveIntegrationController({
 
   const card = (
     <GoogleDriveIntegrationCard
-      canManageWorkspace={canManageWorkspace}
+      canManagePage={canManagePage}
       isBusy={isBusy}
       onConnectPersonal={() => void connectPersonal()}
-      onConnectWorkspace={(enabled) =>
-        void connectWorkspace({ enforceEmailMatch: enabled })
+      onConnectPage={(enabled) =>
+        void connectPage({ enforceEmailMatch: enabled })
       }
       onDisconnectPersonal={() =>
         void disconnectPersonal("Google Drive account disconnected.")
       }
-      onDisconnectWorkspace={() =>
-        void disconnectWorkspace("Google Drive workspace disconnected.")
+      onDisconnectPage={() =>
+        void disconnectPage("Google Drive page disconnected.")
       }
       onToggleEmailMatch={(enabled) => void toggleEmailMatch(enabled)}
       status={status}

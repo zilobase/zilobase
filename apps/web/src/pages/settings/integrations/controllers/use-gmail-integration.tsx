@@ -14,7 +14,7 @@ import {
 import type { IntegrationControllerContext } from "./types";
 
 export function useGmailIntegrationController({
-  canManageWorkspace,
+  canManagePage,
   isLoadingIntegrations,
   setIntegrationsError,
   setSelectedIntegrationId,
@@ -25,10 +25,10 @@ export function useGmailIntegrationController({
   const updateSettings = useUpdateGmailIntegrationSettings();
   const {
     connectPersonal,
-    connectWorkspace,
+    connectPage,
     disconnectIntegration,
     disconnectPersonal,
-    disconnectWorkspace,
+    disconnectPage,
     endpointId,
     runWithIntegrationError,
     startOAuth,
@@ -62,22 +62,22 @@ export function useGmailIntegrationController({
     about:
       "Gmail lets Notelab read messages visible to the connected Google account so AI answers can include email context.",
     category: "AI enterprise search",
-    connected: status?.workspace.connected,
+    connected: status?.page.connected,
     connectDisabled:
       isBusy || status?.configured === false || status?.needsMigration === true,
     connectLabel: "Connect Gmail",
     detail:
-      status?.workspace.hostedDomain ||
+      status?.page.hostedDomain ||
       status?.personal.email ||
-      "Read Gmail messages for AI workspace research.",
+      "Read Gmail messages for AI page research.",
     id: "gmail",
     icon: integrationIcons.gmail,
     isBusy,
     name: "Gmail",
     onConnect: () =>
-      canManageWorkspace
-        ? void connectWorkspace({
-            enforceEmailMatch: status?.workspace.enforceEmailMatch ?? true,
+      canManagePage
+        ? void connectPage({
+            enforceEmailMatch: status?.page.enforceEmailMatch ?? true,
           })
         : void connectPersonal(),
     onManage: () => setSelectedIntegrationId("gmail"),
@@ -85,17 +85,17 @@ export function useGmailIntegrationController({
 
   const card = (
     <GmailIntegrationCard
-      canManageWorkspace={canManageWorkspace}
+      canManagePage={canManagePage}
       isBusy={isBusy}
       onConnectPersonal={() => void connectPersonal()}
-      onConnectWorkspace={(enabled) =>
-        void connectWorkspace({ enforceEmailMatch: enabled })
+      onConnectPage={(enabled) =>
+        void connectPage({ enforceEmailMatch: enabled })
       }
       onDisconnectPersonal={() =>
         void disconnectPersonal("Gmail account disconnected.")
       }
-      onDisconnectWorkspace={() =>
-        void disconnectWorkspace("Gmail workspace disconnected.")
+      onDisconnectPage={() =>
+        void disconnectPage("Gmail page disconnected.")
       }
       onToggleEmailMatch={(enabled) => void toggleEmailMatch(enabled)}
       status={status}

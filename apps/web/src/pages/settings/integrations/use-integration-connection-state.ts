@@ -4,24 +4,24 @@ type DualConnectionStatus = {
   personal: {
     connected?: boolean;
   };
-  workspace: {
+  page: {
     connected?: boolean;
     enforceEmailMatch?: boolean;
   };
 } | null;
 
 export function useIntegrationConnectionState(status: DualConnectionStatus) {
-  const isWorkspaceConnected = status?.workspace.connected === true;
+  const isPageConnected = status?.page.connected === true;
   const isPersonalConnected = status?.personal.connected === true;
   const [pendingEmailMatch, setPendingEmailMatch] = React.useState(true);
-  const enforceEmailMatch = isWorkspaceConnected
-    ? status?.workspace.enforceEmailMatch === true
+  const enforceEmailMatch = isPageConnected
+    ? status?.page.enforceEmailMatch === true
     : pendingEmailMatch;
 
   return {
     enforceEmailMatch,
     isPersonalConnected,
-    isWorkspaceConnected,
+    isPageConnected,
     pendingEmailMatch,
     setPendingEmailMatch,
   };

@@ -10,85 +10,85 @@ import {
   IntegrationSectionCard,
   IntegrationSectionHeader,
   IntegrationSectionLayout,
-  IntegrationWorkspaceActions,
-  IntegrationWorkspacePendingAlert,
+  IntegrationPageActions,
+  IntegrationPagePendingAlert,
   isIntegrationConnectBlocked,
 } from "../integration-card-sections";
 import { useIntegrationConnectionState } from "../use-integration-connection-state";
 
 export function GithubIntegrationCard({
-  canManageWorkspace,
-  githubOrganizationLogin,
+  canManagePage,
+  githubWorkspaceLogin,
   isBusy,
   onConnectPersonal,
-  onConnectWorkspace,
+  onConnectPage,
   onDisconnectPersonal,
-  onDisconnectWorkspace,
-  onOrganizationLoginChange,
+  onDisconnectPage,
+  onWorkspaceLoginChange,
   onToggleEmailMatch,
   status,
 }: {
-  canManageWorkspace: boolean;
-  githubOrganizationLogin: string;
+  canManagePage: boolean;
+  githubWorkspaceLogin: string;
   isBusy: boolean;
   onConnectPersonal: () => void;
-  onConnectWorkspace: (input: {
+  onConnectPage: (input: {
     enforceEmailMatch: boolean;
-    organizationLogin: string;
+    workspaceLogin: string;
   }) => void;
   onDisconnectPersonal: () => void;
-  onDisconnectWorkspace: () => void;
-  onOrganizationLoginChange: (value: string) => void;
+  onDisconnectPage: () => void;
+  onWorkspaceLoginChange: (value: string) => void;
   onToggleEmailMatch: (enabled: boolean) => void;
   status: GithubIntegrationStatus | null;
 }) {
   const {
     enforceEmailMatch,
     isPersonalConnected,
-    isWorkspaceConnected,
+    isPageConnected,
     setPendingEmailMatch,
   } = useIntegrationConnectionState(status);
-  const organizationLogin =
-    status?.workspace.organizationLogin || githubOrganizationLogin;
-  const canConnectWorkspace = organizationLogin.trim().length > 0;
+  const workspaceLogin =
+    status?.page.workspaceLogin || githubWorkspaceLogin;
+  const canConnectPage = workspaceLogin.trim().length > 0;
 
   return (
     <div className="space-y-4">
       <IntegrationSectionCard>
         <IntegrationSectionLayout
           actions={
-            <IntegrationWorkspaceActions
-              canManageWorkspace={canManageWorkspace}
+            <IntegrationPageActions
+              canManagePage={canManagePage}
               connectDisabled={
-                isIntegrationConnectBlocked(status) || !canConnectWorkspace
+                isIntegrationConnectBlocked(status) || !canConnectPage
               }
-              connectLabel="Connect organization"
+              connectLabel="Connect workspace"
               isBusy={isBusy}
-              isWorkspaceConnected={isWorkspaceConnected}
-              onConnectWorkspace={() =>
-                onConnectWorkspace({
+              isPageConnected={isPageConnected}
+              onConnectPage={() =>
+                onConnectPage({
                   enforceEmailMatch,
-                  organizationLogin,
+                  workspaceLogin,
                 })
               }
-              onDisconnectWorkspace={onDisconnectWorkspace}
+              onDisconnectPage={onDisconnectPage}
             />
           }
           footer={
             <>
               <IntegrationEmailMatchSetting
-                canManageWorkspace={canManageWorkspace}
+                canManagePage={canManagePage}
                 checked={enforceEmailMatch}
                 disabled={isBusy}
                 integrationName="GitHub"
-                isWorkspaceConnected={isWorkspaceConnected}
+                isPageConnected={isPageConnected}
                 onApply={onToggleEmailMatch}
                 onPendingChange={setPendingEmailMatch}
               />
-              <IntegrationWorkspacePendingAlert
-                canManageWorkspace={canManageWorkspace}
-                isWorkspaceConnected={isWorkspaceConnected}
-                memberMessage="GitHub organization is not connected. Ask an admin to connect it before linking your GitHub account."
+              <IntegrationPagePendingAlert
+                canManagePage={canManagePage}
+                isPageConnected={isPageConnected}
+                memberMessage="GitHub workspace is not connected. Ask an admin to connect it before linking your GitHub account."
               />
               <IntegrationOAuthNotConfiguredAlert
                 message="GitHub OAuth is not configured on the backend."
@@ -98,21 +98,21 @@ export function GithubIntegrationCard({
           }
         >
           <IntegrationSectionHeader
-            connected={status?.workspace.connected}
-            description="Admin-managed GitHub organization connection for repository, issue, pull request, commit, and file context."
+            connected={status?.page.connected}
+            description="Admin-managed GitHub workspace connection for repository, issue, pull request, commit, and file context."
             details={
               <>
                 <IntegrationDetail
-                  label="Organization"
+                  label="Workspace"
                   value={
-                    status?.workspace.organizationLogin ||
-                    status?.workspace.organizationName ||
+                    status?.page.workspaceLogin ||
+                    status?.page.workspaceName ||
                     "Not connected"
                   }
                 />
                 <IntegrationDetail
-                  label="Organization ID"
-                  value={status?.workspace.organizationId || "Not connected"}
+                  label="Workspace ID"
+                  value={status?.page.workspaceId || "Not connected"}
                 />
                 <IntegrationDetail
                   label="Email matching"
@@ -121,42 +121,42 @@ export function GithubIntegrationCard({
                 <IntegrationDetail
                   label="Access"
                   value={
-                    isWorkspaceConnected
-                      ? "Organization verified"
+                    isPageConnected
+                      ? "Workspace verified"
                       : "Not connected"
                   }
                 />
               </>
             }
             extra={
-              !isWorkspaceConnected && canManageWorkspace ? (
+              !isPageConnected && canManagePage ? (
                 <div className="max-w-sm space-y-1.5">
                   <label
                     className="text-sm font-medium"
-                    htmlFor="github-organization-login"
+                    htmlFor="github-workspace-login"
                   >
-                    Organization login
+                    Workspace login
                   </label>
                   <Input
                     disabled={isBusy}
-                    id="github-organization-login"
+                    id="github-workspace-login"
                     onChange={(event) =>
-                      onOrganizationLoginChange(event.target.value)
+                      onWorkspaceLoginChange(event.target.value)
                     }
                     placeholder="acme-inc"
-                    value={githubOrganizationLogin}
+                    value={githubWorkspaceLogin}
                   />
                 </div>
               ) : null
             }
             iconSrc={integrationIcons.github}
-            title="GitHub organization"
+            title="GitHub workspace"
           />
         </IntegrationSectionLayout>
       </IntegrationSectionCard>
 
       <IntegrationPersonalAccountCard
-        description="Connect your GitHub identity so Notelab can verify you belong to the connected GitHub organization."
+        description="Connect your GitHub identity so Notelab can verify you belong to the connected GitHub workspace."
         details={
           <>
             <IntegrationDetail
@@ -172,11 +172,11 @@ export function GithubIntegrationCard({
               value={status?.personal.email || "Not connected"}
             />
             <IntegrationDetail
-              label="Organization"
+              label="Workspace"
               value={
-                status?.workspace.organizationLogin ||
-                status?.workspace.organizationName ||
-                "Organization not connected"
+                status?.page.workspaceLogin ||
+                status?.page.workspaceName ||
+                "Workspace not connected"
               }
             />
             <IntegrationDetail
@@ -190,10 +190,10 @@ export function GithubIntegrationCard({
           </>
         }
         iconSrc={integrationIcons.github}
-        integrationName="GitHub organization"
+        integrationName="GitHub workspace"
         isBusy={isBusy}
         isPersonalConnected={isPersonalConnected}
-        isWorkspaceConnected={isWorkspaceConnected}
+        isPageConnected={isPageConnected}
         onConnectPersonal={onConnectPersonal}
         onDisconnectPersonal={onDisconnectPersonal}
         status={status}

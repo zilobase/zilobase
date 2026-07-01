@@ -14,7 +14,7 @@ import {
 import type { IntegrationControllerContext } from "./types";
 
 export function useSlackIntegrationController({
-  canManageWorkspace,
+  canManagePage,
   isLoadingIntegrations,
   setIntegrationsError,
   setSelectedIntegrationId,
@@ -25,10 +25,10 @@ export function useSlackIntegrationController({
   const updateSettings = useUpdateSlackIntegrationSettings();
   const {
     connectPersonal,
-    connectWorkspace,
+    connectPage,
     disconnectIntegration,
     disconnectPersonal,
-    disconnectWorkspace,
+    disconnectPage,
     endpointId,
     runWithIntegrationError,
     startOAuth,
@@ -60,25 +60,25 @@ export function useSlackIntegrationController({
 
   const summary: IntegrationSummary = {
     about:
-      "Slack gives Notelab access to the channels, files, canvases, and threads the installed app can see. Personal DMs stay outside this organization connector.",
+      "Slack gives Notelab access to the channels, files, canvases, and threads the installed app can see. Personal DMs stay outside this workspace connector.",
     category: "AI enterprise search",
-    connected: status?.workspace.connected,
+    connected: status?.page.connected,
     connectDisabled:
       isBusy || status?.configured === false || status?.needsMigration === true,
     connectLabel: "Connect Slack",
     detail:
-      status?.workspace.teamName ||
-      status?.workspace.organizationName ||
+      status?.page.teamName ||
+      status?.page.workspaceName ||
       status?.personal.email ||
-      "Read workspace conversations and shared files.",
+      "Read page conversations and shared files.",
     id: "slack",
     icon: integrationIcons.slack,
     isBusy,
     name: "Slack",
     onConnect: () =>
-      canManageWorkspace
-        ? void connectWorkspace({
-            enforceEmailMatch: status?.workspace.enforceEmailMatch ?? true,
+      canManagePage
+        ? void connectPage({
+            enforceEmailMatch: status?.page.enforceEmailMatch ?? true,
           })
         : void connectPersonal(),
     onManage: () => setSelectedIntegrationId("slack"),
@@ -86,17 +86,17 @@ export function useSlackIntegrationController({
 
   const card = (
     <SlackIntegrationCard
-      canManageWorkspace={canManageWorkspace}
+      canManagePage={canManagePage}
       isBusy={isBusy}
       onConnectPersonal={() => void connectPersonal()}
-      onConnectWorkspace={(enabled) =>
-        void connectWorkspace({ enforceEmailMatch: enabled })
+      onConnectPage={(enabled) =>
+        void connectPage({ enforceEmailMatch: enabled })
       }
       onDisconnectPersonal={() =>
         void disconnectPersonal("Slack account disconnected.")
       }
-      onDisconnectWorkspace={() =>
-        void disconnectWorkspace("Slack workspace disconnected.")
+      onDisconnectPage={() =>
+        void disconnectPage("Slack page disconnected.")
       }
       onToggleEmailMatch={(enabled) => void toggleEmailMatch(enabled)}
       status={status}

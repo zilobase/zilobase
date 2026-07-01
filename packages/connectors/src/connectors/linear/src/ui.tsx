@@ -84,7 +84,7 @@ type LinearProjectSummary = {
 };
 
 type LinearProfileOutput = {
-  organization?: {
+  workspace?: {
     id: string;
     name?: string;
     urlKey?: string;
@@ -584,11 +584,11 @@ function LinearProfile({
         countLabel="Connected"
         kicker="Linear profile"
         summary={output.viewer ? userLabel(output.viewer) : undefined}
-        title={output.organization?.name ?? "Linear workspace"}
+        title={output.workspace?.name ?? "Linear page"}
       />
       <div style={styles.statGrid}>
-        <ConnectorStat label="Workspace" value={output.organization?.name ?? "Unavailable"} />
-        <ConnectorStat label="URL key" value={output.organization?.urlKey ?? "Unavailable"} />
+        <ConnectorStat label="Page" value={output.workspace?.name ?? "Unavailable"} />
+        <ConnectorStat label="URL key" value={output.workspace?.urlKey ?? "Unavailable"} />
         <ConnectorStat label="Viewer" value={output.viewer ? userLabel(output.viewer) : "Unavailable"} />
       </div>
     </section>

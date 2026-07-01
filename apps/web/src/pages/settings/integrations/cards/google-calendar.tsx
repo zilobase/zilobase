@@ -12,32 +12,32 @@ import {
   IntegrationSectionHeader,
   IntegrationSectionLayout,
   IntegrationSettingToggle,
-  IntegrationWorkspaceActions,
-  IntegrationWorkspacePendingAlert,
+  IntegrationPageActions,
+  IntegrationPagePendingAlert,
   isIntegrationConnectBlocked,
 } from "../integration-card-sections";
 import { useIntegrationConnectionState } from "../use-integration-connection-state";
 
 export function GoogleCalendarIntegrationCard({
-  canManageWorkspace,
+  canManagePage,
   isBusy,
   onConnectPersonal,
-  onConnectWorkspace,
+  onConnectPage,
   onDisconnectPersonal,
-  onDisconnectWorkspace,
+  onDisconnectPage,
   onToggleCoworkerAccess,
   onToggleEmailMatch,
   status,
 }: {
-  canManageWorkspace: boolean;
+  canManagePage: boolean;
   isBusy: boolean;
   onConnectPersonal: () => void;
-  onConnectWorkspace: (input: {
+  onConnectPage: (input: {
     coworkerCalendarAccessEnabled: boolean;
     enforceEmailMatch: boolean;
   }) => void;
   onDisconnectPersonal: () => void;
-  onDisconnectWorkspace: () => void;
+  onDisconnectPage: () => void;
   onToggleCoworkerAccess: (enabled: boolean) => void;
   onToggleEmailMatch: (enabled: boolean) => void;
   status: GoogleCalendarIntegrationStatus | null;
@@ -45,13 +45,13 @@ export function GoogleCalendarIntegrationCard({
   const {
     enforceEmailMatch,
     isPersonalConnected,
-    isWorkspaceConnected,
+    isPageConnected,
     setPendingEmailMatch,
   } = useIntegrationConnectionState(status);
   const [pendingCoworkerAccess, setPendingCoworkerAccess] =
     React.useState(false);
-  const coworkerAccessEnabled = isWorkspaceConnected
-    ? status?.workspace.coworkerCalendarAccessEnabled === true
+  const coworkerAccessEnabled = isPageConnected
+    ? status?.page.coworkerCalendarAccessEnabled === true
     : pendingCoworkerAccess;
 
   return (
@@ -59,38 +59,38 @@ export function GoogleCalendarIntegrationCard({
       <IntegrationSectionCard>
         <IntegrationSectionLayout
           actions={
-            <IntegrationWorkspaceActions
-              canManageWorkspace={canManageWorkspace}
+            <IntegrationPageActions
+              canManagePage={canManagePage}
               connectDisabled={isIntegrationConnectBlocked(status)}
-              connectLabel="Connect workspace"
+              connectLabel="Connect page"
               isBusy={isBusy}
-              isWorkspaceConnected={isWorkspaceConnected}
-              onConnectWorkspace={() =>
-                onConnectWorkspace({
+              isPageConnected={isPageConnected}
+              onConnectPage={() =>
+                onConnectPage({
                   coworkerCalendarAccessEnabled: coworkerAccessEnabled,
                   enforceEmailMatch,
                 })
               }
-              onDisconnectWorkspace={onDisconnectWorkspace}
+              onDisconnectPage={onDisconnectPage}
             />
           }
           footer={
             <>
               <IntegrationEmailMatchSetting
-                canManageWorkspace={canManageWorkspace}
+                canManagePage={canManagePage}
                 checked={enforceEmailMatch}
                 disabled={isBusy}
                 integrationName="Google"
-                isWorkspaceConnected={isWorkspaceConnected}
+                isPageConnected={isPageConnected}
                 onApply={onToggleEmailMatch}
                 onPendingChange={setPendingEmailMatch}
               />
               <IntegrationSettingToggle
                 checked={coworkerAccessEnabled}
-                description="Allow AI to check free/busy blocks for other organization calendars."
-                disabled={isBusy || !canManageWorkspace}
+                description="Allow AI to check free/busy blocks for other workspace calendars."
+                disabled={isBusy || !canManagePage}
                 onCheckedChange={(checked) => {
-                  if (isWorkspaceConnected) {
+                  if (isPageConnected) {
                     onToggleCoworkerAccess(checked);
                   } else {
                     setPendingCoworkerAccess(checked);
@@ -98,10 +98,10 @@ export function GoogleCalendarIntegrationCard({
                 }}
                 title="Coworker calendar availability"
               />
-              <IntegrationWorkspacePendingAlert
-                canManageWorkspace={canManageWorkspace}
-                isWorkspaceConnected={isWorkspaceConnected}
-                memberMessage="Google Calendar workspace is not connected. Ask an admin to connect it before linking your calendar account."
+              <IntegrationPagePendingAlert
+                canManagePage={canManagePage}
+                isPageConnected={isPageConnected}
+                memberMessage="Google Calendar page is not connected. Ask an admin to connect it before linking your calendar account."
               />
               <IntegrationOAuthNotConfiguredAlert
                 message="Google OAuth is not configured on the backend."
@@ -111,17 +111,17 @@ export function GoogleCalendarIntegrationCard({
           }
         >
           <IntegrationSectionHeader
-            connected={status?.workspace.connected}
-            description="Admin-managed Google Workspace domain and calendar policy for personal calendar accounts."
+            connected={status?.page.connected}
+            description="Admin-managed Google Page domain and calendar policy for personal calendar accounts."
             details={
               <>
                 <IntegrationDetail
                   label="Domain"
-                  value={status?.workspace.hostedDomain || "Not connected"}
+                  value={status?.page.hostedDomain || "Not connected"}
                 />
                 <IntegrationDetail
                   label="Admin account"
-                  value={status?.workspace.email || "Not connected"}
+                  value={status?.page.email || "Not connected"}
                 />
                 <IntegrationDetail
                   label="Email matching"
@@ -138,7 +138,7 @@ export function GoogleCalendarIntegrationCard({
               </>
             }
             iconSrc={integrationIcons.googleCalendar}
-            title="Google Calendar workspace"
+            title="Google Calendar page"
           />
         </IntegrationSectionLayout>
       </IntegrationSectionCard>
@@ -156,9 +156,9 @@ export function GoogleCalendarIntegrationCard({
               value={status?.personal.hostedDomain || "Not verified"}
             />
             <IntegrationDetail
-              label="Workspace"
+              label="Page"
               value={
-                status?.workspace.hostedDomain || "Workspace not connected"
+                status?.page.hostedDomain || "Page not connected"
               }
             />
             <IntegrationDetail
@@ -172,10 +172,10 @@ export function GoogleCalendarIntegrationCard({
           </>
         }
         iconSrc={integrationIcons.googleCalendar}
-        integrationName="Google Calendar workspace"
+        integrationName="Google Calendar page"
         isBusy={isBusy}
         isPersonalConnected={isPersonalConnected}
-        isWorkspaceConnected={isWorkspaceConnected}
+        isPageConnected={isPageConnected}
         onConnectPersonal={onConnectPersonal}
         onDisconnectPersonal={onDisconnectPersonal}
         status={status}

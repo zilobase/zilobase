@@ -14,7 +14,7 @@ import {
 import type { IntegrationControllerContext } from "./types";
 
 export function useLinearIntegrationController({
-  canManageWorkspace,
+  canManagePage,
   isLoadingIntegrations,
   setIntegrationsError,
   setSelectedIntegrationId,
@@ -25,10 +25,10 @@ export function useLinearIntegrationController({
   const updateSettings = useUpdateLinearIntegrationSettings();
   const {
     connectPersonal,
-    connectWorkspace,
+    connectPage,
     disconnectIntegration,
     disconnectPersonal,
-    disconnectWorkspace,
+    disconnectPage,
     endpointId,
     runWithIntegrationError,
     startOAuth,
@@ -70,12 +70,12 @@ export function useLinearIntegrationController({
     about:
       "Linear connects issues, projects, teams, and cycles so Notelab can answer with current product and planning context.",
     category: "AI enterprise search",
-    connected: status?.workspace.connected,
+    connected: status?.page.connected,
     connectDisabled:
       isBusy || status?.configured === false || status?.needsMigration === true,
     connectLabel: "Connect Linear",
     detail:
-      status?.workspace.organizationName ||
+      status?.page.workspaceName ||
       status?.personal.email ||
       "Read planning and delivery context from Linear.",
     id: "linear",
@@ -83,9 +83,9 @@ export function useLinearIntegrationController({
     isBusy,
     name: "Linear",
     onConnect: () =>
-      canManageWorkspace
-        ? void connectWorkspace({
-            enforceEmailMatch: status?.workspace.enforceEmailMatch ?? true,
+      canManagePage
+        ? void connectPage({
+            enforceEmailMatch: status?.page.enforceEmailMatch ?? true,
           })
         : void connectPersonal(),
     onManage: () => setSelectedIntegrationId("linear"),
@@ -93,17 +93,17 @@ export function useLinearIntegrationController({
 
   const card = (
     <LinearIntegrationCard
-      canManageWorkspace={canManageWorkspace}
+      canManagePage={canManagePage}
       isBusy={isBusy}
       onConnectPersonal={() => void connectPersonal()}
-      onConnectWorkspace={(enabled) =>
-        void connectWorkspace({ enforceEmailMatch: enabled })
+      onConnectPage={(enabled) =>
+        void connectPage({ enforceEmailMatch: enabled })
       }
       onDisconnectPersonal={() =>
         void disconnectPersonal("Linear account disconnected.")
       }
-      onDisconnectWorkspace={() =>
-        void disconnectWorkspace("Linear workspace disconnected.")
+      onDisconnectPage={() =>
+        void disconnectPage("Linear page disconnected.")
       }
       onToggleEmailMatch={(enabled) => void toggleEmailMatch(enabled)}
       status={status}

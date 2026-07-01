@@ -89,33 +89,33 @@ export function IntegrationSectionLayout({
   );
 }
 
-export function IntegrationWorkspaceActions({
-  canManageWorkspace,
+export function IntegrationPageActions({
+  canManagePage,
   connectDisabled = false,
   connectLabel,
   isBusy,
-  isWorkspaceConnected,
-  onConnectWorkspace,
-  onDisconnectWorkspace,
+  isPageConnected,
+  onConnectPage,
+  onDisconnectPage,
 }: {
-  canManageWorkspace: boolean;
+  canManagePage: boolean;
   connectDisabled?: boolean;
   connectLabel: string;
   isBusy: boolean;
-  isWorkspaceConnected: boolean;
-  onConnectWorkspace: () => void;
-  onDisconnectWorkspace: () => void;
+  isPageConnected: boolean;
+  onConnectPage: () => void;
+  onDisconnectPage: () => void;
 }) {
-  if (!canManageWorkspace) {
+  if (!canManagePage) {
     return null;
   }
 
   return (
     <div className="flex shrink-0 gap-2 md:justify-end">
-      {isWorkspaceConnected ? (
+      {isPageConnected ? (
         <Button
           disabled={isBusy}
-          onClick={onDisconnectWorkspace}
+          onClick={onDisconnectPage}
           type="button"
           variant="destructive"
         >
@@ -125,7 +125,7 @@ export function IntegrationWorkspaceActions({
       ) : (
         <Button
           disabled={isBusy || connectDisabled}
-          onClick={onConnectWorkspace}
+          onClick={onConnectPage}
           type="button"
         >
           {isBusy ? <Loader2Icon className="animate-spin" /> : <PlugIcon />}
@@ -141,20 +141,20 @@ export function IntegrationConnectionButtons({
   connectLabel = "Connect account",
   isBusy,
   isConnected,
-  isWorkspaceConnected = true,
+  isPageConnected = true,
   onConnect,
   onDisconnect,
-  requireWorkspace = true,
+  requirePage = true,
   status,
 }: {
   connectDisabled?: boolean;
   connectLabel?: string;
   isBusy: boolean;
   isConnected: boolean;
-  isWorkspaceConnected?: boolean;
+  isPageConnected?: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
-  requireWorkspace?: boolean;
+  requirePage?: boolean;
   status?: IntegrationAvailabilityStatus;
 }) {
   const blocked = isIntegrationConnectBlocked(status ?? null);
@@ -177,7 +177,7 @@ export function IntegrationConnectionButtons({
             isBusy ||
             connectDisabled ||
             blocked ||
-            (requireWorkspace && !isWorkspaceConnected)
+            (requirePage && !isPageConnected)
           }
           onClick={onConnect}
           type="button"
@@ -219,29 +219,29 @@ export function IntegrationSettingToggle({
 }
 
 export function IntegrationEmailMatchSetting({
-  canManageWorkspace,
+  canManagePage,
   checked,
   disabled,
   integrationName,
-  isWorkspaceConnected,
+  isPageConnected,
   onApply,
   onPendingChange,
 }: {
-  canManageWorkspace: boolean;
+  canManagePage: boolean;
   checked: boolean;
   disabled?: boolean;
   integrationName: string;
-  isWorkspaceConnected: boolean;
+  isPageConnected: boolean;
   onApply: (enabled: boolean) => void;
   onPendingChange: (enabled: boolean) => void;
 }) {
   return (
     <IntegrationSettingToggle
       checked={checked}
-      description={`Members must connect a ${integrationName} account using their Notelab organization email.`}
-      disabled={disabled || !canManageWorkspace}
+      description={`Members must connect a ${integrationName} account using their Notelab workspace email.`}
+      disabled={disabled || !canManagePage}
       onCheckedChange={(enabled) => {
-        if (isWorkspaceConnected) {
+        if (isPageConnected) {
           onApply(enabled);
         } else {
           onPendingChange(enabled);
@@ -252,16 +252,16 @@ export function IntegrationEmailMatchSetting({
   );
 }
 
-export function IntegrationWorkspacePendingAlert({
-  canManageWorkspace,
-  isWorkspaceConnected,
+export function IntegrationPagePendingAlert({
+  canManagePage,
+  isPageConnected,
   memberMessage,
 }: {
-  canManageWorkspace: boolean;
-  isWorkspaceConnected: boolean;
+  canManagePage: boolean;
+  isPageConnected: boolean;
   memberMessage: string;
 }) {
-  if (isWorkspaceConnected || canManageWorkspace) {
+  if (isPageConnected || canManagePage) {
     return null;
   }
 
@@ -272,14 +272,14 @@ export function IntegrationWorkspacePendingAlert({
   );
 }
 
-export function IntegrationWorkspaceDisconnectedAlert({
+export function IntegrationPageDisconnectedAlert({
   integrationName,
-  isWorkspaceConnected,
+  isPageConnected,
 }: {
   integrationName: string;
-  isWorkspaceConnected: boolean;
+  isPageConnected: boolean;
 }) {
-  if (isWorkspaceConnected) {
+  if (isPageConnected) {
     return null;
   }
 
@@ -317,7 +317,7 @@ export function IntegrationPersonalAccountCard({
   integrationName,
   isBusy,
   isPersonalConnected,
-  isWorkspaceConnected,
+  isPageConnected,
   onConnectPersonal,
   onDisconnectPersonal,
   status,
@@ -329,7 +329,7 @@ export function IntegrationPersonalAccountCard({
   integrationName: string;
   isBusy: boolean;
   isPersonalConnected: boolean;
-  isWorkspaceConnected: boolean;
+  isPageConnected: boolean;
   onConnectPersonal: () => void;
   onDisconnectPersonal: () => void;
   status: IntegrationAvailabilityStatus;
@@ -342,7 +342,7 @@ export function IntegrationPersonalAccountCard({
           <IntegrationConnectionButtons
             isBusy={isBusy}
             isConnected={isPersonalConnected}
-            isWorkspaceConnected={isWorkspaceConnected}
+            isPageConnected={isPageConnected}
             onConnect={onConnectPersonal}
             onDisconnect={onDisconnectPersonal}
             status={status}
@@ -357,9 +357,9 @@ export function IntegrationPersonalAccountCard({
           title={title}
         />
       </IntegrationSectionLayout>
-      <IntegrationWorkspaceDisconnectedAlert
+      <IntegrationPageDisconnectedAlert
         integrationName={integrationName}
-        isWorkspaceConnected={isWorkspaceConnected}
+        isPageConnected={isPageConnected}
       />
     </IntegrationSectionCard>
   );

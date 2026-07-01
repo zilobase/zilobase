@@ -215,15 +215,15 @@ export type GooglePeopleConnectionsResponse = {
   totalPeople?: number;
 };
 
-export type GmailWorkspaceEligibilityInput = {
+export type GmailPageEligibilityInput = {
   allowedEmails: string[];
   connectedEmail: string;
   hostedDomain?: string | null;
   licenseVerified?: boolean;
-  requirePaidWorkspaceLicense?: boolean;
+  requirePaidPageLicense?: boolean;
 };
 
-export type GmailWorkspaceEligibilityResult =
+export type GmailPageEligibilityResult =
   | {
       ok: true;
       connectedEmail: string;
@@ -238,10 +238,10 @@ export type GmailWorkspaceEligibilityResult =
         | "consumer_google_account"
         | "email_not_allowed"
         | "missing_hosted_domain"
-        | "paid_workspace_license_required";
+        | "paid_page_license_required";
     };
 
-export type GoogleWorkspaceLicenseAssignment = {
+export type GooglePageLicenseAssignment = {
   etags?: string;
   kind?: string;
   productId: string;
@@ -252,10 +252,10 @@ export type GoogleWorkspaceLicenseAssignment = {
   userId: string;
 };
 
-export type GoogleWorkspaceLicenseVerificationResult =
+export type GooglePageLicenseVerificationResult =
   | {
       ok: true;
-      assignment: GoogleWorkspaceLicenseAssignment;
+      assignment: GooglePageLicenseAssignment;
       status: "verified";
     }
   | {

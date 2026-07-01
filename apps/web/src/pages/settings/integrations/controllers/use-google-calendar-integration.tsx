@@ -15,7 +15,7 @@ import {
 import type { IntegrationControllerContext } from "./types";
 
 export function useGoogleCalendarIntegrationController({
-  canManageWorkspace,
+  canManagePage,
   isLoadingIntegrations,
   setIntegrationsError,
   setSelectedIntegrationId,
@@ -26,10 +26,10 @@ export function useGoogleCalendarIntegrationController({
   const updateSettings = useUpdateGoogleCalendarIntegrationSettings();
   const {
     connectPersonal,
-    connectWorkspace,
+    connectPage,
     disconnectIntegration,
     disconnectPersonal,
-    disconnectWorkspace,
+    disconnectPage,
     endpointId,
     runWithIntegrationError,
     startOAuth,
@@ -47,10 +47,10 @@ export function useGoogleCalendarIntegrationController({
 
   const toggleCoworkerAccess = React.useCallback(
     async (enabled: boolean) => {
-      if (enabled && status?.workspace.coworkerCalendarAccessGranted !== true) {
-        await connectWorkspace({
+      if (enabled && status?.page.coworkerCalendarAccessGranted !== true) {
+        await connectPage({
           coworkerCalendarAccessEnabled: true,
-          enforceEmailMatch: status?.workspace.enforceEmailMatch ?? true,
+          enforceEmailMatch: status?.page.enforceEmailMatch ?? true,
         });
         return;
       }
@@ -66,7 +66,7 @@ export function useGoogleCalendarIntegrationController({
         );
       });
     },
-    [connectWorkspace, runWithIntegrationError, status, updateSettings],
+    [connectPage, runWithIntegrationError, status, updateSettings],
   );
 
   const toggleEmailMatch = React.useCallback(
@@ -89,12 +89,12 @@ export function useGoogleCalendarIntegrationController({
     about:
       "Google Calendar adds scheduling context from the connected user's calendars. Coworker free/busy lookup can be enabled separately when connected.",
     category: "AI enterprise search",
-    connected: status?.workspace.connected,
+    connected: status?.page.connected,
     connectDisabled:
       isBusy || status?.configured === false || status?.needsMigration === true,
     connectLabel: "Connect Calendar",
     detail:
-      status?.workspace.hostedDomain ||
+      status?.page.hostedDomain ||
       status?.personal.email ||
       "Read calendar events for scheduling-aware AI context.",
     id: "googleCalendar",
@@ -102,11 +102,11 @@ export function useGoogleCalendarIntegrationController({
     isBusy,
     name: "Google Calendar",
     onConnect: () =>
-      canManageWorkspace
-        ? void connectWorkspace({
+      canManagePage
+        ? void connectPage({
             coworkerCalendarAccessEnabled:
-              status?.workspace.coworkerCalendarAccessEnabled ?? false,
-            enforceEmailMatch: status?.workspace.enforceEmailMatch ?? true,
+              status?.page.coworkerCalendarAccessEnabled ?? false,
+            enforceEmailMatch: status?.page.enforceEmailMatch ?? true,
           })
         : void connectPersonal(),
     onManage: () => setSelectedIntegrationId("googleCalendar"),
@@ -114,15 +114,15 @@ export function useGoogleCalendarIntegrationController({
 
   const card = (
     <GoogleCalendarIntegrationCard
-      canManageWorkspace={canManageWorkspace}
+      canManagePage={canManagePage}
       isBusy={isBusy}
       onConnectPersonal={() => void connectPersonal()}
-      onConnectWorkspace={(input) => void connectWorkspace(input)}
+      onConnectPage={(input) => void connectPage(input)}
       onDisconnectPersonal={() =>
         void disconnectPersonal("Google Calendar account disconnected.")
       }
-      onDisconnectWorkspace={() =>
-        void disconnectWorkspace("Google Calendar workspace disconnected.")
+      onDisconnectPage={() =>
+        void disconnectPage("Google Calendar page disconnected.")
       }
       onToggleCoworkerAccess={(enabled) => void toggleCoworkerAccess(enabled)}
       onToggleEmailMatch={(enabled) => void toggleEmailMatch(enabled)}

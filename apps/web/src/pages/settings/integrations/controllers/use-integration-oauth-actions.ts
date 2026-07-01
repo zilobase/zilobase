@@ -71,24 +71,24 @@ export function useIntegrationOAuthActions({
     [endpointId, runWithIntegrationError, startOAuth],
   );
 
-  const connectWorkspace = React.useCallback(
+  const connectPage = React.useCallback(
     (input: Record<string, unknown>) =>
       runWithIntegrationError(async () => {
         const response = await startOAuth.mutateAsync({
           id: endpointId,
-          input: { ...input, mode: "workspace" },
+          input: { ...input, mode: "page" },
         });
         window.location.assign(response.url);
       }),
     [endpointId, runWithIntegrationError, startOAuth],
   );
 
-  const disconnectWorkspace = React.useCallback(
+  const disconnectPage = React.useCallback(
     (successMessage: string) =>
       runWithIntegrationError(async () => {
         await disconnectIntegration.mutateAsync({
           id: endpointId,
-          mode: "workspace",
+          mode: "page",
         });
         toast.success(successMessage);
       }),
@@ -109,10 +109,10 @@ export function useIntegrationOAuthActions({
 
   return {
     connectPersonal,
-    connectWorkspace,
+    connectPage,
     disconnectIntegration,
     disconnectPersonal,
-    disconnectWorkspace,
+    disconnectPage,
     endpointId,
     runWithIntegrationError,
     startOAuth,

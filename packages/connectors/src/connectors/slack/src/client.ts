@@ -294,7 +294,7 @@ function formatSlackApiError(code: string) {
   }
 
   if (code === "invalid_auth" || code === "token_revoked") {
-    return `Slack API request failed: ${code}. Reconnect Slack in organization settings.`;
+    return `Slack API request failed: ${code}. Reconnect Slack in workspace settings.`;
   }
 
   return `Slack API request failed: ${code}.`;
