@@ -123,6 +123,7 @@ export const iconColorOptions = colorTokens.map((token) => ({
   value: token.value ?? "default",
   textClass: token.textClass,
   backgroundClass: token.backgroundClass,
+  solidClass: token.solidClass,
 }))
 
 export function getPaletteColor(color?: string | null) {
@@ -155,8 +156,8 @@ export function getColorTokenValue(color?: string | null) {
   return getColorToken(color).value ?? "default"
 }
 
-export function getIconColorClassName(colorValue?: string | null) {
-  return getColorToken(colorValue === "default" ? null : colorValue).textClass
+export function getIconSolidClassName(colorValue?: string | null) {
+  return getColorToken(colorValue === "default" ? null : colorValue).solidClass
 }
 
 export function isPaletteColorActive(

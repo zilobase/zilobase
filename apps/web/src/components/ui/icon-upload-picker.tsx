@@ -1,8 +1,8 @@
 import * as React from "react"
 import { Upload } from "lucide-react"
 
-import { BoxiconPreview } from "@/components/ui/boxicon-preview"
 import { IconColorGrid } from "@/components/ui/icon-color-grid"
+import { IconSvgPreview } from "@/components/ui/icon-svg-preview"
 import { cn } from "@/lib/utils"
 import {
   buildColoredIconSvg,
@@ -142,7 +142,7 @@ export function IconUploadPicker({
           </div>
           <div className="mt-4 flex justify-center">
             <span className="flex size-16 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
-              <BoxiconPreview
+              <IconSvgPreview
                 content={uploadedIcon.content}
                 size={40}
                 viewBox={uploadedIcon.viewBox}

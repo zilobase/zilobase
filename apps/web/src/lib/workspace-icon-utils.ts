@@ -1,10 +1,3 @@
-export type BoxiconCatalogEntry = {
-  name: string
-  label: string
-  viewBox: string
-  content: string
-}
-
 export function isSvgIcon(value: string | null | undefined) {
   if (!value) {
     return false
@@ -40,6 +33,38 @@ export function buildColoredIconSvg({
   const colorValue = color || "default"
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="1em" height="1em" fill="currentColor" data-icon-color="${colorValue}">${normalizedContent}</svg>`
+}
+
+export function buildStoredSvgFromRenderedSvg({
+  color,
+  svg,
+}: {
+  color: string
+  svg: string
+}) {
+  const sanitized = sanitizeStoredSvg(svg)
+
+  if (!sanitized) {
+    return ""
+  }
+
+  const viewBoxMatch = sanitized.match(/viewBox="([^"]+)"/i)
+  const viewBox = viewBoxMatch?.[1] ?? "0 0 24 24"
+  const content = sanitized
+    .replace(/<svg[^>]*>/i, "")
+    .replace(/<\/svg>\s*$/i, "")
+    .replace(/\sclass="[^"]*"/gi, "")
+    .replace(/\saria-hidden="[^"]*"/gi, "")
+    .replace(/\srole="[^"]*"/gi, "")
+    .trim()
+
+  if (!content) {
+    return ""
+  }
+
+  const colorValue = color || "default"
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-icon-color="${colorValue}">${content}</svg>`
 }
 
 export function parseUploadedSvg(raw: string) {
@@ -83,11 +108,4 @@ export function sanitizeStoredSvg(value: string) {
   }
 
   return trimmed
-}
-
-export function formatBoxiconLabel(name: string) {
-  return name
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
 }

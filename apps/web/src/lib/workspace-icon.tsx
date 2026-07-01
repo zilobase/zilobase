@@ -2,7 +2,7 @@ import { FileIcon, FileTextIcon } from "lucide-react"
 
 import { getWorkspaceEmoji, type Workspace } from "@notelab/features/workspaces"
 import { getDatabaseEmoji } from "@notelab/features/databases"
-import { getIconColorClassName } from "@/lib/color-tokens"
+import { getIconSolidClassName } from "@/lib/color-tokens"
 import { cn } from "@/lib/utils"
 import {
   getStoredIconColor,
@@ -55,6 +55,13 @@ const iconSizeClasses = {
   xl: "size-11 text-3xl [&_svg]:size-11",
 } as const
 
+const svgIconSizeClasses = {
+  sm: "size-4 rounded-sm [&_svg]:size-2.5",
+  md: "size-5 rounded-md [&_svg]:size-3",
+  lg: "size-7 rounded-md [&_svg]:size-4",
+  xl: "size-8 rounded-md [&_svg]:size-5",
+} as const
+
 export function WorkspaceIconDisplay({
   className,
   size = "md",
@@ -78,9 +85,9 @@ export function WorkspaceIconDisplay({
     return (
       <span
         className={cn(
-          "inline-flex shrink-0 items-center justify-center leading-none",
-          iconSizeClasses[size],
-          getIconColorClassName(getStoredIconColor(sanitized)),
+          "inline-flex shrink-0 items-center justify-center leading-none shadow-sm/5",
+          svgIconSizeClasses[size],
+          getIconSolidClassName(getStoredIconColor(sanitized)),
           className,
         )}
         dangerouslySetInnerHTML={{ __html: sanitized }}

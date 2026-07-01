@@ -6,10 +6,15 @@ import {
   EmojiPickerFooter,
   EmojiPickerSearch,
 } from "@/components/ui/emoji-picker"
-import { BoxiconPicker } from "@/components/ui/boxicon-picker"
 import { IconUploadPicker } from "@/components/ui/icon-upload-picker"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+
+const LucideIconPicker = React.lazy(() =>
+  import("@/components/ui/lucide-icon-picker").then((module) => ({
+    default: module.LucideIconPicker,
+  })),
+)
 
 type IconEmojiPickerProps = {
   className?: string
@@ -47,7 +52,17 @@ export function IconEmojiPicker({
           </EmojiPicker>
         </TabsContent>
         <TabsContent className="mt-0" value="icon">
-          <BoxiconPicker onIconSelect={onIconSelect} />
+          {activeTab === "icon" ? (
+            <React.Suspense
+              fallback={
+                <div className="flex h-[342px] w-72 items-center justify-center text-sm text-muted-foreground">
+                  Loading icons...
+                </div>
+              }
+            >
+              <LucideIconPicker onIconSelect={onIconSelect} />
+            </React.Suspense>
+          ) : null}
         </TabsContent>
         <TabsContent className="mt-0" value="upload">
           <IconUploadPicker onIconSelect={onIconSelect} />
