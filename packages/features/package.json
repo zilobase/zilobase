@@ -4,7 +4,7 @@
   "type": "module",
   "version": "0.0.0",
   "scripts": {
-    "test": "tsx --test src/databases/*.test.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "test:databases": "tsx --test src/databases/*.test.ts"
   },
   "devDependencies": {
