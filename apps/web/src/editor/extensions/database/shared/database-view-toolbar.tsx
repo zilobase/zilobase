@@ -354,7 +354,7 @@ export function DatabaseViewToolbar() {
               }}
               value={activeViewTabId}
             >
-              <TabsList variant="underline" className="min-w-0 w-full justify-start overflow-x-auto">
+              <TabsList variant="tab" className="min-w-0 w-full justify-start overflow-x-auto">
                 {viewTabs.map((view) => {
                   const isActiveView = view.id === activeViewTabId
                   const ViewIcon =
