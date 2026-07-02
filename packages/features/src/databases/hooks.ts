@@ -150,7 +150,7 @@ async function commitDatabaseMutation(
   return payload
 }
 
-function reorderDatabaseRows(
+export function reorderDatabaseRows(
   payload: DatabasePayload | null | undefined,
   rowIds: string[],
 ) {
@@ -172,7 +172,7 @@ function reorderDatabaseRows(
   return { ...payload, rows }
 }
 
-function updateDatabasePropertyValue(
+export function updateDatabasePropertyValue(
   payload: DatabasePayload | null | undefined,
   input: UpdatePropertyValueInput,
 ) {
@@ -210,6 +210,78 @@ function updateDatabasePropertyValue(
     : [...payload.values, nextValue]
 
   return { ...payload, values }
+}
+
+export function moveDatabaseRow(
+  payload: DatabasePayload | null | undefined,
+  input: MoveRowInput,
+) {
+  const reorderedPayload = reorderDatabaseRows(payload, input.rowIds)
+
+  if (!reorderedPayload || !input.groupPropertyId) {
+    return reorderedPayload
+  }
+
+  return updateDatabasePropertyValue(reorderedPayload, {
+    databaseId: input.databaseId,
+    propertyId: input.groupPropertyId,
+    rowId: input.rowId,
+    value: input.groupValue,
+  })
+}
+
+export function updateDatabaseViewInPayload(
+  payload: DatabasePayload | null | undefined,
+  input: UpdateDatabaseViewInput,
+) {
+  if (!payload) {
+    return payload
+  }
+
+  const now = new Date().toISOString()
+  const views = payload.views.map((view) =>
+    view.id === input.databaseViewId
+      ? {
+          ...view,
+          ...(input.config !== undefined ? { config: input.config } : {}),
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.type !== undefined ? { type: input.type } : {}),
+          updatedAt: now,
+        }
+      : view,
+  )
+
+  return { ...payload, views }
+}
+
+export function updateDatabasePropertyInPayload(
+  payload: DatabasePayload | null | undefined,
+  input: UpdatePropertyInput,
+) {
+  if (!payload) {
+    return payload
+  }
+
+  const now = new Date().toISOString()
+  const properties = payload.properties.map((databaseProperty) =>
+    databaseProperty.id === input.databasePropertyId
+      ? {
+          ...databaseProperty,
+          ...(input.visible !== undefined ? { visible: input.visible } : {}),
+          ...(input.width !== undefined ? { width: input.width } : {}),
+          updatedAt: now,
+          property: {
+            ...databaseProperty.property,
+            ...(input.config !== undefined ? { config: input.config } : {}),
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            ...(input.type !== undefined ? { type: input.type } : {}),
+            updatedAt: now,
+          },
+        }
+      : databaseProperty,
+  )
+
+  return { ...payload, properties }
 }
 
 export function useDatabase(
@@ -327,6 +399,21 @@ export function useUpdateDatabaseView() {
   const { apiFetch, queryClient } = useNotelabFeatures()
 
   return useMutation({
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({
+        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+      })
+      const previous = queryClient.getQueryData<DatabasePayload | null>(
+        databaseQueryKey(variables.databaseId),
+      )
+
+      queryClient.setQueriesData<DatabasePayload | null>(
+        { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
+        (current) => updateDatabaseViewInPayload(current, variables),
+      )
+
+      return { previous }
+    },
     mutationFn: async ({
       databaseId,
       databaseViewId,
@@ -341,6 +428,15 @@ export function useUpdateDatabaseView() {
       )
 
       return commitDatabaseMutation(queryClient, databaseId, response)
+    },
+    onError: (_error, variables, context) => {
+      if (context?.previous) {
+        setDatabasePayloadQueryData(
+          queryClient,
+          variables.databaseId,
+          context.previous,
+        )
+      }
     },
   })
 }
@@ -426,6 +522,21 @@ export function useUpdateDatabaseProperty() {
   const { apiFetch, queryClient } = useNotelabFeatures()
 
   return useMutation({
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({
+        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+      })
+      const previous = queryClient.getQueryData<DatabasePayload | null>(
+        databaseQueryKey(variables.databaseId),
+      )
+
+      queryClient.setQueriesData<DatabasePayload | null>(
+        { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
+        (current) => updateDatabasePropertyInPayload(current, variables),
+      )
+
+      return { previous }
+    },
     mutationFn: async ({
       databaseId,
       databasePropertyId,
@@ -440,6 +551,15 @@ export function useUpdateDatabaseProperty() {
       )
 
       return commitDatabaseMutation(queryClient, databaseId, response)
+    },
+    onError: (_error, variables, context) => {
+      if (context?.previous) {
+        setDatabasePayloadQueryData(
+          queryClient,
+          variables.databaseId,
+          context.previous,
+        )
+      }
     },
   })
 }
@@ -618,7 +738,7 @@ export function useMoveDatabaseRow() {
 
       queryClient.setQueriesData<DatabasePayload | null>(
         { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
-        (current) => reorderDatabaseRows(current, variables.rowIds),
+        (current) => moveDatabaseRow(current, variables),
       )
 
       return { previous }
