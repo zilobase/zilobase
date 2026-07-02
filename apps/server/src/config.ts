@@ -38,7 +38,14 @@ export function isAllowedClientOrigin(env: RuntimeEnv, origin: string | null) {
 export function getTrustedOrigins(env: RuntimeEnv, requestOrigin: string) {
   const requestUrl = parseUrl(requestOrigin);
   const developmentOrigins = isLocalRequestOrigin(requestUrl)
-    ? ["exp://**", "exps://**"]
+    ? [
+        "exp://**",
+        "exps://**",
+        "http://localhost:1420",
+        "http://127.0.0.1:1420",
+        "http://0.0.0.0:1420",
+        "http://192.0.0.2:1420",
+      ]
     : [];
 
   return Array.from(
@@ -60,6 +67,8 @@ export function isLocalRequestOrigin(url: URL | null) {
 export function isLocalDevelopmentHost(hostname: string) {
   if (
     hostname === "localhost" ||
+    hostname === "0.0.0.0" ||
+    hostname === "192.0.0.2" ||
     hostname === "127.0.0.1" ||
     hostname === "::1"
   ) {

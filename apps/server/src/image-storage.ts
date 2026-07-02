@@ -8,6 +8,10 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getStringEnv, type RuntimeEnv } from "./config";
+import {
+  getConfiguredImageStorageMode,
+  getRuntimeAdapter,
+} from "./runtime-adapter";
 
 export type ImageStorageMode = "s3" | "binding";
 
@@ -65,34 +69,34 @@ type S3Config = {
   secretAccessKey: string;
 };
 
-export function createImageStorage(
-  env: RuntimeEnv & { IMAGE_BUCKET?: R2Bucket },
-): ImageStorage {
-  const mode = resolveImageStorageMode(env);
+export function createImageStorage(env: RuntimeEnv): ImageStorage {
+  const adapterStorage = getRuntimeAdapter().createImageStorage?.(env);
 
-  if (mode === "s3") {
-    return new S3ImageStorage(getS3Config(env));
+  if (adapterStorage) {
+    return adapterStorage;
   }
 
-  if (!env.IMAGE_BUCKET) {
-    throw new Error("IMAGE_BUCKET binding is required when IMAGE_STORAGE_MODE=binding");
-  }
-
-  return new R2BindingImageStorage(env.IMAGE_BUCKET);
+  return createS3ImageStorage(env);
 }
 
 export function resolveImageStorageMode(env: RuntimeEnv): ImageStorageMode {
-  const configured = getStringEnv(env, "IMAGE_STORAGE_MODE");
+  const adapterMode = getRuntimeAdapter().getImageStorageMode?.(env);
+
+  if (adapterMode) {
+    return adapterMode;
+  }
+
+  const configured = getConfiguredImageStorageMode(env);
 
   if (!configured) {
-    return hasS3Config(env) ? "s3" : "binding";
+    return "s3";
   }
 
-  if (configured === "s3" || configured === "binding") {
-    return configured;
-  }
+  return configured;
+}
 
-  throw new Error("IMAGE_STORAGE_MODE must be either 's3' or 'binding'");
+export function createS3ImageStorage(env: RuntimeEnv): ImageStorage {
+  return new S3ImageStorage(getS3Config(env));
 }
 
 class S3ImageStorage implements ImageStorage {
@@ -205,58 +209,6 @@ class S3ImageStorage implements ImageStorage {
   }
 }
 
-class R2BindingImageStorage implements ImageStorage {
-  readonly mode = "binding" as const;
-
-  constructor(private readonly bucket: R2Bucket) {}
-
-  async createUploadUrl(
-    _options: CreateUploadUrlOptions,
-  ): Promise<ImageUploadTarget> {
-    throw new Error("Presigned upload URLs are only supported in s3 mode");
-  }
-
-  async createReadUrl(_options: CreateReadUrlOptions): Promise<string> {
-    throw new Error("Presigned read URLs are only supported in s3 mode");
-  }
-
-  async delete(objectKey: string) {
-    await this.bucket.delete(objectKey);
-  }
-
-  async get(objectKey: string) {
-    const object = await this.bucket.get(objectKey);
-
-    if (!object) {
-      return null;
-    }
-
-    return {
-      body: object.body,
-      byteSize: object.size,
-      contentType: object.httpMetadata?.contentType,
-      etag: object.etag,
-      uploadedAt: object.uploaded,
-    };
-  }
-
-  async head(objectKey: string) {
-    const object = await this.bucket.head(objectKey);
-
-    return object ? toR2Metadata(object) : null;
-  }
-
-  async putObject(options: PutObjectOptions) {
-    const object = await this.bucket.put(options.objectKey, options.body, {
-      httpMetadata: {
-        contentType: options.contentType,
-      },
-    });
-
-    return toR2Metadata(object);
-  }
-}
-
 function getS3Config(env: RuntimeEnv): S3Config {
   const accountId = getStringEnv(env, "R2_ACCOUNT_ID");
   const endpoint =
@@ -309,15 +261,6 @@ function toS3Metadata(response: HeadObjectCommandOutput): StoredImageMetadata {
     contentType: response.ContentType,
     etag: response.ETag,
     uploadedAt: response.LastModified,
-  };
-}
-
-function toR2Metadata(object: R2Object): StoredImageMetadata {
-  return {
-    byteSize: object.size,
-    contentType: object.httpMetadata?.contentType,
-    etag: object.etag,
-    uploadedAt: object.uploaded,
   };
 }
 

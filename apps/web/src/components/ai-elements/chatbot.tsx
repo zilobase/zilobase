@@ -90,8 +90,11 @@ import {
 import type { WorkspaceAiChatModel } from "@notelab/features/integrations";
 import { useQuery } from "@tanstack/react-query";
 import { integrationIcons } from "@/lib/integration-icons";
-import { useAgent } from "agents/react";
-import { useAgentChat } from "@cloudflare/ai-chat/react";
+import { useChat } from "@ai-sdk/react";
+import {
+  getApiRequestHeaders,
+  toApiUrl,
+} from "@/lib/api";
 import {
   GmailToolOutput,
   isGmailToolName,
@@ -118,6 +121,7 @@ import {
 } from "@notelab/connectors/slack/ui";
 import {
   type ChatStatus,
+  DefaultChatTransport,
   type UIMessage,
   getToolName,
   isToolUIPart,
@@ -1508,15 +1512,9 @@ const ChatbotInner = ({
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
   const isAgentReady = Boolean(workspaceId && userId && threadId);
-  const query = workspaceId ? { workspaceId } : undefined;
   const agentName = isAgentReady
     ? `org-${workspaceId}-user-${userId}-thread-${threadId}`
     : "chat-not-ready";
-  const agent = useAgent({
-    agent: "ChatAgent",
-    name: agentName,
-    query,
-  });
 
   const { getEditorHandle } = usePageEditorRegistry();
   const { commitPageEdit, undoPageEdit } = usePageEditApplier();
@@ -1562,30 +1560,12 @@ const ChatbotInner = ({
     setMessages,
     status,
     stop,
-  } = useAgentChat({
-    agent,
-    body: () => ({
-      model,
-      sources: selectedSources,
-      threadId,
-      ...(workspaceId ? { workspaceId } : {}),
-      ...(userId ? { userId } : {}),
-      ...(pageContext ? { pageContext } : {}),
-      allowedPageIds,
-      canEditPages,
-      pageContextMeta: pageContext
-        ? {
-            attachmentIds: attachments.map((item) => item.id),
-            charCount: pageContext.length,
-            primaryId: effectivePrimarySource?.id ?? null,
-          }
-        : undefined,
-    }),
+  } = useChat<UIMessage>({
     experimental_throttle: 50,
-    getInitialMessages: null,
+    id: agentName,
     messages: initialMessages,
     onError: (chatError) => {
-      logAiChatError("useAgentChat onError", chatError, {
+      logAiChatError("useChat onError", chatError, {
         agentName,
         canEditPages,
         isAgentReady,
@@ -1600,7 +1580,36 @@ const ChatbotInner = ({
         description: chatError.message,
       });
     },
-    resume: true,
+    transport: new DefaultChatTransport<UIMessage>({
+      api: toApiUrl("/api/ai/chat"),
+      body: () => ({
+        model,
+        sources: selectedSources,
+        threadId,
+        ...(workspaceId ? { workspaceId } : {}),
+        ...(userId ? { userId } : {}),
+        ...(pageContext ? { pageContext } : {}),
+        allowedPageIds,
+        canEditPages,
+        pageContextMeta: pageContext
+          ? {
+              attachmentIds: attachments.map((item) => item.id),
+              charCount: pageContext.length,
+              primaryId: effectivePrimarySource?.id ?? null,
+            }
+          : undefined,
+      }),
+      credentials: "include",
+      headers: () => {
+        const headers = getApiRequestHeaders();
+
+        if (workspaceId) {
+          headers.set("x-notelab-workspace-id", workspaceId);
+        }
+
+        return headers;
+      },
+    }),
   });
 
   const debugContextRef = useRef<Record<string, unknown>>({});
@@ -1988,7 +1997,7 @@ const ChatbotInner = ({
       return;
     }
 
-    logAiChatError("useAgentChat error state", error, debugContextRef.current);
+    logAiChatError("useChat error state", error, debugContextRef.current);
 
     const timeout = window.setTimeout(() => {
       clearError();

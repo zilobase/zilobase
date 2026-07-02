@@ -1,7 +1,4 @@
 import type { Auth } from "./auth";
-export type HyperdriveBinding = {
-  connectionString: string;
-};
 
 type AuthSession = Auth["$Infer"]["Session"]["session"] & {
   activeWorkspaceId?: string | null;
@@ -16,12 +13,10 @@ type ApiKeyContext = {
 
 export type AppBindings = {
   Bindings: {
-    CHAT_AGENT: DurableObjectNamespace;
-    HYPERDRIVE: HyperdriveBinding;
-    IMAGE_BUCKET?: R2Bucket;
     BETTER_AUTH_SECRET: string;
     BETTER_AUTH_URL: string;
     CLIENT_URL: string;
+    DATABASE_URL?: string;
     EMAIL_FROM?: string;
     OPENAI_API_KEY?: string;
     RESEND_API_KEY?: string;

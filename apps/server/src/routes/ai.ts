@@ -20,9 +20,13 @@ import { buildGoogleDriveTools } from "../ai/ask-ai-google-drive-tools";
 import { buildLinearTools } from "../ai/ask-ai-linear-tools";
 import { buildSlackTools } from "../ai/ask-ai-slack-tools";
 import { canAccessPage, getMembership, getPageRecord } from "../access";
-import { db } from "../db";
+import { createDbClient, db, runWithDbClient } from "../db";
 import { workspaceIntegration, userIntegration } from "../db/schema";
 import type { AppBindings } from "../types";
+import {
+  coerceAiChatRequestBody,
+  runAiChatTurn,
+} from "../ai/chat-service";
 
 type SourceId =
   | "gmail"
@@ -69,6 +73,50 @@ const editorAiRequestSchema = z.object({
 });
 
 export const aiRoutes = new Hono<AppBindings>();
+
+aiRoutes.post("/chat", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  const rawBody = await readJsonBody(c);
+
+  if (!rawBody || typeof rawBody !== "object") {
+    return c.json({ error: "Request body must be valid JSON" }, 400);
+  }
+
+  const raw = rawBody as Record<string, unknown>;
+  const requestedWorkspaceId =
+    typeof raw.workspaceId === "string" ? raw.workspaceId.trim() : null;
+
+  if (requestedWorkspaceId && requestedWorkspaceId !== auth.workspaceId) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const messages = Array.isArray(raw.messages)
+    ? raw.messages as UIMessage[]
+    : [];
+
+  if (messages.length === 0) {
+    return c.json({ error: "messages is required" }, 400);
+  }
+
+  const requestBody = coerceAiChatRequestBody({
+    ...raw,
+    userId: auth.user.id,
+    workspaceId: auth.workspaceId,
+  });
+
+  return runAiChatTurn({
+    abortSignal: c.req.raw.signal,
+    env: c.env,
+    messages,
+    requestBody,
+    withDb: (fn) => runWithDbClient(createDbClient(c.env), fn),
+  });
+});
 
 aiRoutes.post("/ask", async (c) => {
   const auth = await requireActiveWorkspace(c);
@@ -685,6 +733,14 @@ async function parseJson<T extends z.ZodType>(
   }
 
   return { success: true, data: result.data };
+}
+
+async function readJsonBody(c: Context<AppBindings>) {
+  try {
+    return await c.req.json();
+  } catch {
+    return null;
+  }
 }
 
 function readObject(value: unknown) {

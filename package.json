@@ -21,7 +21,6 @@
     "dev:desktop": "npm run dev --workspace @notelab/desktop",
     "build:desktop": "npm run build --workspace @notelab/desktop",
     "dev:server": "npm run dev --workspace @notelab/server",
-    "build:server": "npm run build --workspace @notelab/server",
-    "deploy:server": "npm run deploy --workspace @notelab/server"
+    "build:server": "npm run build --workspace @notelab/server"
   }
 }

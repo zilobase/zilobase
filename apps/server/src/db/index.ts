@@ -1,11 +1,10 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { Client } from "pg";
+import { getDatabaseUrl } from "../runtime-adapter";
 import * as schema from "./schema";
 
-type DbEnv = {
-  HYPERDRIVE: { connectionString: string };
-} & Record<string, unknown>;
+type DbEnv = Record<string, unknown>;
 type DatabaseClient = ReturnType<typeof createDbClientForUrl>;
 type Database = DatabaseClient["db"];
 
@@ -60,10 +59,10 @@ export async function runWithDbClient<T>(
 }
 
 function getConnectionString(env: DbEnv) {
-  const connectionString = env.HYPERDRIVE.connectionString;
+  const connectionString = getDatabaseUrl(env);
 
   if (!connectionString) {
-    throw new Error("HYPERDRIVE binding is required");
+    throw new Error("DATABASE_URL is required");
   }
 
   return connectionString;

@@ -1,6 +1,5 @@
 {
   "name": "@notelab/page-context",
-  "private": true,
   "type": "module",
   "version": "0.0.0",
   "exports": {

@@ -1,18 +1,16 @@
 {
   "name": "@notelab/web",
-  "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "node test/run-tests.mjs",
-    "preview": "vite preview",
-    "deploy": "npm run build && npm run deploy --workspace @notelab/server"
+    "preview": "vite preview"
   },
   "dependencies": {
+    "@ai-sdk/react": "^3.0.220",
     "@base-ui/react": "^1.5.0",
-    "@cloudflare/ai-chat": "^0.6.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/modifiers": "^9.0.0",
     "@faker-js/faker": "^10.4.0",
@@ -52,7 +50,6 @@
     "@tiptap/suggestion": "^3.23.6",
     "@uidotdev/usehooks": "^2.4.1",
     "@xyflow/react": "^12.11.0",
-    "agents": "^0.12.1",
     "ai": "^6.0.193",
     "better-auth": "^1.6.11",
     "class-variance-authority": "^0.7.1",

@@ -1,9 +1,21 @@
 {
   "name": "@notelab/server",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/adapter-api.ts",
+      "default": "./src/adapter-api.ts"
+    },
+    "./adapter-api": {
+      "types": "./src/adapter-api.ts",
+      "default": "./src/adapter-api.ts"
+    }
+  },
   "scripts": {
-    "dev": "wrangler dev --ip 0.0.0.0 --port 3000",
+    "dev": "tsx src/serverful.ts",
+    "dev:node": "tsx src/serverful.ts",
     "build": "tsc --noEmit",
+    "build:node": "tsc --noEmit",
     "test:insert-database-block": "tsx --test src/services/insert-database-block.test.ts",
     "test:database-property-config": "tsx --test src/services/database-property-config.test.ts",
     "test:database-delta": "tsx --test src/services/database-delta.test.ts",
@@ -12,17 +24,10 @@
     "test:flow": "tsx src/scripts/simulate-user-flow.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:migrate:prod": "node src/scripts/prod-db-migrate.mjs migrate",
     "db:reset": "tsx src/scripts/reset-database.ts && drizzle-kit migrate",
-    "db:reset:prod": "node src/scripts/prod-db-migrate.mjs reset --confirm-production-reset",
-    "db:status:prod": "node src/scripts/prod-db-migrate.mjs status",
-    "db:studio": "drizzle-kit studio",
-    "deploy": "wrangler deploy --minify",
-    "cf-typegen": "CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler types --env-interface CloudflareBindings"
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@cloudflare/ai-chat": "^0.6.0",
-    "agents": "^0.12.1",
     "@ai-sdk/openai": "^3.0.72",
     "@aws-sdk/client-s3": "^3.1070.0",
     "@aws-sdk/s3-request-presigner": "^3.1070.0",
@@ -43,8 +48,6 @@
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
     "tsx": "^4.22.3",
-    "typescript": "^6.0.3",
-    "wrangler": "^4.4.0"
-  },
-  "private": true
+    "typescript": "^6.0.3"
+  }
 }
