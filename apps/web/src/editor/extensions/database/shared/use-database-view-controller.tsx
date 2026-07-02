@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type DragEvent as ReactDragEvent,
 } from "react"
@@ -97,6 +98,7 @@ export function useDatabaseViewController({
   const [showSortPill, setShowSortPill] = useState(true)
   const [filterPickerOpen, setFilterPickerOpen] = useState(false)
   const [sortPickerOpen, setSortPickerOpen] = useState(false)
+  const latestViewConfigRef = useRef(new Map<string, unknown>())
   const isControlledActiveView = Boolean(onActiveViewIdChange)
   const linkedDatabaseViews = useMemo(
     () => getDatabaseLinkedViews(payload?.database.config),
@@ -293,6 +295,38 @@ export function useDatabaseViewController({
     }
   }, [activeDatabaseFilters.length])
 
+  useEffect(() => {
+    if (!updateDatabaseView.isPending) {
+      latestViewConfigRef.current.clear()
+    }
+  }, [activePayload?.views, updateDatabaseView.isPending])
+
+  const getLatestViewConfig = useCallback(
+    (nextDatabaseId: string, databaseViewId: string, fallbackConfig: unknown) => {
+      const configKey = `${nextDatabaseId}:${databaseViewId}`
+
+      if (latestViewConfigRef.current.has(configKey)) {
+        return latestViewConfigRef.current.get(configKey)
+      }
+
+      return (
+        activePayload?.views.find((view) => view.id === databaseViewId)?.config ??
+        fallbackConfig
+      )
+    },
+    [activePayload?.views],
+  )
+
+  const setLatestViewConfig = useCallback(
+    (nextDatabaseId: string, databaseViewId: string, config: unknown) => {
+      latestViewConfigRef.current.set(
+        `${nextDatabaseId}:${databaseViewId}`,
+        config,
+      )
+    },
+    [],
+  )
+
   const addLinkedDatabaseView = (linkedView: DatabaseLinkedViewConfig) => {
     if (!databaseId) {
       return
@@ -463,6 +497,8 @@ export function useDatabaseViewController({
     setShowFilterPill,
     setShowSortPill,
     setSortPickerOpen,
+    getLatestViewConfig,
+    setLatestViewConfig,
   })
 
   const handleDatabaseBlockDragOver = (

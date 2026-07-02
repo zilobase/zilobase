@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
-import { useCallback } from "react"
+import { useCallback, useRef } from "react"
 
 import { useNotelabFeatures } from "../context"
 import { invalidateDeletedItems } from "../item-action-cache"
@@ -397,9 +397,17 @@ export function useUpdateDatabase() {
 
 export function useUpdateDatabaseView() {
   const { apiFetch, queryClient } = useNotelabFeatures()
+  const mutationSequenceRef = useRef(0)
+  const latestMutationByViewRef = useRef(new Map<string, number>())
 
   return useMutation({
     onMutate: async (variables) => {
+      const mutationSequence = mutationSequenceRef.current + 1
+      const mutationKey = `${variables.databaseId}:${variables.databaseViewId}`
+
+      mutationSequenceRef.current = mutationSequence
+      latestMutationByViewRef.current.set(mutationKey, mutationSequence)
+
       await queryClient.cancelQueries({
         queryKey: databasePayloadRootQueryKey(variables.databaseId),
       })
@@ -412,30 +420,54 @@ export function useUpdateDatabaseView() {
         (current) => updateDatabaseViewInPayload(current, variables),
       )
 
-      return { previous }
+      return { mutationKey, mutationSequence, previous }
     },
     mutationFn: async ({
       databaseId,
       databaseViewId,
       ...patch
     }: UpdateDatabaseViewInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
+      return apiFetch<DatabaseMutationResponse>(
         `/databases/${databaseId}/views/${databaseViewId}`,
         {
           method: "PATCH",
           body: JSON.stringify(patch),
         },
       )
-
-      return commitDatabaseMutation(queryClient, databaseId, response)
     },
     onError: (_error, variables, context) => {
-      if (context?.previous) {
+      const isLatestMutation =
+        context?.mutationKey &&
+        latestMutationByViewRef.current.get(context.mutationKey) ===
+          context.mutationSequence
+
+      if (isLatestMutation && context?.previous) {
         setDatabasePayloadQueryData(
           queryClient,
           variables.databaseId,
           context.previous,
         )
+      }
+    },
+    onSuccess: async (response, variables, context) => {
+      const isLatestMutation =
+        context?.mutationKey &&
+        latestMutationByViewRef.current.get(context.mutationKey) ===
+          context.mutationSequence
+
+      if (!isLatestMutation) {
+        return
+      }
+
+      await commitDatabaseMutation(queryClient, variables.databaseId, response)
+    },
+    onSettled: (_result, _error, _variables, context) => {
+      if (
+        context?.mutationKey &&
+        latestMutationByViewRef.current.get(context.mutationKey) ===
+          context.mutationSequence
+      ) {
+        latestMutationByViewRef.current.delete(context.mutationKey)
       }
     },
   })

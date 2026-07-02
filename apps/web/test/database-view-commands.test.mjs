@@ -323,6 +323,64 @@ export function register({ assert, loadModule, test }) {
     })
   })
 
+  test("database view commands compose rapid property visibility toggles", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/shared/database-view-commands.ts"
+    )
+    const updateDatabaseView = createMutation()
+    const latestConfigs = new Map()
+    const properties = [
+      createProperty("database-property-1", "property-1", "Text", "text"),
+      createProperty("database-property-2", "property-2", "Owner", "text"),
+    ]
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: { hiddenPropertyIds: [] },
+        id: "view-1",
+        name: "Table",
+        type: "table",
+      },
+      databaseId,
+      editable: true,
+      getLatestViewConfig: (nextDatabaseId, viewId, fallbackConfig) =>
+        latestConfigs.get(`${nextDatabaseId}:${viewId}`) ?? fallbackConfig,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ updateDatabaseView }),
+      payload: createPayload({ properties }),
+      properties,
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setLatestViewConfig: (nextDatabaseId, viewId, config) => {
+        latestConfigs.set(`${nextDatabaseId}:${viewId}`, config)
+      },
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    })
+
+    commands.togglePropertyVisibility("database-property-1")
+    commands.togglePropertyVisibility("database-property-2")
+
+    assert.deepEqual(updateDatabaseView.calls.map(([input]) => input), [
+      {
+        config: { hiddenPropertyIds: ["database-property-1"] },
+        databaseId,
+        databaseViewId: "view-1",
+      },
+      {
+        config: {
+          hiddenPropertyIds: ["database-property-1", "database-property-2"],
+        },
+        databaseId,
+        databaseViewId: "view-1",
+      },
+    ])
+  })
+
   test("database view commands skip unchanged serialized property values", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/editor/extensions/database/shared/database-view-commands.ts"

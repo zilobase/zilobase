@@ -73,6 +73,8 @@ export function getDatabaseViewCommands({
   setShowFilterPill,
   setShowSortPill,
   setSortPickerOpen,
+  getLatestViewConfig,
+  setLatestViewConfig,
 }: {
   activeDatabaseFilters: DatabasePropertyFilterConfig[]
   activeDatabaseSorts: DatabaseSortConfig[]
@@ -91,6 +93,16 @@ export function getDatabaseViewCommands({
   setShowFilterPill: Dispatch<SetStateAction<boolean>>
   setShowSortPill: Dispatch<SetStateAction<boolean>>
   setSortPickerOpen: Dispatch<SetStateAction<boolean>>
+  getLatestViewConfig?: (
+    databaseId: string,
+    databaseViewId: string,
+    fallbackConfig: unknown,
+  ) => unknown
+  setLatestViewConfig?: (
+    databaseId: string,
+    databaseViewId: string,
+    config: unknown,
+  ) => void
 }) {
   const {
     addDatabaseView,
@@ -673,9 +685,12 @@ export function getDatabaseViewCommands({
         return
       }
 
+      const currentConfig =
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
+        activeView.config
       const hiddenPropertyIds = new Set(
-        hasViewHiddenPropertyIds(activeView.config)
-          ? getViewHiddenPropertyIds(activeView.config)
+        hasViewHiddenPropertyIds(currentConfig)
+          ? getViewHiddenPropertyIds(currentConfig)
           : isKanbanView
             ? properties.map((property) => property.id)
             : properties
@@ -689,10 +704,13 @@ export function getDatabaseViewCommands({
         hiddenPropertyIds.add(propertyId)
       }
 
+      const nextConfig = getMergedDatabaseConfig(currentConfig, {
+        hiddenPropertyIds: [...hiddenPropertyIds],
+      })
+
+      setLatestViewConfig?.(databaseId, activeView.id, nextConfig)
       updateDatabaseView.mutate({
-        config: getMergedDatabaseConfig(activeView.config, {
-          hiddenPropertyIds: [...hiddenPropertyIds],
-        }),
+        config: nextConfig,
         databaseId,
         databaseViewId: activeView.id,
       })
