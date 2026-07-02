@@ -1,0 +1,82 @@
+---
+title: Connect a Domain
+description: Route a real domain to a self-hosted Notelab server.
+---
+
+Use this flow for a production self-hosted domain such as:
+
+```text
+notes.example.com
+```
+
+## 1. Create DNS records
+
+At your DNS provider, point the domain to the public server IP:
+
+```text
+Type: A
+Name: notes
+Value: <server-public-ipv4>
+```
+
+If the server has IPv6:
+
+```text
+Type: AAAA
+Name: notes
+Value: <server-public-ipv6>
+```
+
+## 2. Open firewall ports
+
+Allow inbound traffic:
+
+```text
+80/tcp
+443/tcp
+```
+
+Caddy uses these ports to serve the app and issue HTTPS certificates.
+
+## 3. Configure Notelab
+
+Create the environment file:
+
+```bash
+cp .env.selfhost.example .env
+```
+
+Set the public origin:
+
+```env
+NOTELAB_SITE_ADDRESS=notes.example.com
+CLIENT_URL=https://notes.example.com
+BETTER_AUTH_URL=https://notes.example.com
+```
+
+Generate strong secrets:
+
+```bash
+openssl rand -base64 48
+```
+
+Update:
+
+```env
+BETTER_AUTH_SECRET=<random-secret>
+OAUTH_STATE_SECRET=<random-secret>
+POSTGRES_PASSWORD=<random-password>
+MINIO_ROOT_PASSWORD=<random-password>
+```
+
+## 4. Start the stack
+
+```bash
+docker compose up -d --build
+```
+
+Visit:
+
+```text
+https://notes.example.com
+```

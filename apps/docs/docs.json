@@ -1,0 +1,71 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "Notelab",
+  "theme": "mint",
+  "description": "Docs for Notelab cloud, self-hosting, and developer integrations.",
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#111827",
+    "light": "#ffffff",
+    "dark": "#111827"
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Get started",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "index",
+              "quickstart",
+              "deployment-models"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Self-hosting",
+        "groups": [
+          {
+            "group": "Docker",
+            "pages": [
+              "self-hosting/index",
+              "self-hosting/domain",
+              "self-hosting/operations"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Developers",
+        "groups": [
+          {
+            "group": "API",
+            "pages": [
+              "developers/api-keys",
+              "developers/integrations"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "App",
+        "href": "https://app.notelab.io"
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/notelab-io/notelab"
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/notelab-io/notelab"
+    }
+  }
+}

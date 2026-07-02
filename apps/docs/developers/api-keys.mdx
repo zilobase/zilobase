@@ -1,0 +1,15 @@
+---
+title: API Keys
+description: Use API keys for programmatic access to a Notelab workspace.
+---
+
+API keys are workspace-scoped credentials for programmatic access.
+
+When calling the API, include:
+
+```http
+Authorization: Bearer <api-key>
+x-notelab-workspace-id: <workspace-id>
+```
+
+API keys can only access the workspace they were created for.

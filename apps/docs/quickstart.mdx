@@ -1,0 +1,32 @@
+---
+title: Quickstart
+description: Choose a Notelab deployment path.
+---
+
+## Notelab Cloud
+
+Use Notelab Cloud when you want the hosted product managed by the Notelab team.
+
+```text
+https://app.notelab.io
+```
+
+## Self-hosted Notelab
+
+Use the Docker stack when you want to run Notelab on your own server.
+
+```bash
+docker compose up -d --build
+```
+
+Open:
+
+```text
+http://localhost
+```
+
+For production, connect a domain and let Caddy issue TLS automatically.
+
+<Card title="Connect a domain" icon="globe" href="/self-hosting/domain">
+  Route a real domain such as docs.example.com or notes.example.com to your server.
+</Card>

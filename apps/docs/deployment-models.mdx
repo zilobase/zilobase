@@ -1,0 +1,21 @@
+---
+title: Deployment Models
+description: How Notelab Cloud and self-hosted Notelab share the same product core.
+---
+
+Notelab is built as one product with deployment-specific runtime adapters.
+
+## Cloud
+
+The cloud deployment uses the Cloudflare adapter for hosted infrastructure and Cloudflare-specific bindings.
+
+## Self-hosted
+
+The self-hosted deployment uses the serverful Node runtime and Docker Compose:
+
+- Caddy for public HTTP and HTTPS
+- Notelab for the combined web client and API server
+- Postgres for relational data
+- MinIO for S3-compatible object storage
+
+Both deployment targets share the web app, API, schema, auth, and product features.

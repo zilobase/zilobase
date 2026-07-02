@@ -1,0 +1,12 @@
+{
+  "name": "@notelab/docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "mint dev",
+    "check": "mint broken-links"
+  },
+  "devDependencies": {
+    "mint": "^4.2.664"
+  }
+}

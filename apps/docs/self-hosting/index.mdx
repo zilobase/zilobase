@@ -1,0 +1,35 @@
+---
+title: Self-hosting
+description: Run Notelab on your own infrastructure.
+---
+
+Self-hosted Notelab runs behind one public URL. Caddy handles HTTP/HTTPS, Notelab serves the client and API, Postgres stores data, and MinIO stores uploads.
+
+## Start locally
+
+```bash
+docker compose up -d --build
+```
+
+Open:
+
+```text
+http://localhost
+```
+
+## Production checklist
+
+- Point DNS at the server.
+- Open ports `80` and `443`.
+- Set `NOTELAB_SITE_ADDRESS`, `CLIENT_URL`, and `BETTER_AUTH_URL`.
+- Replace all default secrets.
+- Back up Postgres and MinIO volumes.
+
+<CardGroup cols={2}>
+  <Card title="Domain setup" icon="globe" href="/self-hosting/domain">
+    Configure DNS and Caddy for HTTPS.
+  </Card>
+  <Card title="Operations" icon="database" href="/self-hosting/operations">
+    Back up, upgrade, and troubleshoot the stack.
+  </Card>
+</CardGroup>

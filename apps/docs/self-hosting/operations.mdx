@@ -1,0 +1,48 @@
+---
+title: Operations
+description: Back up, upgrade, and troubleshoot self-hosted Notelab.
+---
+
+## Health
+
+```bash
+curl http://localhost/health
+docker compose ps
+```
+
+## Logs
+
+```bash
+docker compose logs -f notelab
+docker compose logs -f caddy
+```
+
+If `RESEND_API_KEY` is not configured, auth emails and verification codes are printed in the Notelab logs.
+
+## Backups
+
+Back up Postgres:
+
+```bash
+docker compose exec postgres pg_dump -U notelab notelab > notelab-postgres.sql
+```
+
+Back up MinIO by snapshotting the `minio_data` Docker volume or copying objects with an S3-compatible client.
+
+Persistent volumes:
+
+```text
+postgres_data
+minio_data
+caddy_data
+caddy_config
+```
+
+## Upgrades
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+The Notelab container runs database migrations before starting.

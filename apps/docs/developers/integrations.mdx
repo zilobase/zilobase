@@ -1,0 +1,36 @@
+---
+title: Integrations
+description: Configure external services for Notelab.
+---
+
+Notelab supports optional integrations through environment variables.
+
+## AI
+
+```env
+OPENAI_API_KEY=<key>
+```
+
+## Email
+
+```env
+RESEND_API_KEY=<key>
+EMAIL_FROM=Notelab <hello@example.com>
+```
+
+Without `RESEND_API_KEY`, auth emails are printed to the Notelab server logs.
+
+## OAuth providers
+
+Configure provider credentials as needed:
+
+```env
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GITHUB_OAUTH_CLIENT_ID=
+GITHUB_OAUTH_CLIENT_SECRET=
+SLACK_OAUTH_CLIENT_ID=
+SLACK_OAUTH_CLIENT_SECRET=
+LINEAR_OAUTH_CLIENT_ID=
+LINEAR_OAUTH_CLIENT_SECRET=
+```
