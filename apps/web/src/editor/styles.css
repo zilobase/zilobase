@@ -1349,6 +1349,7 @@
       .database-date-cell-trigger,
       .database-input-cell-trigger,
       .database-page-link,
+      .database-relation-cell-trigger,
       .database-select-cell-trigger
     ) {
     min-width: 100%;
@@ -1364,6 +1365,7 @@
       .database-date-cell-trigger,
       .database-input-cell-trigger,
       .database-page-link,
+      .database-relation-cell-trigger,
       .database-select-cell-trigger
     ) {
     @apply h-auto min-h-8 items-start whitespace-normal;
@@ -1557,6 +1559,10 @@
 
   .database-select-cell-trigger {
     @apply flex min-h-8 w-full min-w-0 flex-wrap items-center gap-1 px-3 py-1 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+
+  .database-relation-cell-trigger {
+    @apply flex min-h-8 w-full min-w-0 flex-col items-stretch text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40;
   }
 
   .database-select-badge {

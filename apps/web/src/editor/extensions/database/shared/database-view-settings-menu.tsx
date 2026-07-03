@@ -1124,7 +1124,11 @@ export function DatabaseViewSettingsMenu({
                     config={property.property.config}
                     databaseId={databaseId}
                     databasePropertyId={property.id}
+                    sourceDatabaseId={sourceDatabaseId}
+                    sourceDatabaseName={databaseName}
+                    sourcePropertyId={property.property.id}
                     type={property.property.type}
+                    workspaceId={workspaceId}
                   >
                     {option.icon}
                     <span>{option.label}</span>

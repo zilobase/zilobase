@@ -1,7 +1,20 @@
-import { type FormEvent } from "react"
+import { useState, type FormEvent } from "react"
+import { Check, FileText } from "lucide-react"
 
 import { Checkbox } from "@/components/ui/checkbox"
-import type { DatabaseProperty } from "@notelab/features/databases"
+import {
+  useDatabase,
+  useUpdateDatabasePropertyValue,
+  type DatabaseProperty,
+  type DatabaseRow as FeatureDatabaseRow,
+} from "@notelab/features/databases"
+import { getPageEmoji, type PageMetadata } from "@notelab/features/pages"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { PageIconDisplay } from "@/lib/page-icon"
 
 import { defaultStatusOptions } from "../constants"
 import { DatabasePropertyButton } from "../database-property-button"
@@ -10,9 +23,15 @@ import { DatabasePropertyFiles } from "../database-property-files"
 import { DatabasePropertyInput } from "../database-property-input"
 import { DatabasePropertySelect } from "../database-property-select"
 import { DatabaseFormulaValue } from "../formula"
-import { type DatabasePropertyValue } from "../utils"
+import { toStringArray, type DatabasePropertyValue } from "../utils"
 import { formatDatabaseDateValue } from "./database-date-config"
 import { DatabasePageLink } from "./database-page-link"
+import {
+  getRelationConfigWithPageSummary,
+  getRelationLimit,
+  getRelationReciprocalUpdates,
+  getRelationTargetDatabaseId,
+} from "./database-relation-sync"
 import {
   getReadOnlyTimePropertyRawValue,
   isReadOnlyTimeProperty,
@@ -26,6 +45,9 @@ type DatabaseRow = {
   id: string
   page: {
     createdAt?: string
+    id?: string
+    metadata?: unknown
+    name?: string
     updatedAt?: string
   }
   pageId: string
@@ -253,8 +275,24 @@ export function DatabasePropertyValue({
     />
   ) : isRelationProperty ? (
     <DatabaseRelationPropertyValue
+      editable={editable}
+      label={pageProperty.name}
       onOpen={databaseContext.onOpenPage}
+      onOpenChange={(open) => onActiveValueChange(open ? key : null)}
+      onPropertyConfigChange={(config) =>
+        onPropertyConfigChange(property.id, config)
+      }
+      onSelect={(nextValue) =>
+        onSaveValue(
+          row.id,
+          pageProperty.id,
+          pageProperty.type,
+          persistedValue,
+          nextValue
+        )
+      }
       propertyConfig={pageProperty.config}
+      row={row}
       value={value}
     />
   ) : (
@@ -302,31 +340,206 @@ export function DatabasePropertyValue({
 }
 
 function DatabaseRelationPropertyValue({
+  editable,
+  label,
+  onOpenChange,
   onOpen,
+  onPropertyConfigChange,
+  onSelect,
   propertyConfig,
+  row,
   value,
 }: {
+  editable: boolean
+  label: string
+  onOpenChange?: (open: boolean) => void
   onOpen?: (pageId: string) => void
+  onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown
+  onSelect: (value: string | string[]) => void
   propertyConfig: unknown
+  row: DatabaseRow
   value: DatabasePropertyValue
 }) {
-  const pageId = Array.isArray(value) ? value[0] : value
+  const [isOpen, setIsOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const updateValue = useUpdateDatabasePropertyValue()
+  const relatedDatabaseId = getRelationTargetDatabaseId(propertyConfig)
+  const multiple = getRelationLimit(propertyConfig) !== "one_page"
+  const selectedPageIds = toStringArray(value)
+  const { data: relatedDatabasePayload, isLoading } = useDatabase(
+    relatedDatabaseId,
+    { schemaOnly: false }
+  )
+  const pageOptions = relatedDatabasePayload?.rows ?? []
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredPageOptions = normalizedQuery
+    ? pageOptions.filter((row) =>
+        row.page.name.toLowerCase().includes(normalizedQuery)
+      )
+    : pageOptions
 
-  if (!pageId) {
-    return null
+  const setOpen = (open: boolean) => {
+    onOpenChange?.(open)
+
+    if (open) {
+      setIsOpen(true)
+      return
+    }
+
+    setIsOpen(false)
+    setQuery("")
   }
 
-  const pageSummary = getRelationPageSummary(propertyConfig, pageId)
+  const selectPage = (page: FeatureDatabaseRow["page"]) => {
+    const wasSelected = selectedPageIds.includes(page.id)
+    const nextValue = multiple
+      ? wasSelected
+        ? selectedPageIds.filter((pageId) => pageId !== page.id)
+        : [...selectedPageIds, page.id]
+      : page.id
+    const nextPageIds = toStringArray(nextValue)
 
-  return (
+    void onPropertyConfigChange?.(
+      getRelationConfigWithPageSummary(propertyConfig, page)
+    )
+    onSelect(nextValue)
+
+    getRelationReciprocalUpdates({
+      nextPageIds,
+      propertyConfig,
+      relatedDatabasePayload,
+      selectedPageIds,
+      sourcePage: {
+        id: row.pageId,
+      },
+    }).forEach((update) => {
+      updateValue.mutate({
+        databaseId: update.databaseId,
+        propertyId: update.propertyId,
+        rowId: update.rowId,
+        value: update.value,
+      })
+    })
+
+    if (!multiple) {
+      setOpen(false)
+    }
+  }
+
+  const selectedLinks = selectedPageIds.map((pageId) => (
     <DatabasePageLink
       editable={false}
+      key={pageId}
       onOpen={onOpen}
       pageId={pageId}
-      pageSummary={pageSummary}
+      pageSummary={getRelationPageSummary(propertyConfig, pageId)}
       showPageIcon
     />
+  ))
+
+  if (!editable) {
+    return selectedLinks.length > 0 ? (
+      <span className="flex min-w-0 flex-wrap gap-1">{selectedLinks}</span>
+    ) : null
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div
+          aria-label={`${label} value`}
+          className={
+            selectedLinks.length > 0
+              ? "database-relation-cell-trigger"
+              : "database-select-cell-trigger"
+          }
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault()
+              setOpen(true)
+            }
+          }}
+          role="button"
+          tabIndex={0}
+        >
+          {selectedLinks.length > 0 ? (
+            selectedLinks
+          ) : (
+            <span className="text-muted-foreground">Empty</span>
+          )}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-80 gap-1 p-1" sideOffset={0}>
+        <input
+          autoFocus
+          className="database-select-search"
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && filteredPageOptions[0]) {
+              event.preventDefault()
+              selectPage(filteredPageOptions[0].page)
+            }
+
+            if (event.key === "Escape") {
+              setOpen(false)
+            }
+          }}
+          placeholder="Search for a page..."
+          value={query}
+        />
+        <div className="database-select-popover-label">
+          {multiple ? "Select pages" : "Select a page"}
+        </div>
+        <div className="database-select-options">
+          {!relatedDatabaseId ? (
+            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+              Configure a relation database first.
+            </div>
+          ) : isLoading ? (
+            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+              Loading pages...
+            </div>
+          ) : filteredPageOptions.length > 0 ? (
+            filteredPageOptions.map((row) => {
+              const isSelected = selectedPageIds.includes(row.page.id)
+
+              return (
+                <button
+                  className="database-select-option"
+                  data-selected={isSelected ? "true" : undefined}
+                  key={row.page.id}
+                  onClick={() => selectPage(row.page)}
+                  type="button"
+                >
+                  <RelationPageOptionIcon page={row.page} />
+                  <span className="truncate">{row.page.name || "Untitled"}</span>
+                  {isSelected ? (
+                    <Check className="database-select-option-check" />
+                  ) : null}
+                </button>
+              )
+            })
+          ) : (
+            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+              No pages found.
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
+}
+
+function RelationPageOptionIcon({
+  page,
+}: {
+  page: FeatureDatabaseRow["page"]
+}) {
+  const emoji = getPageEmoji({
+    metadata: page.metadata as PageMetadata | null | undefined,
+  })
+
+  return emoji ? <PageIconDisplay size="sm" value={emoji} /> : <FileText />
 }
 
 function getRelationPageSummary(

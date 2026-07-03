@@ -17,6 +17,7 @@ export type DatabaseNumberDisplayStyle = "number" | "bar" | "ring"
 type PersonLimitValue = "one_person" | "no_limit"
 type PersonDefaultValue = "no_default" | "created_by"
 type PersonNotificationsValue = "users_and_groups" | "users_only" | "none"
+type RelationLimitValue = "one_page" | "no_limit"
 type SelectOptionSortValue = "manual" | "alphabetical" | "reverse_alphabetical"
 export type DatabaseConditionalColorApplyTarget = "entire-row" | "this-property"
 export type DatabaseConditionalColorStyle = "page-background"
@@ -53,6 +54,15 @@ export type DatabasePropertyConfig = {
   personDefault?: PersonDefaultValue
   personLimit?: PersonLimitValue
   personNotifications?: PersonNotificationsValue
+  relation?: {
+    limit?: RelationLimitValue
+    relatedDatabaseId?: string
+    relatedDatabaseName?: string
+    relatedPageName?: string
+    relatedPropertyId?: string
+    relatedPropertyName?: string
+    twoWayRelation?: boolean
+  }
   selectOptionSort?: SelectOptionSortValue
   showFullUrl?: boolean
   timeFormat?: TimeFormatValue

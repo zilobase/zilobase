@@ -1,14 +1,19 @@
 import {
+  ArrowUpRight,
   ArrowDownUp,
   ArrowLeftRight,
   Bell,
   Calendar,
   Check,
+  ChevronLeft,
   CircleUserRound,
+  CircleHelp,
+  Database,
   Flag,
   GripVertical,
   Hash,
   Plus,
+  Search,
   Trash2,
   UserRound,
 } from "lucide-react"
@@ -24,9 +29,14 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
 } from "@/components/ui/dropdrawer"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { useUpdateDatabaseProperty } from "@notelab/features/databases"
+import {
+  useAddDatabaseProperty,
+  useUpdateDatabaseProperty,
+} from "@notelab/features/databases"
+import { usePages } from "@notelab/features/pages"
 import {
   colorTokens,
   cyclingColorTokens,
@@ -59,6 +69,10 @@ import {
   type DatabaseSelectOption,
   type NumberDecimalPlacesValue,
 } from "./database-view-config"
+import {
+  DatabaseSearchableMenuItems,
+  type DatabaseSearchableMenuOption,
+} from "./database-searchable-menu-items"
 
 type StatusOption = DatabaseSelectOption & {
   group?: string
@@ -75,13 +89,21 @@ export function DatabasePropertyEditSubmenu({
   config,
   databaseId,
   databasePropertyId,
+  sourceDatabaseId,
+  sourceDatabaseName,
+  sourcePropertyId,
   type,
+  workspaceId,
 }: {
   children: ReactNode
   config?: unknown
   databaseId: string
   databasePropertyId: string
+  sourceDatabaseId?: string
+  sourceDatabaseName?: string
+  sourcePropertyId?: string
   type: string
+  workspaceId?: string | null
 }) {
   return (
     <DropDrawerSub>
@@ -93,7 +115,11 @@ export function DatabasePropertyEditSubmenu({
           config={config}
           databaseId={databaseId}
           databasePropertyId={databasePropertyId}
+          sourceDatabaseId={sourceDatabaseId}
+          sourceDatabaseName={sourceDatabaseName}
+          sourcePropertyId={sourcePropertyId}
           type={type}
+          workspaceId={workspaceId}
         />
       </DropDrawerSubContent>
     </DropDrawerSub>
@@ -109,6 +135,7 @@ export function hasDatabasePropertyEditSettings(type: string) {
     type === "multi_select" ||
     type === "person" ||
     type === "files" ||
+    type === "relation" ||
     type === "date" ||
     type === "created_time" ||
     type === "edited_time"
@@ -119,18 +146,27 @@ function DatabasePropertyEditMenuItems({
   config,
   databaseId,
   databasePropertyId,
+  sourceDatabaseId,
+  sourceDatabaseName,
+  sourcePropertyId,
   type,
+  workspaceId,
 }: {
   config?: unknown
   databaseId: string
   databasePropertyId: string
+  sourceDatabaseId?: string
+  sourceDatabaseName?: string
+  sourcePropertyId?: string
   type: string
+  workspaceId?: string | null
 }) {
   const updateProperty = useUpdateDatabaseProperty()
   const isStatusProperty = type === "status"
   const isSelectProperty = type === "select" || type === "multi_select"
   const isPersonProperty = type === "person"
   const isFilesProperty = type === "files"
+  const isRelationProperty = type === "relation"
   const isNumberProperty = type === "number"
   const isUrlProperty = type === "url"
   const isDateProperty =
@@ -215,6 +251,19 @@ function DatabasePropertyEditMenuItems({
     )
   }
 
+  if (isRelationProperty) {
+    return (
+      <RelationPropertyOptions
+        config={config}
+        onUpdateConfig={updatePropertyConfig}
+        sourceDatabaseId={sourceDatabaseId ?? databaseId}
+        sourceDatabaseName={sourceDatabaseName}
+        sourcePropertyId={sourcePropertyId}
+        workspaceId={workspaceId}
+      />
+    )
+  }
+
   if (isDateProperty) {
     return (
       <DatePropertyOptions
@@ -235,11 +284,310 @@ function getDatabasePropertyEditSubmenuContentClassName(type: string) {
     type === "multi_select" ||
     type === "person" ||
     type === "files" ||
+    type === "relation" ||
     type === "date" ||
     type === "created_time" ||
     type === "edited_time"
     ? "w-80"
     : undefined
+}
+
+type RelationDatabaseOption = DatabaseSearchableMenuOption & {
+  pageName: string
+}
+
+function RelationPropertyOptions({
+  config,
+  onUpdateConfig,
+  sourceDatabaseId,
+  sourceDatabaseName,
+  sourcePropertyId,
+  workspaceId,
+}: {
+  config?: unknown
+  onUpdateConfig: (config: DatabasePropertyConfig) => void
+  sourceDatabaseId: string
+  sourceDatabaseName?: string
+  sourcePropertyId?: string
+  workspaceId?: string | null
+}) {
+  const relationConfig = getRelationConfig(config)
+  const addProperty = useAddDatabaseProperty()
+  const [selectedDatabaseId, setSelectedDatabaseId] = useState<string | null>(
+    relationConfig.relatedDatabaseId ?? null
+  )
+  const [relatedPropertyName, setRelatedPropertyName] = useState(
+    relationConfig.relatedPropertyName ?? ""
+  )
+  const { data: pages = [], isLoading } = usePages(workspaceId, {
+    enabled: Boolean(workspaceId),
+  })
+  const databaseOptions = pages.flatMap((page) =>
+    (page.databases ?? [])
+      .filter((database) => database.id !== sourceDatabaseId)
+      .map<RelationDatabaseOption>((database) => ({
+        icon: <Database />,
+        label: database.name || "Untitled database",
+        pageName: page.name,
+        searchText: `${database.name} ${page.name}`.trim(),
+        value: database.id,
+      }))
+  )
+  const selectedDatabase = selectedDatabaseId
+    ? databaseOptions.find((option) => option.value === selectedDatabaseId)
+    : null
+  const limit = relationConfig.limit ?? "no_limit"
+  const twoWayRelation = relationConfig.twoWayRelation ?? false
+  const saveRelation = () => {
+    if (!selectedDatabase) {
+      return
+    }
+
+    const nextRelation = {
+      ...relationConfig,
+      relatedDatabaseId: selectedDatabase.value,
+      relatedDatabaseName: selectedDatabase.label,
+      relatedPageName: selectedDatabase.pageName,
+      relatedPropertyName: relatedPropertyName.trim() || undefined,
+      twoWayRelation,
+    }
+
+    if (!twoWayRelation || !relatedPropertyName.trim() || !sourcePropertyId) {
+      onUpdateConfig({ relation: nextRelation })
+      return
+    }
+
+    const reciprocalRelation = {
+      limit,
+      relatedDatabaseId: sourceDatabaseId,
+      relatedDatabaseName: sourceDatabaseName,
+      relatedPropertyId: sourcePropertyId,
+      twoWayRelation: true,
+    }
+
+    addProperty.mutate(
+      {
+        config: {
+          relation: reciprocalRelation,
+        },
+        databaseId: selectedDatabase.value,
+        name: relatedPropertyName.trim(),
+        type: "relation",
+      },
+      {
+        onSuccess: (payload) => {
+          const reciprocalProperty = payload.properties
+            .filter(
+              (property) =>
+                property.property.type === "relation" &&
+                property.property.name === relatedPropertyName.trim()
+            )
+            .at(-1)
+
+          onUpdateConfig({
+            relation: {
+              ...nextRelation,
+              relatedPropertyId: reciprocalProperty?.property.id,
+            },
+          })
+        },
+      }
+    )
+  }
+
+  if (selectedDatabase) {
+    return (
+      <>
+        <DropDrawerItem
+          onSelect={(event) => {
+            event.preventDefault()
+            setSelectedDatabaseId(null)
+          }}
+        >
+          <ChevronLeft />
+          <span>Back</span>
+        </DropDrawerItem>
+        <DropDrawerSeparator />
+        <DropDrawerItem disabled>
+          <Database />
+          <span>Related to</span>
+          <span className="ml-auto max-w-36 truncate text-muted-foreground">
+            {selectedDatabase.label}
+          </span>
+        </DropDrawerItem>
+        <DropDrawerItem
+          onSelect={(event) => {
+            event.preventDefault()
+            onUpdateConfig({
+              relation: {
+                ...relationConfig,
+                limit: limit === "no_limit" ? "one_page" : "no_limit",
+              },
+            })
+          }}
+        >
+          <Hash />
+          <span>Limit</span>
+          <span className="ml-auto text-muted-foreground">
+            {limit === "one_page" ? "1 page" : "No limit"}
+          </span>
+        </DropDrawerItem>
+        <DropDrawerItem
+          aria-pressed={twoWayRelation}
+          onSelect={(event) => {
+            event.preventDefault()
+            const nextTwoWayRelation = !twoWayRelation
+            onUpdateConfig({
+              relation: {
+                ...relationConfig,
+                relatedPropertyName: relatedPropertyName.trim() || undefined,
+                twoWayRelation: nextTwoWayRelation,
+              },
+            })
+          }}
+        >
+          <ArrowUpRight />
+          <span>Two-way relation</span>
+          <Switch
+            checked={twoWayRelation}
+            className="ml-auto pointer-events-none"
+            size="sm"
+            tabIndex={-1}
+          />
+        </DropDrawerItem>
+        {twoWayRelation ? (
+          <div className="px-2 py-1.5">
+            <Input
+              aria-label="Related property name"
+              className="h-8"
+              onChange={(event) => setRelatedPropertyName(event.target.value)}
+              onKeyDown={(event) => event.stopPropagation()}
+              placeholder="Related property name"
+              value={relatedPropertyName}
+            />
+          </div>
+        ) : null}
+        <div className="px-2 py-1.5">
+          <Button
+            className="w-full"
+            disabled={
+              addProperty.isPending ||
+              (twoWayRelation &&
+                (!relatedPropertyName.trim() || !sourcePropertyId))
+            }
+            onClick={saveRelation}
+            size="sm"
+            type="button"
+          >
+            <Plus />
+            <span>{addProperty.isPending ? "Adding..." : "Add relation"}</span>
+          </Button>
+        </div>
+        <DropDrawerSeparator />
+        <DropDrawerItem disabled>
+          <CircleHelp />
+          <span>Learn about relations</span>
+        </DropDrawerItem>
+      </>
+    )
+  }
+
+  if (isLoading) {
+    return <DropDrawerItem disabled>Loading databases...</DropDrawerItem>
+  }
+
+  return (
+    <DatabaseSearchableMenuItems
+      emptyMessage="No databases available."
+      inputAriaLabel="Search relation databases"
+      inputIcon={<Search className="size-4" />}
+      inputPlaceholder="Search databases..."
+      open
+      options={databaseOptions}
+      renderOption={(option) => {
+        const databaseOption = option as RelationDatabaseOption
+
+        return (
+          <DropDrawerItem
+            key={databaseOption.value}
+            onSelect={(event) => {
+              event.preventDefault()
+              setSelectedDatabaseId(databaseOption.value)
+            }}
+          >
+            <Database />
+            <div className="min-w-0 flex-1">
+              <div className="truncate">{databaseOption.label}</div>
+              <div className="truncate text-xs text-muted-foreground">
+                {databaseOption.pageName}
+              </div>
+            </div>
+          </DropDrawerItem>
+        )
+      }}
+    />
+  )
+}
+
+function getRelationConfig(config: unknown): {
+  limit?: "no_limit" | "one_page"
+  relatedDatabaseId?: string
+  relatedDatabaseName?: string
+  relatedPageName?: string
+  relatedPropertyId?: string
+  relatedPropertyName?: string
+  twoWayRelation?: boolean
+} {
+  const relation =
+    config && typeof config === "object" && !Array.isArray(config)
+      ? (config as { relation?: unknown }).relation
+      : null
+
+  if (!relation || typeof relation !== "object" || Array.isArray(relation)) {
+    return {}
+  }
+
+  const relationConfig = relation as {
+    limit?: unknown
+    relatedDatabaseId?: unknown
+    relatedDatabaseName?: unknown
+    relatedPageName?: unknown
+    relatedPropertyId?: unknown
+    relatedPropertyName?: unknown
+    twoWayRelation?: unknown
+  }
+
+  return {
+    limit:
+      relationConfig.limit === "one_page" ||
+      relationConfig.limit === "no_limit"
+        ? relationConfig.limit
+        : undefined,
+    relatedDatabaseId:
+      typeof relationConfig.relatedDatabaseId === "string"
+        ? relationConfig.relatedDatabaseId
+        : undefined,
+    relatedDatabaseName:
+      typeof relationConfig.relatedDatabaseName === "string"
+        ? relationConfig.relatedDatabaseName
+        : undefined,
+    relatedPageName:
+      typeof relationConfig.relatedPageName === "string"
+        ? relationConfig.relatedPageName
+        : undefined,
+    relatedPropertyId:
+      typeof relationConfig.relatedPropertyId === "string"
+        ? relationConfig.relatedPropertyId
+        : undefined,
+    relatedPropertyName:
+      typeof relationConfig.relatedPropertyName === "string"
+        ? relationConfig.relatedPropertyName
+        : undefined,
+    twoWayRelation:
+      typeof relationConfig.twoWayRelation === "boolean"
+        ? relationConfig.twoWayRelation
+        : undefined,
+  }
 }
 
 function NumberPropertyOptions({

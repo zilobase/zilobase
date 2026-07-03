@@ -87,7 +87,11 @@ export function DatabasePropertyMenu({
   onUpdateConfig,
   isGrouped = false,
   schemaActionsEnabled = true,
+  sourceDatabaseId,
+  sourceDatabaseName,
+  sourcePropertyId,
   type,
+  workspaceId,
 }: {
   config?: unknown
   databaseConfig?: unknown
@@ -104,7 +108,11 @@ export function DatabasePropertyMenu({
   onUpdateConfig?: (config: DatabasePropertyConfig) => void
   open?: boolean
   schemaActionsEnabled?: boolean
+  sourceDatabaseId?: string
+  sourceDatabaseName?: string
+  sourcePropertyId?: string
   type: string
+  workspaceId?: string | null
 }) {
   const [automationDialogOpen, setAutomationDialogOpen] = useState(false)
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false)
@@ -215,7 +223,11 @@ export function DatabasePropertyMenu({
               config={config}
               databaseId={databaseId}
               databasePropertyId={databasePropertyId}
+              sourceDatabaseId={sourceDatabaseId}
+              sourceDatabaseName={sourceDatabaseName}
+              sourcePropertyId={sourcePropertyId}
               type={type}
+              workspaceId={workspaceId}
             >
               <Settings2 />
               <span>Edit property</span>

@@ -146,6 +146,10 @@ export function serializePropertyValue(
     return Array.isArray(value) ? value : value.trim() ? value : null
   }
 
+  if (propertyType === "relation") {
+    return Array.isArray(value) ? value : value.trim() || null
+  }
+
   if (propertyType === "number") {
     const trimmedValue = firstScalarValue(value).trim()
 

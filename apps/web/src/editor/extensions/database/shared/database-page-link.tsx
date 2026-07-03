@@ -83,7 +83,9 @@ export function DatabasePageLink({
     inputElement.select()
   }, [isEditingTitle])
 
-  const handleClick = () => {
+  const handleClick = (event?: { stopPropagation: () => void }) => {
+    event?.stopPropagation()
+
     if (isOpen) {
       if (sidePane?.dialogPageId === pageId) {
         sidePane.closeEmbeddedPageDialog()

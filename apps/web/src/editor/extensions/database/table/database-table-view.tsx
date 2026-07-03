@@ -236,6 +236,8 @@ export function DatabaseTableView() {
     propertyValuesByKey,
     databaseConfig,
     databaseId,
+    databaseName,
+    databaseWorkspaceId,
     draftPropertyValues,
     editable,
     fetchNextPage,
@@ -264,6 +266,7 @@ export function DatabaseTableView() {
     updateDatabasePropertyConfig,
     updateNameColumnConfig,
     visibleProperties,
+    workspaceId,
   } = useDatabaseViewContext()
   const moveRow = useMoveDatabaseRow()
   const reorderRows = useReorderDatabaseRows()
@@ -1147,6 +1150,9 @@ export function DatabaseTableView() {
                       getHeaderEditingKey(headerScope, property.id)
                     }
                     schemaActionsEnabled={canEditStructure}
+                    sourceDatabaseId={loadedDatabaseId}
+                    sourceDatabaseName={databaseName}
+                    sourcePropertyId={property.property.id}
                     onSort={(direction) =>
                       void saveDatabaseSorts([
                         ...activeDatabaseSorts.filter(
@@ -1159,6 +1165,7 @@ export function DatabaseTableView() {
                       void updateDatabasePropertyConfig(property.id, config)
                     }
                     type={property.property.type}
+                    workspaceId={workspaceId ?? databaseWorkspaceId}
                   />
                 ) : (
                   <span className="database-property-header-label">
