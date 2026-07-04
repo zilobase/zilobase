@@ -4,6 +4,7 @@ import { Check, FileText } from "lucide-react"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   useDatabase,
+  useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
   type DatabaseProperty,
   type DatabaseRow as FeatureDatabaseRow,
@@ -28,6 +29,7 @@ import { formatDatabaseDateValue } from "./database-date-config"
 import { DatabasePageLink } from "./database-page-link"
 import {
   getRelationConfigWithPageSummary,
+  getRelationConfigWithSyncStatus,
   getRelationLimit,
   getRelationReciprocalUpdates,
   getRelationTargetDatabaseId,
@@ -362,6 +364,7 @@ function DatabaseRelationPropertyValue({
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState("")
+  const updateProperty = useUpdateDatabaseProperty()
   const updateValue = useUpdateDatabasePropertyValue()
   const relatedDatabaseId = getRelationTargetDatabaseId(propertyConfig)
   const multiple = getRelationLimit(propertyConfig) !== "one_page"
@@ -398,21 +401,41 @@ function DatabaseRelationPropertyValue({
         : [...selectedPageIds, page.id]
       : page.id
     const nextPageIds = toStringArray(nextValue)
+    const relationChanged =
+      nextPageIds.length !== selectedPageIds.length ||
+      nextPageIds.some((pageId, index) => pageId !== selectedPageIds[index])
 
-    void onPropertyConfigChange?.(
-      getRelationConfigWithPageSummary(propertyConfig, page)
-    )
-    onSelect(nextValue)
-
-    getRelationReciprocalUpdates({
+    const reciprocalUpdates = getRelationReciprocalUpdates({
       nextPageIds,
       propertyConfig,
       relatedDatabasePayload,
       selectedPageIds,
       sourcePage: {
         id: row.pageId,
+        metadata: row.page.metadata,
+        name: row.page.name,
       },
-    }).forEach((update) => {
+    })
+    const nextConfig = getRelationConfigWithPageSummary(propertyConfig, page)
+
+    void onPropertyConfigChange?.(
+      reciprocalUpdates.length > 0
+        ? nextConfig
+        : relationChanged
+          ? getRelationConfigWithSyncStatus(nextConfig, "not_synced")
+          : nextConfig
+    )
+    onSelect(nextValue)
+
+    reciprocalUpdates.forEach((update) => {
+      if (update.config && update.databasePropertyId) {
+        updateProperty.mutate({
+          config: update.config,
+          databaseId: update.databaseId,
+          databasePropertyId: update.databasePropertyId,
+        })
+      }
+
       updateValue.mutate({
         databaseId: update.databaseId,
         propertyId: update.propertyId,

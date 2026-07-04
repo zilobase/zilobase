@@ -41,6 +41,7 @@ import {
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer"
 import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  useDatabase,
   useDeleteDatabaseProperty,
   useDuplicateDatabaseProperty,
   useUpdateDatabase,
@@ -115,6 +117,9 @@ export function DatabasePropertyMenu({
   workspaceId?: string | null
 }) {
   const [automationDialogOpen, setAutomationDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [relationDeleteMode, setRelationDeleteMode] =
+    useState<"this" | "related">("this")
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false)
   const updateDatabase = useUpdateDatabase()
   const updateProperty = useUpdateDatabaseProperty()
@@ -128,6 +133,15 @@ export function DatabasePropertyMenu({
   )?.direction
   const isButtonProperty = type === "button"
   const isFormulaProperty = type === "formula"
+  const relationDeleteConfig = getRelationDeleteConfig(config)
+  const { data: relatedDatabasePayload } = useDatabase(
+    type === "relation" ? relationDeleteConfig.relatedDatabaseId : null,
+    { schemaOnly: true }
+  )
+  const relatedDatabaseProperty = relatedDatabasePayload?.properties.find(
+    (property) =>
+      property.property.id === relationDeleteConfig.relatedPropertyId
+  )
   const wrapContent = getPropertyWrapContent(config)
   const updatePropertyConfig = (nextConfig: DatabasePropertyConfig) => {
     if (onUpdateConfig) {
@@ -164,6 +178,22 @@ export function DatabasePropertyMenu({
       databasePropertyId,
       includeValues,
     })
+  }
+  const deleteDatabaseProperty = () => {
+    deleteProperty.mutate({
+      databaseId,
+      databasePropertyId,
+    })
+  }
+  const deleteRelationProperties = (includeRelated: boolean) => {
+    if (includeRelated && relatedDatabaseProperty) {
+      deleteProperty.mutate({
+        databaseId: relationDeleteConfig.relatedDatabaseId!,
+        databasePropertyId: relatedDatabaseProperty.id,
+      })
+    }
+
+    deleteDatabaseProperty()
   }
 
   return (
@@ -345,10 +375,9 @@ export function DatabasePropertyMenu({
               <DropDrawerItem
                 disabled={deleteProperty.isPending}
                 onSelect={() =>
-                  deleteProperty.mutate({
-                    databaseId,
-                    databasePropertyId,
-                  })
+                  type === "relation"
+                    ? setDeleteDialogOpen(true)
+                    : deleteDatabaseProperty()
                 }
                 variant="destructive"
               >
@@ -382,6 +411,63 @@ export function DatabasePropertyMenu({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete relation property?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose what should happen to the related property.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <RadioGroup
+            className="grid gap-2"
+            onValueChange={(value) =>
+              setRelationDeleteMode(value === "related" ? "related" : "this")
+            }
+            value={relationDeleteMode}
+          >
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent">
+              <RadioGroupItem className="mt-0.5" value="this" />
+              <span className="grid gap-1">
+                <span className="text-sm font-medium">
+                  Delete this property only
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Keep the related property in the connected database.
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent has-[[data-disabled]]:cursor-not-allowed has-[[data-disabled]]:opacity-50">
+              <RadioGroupItem
+                className="mt-0.5"
+                disabled={!relatedDatabaseProperty}
+                value="related"
+              />
+              <span className="grid gap-1">
+                <span className="text-sm font-medium">
+                  Also delete related property
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Remove the matching relation property from the connected
+                  database too.
+                </span>
+              </span>
+            </label>
+          </RadioGroup>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteRelationProperties(relationDeleteMode === "related")}
+              variant="destructive"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Dialog
         open={automationDialogOpen}
         onOpenChange={setAutomationDialogOpen}
@@ -392,6 +478,33 @@ export function DatabasePropertyMenu({
       </Dialog>
     </>
   )
+}
+
+function getRelationDeleteConfig(config: unknown) {
+  const relation =
+    config && typeof config === "object" && !Array.isArray(config)
+      ? (config as { relation?: unknown }).relation
+      : null
+
+  if (!relation || typeof relation !== "object" || Array.isArray(relation)) {
+    return {}
+  }
+
+  const relationConfig = relation as {
+    relatedDatabaseId?: unknown
+    relatedPropertyId?: unknown
+  }
+
+  return {
+    relatedDatabaseId:
+      typeof relationConfig.relatedDatabaseId === "string"
+        ? relationConfig.relatedDatabaseId
+        : undefined,
+    relatedPropertyId:
+      typeof relationConfig.relatedPropertyId === "string"
+        ? relationConfig.relatedPropertyId
+        : undefined,
+  }
 }
 
 function ButtonAutomationDialog({

@@ -420,6 +420,62 @@ export function register({ assert, loadModule, test }) {
     ])
   })
 
+  test("database view commands merge property config patches", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/shared/database-view-commands.ts"
+    )
+    const updateProperty = createMutation()
+    const relationConfig = {
+      pageSummaries: {
+        "page-b": { id: "page-b", name: "Beta" },
+      },
+      relation: {
+        relatedDatabaseId: "database-b",
+        relatedPropertyId: "property-b",
+        syncStatus: "not_synced",
+        twoWayRelation: true,
+      },
+    }
+    const property = createProperty(
+      "database-property-relation",
+      "property-relation",
+      "Related",
+      "relation",
+      relationConfig
+    )
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: null,
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ updateProperty }),
+      payload: createPayload({ properties: [property] }),
+      properties: [property],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    })
+
+    await commands.updateDatabasePropertyConfig("database-property-relation", {
+      wrapContent: true,
+    })
+
+    assert.deepEqual(updateProperty.calls[0][0], {
+      config: {
+        ...relationConfig,
+        wrapContent: true,
+      },
+      databaseId,
+      databasePropertyId: "database-property-relation",
+    })
+  })
+
   test("database view commands update group config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/editor/extensions/database/shared/database-view-commands.ts"

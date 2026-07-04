@@ -34,14 +34,17 @@ import type { DatabasePageDragPayload } from "./database-page-drop"
 import {
   getDatabaseFilterOperatorsForType,
   getMergedDatabaseConfig,
+  getMergedPropertyConfig,
   getPropertyHidden,
   getViewHiddenPropertyIds,
   getValidDatabaseFilterOperator,
   type DatabaseConditionalColorConfig,
   type DatabasePropertyFilterConfig,
+  type DatabasePropertyConfig,
   type DatabaseSortConfig,
 } from "./database-view-config"
 import type { DatabaseFilterUpdatePatch } from "./database-filter-menu"
+import { getRelationLimitTrimUpdates } from "./database-relation-sync"
 
 type DatabaseMutations = {
   addDatabaseView: ReturnType<typeof useAddDatabaseView>
@@ -728,9 +731,31 @@ export function getDatabaseViewCommands({
       if (!databaseId) {
         return Promise.resolve()
       }
+      const currentPropertyConfig = payload?.properties.find(
+        (property) => property.id === databasePropertyId
+      )?.property.config
+      const nextConfig = getMergedPropertyConfig(
+        currentPropertyConfig,
+        config as DatabasePropertyConfig
+      )
+
+      const trimUpdates = getRelationLimitTrimUpdates({
+        databasePropertyId,
+        payload,
+        propertyConfig: nextConfig,
+      })
+
+      for (const update of trimUpdates) {
+        updateValue.mutate({
+          databaseId,
+          propertyId: update.propertyId,
+          rowId: update.rowId,
+          value: update.value,
+        })
+      }
 
       return updateProperty.mutateAsync({
-        config,
+        config: nextConfig,
         databaseId,
         databasePropertyId,
       })

@@ -61,6 +61,7 @@ export type DatabasePropertyConfig = {
     relatedPageName?: string
     relatedPropertyId?: string
     relatedPropertyName?: string
+    syncStatus?: "not_synced" | "synced"
     twoWayRelation?: boolean
   }
   selectOptionSort?: SelectOptionSortValue
