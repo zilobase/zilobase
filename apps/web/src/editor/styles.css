@@ -1390,6 +1390,16 @@
     width: max-content;
   }
 
+  .database-cell-scroll[data-wrap-content="false"] .database-page-link .database-page-main {
+    @apply flex-none;
+  }
+
+  .database-cell-scroll[data-wrap-content="false"] .database-page-title {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+
   .database-cell-scroll[data-wrap-content="true"] .database-select-badge {
     white-space: normal;
     overflow-wrap: anywhere;
