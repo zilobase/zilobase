@@ -281,7 +281,7 @@ function getDisplayValue(type: string, value: string, config: unknown) {
   return `${url.hostname}${pathname}`
 }
 
-function getNumberDisplayValue(value: string, config: unknown): ReactNode {
+export function getNumberDisplayValue(value: string, config: unknown): ReactNode {
   const trimmedValue = value.trim()
 
   if (!trimmedValue) {

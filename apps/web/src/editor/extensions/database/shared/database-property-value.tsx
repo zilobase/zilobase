@@ -3,6 +3,11 @@ import { Check, FileText } from "lucide-react"
 
 import { Checkbox } from "@/components/ui/checkbox"
 import {
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer"
+import {
   useDatabase,
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
@@ -21,7 +26,10 @@ import { defaultStatusOptions } from "../constants"
 import { DatabasePropertyButton } from "../database-property-button"
 import { DatabasePropertyDate } from "../database-property-date"
 import { DatabasePropertyFiles } from "../database-property-files"
-import { DatabasePropertyInput } from "../database-property-input"
+import {
+  DatabasePropertyInput,
+  getNumberDisplayValue,
+} from "../database-property-input"
 import { DatabasePropertySelect } from "../database-property-select"
 import { DatabaseFormulaValue } from "../formula"
 import { toStringArray, type DatabasePropertyValue } from "../utils"
@@ -38,9 +46,15 @@ import {
   getReadOnlyTimePropertyRawValue,
   isReadOnlyTimeProperty,
 } from "./read-only-time-property"
+import { DatabaseRollupPropertySettings } from "./database-property-edit-submenu"
 import { useDatabaseViewContext } from "./database-view-context"
 import { getPersonLimit } from "./database-view-config"
 import { type DatabasePropertyListItem } from "../kanban/database-kanban-config"
+import {
+  evaluateDatabaseRollup,
+  getRollupRelationProperty,
+} from "../rollup/rollup-engine"
+import { getRollupConfig } from "../rollup/rollup-config"
 
 type DatabaseRow = {
   createdAt: string
@@ -151,6 +165,7 @@ export function DatabasePropertyValue({
   const isFormulaProperty = pageProperty.type === "formula"
   const isPersonProperty = pageProperty.type === "person"
   const isRelationProperty = pageProperty.type === "relation"
+  const isRollupProperty = pageProperty.type === "rollup"
   const isReadOnlyTimeCell = isReadOnlyTimeProperty(pageProperty.type)
   const isMultiSelectProperty =
     pageProperty.type === "multi_select" ||
@@ -297,6 +312,19 @@ export function DatabasePropertyValue({
       row={row}
       value={value}
     />
+  ) : isRollupProperty ? (
+    <DatabaseRollupPropertyValue
+      databaseId={databaseContext.databaseId}
+      editable={editable}
+      onOpenChange={(open) => onActiveValueChange(open ? key : null)}
+      onPropertyConfigChange={(config) =>
+        onPropertyConfigChange(property.id, config)
+      }
+      properties={properties}
+      propertyConfig={pageProperty.config}
+      propertyValuesByKey={propertyValuesByKey}
+      row={row}
+    />
   ) : (
     <DatabasePropertyInput
       editable={editable}
@@ -339,6 +367,86 @@ export function DatabasePropertyValue({
   )
 
   return content
+}
+
+function DatabaseRollupPropertyValue({
+  databaseId,
+  editable,
+  onOpenChange,
+  onPropertyConfigChange,
+  properties,
+  propertyConfig,
+  propertyValuesByKey,
+  row,
+}: {
+  databaseId: string | null | undefined
+  editable: boolean
+  onOpenChange?: (open: boolean) => void
+  onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown
+  properties: DatabaseProperty[]
+  propertyConfig: unknown
+  propertyValuesByKey: Record<string, DatabasePropertyValue>
+  row: DatabaseRow
+}) {
+  const config = getRollupConfig(propertyConfig)
+  const relationProperty = getRollupRelationProperty(
+    properties,
+    config.relationPropertyId
+  )
+  const relatedDatabaseId = relationProperty
+    ? getRelationTargetDatabaseId(relationProperty.property.config)
+    : null
+  const { data: relatedDatabasePayload } = useDatabase(relatedDatabaseId, {
+    schemaOnly: false,
+  })
+  const result = evaluateDatabaseRollup({
+    currentRow: row,
+    propertyConfig,
+    propertyValuesByKey,
+    relatedDatabasePayload,
+    relationProperty,
+  })
+  const numberDisplayConfig =
+    config.calculation?.startsWith("percent_")
+      ? { ...config, numberFormat: "percent" }
+      : config
+  const value =
+    result.kind === "number" && typeof result.value === "number"
+      ? getNumberDisplayValue(String(result.value), numberDisplayConfig)
+      : result.displayValue || <span className="text-muted-foreground">Empty</span>
+
+  if (!editable || !databaseId) {
+    return <span className="database-input-cell-trigger">{value}</span>
+  }
+
+  return (
+    <DropDrawer onOpenChange={onOpenChange}>
+      <DropDrawerTrigger asChild>
+        <button
+          className="database-input-cell-trigger"
+          type="button"
+        >
+          {result.kind === "empty" && result.displayValue ? (
+            <span className="text-muted-foreground">{result.displayValue}</span>
+          ) : (
+            value
+          )}
+        </button>
+      </DropDrawerTrigger>
+      <DropDrawerContent
+        className="w-80"
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        <DatabaseRollupPropertySettings
+          config={propertyConfig}
+          databaseId={databaseId}
+          onUpdateConfig={(config) => {
+            void onPropertyConfigChange?.(config)
+          }}
+        />
+      </DropDrawerContent>
+    </DropDrawer>
+  )
 }
 
 function DatabaseRelationPropertyValue({

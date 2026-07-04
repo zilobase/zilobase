@@ -21,6 +21,25 @@ type RelationLimitValue = "one_page" | "no_limit"
 type SelectOptionSortValue = "manual" | "alphabetical" | "reverse_alphabetical"
 export type DatabaseConditionalColorApplyTarget = "entire-row" | "this-property"
 export type DatabaseConditionalColorStyle = "page-background"
+export type DatabaseRollupCalculation =
+  | "show_original"
+  | "show_unique"
+  | "count_all"
+  | "count_values"
+  | "count_unique"
+  | "count_empty"
+  | "count_not_empty"
+  | "percent_empty"
+  | "percent_not_empty"
+  | "sum"
+  | "average"
+  | "median"
+  | "min"
+  | "max"
+  | "range"
+  | "earliest_date"
+  | "latest_date"
+  | "date_range"
 
 export type DatabaseConditionalColorConfig = {
   applyTo: DatabaseConditionalColorApplyTarget
@@ -63,6 +82,17 @@ export type DatabasePropertyConfig = {
     relatedPropertyName?: string
     syncStatus?: "not_synced" | "synced"
     twoWayRelation?: boolean
+  }
+  rollup?: {
+    calculation?: DatabaseRollupCalculation
+    numberDisplayColor?: string
+    numberDisplayDivideBy?: number
+    numberDisplayShowNumber?: boolean
+    numberDisplayStyle?: DatabaseNumberDisplayStyle
+    numberDecimalPlaces?: NumberDecimalPlacesValue
+    numberFormat?: string
+    relationPropertyId?: string
+    targetPropertyId?: string
   }
   selectOptionSort?: SelectOptionSortValue
   showFullUrl?: boolean

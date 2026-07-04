@@ -14,7 +14,9 @@ import {
   Hash,
   Plus,
   Search,
+  Sigma,
   Trash2,
+  Type,
   UserRound,
 } from "lucide-react"
 import { Reorder, useDragControls } from "framer-motion"
@@ -97,6 +99,19 @@ import {
   getRelationRepairMutationPlan,
   getRelationTwoWayConfigUpdate,
 } from "./database-relation-sync"
+import {
+  getRollupCalculationsForType,
+  getRollupConfig,
+  getRollupConfigUpdate,
+  getRollupNumberPropertyConfig,
+  rollupCountCalculations,
+  rollupDateCalculations,
+  rollupPercentCalculations,
+  rollupShowCalculations,
+  getValidRollupCalculation,
+  type DatabaseRollupConfig,
+} from "../rollup/rollup-config"
+import { getRollupRelationProperty } from "../rollup/rollup-engine"
 
 type StatusOption = DatabaseSelectOption & {
   group?: string
@@ -160,6 +175,7 @@ export function hasDatabasePropertyEditSettings(type: string) {
     type === "person" ||
     type === "files" ||
     type === "relation" ||
+    type === "rollup" ||
     type === "date" ||
     type === "created_time" ||
     type === "edited_time"
@@ -191,6 +207,7 @@ function DatabasePropertyEditMenuItems({
   const isPersonProperty = type === "person"
   const isFilesProperty = type === "files"
   const isRelationProperty = type === "relation"
+  const isRollupProperty = type === "rollup"
   const isNumberProperty = type === "number"
   const isUrlProperty = type === "url"
   const isDateProperty =
@@ -290,6 +307,16 @@ function DatabasePropertyEditMenuItems({
     )
   }
 
+  if (isRollupProperty) {
+    return (
+      <DatabaseRollupPropertySettings
+        config={config}
+        databaseId={databaseId}
+        onUpdateConfig={updatePropertyConfig}
+      />
+    )
+  }
+
   if (isDateProperty) {
     return (
       <DatePropertyOptions
@@ -311,11 +338,155 @@ function getDatabasePropertyEditSubmenuContentClassName(type: string) {
     type === "person" ||
     type === "files" ||
     type === "relation" ||
+    type === "rollup" ||
     type === "date" ||
     type === "created_time" ||
     type === "edited_time"
     ? "w-80"
     : undefined
+}
+
+export function DatabaseRollupPropertySettings({
+  config,
+  databaseId,
+  onUpdateConfig,
+}: {
+  config?: unknown
+  databaseId: string
+  onUpdateConfig: (config: DatabasePropertyConfig) => void
+}) {
+  const rollupConfig = getRollupConfig(config)
+  const { data: currentDatabasePayload, isLoading: isLoadingCurrentDatabase } =
+    useDatabase(databaseId, { schemaOnly: true })
+  const relationProperties =
+    currentDatabasePayload?.properties.filter(
+      (property) => property.property.type === "relation"
+    ) ?? []
+  const selectedRelationProperty =
+    getRollupRelationProperty(relationProperties, rollupConfig.relationPropertyId) ??
+    relationProperties[0]
+  const relationConfig = getRelationConfig(selectedRelationProperty?.property.config)
+  const { data: relatedDatabasePayload, isLoading: isLoadingRelatedDatabase } =
+    useDatabase(relationConfig.relatedDatabaseId, { schemaOnly: true })
+  const targetProperties = [
+    {
+      id: "name",
+      name: "Name",
+      type: "text",
+    },
+    ...(relatedDatabasePayload?.properties ?? [])
+      .filter((property) => property.property.type !== "rollup")
+      .map((property) => ({
+        id: property.property.id,
+        name: property.property.name,
+        type: property.property.type,
+      })),
+  ]
+  const selectedTargetProperty = targetProperties.find(
+    (property) => property.id === rollupConfig.targetPropertyId
+  )
+  const effectiveTargetProperty = selectedTargetProperty ?? targetProperties[0]
+  const selectedTargetType = effectiveTargetProperty?.type ?? "text"
+  const calculation = getValidRollupCalculation(
+    rollupConfig.calculation,
+    selectedTargetType
+  )
+  const calculationOptions = getRollupCalculationsForType(selectedTargetType)
+  const updateRollupConfig = (patch: Partial<DatabaseRollupConfig>) => {
+    onUpdateConfig(
+      getRollupConfigUpdate(
+        config,
+        {
+          relationPropertyId: selectedRelationProperty?.id,
+          targetPropertyId: effectiveTargetProperty?.id,
+        },
+        patch
+      )
+    )
+  }
+
+  if (isLoadingCurrentDatabase) {
+    return <DropDrawerItem disabled>Loading relations...</DropDrawerItem>
+  }
+
+  if (relationProperties.length === 0) {
+    return <DropDrawerItem disabled>Add a relation property first.</DropDrawerItem>
+  }
+
+  return (
+    <>
+      <PropertySettingSubmenu
+        icon={<ArrowUpRight />}
+        label="Relation"
+        onSelect={(relationPropertyId) => {
+          const nextRelationProperty = relationProperties.find(
+            (property) => property.id === relationPropertyId
+          )
+
+          updateRollupConfig({
+            calculation: "show_original",
+            relationPropertyId,
+            targetPropertyId:
+              nextRelationProperty?.id === rollupConfig.relationPropertyId
+                ? rollupConfig.targetPropertyId
+                : undefined,
+          })
+        }}
+        options={relationProperties.map((property) => ({
+          label: property.property.name,
+          value: property.id,
+        }))}
+        selectedValue={selectedRelationProperty?.id ?? ""}
+      />
+      <PropertySettingSubmenu
+        icon={<Type />}
+        label="Target property"
+        onSelect={(targetPropertyId) => {
+          const nextTarget = targetProperties.find(
+            (property) => property.id === targetPropertyId
+          )
+
+          updateRollupConfig({
+            calculation: getValidRollupCalculation(
+              rollupConfig.calculation,
+              nextTarget?.type ?? "text"
+            ),
+            targetPropertyId,
+          })
+        }}
+        options={targetProperties.map((property) => ({
+          label: property.name,
+          value: property.id,
+        }))}
+        selectedValue={effectiveTargetProperty?.id ?? ""}
+      />
+      {!selectedRelationProperty ? (
+        <DropDrawerItem disabled>Select a relation.</DropDrawerItem>
+      ) : !relationConfig.relatedDatabaseId ? (
+        <DropDrawerItem disabled>Configure relation first.</DropDrawerItem>
+      ) : isLoadingRelatedDatabase ? (
+        <DropDrawerItem disabled>Loading properties...</DropDrawerItem>
+      ) : targetProperties.length === 0 ? (
+        <DropDrawerItem disabled>No properties available.</DropDrawerItem>
+      ) : null}
+      <RollupCalculationSubmenu
+        calculation={calculation}
+        onSelect={(nextCalculation) =>
+          updateRollupConfig({ calculation: nextCalculation })
+        }
+        options={calculationOptions}
+      />
+      {selectedTargetType === "number" ? (
+        <>
+          <DropDrawerSeparator />
+          <NumberPropertyOptions
+            config={getRollupNumberPropertyConfig(config)}
+            onUpdateConfig={updateRollupConfig}
+          />
+        </>
+      ) : null}
+    </>
+  )
 }
 
 type RelationDatabaseOption = DatabaseSearchableMenuOption & {
@@ -1025,6 +1196,135 @@ function PropertySettingSubmenu<TValue extends string | number>({
         ))}
       </DropDrawerSubContent>
     </DropDrawerSub>
+  )
+}
+
+function RollupCalculationSubmenu({
+  calculation,
+  onSelect,
+  options,
+}: {
+  calculation: DatabaseRollupConfig["calculation"]
+  onSelect: (value: NonNullable<DatabaseRollupConfig["calculation"]>) => void
+  options: {
+    label: string
+    value: NonNullable<DatabaseRollupConfig["calculation"]>
+  }[]
+}) {
+  const selectedOption =
+    options.find((option) => option.value === calculation) ?? options[0]
+  const visibleValues = new Set(options.map((option) => option.value))
+  const showOptions = rollupShowCalculations.filter((option) =>
+    visibleValues.has(option.value)
+  )
+  const countOptions = rollupCountCalculations.filter((option) =>
+    visibleValues.has(option.value)
+  )
+  const percentOptions = rollupPercentCalculations.filter((option) =>
+    visibleValues.has(option.value)
+  )
+  const dateOptions = rollupDateCalculations.filter((option) =>
+    visibleValues.has(option.value)
+  )
+  const groups = [
+    { label: "Count", options: countOptions },
+    { label: "Percent", options: percentOptions },
+    { label: "Date", options: dateOptions },
+  ].filter((group) => group.options.length > 0)
+  const otherOptions = options.filter(
+    (option) =>
+      !showOptions.some((item) => item.value === option.value) &&
+      !countOptions.some((item) => item.value === option.value) &&
+      !percentOptions.some((item) => item.value === option.value) &&
+      !dateOptions.some((item) => item.value === option.value)
+  )
+
+  return (
+    <DropDrawerSub>
+      <DropDrawerSubTrigger>
+        <Sigma />
+        <span className="flex-1">Calculate</span>
+        <span className="text-muted-foreground">{selectedOption?.label}</span>
+      </DropDrawerSubTrigger>
+      <DropDrawerSubContent className="w-64">
+        {[...showOptions, ...otherOptions].map((option) => (
+          <RollupCalculationItem
+            key={option.value}
+            calculation={calculation}
+            onSelect={(event) => {
+              event.preventDefault()
+              onSelect(option.value)
+            }}
+            option={option}
+          />
+        ))}
+        {groups.map((group) => (
+          <RollupCalculationGroupSubmenu
+            key={group.label}
+            calculation={calculation}
+            label={group.label}
+            onSelect={onSelect}
+            options={group.options}
+          />
+        ))}
+      </DropDrawerSubContent>
+    </DropDrawerSub>
+  )
+}
+
+function RollupCalculationGroupSubmenu({
+  calculation,
+  label,
+  onSelect,
+  options,
+}: {
+  calculation: DatabaseRollupConfig["calculation"]
+  label: string
+  onSelect: (value: NonNullable<DatabaseRollupConfig["calculation"]>) => void
+  options: {
+    label: string
+    value: NonNullable<DatabaseRollupConfig["calculation"]>
+  }[]
+}) {
+  return (
+    <DropDrawerSub>
+      <DropDrawerSubTrigger>
+        <span>{label}</span>
+      </DropDrawerSubTrigger>
+      <DropDrawerSubContent className="w-64">
+        {options.map((option) => (
+          <RollupCalculationItem
+            key={option.value}
+            calculation={calculation}
+            onSelect={(event) => {
+              event.preventDefault()
+              onSelect(option.value)
+            }}
+            option={option}
+          />
+        ))}
+      </DropDrawerSubContent>
+    </DropDrawerSub>
+  )
+}
+
+function RollupCalculationItem({
+  calculation,
+  onSelect,
+  option,
+}: {
+  calculation: DatabaseRollupConfig["calculation"]
+  onSelect: (event: Event) => void
+  option: {
+    label: string
+    value: NonNullable<DatabaseRollupConfig["calculation"]>
+  }
+}) {
+  return (
+    <DropDrawerItem onSelect={onSelect}>
+      <span>{option.label}</span>
+      {option.value === calculation ? <Check className="ml-auto" /> : null}
+    </DropDrawerItem>
   )
 }
 
