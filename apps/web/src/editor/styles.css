@@ -1380,6 +1380,16 @@
     overflow-wrap: anywhere;
   }
 
+  .database-cell-scroll[data-wrap-content="false"] .database-relation-cell-trigger {
+    @apply flex-nowrap;
+  }
+
+  .database-cell-scroll[data-wrap-content="false"]
+    .database-relation-cell-trigger
+    .database-page-link {
+    width: max-content;
+  }
+
   .database-cell-scroll[data-wrap-content="true"] .database-select-badge {
     white-space: normal;
     overflow-wrap: anywhere;
@@ -1562,7 +1572,7 @@
   }
 
   .database-relation-cell-trigger {
-    @apply flex min-h-8 w-full min-w-0 flex-col items-stretch text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40;
+    @apply flex min-h-8 w-full min-w-0 flex-wrap items-center text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40;
   }
 
   .database-select-badge {
@@ -1715,6 +1725,10 @@
 
   .database-page-title-button {
     @apply block max-w-full cursor-text rounded-sm bg-transparent p-0 text-left text-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+
+  .database-page-title-link {
+    @apply block max-w-full bg-transparent p-0 text-left text-primary underline underline-offset-2 outline-none hover:text-primary/80 focus-visible:ring-2 focus-visible:ring-ring/40;
   }
 
   .database-page-title-input {

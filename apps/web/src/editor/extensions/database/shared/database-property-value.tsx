@@ -11,6 +11,7 @@ import {
   useDatabase,
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
+  type DatabasePayload,
   type DatabaseProperty,
   type DatabaseRow as FeatureDatabaseRow,
 } from "@notelab/features/databases"
@@ -316,6 +317,7 @@ export function DatabasePropertyValue({
     <DatabaseRollupPropertyValue
       databaseId={databaseContext.databaseId}
       editable={editable}
+      onOpen={databaseContext.onOpenPage}
       onOpenChange={(open) => onActiveValueChange(open ? key : null)}
       onPropertyConfigChange={(config) =>
         onPropertyConfigChange(property.id, config)
@@ -372,6 +374,7 @@ export function DatabasePropertyValue({
 function DatabaseRollupPropertyValue({
   databaseId,
   editable,
+  onOpen,
   onOpenChange,
   onPropertyConfigChange,
   properties,
@@ -381,6 +384,7 @@ function DatabaseRollupPropertyValue({
 }: {
   databaseId: string | null | undefined
   editable: boolean
+  onOpen?: (pageId: string) => void
   onOpenChange?: (open: boolean) => void
   onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown
   properties: DatabaseProperty[]
@@ -414,24 +418,52 @@ function DatabaseRollupPropertyValue({
     result.kind === "number" && typeof result.value === "number"
       ? getNumberDisplayValue(String(result.value), numberDisplayConfig)
       : result.displayValue || <span className="text-muted-foreground">Empty</span>
+  const shouldShowRelationLinks =
+    config.targetPropertyId === "name" &&
+    (!config.calculation || config.calculation === "show_original")
+  const pageLinks =
+    shouldShowRelationLinks
+      ? getRollupPageLinks({
+          onOpen,
+          pageIds: toStringArray(
+            relationProperty
+              ? propertyValuesByKey[`${row.pageId}:${relationProperty.property.id}`]
+              : ""
+          ),
+          relatedDatabasePayload,
+        })
+      : null
+  const displayContent =
+    pageLinks && pageLinks.length > 0 ? (
+      pageLinks
+    ) : result.kind === "empty" && result.displayValue ? (
+      <span className="text-muted-foreground">{result.displayValue}</span>
+    ) : (
+      value
+    )
 
   if (!editable || !databaseId) {
-    return <span className="database-input-cell-trigger">{value}</span>
+    return pageLinks && pageLinks.length > 0 ? (
+      <span className="database-relation-cell-trigger">{pageLinks}</span>
+    ) : (
+      <span className="database-input-cell-trigger">{value}</span>
+    )
   }
 
   return (
     <DropDrawer onOpenChange={onOpenChange}>
       <DropDrawerTrigger asChild>
-        <button
-          className="database-input-cell-trigger"
-          type="button"
+        <div
+          className={
+            pageLinks && pageLinks.length > 0
+              ? "database-relation-cell-trigger"
+              : "database-input-cell-trigger"
+          }
+          role="button"
+          tabIndex={0}
         >
-          {result.kind === "empty" && result.displayValue ? (
-            <span className="text-muted-foreground">{result.displayValue}</span>
-          ) : (
-            value
-          )}
-        </button>
+          {displayContent}
+        </div>
       </DropDrawerTrigger>
       <DropDrawerContent
         className="w-80"
@@ -447,6 +479,48 @@ function DatabaseRollupPropertyValue({
       </DropDrawerContent>
     </DropDrawer>
   )
+}
+
+function getRollupPageLinks({
+  onOpen,
+  pageIds,
+  relatedDatabasePayload,
+}: {
+  onOpen?: (pageId: string) => void
+  pageIds: string[]
+  relatedDatabasePayload: DatabasePayload | null | undefined
+}) {
+  if (!relatedDatabasePayload) {
+    return []
+  }
+
+  const rowsByPageId = new Map(
+    relatedDatabasePayload.rows.map((relatedRow) => [relatedRow.pageId, relatedRow])
+  )
+
+  return pageIds.flatMap((pageId) => {
+    const relatedRow = rowsByPageId.get(pageId)
+
+    if (!relatedRow) {
+      return []
+    }
+
+    return (
+      <DatabasePageLink
+        editable={false}
+        key={pageId}
+        onOpen={onOpen}
+        openMode="title"
+        pageId={pageId}
+        pageSummary={{
+          id: relatedRow.page.id,
+          metadata: relatedRow.page.metadata,
+          name: relatedRow.page.name,
+        }}
+        showPageIcon
+      />
+    )
+  })
 }
 
 function DatabaseRelationPropertyValue({
@@ -562,6 +636,7 @@ function DatabaseRelationPropertyValue({
       editable={false}
       key={pageId}
       onOpen={onOpen}
+      openMode="title"
       pageId={pageId}
       pageSummary={getRelationPageSummary(propertyConfig, pageId)}
       showPageIcon

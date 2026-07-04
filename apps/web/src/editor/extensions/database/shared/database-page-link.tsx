@@ -25,6 +25,7 @@ export function DatabasePageLink({
   editable = false,
   onActiveChange,
   onOpen,
+  openMode = "button",
   pageId,
   pageSummary,
   showPageIcon = true,
@@ -32,6 +33,7 @@ export function DatabasePageLink({
   editable?: boolean
   onActiveChange?: (active: boolean) => void
   onOpen?: (pageId: string) => void
+  openMode?: "button" | "title"
   pageId: string
   pageSummary?: DatabasePageSummary | null
   showPageIcon?: boolean
@@ -194,11 +196,19 @@ export function DatabasePageLink({
           >
             {title}
           </button>
+        ) : openMode === "title" ? (
+          <button
+            className="database-page-title database-page-title-link"
+            onClick={handleClick}
+            type="button"
+          >
+            {title}
+          </button>
         ) : (
           <span className="database-page-title">{title}</span>
         )}
       </span>
-      {pageSummary && !isEditingTitle ? (
+      {pageSummary && !isEditingTitle && openMode === "button" ? (
         <button
           aria-label={`${actionLabel} ${title}`}
           className="database-page-open"
