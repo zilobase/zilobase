@@ -3,6 +3,7 @@ import { UploadIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
+import { isFeatureEnabled } from "@/config/feature-flags"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -43,7 +44,9 @@ export default function WorkspaceSettingsPage() {
 
       <div className="mx-auto grid w-full max-w-4xl gap-6">
         <WorkspaceDetailsSection workspace={workspace} />
-        <WorkspaceImportSection workspaceId={activeWorkspaceId} />
+        {isFeatureEnabled("notionImport") ? (
+          <WorkspaceImportSection workspaceId={activeWorkspaceId} />
+        ) : null}
       </div>
     </main>
   )
