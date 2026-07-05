@@ -6,10 +6,13 @@ import {
   ChevronDown,
   ChevronsUpDown,
   Copy,
+  Eye,
   EyeOff,
+  FileText,
   Filter,
   GripVertical,
   Pin,
+  PlayCircle,
   Plus,
   Settings2,
   Sigma,
@@ -57,6 +60,14 @@ import {
   useUpdateDatabase,
   useUpdateDatabaseProperty,
 } from "@notelab/features/databases"
+import { Separator } from "@/components/ui/separator"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 
 import { getDatabasePropertyType } from "../constants"
 import {
@@ -117,6 +128,7 @@ export function DatabasePropertyMenu({
   workspaceId?: string | null
 }) {
   const [automationDialogOpen, setAutomationDialogOpen] = useState(false)
+  const [basicAutofillDialogOpen, setBasicAutofillDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [relationDeleteMode, setRelationDeleteMode] =
     useState<"this" | "related">("this")
@@ -133,6 +145,10 @@ export function DatabasePropertyMenu({
   )?.direction
   const isButtonProperty = type === "button"
   const isFormulaProperty = type === "formula"
+  const hidesEditProperty =
+    type === "text" || type === "checkbox" || type === "email" || type === "phone"
+  const canBasicAutofill =
+    type === "text" || type === "select" || type === "multi_select"
   const relationDeleteConfig = getRelationDeleteConfig(config)
   const { data: relatedDatabasePayload } = useDatabase(
     type === "relation" ? relationDeleteConfig.relatedDatabaseId : null,
@@ -248,7 +264,7 @@ export function DatabasePropertyMenu({
               <Sigma />
               <span>Edit formula</span>
             </DropDrawerItem>
-          ) : schemaActionsEnabled ? (
+          ) : schemaActionsEnabled && !hidesEditProperty ? (
             <DatabasePropertyEditSubmenu
               config={config}
               databaseId={databaseId}
@@ -287,17 +303,22 @@ export function DatabasePropertyMenu({
             </DropDrawerSubContent>
           </DropDrawerSub>
           ) : null}
-          {isFormulaProperty || !schemaActionsEnabled ? null : (
+          {canBasicAutofill && schemaActionsEnabled ? (
             <DropDrawerSub>
               <DropDrawerSubTrigger>
                 <Sparkles />
                 <span>AI Autofill</span>
               </DropDrawerSubTrigger>
               <DropDrawerSubContent>
-                <DropDrawerItem disabled>Configure autofill</DropDrawerItem>
+                <DropDrawerItem
+                  onSelect={() => setBasicAutofillDialogOpen(true)}
+                >
+                  Basic Autofill
+                </DropDrawerItem>
+                <DropDrawerItem disabled>Agent Autofill</DropDrawerItem>
               </DropDrawerSubContent>
             </DropDrawerSub>
-          )}
+          ) : null}
           <DropDrawerSeparator />
           <DropDrawerItem disabled>
             <Filter />
@@ -476,6 +497,14 @@ export function DatabasePropertyMenu({
           <ButtonAutomationDialog propertyName={name} />
         </DialogContent>
       </Dialog>
+      <Dialog
+        open={basicAutofillDialogOpen}
+        onOpenChange={setBasicAutofillDialogOpen}
+      >
+        <DialogContent className="sm:max-w-5xl">
+          <BasicAutofillDialog propertyName={name} />
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -552,6 +581,125 @@ function ButtonAutomationDialog({
       <DialogFooter>
         <Button type="button">
           Save
+        </Button>
+      </DialogFooter>
+    </>
+  )
+}
+
+function BasicAutofillDialog({
+  propertyName,
+}: {
+  propertyName: string
+}) {
+  return (
+    <>
+      <div className="grid min-h-[28rem] gap-4 md:grid-cols-[minmax(0,1fr)_1px_minmax(18rem,0.95fr)] md:grid-rows-[auto_minmax(0,1fr)]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="size-5 text-muted-foreground" />
+            <span>Autofill {propertyName}</span>
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Configure basic autofill for {propertyName}.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Separator className="hidden md:row-span-2 md:block" orientation="vertical" />
+
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <span>Preview with</span>
+          <Button className="min-w-0" size="sm" type="button" variant="ghost">
+            <FileText className="size-4" />
+            <span className="truncate">{propertyName}</span>
+            <ChevronDown className="size-4" />
+          </Button>
+        </div>
+
+        <section className="grid content-start gap-5">
+          <Tabs className="gap-4" defaultValue="basic">
+            <TabsList className="w-full">
+              <TabsTrigger className="flex-1" value="basic">
+                <Sparkles />
+                Basic
+              </TabsTrigger>
+              <TabsTrigger className="flex-1" disabled value="agent">
+                Custom Agent
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent className="grid gap-5" value="basic">
+              <div className="grid gap-2">
+                <div className="text-sm font-medium text-muted-foreground">
+                  Suggested
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="secondary">
+                    Translate
+                    <ChevronDown className="size-4" />
+                  </Button>
+                  <Button type="button" variant="secondary">
+                    Summarize
+                    <ChevronDown className="size-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Instructions
+                </span>
+                <Textarea
+                  className="min-h-40 resize-none"
+                  placeholder="How would you like to autofill this property?"
+                />
+              </label>
+
+              <div className="grid gap-3">
+                <div className="text-sm font-medium text-muted-foreground">
+                  Triggers
+                </div>
+                <button
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  type="button"
+                >
+                  <span>On page creation</span>
+                  <span className="flex items-center gap-1">
+                    None
+                    <ChevronDown className="-rotate-90 size-4" />
+                  </span>
+                </button>
+                <button
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  type="button"
+                >
+                  <span>On page update</span>
+                  <span className="flex items-center gap-1">
+                    None
+                    <ChevronDown className="-rotate-90 size-4" />
+                  </span>
+                </button>
+              </div>
+            </TabsContent>
+            <TabsContent value="agent" />
+          </Tabs>
+        </section>
+
+        <section className="flex min-h-0 flex-col border-t md:border-t-0">
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 py-10 text-center text-muted-foreground">
+            <Eye className="size-8" />
+            <div className="text-sm font-medium">Preview with real data</div>
+            <Button disabled type="button" variant="outline">
+              Generate
+            </Button>
+          </div>
+        </section>
+      </div>
+
+      <DialogFooter>
+        <Button type="button">Save changes</Button>
+        <Button disabled type="button" variant="outline">
+          <PlayCircle className="size-4" />
+          Run AI Autofill now
         </Button>
       </DialogFooter>
     </>
