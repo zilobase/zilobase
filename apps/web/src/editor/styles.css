@@ -1446,7 +1446,7 @@
   }
 
   .database-name-header {
-    @apply min-w-0;
+    @apply min-w-0 overflow-hidden;
   }
 
   .database-name-header:has(button:hover),
@@ -1459,8 +1459,20 @@
     @apply flex h-8 min-w-0 items-center px-3 py-1;
   }
 
-  .tiptap-editor .database-table th.database-property-header {
-    @apply min-w-0 overflow-hidden;
+  .tiptap-editor .database-table th.database-reorderable-header {
+    @apply relative min-w-0 overflow-hidden;
+  }
+
+  .tiptap-editor .database-table th.database-reorderable-header[data-column-reorderable="true"] .database-name-menu-trigger,
+  .tiptap-editor .database-table th.database-reorderable-header[data-column-reorderable="true"] .database-name-header-content,
+  .tiptap-editor .database-table th.database-reorderable-header[data-column-reorderable="true"] .database-property-menu-trigger,
+  .tiptap-editor .database-table th.database-reorderable-header[data-column-reorderable="true"] .database-property-header-label {
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .tiptap-editor .database-table th.database-reorderable-header[data-column-dragging="true"] {
+    @apply z-10 bg-popover text-foreground shadow-lg ring-1 ring-ring/50;
   }
 
   .tiptap-editor .database-table th.database-property-header:has(button:hover),

@@ -6,9 +6,12 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type CSSProperties,
   type DragEvent as ReactDragEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react"
+import { Reorder, useDragControls } from "framer-motion"
 import {
   ChevronDown,
   ChevronRight,
@@ -60,6 +63,7 @@ import {
   serializePropertyValue,
 } from "../utils"
 import {
+  getDatabasePropertyOrder,
   getNameColumnWrapContent,
   getPropertyWrapContent,
 } from "../shared/database-view-config"
@@ -92,6 +96,13 @@ type PendingInsertProperty = {
   sourceColumnKey: string
 }
 
+type PendingPropertyInsertOrder = {
+  columnIds: string[]
+  existingPropertyIds: string[]
+  side: InsertPropertySide
+  sourceColumnKey: string
+}
+
 type PendingFormulaSetup = {
   existingPropertyIds: string[]
 }
@@ -118,6 +129,60 @@ type GroupSectionDraft = Omit<GroupSection, "rows"> & {
   rows: any[]
 }
 
+const DATABASE_NAME_COLUMN_ID = "name"
+
+function DatabaseHeaderReorderItem({
+  children,
+  canReorder,
+  className,
+  headerScope,
+  isDragging,
+  columnId,
+  onDragEnd,
+  onDragStart,
+}: {
+  canReorder: boolean
+  children: (
+    onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => void
+  ) => ReactNode
+  className?: string
+  headerScope: string
+  isDragging: boolean
+  columnId: string
+  onDragEnd: () => void
+  onDragStart: () => void
+}) {
+  const dragControls = useDragControls()
+  const startDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!canReorder) {
+      return
+    }
+
+    event.stopPropagation()
+    dragControls.start(event)
+  }
+
+  return (
+    <Reorder.Item
+      as="th"
+      className={cn("database-reorderable-header", className)}
+      data-column-dragging={isDragging ? "true" : undefined}
+      data-column-reorderable={canReorder ? "true" : undefined}
+      data-header-scope={headerScope}
+      data-property-id={columnId}
+      dragControls={dragControls}
+      dragListener={false}
+      transition={{ layout: { duration: 0.18, ease: "easeOut" } }}
+      value={columnId}
+      whileDrag={{ scale: 0.995 }}
+      onDragEnd={onDragEnd}
+      onDragStart={onDragStart}
+    >
+      {children(startDrag)}
+    </Reorder.Item>
+  )
+}
+
 function getHeaderEditingKey(headerScope: string, propertyKey: string) {
   return `${headerScope}:${propertyKey}`
 }
@@ -132,6 +197,58 @@ function getPropertyKeyFromHeaderEditingKey(editingKey: string | null) {
   return separatorIndex === -1
     ? editingKey
     : editingKey.slice(separatorIndex + 1)
+}
+
+function areColumnOrdersEqual(left: string[] | null, right: string[]) {
+  return (
+    left !== null &&
+    left.length === right.length &&
+    left.every((propertyId, index) => propertyId === right[index])
+  )
+}
+
+function getMergedColumnIds(
+  columnIds: string[],
+  preferredColumnIds: string[] | null
+) {
+  if (!preferredColumnIds) {
+    return columnIds
+  }
+
+  const validColumnIds = new Set(columnIds)
+  const seenColumnIds = new Set<string>()
+  const orderedColumnIds = preferredColumnIds.filter((columnId) => {
+    if (!validColumnIds.has(columnId) || seenColumnIds.has(columnId)) {
+      return false
+    }
+
+    seenColumnIds.add(columnId)
+    return true
+  })
+
+  return [
+    ...orderedColumnIds,
+    ...columnIds.filter((columnId) => !seenColumnIds.has(columnId)),
+  ]
+}
+
+function getColumnIdsWithInsertedProperty(
+  pendingInsert: PendingPropertyInsertOrder,
+  propertyId: string,
+  currentColumnIds: string[]
+) {
+  const columnIds = pendingInsert.columnIds.filter(
+    (columnId) => columnId !== propertyId
+  )
+  const sourceIndex = columnIds.indexOf(pendingInsert.sourceColumnKey)
+  const insertIndex =
+    sourceIndex === -1
+      ? columnIds.length
+      : sourceIndex + (pendingInsert.side === "right" ? 1 : 0)
+
+  columnIds.splice(insertIndex, 0, propertyId)
+
+  return getMergedColumnIds(currentColumnIds, columnIds)
 }
 
 function requireDatabaseId(databaseId: string | null | undefined) {
@@ -265,6 +382,7 @@ export function DatabaseTableView() {
     renameDatabaseProperty,
     updateDatabasePropertyConfig,
     updateNameColumnConfig,
+    saveDatabasePropertyOrder,
     visibleProperties,
     workspaceId,
   } = useDatabaseViewContext()
@@ -287,6 +405,8 @@ export function DatabaseTableView() {
   )
   const [pendingInsertProperty, setPendingInsertProperty] =
     useState<PendingInsertProperty | null>(null)
+  const [pendingPropertyInsertOrder, setPendingPropertyInsertOrder] =
+    useState<PendingPropertyInsertOrder | null>(null)
   const [pendingFormulaSetup, setPendingFormulaSetup] =
     useState<PendingFormulaSetup | null>(null)
   const [formulaSetupPropertyId, setFormulaSetupPropertyId] = useState<
@@ -294,6 +414,15 @@ export function DatabaseTableView() {
   >(null)
   const [pendingSortedRowReorder, setPendingSortedRowReorder] =
     useState<PendingSortedRowReorder | null>(null)
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null)
+  const [dragColumnOrder, setDragColumnOrder] = useState<string[] | null>(
+    null
+  )
+  const dragColumnOrderRef = useRef<string[] | null>(null)
+  const [pendingColumnOrder, setPendingColumnOrder] = useState<string[] | null>(
+    null
+  )
+  const suppressPropertyHeaderClickRef = useRef(false)
   const [editingPropertyKey, setEditingPropertyKey] = useState<string | null>(
     null
   )
@@ -313,12 +442,87 @@ export function DatabaseTableView() {
     () => visibleProperties,
     [visibleProperties]
   )
+  const propertiesById = useMemo(
+    () =>
+      new Map(
+        renderedProperties.map((property: any) => [property.id, property])
+      ),
+    [renderedProperties]
+  )
+  const baseColumnIds = useMemo(
+    () => [
+      DATABASE_NAME_COLUMN_ID,
+      ...renderedProperties.map((property: any) => property.id),
+    ],
+    [renderedProperties]
+  )
+  const savedColumnIds = useMemo(() => {
+    const configuredColumnOrder = getDatabasePropertyOrder(databaseConfig)
+
+    return configuredColumnOrder.includes(DATABASE_NAME_COLUMN_ID)
+      ? getMergedColumnIds(baseColumnIds, configuredColumnOrder)
+      : baseColumnIds
+  }, [baseColumnIds, databaseConfig])
+  const renderedColumnIds = useMemo(
+    () =>
+      pendingColumnOrder
+        ? getMergedColumnIds(baseColumnIds, pendingColumnOrder)
+        : savedColumnIds,
+    [baseColumnIds, pendingColumnOrder, savedColumnIds]
+  )
+  const headerColumnIds = useMemo(
+    () =>
+      dragColumnOrder
+        ? getMergedColumnIds(renderedColumnIds, dragColumnOrder)
+        : renderedColumnIds,
+    [dragColumnOrder, renderedColumnIds]
+  )
+  useEffect(() => {
+    if (
+      pendingColumnOrder &&
+      areColumnOrdersEqual(pendingColumnOrder, savedColumnIds)
+    ) {
+      setPendingColumnOrder(null)
+    }
+  }, [pendingColumnOrder, savedColumnIds])
+  useEffect(() => {
+    if (!pendingPropertyInsertOrder) {
+      return
+    }
+
+    const existingPropertyIds = new Set(
+      pendingPropertyInsertOrder.existingPropertyIds
+    )
+    const insertedProperty = renderedProperties.find(
+      (property: any) => !existingPropertyIds.has(property.id)
+    )
+
+    if (!insertedProperty) {
+      return
+    }
+
+    const nextColumnIds = getColumnIdsWithInsertedProperty(
+      pendingPropertyInsertOrder,
+      insertedProperty.id,
+      renderedColumnIds
+    )
+
+    setPendingPropertyInsertOrder(null)
+    setPendingColumnOrder(nextColumnIds)
+    saveDatabasePropertyOrder(nextColumnIds)
+  }, [
+    pendingPropertyInsertOrder,
+    renderedColumnIds,
+    renderedProperties,
+    saveDatabasePropertyOrder,
+  ])
   const personOptionsById = useMemo(
     () => new Map(personOptions.map((option) => [option.id, option.name])),
     [personOptions]
   )
   const activeInsertProperty = pendingInsertProperty
   const canReorderRows = editable
+  const canReorderColumns = editable && renderedColumnIds.length > 1
   const rowDragTitle = (() => {
     if (!canReorderRows) {
       return "Manual row sorting is disabled"
@@ -350,28 +554,25 @@ export function DatabaseTableView() {
     ? `insert-property-${activeInsertProperty.sourceColumnKey}-${activeInsertProperty.side}`
     : null
   const columnKeys = (() => {
-    const nameKeys =
-      activeInsertProperty?.sourceColumnKey === "name"
-        ? activeInsertProperty.side === "left"
-          ? ["insert-property-name-left", "name"]
-          : ["name", "insert-property-name-right"]
-        : ["name"]
-    const propertyKeys = renderedProperties.flatMap((property: any) => {
+    const dataColumnKeys = renderedColumnIds.flatMap((columnId) => {
       if (
         !activeInsertProperty ||
-        property.id !== activeInsertProperty.sourceColumnKey
+        columnId !== activeInsertProperty.sourceColumnKey
       ) {
-        return [property.id]
+        return [columnId]
       }
 
-      const insertKey = `insert-property-${property.id}-${activeInsertProperty.side}`
+      const insertKey = `insert-property-${columnId}-${activeInsertProperty.side}`
 
       return activeInsertProperty.side === "left"
-        ? [insertKey, property.id]
-        : [property.id, insertKey]
+        ? [insertKey, columnId]
+        : [columnId, insertKey]
     })
 
-    return [...nameKeys, ...propertyKeys, ...(canEditStructure ? ["add-property"] : [])]
+    return [
+      ...dataColumnKeys,
+      ...(canEditStructure ? ["add-property"] : []),
+    ]
   })()
   const tableMinWidth = columnKeys.reduce(
     (width, key) => width + getColumnWidth(columnWidths, key),
@@ -952,8 +1153,57 @@ export function DatabaseTableView() {
     position: number,
     insertKey: string
   ) => {
+    if (pendingInsertProperty) {
+      setPendingPropertyInsertOrder({
+        columnIds: headerColumnIds,
+        existingPropertyIds: renderedProperties.map((property: any) => property.id),
+        side: pendingInsertProperty.side,
+        sourceColumnKey: pendingInsertProperty.sourceColumnKey,
+      })
+    }
+
     addDatabasePropertyAndMaybeOpenFormula(type, label, position)
     clearPendingInsertProperty(insertKey)
+  }
+
+  const startColumnHeaderReorder = (columnId: string) => {
+    if (!canReorderColumns) {
+      return
+    }
+
+    setEditingPropertyKey(null)
+    suppressPropertyHeaderClickRef.current = true
+    setDraggedColumnId(columnId)
+    dragColumnOrderRef.current = headerColumnIds
+  }
+
+  const queueColumnHeaderOrder = (columnIds: string[]) => {
+    if (!canReorderColumns) {
+      return
+    }
+
+    if (areColumnOrdersEqual(dragColumnOrder, columnIds)) {
+      return
+    }
+
+    dragColumnOrderRef.current = columnIds
+    setDragColumnOrder(columnIds)
+  }
+
+  const finishColumnHeaderReorder = () => {
+    const columnIds = dragColumnOrderRef.current
+
+    if (columnIds && !areColumnOrdersEqual(columnIds, renderedColumnIds)) {
+      setPendingColumnOrder(columnIds)
+      saveDatabasePropertyOrder(columnIds)
+    }
+
+    dragColumnOrderRef.current = null
+    setDraggedColumnId(null)
+    setDragColumnOrder(null)
+    window.setTimeout(() => {
+      suppressPropertyHeaderClickRef.current = false
+    }, 0)
   }
 
   const toggleGroupCollapsed = (groupId: string) => {
@@ -1058,130 +1308,206 @@ export function DatabaseTableView() {
   )
   const renderTableHeader = (headerScope = "default") => (
     <thead>
-      <tr>
-        {pendingInsertPropertyKey === "insert-property-name-left"
-          ? renderInsertPropertyHeader("insert-property-name-left", 0)
-          : null}
-        <th className="database-name-header">
-        {canUseHeaderMenus ? (
-            <DatabaseNamePropertyMenu
-              config={databaseConfig}
-              databaseId={loadedDatabaseId}
-              isGrouped={groupProperty?.id === "name"}
-              onOpenChange={(open) =>
-                handleEditingPropertyOpenChange(headerScope, "name", open)
-              }
-              onInsertProperty={(side) => openInsertPropertyMenu("name", 0, side)}
-              onToggleGroup={() =>
-                togglePropertyGrouping("name", groupProperty?.id === "name")
-              }
-              open={editingPropertyKey === getHeaderEditingKey(headerScope, "name")}
-              schemaActionsEnabled={canEditStructure}
-              onSort={(direction) =>
-                void saveDatabaseSorts([
-                  ...activeDatabaseSorts.filter((sort) => sort.column !== "name"),
-                  { column: "name", direction },
-                ])
-              }
-              onUpdateConfig={(config) =>
-                void updateNameColumnConfig?.(config)
-              }
-            />
-          ) : (
-            <span className="database-name-header-content">
-              <span>Aa</span>
-              <span>{nameColumnLabel}</span>
-            </span>
-          )}
-          <span
-            aria-hidden="true"
-            className="database-column-resize-handle"
-            onPointerDown={(event) => startColumnResize("name", event)}
-          />
-        </th>
-        {pendingInsertPropertyKey === "insert-property-name-right"
-          ? renderInsertPropertyHeader("insert-property-name-right", 1)
-          : null}
-        {renderedProperties.map((property: any) => {
-          const leftInsertKey = `insert-property-${property.id}-left`
-          const rightInsertKey = `insert-property-${property.id}-right`
+      <Reorder.Group
+        as="tr"
+        axis="x"
+        values={headerColumnIds}
+        onReorder={queueColumnHeaderOrder}
+      >
+        {headerColumnIds.map((columnId) => {
+          const leftInsertKey = `insert-property-${columnId}-left`
+          const rightInsertKey = `insert-property-${columnId}-right`
           const showLeftInsert = pendingInsertPropertyKey === leftInsertKey
           const showRightInsert = pendingInsertPropertyKey === rightInsertKey
+          const property = propertiesById.get(columnId)
 
           return (
-            <Fragment key={property.id}>
+            <Fragment key={columnId}>
               {showLeftInsert
                 ? renderInsertPropertyHeader(
                     leftInsertKey,
-                    pendingInsertProperty?.position ?? property.position
+                    pendingInsertProperty?.position ?? property?.position ?? 0
                   )
                 : null}
-              <th className="database-property-header">
-                {canUseHeaderMenus ? (
-                  <DatabasePropertyMenu
-                    config={property.property.config}
-                    databaseConfig={databaseConfig}
-                    databaseId={loadedDatabaseId}
-                    databasePropertyId={property.id}
-                    isGrouped={
-                      groupProperty?.property.id === property.property.id
-                    }
-                    name={property.property.name}
-                    onOpenChange={(open) =>
-                      handleEditingPropertyOpenChange(
-                        headerScope,
-                        property.id,
-                        open
+              <DatabaseHeaderReorderItem
+                canReorder={canReorderColumns}
+                className={
+                  columnId === DATABASE_NAME_COLUMN_ID
+                    ? "database-name-header"
+                    : "database-property-header"
+                }
+                headerScope={headerScope}
+                isDragging={draggedColumnId === columnId}
+                columnId={columnId}
+                onDragEnd={finishColumnHeaderReorder}
+                onDragStart={() => startColumnHeaderReorder(columnId)}
+              >
+                {(startHeaderDrag) => (
+                  <>
+                    {columnId === DATABASE_NAME_COLUMN_ID ? (
+                      canUseHeaderMenus ? (
+                        <DatabaseNamePropertyMenu
+                          config={databaseConfig}
+                          databaseId={loadedDatabaseId}
+                          isGrouped={groupProperty?.id === "name"}
+                          onOpenChange={(open) =>
+                            handleEditingPropertyOpenChange(
+                              headerScope,
+                              "name",
+                              open
+                            )
+                          }
+                          onInsertProperty={(side) =>
+                            openInsertPropertyMenu("name", 0, side)
+                          }
+                          onToggleGroup={() =>
+                            togglePropertyGrouping(
+                              "name",
+                              groupProperty?.id === "name"
+                            )
+                          }
+                          open={
+                            editingPropertyKey ===
+                            getHeaderEditingKey(headerScope, "name")
+                          }
+                          schemaActionsEnabled={canEditStructure}
+                          onSort={(direction) =>
+                            void saveDatabaseSorts([
+                              ...activeDatabaseSorts.filter(
+                                (sort) => sort.column !== "name"
+                              ),
+                              { column: "name", direction },
+                            ])
+                          }
+                          onUpdateConfig={(config) =>
+                            void updateNameColumnConfig?.(config)
+                          }
+                          triggerDragProps={{
+                            onClick: (event) => {
+                              if (suppressPropertyHeaderClickRef.current) {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                suppressPropertyHeaderClickRef.current = false
+                                return
+                              }
+
+                              handleEditingPropertyOpenChange(
+                                headerScope,
+                                "name",
+                                true
+                              )
+                            },
+                            onPointerDownCapture: startHeaderDrag,
+                            title: canReorderColumns
+                              ? "Drag to reorder column"
+                              : undefined,
+                          }}
+                        />
+                      ) : (
+                        <span
+                          className="database-name-header-content"
+                          onPointerDownCapture={startHeaderDrag}
+                          title={
+                            canReorderColumns ? "Drag to reorder column" : undefined
+                          }
+                        >
+                          <span>Aa</span>
+                          <span>{nameColumnLabel}</span>
+                        </span>
                       )
-                    }
-                    onInsertProperty={(side) =>
-                      openInsertPropertyMenu(property.id, property.position, side)
-                    }
-                    onEditFormula={() => setFormulaSetupPropertyId(property.id)}
-                    onRename={(name) => renameDatabaseProperty(property.id, name)}
-                    onToggleGroup={() =>
-                      togglePropertyGrouping(
-                        property.property.id,
-                        groupProperty?.property.id === property.property.id
-                      )
-                    }
-                    open={
-                      editingPropertyKey ===
-                      getHeaderEditingKey(headerScope, property.id)
-                    }
-                    schemaActionsEnabled={canEditStructure}
-                    sourceDatabaseId={loadedDatabaseId}
-                    sourceDatabaseName={databaseName}
-                    sourcePropertyId={property.property.id}
-                    onSort={(direction) =>
-                      void saveDatabaseSorts([
-                        ...activeDatabaseSorts.filter(
-                          (sort) => sort.column !== property.id
-                        ),
-                        { column: property.id, direction },
-                      ])
-                    }
-                    onUpdateConfig={(config) =>
-                      void updateDatabasePropertyConfig(property.id, config)
-                    }
-                    type={property.property.type}
-                    workspaceId={workspaceId ?? databaseWorkspaceId}
-                  />
-                ) : (
-                  <span className="database-property-header-label">
-                    {property.property.name}
-                  </span>
+                    ) : property && canUseHeaderMenus ? (
+                      <DatabasePropertyMenu
+                        config={property.property.config}
+                        databaseConfig={databaseConfig}
+                        databaseId={loadedDatabaseId}
+                        databasePropertyId={property.id}
+                        isGrouped={
+                          groupProperty?.property.id === property.property.id
+                        }
+                        name={property.property.name}
+                        onOpenChange={(open) =>
+                          handleEditingPropertyOpenChange(
+                            headerScope,
+                            property.id,
+                            open
+                          )
+                        }
+                        onInsertProperty={(side) =>
+                          openInsertPropertyMenu(property.id, property.position, side)
+                        }
+                        onEditFormula={() => setFormulaSetupPropertyId(property.id)}
+                        onRename={(name) => renameDatabaseProperty(property.id, name)}
+                        onToggleGroup={() =>
+                          togglePropertyGrouping(
+                            property.property.id,
+                            groupProperty?.property.id === property.property.id
+                          )
+                        }
+                        open={
+                          editingPropertyKey ===
+                          getHeaderEditingKey(headerScope, property.id)
+                        }
+                        schemaActionsEnabled={canEditStructure}
+                        sourceDatabaseId={loadedDatabaseId}
+                        sourceDatabaseName={databaseName}
+                        sourcePropertyId={property.property.id}
+                        onSort={(direction) =>
+                          void saveDatabaseSorts([
+                            ...activeDatabaseSorts.filter(
+                              (sort) => sort.column !== property.id
+                            ),
+                            { column: property.id, direction },
+                          ])
+                        }
+                        onUpdateConfig={(config) =>
+                          void updateDatabasePropertyConfig(property.id, config)
+                        }
+                        triggerDragProps={{
+                          onClick: (event) => {
+                            if (suppressPropertyHeaderClickRef.current) {
+                              event.preventDefault()
+                              event.stopPropagation()
+                              suppressPropertyHeaderClickRef.current = false
+                              return
+                            }
+
+                            handleEditingPropertyOpenChange(
+                              headerScope,
+                              property.id,
+                              true
+                            )
+                          },
+                          onPointerDownCapture: startHeaderDrag,
+                          title: canReorderColumns
+                            ? "Drag to reorder column"
+                            : undefined,
+                        }}
+                        type={property.property.type}
+                        workspaceId={workspaceId ?? databaseWorkspaceId}
+                      />
+                    ) : property ? (
+                      <span
+                        className="database-property-header-label"
+                        onPointerDownCapture={startHeaderDrag}
+                        title={
+                          canReorderColumns ? "Drag to reorder column" : undefined
+                        }
+                      >
+                        {property.property.name}
+                      </span>
+                    ) : null}
+                    <span
+                      aria-hidden="true"
+                      className="database-column-resize-handle"
+                      onPointerDown={(event) => startColumnResize(columnId, event)}
+                    />
+                  </>
                 )}
-                <span
-                  aria-hidden="true"
-                  className="database-column-resize-handle"
-                  onPointerDown={(event) => startColumnResize(property.id, event)}
-                />
-              </th>
+              </DatabaseHeaderReorderItem>
               {showRightInsert
                 ? renderInsertPropertyHeader(
                     rightInsertKey,
-                    pendingInsertProperty?.position ?? property.position + 1
+                    pendingInsertProperty?.position ?? (property?.position ?? 0) + 1
                   )
                 : null}
             </Fragment>
@@ -1201,7 +1527,7 @@ export function DatabaseTableView() {
             />
           </th>
         ) : null}
-      </tr>
+      </Reorder.Group>
     </thead>
   )
 
@@ -1221,39 +1547,50 @@ export function DatabaseTableView() {
               setHoveredRowId(row.id)
             }}
           >
-            {pendingInsertPropertyKey === "insert-property-name-left"
-              ? renderInsertPropertyCell("insert-property-name-left")
-              : null}
-            <td
-              className={cn(
-                "database-page-cell",
-                getConditionalColorClassName(conditionalColors.propertyColors.name)
-              )}
-              data-active={
-                activePropertyValueKey === nameCellKey ? "true" : undefined
-              }
-            >
-              <DatabaseTableCellContent wrapContent={nameColumnWrapContent}>
-                <DatabasePageLink
-                  editable={editable}
-                  onActiveChange={(active) =>
-                    setActivePropertyValueKey(active ? nameCellKey : null)
-                  }
-                  onOpen={onOpenPage}
-                  pageId={row.pageId}
-                  pageSummary={row.page}
-                  showPageIcon={nameColumnShowPageIcon}
-                />
-              </DatabaseTableCellContent>
-            </td>
-            {pendingInsertPropertyKey === "insert-property-name-right"
-              ? renderInsertPropertyCell("insert-property-name-right")
-              : null}
-            {renderedProperties.map((property: any) => {
-              const leftInsertKey = `insert-property-${property.id}-left`
-              const rightInsertKey = `insert-property-${property.id}-right`
+            {renderedColumnIds.map((columnId) => {
+              const leftInsertKey = `insert-property-${columnId}-left`
+              const rightInsertKey = `insert-property-${columnId}-right`
               const showLeftInsert = pendingInsertPropertyKey === leftInsertKey
               const showRightInsert = pendingInsertPropertyKey === rightInsertKey
+              const property = propertiesById.get(columnId)
+
+              if (columnId === DATABASE_NAME_COLUMN_ID) {
+                return (
+                  <Fragment key={columnId}>
+                    {showLeftInsert ? renderInsertPropertyCell(leftInsertKey) : null}
+                    <td
+                      className={cn(
+                        "database-page-cell",
+                        getConditionalColorClassName(
+                          conditionalColors.propertyColors.name
+                        )
+                      )}
+                      data-active={
+                        activePropertyValueKey === nameCellKey ? "true" : undefined
+                      }
+                    >
+                      <DatabaseTableCellContent wrapContent={nameColumnWrapContent}>
+                        <DatabasePageLink
+                          editable={editable}
+                          onActiveChange={(active) =>
+                            setActivePropertyValueKey(active ? nameCellKey : null)
+                          }
+                          onOpen={onOpenPage}
+                          pageId={row.pageId}
+                          pageSummary={row.page}
+                          showPageIcon={nameColumnShowPageIcon}
+                        />
+                      </DatabaseTableCellContent>
+                    </td>
+                    {showRightInsert ? renderInsertPropertyCell(rightInsertKey) : null}
+                  </Fragment>
+                )
+              }
+
+              if (!property) {
+                return null
+              }
+
               const pageProperty = property.property
               const key = `${row.pageId}:${pageProperty.id}`
               const persistedValue = propertyValuesByKey[key] ?? ""

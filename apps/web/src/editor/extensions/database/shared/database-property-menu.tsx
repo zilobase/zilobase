@@ -20,7 +20,7 @@ import {
   TextWrap,
   Trash2,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, type ButtonHTMLAttributes } from "react"
 
 import {
   AlertDialog,
@@ -98,6 +98,7 @@ export function DatabasePropertyMenu({
   open,
   onToggleGroup,
   onUpdateConfig,
+  triggerDragProps,
   isGrouped = false,
   schemaActionsEnabled = true,
   sourceDatabaseId,
@@ -125,6 +126,10 @@ export function DatabasePropertyMenu({
   sourceDatabaseName?: string
   sourcePropertyId?: string
   type: string
+  triggerDragProps?: Pick<
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    "onClick" | "onPointerDownCapture" | "title"
+  >
   workspaceId?: string | null
 }) {
   const [automationDialogOpen, setAutomationDialogOpen] = useState(false)
@@ -218,8 +223,9 @@ export function DatabasePropertyMenu({
         <DropDrawerTrigger asChild>
           <button
             aria-label={`${name} property options`}
-            className="group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none data-[state=open]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
+            className="database-property-menu-trigger group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none data-[state=open]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
             type="button"
+            {...triggerDragProps}
           >
             <PropertyIcon className="self-center text-muted-foreground" />
             <span className="flex min-w-0 items-center truncate">{name}</span>
@@ -290,18 +296,18 @@ export function DatabasePropertyMenu({
             <span>{wrapContent ? "Unwrap content" : "Wrap content"}</span>
           </DropDrawerItem>
           {schemaActionsEnabled ? (
-          <DropDrawerSub>
-            <DropDrawerSubTrigger>
-              <ChevronsUpDown />
-              <span>Change type</span>
-            </DropDrawerSubTrigger>
-            <DropDrawerSubContent>
-              <DropDrawerItem disabled>
-                <PropertyIcon />
-                <span>{propertyType.label}</span>
-              </DropDrawerItem>
-            </DropDrawerSubContent>
-          </DropDrawerSub>
+            <DropDrawerSub>
+              <DropDrawerSubTrigger>
+                <ChevronsUpDown />
+                <span>Change type</span>
+              </DropDrawerSubTrigger>
+              <DropDrawerSubContent>
+                <DropDrawerItem disabled>
+                  <PropertyIcon />
+                  <span>{propertyType.label}</span>
+                </DropDrawerItem>
+              </DropDrawerSubContent>
+            </DropDrawerSub>
           ) : null}
           {canBasicAutofill && schemaActionsEnabled ? (
             <DropDrawerSub>
@@ -364,10 +370,10 @@ export function DatabasePropertyMenu({
             </DropDrawerSubContent>
           </DropDrawerSub>
           {schemaActionsEnabled ? (
-          <DropDrawerItem disabled>
-            <Pin />
-            <span>Freeze</span>
-          </DropDrawerItem>
+            <DropDrawerItem disabled>
+              <Pin />
+              <span>Freeze</span>
+            </DropDrawerItem>
           ) : null}
           <DropDrawerItem
             onSelect={() => updatePropertyConfig({ hidden: true })}

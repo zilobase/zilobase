@@ -1,15 +1,17 @@
 import {
   ArrowDownUp,
-  GripVertical,
+  ArrowLeftToLine,
   ArrowRightToLine,
   Check,
   ChevronDown,
   FileText,
   Filter,
+  GripVertical,
   Pin,
   Sparkles,
   TextWrap,
 } from "lucide-react"
+import type { ButtonHTMLAttributes } from "react"
 
 import {
   DropDrawer,
@@ -50,6 +52,7 @@ export function DatabaseNamePropertyMenu({
   onUpdateConfig,
   open,
   schemaActionsEnabled = true,
+  triggerDragProps,
 }: {
   config?: unknown
   databaseId: string
@@ -61,6 +64,10 @@ export function DatabaseNamePropertyMenu({
   onUpdateConfig?: (config: DatabaseNameColumnConfig) => void
   open?: boolean
   schemaActionsEnabled?: boolean
+  triggerDragProps?: Pick<
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    "onClick" | "onPointerDownCapture" | "title"
+  >
 }) {
   const updateDatabase = useUpdateDatabase()
   const label = getNameColumnLabel(config)
@@ -104,8 +111,9 @@ export function DatabaseNamePropertyMenu({
       <DropDrawerTrigger asChild>
         <button
           aria-label="Name column options"
-          className="group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none data-[state=open]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
+          className="database-name-menu-trigger group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none data-[state=open]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
           type="button"
+          {...triggerDragProps}
         >
           <span className="self-center text-muted-foreground">
             <NameColumnGlyph />
@@ -224,10 +232,16 @@ export function DatabaseNamePropertyMenu({
         </DropDrawerItem>
         <DropDrawerSeparator />
         {schemaActionsEnabled ? (
-          <DropDrawerItem onSelect={() => onInsertProperty("right")}>
-            <ArrowRightToLine />
-            <span>Insert right</span>
-          </DropDrawerItem>
+          <>
+            <DropDrawerItem onSelect={() => onInsertProperty("left")}>
+              <ArrowLeftToLine />
+              <span>Insert left</span>
+            </DropDrawerItem>
+            <DropDrawerItem onSelect={() => onInsertProperty("right")}>
+              <ArrowRightToLine />
+              <span>Insert right</span>
+            </DropDrawerItem>
+          </>
         ) : null}
       </DropDrawerContent>
     </DropDrawer>
