@@ -5,6 +5,12 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
+  PageSidePaneLayout,
+  usePageSidePane,
+} from "@/contexts/page-side-pane"
+import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
+import { PageEditorPane } from "@/pages/page"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -57,6 +63,8 @@ type HomepageRow = {
   lastVisitedAt: string | null
   metadata: Page["metadata"] | null
   name: string
+  openDatabaseId: string | null
+  openPageId: string
   source: string
   sourcePage: HomepageSourcePage | null
   updatedAt: string
@@ -96,6 +104,17 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
   const workspaceId = useActiveWorkspaceId()
   const { data: pages = [], isLoading } = usePages(workspaceId, {
     deleted: mode === "trash" ? "only" : "active",
+  })
+  const {
+    renderedSidePanePageId,
+    sidePaneAnimatedOpen,
+    sidePaneContentReady,
+    sidePaneDatabaseId,
+  } = usePageSidePane()
+  const { openPage } = useOpenEmbeddedPage({
+    contextPageId: null,
+    databaseId: null,
+    page: null,
   })
   const createPageMutation = useCreatePage()
   const createDatabase = useCreateDatabase()
@@ -232,180 +251,195 @@ export default function DashboardPage({ mode = "home" }: { mode?: DashboardMode 
   }
 
   const openHomepagePage = (pageId: string) => {
-    const separatorIndex = pageId.indexOf(":")
-    const kind = pageId.slice(0, separatorIndex)
-    const id = pageId.slice(separatorIndex + 1)
+    const row = rows.find(
+      (candidate) =>
+        candidate.id === pageId || candidate.openPageId === pageId,
+    )
 
-    if (kind === "database") {
-      void navigate({
-        params: { databaseId: id },
-        search: { view: undefined },
-        to: "/d/$databaseId",
-      })
+    if (row) {
+      openPage(row.openPageId, { databaseId: row.openDatabaseId })
       return
     }
 
-    void navigate({
-      params: { pageId: id },
-      to: "/p/$pageId",
-    })
+    openPage(pageId)
   }
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto bg-background">
-      <section className="animate-in fade-in-0 duration-300">
-        <div className="tiptap-editor px-5 pb-10 pt-12 sm:px-8 md:px-20 lg:px-24">
-          <DatabaseViewProvider
-            value={{
-              ...viewModel,
-              activePropertyValueKey: null,
-              activeViewTabId: activeViewId,
-              addDatabaseProperty: () => {},
-              addDatabaseRow: () => {},
-              addDraggedPageRow: () => {},
-              addKanbanView: () => {},
-              addLinkedDatabaseView: () => {},
-              addTableView: () => {},
-              addTimelineRow: () => {},
-              addTimelineView: () => {},
-              canAddDatabaseProperties: false,
-              canAddDatabaseRows: false,
-              canAddDatabaseViews: false,
-              clearDatabaseFilter: () => updateActiveViewConfig(undefined),
-              clearDatabaseSort: () => void saveDatabaseSorts([]),
-              copyDatabaseViewLink: () => {},
-              createDatabaseFilter: () => {},
-              createDatabaseSort: () => {},
-              databaseConfig: payload.database.config,
-              databaseId: payload.database.id,
-              databaseName: payload.database.name,
-              databaseWorkspaceId: workspaceId ?? undefined,
-              deleteDatabaseView: () => {},
-              draftDatabaseTitle: pageTitle,
-              draftPropertyValues: {},
-              draftViewTitle:
-                homepageViews.find((view) => view.id === activeViewId)?.label ??
-                "Recents",
-              duplicateDatabaseView: () => {},
-              editable: false,
-              fetchNextPage: emptyAsync,
-              filterPickerOpen: false,
-              getDatabasePageDragPayload: () => null,
-              hasDatabasePageDragPayload: () => false,
-              hasNextPage: false,
-              headerMenusEnabled: true,
-              hostDatabaseId: payload.database.id,
-              hostDatabaseName: payload.database.name,
-              hostDatabaseWorkspaceId: workspaceId ?? undefined,
-              hostViews: payload.views,
-              isAddingDatabaseProperty: false,
-              isAddingDatabaseRow: false,
-              isAddingDatabaseView: false,
-              isFetchingNextPage: false,
-              linkedDatabaseViews: [],
-              onOpenPage: openHomepagePage,
-              onShowTitleChange: undefined,
-              options: viewModel.kanbanOptions,
-              workspaceId,
-              removeDatabaseFilter: () => {},
-              removeDatabaseSort: () => {},
-              renameDatabaseProperty: () => {},
-              reorderDatabaseFilters: () => {},
-              saveDatabaseConditionalColors: () => {},
-              saveDatabaseEmoji: () => {},
-              saveDatabaseFilters: () => {},
-              saveDatabasePropertyOrder: () => {},
-              saveDatabaseSorts,
-              saveDatabaseTitle: () => {},
-              saveDatabaseViewTitle: () => {},
-              savePropertyValue: () => {},
-              setActivePropertyValueKey: () => {},
-              setActiveViewId,
-              setDraftDatabaseTitle: () => {},
-              setDraftPropertyValues: () => {},
-              setDraftViewTitle: () => {},
-              setFilterPickerOpen: () => {},
-              setSortPickerOpen: () => {},
-              setViewDateProperty: () => {},
-              setViewGroupProperty,
-              setViewType: () => {},
-              showExpandButton: false,
-              showFilterPill: false,
-              showSortPill: false,
-              showTitle: true,
-              sortPickerOpen: false,
-              toggleFilterPillVisibility: () => {},
-              togglePropertyVisibility: (propertyId) => {
-                void updateDatabasePropertyConfig(propertyId, { hidden: true })
-              },
-              togglePropertyTitles: () => {},
-              toggleSortPillVisibility: () => {},
-              updateDatabaseFilter: () => {},
-              updateDatabasePropertyConfig,
-              updateDatabaseSort: () => {},
-              updateNameColumnConfig,
-              viewTabs: homepageViews.map((view) => ({
-                id: view.id,
-                name: view.label,
-                type: "table",
-              })),
-              views: payload.views,
-            }}
-          >
-            <div className="database-block-shell database-block-shell-full">
-              <div className="database-toolbar-section">
-                <div className="flex min-w-0 items-start gap-3">
-                  <div className="min-w-0 flex-1">
-                    <DatabaseViewToolbar />
+    <PageSidePaneLayout
+      main={
+        <main className="min-h-0 flex-1 overflow-y-auto bg-background">
+          <section className="animate-in fade-in-0 duration-300">
+            <div className="tiptap-editor px-5 pb-10 pt-12 sm:px-8 md:px-20 lg:px-24">
+              <DatabaseViewProvider
+                value={{
+                  ...viewModel,
+                  activePropertyValueKey: null,
+                  activeViewTabId: activeViewId,
+                  addDatabaseProperty: () => {},
+                  addDatabaseRow: () => {},
+                  addDraggedPageRow: () => {},
+                  addKanbanView: () => {},
+                  addLinkedDatabaseView: () => {},
+                  addTableView: () => {},
+                  addTimelineRow: () => {},
+                  addTimelineView: () => {},
+                  canAddDatabaseProperties: false,
+                  canAddDatabaseRows: false,
+                  canAddDatabaseViews: false,
+                  clearDatabaseFilter: () => updateActiveViewConfig(undefined),
+                  clearDatabaseSort: () => void saveDatabaseSorts([]),
+                  copyDatabaseViewLink: () => {},
+                  createDatabaseFilter: () => {},
+                  createDatabaseSort: () => {},
+                  databaseConfig: payload.database.config,
+                  databaseId: payload.database.id,
+                  databaseName: payload.database.name,
+                  databaseWorkspaceId: workspaceId ?? undefined,
+                  deleteDatabaseView: () => {},
+                  draftDatabaseTitle: pageTitle,
+                  draftPropertyValues: {},
+                  draftViewTitle:
+                    homepageViews.find((view) => view.id === activeViewId)
+                      ?.label ?? "Recents",
+                  duplicateDatabaseView: () => {},
+                  editable: false,
+                  fetchNextPage: emptyAsync,
+                  filterPickerOpen: false,
+                  getDatabasePageDragPayload: () => null,
+                  hasDatabasePageDragPayload: () => false,
+                  hasNextPage: false,
+                  headerMenusEnabled: true,
+                  hostDatabaseId: payload.database.id,
+                  hostDatabaseName: payload.database.name,
+                  hostDatabaseWorkspaceId: workspaceId ?? undefined,
+                  hostViews: payload.views,
+                  isAddingDatabaseProperty: false,
+                  isAddingDatabaseRow: false,
+                  isAddingDatabaseView: false,
+                  isFetchingNextPage: false,
+                  linkedDatabaseViews: [],
+                  onOpenPage: openHomepagePage,
+                  onShowTitleChange: undefined,
+                  options: viewModel.kanbanOptions,
+                  workspaceId,
+                  removeDatabaseFilter: () => {},
+                  removeDatabaseSort: () => {},
+                  renameDatabaseProperty: () => {},
+                  reorderDatabaseFilters: () => {},
+                  saveDatabaseConditionalColors: () => {},
+                  saveDatabaseEmoji: () => {},
+                  saveDatabaseFilters: () => {},
+                  saveDatabasePropertyOrder: () => {},
+                  saveDatabaseSorts,
+                  saveDatabaseTitle: () => {},
+                  saveDatabaseViewTitle: () => {},
+                  savePropertyValue: () => {},
+                  setActivePropertyValueKey: () => {},
+                  setActiveViewId,
+                  setDraftDatabaseTitle: () => {},
+                  setDraftPropertyValues: () => {},
+                  setDraftViewTitle: () => {},
+                  setFilterPickerOpen: () => {},
+                  setSortPickerOpen: () => {},
+                  setViewDateProperty: () => {},
+                  setViewGroupProperty,
+                  setViewType: () => {},
+                  showExpandButton: false,
+                  showFilterPill: false,
+                  showSortPill: false,
+                  showTitle: true,
+                  sortPickerOpen: false,
+                  toggleFilterPillVisibility: () => {},
+                  togglePropertyVisibility: (propertyId) => {
+                    void updateDatabasePropertyConfig(propertyId, {
+                      hidden: true,
+                    })
+                  },
+                  togglePropertyTitles: () => {},
+                  toggleSortPillVisibility: () => {},
+                  updateDatabaseFilter: () => {},
+                  updateDatabasePropertyConfig,
+                  updateDatabaseSort: () => {},
+                  updateNameColumnConfig,
+                  viewTabs: homepageViews.map((view) => ({
+                    id: view.id,
+                    name: view.label,
+                    type: "table",
+                  })),
+                  views: payload.views,
+                }}
+              >
+                <div className="database-block-shell database-block-shell-full">
+                  <div className="database-toolbar-section">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <DatabaseViewToolbar />
+                      </div>
+                      {mode === "home" ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              className="database-new-button mt-2 shrink-0"
+                              disabled={!workspaceId || isCreating}
+                              type="button"
+                            >
+                              {isCreating ? (
+                                <Loader2 className="animate-spin" />
+                              ) : (
+                                <Plus />
+                              )}
+                              <span>New</span>
+                              <ChevronDown className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem
+                              onSelect={() => void createStandaloneDatabase()}
+                            >
+                              <Database />
+                              <span>Database</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => void createPage()}
+                            >
+                              <FileText />
+                              <span>Page</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
+                    </div>
                   </div>
-                  {mode === "home" ? (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          className="database-new-button mt-2 shrink-0"
-                          disabled={!workspaceId || isCreating}
-                          type="button"
-                        >
-                          {isCreating ? (
-                            <Loader2 className="animate-spin" />
-                          ) : (
-                            <Plus />
-                          )}
-                          <span>New</span>
-                          <ChevronDown className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44">
-                        <DropdownMenuItem
-                          onSelect={() => void createStandaloneDatabase()}
-                        >
-                          <Database />
-                          <span>Database</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => void createPage()}>
-                          <FileText />
-                          <span>Page</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : null}
+                  <div className="database-scroll-section">
+                    {isLoading ? (
+                      <div className="database-empty-state">
+                        <Loader2 className="animate-spin" />
+                        <span>{emptyLabel}</span>
+                      </div>
+                    ) : (
+                      <DatabaseTableView />
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="database-scroll-section">
-                {isLoading ? (
-                  <div className="database-empty-state">
-                    <Loader2 className="animate-spin" />
-                    <span>{emptyLabel}</span>
-                  </div>
-                ) : (
-                  <DatabaseTableView />
-                )}
-              </div>
+              </DatabaseViewProvider>
             </div>
-          </DatabaseViewProvider>
-        </div>
-      </section>
-    </main>
+          </section>
+        </main>
+      }
+      sidePane={
+        sidePaneContentReady && renderedSidePanePageId ? (
+          <PageEditorPane
+            databaseId={sidePaneDatabaseId}
+            enableComments={false}
+            key={renderedSidePanePageId}
+            onOpenPage={openPage}
+            pageId={renderedSidePanePageId}
+          />
+        ) : null
+      }
+      sidePaneOpen={sidePaneAnimatedOpen}
+      sidePaneVisible={renderedSidePanePageId !== null}
+    />
   )
 }
 
@@ -497,7 +531,7 @@ function buildHomepagePayload({
       page: {
         createdAt: row.createdAt,
         iconKind: row.iconKind,
-        id: row.id,
+        id: row.openPageId,
         metadata: row.metadata,
         name: row.name,
         updatedAt: row.updatedAt,
@@ -568,6 +602,8 @@ function buildHomepageRows(pages: Page[], mode: DashboardMode): HomepageRow[] {
         lastVisitedAt: page.lastVisitedAt ?? null,
         metadata: page.metadata ?? null,
         name: page.name || "Untitled",
+        openDatabaseId: null,
+        openPageId: page.id,
         source: parentKeys.has(`page:${page.id}`)
           ? ""
           : resolveSourcePage(
@@ -619,6 +655,8 @@ function buildHomepageRows(pages: Page[], mode: DashboardMode): HomepageRow[] {
           lastVisitedAt: database.lastVisitedAt ?? null,
           metadata: databaseEmoji ? { emoji: databaseEmoji } : null,
           name: database.name || "Untitled",
+          openDatabaseId: database.id,
+          openPageId: page.id,
           source: sourcePage?.id ?? "",
           sourcePage,
           updatedAt: database.updatedAt,
