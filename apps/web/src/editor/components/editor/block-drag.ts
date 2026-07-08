@@ -326,6 +326,89 @@ export function getBlockDragHandleRect(view: EditorView, target: DragHandleTarge
   }
 }
 
+export function getDatabaseBlockDragImagePlacement(
+  pointerX: number,
+  pointerY: number,
+  blockLeft: number,
+  blockTop: number,
+) {
+  return {
+    offsetX: Math.max(0, pointerX - blockLeft),
+    offsetY: Math.max(0, pointerY - blockTop),
+    paddingLeft: Math.max(0, blockLeft - pointerX),
+  }
+}
+
+function setDatabaseBlockDragImage(event: DragEvent, image: Element) {
+  if (!(image instanceof HTMLElement) || !event.dataTransfer) return false
+
+  const block = image.closest<HTMLElement>(".database-block, .node-databaseBlock") ?? image
+  const rect = block.getBoundingClientRect()
+  if (!rect.width || !rect.height) return false
+
+  const placement = getDatabaseBlockDragImagePlacement(
+    event.clientX,
+    event.clientY,
+    rect.left,
+    rect.top,
+  )
+  const clone = block.cloneNode(true) as HTMLElement
+  const scrollLefts = Array.from(
+    block.querySelectorAll<HTMLElement>(".database-inline-scroll")
+  ).map((element) => element.scrollLeft)
+  const dragImage = document.createElement("div")
+
+  dragImage.className = "tiptap-editor"
+  dragImage.style.position = "fixed"
+  dragImage.style.top = "-10000px"
+  dragImage.style.left = "0"
+  dragImage.style.width = `${rect.width + placement.paddingLeft}px`
+  dragImage.style.height = `${rect.height}px`
+  dragImage.style.pointerEvents = "none"
+  dragImage.style.setProperty("--database-inline-scroll-offset", "0px")
+  dragImage.style.setProperty("--database-inline-scroll-viewport-width", `${rect.width}px`)
+
+  clone.style.margin = "0"
+  clone.style.marginLeft = `${placement.paddingLeft}px`
+  clone.style.width = `${rect.width}px`
+  clone.style.maxWidth = `${rect.width}px`
+  clone.style.overflow = "hidden"
+  clone
+    .querySelectorAll<HTMLElement>(".database-inline-scroll-wrap[data-inline-scroll='true']")
+    .forEach((element) => {
+      element.style.setProperty("--database-inline-scroll-offset", "0px")
+      element.style.setProperty("--database-inline-scroll-viewport-width", `${rect.width}px`)
+    })
+  clone
+    .querySelectorAll<HTMLElement>(".database-inline-scroll")
+    .forEach((element) => {
+      element.style.marginLeft = "0"
+      element.style.width = `${rect.width}px`
+      element.style.maxWidth = `${rect.width}px`
+      element.style.overflow = "hidden"
+    })
+  clone
+    .querySelectorAll<HTMLElement>(".database-inline-scroll-content")
+    .forEach((element) => {
+      element.style.paddingLeft = "0"
+    })
+
+  dragImage.appendChild(clone)
+  document.body.appendChild(dragImage)
+  clone
+    .querySelectorAll<HTMLElement>(".database-inline-scroll")
+    .forEach((element, index) => {
+      element.scrollLeft = scrollLefts[index] ?? 0
+    })
+  event.dataTransfer.setDragImage(
+    dragImage,
+    placement.offsetX,
+    placement.offsetY,
+  )
+  window.requestAnimationFrame(() => dragImage.remove())
+  return true
+}
+
 export function startBlockDrag({
   editorId,
   event,
@@ -355,13 +438,21 @@ export function startBlockDrag({
   activeDrag = payload
   const slice = view.state.selection.content()
   const { dom, text } = view.serializeForClipboard(slice)
+  const isDatabaseBlockDrag = target.node.type.name === "databaseBlock"
   const image = view.nodeDOM(target.pos)
 
   event.dataTransfer.effectAllowed = "copyMove"
   event.dataTransfer.setData(EDITOR_BLOCK_DRAG_MIME, JSON.stringify(payload))
-  event.dataTransfer.setData("text/html", dom.innerHTML)
+  if (!isDatabaseBlockDrag) {
+    event.dataTransfer.setData("text/html", dom.innerHTML)
+  }
   event.dataTransfer.setData("text/plain", text)
-  if (image instanceof Element) event.dataTransfer.setDragImage(image, 0, 0)
+  if (
+    image instanceof Element &&
+    (!isDatabaseBlockDrag || !setDatabaseBlockDragImage(event, image))
+  ) {
+    event.dataTransfer.setDragImage(image, 0, 0)
+  }
 
   view.dragging = { slice, move: !event.ctrlKey }
   return true
