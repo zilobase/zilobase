@@ -3,6 +3,8 @@ import { ThemeProvider } from "next-themes"
 
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { PageEditorCommentsProvider } from "@/components/page-editor-comments"
+import { PageEditorRegistryProvider } from "@/contexts/page-editor-registry"
 import { WebFeaturesProvider } from "@/providers/features-provider"
 import { queryClient } from "@/lib/query-client"
 
@@ -17,7 +19,9 @@ export function AppProviders({ children }: React.PropsWithChildren) {
           disableTransitionOnChange
         >
           <TooltipProvider>
-            {children}
+            <PageEditorRegistryProvider>
+              <PageEditorCommentsProvider>{children}</PageEditorCommentsProvider>
+            </PageEditorRegistryProvider>
             <Toaster />
           </TooltipProvider>
         </ThemeProvider>

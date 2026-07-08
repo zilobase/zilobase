@@ -14,7 +14,6 @@ import {
   ChatSidebarPanel,
   ChatSidebarTrigger,
 } from "@/components/chat-sidebar"
-import { PageEditorRegistryProvider } from "@/contexts/page-editor-registry"
 import {
   usePageSidePaneState,
   PageSidePaneContext,
@@ -28,7 +27,6 @@ import {
   RightSidebarMobilePanels,
   RightSidebars,
 } from "@/components/right-sidebars"
-import { PageEditorCommentsProvider } from "@/components/page-editor-comments"
 
 import {
   getDatabaseId,
@@ -202,118 +200,110 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
     openPagesAs === "sidepanel" && renderedSidePanePageId !== null
 
   return (
-    <PageEditorRegistryProvider>
-      <PageEditorCommentsProvider>
-        <PageSidePaneContext.Provider value={sidePaneContext}>
-          <EmbeddedPageDialogHost
-            contextPageId={hostPageId}
-            databaseId={databaseId}
-            hostPage={hostPage}
-            userSettings={userSettings}
-          />
-          {isSettingsPage ? (
-            <SettingsSidebar />
-          ) : (
-            <AppSidebar />
+    <PageSidePaneContext.Provider value={sidePaneContext}>
+      <EmbeddedPageDialogHost
+        contextPageId={hostPageId}
+        databaseId={databaseId}
+        hostPage={hostPage}
+        userSettings={userSettings}
+      />
+      {isSettingsPage ? (
+        <SettingsSidebar />
+      ) : (
+        <AppSidebar />
+      )}
+      <ResizablePanelGroup
+        className="min-h-0 min-w-0 flex-1 overflow-hidden"
+        orientation="horizontal"
+        style={{ height: "100svh" }}
+      >
+        <ResizablePanel
+          className="min-h-0 min-w-0"
+          defaultSize={getRightSidebarEditorDefaultSize(
+            desktopRightPanelCount,
           )}
-          <ResizablePanelGroup
-            className="min-h-0 min-w-0 flex-1 overflow-hidden"
-            orientation="horizontal"
-            style={{ height: "100svh" }}
-          >
-            <ResizablePanel
-              className="min-h-0 min-w-0"
-              defaultSize={getRightSidebarEditorDefaultSize(
-                desktopRightPanelCount,
-              )}
-              id="app-editor-pane"
-              minSize={getRightSidebarEditorMinSize(desktopRightPanelCount)}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                minHeight: 0,
-                overflow: "hidden",
-              }}
-            >
-              <SidebarInset className="flex h-full min-h-0 flex-col overflow-hidden">
-                <PageSidePaneShell
-                  body={children ?? <Outlet />}
-                  header={
-                    embeddedMobileViewer ? undefined : (
-                      <AppHeader
-                        isSettingsPage={isSettingsPage || isAiPage}
-                        onCloseSidePane={closeSidePane}
-                        pathname={pathname}
-                        renderedSidePanePageId={
-                          showSidePaneLayout
-                            ? renderedSidePanePageId
-                            : null
-                        }
-                        sidePaneAnimatedOpen={
-                          showSidePaneLayout && sidePaneAnimatedOpen
-                        }
-                      />
-                    )
-                  }
-                  open={showSidePaneLayout && sidePaneAnimatedOpen}
-                  visible={showSidePaneLayout}
-                />
-              </SidebarInset>
-            </ResizablePanel>
-            <RightSidebars
-              chatOpen={chatSidebarOpen}
-              chatPanel={
-                <ChatSidebarPanel
-                  databaseId={databaseId}
-                  onClose={() => setChatSidebarOpen(false)}
-                  pageId={pageId}
-                />
-              }
-              discussionsEnabled={discussionsEnabled}
-              discussionsOpen={discussionsSidebarOpen}
-              discussionsPanel={
-                discussionsEnabled ? (
-                  <DiscussionsSidebarPanel
-                    onClose={() => setDiscussionsSidebarOpen(false)}
-                    open={discussionsSidebarOpen}
-                    pageId={pageId}
+          id="app-editor-pane"
+          minSize={getRightSidebarEditorMinSize(desktopRightPanelCount)}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+            overflow: "hidden",
+          }}
+        >
+          <SidebarInset className="flex h-full min-h-0 flex-col overflow-hidden">
+            <PageSidePaneShell
+              body={children ?? <Outlet />}
+              header={
+                embeddedMobileViewer ? undefined : (
+                  <AppHeader
+                    isSettingsPage={isSettingsPage || isAiPage}
+                    onCloseSidePane={closeSidePane}
+                    pathname={pathname}
+                    renderedSidePanePageId={
+                      showSidePaneLayout ? renderedSidePanePageId : null
+                    }
+                    sidePaneAnimatedOpen={
+                      showSidePaneLayout && sidePaneAnimatedOpen
+                    }
                   />
-                ) : undefined
+                )
               }
+              open={showSidePaneLayout && sidePaneAnimatedOpen}
+              visible={showSidePaneLayout}
             />
-          </ResizablePanelGroup>
-          <RightSidebarMobilePanels
-            chatOpen={chatSidebarOpen}
-            chatPanel={
-              <ChatSidebarPanel
-                databaseId={databaseId}
-                onClose={() => setChatSidebarOpen(false)}
+          </SidebarInset>
+        </ResizablePanel>
+        <RightSidebars
+          chatOpen={chatSidebarOpen}
+          chatPanel={
+            <ChatSidebarPanel
+              databaseId={databaseId}
+              onClose={() => setChatSidebarOpen(false)}
+              pageId={pageId}
+            />
+          }
+          discussionsEnabled={discussionsEnabled}
+          discussionsOpen={discussionsSidebarOpen}
+          discussionsPanel={
+            discussionsEnabled ? (
+              <DiscussionsSidebarPanel
+                onClose={() => setDiscussionsSidebarOpen(false)}
+                open={discussionsSidebarOpen}
                 pageId={pageId}
               />
-            }
-            discussionsEnabled={discussionsEnabled}
-            discussionsOpen={discussionsSidebarOpen}
-            discussionsPanel={
-              discussionsEnabled ? (
-                <DiscussionsSidebarPanel
-                  onClose={() => setDiscussionsSidebarOpen(false)}
-                  open={discussionsSidebarOpen}
-                  pageId={pageId}
-                />
-              ) : undefined
-            }
+            ) : undefined
+          }
+        />
+      </ResizablePanelGroup>
+      <RightSidebarMobilePanels
+        chatOpen={chatSidebarOpen}
+        chatPanel={
+          <ChatSidebarPanel
+            databaseId={databaseId}
+            onClose={() => setChatSidebarOpen(false)}
+            pageId={pageId}
           />
-          {chatSidebarOpen ? null : (
-            <ChatSidebarTrigger
-              discussionsSidebarOpen={
-                discussionsEnabled && discussionsSidebarOpen
-              }
-              onOpen={openChatSidebar}
+        }
+        discussionsEnabled={discussionsEnabled}
+        discussionsOpen={discussionsSidebarOpen}
+        discussionsPanel={
+          discussionsEnabled ? (
+            <DiscussionsSidebarPanel
+              onClose={() => setDiscussionsSidebarOpen(false)}
+              open={discussionsSidebarOpen}
+              pageId={pageId}
             />
-          )}
-        </PageSidePaneContext.Provider>
-      </PageEditorCommentsProvider>
-    </PageEditorRegistryProvider>
+          ) : undefined
+        }
+      />
+      {chatSidebarOpen ? null : (
+        <ChatSidebarTrigger
+          discussionsSidebarOpen={discussionsEnabled && discussionsSidebarOpen}
+          onOpen={openChatSidebar}
+        />
+      )}
+    </PageSidePaneContext.Provider>
   )
 }
 
