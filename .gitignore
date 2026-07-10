@@ -13,6 +13,7 @@ dist-ssr
 .vite
 .wrangler
 target
+packages/notelab-cloudflare-adapter
 *.local
 
 # Editor directories and files

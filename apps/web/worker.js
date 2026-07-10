@@ -21,7 +21,7 @@ export default {
     const url = new URL(request.url);
 
     if (isApiRoute(url.pathname)) {
-      return proxyApiRequest(request);
+      return proxyApiRequest(request, env);
     }
 
     if (
@@ -46,11 +46,14 @@ export default {
   },
 };
 
-async function proxyApiRequest(request) {
+async function proxyApiRequest(request, env) {
   const sourceUrl = new URL(request.url);
   const targetPathname = getApiTargetPathname(sourceUrl.pathname);
   const targetUrl = new URL(targetPathname + sourceUrl.search, API_ORIGIN);
-  const response = await fetch(new Request(targetUrl, request));
+  const targetRequest = new Request(targetUrl, request);
+  const response = env.API_SERVICE
+    ? await env.API_SERVICE.fetch(targetRequest)
+    : await fetch(targetRequest);
 
   return rewriteApiResponseCookies(response);
 }

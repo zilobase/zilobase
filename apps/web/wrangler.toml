@@ -6,5 +6,9 @@ routes = [
   { pattern = "app.notelab.io", custom_domain = true }
 ]
 
+services = [
+  { binding = "API_SERVICE", service = "notelab-server" }
+]
+
 [observability]
 enabled = true
