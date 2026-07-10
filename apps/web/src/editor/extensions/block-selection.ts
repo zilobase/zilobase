@@ -52,13 +52,14 @@ const getActiveBlockContentRange = ($pos: ResolvedPos): BlockRange | null => {
 
 const addBlockRange = (
   ranges: Map<string, BlockRange>,
+  node: ProseMirrorNode,
   from: number,
   to: number,
   selectionFrom: number,
   selectionTo: number,
 ) => {
-  const contentFrom = from + 1
-  const contentTo = to - 1
+  const contentFrom = node.isLeaf || node.isAtom ? from : from + 1
+  const contentTo = node.isLeaf || node.isAtom ? to : to - 1
 
   if (contentTo <= selectionFrom || contentFrom >= selectionTo) {
     return
@@ -67,7 +68,7 @@ const addBlockRange = (
   ranges.set(`${from}:${to}`, { from, to })
 }
 
-const createBlockSelectionDecorations = (
+export const getBlockSelectionRanges = (
   doc: ProseMirrorNode,
   selectionFrom: number,
   selectionTo: number,
@@ -81,7 +82,14 @@ const createBlockSelectionDecorations = (
       }
 
       if (node.isBlock) {
-        addBlockRange(ranges, pos, pos + node.nodeSize, selectionFrom, selectionTo)
+        addBlockRange(
+          ranges,
+          node,
+          pos,
+          pos + node.nodeSize,
+          selectionFrom,
+          selectionTo,
+        )
         return false
       }
 
@@ -89,17 +97,39 @@ const createBlockSelectionDecorations = (
     }
 
     if (node.type.name === "listItem") {
-      addBlockRange(ranges, pos, pos + node.nodeSize, selectionFrom, selectionTo)
+      addBlockRange(
+        ranges,
+        node,
+        pos,
+        pos + node.nodeSize,
+        selectionFrom,
+        selectionTo,
+      )
       return false
     }
 
     if (node.type.name === "taskItem") {
-      addBlockRange(ranges, pos, pos + node.nodeSize, selectionFrom, selectionTo)
+      addBlockRange(
+        ranges,
+        node,
+        pos,
+        pos + node.nodeSize,
+        selectionFrom,
+        selectionTo,
+      )
       return false
     }
   })
 
-  return [...ranges.values()].map((range) =>
+  return [...ranges.values()]
+}
+
+const createBlockSelectionDecorations = (
+  doc: ProseMirrorNode,
+  selectionFrom: number,
+  selectionTo: number,
+) => {
+  return getBlockSelectionRanges(doc, selectionFrom, selectionTo).map((range) =>
     Decoration.node(range.from, range.to, {
       class: "editor-block-selection",
     }),
