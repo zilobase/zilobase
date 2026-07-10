@@ -62,6 +62,16 @@ cp .env.selfhost.example .env
 docker compose up -d --build
 ```
 
+If you already started the stack once before creating `.env`, remove the old
+data volumes before switching credentials, or keep the original default
+passwords in `.env`. Otherwise Postgres and MinIO will keep their old persisted
+credentials while the app starts with new ones.
+
+```sh
+docker compose down -v
+docker compose up -d --build
+```
+
 Read the self-hosting guide:
 
 - [Self-hosting overview](https://docs.notelab.io/self-hosting)
