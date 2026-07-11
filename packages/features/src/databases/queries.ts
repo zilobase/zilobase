@@ -5,7 +5,9 @@ import type { ApiFetcher } from "../context"
 export type DatabaseRecord = {
   id: string
   workspaceId: string
-  pageId: string
+  pageId: string | null
+  accessLevel?: "view" | "edit" | "full" | null
+  createdById?: string | null
   name: string
   config?: unknown
   isFavorite?: boolean
@@ -124,14 +126,60 @@ export type DatabasePayload = {
   values: PagePropertyValue[]
 }
 
+export type DatabaseAccessRule = {
+  id: string
+  workspaceId: string
+  databaseId: string
+  targetType: "public" | "user" | "team"
+  targetId: string
+  accessLevel: "view" | "edit" | "full"
+  createdAt: string
+  updatedAt: string
+}
+
+export type DatabaseAccessPayload = { access: DatabaseAccessRule[] }
+
+export const databaseAccessQueryKey = (
+  databaseId: string | null | undefined,
+) => ["database", databaseId ?? "none", "access"] as const
+
+export const databaseAccessQueryOptions = (
+  apiFetch: ApiFetcher,
+  databaseId: string | null | undefined,
+) =>
+  queryOptions({
+    queryKey: databaseAccessQueryKey(databaseId),
+    enabled: Boolean(databaseId),
+    queryFn: async ({ signal }) => {
+      if (!databaseId) return { access: [] }
+      try {
+        return await apiFetch<DatabaseAccessPayload>(
+          `/databases/${databaseId}/access`,
+          { method: "GET", signal },
+        )
+      } catch (error) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "status" in error &&
+          error.status === 403
+        ) {
+          return { access: [] }
+        }
+        throw error
+      }
+    },
+  })
+
 export const databaseQueryKey = (
   databaseId: string | null | undefined,
-  options?: { schemaOnly?: boolean },
+  options?: { includeDeleted?: boolean; schemaOnly?: boolean },
 ) =>
   [
     "database",
     databaseId ?? "none",
     options?.schemaOnly ? "schema" : "full",
+    options?.includeDeleted ? "include-deleted" : "active-only",
   ] as const
 
 export const databaseRootQueryKey = () => ["database"] as const
@@ -143,7 +191,7 @@ export const databasePayloadRootQueryKey = (
 export const databaseQueryOptions = (
   apiFetch: ApiFetcher,
   databaseId: string | null | undefined,
-  options?: { schemaOnly?: boolean },
+  options?: { includeDeleted?: boolean; schemaOnly?: boolean },
 ) =>
   queryOptions({
     queryKey: databaseQueryKey(databaseId, options),
@@ -153,11 +201,21 @@ export const databaseQueryOptions = (
         throw new Error("databaseId is required")
       }
 
-      const params = options?.schemaOnly ? "?schemaOnly=1" : ""
+      const params = new URLSearchParams()
+
+      if (options?.schemaOnly) {
+        params.set("schemaOnly", "1")
+      }
+
+      if (options?.includeDeleted) {
+        params.set("includeDeleted", "1")
+      }
+
+      const queryString = params.toString()
 
       try {
         return await apiFetch<DatabasePayload>(
-          `/databases/${databaseId}${params}`,
+          `/databases/${databaseId}${queryString ? `?${queryString}` : ""}`,
           {
             method: "GET",
             signal,

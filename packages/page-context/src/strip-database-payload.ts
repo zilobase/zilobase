@@ -19,7 +19,7 @@ type DatabasePayloadLike = {
   database: {
     id: string
     name: string
-    pageId: string
+    pageId: string | null
     config?: unknown
   }
   properties: DatabaseContextPayload["properties"]

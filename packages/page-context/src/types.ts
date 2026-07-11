@@ -51,7 +51,7 @@ export type DatabaseContextPayload = {
   database: {
     id: string
     name: string
-    pageId: string
+    pageId: string | null
     config?: unknown
   }
   properties: DatabasePropertySchema[]
@@ -60,9 +60,6 @@ export type DatabaseContextPayload = {
   rows: DatabaseRowContext[]
   values: DatabaseValueContext[]
 }
-
-/** @deprecated Use DatabaseContextPayload */
-export type DatabaseSchemaPayload = DatabaseContextPayload
 
 export type PageDatabaseContext = {
   schema: DatabaseContextPayload

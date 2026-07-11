@@ -1,30 +1,30 @@
-import { useMemo } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMemo } from "react";
+import { type QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 
-import { useNotelabFeatures } from "../context"
-import { useDatabase } from "../databases/hooks"
+import { useNotelabFeatures } from "../context";
+import { useDatabase } from "../databases/hooks";
 import {
   invalidateDeletedItems,
+  invalidateRestoredItems,
   setPageDetailCache,
-} from "../item-action-cache"
+} from "../item-action-cache";
 import {
   buildPagePropertiesPayloadFromDatabase,
   findDatabaseIdForRowPage,
   patchDatabaseCachePage,
   patchDatabaseCachePagePropertyValues,
-} from "../databases/row-page-properties"
-import { useDatabaseIdForRowPage } from "../databases/use-database-id-for-row-page"
+} from "../databases/row-page-properties";
+import { useDatabaseIdForRowPage } from "../databases/use-database-id-for-row-page";
 import {
   defaultUserSettings,
   userSettingsQueryKey,
   type UserSettings,
-} from "../user-settings/queries"
-import type { NavItemKind } from "./item-relationships"
+} from "../user-settings/queries";
+import type { NavItemKind } from "./item-relationships";
 import {
   pageQueryKey,
   pageQueryOptions,
   getPageFromDetail,
-  readParentItemId,
   pageAccessQueryKey,
   pageAccessQueryOptions,
   pageAccessTargetsQueryOptions,
@@ -46,218 +46,225 @@ import {
   type AccessTargetType,
   type PagesDeletedFilter,
   type Page,
+  type PageNavigationPayload,
   type PageCommentsPayload,
   type PageCommentMessage,
   type PageMetadata,
   type PagePropertiesPayload,
-} from "./queries"
+} from "./queries";
 import {
   applyPageFavoriteToNav,
   applyItemVisitToNav,
   applyNavDelta,
   type NavDelta,
-} from "./nav-delta"
+} from "./nav-delta";
 
 type CreatePageInput = {
-  content?: unknown
-  metadata?: PageMetadata
-  workspaceId: string
-  name?: string
-  emoji?: string
-  parentItemId?: string
-}
+  content?: unknown;
+  metadata?: PageMetadata;
+  workspaceId: string;
+  name?: string;
+  emoji?: string;
+  parentItemId?: string;
+};
 
 type CreatePageResponse = {
-  navDelta?: NavDelta
-  page: Page
-}
+  navDelta?: NavDelta;
+  page: Page;
+};
 
 type CreatedPageResult = Page & {
-  navDelta?: NavDelta
-}
+  navDelta?: NavDelta;
+};
 
 type UpdatePageInput = {
-  id: string
-  content?: unknown
-  name?: string
-  metadata?: PageMetadata
-}
+  id: string;
+  content?: unknown;
+  name?: string;
+  metadata?: PageMetadata;
+};
 
 type UpdatePageResponse =
   | {
-      page: Page
+      page: Page;
     }
   | {
-      page: Pick<Page, "id" | "updatedAt">
-    }
+      page: Pick<Page, "id" | "updatedAt">;
+    };
 
 type UpdatePagePropertyValueInput = {
-  propertyId: string
-  value: unknown
-  pageId: string
-}
+  propertyId: string;
+  value: unknown;
+  pageId: string;
+};
 
 type CreatePageCommentInput = {
-  body: string
-  pageId: string
-}
+  body: string;
+  pageId: string;
+};
 
 type UpdatePageCommentInput = {
-  body: string
-  messageId: string
-  pageId: string
-}
+  body: string;
+  messageId: string;
+  pageId: string;
+};
 
 type DeletePageCommentInput = {
-  messageId: string
-  pageId: string
-}
+  messageId: string;
+  pageId: string;
+};
 
 type UpdatePageCommentReactionInput = {
-  emoji: string
-  messageId: string
-  pageId: string
-}
+  emoji: string;
+  messageId: string;
+  pageId: string;
+};
 
 type ResolvePageCommentThreadInput = {
-  pageId: string
-  threadId?: string
-}
+  pageId: string;
+  threadId?: string;
+};
 
 type UpsertPageAccessInput = {
-  accessLevel: AccessLevel
-  targetId: string
-  targetType: AccessTargetType
-  pageId: string
-}
+  accessLevel: AccessLevel;
+  targetId: string;
+  targetType: AccessTargetType;
+  pageId: string;
+};
 
 type SetPagePublishedInput = {
-  isPublished: boolean
-  pageId: string
-}
+  isPublished: boolean;
+  pageId: string;
+};
 
 type SetPageFavoriteInput = {
-  isFavorite: boolean
-  pageId: string
-}
+  isFavorite: boolean;
+  pageId: string;
+};
 
 type RecordItemVisitInput = {
-  itemId: string
-  itemKind: "database" | "page"
-  workspaceId: string
-}
+  itemId: string;
+  itemKind: "database" | "page";
+  workspaceId: string;
+};
 
 export function usePages(
   workspaceId: string | null | undefined,
   options?: { deleted?: PagesDeletedFilter; enabled?: boolean },
 ) {
-  const { apiFetch } = useNotelabFeatures()
+  const { apiFetch } = useNotelabFeatures();
 
   return useQuery({
     ...pagesQueryOptions(apiFetch, workspaceId, {
       deleted: options?.deleted,
     }),
-    enabled:
-      Boolean(workspaceId) && (options?.enabled ?? true),
-  })
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
+    select: (navigation) => navigation.pages,
+  });
 }
 
-export function useNotelabAiPages(
+export function usePageNavigation(
   workspaceId: string | null | undefined,
+  options?: { deleted?: PagesDeletedFilter; enabled?: boolean },
 ) {
-  const { apiFetch } = useNotelabFeatures()
+  const { apiFetch } = useNotelabFeatures();
 
-  return useQuery(notelabAiPagesQueryOptions(apiFetch, workspaceId))
+  return useQuery({
+    ...pagesQueryOptions(apiFetch, workspaceId, {
+      deleted: options?.deleted,
+    }),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
+  });
+}
+
+export function useNotelabAiPages(workspaceId: string | null | undefined) {
+  const { apiFetch } = useNotelabFeatures();
+
+  return useQuery(notelabAiPagesQueryOptions(apiFetch, workspaceId));
 }
 
 type PageQueryHookOptions = {
-  refetchOnMount?: boolean
-}
+  refetchOnMount?: boolean;
+};
 
 export function usePage(
   pageId: string | null | undefined,
   options?: PageQueryHookOptions,
 ) {
-  const { apiFetch } = useNotelabFeatures()
+  const { apiFetch } = useNotelabFeatures();
 
   return useQuery({
     ...pageQueryOptions(apiFetch, pageId),
     refetchOnMount: options?.refetchOnMount,
     select: (detail) => getPageFromDetail(detail),
-  })
+  });
 }
 
 export function usePageAccessLevel(
   pageId: string | null | undefined,
   options?: PageQueryHookOptions,
 ) {
-  const { apiFetch } = useNotelabFeatures()
+  const { apiFetch } = useNotelabFeatures();
 
   return useQuery({
     ...pageQueryOptions(apiFetch, pageId),
     refetchOnMount: options?.refetchOnMount,
     select: (detail) => detail?.accessLevel ?? null,
-  })
+  });
 }
 
 export function usePageAccess(pageId: string | null | undefined) {
-  const { apiFetch } = useNotelabFeatures()
+  const { apiFetch } = useNotelabFeatures();
 
-  return useQuery(pageAccessQueryOptions(apiFetch, pageId))
+  return useQuery(pageAccessQueryOptions(apiFetch, pageId));
 }
 
-export function usePageAccessTargets(
-  workspaceId: string | null | undefined,
-) {
-  const { apiFetch } = useNotelabFeatures()
+export function usePageAccessTargets(workspaceId: string | null | undefined) {
+  const { apiFetch } = useNotelabFeatures();
 
-  return useQuery(pageAccessTargetsQueryOptions(apiFetch, workspaceId))
+  return useQuery(pageAccessTargetsQueryOptions(apiFetch, workspaceId));
 }
 
 export function usePagePersonAccessTargets(
   pageId: string | null | undefined,
   options?: { enabled?: boolean },
 ) {
-  const { apiFetch } = useNotelabFeatures()
+  const { apiFetch } = useNotelabFeatures();
 
   return useQuery({
     ...pagePersonAccessTargetsQueryOptions(apiFetch, pageId),
-    enabled:
-      Boolean(pageId) && (options?.enabled ?? true),
-  })
+    enabled: Boolean(pageId) && (options?.enabled ?? true),
+  });
 }
 
 type PagePropertiesOptions = {
-  databaseId?: string | null
-}
+  databaseId?: string | null;
+};
 
 export function usePageProperties(
   pageId: string | null | undefined,
   options?: PagePropertiesOptions,
 ) {
-  const { apiFetch } = useNotelabFeatures()
+  const { apiFetch } = useNotelabFeatures();
   const resolvedDatabaseId = useDatabaseIdForRowPage(
     pageId,
     options?.databaseId,
-  )
-  const databaseQuery = useDatabase(resolvedDatabaseId)
+  );
+  const databaseQuery = useDatabase(resolvedDatabaseId);
   const apiQuery = useQuery({
     ...pagePropertiesQueryOptions(apiFetch, pageId),
     enabled: Boolean(pageId) && !resolvedDatabaseId,
-  })
+  });
   const derivedPayload = useMemo(() => {
     if (!resolvedDatabaseId || !databaseQuery.data || !pageId) {
-      return undefined
+      return undefined;
     }
 
-    return buildPagePropertiesPayloadFromDatabase(
-      databaseQuery.data,
-      pageId,
-    )
-  }, [databaseQuery.data, resolvedDatabaseId, pageId])
+    return buildPagePropertiesPayloadFromDatabase(databaseQuery.data, pageId);
+  }, [databaseQuery.data, resolvedDatabaseId, pageId]);
 
   if (!resolvedDatabaseId) {
-    return apiQuery
+    return apiQuery;
   }
 
   return {
@@ -268,7 +275,7 @@ export function usePageProperties(
     isError: databaseQuery.isError,
     error: databaseQuery.error,
     refetch: databaseQuery.refetch,
-  }
+  };
 }
 
 export function usePageComments(
@@ -276,90 +283,152 @@ export function usePageComments(
   threadIdOrEnabled?: string | null | boolean,
   enabled = true,
 ) {
-  const { apiFetch } = useNotelabFeatures()
+  const { apiFetch } = useNotelabFeatures();
 
-  let threadId: string | null | undefined
-  let isEnabled = enabled
+  let threadId: string | null | undefined;
+  let isEnabled = enabled;
 
   if (typeof threadIdOrEnabled === "boolean") {
-    isEnabled = threadIdOrEnabled
-    threadId = undefined
+    isEnabled = threadIdOrEnabled;
+    threadId = undefined;
   } else if (threadIdOrEnabled !== undefined) {
-    threadId = threadIdOrEnabled
+    threadId = threadIdOrEnabled;
   }
 
-  return useQuery(pageCommentsQueryOptions(apiFetch, pageId, threadId, isEnabled))
+  return useQuery(
+    pageCommentsQueryOptions(apiFetch, pageId, threadId, isEnabled),
+  );
 }
 
 export function usePageThreads(
   pageId: string | null | undefined,
   enabled = true,
 ) {
-  const { apiFetch } = useNotelabFeatures()
+  const { apiFetch } = useNotelabFeatures();
 
-  return useQuery(pageThreadsQueryOptions(apiFetch, pageId, enabled))
+  return useQuery(pageThreadsQueryOptions(apiFetch, pageId, enabled));
 }
 
 function updateCommentReaction(
-  payload: PageCommentsPayload | undefined,
+  payload: PageCommentsPayload,
   messageId: string,
   emoji: string,
   delta: 1 | -1,
 ) {
-  if (!payload) {
-    return payload
-  }
-
   return {
     ...payload,
     comments: payload.comments.map((comment) => {
       if (comment.id !== messageId) {
-        return comment
+        return comment;
       }
 
-      const reactions = [...(comment.reactions ?? [])]
-      const index = reactions.findIndex((reaction) => reaction.emoji === emoji)
-      const current = index >= 0
-        ? reactions[index]
-        : { count: 0, emoji, reactedByMe: false }
-      const nextCount = Math.max(0, current.count + delta)
+      const reactions = [...(comment.reactions ?? [])];
+      const index = reactions.findIndex((reaction) => reaction.emoji === emoji);
+      const current =
+        index >= 0 ? reactions[index] : { count: 0, emoji, reactedByMe: false };
+      const nextCount = Math.max(0, current.count + delta);
       const nextReaction = {
         ...current,
         count: nextCount,
         reactedByMe: delta > 0,
-      }
+      };
 
       if (nextCount === 0) {
         if (index >= 0) {
-          reactions.splice(index, 1)
+          reactions.splice(index, 1);
         }
       } else if (index >= 0) {
-        reactions[index] = nextReaction
+        reactions[index] = nextReaction;
       } else {
-        reactions.push(nextReaction)
+        reactions.push(nextReaction);
       }
 
-      return { ...comment, reactions }
+      return { ...comment, reactions };
     }),
+  };
+}
+
+type CommentCacheSnapshot = Array<
+  readonly [readonly unknown[], PageCommentsPayload | undefined]
+>;
+
+function pageCommentsQueryPrefix(pageId: string) {
+  return ["page", pageId, "comments"] as const;
+}
+
+function getCommentCacheSnapshot(queryClient: QueryClient, pageId: string) {
+  return queryClient.getQueriesData<PageCommentsPayload>({
+    queryKey: pageCommentsQueryPrefix(pageId),
+  }) as CommentCacheSnapshot;
+}
+
+function restoreCommentCacheSnapshot(
+  queryClient: QueryClient,
+  snapshot: CommentCacheSnapshot,
+) {
+  for (const [queryKey, payload] of snapshot) {
+    queryClient.setQueryData(queryKey, payload);
+  }
+}
+
+function updateCachedCommentPayloads(
+  queryClient: QueryClient,
+  pageId: string,
+  update: (payload: PageCommentsPayload) => PageCommentsPayload,
+) {
+  queryClient.setQueriesData<PageCommentsPayload>(
+    { queryKey: pageCommentsQueryPrefix(pageId) },
+    (payload) => (payload ? update(payload) : payload),
+  );
+}
+
+function syncCommentPayload(
+  queryClient: QueryClient,
+  pageId: string,
+  payload: PageCommentsPayload,
+  options?: { setActive?: boolean },
+) {
+  const threadId = payload.thread?.id;
+
+  if (!threadId) {
+    return;
+  }
+
+  queryClient.setQueryData(pageCommentsQueryKey(pageId, threadId), payload);
+  updateCachedCommentPayloads(queryClient, pageId, (current) =>
+    current.thread?.id === threadId ? payload : current,
+  );
+
+  const activePayload = queryClient.getQueryData<PageCommentsPayload>(
+    pageCommentsQueryKey(pageId),
+  );
+
+  if (options?.setActive || activePayload?.thread?.id === threadId) {
+    queryClient.setQueryData(pageCommentsQueryKey(pageId), payload);
   }
 }
 
 function applyPageFavoriteToList(
-  pages: Page[] | undefined,
+  navigation: PageNavigationPayload | undefined,
   pageId: string,
   isFavorite: boolean,
 ) {
-  return pages?.map((page) =>
-    page.id === pageId ? { ...page, isFavorite } : page,
-  )
+  return navigation
+    ? {
+        ...navigation,
+        pages: navigation.pages.map((page) =>
+          page.id === pageId ? { ...page, isFavorite } : page,
+        ),
+      }
+    : navigation;
 }
 
 function isPageNavQueryKey(queryKey: readonly unknown[]) {
-  return queryKey[0] === "pages" && queryKey[2] === "nav"
+  return queryKey[0] === "pages" && queryKey[2] === "nav";
 }
 
 export function useCreatePage() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({
@@ -372,22 +441,17 @@ export function useCreatePage() {
     }: CreatePageInput) => {
       const userSettings =
         queryClient.getQueryData<UserSettings>(userSettingsQueryKey) ??
-        defaultUserSettings
+        defaultUserSettings;
       const metadata: PageMetadata = {
         embeddedItemsOpenAs: userSettings.embeddedItemsOpenAs,
         fullWidth: Boolean(userSettings.pageFullWidth),
         useUserEmbeddedItemsPreference: true,
         useUserFullWidthPreference: true,
         ...(inputMetadata ?? {}),
-      }
+      };
 
       if (emoji) {
-        metadata.emoji = emoji
-      }
-
-      if (parentItemId) {
-        metadata.parentItemId = parentItemId
-        metadata.parentItemKind = "page"
+        metadata.emoji = emoji;
       }
 
       const result = await apiFetch<CreatePageResponse>("/pages", {
@@ -399,24 +463,30 @@ export function useCreatePage() {
           url: "#",
           content,
           metadata,
+          parentItemId,
         }),
-      })
+      });
 
       return {
         ...result.page,
         navDelta: result.navDelta,
-      } satisfies CreatedPageResult
+      } satisfies CreatedPageResult;
     },
     onSuccess: async (page) => {
-      const { navDelta, ...pageRecord } = page
-      const parentItemId = readParentItemId(pageRecord.metadata)
+      const { navDelta, ...pageRecord } = page;
+      const parentItemId = navDelta?.upsertPlacements?.find(
+        (placement) =>
+          placement.itemKind === "page" &&
+          placement.itemId === pageRecord.id &&
+          placement.placementKind === "primary",
+      )?.parentId;
       const parentDetail = parentItemId
         ? queryClient.getQueryData<PageDetail | null>(
             pageQueryKey(parentItemId),
           )
-        : null
+        : null;
       const inheritedAccessLevel =
-        parentDetail?.accessLevel ?? ("full" as AccessLevel)
+        parentDetail?.accessLevel ?? ("full" as AccessLevel);
 
       queryClient.setQueryData<PageDetail | null>(
         pageQueryKey(pageRecord.id),
@@ -425,33 +495,28 @@ export function useCreatePage() {
           page: {
             ...(current?.page ?? {}),
             ...pageRecord,
-            isFavorite:
-              pageRecord.isFavorite ?? current?.page.isFavorite,
-            isTeamspace:
-              pageRecord.isTeamspace ?? current?.page.isTeamspace,
+            isFavorite: pageRecord.isFavorite ?? current?.page.isFavorite,
+            isTeamspace: pageRecord.isTeamspace ?? current?.page.isTeamspace,
           },
         }),
-      )
-      queryClient.setQueriesData<Page[] | undefined>(
+      );
+      queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesNavRootQueryKey(pageRecord.workspaceId) },
         (current) =>
-          applyNavDelta(
-            current,
-            navDelta ?? { upsertPages: [pageRecord] },
-          ),
-      )
+          applyNavDelta(current, navDelta ?? { upsertPages: [pageRecord] }),
+      );
 
       if (pageRecord.metadata?.notelabai) {
         await queryClient.invalidateQueries({
           queryKey: notelabAiPagesQueryKey(pageRecord.workspaceId),
-        })
+        });
       }
     },
-  })
+  });
 }
 
 export function useUpsertPageAccess() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({
@@ -466,9 +531,9 @@ export function useUpsertPageAccess() {
           method: "PUT",
           body: JSON.stringify({ accessLevel, targetId, targetType }),
         },
-      )
+      );
 
-      return result.access
+      return result.access;
     },
     onSuccess: async (_access, variables) => {
       await Promise.all([
@@ -478,26 +543,25 @@ export function useUpsertPageAccess() {
         queryClient.invalidateQueries({
           queryKey: pageQueryKey(variables.pageId),
         }),
-      ])
+      ]);
     },
-  })
+  });
 }
 
 export function useDeletePageAccess() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({
       ruleId,
       pageId,
     }: {
-      ruleId: string
-      pageId: string
+      ruleId: string;
+      pageId: string;
     }) =>
-      apiFetch<{ access: unknown }>(
-        `/pages/${pageId}/access/${ruleId}`,
-        { method: "DELETE" },
-      ),
+      apiFetch<{ access: unknown }>(`/pages/${pageId}/access/${ruleId}`, {
+        method: "DELETE",
+      }),
     onSuccess: async (_access, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({
@@ -506,19 +570,16 @@ export function useDeletePageAccess() {
         queryClient.invalidateQueries({
           queryKey: pageQueryKey(variables.pageId),
         }),
-      ])
+      ]);
     },
-  })
+  });
 }
 
 export function useSetPagePublished() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
-    mutationFn: async ({
-      isPublished,
-      pageId,
-    }: SetPagePublishedInput) => {
+    mutationFn: async ({ isPublished, pageId }: SetPagePublishedInput) => {
       if (isPublished) {
         const result = await apiFetch<{ access: unknown }>(
           `/pages/${pageId}/access`,
@@ -530,15 +591,14 @@ export function useSetPagePublished() {
               targetType: "public",
             }),
           },
-        )
+        );
 
-        return result.access
+        return result.access;
       }
 
-      return apiFetch<{ access: unknown }>(
-        `/pages/${pageId}/access/public`,
-        { method: "DELETE" },
-      )
+      return apiFetch<{ access: unknown }>(`/pages/${pageId}/access/public`, {
+        method: "DELETE",
+      });
     },
     onSuccess: async (_access, variables) => {
       await Promise.all([
@@ -548,26 +608,22 @@ export function useSetPagePublished() {
         queryClient.invalidateQueries({
           queryKey: pageQueryKey(variables.pageId),
         }),
-      ])
+      ]);
     },
-  })
+  });
 }
 
 type EmbedPageItemInput = {
-  hostPageId: string
-  itemId: string
-  kind: NavItemKind
-}
+  hostPageId: string;
+  itemId: string;
+  kind: NavItemKind;
+};
 
 export function useEmbedPageItem() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
-    mutationFn: async ({
-      hostPageId,
-      itemId,
-      kind,
-    }: EmbedPageItemInput) =>
+    mutationFn: async ({ hostPageId, itemId, kind }: EmbedPageItemInput) =>
       apiFetch<{ action: string; host: Page }>(
         `/pages/${hostPageId}/embed-item`,
         {
@@ -578,20 +634,16 @@ export function useEmbedPageItem() {
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({
         queryKey: pagesQueryKey(result.host.workspaceId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useRemovePageEmbed() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
-    mutationFn: async ({
-      hostPageId,
-      itemId,
-      kind,
-    }: EmbedPageItemInput) =>
+    mutationFn: async ({ hostPageId, itemId, kind }: EmbedPageItemInput) =>
       apiFetch<{ action: string }>(`/pages/${hostPageId}/embed-item`, {
         method: "DELETE",
         body: JSON.stringify({ itemId, kind }),
@@ -599,29 +651,29 @@ export function useRemovePageEmbed() {
     onSuccess: async (_result, variables) => {
       const host = getPageFromDetail(
         queryClient.getQueryData(pageQueryKey(variables.hostPageId)),
-      )
+      );
 
       if (host) {
         await queryClient.invalidateQueries({
           queryKey: pagesQueryKey(host.workspaceId),
-        })
+        });
       }
     },
-  })
+  });
 }
 
 export function useUpdatePage() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({ id, ...patch }: UpdatePageInput) => {
       const isContentOnlyPatch =
         patch.content !== undefined &&
         patch.name === undefined &&
-        patch.metadata === undefined
+        patch.metadata === undefined;
       const current = queryClient.getQueryData<PageDetail | null>(
         pageQueryKey(id),
-      )
+      );
       const result = await apiFetch<UpdatePageResponse>(
         isContentOnlyPatch ? `/pages/${id}/content` : `/pages/${id}`,
         {
@@ -635,25 +687,26 @@ export function useUpdatePage() {
               : patch,
           ),
         },
-      )
+      );
 
-      return result.page
+      return result.page;
     },
     onMutate: async (variables) => {
       await Promise.all([
         queryClient.cancelQueries({ queryKey: pageQueryKey(variables.id) }),
         queryClient.cancelQueries({ queryKey: pagesRootQueryKey() }),
-      ])
+      ]);
       const previous = queryClient.getQueryData<PageDetail | null>(
         pageQueryKey(variables.id),
-      )
-      const currentPage = previous?.page
-      const previousNavQueries = queryClient.getQueriesData<Page[]>({
-        queryKey: pagesRootQueryKey(),
-      })
+      );
+      const currentPage = previous?.page;
+      const previousNavQueries =
+        queryClient.getQueriesData<PageNavigationPayload>({
+          queryKey: pagesRootQueryKey(),
+        });
 
       if (!currentPage) {
-        return { previous, previousNavQueries }
+        return { previous, previousNavQueries };
       }
 
       const optimisticPage: Page = {
@@ -668,7 +721,7 @@ export function useUpdatePage() {
         ...(variables.name !== undefined || variables.metadata !== undefined
           ? { updatedAt: new Date().toISOString() }
           : {}),
-      }
+      };
 
       queryClient.setQueryData<PageDetail | null>(
         pageQueryKey(variables.id),
@@ -676,35 +729,31 @@ export function useUpdatePage() {
           accessLevel: previous.accessLevel ?? null,
           page: optimisticPage,
         }),
-      )
-      patchDatabaseCachePage(queryClient, optimisticPage)
-      queryClient.setQueriesData<Page[] | undefined>(
+      );
+      patchDatabaseCachePage(queryClient, optimisticPage);
+      queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesNavRootQueryKey(optimisticPage.workspaceId) },
-        (current) =>
-          applyNavDelta(current, { upsertPages: [optimisticPage] }),
-      )
+        (current) => applyNavDelta(current, { upsertPages: [optimisticPage] }),
+      );
 
-      return { previous, previousNavQueries }
+      return { previous, previousNavQueries };
     },
     onError: (_error, variables, context) => {
       if (!context?.previous) {
-        return
+        return;
       }
 
-      queryClient.setQueryData(
-        pageQueryKey(variables.id),
-        context.previous,
-      )
-      patchDatabaseCachePage(queryClient, context.previous.page)
+      queryClient.setQueryData(pageQueryKey(variables.id), context.previous);
+      patchDatabaseCachePage(queryClient, context.previous.page);
 
       for (const [queryKey, data] of context.previousNavQueries) {
-        queryClient.setQueryData(queryKey, data)
+        queryClient.setQueryData(queryKey, data);
       }
     },
     onSuccess: async (pagePatch, variables) => {
       const current = queryClient.getQueryData<PageDetail | null>(
         pageQueryKey(pagePatch.id),
-      )
+      );
       const page =
         "content" in pagePatch
           ? pagePatch
@@ -716,13 +765,13 @@ export function useUpdatePage() {
                   ? { content: variables.content }
                   : {}),
               }
-            : null
+            : null;
 
       if (!page) {
         await queryClient.invalidateQueries({
           queryKey: pageQueryKey(pagePatch.id),
-        })
-        return
+        });
+        return;
       }
 
       queryClient.setQueryData<PageDetail | null>(
@@ -731,49 +780,48 @@ export function useUpdatePage() {
           accessLevel: current?.accessLevel ?? "full",
           page,
         }),
-      )
-      const rowPageDatabaseIds = patchDatabaseCachePage(
-        queryClient,
-        page,
-      )
+      );
+      const rowPageDatabaseIds = patchDatabaseCachePage(queryClient, page);
 
       const navFieldsChanged =
-        variables.name !== undefined || variables.metadata !== undefined
+        variables.name !== undefined || variables.metadata !== undefined;
 
       if (!navFieldsChanged) {
-        return
+        return;
       }
 
       if (rowPageDatabaseIds.length > 0) {
-        return
+        return;
       }
 
-      queryClient.setQueriesData<Page[] | undefined>(
+      queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesNavRootQueryKey(page.workspaceId) },
         (current) => applyNavDelta(current, { upsertPages: [page] }),
-      )
+      );
 
       if (variables.metadata?.notelabai !== undefined) {
         await queryClient.invalidateQueries({
           queryKey: notelabAiPagesQueryKey(page.workspaceId),
-        })
+        });
       }
     },
-  })
+  });
 }
 
 type DeletePageResult = {
-  deletedDatabaseIds: string[]
-  deletedPageIds: string[]
-  page: Page | null
-}
+  deletedDatabaseIds: string[];
+  deletedPageIds: string[];
+  page: Page | null;
+};
 
 type RestorePageResult = {
-  page: Page
-}
+  page: Page;
+  restoredDatabaseIds: string[];
+  restoredPageIds: string[];
+};
 
 export function useDeletePage() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async (pageId: string) =>
@@ -787,45 +835,40 @@ export function useDeletePage() {
         queryClient,
         result,
       }),
-  })
+  });
 }
 
 export function useRestorePage() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async (pageId: string) =>
       apiFetch<RestorePageResult>(`/pages/${pageId}/restore`, {
         method: "POST",
       }),
-    onSuccess: async ({ page }) => {
-      setPageDetailCache(queryClient, page)
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: pagesNavRootQueryKey(page.workspaceId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: notelabAiPagesQueryKey(page.workspaceId),
-        }),
-      ])
+    onSuccess: async (result) => {
+      await invalidateRestoredItems({
+        includeNotelabAi: true,
+        workspaceId: result.page.workspaceId,
+        queryClient,
+        result,
+      });
+      setPageDetailCache(queryClient, result.page);
     },
-  })
+  });
 }
 
 export function useSetPageFavorite() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
-    mutationFn: async ({
-      isFavorite,
-      pageId,
-    }: SetPageFavoriteInput) => {
+    mutationFn: async ({ isFavorite, pageId }: SetPageFavoriteInput) => {
       const result = await apiFetch<{ page: Page }>(
         `/pages/${pageId}/favorite`,
         { method: isFavorite ? "PUT" : "DELETE" },
-      )
+      );
 
-      return result.page
+      return result.page;
     },
     onMutate: async (variables) => {
       await Promise.all([
@@ -833,14 +876,16 @@ export function useSetPageFavorite() {
           queryKey: pageQueryKey(variables.pageId),
         }),
         queryClient.cancelQueries({ queryKey: pagesRootQueryKey() }),
-      ])
+      ]);
 
       const previousDetail = queryClient.getQueryData<PageDetail | null>(
         pageQueryKey(variables.pageId),
-      )
+      );
       const previousNavQueries = queryClient
-        .getQueriesData<Page[]>({ queryKey: pagesRootQueryKey() })
-        .filter(([queryKey]) => isPageNavQueryKey(queryKey))
+        .getQueriesData<PageNavigationPayload>({
+          queryKey: pagesRootQueryKey(),
+        })
+        .filter(([queryKey]) => isPageNavQueryKey(queryKey));
 
       queryClient.setQueryData<PageDetail | null>(
         pageQueryKey(variables.pageId),
@@ -854,9 +899,9 @@ export function useSetPageFavorite() {
                 },
               }
             : current,
-      )
+      );
       for (const [queryKey] of previousNavQueries) {
-        queryClient.setQueryData<Page[] | undefined>(
+        queryClient.setQueryData<PageNavigationPayload | undefined>(
           queryKey,
           (current) =>
             applyPageFavoriteToList(
@@ -864,49 +909,49 @@ export function useSetPageFavorite() {
               variables.pageId,
               variables.isFavorite,
             ),
-        )
+        );
       }
 
-      return { previousDetail, previousNavQueries }
+      return { previousDetail, previousNavQueries };
     },
     onError: (_error, variables, context) => {
       queryClient.setQueryData(
         pageQueryKey(variables.pageId),
         context?.previousDetail,
-      )
+      );
 
       for (const [queryKey, data] of context?.previousNavQueries ?? []) {
-        queryClient.setQueryData(queryKey, data)
+        queryClient.setQueryData(queryKey, data);
       }
     },
     onSuccess: async (page) => {
-      setPageDetailCache(queryClient, page)
-      queryClient.setQueriesData<Page[] | undefined>(
+      setPageDetailCache(queryClient, page);
+      queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesNavRootQueryKey(page.workspaceId) },
         (current) => applyPageFavoriteToNav(current, page),
-      )
+      );
     },
-  })
+  });
 }
 
 export function useRecordItemVisit() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async (input: RecordItemVisitInput) =>
       apiFetch<{
-        itemId: string
-        itemKind: RecordItemVisitInput["itemKind"]
-        lastVisitedAt: string
+        itemId: string;
+        itemKind: RecordItemVisitInput["itemKind"];
+        lastVisitedAt: string;
       }>("/pages/item-visits", {
         method: "POST",
         body: JSON.stringify(input),
       }),
     onSuccess: (result, variables) => {
-      queryClient.setQueriesData<Page[] | undefined>(
+      queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesQueryKey(variables.workspaceId) },
         (current) => applyItemVisitToNav(current, result),
-      )
+      );
 
       if (result.itemKind === "page") {
         queryClient.setQueryData<PageDetail | null>(
@@ -921,14 +966,14 @@ export function useRecordItemVisit() {
                   },
                 }
               : current,
-        )
+        );
       }
     },
-  })
+  });
 }
 
 export function useUpdatePagePropertyValue() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({
@@ -947,11 +992,10 @@ export function useUpdatePagePropertyValue() {
       queryClient.setQueryData(
         pagePropertiesQueryKey(variables.pageId),
         payload,
-      )
+      );
 
       const databaseId =
-        findDatabaseIdForRowPage(queryClient, variables.pageId) ??
-        null
+        findDatabaseIdForRowPage(queryClient, variables.pageId) ?? null;
 
       if (databaseId) {
         patchDatabaseCachePagePropertyValues(
@@ -959,43 +1003,44 @@ export function useUpdatePagePropertyValue() {
           databaseId,
           variables.pageId,
           payload,
-        )
+        );
       }
     },
-  })
+  });
 }
 
 export function useCreatePageComment() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
-    mutationFn: async ({
-      body,
-      pageId,
-    }: CreatePageCommentInput) =>
-      apiFetch<PageCommentsPayload>(
-        `/pages/${pageId}/comments`,
-        {
-          method: "POST",
-          body: JSON.stringify({ body }),
-        },
-      ),
+    mutationFn: async ({ body, pageId }: CreatePageCommentInput) =>
+      apiFetch<PageCommentsPayload>(`/pages/${pageId}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ body }),
+      }),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({
-        queryKey: pageCommentsQueryKey(variables.pageId),
-      })
-      const previous = queryClient.getQueryData<PageCommentsPayload>(
+        queryKey: pageCommentsQueryPrefix(variables.pageId),
+      });
+      const previous = getCommentCacheSnapshot(queryClient, variables.pageId);
+      const activePayload = queryClient.getQueryData<PageCommentsPayload>(
         pageCommentsQueryKey(variables.pageId),
-      )
-      const now = new Date().toISOString()
-      const thread = previous?.thread ?? {
+      );
+      const existingThread =
+        activePayload?.thread ??
+        previous
+          .map(([, payload]) => payload?.thread)
+          .find((thread) => thread && !thread.resolvedAt) ??
+        null;
+      const now = new Date().toISOString();
+      const thread = existingThread ?? {
         createdAt: now,
         id: `optimistic-thread:${crypto.randomUUID()}`,
         lastActivityAt: now,
         workspaceId: "",
         updatedAt: now,
         pageId: variables.pageId,
-      }
+      };
       const optimisticComment: PageCommentMessage = {
         author: null,
         authorId: null,
@@ -1005,152 +1050,117 @@ export function useCreatePageComment() {
         reactions: [],
         threadId: thread.id,
         updatedAt: now,
+      };
+
+      if (existingThread) {
+        updateCachedCommentPayloads(queryClient, variables.pageId, (payload) =>
+          payload.thread?.id === existingThread.id
+            ? { ...payload, comments: [...payload.comments, optimisticComment] }
+            : payload,
+        );
+      } else {
+        queryClient.setQueryData<PageCommentsPayload>(
+          pageCommentsQueryKey(variables.pageId),
+          { comments: [optimisticComment], thread },
+        );
       }
 
-      queryClient.setQueryData<PageCommentsPayload>(
-        pageCommentsQueryKey(variables.pageId),
-        {
-          comments: [...(previous?.comments ?? []), optimisticComment],
-          thread,
-        },
-      )
-
-      return { previous }
+      return { previous };
     },
-    onError: (_error, variables, context) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        context?.previous,
-      )
+    onError: (_error, _variables, context) => {
+      restoreCommentCacheSnapshot(queryClient, context?.previous ?? []);
     },
     onSuccess: (payload, variables) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        payload,
-      )
+      syncCommentPayload(queryClient, variables.pageId, payload, {
+        setActive: true,
+      });
       queryClient.invalidateQueries({
         queryKey: pageThreadsQueryKey(variables.pageId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useUpdatePageComment() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
-    mutationFn: async ({
-      body,
-      messageId,
-      pageId,
-    }: UpdatePageCommentInput) =>
-      apiFetch<PageCommentsPayload>(
-        `/pages/${pageId}/comments/${messageId}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({ body }),
-        },
-      ),
+    mutationFn: async ({ body, messageId, pageId }: UpdatePageCommentInput) =>
+      apiFetch<PageCommentsPayload>(`/pages/${pageId}/comments/${messageId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ body }),
+      }),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({
-        queryKey: pageCommentsQueryKey(variables.pageId),
-      })
-      const previous = queryClient.getQueryData<PageCommentsPayload>(
-        pageCommentsQueryKey(variables.pageId),
-      )
+        queryKey: pageCommentsQueryPrefix(variables.pageId),
+      });
+      const previous = getCommentCacheSnapshot(queryClient, variables.pageId);
 
-      queryClient.setQueryData<PageCommentsPayload>(
-        pageCommentsQueryKey(variables.pageId),
-        previous
-          ? {
-              ...previous,
-              comments: previous.comments.map((comment) =>
-                comment.id === variables.messageId
-                  ? {
-                      ...comment,
-                      body: variables.body,
-                      editedAt: new Date().toISOString(),
-                      updatedAt: new Date().toISOString(),
-                    }
-                  : comment,
-              ),
-            }
-          : previous,
-      )
+      updateCachedCommentPayloads(queryClient, variables.pageId, (payload) => ({
+        ...payload,
+        comments: payload.comments.map((comment) =>
+          comment.id === variables.messageId
+            ? {
+                ...comment,
+                body: variables.body,
+                editedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }
+            : comment,
+        ),
+      }));
 
-      return { previous }
+      return { previous };
     },
-    onError: (_error, variables, context) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        context?.previous,
-      )
+    onError: (_error, _variables, context) => {
+      restoreCommentCacheSnapshot(queryClient, context?.previous ?? []);
     },
     onSuccess: (payload, variables) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        payload,
-      )
+      syncCommentPayload(queryClient, variables.pageId, payload);
       queryClient.invalidateQueries({
         queryKey: pageThreadsQueryKey(variables.pageId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useDeletePageComment() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({ messageId, pageId }: DeletePageCommentInput) =>
-      apiFetch<PageCommentsPayload>(
-        `/pages/${pageId}/comments/${messageId}`,
-        {
-          method: "DELETE",
-        },
-      ),
+      apiFetch<PageCommentsPayload>(`/pages/${pageId}/comments/${messageId}`, {
+        method: "DELETE",
+      }),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({
-        queryKey: pageCommentsQueryKey(variables.pageId),
-      })
-      const previous = queryClient.getQueryData<PageCommentsPayload>(
-        pageCommentsQueryKey(variables.pageId),
-      )
+        queryKey: pageCommentsQueryPrefix(variables.pageId),
+      });
+      const previous = getCommentCacheSnapshot(queryClient, variables.pageId);
 
-      queryClient.setQueryData<PageCommentsPayload>(
-        pageCommentsQueryKey(variables.pageId),
-        previous
-          ? {
-              ...previous,
-              comments: previous.comments.filter(
-                (comment) => comment.id !== variables.messageId,
-              ),
-            }
-          : previous,
-      )
+      updateCachedCommentPayloads(queryClient, variables.pageId, (payload) => ({
+        ...payload,
+        comments: payload.comments.filter(
+          (comment) => comment.id !== variables.messageId,
+        ),
+      }));
 
-      return { previous }
+      return { previous };
     },
-    onError: (_error, variables, context) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        context?.previous,
-      )
+    onError: (_error, _variables, context) => {
+      restoreCommentCacheSnapshot(queryClient, context?.previous ?? []);
     },
     onSuccess: (payload, variables) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        payload,
-      )
+      syncCommentPayload(queryClient, variables.pageId, payload);
       queryClient.invalidateQueries({
         queryKey: pageThreadsQueryKey(variables.pageId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useAddPageCommentReaction() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({
@@ -1167,39 +1177,30 @@ export function useAddPageCommentReaction() {
       ),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({
-        queryKey: pageCommentsQueryKey(variables.pageId),
-      })
-      const previous = queryClient.getQueryData<PageCommentsPayload>(
-        pageCommentsQueryKey(variables.pageId),
-      )
+        queryKey: pageCommentsQueryPrefix(variables.pageId),
+      });
+      const previous = getCommentCacheSnapshot(queryClient, variables.pageId);
 
-      queryClient.setQueryData<PageCommentsPayload>(
-        pageCommentsQueryKey(variables.pageId),
-        updateCommentReaction(previous, variables.messageId, variables.emoji, 1),
-      )
+      updateCachedCommentPayloads(queryClient, variables.pageId, (payload) =>
+        updateCommentReaction(payload, variables.messageId, variables.emoji, 1),
+      );
 
-      return { previous }
+      return { previous };
     },
-    onError: (_error, variables, context) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        context?.previous,
-      )
+    onError: (_error, _variables, context) => {
+      restoreCommentCacheSnapshot(queryClient, context?.previous ?? []);
     },
     onSuccess: (payload, variables) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        payload,
-      )
+      syncCommentPayload(queryClient, variables.pageId, payload);
       queryClient.invalidateQueries({
         queryKey: pageThreadsQueryKey(variables.pageId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useRemovePageCommentReaction() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({
@@ -1216,39 +1217,35 @@ export function useRemovePageCommentReaction() {
       ),
     onMutate: async (variables) => {
       await queryClient.cancelQueries({
-        queryKey: pageCommentsQueryKey(variables.pageId),
-      })
-      const previous = queryClient.getQueryData<PageCommentsPayload>(
-        pageCommentsQueryKey(variables.pageId),
-      )
+        queryKey: pageCommentsQueryPrefix(variables.pageId),
+      });
+      const previous = getCommentCacheSnapshot(queryClient, variables.pageId);
 
-      queryClient.setQueryData<PageCommentsPayload>(
-        pageCommentsQueryKey(variables.pageId),
-        updateCommentReaction(previous, variables.messageId, variables.emoji, -1),
-      )
+      updateCachedCommentPayloads(queryClient, variables.pageId, (payload) =>
+        updateCommentReaction(
+          payload,
+          variables.messageId,
+          variables.emoji,
+          -1,
+        ),
+      );
 
-      return { previous }
+      return { previous };
     },
-    onError: (_error, variables, context) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        context?.previous,
-      )
+    onError: (_error, _variables, context) => {
+      restoreCommentCacheSnapshot(queryClient, context?.previous ?? []);
     },
     onSuccess: (payload, variables) => {
-      queryClient.setQueryData(
-        pageCommentsQueryKey(variables.pageId),
-        payload,
-      )
+      syncCommentPayload(queryClient, variables.pageId, payload);
       queryClient.invalidateQueries({
         queryKey: pageThreadsQueryKey(variables.pageId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useResolvePageCommentThread() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({ pageId, threadId }: ResolvePageCommentThreadInput) =>
@@ -1262,16 +1259,16 @@ export function useResolvePageCommentThread() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: pageCommentsQueryKey(variables.pageId),
-      })
+      });
       queryClient.invalidateQueries({
         queryKey: pageThreadsQueryKey(variables.pageId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useUnresolvePageCommentThread() {
-  const { apiFetch, queryClient } = useNotelabFeatures()
+  const { apiFetch, queryClient } = useNotelabFeatures();
 
   return useMutation({
     mutationFn: async ({ pageId, threadId }: ResolvePageCommentThreadInput) =>
@@ -1285,10 +1282,10 @@ export function useUnresolvePageCommentThread() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: pageCommentsQueryKey(variables.pageId),
-      })
+      });
       queryClient.invalidateQueries({
         queryKey: pageThreadsQueryKey(variables.pageId),
-      })
+      });
     },
-  })
+  });
 }

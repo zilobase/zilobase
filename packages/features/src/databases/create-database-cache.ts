@@ -1,10 +1,9 @@
 import type { DatabasePayload } from "./queries"
-import { readDatabaseParentItemId } from "../pages/item-relationships"
 import { applyNavDelta, type NavDelta } from "../pages/nav-delta"
 import type {
-  Page,
   PageDatabase,
   PageItemPlacement,
+  PageNavigationPayload,
 } from "../pages/queries"
 
 function toPageDatabase(payload: DatabasePayload): PageDatabase {
@@ -17,14 +16,14 @@ function toPageDatabase(payload: DatabasePayload): PageDatabase {
 function getPrimaryDatabasePlacement(
   payload: DatabasePayload,
 ): PageItemPlacement | null {
-  const parentItemId = readDatabaseParentItemId(payload.database.config)
+  const parentItemId = payload.database.pageId
 
   if (!parentItemId) {
     return null
   }
 
   return {
-    id: `legacy:primary:page:${parentItemId}:database:${payload.database.id}:`,
+    id: `primary:page:${parentItemId}:database:${payload.database.id}`,
     itemId: payload.database.id,
     itemKind: "database",
     workspaceId: payload.database.workspaceId,
@@ -47,8 +46,8 @@ export function getCreatedDatabaseNavDelta(payload: DatabasePayload): NavDelta {
 }
 
 export function applyCreatedDatabaseToPageNav(
-  pages: Page[] | undefined,
+  navigation: PageNavigationPayload | undefined,
   payload: DatabasePayload,
 ) {
-  return applyNavDelta(pages, getCreatedDatabaseNavDelta(payload))
+  return applyNavDelta(navigation, getCreatedDatabaseNavDelta(payload))
 }
