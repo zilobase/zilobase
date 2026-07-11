@@ -50,6 +50,43 @@ export async function createCollaborationTicket(
   };
 }
 
+export async function getOrCreateCollaborationDocumentState(pageId: string) {
+  const [stored] = await db
+    .select({ state: pageCollaborationDocument.state })
+    .from(pageCollaborationDocument)
+    .where(eq(pageCollaborationDocument.pageId, pageId))
+    .limit(1);
+
+  if (stored) {
+    return new Uint8Array(stored.state);
+  }
+
+  const state = encodePageContentAsYjs(null);
+  const [inserted] = await db
+    .insert(pageCollaborationDocument)
+    .values({ pageId, state: Buffer.from(state), updatedAt: new Date() })
+    .onConflictDoNothing()
+    .returning({ state: pageCollaborationDocument.state });
+
+  if (inserted) {
+    return new Uint8Array(inserted.state);
+  }
+
+  // Another request initialized the document concurrently. Its state is the
+  // canonical base both the client and Durable Object must use.
+  const [concurrent] = await db
+    .select({ state: pageCollaborationDocument.state })
+    .from(pageCollaborationDocument)
+    .where(eq(pageCollaborationDocument.pageId, pageId))
+    .limit(1);
+
+  if (!concurrent) {
+    throw new Error("Could not initialize collaboration document");
+  }
+
+  return new Uint8Array(concurrent.state);
+}
+
 export async function verifyCollaborationTicket(
   token: string,
   env: RuntimeEnv,
@@ -76,18 +113,44 @@ export async function verifyCollaborationTicket(
 }
 
 export function createCollaborationHocuspocus(env: RuntimeEnv) {
+  const documentLoads = new Map<string, Promise<Uint8Array>>();
+
+  const preloadDocument = (documentName: string) => {
+    const existing = documentLoads.get(documentName);
+
+    if (existing) {
+      return existing;
+    }
+
+    const load = loadDocument(documentName, env);
+    documentLoads.set(documentName, load);
+    void load.catch(() => documentLoads.delete(documentName));
+    return load;
+  };
+
+  const consumeDocument = (documentName: string) => {
+    const load =
+      documentLoads.get(documentName) ?? preloadDocument(documentName);
+    documentLoads.delete(documentName);
+    return load;
+  };
+
   return new Hocuspocus<CollaborationContext>({
     debounce: 800,
     maxDebounce: 5_000,
     extensions: [
       new Database({
-        fetch: async ({ documentName }) => loadDocument(documentName, env),
+        fetch: async ({ documentName }) => consumeDocument(documentName),
         store: async ({ documentName, document, state }) =>
           storeDocument(documentName, document, state, env),
       }),
     ],
     async onAuthenticate({ documentName, requestParameters, token }) {
+      const authenticateStartedAt = performance.now();
       const claims = await verifyCollaborationTicket(token, env);
+      const ticketVerifyMs = Math.round(
+        performance.now() - authenticateStartedAt,
+      );
       const pageId = pageIdFromDocumentName(documentName);
       const routedDocumentName = requestParameters.get("document");
 
@@ -96,9 +159,16 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
       }
 
       if (routedDocumentName && routedDocumentName !== documentName) {
-        throw new Error("Collaboration document does not match the routed room");
+        throw new Error(
+          "Collaboration document does not match the routed room",
+        );
       }
 
+      // Hocuspocus loads the document after authentication. Start the read once
+      // the signed ticket has scoped the request so it overlaps the live access
+      // check instead of adding another database round trip to first sync.
+      const documentLoad = preloadDocument(documentName);
+      const pageAccessStartedAt = performance.now();
       const allowed = await withDatabase(env, () =>
         canAccessPageInWorkspace(
           claims.pageId,
@@ -107,10 +177,24 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
           "edit",
         ),
       );
+      const pageAccessMs = Math.round(performance.now() - pageAccessStartedAt);
+
+      console.info(
+        JSON.stringify({
+          event: "collaboration_ticket_authenticated",
+          pageAccessMs,
+          ticketVerifyMs,
+        }),
+      );
 
       if (!allowed) {
+        documentLoads.delete(documentName);
         throw new Error("Forbidden");
       }
+
+      // Retain the promise until Hocuspocus asks its Database extension for it.
+      // Its rejection will be surfaced by that fetch path for authorized clients.
+      void documentLoad.catch(() => undefined);
 
       return claims;
     },
@@ -190,29 +274,43 @@ async function loadDocument(documentName: string, env: RuntimeEnv) {
     throw new Error("Invalid collaboration document name");
   }
 
-  return withDatabase(env, async () => {
-    const [stored] = await db
-      .select({ state: pageCollaborationDocument.state })
-      .from(pageCollaborationDocument)
-      .where(eq(pageCollaborationDocument.pageId, pageId))
-      .limit(1);
+  const loadStartedAt = performance.now();
+  let source: "collaboration_state" | "missing" = "missing";
 
-    if (stored) {
-      return new Uint8Array(stored.state);
-    }
+  try {
+    return await withDatabase(env, async () => {
+      const [stored] = await db
+        .select({ state: pageCollaborationDocument.state })
+        .from(pageCollaborationDocument)
+        .where(eq(pageCollaborationDocument.pageId, pageId))
+        .limit(1);
 
-    const [record] = await db
-      .select({ content: page.content })
-      .from(page)
-      .where(and(eq(page.id, pageId), isNull(page.deletedAt)))
-      .limit(1);
+      if (stored) {
+        source = "collaboration_state";
+        return new Uint8Array(stored.state);
+      }
 
-    if (!record) {
-      throw new Error("Page not found");
-    }
+      const [record] = await db
+        .select({ id: page.id })
+        .from(page)
+        .where(and(eq(page.id, pageId), isNull(page.deletedAt)))
+        .limit(1);
 
-    return encodePageContentAsYjs(record.content);
-  });
+      if (!record) {
+        throw new Error("Page not found");
+      }
+
+      throw new Error("Page collaboration state is missing");
+    });
+  } finally {
+    console.info(
+      JSON.stringify({
+        event: "collaboration_document_loaded",
+        loadMs: Math.round(performance.now() - loadStartedAt),
+        source,
+      }),
+    );
+  }
 }
 
 async function storeDocument(
@@ -259,15 +357,10 @@ function toYDoc(content: unknown) {
 }
 
 function normalizeDocument(content: unknown): ProseMirrorJson {
-  if (typeof content === "string") {
-    try {
-      return normalizeDocument(JSON.parse(content));
-    } catch {
-      return { type: "doc", content: content ? [{ type: "paragraph", content: [{ type: "text", text: content }] }] : [] };
-    }
-  }
-
-  return content && typeof content === "object" && !Array.isArray(content)
+  return content &&
+    typeof content === "object" &&
+    !Array.isArray(content) &&
+    typeof (content as { type?: unknown }).type === "string"
     ? (content as ProseMirrorJson)
     : { type: "doc", content: [] };
 }
@@ -319,7 +412,19 @@ function nodeSpec(name: string, attrs: Set<string>): NodeSpec {
   if (["bulletList", "orderedList", "taskList"].includes(name)) {
     return { attrs: attrsSpec(attrs), content: "block*", group: "block" };
   }
-  if (["listItem", "taskItem", "blockquote", "details", "detailsContent", "column", "columns", "tableCell", "tableHeader"].includes(name)) {
+  if (
+    [
+      "listItem",
+      "taskItem",
+      "blockquote",
+      "details",
+      "detailsContent",
+      "column",
+      "columns",
+      "tableCell",
+      "tableHeader",
+    ].includes(name)
+  ) {
     return { attrs: attrsSpec(attrs), content: "block*", group: "block" };
   }
   if (name === "table") {
@@ -329,16 +434,26 @@ function nodeSpec(name: string, attrs: Set<string>): NodeSpec {
     return { attrs: attrsSpec(attrs), content: "(tableCell | tableHeader)+" };
   }
   if (["hardBreak", "emoji", "linkMention"].includes(name)) {
-    return { attrs: attrsSpec(attrs), group: "inline", inline: true, atom: true };
+    return {
+      attrs: attrsSpec(attrs),
+      group: "inline",
+      inline: true,
+      atom: true,
+    };
   }
   return { attrs: attrsSpec(attrs), group: "block", atom: true };
 }
 
 function attrsSpec(attrs: Set<string>) {
-  return Object.fromEntries([...attrs].map((name) => [name, { default: null }]));
+  return Object.fromEntries(
+    [...attrs].map((name) => [name, { default: null }]),
+  );
 }
 
-function visit(node: ProseMirrorJson, callback: (node: ProseMirrorJson) => void) {
+function visit(
+  node: ProseMirrorJson,
+  callback: (node: ProseMirrorJson) => void,
+) {
   callback(node);
   node.content?.forEach((child) => visit(child, callback));
 }
@@ -387,7 +502,11 @@ async function sign(value: string, secret: string) {
     false,
     ["sign"],
   );
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(value),
+  );
   return Buffer.from(signature).toString("base64url");
 }
 
@@ -409,14 +528,20 @@ function constantTimeEqual(left: string, right: string) {
 
 function timingSafeBytes(left: Buffer, right: Buffer) {
   let difference = 0;
-  for (let index = 0; index < left.length; index += 1) difference |= left[index] ^ right[index];
+  for (let index = 0; index < left.length; index += 1)
+    difference |= left[index] ^ right[index];
   return difference === 0;
 }
 
 function isTicketClaims(value: unknown): value is CollaborationTicketClaims {
   if (!value || typeof value !== "object") return false;
   const claims = value as Record<string, unknown>;
-  return typeof claims.exp === "number" && typeof claims.pageId === "string" && typeof claims.userId === "string" && typeof claims.workspaceId === "string";
+  return (
+    typeof claims.exp === "number" &&
+    typeof claims.pageId === "string" &&
+    typeof claims.userId === "string" &&
+    typeof claims.workspaceId === "string"
+  );
 }
 
 function withDatabase<T>(env: RuntimeEnv, callback: () => Promise<T>) {

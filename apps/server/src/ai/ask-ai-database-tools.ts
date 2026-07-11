@@ -133,21 +133,13 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         parentPageId: z.string().trim().optional(),
       }),
       execute: withDbExecute(context, async (input) => {
-        const metadata =
-          input.parentPageId !== undefined
-            ? {
-                parentItemId: input.parentPageId,
-                parentItemKind: "page" as const,
-              }
-            : undefined;
-
         if (input.parentPageId) {
           assertAllowedPage(context, input.parentPageId);
         }
 
         const result = await createPageService({
-          metadata,
           name: input.name,
+          parentPageId: input.parentPageId,
           workspaceId: context.workspaceId,
           userId: context.userId,
         });

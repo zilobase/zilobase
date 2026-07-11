@@ -2,7 +2,11 @@ import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 
-import { getAccessiblePageIds, getMembership } from "../../access";
+import {
+  canAccessDatabaseInWorkspace,
+  getAccessiblePageIds,
+  getMembership,
+} from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
 import { db } from "../../db";
 import { database, page } from "../../db/schema";
@@ -51,10 +55,6 @@ searchRoutes.get("/", async (c) => {
     membershipVerified: true,
   });
 
-  if (accessibleIds.size === 0) {
-    return c.json({ results: [] });
-  }
-
   const [pageRecords, databaseRecords] = await Promise.all([
     db
       .select({
@@ -83,12 +83,26 @@ searchRoutes.get("/", async (c) => {
       .where(
         and(
           eq(database.workspaceId, workspaceId),
-          inArray(database.pageId, [...accessibleIds]),
           isNull(database.deletedAt),
         ),
       )
       .orderBy(asc(database.name)),
   ]);
+  const visibleDatabaseRecords = (
+    await Promise.all(
+      databaseRecords.map(async (record) => ({
+        record,
+        visible: await canAccessDatabaseInWorkspace(
+          record.id,
+          workspaceId,
+          user.id,
+          "view",
+        ),
+      })),
+    )
+  )
+    .filter(({ visible }) => visible)
+    .map(({ record }) => record);
   const pageById = new Map(
     pageRecords.map((record) => [record.id, record]),
   );
@@ -113,18 +127,20 @@ searchRoutes.get("/", async (c) => {
     }
   }
 
-  for (const record of databaseRecords) {
-    const parentPage = pageById.get(record.pageId);
+  for (const record of visibleDatabaseRecords) {
+    const parentPage = record.pageId ? pageById.get(record.pageId) : null;
 
-    if (!parentPage) {
+    if (record.pageId && !parentPage) {
       continue;
     }
 
     const title = getTitle(record.name, "Database");
-    const parentPath = pageGraph.getPagePath(parentPage, (value) =>
-      getTitle(value, "Untitled"),
-    );
-    const path = `${parentPath} / ${title}`;
+    const parentPath = parentPage
+      ? pageGraph.getPagePath(parentPage, (value) =>
+          getTitle(value, "Untitled"),
+        )
+      : "";
+    const path = parentPath ? `${parentPath} / ${title}` : title;
 
     if (matchesQuery(query, [title, path])) {
       results.push({

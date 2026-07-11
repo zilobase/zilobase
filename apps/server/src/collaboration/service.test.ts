@@ -30,7 +30,7 @@ test("collaboration tickets are scoped and reject tampering", async () => {
   );
 });
 
-test("legacy ProseMirror JSON round-trips through Yjs", () => {
+test("canonical page JSON round-trips through Yjs", () => {
   const content = {
     type: "doc",
     content: [
@@ -70,8 +70,7 @@ test("explicit WebSocket URL overrides a rewritten request host", () => {
     getCollaborationWebSocketUrl(
       new Request("http://api.notelab.io/pages/page-1/collaboration-ticket"),
       {
-        COLLABORATION_WEBSOCKET_URL:
-          "ws://localhost:3000/collaboration",
+        COLLABORATION_WEBSOCKET_URL: "ws://localhost:3000/collaboration",
       },
     ),
     "ws://localhost:3000/collaboration",

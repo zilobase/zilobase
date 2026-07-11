@@ -1,9 +1,14 @@
 import { and, eq, isNull } from "drizzle-orm";
 
-import { canAccessPage, getMembership } from "../access";
+import {
+  canAccessDatabaseInWorkspace,
+  canAccessPage,
+  getMembership,
+} from "../access";
 import { db } from "../db";
-import { database, page } from "../db/schema";
-import { addLinkedItem, readMetadataRecord } from "../item-relationships";
+import { database, page, pageCollaborationDocument } from "../db/schema";
+import { encodePageContentAsYjs } from "../collaboration/service";
+import { upsertPageItemPlacement } from "../page-item-placements";
 import { insertDatabaseBlockInContent } from "./insert-database-block";
 import { ServiceMutationError } from "./database-mutations";
 
@@ -11,6 +16,7 @@ export async function createPageService(input: {
   content?: unknown;
   metadata?: unknown;
   name?: string;
+  parentPageId?: string;
   workspaceId: string;
   type?: string;
   url?: string;
@@ -21,35 +27,48 @@ export async function createPageService(input: {
   }
 
   if (
-    typeof input.metadata === "object" &&
-    input.metadata &&
-    !Array.isArray(input.metadata) &&
-    typeof (input.metadata as { parentItemId?: unknown }).parentItemId ===
-      "string" &&
-    !(await canAccessPage(
-      (input.metadata as { parentItemId: string }).parentItemId,
-      input.userId,
-      "edit",
-    ))
+    input.parentPageId &&
+    !(await canAccessPage(input.parentPageId, input.userId, "edit"))
   ) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 
   const pageId = crypto.randomUUID();
 
-  const [record] = await db
-    .insert(page)
-    .values({
-      id: pageId,
-      workspaceId: input.workspaceId,
-      createdById: input.userId,
-      type: input.type ?? "pageblock",
-      name: input.name ?? "",
-      url: input.url ?? "#",
-      content: input.content ?? null,
-      metadata: input.metadata ?? null,
-    })
-    .returning();
+  const [record] = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(page)
+      .values({
+        id: pageId,
+        workspaceId: input.workspaceId,
+        createdById: input.userId,
+        type: input.type ?? "pageblock",
+        name: input.name ?? "",
+        url: input.url ?? "#",
+        content: input.content ?? null,
+        metadata: input.metadata ?? null,
+      })
+      .returning();
+
+    if (input.parentPageId) {
+      await upsertPageItemPlacement(tx, {
+        workspaceId: input.workspaceId,
+        parentKind: "page",
+        parentId: input.parentPageId,
+        itemKind: "page",
+        itemId: pageId,
+        placementKind: "primary",
+      });
+    }
+
+    await tx.insert(pageCollaborationDocument).values({
+      pageId,
+      state: Buffer.from(encodePageContentAsYjs(input.content ?? null)),
+      updatedAt: new Date(),
+    });
+
+    return [created];
+  });
 
   return { page: record, pageId: record.id };
 }
@@ -62,9 +81,7 @@ export async function linkDatabaseInPageService(input: {
   const [host] = await db
     .select()
     .from(page)
-    .where(
-      and(eq(page.id, input.hostPageId), isNull(page.deletedAt)),
-    )
+    .where(and(eq(page.id, input.hostPageId), isNull(page.deletedAt)))
     .limit(1);
 
   if (!host) {
@@ -91,7 +108,14 @@ export async function linkDatabaseInPageService(input: {
     throw new ServiceMutationError("Database not found", 404);
   }
 
-  if (!(await canAccessPage(databaseRecord.pageId, input.userId, "view"))) {
+  if (
+    !(await canAccessDatabaseInWorkspace(
+      databaseRecord.id,
+      databaseRecord.workspaceId,
+      input.userId,
+      "view",
+    ))
+  ) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 
@@ -103,20 +127,18 @@ export async function linkDatabaseInPageService(input: {
     };
   }
 
-  const hostMetadata = addLinkedItem(readMetadataRecord(host.metadata), {
-    id: databaseRecord.id,
-    kind: "database",
+  await upsertPageItemPlacement(db, {
+    workspaceId: host.workspaceId,
+    parentKind: "page",
+    parentId: host.id,
+    itemKind: "database",
+    itemId: databaseRecord.id,
+    placementKind: "linked",
   });
-
-  const [updatedHost] = await db
-    .update(page)
-    .set({ metadata: hostMetadata, updatedAt: new Date() })
-    .where(eq(page.id, host.id))
-    .returning();
 
   return {
     action: "addLink" as const,
-    hostPageId: updatedHost?.id ?? host.id,
+    hostPageId: host.id,
     databaseId: databaseRecord.id,
   };
 }
@@ -130,9 +152,7 @@ export async function embedDatabaseInPageService(input: {
   const [existing] = await db
     .select()
     .from(page)
-    .where(
-      and(eq(page.id, input.pageId), isNull(page.deletedAt)),
-    )
+    .where(and(eq(page.id, input.pageId), isNull(page.deletedAt)))
     .limit(1);
 
   if (!existing) {
@@ -146,9 +166,7 @@ export async function embedDatabaseInPageService(input: {
   const [databaseRecord] = await db
     .select({ id: database.id, workspaceId: database.workspaceId })
     .from(database)
-    .where(
-      and(eq(database.id, input.databaseId), isNull(database.deletedAt)),
-    )
+    .where(and(eq(database.id, input.databaseId), isNull(database.deletedAt)))
     .limit(1);
 
   if (!databaseRecord) {

@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import {
+  canAccessDatabaseInWorkspace,
   canAccessPageInWorkspace,
   getAccessiblePageIds,
   getEffectivePageAccessInWorkspace,
@@ -28,31 +29,25 @@ import {
   user as userTable,
   page,
   pageAccess,
+  pageCollaborationDocument,
   pageItemPlacement,
   pageProperty,
   pagePropertyValue,
 } from "../../db/schema";
 import type { AppBindings } from "../../types";
 import {
-  addLinkedItem,
-  clearParentItem,
-  readMetadataRecord,
-  readParentItemId,
-  removeLinkedItem,
-  resolveEmbedItem,
-  wouldCreateParentCycle,
-  type ItemRef,
-} from "../../item-relationships";
-import {
   buildNavigationPlacements,
   softDeletePageItemPlacement,
   upsertPageItemPlacement,
+  type ItemRef,
 } from "../../page-item-placements";
 import { softDeletePageTree } from "../../soft-delete-nav-items";
 import { loadWorkspacePageGraph } from "../../page-graph";
 import {
   createCollaborationTicket,
   documentNameForPage,
+  encodePageContentAsYjs,
+  getOrCreateCollaborationDocumentState,
   replacePageContent,
 } from "../../collaboration/service";
 import { getCollaborationWebSocketUrl } from "../../runtime-adapter";
@@ -89,8 +84,7 @@ const readNotelabAiMode = (metadata: unknown): NotelabAiMode | null => {
 
   const mode = (metadata as { notelabai?: unknown }).notelabai;
 
-  return typeof mode === "string" &&
-    NOTELAB_AI_MODES.has(mode as NotelabAiMode)
+  return typeof mode === "string" && NOTELAB_AI_MODES.has(mode as NotelabAiMode)
     ? (mode as NotelabAiMode)
     : null;
 };
@@ -133,11 +127,7 @@ const toNotelabAiPageSummary = (record: PageListRecord) => {
 const getPage = getPageRecord;
 
 const getPageIncludingDeleted = async (id: string) => {
-  const [record] = await db
-    .select()
-    .from(page)
-    .where(eq(page.id, id))
-    .limit(1);
+  const [record] = await db.select().from(page).where(eq(page.id, id)).limit(1);
 
   return record ?? null;
 };
@@ -158,10 +148,7 @@ const enforceActiveWorkspace = (
   userId: string,
 ) => rejectActiveWorkspaceMismatch(c, workspaceId, userId);
 
-const getPagePropertyPayload = async (
-  pageId: string,
-  workspaceId: string,
-) => {
+const getPagePropertyPayload = async (pageId: string, workspaceId: string) => {
   const [databaseProperties, values] = await Promise.all([
     db
       .select({ property: pageProperty })
@@ -170,10 +157,7 @@ const getPagePropertyPayload = async (
         databaseProperty,
         eq(databaseRow.databaseId, databaseProperty.databaseId),
       )
-      .innerJoin(
-        pageProperty,
-        eq(databaseProperty.propertyId, pageProperty.id),
-      )
+      .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
       .where(
         and(
           eq(databaseRow.pageId, pageId),
@@ -283,62 +267,130 @@ pageRoutes.get("/", async (c) => {
 
   if (isSummary) {
     return c.json({
-      pages: accessibleRecords.map((record) =>
-        toNotelabAiPageSummary(record),
-      ),
+      pages: accessibleRecords.map((record) => toNotelabAiPageSummary(record)),
     });
   }
 
-  const [sharedPageRows, favoriteRows, visitRows, databaseRecords, placementRecords] =
-    await Promise.all([
-      db
-        .select({ pageId: pageAccess.pageId })
-        .from(pageAccess)
-        .where(eq(pageAccess.workspaceId, workspaceId)),
-      db
-        .select({
-          databaseId: favorite.databaseId,
-          pageId: favorite.pageId,
-        })
-        .from(favorite)
-        .where(eq(favorite.userId, user.id)),
-      db
-        .select({
-          itemId: itemVisit.itemId,
-          itemKind: itemVisit.itemKind,
-          lastVisitedAt: itemVisit.lastVisitedAt,
-        })
-        .from(itemVisit)
-        .where(
-          and(
-            eq(itemVisit.workspaceId, workspaceId),
-            eq(itemVisit.userId, user.id),
-          ),
+  const [
+    sharedPageRows,
+    favoriteRows,
+    visitRows,
+    databaseRecords,
+    placementRecords,
+  ] = await Promise.all([
+    db
+      .select({ pageId: pageAccess.pageId })
+      .from(pageAccess)
+      .where(eq(pageAccess.workspaceId, workspaceId)),
+    db
+      .select({
+        databaseId: favorite.databaseId,
+        pageId: favorite.pageId,
+      })
+      .from(favorite)
+      .where(eq(favorite.userId, user.id)),
+    db
+      .select({
+        itemId: itemVisit.itemId,
+        itemKind: itemVisit.itemKind,
+        lastVisitedAt: itemVisit.lastVisitedAt,
+      })
+      .from(itemVisit)
+      .where(
+        and(
+          eq(itemVisit.workspaceId, workspaceId),
+          eq(itemVisit.userId, user.id),
         ),
-      db
-        .select()
-        .from(database)
-        .where(
-          and(
-            eq(database.workspaceId, workspaceId),
+      ),
+    db
+      .select()
+      .from(database)
+      .where(
+        and(
+          eq(database.workspaceId, workspaceId),
+          deletedFilter === "only"
+            ? isNotNull(database.deletedAt)
+            : isNull(database.deletedAt),
+        ),
+      ),
+    db
+      .select()
+      .from(pageItemPlacement)
+      .where(
+        and(
+          eq(pageItemPlacement.workspaceId, workspaceId),
+          isNull(pageItemPlacement.deletedAt),
+        ),
+      ),
+  ]);
+
+  const standaloneDatabaseRecords = (
+    await Promise.all(
+      databaseRecords
+        .filter((record) => !record.pageId)
+        .map(async (record) => ({
+          record,
+          visible:
             deletedFilter === "only"
-              ? isNotNull(database.deletedAt)
-              : isNull(database.deletedAt),
+              ? Boolean(record.deletedAt)
+              : await canAccessDatabaseInWorkspace(
+                  record.id,
+                  record.workspaceId,
+                  user.id,
+                  "view",
+                ),
+        })),
+    )
+  ).filter(({ visible }) => visible);
+  const standaloneDatabaseIds = new Set(
+    standaloneDatabaseRecords.map(({ record }) => record.id),
+  );
+  const navigationDatabaseRecords = databaseRecords.filter(
+    (record) => Boolean(record.pageId) || standaloneDatabaseIds.has(record.id),
+  );
+
+  if (deletedFilter === "only") {
+    const accessibleRecordIds = new Set(
+      accessibleRecords.map((record) => record.id),
+    );
+    const missingDatabaseHostPageIds = [
+      ...new Set(
+        navigationDatabaseRecords
+          .map((record) => record.pageId)
+          .filter((pageId): pageId is string =>
+            Boolean(pageId && !accessibleRecordIds.has(pageId)),
           ),
-        ),
-      db
-        .select()
-        .from(pageItemPlacement)
+      ),
+    ];
+
+    if (missingDatabaseHostPageIds.length > 0) {
+      const databaseHostPages = await db
+        .select({
+          id: page.id,
+          workspaceId: page.workspaceId,
+          createdById: page.createdById,
+          type: page.type,
+          name: page.name,
+          url: page.url,
+          metadata: page.metadata,
+          deletedById: page.deletedById,
+          deletedAt: page.deletedAt,
+          createdAt: page.createdAt,
+          updatedAt: page.updatedAt,
+        })
+        .from(page)
         .where(
           and(
-            eq(pageItemPlacement.workspaceId, workspaceId),
-            isNull(pageItemPlacement.deletedAt),
+            eq(page.workspaceId, workspaceId),
+            inArray(page.id, missingDatabaseHostPageIds),
           ),
-        ),
-    ]);
-  const teamspaceIds = new Set(
-    sharedPageRows.map((row) => row.pageId),
-  );
+        );
+
+      accessibleRecords = [...accessibleRecords, ...databaseHostPages];
+    }
+  }
+
+  const teamspaceIds = new Set(sharedPageRows.map((row) => row.pageId));
   const favoritePageIds = new Set(
     favoriteRows
       .map((row) => row.pageId)
@@ -359,8 +411,10 @@ pageRoutes.get("/", async (c) => {
   const accessibleRecordIds = new Set(
     accessibleRecords.map((record) => record.id),
   );
-  const activeDatabases = databaseRecords.filter((record) =>
-    accessibleRecordIds.has(record.pageId),
+  const activeDatabases = navigationDatabaseRecords.filter((record) =>
+    record.pageId
+      ? accessibleRecordIds.has(record.pageId)
+      : standaloneDatabaseIds.has(record.id),
   );
   const activeDatabaseIds = new Set(activeDatabases.map((record) => record.id));
   const databaseRowPages =
@@ -427,8 +481,8 @@ pageRoutes.get("/", async (c) => {
           record.deletedById,
         ]),
         ...activeDatabases.map((record) => record.deletedById),
-      ]
-        .filter((createdById): createdById is string => Boolean(createdById)),
+        ...activeDatabases.map((record) => record.createdById),
+      ].filter((createdById): createdById is string => Boolean(createdById)),
     ),
   ];
   const [creatorRows, databaseViews] = await Promise.all([
@@ -459,11 +513,15 @@ pageRoutes.get("/", async (c) => {
           .where(inArray(databaseView.databaseId, [...activeDatabaseIds]))
       : Promise.resolve([]),
   ]);
-  const creatorsById = new Map(creatorRows.map((creator) => [creator.id, creator]));
+  const creatorsById = new Map(
+    creatorRows.map((creator) => [creator.id, creator]),
+  );
   const createdByByPageId = new Map(
     accessibleRecords.map((record) => [
       record.id,
-      record.createdById ? creatorsById.get(record.createdById) ?? null : null,
+      record.createdById
+        ? (creatorsById.get(record.createdById) ?? null)
+        : null,
     ]),
   );
 
@@ -482,49 +540,41 @@ pageRoutes.get("/", async (c) => {
     lastVisitedAt: Date | null;
     views: typeof databaseViews;
   };
-  const databasesByPageId = new Map<string, ActiveDatabasePayload[]>();
+  const databasePayloads: ActiveDatabasePayload[] = [];
 
   for (const record of activeDatabases) {
     const views = [...(viewsByDatabaseId.get(record.id) ?? [])].sort(
       (first, second) => first.position - second.position,
     );
 
-    databasesByPageId.set(record.pageId, [
-      ...(databasesByPageId.get(record.pageId) ?? []),
-      {
-        ...record,
-        createdBy: createdByByPageId.get(record.pageId) ?? null,
-        deletedBy: record.deletedById
-          ? creatorsById.get(record.deletedById) ?? null
-          : null,
-        isFavorite: favoriteDatabaseIds.has(record.id),
-        lastVisitedAt: visitsByKey.get(`database:${record.id}`) ?? null,
-        views,
-      },
-    ]);
+    databasePayloads.push({
+      ...record,
+      createdBy: record.createdById
+        ? (creatorsById.get(record.createdById) ?? null)
+        : null,
+      deletedBy: record.deletedById
+        ? (creatorsById.get(record.deletedById) ?? null)
+        : null,
+      isFavorite: favoriteDatabaseIds.has(record.id),
+      lastVisitedAt: visitsByKey.get(`database:${record.id}`) ?? null,
+      views,
+    });
   }
   const placements = buildNavigationPlacements({
-    databaseRecords: activeDatabases,
-    databaseRows: databaseRowPages.filter(
-      (row) =>
-        activeDatabaseIds.has(row.databaseId) &&
-        accessibleRecordIds.has(row.pageId),
-    ),
     placementRecords,
-    pageRecords: accessibleRecords,
   });
 
   return c.json({
+    databases: databasePayloads,
     placements,
     pages: accessibleRecords.map((record) => ({
       ...record,
       createdBy: record.createdById
-        ? creatorsById.get(record.createdById) ?? null
+        ? (creatorsById.get(record.createdById) ?? null)
         : null,
       deletedBy: record.deletedById
-        ? creatorsById.get(record.deletedById) ?? null
+        ? (creatorsById.get(record.deletedById) ?? null)
         : null,
-      databases: databasesByPageId.get(record.id) ?? [],
       isFavorite: favoritePageIds.has(record.id),
       isTeamspace: teamspaceIds.has(record.id),
       lastVisitedAt: visitsByKey.get(`page:${record.id}`) ?? null,
@@ -573,33 +623,17 @@ pageRoutes.post("/item-visits", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const targetPageId =
+  const canView =
     itemKind === "page"
-      ? itemId
-      : (
-          await db
-            .select({ pageId: database.pageId })
-            .from(database)
-            .where(
-              and(
-                eq(database.id, itemId),
-                eq(database.workspaceId, workspaceId),
-                isNull(database.deletedAt),
-              ),
-            )
-            .limit(1)
-        )[0]?.pageId;
+      ? await canAccessPageInWorkspace(itemId, workspaceId, user.id, "view")
+      : await canAccessDatabaseInWorkspace(
+          itemId,
+          workspaceId,
+          user.id,
+          "view",
+        );
 
-  if (!targetPageId) {
-    return c.json({ error: "Item not found" }, 404);
-  }
-
-  if (!(await canAccessPageInWorkspace(
-    targetPageId,
-    workspaceId,
-    user.id,
-    "view",
-  ))) {
+  if (!canView) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -652,6 +686,7 @@ pageRoutes.post("/", async (c) => {
     url = "#",
     content = null,
     metadata = null,
+    parentItemId = null,
   } = body as {
     workspaceId?: unknown;
     type?: unknown;
@@ -659,6 +694,7 @@ pageRoutes.post("/", async (c) => {
     url?: unknown;
     content?: unknown;
     metadata?: unknown;
+    parentItemId?: unknown;
   };
 
   if (typeof workspaceId !== "string" || workspaceId.length === 0) {
@@ -693,13 +729,14 @@ pageRoutes.post("/", async (c) => {
     return createOrgMismatch;
   }
 
+  if (parentItemId !== null && typeof parentItemId !== "string") {
+    return c.json({ error: "parentItemId must be a string or null" }, 400);
+  }
+
   if (
-    typeof metadata === "object" &&
-    metadata &&
-    !Array.isArray(metadata) &&
-    typeof (metadata as { parentItemId?: unknown }).parentItemId === "string" &&
+    typeof parentItemId === "string" &&
     !(await canAccessPageInWorkspace(
-      (metadata as { parentItemId: string }).parentItemId,
+      parentItemId,
       workspaceId,
       user.id,
       "edit",
@@ -709,13 +746,6 @@ pageRoutes.post("/", async (c) => {
   }
 
   const pageId = crypto.randomUUID();
-  const parentItemId =
-    typeof metadata === "object" &&
-    metadata &&
-    !Array.isArray(metadata) &&
-    typeof (metadata as { parentItemId?: unknown }).parentItemId === "string"
-      ? (metadata as { parentItemId: string }).parentItemId
-      : null;
   const [parentFavorite] = parentItemId
     ? await db
         .select({ id: favorite.id })
@@ -726,9 +756,10 @@ pageRoutes.post("/", async (c) => {
         .limit(1)
     : [];
   const shouldInheritFavorite = Boolean(parentFavorite);
+  const placementId = parentItemId ? crypto.randomUUID() : null;
   const placement = parentItemId
     ? {
-        id: `legacy:primary:page:${parentItemId}:page:${pageId}:`,
+        id: placementId as string,
         workspaceId,
         parentKind: "page" as const,
         parentId: parentItemId,
@@ -765,6 +796,12 @@ pageRoutes.post("/", async (c) => {
         placementKind: "primary",
       });
     }
+
+    await tx.insert(pageCollaborationDocument).values({
+      pageId,
+      state: Buffer.from(encodePageContentAsYjs(content)),
+      updatedAt: new Date(),
+    });
 
     if (shouldInheritFavorite) {
       await tx
@@ -833,7 +870,14 @@ pageRoutes.post("/:id/embed-item", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(host.id, host.workspaceId, user.id, "edit"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      host.id,
+      host.workspaceId,
+      user.id,
+      "edit",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -868,111 +912,66 @@ pageRoutes.post("/:id/embed-item", async (c) => {
       return c.json({ error: "Page not found" }, 404);
     }
 
-    if (!(await canAccessPageInWorkspace(child.id, child.workspaceId, user.id, "view"))) {
+    if (
+      !(await canAccessPageInWorkspace(
+        child.id,
+        child.workspaceId,
+        user.id,
+        "view",
+      ))
+    ) {
       return c.json({ error: "Forbidden" }, 403);
     }
 
-    const [sourceDatabaseRow] = await db
-      .select({ id: databaseRow.id })
-      .from(databaseRow)
-      .where(and(eq(databaseRow.pageId, child.id), isNull(databaseRow.deletedAt)))
-      .limit(1);
+    const graph = await loadWorkspacePageGraph(host.workspaceId);
 
-    const orgPages = await db
-      .select({ id: page.id, metadata: page.metadata })
-      .from(page)
-      .where(
-        and(
-          eq(page.workspaceId, host.workspaceId),
-          isNull(page.deletedAt),
-        ),
-      );
-    const metadataByPageId = new Map(
-      orgPages.map((record) => [record.id, record.metadata]),
-    );
-
-    if (
-      wouldCreateParentCycle({
-        childId: child.id,
-        parentId: host.id,
-        getParentItemId: (pageId) => {
-          if (pageId === child.id) {
-            return host.id;
-          }
-
-          return readParentItemId(metadataByPageId.get(pageId));
-        },
-      })
-    ) {
+    if (graph.getPrimaryNestedPageIds(child.id).includes(host.id)) {
       return c.json({ error: "Embedding would create a cycle" }, 400);
     }
 
-    const resolved = resolveEmbedItem({
-      childId: child.id,
-      childMetadata: child.metadata,
-      hostId: host.id,
-      hostMetadata: host.metadata,
-      kind: "page",
-    });
-    const childParentItemId = readParentItemId(child.metadata);
-    const shouldLinkDatabaseRowPage =
-      Boolean(sourceDatabaseRow) &&
-      resolved.action === "setParent" &&
-      !childParentItemId;
+    const [primaryPlacement, sourceDatabaseRow] = await Promise.all([
+      db
+        .select({ parentId: pageItemPlacement.parentId })
+        .from(pageItemPlacement)
+        .where(
+          and(
+            eq(pageItemPlacement.workspaceId, host.workspaceId),
+            eq(pageItemPlacement.itemKind, "page"),
+            eq(pageItemPlacement.itemId, child.id),
+            eq(pageItemPlacement.placementKind, "primary"),
+            isNull(pageItemPlacement.deletedAt),
+          ),
+        )
+        .limit(1),
+      db
+        .select({ id: databaseRow.id })
+        .from(databaseRow)
+        .where(
+          and(eq(databaseRow.pageId, child.id), isNull(databaseRow.deletedAt)),
+        )
+        .limit(1),
+    ]);
+    const action =
+      primaryPlacement[0]?.parentId === host.id
+        ? "setParent"
+        : primaryPlacement.length === 0 && sourceDatabaseRow.length === 0
+          ? "setParent"
+          : "addLink";
 
-    await db.transaction(async (tx) => {
-      if (resolved.action === "setParent" && !shouldLinkDatabaseRowPage) {
-        await tx
-          .update(page)
-          .set({
-            metadata: resolved.childMetadata,
-            updatedAt: new Date(),
-          })
-          .where(eq(page.id, child.id));
-        await upsertPageItemPlacement(tx, {
-          workspaceId: host.workspaceId,
-          parentKind: "page",
-          parentId: host.id,
-          itemKind: "page",
-          itemId: child.id,
-          placementKind: "primary",
-        });
-      } else {
-        const hostMetadata =
-          resolved.action === "addLink"
-            ? resolved.hostMetadata
-            : addLinkedItem(readMetadataRecord(host.metadata), {
-                id: child.id,
-                kind: "page",
-              });
-
-        await tx
-          .update(page)
-          .set({
-            metadata: hostMetadata,
-            updatedAt: new Date(),
-          })
-          .where(eq(page.id, host.id));
-        await upsertPageItemPlacement(tx, {
-          workspaceId: host.workspaceId,
-          parentKind: "page",
-          parentId: host.id,
-          itemKind: "page",
-          itemId: child.id,
-          placementKind: "linked",
-        });
-      }
-    });
-
-    const [updatedHost] = await db
-      .select()
-      .from(page)
-      .where(eq(page.id, host.id))
-      .limit(1);
+    if (primaryPlacement[0]?.parentId !== host.id) {
+      await upsertPageItemPlacement(db, {
+        workspaceId: host.workspaceId,
+        parentKind: "page",
+        parentId: host.id,
+        itemKind: "page",
+        itemId: child.id,
+        placementKind: action === "setParent" ? "primary" : "linked",
+      });
+    }
 
     return c.json({
-      action: shouldLinkDatabaseRowPage ? "addLink" : resolved.action,
-      host: updatedHost,
+      action,
+      host,
     });
   }
 
@@ -992,53 +991,31 @@ pageRoutes.post("/:id/embed-item", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(
-    databaseRecord.pageId,
-    databaseRecord.workspaceId,
-    user.id,
-    "view",
-  ))) {
+  if (
+    !(await canAccessDatabaseInWorkspace(
+      databaseRecord.id,
+      databaseRecord.workspaceId,
+      user.id,
+      "view",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
   if (databaseRecord.pageId === host.id) {
-    return c.json({
-      action: "setParent",
-      host,
-    });
+    return c.json({ action: "setParent", host });
   }
 
-  const hostMetadata = addLinkedItem(
-    readMetadataRecord(host.metadata),
-    { id: databaseRecord.id, kind: "database" },
-  );
-
-  const [updatedHost] = await db.transaction(async (tx) => {
-    const [updated] = await tx
-      .update(page)
-      .set({
-        metadata: hostMetadata,
-        updatedAt: new Date(),
-      })
-      .where(eq(page.id, host.id))
-      .returning();
-
-    await upsertPageItemPlacement(tx, {
-      workspaceId: host.workspaceId,
-      parentKind: "page",
-      parentId: host.id,
-      itemKind: "database",
-      itemId: databaseRecord.id,
-      placementKind: "linked",
-    });
-
-    return [updated];
+  await upsertPageItemPlacement(db, {
+    workspaceId: host.workspaceId,
+    parentKind: "page",
+    parentId: host.id,
+    itemKind: "database",
+    itemId: databaseRecord.id,
+    placementKind: "linked",
   });
 
-  return c.json({
-    action: "addLink",
-    host: updatedHost ?? null,
-  });
+  return c.json({ action: "addLink", host });
 });
 
 pageRoutes.delete("/:id/embed-item", async (c) => {
@@ -1078,7 +1055,14 @@ pageRoutes.delete("/:id/embed-item", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(host.id, host.workspaceId, user.id, "edit"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      host.id,
+      host.workspaceId,
+      user.id,
+      "edit",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1093,62 +1077,32 @@ pageRoutes.delete("/:id/embed-item", async (c) => {
   }
 
   const ref: ItemRef = { id: itemId, kind };
+  const [placement] = await db
+    .select({ placementKind: pageItemPlacement.placementKind })
+    .from(pageItemPlacement)
+    .where(
+      and(
+        eq(pageItemPlacement.workspaceId, host.workspaceId),
+        eq(pageItemPlacement.parentKind, "page"),
+        eq(pageItemPlacement.parentId, host.id),
+        eq(pageItemPlacement.itemKind, kind),
+        eq(pageItemPlacement.itemId, itemId),
+        isNull(pageItemPlacement.deletedAt),
+      ),
+    )
+    .limit(1);
 
-  if (kind === "page") {
-    const [child] = await db
-      .select()
-      .from(page)
-      .where(
-        and(
-          eq(page.id, itemId),
-          eq(page.workspaceId, host.workspaceId),
-          isNull(page.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!child) {
-      return c.json({ error: "Page not found" }, 404);
-    }
-
-    if (readParentItemId(child.metadata) === host.id) {
-      await db.transaction(async (tx) => {
-        await tx
-          .update(page)
-          .set({
-            metadata: clearParentItem(readMetadataRecord(child.metadata)),
-            updatedAt: new Date(),
-          })
-          .where(eq(page.id, child.id));
-        await softDeletePageItemPlacement(tx, {
-          workspaceId: host.workspaceId,
-          parentKind: "page",
-          parentId: host.id,
-          item: ref,
-        });
-      });
-
-      return c.json({ action: "clearParent" });
-    }
-  }
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(page)
-      .set({
-        metadata: removeLinkedItem(readMetadataRecord(host.metadata), ref),
-        updatedAt: new Date(),
-      })
-      .where(eq(page.id, host.id));
-    await softDeletePageItemPlacement(tx, {
-      workspaceId: host.workspaceId,
-      parentKind: "page",
-      parentId: host.id,
-      item: ref,
-    });
+  await softDeletePageItemPlacement(db, {
+    workspaceId: host.workspaceId,
+    parentKind: "page",
+    parentId: host.id,
+    item: ref,
   });
 
-  return c.json({ action: "removeLink" });
+  return c.json({
+    action:
+      placement?.placementKind === "primary" ? "clearParent" : "removeLink",
+  });
 });
 
 pageRoutes.get("/:id", async (c) => {
@@ -1206,17 +1160,31 @@ pageRoutes.get("/:id", async (c) => {
         .select({ id: favorite.id })
         .from(favorite)
         .where(
-          and(
-            eq(favorite.userId, user.id),
-            eq(favorite.pageId, record.id),
-          ),
+          and(eq(favorite.userId, user.id), eq(favorite.pageId, record.id)),
         )
         .limit(1)
     : [];
+  const [parentPlacement] = await db
+    .select({ parentId: pageItemPlacement.parentId })
+    .from(pageItemPlacement)
+    .where(
+      and(
+        eq(pageItemPlacement.workspaceId, record.workspaceId),
+        eq(pageItemPlacement.itemKind, "page"),
+        eq(pageItemPlacement.itemId, record.id),
+        eq(pageItemPlacement.placementKind, "primary"),
+        isNull(pageItemPlacement.deletedAt),
+      ),
+    )
+    .limit(1);
 
   return c.json({
     accessLevel: hasAccess(accessLevel, "view") ? accessLevel : "view",
-    page: { ...record, isFavorite: Boolean(favoriteRecord) },
+    page: {
+      ...record,
+      isFavorite: Boolean(favoriteRecord),
+      parentPageId: parentPlacement?.parentId ?? null,
+    },
   });
 });
 
@@ -1245,7 +1213,14 @@ pageRoutes.put("/:id/favorite", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(record.id, record.workspaceId, user.id, "view"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      record.id,
+      record.workspaceId,
+      user.id,
+      "view",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1286,7 +1261,14 @@ pageRoutes.delete("/:id/favorite", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(record.id, record.workspaceId, user.id, "view"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      record.id,
+      record.workspaceId,
+      user.id,
+      "view",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1453,7 +1435,11 @@ pageRoutes.put("/:id/access", async (c) => {
   };
   const normalizedAccessLevel = normalizeAccessLevel(accessLevel);
 
-  if (targetType !== "public" && targetType !== "user" && targetType !== "team") {
+  if (
+    targetType !== "public" &&
+    targetType !== "user" &&
+    targetType !== "team"
+  ) {
     return c.json({ error: "targetType must be public, user, or team" }, 400);
   }
 
@@ -1479,26 +1465,26 @@ pageRoutes.put("/:id/access", async (c) => {
     targetType === "public"
       ? [{ id: "*" }]
       : targetType === "user"
-      ? await db
-          .select({ id: member.id })
-          .from(member)
-          .where(
-            and(
-              eq(member.organizationId, record.workspaceId),
-              eq(member.userId, targetId),
-            ),
-          )
-          .limit(1)
-      : await db
-          .select({ id: team.id })
-          .from(team)
-          .where(
-            and(
-              eq(team.organizationId, record.workspaceId),
-              eq(team.id, targetId),
-            ),
-          )
-          .limit(1);
+        ? await db
+            .select({ id: member.id })
+            .from(member)
+            .where(
+              and(
+                eq(member.organizationId, record.workspaceId),
+                eq(member.userId, targetId),
+              ),
+            )
+            .limit(1)
+        : await db
+            .select({ id: team.id })
+            .from(team)
+            .where(
+              and(
+                eq(team.organizationId, record.workspaceId),
+                eq(team.id, targetId),
+              ),
+            )
+            .limit(1);
 
   if (!target) {
     return c.json({ error: "Target not found" }, 404);
@@ -1515,11 +1501,7 @@ pageRoutes.put("/:id/access", async (c) => {
       pageId: record.id,
     })
     .onConflictDoUpdate({
-      target: [
-        pageAccess.pageId,
-        pageAccess.targetType,
-        pageAccess.targetId,
-      ],
+      target: [pageAccess.pageId, pageAccess.targetType, pageAccess.targetId],
       set: {
         accessLevel: normalizedAccessLevel,
         updatedAt: new Date(),
@@ -1640,7 +1622,14 @@ pageRoutes.get("/:id/properties", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(record.id, record.workspaceId, user.id, "view"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      record.id,
+      record.workspaceId,
+      user.id,
+      "view",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1654,9 +1643,7 @@ pageRoutes.get("/:id/properties", async (c) => {
     return propertiesOrgMismatch;
   }
 
-  return c.json(
-    await getPagePropertyPayload(record.id, record.workspaceId),
-  );
+  return c.json(await getPagePropertyPayload(record.id, record.workspaceId));
 });
 
 pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
@@ -1672,7 +1659,14 @@ pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(record.id, record.workspaceId, user.id, "edit"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      record.id,
+      record.workspaceId,
+      user.id,
+      "edit",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1715,19 +1709,14 @@ pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
       value,
     })
     .onConflictDoUpdate({
-      target: [
-        pagePropertyValue.pageId,
-        pagePropertyValue.propertyId,
-      ],
+      target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
       set: {
         value,
         updatedAt: new Date(),
       },
     });
 
-  return c.json(
-    await getPagePropertyPayload(record.id, record.workspaceId),
-  );
+  return c.json(await getPagePropertyPayload(record.id, record.workspaceId));
 });
 
 pageRoutes.post("/:id/collaboration-ticket", async (c) => {
@@ -1743,7 +1732,14 @@ pageRoutes.post("/:id/collaboration-ticket", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.id, existing.workspaceId, user.id, "edit"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      existing.id,
+      existing.workspaceId,
+      user.id,
+      "edit",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1757,22 +1753,24 @@ pageRoutes.post("/:id/collaboration-ticket", async (c) => {
     return workspaceMismatch;
   }
 
-  const ticket = await createCollaborationTicket(
-    {
-      pageId: existing.id,
-      userId: user.id,
-      workspaceId: existing.workspaceId,
-    },
-    c.env,
-  );
+  const [ticket, initialState] = await Promise.all([
+    createCollaborationTicket(
+      {
+        pageId: existing.id,
+        userId: user.id,
+        workspaceId: existing.workspaceId,
+      },
+      c.env,
+    ),
+    getOrCreateCollaborationDocumentState(existing.id),
+  ]);
   const documentName = documentNameForPage(existing.id);
-  const websocketUrl = new URL(
-    getCollaborationWebSocketUrl(c.req.raw, c.env),
-  );
+  const websocketUrl = new URL(getCollaborationWebSocketUrl(c.req.raw, c.env));
   websocketUrl.searchParams.set("document", documentName);
 
   return c.json({
     documentName,
+    initialState: Buffer.from(initialState).toString("base64"),
     websocketUrl: websocketUrl.toString(),
     ...ticket,
   });
@@ -1791,7 +1789,14 @@ pageRoutes.patch("/:id/content", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.id, existing.workspaceId, user.id, "edit"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      existing.id,
+      existing.workspaceId,
+      user.id,
+      "edit",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1873,7 +1878,14 @@ pageRoutes.patch("/:id", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.id, existing.workspaceId, user.id, "edit"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      existing.id,
+      existing.workspaceId,
+      user.id,
+      "edit",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1929,32 +1941,6 @@ pageRoutes.patch("/:id", async (c) => {
   }
 
   if (patch.metadata !== undefined) {
-    if (
-      patch.metadata &&
-      typeof patch.metadata === "object" &&
-      !Array.isArray(patch.metadata)
-    ) {
-      const parentItemId = (patch.metadata as { parentItemId?: unknown })
-        .parentItemId;
-
-      if (parentItemId === existing.id) {
-        return c.json({ error: "A page cannot be nested inside itself" }, 400);
-      }
-
-      if (
-        typeof parentItemId === "string" &&
-        parentItemId.length > 0 &&
-        !(await canAccessPageInWorkspace(
-          parentItemId,
-          existing.workspaceId,
-          user.id,
-          "edit",
-        ))
-      ) {
-        return c.json({ error: "Forbidden" }, 403);
-      }
-    }
-
     values.metadata = patch.metadata;
   }
 
@@ -2004,17 +1990,81 @@ pageRoutes.post("/:id/restore", async (c) => {
     return restoreOrgMismatch;
   }
 
-  const [record] = await db
-    .update(page)
-    .set({
-      deletedAt: null,
-      deletedById: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(page.id, existing.id))
-    .returning();
+  if (!existing.deletedAt) {
+    return c.json({
+      page: existing,
+      restoredDatabaseIds: [],
+      restoredPageIds: [],
+    });
+  }
 
-  return c.json({ page: record });
+  const deletedAt = existing.deletedAt;
+  const restored = await db.transaction(async (tx) => {
+    const now = new Date();
+    const restoredPages = await tx
+      .update(page)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(page.workspaceId, existing.workspaceId),
+          eq(page.deletedAt, deletedAt),
+          existing.deletedById
+            ? eq(page.deletedById, existing.deletedById)
+            : undefined,
+        ),
+      )
+      .returning();
+    const restoredDatabases = await tx
+      .update(database)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(database.workspaceId, existing.workspaceId),
+          eq(database.deletedAt, deletedAt),
+          existing.deletedById
+            ? eq(database.deletedById, existing.deletedById)
+            : undefined,
+        ),
+      )
+      .returning({ id: database.id });
+    const restoredDatabaseIds = restoredDatabases.map((record) => record.id);
+
+    if (restoredDatabaseIds.length > 0) {
+      await tx
+        .update(databaseRow)
+        .set({
+          deletedAt: null,
+          deletedById: null,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            inArray(databaseRow.databaseId, restoredDatabaseIds),
+            eq(databaseRow.deletedAt, deletedAt),
+            existing.deletedById
+              ? eq(databaseRow.deletedById, existing.deletedById)
+              : undefined,
+          ),
+        );
+    }
+
+    return {
+      page:
+        restoredPages.find((record) => record.id === existing.id) ?? existing,
+      restoredDatabaseIds,
+      restoredPageIds: restoredPages.map((record) => record.id),
+    };
+  });
+
+  return c.json(restored);
 });
 
 pageRoutes.delete("/:id", async (c) => {
@@ -2030,7 +2080,14 @@ pageRoutes.delete("/:id", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.id, existing.workspaceId, user.id, "full"))) {
+  if (
+    !(await canAccessPageInWorkspace(
+      existing.id,
+      existing.workspaceId,
+      user.id,
+      "full",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -2044,12 +2101,11 @@ pageRoutes.delete("/:id", async (c) => {
     return deleteOrgMismatch;
   }
 
-  const { deletedDatabaseIds, deletedPageIds } =
-    await softDeletePageTree({
-      workspaceId: existing.workspaceId,
-      rootPageId: existing.id,
-      userId: user.id,
-    });
+  const { deletedDatabaseIds, deletedPageIds } = await softDeletePageTree({
+    workspaceId: existing.workspaceId,
+    rootPageId: existing.id,
+    userId: user.id,
+  });
 
   const [record] = await db
     .select()

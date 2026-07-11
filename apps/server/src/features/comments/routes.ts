@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import {
@@ -179,10 +179,13 @@ const getThreadsCommentsPayload = async (
   const commentsByThreadId = new Map<string, typeof comments>();
 
   for (const comment of comments) {
-    commentsByThreadId.set(comment.threadId, [
-      ...(commentsByThreadId.get(comment.threadId) ?? []),
-      comment,
-    ]);
+    const threadComments = commentsByThreadId.get(comment.threadId);
+
+    if (threadComments) {
+      threadComments.push(comment);
+    } else {
+      commentsByThreadId.set(comment.threadId, [comment]);
+    }
   }
 
   return threads.map((thread) => ({
@@ -333,23 +336,31 @@ commentRoutes.get("/pages/:id/threads", async (c) => {
     return context.error;
   }
 
+  // The editor only needs thread metadata and counts here. Loading every
+  // message, author, and reaction made opening a page proportional to the
+  // complete discussion history; each thread fetches its detail on demand.
   const threads = await db
-    .select()
+    .select({
+      commentCount: count(commentMessage.id),
+      thread: commentThread,
+    })
     .from(commentThread)
+    .leftJoin(commentMessage, eq(commentMessage.threadId, commentThread.id))
     .where(
       and(
         eq(commentThread.pageId, context.page.id),
         isNull(commentThread.deletedAt),
       ),
     )
+    .groupBy(commentThread.id)
     .orderBy(desc(commentThread.lastActivityAt));
 
-  const results = await getThreadsCommentsPayload(
-    threads,
-    context.requestUser.id,
-  );
-
-  return c.json({ threads: results });
+  return c.json({
+    threads: threads.map(({ commentCount, thread }) => ({
+      commentCount: Number(commentCount),
+      thread,
+    })),
+  });
 });
 
 commentRoutes.post("/pages/:id/comments", async (c) => {
@@ -411,8 +422,14 @@ commentRoutes.post("/pages/:id/comments", async (c) => {
   });
 
   return c.json(
-    await getPageCommentsPayload(
-      context.page.id,
+    await getThreadCommentsPayload(
+      (
+        await db
+          .select()
+          .from(commentThread)
+          .where(eq(commentThread.id, threadId))
+          .limit(1)
+      )[0],
       context.requestUser.id,
     ),
     201,
@@ -462,8 +479,13 @@ commentRoutes.patch("/pages/:id/comments/thread/resolve", async (c) => {
     .where(eq(commentThread.id, thread.id));
 
   return c.json(
-    await getPageCommentsPayload(
-      context.page.id,
+    await getThreadCommentsPayload(
+      {
+        ...thread,
+        resolvedAt: now,
+        resolvedById: context.requestUser.id,
+        updatedAt: now,
+      },
       context.requestUser.id,
     ),
   );
@@ -512,8 +534,13 @@ commentRoutes.patch("/pages/:id/comments/thread/unresolve", async (c) => {
     .where(eq(commentThread.id, thread.id));
 
   return c.json(
-    await getPageCommentsPayload(
-      context.page.id,
+    await getThreadCommentsPayload(
+      {
+        ...thread,
+        resolvedAt: null,
+        resolvedById: null,
+        updatedAt: now,
+      },
       context.requestUser.id,
     ),
   );
@@ -567,8 +594,8 @@ commentRoutes.patch("/pages/:id/comments/:messageId", async (c) => {
     .where(eq(commentThread.id, messageContext.thread.id));
 
   return c.json(
-    await getPageCommentsPayload(
-      context.page.id,
+    await getThreadCommentsPayload(
+      messageContext.thread,
       context.requestUser.id,
     ),
   );
@@ -620,8 +647,8 @@ commentRoutes.post("/pages/:id/comments/:messageId/reactions", async (c) => {
     });
 
   return c.json(
-    await getPageCommentsPayload(
-      context.page.id,
+    await getThreadCommentsPayload(
+      messageContext.thread,
       context.requestUser.id,
     ),
   );
@@ -668,8 +695,8 @@ commentRoutes.delete(
       );
 
     return c.json(
-      await getPageCommentsPayload(
-        context.page.id,
+      await getThreadCommentsPayload(
+        messageContext.thread,
         context.requestUser.id,
       ),
     );
@@ -705,7 +732,7 @@ commentRoutes.delete("/pages/:id/comments/:messageId", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  await db.transaction(async (tx) => {
+  const threadHasComments = await db.transaction(async (tx) => {
     const now = new Date();
 
     await tx
@@ -722,19 +749,23 @@ commentRoutes.delete("/pages/:id/comments/:messageId", async (c) => {
       await tx
         .delete(commentThread)
         .where(eq(commentThread.id, messageContext.thread.id));
-      return;
+      return false;
     }
 
     await tx
       .update(commentThread)
       .set({ lastActivityAt: now, updatedAt: now })
       .where(eq(commentThread.id, messageContext.thread.id));
+
+    return true;
   });
 
   return c.json(
-    await getPageCommentsPayload(
-      context.page.id,
-      context.requestUser.id,
-    ),
+    threadHasComments
+      ? await getThreadCommentsPayload(
+          messageContext.thread,
+          context.requestUser.id,
+        )
+      : { comments: [], thread: null },
   );
 });

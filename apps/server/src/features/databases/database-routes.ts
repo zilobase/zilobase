@@ -3,27 +3,35 @@ import type { SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import {
+  canAccessDatabaseInWorkspace,
   canAccessPageInWorkspace,
   getAccessiblePageIds,
-  isPagePublishedInWorkspace,
+  getEffectiveDatabaseAccessInWorkspace,
+  getMembership,
+  isDatabasePublishedInWorkspace,
+  normalizeAccessLevel,
 } from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
 import { db } from "../../db";
 import type { Database } from "../../db";
 import {
   database,
+  databaseAccess,
   databaseProperty,
   databaseRow,
   databaseView,
   favorite,
+  member,
   page,
+  pageCollaborationDocument,
   pageItemPlacement,
   pageProperty,
   pagePropertyValue,
+  team,
 } from "../../db/schema";
 import type { DatabaseChangedArea } from "../../services/database-delta";
+import { encodePageContentAsYjs } from "../../collaboration/service";
 import type { AppBindings } from "../../types";
-import { withDatabaseParentItemId } from "../../item-relationships";
 import { upsertPageItemPlacement } from "../../page-item-placements";
 import { softDeleteDatabaseTree } from "../../soft-delete-nav-items";
 import { loadWorkspacePageGraph } from "../../page-graph";
@@ -34,6 +42,7 @@ import {
   type SqlExecutor,
 } from "../../services/database-commit";
 import {
+  isDatabaseHostPageId,
   normalizePropertyConfig,
   ServiceMutationError,
   validateCellValue,
@@ -54,6 +63,13 @@ import {
 export const databaseRoutes = new Hono<AppBindings>();
 
 const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
+
+const canAccessDatabaseRecord = (
+  record: { id: string; workspaceId: string },
+  userId: string,
+  required: "view" | "edit" | "full",
+) =>
+  canAccessDatabaseInWorkspace(record.id, record.workspaceId, userId, required);
 
 const defaultStatusOptions = [
   {
@@ -76,11 +92,19 @@ const defaultStatusOptions = [
   },
 ];
 
-const getDatabaseRecord = async (id: string) => {
+const getDatabaseRecord = async (
+  id: string,
+  options?: { includeDeleted?: boolean },
+) => {
   const [record] = await db
     .select()
     .from(database)
-    .where(and(eq(database.id, id), isNull(database.deletedAt)))
+    .where(
+      and(
+        eq(database.id, id),
+        options?.includeDeleted ? undefined : isNull(database.deletedAt),
+      ),
+    )
     .limit(1);
 
   return record;
@@ -106,7 +130,9 @@ type StatusPropertyConfig = {
   options?: unknown;
 };
 
-type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+type DatabaseTransaction = Parameters<
+  Parameters<Database["transaction"]>[0]
+>[0];
 
 const databaseMutationErrorResponse = (
   c: Context<AppBindings>,
@@ -257,7 +283,9 @@ const getStatusDefaultValue = (config: unknown) => {
       : defaultStatusOptions[0]?.id;
 
   if (typeof defaultOptionId === "string") {
-    const defaultOption = options.find((option) => option.id === defaultOptionId);
+    const defaultOption = options.find(
+      (option) => option.id === defaultOptionId,
+    );
 
     if (defaultOption) {
       return defaultOption.name;
@@ -295,7 +323,9 @@ const readPropertyOptions = (
 const getOptionValueNames = (propertyType: string, value: unknown) => {
   if (propertyType === "multi_select") {
     return Array.isArray(value)
-      ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
+      ? value.filter(
+          (item): item is string => typeof item === "string" && item.length > 0,
+        )
       : typeof value === "string" && value.length > 0
         ? [value]
         : [];
@@ -313,11 +343,12 @@ const getOptionValueNames = (propertyType: string, value: unknown) => {
 };
 
 const getOptionId = (name: string, existingIds: Set<string>) => {
-  const baseId = name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "option";
+  const baseId =
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "option";
   let id = baseId;
   let index = 2;
 
@@ -330,7 +361,10 @@ const getOptionId = (name: string, existingIds: Set<string>) => {
   return id;
 };
 
-const normalizeValueForPropertyType = (propertyType: string, value: unknown) => {
+const normalizeValueForPropertyType = (
+  propertyType: string,
+  value: unknown,
+) => {
   if (propertyType === "multi_select" && typeof value === "string") {
     return [value];
   }
@@ -397,10 +431,7 @@ const mergeSelectOptionsForValue = (
   };
 };
 
-const getDuplicatePropertyName = (
-  name: string,
-  existingNames: Set<string>,
-) => {
+const getDuplicatePropertyName = (name: string, existingNames: Set<string>) => {
   const trimmedName = name.trim() || "Property";
   const baseName = `${trimmedName} copy`;
 
@@ -440,8 +471,9 @@ const getDatabasePayload = async (
   id: string,
   userId?: string,
   existingRecord?: NonNullable<Awaited<ReturnType<typeof getDatabaseRecord>>>,
+  options?: { includeDeleted?: boolean },
 ) => {
-  const record = existingRecord ?? await getDatabaseRecord(id);
+  const record = existingRecord ?? (await getDatabaseRecord(id, options));
 
   if (!record) {
     return null;
@@ -454,10 +486,7 @@ const getDatabasePayload = async (
         property: pageProperty,
       })
       .from(databaseProperty)
-      .innerJoin(
-        pageProperty,
-        eq(databaseProperty.propertyId, pageProperty.id),
-      )
+      .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
       .where(
         and(
           eq(databaseProperty.databaseId, id),
@@ -487,7 +516,7 @@ const getDatabasePayload = async (
       .where(
         and(
           eq(databaseRow.databaseId, id),
-          isNull(databaseRow.deletedAt),
+          options?.includeDeleted ? undefined : isNull(databaseRow.deletedAt),
         ),
       )
       .orderBy(asc(databaseRow.position)),
@@ -535,8 +564,9 @@ const getDatabaseSchemaPayload = async (
   id: string,
   userId?: string,
   existingRecord?: NonNullable<Awaited<ReturnType<typeof getDatabaseRecord>>>,
+  options?: { includeDeleted?: boolean },
 ) => {
-  const record = existingRecord ?? (await getDatabaseRecord(id));
+  const record = existingRecord ?? (await getDatabaseRecord(id, options));
 
   if (!record) {
     return null;
@@ -549,10 +579,7 @@ const getDatabaseSchemaPayload = async (
         property: pageProperty,
       })
       .from(databaseProperty)
-      .innerJoin(
-        pageProperty,
-        eq(databaseProperty.propertyId, pageProperty.id),
-      )
+      .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
       .where(
         and(
           eq(databaseProperty.databaseId, id),
@@ -622,7 +649,10 @@ databaseRoutes.post("/", async (c) => {
     return mismatch;
   }
 
-  if (typeof pageId !== "string" || pageId.length === 0) {
+  if (
+    standalone !== true &&
+    (typeof pageId !== "string" || pageId.length === 0)
+  ) {
     return c.json({ error: "pageId is required" }, 400);
   }
 
@@ -630,31 +660,52 @@ databaseRoutes.post("/", async (c) => {
     return c.json({ error: "name must be a string" }, 400);
   }
 
-  const [pageRecord] = await db
-    .select({ id: page.id })
-    .from(page)
-    .where(
-      and(
-        eq(page.id, pageId),
-        eq(page.workspaceId, workspaceId),
-        isNull(page.deletedAt),
-      ),
-    )
-    .limit(1);
+  const [pageRecord] =
+    typeof pageId === "string"
+      ? await db
+          .select({ id: page.id })
+          .from(page)
+          .where(
+            and(
+              eq(page.id, pageId),
+              eq(page.workspaceId, workspaceId),
+              isNull(page.deletedAt),
+            ),
+          )
+          .limit(1)
+      : [];
 
-  if (!pageRecord) {
+  if (standalone !== true && !pageRecord) {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(pageRecord.id, workspaceId, user.id, "edit"))) {
+  if (standalone === true) {
+    if (!(await getMembership(workspaceId, user.id))) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+  } else if (
+    !pageRecord ||
+    !(await canAccessPageInWorkspace(
+      pageRecord.id,
+      workspaceId,
+      user.id,
+      "edit",
+    ))
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
   const databaseId = crypto.randomUUID();
+  const parentPlacementId = standalone === true ? null : crypto.randomUUID();
   const [parentFavorite] = await db
     .select({ id: favorite.id })
     .from(favorite)
-    .where(and(eq(favorite.userId, user.id), eq(favorite.pageId, pageId)))
+    .where(
+      and(
+        eq(favorite.userId, user.id),
+        eq(favorite.pageId, typeof pageId === "string" ? pageId : ""),
+      ),
+    )
     .limit(1);
   const shouldInheritFavorite = Boolean(parentFavorite);
 
@@ -662,9 +713,10 @@ databaseRoutes.post("/", async (c) => {
     await tx.insert(database).values({
       id: databaseId,
       workspaceId,
-      pageId,
+      createdById: user.id,
+      pageId: standalone === true ? null : (pageId as string),
       name,
-      config: standalone === true ? {} : withDatabaseParentItemId(null, pageId),
+      config: {},
     });
     await tx.insert(databaseView).values({
       id: crypto.randomUUID(),
@@ -673,6 +725,17 @@ databaseRoutes.post("/", async (c) => {
       name: "Table",
       position: 0,
     });
+    if (parentPlacementId && typeof pageId === "string") {
+      await upsertPageItemPlacement(tx, {
+        id: parentPlacementId,
+        workspaceId,
+        parentKind: "page",
+        parentId: pageId,
+        itemKind: "database",
+        itemId: databaseId,
+        placementKind: "primary",
+      });
+    }
     if (shouldInheritFavorite) {
       await tx
         .insert(favorite)
@@ -694,10 +757,10 @@ databaseRoutes.post("/", async (c) => {
   }
 
   const parentPlacement =
-    standalone === true
+    standalone === true || typeof pageId !== "string"
       ? null
       : {
-          id: `legacy:primary:page:${pageId}:database:${databaseId}:`,
+          id: parentPlacementId as string,
           workspaceId,
           parentKind: "page" as const,
           parentId: pageId,
@@ -711,10 +774,15 @@ databaseRoutes.post("/", async (c) => {
   return c.json(
     {
       ...payload,
+      database: {
+        ...payload.database,
+        accessLevel: "full" as const,
+      },
       navDelta: {
         upsertDatabases: [
           {
             ...payload.database,
+            accessLevel: "full" as const,
             views: payload.views,
           },
         ],
@@ -725,28 +793,28 @@ databaseRoutes.post("/", async (c) => {
   );
 });
 
-
-
 databaseRoutes.get("/:id", async (c) => {
   const user = requireUser(c);
-  const record = await getDatabaseRecord(c.req.param("id"));
+  const includeDeleted = c.req.query("includeDeleted") === "1";
+  const record = await getDatabaseRecord(c.req.param("id"), {
+    includeDeleted,
+  });
 
   if (!record) {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  const canView = user
-    ? await canAccessPageInWorkspace(
-        record.pageId,
-        record.workspaceId,
-        user.id,
-        "view",
-      )
-    : false;
+  const canView = record.deletedAt
+    ? user
+      ? Boolean(await getMembership(record.workspaceId, user.id))
+      : false
+    : user
+      ? await canAccessDatabaseRecord(record, user.id, "view")
+      : false;
 
   if (!canView) {
-    const published = await isPagePublishedInWorkspace(
-      record.pageId,
+    const published = await isDatabasePublishedInWorkspace(
+      record.id,
       record.workspaceId,
     );
 
@@ -761,10 +829,23 @@ databaseRoutes.get("/:id", async (c) => {
 
   const schemaOnly = c.req.query("schemaOnly") === "1";
   const payload = schemaOnly
-    ? await getDatabaseSchemaPayload(record.id, user?.id, record)
-    : await getDatabasePayload(record.id, user?.id, record);
+    ? await getDatabaseSchemaPayload(record.id, user?.id, record, {
+        includeDeleted,
+      })
+    : await getDatabasePayload(record.id, user?.id, record, { includeDeleted });
 
-  return c.json(payload);
+  const accessLevel = user
+    ? await getEffectiveDatabaseAccessInWorkspace(
+        record.id,
+        record.workspaceId,
+        user.id,
+      )
+    : null;
+
+  return c.json({
+    ...payload,
+    database: payload ? { ...payload.database, accessLevel } : payload,
+  });
 });
 
 databaseRoutes.get("/:id/published", async (c) => {
@@ -775,11 +856,150 @@ databaseRoutes.get("/:id/published", async (c) => {
   }
 
   return c.json({
-    published: await isPagePublishedInWorkspace(
-      record.pageId,
+    published: await isDatabasePublishedInWorkspace(
+      record.id,
       record.workspaceId,
     ),
   });
+});
+
+databaseRoutes.get("/:id/access", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const record = await getDatabaseRecord(c.req.param("id"));
+  if (!record) return c.json({ error: "Database not found" }, 404);
+  if (!(await canAccessDatabaseRecord(record, user.id, "full"))) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  const rules = await db
+    .select()
+    .from(databaseAccess)
+    .where(eq(databaseAccess.databaseId, record.id))
+    .orderBy(asc(databaseAccess.createdAt));
+  return c.json({ access: rules });
+});
+
+databaseRoutes.put("/:id/access", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const record = await getDatabaseRecord(c.req.param("id"));
+  if (!record) return c.json({ error: "Database not found" }, 404);
+  if (!(await canAccessDatabaseRecord(record, user.id, "full"))) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  const body = await c.req.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return c.json({ error: "A JSON body is required" }, 400);
+  }
+  const { targetType, targetId, accessLevel } = body as {
+    accessLevel?: unknown;
+    targetId?: unknown;
+    targetType?: unknown;
+  };
+  const normalizedAccessLevel = normalizeAccessLevel(accessLevel);
+  if (
+    targetType !== "public" &&
+    targetType !== "user" &&
+    targetType !== "team"
+  ) {
+    return c.json({ error: "targetType must be public, user, or team" }, 400);
+  }
+  if (typeof targetId !== "string" || !targetId) {
+    return c.json({ error: "targetId is required" }, 400);
+  }
+  if (!normalizedAccessLevel) {
+    return c.json({ error: "accessLevel must be view, edit, or full" }, 400);
+  }
+  if (
+    targetType === "public" &&
+    (targetId !== "*" || normalizedAccessLevel !== "view")
+  ) {
+    return c.json({ error: "public access must be view for *" }, 400);
+  }
+  const [target] =
+    targetType === "public"
+      ? [{ id: "*" }]
+      : targetType === "user"
+        ? await db
+            .select({ id: member.id })
+            .from(member)
+            .where(
+              and(
+                eq(member.organizationId, record.workspaceId),
+                eq(member.userId, targetId),
+              ),
+            )
+            .limit(1)
+        : await db
+            .select({ id: team.id })
+            .from(team)
+            .where(
+              and(
+                eq(team.organizationId, record.workspaceId),
+                eq(team.id, targetId),
+              ),
+            )
+            .limit(1);
+  if (!target) return c.json({ error: "Target not found" }, 404);
+  const [rule] = await db
+    .insert(databaseAccess)
+    .values({
+      id: crypto.randomUUID(),
+      accessLevel: normalizedAccessLevel,
+      workspaceId: record.workspaceId,
+      targetId,
+      targetType,
+      databaseId: record.id,
+    })
+    .onConflictDoUpdate({
+      target: [
+        databaseAccess.databaseId,
+        databaseAccess.targetType,
+        databaseAccess.targetId,
+      ],
+      set: { accessLevel: normalizedAccessLevel, updatedAt: new Date() },
+    })
+    .returning();
+  return c.json({ access: rule });
+});
+
+databaseRoutes.delete("/:id/access/public", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const record = await getDatabaseRecord(c.req.param("id"));
+  if (!record) return c.json({ error: "Database not found" }, 404);
+  if (!(await canAccessDatabaseRecord(record, user.id, "full"))) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  await db
+    .delete(databaseAccess)
+    .where(
+      and(
+        eq(databaseAccess.databaseId, record.id),
+        eq(databaseAccess.targetType, "public"),
+        eq(databaseAccess.targetId, "*"),
+      ),
+    );
+  return c.json({ access: null });
+});
+
+databaseRoutes.delete("/:id/access/:ruleId", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const record = await getDatabaseRecord(c.req.param("id"));
+  if (!record) return c.json({ error: "Database not found" }, 404);
+  if (!(await canAccessDatabaseRecord(record, user.id, "full"))) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  await db
+    .delete(databaseAccess)
+    .where(
+      and(
+        eq(databaseAccess.id, c.req.param("ruleId")),
+        eq(databaseAccess.databaseId, record.id),
+      ),
+    );
+  return c.json({ access: null });
 });
 
 databaseRoutes.put("/:id/favorite", async (c) => {
@@ -795,7 +1015,7 @@ databaseRoutes.put("/:id/favorite", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "view"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "view"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -828,16 +1048,15 @@ databaseRoutes.delete("/:id", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "full"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "full"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const { deletedDatabaseIds, deletedPageIds } =
-    await softDeleteDatabaseTree({
-      databaseId: existing.id,
-      workspaceId: existing.workspaceId,
-      userId: user.id,
-    });
+  const { deletedDatabaseIds, deletedPageIds } = await softDeleteDatabaseTree({
+    databaseId: existing.id,
+    workspaceId: existing.workspaceId,
+    userId: user.id,
+  });
 
   const [record] = await db
     .select()
@@ -850,6 +1069,113 @@ databaseRoutes.delete("/:id", async (c) => {
     deletedDatabaseIds,
     deletedPageIds,
   });
+});
+
+databaseRoutes.post("/:id/restore", async (c) => {
+  const user = requireUser(c);
+
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const existing = await getDatabaseRecord(c.req.param("id"), {
+    includeDeleted: true,
+  });
+
+  if (!existing) {
+    return c.json({ error: "Database not found" }, 404);
+  }
+
+  if (!(await getMembership(existing.workspaceId, user.id))) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  if (!existing.deletedAt) {
+    const payload = await getDatabasePayload(existing.id, user.id, existing, {
+      includeDeleted: true,
+    });
+
+    return c.json({
+      database: payload?.database ?? existing,
+      restoredDatabaseIds: [],
+      restoredPageIds: [],
+    });
+  }
+
+  const deletedAt = existing.deletedAt;
+  const now = new Date();
+  const restored = await db.transaction(async (tx) => {
+    const restoredDatabases = await tx
+      .update(database)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(database.workspaceId, existing.workspaceId),
+          eq(database.deletedAt, deletedAt),
+          existing.deletedById
+            ? eq(database.deletedById, existing.deletedById)
+            : undefined,
+        ),
+      )
+      .returning({ id: database.id });
+    const restoredDatabaseIds = restoredDatabases.map((record) => record.id);
+
+    if (restoredDatabaseIds.length > 0) {
+      await tx
+        .update(databaseRow)
+        .set({
+          deletedAt: null,
+          deletedById: null,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            inArray(databaseRow.databaseId, restoredDatabaseIds),
+            eq(databaseRow.deletedAt, deletedAt),
+            existing.deletedById
+              ? eq(databaseRow.deletedById, existing.deletedById)
+              : undefined,
+          ),
+        );
+    }
+
+    const restoredPages = await tx
+      .update(page)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(page.workspaceId, existing.workspaceId),
+          eq(page.deletedAt, deletedAt),
+          existing.deletedById
+            ? eq(page.deletedById, existing.deletedById)
+            : undefined,
+        ),
+      )
+      .returning({ id: page.id });
+
+    return {
+      restoredDatabaseIds,
+      restoredPageIds: restoredPages.map((record) => record.id),
+    };
+  });
+
+  const payload = await getDatabasePayload(existing.id, user.id, undefined, {
+    includeDeleted: true,
+  });
+
+  if (!payload) {
+    return c.json({ error: "Database not found" }, 404);
+  }
+
+  return c.json({ database: payload.database, ...restored });
 });
 
 databaseRoutes.delete("/:id/favorite", async (c) => {
@@ -865,13 +1191,15 @@ databaseRoutes.delete("/:id/favorite", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "view"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "view"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
   await db
     .delete(favorite)
-    .where(and(eq(favorite.userId, user.id), eq(favorite.databaseId, existing.id)));
+    .where(
+      and(eq(favorite.userId, user.id), eq(favorite.databaseId, existing.id)),
+    );
 
   const payload = await getDatabasePayload(existing.id, user.id, existing);
 
@@ -891,7 +1219,7 @@ databaseRoutes.patch("/:id", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -900,7 +1228,6 @@ databaseRoutes.patch("/:id", async (c) => {
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-
 
   const patch = body as { name?: unknown; config?: unknown };
   const values: Partial<typeof database.$inferInsert> = {
@@ -961,7 +1288,7 @@ databaseRoutes.patch("/:id/views/:viewId", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -985,7 +1312,6 @@ databaseRoutes.patch("/:id/views/:viewId", async (c) => {
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-
 
   const patch = body as { name?: unknown; config?: unknown; type?: unknown };
   const values: Partial<typeof databaseView.$inferInsert> = {
@@ -1062,7 +1388,7 @@ databaseRoutes.post("/:id/views", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1160,7 +1486,7 @@ databaseRoutes.delete("/:id/views/:viewId", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1189,7 +1515,6 @@ databaseRoutes.delete("/:id/views/:viewId", async (c) => {
   }
 
   const body = await c.req.json().catch(() => null);
-
 
   const mutation = await commitDatabaseMutation(
     c,
@@ -1230,13 +1555,18 @@ databaseRoutes.post("/:id/properties", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
   const body = await c.req.json().catch(() => ({}));
 
-  const { name = "Property", type = "text", config = null, position } = body as {
+  const {
+    name = "Property",
+    type = "text",
+    config = null,
+    position,
+  } = body as {
     name?: unknown;
     type?: unknown;
     config?: unknown;
@@ -1269,7 +1599,9 @@ databaseRoutes.post("/:id/properties", async (c) => {
   const propertyId = crypto.randomUUID();
   const columnId = crypto.randomUUID();
   const targetPosition =
-    position === undefined ? columns.length : Math.min(position as number, columns.length);
+    position === undefined
+      ? columns.length
+      : Math.min(position as number, columns.length);
   const now = new Date();
 
   const mutation = await commitDatabaseMutation(
@@ -1360,7 +1692,7 @@ databaseRoutes.patch("/:id/properties/reorder", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1369,7 +1701,6 @@ databaseRoutes.patch("/:id/properties/reorder", async (c) => {
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-
 
   const { propertyIds } = body as { propertyIds?: unknown };
 
@@ -1395,38 +1726,40 @@ databaseRoutes.patch("/:id/properties/reorder", async (c) => {
       databaseId: existing.id,
     },
     async (tx) => {
-    const properties = await tx
-      .select({ id: databaseProperty.id })
-      .from(databaseProperty)
-      .innerJoin(
-        pageProperty,
-        eq(databaseProperty.propertyId, pageProperty.id),
-      )
-      .where(
-        and(
-          eq(databaseProperty.databaseId, existing.id),
-          isNull(pageProperty.deletedAt),
-        ),
+      const properties = await tx
+        .select({ id: databaseProperty.id })
+        .from(databaseProperty)
+        .innerJoin(
+          pageProperty,
+          eq(databaseProperty.propertyId, pageProperty.id),
+        )
+        .where(
+          and(
+            eq(databaseProperty.databaseId, existing.id),
+            isNull(pageProperty.deletedAt),
+          ),
+        );
+      const existingPropertyIds = new Set(
+        properties.map((property) => property.id),
       );
-    const existingPropertyIds = new Set(
-      properties.map((property) => property.id),
-    );
 
-    if (
-      nextPropertyIds.length !== existingPropertyIds.size ||
-      nextPropertyIds.some((propertyId) => !existingPropertyIds.has(propertyId))
-    ) {
-      throw new DatabaseMutationError(
-        "propertyIds must include every active database property",
+      if (
+        nextPropertyIds.length !== existingPropertyIds.size ||
+        nextPropertyIds.some(
+          (propertyId) => !existingPropertyIds.has(propertyId),
+        )
+      ) {
+        throw new DatabaseMutationError(
+          "propertyIds must include every active database property",
+        );
+      }
+
+      await updateDatabasePropertyPositions(
+        tx,
+        existing.id,
+        nextPropertyIds,
+        new Date(),
       );
-    }
-
-    await updateDatabasePropertyPositions(
-      tx,
-      existing.id,
-      nextPropertyIds,
-      new Date(),
-    );
 
       return {
         delta: propertyPositionDelta(nextPropertyIds),
@@ -1454,7 +1787,7 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1493,7 +1826,6 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
   if (!pagePropertyRecord) {
     return c.json({ error: "Property not found" }, 404);
   }
-
 
   const patch = body as {
     config?: unknown;
@@ -1541,7 +1873,10 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
       return c.json({ error: "Unsupported property type" }, 400);
     }
 
-    propertyValues.config = normalizePropertyConfig(effectiveType, patch.config);
+    propertyValues.config = normalizePropertyConfig(
+      effectiveType,
+      patch.config,
+    );
   } else if (normalizedPatchType === "status") {
     propertyValues.config = normalizePropertyConfig(
       "status",
@@ -1566,26 +1901,26 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
       databaseId: existing.id,
     },
     async (tx) => {
-    await tx
-      .update(databaseProperty)
-      .set(columnValues)
-      .where(eq(databaseProperty.id, column.id));
-
-    if (
-      patch.name !== undefined ||
-      patch.type !== undefined ||
-      patch.config !== undefined
-    ) {
       await tx
-        .update(pageProperty)
-        .set(propertyValues)
-        .where(
-          and(
-            eq(pageProperty.id, column.propertyId),
-            eq(pageProperty.workspaceId, existing.workspaceId),
-          ),
-        );
-    }
+        .update(databaseProperty)
+        .set(columnValues)
+        .where(eq(databaseProperty.id, column.id));
+
+      if (
+        patch.name !== undefined ||
+        patch.type !== undefined ||
+        patch.config !== undefined
+      ) {
+        await tx
+          .update(pageProperty)
+          .set(propertyValues)
+          .where(
+            and(
+              eq(pageProperty.id, column.propertyId),
+              eq(pageProperty.workspaceId, existing.workspaceId),
+            ),
+          );
+      }
 
       const delta = await fetchDatabasePropertyDelta(existing.id, column.id);
 
@@ -1613,199 +1948,196 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
   return c.json(mutationResponse(mutation));
 });
 
-databaseRoutes.post("/:id/properties/:databasePropertyId/duplicate", async (c) => {
-  const user = requireUser(c);
+databaseRoutes.post(
+  "/:id/properties/:databasePropertyId/duplicate",
+  async (c) => {
+    const user = requireUser(c);
 
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
+    if (!user) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
+    const existing = await getDatabaseRecord(c.req.param("id"));
 
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
+    if (!existing) {
+      return c.json({ error: "Database not found" }, 404);
+    }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
+    if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
 
-  const body = await c.req.json().catch(() => ({}));
+    const body = await c.req.json().catch(() => ({}));
 
-  const { includeValues = false } = body as { includeValues?: unknown };
+    const { includeValues = false } = body as { includeValues?: unknown };
 
-  if (typeof includeValues !== "boolean") {
-    return c.json({ error: "includeValues must be a boolean" }, 400);
-  }
+    if (typeof includeValues !== "boolean") {
+      return c.json({ error: "includeValues must be a boolean" }, 400);
+    }
 
-  const [source] = await db
-    .select({
-      column: databaseProperty,
-      property: pageProperty,
-    })
-    .from(databaseProperty)
-    .innerJoin(
-      pageProperty,
-      eq(databaseProperty.propertyId, pageProperty.id),
-    )
-    .where(
-      and(
-        eq(databaseProperty.id, c.req.param("databasePropertyId")),
-        eq(databaseProperty.databaseId, existing.id),
-        eq(pageProperty.workspaceId, existing.workspaceId),
-        isNull(pageProperty.deletedAt),
-      ),
-    )
-    .limit(1);
+    const [source] = await db
+      .select({
+        column: databaseProperty,
+        property: pageProperty,
+      })
+      .from(databaseProperty)
+      .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
+      .where(
+        and(
+          eq(databaseProperty.id, c.req.param("databasePropertyId")),
+          eq(databaseProperty.databaseId, existing.id),
+          eq(pageProperty.workspaceId, existing.workspaceId),
+          isNull(pageProperty.deletedAt),
+        ),
+      )
+      .limit(1);
 
-  if (!source) {
-    return c.json({ error: "Property not found" }, 404);
-  }
+    if (!source) {
+      return c.json({ error: "Property not found" }, 404);
+    }
 
-  const existingProperties = await db
-    .select({ name: pageProperty.name })
-    .from(databaseProperty)
-    .innerJoin(
-      pageProperty,
-      eq(databaseProperty.propertyId, pageProperty.id),
-    )
-    .where(
-      and(
-        eq(databaseProperty.databaseId, existing.id),
-        eq(pageProperty.workspaceId, existing.workspaceId),
-        isNull(pageProperty.deletedAt),
-      ),
+    const existingProperties = await db
+      .select({ name: pageProperty.name })
+      .from(databaseProperty)
+      .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
+      .where(
+        and(
+          eq(databaseProperty.databaseId, existing.id),
+          eq(pageProperty.workspaceId, existing.workspaceId),
+          isNull(pageProperty.deletedAt),
+        ),
+      );
+    const sourceValues = includeValues
+      ? await db
+          .select({
+            value: pagePropertyValue.value,
+            pageId: pagePropertyValue.pageId,
+          })
+          .from(pagePropertyValue)
+          .innerJoin(
+            databaseRow,
+            eq(pagePropertyValue.pageId, databaseRow.pageId),
+          )
+          .where(
+            and(
+              eq(pagePropertyValue.propertyId, source.property.id),
+              eq(databaseRow.databaseId, existing.id),
+              isNull(databaseRow.deletedAt),
+            ),
+          )
+      : [];
+    const newPropertyId = crypto.randomUUID();
+    const columnId = crypto.randomUUID();
+    const targetPosition = source.column.position + 1;
+    const now = new Date();
+    const duplicateName = getDuplicatePropertyName(
+      source.property.name,
+      new Set(existingProperties.map((property) => property.name)),
     );
-  const sourceValues = includeValues
-    ? await db
-        .select({
-          value: pagePropertyValue.value,
-          pageId: pagePropertyValue.pageId,
-        })
-        .from(pagePropertyValue)
-        .innerJoin(
-          databaseRow,
-          eq(pagePropertyValue.pageId, databaseRow.pageId),
-        )
-        .where(
-          and(
-            eq(pagePropertyValue.propertyId, source.property.id),
-            eq(databaseRow.databaseId, existing.id),
-            isNull(databaseRow.deletedAt),
-          ),
-        )
-    : [];
-  const newPropertyId = crypto.randomUUID();
-  const columnId = crypto.randomUUID();
-  const targetPosition = source.column.position + 1;
-  const now = new Date();
-  const duplicateName = getDuplicatePropertyName(
-    source.property.name,
-    new Set(existingProperties.map((property) => property.name)),
-  );
 
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: includeValues ? ["properties", "values"] : ["properties"],
+    const mutation = await commitDatabaseMutation(
+      c,
+      {
+        actorId: user.id,
+        changed: includeValues ? ["properties", "values"] : ["properties"],
 
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      await tx
-        .update(databaseProperty)
-        .set({
-          position: sql`${databaseProperty.position} + 1`,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(databaseProperty.databaseId, existing.id),
-            gte(databaseProperty.position, targetPosition),
-          ),
-        );
-      await tx.insert(pageProperty).values({
-        id: newPropertyId,
-        workspaceId: existing.workspaceId,
-        name: duplicateName,
-        type: source.property.type,
-        config: source.property.config,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await tx.insert(databaseProperty).values({
-        id: columnId,
         databaseId: existing.id,
-        propertyId: newPropertyId,
-        position: targetPosition,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      const insertedValues =
-        sourceValues.length > 0
-          ? sourceValues.map((propertyValue) => ({
-              createdAt: now.toISOString(),
-              id: crypto.randomUUID(),
-              propertyId: newPropertyId,
-              updatedAt: now.toISOString(),
-              value: propertyValue.value,
-              pageId: propertyValue.pageId,
-            }))
-          : [];
-
-      if (insertedValues.length > 0) {
-        await tx.insert(pagePropertyValue).values(
-          insertedValues.map((propertyValue) => ({
-            id: propertyValue.id,
-            propertyId: propertyValue.propertyId,
-            value: propertyValue.value,
-            pageId: propertyValue.pageId,
-            createdAt: now,
+      },
+      async (tx) => {
+        await tx
+          .update(databaseProperty)
+          .set({
+            position: sql`${databaseProperty.position} + 1`,
             updatedAt: now,
-          })),
-        );
-      }
+          })
+          .where(
+            and(
+              eq(databaseProperty.databaseId, existing.id),
+              gte(databaseProperty.position, targetPosition),
+            ),
+          );
+        await tx.insert(pageProperty).values({
+          id: newPropertyId,
+          workspaceId: existing.workspaceId,
+          name: duplicateName,
+          type: source.property.type,
+          config: source.property.config,
+          createdAt: now,
+          updatedAt: now,
+        });
+        await tx.insert(databaseProperty).values({
+          id: columnId,
+          databaseId: existing.id,
+          propertyId: newPropertyId,
+          position: targetPosition,
+          createdAt: now,
+          updatedAt: now,
+        });
 
-      const delta = await fetchDatabasePropertyDelta(existing.id, columnId);
-
-      return {
-        delta: {
-          ...(delta ?? {
-            properties: [
-              {
+        const insertedValues =
+          sourceValues.length > 0
+            ? sourceValues.map((propertyValue) => ({
                 createdAt: now.toISOString(),
-                databaseId: existing.id,
-                id: columnId,
-                position: targetPosition,
-                property: {
-                  config: source.property.config,
-                  createdAt: now.toISOString(),
-                  id: newPropertyId,
-                  name: duplicateName,
-                  workspaceId: existing.workspaceId,
-                  type: source.property.type,
-                  updatedAt: now.toISOString(),
-                },
+                id: crypto.randomUUID(),
                 propertyId: newPropertyId,
                 updatedAt: now.toISOString(),
-                visible: true,
-              },
-            ],
-          }),
-          ...(insertedValues.length > 0 ? { values: insertedValues } : {}),
-        },
-      };
-    },
-  );
+                value: propertyValue.value,
+                pageId: propertyValue.pageId,
+              }))
+            : [];
 
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
-  }
+        if (insertedValues.length > 0) {
+          await tx.insert(pagePropertyValue).values(
+            insertedValues.map((propertyValue) => ({
+              id: propertyValue.id,
+              propertyId: propertyValue.propertyId,
+              value: propertyValue.value,
+              pageId: propertyValue.pageId,
+              createdAt: now,
+              updatedAt: now,
+            })),
+          );
+        }
 
-  return c.json(mutationResponse(mutation), 201);
-});
+        const delta = await fetchDatabasePropertyDelta(existing.id, columnId);
+
+        return {
+          delta: {
+            ...(delta ?? {
+              properties: [
+                {
+                  createdAt: now.toISOString(),
+                  databaseId: existing.id,
+                  id: columnId,
+                  position: targetPosition,
+                  property: {
+                    config: source.property.config,
+                    createdAt: now.toISOString(),
+                    id: newPropertyId,
+                    name: duplicateName,
+                    workspaceId: existing.workspaceId,
+                    type: source.property.type,
+                    updatedAt: now.toISOString(),
+                  },
+                  propertyId: newPropertyId,
+                  updatedAt: now.toISOString(),
+                  visible: true,
+                },
+              ],
+            }),
+            ...(insertedValues.length > 0 ? { values: insertedValues } : {}),
+          },
+        };
+      },
+    );
+
+    if (!mutation.ok) {
+      return databaseMutationErrorResponse(c, mutation.error);
+    }
+
+    return c.json(mutationResponse(mutation), 201);
+  },
+);
 
 databaseRoutes.delete("/:id/properties/:databasePropertyId", async (c) => {
   const user = requireUser(c);
@@ -1820,7 +2152,7 @@ databaseRoutes.delete("/:id/properties/:databasePropertyId", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1832,10 +2164,7 @@ databaseRoutes.delete("/:id/properties/:databasePropertyId", async (c) => {
       property: pageProperty,
     })
     .from(databaseProperty)
-    .innerJoin(
-      pageProperty,
-      eq(databaseProperty.propertyId, pageProperty.id),
-    )
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
         eq(databaseProperty.id, c.req.param("databasePropertyId")),
@@ -1861,18 +2190,18 @@ databaseRoutes.delete("/:id/properties/:databasePropertyId", async (c) => {
       databaseId: existing.id,
     },
     async (tx) => {
-    await tx
-      .update(pageProperty)
-      .set({
-        deletedAt: now,
-        deletedById: user.id,
-        updatedAt: now,
-      })
-      .where(eq(pageProperty.id, column.property.id));
-    await tx
-      .update(databaseProperty)
-      .set({ updatedAt: now })
-      .where(eq(databaseProperty.id, column.column.id));
+      await tx
+        .update(pageProperty)
+        .set({
+          deletedAt: now,
+          deletedById: user.id,
+          updatedAt: now,
+        })
+        .where(eq(pageProperty.id, column.property.id));
+      await tx
+        .update(databaseProperty)
+        .set({ updatedAt: now })
+        .where(eq(databaseProperty.id, column.column.id));
 
       return {
         delta: {
@@ -1902,12 +2231,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(
-    existing.pageId,
-    existing.workspaceId,
-    user.id,
-    "edit",
-  ))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1941,7 +2265,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
     return c.json({ error: "Invalid row input" }, 400);
   }
 
-  if (existingPageId === existing.pageId) {
+  if (isDatabaseHostPageId(existingPageId, existing.pageId)) {
     return c.json({ error: "A page cannot be nested inside itself" }, 400);
   }
 
@@ -1951,16 +2275,14 @@ databaseRoutes.post("/:id/rows", async (c) => {
       : null;
 
   if (sourceDatabaseId && sourceDatabaseId !== existing.id) {
-    if (!sourceDatabase || sourceDatabase.workspaceId !== existing.workspaceId) {
+    if (
+      !sourceDatabase ||
+      sourceDatabase.workspaceId !== existing.workspaceId
+    ) {
       return c.json({ error: "Source database not found" }, 404);
     }
 
-    if (!(await canAccessPageInWorkspace(
-      sourceDatabase.pageId,
-      sourceDatabase.workspaceId,
-      user.id,
-      "view",
-    ))) {
+    if (!(await canAccessDatabaseRecord(sourceDatabase, user.id, "view"))) {
       return c.json({ error: "Forbidden" }, 403);
     }
   }
@@ -1968,11 +2290,17 @@ databaseRoutes.post("/:id/rows", async (c) => {
   const [rowCountRecord] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(databaseRow)
-    .where(and(eq(databaseRow.databaseId, existing.id), isNull(databaseRow.deletedAt)));
+    .where(
+      and(
+        eq(databaseRow.databaseId, existing.id),
+        isNull(databaseRow.deletedAt),
+      ),
+    );
   const rowCount = rowCountRecord?.count ?? 0;
   const targetPosition =
     position === undefined ? rowCount : Math.min(position as number, rowCount);
-  let pageId = typeof existingPageId === "string" ? existingPageId : crypto.randomUUID();
+  let pageId =
+    typeof existingPageId === "string" ? existingPageId : crypto.randomUUID();
   let pageMetadata: Record<string, unknown> = {};
 
   if (existingPageId) {
@@ -1997,12 +2325,14 @@ databaseRoutes.post("/:id/rows", async (c) => {
       return c.json({ error: "Page not found" }, 404);
     }
 
-    if (!(await canAccessPageInWorkspace(
-      pageRecord.id,
-      pageRecord.workspaceId,
-      user.id,
-      "edit",
-    ))) {
+    if (
+      !(await canAccessPageInWorkspace(
+        pageRecord.id,
+        pageRecord.workspaceId,
+        user.id,
+        "edit",
+      ))
+    ) {
       return c.json({ error: "Forbidden" }, 403);
     }
 
@@ -2046,10 +2376,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
       id: pageProperty.id,
     })
     .from(databaseProperty)
-    .innerJoin(
-      pageProperty,
-      eq(databaseProperty.propertyId, pageProperty.id),
-    )
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
         eq(databaseProperty.databaseId, existing.id),
@@ -2069,7 +2396,9 @@ databaseRoutes.post("/:id/rows", async (c) => {
   const [databaseFavorite] = await db
     .select({ id: favorite.id })
     .from(favorite)
-    .where(and(eq(favorite.userId, user.id), eq(favorite.databaseId, existing.id)))
+    .where(
+      and(eq(favorite.userId, user.id), eq(favorite.databaseId, existing.id)),
+    )
     .limit(1);
   const shouldInheritFavorite = Boolean(databaseFavorite);
 
@@ -2111,6 +2440,11 @@ databaseRoutes.post("/:id/rows", async (c) => {
           content: null,
           metadata: pageMetadata,
           createdAt: now,
+          updatedAt: now,
+        });
+        await tx.insert(pageCollaborationDocument).values({
+          pageId,
+          state: Buffer.from(encodePageContentAsYjs(null)),
           updatedAt: now,
         });
       }
@@ -2156,7 +2490,9 @@ databaseRoutes.post("/:id/rows", async (c) => {
                 .where(
                   and(
                     eq(pagePropertyValue.pageId, pageId),
-                    inArray(pagePropertyValue.propertyId, [...targetPropertyIds]),
+                    inArray(pagePropertyValue.propertyId, [
+                      ...targetPropertyIds,
+                    ]),
                   ),
                 )
             : [];
@@ -2204,7 +2540,9 @@ databaseRoutes.post("/:id/rows", async (c) => {
         for (const sourceColumn of missingColumns) {
           const targetColumn =
             sourcePropertyMode === "match"
-              ? targetColumnsByName.get(getPropertyNameKey(sourceColumn.property.name))
+              ? targetColumnsByName.get(
+                  getPropertyNameKey(sourceColumn.property.name),
+                )
               : null;
           const sourceValue = sourceValueByPropertyId.get(
             sourceColumn.column.propertyId,
@@ -2218,7 +2556,11 @@ databaseRoutes.post("/:id/rows", async (c) => {
             continue;
           }
 
-          if (!sourceValue || sourceValue.value === null || !targetPropertyType) {
+          if (
+            !sourceValue ||
+            sourceValue.value === null ||
+            !targetPropertyType
+          ) {
             continue;
           }
 
@@ -2284,10 +2626,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
               updatedAt: now,
             })
             .onConflictDoUpdate({
-              target: [
-                pagePropertyValue.pageId,
-                pagePropertyValue.propertyId,
-              ],
+              target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
               set: { value: nextValue, updatedAt: now },
             });
 
@@ -2385,7 +2724,9 @@ databaseRoutes.post("/:id/rows", async (c) => {
           .map((value) => value.propertyId),
       );
       const insertedValues = defaultStatusValues
-        .filter((property) => !inheritedValuePropertyIds.has(property.propertyId))
+        .filter(
+          (property) => !inheritedValuePropertyIds.has(property.propertyId),
+        )
         .map((property) => ({
           createdAt: nowIso,
           id: crypto.randomUUID(),
@@ -2409,10 +2750,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
             })),
           )
           .onConflictDoNothing({
-            target: [
-              pagePropertyValue.pageId,
-              pagePropertyValue.propertyId,
-            ],
+            target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
           });
       }
 
@@ -2500,7 +2838,7 @@ databaseRoutes.patch("/:id/rows/reorder", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -2509,7 +2847,6 @@ databaseRoutes.patch("/:id/rows/reorder", async (c) => {
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-
 
   const { rowIds } = body as { rowIds?: unknown };
 
@@ -2535,27 +2872,35 @@ databaseRoutes.patch("/:id/rows/reorder", async (c) => {
       databaseId: existing.id,
     },
     async (tx) => {
-    const rows = await tx
-      .select({ id: databaseRow.id })
-      .from(databaseRow)
-      .where(
-        and(eq(databaseRow.databaseId, existing.id), isNull(databaseRow.deletedAt)),
+      const rows = await tx
+        .select({ id: databaseRow.id })
+        .from(databaseRow)
+        .where(
+          and(
+            eq(databaseRow.databaseId, existing.id),
+            isNull(databaseRow.deletedAt),
+          ),
+        );
+      const existingRowIds = new Set(rows.map((row) => row.id));
+
+      if (
+        nextRowIds.length !== existingRowIds.size ||
+        nextRowIds.some((rowId) => !existingRowIds.has(rowId))
+      ) {
+        throw new DatabaseMutationError(
+          "rowIds must include every active database row",
+        );
+      }
+
+      const now = new Date();
+
+      await updateDatabaseRowPositions(tx, existing.id, nextRowIds, now);
+      await updateDatabaseRowPlacementPositions(
+        tx,
+        existing.id,
+        nextRowIds,
+        now,
       );
-    const existingRowIds = new Set(rows.map((row) => row.id));
-
-    if (
-      nextRowIds.length !== existingRowIds.size ||
-      nextRowIds.some((rowId) => !existingRowIds.has(rowId))
-    ) {
-      throw new DatabaseMutationError(
-        "rowIds must include every active database row",
-      );
-    }
-
-    const now = new Date();
-
-    await updateDatabaseRowPositions(tx, existing.id, nextRowIds, now);
-    await updateDatabaseRowPlacementPositions(tx, existing.id, nextRowIds, now);
 
       return {
         delta: rowPositionDelta(nextRowIds),
@@ -2583,7 +2928,7 @@ databaseRoutes.patch("/:id/rows/:rowId/move", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -2593,8 +2938,11 @@ databaseRoutes.patch("/:id/rows/:rowId/move", async (c) => {
     return c.json({ error: "A JSON body is required" }, 400);
   }
 
-
-  const { groupPropertyId, groupValue = null, rowIds } = body as {
+  const {
+    groupPropertyId,
+    groupValue = null,
+    rowIds,
+  } = body as {
     groupPropertyId?: unknown;
     groupValue?: unknown;
     rowIds?: unknown;
@@ -2625,110 +2973,119 @@ databaseRoutes.patch("/:id/rows/:rowId/move", async (c) => {
       databaseId: existing.id,
     },
     async (tx) => {
-    const rows = await tx
-      .select({ id: databaseRow.id, pageId: databaseRow.pageId })
-      .from(databaseRow)
-      .where(
-        and(eq(databaseRow.databaseId, existing.id), isNull(databaseRow.deletedAt)),
-      );
-    const row = rows.find((item) => item.id === rowId);
-    const existingRowIds = new Set(rows.map((item) => item.id));
-
-    if (!row) {
-      throw new DatabaseMutationError("Row not found", 404);
-    }
-
-    if (
-      nextRowIds.length !== existingRowIds.size ||
-      nextRowIds.some((nextRowId) => !existingRowIds.has(nextRowId))
-    ) {
-      throw new DatabaseMutationError(
-        "rowIds must include every active database row",
-      );
-    }
-
-    let property: { config: unknown; id: string; type: string } | null = null;
-
-    if (nextGroupPropertyId) {
-      const [groupProperty] = await tx
-        .select({
-          config: pageProperty.config,
-          id: pageProperty.id,
-          type: pageProperty.type,
-        })
-        .from(databaseProperty)
-        .innerJoin(
-          pageProperty,
-          eq(databaseProperty.propertyId, pageProperty.id),
-        )
+      const rows = await tx
+        .select({ id: databaseRow.id, pageId: databaseRow.pageId })
+        .from(databaseRow)
         .where(
           and(
-            eq(databaseProperty.databaseId, existing.id),
-            eq(databaseProperty.propertyId, nextGroupPropertyId),
-            eq(pageProperty.workspaceId, existing.workspaceId),
-            isNull(pageProperty.deletedAt),
-          ),
-        )
-        .limit(1);
-
-      if (!groupProperty) {
-        throw new DatabaseMutationError("Property not found", 404);
-      }
-
-      try {
-        validateCellValue(groupProperty.type, groupProperty.config, groupValue);
-      } catch (error) {
-        if (error instanceof ServiceMutationError) {
-          throw new DatabaseMutationError(error.message, error.status);
-        }
-
-        throw error;
-      }
-
-      property = groupProperty;
-    }
-
-    const now = new Date();
-
-    await updateDatabaseRowPositions(tx, existing.id, nextRowIds, now);
-    await updateDatabaseRowPlacementPositions(tx, existing.id, nextRowIds, now);
-
-    if (property) {
-      await tx
-        .insert(pagePropertyValue)
-        .values({
-          id: crypto.randomUUID(),
-          pageId: row.pageId,
-          propertyId: property.id,
-          value: groupValue,
-        })
-        .onConflictDoUpdate({
-          target: [
-            pagePropertyValue.pageId,
-            pagePropertyValue.propertyId,
-          ],
-          set: {
-            value: groupValue,
-            updatedAt: now,
-          },
-        });
-      await tx
-        .update(databaseRow)
-        .set({
-          lastEditedById: user.id,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(databaseRow.id, rowId),
             eq(databaseRow.databaseId, existing.id),
+            isNull(databaseRow.deletedAt),
           ),
         );
-      await tx
-        .update(page)
-        .set({ updatedAt: now })
-        .where(eq(page.id, row.pageId));
-    }
+      const row = rows.find((item) => item.id === rowId);
+      const existingRowIds = new Set(rows.map((item) => item.id));
+
+      if (!row) {
+        throw new DatabaseMutationError("Row not found", 404);
+      }
+
+      if (
+        nextRowIds.length !== existingRowIds.size ||
+        nextRowIds.some((nextRowId) => !existingRowIds.has(nextRowId))
+      ) {
+        throw new DatabaseMutationError(
+          "rowIds must include every active database row",
+        );
+      }
+
+      let property: { config: unknown; id: string; type: string } | null = null;
+
+      if (nextGroupPropertyId) {
+        const [groupProperty] = await tx
+          .select({
+            config: pageProperty.config,
+            id: pageProperty.id,
+            type: pageProperty.type,
+          })
+          .from(databaseProperty)
+          .innerJoin(
+            pageProperty,
+            eq(databaseProperty.propertyId, pageProperty.id),
+          )
+          .where(
+            and(
+              eq(databaseProperty.databaseId, existing.id),
+              eq(databaseProperty.propertyId, nextGroupPropertyId),
+              eq(pageProperty.workspaceId, existing.workspaceId),
+              isNull(pageProperty.deletedAt),
+            ),
+          )
+          .limit(1);
+
+        if (!groupProperty) {
+          throw new DatabaseMutationError("Property not found", 404);
+        }
+
+        try {
+          validateCellValue(
+            groupProperty.type,
+            groupProperty.config,
+            groupValue,
+          );
+        } catch (error) {
+          if (error instanceof ServiceMutationError) {
+            throw new DatabaseMutationError(error.message, error.status);
+          }
+
+          throw error;
+        }
+
+        property = groupProperty;
+      }
+
+      const now = new Date();
+
+      await updateDatabaseRowPositions(tx, existing.id, nextRowIds, now);
+      await updateDatabaseRowPlacementPositions(
+        tx,
+        existing.id,
+        nextRowIds,
+        now,
+      );
+
+      if (property) {
+        await tx
+          .insert(pagePropertyValue)
+          .values({
+            id: crypto.randomUUID(),
+            pageId: row.pageId,
+            propertyId: property.id,
+            value: groupValue,
+          })
+          .onConflictDoUpdate({
+            target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
+            set: {
+              value: groupValue,
+              updatedAt: now,
+            },
+          });
+        await tx
+          .update(databaseRow)
+          .set({
+            lastEditedById: user.id,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(databaseRow.id, rowId),
+              eq(databaseRow.databaseId, existing.id),
+            ),
+          );
+        await tx
+          .update(page)
+          .set({ updatedAt: now })
+          .where(eq(page.id, row.pageId));
+      }
 
       return {
         delta: {
@@ -2777,7 +3134,7 @@ databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(existing.pageId, existing.workspaceId, user.id, "edit"))) {
+  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -2786,7 +3143,6 @@ databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-
 
   const { value = null } = body as { value?: unknown };
   const rowId = c.req.param("rowId");
@@ -2810,10 +3166,7 @@ databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {
       type: pageProperty.type,
     })
     .from(databaseProperty)
-    .innerJoin(
-      pageProperty,
-      eq(databaseProperty.propertyId, pageProperty.id),
-    )
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
         eq(databaseProperty.databaseId, existing.id),
@@ -2849,35 +3202,32 @@ databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {
       databaseId: existing.id,
     },
     async (tx) => {
-    await tx
-      .insert(pagePropertyValue)
-      .values({
-        id: crypto.randomUUID(),
-        pageId: row.pageId,
-        propertyId,
-        value,
-      })
-      .onConflictDoUpdate({
-        target: [
-          pagePropertyValue.pageId,
-          pagePropertyValue.propertyId,
-        ],
-        set: {
+      await tx
+        .insert(pagePropertyValue)
+        .values({
+          id: crypto.randomUUID(),
+          pageId: row.pageId,
+          propertyId,
           value,
+        })
+        .onConflictDoUpdate({
+          target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
+          set: {
+            value,
+            updatedAt: now,
+          },
+        });
+      await tx
+        .update(databaseRow)
+        .set({
+          lastEditedById: user.id,
           updatedAt: now,
-        },
-      });
-    await tx
-      .update(databaseRow)
-      .set({
-        lastEditedById: user.id,
-        updatedAt: now,
-      })
-      .where(eq(databaseRow.id, row.id));
-    await tx
-      .update(page)
-      .set({ updatedAt: now })
-      .where(eq(page.id, row.pageId));
+        })
+        .where(eq(databaseRow.id, row.id));
+      await tx
+        .update(page)
+        .set({ updatedAt: now })
+        .where(eq(page.id, row.pageId));
 
       return {
         delta: {

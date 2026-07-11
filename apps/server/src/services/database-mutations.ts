@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
-import { canAccessPage } from "../access";
+import { canAccessDatabaseInWorkspace, canAccessPage } from "../access";
 import { db } from "../db";
 import type { Database } from "../db";
 import {
@@ -10,11 +10,13 @@ import {
   databaseRow,
   databaseView,
   page,
+  pageCollaborationDocument,
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
 import type { DatabaseChangedArea } from "./database-delta";
-import { withDatabaseParentItemId } from "../item-relationships";
+import { upsertPageItemPlacement } from "../page-item-placements";
+import { encodePageContentAsYjs } from "../collaboration/service";
 import { commitDatabaseMutation } from "./database-commit";
 import {
   isReadOnlyPropertyType,
@@ -37,7 +39,9 @@ export class ServiceMutationError extends Error {
   }
 }
 
-type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+type DatabaseTransaction = Parameters<
+  Parameters<Database["transaction"]>[0]
+>[0];
 
 type SqlExecutor = {
   execute: (query: SQL) => Promise<unknown>;
@@ -45,7 +49,12 @@ type SqlExecutor = {
 
 export const defaultStatusOptions = [
   { color: "gray", group: "To-do", id: "not-started", name: "Not started" },
-  { color: "blue", group: "In progress", id: "in-progress", name: "In progress" },
+  {
+    color: "blue",
+    group: "In progress",
+    id: "in-progress",
+    name: "In progress",
+  },
   { color: "green", group: "Complete", id: "done", name: "Done" },
 ] as const;
 
@@ -70,6 +79,14 @@ type PropertySelectOption = {
 
 type StatusOption = { id: string; name: string };
 type StatusPropertyConfig = { defaultOptionId?: unknown; options?: unknown };
+
+export const isDatabaseHostPageId = (
+  candidatePageId: unknown,
+  databasePageId: string | null,
+) =>
+  typeof candidatePageId === "string" &&
+  candidatePageId.length > 0 &&
+  candidatePageId === databasePageId;
 
 const statusOptionAliases: Record<string, string> = {
   complete: "done",
@@ -267,7 +284,9 @@ const getStatusDefaultValue = (config: unknown) => {
       : defaultStatusOptions[0]?.id;
 
   if (typeof defaultOptionId === "string") {
-    const defaultOption = options.find((option) => option.id === defaultOptionId);
+    const defaultOption = options.find(
+      (option) => option.id === defaultOptionId,
+    );
     if (defaultOption) {
       return defaultOption.name;
     }
@@ -276,7 +295,10 @@ const getStatusDefaultValue = (config: unknown) => {
   return options[0]?.name ?? null;
 };
 
-const getNextDatabaseViewName = (baseName: string, existingNames: Set<string>) => {
+const getNextDatabaseViewName = (
+  baseName: string,
+  existingNames: Set<string>,
+) => {
   const trimmedName = baseName.trim() || "Table";
 
   if (!existingNames.has(trimmedName)) {
@@ -308,7 +330,14 @@ async function requireDatabaseEditAccess(databaseId: string, userId: string) {
     throw new ServiceMutationError("Database not found", 404);
   }
 
-  if (!(await canAccessPage(record.pageId, userId, "edit"))) {
+  if (
+    !(await canAccessDatabaseInWorkspace(
+      record.id,
+      record.workspaceId,
+      userId,
+      "edit",
+    ))
+  ) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 
@@ -316,7 +345,6 @@ async function requireDatabaseEditAccess(databaseId: string, userId: string) {
 }
 
 export async function createDatabaseService(input: {
-
   name?: string;
   workspaceId: string;
   pageId: string;
@@ -347,17 +375,16 @@ export async function createDatabaseService(input: {
 
   const databaseId = crypto.randomUUID();
   const defaultViewId = crypto.randomUUID();
+  const parentPlacementId = crypto.randomUUID();
 
   await db.transaction(async (tx) => {
     await tx.insert(database).values({
       id: databaseId,
       workspaceId: input.workspaceId,
+      createdById: input.userId,
       pageId: input.pageId,
       name,
-      config:
-        input.standalone === true
-          ? {}
-          : withDatabaseParentItemId(null, input.pageId),
+      config: {},
     });
     await tx.insert(databaseView).values({
       id: defaultViewId,
@@ -365,6 +392,15 @@ export async function createDatabaseService(input: {
       type: "table",
       name: "Table",
       position: 0,
+    });
+    await upsertPageItemPlacement(tx, {
+      id: parentPlacementId,
+      workspaceId: input.workspaceId,
+      parentKind: "page",
+      parentId: input.pageId,
+      itemKind: "database",
+      itemId: databaseId,
+      placementKind: "primary",
     });
   });
 
@@ -383,7 +419,10 @@ export async function updateDatabaseService(input: {
   name?: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(input.databaseId, input.userId);
+  const existing = await requireDatabaseEditAccess(
+    input.databaseId,
+    input.userId,
+  );
   const values: Partial<typeof database.$inferInsert> = {
     updatedAt: new Date(),
   };
@@ -428,7 +467,10 @@ export async function createDatabasePropertyService(input: {
   type?: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(input.databaseId, input.userId);
+  const existing = await requireDatabaseEditAccess(
+    input.databaseId,
+    input.userId,
+  );
   const name = input.name?.trim() || "Property";
   const type = normalizeDatabasePropertyType(input.type) ?? "";
 
@@ -519,7 +561,10 @@ export async function updateDatabasePropertyService(input: {
   type?: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(input.databaseId, input.userId);
+  const existing = await requireDatabaseEditAccess(
+    input.databaseId,
+    input.userId,
+  );
 
   const [column] = await db
     .select()
@@ -640,7 +685,10 @@ export async function createDatabaseViewService(input: {
   type?: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(input.databaseId, input.userId);
+  const existing = await requireDatabaseEditAccess(
+    input.databaseId,
+    input.userId,
+  );
   const type = input.type?.trim() || "table";
   const baseName = input.name?.trim() || "Table";
   const config = input.config ?? null;
@@ -697,7 +745,10 @@ export async function updateDatabaseViewService(input: {
   userId: string;
   viewId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(input.databaseId, input.userId);
+  const existing = await requireDatabaseEditAccess(
+    input.databaseId,
+    input.userId,
+  );
 
   const [existingView] = await db
     .select({ id: databaseView.id })
@@ -762,10 +813,16 @@ export async function createDatabaseRowService(input: {
   title?: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(input.databaseId, input.userId);
+  const existing = await requireDatabaseEditAccess(
+    input.databaseId,
+    input.userId,
+  );
 
-  if (input.pageId === existing.pageId) {
-    throw new ServiceMutationError("A page cannot be nested inside itself", 400);
+  if (isDatabaseHostPageId(input.pageId, existing.pageId)) {
+    throw new ServiceMutationError(
+      "A page cannot be nested inside itself",
+      400,
+    );
   }
 
   const rows = await db
@@ -775,7 +832,12 @@ export async function createDatabaseRowService(input: {
       position: databaseRow.position,
     })
     .from(databaseRow)
-    .where(and(eq(databaseRow.databaseId, existing.id), isNull(databaseRow.deletedAt)))
+    .where(
+      and(
+        eq(databaseRow.databaseId, existing.id),
+        isNull(databaseRow.deletedAt),
+      ),
+    )
     .orderBy(asc(databaseRow.position));
 
   const targetPosition =
@@ -832,16 +894,16 @@ export async function createDatabaseRowService(input: {
   }
 
   if (rows.some((row) => row.pageId === pageId)) {
-    throw new ServiceMutationError("This page is already in this database", 409);
+    throw new ServiceMutationError(
+      "This page is already in this database",
+      409,
+    );
   }
 
   const statusProperties = await db
     .select({ config: pageProperty.config, id: pageProperty.id })
     .from(databaseProperty)
-    .innerJoin(
-      pageProperty,
-      eq(databaseProperty.propertyId, pageProperty.id),
-    )
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
         eq(databaseProperty.databaseId, existing.id),
@@ -875,11 +937,7 @@ export async function createDatabaseRowService(input: {
         await tx
           .update(page)
           .set({
-            metadata: {
-              ...pageMetadata,
-              parentItemId: existing.pageId,
-              parentItemKind: "page",
-            },
+            metadata: pageMetadata,
             updatedAt: now,
           })
           .where(eq(page.id, pageId));
@@ -892,11 +950,13 @@ export async function createDatabaseRowService(input: {
           name: title as string,
           url: "#",
           content: null,
-          metadata: {
-            parentItemId: existing.pageId,
-            parentItemKind: "page",
-          },
+          metadata: null,
           createdAt: now,
+          updatedAt: now,
+        });
+        await tx.insert(pageCollaborationDocument).values({
+          pageId,
+          state: Buffer.from(encodePageContentAsYjs(null)),
           updatedAt: now,
         });
       }
@@ -925,6 +985,16 @@ export async function createDatabaseRowService(input: {
         lastEditedById: input.userId,
         createdAt: now,
         updatedAt: now,
+      });
+      await upsertPageItemPlacement(tx, {
+        workspaceId: existing.workspaceId,
+        parentKind: "database",
+        parentId: existing.id,
+        itemKind: "page",
+        itemId: pageId,
+        placementKind: "database_row",
+        sourceRowId: rowId,
+        position: targetPosition,
       });
 
       const insertedValues = defaultStatusValues.map((property) => ({
@@ -1046,7 +1116,10 @@ export async function setDatabaseCellValueService(input: {
   value: unknown;
   pagePropertyId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(input.databaseId, input.userId);
+  const existing = await requireDatabaseEditAccess(
+    input.databaseId,
+    input.userId,
+  );
 
   const [row] = await db
     .select({ id: databaseRow.id, pageId: databaseRow.pageId })
@@ -1067,10 +1140,7 @@ export async function setDatabaseCellValueService(input: {
       type: pageProperty.type,
     })
     .from(databaseProperty)
-    .innerJoin(
-      pageProperty,
-      eq(databaseProperty.propertyId, pageProperty.id),
-    )
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
         eq(databaseProperty.databaseId, existing.id),
@@ -1105,10 +1175,7 @@ export async function setDatabaseCellValueService(input: {
           value: input.value,
         })
         .onConflictDoUpdate({
-          target: [
-            pagePropertyValue.pageId,
-            pagePropertyValue.propertyId,
-          ],
+          target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
           set: { value: input.value, updatedAt: now },
         });
       await tx
