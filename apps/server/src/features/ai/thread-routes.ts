@@ -11,9 +11,9 @@ import {
   listAiChatThreads,
   loadAiChatThreadMessages,
   renameAiChatThread,
-} from "../ai/chat-persistence";
-import { getMembership } from "../access";
-import type { AppBindings } from "../types";
+} from "../../ai/chat-persistence";
+import { getMembership } from "../../access";
+import type { AppBindings } from "../../types";
 
 const createThreadSchema = z.object({
   title: z.string().trim().max(120).optional(),

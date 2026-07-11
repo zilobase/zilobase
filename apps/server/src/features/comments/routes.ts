@@ -5,17 +5,17 @@ import {
   getEffectivePageAccessInWorkspace,
   getPageRecord,
   hasAccess,
-} from "../access";
-import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
-import { db } from "../db";
+} from "../../access";
+import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+import { db } from "../../db";
 import {
   commentMessage,
   commentReaction,
   commentThread,
   user,
   page,
-} from "../db/schema";
-import type { AppBindings } from "../types";
+} from "../../db/schema";
+import type { AppBindings } from "../../types";
 
 const MAX_COMMENT_BODY_LENGTH = 10_000;
 const MAX_REACTION_EMOJI_LENGTH = 32;

@@ -6,10 +6,10 @@ import {
   canAccessPageInWorkspace,
   getAccessiblePageIds,
   isPagePublishedInWorkspace,
-} from "../access";
-import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
-import { db } from "../db";
-import type { Database } from "../db";
+} from "../../access";
+import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+import { db } from "../../db";
+import type { Database } from "../../db";
 import {
   database,
   databaseProperty,
@@ -20,36 +20,36 @@ import {
   pageItemPlacement,
   pageProperty,
   pagePropertyValue,
-} from "../db/schema";
-import type { DatabaseChangedArea } from "../services/database-delta";
-import type { AppBindings } from "../types";
-import { withDatabaseParentItemId } from "../item-relationships";
-import { upsertPageItemPlacement } from "../page-item-placements";
-import { softDeleteDatabaseTree } from "../soft-delete-nav-items";
-import { loadWorkspacePageGraph } from "../page-graph";
+} from "../../db/schema";
+import type { DatabaseChangedArea } from "../../services/database-delta";
+import type { AppBindings } from "../../types";
+import { withDatabaseParentItemId } from "../../item-relationships";
+import { upsertPageItemPlacement } from "../../page-item-placements";
+import { softDeleteDatabaseTree } from "../../soft-delete-nav-items";
+import { loadWorkspacePageGraph } from "../../page-graph";
 import {
   commitDatabaseMutation as commitDatabaseMutationCore,
   DatabaseMutationError,
   mutationResponse,
   type SqlExecutor,
-} from "../services/database-commit";
+} from "../../services/database-commit";
 import {
   normalizePropertyConfig,
   ServiceMutationError,
   validateCellValue,
-} from "../services/database-mutations";
+} from "../../services/database-mutations";
 import {
   isReadOnlyPropertyType,
   isSelectLikePropertyType,
   normalizeDatabasePropertyType,
-} from "../services/database-property-types";
+} from "../../services/database-property-types";
 import {
   fetchDatabasePropertyDelta,
   fetchDatabaseViewDelta,
   propertyPositionDelta,
   rowPositionDelta,
   type DatabaseDelta,
-} from "../services/database-delta";
+} from "../../services/database-delta";
 
 export const databaseRoutes = new Hono<AppBindings>();
 

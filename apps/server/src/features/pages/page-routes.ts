@@ -13,9 +13,9 @@ import {
   normalizeAccessLevel,
   rejectActiveWorkspaceMismatch,
   type AccessLevel,
-} from "../access";
-import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
-import { db } from "../db";
+} from "../../access";
+import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+import { db } from "../../db";
 import {
   database,
   databaseProperty,
@@ -31,8 +31,8 @@ import {
   pageItemPlacement,
   pageProperty,
   pagePropertyValue,
-} from "../db/schema";
-import type { AppBindings } from "../types";
+} from "../../db/schema";
+import type { AppBindings } from "../../types";
 import {
   addLinkedItem,
   clearParentItem,
@@ -42,20 +42,20 @@ import {
   resolveEmbedItem,
   wouldCreateParentCycle,
   type ItemRef,
-} from "../item-relationships";
+} from "../../item-relationships";
 import {
   buildNavigationPlacements,
   softDeletePageItemPlacement,
   upsertPageItemPlacement,
-} from "../page-item-placements";
-import { softDeletePageTree } from "../soft-delete-nav-items";
-import { loadWorkspacePageGraph } from "../page-graph";
+} from "../../page-item-placements";
+import { softDeletePageTree } from "../../soft-delete-nav-items";
+import { loadWorkspacePageGraph } from "../../page-graph";
 import {
   createCollaborationTicket,
   documentNameForPage,
   replacePageContent,
-} from "../collaboration/service";
-import { getCollaborationWebSocketUrl } from "../runtime-adapter";
+} from "../../collaboration/service";
+import { getCollaborationWebSocketUrl } from "../../runtime-adapter";
 export const pageRoutes = new Hono<AppBindings>();
 
 const NOTELAB_AI_MODES = new Set(["instruction", "skill"] as const);

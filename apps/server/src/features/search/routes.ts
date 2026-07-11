@@ -2,12 +2,12 @@ import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 
-import { getAccessiblePageIds, getMembership } from "../access";
-import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
-import { db } from "../db";
-import { database, page } from "../db/schema";
-import type { AppBindings } from "../types";
-import { PageGraph } from "../page-graph";
+import { getAccessiblePageIds, getMembership } from "../../access";
+import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+import { db } from "../../db";
+import { database, page } from "../../db/schema";
+import type { AppBindings } from "../../types";
+import { PageGraph } from "../../page-graph";
 
 export const searchRoutes = new Hono<AppBindings>();
 

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { AppBindings } from "../types";
+import type { AppBindings } from "../../types";
 
 export const healthRoutes = new Hono<AppBindings>();
 

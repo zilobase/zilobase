@@ -12,21 +12,21 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import * as z from "zod";
 
-import { AiProviderConfigError, resolveWorkspaceAiModel } from "../ai/ai-provider";
-import { buildGithubTools } from "../ai/ask-ai-github-tools";
-import { buildGmailTools } from "../ai/ask-ai-gmail-tools";
-import { buildGoogleCalendarTools } from "../ai/ask-ai-google-calendar-tools";
-import { buildGoogleDriveTools } from "../ai/ask-ai-google-drive-tools";
-import { buildLinearTools } from "../ai/ask-ai-linear-tools";
-import { buildSlackTools } from "../ai/ask-ai-slack-tools";
-import { canAccessPage, getMembership, getPageRecord } from "../access";
-import { createDbClient, db, runWithDbClient } from "../db";
-import { workspaceIntegration, userIntegration } from "../db/schema";
-import type { AppBindings } from "../types";
+import { AiProviderConfigError, resolveWorkspaceAiModel } from "../../ai/ai-provider";
+import { buildGithubTools } from "../../ai/ask-ai-github-tools";
+import { buildGmailTools } from "../../ai/ask-ai-gmail-tools";
+import { buildGoogleCalendarTools } from "../../ai/ask-ai-google-calendar-tools";
+import { buildGoogleDriveTools } from "../../ai/ask-ai-google-drive-tools";
+import { buildLinearTools } from "../../ai/ask-ai-linear-tools";
+import { buildSlackTools } from "../../ai/ask-ai-slack-tools";
+import { canAccessPage, getMembership, getPageRecord } from "../../access";
+import { createDbClient, db, runWithDbClient } from "../../db";
+import { workspaceIntegration, userIntegration } from "../../db/schema";
+import type { AppBindings } from "../../types";
 import {
   coerceAiChatRequestBody,
   runAiChatTurn,
-} from "../ai/chat-service";
+} from "../../ai/chat-service";
 
 type SourceId =
   | "gmail"

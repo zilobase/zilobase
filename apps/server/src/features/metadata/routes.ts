@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { isIP } from "node:net";
-import type { AppBindings } from "../types";
+import type { AppBindings } from "../../types";
 
 export const metadataRoutes = new Hono<AppBindings>();
 

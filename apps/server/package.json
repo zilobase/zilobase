@@ -23,6 +23,7 @@
     "test:database-delta": "tsx --test src/services/database-delta.test.ts",
     "test:databases": "tsx --test src/services/database-property-config.test.ts src/services/database-delta.test.ts src/services/insert-database-block.test.ts",
     "test:collaboration": "tsx --test src/collaboration/*.test.ts",
+    "test": "tsx --test 'src/**/*.test.ts' 'src/*.test.ts'",
     "test:api-keys": "tsx src/scripts/test-api-key-flow.ts",
     "test:flow": "tsx src/scripts/simulate-user-flow.ts",
     "db:generate": "drizzle-kit generate",

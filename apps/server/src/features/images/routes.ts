@@ -4,16 +4,16 @@ import type { Context } from "hono";
 import {
   canAccessPageInWorkspace,
   getPageRecord,
-} from "../access";
-import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
-import { getStringEnv } from "../config";
-import { db } from "../db";
-import { database, imageAsset } from "../db/schema";
+} from "../../access";
+import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+import { getStringEnv } from "../../config";
+import { db } from "../../db";
+import { database, imageAsset } from "../../db/schema";
 import {
   createImageStorage,
   resolveImageStorageMode,
-} from "../image-storage";
-import type { AppBindings } from "../types";
+} from "../../image-storage";
+import type { AppBindings } from "../../types";
 
 export const imageRoutes = new Hono<AppBindings>();
 
