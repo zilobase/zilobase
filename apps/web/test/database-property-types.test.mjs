@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url"
 export function register({ assert, loadModule, test }) {
   test("database property type metadata covers defaults and fallbacks", async () => {
     const propertyTypes = await loadModule(
-      "/src/editor/extensions/database/database-property-types.ts"
+      "/src/editor/extensions/database/core/database-property-types.ts"
     )
 
     assert.equal(propertyTypes.getDatabasePropertyType("number").label, "Number")
@@ -36,7 +36,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database property type UI metadata covers the shared canonical contract", async () => {
     const propertyTypes = await loadModule(
-      "/src/editor/extensions/database/database-property-types.ts"
+      "/src/editor/extensions/database/core/database-property-types.ts"
     )
     const sharedPropertyTypes = await loadModule(
       fileURLToPath(
@@ -53,9 +53,18 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
+  test("database option colors use one canonical cycling strategy", async () => {
+    const { getNextDatabaseOptionColor } = await loadModule(
+      "/src/editor/extensions/database/core/database-property-types.ts"
+    )
+
+    assert.equal(getNextDatabaseOptionColor(0), getNextDatabaseOptionColor(0))
+    assert.notEqual(getNextDatabaseOptionColor(0), getNextDatabaseOptionColor(1))
+  })
+
   test("database filter operators are selected from property metadata", async () => {
     const { getDatabaseFilterOperatorsForType } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-config.ts"
+      "/src/editor/extensions/database/views/database-view-config.ts"
     )
 
     assert.deepEqual(

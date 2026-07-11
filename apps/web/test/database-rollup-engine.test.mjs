@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database rollups require relation and target configuration", async () => {
     const { evaluateDatabaseRollup } = await loadModule(
-      "/src/editor/extensions/database/rollup/rollup-engine.ts"
+      "/src/editor/extensions/database/properties/rollup/rollup-engine.ts"
     )
     const context = createRollupContext()
 
@@ -16,7 +16,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database rollups show original and unique values", async () => {
     const { evaluateDatabaseRollup } = await loadModule(
-      "/src/editor/extensions/database/rollup/rollup-engine.ts"
+      "/src/editor/extensions/database/properties/rollup/rollup-engine.ts"
     )
     const context = createRollupContext()
 
@@ -35,7 +35,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database rollups resolve relation by page property id", async () => {
     const { evaluateDatabaseRollup, getRollupRelationProperty } = await loadModule(
-      "/src/editor/extensions/database/rollup/rollup-engine.ts"
+      "/src/editor/extensions/database/properties/rollup/rollup-engine.ts"
     )
     const context = createRollupContext()
     const relationProperty = getRollupRelationProperty(
@@ -61,7 +61,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database rollup config updates persist displayed defaults", async () => {
     const { getRollupConfigUpdate } = await loadModule(
-      "/src/editor/extensions/database/rollup/rollup-config.ts"
+      "/src/editor/extensions/database/properties/rollup/rollup-config.ts"
     )
 
     assert.deepEqual(
@@ -91,7 +91,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database rollup config updates persist number display settings", async () => {
     const { getRollupConfigUpdate } = await loadModule(
-      "/src/editor/extensions/database/rollup/rollup-config.ts"
+      "/src/editor/extensions/database/properties/rollup/rollup-config.ts"
     )
     const next = getRollupConfigUpdate(
       {},
@@ -108,7 +108,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database rollups count and percent values", async () => {
     const { evaluateDatabaseRollup } = await loadModule(
-      "/src/editor/extensions/database/rollup/rollup-engine.ts"
+      "/src/editor/extensions/database/properties/rollup/rollup-engine.ts"
     )
     const context = createRollupContext()
 
@@ -128,7 +128,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database rollups aggregate numbers", async () => {
     const { evaluateDatabaseRollup } = await loadModule(
-      "/src/editor/extensions/database/rollup/rollup-engine.ts"
+      "/src/editor/extensions/database/properties/rollup/rollup-engine.ts"
     )
     const context = createRollupContext()
 
@@ -152,7 +152,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database rollups aggregate dates", async () => {
     const { evaluateDatabaseRollup } = await loadModule(
-      "/src/editor/extensions/database/rollup/rollup-engine.ts"
+      "/src/editor/extensions/database/properties/rollup/rollup-engine.ts"
     )
     const context = createRollupContext()
 
@@ -171,7 +171,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database rollups exclude rollup targets", async () => {
     const { getRollupTargetProperty } = await loadModule(
-      "/src/editor/extensions/database/rollup/rollup-engine.ts"
+      "/src/editor/extensions/database/properties/rollup/rollup-engine.ts"
     )
     const context = createRollupContext()
 

@@ -22,20 +22,20 @@ import {
 
 import { ImageSourcePicker } from "@/packages/editor/components/image-source-picker"
 
-import { DatabasePropertyDate } from "../../extensions/database/database-property-date"
-import { DatabasePropertyButton } from "../../extensions/database/database-property-button"
-import { DatabasePropertyFiles } from "../../extensions/database/database-property-files"
-import { DatabasePropertyInput } from "../../extensions/database/database-property-input"
-import { DatabasePropertySelect } from "../../extensions/database/database-property-select"
-import { getDatabasePropertyType } from "../../extensions/database/constants"
-import { defaultStatusOptions } from "../../extensions/database/constants"
-import { formatDatabaseDateValue } from "../../extensions/database/shared/database-date-config"
-import { getPersonLimit } from "../../extensions/database/shared/database-view-config"
+import { DatabasePropertyDate } from "../../extensions/database/properties/database-property-date"
+import { DatabasePropertyButton } from "../../extensions/database/properties/database-property-button"
+import { DatabasePropertyFiles } from "../../extensions/database/properties/database-property-files"
+import { DatabasePropertyInput } from "../../extensions/database/properties/database-property-input"
+import { DatabasePropertySelect } from "../../extensions/database/properties/database-property-select"
+import { getDatabasePropertyType } from "../../extensions/database/core/database-property-types"
+import { defaultStatusOptions } from "../../extensions/database/core/database-property-types"
+import { formatDatabaseDateValue } from "../../extensions/database/properties/database-date-config"
+import { getPersonLimit } from "../../extensions/database/views/database-view-config"
 import {
   type DatabasePropertyValue,
   parsePropertyValue,
   serializePropertyValue,
-} from "../../extensions/database/utils"
+} from "../../extensions/database/core/utils"
 
 type PageMetadataProps = {
   contentClassName?: string

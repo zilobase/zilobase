@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database formulas evaluate Notion-style property expressions", async () => {
     const { evaluateDatabaseFormula, formatFormulaValue } = await loadModule(
-      "/src/editor/extensions/database/formula/formula-engine.ts"
+      "/src/editor/extensions/database/properties/formula/formula-engine.ts"
     )
     const context = createFormulaContext()
 
@@ -35,7 +35,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database formulas can reference other formula properties", async () => {
     const { evaluateDatabaseFormula } = await loadModule(
-      "/src/editor/extensions/database/formula/formula-engine.ts"
+      "/src/editor/extensions/database/properties/formula/formula-engine.ts"
     )
     const context = createFormulaContext({
       extraProperties: [
@@ -59,7 +59,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database formulas support variables and scoped list expressions", async () => {
     const { evaluateDatabaseFormula, formatFormulaValue } = await loadModule(
-      "/src/editor/extensions/database/formula/formula-engine.ts"
+      "/src/editor/extensions/database/properties/formula/formula-engine.ts"
     )
     const context = createFormulaContext()
 
@@ -99,7 +99,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database formulas support date, number, and list utility functions", async () => {
     const { evaluateDatabaseFormula, formatFormulaValue } = await loadModule(
-      "/src/editor/extensions/database/formula/formula-engine.ts"
+      "/src/editor/extensions/database/properties/formula/formula-engine.ts"
     )
     const context = createFormulaContext()
 

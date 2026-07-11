@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("two-way relation updates the reciprocal database", async () => {
     const { getRelationReciprocalUpdates } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
 
     const updates = getRelationReciprocalUpdates({
@@ -51,7 +51,7 @@ export function register({ assert, loadModule, test }) {
 
   test("two-way relation updates back from the reciprocal database", async () => {
     const { getRelationReciprocalUpdates } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
 
     const updates = getRelationReciprocalUpdates({
@@ -89,7 +89,7 @@ export function register({ assert, loadModule, test }) {
 
   test("relation without two-way enabled does not sync", async () => {
     const { getRelationReciprocalUpdates } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
 
     const updates = getRelationReciprocalUpdates({
@@ -114,7 +114,7 @@ export function register({ assert, loadModule, test }) {
 
   test("disabling two-way relation disables the reciprocal property too", async () => {
     const { getRelationTwoWayConfigUpdate } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
 
     const update = getRelationTwoWayConfigUpdate({
@@ -144,7 +144,7 @@ export function register({ assert, loadModule, test }) {
 
   test("re-enabling two-way relation only patches reciprocal config", async () => {
     const { getRelationTwoWayConfigUpdate } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
     const relatedDatabasePayload = payload({
       databaseId: "database-b",
@@ -191,7 +191,7 @@ export function register({ assert, loadModule, test }) {
 
   test("relation repair does not mark synced before payloads load", async () => {
     const { getRelationRepairMutationPlan } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
 
     const plan = getRelationRepairMutationPlan({
@@ -216,7 +216,7 @@ export function register({ assert, loadModule, test }) {
 
   test("relation repair plan updates rows then marks both sides synced", async () => {
     const { getRelationRepairMutationPlan } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
     const databaseA = payload({
       databaseId: "database-a",
@@ -289,7 +289,7 @@ export function register({ assert, loadModule, test }) {
 
   test("relation repair plan mirrors source over related", async () => {
     const { getRelationRepairMutationPlan } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
     const databaseA = payload({
       databaseId: "database-a",
@@ -333,7 +333,7 @@ export function register({ assert, loadModule, test }) {
 
   test("relation repair plan mirrors related over source", async () => {
     const { getRelationRepairMutationPlan } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
     const databaseA = payload({
       databaseId: "database-a",
@@ -383,7 +383,7 @@ export function register({ assert, loadModule, test }) {
 
   test("relation repair skips already mirrored links", async () => {
     const { getRelationRepairMutationPlan } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
 
     const plan = getRelationRepairMutationPlan({
@@ -417,7 +417,7 @@ export function register({ assert, loadModule, test }) {
       getRelationConfigWithSyncStatus,
       getRelationNeedsRepair,
     } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
     const databaseB = payload({
       databaseId: "database-b",
@@ -482,7 +482,7 @@ export function register({ assert, loadModule, test }) {
       getRelationConfigWithSyncStatus,
       getRelationNeedsRepair,
     } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
     const databaseB = payload({
       databaseId: "database-b",
@@ -525,7 +525,7 @@ export function register({ assert, loadModule, test }) {
 
   test("one-page relation limit trims existing multi values", async () => {
     const { getRelationLimitTrimUpdates } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
 
     const updates = getRelationLimitTrimUpdates({
@@ -555,7 +555,7 @@ export function register({ assert, loadModule, test }) {
 
   test("no-limit relation keeps existing multi values", async () => {
     const { getRelationLimitTrimUpdates } = await loadModule(
-      "/src/editor/extensions/database/shared/database-relation-sync.ts"
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
     )
 
     const updates = getRelationLimitTrimUpdates({

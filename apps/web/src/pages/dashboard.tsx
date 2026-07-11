@@ -16,10 +16,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { DatabaseTableView } from "@/packages/editor/extensions/database/table"
-import { DatabaseViewProvider } from "@/packages/editor/extensions/database/shared/database-view-context"
-import { DatabaseViewToolbar } from "@/packages/editor/extensions/database/shared/database-view-toolbar"
-import { getDatabaseViewModel } from "@/packages/editor/extensions/database/shared/database-view-model"
+import { DatabaseTableView } from "@/packages/editor/extensions/database/views/table/database-table-view"
+import { DatabaseViewProvider } from "@/packages/editor/extensions/database/views/database-view-context"
+import { DatabaseViewToolbar } from "@/packages/editor/extensions/database/views/database-view-toolbar"
+import { getDatabaseViewModel } from "@/packages/editor/extensions/database/views/database-view-model"
 import {
   getMergedDatabaseConfig,
   getMergedNameColumnConfig,
@@ -27,7 +27,7 @@ import {
   type DatabaseNameColumnConfig,
   type DatabasePropertyConfig,
   type DatabaseSortConfig,
-} from "@/packages/editor/extensions/database/shared/database-view-config"
+} from "@/packages/editor/extensions/database/views/database-view-config"
 import { getDatabaseEmoji, useCreateDatabase } from "@notelab/features/databases"
 import { useActiveWorkspaceId } from "@notelab/features/integrations"
 import {

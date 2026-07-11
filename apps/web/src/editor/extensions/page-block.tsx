@@ -31,7 +31,7 @@ import {
   type DatabasePayload,
 } from "@notelab/features/databases"
 import { colorWithAlpha, getPaletteColor } from "@/lib/color-tokens"
-import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database/constants"
+import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
 
 export type CreatedPage = {
   id: string

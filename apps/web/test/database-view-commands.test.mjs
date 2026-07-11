@@ -3,7 +3,7 @@ const databaseId = "database-1"
 export function register({ assert, loadModule, test }) {
   test("database view commands update sort config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const showSortPillValues = []
@@ -56,7 +56,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands create filter config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const showFilterPillValues = []
@@ -132,7 +132,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands update filter config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const properties = [
@@ -197,7 +197,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands reorder filter config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const commands = getDatabaseViewCommands({
@@ -281,7 +281,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands toggle property visibility from table defaults", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const properties = [
@@ -325,7 +325,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands save property order config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const latestConfigs = []
@@ -405,7 +405,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands compose rapid property visibility toggles", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const latestConfigs = new Map()
@@ -463,7 +463,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands skip unchanged serialized property values", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateValue = createMutation()
     const commands = getDatabaseViewCommands({
@@ -502,7 +502,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands merge property config patches", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateProperty = createMutation()
     const relationConfig = {
@@ -558,7 +558,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands trim relation values when switching to one page", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateProperty = createMutation()
     const updateValue = createMutation()
@@ -625,7 +625,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands update group config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const commands = getDatabaseViewCommands({
@@ -675,7 +675,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands save conditional color config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const commands = getDatabaseViewCommands({
@@ -757,7 +757,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands add kanban view grouped by name without properties", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const addDatabaseView = createMutation()
     const addProperty = createMutation()
@@ -795,7 +795,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands avoid writing read-only group values", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const addRow = createMutation()
     const updateValue = createMutation()
@@ -843,7 +843,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands update active view type", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const updateDatabaseView = createMutation()
     const properties = [
@@ -890,7 +890,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands add timeline view with existing date property", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const addDatabaseView = createMutation()
     const addProperty = createMutation()
@@ -943,7 +943,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view commands add timeline view creates date property", async () => {
     const { getDatabaseViewCommands } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-commands.ts"
+      "/src/editor/extensions/database/views/database-view-commands.ts"
     )
     const addDatabaseView = createMutation()
     const addProperty = createMutation()

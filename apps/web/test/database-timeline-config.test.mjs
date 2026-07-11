@@ -9,7 +9,7 @@ export function register({ assert, loadModule, test }) {
       groupTimelineRows,
       UNSCHEDULED_GROUP_NAME,
     } = await loadModule(
-      "/src/editor/extensions/database/timeline/database-timeline-config.ts"
+      "/src/editor/extensions/database/views/timeline/database-timeline-config.ts"
     )
 
     const singleDate = parseRowDateRange("2026-06-15")

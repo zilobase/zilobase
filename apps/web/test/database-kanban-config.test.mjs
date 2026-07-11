@@ -5,7 +5,7 @@ export function register({ assert, loadModule, test }) {
       canMoveRowsAcrossKanbanGroups,
       canUpdateKanbanGroupProperty,
     } = await loadModule(
-      "/src/editor/extensions/database/kanban/database-kanban-config.ts"
+      "/src/editor/extensions/database/views/kanban/database-kanban-config.ts"
     )
 
     assert.equal(canCreateKanbanGroup(createProperty("name", "text")), true)

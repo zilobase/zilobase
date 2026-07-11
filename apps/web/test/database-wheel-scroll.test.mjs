@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database wheel scroll ignores trackpad drift during vertical scroll", async () => {
     const { getDatabaseHorizontalWheelDelta } = await loadModule(
-      "/src/editor/extensions/database/shared/database-wheel-scroll.ts"
+      "/src/editor/extensions/database/interactions/database-wheel-scroll.ts"
     )
 
     assert.equal(
@@ -16,7 +16,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database wheel scroll keeps deliberate horizontal gestures", async () => {
     const { getDatabaseHorizontalWheelDelta } = await loadModule(
-      "/src/editor/extensions/database/shared/database-wheel-scroll.ts"
+      "/src/editor/extensions/database/interactions/database-wheel-scroll.ts"
     )
 
     assert.equal(
@@ -31,7 +31,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database wheel scroll supports shift wheel horizontal scrolling", async () => {
     const { getDatabaseHorizontalWheelDelta } = await loadModule(
-      "/src/editor/extensions/database/shared/database-wheel-scroll.ts"
+      "/src/editor/extensions/database/interactions/database-wheel-scroll.ts"
     )
 
     assert.equal(

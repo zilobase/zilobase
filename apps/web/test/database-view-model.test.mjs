@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database view model derives kanban visibility, sorts, and rows", async () => {
     const { getDatabaseViewModel } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-model.tsx"
+      "/src/editor/extensions/database/views/database-view-model.tsx"
     )
     const statusProperty = createProperty(
       "database-property-status",
@@ -165,7 +165,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view model filters rows before sorting", async () => {
     const { getDatabaseViewModel } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-model.tsx"
+      "/src/editor/extensions/database/views/database-view-model.tsx"
     )
     const statusProperty = createProperty(
       "database-property-status",
@@ -303,7 +303,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view model applies table property order", async () => {
     const { getDatabaseViewModel } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-model.tsx"
+      "/src/editor/extensions/database/views/database-view-model.tsx"
     )
     const statusProperty = createProperty(
       "database-property-status",
@@ -365,7 +365,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view model uses the latest duplicated cell value", async () => {
     const { getDatabaseViewModel } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-model.tsx"
+      "/src/editor/extensions/database/views/database-view-model.tsx"
     )
     const statusProperty = createProperty(
       "database-property-status",
@@ -416,7 +416,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view model keeps name and date kanban group properties", async () => {
     const { getDatabaseViewModel } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-model.tsx"
+      "/src/editor/extensions/database/views/database-view-model.tsx"
     )
     const dueProperty = createProperty(
       "database-property-due",
@@ -498,7 +498,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database view model derives conditional color settings", async () => {
     const { getDatabaseViewModel } = await loadModule(
-      "/src/editor/extensions/database/shared/database-view-model.tsx"
+      "/src/editor/extensions/database/views/database-view-model.tsx"
     )
     const statusProperty = createProperty(
       "database-property-status",
