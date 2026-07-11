@@ -183,6 +183,27 @@
       "when": 1783771200000,
       "tag": "0025_page_collaboration",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1783780000000,
+      "tag": "0026_standalone_databases",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1783866600000,
+      "tag": "0027_database_navigation_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1783868400000,
+      "tag": "0028_canonical_page_navigation",
+      "breakpoints": true
     }
   ]
 }

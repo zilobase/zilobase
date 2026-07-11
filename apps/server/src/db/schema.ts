@@ -702,8 +702,10 @@ export const database = pgTable(
     workspaceId: text("workspace_id")
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
+    createdById: text("created_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     pageId: text("page_id")
-      .notNull()
       .references(() => page.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     config: jsonb("config"),
@@ -726,6 +728,42 @@ export const database = pgTable(
     ),
     index("database_page_id_idx").on(table.pageId),
     index("database_deleted_at_idx").on(table.deletedAt),
+  ],
+);
+
+export const databaseAccess = pgTable(
+  "database_access",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    databaseId: text("database_id")
+      .notNull()
+      .references(() => database.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    accessLevel: text("access_level").notNull().default("view"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("database_access_workspace_id_idx").on(table.workspaceId),
+    index("database_access_database_id_idx").on(table.databaseId),
+    index("database_access_target_idx").on(
+      table.workspaceId,
+      table.targetType,
+      table.targetId,
+    ),
+    uniqueIndex("database_access_target_unique").on(
+      table.databaseId,
+      table.targetType,
+      table.targetId,
+    ),
   ],
 );
 

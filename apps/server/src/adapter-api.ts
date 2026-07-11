@@ -42,6 +42,7 @@ export {
   createCollaborationTicket,
   documentNameForPage,
   encodePageContentAsYjs,
+  getOrCreateCollaborationDocumentState,
   materializePageContentFromYjs,
   pageIdFromDocumentName,
   replacePageContent,

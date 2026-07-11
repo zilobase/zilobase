@@ -3,6 +3,9 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "./db";
 import type { AppBindings } from "./types";
 import {
+  database,
+  databaseAccess,
+  databaseRow,
   member,
   teamMember,
   page,
@@ -113,11 +116,10 @@ export async function getEffectivePageAccessInWorkspace(
 
   const ancestorIds = graph.getAncestorIds(pageId);
 
-  if (ancestorIds.length === 0) {
-    return "none";
-  }
-
-  if (graph.hasOwnedRootAccess(ancestorIds, userId)) {
+  if (
+    ancestorIds.length > 0 &&
+    graph.hasOwnedRootAccess(ancestorIds, userId)
+  ) {
     return "full";
   }
 
@@ -128,23 +130,53 @@ export async function getEffectivePageAccessInWorkspace(
     targetTypes.push("team");
   }
 
-  const rules = await db
-    .select({ accessLevel: pageAccess.accessLevel })
-    .from(pageAccess)
-    .where(
-      and(
-        eq(pageAccess.workspaceId, workspaceId),
-        inArray(pageAccess.pageId, ancestorIds),
-        inArray(pageAccess.targetType, targetTypes),
-        inArray(pageAccess.targetId, targetIds),
-      ),
-    );
+  const rules =
+    ancestorIds.length > 0
+      ? await db
+          .select({ accessLevel: pageAccess.accessLevel })
+          .from(pageAccess)
+          .where(
+            and(
+              eq(pageAccess.workspaceId, workspaceId),
+              inArray(pageAccess.pageId, ancestorIds),
+              inArray(pageAccess.targetType, targetTypes),
+              inArray(pageAccess.targetId, targetIds),
+            ),
+          )
+      : [];
 
-  return rules.reduce<AccessLevel>((best, rule) => {
+  const pageLevel = rules.reduce<AccessLevel>((best, rule) => {
     const next = normalizeAccessLevel(rule.accessLevel) ?? "none";
 
     return accessRank[next] > accessRank[best] ? next : best;
   }, "none");
+
+  if (pageLevel !== "none") {
+    return pageLevel;
+  }
+
+  const [standaloneDatabaseRow] = await db
+    .select({ databaseId: databaseRow.databaseId })
+    .from(databaseRow)
+    .innerJoin(database, eq(database.id, databaseRow.databaseId))
+    .where(
+      and(
+        eq(databaseRow.pageId, pageId),
+        eq(database.workspaceId, workspaceId),
+        isNull(database.pageId),
+        isNull(database.deletedAt),
+        isNull(databaseRow.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  return standaloneDatabaseRow
+    ? getEffectiveDatabaseAccessInWorkspace(
+        standaloneDatabaseRow.databaseId,
+        workspaceId,
+        userId,
+      )
+    : "none";
 }
 
 export async function isPagePublished(pageId: string) {
@@ -160,28 +192,50 @@ export async function isPagePublished(pageId: string) {
 export async function isPagePublishedInWorkspace(
   pageId: string,
   workspaceId: string,
-) {
+): Promise<boolean> {
   const graph = await loadWorkspacePageGraph(workspaceId);
   const ancestorIds = graph.getAncestorIds(pageId);
 
-  if (ancestorIds.length === 0) {
-    return false;
+  if (ancestorIds.length > 0) {
+    const [rule] = await db
+      .select({ id: pageAccess.id })
+      .from(pageAccess)
+      .where(
+        and(
+          eq(pageAccess.workspaceId, workspaceId),
+          inArray(pageAccess.pageId, ancestorIds),
+          eq(pageAccess.targetType, "public"),
+          eq(pageAccess.targetId, "*"),
+        ),
+      )
+      .limit(1);
+
+    if (rule) {
+      return true;
+    }
   }
 
-  const [rule] = await db
-    .select({ id: pageAccess.id })
-    .from(pageAccess)
+  const [standaloneDatabaseRow] = await db
+    .select({ databaseId: databaseRow.databaseId })
+    .from(databaseRow)
+    .innerJoin(database, eq(database.id, databaseRow.databaseId))
     .where(
       and(
-        eq(pageAccess.workspaceId, workspaceId),
-        inArray(pageAccess.pageId, ancestorIds),
-        eq(pageAccess.targetType, "public"),
-        eq(pageAccess.targetId, "*"),
+        eq(databaseRow.pageId, pageId),
+        eq(database.workspaceId, workspaceId),
+        isNull(database.pageId),
+        isNull(database.deletedAt),
+        isNull(databaseRow.deletedAt),
       ),
     )
     .limit(1);
 
-  return Boolean(rule);
+  return standaloneDatabaseRow
+    ? isDatabasePublishedInWorkspace(
+        standaloneDatabaseRow.databaseId,
+        workspaceId,
+      )
+    : false;
 }
 
 export async function canAccessPage(
@@ -202,6 +256,93 @@ export async function canAccessPageInWorkspace(
     await getEffectivePageAccessInWorkspace(pageId, workspaceId, userId),
     required,
   );
+}
+
+export async function getEffectiveDatabaseAccessInWorkspace(
+  databaseId: string,
+  workspaceId: string,
+  userId: string,
+): Promise<AccessLevel> {
+  const [record] = await db
+    .select({ createdById: database.createdById, pageId: database.pageId })
+    .from(database)
+    .where(
+      and(
+        eq(database.id, databaseId),
+        eq(database.workspaceId, workspaceId),
+        isNull(database.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!record) return "none";
+  if (record.pageId) {
+    return getEffectivePageAccessInWorkspace(record.pageId, workspaceId, userId);
+  }
+  if (!(await getMembership(workspaceId, userId))) return "none";
+  if (record.createdById === userId) return "full";
+
+  const teamRows = await db
+    .select({ teamId: teamMember.teamId })
+    .from(teamMember)
+    .where(eq(teamMember.userId, userId));
+  const targetTypes = ["user", ...(teamRows.length ? ["team"] : [])];
+  const targetIds = [userId, ...teamRows.map((row) => row.teamId)];
+  const rules = await db
+    .select({ accessLevel: databaseAccess.accessLevel })
+    .from(databaseAccess)
+    .where(
+      and(
+        eq(databaseAccess.databaseId, databaseId),
+        inArray(databaseAccess.targetType, targetTypes),
+        inArray(databaseAccess.targetId, targetIds),
+      ),
+    );
+
+  return rules.reduce<AccessLevel>((best, rule) => {
+    const next = normalizeAccessLevel(rule.accessLevel) ?? "none";
+    return accessRank[next] > accessRank[best] ? next : best;
+  }, "none");
+}
+
+export async function canAccessDatabaseInWorkspace(
+  databaseId: string,
+  workspaceId: string,
+  userId: string,
+  required: Exclude<AccessLevel, "none">,
+) {
+  return hasAccess(
+    await getEffectiveDatabaseAccessInWorkspace(databaseId, workspaceId, userId),
+    required,
+  );
+}
+
+export async function isDatabasePublishedInWorkspace(
+  databaseId: string,
+  workspaceId: string,
+): Promise<boolean> {
+  const [record] = await db
+    .select({ pageId: database.pageId })
+    .from(database)
+    .where(and(eq(database.id, databaseId), eq(database.workspaceId, workspaceId)))
+    .limit(1);
+
+  if (record?.pageId) {
+    return isPagePublishedInWorkspace(record.pageId, workspaceId);
+  }
+
+  const [rule] = await db
+    .select({ id: databaseAccess.id })
+    .from(databaseAccess)
+    .where(
+      and(
+        eq(databaseAccess.databaseId, databaseId),
+        eq(databaseAccess.targetType, "public"),
+        eq(databaseAccess.targetId, "*"),
+      ),
+    )
+    .limit(1);
+  return Boolean(rule);
 }
 
 export const ACTIVE_ORGANIZATION_MISMATCH_CODE = "ACTIVE_ORGANIZATION_MISMATCH";
