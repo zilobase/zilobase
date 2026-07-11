@@ -2,13 +2,45 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "./db";
 import { database, databaseRow, page } from "./db/schema";
-import { readDatabaseParentItemId } from "./item-relationships";
 import { loadWorkspacePageGraph } from "./page-graph";
 
 type SoftDeleteResult = {
   deletedDatabaseIds: string[];
   deletedPageIds: string[];
 };
+
+function collectNestedDatabaseTree(
+  graph: Awaited<ReturnType<typeof loadWorkspacePageGraph>>,
+  databaseRecords: Array<{ id: string; pageId: string }>,
+  initialPageIds: Iterable<string>,
+  initialDatabaseIds: Iterable<string> = [],
+) {
+  const pageIds = new Set(initialPageIds);
+  const databaseIds = new Set(initialDatabaseIds);
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+
+    for (const record of databaseRecords) {
+      if (databaseIds.has(record.id) || !pageIds.has(record.pageId)) {
+        continue;
+      }
+
+      databaseIds.add(record.id);
+      changed = true;
+
+      for (const pageId of graph.getPrimaryNestedDatabasePageIds(record.id)) {
+        if (!pageIds.has(pageId)) {
+          pageIds.add(pageId);
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return { databaseIds, pageIds };
+}
 
 async function softDeleteRecords({
   databaseIds,
@@ -30,9 +62,7 @@ async function softDeleteRecords({
           deletedById: userId,
           updatedAt: now,
         })
-        .where(
-          and(inArray(page.id, pageIds), isNull(page.deletedAt)),
-        );
+        .where(and(inArray(page.id, pageIds), isNull(page.deletedAt)));
     }
 
     if (databaseIds.length > 0) {
@@ -74,41 +104,24 @@ export async function softDeletePageTree({
   userId: string;
 }): Promise<SoftDeleteResult> {
   const graph = await loadWorkspacePageGraph(workspaceId);
-  const pageIds = new Set(
-    graph.getPrimaryNestedPageIds(rootPageId),
-  );
-  const databaseIds = new Set<string>();
-
   const databaseRecords = await db
     .select({
-      config: database.config,
       id: database.id,
       pageId: database.pageId,
     })
     .from(database)
     .where(
-      and(
-        eq(database.workspaceId, workspaceId),
-        isNull(database.deletedAt),
-      ),
+      and(eq(database.workspaceId, workspaceId), isNull(database.deletedAt)),
     );
 
-  for (const record of databaseRecords) {
-    const parentItemId = readDatabaseParentItemId(record.config);
-
-    if (
-      !pageIds.has(record.pageId) &&
-      (!parentItemId || !pageIds.has(parentItemId))
-    ) {
-      continue;
-    }
-
-    databaseIds.add(record.id);
-
-    for (const pageId of graph.getPrimaryNestedDatabasePageIds(record.id)) {
-      pageIds.add(pageId);
-    }
-  }
+  const { databaseIds, pageIds } = collectNestedDatabaseTree(
+    graph,
+    databaseRecords.filter(
+      (record): record is typeof record & { pageId: string } =>
+        Boolean(record.pageId),
+    ),
+    graph.getPrimaryNestedPageIds(rootPageId),
+  );
 
   const deletedPageIds = [...pageIds];
   const deletedDatabaseIds = [...databaseIds];
@@ -132,8 +145,26 @@ export async function softDeleteDatabaseTree({
   userId: string;
 }): Promise<SoftDeleteResult> {
   const graph = await loadWorkspacePageGraph(workspaceId);
-  const deletedPageIds = graph.getPrimaryNestedDatabasePageIds(databaseId);
-  const deletedDatabaseIds = [databaseId];
+  const databaseRecords = await db
+    .select({
+      id: database.id,
+      pageId: database.pageId,
+    })
+    .from(database)
+    .where(
+      and(eq(database.workspaceId, workspaceId), isNull(database.deletedAt)),
+    );
+  const { databaseIds, pageIds } = collectNestedDatabaseTree(
+    graph,
+    databaseRecords.filter(
+      (record): record is typeof record & { pageId: string } =>
+        Boolean(record.pageId),
+    ),
+    graph.getPrimaryNestedDatabasePageIds(databaseId),
+    [databaseId],
+  );
+  const deletedPageIds = [...pageIds];
+  const deletedDatabaseIds = [...databaseIds];
 
   await softDeleteRecords({
     databaseIds: deletedDatabaseIds,

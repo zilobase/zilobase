@@ -1,13 +1,19 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { db } from "./db";
-import { database, databaseRow, page } from "./db/schema";
-import { readLinkedItems, readParentItemId } from "./item-relationships";
+import { database, databaseRow, page, pageItemPlacement } from "./db/schema";
 
 export type PageGraphPage = {
   createdById?: string | null;
   id: string;
-  metadata: unknown;
   name?: string;
+};
+
+type PageGraphPlacement = {
+  itemId: string;
+  itemKind: string;
+  parentId: string;
+  parentKind: string;
+  placementKind: string;
 };
 
 type PageGraphDatabase = {
@@ -26,24 +32,26 @@ export class PageGraph {
   private readonly primaryChildIdsByParentId = new Map<string, Set<string>>();
   private readonly databasePageIdByDatabaseId: Map<string, string>;
   private readonly pageById: Map<string, PageGraphPage>;
+  private readonly primaryParentIdByPageId = new Map<string, string>();
 
   constructor(
     private readonly options: {
       databaseRecords?: PageGraphDatabase[];
       databaseRows?: PageGraphDatabaseRow[];
       pages: PageGraphPage[];
+      placements?: PageGraphPlacement[];
     },
   ) {
-    this.pageById = new Map(
-      options.pages.map((item) => [item.id, item]),
-    );
+    this.pageById = new Map(options.pages.map((item) => [item.id, item]));
     this.databasePageIdByDatabaseId = new Map(
-      (options.databaseRecords ?? []).map((record) => [record.id, record.pageId]),
+      (options.databaseRecords ?? []).map((record) => [
+        record.id,
+        record.pageId,
+      ]),
     );
 
-    this.indexPageChildren();
+    this.indexNavigationPlacements();
     this.indexDatabaseRowChildren();
-    this.indexLinkedItems();
   }
 
   getAncestorIds(pageId: string) {
@@ -67,7 +75,8 @@ export class PageGraph {
       ids.push(current.id);
       visited.add(current.id);
 
-      for (const parentId of this.accessParentIdsByChildId.get(current.id) ?? []) {
+      for (const parentId of this.accessParentIdsByChildId.get(current.id) ??
+        []) {
         pendingIds.push(parentId);
       }
     }
@@ -100,10 +109,7 @@ export class PageGraph {
     );
   }
 
-  getPrimaryNestedPageIds(
-    rootPageId: string,
-    accessibleIds?: Set<string>,
-  ) {
+  getPrimaryNestedPageIds(rootPageId: string, accessibleIds?: Set<string>) {
     return this.collectNestedPageIds(
       [rootPageId],
       accessibleIds,
@@ -111,7 +117,10 @@ export class PageGraph {
     );
   }
 
-  getNestedDatabasePageIds(rootDatabaseId: string, accessibleIds?: Set<string>) {
+  getNestedDatabasePageIds(
+    rootDatabaseId: string,
+    accessibleIds?: Set<string>,
+  ) {
     const rootPageIds = (this.options.databaseRows ?? [])
       .filter((row) => row.databaseId === rootDatabaseId)
       .map((row) => row.pageId);
@@ -138,7 +147,10 @@ export class PageGraph {
     );
   }
 
-  getDatabaseIdsForPageIds(pageIds: Iterable<string>, accessibleIds?: Set<string>) {
+  getDatabaseIdsForPageIds(
+    pageIds: Iterable<string>,
+    accessibleIds?: Set<string>,
+  ) {
     const pageIdSet = new Set(pageIds);
 
     return (this.options.databaseRecords ?? [])
@@ -156,30 +168,21 @@ export class PageGraph {
   ) {
     const path: string[] = [];
     const visited = new Set<string>();
-    let current: (PageGraphPage & { name?: string }) | undefined =
-      record;
+    let current: (PageGraphPage & { name?: string }) | undefined = record;
 
     while (current && !visited.has(current.id)) {
       path.unshift(getTitle(current.name ?? ""));
       visited.add(current.id);
 
-      const parentItemId = readParentItemId(current.metadata);
-      current = parentItemId
-        ? this.pageById.get(parentItemId)
-        : undefined;
+      const parentItemId = this.primaryParentIdByPageId.get(current.id);
+      current = parentItemId ? this.pageById.get(parentItemId) : undefined;
     }
 
     return path.join(" / ");
   }
 
-  getLinkedItemIds(pageId: string) {
-    const record = this.pageById.get(pageId);
-
-    if (!record) {
-      return [];
-    }
-
-    return readLinkedItems(record.metadata);
+  getPrimaryParentId(pageId: string) {
+    return this.primaryParentIdByPageId.get(pageId) ?? null;
   }
 
   private collectNestedPageIds(
@@ -211,15 +214,30 @@ export class PageGraph {
     return [...nestedIds];
   }
 
-  private indexPageChildren() {
-    for (const record of this.options.pages) {
-      const parentItemId = readParentItemId(record.metadata);
+  private indexNavigationPlacements() {
+    const databasePageIds = new Set(this.databasePageIdByDatabaseId.values());
 
-      if (!parentItemId) {
+    for (const placement of this.options.placements ?? []) {
+      if (placement.parentKind !== "page") continue;
+
+      if (placement.placementKind === "linked") {
+        if (placement.itemKind === "page") {
+          this.addChild(
+            placement.parentId,
+            placement.itemId,
+            databasePageIds.has(placement.itemId),
+          );
+        }
         continue;
       }
 
-      this.addPrimaryChild(parentItemId, record.id);
+      if (
+        placement.placementKind === "primary" &&
+        placement.itemKind === "page"
+      ) {
+        this.primaryParentIdByPageId.set(placement.itemId, placement.parentId);
+        this.addPrimaryChild(placement.parentId, placement.itemId);
+      }
     }
   }
 
@@ -232,22 +250,6 @@ export class PageGraph {
       }
 
       this.addPrimaryChild(parentItemId, row.pageId);
-    }
-  }
-
-  private indexLinkedItems() {
-    const databasePageIds = new Set(this.databasePageIdByDatabaseId.values());
-
-    for (const record of this.options.pages) {
-      for (const linkedItem of readLinkedItems(record.metadata)) {
-        if (linkedItem.kind === "page") {
-          this.addChild(
-            record.id,
-            linkedItem.id,
-            databasePageIds.has(linkedItem.id),
-          );
-        }
-      }
     }
   }
 
@@ -283,20 +285,14 @@ export class PageGraph {
 }
 
 export async function loadWorkspacePageGraph(workspaceId: string) {
-  const [pages, databaseRecords, databaseRows] = await Promise.all([
+  const [pages, databaseRecords, databaseRows, placements] = await Promise.all([
     db
       .select({
         createdById: page.createdById,
         id: page.id,
-        metadata: page.metadata,
       })
       .from(page)
-      .where(
-        and(
-          eq(page.workspaceId, workspaceId),
-          isNull(page.deletedAt),
-        ),
-      ),
+      .where(and(eq(page.workspaceId, workspaceId), isNull(page.deletedAt))),
     db
       .select({
         id: database.id,
@@ -307,6 +303,7 @@ export async function loadWorkspacePageGraph(workspaceId: string) {
         and(
           eq(database.workspaceId, workspaceId),
           isNull(database.deletedAt),
+          isNotNull(database.pageId),
         ),
       ),
     db
@@ -323,9 +320,29 @@ export async function loadWorkspacePageGraph(workspaceId: string) {
           isNull(databaseRow.deletedAt),
         ),
       ),
+    db
+      .select({
+        itemId: pageItemPlacement.itemId,
+        itemKind: pageItemPlacement.itemKind,
+        parentId: pageItemPlacement.parentId,
+        parentKind: pageItemPlacement.parentKind,
+        placementKind: pageItemPlacement.placementKind,
+      })
+      .from(pageItemPlacement)
+      .where(
+        and(
+          eq(pageItemPlacement.workspaceId, workspaceId),
+          isNull(pageItemPlacement.deletedAt),
+        ),
+      ),
   ]);
 
-  return new PageGraph({ databaseRecords, databaseRows, pages });
+  return new PageGraph({
+    databaseRecords: databaseRecords.filter(
+      (record): record is PageGraphDatabase => Boolean(record.pageId),
+    ),
+    databaseRows,
+    pages,
+    placements,
+  });
 }
-
-export { readParentItemId } from "./item-relationships";

@@ -4,22 +4,31 @@ import { buildNavigationPlacements } from "./page-item-placements";
 
 test("buildNavigationPlacements keeps database row and page linked appearances", () => {
   const placements = buildNavigationPlacements({
-    databaseRecords: [
-      {
-        config: { parentItemId: "parent" },
-        id: "database",
-        workspaceId: "org",
-      },
-    ],
-    databaseRows: [
-      {
-        databaseId: "database",
-        id: "row",
-        pageId: "row-page",
-        position: 2,
-      },
-    ],
     placementRecords: [
+      {
+        deletedAt: null,
+        id: "database-row-placement",
+        itemId: "row-page",
+        itemKind: "page",
+        workspaceId: "org",
+        parentId: "database",
+        parentKind: "database",
+        placementKind: "database_row",
+        position: 2,
+        sourceRowId: "row",
+      },
+      {
+        deletedAt: null,
+        id: "primary-database-placement",
+        itemId: "database",
+        itemKind: "database",
+        workspaceId: "org",
+        parentId: "parent",
+        parentKind: "page",
+        placementKind: "primary",
+        position: 0,
+        sourceRowId: null,
+      },
       {
         deletedAt: null,
         id: "linked-placement",
@@ -32,10 +41,6 @@ test("buildNavigationPlacements keeps database row and page linked appearances",
         position: 1,
         sourceRowId: null,
       },
-    ],
-    pageRecords: [
-      { id: "parent", metadata: {}, workspaceId: "org" },
-      { id: "row-page", metadata: {}, workspaceId: "org" },
     ],
   });
 

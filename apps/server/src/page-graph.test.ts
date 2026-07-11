@@ -4,10 +4,29 @@ import { PageGraph } from "./page-graph";
 
 test("getPrimaryNestedPageIds skips linked children", () => {
   const graph = new PageGraph({
-    pages: [
-      { id: "parent", metadata: { linkedItems: [{ id: "linked", kind: "page" }] } },
-      { id: "primary", metadata: { parentItemId: "parent" } },
-      { id: "linked", metadata: { parentItemId: "elsewhere" } },
+    pages: [{ id: "parent" }, { id: "primary" }, { id: "linked" }],
+    placements: [
+      {
+        itemId: "primary",
+        itemKind: "page",
+        parentId: "parent",
+        parentKind: "page",
+        placementKind: "primary",
+      },
+      {
+        itemId: "linked",
+        itemKind: "page",
+        parentId: "parent",
+        parentKind: "page",
+        placementKind: "linked",
+      },
+      {
+        itemId: "linked",
+        itemKind: "page",
+        parentId: "elsewhere",
+        parentKind: "page",
+        placementKind: "primary",
+      },
     ],
   });
 
@@ -26,13 +45,15 @@ test("getAncestorIds includes embedded database row parents", () => {
   const graph = new PageGraph({
     databaseRecords: [{ id: "database", pageId: "database-page" }],
     databaseRows: [{ databaseId: "database", pageId: "row-page" }],
-    pages: [
+    pages: [{ id: "host-page" }, { id: "database-page" }, { id: "row-page" }],
+    placements: [
       {
-        id: "host-page",
-        metadata: { linkedItems: [{ id: "database-page", kind: "page" }] },
+        itemId: "database-page",
+        itemKind: "page",
+        parentId: "host-page",
+        parentKind: "page",
+        placementKind: "linked",
       },
-      { id: "database-page", metadata: {} },
-      { id: "row-page", metadata: {} },
     ],
   });
 
@@ -45,12 +66,15 @@ test("getAncestorIds includes embedded database row parents", () => {
 
 test("getAncestorIds excludes ordinary linked pages", () => {
   const graph = new PageGraph({
-    pages: [
+    pages: [{ id: "host-page" }, { id: "linked-page" }],
+    placements: [
       {
-        id: "host-page",
-        metadata: { linkedItems: [{ id: "linked-page", kind: "page" }] },
+        itemId: "linked-page",
+        itemKind: "page",
+        parentId: "host-page",
+        parentKind: "page",
+        placementKind: "linked",
       },
-      { id: "linked-page", metadata: {} },
     ],
   });
 
@@ -62,18 +86,26 @@ test("hasOwnedRootAccess supports multiple embedded database parents", () => {
     databaseRecords: [{ id: "database", pageId: "database-page" }],
     databaseRows: [{ databaseId: "database", pageId: "row-page" }],
     pages: [
+      { createdById: "first-owner", id: "first-host" },
+      { createdById: "second-owner", id: "second-host" },
+      { createdById: "database-owner", id: "database-page" },
+      { createdById: "row-owner", id: "row-page" },
+    ],
+    placements: [
       {
-        createdById: "first-owner",
-        id: "first-host",
-        metadata: { linkedItems: [{ id: "database-page", kind: "page" }] },
+        itemId: "database-page",
+        itemKind: "page",
+        parentId: "first-host",
+        parentKind: "page",
+        placementKind: "linked",
       },
       {
-        createdById: "second-owner",
-        id: "second-host",
-        metadata: { linkedItems: [{ id: "database-page", kind: "page" }] },
+        itemId: "database-page",
+        itemKind: "page",
+        parentId: "second-host",
+        parentKind: "page",
+        placementKind: "linked",
       },
-      { createdById: "database-owner", id: "database-page", metadata: {} },
-      { createdById: "row-owner", id: "row-page", metadata: {} },
     ],
   });
   const ancestorIds = graph.getAncestorIds("row-page");
