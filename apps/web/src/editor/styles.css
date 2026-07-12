@@ -1065,7 +1065,11 @@
   }
 
   .database-table-group {
-    @apply min-w-0;
+    @apply min-w-0 transition-colors;
+  }
+
+  .database-table-group[data-drag-over="true"] {
+    @apply bg-muted/20;
   }
 
   .database-table-group-toggle {

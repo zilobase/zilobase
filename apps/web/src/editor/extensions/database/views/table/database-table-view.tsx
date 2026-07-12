@@ -90,7 +90,6 @@ import { getDatabaseRowDropTargetIndex as getDropTargetIndex } from "../../inter
 import {
   getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
-  getGroupedReorderedRowIds,
   getReorderedRowIds,
   finishDatabaseRowDrag,
   hideNativeDatabaseRowDragPreview,
@@ -139,6 +138,11 @@ type GroupSection = DatabaseTableGroupSection<TableRow>
 type RowLayout = {
   centers: Record<string, number>
   dropTops: number[]
+}
+type GroupRowDropTarget = {
+  localTargetIndex: number
+  sectionId: string
+  top: number
 }
 
 function DatabaseHeaderReorderItem({
@@ -497,9 +501,12 @@ function DatabaseVirtualizedTable({
   }, [])
 
   const virtualRows = virtualizer.getVirtualItems()
+  const getLocalVirtualStart = (start: number) => start - scrollMargin
+  const getLocalVirtualEnd = (end: number) => end - scrollMargin
   const paddingBottom =
     virtualRows.length > 0
-      ? virtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
+      ? virtualizer.getTotalSize() -
+        getLocalVirtualEnd(virtualRows[virtualRows.length - 1].end)
       : 0
 
   return (
@@ -514,8 +521,11 @@ function DatabaseVirtualizedTable({
           {virtualizationEnabled
             ? virtualRows.map((virtualRow, virtualIndex) => {
                 const previousEnd =
-                  virtualIndex === 0 ? 0 : virtualRows[virtualIndex - 1].end
-                const gap = virtualRow.start - previousEnd
+                  virtualIndex === 0
+                    ? 0
+                    : getLocalVirtualEnd(virtualRows[virtualIndex - 1].end)
+                const gap =
+                  getLocalVirtualStart(virtualRow.start) - previousEnd
 
                 return (
                   <Fragment key={virtualRow.key}>
@@ -688,6 +698,8 @@ export function DatabaseTableView() {
   const [rowDropTargetIndex, setRowDropTargetIndex] = useState<number | null>(
     null
   )
+  const [groupRowDropTarget, setGroupRowDropTarget] =
+    useState<GroupRowDropTarget | null>(null)
   const [pendingInsertProperty, setPendingInsertProperty] =
     useState<PendingInsertProperty | null>(null)
   const [pendingPropertyInsertOrder, setPendingPropertyInsertOrder] =
@@ -885,20 +897,6 @@ export function DatabaseTableView() {
 
     return sectionsByRowId
   }, [groupedSections])
-  const groupRangeById = useMemo(() => {
-    const ranges = new Map<string, { end: number; start: number }>()
-
-    groupedSections.forEach((section) => {
-      const firstRow = section.rows[0]
-      const start = firstRow ? visibleRowIndexById.get(firstRow.id) : undefined
-
-      if (start !== undefined) {
-        ranges.set(section.id, { end: start + section.rows.length, start })
-      }
-    })
-
-    return ranges
-  }, [groupedSections, visibleRowIndexById])
   const getRowElements = useCallback(() => {
     return Array.from(
       tableWrapRef.current?.querySelectorAll<HTMLTableRowElement>(
@@ -954,6 +952,72 @@ export function DatabaseTableView() {
 
     return getDropTargetIndex(rowLayout.dropTops, relativeY)
   }
+  const getGroupRowDropTarget = (clientY: number): GroupRowDropTarget | null => {
+    const wrapperElement = tableWrapRef.current
+
+    if (!wrapperElement) {
+      return null
+    }
+
+    const groupElements = Array.from(
+      wrapperElement.querySelectorAll<HTMLElement>(
+        ".database-table-group[data-database-group-id]"
+      )
+    )
+    const groupElement =
+      groupElements.find((element) => {
+        const rect = element.getBoundingClientRect()
+
+        return clientY >= rect.top && clientY <= rect.bottom
+      }) ??
+      groupElements.reduce<HTMLElement | null>((closest, element) => {
+        if (!closest) return element
+
+        const rect = element.getBoundingClientRect()
+        const closestRect = closest.getBoundingClientRect()
+        const distance = Math.min(
+          Math.abs(clientY - rect.top),
+          Math.abs(clientY - rect.bottom)
+        )
+        const closestDistance = Math.min(
+          Math.abs(clientY - closestRect.top),
+          Math.abs(clientY - closestRect.bottom)
+        )
+
+        return distance < closestDistance ? element : closest
+      }, null)
+
+    if (!groupElement?.dataset.databaseGroupId) {
+      return null
+    }
+
+    const rowElements = Array.from(
+      groupElement.querySelectorAll<HTMLTableRowElement>(
+        "tbody tr[data-database-row-id]"
+      )
+    )
+    const localTargetIndex = rowElements.findIndex((rowElement) => {
+      const rect = rowElement.getBoundingClientRect()
+
+      return clientY < rect.top + rect.height / 2
+    })
+    const resolvedTargetIndex =
+      localTargetIndex === -1 ? rowElements.length : localTargetIndex
+    const targetRow = rowElements[resolvedTargetIndex]
+    const previousRow = rowElements[resolvedTargetIndex - 1]
+    const groupRect = groupElement.getBoundingClientRect()
+    const wrapperRect = wrapperElement.getBoundingClientRect()
+    const top =
+      (targetRow?.getBoundingClientRect().top ??
+        previousRow?.getBoundingClientRect().bottom ??
+        groupRect.bottom) - wrapperRect.top
+
+    return {
+      localTargetIndex: resolvedTargetIndex,
+      sectionId: groupElement.dataset.databaseGroupId,
+      top,
+    }
+  }
   const getGroupSectionForRowId = (rowId: string) => {
     if (!isTableGrouped) {
       return null
@@ -961,11 +1025,8 @@ export function DatabaseTableView() {
 
     return groupSectionByRowId.get(rowId) ?? null
   }
-  const getGroupSectionRange = (section: GroupSection) => {
-    return groupRangeById.get(section.id) ?? null
-  }
   const getDraggedRowGroupDropTarget = () => {
-    if (!draggedRowId || rowDropTargetIndex === null || !isTableGrouped) {
+    if (!draggedRowId || !groupRowDropTarget || !isTableGrouped) {
       return null
     }
 
@@ -975,49 +1036,28 @@ export function DatabaseTableView() {
       return null
     }
 
-    const sourceRange = getGroupSectionRange(sourceSection)
+    const targetSection = groupedSections.find(
+      (section) => section.id === groupRowDropTarget.sectionId
+    )
 
-    if (!sourceRange) {
+    if (!targetSection) {
       return null
     }
 
-    if (
-      rowDropTargetIndex >= sourceRange.start &&
-      rowDropTargetIndex <= sourceRange.end
-    ) {
-      return {
-        isCrossGroup: false,
-        localTargetIndex: rowDropTargetIndex - sourceRange.start,
-        section: sourceSection,
-        sourceSection,
-      }
+    return {
+      isCrossGroup: targetSection.id !== sourceSection.id,
+      localTargetIndex: groupRowDropTarget.localTargetIndex,
+      section: targetSection,
+      sourceSection,
     }
-
-    for (const section of groupedSections) {
-      if (section.id === sourceSection.id) {
-        continue
-      }
-
-      const range = getGroupSectionRange(section)
-
-      if (
-        range &&
-        rowDropTargetIndex >= range.start &&
-        rowDropTargetIndex <= range.end
-      ) {
-        return {
-          isCrossGroup: true,
-          localTargetIndex: rowDropTargetIndex - range.start,
-          section,
-          sourceSection,
-        }
-      }
-    }
-
-    return null
   }
   const getDraggedRowMove = (): RowMove | null => {
-    if (!draggedRowId || rowDropTargetIndex === null) {
+    if (
+      !draggedRowId ||
+      (isTableGrouped
+        ? groupRowDropTarget === null
+        : rowDropTargetIndex === null)
+    ) {
       return null
     }
 
@@ -1029,13 +1069,12 @@ export function DatabaseTableView() {
       }
 
       if (!groupTarget.isCrossGroup) {
-        const rowIds = getGroupedReorderedRowIds({
-          allRows: rows,
+        const rowIds = getFilteredReorderedRowIds(
+          rows,
+          groupTarget.section.rows,
           draggedRowId,
-          groupRows: groupTarget.section.rows,
-          targetIndex: rowDropTargetIndex,
-          visibleRows,
-        })
+          groupTarget.localTargetIndex
+        )
 
         return rowIds ? { rowId: draggedRowId, rowIds } : null
       }
@@ -1082,7 +1121,7 @@ export function DatabaseTableView() {
         rows,
         sortedRows,
         draggedRowId,
-        rowDropTargetIndex
+        rowDropTargetIndex ?? 0
       )
 
       return rowIds ? { rowId: draggedRowId, rowIds } : null
@@ -1091,7 +1130,7 @@ export function DatabaseTableView() {
     const rowIds = getReorderedRowIds(
       isTableSorted ? sortedRows : rows,
       draggedRowId,
-      rowDropTargetIndex
+      rowDropTargetIndex ?? 0
     )
 
     return rowIds ? { rowId: draggedRowId, rowIds } : null
@@ -1136,11 +1175,15 @@ export function DatabaseTableView() {
     setDraggedRowId(null)
     setRowDragOverlay(null)
     setRowDropTargetIndex(null)
+    setGroupRowDropTarget(null)
   }
   const rowDropLineTop =
-    rowDropTargetIndex === null || (draggedRowId && !getDraggedRowMove())
+    (isTableGrouped ? !groupRowDropTarget : rowDropTargetIndex === null) ||
+    (draggedRowId && !getDraggedRowMove())
       ? null
-      : (rowLayout.dropTops[rowDropTargetIndex] ?? null)
+      : isTableGrouped
+        ? groupRowDropTarget?.top ?? null
+        : (rowLayout.dropTops[rowDropTargetIndex ?? 0] ?? null)
   const conditionalColorsByRowId = useMemo(() => {
     const colorsByRowId = new Map<
       string,
@@ -1510,6 +1553,20 @@ export function DatabaseTableView() {
     hideNativeDatabaseRowDragPreview(event.dataTransfer)
     setDraggedRowId(row.id)
     setRowDropTargetIndex(visibleRowIndexById.get(row.id) ?? 0)
+    const sourceSection = groupSectionByRowId.get(row.id)
+    const sourceLocalIndex = sourceSection?.rows.findIndex(
+      (sourceRow) => sourceRow.id === row.id
+    )
+
+    setGroupRowDropTarget(
+      sourceSection && sourceLocalIndex !== undefined
+        ? {
+            localTargetIndex: sourceLocalIndex,
+            sectionId: sourceSection.id,
+            top: rowLayout.dropTops[visibleRowIndexById.get(row.id) ?? 0] ?? 0,
+          }
+        : null
+    )
     event.dataTransfer.effectAllowed = "copyMove"
     event.dataTransfer.setData(
       DATABASE_PAGE_DRAG_MIME,
@@ -2010,6 +2067,7 @@ export function DatabaseTableView() {
             )
           ) {
             setRowDropTargetIndex(null)
+            setGroupRowDropTarget(null)
             setIsExternalRowDragActive(false)
           }
         }}
@@ -2040,7 +2098,11 @@ export function DatabaseTableView() {
                 : overlay
             )
           }
-          setRowDropTargetIndex(getRowDropTargetIndex(event.clientY))
+          if (isTableGrouped) {
+            setGroupRowDropTarget(getGroupRowDropTarget(event.clientY))
+          } else {
+            setRowDropTargetIndex(getRowDropTargetIndex(event.clientY))
+          }
         }}
         onDrop={(event) => {
           if (isTableGrouped && !draggedRowId) {
@@ -2049,7 +2111,11 @@ export function DatabaseTableView() {
 
           const dragPayload = getDatabasePageDragPayload(event.dataTransfer)
 
-          if ((!draggedRowId && !dragPayload) || rowDropTargetIndex === null) {
+          const hasDropTarget = isTableGrouped
+            ? groupRowDropTarget !== null
+            : rowDropTargetIndex !== null
+
+          if ((!draggedRowId && !dragPayload) || !hasDropTarget) {
             return
           }
 
@@ -2066,7 +2132,7 @@ export function DatabaseTableView() {
               applyRowMove(nextMove)
             }
           } else if (dragPayload) {
-            addDraggedPageRow(dragPayload, rowDropTargetIndex)
+            addDraggedPageRow(dragPayload, rowDropTargetIndex ?? 0)
           }
           clearRowDrag()
           setIsExternalRowDragActive(false)
@@ -2104,7 +2170,16 @@ export function DatabaseTableView() {
                   const isCollapsed = collapsedGroups[section.id] === true
 
                   return (
-                    <section className="database-table-group" key={section.id}>
+                    <section
+                      className="database-table-group"
+                      data-database-group-id={section.id}
+                      data-drag-over={
+                        groupRowDropTarget?.sectionId === section.id
+                          ? "true"
+                          : undefined
+                      }
+                      key={section.id}
+                    >
                       <button
                         aria-expanded={!isCollapsed}
                         className="database-table-group-toggle"
