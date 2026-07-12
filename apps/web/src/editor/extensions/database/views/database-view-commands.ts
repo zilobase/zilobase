@@ -142,6 +142,8 @@ export function getDatabaseViewCommands({
       return Promise.resolve();
     }
 
+    setShowSortPill(nextSorts.length > 0);
+
     return updateDatabaseView.mutateAsync({
       config: getMergedDatabaseConfig(activeView.config, {
         sorts: nextSorts.length > 0 ? nextSorts : undefined,
@@ -555,7 +557,6 @@ export function getDatabaseViewCommands({
           direction: "ascending",
         },
       ]);
-      setShowSortPill(true);
       setSortPickerOpen(false);
     },
     createDatabaseFilter: (field: string) => {
