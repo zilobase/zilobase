@@ -125,6 +125,7 @@ export function DatabaseNamePropertyMenu({
       <DropDrawerContent
         className="w-72"
         onCloseAutoFocus={(event) => event.preventDefault()}
+        sideOffset={0}
       >
         <div className="flex items-center gap-1.5 px-1.5 py-1">
           <span className="shrink-0 text-muted-foreground">
