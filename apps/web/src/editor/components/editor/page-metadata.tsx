@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ImagePlus, MessageSquare, SmilePlus, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -52,6 +52,18 @@ type PageMetadataProps = {
   pageId?: string | null
 }
 
+function resizeTitleTextarea(
+  titleElement: HTMLTextAreaElement,
+  titleRow: HTMLDivElement,
+) {
+  if (titleRow.clientWidth < 64) {
+    return
+  }
+
+  titleElement.style.height = "0px"
+  titleElement.style.height = `${titleElement.scrollHeight}px`
+}
+
 export function PageMetadata({
   contentClassName,
   cover: coverProp,
@@ -73,6 +85,7 @@ export function PageMetadata({
   const [localTitle, setLocalTitle] = useState("")
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [draftValues, setDraftValues] = useState<Record<string, DatabasePropertyValue>>({})
+  const titleRowRef = useRef<HTMLDivElement | null>(null)
   const titleRef = useRef<HTMLTextAreaElement | null>(null)
   const { editorCommentsOpenRequest } = usePageEditorComments()
   const { data: propertyPayload } = usePageProperties(pageId, {
@@ -211,16 +224,46 @@ export function PageMetadata({
     }
   }
 
+  useLayoutEffect(() => {
+    const titleElement = titleRef.current
+    const titleRow = titleRowRef.current
+
+    if (titleElement && titleRow) {
+      resizeTitleTextarea(titleElement, titleRow)
+    }
+  }, [title])
+
   useEffect(() => {
     const titleElement = titleRef.current
+    const titleRow = titleRowRef.current
 
-    if (!titleElement) {
+    if (!titleElement || !titleRow) {
       return
     }
 
-    titleElement.style.height = "0px"
-    titleElement.style.height = `${titleElement.scrollHeight}px`
-  }, [title])
+    let resizeFrame = 0
+    let previousWidth = titleRow.clientWidth
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? titleRow.clientWidth
+
+      if (width === previousWidth) {
+        return
+      }
+
+      previousWidth = width
+      cancelAnimationFrame(resizeFrame)
+      resizeFrame = requestAnimationFrame(() => {
+        resizeTitleTextarea(titleElement, titleRow)
+      })
+    })
+
+    observer.observe(titleRow)
+
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(resizeFrame)
+    }
+  }, [])
 
   const iconPicker = icon && editable ? (
     <div className="group/icon relative shrink-0">
@@ -399,7 +442,7 @@ export function PageMetadata({
           </div>
         ) : null}
 
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3" ref={titleRowRef}>
           {icon ? (
             editable ? (
               iconPicker

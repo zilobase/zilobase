@@ -72,7 +72,6 @@ export const useEditorInstance = ({
   const editorRef = useRef<Editor | null>(null)
 
   const onContentChangeRef = useLatestRef(onContentChange)
-  const onEditorReadyRef = useLatestRef(onEditorReady)
   const onEmbedPageRef = useLatestRef(onEmbedPage)
   const dropPageOnDatabaseRef = useLatestRef(dropPageOnDatabase)
   const handleProviderLinkPasteRef = useLatestRef(
@@ -114,7 +113,6 @@ export const useEditorInstance = ({
       shouldRerenderOnTransaction: false,
       onCreate: ({ editor: currentEditor }) => {
         editorRef.current = currentEditor
-        onEditorReadyRef.current?.(currentEditor)
       },
       onUpdate: ({ editor: currentEditor }) => {
         if (editable) onContentChangeRef.current?.(currentEditor.getJSON())
