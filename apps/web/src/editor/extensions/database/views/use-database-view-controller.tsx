@@ -183,6 +183,33 @@ export function useDatabaseViewController({
     () => getDatabaseLinkedViews(payload?.database.config),
     [payload?.database.config]
   )
+  const viewTabs = useMemo(
+    () => [
+      ...(payload?.views ?? []).map((view) => ({
+        id: view.id,
+        name: view.name,
+        type: view.type,
+      })),
+      ...linkedDatabaseViews.map((linkedView) => ({
+        id: getDatabaseLinkedViewKey(linkedView),
+        isLinked: true,
+        name: linkedView.viewName,
+        sourceDatabaseId: linkedView.databaseId,
+        sourceDatabaseName: linkedView.databaseName,
+        sourceViewId: linkedView.viewId,
+        type: linkedView.viewType,
+      })),
+    ],
+    [linkedDatabaseViews, payload?.views]
+  )
+  const requestedViewId =
+    requestedActiveViewId &&
+    viewTabs.some((view) => view.id === requestedActiveViewId)
+      ? requestedActiveViewId
+      : null
+  const resolvedActiveViewId = isControlledActiveView
+    ? requestedViewId ?? viewTabs[0]?.id ?? null
+    : activeViewId
   const setupDismissed = getDatabaseSetupDismissed(payload?.database.config)
   const hasDatabaseSetupContent = Boolean(
     payload &&
@@ -196,9 +223,10 @@ export function useDatabaseViewController({
   const activeLinkedDatabaseView = useMemo(
     () =>
       linkedDatabaseViews.find(
-        (linkedView) => getDatabaseLinkedViewKey(linkedView) === activeViewId
+        (linkedView) =>
+          getDatabaseLinkedViewKey(linkedView) === resolvedActiveViewId
       ) ?? null,
-    [activeViewId, linkedDatabaseViews]
+    [linkedDatabaseViews, resolvedActiveViewId]
   )
   const {
     data: linkedPayload,
@@ -222,7 +250,8 @@ export function useDatabaseViewController({
   const activeIsFetchingNextPage = activeLinkedDatabaseView
     ? isFetchingNextLinkedPage
     : isFetchingNextPage
-  const activeViewLookupId = activeLinkedDatabaseView?.viewId ?? activeViewId
+  const activeViewLookupId =
+    activeLinkedDatabaseView?.viewId ?? resolvedActiveViewId
   const { data: session } = useSession()
   const needsPersonAccessTargets = useMemo(
     () =>
@@ -237,33 +266,20 @@ export function useDatabaseViewController({
   )
   const activeViewTabId = activeLinkedDatabaseView
     ? getDatabaseLinkedViewKey(activeLinkedDatabaseView)
-    : activeViewId
-  const viewTabs = useMemo(
-    () => [
-      ...(payload?.views ?? []).map((view) => ({
-        id: view.id,
-        name: view.name,
-        type: view.type,
-      })),
-      ...linkedDatabaseViews.map((linkedView) => ({
-        id: getDatabaseLinkedViewKey(linkedView),
-        isLinked: true,
-        name: linkedView.viewName,
-        sourceDatabaseId: linkedView.databaseId,
-        sourceDatabaseName: linkedView.databaseName,
-        sourceViewId: linkedView.viewId,
-        type: linkedView.viewType,
-      })),
-    ],
-    [linkedDatabaseViews, payload?.views]
-  )
+    : resolvedActiveViewId
   const setSelectedActiveViewId = useCallback<
     DatabaseViewContextValue["setActiveViewId"]
   >(
     (value) => {
       setActiveViewId((currentViewId) => {
         const nextViewId =
-          typeof value === "function" ? value(currentViewId) : value
+          typeof value === "function"
+            ? value(
+                isControlledActiveView
+                  ? resolvedActiveViewId
+                  : currentViewId
+              )
+            : value
 
         if (nextViewId !== currentViewId) {
           onActiveViewIdChange?.(nextViewId)
@@ -272,7 +288,7 @@ export function useDatabaseViewController({
         return nextViewId
       })
     },
-    [onActiveViewIdChange],
+    [isControlledActiveView, onActiveViewIdChange, resolvedActiveViewId],
   )
 
   const viewModel = useMemo(
@@ -333,31 +349,21 @@ export function useDatabaseViewController({
   ])
 
   useEffect(() => {
+    if (isControlledActiveView) {
+      return
+    }
+
     if (viewTabs.length === 0) {
       setActiveViewId(null)
       return
     }
 
-    const requestedViewId =
-      requestedActiveViewId &&
-      viewTabs.some((view) => view.id === requestedActiveViewId)
-        ? requestedActiveViewId
-        : null
-
     setActiveViewId((currentViewId) => {
-      if (requestedViewId) {
-        return requestedViewId
-      }
-
-      if (isControlledActiveView) {
-        return viewTabs[0]?.id ?? null
-      }
-
       return currentViewId && viewTabs.some((view) => view.id === currentViewId)
         ? currentViewId
         : viewTabs[0]?.id ?? null
     })
-  }, [isControlledActiveView, requestedActiveViewId, viewTabs])
+  }, [isControlledActiveView, viewTabs])
 
   useEffect(() => {
     const nextViewTitle = activeView?.name ?? activeLinkedDatabaseView?.viewName
