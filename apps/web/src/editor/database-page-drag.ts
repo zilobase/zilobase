@@ -47,12 +47,13 @@ export const insertDraggedDatabasePage = (
   view: EditorView,
   event: DragEvent,
   onEmbedPage?: (pageId: string) => void | Promise<void>,
+  currentPageId?: string | null,
 ) => {
   const payload = event.dataTransfer?.getData(DATABASE_PAGE_DRAG_MIME)
   if (!payload) return false
 
   const pageId = parsePageId(payload)
-  if (!pageId) return false
+  if (!pageId || pageId === currentPageId) return false
 
   const target = getEditorInsertDropTarget(view, event)
   if (!target) return false

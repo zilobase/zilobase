@@ -163,13 +163,20 @@ function PageBlockView({
     }
   }
 
-  const linkPage = (nextPageId: string) => {
-    void Promise.resolve(options.onEmbedPage?.(nextPageId)).finally(() => {
+  const linkPage = async (nextPageId: string) => {
+    if (nextPageId === options.currentPageId) {
+      return
+    }
+
+    try {
+      await options.onEmbedPage?.(nextPageId)
       updateAttributes({
         pageId: nextPageId,
       })
       setIsOpen(false)
-    })
+    } catch {
+      // Keep the picker open when the embed is rejected.
+    }
   }
 
   const openPage = () => {

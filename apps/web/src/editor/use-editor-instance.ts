@@ -92,8 +92,11 @@ export const useEditorInstance = ({
             ? editorRef.current.view
             : null,
         insertDraggedPage: (view, event) =>
-          insertDraggedDatabasePage(view, event, (pageId) =>
-            onEmbedPageRef.current?.(pageId),
+          insertDraggedDatabasePage(
+            view,
+            event,
+            (embeddedPageId) => onEmbedPageRef.current?.(embeddedPageId),
+            pageId
           ),
         isDraggingPage: isDraggingPageToEditor,
         isOverDatabaseDrop: (event) => Boolean(getDropDatabaseElement(event)),

@@ -25,7 +25,11 @@ export const updateExtensionOptions = (
     if (extension.name === "taskItem") {
       extension.options.editable = options.editable
     }
-    if (extension.name === "pageBlock" || extension.name === "slashCommand") {
+    if (extension.name === "pageBlock") {
+      extension.options.currentPageId = options.pageId
+      extension.options.onOpenPage = options.onOpenPage
+    }
+    if (extension.name === "slashCommand") {
       extension.options.onOpenPage = options.onOpenPage
     }
   }
