@@ -98,7 +98,7 @@ export function register({ assert, loadModule, test }) {
       ["database-property-status", "database-property-priority"]
     )
     assert.equal(model.visiblePropertyCount, 1)
-    assert.equal(model.showPropertyTitles, true)
+    assert.equal(model.showPropertyTitles, false)
     assert.equal(
       getDatabaseViewModel({
         activeViewId: "view-kanban",
@@ -114,7 +114,7 @@ export function register({ assert, loadModule, test }) {
                   "database-property-priority",
                   "name",
                 ],
-                showPropertyTitles: false,
+                showPropertyTitles: true,
               },
             },
           ],
@@ -132,13 +132,13 @@ export function register({ assert, loadModule, test }) {
               ...payload.views[0],
               config: {
                 ...payload.views[0].config,
-                showPropertyTitles: false,
+                showPropertyTitles: true,
               },
             },
           ],
         },
       }).showPropertyTitles,
-      false
+      true
     )
     assert.deepEqual(
       model.kanbanOptions.map((option) => option.name),

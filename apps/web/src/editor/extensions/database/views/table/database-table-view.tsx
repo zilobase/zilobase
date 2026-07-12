@@ -460,7 +460,6 @@ export function DatabaseTableView() {
     isFetchingNextPage,
     titlePropertyLabel: nameColumnLabel,
     showPageIconInTitle: nameColumnShowPageIcon,
-    showPropertyTitles,
     addDatabaseRow,
     onOpenPage,
     personOptions,
@@ -1408,7 +1407,7 @@ export function DatabaseTableView() {
                           <span>{nameColumnLabel}</span>
                         </span>
                       )
-                    ) : property && showPropertyTitles && canUseHeaderMenus ? (
+                    ) : property && canUseHeaderMenus ? (
                       <DatabasePropertyMenu
                         config={property.property.config}
                         databaseConfig={databaseConfig}
@@ -1486,7 +1485,7 @@ export function DatabaseTableView() {
                         type={property.property.type}
                         workspaceId={workspaceId ?? databaseWorkspaceId}
                       />
-                    ) : property && showPropertyTitles ? (
+                    ) : property ? (
                       <span
                         className="database-property-header-label"
                         onPointerDownCapture={startHeaderDrag}

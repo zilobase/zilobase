@@ -929,22 +929,24 @@ export function DatabaseViewSettingsMenu({
             </DropDrawerSubContent>
           </DropDrawerSub>
         ) : null}
-        <DropDrawerItem
-          aria-pressed={!showPropertyTitles}
-          onSelect={(event) => {
-            event.preventDefault();
-            onTogglePropertyTitles();
-          }}
-        >
-          <EyeOff />
-          <span>Hide property titles</span>
-          <Switch
-            checked={!showPropertyTitles}
-            className="ml-auto pointer-events-none"
-            size="sm"
-            tabIndex={-1}
-          />
-        </DropDrawerItem>
+        {isKanbanView ? (
+          <DropDrawerItem
+            aria-pressed={showPropertyTitles}
+            onSelect={(event) => {
+              event.preventDefault();
+              onTogglePropertyTitles();
+            }}
+          >
+            <Eye />
+            <span>Show property titles</span>
+            <Switch
+              checked={showPropertyTitles}
+              className="ml-auto pointer-events-none"
+              size="sm"
+              tabIndex={-1}
+            />
+          </DropDrawerItem>
+        ) : null}
         <DropDrawerSub>
           <DropDrawerSubTrigger>
             <ViewSettingsRow

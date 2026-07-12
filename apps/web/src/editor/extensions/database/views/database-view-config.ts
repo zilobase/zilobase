@@ -486,10 +486,10 @@ export function getViewHiddenPropertyIds(config: unknown) {
 
 export function getShowPropertyTitles(config: unknown) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
-    return true;
+    return false;
   }
 
-  return (config as DatabaseConfig).showPropertyTitles !== false;
+  return (config as DatabaseConfig).showPropertyTitles === true;
 }
 
 export function getDatabasePropertyOrder(config: unknown) {
