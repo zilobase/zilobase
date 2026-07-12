@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react"
+import { CalendarPlus } from "lucide-react"
 import {
   GanttFeatureItem,
   GanttHeader,
@@ -12,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 
 import { getDatabasePropertyType } from "../../core/database-property-types"
 import { getRawDatabaseGroupValue } from "../../interactions/database-group-values"
@@ -94,6 +96,7 @@ export function DatabaseTimelineView() {
     editable,
     databaseId,
     groupProperty,
+    isAddingDatabaseProperty,
     isAddingDatabaseRow,
     onOpenPage,
     personOptions,
@@ -101,6 +104,7 @@ export function DatabaseTimelineView() {
     propertyValuesByKey,
     savePropertyValue,
     setViewDateProperty,
+    setupTimelineDateProperty,
     showPageIconInTitle,
     sortedItems,
     timelineDateProperties,
@@ -259,6 +263,33 @@ export function DatabaseTimelineView() {
   }
 
   if (!timelineDateProperty) {
+    if (timelineDateProperties.length === 0) {
+      return (
+        <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-center text-sm text-muted-foreground">
+          <div className="flex flex-col gap-1">
+            <span className="font-medium text-foreground">
+              Timeline needs a date property
+            </span>
+            <span>Create one to schedule items on this timeline.</span>
+          </div>
+          <Select disabled>
+            <SelectTrigger className="min-w-56">
+              <SelectValue placeholder="No date properties available" />
+            </SelectTrigger>
+          </Select>
+          <Button
+            disabled={!editable || isAddingDatabaseProperty}
+            onClick={setupTimelineDateProperty}
+            size="sm"
+            type="button"
+          >
+            <CalendarPlus />
+            Set up date property
+          </Button>
+        </div>
+      )
+    }
+
     return (
       <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-sm text-muted-foreground">
         <span>Schedule this timeline view by</span>
