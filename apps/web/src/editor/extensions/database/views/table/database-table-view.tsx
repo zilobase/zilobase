@@ -13,6 +13,11 @@ import {
 } from "react"
 import { Reorder, useDragControls } from "framer-motion"
 import {
+  defaultRangeExtractor,
+  useVirtualizer,
+  type Range,
+} from "@tanstack/react-virtual"
+import {
   ChevronDown,
   ChevronRight,
   FileText,
@@ -68,6 +73,11 @@ import {
   getPropertyWrapContent,
 } from "../database-view-config"
 import { useDatabaseViewContext } from "../database-view-context"
+import {
+  useActiveDatabaseCellKey,
+  useDatabaseCellIsActive,
+  useSetActiveDatabaseCell,
+} from "../database-cell-state"
 import { useDatabaseRowsScroll } from "../../interactions/use-database-rows-scroll"
 import { useInlineDatabaseScroll } from "../../interactions/use-inline-database-scroll"
 import {
@@ -379,11 +389,196 @@ function DatabaseTable({
     >
       <colgroup>
         {columnKeys.map((key) => (
-          <col key={key} style={{ width: getColumnWidth(columnWidths, key) }} />
+          <col
+            data-column-id={key}
+            key={key}
+            style={{ width: getColumnWidth(columnWidths, key) }}
+          />
         ))}
       </colgroup>
       {children}
     </table>
+  )
+}
+
+function DatabaseVirtualizedTable({
+  children,
+  columnKeys,
+  columnWidths,
+  renderRow,
+  rows,
+  tableMinWidth,
+  virtualizationEnabled,
+}: {
+  children: ReactNode
+  columnKeys: string[]
+  columnWidths: Record<string, number>
+  renderRow: (
+    row: TableRow,
+    index: number,
+    measureElement: (node: Element | null) => void
+  ) => ReactNode
+  rows: TableRow[]
+  tableMinWidth: number
+  virtualizationEnabled: boolean
+}) {
+  const tableRef = useRef<HTMLDivElement | null>(null)
+  const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null)
+  const [scrollMargin, setScrollMargin] = useState(0)
+  const activeCellKey = useActiveDatabaseCellKey()
+  const activeRowIndex = activeCellKey
+    ? rows.findIndex((row) => activeCellKey.startsWith(`${row.pageId}:`))
+    : -1
+  const rangeExtractor = useCallback(
+    (range: Range) => {
+      const indexes = defaultRangeExtractor(range)
+
+      if (activeRowIndex < 0 || indexes.includes(activeRowIndex)) {
+        return indexes
+      }
+
+      return [...indexes, activeRowIndex].sort((left, right) => left - right)
+    },
+    [activeRowIndex]
+  )
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    estimateSize: () => 32,
+    getScrollElement: () => scrollElement,
+    getItemKey: (index) => rows[index]?.id ?? index,
+    overscan: 8,
+    rangeExtractor,
+    scrollMargin,
+  })
+
+  useLayoutEffect(() => {
+    const element = tableRef.current
+
+    if (!element) {
+      return
+    }
+
+    let parent = element.parentElement
+    let nextScrollElement: HTMLElement | null = null
+
+    while (parent) {
+      const overflowY = window.getComputedStyle(parent).overflowY
+
+      if (overflowY === "auto" || overflowY === "scroll") {
+        nextScrollElement = parent
+        break
+      }
+
+      parent = parent.parentElement
+    }
+
+    nextScrollElement ??= document.scrollingElement as HTMLElement | null
+    setScrollElement(nextScrollElement)
+
+    const measureOffset = () => {
+      const elementRect = element.getBoundingClientRect()
+      const scrollRect = nextScrollElement?.getBoundingClientRect()
+      const scrollTop = nextScrollElement?.scrollTop ?? window.scrollY
+
+      setScrollMargin(
+        elementRect.top - (scrollRect?.top ?? 0) + scrollTop
+      )
+    }
+
+    measureOffset()
+    const observer = new ResizeObserver(measureOffset)
+    observer.observe(element)
+    if (nextScrollElement) {
+      observer.observe(nextScrollElement)
+    }
+    window.addEventListener("resize", measureOffset)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener("resize", measureOffset)
+    }
+  }, [])
+
+  const virtualRows = virtualizer.getVirtualItems()
+  const paddingBottom =
+    virtualRows.length > 0
+      ? virtualizer.getTotalSize() - virtualRows[virtualRows.length - 1].end
+      : 0
+
+  return (
+    <div ref={tableRef}>
+      <DatabaseTable
+        columnKeys={columnKeys}
+        columnWidths={columnWidths}
+        tableMinWidth={tableMinWidth}
+      >
+        {children}
+        <tbody>
+          {virtualizationEnabled
+            ? virtualRows.map((virtualRow, virtualIndex) => {
+                const previousEnd =
+                  virtualIndex === 0 ? 0 : virtualRows[virtualIndex - 1].end
+                const gap = virtualRow.start - previousEnd
+
+                return (
+                  <Fragment key={virtualRow.key}>
+                    {gap > 0 ? (
+                      <tr aria-hidden="true">
+                        <td
+                          className="database-virtual-spacer"
+                          colSpan={columnKeys.length}
+                          style={{ height: gap }}
+                        />
+                      </tr>
+                    ) : null}
+                    {renderRow(
+                      rows[virtualRow.index],
+                      virtualRow.index,
+                      virtualizer.measureElement
+                    )}
+                  </Fragment>
+                )
+              })
+            : rows.map((row, index) =>
+                renderRow(row, index, virtualizer.measureElement)
+              )}
+          {virtualizationEnabled && paddingBottom > 0 ? (
+            <tr aria-hidden="true">
+              <td
+                className="database-virtual-spacer"
+                colSpan={columnKeys.length}
+                style={{ height: paddingBottom }}
+              />
+            </tr>
+          ) : null}
+        </tbody>
+      </DatabaseTable>
+    </div>
+  )
+}
+
+function DatabaseActiveTableCell({
+  cellKey,
+  children,
+  className,
+  wrapContent,
+}: {
+  cellKey: string
+  children: (setActive: (active: boolean) => void) => ReactNode
+  className?: string
+  wrapContent?: boolean
+}) {
+  const isActive = useDatabaseCellIsActive(cellKey)
+  const setActiveCell = useSetActiveDatabaseCell()
+
+  return (
+    <td
+      className={className}
+      data-active={isActive ? "true" : undefined}
+      data-wrap-content={wrapContent ? "true" : undefined}
+    >
+      {children((active) => setActiveCell(active ? cellKey : null))}
+    </td>
   )
 }
 
@@ -440,7 +635,6 @@ function areRowLayoutsEqual(left: RowLayout, right: RowLayout) {
 export function DatabaseTableView() {
   const {
     activeConditionalColors,
-    activePropertyValueKey,
     activeDatabaseFilters,
     activeDatabaseSorts,
     canAddDatabaseProperties,
@@ -451,7 +645,6 @@ export function DatabaseTableView() {
     databaseId,
     databaseName,
     databaseWorkspaceId,
-    draftPropertyValues,
     editable,
     fetchNextPage,
     getDatabasePageDragPayload,
@@ -471,8 +664,6 @@ export function DatabaseTableView() {
     items: rows,
     savePropertyValue,
     saveDatabaseSorts,
-    setActivePropertyValueKey,
-    setDraftPropertyValues,
     setViewGroupProperty,
     sortedItems: sortedRows,
     renameDatabaseProperty,
@@ -491,6 +682,7 @@ export function DatabaseTableView() {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null)
+  const [isExternalRowDragActive, setIsExternalRowDragActive] = useState(false)
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(
     () => new Set()
   )
@@ -1078,10 +1270,11 @@ export function DatabaseTableView() {
   useLayoutEffect(() => {
     measureRows()
   }, [
-    activePropertyValueKey,
     collapsedGroups,
     measureRows,
     renderedColumnIds,
+    isExternalRowDragActive,
+    draggedRowId,
     visibleRows,
   ])
   const startColumnResize = (
@@ -1097,20 +1290,49 @@ export function DatabaseTableView() {
 
     const startX = event.clientX
     const startWidth = getColumnWidth(columnWidths, columnKey)
+    let nextWidth = startWidth
+    let animationFrame: number | null = null
+
+    const applyWidth = () => {
+      animationFrame = null
+      const wrapper = tableWrapRef.current
+
+      wrapper
+        ?.querySelectorAll<HTMLTableColElement>("col[data-column-id]")
+        .forEach((column) => {
+          if (column.dataset.columnId === columnKey) {
+            column.style.width = `${nextWidth}px`
+          }
+        })
+
+      wrapper
+        ?.querySelectorAll<HTMLElement>(".database-table")
+        .forEach((table) => {
+          table.style.setProperty(
+            "--database-table-min-width",
+            `${tableMinWidth + nextWidth - startWidth}px`
+          )
+        })
+    }
 
     const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      const nextWidth = Math.max(
+      nextWidth = Math.max(
         databaseColumnMinWidth,
         startWidth + moveEvent.clientX - startX
       )
 
-      setColumnWidths((widths: Record<string, number>) => ({
-        ...widths,
-        [columnKey]: nextWidth,
-      }))
+      if (animationFrame === null) {
+        animationFrame = requestAnimationFrame(applyWidth)
+      }
     }
 
     const removeListeners = () => {
+      if (animationFrame !== null) {
+        cancelAnimationFrame(animationFrame)
+        applyWidth()
+      }
+
+      setColumnWidths((widths) => ({ ...widths, [columnKey]: nextWidth }))
       document.body.classList.remove("database-resize-cursor")
       window.removeEventListener("pointermove", handlePointerMove)
       window.removeEventListener("pointerup", removeListeners)
@@ -1580,9 +1802,11 @@ export function DatabaseTableView() {
     </thead>
   )
 
-  const renderTableRows = (tableRows: TableRow[]) => (
-    <tbody>
-      {tableRows.map((row) => {
+  const renderTableRow = (
+    row: TableRow,
+    index: number,
+    measureElement: (node: Element | null) => void
+  ) => {
         const conditionalColors = conditionalColorsByRowId.get(row.id) ?? {
           propertyColors: {},
           rowColor: undefined,
@@ -1592,6 +1816,7 @@ export function DatabaseTableView() {
         return (
           <tr
             className={getConditionalColorClassName(conditionalColors.rowColor)}
+            data-index={index}
             data-database-row-id={row.id}
             key={row.id}
             onMouseEnter={
@@ -1601,6 +1826,7 @@ export function DatabaseTableView() {
                   }
                 : undefined
             }
+            ref={measureElement}
           >
             {renderedColumnIds.map((columnId) => {
               const leftInsertKey = getInsertPropertyColumnKey(columnId, "left")
@@ -1619,36 +1845,30 @@ export function DatabaseTableView() {
                     {showLeftInsert
                       ? renderInsertPropertyCell(leftInsertKey)
                       : null}
-                    <td
+                    <DatabaseActiveTableCell
+                      cellKey={nameCellKey}
                       className={cn(
                         "database-page-cell",
                         getConditionalColorClassName(
                           conditionalColors.propertyColors.name
                         )
                       )}
-                      data-active={
-                        activePropertyValueKey === nameCellKey
-                          ? "true"
-                          : undefined
-                      }
                     >
-                      <DatabaseTableCellContent
-                        wrapContent={nameColumnWrapContent}
-                      >
-                        <DatabasePageLink
-                          editable={editable}
-                          onActiveChange={(active) =>
-                            setActivePropertyValueKey(
-                              active ? nameCellKey : null
-                            )
-                          }
-                          onOpen={onOpenPage}
-                          pageId={row.pageId}
-                          pageSummary={row.page}
-                          showPageIcon={nameColumnShowPageIcon}
-                        />
-                      </DatabaseTableCellContent>
-                    </td>
+                      {(setActive) => (
+                        <DatabaseTableCellContent
+                          wrapContent={nameColumnWrapContent}
+                        >
+                          <DatabasePageLink
+                            editable={editable}
+                            onActiveChange={setActive}
+                            onOpen={onOpenPage}
+                            pageId={row.pageId}
+                            pageSummary={row.page}
+                            showPageIcon={nameColumnShowPageIcon}
+                          />
+                        </DatabaseTableCellContent>
+                      )}
+                    </DatabaseActiveTableCell>
                     {showRightInsert
                       ? renderInsertPropertyCell(rightInsertKey)
                       : null}
@@ -1663,7 +1883,6 @@ export function DatabaseTableView() {
               const pageProperty = property.property
               const key = `${row.pageId}:${pageProperty.id}`
               const persistedValue = propertyValuesByKey[key] ?? ""
-              const value = draftPropertyValues[key] ?? persistedValue
               const wrapContent = getPropertyWrapContent(pageProperty.config)
 
               return (
@@ -1671,42 +1890,38 @@ export function DatabaseTableView() {
                   {showLeftInsert
                     ? renderInsertPropertyCell(leftInsertKey)
                     : null}
-                  <td
+                  <DatabaseActiveTableCell
+                    cellKey={key}
                     className={cn(
                       "database-value-cell",
                       getConditionalColorClassName(
                         conditionalColors.propertyColors[property.id]
                       )
                     )}
-                    data-active={
-                      activePropertyValueKey === key ? "true" : undefined
-                    }
-                    data-wrap-content={wrapContent ? "true" : undefined}
+                    wrapContent={wrapContent}
                   >
-                    <DatabaseTableCellContent wrapContent={wrapContent}>
-                      <DatabasePropertyValue
-                        draftValues={draftPropertyValues}
-                        editable={editable}
-                        properties={properties}
-                        propertyValuesByKey={propertyValuesByKey}
-                        onActiveValueChange={setActivePropertyValueKey}
-                        onDraftValuesChange={setDraftPropertyValues}
-                        onPropertyConfigChange={(databasePropertyId, config) =>
-                          updateDatabasePropertyConfig(
-                            databasePropertyId,
-                            config
-                          )
-                        }
-                        onSaveValue={savePropertyValue}
-                        persistedValue={persistedValue}
-                        personOptions={personOptions}
-                        property={property}
-                        row={row}
-                        titlePropertyLabel={nameColumnLabel}
-                        value={value}
-                      />
-                    </DatabaseTableCellContent>
-                  </td>
+                    {() => (
+                      <DatabaseTableCellContent wrapContent={wrapContent}>
+                        <DatabasePropertyValue
+                          editable={editable}
+                          properties={properties}
+                          propertyValuesByKey={propertyValuesByKey}
+                          onPropertyConfigChange={(databasePropertyId, config) =>
+                            updateDatabasePropertyConfig(
+                              databasePropertyId,
+                              config
+                            )
+                          }
+                          onSaveValue={savePropertyValue}
+                          persistedValue={persistedValue}
+                          personOptions={personOptions}
+                          property={property}
+                          row={row}
+                          titlePropertyLabel={nameColumnLabel}
+                        />
+                      </DatabaseTableCellContent>
+                    )}
+                  </DatabaseActiveTableCell>
                   {showRightInsert
                     ? renderInsertPropertyCell(rightInsertKey)
                     : null}
@@ -1716,9 +1931,7 @@ export function DatabaseTableView() {
             {editable ? <td /> : null}
           </tr>
         )
-      })}
-    </tbody>
-  )
+  }
 
   const renderRowDragRail = () =>
     editable ? (
@@ -1801,6 +2014,7 @@ export function DatabaseTableView() {
             )
           ) {
             setRowDropTargetIndex(null)
+            setIsExternalRowDragActive(false)
           }
         }}
         onDragOver={(event: ReactDragEvent<HTMLDivElement>) => {
@@ -1808,6 +2022,11 @@ export function DatabaseTableView() {
             !isTableGrouped && hasDatabasePageDragPayload(event.dataTransfer)
 
           if (!draggedRowId && !hasDragPayload) {
+            return
+          }
+
+          if (!draggedRowId && hasDragPayload && !isExternalRowDragActive) {
+            setIsExternalRowDragActive(true)
             return
           }
 
@@ -1854,6 +2073,7 @@ export function DatabaseTableView() {
             addDraggedPageRow(dragPayload, rowDropTargetIndex)
           }
           clearRowDrag()
+          setIsExternalRowDragActive(false)
         }}
       >
         {rowDragOverlay ? (
@@ -1915,14 +2135,18 @@ export function DatabaseTableView() {
                       </button>
                       {!isCollapsed ? (
                         <>
-                          <DatabaseTable
+                          <DatabaseVirtualizedTable
                             columnKeys={columnKeys}
                             columnWidths={columnWidths}
+                            renderRow={renderTableRow}
+                            rows={section.rows}
                             tableMinWidth={tableMinWidth}
+                            virtualizationEnabled={
+                              !draggedRowId && !isExternalRowDragActive
+                            }
                           >
                             {renderTableHeader(section.id)}
-                            {renderTableRows(section.rows)}
-                          </DatabaseTable>
+                          </DatabaseVirtualizedTable>
                           {editable &&
                           !section.isEmpty &&
                           groupProperty &&
@@ -1946,14 +2170,18 @@ export function DatabaseTableView() {
                 })}
               </div>
             ) : (
-              <DatabaseTable
+              <DatabaseVirtualizedTable
                 columnKeys={columnKeys}
                 columnWidths={columnWidths}
+                renderRow={renderTableRow}
+                rows={sortedRows}
                 tableMinWidth={tableMinWidth}
+                virtualizationEnabled={
+                  !draggedRowId && !isExternalRowDragActive
+                }
               >
                 {renderTableHeader()}
-                {renderTableRows(sortedRows)}
-              </DatabaseTable>
+              </DatabaseVirtualizedTable>
             )}
             {hasNextPage || isFetchingNextPage ? (
               <div

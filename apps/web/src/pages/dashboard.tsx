@@ -295,7 +295,6 @@ export default function DashboardPage({
               <DatabaseViewProvider
                 value={{
                   ...viewModel,
-                  activePropertyValueKey: null,
                   activeViewTabId: activeViewId,
                   addDatabaseProperty: () => {},
                   addDatabaseRow: () => {},
@@ -319,7 +318,6 @@ export default function DashboardPage({
                   databaseWorkspaceId: workspaceId ?? undefined,
                   deleteDatabaseView: () => {},
                   draftDatabaseTitle: pageTitle,
-                  draftPropertyValues: {},
                   draftViewTitle:
                     homepageViews.find((view) => view.id === activeViewId)
                       ?.label ?? "Recents",
@@ -356,10 +354,8 @@ export default function DashboardPage({
                   saveDatabaseTitle: () => {},
                   saveDatabaseViewTitle: () => {},
                   savePropertyValue: () => {},
-                  setActivePropertyValueKey: () => {},
                   setActiveViewId,
                   setDraftDatabaseTitle: () => {},
-                  setDraftPropertyValues: () => {},
                   setDraftViewTitle: () => {},
                   setFilterPickerOpen: () => {},
                   setSortPickerOpen: () => {},

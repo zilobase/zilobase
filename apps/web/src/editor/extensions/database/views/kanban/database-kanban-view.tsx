@@ -308,7 +308,6 @@ export function DatabaseKanbanView() {
     databaseId,
     databaseName,
     databaseWorkspaceId,
-    draftPropertyValues,
     editable,
     fetchNextPage,
     groupProperty,
@@ -325,8 +324,6 @@ export function DatabaseKanbanView() {
     properties,
     items: allRows,
     savePropertyValue,
-    setActivePropertyValueKey,
-    setDraftPropertyValues,
     setViewGroupProperty,
     saveDatabaseSorts,
     sortedItems: items,
@@ -871,7 +868,6 @@ export function DatabaseKanbanView() {
     const pageProperty = property.property
     const key = `${row.pageId}:${pageProperty.id}`
     const persistedValue = propertyValuesByKey[key] ?? ""
-    const value = draftPropertyValues[key] ?? persistedValue
     const wrapContent = getPropertyWrapContent(pageProperty.config)
     const isGrouped = groupProperty?.property.id === pageProperty.id
     const propertyMenuKey = `${row.pageId}:${property.id}`
@@ -952,12 +948,9 @@ export function DatabaseKanbanView() {
           <DatabaseTableCellContent wrapContent={wrapContent}>
             <DatabasePropertyValue
               disabledSelect={disabledSelect}
-              draftValues={draftPropertyValues}
               editable={editable}
               properties={properties}
               propertyValuesByKey={propertyValuesByKey}
-              onActiveValueChange={setActivePropertyValueKey}
-              onDraftValuesChange={setDraftPropertyValues}
               onPropertyConfigChange={onPropertyConfigChange}
               onSaveValue={savePropertyValue}
               persistedValue={persistedValue}
@@ -965,7 +958,6 @@ export function DatabaseKanbanView() {
               property={property}
               row={row}
               titlePropertyLabel={titlePropertyLabel}
-              value={value}
             />
           </DatabaseTableCellContent>
         </div>

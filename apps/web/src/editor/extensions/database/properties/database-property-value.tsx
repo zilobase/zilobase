@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useCallback, useState, type FormEvent } from "react"
 import { Check, FileText } from "lucide-react"
 
 import { Checkbox } from "@/components/ui/checkbox"
@@ -47,6 +47,11 @@ import {
 } from "./read-only-time-property"
 import { DatabaseRollupPropertySettings } from "./database-property-edit-submenu"
 import { useDatabaseViewContext } from "../views/database-view-context"
+import {
+  useDatabaseCellDraft,
+  useSetActiveDatabaseCell,
+  useUpdateDatabaseCellDraft,
+} from "../views/database-cell-state"
 import { getPersonLimit, getPropertyWrapContent } from "../views/database-view-config"
 import { type DatabasePropertyListItem } from "../views/kanban/database-kanban-config"
 import {
@@ -84,16 +89,9 @@ type RelationPageSummary = {
 
 type DatabasePropertyValueProps = {
   disabledSelect?: boolean
-  draftValues: Record<string, DatabasePropertyValue>
   editable: boolean
   properties: DatabaseProperty[]
   propertyValuesByKey: Record<string, DatabasePropertyValue>
-  onActiveValueChange: (key: string | null) => void
-  onDraftValuesChange: (
-    updater: (
-      drafts: Record<string, DatabasePropertyValue>
-    ) => Record<string, DatabasePropertyValue>
-  ) => void
   onPropertyConfigChange: (
     databasePropertyId: string,
     config: unknown
@@ -110,7 +108,6 @@ type DatabasePropertyValueProps = {
   property: DatabasePropertyListItem
   row: DatabaseRow
   titlePropertyLabel: string
-  value: DatabasePropertyValue
 }
 
 function formatReadOnlyTimePropertyValue(
@@ -135,12 +132,9 @@ function handleCellInput(event: FormEvent<HTMLTextAreaElement>) {
 
 export function DatabasePropertyValue({
   disabledSelect = false,
-  draftValues,
   editable,
   properties,
   propertyValuesByKey,
-  onActiveValueChange,
-  onDraftValuesChange,
   onPropertyConfigChange,
   onSaveValue,
   persistedValue,
@@ -148,11 +142,35 @@ export function DatabasePropertyValue({
   property,
   row,
   titlePropertyLabel,
-  value,
 }: DatabasePropertyValueProps) {
   const databaseContext = useDatabaseViewContext()
   const pageProperty = property.property
   const key = `${row.pageId}:${pageProperty.id}`
+  const draftValue = useDatabaseCellDraft(key)
+  const setActiveCell = useSetActiveDatabaseCell()
+  const updateDraft = useUpdateDatabaseCellDraft()
+  const draftValues =
+    draftValue === undefined ? {} : { [key]: draftValue }
+  const value = draftValue ?? persistedValue
+  const onActiveValueChange = useCallback(
+    (activeKey: string | null) => setActiveCell(activeKey),
+    [setActiveCell]
+  )
+  const onDraftValuesChange = useCallback(
+    (
+      updater: (
+        drafts: Record<string, DatabasePropertyValue>
+      ) => Record<string, DatabasePropertyValue>
+    ) => {
+      updateDraft(key, (currentValue) => {
+        const currentDrafts =
+          currentValue === undefined ? {} : { [key]: currentValue }
+
+        return updater(currentDrafts)[key]
+      })
+    },
+    [key, updateDraft]
+  )
   const cellKind = getDatabasePropertyCellKind(pageProperty.type)
   const isMultiSelectProperty =
     pageProperty.type === "multi_select" ||

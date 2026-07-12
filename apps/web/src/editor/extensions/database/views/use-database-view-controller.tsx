@@ -45,7 +45,6 @@ import {
   type DatabasePageDragPayload,
 } from "../interactions/database-page-drop"
 import type { DatabaseViewContextValue } from "./database-view-context"
-import { type DatabasePropertyValue } from "../core/utils"
 import { getDatabaseViewCommands } from "./database-view-commands"
 import { getDatabaseViewModel } from "./database-view-model"
 import {
@@ -141,9 +140,6 @@ export function useDatabaseViewController({
   pageId = null,
 }: DatabaseViewProps) {
   const { apiFetch, queryClient } = useNotelabFeatures()
-  const [draftPropertyValues, setDraftPropertyValues] = useState<
-    Record<string, DatabasePropertyValue>
-  >({})
   const [pendingSourcePropertyMode, setPendingSourcePropertyMode] =
     useState<PendingSourcePropertyMode | null>(null)
   const sourcePropertyModeResolverRef = useRef<
@@ -177,7 +173,6 @@ export function useDatabaseViewController({
   const [activeViewId, setActiveViewId] = useState<string | null>(
     requestedActiveViewId ?? null,
   )
-  const [activePropertyValueKey, setActivePropertyValueKey] = useState<string | null>(null)
   const [showFilterPill, setShowFilterPill] = useState(true)
   const [showSortPill, setShowSortPill] = useState(true)
   const [filterPickerOpen, setFilterPickerOpen] = useState(false)
@@ -674,7 +669,6 @@ export function useDatabaseViewController({
   }
 
   const databaseViewContext: DatabaseViewContextValue = {
-    activePropertyValueKey,
     activeConditionalColors,
     activeDatabaseFilters,
     activeDatabaseSorts,
@@ -708,7 +702,6 @@ export function useDatabaseViewController({
     databaseWorkspaceId: activePayload?.database.workspaceId,
     deleteDatabaseView: deleteDatabaseViewByTab,
     duplicateDatabaseView,
-    draftPropertyValues,
     draftDatabaseTitle,
     draftViewTitle,
     editable,
@@ -754,9 +747,7 @@ export function useDatabaseViewController({
     saveDatabasePropertyOrder: commands.saveDatabasePropertyOrder,
     saveDatabaseSorts: commands.saveDatabaseSorts,
     saveDatabaseViewTitle: commands.saveDatabaseViewTitle,
-    setActivePropertyValueKey,
     setActiveViewId: setSelectedActiveViewId,
-    setDraftPropertyValues,
     setDraftDatabaseTitle,
     setDraftViewTitle,
     setFilterPickerOpen,

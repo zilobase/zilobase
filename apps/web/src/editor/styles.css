@@ -1296,6 +1296,10 @@
     @apply border-r-0;
   }
 
+  .tiptap-editor .database-table tbody td.database-virtual-spacer {
+    @apply border-0 p-0;
+  }
+
   .tiptap-editor .database-table tbody td.database-page-cell,
   .tiptap-editor .database-table tbody td.database-value-cell {
     @apply p-0;

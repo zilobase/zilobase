@@ -12,9 +12,7 @@ import type {
   DatabaseView,
 } from "@notelab/features/databases"
 
-import type {
-  DatabasePropertyValue,
-} from "../core/utils"
+import type { DatabasePropertyValue } from "../core/utils"
 import type {
   DatabasePropertyListItem,
   DatabaseSelectOption,
@@ -42,6 +40,7 @@ import type {
 import type {
   SortableDatabaseItem,
 } from "../interactions/database-item-utils"
+import { DatabaseCellStateProvider } from "./database-cell-state"
 
 export type DatabaseActiveConditionalColor = Omit<
   DatabaseConditionalColorConfig,
@@ -64,7 +63,6 @@ export type DatabaseViewContextValue = {
   activeConditionalColors: DatabaseActiveConditionalColor[]
   activeDatabaseFilters: DatabaseActiveFilter[]
   activeDatabaseSorts: DatabaseActiveSort[]
-  activePropertyValueKey: string | null
   activeView: DatabaseView | null
   activeViewTabId: string | null
   activeVisibilityConfig: unknown
@@ -101,7 +99,6 @@ export type DatabaseViewContextValue = {
   deleteDatabaseView: (view: DatabaseViewTab) => void
   duplicateDatabaseView: (view: DatabaseViewTab) => void
   draftDatabaseTitle: string
-  draftPropertyValues: Record<string, DatabasePropertyValue>
   draftViewTitle: string
   editable: boolean
   fetchNextPage: () => Promise<void>
@@ -155,12 +152,8 @@ export type DatabaseViewContextValue = {
     currentValue: DatabasePropertyValue,
     nextValue: DatabasePropertyValue
   ) => void
-  setActivePropertyValueKey: (key: string | null) => void
   setActiveViewId: Dispatch<SetStateAction<string | null>>
   setDraftDatabaseTitle: Dispatch<SetStateAction<string>>
-  setDraftPropertyValues: Dispatch<
-    SetStateAction<Record<string, DatabasePropertyValue>>
-  >
   setDraftViewTitle: Dispatch<SetStateAction<string>>
   setFilterPickerOpen: Dispatch<SetStateAction<boolean>>
   setViewDateProperty: (datePropertyId: string | null) => void
@@ -208,7 +201,7 @@ export function DatabaseViewProvider({
 }) {
   return (
     <DatabaseViewContext.Provider value={value}>
-      {children}
+      <DatabaseCellStateProvider>{children}</DatabaseCellStateProvider>
     </DatabaseViewContext.Provider>
   )
 }
