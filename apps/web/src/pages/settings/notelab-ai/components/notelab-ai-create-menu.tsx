@@ -1,36 +1,37 @@
-import * as React from "react"
-import { useNavigate } from "@tanstack/react-router"
-import { Loader2Icon, PlusIcon, SearchIcon } from "lucide-react"
-import { toast } from "sonner"
+import * as React from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { Loader2Icon, PlusIcon, SearchIcon } from "lucide-react";
+import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/dropdrawer";
+import { Input } from "@/components/ui/input";
 
-import { getApiErrorMessage } from "@/lib/api"
-import { PageIcon } from "@/lib/page-icon"
-import { useNotelabFeatures } from "@notelab/features"
+import { getApiErrorMessage } from "@/lib/api";
+import { PageIcon } from "@/lib/page-icon";
+import { useNotelabFeatures } from "@notelab/features";
 import {
-  readParentItemId,
+  getPrimaryPageParentId,
   useCreatePage,
   useUpdatePage,
-  usePages,
+  usePageNavigation,
   pageQueryKey,
   type NotelabAiMode,
   type Page,
-} from "@notelab/features/pages"
+  type PageItemPlacement,
+} from "@notelab/features/pages";
 
 const modeConfig: Record<
   NotelabAiMode,
   {
-    buttonLabel: string
-    createItemLabel: string
-    newPageTitle: string
+    buttonLabel: string;
+    createItemLabel: string;
+    newPageTitle: string;
   }
 > = {
   instruction: {
@@ -43,55 +44,57 @@ const modeConfig: Record<
     createItemLabel: "Create skill",
     newPageTitle: "My agent skill",
   },
-}
+};
 
 type LinkablePageOption = {
-  label: string
-  path: string
-  searchText: string
-  value: string
-  page: Page
-}
+  label: string;
+  path: string;
+  searchText: string;
+  value: string;
+  page: Page;
+};
 
 function buildPagePath(
   pagesById: Map<string, Page>,
   pageId: string,
+  placements: PageItemPlacement[],
 ) {
-  const parts: string[] = []
-  const visited = new Set<string>()
-  let current = pagesById.get(pageId)
+  const parts: string[] = [];
+  const visited = new Set<string>();
+  let current = pagesById.get(pageId);
 
   while (current) {
     if (visited.has(current.id)) {
-      break
+      break;
     }
 
-    visited.add(current.id)
-    parts.unshift(current.name.trim() || "Untitled")
+    visited.add(current.id);
+    parts.unshift(current.name.trim() || "Untitled");
 
-    const parentItemId = readParentItemId(current.metadata)
+    const parentItemId = getPrimaryPageParentId(placements, current.id);
 
     if (!parentItemId) {
-      break
+      break;
     }
 
-    current = pagesById.get(parentItemId)
+    current = pagesById.get(parentItemId);
   }
 
-  return parts.join(" / ")
+  return parts.join(" / ");
 }
 
 function buildLinkablePageOptions(
   pages: Page[],
+  placements: PageItemPlacement[],
   excludedPageIds: Set<string>,
 ) {
-  const pagesById = new Map(pages.map((page) => [page.id, page]))
+  const pagesById = new Map(pages.map((page) => [page.id, page]));
 
   return pages
     .filter((page) => !excludedPageIds.has(page.id))
     .map<LinkablePageOption>((page) => {
-      const label = page.name.trim() || "Untitled"
-      const path = buildPagePath(pagesById, page.id)
+      const label = page.name.trim() || "Untitled";
+      const path = buildPagePath(pagesById, page.id, placements);
 
       return {
         label,
@@ -99,8 +102,8 @@ function buildLinkablePageOptions(
         searchText: `${label} ${path}`.trim(),
         value: page.id,
         page,
-      }
-    })
+      };
+    });
 }
 
 export function NotelabAiCreateMenu({
@@ -108,81 +111,84 @@ export function NotelabAiCreateMenu({
   mode,
   workspaceId,
 }: {
-  existingPageIds: string[]
-  mode: NotelabAiMode
-  workspaceId: string | null
+  existingPageIds: string[];
+  mode: NotelabAiMode;
+  workspaceId: string | null;
 }) {
-  const navigate = useNavigate()
-  const { apiFetch, queryClient } = useNotelabFeatures()
-  const createPage = useCreatePage()
-  const updatePage = useUpdatePage()
-  const { data: pages = [], isLoading: isLoadingPages } =
-    usePages(workspaceId)
-  const [open, setOpen] = React.useState(false)
-  const [query, setQuery] = React.useState("")
-  const config = modeConfig[mode]
+  const navigate = useNavigate();
+  const { apiFetch, queryClient } = useNotelabFeatures();
+  const createPage = useCreatePage();
+  const updatePage = useUpdatePage();
+  const { data: navigation, isLoading: isLoadingPages } =
+    usePageNavigation(workspaceId);
+  const pages = navigation?.pages ?? [];
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const config = modeConfig[mode];
   const excludedIds = React.useMemo(
     () => new Set(existingPageIds),
     [existingPageIds],
-  )
+  );
   const pageOptions = React.useMemo(
-    () => buildLinkablePageOptions(pages, excludedIds),
-    [excludedIds, pages],
-  )
-  const normalizedQuery = query.trim().toLowerCase()
+    () =>
+      buildLinkablePageOptions(
+        pages,
+        navigation?.placements ?? [],
+        excludedIds,
+      ),
+    [excludedIds, navigation?.placements, pages],
+  );
+  const normalizedQuery = query.trim().toLowerCase();
   const filteredPageOptions = React.useMemo(() => {
     if (!normalizedQuery) {
-      return []
+      return [];
     }
 
     return pageOptions.filter((option) =>
       option.searchText.toLowerCase().includes(normalizedQuery),
-    )
-  }, [normalizedQuery, pageOptions])
-  const isBusy = createPage.isPending || updatePage.isPending
+    );
+  }, [normalizedQuery, pageOptions]);
+  const isBusy = createPage.isPending || updatePage.isPending;
 
   React.useEffect(() => {
     if (!open) {
-      setQuery("")
+      setQuery("");
     }
-  }, [open])
+  }, [open]);
 
   const closeMenu = () => {
-    setOpen(false)
-  }
+    setOpen(false);
+  };
 
   const openPage = (pageId: string) => {
-    closeMenu()
+    closeMenu();
     void navigate({
       params: { pageId },
       to: "/p/$pageId",
-    })
-  }
+    });
+  };
 
   const resolvePageMetadata = async (pageId: string) => {
-    const cached = queryClient.getQueryData<Page | null>(
-      pageQueryKey(pageId),
-    )
+    const cached = queryClient.getQueryData<Page | null>(pageQueryKey(pageId));
 
     if (cached?.metadata) {
-      return cached.metadata
+      return cached.metadata;
     }
 
-    const result = await apiFetch<{ page: Page }>(
-      `/pages/${pageId}`,
-      { method: "GET" },
-    )
+    const result = await apiFetch<{ page: Page }>(`/pages/${pageId}`, {
+      method: "GET",
+    });
 
-    return result.page.metadata ?? {}
-  }
+    return result.page.metadata ?? {};
+  };
 
   const assignExistingPage = async (pageId: string) => {
     if (!workspaceId || isBusy) {
-      return
+      return;
     }
 
     try {
-      const metadata = await resolvePageMetadata(pageId)
+      const metadata = await resolvePageMetadata(pageId);
 
       await updatePage.mutateAsync({
         id: pageId,
@@ -190,18 +196,18 @@ export function NotelabAiCreateMenu({
           ...metadata,
           notelabai: mode,
         },
-      })
+      });
 
-      toast.success(`Added as ${mode}.`)
-      openPage(pageId)
+      toast.success(`Added as ${mode}.`);
+      openPage(pageId);
     } catch (error) {
-      toast.error(getApiErrorMessage(error))
+      toast.error(getApiErrorMessage(error));
     }
-  }
+  };
 
   const createNewPage = async () => {
     if (!workspaceId || isBusy) {
-      return
+      return;
     }
 
     try {
@@ -209,14 +215,14 @@ export function NotelabAiCreateMenu({
         metadata: { notelabai: mode },
         name: config.newPageTitle,
         workspaceId,
-      })
+      });
 
-      toast.success(`Created ${mode}.`)
-      openPage(page.id)
+      toast.success(`Created ${mode}.`);
+      openPage(page.id);
     } catch (error) {
-      toast.error(getApiErrorMessage(error))
+      toast.error(getApiErrorMessage(error));
     }
-  }
+  };
 
   return (
     <DropDrawer onOpenChange={setOpen} open={open}>
@@ -226,10 +232,7 @@ export function NotelabAiCreateMenu({
           {config.buttonLabel}
         </Button>
       </DropDrawerTrigger>
-      <DropDrawerContent
-        align="end"
-        className="w-80 overflow-hidden p-0"
-      >
+      <DropDrawerContent align="end" className="w-80 overflow-hidden p-0">
         <div className="flex flex-col">
           <div className="shrink-0 border-b bg-popover pt-3">
             <div className="flex items-center gap-1.5 px-3 pb-2.5">
@@ -259,8 +262,8 @@ export function NotelabAiCreateMenu({
                 <DropDrawerItem
                   key={pageOption.value}
                   onSelect={(event) => {
-                    event.preventDefault()
-                    void assignExistingPage(pageOption.value)
+                    event.preventDefault();
+                    void assignExistingPage(pageOption.value);
                   }}
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -285,8 +288,8 @@ export function NotelabAiCreateMenu({
             <div className="px-3 pt-2.5">
               <DropDrawerItem
                 onSelect={(event) => {
-                  event.preventDefault()
-                  void createNewPage()
+                  event.preventDefault();
+                  void createNewPage();
                 }}
               >
                 <PlusIcon />
@@ -297,5 +300,5 @@ export function NotelabAiCreateMenu({
         </div>
       </DropDrawerContent>
     </DropDrawer>
-  )
+  );
 }

@@ -1,6 +1,7 @@
 const API_ORIGIN = "https://api.notelab.io";
 const API_PREFIX = "/api";
 const RAW_API_PREFIX = "/api/_raw";
+const COLLABORATION_PATH = "/collaboration";
 const API_PATH_PREFIXES = [
   "/agents",
   "/session",
@@ -20,7 +21,10 @@ export default {
   async fetch(request, env, _ctx) {
     const url = new URL(request.url);
 
-    if (isApiRoute(url.pathname)) {
+    if (
+      isApiRoute(url.pathname) ||
+      url.pathname === COLLABORATION_PATH
+    ) {
       return proxyApiRequest(request, env);
     }
 

@@ -1,22 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { type QueryClient, useQueryClient } from "@tanstack/react-query"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 
-import { usePageEditorRegistry } from "@/contexts/page-editor-registry"
-import { useNotelabFeatures } from "@notelab/features"
+import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
+import { useNotelabFeatures } from "@notelab/features";
 import {
   databaseQueryKey,
   databaseQueryOptions,
   type DatabasePayload,
-} from "@notelab/features/databases"
+} from "@notelab/features/databases";
 import {
   ensurePageDetail,
+  getPrimaryPageParentId,
   getPageFromDetail,
-  readParentItemId,
   pageQueryKey,
   pagesQueryKey,
   type Page,
   type PageDetail,
-} from "@notelab/features/pages"
+  type PageNavigationPayload,
+  type PageItemPlacement,
+} from "@notelab/features/pages";
 import {
   buildContextMarkdown,
   collectRequiredLinkedDatabaseIds,
@@ -29,41 +31,42 @@ import {
   type ContextSourceRef,
   type DatabaseContextPayload,
   type PageDatabaseContext,
-} from "@notelab/page-context"
+} from "@notelab/page-context";
 
 type UsePageAiContextOptions = {
-  attachments?: ContextAttachment[]
-  enabled?: boolean
-  workspaceId?: string | null
-  primarySource?: ContextSourceRef | null
-}
+  attachments?: ContextAttachment[];
+  enabled?: boolean;
+  workspaceId?: string | null;
+  primarySource?: ContextSourceRef | null;
+};
 
 function buildPagePath(
   pagesById: Map<string, Page>,
   pageId: string,
+  placements: PageItemPlacement[],
 ) {
-  const parts: string[] = []
-  const visited = new Set<string>()
-  let current = pagesById.get(pageId)
+  const parts: string[] = [];
+  const visited = new Set<string>();
+  let current = pagesById.get(pageId);
 
   while (current) {
     if (visited.has(current.id)) {
-      break
+      break;
     }
 
-    visited.add(current.id)
-    parts.unshift(current.name.trim() || "Untitled")
+    visited.add(current.id);
+    parts.unshift(current.name.trim() || "Untitled");
 
-    const parentItemId = readParentItemId(current.metadata)
+    const parentItemId = getPrimaryPageParentId(placements, current.id);
 
     if (!parentItemId) {
-      break
+      break;
     }
 
-    current = pagesById.get(parentItemId)
+    current = pagesById.get(parentItemId);
   }
 
-  return parts.join(" / ")
+  return parts.join(" / ");
 }
 
 async function resolvePageForContext(
@@ -73,18 +76,16 @@ async function resolvePageForContext(
   getEditorContent: (pageId: string) => unknown | null,
 ) {
   const cached = getPageFromDetail(
-    queryClient.getQueryData<PageDetail | null>(
-      pageQueryKey(pageId),
-    ),
-  )
+    queryClient.getQueryData<PageDetail | null>(pageQueryKey(pageId)),
+  );
 
   if (cached || getEditorContent(pageId) != null) {
-    return cached
+    return cached;
   }
 
   return getPageFromDetail(
     await ensurePageDetail(queryClient, apiFetch, pageId),
-  )
+  );
 }
 
 async function resolveDatabaseContext(
@@ -94,37 +95,37 @@ async function resolveDatabaseContext(
   contextCache: Map<string, DatabaseContextPayload>,
 ): Promise<DatabaseContextPayload | null> {
   if (contextCache.has(databaseId)) {
-    return contextCache.get(databaseId) ?? null
+    return contextCache.get(databaseId) ?? null;
   }
 
   const fullCached = queryClient.getQueryData<DatabasePayload | null>(
     databaseQueryKey(databaseId),
-  )
+  );
 
   if (
     fullCached &&
     Array.isArray(fullCached.rows) &&
     Array.isArray(fullCached.values)
   ) {
-    const contextPayload = stripDatabasePayload(fullCached)
-    contextCache.set(databaseId, contextPayload)
-    return contextPayload
+    const contextPayload = stripDatabasePayload(fullCached);
+    contextCache.set(databaseId, contextPayload);
+    return contextPayload;
   }
 
   try {
     const payload = await queryClient.fetchQuery(
       databaseQueryOptions(apiFetch, databaseId),
-    )
+    );
 
     if (!payload) {
-      return null
+      return null;
     }
 
-    const contextPayload = stripDatabasePayload(payload)
-    contextCache.set(databaseId, contextPayload)
-    return contextPayload
+    const contextPayload = stripDatabasePayload(payload);
+    contextCache.set(databaseId, contextPayload);
+    return contextPayload;
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -134,8 +135,8 @@ async function resolveLinkedSchemas(
   apiFetch: ReturnType<typeof useNotelabFeatures>["apiFetch"],
   contextCache: Map<string, DatabaseContextPayload>,
 ) {
-  const linkedSourceSchemas: Record<string, DatabaseContextPayload> = {}
-  const requiredIds = collectRequiredLinkedDatabaseIds([schema])
+  const linkedSourceSchemas: Record<string, DatabaseContextPayload> = {};
+  const requiredIds = collectRequiredLinkedDatabaseIds([schema]);
 
   await Promise.all(
     requiredIds.map(async (databaseId) => {
@@ -144,15 +145,15 @@ async function resolveLinkedSchemas(
         queryClient,
         apiFetch,
         contextCache,
-      )
+      );
 
       if (linkedSchema) {
-        linkedSourceSchemas[databaseId] = linkedSchema
+        linkedSourceSchemas[databaseId] = linkedSchema;
       }
     }),
-  )
+  );
 
-  return linkedSourceSchemas
+  return linkedSourceSchemas;
 }
 
 async function resolvePageDatabases(
@@ -161,8 +162,8 @@ async function resolvePageDatabases(
   apiFetch: ReturnType<typeof useNotelabFeatures>["apiFetch"],
   contextCache: Map<string, DatabaseContextPayload>,
 ) {
-  const databaseIds = extractDatabaseIds(content)
-  const databases: PageDatabaseContext[] = []
+  const databaseIds = extractDatabaseIds(content);
+  const databases: PageDatabaseContext[] = [];
 
   for (const databaseId of databaseIds) {
     const schema = await resolveDatabaseContext(
@@ -170,10 +171,10 @@ async function resolvePageDatabases(
       queryClient,
       apiFetch,
       contextCache,
-    )
+    );
 
     if (!schema) {
-      continue
+      continue;
     }
 
     databases.push({
@@ -184,10 +185,10 @@ async function resolvePageDatabases(
         apiFetch,
         contextCache,
       ),
-    })
+    });
   }
 
-  return databases
+  return databases;
 }
 
 export function usePageAiContext({
@@ -196,28 +197,28 @@ export function usePageAiContext({
   workspaceId,
   primarySource = null,
 }: UsePageAiContextOptions) {
-  const { apiFetch } = useNotelabFeatures()
-  const queryClient = useQueryClient()
-  const { getEditorHandle } = usePageEditorRegistry()
+  const { apiFetch } = useNotelabFeatures();
+  const queryClient = useQueryClient();
+  const { getEditorHandle } = usePageEditorRegistry();
   const getEditorContent = useCallback(
     (pageId: string) => getEditorHandle(pageId)?.getContentJson() ?? null,
     [getEditorHandle],
-  )
-  const [markdown, setMarkdown] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const buildIdRef = useRef(0)
+  );
+  const [markdown, setMarkdown] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const buildIdRef = useRef(0);
 
   const attachmentKey = useMemo(
     () => attachments.map((item) => `${item.type}:${item.id}`).join("|"),
     [attachments],
-  )
+  );
 
   const trackedDatabaseIds = useMemo(() => {
-    const ids = new Set<string>()
+    const ids = new Set<string>();
 
     if (primarySource?.type === "database") {
-      ids.add(primarySource.id)
+      ids.add(primarySource.id);
     }
 
     if (primarySource?.type === "page") {
@@ -225,49 +226,47 @@ export function usePageAiContext({
         queryClient.getQueryData<PageDetail | null>(
           pageQueryKey(primarySource.id),
         ),
-      )
+      );
       const content =
-        getEditorContent(primarySource.id) ?? page?.content ?? null
+        getEditorContent(primarySource.id) ?? page?.content ?? null;
 
       for (const databaseId of extractDatabaseIds(content)) {
-        ids.add(databaseId)
+        ids.add(databaseId);
       }
     }
 
     for (const attachment of attachments) {
       if (attachment.type === "database") {
-        ids.add(attachment.id)
+        ids.add(attachment.id);
       }
     }
 
-    return [...ids]
-  }, [attachments, getEditorContent, primarySource, queryClient])
+    return [...ids];
+  }, [attachments, getEditorContent, primarySource, queryClient]);
 
   const buildContext = useCallback(async () => {
     if (!enabled || !workspaceId) {
-      setMarkdown("")
-      setError(null)
-      setIsLoading(false)
-      return
+      setMarkdown("");
+      setError(null);
+      setIsLoading(false);
+      return;
     }
 
-    const buildId = buildIdRef.current + 1
-    buildIdRef.current = buildId
-    setIsLoading(true)
-    setError(null)
+    const buildId = buildIdRef.current + 1;
+    buildIdRef.current = buildId;
+    setIsLoading(true);
+    setError(null);
 
-    const startedAt = performance.now()
+    const startedAt = performance.now();
 
     try {
-      const pages =
-        queryClient.getQueryData<Page[]>(
-          pagesQueryKey(workspaceId),
-        ) ?? []
-      const pagesById = new Map(
-        pages.map((page) => [page.id, page]),
-      )
-      const contextCache = new Map<string, DatabaseContextPayload>()
-      const sections: ContextSection[] = []
+      const navigation = queryClient.getQueryData<PageNavigationPayload>(
+        pagesQueryKey(workspaceId),
+      );
+      const pages = navigation?.pages ?? [];
+      const pagesById = new Map(pages.map((page) => [page.id, page]));
+      const contextCache = new Map<string, DatabaseContextPayload>();
+      const sections: ContextSection[] = [];
 
       if (primarySource?.type === "page") {
         const page = await resolvePageForContext(
@@ -275,17 +274,21 @@ export function usePageAiContext({
           queryClient,
           apiFetch,
           getEditorContent,
-        )
+        );
 
         const content =
-          getEditorContent(primarySource.id) ?? page?.content ?? null
+          getEditorContent(primarySource.id) ?? page?.content ?? null;
 
         sections.push({
           kind: "page",
           role: "primary",
           id: primarySource.id,
           title: page?.name?.trim() || "Untitled",
-          path: buildPagePath(pagesById, primarySource.id),
+          path: buildPagePath(
+            pagesById,
+            primarySource.id,
+            navigation?.placements ?? [],
+          ),
           content,
           databases: await resolvePageDatabases(
             content,
@@ -293,14 +296,14 @@ export function usePageAiContext({
             apiFetch,
             contextCache,
           ),
-        })
+        });
       } else if (primarySource?.type === "database") {
         const schema = await resolveDatabaseContext(
           primarySource.id,
           queryClient,
           apiFetch,
           contextCache,
-        )
+        );
 
         if (schema) {
           sections.push({
@@ -313,7 +316,7 @@ export function usePageAiContext({
               apiFetch,
               contextCache,
             ),
-          })
+          });
         }
       }
 
@@ -323,7 +326,7 @@ export function usePageAiContext({
           primarySource.type === attachment.type &&
           primarySource.id === attachment.id
         ) {
-          continue
+          continue;
         }
 
         if (attachment.type === "page") {
@@ -332,7 +335,7 @@ export function usePageAiContext({
             queryClient,
             apiFetch,
             getEditorContent,
-          )
+          );
 
           sections.push({
             kind: "page",
@@ -347,8 +350,8 @@ export function usePageAiContext({
               apiFetch,
               contextCache,
             ),
-          })
-          continue
+          });
+          continue;
         }
 
         const schema = await resolveDatabaseContext(
@@ -356,10 +359,10 @@ export function usePageAiContext({
           queryClient,
           apiFetch,
           contextCache,
-        )
+        );
 
         if (!schema) {
-          continue
+          continue;
         }
 
         sections.push({
@@ -372,41 +375,41 @@ export function usePageAiContext({
             apiFetch,
             contextCache,
           ),
-        })
+        });
       }
 
       if (buildId !== buildIdRef.current) {
-        return
+        return;
       }
 
-      const result = buildContextMarkdown({ sections })
+      const result = buildContextMarkdown({ sections });
 
       if (result.trimmedAttachmentIds.length > 0) {
-        warnPageContextTrimmed(result.trimmedAttachmentIds)
+        warnPageContextTrimmed(result.trimmedAttachmentIds);
       }
 
-      setMarkdown(result.markdown)
+      setMarkdown(result.markdown);
       logPageContext(result.markdown, {
         primaryId: primarySource?.id ?? null,
         attachmentIds: attachments.map((item) => item.id),
         charCount: result.charCount,
         buildMs: Math.round(performance.now() - startedAt),
         trimmedAttachmentIds: result.trimmedAttachmentIds,
-      })
+      });
     } catch (buildError) {
       if (buildId !== buildIdRef.current) {
-        return
+        return;
       }
 
       setError(
         buildError instanceof Error
           ? buildError.message
           : "Failed to build page context",
-      )
-      setMarkdown("")
+      );
+      setMarkdown("");
     } finally {
       if (buildId === buildIdRef.current) {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
   }, [
@@ -418,42 +421,42 @@ export function usePageAiContext({
     workspaceId,
     primarySource,
     queryClient,
-  ])
+  ]);
 
   useEffect(() => {
-    void buildContext()
-  }, [buildContext])
+    void buildContext();
+  }, [buildContext]);
 
   useEffect(() => {
     if (!enabled || trackedDatabaseIds.length === 0) {
-      return
+      return;
     }
 
-    const trackedIdSet = new Set(trackedDatabaseIds)
+    const trackedIdSet = new Set(trackedDatabaseIds);
 
     return queryClient.getQueryCache().subscribe((event) => {
       if (event.type !== "updated") {
-        return
+        return;
       }
 
-      const queryKey = event.query.queryKey
+      const queryKey = event.query.queryKey;
 
       if (queryKey[0] !== "database" || typeof queryKey[1] !== "string") {
-        return
+        return;
       }
 
       if (!trackedIdSet.has(queryKey[1])) {
-        return
+        return;
       }
 
-      void buildContext()
-    })
-  }, [buildContext, enabled, trackedDatabaseIds])
+      void buildContext();
+    });
+  }, [buildContext, enabled, trackedDatabaseIds]);
 
   return {
     error,
     isLoading,
     markdown,
     rebuild: buildContext,
-  }
+  };
 }

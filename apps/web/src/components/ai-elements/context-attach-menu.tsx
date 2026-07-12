@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   forwardRef,
@@ -8,8 +8,8 @@ import {
   useMemo,
   useRef,
   useState,
-} from "react"
-import { DatabaseIcon, FileTextIcon } from "lucide-react"
+} from "react";
+import { DatabaseIcon, FileTextIcon } from "lucide-react";
 
 import {
   PromptInputCommand,
@@ -17,84 +17,91 @@ import {
   PromptInputCommandGroup,
   PromptInputCommandItem,
   PromptInputCommandList,
-} from "@/components/ai-elements/prompt-input"
-import { PageIconDisplay, PageIcon } from "@/lib/page-icon"
-import { useActiveWorkspaceId } from "@notelab/features/integrations"
-import type { AppSearchResult } from "@notelab/features/search"
+} from "@/components/ai-elements/prompt-input";
+import { PageIconDisplay, PageIcon } from "@/lib/page-icon";
+import { useActiveWorkspaceId } from "@notelab/features/integrations";
+import type { AppSearchResult } from "@notelab/features/search";
 import {
-  readParentItemId,
-  usePages,
+  getPrimaryPageParentId,
+  usePageNavigation,
   type Page,
-} from "@notelab/features/pages"
+  type PageDatabase,
+  type PageItemPlacement,
+} from "@notelab/features/pages";
 import type {
   ContextAttachment,
   ContextSourceRef,
-} from "@notelab/page-context"
+} from "@notelab/page-context";
 
-const MAX_VISIBLE_PER_GROUP = 3
+const MAX_VISIBLE_PER_GROUP = 3;
 
-type AttachMenuCategory = "current-page" | "skills" | "link-to-page" | "databases"
+type AttachMenuCategory =
+  | "current-page"
+  | "skills"
+  | "link-to-page"
+  | "databases";
 
 const categoryHeadings: Record<AttachMenuCategory, string> = {
   "current-page": "Current page",
   skills: "Skills",
   "link-to-page": "Link to page",
   databases: "Databases",
-}
+};
 
 const categoryOrder: AttachMenuCategory[] = [
   "current-page",
   "skills",
   "link-to-page",
   "databases",
-]
+];
 
 export function buildPagePath(
   pagesById: Map<string, Page>,
   pageId: string,
+  placements: PageItemPlacement[],
 ) {
-  const parts: string[] = []
-  const visited = new Set<string>()
-  let current = pagesById.get(pageId)
+  const parts: string[] = [];
+  const visited = new Set<string>();
+  let current = pagesById.get(pageId);
 
   while (current) {
     if (visited.has(current.id)) {
-      break
+      break;
     }
 
-    visited.add(current.id)
-    parts.unshift(current.name.trim() || "Untitled")
+    visited.add(current.id);
+    parts.unshift(current.name.trim() || "Untitled");
 
-    const parentItemId = readParentItemId(current.metadata)
+    const parentItemId = getPrimaryPageParentId(placements, current.id);
 
     if (!parentItemId) {
-      break
+      break;
     }
 
-    current = pagesById.get(parentItemId)
+    current = pagesById.get(parentItemId);
   }
 
-  return parts.join(" / ")
+  return parts.join(" / ");
 }
 
 function readDatabaseEmoji(config: unknown) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
-    return null
+    return null;
   }
 
-  const emoji = (config as { emoji?: unknown }).emoji
+  const emoji = (config as { emoji?: unknown }).emoji;
 
-  return typeof emoji === "string" && emoji.length > 0 ? emoji : null
+  return typeof emoji === "string" && emoji.length > 0 ? emoji : null;
 }
 
 function matchesQuery(text: string, query: string) {
-  const normalizedQuery = query.trim().toLowerCase()
+  const normalizedQuery = query.trim().toLowerCase();
 
   if (!normalizedQuery) {
-    return true
+    return true;
   }
 
-  return text.toLowerCase().includes(normalizedQuery)
+  return text.toLowerCase().includes(normalizedQuery);
 }
 
 function toAttachment(result: AppSearchResult): ContextAttachment {
@@ -104,53 +111,53 @@ function toAttachment(result: AppSearchResult): ContextAttachment {
     title: result.title,
     path: result.path,
     emoji: result.emoji,
-  }
+  };
 }
 
 type AttachMenuItem = {
-  attachment: ContextAttachment
-  category: AttachMenuCategory
-  key: string
-  result: AppSearchResult
-}
+  attachment: ContextAttachment;
+  category: AttachMenuCategory;
+  key: string;
+  result: AppSearchResult;
+};
 
 export type ContextAttachMenuEntry =
   | {
-      attachment: ContextAttachment
-      key: string
-      menuItem: AttachMenuItem
-      type: "attachment"
+      attachment: ContextAttachment;
+      key: string;
+      menuItem: AttachMenuItem;
+      type: "attachment";
     }
   | {
-      category: AttachMenuCategory
-      hiddenCount: number
-      key: string
-      type: "expand"
-    }
+      category: AttachMenuCategory;
+      hiddenCount: number;
+      key: string;
+      type: "expand";
+    };
 
 export type ContextAttachMenuHandle = {
-  activateEntry: (entry: ContextAttachMenuEntry) => void
-}
+  activateEntry: (entry: ContextAttachMenuEntry) => void;
+};
 
 function getExpandKey(category: AttachMenuCategory) {
-  return `expand:${category}`
+  return `expand:${category}`;
 }
 
 function buildMenuEntries({
   expandedCategories,
   groupedResults,
 }: {
-  expandedCategories: Set<AttachMenuCategory>
-  groupedResults: Record<AttachMenuCategory, AttachMenuItem[]>
+  expandedCategories: Set<AttachMenuCategory>;
+  groupedResults: Record<AttachMenuCategory, AttachMenuItem[]>;
 }): ContextAttachMenuEntry[] {
-  const entries: ContextAttachMenuEntry[] = []
+  const entries: ContextAttachMenuEntry[] = [];
 
   for (const category of categoryOrder) {
-    const groupItems = groupedResults[category]
-    const isExpanded = expandedCategories.has(category)
+    const groupItems = groupedResults[category];
+    const isExpanded = expandedCategories.has(category);
     const visibleItems = isExpanded
       ? groupItems
-      : groupItems.slice(0, MAX_VISIBLE_PER_GROUP)
+      : groupItems.slice(0, MAX_VISIBLE_PER_GROUP);
 
     for (const item of visibleItems) {
       entries.push({
@@ -158,7 +165,7 @@ function buildMenuEntries({
         key: item.key,
         menuItem: item,
         type: "attachment",
-      })
+      });
     }
 
     if (!isExpanded && groupItems.length > visibleItems.length) {
@@ -167,11 +174,11 @@ function buildMenuEntries({
         hiddenCount: groupItems.length - visibleItems.length,
         key: getExpandKey(category),
         type: "expand",
-      })
+      });
     }
   }
 
-  return entries
+  return entries;
 }
 
 function buildAttachMenuItems({
@@ -179,27 +186,26 @@ function buildAttachMenuItems({
   currentPageId,
   existingAttachmentKeys,
   query,
+  databases: databaseRecords,
   pages,
+  placements,
 }: {
-  currentDatabaseId?: string | null
-  currentPageId?: string | null
-  existingAttachmentKeys: Set<string>
-  query: string
-  pages: Page[]
+  currentDatabaseId?: string | null;
+  currentPageId?: string | null;
+  existingAttachmentKeys: Set<string>;
+  query: string;
+  databases: PageDatabase[];
+  pages: Page[];
+  placements: PageItemPlacement[];
 }): AttachMenuItem[] {
-  const pagesById = new Map(
-    pages.map((page) => [page.id, page]),
-  )
-  const items: AttachMenuItem[] = []
+  const pagesById = new Map(pages.map((page) => [page.id, page]));
+  const items: AttachMenuItem[] = [];
 
-  const pushItem = (
-    result: AppSearchResult,
-    category: AttachMenuCategory,
-  ) => {
-    const key = `${result.type === "database" ? "database" : "page"}:${result.id}`
+  const pushItem = (result: AppSearchResult, category: AttachMenuCategory) => {
+    const key = `${result.type === "database" ? "database" : "page"}:${result.id}`;
 
     if (existingAttachmentKeys.has(key)) {
-      return
+      return;
     }
 
     items.push({
@@ -207,16 +213,16 @@ function buildAttachMenuItems({
       category,
       key,
       result,
-    })
-  }
+    });
+  };
 
   if (currentPageId) {
-    const page = pagesById.get(currentPageId)
+    const page = pagesById.get(currentPageId);
 
     if (page) {
-      const title = page.name.trim() || "Untitled"
-      const path = buildPagePath(pagesById, page.id)
-      const searchText = `${title} ${path}`
+      const title = page.name.trim() || "Untitled";
+      const path = buildPagePath(pagesById, page.id, placements);
+      const searchText = `${title} ${path}`;
 
       if (matchesQuery(searchText, query)) {
         pushItem(
@@ -228,22 +234,21 @@ function buildAttachMenuItems({
             type: "page",
           },
           "current-page",
-        )
+        );
       }
     }
   } else if (currentDatabaseId) {
-    for (const page of pages) {
-      const database = page.databases?.find(
-        (item) => item.id === currentDatabaseId,
-      )
+    const database = databaseRecords.find(
+      (item) => item.id === currentDatabaseId,
+    );
 
-      if (!database) {
-        continue
-      }
-
-      const path = `${buildPagePath(pagesById, page.id)} / ${database.name.trim() || "Database"}`
-      const title = database.name.trim() || "Database"
-      const searchText = `${title} ${path}`
+    if (database) {
+      const page = database.pageId ? pagesById.get(database.pageId) : null;
+      const title = database.name.trim() || "Database";
+      const path = page
+        ? `${buildPagePath(pagesById, page.id, placements)} / ${title}`
+        : title;
+      const searchText = `${title} ${path}`;
 
       if (matchesQuery(searchText, query)) {
         pushItem(
@@ -255,23 +260,21 @@ function buildAttachMenuItems({
             type: "database",
           },
           "current-page",
-        )
+        );
       }
-
-      break
     }
   }
 
-  const skillPages: AppSearchResult[] = []
-  const linkPages: AppSearchResult[] = []
-  const databases: AppSearchResult[] = []
+  const skillPages: AppSearchResult[] = [];
+  const linkPages: AppSearchResult[] = [];
+  const databaseResults: AppSearchResult[] = [];
 
   for (const page of pages) {
-    const title = page.name.trim() || "Untitled"
-    const path = buildPagePath(pagesById, page.id)
-    const pageSearchText = `${title} ${path}`
-    const isCurrentPage = page.id === currentPageId
-    const isSkill = page.metadata?.notelabai === "skill"
+    const title = page.name.trim() || "Untitled";
+    const path = buildPagePath(pagesById, page.id, placements);
+    const pageSearchText = `${title} ${path}`;
+    const isCurrentPage = page.id === currentPageId;
+    const isSkill = page.metadata?.notelabai === "skill";
 
     if (!isCurrentPage && matchesQuery(pageSearchText, query)) {
       const result: AppSearchResult = {
@@ -280,87 +283,82 @@ function buildAttachMenuItems({
         path,
         title,
         type: "page",
-      }
+      };
 
       if (isSkill) {
-        skillPages.push(result)
+        skillPages.push(result);
       } else {
-        linkPages.push(result)
+        linkPages.push(result);
       }
     }
+  }
 
-    for (const database of page.databases ?? []) {
-      if (database.id === currentDatabaseId) {
-        continue
-      }
+  for (const database of databaseRecords) {
+    if (database.id === currentDatabaseId) continue;
+    const parentPage = database.pageId ? pagesById.get(database.pageId) : null;
+    const databaseTitle = database.name.trim() || "Database";
+    const databasePath = parentPage
+      ? `${buildPagePath(pagesById, parentPage.id, placements)} / ${databaseTitle}`
+      : databaseTitle;
 
-      const databaseTitle = database.name.trim() || "Database"
-      const databasePath = `${path} / ${databaseTitle}`
-      const databaseSearchText = `${databaseTitle} ${databasePath}`
-
-      if (matchesQuery(databaseSearchText, query)) {
-        databases.push({
-          emoji: readDatabaseEmoji(database.config),
-          id: database.id,
-          path: databasePath,
-          title: databaseTitle,
-          type: "database",
-        })
-      }
+    if (matchesQuery(`${databaseTitle} ${databasePath}`, query)) {
+      databaseResults.push({
+        emoji: readDatabaseEmoji(database.config),
+        id: database.id,
+        path: databasePath,
+        title: databaseTitle,
+        type: "database",
+      });
     }
   }
 
   skillPages
     .sort((left, right) => left.title.localeCompare(right.title))
-    .forEach((result) => pushItem(result, "skills"))
+    .forEach((result) => pushItem(result, "skills"));
 
   linkPages
     .sort((left, right) => left.title.localeCompare(right.title))
-    .forEach((result) => pushItem(result, "link-to-page"))
+    .forEach((result) => pushItem(result, "link-to-page"));
 
-  databases
+  databaseResults
     .sort((left, right) => left.title.localeCompare(right.title))
-    .forEach((result) => pushItem(result, "databases"))
+    .forEach((result) => pushItem(result, "databases"));
 
-  return items
+  return items;
 }
 
 export function buildPrimaryAttachment({
+  databasePageId,
   databaseEmoji,
   databaseName,
   primarySource,
   pages,
+  placements,
 }: {
-  databaseEmoji?: string | null
-  databaseName?: string | null
-  primarySource: ContextSourceRef
-  pages: Page[]
+  databasePageId?: string | null;
+  databaseEmoji?: string | null;
+  databaseName?: string | null;
+  primarySource: ContextSourceRef;
+  pages: Page[];
+  placements: PageItemPlacement[];
 }): ContextAttachment | null {
   if (primarySource.type === "database") {
     if (!databaseName) {
-      return null
+      return null;
     }
 
-    for (const page of pages) {
-      const database = page.databases?.find(
-        (item) => item.id === primarySource.id,
-      )
+    if (databasePageId) {
+      const page = pages.find((item) => item.id === databasePageId);
+      const pagesById = new Map(pages.map((item) => [item.id, item]));
 
-      if (!database) {
-        continue
-      }
-
-      const pagesById = new Map(
-        pages.map((item) => [item.id, item]),
-      )
-
-      return {
-        emoji: databaseEmoji ?? readDatabaseEmoji(database.config),
-        id: primarySource.id,
-        path: `${buildPagePath(pagesById, page.id)} / ${databaseName}`,
-        title: databaseName,
-        type: "database",
-      }
+      if (page)
+        return {
+          emoji: databaseEmoji,
+          id: primarySource.id,
+          path: `${buildPagePath(pagesById, page.id, placements)} / ${databaseName}`,
+          title: databaseName,
+          type: "database",
+        };
     }
 
     return {
@@ -369,40 +367,36 @@ export function buildPrimaryAttachment({
       path: "",
       title: databaseName,
       type: "database",
-    }
+    };
   }
 
-  const pagesById = new Map(pages.map((item) => [item.id, item]))
-  const page = pagesById.get(primarySource.id)
+  const pagesById = new Map(pages.map((item) => [item.id, item]));
+  const page = pagesById.get(primarySource.id);
 
   if (!page) {
-    return null
+    return null;
   }
 
   return {
     emoji: page.metadata?.emoji ?? null,
     id: primarySource.id,
-    path: buildPagePath(pagesById, primarySource.id),
+    path: buildPagePath(pagesById, primarySource.id, placements),
     title: page.name.trim() || "Untitled",
     type: "page",
-  }
+  };
 }
 
-function AttachMenuItemIcon({
-  item,
-}: {
-  item: AttachMenuItem
-}) {
+function AttachMenuItemIcon({ item }: { item: AttachMenuItem }) {
   if (item.result.type === "database") {
     if (item.result.emoji) {
-      return <PageIconDisplay size="sm" value={item.result.emoji} />
+      return <PageIconDisplay size="sm" value={item.result.emoji} />;
     }
 
-    return <DatabaseIcon className="size-4 shrink-0 text-muted-foreground" />
+    return <DatabaseIcon className="size-4 shrink-0 text-muted-foreground" />;
   }
 
   if (item.category === "skills") {
-    return <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
+    return <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />;
   }
 
   const page = {
@@ -410,13 +404,13 @@ function AttachMenuItemIcon({
     metadata: {
       emoji: item.result.emoji,
     },
-  }
+  };
 
   return (
     <span className="flex size-4 shrink-0 items-center justify-center">
       <PageIcon page={page} />
     </span>
-  )
+  );
 }
 
 function AttachMenuGroup({
@@ -428,23 +422,23 @@ function AttachMenuGroup({
   selectedIndex,
   selectedItemRef,
 }: {
-  allEntries: ContextAttachMenuEntry[]
-  category: AttachMenuCategory
-  isExpanded: boolean
-  items: AttachMenuItem[]
-  onActivateEntry: (entry: ContextAttachMenuEntry) => void
-  selectedIndex: number
-  selectedItemRef: React.RefObject<HTMLDivElement | null>
+  allEntries: ContextAttachMenuEntry[];
+  category: AttachMenuCategory;
+  isExpanded: boolean;
+  items: AttachMenuItem[];
+  onActivateEntry: (entry: ContextAttachMenuEntry) => void;
+  selectedIndex: number;
+  selectedItemRef: React.RefObject<HTMLDivElement | null>;
 }) {
   if (items.length === 0) {
-    return null
+    return null;
   }
 
   const visibleItems = isExpanded
     ? items
-    : items.slice(0, MAX_VISIBLE_PER_GROUP)
-  const hiddenCount = isExpanded ? 0 : items.length - visibleItems.length
-  const expandKey = getExpandKey(category)
+    : items.slice(0, MAX_VISIBLE_PER_GROUP);
+  const hiddenCount = isExpanded ? 0 : items.length - visibleItems.length;
+  const expandKey = getExpandKey(category);
   const expandEntry: ContextAttachMenuEntry | null =
     hiddenCount > 0
       ? {
@@ -453,12 +447,14 @@ function AttachMenuGroup({
           key: expandKey,
           type: "expand",
         }
-      : null
+      : null;
 
   return (
     <PromptInputCommandGroup heading={categoryHeadings[category]}>
       {visibleItems.map((item) => {
-        const entryIndex = allEntries.findIndex((candidate) => candidate.key === item.key)
+        const entryIndex = allEntries.findIndex(
+          (candidate) => candidate.key === item.key,
+        );
 
         return (
           <PromptInputCommandItem
@@ -468,13 +464,13 @@ function AttachMenuGroup({
             }
             key={item.key}
             onMouseDown={(event) => {
-              event.preventDefault()
+              event.preventDefault();
               onActivateEntry({
                 attachment: item.attachment,
                 key: item.key,
                 menuItem: item,
                 type: "attachment",
-              })
+              });
             }}
             onSelect={() =>
               onActivateEntry({
@@ -497,55 +493,55 @@ function AttachMenuGroup({
               ) : null}
             </div>
           </PromptInputCommandItem>
-        )
+        );
       })}
-      {expandEntry ? (
-        (() => {
-          const entryIndex = allEntries.findIndex(
-            (candidate) => candidate.key === expandKey,
-          )
+      {expandEntry
+        ? (() => {
+            const entryIndex = allEntries.findIndex(
+              (candidate) => candidate.key === expandKey,
+            );
 
-          return (
-            <PromptInputCommandItem
-              aria-selected={entryIndex === selectedIndex}
-              className={
-                entryIndex === selectedIndex
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground"
-              }
-              key={expandKey}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                onActivateEntry(expandEntry)
-              }}
-              onSelect={() => onActivateEntry(expandEntry)}
-              ref={entryIndex === selectedIndex ? selectedItemRef : undefined}
-              value={expandKey}
-            >
-              <span className="truncate">
-                ... {expandEntry.hiddenCount} more result
-                {expandEntry.hiddenCount === 1 ? "" : "s"}
-              </span>
-            </PromptInputCommandItem>
-          )
-        })()
-      ) : null}
+            return (
+              <PromptInputCommandItem
+                aria-selected={entryIndex === selectedIndex}
+                className={
+                  entryIndex === selectedIndex
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground"
+                }
+                key={expandKey}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  onActivateEntry(expandEntry);
+                }}
+                onSelect={() => onActivateEntry(expandEntry)}
+                ref={entryIndex === selectedIndex ? selectedItemRef : undefined}
+                value={expandKey}
+              >
+                <span className="truncate">
+                  ... {expandEntry.hiddenCount} more result
+                  {expandEntry.hiddenCount === 1 ? "" : "s"}
+                </span>
+              </PromptInputCommandItem>
+            );
+          })()
+        : null}
     </PromptInputCommandGroup>
-  )
+  );
 }
 
 export const ContextAttachMenu = forwardRef<
   ContextAttachMenuHandle,
   {
-    currentDatabaseId?: string | null
-    currentPageId?: string | null
-    existingAttachmentKeys: Set<string>
-    onEntriesChange?: (entries: ContextAttachMenuEntry[]) => void
-    onSelect: (attachment: ContextAttachment) => void
-    open: boolean
-    query: string
-    selectedIndex: number
-    setSelectedIndex: (index: number) => void
+    currentDatabaseId?: string | null;
+    currentPageId?: string | null;
+    existingAttachmentKeys: Set<string>;
+    onEntriesChange?: (entries: ContextAttachMenuEntry[]) => void;
+    onSelect: (attachment: ContextAttachment) => void;
+    open: boolean;
+    query: string;
+    selectedIndex: number;
+    setSelectedIndex: (index: number) => void;
   }
 >(function ContextAttachMenu(
   {
@@ -561,16 +557,19 @@ export const ContextAttachMenu = forwardRef<
   },
   ref,
 ) {
-  const workspaceId = useActiveWorkspaceId()
+  const workspaceId = useActiveWorkspaceId();
   const {
-    data: pages = [],
+    data: navigation,
     isFetching,
     isLoading,
-  } = usePages(workspaceId, { enabled: open })
-  const selectedItemRef = useRef<HTMLDivElement | null>(null)
+  } = usePageNavigation(workspaceId, { enabled: open });
+  const pages = navigation?.pages ?? [];
+  const databases = navigation?.databases ?? [];
+  const placements = navigation?.placements ?? [];
+  const selectedItemRef = useRef<HTMLDivElement | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<
     Set<AttachMenuCategory>
-  >(new Set())
+  >(new Set());
 
   const items = useMemo(
     () =>
@@ -580,7 +579,9 @@ export const ContextAttachMenu = forwardRef<
             currentPageId,
             existingAttachmentKeys,
             query,
+            databases,
             pages,
+            placements,
           })
         : [],
     [
@@ -589,9 +590,11 @@ export const ContextAttachMenu = forwardRef<
       existingAttachmentKeys,
       open,
       query,
+      databases,
       pages,
+      placements,
     ],
-  )
+  );
 
   const groupedResults = useMemo(() => {
     const groups: Record<AttachMenuCategory, AttachMenuItem[]> = {
@@ -599,14 +602,14 @@ export const ContextAttachMenu = forwardRef<
       databases: [],
       "link-to-page": [],
       skills: [],
-    }
+    };
 
     for (const item of items) {
-      groups[item.category].push(item)
+      groups[item.category].push(item);
     }
 
-    return groups
-  }, [items])
+    return groups;
+  }, [items]);
 
   const menuEntries = useMemo(
     () =>
@@ -615,30 +618,30 @@ export const ContextAttachMenu = forwardRef<
         groupedResults,
       }),
     [expandedCategories, groupedResults],
-  )
+  );
 
-  const selectedEntry = menuEntries[selectedIndex]
-  const isLoadingResults = (isLoading || isFetching) && pages.length === 0
+  const selectedEntry = menuEntries[selectedIndex];
+  const isLoadingResults = (isLoading || isFetching) && pages.length === 0;
 
   const handleExpandCategory = useCallback((category: AttachMenuCategory) => {
     setExpandedCategories((current) => {
-      const next = new Set(current)
-      next.add(category)
-      return next
-    })
-  }, [])
+      const next = new Set(current);
+      next.add(category);
+      return next;
+    });
+  }, []);
 
   const handleActivateEntry = useCallback(
     (entry: ContextAttachMenuEntry) => {
       if (entry.type === "expand") {
-        handleExpandCategory(entry.category)
-        return
+        handleExpandCategory(entry.category);
+        return;
       }
 
-      onSelect(entry.attachment)
+      onSelect(entry.attachment);
     },
     [handleExpandCategory, onSelect],
-  )
+  );
 
   useImperativeHandle(
     ref,
@@ -646,38 +649,40 @@ export const ContextAttachMenu = forwardRef<
       activateEntry: handleActivateEntry,
     }),
     [handleActivateEntry],
-  )
+  );
 
   useEffect(() => {
-    setExpandedCategories(new Set())
-  }, [open, query])
+    setExpandedCategories(new Set());
+  }, [open, query]);
 
   useEffect(() => {
-    selectedItemRef.current?.scrollIntoView({ block: "nearest" })
-  }, [selectedIndex])
+    selectedItemRef.current?.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex]);
 
   useEffect(() => {
-    onEntriesChange?.(menuEntries)
-  }, [menuEntries, onEntriesChange])
+    onEntriesChange?.(menuEntries);
+  }, [menuEntries, onEntriesChange]);
 
   useEffect(() => {
     if (selectedIndex >= menuEntries.length && menuEntries.length > 0) {
-      setSelectedIndex(menuEntries.length - 1)
+      setSelectedIndex(menuEntries.length - 1);
     }
-  }, [menuEntries.length, selectedIndex, setSelectedIndex])
+  }, [menuEntries.length, selectedIndex, setSelectedIndex]);
 
   if (!open) {
-    return null
+    return null;
   }
 
   return (
     <div className="absolute bottom-full left-0 z-50 mb-2 w-full max-w-md overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
       <PromptInputCommand
         onValueChange={(value) => {
-          const nextIndex = menuEntries.findIndex((entry) => entry.key === value)
+          const nextIndex = menuEntries.findIndex(
+            (entry) => entry.key === value,
+          );
 
           if (nextIndex >= 0) {
-            setSelectedIndex(nextIndex)
+            setSelectedIndex(nextIndex);
           }
         }}
         shouldFilter={false}
@@ -689,7 +694,9 @@ export const ContextAttachMenu = forwardRef<
               Loading pages and databases...
             </div>
           ) : items.length === 0 ? (
-            <PromptInputCommandEmpty>No pages or databases found.</PromptInputCommandEmpty>
+            <PromptInputCommandEmpty>
+              No pages or databases found.
+            </PromptInputCommandEmpty>
           ) : (
             categoryOrder.map((category) => (
               <AttachMenuGroup
@@ -707,33 +714,39 @@ export const ContextAttachMenu = forwardRef<
         </PromptInputCommandList>
       </PromptInputCommand>
     </div>
-  )
-})
+  );
+});
 
-export function getAttachmentKey(attachment: Pick<ContextAttachment, "type" | "id">) {
-  return `${attachment.type}:${attachment.id}`
+export function getAttachmentKey(
+  attachment: Pick<ContextAttachment, "type" | "id">,
+) {
+  return `${attachment.type}:${attachment.id}`;
 }
 
 export function parseMentionState(
   text: string,
   caretPosition: number | null | undefined,
 ): { mentionQuery: string; mentionStart: number } | null {
-  if (caretPosition === null || caretPosition === undefined || caretPosition < 0) {
-    return null
+  if (
+    caretPosition === null ||
+    caretPosition === undefined ||
+    caretPosition < 0
+  ) {
+    return null;
   }
 
-  const beforeCaret = text.slice(0, caretPosition)
-  const match = /(?:^|\s)@([^\s@]*)$/.exec(beforeCaret)
+  const beforeCaret = text.slice(0, caretPosition);
+  const match = /(?:^|\s)@([^\s@]*)$/.exec(beforeCaret);
 
   if (!match) {
-    return null
+    return null;
   }
 
-  const mentionQuery = match[1] ?? ""
-  const mentionStart = beforeCaret.length - mentionQuery.length - 1
+  const mentionQuery = match[1] ?? "";
+  const mentionStart = beforeCaret.length - mentionQuery.length - 1;
 
   return {
     mentionQuery,
     mentionStart,
-  }
+  };
 }

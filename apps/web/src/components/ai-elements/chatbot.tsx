@@ -4,7 +4,11 @@ import {
   Conversation,
   ConversationContent,
 } from "@/components/ai-elements/conversation";
-import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
 import {
   ModelSelector,
   ModelSelectorContent,
@@ -83,22 +87,13 @@ import {
   useIntegrations,
   useWorkspaceAiModels,
 } from "@notelab/features/integrations";
-import {
-  usePageAccessLevel,
-  usePages,
-} from "@notelab/features/pages";
+import { usePageAccessLevel, usePageNavigation } from "@notelab/features/pages";
 import type { WorkspaceAiChatModel } from "@notelab/features/integrations";
 import { useQuery } from "@tanstack/react-query";
 import { integrationIcons } from "@/lib/integration-icons";
 import { useChat } from "@ai-sdk/react";
-import {
-  getApiRequestHeaders,
-  toApiUrl,
-} from "@/lib/api";
-import {
-  GmailToolOutput,
-  isGmailToolName,
-} from "@notelab/connectors/gmail/ui";
+import { getApiRequestHeaders, toApiUrl } from "@/lib/api";
+import { GmailToolOutput, isGmailToolName } from "@notelab/connectors/gmail/ui";
 import {
   GithubToolOutput,
   isGithubToolName,
@@ -115,10 +110,7 @@ import {
   isLinearToolName,
   LinearToolOutput,
 } from "@notelab/connectors/linear/ui";
-import {
-  isSlackToolName,
-  SlackToolOutput,
-} from "@notelab/connectors/slack/ui";
+import { isSlackToolName, SlackToolOutput } from "@notelab/connectors/slack/ui";
 import {
   type ChatStatus,
   DefaultChatTransport,
@@ -134,7 +126,13 @@ import {
   type ContextAttachment,
   type ContextSourceRef,
 } from "@notelab/page-context";
-import { ArrowDownIcon, CheckIcon, InboxIcon, PlusIcon, XIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  CheckIcon,
+  InboxIcon,
+  PlusIcon,
+  XIcon,
+} from "lucide-react";
 import { useGenerativeToolUiEnabled } from "@/lib/debug-settings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -639,9 +637,9 @@ const pendingPhrases = [
 ];
 
 const providerLogoSlugs: Record<string, string> = {
-  "fireworks": "fireworks-ai",
+  fireworks: "fireworks-ai",
   "google-ai-studio": "google",
-  "together": "togetherai",
+  together: "togetherai",
 };
 
 function getProviderLogoSlug(provider: string) {
@@ -657,7 +655,7 @@ const ShellScrollButton = ({
 
   useEffect(() => {
     const scrollShell = targetRef.current?.closest(
-      "[data-ai-scroll-shell]"
+      "[data-ai-scroll-shell]",
     ) as HTMLElement | null;
 
     if (!scrollShell) {
@@ -666,7 +664,9 @@ const ShellScrollButton = ({
 
     const updateVisibility = () => {
       const distanceFromBottom =
-        scrollShell.scrollHeight - scrollShell.scrollTop - scrollShell.clientHeight;
+        scrollShell.scrollHeight -
+        scrollShell.scrollTop -
+        scrollShell.clientHeight;
 
       setIsVisible(distanceFromBottom > 160);
     };
@@ -683,7 +683,7 @@ const ShellScrollButton = ({
 
   const handleClick = useCallback(() => {
     const scrollShell = targetRef.current?.closest(
-      "[data-ai-scroll-shell]"
+      "[data-ai-scroll-shell]",
     ) as HTMLElement | null;
 
     scrollShell?.scrollTo({
@@ -729,7 +729,10 @@ const ModelItem = ({
       <ModelSelectorName>{m.name}</ModelSelectorName>
       <ModelSelectorLogoGroup>
         {m.providers.map((provider) => (
-          <ModelSelectorLogo key={provider} provider={getProviderLogoSlug(provider)} />
+          <ModelSelectorLogo
+            key={provider}
+            provider={getProviderLogoSlug(provider)}
+          />
         ))}
       </ModelSelectorLogoGroup>
       {isSelected ? (
@@ -753,10 +756,10 @@ const SourceSelector = ({
   onRemoveSource: (source: SourceId) => void;
 }) => {
   const visibleSources = availableSources.filter((source) =>
-    enabledSources?.includes(source.id)
+    enabledSources?.includes(source.id),
   );
   const remainingSources = visibleSources.filter(
-    (source) => !selectedSources.includes(source.id)
+    (source) => !selectedSources.includes(source.id),
   );
 
   return (
@@ -835,7 +838,6 @@ const SourceSelector = ({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
- 
     </div>
   );
 };
@@ -975,10 +977,7 @@ const PendingAssistantStatus = () => {
   );
 };
 
-function shouldShowPendingAssistant(
-  messages: UIMessage[],
-  status: ChatStatus
-) {
+function shouldShowPendingAssistant(messages: UIMessage[], status: ChatStatus) {
   if (!(status === "submitted" || status === "streaming")) {
     return false;
   }
@@ -994,7 +993,7 @@ function shouldShowPendingAssistant(
   }
 
   return !lastMessage.parts.some(
-    (part) => part.type === "text" || isToolUIPart(part)
+    (part) => part.type === "text" || isToolUIPart(part),
   );
 }
 
@@ -1032,7 +1031,7 @@ const PageEditToolPart = ({
       : "Updated the page in page context.");
   const toolError =
     part.state === "output-error" || part.errorText
-      ? part.errorText ?? "The page update tool failed."
+      ? (part.errorText ?? "The page update tool failed.")
       : null;
 
   if (
@@ -1075,12 +1074,8 @@ const ChatMessage = ({
   visibleDiffToolCallId,
 }: {
   applyingToolCallIds: readonly string[];
-  getPageEditBaselineCurrent: (
-    snapshot: PageEditSnapshotPart,
-  ) => boolean;
-  getPageEditReviewAvailable: (
-    snapshot: PageEditSnapshotPart,
-  ) => boolean;
+  getPageEditBaselineCurrent: (snapshot: PageEditSnapshotPart) => boolean;
+  getPageEditReviewAvailable: (snapshot: PageEditSnapshotPart) => boolean;
   message: UIMessage;
   onApplyPageEdit: (toolCallId: string) => void | Promise<void>;
   onDiscardPageEdit: (toolCallId: string) => void | Promise<void>;
@@ -1110,7 +1105,9 @@ const ChatMessage = ({
           }
 
           if (group.type === "integration-tools") {
-            const slackAccessErrors = group.parts.filter(isSlackNotInChannelToolPart);
+            const slackAccessErrors = group.parts.filter(
+              isSlackNotInChannelToolPart,
+            );
             const slackAccessChannels = slackAccessErrors
               .map((part) => getToolInputChannel(part.input))
               .filter((channel): channel is string => Boolean(channel));
@@ -1225,7 +1222,9 @@ const ChatMessage = ({
 
 function isSlackNotInChannelToolPart(part: ToolPart) {
   const staticToolName =
-    part.type === "dynamic-tool" ? part.toolName : part.type.replace(/^tool-/, "");
+    part.type === "dynamic-tool"
+      ? part.toolName
+      : part.type.replace(/^tool-/, "");
 
   return (
     isSlackToolName(staticToolName) &&
@@ -1253,7 +1252,8 @@ const EmptyState = () => (
       <h2 className="font-semibold text-xl">Ask AI about your page</h2>
       <p className="mx-auto max-w-xl text-muted-foreground text-sm">
         The assistant can search connected Gmail, GitHub, Google Calendar,
-        Slack, and Linear context, then answer with project details and insights.
+        Slack, and Linear context, then answer with project details and
+        insights.
       </p>
     </div>
   </div>
@@ -1373,9 +1373,10 @@ const ChatbotInner = ({
     return null;
   }, [databaseId, pageId]);
   const effectivePrimarySource = primaryDismissed ? null : primarySource;
-  const { data: pages = [] } = usePages(workspaceId, {
+  const { data: navigation } = usePageNavigation(workspaceId, {
     enabled: isSidebar && Boolean(workspaceId),
   });
+  const pages = navigation?.pages ?? [];
   const { data: pageAccessLevel } = usePageAccessLevel(
     isSidebar ? pageId : null,
     {
@@ -1394,15 +1395,17 @@ const ChatbotInner = ({
       typeof databaseConfig === "object" &&
       !Array.isArray(databaseConfig) &&
       typeof (databaseConfig as { emoji?: unknown }).emoji === "string"
-        ? ((databaseConfig as { emoji: string }).emoji)
+        ? (databaseConfig as { emoji: string }).emoji
         : null;
 
     return (
       buildPrimaryAttachment({
         databaseEmoji,
         databaseName: databasePayload?.database.name,
+        databasePageId: databasePayload?.database.pageId,
         primarySource: effectivePrimarySource,
         pages,
+        placements: navigation?.placements ?? [],
       }) ?? {
         emoji: databaseEmoji,
         id: effectivePrimarySource.id,
@@ -1414,14 +1417,17 @@ const ChatbotInner = ({
         type: effectivePrimarySource.type,
       }
     );
-  }, [databasePayload, effectivePrimarySource, pages]);
-  const { error: contextError, isLoading: isContextLoading, markdown: pageContext } =
-    usePageAiContext({
-      attachments,
-      enabled: isSidebar && Boolean(workspaceId),
-      workspaceId,
-      primarySource: effectivePrimarySource,
-    });
+  }, [databasePayload, effectivePrimarySource, navigation?.placements, pages]);
+  const {
+    error: contextError,
+    isLoading: isContextLoading,
+    markdown: pageContext,
+  } = usePageAiContext({
+    attachments,
+    enabled: isSidebar && Boolean(workspaceId),
+    workspaceId,
+    primarySource: effectivePrimarySource,
+  });
   const integrationsQuery = useIntegrations();
   const aiModelsQuery = useWorkspaceAiModels();
   const models = useMemo(() => {
@@ -1450,16 +1456,16 @@ const ChatbotInner = ({
 
   const selectedModelData = useMemo(
     () => models.find((m) => m.id === model),
-    [models, model]
+    [models, model],
   );
   const chefs = useMemo(
     () => Array.from(new Set(models.map((item) => item.chef))),
-    [models]
+    [models],
   );
 
   useEffect(() => {
     setModel((current) =>
-      models.some((item) => item.id === current) ? current : models[0].id
+      models.some((item) => item.id === current) ? current : models[0].id,
     );
   }, [models]);
 
@@ -1479,7 +1485,9 @@ const ChatbotInner = ({
     ? `${mentionTrigger.mentionStart}:${mentionTrigger.mentionQuery}`
     : null;
   const activeMentionTrigger =
-    mentionTrigger && mentionKey !== dismissedMentionKey ? mentionTrigger : null;
+    mentionTrigger && mentionKey !== dismissedMentionKey
+      ? mentionTrigger
+      : null;
   const mentionMenuOpen = Boolean(activeMentionTrigger);
 
   useEffect(() => {
@@ -1504,7 +1512,7 @@ const ChatbotInner = ({
     }
 
     setSelectedSources((current) =>
-      current.filter((source) => enabledSources.includes(source))
+      current.filter((source) => enabledSources.includes(source)),
     );
   }, [enabledSources]);
 
@@ -1518,9 +1526,9 @@ const ChatbotInner = ({
 
   const { getEditorHandle } = usePageEditorRegistry();
   const { commitPageEdit, undoPageEdit } = usePageEditApplier();
-  const [visibleDiffToolCallId, setVisibleDiffToolCallId] = useState<string | null>(
-    null,
-  );
+  const [visibleDiffToolCallId, setVisibleDiffToolCallId] = useState<
+    string | null
+  >(null);
 
   const allowedPageIds = useMemo(() => {
     const ids = new Set<string>();
@@ -1540,8 +1548,8 @@ const ChatbotInner = ({
 
   const canEditPages = Boolean(
     isSidebar &&
-      pageId &&
-      (pageAccessLevel === "edit" || pageAccessLevel === "full"),
+    pageId &&
+    (pageAccessLevel === "edit" || pageAccessLevel === "full"),
   );
 
   const threadMessagesQueryKey = useMemo(
@@ -1653,7 +1661,11 @@ const ChatbotInner = ({
       });
     };
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      logAiChatError("unhandled rejection", event.reason, debugContextRef.current);
+      logAiChatError(
+        "unhandled rejection",
+        event.reason,
+        debugContextRef.current,
+      );
     };
 
     window.addEventListener("error", handleWindowError);
@@ -1661,7 +1673,10 @@ const ChatbotInner = ({
 
     return () => {
       window.removeEventListener("error", handleWindowError);
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      window.removeEventListener(
+        "unhandledrejection",
+        handleUnhandledRejection,
+      );
     };
   }, []);
 
@@ -1685,9 +1700,10 @@ const ChatbotInner = ({
     logPageEdit("chat:page-edit-config", {
       allowedPageIds,
       canEditPages,
-      primaryPageId: effectivePrimarySource?.type === "page"
-        ? effectivePrimarySource.id
-        : null,
+      primaryPageId:
+        effectivePrimarySource?.type === "page"
+          ? effectivePrimarySource.id
+          : null,
       pageAccessLevel: pageAccessLevel ?? null,
       pageContextChars: pageContext.length,
       pageId,
@@ -1766,12 +1782,7 @@ const ChatbotInner = ({
         return { ...current, messages };
       },
     );
-  }, [
-    messages,
-    queryClient,
-    status,
-    threadMessagesQueryKey,
-  ]);
+  }, [messages, queryClient, status, threadMessagesQueryKey]);
 
   const getPageEditBaselineCurrent = useCallback(
     (snapshot: PageEditSnapshotPart) => {
@@ -1828,12 +1839,7 @@ const ChatbotInner = ({
         updatePageEditSnapshotStatus(currentMessages, toolCallId, "declined"),
       );
     },
-    [
-      getEditorHandle,
-      setMessages,
-      snapshotByToolCallId,
-      visibleDiffToolCallId,
-    ],
+    [getEditorHandle, setMessages, snapshotByToolCallId, visibleDiffToolCallId],
   );
 
   const handleApplyPageEdit = useCallback(
@@ -1849,7 +1855,8 @@ const ChatbotInner = ({
 
       if (!getPageEditReviewAvailable(snapshot)) {
         toast.error("This update is no longer available", {
-          description: "The page has changed since this suggestion was created.",
+          description:
+            "The page has changed since this suggestion was created.",
         });
         return;
       }
@@ -1910,7 +1917,8 @@ const ChatbotInner = ({
 
       if (!getPageEditReviewAvailable(snapshot)) {
         toast.error("This update is no longer available", {
-          description: "The page has changed since this suggestion was created.",
+          description:
+            "The page has changed since this suggestion was created.",
         });
         return;
       }
@@ -2016,7 +2024,8 @@ const ChatbotInner = ({
 
       if (!isAgentReady) {
         toast.error("Ask AI failed", {
-          description: "Sign in and select an active workspace before using AI.",
+          description:
+            "Sign in and select an active workspace before using AI.",
         });
         return;
       }
@@ -2033,19 +2042,14 @@ const ChatbotInner = ({
       setTextCursor(0);
       setDismissedMentionKey(null);
     },
-    [
-      attachments.length,
-      isAgentReady,
-      sendMessage,
-      pageContext,
-    ]
+    [attachments.length, isAgentReady, sendMessage, pageContext],
   );
 
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
       submitText(message.text || "");
     },
-    [submitText]
+    [submitText],
   );
 
   const existingAttachmentKeys = useMemo(() => {
@@ -2072,7 +2076,7 @@ const ChatbotInner = ({
       setTextCursor(caretPosition);
       setDismissedMentionKey(null);
     },
-    []
+    [],
   );
 
   const clearMentionTrigger = useCallback(() => {
@@ -2102,10 +2106,7 @@ const ChatbotInner = ({
         return;
       }
 
-      if (
-        primarySource &&
-        getAttachmentKey(primarySource) === key
-      ) {
+      if (primarySource && getAttachmentKey(primarySource) === key) {
         setPrimaryDismissed(false);
         clearMentionTrigger();
         textareaRef.current?.focus();
@@ -2116,7 +2117,7 @@ const ChatbotInner = ({
       clearMentionTrigger();
       textareaRef.current?.focus();
     },
-    [clearMentionTrigger, existingAttachmentKeys, primarySource]
+    [clearMentionTrigger, existingAttachmentKeys, primarySource],
   );
 
   const handleRemovePrimary = useCallback(() => {
@@ -2143,7 +2144,8 @@ const ChatbotInner = ({
         event.preventDefault();
         setSelectedMentionIndex((index) =>
           mentionMenuEntries.length
-            ? (index - 1 + mentionMenuEntries.length) % mentionMenuEntries.length
+            ? (index - 1 + mentionMenuEntries.length) %
+              mentionMenuEntries.length
             : 0,
         );
         return;
@@ -2155,10 +2157,7 @@ const ChatbotInner = ({
         return;
       }
 
-      if (
-        (event.key === "Enter" || event.key === "Tab") &&
-        !event.shiftKey
-      ) {
+      if ((event.key === "Enter" || event.key === "Tab") && !event.shiftKey) {
         event.preventDefault();
 
         const selectedEntry = mentionMenuEntries[selectedMentionIndex];
@@ -2170,42 +2169,40 @@ const ChatbotInner = ({
         }
       }
     },
-    [
-      mentionKey,
-      mentionMenuEntries,
-      mentionMenuOpen,
-      selectedMentionIndex,
-    ]
+    [mentionKey, mentionMenuEntries, mentionMenuOpen, selectedMentionIndex],
   );
 
-  const handleRemoveAttachment = useCallback((attachment: ContextAttachment) => {
-    setAttachments((current) =>
-      current.filter(
-        (item) => getAttachmentKey(item) !== getAttachmentKey(attachment),
-      ),
-    );
-  }, []);
+  const handleRemoveAttachment = useCallback(
+    (attachment: ContextAttachment) => {
+      setAttachments((current) =>
+        current.filter(
+          (item) => getAttachmentKey(item) !== getAttachmentKey(attachment),
+        ),
+      );
+    },
+    [],
+  );
 
-  const handleModelSelect = useCallback((modelId: string) => {
-    setModel(modelId);
-    setModelSelectorOpen(false);
-  }, [setModel, setModelSelectorOpen]);
+  const handleModelSelect = useCallback(
+    (modelId: string) => {
+      setModel(modelId);
+      setModelSelectorOpen(false);
+    },
+    [setModel, setModelSelectorOpen],
+  );
 
   const handleAddSource = useCallback((source: SourceId) => {
     setSelectedSources((current) =>
-      current.includes(source) ? current : [...current, source]
+      current.includes(source) ? current : [...current, source],
     );
   }, []);
 
   const handleRemoveSource = useCallback((source: SourceId) => {
-    setSelectedSources((current) =>
-      current.filter((item) => item !== source)
-    );
+    setSelectedSources((current) => current.filter((item) => item !== source));
   }, []);
 
   const hasMessages = visibleMessages.length > 0;
-  const showPendingAssistant =
-    shouldShowPendingAssistant(messages, status);
+  const showPendingAssistant = shouldShowPendingAssistant(messages, status);
 
   useEffect(() => {
     const previousMessageCount = previousMessageCountRef.current;
@@ -2216,7 +2213,7 @@ const ChatbotInner = ({
     }
 
     const scrollShell = rootRef.current?.closest(
-      "[data-ai-scroll-shell]"
+      "[data-ai-scroll-shell]",
     ) as HTMLElement | null;
 
     window.requestAnimationFrame(() => {
@@ -2343,7 +2340,9 @@ const ChatbotInner = ({
                     <PromptInputButton>
                       {selectedModelData?.chefSlug && (
                         <ModelSelectorLogo
-                          provider={getProviderLogoSlug(selectedModelData.chefSlug)}
+                          provider={getProviderLogoSlug(
+                            selectedModelData.chefSlug,
+                          )}
                         />
                       )}
                       {selectedModelData?.name && (
@@ -2375,10 +2374,7 @@ const ChatbotInner = ({
                   </ModelSelectorContent>
                 </ModelSelector>
               </PromptInputTools>
-              <PromptInputSubmit
-                status={status as ChatStatus}
-                onStop={stop}
-              />
+              <PromptInputSubmit status={status as ChatStatus} onStop={stop} />
             </PromptInputFooter>
           </PromptInput>
         </div>

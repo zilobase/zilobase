@@ -30,7 +30,7 @@ Notelab is an open-source workspace for building and organizing knowledge with s
 ## What You Can Do
 
 - **Write and organize pages** with a rich editor, nested navigation, comments, and workspace context.
-- **Model structured information** with page-backed databases, table views, kanban views, timeline views, properties, filters, sorting, and grouping.
+- **Model structured information** with standalone or embedded databases, table views, kanban views, timeline views, properties, filters, sorting, and grouping.
 - **Work with AI in context** using page-aware chat, workspace tools, and supported page/database edit flows.
 - **Connect external systems** through shared connector packages for GitHub, Gmail, Google Calendar, Google Drive, Linear, and Slack.
 - **Run it yourself** with Docker Compose, Caddy, Postgres, and MinIO.
