@@ -1,10 +1,10 @@
-import { Node, mergeAttributes } from "@tiptap/core"
+import { Node, mergeAttributes } from "@tiptap/core";
 import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
-} from "@tiptap/react"
-import { FileText, LinkIcon, Loader2, Plus } from "lucide-react"
+} from "@tiptap/react";
+import { FileText, LinkIcon, Loader2, Plus } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -12,70 +12,66 @@ import {
   useState,
   type DragEvent,
   type KeyboardEvent,
-} from "react"
+} from "react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import {
-  getPageEmoji,
-  usePages,
-  type Page,
-} from "@notelab/features/pages"
-import { useNotelabFeatures } from "@notelab/features"
+} from "@/components/ui/popover";
+import { getPageEmoji, usePages, type Page } from "@notelab/features/pages";
+import { useNotelabFeatures } from "@notelab/features";
 import {
   databaseRootQueryKey,
   type DatabasePayload,
-} from "@notelab/features/databases"
-import { colorWithAlpha, getPaletteColor } from "@/lib/color-tokens"
-import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
+} from "@notelab/features/databases";
+import { colorWithAlpha, getPaletteColor } from "@/lib/color-tokens";
+import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database";
 
 export type CreatedPage = {
-  id: string
-}
+  id: string;
+};
 
 export type PageBlockOptions = {
-  currentPageId?: string | null
-  onCreatePage?: () => Promise<CreatedPage>
-  onEmbedPage?: (pageId: string) => void | Promise<void>
-  onOpenPage?: (pageId: string) => void
-  workspaceId?: string | null
-}
+  currentPageId?: string | null;
+  onCreatePage?: () => Promise<CreatedPage>;
+  onEmbedPage?: (pageId: string) => void | Promise<void>;
+  onOpenPage?: (pageId: string) => void;
+  workspaceId?: string | null;
+};
 
-type PageSummary = Pick<Page, "id" | "metadata" | "name">
+type PageSummary = Pick<Page, "id" | "metadata" | "name">;
 
 function findCachedDatabaseRowPage(
   queryClient: ReturnType<typeof useNotelabFeatures>["queryClient"],
   pageId: string | null,
 ): PageSummary | null {
   if (!pageId) {
-    return null
+    return null;
   }
 
   for (const [, data] of queryClient.getQueriesData<DatabasePayload>({
     queryKey: databaseRootQueryKey(),
   })) {
-    const row = data?.rows.find((item) => item.pageId === pageId)
+    const row = data?.rows.find((item) => item.pageId === pageId);
 
     if (row) {
-      return row.page as PageSummary
+      return row.page as PageSummary;
     }
   }
 
-  return null
+  return null;
 }
 
 function useCachedDatabaseRowPage(pageId: string | null) {
-  const { queryClient } = useNotelabFeatures()
+  const { queryClient } = useNotelabFeatures();
 
   return useSyncExternalStore(
     (onStoreChange) => queryClient.getQueryCache().subscribe(onStoreChange),
     () => findCachedDatabaseRowPage(queryClient, pageId),
     () => null,
-  )
+  );
 }
 
 function PageBlockView({
@@ -83,172 +79,167 @@ function PageBlockView({
   node,
   updateAttributes,
 }: ReactNodeViewProps) {
-  const [isCreating, setIsCreating] = useState(false)
-  const pageId = node.attrs.pageId as string | null
-  const shouldOpenPicker = Boolean(node.attrs.openPicker)
-  const textColor = node.attrs.textColor as string | null
-  const backgroundColor = node.attrs.backgroundColor as string | null
-  const [isOpen, setIsOpen] = useState(shouldOpenPicker)
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const options = extension.options as PageBlockOptions
-  const { data: pages = [] } = usePages(
-    options.workspaceId,
-    {
-      enabled: Boolean(pageId) || isOpen,
-    },
-  )
-  const navPage = pageId
-    ? pages.find((page) => page.id === pageId)
-    : undefined
-  const rowPage = useCachedDatabaseRowPage(pageId)
-  const page = navPage ?? rowPage ?? undefined
-  const title = page?.name.trim() || "Untitled"
-  const emoji = page ? getPageEmoji(page) : null
+  const [isCreating, setIsCreating] = useState(false);
+  const pageId = node.attrs.pageId as string | null;
+  const shouldOpenPicker = Boolean(node.attrs.openPicker);
+  const textColor = node.attrs.textColor as string | null;
+  const backgroundColor = node.attrs.backgroundColor as string | null;
+  const [isOpen, setIsOpen] = useState(shouldOpenPicker);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const options = extension.options as PageBlockOptions;
+  const { data: pages = [] } = usePages(options.workspaceId, {
+    enabled: Boolean(pageId) || isOpen,
+  });
+  const navPage = pageId ? pages.find((page) => page.id === pageId) : undefined;
+  const rowPage = useCachedDatabaseRowPage(pageId);
+  const page = navPage ?? rowPage ?? undefined;
+  const title = page?.name.trim() || "Untitled";
+  const emoji = page ? getPageEmoji(page) : null;
   const linkablePages = pages.filter(
-    (page) => page.id !== options.currentPageId
-  )
-  const optionCount = linkablePages.length + (options.onCreatePage ? 1 : 0)
+    (page) => page.id !== options.currentPageId,
+  );
+  const optionCount = linkablePages.length + (options.onCreatePage ? 1 : 0);
   const cardStyle = {
     ...(backgroundColor
       ? { backgroundColor: colorWithAlpha(backgroundColor, 0.18) ?? undefined }
       : {}),
     ...(textColor ? { color: getPaletteColor(textColor) ?? undefined } : {}),
-  }
+  };
 
   useEffect(() => {
     if (!shouldOpenPicker || pageId) {
-      return
+      return;
     }
 
-    setIsOpen(true)
+    setIsOpen(true);
     updateAttributes({
       openPicker: false,
-    })
-  }, [pageId, shouldOpenPicker, updateAttributes])
+    });
+  }, [pageId, shouldOpenPicker, updateAttributes]);
 
   useEffect(() => {
     if (!isOpen) {
-      return
+      return;
     }
 
-    setSelectedIndex(0)
-  }, [isOpen, linkablePages.length])
+    setSelectedIndex(0);
+  }, [isOpen, linkablePages.length]);
 
   useEffect(() => {
     if (!isOpen) {
-      return
+      return;
     }
 
-    optionRefs.current[selectedIndex]?.focus()
-  }, [isOpen, selectedIndex])
+    optionRefs.current[selectedIndex]?.focus();
+  }, [isOpen, selectedIndex]);
 
   const createPage = async () => {
     if (!options.onCreatePage || isCreating) {
-      return
+      return;
     }
 
-    setIsCreating(true)
+    setIsCreating(true);
 
     try {
-      const page = await options.onCreatePage()
+      const page = await options.onCreatePage();
 
       updateAttributes({
         pageId: page.id,
-      })
-      setIsOpen(false)
-      options.onOpenPage?.(page.id)
+      });
+      setIsOpen(false);
+      options.onOpenPage?.(page.id);
     } finally {
-      setIsCreating(false)
+      setIsCreating(false);
     }
-  }
+  };
 
   const linkPage = async (nextPageId: string) => {
     if (nextPageId === options.currentPageId) {
-      return
+      return;
     }
 
     try {
-      await options.onEmbedPage?.(nextPageId)
+      await options.onEmbedPage?.(nextPageId);
       updateAttributes({
         pageId: nextPageId,
-      })
-      setIsOpen(false)
+      });
+      setIsOpen(false);
     } catch {
       // Keep the picker open when the embed is rejected.
     }
-  }
+  };
 
   const openPage = () => {
     if (pageId) {
-      options.onOpenPage?.(pageId)
+      options.onOpenPage?.(pageId);
     }
-  }
+  };
 
   const startPageDrag = (event: DragEvent<HTMLButtonElement>) => {
     if (!pageId) {
-      event.preventDefault()
-      return
+      event.preventDefault();
+      return;
     }
 
-    event.dataTransfer.effectAllowed = "copyMove"
+    event.dataTransfer.effectAllowed = "copyMove";
     event.dataTransfer.setData(
       DATABASE_PAGE_DRAG_MIME,
       JSON.stringify({
         pageId,
         title,
-      })
-    )
-    event.dataTransfer.setData("text/plain", title)
-  }
+      }),
+    );
+    event.dataTransfer.setData("text/plain", title);
+  };
 
   const selectOption = (index: number) => {
-    const linkedPage = linkablePages[index]
+    const linkedPage = linkablePages[index];
 
     if (linkedPage) {
-      linkPage(linkedPage.id)
-      return
+      linkPage(linkedPage.id);
+      return;
     }
 
     if (index === linkablePages.length) {
-      void createPage()
+      void createPage();
     }
-  }
+  };
 
   const handlePickerKeyDown = (event: KeyboardEvent) => {
     if (optionCount === 0) {
-      return
+      return;
     }
 
     if (event.key === "ArrowDown") {
-      event.preventDefault()
-      setSelectedIndex((index) => (index + 1) % optionCount)
-      return
+      event.preventDefault();
+      setSelectedIndex((index) => (index + 1) % optionCount);
+      return;
     }
 
     if (event.key === "ArrowUp") {
-      event.preventDefault()
-      setSelectedIndex((index) => (index + optionCount - 1) % optionCount)
-      return
+      event.preventDefault();
+      setSelectedIndex((index) => (index + optionCount - 1) % optionCount);
+      return;
     }
 
     if (event.key === "Home") {
-      event.preventDefault()
-      setSelectedIndex(0)
-      return
+      event.preventDefault();
+      setSelectedIndex(0);
+      return;
     }
 
     if (event.key === "End") {
-      event.preventDefault()
-      setSelectedIndex(optionCount - 1)
-      return
+      event.preventDefault();
+      setSelectedIndex(optionCount - 1);
+      return;
     }
 
     if (event.key === "Enter") {
-      event.preventDefault()
-      selectOption(selectedIndex)
+      event.preventDefault();
+      selectOption(selectedIndex);
     }
-  }
+  };
 
   return (
     <NodeViewWrapper
@@ -269,9 +260,7 @@ function PageBlockView({
           <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
             {emoji || <FileText />}
           </span>
-          <span className="min-w-0 truncate font-medium">
-            {title}
-          </span>
+          <span className="min-w-0 truncate font-medium">{title}</span>
         </button>
       ) : (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -302,8 +291,8 @@ function PageBlockView({
             <div className="grid gap-1">
               {linkablePages.length > 0 ? (
                 linkablePages.map((page, index) => {
-                  const pageTitle = page.name.trim() || "Untitled"
-                  const pageEmoji = getPageEmoji(page)
+                  const pageTitle = page.name.trim() || "Untitled";
+                  const pageEmoji = getPageEmoji(page);
 
                   return (
                     <button
@@ -313,7 +302,7 @@ function PageBlockView({
                       onClick={() => linkPage(page.id)}
                       onMouseEnter={() => setSelectedIndex(index)}
                       ref={(element) => {
-                        optionRefs.current[index] = element
+                        optionRefs.current[index] = element;
                       }}
                       type="button"
                     >
@@ -322,7 +311,7 @@ function PageBlockView({
                       </span>
                       <span className="min-w-0 truncate">{pageTitle}</span>
                     </button>
-                  )
+                  );
                 })
               ) : (
                 <div className="px-2 py-2 text-xs text-muted-foreground">
@@ -342,7 +331,7 @@ function PageBlockView({
                   onClick={createPage}
                   onMouseEnter={() => setSelectedIndex(linkablePages.length)}
                   ref={(element) => {
-                    optionRefs.current[linkablePages.length] = element
+                    optionRefs.current[linkablePages.length] = element;
                   }}
                   type="button"
                   variant="ghost"
@@ -358,7 +347,7 @@ function PageBlockView({
         </Popover>
       )}
     </NodeViewWrapper>
-  )
+  );
 }
 
 export const PageBlock = Node.create<PageBlockOptions>({
@@ -379,7 +368,7 @@ export const PageBlock = Node.create<PageBlockOptions>({
       onEmbedPage: undefined,
       onOpenPage: undefined,
       workspaceId: null,
-    }
+    };
   },
 
   addAttributes() {
@@ -394,7 +383,9 @@ export const PageBlock = Node.create<PageBlockOptions>({
         default: null,
         parseHTML: (element) => element.getAttribute("data-text-color"),
         renderHTML: (attributes) =>
-          attributes.textColor ? { "data-text-color": attributes.textColor } : {},
+          attributes.textColor
+            ? { "data-text-color": attributes.textColor }
+            : {},
       },
       backgroundColor: {
         default: null,
@@ -408,7 +399,7 @@ export const PageBlock = Node.create<PageBlockOptions>({
         default: false,
         rendered: false,
       },
-    }
+    };
   },
 
   parseHTML() {
@@ -416,17 +407,17 @@ export const PageBlock = Node.create<PageBlockOptions>({
       {
         tag: 'div[data-type="pageBlock"]',
       },
-    ]
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
     return [
       "div",
       mergeAttributes(HTMLAttributes, { "data-type": "pageBlock" }),
-    ]
+    ];
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(PageBlockView)
+    return ReactNodeViewRenderer(PageBlockView);
   },
-})
+});

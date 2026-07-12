@@ -5,50 +5,51 @@ import {
   useState,
   type MutableRefObject,
   type RefObject,
-} from "react"
-import { useEditor } from "@tiptap/react"
-import type { Content, Editor, Extensions } from "@tiptap/core"
-import type { DatabaseBlockEditorRuntime } from "@/packages/editor/extensions/database"
+} from "react";
+import { useEditor } from "@tiptap/react";
+import type { Content, Editor, Extensions } from "@tiptap/core";
+import { toast } from "sonner";
+import type { DatabaseBlockEditorRuntime } from "@/packages/editor/extensions/database";
 import {
   createEditorDragDrop,
   registerBlockDragSource,
-} from "@/packages/editor/components/editor/block-drag"
+} from "@/packages/editor/components/editor/block-drag";
 import {
   getDropDatabaseElement,
   insertDraggedDatabasePage,
   isDraggingPageToEditor,
   shouldSkipEditorDropLine,
-} from "./database-page-drag"
+} from "./database-page-drag";
 import {
   handleProviderLinkPaste,
   handleTypedLinkChoice,
   normalizePastedEditorHTML,
-} from "./paste"
-import { updateExtensionOptions } from "./update-extension-options"
-import type { BlockDropLine, PasteChoiceState } from "./types"
-import { useLatestRef } from "./use-latest-ref"
+} from "./paste";
+import { updateExtensionOptions } from "./update-extension-options";
+import type { BlockDropLine, PasteChoiceState } from "./types";
+import { useLatestRef } from "./use-latest-ref";
 
 type UseEditorInstanceOptions = {
-  databaseEditorRuntime: DatabaseBlockEditorRuntime
-  dropPageOnDatabase: (event: DragEvent) => boolean
-  editable: boolean
-  editorContentRef?: MutableRefObject<(() => unknown) | null>
-  editorSurfaceRef?: RefObject<HTMLElement | null>
-  editorExtensions: Extensions
-  editorId: string
-  editorLifecycleKey: string
+  databaseEditorRuntime: DatabaseBlockEditorRuntime;
+  dropPageOnDatabase: (event: DragEvent) => boolean;
+  editable: boolean;
+  editorContentRef?: MutableRefObject<(() => unknown) | null>;
+  editorSurfaceRef?: RefObject<HTMLElement | null>;
+  editorExtensions: Extensions;
+  editorId: string;
+  editorLifecycleKey: string;
   editorRuntimeRef: MutableRefObject<{
-    editable: boolean
-    listeners: Set<() => void>
-  }>
-  initialContent: Content | undefined
-  onContentChange?: (content: unknown) => void
-  onEditorReady?: (editor: Editor | null) => void
-  onEmbedPage?: (pageId: string) => void | Promise<void>
-  onOpenPage?: (pageId: string) => void
-  setPasteChoice: (choice: PasteChoiceState | null) => void
-  pageId?: string | null
-}
+    editable: boolean;
+    listeners: Set<() => void>;
+  }>;
+  initialContent: Content | undefined;
+  onContentChange?: (content: unknown) => void;
+  onEditorReady?: (editor: Editor | null) => void;
+  onEmbedPage?: (pageId: string) => void | Promise<void>;
+  onOpenPage?: (pageId: string) => void;
+  setPasteChoice: (choice: PasteChoiceState | null) => void;
+  pageId?: string | null;
+};
 
 export const useEditorInstance = ({
   databaseEditorRuntime,
@@ -68,20 +69,25 @@ export const useEditorInstance = ({
   setPasteChoice,
   pageId,
 }: UseEditorInstanceOptions) => {
-  const [blockDropLine, setBlockDropLine] = useState<BlockDropLine | null>(null)
-  const editorRef = useRef<Editor | null>(null)
+  const [blockDropLine, setBlockDropLine] = useState<BlockDropLine | null>(
+    null,
+  );
+  const editorRef = useRef<Editor | null>(null);
 
-  const onContentChangeRef = useLatestRef(onContentChange)
-  const onEmbedPageRef = useLatestRef(onEmbedPage)
-  const dropPageOnDatabaseRef = useLatestRef(dropPageOnDatabase)
+  const onContentChangeRef = useLatestRef(onContentChange);
+  const onEmbedPageRef = useLatestRef(onEmbedPage);
+  const dropPageOnDatabaseRef = useLatestRef(dropPageOnDatabase);
+  const pageIdRef = useLatestRef(pageId);
   const handleProviderLinkPasteRef = useLatestRef(
-    (view: Parameters<typeof handleProviderLinkPaste>[0], event: ClipboardEvent) =>
-      handleProviderLinkPaste(view, event, editable, setPasteChoice)
-  )
+    (
+      view: Parameters<typeof handleProviderLinkPaste>[0],
+      event: ClipboardEvent,
+    ) => handleProviderLinkPaste(view, event, editable, setPasteChoice),
+  );
   const handleTypedLinkChoiceRef = useLatestRef(
     (view: Parameters<typeof handleTypedLinkChoice>[0], event: KeyboardEvent) =>
-      handleTypedLinkChoice(view, event, editable, setPasteChoice)
-  )
+      handleTypedLinkChoice(view, event, editable, setPasteChoice),
+  );
 
   const dragDrop = useMemo(
     () =>
@@ -96,7 +102,8 @@ export const useEditorInstance = ({
             view,
             event,
             (embeddedPageId) => onEmbedPageRef.current?.(embeddedPageId),
-            pageId
+            pageIdRef.current,
+            () => toast.error("You can't embed a page inside itself."),
           ),
         isDraggingPage: isDraggingPageToEditor,
         isOverDatabaseDrop: (event) => Boolean(getDropDatabaseElement(event)),
@@ -104,7 +111,7 @@ export const useEditorInstance = ({
         surfaceRef: editorSurfaceRef,
       }),
     [editorSurfaceRef],
-  )
+  );
 
   const editor = useEditor(
     {
@@ -115,10 +122,10 @@ export const useEditorInstance = ({
       // entire React editor shell; controls subscribe to the editor directly.
       shouldRerenderOnTransaction: false,
       onCreate: ({ editor: currentEditor }) => {
-        editorRef.current = currentEditor
+        editorRef.current = currentEditor;
       },
       onUpdate: ({ editor: currentEditor }) => {
-        if (editable) onContentChangeRef.current?.(currentEditor.getJSON())
+        if (editable) onContentChangeRef.current?.(currentEditor.getJSON());
       },
       editorProps: {
         attributes: { class: "tiptap-editor", "aria-label": "Document editor" },
@@ -139,43 +146,50 @@ export const useEditorInstance = ({
         transformPastedHTML: normalizePastedEditorHTML,
       },
     },
-    [editorLifecycleKey]
-  )
+    [editorLifecycleKey],
+  );
 
   useEffect(() => {
-    editorRef.current = editor
-  }, [editor])
+    editorRef.current = editor;
+  }, [editor]);
 
   useEffect(() => {
-    if (!editorContentRef) return
-    editorContentRef.current = editor ? () => editor.getJSON() : null
+    if (!editorContentRef) return;
+    editorContentRef.current = editor ? () => editor.getJSON() : null;
     return () => {
-      editorContentRef.current = null
-    }
-  }, [editor, editorContentRef])
+      editorContentRef.current = null;
+    };
+  }, [editor, editorContentRef]);
 
   useEffect(() => {
-    onEditorReady?.(editor ?? null)
+    onEditorReady?.(editor ?? null);
     return () => {
-      onEditorReady?.(null)
-    }
-  }, [editor, onEditorReady])
+      onEditorReady?.(null);
+    };
+  }, [editor, onEditorReady]);
 
   useEffect(() => {
-    if (!editor || editor.isDestroyed || !editor.extensionManager) return
+    if (!editor || editor.isDestroyed || !editor.extensionManager) return;
     updateExtensionOptions(editor, {
       databaseEditorRuntime,
       editable,
       editorRuntimeRef,
       onOpenPage,
       pageId,
-    })
-  }, [databaseEditorRuntime, editor, editable, editorRuntimeRef, onOpenPage, pageId])
+    });
+  }, [
+    databaseEditorRuntime,
+    editor,
+    editable,
+    editorRuntimeRef,
+    onOpenPage,
+    pageId,
+  ]);
 
   useEffect(() => {
-    if (!editor) return
-    return registerBlockDragSource(editorId, editor)
-  }, [editor, editorId])
+    if (!editor) return;
+    return registerBlockDragSource(editorId, editor);
+  }, [editor, editorId]);
 
-  return { blockDropLine, editor, surfaceDragHandlers: dragDrop.surfaceProps }
-}
+  return { blockDropLine, editor, surfaceDragHandlers: dragDrop.surfaceProps };
+};

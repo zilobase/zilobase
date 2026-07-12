@@ -763,9 +763,17 @@
   }
 
   .database-timeline-view {
-    @apply min-h-[28rem] overflow-auto pb-0;
+    @apply min-h-[28rem] overflow-visible pb-0;
     --database-table-min-width: 220px;
     --gantt-sidebar-width: var(--database-table-min-width);
+  }
+
+  .database-timeline-row-drag-rail {
+    @apply z-[70];
+  }
+
+  .database-timeline-row-drop-line {
+    @apply z-[65];
   }
 
   .database-timeline-view .database-timeline-gantt.gantt {

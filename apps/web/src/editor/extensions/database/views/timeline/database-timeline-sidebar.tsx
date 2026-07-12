@@ -207,6 +207,7 @@ type TimelineSidebarEntryCellProps = {
     >[0]["groupProperty"]
   ) => void
   onOpenPage?: (pageId: string) => void
+  onRowMouseEnter?: (rowId: string) => void
   onToggleGroup: (sectionId: string) => void
   showPageIcon: boolean
 }
@@ -222,6 +223,7 @@ export function TimelineSidebarEntryCell({
   nameColumnLabel,
   onAddPage,
   onOpenPage,
+  onRowMouseEnter,
   onToggleGroup,
   showPageIcon,
 }: TimelineSidebarEntryCellProps) {
@@ -320,6 +322,7 @@ export function TimelineSidebarEntryCell({
       <div
         className="database-timeline-sidebar-row"
         data-timeline-row-id={entry.row.id}
+        onMouseEnter={() => onRowMouseEnter?.(entry.row.id)}
       >
         <DatabaseTableCellContent wrapContent={nameColumnWrapContent}>
           <DatabasePageLink
