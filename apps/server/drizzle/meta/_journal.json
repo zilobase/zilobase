@@ -204,6 +204,13 @@
       "when": 1783868400000,
       "tag": "0028_canonical_page_navigation",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1783940400000,
+      "tag": "0029_page_layouts",
+      "breakpoints": true
     }
   ]
 }

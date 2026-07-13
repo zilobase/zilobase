@@ -56,6 +56,10 @@
     "./pages": {
       "types": "./src/pages/index.ts",
       "default": "./src/pages/index.ts"
+    },
+    "./pages/layouts": {
+      "types": "./src/pages/page-layouts.ts",
+      "default": "./src/pages/page-layouts.ts"
     }
   }
 }

@@ -383,6 +383,29 @@ export const page = pgTable(
   ],
 );
 
+export const pageLayout = pgTable(
+  "page_layout",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    scopeType: text("scope_type").notNull(),
+    scopeId: text("scope_id").notNull(),
+    config: jsonb("config").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("page_layout_workspace_idx").on(table.workspaceId),
+    uniqueIndex("page_layout_scope_unique").on(table.scopeType, table.scopeId),
+  ],
+);
+
 export const pageCollaborationDocument = pgTable(
   "page_collaboration_document",
   {
