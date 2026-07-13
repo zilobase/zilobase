@@ -336,17 +336,27 @@ export function Editor({
       return (
         <div
           className={cn(
+            "relative min-w-0 max-w-full",
             module.region === "panel"
               ? "px-4 py-4"
               : pageContentLayout.className,
+            layoutPreview &&
+              "h-[32rem] overflow-hidden",
             onLayoutChange &&
               module.region === "main" &&
               "[&_.tiptap-editor]:px-8 [&_.tiptap-editor]:py-5",
           )}
           data-editor-page-content={pageContentLayout.mode}
+          data-layout-content-preview={layoutPreview ? "true" : undefined}
           key={module.id}
         >
           <EditorContent editor={editor} />
+          {layoutPreview ? (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-background via-background/85 to-transparent"
+            />
+          ) : null}
         </div>
       )
     }
@@ -451,7 +461,7 @@ export function Editor({
           plusMenuOpen={plusMenuOpen}
           setDragHandleMenuOpen={setDragHandleMenuOpen}
           setPlusMenuOpen={setPlusMenuOpen}
-          tocItems={tocItems}
+          tocItems={layoutPreview ? [] : tocItems}
         />
         {layoutConfig ? (
           <PageLayoutModuleCanvas
