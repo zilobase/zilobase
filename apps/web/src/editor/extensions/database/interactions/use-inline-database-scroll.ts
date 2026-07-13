@@ -58,8 +58,17 @@ export function useInlineDatabaseScroll({
     const editorSurface = wrapperElement?.closest<HTMLElement>(
       "[data-editor-surface]"
     )
+    const layoutModule = wrapperElement?.closest<HTMLElement>(
+      "[data-layout-module]"
+    )
 
-    if (!enabled || !wrapperElement || !narrowPageContent || !editorSurface) {
+    if (
+      !enabled ||
+      !wrapperElement ||
+      !narrowPageContent ||
+      !editorSurface ||
+      layoutModule
+    ) {
       setLayout((currentLayout) =>
         currentLayout === null ? currentLayout : null
       )

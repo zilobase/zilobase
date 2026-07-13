@@ -51,9 +51,9 @@ export function isDatabaseRowPage(
 
 export function buildPagePropertiesPayloadFromDatabase(
   payload: DatabasePayload,
-  pageId: string,
+  pageId?: string | null,
 ): PagePropertiesPayload | null {
-  if (!isDatabaseRowPage(payload, pageId)) {
+  if (pageId && !isDatabaseRowPage(payload, pageId)) {
     return null
   }
 
@@ -64,9 +64,9 @@ export function buildPagePropertiesPayloadFromDatabase(
     )
     .map(({ property }) => property)
 
-  const values = payload.values.filter(
-    (value) => value.pageId === pageId,
-  )
+  const values = pageId
+    ? payload.values.filter((value) => value.pageId === pageId)
+    : []
 
   return { properties, values }
 }

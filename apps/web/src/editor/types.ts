@@ -8,6 +8,7 @@ import type {
 import type { CreatedPage } from "@/packages/editor/extensions/page-block"
 import type { HocuspocusProvider } from "@hocuspocus/provider"
 import type { CollaborationUser } from "./use-page-collaboration"
+import type { PageLayoutConfig } from "@notelab/features/pages"
 
 export type EditorCollaboration = {
   provider: HocuspocusProvider
@@ -68,6 +69,9 @@ export type EditorProps = {
   editable?: boolean
   enableComments?: boolean
   fullWidth?: boolean
+  layoutConfig?: PageLayoutConfig
+  layoutPreview?: boolean
+  onLayoutChange?: (config: PageLayoutConfig) => void
   onContentChange?: (content: unknown) => void
   onCoverChange?: (cover: string) => void
   onCreatePage?: () => Promise<CreatedPage>

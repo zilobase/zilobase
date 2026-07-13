@@ -3,6 +3,8 @@ import { EditorContent } from "@tiptap/react"
 import { SelectionAiDiffDock } from "@/packages/editor/components/editor/selection-ai-diff-dock"
 import { MobileActionBar } from "@/packages/editor/components/editor/mobile-action-bar"
 import { PageMetadata } from "@/packages/editor/components/editor/page-metadata"
+import { PageLayoutModuleCanvas } from "@/packages/editor/components/editor/page-layout-module-canvas"
+import { PageLayoutTabs } from "@/packages/editor/components/editor/page-layout-tabs"
 import { starterContent } from "./constants"
 import {
   getFullDocumentPreviewRange,
@@ -25,6 +27,8 @@ import { useEditorMenuEffects } from "./use-editor-menu-effects"
 import { useEditorRuntime } from "./use-editor-runtime"
 import { useMobileNodeActions } from "./use-mobile-node-actions"
 import { CollaborationPresence } from "./collaboration-presence"
+import { DatabaseView } from "@/packages/editor/extensions/database/views/database-view"
+import { cn } from "@/lib/utils"
 
 export function Editor({
   collaboration,
@@ -36,6 +40,9 @@ export function Editor({
   enableComments = true,
   emoji,
   fullWidth = true,
+  layoutConfig,
+  layoutPreview = false,
+  onLayoutChange,
   onContentChange,
   onCoverChange,
   onCreatePage,
@@ -56,10 +63,20 @@ export function Editor({
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
   const [selectionAiPreview, setSelectionAiPreview] =
     useState<SelectionAiDiffPreview | null>(null)
+  const [activeLayoutTab, setActiveLayoutTab] = useState("content")
   const pendingPageEditRef = useRef<PageEditPreviewRequest | null>(null)
   const pageContentLayout = fullWidth
     ? { className: "", mode: "full" as const }
     : { className: "mx-auto max-w-5xl", mode: "narrow" as const }
+  const activeLinkedTab = layoutConfig?.linkedTabs.find(
+    (tab) => tab.id === activeLayoutTab,
+  )
+
+  useEffect(() => {
+    if (layoutConfig?.structure !== "tabbed" || (activeLayoutTab !== "content" && !activeLinkedTab)) {
+      setActiveLayoutTab("content")
+    }
+  }, [activeLayoutTab, activeLinkedTab, layoutConfig?.structure])
 
   const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(editable)
   const { createEditorDatabase, handleDatabasePageDrop } =
@@ -312,10 +329,71 @@ export function Editor({
     selectionAiPreview,
   ])
 
+  const renderLayoutModule = (
+    module: NonNullable<typeof layoutConfig>["modules"][number],
+  ) => {
+    if (module.type === "content") {
+      return (
+        <div
+          className={cn(
+            module.region === "panel"
+              ? "px-4 py-4"
+              : pageContentLayout.className,
+            onLayoutChange &&
+              module.region === "main" &&
+              "[&_.tiptap-editor]:px-8 [&_.tiptap-editor]:py-5",
+          )}
+          data-editor-page-content={pageContentLayout.mode}
+          key={module.id}
+        >
+          <EditorContent editor={editor} />
+        </div>
+      )
+    }
+
+    if (module.type === "discussions" && layoutConfig?.discussionsVisible === false) {
+      return null
+    }
+
+    const layoutSection =
+      module.type === "heading"
+        ? "heading"
+        : module.type === "discussions"
+          ? "discussions"
+          : "properties"
+
+    return (
+      <PageMetadata
+        compact={module.region === "panel" || Boolean(onLayoutChange)}
+        compactSpacing={onLayoutChange ? "comfortable" : "default"}
+        contentClassName={module.region === "panel" ? undefined : pageContentLayout.className}
+        cover={cover}
+        databaseId={databaseId}
+        editable={editable}
+        enableComments={enableComments}
+        forceDiscussionsExpanded={module.type === "discussions"}
+        icon={emoji}
+        key={module.id}
+        layoutConfig={layoutConfig}
+        layoutPropertyId={module.type === "property" ? module.propertyId : undefined}
+        layoutSection={layoutSection}
+        onCoverChange={onCoverChange}
+        onIconChange={onEmojiChange}
+        onTitleChange={onTitleChange}
+        workspaceId={workspaceId}
+        title={title}
+        pageId={pageId}
+      />
+    )
+  }
+
   return (
-    <div className="flex min-h-[calc(100svh-3rem)] w-full flex-col text-foreground">
+    <div className={cn("flex w-full flex-col text-foreground", layoutPreview ? "h-full min-h-0" : "min-h-[calc(100svh-3rem)]")}>
       <section
-        className="relative min-h-0 flex-1"
+        className={cn(
+          "relative min-h-0 flex-1",
+          layoutPreview && "flex flex-col overflow-hidden",
+        )}
         data-editor-surface
         ref={editorSurfaceRef}
         onDragEnd={surfaceDragHandlers.onDragEnd}
@@ -326,6 +404,36 @@ export function Editor({
         onClickCapture={handleMobileNodeClick}
         onPointerMoveCapture={updateDragTargetFromPointer}
       >
+        {layoutConfig?.structure === "tabbed" ? (
+          <PageLayoutTabs
+            config={layoutConfig}
+            onChange={onLayoutChange}
+            onValueChange={setActiveLayoutTab}
+            value={activeLayoutTab}
+          />
+        ) : null}
+        {activeLinkedTab ? (
+          <div
+            className={cn(
+              "p-5 md:px-12",
+              layoutPreview
+                ? "min-h-0 flex-1 overflow-y-auto"
+                : "min-h-[calc(100svh-6rem)]",
+            )}
+          >
+            <DatabaseView
+              activeViewId={activeLinkedTab.viewId}
+              databaseId={activeLinkedTab.databaseId}
+              editable={editable}
+              fullPage
+              onOpenPage={onOpenPage}
+              pageId={pageId}
+              showExpandButton={false}
+              workspaceId={workspaceId}
+            />
+          </div>
+        ) : (
+          <>
         {collaboration ? (
           <CollaborationPresence users={collaboration.users} />
         ) : null}
@@ -345,26 +453,37 @@ export function Editor({
           setPlusMenuOpen={setPlusMenuOpen}
           tocItems={tocItems}
         />
-        <PageMetadata
-          contentClassName={pageContentLayout.className}
-          cover={cover}
-          databaseId={databaseId}
-          editable={editable}
-          enableComments={enableComments}
-          icon={emoji}
-          onCoverChange={onCoverChange}
-          onIconChange={onEmojiChange}
-          onTitleChange={onTitleChange}
-          workspaceId={workspaceId}
-          title={title}
-          pageId={pageId}
-        />
-        <div
-          className={pageContentLayout.className}
-          data-editor-page-content={pageContentLayout.mode}
-        >
-          <EditorContent editor={editor} />
-        </div>
+        {layoutConfig ? (
+          <PageLayoutModuleCanvas
+            config={layoutConfig}
+            fullWidth={fullWidth}
+            onChange={onLayoutChange}
+            renderModule={renderLayoutModule}
+          />
+        ) : (
+          <>
+            <PageMetadata
+              contentClassName={pageContentLayout.className}
+              cover={cover}
+              databaseId={databaseId}
+              editable={editable}
+              enableComments={enableComments}
+              icon={emoji}
+              onCoverChange={onCoverChange}
+              onIconChange={onEmojiChange}
+              onTitleChange={onTitleChange}
+              workspaceId={workspaceId}
+              title={title}
+              pageId={pageId}
+            />
+            <div
+              className={pageContentLayout.className}
+              data-editor-page-content={pageContentLayout.mode}
+            >
+              <EditorContent editor={editor} />
+            </div>
+          </>
+        )}
         {editable && mobileNodeTarget ? (
           <MobileActionBar
             canMoveDown={canMoveMobileTarget("down")}
@@ -382,6 +501,8 @@ export function Editor({
             onDecline={clearSelectionAiPreview}
           />
         ) : null}
+          </>
+        )}
       </section>
     </div>
   )

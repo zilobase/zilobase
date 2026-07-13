@@ -30,6 +30,7 @@ import {
   useRemovePageEmbed,
   usePage,
   usePageAccessLevel,
+  useResolvedPageLayout,
 } from "@notelab/features/pages";
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog";
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";
@@ -277,6 +278,11 @@ export function PageEditorPane({
     refetchOnMount: false,
   });
   const { data: userSettings } = useUserSettings();
+  const { data: resolvedLayout } = useResolvedPageLayout({ pageId, databaseId });
+  const appliedLayout =
+    resolvedLayout && Object.keys(resolvedLayout.sources).length > 0
+      ? resolvedLayout.config
+      : undefined;
   const createPage = useCreatePage();
   const embedPageItem = useEmbedPageItem();
   const removePageEmbed = useRemovePageEmbed();
@@ -293,7 +299,9 @@ export function PageEditorPane({
   const [name, setName] = useState("");
   const [cover, setCover] = useState("");
   const [emoji, setEmoji] = useState("");
-  const fullWidth = resolvePageFullWidth(page, userSettings?.pageFullWidth);
+  const fullWidth =
+    appliedLayout?.fullWidth ??
+    resolvePageFullWidth(page, userSettings?.pageFullWidth);
 
   const flushContentSaveTimeout = useCallback(() => {
     if (contentSaveTimeoutRef.current === null) {
@@ -606,6 +614,7 @@ export function PageEditorPane({
         }}
         emoji={emoji}
         fullWidth={fullWidth}
+        layoutConfig={appliedLayout}
         onContentChange={updateContent}
         onCoverChange={updateCover}
         onCreatePage={createNestedPage}

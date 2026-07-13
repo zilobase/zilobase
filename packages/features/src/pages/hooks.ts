@@ -256,7 +256,7 @@ export function usePageProperties(
     enabled: Boolean(pageId) && !resolvedDatabaseId,
   });
   const derivedPayload = useMemo(() => {
-    if (!resolvedDatabaseId || !databaseQuery.data || !pageId) {
+    if (!resolvedDatabaseId || !databaseQuery.data) {
       return undefined;
     }
 

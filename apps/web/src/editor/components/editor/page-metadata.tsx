@@ -15,6 +15,7 @@ import {
   usePageProperties,
   usePageThreads,
 } from "@notelab/features/pages"
+import type { PageLayoutConfig } from "@notelab/features/pages"
 import {
   formatCommentButtonLabel,
   PageCommentThread,
@@ -38,12 +39,18 @@ import {
 } from "../../extensions/database/core/utils"
 
 type PageMetadataProps = {
+  compact?: boolean
+  compactSpacing?: "default" | "comfortable"
   contentClassName?: string
   cover?: string
   databaseId?: string | null
   editable?: boolean
   enableComments?: boolean
+  forceDiscussionsExpanded?: boolean
   icon?: string
+  layoutConfig?: PageLayoutConfig
+  layoutPropertyId?: string
+  layoutSection?: "heading" | "properties" | "discussions"
   onCoverChange?: (cover: string) => void
   onIconChange?: (icon: string) => void
   onTitleChange?: (title: string) => void
@@ -65,12 +72,18 @@ function resizeTitleTextarea(
 }
 
 export function PageMetadata({
+  compact = false,
+  compactSpacing = "default",
   contentClassName,
   cover: coverProp,
   databaseId,
   editable = true,
   enableComments = true,
+  forceDiscussionsExpanded = false,
   icon: iconProp,
+  layoutConfig,
+  layoutPropertyId,
+  layoutSection,
   onCoverChange,
   onIconChange,
   onTitleChange,
@@ -103,7 +116,7 @@ export function PageMetadata({
   })
   const { data: session } = useSession()
   const commentsEnabled = Boolean(
-    enableComments && pageId && session?.user,
+    enableComments && layoutConfig?.discussionsVisible !== false && pageId && session?.user,
   )
   const { data: threadsData } = usePageThreads(pageId, commentsEnabled)
   const updatePropertyValue = useUpdatePagePropertyValue()
@@ -121,7 +134,11 @@ export function PageMetadata({
     (sum, item) => sum + item.commentCount,
     0,
   )
-  const showCommentsSection = commentsOpen || unresolvedThreads.length > 0
+  const showHeading = !layoutSection || layoutSection === "heading"
+  const showProperties = !layoutSection || layoutSection === "properties"
+  const showDiscussions = !layoutSection || layoutSection === "discussions"
+  const showCommentsSection =
+    forceDiscussionsExpanded || commentsOpen || unresolvedThreads.length > 0
   const propertyValues = useMemo(() => {
     const values: Record<string, DatabasePropertyValue> = {}
 
@@ -134,6 +151,29 @@ export function PageMetadata({
 
     return values
   }, [propertyPayload?.properties, propertyPayload?.values])
+  const standalonePropertyIds = useMemo(
+    () => new Set(
+      (layoutConfig?.modules ?? [])
+        .filter((module) => module.type === "property" && module.propertyId)
+        .map((module) => module.propertyId as string),
+    ),
+    [layoutConfig?.modules],
+  )
+  const visibleProperties = useMemo(
+    () => [...(propertyPayload?.properties ?? [])].sort((left, right) => {
+      const leftIndex = layoutConfig?.propertyOrder.indexOf(left.id) ?? -1
+      const rightIndex = layoutConfig?.propertyOrder.indexOf(right.id) ?? -1
+      return (leftIndex < 0 ? Number.MAX_SAFE_INTEGER : leftIndex) -
+        (rightIndex < 0 ? Number.MAX_SAFE_INTEGER : rightIndex)
+    }).filter((property) => {
+      const setting = layoutConfig?.propertySettings[property.id]
+      const value = propertyValues[property.id]
+      if (setting?.display === "hidden") return false
+      if (setting?.display === "hide_when_empty" && (value === "" || value === null || value === undefined || (Array.isArray(value) && value.length === 0))) return false
+      return !layoutConfig?.pinnedPropertyIds.includes(property.id) && !standalonePropertyIds.has(property.id)
+    }),
+    [layoutConfig?.pinnedPropertyIds, layoutConfig?.propertyOrder, layoutConfig?.propertySettings, propertyPayload?.properties, propertyValues, standalonePropertyIds],
+  )
   const personOptions = useMemo(
     () =>
       (accessTargets?.members ?? []).map((member) => ({
@@ -348,7 +388,7 @@ export function PageMetadata({
   const showMetadataActions =
     (!icon && editable) ||
     (!cover && editable) ||
-    (commentsEnabled &&
+    (commentsEnabled && !layoutSection &&
       !showCommentsSection &&
       (editable || totalCommentCount > 0))
 
@@ -357,7 +397,7 @@ export function PageMetadata({
 
   return (
     <section className="group/metadata" contentEditable={false}>
-      {cover ? (
+      {showHeading && cover ? (
         <div className="relative h-40 w-full overflow-hidden bg-muted">
           <img alt="Cover" className="size-full object-cover" src={cover} />
           {editable ? (
@@ -377,9 +417,9 @@ export function PageMetadata({
       ) : null}
 
       <div
-        className={`${contentClassName ?? ""} px-5 py-6 sm:px-8 md:px-20 md:py-8 lg:px-24`}
+        className={`${contentClassName ?? ""} ${compact ? compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4" : "px-5 py-6 sm:px-8 md:px-20 md:py-8 lg:px-24"}`}
       >
-        {showMetadataActions ? (
+        {showHeading && showMetadataActions ? (
           <div className="relative mb-3 min-h-8">
             <div
               className={`absolute inset-0 flex flex-wrap items-center gap-2 ${metadataActionVisibilityClassName}`}
@@ -419,7 +459,7 @@ export function PageMetadata({
                 </PopoverContent>
               </Popover>
             ) : null}
-            {commentsEnabled &&
+            {commentsEnabled && !layoutSection &&
             !showCommentsSection &&
             (editable || totalCommentCount > 0) ? (
               <Button
@@ -442,7 +482,7 @@ export function PageMetadata({
           </div>
         ) : null}
 
-        <div className="flex items-start gap-3" ref={titleRowRef}>
+        {showHeading ? <div className="flex items-start gap-3" ref={titleRowRef}>
           {icon ? (
             editable ? (
               iconPicker
@@ -468,9 +508,34 @@ export function PageMetadata({
             rows={1}
             value={title}
           />
-        </div>
+        </div> : null}
 
-        {commentsEnabled && showCommentsSection ? (
+        {showHeading && layoutConfig?.pinnedPropertyIds.length ? (
+          <div className="mt-3 flex flex-wrap gap-2 pl-3">
+            {layoutConfig.pinnedPropertyIds.flatMap((propertyId) => {
+              const property = propertyPayload?.properties.find(
+                (item) => item.id === propertyId,
+              )
+              if (!property) return []
+              const value = propertyValues[property.id]
+              const PropertyIcon = getDatabasePropertyType(property.type).icon
+              return [
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
+                  key={property.id}
+                >
+                  {layoutConfig.propertyIcons ? <PropertyIcon className="size-3.5" /> : null}
+                  <span>{property.name}</span>
+                  <span className="text-foreground">
+                    {Array.isArray(value) ? value.join(", ") : String(value || "Empty")}
+                  </span>
+                </span>,
+              ]
+            })}
+          </div>
+        ) : null}
+
+        {showDiscussions && commentsEnabled && showCommentsSection ? (
           <div className="mt-6 space-y-0 pb-3">
             {unresolvedThreads.length > 0 ? (
               unresolvedThreads.map((item, index) => (
@@ -497,9 +562,14 @@ export function PageMetadata({
           </div>
         ) : null}
 
-        {propertyPayload?.properties.length ? (
+        {showProperties && (layoutPropertyId
+          ? propertyPayload?.properties.some((property) => property.id === layoutPropertyId)
+          : visibleProperties.length) ? (
           <div className="mt-6 grid gap-1 border-y py-2">
-            {propertyPayload.properties.map((property) => {
+            {(layoutPropertyId
+              ? propertyPayload?.properties.filter((property) => property.id === layoutPropertyId) ?? []
+              : visibleProperties
+            ).map((property) => {
               const PropertyIcon = getDatabasePropertyType(property.type).icon
               const value =
                 draftValues[property.id] ?? propertyValues[property.id] ?? ""
@@ -525,7 +595,7 @@ export function PageMetadata({
                   key={property.id}
                 >
                   <span className="flex min-w-0 items-center gap-2 text-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0">
-                    <PropertyIcon />
+                    {layoutConfig?.propertyIcons === false ? null : <PropertyIcon />}
                     <span className="truncate">{property.name}</span>
                   </span>
                   <div className="min-w-0">
