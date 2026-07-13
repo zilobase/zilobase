@@ -300,9 +300,7 @@ export function PageEditorPane({
   const [name, setName] = useState("");
   const [cover, setCover] = useState("");
   const [emoji, setEmoji] = useState("");
-  const fullWidth =
-    appliedLayout?.fullWidth ??
-    resolvePageFullWidth(page, userSettings?.pageFullWidth);
+  const fullWidth = resolvePageFullWidth(page, userSettings?.pageFullWidth);
 
   const flushContentSaveTimeout = useCallback(() => {
     if (contentSaveTimeoutRef.current === null) {

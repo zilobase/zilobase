@@ -23,6 +23,7 @@ import { useDatabase } from "@notelab/features/databases"
 import {
   getPageCover,
   getPageEmoji,
+  resolvePageFullWidth,
   usePage,
   useResolvedPageLayout,
   useResetPageLayout,
@@ -30,6 +31,11 @@ import {
   type PageLayoutConfig,
   type PageLayoutScope,
 } from "@notelab/features/pages"
+import {
+  defaultUserSettings,
+  useUpdateUserSettings,
+  useUserSettings,
+} from "@notelab/features/user-settings"
 
 type LayoutEditorTarget = {
   databaseId?: string | null
@@ -37,6 +43,11 @@ type LayoutEditorTarget = {
 }
 type LayoutEditorContextValue = {
   openLayoutEditor: (target: LayoutEditorTarget) => void
+}
+
+function withoutLayoutFullWidth(config: PageLayoutConfig): PageLayoutConfig {
+  const { fullWidth: _fullWidth, ...layoutConfig } = config
+  return layoutConfig
 }
 
 const LayoutEditorContext = createContext<LayoutEditorContextValue | null>(null)
@@ -79,12 +90,16 @@ function LayoutEditor({
   const pageId = target.pageId ?? resolved?.pageId ?? null
   const { data: databasePayload } = useDatabase(databaseId)
   const { data: page } = usePage(pageId, { refetchOnMount: false })
+  const { data: userSettings = defaultUserSettings } = useUserSettings()
   const [draft, setDraft] = useState<PageLayoutConfig | null>(null)
   const saveLayout = useSavePageLayout()
   const resetLayout = useResetPageLayout()
+  const updateUserSettings = useUpdateUserSettings()
 
   useEffect(() => {
-    if (resolved?.config) setDraft(structuredClone(resolved.config))
+    if (resolved?.config) {
+      setDraft(structuredClone(withoutLayoutFullWidth(resolved.config)))
+    }
   }, [resolved?.config])
 
   const properties = databasePayload?.properties ?? []
@@ -94,10 +109,14 @@ function LayoutEditor({
   const previewCover = page ? getPageCover(page) : null
   const previewWorkspaceId =
     page?.workspaceId ?? databasePayload?.database.workspaceId ?? null
+  const fullWidth = resolvePageFullWidth(page, userSettings.pageFullWidth)
+  const resolvedConfig = resolved?.config
+    ? withoutLayoutFullWidth(resolved.config)
+    : null
   const dirty = Boolean(
     draft &&
-      resolved &&
-      JSON.stringify(draft) !== JSON.stringify(resolved.config),
+      resolvedConfig &&
+      JSON.stringify(draft) !== JSON.stringify(resolvedConfig),
   )
 
   const close = () => {
@@ -115,7 +134,11 @@ function LayoutEditor({
           : pageId
     if (!scopeId) return
     try {
-      await saveLayout.mutateAsync({ config: draft, scope, scopeId })
+      await saveLayout.mutateAsync({
+        config: withoutLayoutFullWidth(draft),
+        scope,
+        scopeId,
+      })
       toast.success(
         scope === "workspace"
           ? "Workspace layout saved."
@@ -127,6 +150,21 @@ function LayoutEditor({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save layout.")
     }
+  }
+
+  const setFullWidth = (nextFullWidth: boolean) => {
+    updateUserSettings.mutate(
+      { pageFullWidth: nextFullWidth },
+      {
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Could not update full width setting.",
+          )
+        },
+      },
+    )
   }
 
   const defaultScope: PageLayoutScope = target.databaseId ? "database" : "page"
@@ -221,7 +259,7 @@ function LayoutEditor({
               databaseId={databaseId}
               editable={false}
               emoji={previewIcon ?? undefined}
-              fullWidth={Boolean(draft.fullWidth)}
+              fullWidth={fullWidth}
               layoutConfig={draft}
               layoutPreview
               onLayoutChange={setDraft}
@@ -234,7 +272,10 @@ function LayoutEditor({
 
         <LayoutEditorSettings
           draft={draft}
+          fullWidth={fullWidth}
+          fullWidthPending={updateUserSettings.isPending}
           onChange={setDraft}
+          onFullWidthChange={setFullWidth}
           properties={properties}
         />
       </div>

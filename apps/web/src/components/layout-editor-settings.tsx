@@ -31,7 +31,10 @@ import {
 
 type LayoutEditorSettingsProps = {
   draft: PageLayoutConfig
+  fullWidth: boolean
+  fullWidthPending?: boolean
   onChange: (draft: PageLayoutConfig) => void
+  onFullWidthChange: (fullWidth: boolean) => void
   properties: DatabasePayload["properties"]
 }
 
@@ -54,10 +57,12 @@ function SettingsSection({
 
 function SettingToggle({
   checked,
+  disabled = false,
   label,
   onCheckedChange,
 }: {
   checked: boolean
+  disabled?: boolean
   label: string
   onCheckedChange: (checked: boolean) => void
 }) {
@@ -66,6 +71,7 @@ function SettingToggle({
       <span className="flex-1">{label}</span>
       <Switch
         checked={checked}
+        disabled={disabled}
         onCheckedChange={onCheckedChange}
         size="sm"
       />
@@ -82,7 +88,10 @@ function formatModuleLabel(type: PageLayoutModuleType) {
 
 export function LayoutEditorSettings({
   draft,
+  fullWidth,
+  fullWidthPending = false,
   onChange,
+  onFullWidthChange,
   properties,
 }: LayoutEditorSettingsProps) {
   const orderedProperties = useMemo(
@@ -174,9 +183,10 @@ export function LayoutEditorSettings({
           }
         />
         <SettingToggle
-          checked={Boolean(draft.fullWidth)}
+          checked={fullWidth}
           label="Full width"
-          onCheckedChange={(fullWidth) => onChange({ ...draft, fullWidth })}
+          onCheckedChange={onFullWidthChange}
+          disabled={fullWidthPending}
         />
       </SettingsSection>
 
