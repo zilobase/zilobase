@@ -8,9 +8,7 @@ import {
   LockIcon,
   MoreHorizontalIcon,
   Share2Icon,
-  PanelRightIcon,
   SparklesIcon,
-  SquareIcon,
   StarIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -94,24 +92,17 @@ import {
   useUpdateUserSettings,
   useUserSettings,
 } from "@notelab/features/user-settings";
-import { useOptionalPageSidePane } from "@/contexts/page-side-pane";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { useLayoutEditor } from "@/components/layout-editor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  embeddedItemsOpenAsLabels,
   getPrimaryPageParentId,
-  embeddedItemsOpenAsModes,
   notelabAiModeLabels,
-  resolveEmbeddedItemsOpenAs,
   resolvePageFullWidth,
-  usesUserEmbeddedItemsPreference,
-  usesUserFullWidthPreference,
   type AccessLevel,
   type AccessTargetType,
-  type EmbeddedItemsOpenAs,
   type NotelabAiMode,
   type PageAccessRule,
   type PageMetadata,
@@ -164,26 +155,16 @@ export function NavActions({
   const setDatabaseFavorite = useSetDatabaseFavorite();
   const { data: userSettings } = useUserSettings();
   const updateUserSettings = useUpdateUserSettings();
-  const sidePane = useOptionalPageSidePane();
   const isMobile = useIsMobile();
   const listPage = pages.find((item) => item.id === actionPageId);
   const isDatabasePage = Boolean(databaseId);
   const hasPageActions = Boolean(actionPageId || databaseId);
   const pageMetadata = (page?.metadata ?? {}) as PageMetadata;
-  const usesUserPreference = usesUserFullWidthPreference(pageMetadata);
-  const usesUserEmbeddedItemsPref =
-    usesUserEmbeddedItemsPreference(pageMetadata);
   const effectiveFullWidth = resolvePageFullWidth(
     page,
     userSettings?.pageFullWidth,
   );
-  const effectiveEmbeddedItemsOpenAs = resolveEmbeddedItemsOpenAs(
-    page,
-    userSettings?.embeddedItemsOpenAs,
-  );
   const fullWidthUpdatePending =
-    updateUserSettings.isPending || updatePage.isPending;
-  const embeddedItemsUpdatePending =
     updateUserSettings.isPending || updatePage.isPending;
   const isFavorite = isDatabasePage
     ? Boolean(databasePayload?.database.isFavorite)
@@ -341,33 +322,6 @@ export function NavActions({
       return;
     }
 
-    if (!usesUserPreference) {
-      if (!page) {
-        return;
-      }
-
-      updatePage.mutate(
-        {
-          id: page.id,
-          metadata: {
-            ...pageMetadata,
-            fullWidth: !Boolean(pageMetadata.fullWidth),
-            useUserFullWidthPreference: false,
-          },
-        },
-        {
-          onError: (error) => {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Could not update page full width.",
-            );
-          },
-        },
-      );
-      return;
-    }
-
     updateUserSettings.mutate(
       { pageFullWidth: !userSettings?.pageFullWidth },
       {
@@ -376,107 +330,6 @@ export function NavActions({
             error instanceof Error
               ? error.message
               : "Could not update full width setting.",
-          );
-        },
-      },
-    );
-  };
-  const toggleUseUserFullWidthPreference = () => {
-    if (isDatabasePage || !page || fullWidthUpdatePending) {
-      return;
-    }
-
-    const nextUsesUserPreference = !usesUserPreference;
-
-    updatePage.mutate(
-      {
-        id: page.id,
-        metadata: {
-          ...pageMetadata,
-          useUserFullWidthPreference: nextUsesUserPreference,
-        },
-      },
-      {
-        onError: (error) => {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not update page full width preference.",
-          );
-        },
-      },
-    );
-  };
-  const setEmbeddedItemsOpenAs = (mode: EmbeddedItemsOpenAs) => {
-    if (isDatabasePage || embeddedItemsUpdatePending) {
-      return;
-    }
-
-    if (mode === "dialog") {
-      sidePane?.closeSidePane();
-    }
-
-    if (!usesUserEmbeddedItemsPref) {
-      if (!page) {
-        return;
-      }
-
-      updatePage.mutate(
-        {
-          id: page.id,
-          metadata: {
-            ...pageMetadata,
-            embeddedItemsOpenAs: mode,
-            useUserEmbeddedItemsPreference: false,
-          },
-        },
-        {
-          onError: (error) => {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Could not update open pages setting.",
-            );
-          },
-        },
-      );
-      return;
-    }
-
-    updateUserSettings.mutate(
-      { embeddedItemsOpenAs: mode },
-      {
-        onError: (error) => {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not update open pages setting.",
-          );
-        },
-      },
-    );
-  };
-  const toggleUseUserEmbeddedItemsPreference = () => {
-    if (isDatabasePage || !page || embeddedItemsUpdatePending) {
-      return;
-    }
-
-    const nextUsesUserPreference = !usesUserEmbeddedItemsPref;
-
-    updatePage.mutate(
-      {
-        id: page.id,
-        metadata: {
-          ...pageMetadata,
-          useUserEmbeddedItemsPreference: nextUsesUserPreference,
-        },
-      },
-      {
-        onError: (error) => {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not update open pages preference.",
           );
         },
       },
@@ -557,7 +410,7 @@ export function NavActions({
               {!isDatabasePage && !isMobile ? (
                 <>
                   <DropDrawerItem
-                    disabled={!page || fullWidthUpdatePending}
+                    disabled={fullWidthUpdatePending}
                     onSelect={(event) => {
                       event.preventDefault();
                       togglePageFullWidth();
@@ -566,45 +419,6 @@ export function NavActions({
                     <span>Full Width</span>
                     <Switch
                       checked={effectiveFullWidth}
-                      className="ml-auto pointer-events-none"
-                      size="sm"
-                      tabIndex={-1}
-                    />
-                  </DropDrawerItem>
-                  <DropDrawerItem
-                    disabled={!page || fullWidthUpdatePending}
-                    onSelect={(event) => {
-                      event.preventDefault();
-                      toggleUseUserFullWidthPreference();
-                    }}
-                  >
-                    <span>Use my preferences</span>
-                    <Switch
-                      checked={usesUserPreference}
-                      className="ml-auto pointer-events-none"
-                      size="sm"
-                      tabIndex={-1}
-                    />
-                  </DropDrawerItem>
-                </>
-              ) : null}
-              {!isDatabasePage && !isMobile ? (
-                <>
-                  <EmbeddedItemsOpenAsSubmenu
-                    disabled={!page || embeddedItemsUpdatePending}
-                    mode={effectiveEmbeddedItemsOpenAs}
-                    onSelect={setEmbeddedItemsOpenAs}
-                  />
-                  <DropDrawerItem
-                    disabled={!page || embeddedItemsUpdatePending}
-                    onSelect={(event) => {
-                      event.preventDefault();
-                      toggleUseUserEmbeddedItemsPreference();
-                    }}
-                  >
-                    <span>Use my preferences</span>
-                    <Switch
-                      checked={usesUserEmbeddedItemsPref}
                       className="ml-auto pointer-events-none"
                       size="sm"
                       tabIndex={-1}
@@ -671,44 +485,6 @@ export function NavActions({
         </>
       ) : null}
     </div>
-  );
-}
-
-function EmbeddedItemsOpenAsSubmenu({
-  disabled,
-  mode,
-  onSelect,
-}: {
-  disabled: boolean;
-  mode: EmbeddedItemsOpenAs;
-  onSelect: (mode: EmbeddedItemsOpenAs) => void;
-}) {
-  return (
-    <DropDrawerSub>
-      <DropDrawerSubTrigger disabled={disabled}>
-        <PanelRightIcon />
-        <span className="flex-1">Open pages as</span>
-        <span className="text-muted-foreground">
-          {embeddedItemsOpenAsLabels[mode]}
-        </span>
-      </DropDrawerSubTrigger>
-      <DropDrawerSubContent className="w-64">
-        {embeddedItemsOpenAsModes.map((value) => (
-          <DropDrawerItem
-            key={value}
-            disabled={disabled}
-            onSelect={(event) => {
-              event.preventDefault();
-              onSelect(value);
-            }}
-          >
-            {value === "sidepanel" ? <PanelRightIcon /> : <SquareIcon />}
-            <span>{embeddedItemsOpenAsLabels[value]}</span>
-            {mode === value ? <CheckIcon className="ml-auto" /> : null}
-          </DropDrawerItem>
-        ))}
-      </DropDrawerSubContent>
-    </DropDrawerSub>
   );
 }
 

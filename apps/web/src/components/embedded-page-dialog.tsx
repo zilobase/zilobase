@@ -10,11 +10,12 @@ import { usePageSidePane } from "@/contexts/page-side-pane"
 import { PageWorkspaceGate } from "@/components/page-workspace-gate"
 import { PagePaneHeader } from "@/components/page-pane-header"
 import { PageEditorPane } from "@/pages/page"
+import type { OpenPageOptions } from "@/packages/editor/types"
 
 export function EmbeddedPageDialog({
   onOpenPage,
 }: {
-  onOpenPage: (pageId: string) => void
+  onOpenPage: (pageId: string, options?: OpenPageOptions) => void
 }) {
   const {
     closeEmbeddedPageDialog,
@@ -60,6 +61,8 @@ export function EmbeddedPageDialog({
             </Button>
           }
           pathname={dialogPathname}
+          rowNavigationDatabaseId={dialogDatabaseId}
+          showPaneControls
         />
         <div className="min-h-0 flex-1 overflow-y-auto">
           {dialogPageId ? (

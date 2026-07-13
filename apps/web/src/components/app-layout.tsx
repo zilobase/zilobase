@@ -244,6 +244,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
                     sidePaneAnimatedOpen={
                       showSidePaneLayout && sidePaneAnimatedOpen
                     }
+                    sidePaneDatabaseId={sidePaneDatabaseId}
                   />
                 )
               }
@@ -330,6 +331,7 @@ function AppHeader({
   renderedSidePaneDatabaseId,
   renderedSidePanePageId,
   sidePaneAnimatedOpen,
+  sidePaneDatabaseId,
 }: {
   isSettingsPage: boolean
   onCloseSidePane: () => void
@@ -337,6 +339,7 @@ function AppHeader({
   renderedSidePaneDatabaseId: string | null
   renderedSidePanePageId: string | null
   sidePaneAnimatedOpen: boolean
+  sidePaneDatabaseId: string | null
 }) {
   const showSidePaneHeader = Boolean(
     renderedSidePanePageId || renderedSidePaneDatabaseId,
@@ -345,6 +348,10 @@ function AppHeader({
   const sidePanePathname = renderedSidePaneDatabaseId
     ? `/d/${encodeURIComponent(renderedSidePaneDatabaseId)}`
     : `/p/${encodeURIComponent(renderedSidePanePageId ?? "")}`
+  const routeDatabaseId = getDatabaseId(pathname)
+  const rowNavigationDatabaseId = renderedSidePanePageId
+    ? (sidePaneDatabaseId ?? routeDatabaseId)
+    : null
 
   return (
     <>
@@ -374,6 +381,7 @@ function AppHeader({
             className="min-w-0 flex-1"
             onClose={onCloseSidePane}
             pathname={sidePanePathname}
+            rowNavigationDatabaseId={rowNavigationDatabaseId}
           />
         </PageSidePaneHeaderCell>
       ) : null}

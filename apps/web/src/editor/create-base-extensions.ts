@@ -45,6 +45,7 @@ import { ShadcnTaskItem } from "@/packages/editor/extensions/shadcn-task-item"
 import { SelectionAiPreview } from "@/packages/editor/extensions/selection-ai-preview"
 import { SlashCommand } from "@/packages/editor/extensions/slash-command"
 import { VideoBlock } from "@/packages/editor/extensions/video-block"
+import type { OpenPageOptions } from "./types"
 
 export type BaseExtensionsOptions = {
   collaboration?: import("./types").EditorCollaboration
@@ -53,7 +54,7 @@ export type BaseExtensionsOptions = {
   editable: boolean
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
-  onOpenPage?: (pageId: string) => void
+  onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
   onTocUpdate: (items: TableOfContentDataItem[]) => void
   workspaceId?: string | null
   pageId?: string | null

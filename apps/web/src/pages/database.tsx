@@ -35,6 +35,7 @@ import {
   PageEditorPane,
 } from "@/pages/page"
 import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
+import type { OpenPageOptions } from "@/packages/editor/types"
 
 export default function DatabasePage() {
   const { data: session } = useSession()
@@ -247,7 +248,7 @@ export function DatabaseMainPane({
   className?: string
   databaseId: string
   embedded?: boolean
-  onOpenPage: (pageId: string) => void
+  onOpenPage: (pageId: string, options?: OpenPageOptions) => void
   readOnly?: boolean
 }) {
   const {

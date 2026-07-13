@@ -131,7 +131,10 @@ export type DatabaseViewContextValue = {
   isFetchingNextPage: boolean
   items: DatabaseRow[]
   linkedDatabaseViews: DatabaseLinkedViewConfig[]
-  onOpenPage?: (pageId: string) => void
+  onOpenPage?: (
+    pageId: string,
+    options?: { databaseId?: string | null },
+  ) => void
   options: DatabaseSelectOption[]
   workspaceId?: string | null
   personOptions: Array<{ id: string; name: string; suffix?: string }>

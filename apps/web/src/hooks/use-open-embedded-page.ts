@@ -14,6 +14,10 @@ import {
   pageQueryKey,
   type Page,
 } from "@notelab/features/pages"
+import {
+  isPublishedFallbackPage,
+  readPublishedEmbeddedItemsOpenAs,
+} from "@/lib/published-page-preferences"
 
 function resolveOpenPagesAsFromCache(
   queryClient: ReturnType<typeof useNotelabFeatures>["queryClient"],
@@ -27,6 +31,10 @@ function resolveOpenPagesAsFromCache(
     getPageFromDetail(
       queryClient.getQueryData(pageQueryKey(hostPageId)),
     ) ?? fallbackPage
+
+  if (isPublishedFallbackPage(page)) {
+    return readPublishedEmbeddedItemsOpenAs()
+  }
 
   return resolveEmbeddedItemsOpenAs(
     page,

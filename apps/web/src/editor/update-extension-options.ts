@@ -1,6 +1,7 @@
 import type { MutableRefObject } from "react";
 import type { Editor as TiptapEditor } from "@tiptap/react";
 import type { DatabaseBlockEditorRuntime } from "@/packages/editor/extensions/database";
+import type { OpenPageOptions } from "./types";
 
 export const updateExtensionOptions = (
   editor: TiptapEditor,
@@ -11,7 +12,7 @@ export const updateExtensionOptions = (
       editable: boolean;
       listeners: Set<() => void>;
     }>;
-    onOpenPage?: (pageId: string) => void;
+    onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
     pageId?: string | null;
   },
 ) => {

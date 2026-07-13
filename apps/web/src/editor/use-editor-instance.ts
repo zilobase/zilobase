@@ -26,7 +26,7 @@ import {
   normalizePastedEditorHTML,
 } from "./paste";
 import { updateExtensionOptions } from "./update-extension-options";
-import type { BlockDropLine, PasteChoiceState } from "./types";
+import type { BlockDropLine, OpenPageOptions, PasteChoiceState } from "./types";
 import { useLatestRef } from "./use-latest-ref";
 
 type UseEditorInstanceOptions = {
@@ -46,7 +46,7 @@ type UseEditorInstanceOptions = {
   onContentChange?: (content: unknown) => void;
   onEditorReady?: (editor: Editor | null) => void;
   onEmbedPage?: (pageId: string) => void | Promise<void>;
-  onOpenPage?: (pageId: string) => void;
+  onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
   setPasteChoice: (choice: PasteChoiceState | null) => void;
   pageId?: string | null;
 };

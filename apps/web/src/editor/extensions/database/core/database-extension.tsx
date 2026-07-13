@@ -58,7 +58,9 @@ function DatabaseBlockView({
       <DatabaseView
         databaseId={databaseId}
         editable={isEditable}
-        onOpenPage={options.onOpenPage}
+        onOpenPage={(pageId) =>
+          options.onOpenPage?.(pageId, { databaseId })
+        }
         onDismissSetup={() => updateAttributes({ setupMode: false })}
         onSetupComplete={() => updateAttributes({ setupMode: false })}
         onShowTitleChange={(nextShowTitle) =>

@@ -76,6 +76,9 @@ export type Page = {
   id: string;
   createdBy?: PageCreator | null;
   deletedBy?: PageCreator | null;
+  publishedOwnerPreferences?: {
+    pageFullWidth: boolean;
+  } | null;
   isFavorite?: boolean;
   isTeamspace?: boolean;
   lastVisitedAt?: string | null;
@@ -132,42 +135,34 @@ export type NotelabAiPageSummary = {
   };
 };
 
-export function usesUserFullWidthPreference(
-  metadata: PageMetadata | null | undefined,
-) {
-  return metadata?.useUserFullWidthPreference !== false;
+export function usesUserFullWidthPreference() {
+  return true;
 }
 
 export function resolvePageFullWidth(
-  page: { metadata?: PageMetadata | null } | null | undefined,
+  page:
+    | {
+        metadata?: PageMetadata | null;
+        publishedOwnerPreferences?: { pageFullWidth: boolean } | null;
+      }
+    | null
+    | undefined,
   userFullWidthPreference: boolean | null | undefined,
 ) {
-  const metadata = page?.metadata ?? null;
-
-  if (usesUserFullWidthPreference(metadata)) {
-    return Boolean(userFullWidthPreference);
-  }
-
-  return Boolean(metadata?.fullWidth);
+  return Boolean(
+    page?.publishedOwnerPreferences?.pageFullWidth ?? userFullWidthPreference,
+  );
 }
 
-export function usesUserEmbeddedItemsPreference(
-  metadata: PageMetadata | null | undefined,
-) {
-  return metadata?.useUserEmbeddedItemsPreference !== false;
+export function usesUserEmbeddedItemsPreference() {
+  return true;
 }
 
 export function resolveEmbeddedItemsOpenAs(
-  page: { metadata?: PageMetadata | null } | null | undefined,
+  _page: { metadata?: PageMetadata | null } | null | undefined,
   userEmbeddedItemsPreference: EmbeddedItemsOpenAs | null | undefined,
 ) {
-  const metadata = page?.metadata ?? null;
-
-  if (usesUserEmbeddedItemsPreference(metadata)) {
-    return userEmbeddedItemsPreference ?? "sidepanel";
-  }
-
-  return metadata?.embeddedItemsOpenAs ?? "sidepanel";
+  return userEmbeddedItemsPreference ?? "sidepanel";
 }
 
 export type PageProperty = {

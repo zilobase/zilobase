@@ -39,13 +39,14 @@ import { useUserSettings } from "@notelab/features/user-settings";
 import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
 import { createPageEditorHandle } from "@/hooks/use-page-edit-applier";
 import { Editor, type PageEditPreviewControls } from "@/packages/editor";
+import type { OpenPageOptions } from "@/packages/editor/types";
 import { usePageCollaboration } from "@/packages/editor/use-page-collaboration";
 
 type PageEditorPaneProps = {
   className?: string;
   databaseId?: string | null;
   enableComments?: boolean;
-  onOpenPage: (pageId: string) => void;
+  onOpenPage: (pageId: string, options?: OpenPageOptions) => void;
   readOnly?: boolean;
   pageId: string;
 };

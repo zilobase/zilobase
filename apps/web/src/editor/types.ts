@@ -58,6 +58,10 @@ export type PageEditPreviewControls = {
   toolCallId: () => string | null
 }
 
+export type OpenPageOptions = {
+  databaseId?: string | null
+}
+
 export type EditorProps = {
   content?: unknown
   collaboration?: EditorCollaboration
@@ -77,7 +81,7 @@ export type EditorProps = {
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onEmojiChange?: (emoji: string) => void
-  onOpenPage?: (pageId: string) => void
+  onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
   onTitleChange?: (title: string) => void
   workspaceId?: string | null
   title?: string
@@ -93,7 +97,7 @@ export type UseEditorExtensionsOptions = {
   editable: boolean
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
-  onOpenPage?: (pageId: string) => void
+  onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
   workspaceId?: string | null
   pageId?: string | null
 }

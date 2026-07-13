@@ -62,7 +62,10 @@ export type DatabaseViewProps = {
   fullPage?: boolean
   includeDeleted?: boolean
   onActiveViewIdChange?: (viewId: string | null) => void
-  onOpenPage?: (pageId: string) => void
+  onOpenPage?: (
+    pageId: string,
+    options?: { databaseId?: string | null },
+  ) => void
   onDismissSetup?: () => void
   onSetupComplete?: () => void
   onShowTitleChange?: (showTitle: boolean) => void

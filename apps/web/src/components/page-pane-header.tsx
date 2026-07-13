@@ -1,9 +1,24 @@
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
+import {
+  ArrowRight,
+  CheckIcon,
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  PanelRightIcon,
+  SquareIcon,
+} from "lucide-react";
+import { toast } from "sonner";
 
 import { NavActions } from "@/components/nav-actions";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -15,13 +30,29 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useActiveWorkspaceId } from "@notelab/features/integrations";
 import { useDatabase } from "@notelab/features/databases";
+import {
+  defaultUserSettings,
+  useUpdateUserSettings,
+  useUserSettings,
+} from "@notelab/features/user-settings";
 import { formatPageBreadcrumbLabel } from "@/lib/page-icon";
 import {
+  embeddedItemsOpenAsLabels,
+  embeddedItemsOpenAsModes,
   getPrimaryPageParentId,
+  resolveEmbeddedItemsOpenAs,
+  usePage,
   usePageNavigation,
+  type EmbeddedItemsOpenAs,
   type Page,
   type PageItemPlacement,
 } from "@notelab/features/pages";
+import { useOptionalPageSidePane } from "@/contexts/page-side-pane";
+import {
+  isPublishedFallbackPage,
+  readPublishedEmbeddedItemsOpenAs,
+  writePublishedEmbeddedItemsOpenAs,
+} from "@/lib/published-page-preferences";
 
 export function PagePaneHeader({
   bordered = true,
@@ -29,6 +60,8 @@ export function PagePaneHeader({
   leadingControl,
   onClose,
   pathname,
+  rowNavigationDatabaseId,
+  showPaneControls = Boolean(onClose),
   showActions = true,
 }: {
   bordered?: boolean;
@@ -36,20 +69,20 @@ export function PagePaneHeader({
   leadingControl?: ReactNode | null;
   onClose?: () => void;
   pathname: string;
+  rowNavigationDatabaseId?: string | null;
+  showPaneControls?: boolean;
   showActions?: boolean;
 }) {
   const pageId = getPageId(pathname);
   const databaseId = getDatabaseId(pathname);
-  const closeControl = onClose ? (
-    <Button
-      aria-label="Close"
-      onClick={onClose}
-      size="icon-sm"
-      type="button"
-      variant="ghost"
-    >
-      <ArrowRight />
-    </Button>
+  const leadingControls = showPaneControls ? (
+    <PagePaneControls
+      leadingControl={leadingControl}
+      onClose={onClose}
+      pageId={pageId}
+      pathname={pathname}
+      rowNavigationDatabaseId={rowNavigationDatabaseId}
+    />
   ) : (
     leadingControl
   );
@@ -59,9 +92,9 @@ export function PagePaneHeader({
       className={`flex h-12 shrink-0 items-center gap-2 ${bordered ? "border-b" : ""} ${className ?? ""}`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-        {closeControl ? (
+        {leadingControls ? (
           <>
-            {closeControl}
+            {leadingControls}
             <Separator
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"
@@ -76,6 +109,217 @@ export function PagePaneHeader({
         </div>
       ) : null}
     </header>
+  );
+}
+
+function PagePaneControls({
+  leadingControl,
+  onClose,
+  pageId,
+  pathname,
+  rowNavigationDatabaseId,
+}: {
+  leadingControl?: ReactNode | null;
+  onClose?: () => void;
+  pageId: string | null;
+  pathname: string;
+  rowNavigationDatabaseId?: string | null;
+}) {
+  const sidePane = useOptionalPageSidePane();
+  const { data: page } = usePage(pageId, { refetchOnMount: false });
+  const { data: userSettings = defaultUserSettings } = useUserSettings();
+  const updateUserSettings = useUpdateUserSettings();
+  const isPublishedFallback = isPublishedFallbackPage(page);
+  const [publishedEmbeddedItemsOpenAs, setPublishedEmbeddedItemsOpenAs] =
+    useState<EmbeddedItemsOpenAs>(readPublishedEmbeddedItemsOpenAs);
+  const mode = isPublishedFallback
+    ? publishedEmbeddedItemsOpenAs
+    : resolveEmbeddedItemsOpenAs(page, userSettings.embeddedItemsOpenAs);
+  const rowDatabaseId = pageId ? rowNavigationDatabaseId : null;
+  const isDialogPane = !onClose;
+  const { data: rowDatabasePayload } = useDatabase(rowDatabaseId);
+  const { nextRowPageId, previousRowPageId } = useMemo(() => {
+    const rowPageIds =
+      rowDatabasePayload?.rows
+        .filter((row) => !row.deletedAt)
+        .slice()
+        .sort((first, second) => first.position - second.position)
+        .map((row) => row.pageId) ?? [];
+    const currentRowIndex = pageId ? rowPageIds.indexOf(pageId) : -1;
+
+    return {
+      previousRowPageId:
+        currentRowIndex > 0 ? rowPageIds[currentRowIndex - 1] : null,
+      nextRowPageId:
+        currentRowIndex >= 0 && currentRowIndex < rowPageIds.length - 1
+          ? rowPageIds[currentRowIndex + 1]
+          : null,
+    };
+  }, [pageId, rowDatabasePayload?.rows]);
+
+  const handleModeSelect = (nextMode: EmbeddedItemsOpenAs) => {
+    if (!pageId) {
+      return;
+    }
+
+    if (isPublishedFallback) {
+      writePublishedEmbeddedItemsOpenAs(nextMode);
+      setPublishedEmbeddedItemsOpenAs(nextMode);
+    } else {
+      updateUserSettings.mutate(
+        { embeddedItemsOpenAs: nextMode },
+        {
+          onError: (error) => {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Could not update open pages setting.",
+            );
+          },
+        },
+      );
+    }
+
+    if (nextMode === "dialog" && !isDialogPane) {
+      sidePane?.openEmbeddedPageDialog(pageId, {
+        databaseId: rowDatabaseId,
+      });
+    } else if (nextMode === "sidepanel" && isDialogPane) {
+      sidePane?.openSidePane(pageId, { databaseId: rowDatabaseId });
+    }
+  };
+
+  const openRowPage = (targetPageId: string | null) => {
+    if (!targetPageId || !rowDatabaseId) {
+      return;
+    }
+
+    if (isDialogPane) {
+      sidePane?.openEmbeddedPageDialog(targetPageId, {
+        databaseId: rowDatabaseId,
+      });
+    } else {
+      sidePane?.openSidePane(targetPageId, { databaseId: rowDatabaseId });
+    }
+  };
+
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      {onClose ? (
+        <Button
+          aria-label="Close"
+          onClick={onClose}
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+        >
+          <ArrowRight />
+        </Button>
+      ) : (
+        leadingControl
+      )}
+      <Button
+        aria-label="Open as full page"
+        asChild
+        size="icon-sm"
+        variant="ghost"
+      >
+        <Link to={pathname}>
+          <Maximize2 />
+        </Link>
+      </Button>
+      {pageId ? (
+        <OpenPageAsDropdown
+          disabled={!isPublishedFallback && updateUserSettings.isPending}
+          mode={mode}
+          onSelect={handleModeSelect}
+        />
+      ) : null}
+      {rowDatabaseId ? (
+        <>
+          <Separator
+            orientation="vertical"
+            className="mx-1 data-[orientation=vertical]:h-4"
+          />
+          <Button
+            aria-label="Open previous row"
+            disabled={!previousRowPageId}
+            onClick={() => openRowPage(previousRowPageId)}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          >
+            <ChevronUp />
+          </Button>
+          <Button
+            aria-label="Open next row"
+            disabled={!nextRowPageId}
+            onClick={() => openRowPage(nextRowPageId)}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          >
+            <ChevronDown />
+          </Button>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function OpenPageAsDropdown({
+  disabled,
+  mode,
+  onSelect,
+}: {
+  disabled?: boolean;
+  mode: EmbeddedItemsOpenAs;
+  onSelect: (mode: EmbeddedItemsOpenAs) => void;
+}) {
+  const ModeIcon = mode === "sidepanel" ? PanelRightIcon : SquareIcon;
+  const [open, setOpen] = useState(false);
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          aria-label="Open pages as"
+          disabled={disabled}
+          onMouseEnter={() => setOpen(true)}
+          size="icon-sm"
+          title={`Open pages as ${embeddedItemsOpenAsLabels[mode]}`}
+          type="button"
+          variant="ghost"
+        >
+          <ModeIcon />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="w-52"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+      >
+        {embeddedItemsOpenAsModes.map((value) => {
+          const OptionIcon = value === "sidepanel" ? PanelRightIcon : SquareIcon;
+
+          return (
+            <DropdownMenuItem
+              key={value}
+              onSelect={(event) => {
+                event.preventDefault();
+                onSelect(value);
+                setOpen(false);
+              }}
+            >
+              <OptionIcon />
+              <span>{embeddedItemsOpenAsLabels[value]}</span>
+              {mode === value ? <CheckIcon className="ml-auto" /> : null}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

@@ -33,6 +33,7 @@ import {
   pageItemPlacement,
   pageProperty,
   pagePropertyValue,
+  pageSettings,
 } from "../../db/schema";
 import type { AppBindings } from "../../types";
 import {
@@ -1115,6 +1116,7 @@ pageRoutes.get("/:id", async (c) => {
   }
 
   let accessLevel: AccessLevel = "none";
+  let usesPublishedFallback = false;
 
   if (record.deletedAt && user) {
     accessLevel = (await getMembership(record.workspaceId, user.id))
@@ -1141,6 +1143,8 @@ pageRoutes.get("/:id", async (c) => {
 
       return c.json({ error: "Forbidden" }, 403);
     }
+
+    usesPublishedFallback = true;
   }
 
   if (user && hasAccess(accessLevel, "view")) {
@@ -1155,33 +1159,52 @@ pageRoutes.get("/:id", async (c) => {
     }
   }
 
-  const [favoriteRecord] = user
-    ? await db
-        .select({ id: favorite.id })
-        .from(favorite)
+  const [favoriteRecords, parentPlacements, ownerSettingsRecords] =
+    await Promise.all([
+      user
+        ? db
+            .select({ id: favorite.id })
+            .from(favorite)
+            .where(
+              and(
+                eq(favorite.userId, user.id),
+                eq(favorite.pageId, record.id),
+              ),
+            )
+            .limit(1)
+        : Promise.resolve([]),
+      db
+        .select({ parentId: pageItemPlacement.parentId })
+        .from(pageItemPlacement)
         .where(
-          and(eq(favorite.userId, user.id), eq(favorite.pageId, record.id)),
+          and(
+            eq(pageItemPlacement.workspaceId, record.workspaceId),
+            eq(pageItemPlacement.itemKind, "page"),
+            eq(pageItemPlacement.itemId, record.id),
+            eq(pageItemPlacement.placementKind, "primary"),
+            isNull(pageItemPlacement.deletedAt),
+          ),
         )
-        .limit(1)
-    : [];
-  const [parentPlacement] = await db
-    .select({ parentId: pageItemPlacement.parentId })
-    .from(pageItemPlacement)
-    .where(
-      and(
-        eq(pageItemPlacement.workspaceId, record.workspaceId),
-        eq(pageItemPlacement.itemKind, "page"),
-        eq(pageItemPlacement.itemId, record.id),
-        eq(pageItemPlacement.placementKind, "primary"),
-        isNull(pageItemPlacement.deletedAt),
-      ),
-    )
-    .limit(1);
+        .limit(1),
+      usesPublishedFallback && record.createdById
+        ? db
+            .select({ pageFullWidth: pageSettings.pageFullWidth })
+            .from(pageSettings)
+            .where(eq(pageSettings.userId, record.createdById))
+            .limit(1)
+        : Promise.resolve([]),
+    ]);
+  const [favoriteRecord] = favoriteRecords;
+  const [parentPlacement] = parentPlacements;
+  const [ownerSettings] = ownerSettingsRecords;
 
   return c.json({
     accessLevel: hasAccess(accessLevel, "view") ? accessLevel : "view",
     page: {
       ...record,
+      publishedOwnerPreferences: usesPublishedFallback
+        ? { pageFullWidth: ownerSettings?.pageFullWidth ?? false }
+        : null,
       isFavorite: Boolean(favoriteRecord),
       parentPageId: parentPlacement?.parentId ?? null,
     },
