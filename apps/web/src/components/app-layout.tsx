@@ -38,6 +38,7 @@ import { useDatabase } from "@notelab/features/databases"
 import { useRecordItemVisit, usePage } from "@notelab/features/pages"
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
+import { LayoutEditorProvider } from "@/components/layout-editor"
 
 export function AppLayout({ children }: { children?: ReactNode }) {
   return (
@@ -52,7 +53,9 @@ export function AppLayout({ children }: { children?: ReactNode }) {
       }
     >
       <AppSearchProvider>
-        <AppLayoutContent>{children}</AppLayoutContent>
+        <LayoutEditorProvider>
+          <AppLayoutContent>{children}</AppLayoutContent>
+        </LayoutEditorProvider>
       </AppSearchProvider>
     </SidebarProvider>
   )

@@ -98,6 +98,7 @@ import { useOptionalPageSidePane } from "@/contexts/page-side-pane";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
+import { useLayoutEditor } from "@/components/layout-editor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   embeddedItemsOpenAsLabels,
@@ -119,7 +120,7 @@ import {
 const notelabAiModes: NotelabAiMode[] = ["instruction", "skill"];
 
 const moreActions = [
-  "Customize Page",
+  "Customize layout",
   "Copy Link",
   "Duplicate",
   "Move to Trash",
@@ -142,6 +143,7 @@ export function NavActions({
   pageId?: string | null;
 }) {
   const navigate = useNavigate();
+  const { openLayoutEditor } = useLayoutEditor();
   const [isOpen, setIsOpen] = React.useState(false);
   const [trashConfirmOpen, setTrashConfirmOpen] = React.useState(false);
   const { data: databasePayload } = useDatabase(databaseId, {
@@ -315,6 +317,11 @@ export function NavActions({
     });
   };
   const runMoreAction = (label: string) => {
+    if (label === "Customize layout") {
+      setIsOpen(false);
+      openLayoutEditor({ databaseId, pageId });
+      return;
+    }
     if (label === "Copy Link") {
       void copyLink();
       return;
