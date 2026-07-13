@@ -289,7 +289,7 @@ export default function DashboardPage({
   return (
     <PageSidePaneLayout
       main={
-        <main className="min-h-0 flex-1 overflow-y-auto bg-background">
+        <main className="min-h-0 flex-1 bg-background">
           <section className="animate-in fade-in-0 duration-300">
             <div className="tiptap-editor px-5 pb-10 pt-12 sm:px-8 md:px-20 lg:px-24">
               <DatabaseViewProvider

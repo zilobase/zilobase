@@ -10,6 +10,7 @@ import {
   type CSSProperties,
   type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
 } from "react"
 import { Reorder, useDragControls } from "framer-motion"
 import {
@@ -403,7 +404,6 @@ function DatabaseTable({
 }
 
 function DatabaseVirtualizedTable({
-  children,
   columnKeys,
   columnWidths,
   renderRow,
@@ -411,7 +411,6 @@ function DatabaseVirtualizedTable({
   tableMinWidth,
   virtualizationEnabled,
 }: {
-  children: ReactNode
   columnKeys: string[]
   columnWidths: Record<string, number>
   renderRow: (
@@ -516,7 +515,6 @@ function DatabaseVirtualizedTable({
         columnWidths={columnWidths}
         tableMinWidth={tableMinWidth}
       >
-        {children}
         <tbody>
           {virtualizationEnabled
             ? virtualRows.map((virtualRow, virtualIndex) => {
@@ -562,6 +560,61 @@ function DatabaseVirtualizedTable({
       </DatabaseTable>
     </div>
   )
+}
+
+function useSyncedHorizontalScroll(
+  primaryRef: RefObject<HTMLElement | null>,
+  secondaryRef: RefObject<HTMLElement | null>,
+  syncVersion: unknown
+) {
+  const isSyncingRef = useRef(false)
+
+  useLayoutEffect(() => {
+    const primary = primaryRef.current
+    const secondary = secondaryRef.current
+
+    if (!primary || !secondary) {
+      return
+    }
+
+    let frame: number | null = null
+    const syncScroll = (source: HTMLElement, target: HTMLElement) => {
+      if (
+        isSyncingRef.current ||
+        target.scrollLeft === source.scrollLeft
+      ) {
+        return
+      }
+
+      isSyncingRef.current = true
+      target.scrollLeft = source.scrollLeft
+
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame)
+      }
+
+      frame = window.requestAnimationFrame(() => {
+        frame = null
+        isSyncingRef.current = false
+      })
+    }
+
+    const syncSecondary = () => syncScroll(primary, secondary)
+    const syncPrimary = () => syncScroll(secondary, primary)
+
+    primary.scrollLeft = secondary.scrollLeft
+    primary.addEventListener("scroll", syncSecondary, { passive: true })
+    secondary.addEventListener("scroll", syncPrimary, { passive: true })
+
+    return () => {
+      primary.removeEventListener("scroll", syncSecondary)
+      secondary.removeEventListener("scroll", syncPrimary)
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame)
+      }
+      isSyncingRef.current = false
+    }
+  }, [primaryRef, secondaryRef, syncVersion])
 }
 
 function DatabaseActiveTableCell({
@@ -724,6 +777,7 @@ export function DatabaseTableView() {
   const [collapsedGroups, setCollapsedGroups] = useState<
     Record<string, boolean>
   >({})
+  const stickyHeaderScrollRef = useRef<HTMLDivElement | null>(null)
   const tableScrollRef = useRef<HTMLDivElement | null>(null)
   const tableWrapRef = useRef<HTMLDivElement | null>(null)
   const [rowLayout, setRowLayout] = useState<RowLayout>({
@@ -848,6 +902,11 @@ export function DatabaseTableView() {
     scrollRef: tableScrollRef,
     wrapperRef: tableWrapRef,
   })
+  useSyncedHorizontalScroll(
+    stickyHeaderScrollRef,
+    tableScrollRef,
+    tableMinWidth
+  )
   const { sentinelRef: rowsScrollSentinelRef } = useDatabaseRowsScroll({
     fetchNextPage,
     hasNextPage,
@@ -2168,6 +2227,20 @@ export function DatabaseTableView() {
         {!isInlineTableScrollEnabled ? renderRowDragRail() : null}
         {!isInlineTableScrollEnabled ? renderRowDropLine() : null}
         <div
+          className="database-table-sticky-header database-inline-scroll"
+          ref={stickyHeaderScrollRef}
+        >
+          <div className="database-table-scroll-content database-inline-scroll-content">
+            <DatabaseTable
+              columnKeys={columnKeys}
+              columnWidths={columnWidths}
+              tableMinWidth={tableMinWidth}
+            >
+              {renderTableHeader("sticky")}
+            </DatabaseTable>
+          </div>
+        </div>
+        <div
           className="database-table-scroll database-inline-scroll"
           ref={tableScrollRef}
         >
@@ -2225,9 +2298,7 @@ export function DatabaseTableView() {
                             virtualizationEnabled={
                               !draggedRowId && !isExternalRowDragActive
                             }
-                          >
-                            {renderTableHeader(section.id)}
-                          </DatabaseVirtualizedTable>
+                          />
                           {editable &&
                           !section.isEmpty &&
                           groupProperty &&
@@ -2260,9 +2331,7 @@ export function DatabaseTableView() {
                 virtualizationEnabled={
                   !draggedRowId && !isExternalRowDragActive
                 }
-              >
-                {renderTableHeader()}
-              </DatabaseVirtualizedTable>
+              />
             )}
             {hasNextPage || isFetchingNextPage ? (
               <div

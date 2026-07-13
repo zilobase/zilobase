@@ -1087,6 +1087,19 @@
     min-width: var(--database-inline-scroll-view-width, 100%);
   }
 
+  .database-table-scroll {
+    overflow-y: clip;
+  }
+
+  .database-table-sticky-header {
+    @apply sticky top-0 z-50 bg-background;
+    scrollbar-width: none;
+  }
+
+  .database-table-sticky-header::-webkit-scrollbar {
+    display: none;
+  }
+
   .database-table-groups {
     @apply flex min-w-0 flex-col gap-5;
   }
@@ -1416,8 +1429,12 @@
     @apply relative border-b bg-transparent text-sm font-medium text-muted-foreground;
   }
 
+  .tiptap-editor .database-table {
+    overflow: visible;
+  }
+
   .tiptap-editor .database-table thead th {
-    @apply h-8 p-0;
+    @apply h-8 bg-background p-0;
   }
 
   .database-name-header {
