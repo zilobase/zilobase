@@ -1946,14 +1946,13 @@ pageRoutes.post("/:id/collaboration-ticket", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (
-    !(await canAccessPageInWorkspace(
-      existing.id,
-      existing.workspaceId,
-      user.id,
-      "edit",
-    ))
-  ) {
+  const accessLevel = await getEffectivePageAccessInWorkspace(
+    existing.id,
+    existing.workspaceId,
+    user.id,
+  );
+
+  if (!hasAccess(accessLevel, "view")) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1971,6 +1970,7 @@ pageRoutes.post("/:id/collaboration-ticket", async (c) => {
     createCollaborationTicket(
       {
         pageId: existing.id,
+        scope: hasAccess(accessLevel, "edit") ? "read-write" : "readonly",
         userId: user.id,
         workspaceId: existing.workspaceId,
       },

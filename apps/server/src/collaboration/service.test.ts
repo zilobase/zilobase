@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as Y from "yjs";
 import {
   createCollaborationTicket,
   documentNameForPage,
@@ -14,13 +15,14 @@ const env = { BETTER_AUTH_SECRET: "test-collaboration-secret" };
 
 test("collaboration tickets are scoped and reject tampering", async () => {
   const { token } = await createCollaborationTicket(
-    { pageId: "page-1", userId: "user-1", workspaceId: "workspace-1" },
+    { pageId: "page-1", scope: "readonly", userId: "user-1", workspaceId: "workspace-1" },
     env,
   );
 
   assert.deepEqual(await verifyCollaborationTicket(token, env), {
     exp: (await verifyCollaborationTicket(token, env)).exp,
     pageId: "page-1",
+    scope: "readonly",
     userId: "user-1",
     workspaceId: "workspace-1",
   });
@@ -55,6 +57,21 @@ test("canonical page JSON round-trips through Yjs", () => {
 
   assert.deepEqual(
     materializePageContentFromYjs(encodePageContentAsYjs(content)),
+    content,
+  );
+});
+
+test("materialized page JSON ignores Yjs-native comment metadata", () => {
+  const content = {
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
+  };
+  const document = new Y.Doc();
+  Y.applyUpdate(document, encodePageContentAsYjs(content));
+  document.getMap("commentThreads").set("thread-1", { kind: "page" });
+
+  assert.deepEqual(
+    materializePageContentFromYjs(Y.encodeStateAsUpdate(document)),
     content,
   );
 });

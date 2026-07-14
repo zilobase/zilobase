@@ -17,6 +17,7 @@ const TICKET_TTL_MS = 5 * 60 * 1000;
 export type CollaborationTicketClaims = {
   exp: number;
   pageId: string;
+  scope: "read-write" | "readonly";
   userId: string;
   workspaceId: string;
 };
@@ -145,7 +146,7 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
           storeDocument(documentName, document, state, env),
       }),
     ],
-    async onAuthenticate({ documentName, requestParameters, token }) {
+    async onAuthenticate({ connectionConfig, documentName, requestParameters, token }) {
       const authenticateStartedAt = performance.now();
       const claims = await verifyCollaborationTicket(token, env);
       const ticketVerifyMs = Math.round(
@@ -174,7 +175,7 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
           claims.pageId,
           claims.workspaceId,
           claims.userId,
-          "edit",
+          claims.scope === "readonly" ? "view" : "edit",
         ),
       );
       const pageAccessMs = Math.round(performance.now() - pageAccessStartedAt);
@@ -191,6 +192,8 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
         documentLoads.delete(documentName);
         throw new Error("Forbidden");
       }
+
+      connectionConfig.readOnly = claims.scope === "readonly";
 
       // Retain the promise until Hocuspocus asks its Database extension for it.
       // Its rejection will be surfaced by that fetch path for authorized clients.
@@ -250,6 +253,7 @@ export async function replacePageContentInHocuspocus(
     {
       exp: Date.now() + TICKET_TTL_MS,
       pageId: input.pageId,
+      scope: "read-write",
       userId: input.userId,
       workspaceId: "server",
     },
@@ -539,6 +543,7 @@ function isTicketClaims(value: unknown): value is CollaborationTicketClaims {
   return (
     typeof claims.exp === "number" &&
     typeof claims.pageId === "string" &&
+    (claims.scope === "read-write" || claims.scope === "readonly") &&
     typeof claims.userId === "string" &&
     typeof claims.workspaceId === "string"
   );
