@@ -17,6 +17,7 @@ const CONNECTION_LIMIT_WINDOW_MS = 60_000;
 type NodeCollaborationRuntimeOptions = {
   authenticate?: (request: Request, env: RuntimeEnv) => Promise<string | null>;
   connectionLimit?: number;
+  passthroughPaths?: readonly string[];
 };
 
 export function attachNodeCollaborationRuntime(
@@ -72,7 +73,9 @@ export function attachNodeCollaborationRuntime(
     const url = new URL(request.url ?? "/", "http://notelab.local");
 
     if (url.pathname !== "/collaboration") {
-      socket.destroy();
+      if (!options.passthroughPaths?.includes(url.pathname)) {
+        socket.destroy();
+      }
       return;
     }
 

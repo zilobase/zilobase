@@ -7,6 +7,8 @@ COPY apps ./apps
 COPY packages ./packages
 
 RUN npm ci
+ARG VITE_FEATURE_DATABASE_REALTIME=true
+ENV VITE_FEATURE_DATABASE_REALTIME=${VITE_FEATURE_DATABASE_REALTIME}
 RUN npm run build:web
 RUN npx esbuild apps/server/src/serverful.ts apps/server/src/scripts/migrate.ts \
   --bundle \

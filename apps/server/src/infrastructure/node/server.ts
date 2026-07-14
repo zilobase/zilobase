@@ -6,6 +6,10 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { createApp } from "../../app";
 import { attachNodeCollaborationRuntime } from "../../collaboration/node-runtime";
+import { attachNodeDatabaseRealtimeRuntime } from "../../database-realtime/node-runtime";
+import { createDbClient, runWithDbClient } from "../../db";
+import { setRuntimeAdapter } from "../../runtime-adapter";
+import { drainDatabaseRealtimeOutbox } from "../../services/database-realtime";
 
 loadEnv({
   path: process.env.NOTELAB_ENV_FILE ?? path.resolve("apps/server/.env"),
@@ -70,10 +74,22 @@ const server = createServer(async (incoming, outgoing) => {
 const collaboration = attachNodeCollaborationRuntime(
   server,
   process.env as Record<string, unknown>,
+  { passthroughPaths: ["/database-collaboration"] },
 );
+const databaseRealtime = attachNodeDatabaseRealtimeRuntime(
+  server,
+  process.env as Record<string, unknown>,
+);
+setRuntimeAdapter({
+  publishDatabaseMutation: ({ event }) =>
+    databaseRealtime.publishMutation(event),
+});
+const stopDatabaseRealtimeOutboxDrainer = startDatabaseRealtimeOutboxDrainer();
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, async () => {
+    stopDatabaseRealtimeOutboxDrainer();
+    await databaseRealtime.destroy();
     await collaboration.destroy();
     server.close(() => process.exit(0));
   });
@@ -83,6 +99,39 @@ server.listen(port, hostname, () => {
   console.log(`Notelab server listening on http://${hostname}:${port}`);
   console.log(`Serving Notelab web assets from ${webDistDir}`);
 });
+
+function startDatabaseRealtimeOutboxDrainer() {
+  const env = process.env as Record<string, unknown>;
+  let draining = false;
+
+  const drain = async () => {
+    if (draining) return;
+    draining = true;
+
+    try {
+      await runWithDbClient(createDbClient(env), () =>
+        drainDatabaseRealtimeOutbox(env, { limit: 250 })
+      );
+    } catch (error) {
+      console.error(JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+        event: "database_realtime_outbox_drain_failed",
+      }));
+    } finally {
+      draining = false;
+    }
+  };
+
+  const startupTimer = setTimeout(() => void drain(), 0);
+  const interval = setInterval(() => void drain(), 5 * 60 * 1000);
+  startupTimer.unref();
+  interval.unref();
+
+  return () => {
+    clearTimeout(startupTimer);
+    clearInterval(interval);
+  };
+}
 
 function toRequest(incoming: IncomingMessage) {
   const host = incoming.headers.host ?? `localhost:${port}`;

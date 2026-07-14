@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_FEATURE_DATABASE_REALTIME?: string
   readonly VITE_FEATURE_NOTION_IMPORT?: string
 }
 

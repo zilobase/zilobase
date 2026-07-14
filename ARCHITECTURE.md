@@ -45,9 +45,12 @@ Self-hosting uses:
 - `caddy`: public HTTP/HTTPS entrypoint
 - `notelab`: combined web/API container
 
-The serverful runtime hosts Hocuspocus on the same HTTP server. Hosted adapters
-can run the shared Hocuspocus core inside page-scoped Cloudflare Durable Objects
-while keeping the Yjs binary in Postgres.
+The serverful runtime hosts Hocuspocus and database realtime rooms on the same
+HTTP server. Database rooms broadcast versioned mutation deltas and ephemeral
+cell presence, while PostgreSQL remains authoritative and an outbox retries
+delivery after process failures. Hosted adapters can run the shared Hocuspocus
+core and database rooms inside scoped Cloudflare Durable Objects while keeping
+authoritative state in Postgres.
 
 ## Deployment Model
 

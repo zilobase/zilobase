@@ -23,7 +23,7 @@ export const appConfig = {
   featureFlags: {
     databaseRealtime: readBooleanFeatureFlag(
       import.meta.env.VITE_FEATURE_DATABASE_REALTIME,
-      false,
+      true,
     ),
     notionImport: readBooleanFeatureFlag(
       import.meta.env.VITE_FEATURE_NOTION_IMPORT,
