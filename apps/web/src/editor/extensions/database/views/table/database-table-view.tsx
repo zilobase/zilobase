@@ -996,21 +996,34 @@ export function DatabaseTableView() {
       ) ?? []
     )
   }, [])
-  const measureRows = useCallback(() => {
+  const getRowLayoutElement = useCallback(() => {
     const wrapperElement = tableWrapRef.current
 
-    if (!wrapperElement) {
+    if (!isInlineTableScrollEnabled) {
+      return wrapperElement
+    }
+
+    return (
+      tableScrollRef.current?.querySelector<HTMLElement>(
+        ".database-table-scroll-content"
+      ) ?? wrapperElement
+    )
+  }, [isInlineTableScrollEnabled])
+  const measureRows = useCallback(() => {
+    const layoutElement = getRowLayoutElement()
+
+    if (!layoutElement) {
       return { centers: {}, dropTops: [] }
     }
 
-    const wrapperRect = wrapperElement.getBoundingClientRect()
+    const layoutRect = layoutElement.getBoundingClientRect()
     const rowElements = getRowElements()
     const centers: Record<string, number> = {}
     const dropTops: number[] = []
 
     rowElements.forEach((rowElement, index) => {
       const rect = rowElement.getBoundingClientRect()
-      const top = rect.top - wrapperRect.top
+      const top = rect.top - layoutRect.top
       const height = rect.height
       const rowId = rowElement.dataset.databaseRowId
 
@@ -1032,15 +1045,15 @@ export function DatabaseTableView() {
     )
 
     return nextLayout
-  }, [getRowElements])
+  }, [getRowElements, getRowLayoutElement])
   const getRowDropTargetIndex = (clientY: number) => {
-    const wrapperElement = tableWrapRef.current
+    const layoutElement = getRowLayoutElement()
 
-    if (!wrapperElement || rowLayout.dropTops.length < 2) {
+    if (!layoutElement || rowLayout.dropTops.length < 2) {
       return 0
     }
 
-    const relativeY = clientY - wrapperElement.getBoundingClientRect().top
+    const relativeY = clientY - layoutElement.getBoundingClientRect().top
 
     return getDropTargetIndex(rowLayout.dropTops, relativeY)
   }
@@ -1098,11 +1111,16 @@ export function DatabaseTableView() {
     const targetRow = rowElements[resolvedTargetIndex]
     const previousRow = rowElements[resolvedTargetIndex - 1]
     const groupRect = groupElement.getBoundingClientRect()
-    const wrapperRect = wrapperElement.getBoundingClientRect()
+    const layoutRect = getRowLayoutElement()?.getBoundingClientRect()
+
+    if (!layoutRect) {
+      return null
+    }
+
     const top =
       (targetRow?.getBoundingClientRect().top ??
         previousRow?.getBoundingClientRect().bottom ??
-        groupRect.bottom) - wrapperRect.top
+        groupRect.bottom) - layoutRect.top
 
     return {
       localTargetIndex: resolvedTargetIndex,
@@ -1270,8 +1288,7 @@ export function DatabaseTableView() {
     setGroupRowDropTarget(null)
   }
   const rowDropLineTop =
-    (isTableGrouped ? !groupRowDropTarget : rowDropTargetIndex === null) ||
-    (draggedRowId && !getDraggedRowMove())
+    (isTableGrouped ? !groupRowDropTarget : rowDropTargetIndex === null)
       ? null
       : isTableGrouped
         ? groupRowDropTarget?.top ?? null
