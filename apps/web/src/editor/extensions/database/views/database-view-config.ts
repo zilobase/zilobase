@@ -116,6 +116,7 @@ type DatabaseConfig = {
   groupPropertyId?: string;
   hiddenPropertyIds?: string[];
   linkedDatabaseViews?: DatabaseLinkedViewConfig[];
+  layout?: DatabaseLayoutSettings;
   nameColumn?: DatabaseNameColumnConfig;
   propertyOrder?: string[];
   showPropertyTitles?: boolean;
@@ -127,6 +128,24 @@ export type DatabaseNameColumnConfig = {
   label?: string;
   showPageIcon?: boolean;
   wrapContent?: boolean;
+};
+
+export type DatabaseLayoutSettings = {
+  cardLayout: "compact" | "list";
+  cardPreview: "none" | "page-cover";
+  cardSize: "small" | "medium" | "large";
+  fullLinePropertyIds: string[];
+  showVerticalLines: boolean;
+  wrapAllContent: boolean;
+};
+
+export const defaultDatabaseLayoutSettings: DatabaseLayoutSettings = {
+  cardLayout: "compact",
+  cardPreview: "page-cover",
+  cardSize: "medium",
+  fullLinePropertyIds: [],
+  showVerticalLines: true,
+  wrapAllContent: false,
 };
 
 export type DatabaseSortDirection = "ascending" | "descending";
@@ -402,6 +421,40 @@ export function getMergedNameColumnConfig(
       ...nextConfig,
     },
   });
+}
+
+export function getDatabaseLayoutSettings(
+  config: unknown,
+): DatabaseLayoutSettings {
+  if (
+    !config ||
+    typeof config !== "object" ||
+    Array.isArray(config) ||
+    !("layout" in config)
+  ) {
+    return defaultDatabaseLayoutSettings;
+  }
+
+  const layout = (config as DatabaseConfig).layout;
+
+  if (!layout || typeof layout !== "object" || Array.isArray(layout)) {
+    return defaultDatabaseLayoutSettings;
+  }
+
+  return {
+    cardLayout: layout.cardLayout === "list" ? "list" : "compact",
+    cardPreview: layout.cardPreview === "none" ? "none" : "page-cover",
+    cardSize: ["small", "medium", "large"].includes(layout.cardSize)
+      ? layout.cardSize
+      : "medium",
+    fullLinePropertyIds: Array.isArray(layout.fullLinePropertyIds)
+      ? layout.fullLinePropertyIds.filter(
+          (propertyId): propertyId is string => typeof propertyId === "string",
+        )
+      : [],
+    showVerticalLines: layout.showVerticalLines !== false,
+    wrapAllContent: layout.wrapAllContent === true,
+  };
 }
 
 export function getMergedPropertyConfig(

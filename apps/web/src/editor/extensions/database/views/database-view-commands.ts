@@ -40,7 +40,9 @@ import {
 import type { DatabasePageDragPayload } from "../interactions/database-page-drop";
 import {
   getDatabaseFilterOperatorsForType,
+  getDatabaseLayoutSettings,
   getMergedDatabaseConfig,
+  getMergedNameColumnConfig,
   getMergedPropertyConfig,
   getPropertyHidden,
   getShowPropertyTitles,
@@ -49,6 +51,8 @@ import {
   type DatabaseConditionalColorConfig,
   type DatabasePropertyFilterConfig,
   type DatabasePropertyConfig,
+  type DatabaseLayoutSettings,
+  type DatabaseNameColumnConfig,
   type DatabaseSortConfig,
 } from "./database-view-config";
 import type { DatabaseFilterUpdatePatch } from "./database-filter-menu";
@@ -327,6 +331,31 @@ export function getDatabaseViewCommands({
     });
   };
 
+  const updateDatabaseLayoutSettings = (
+    settings: Partial<DatabaseLayoutSettings>,
+  ) => {
+    if (!databaseId || !activeView?.id) {
+      return;
+    }
+
+    const currentConfig =
+      getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
+      activeView.config;
+    const nextConfig = getMergedDatabaseConfig(currentConfig, {
+      layout: {
+        ...getDatabaseLayoutSettings(currentConfig),
+        ...settings,
+      },
+    });
+
+    setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
+    updateDatabaseView.mutate({
+      config: nextConfig,
+      databaseId,
+      databaseViewId: activeView.id,
+    });
+  };
+
   return {
     addDatabaseProperty: (
       type = "text",
@@ -436,6 +465,36 @@ export function getDatabaseViewCommands({
         },
       );
     },
+    addGalleryView: () => {
+      if (!databaseId || addDatabaseView.isPending) {
+        return;
+      }
+
+      const existingViewIds = new Set(
+        (payload?.views ?? []).map((view) => view.id),
+      );
+
+      addDatabaseView.mutate(
+        {
+          databaseId,
+          name: "Gallery",
+          type: "gallery",
+        },
+        {
+          onSuccess: (nextPayload) => {
+            const addedView =
+              nextPayload.views.find(
+                (view) => !existingViewIds.has(view.id),
+              ) ?? nextPayload.views.at(-1);
+
+            setActiveViewId(addedView?.id ?? null);
+          },
+          onError: () => {
+            toast.error("Couldn't add gallery view");
+          },
+        },
+      );
+    },
     addKanbanView: () => {
       if (!databaseId || addDatabaseView.isPending) {
         return;
@@ -494,6 +553,36 @@ export function getDatabaseViewCommands({
       }
 
       addView("name", []);
+    },
+    addListView: () => {
+      if (!databaseId || addDatabaseView.isPending) {
+        return;
+      }
+
+      const existingViewIds = new Set(
+        (payload?.views ?? []).map((view) => view.id),
+      );
+
+      addDatabaseView.mutate(
+        {
+          databaseId,
+          name: "List",
+          type: "list",
+        },
+        {
+          onSuccess: (nextPayload) => {
+            const addedView =
+              nextPayload.views.find(
+                (view) => !existingViewIds.has(view.id),
+              ) ?? nextPayload.views.at(-1);
+
+            setActiveViewId(addedView?.id ?? null);
+          },
+          onError: () => {
+            toast.error("Couldn't add list view");
+          },
+        },
+      );
     },
     addTimelineRow: (
       startAt: Date,
@@ -773,7 +862,9 @@ export function getDatabaseViewCommands({
         name: nextTitle,
       });
     },
-    setViewType: (type: "table" | "kanban" | "timeline" | "chart") => {
+    setViewType: (
+      type: "table" | "kanban" | "timeline" | "chart" | "gallery" | "list",
+    ) => {
       if (!databaseId || !activeView?.id || type === activeView.type) {
         return;
       }
@@ -813,6 +904,20 @@ export function getDatabaseViewCommands({
       });
     },
     updateDatabaseChartSettings,
+    updateDatabaseLayoutSettings,
+    updateNameColumnConfig: (config: DatabaseNameColumnConfig) => {
+      if (!editable || !databaseId) {
+        return;
+      }
+
+      updateDatabase.mutate({
+        config: getMergedNameColumnConfig(
+          payload?.database.config,
+          config,
+        ),
+        databaseId,
+      });
+    },
     savePropertyValue: (
       rowId: string,
       propertyId: string,

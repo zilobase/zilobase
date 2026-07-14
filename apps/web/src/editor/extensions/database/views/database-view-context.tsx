@@ -38,6 +38,8 @@ import type {
   DatabaseConditionalColorConfig,
   DatabaseLinkedViewConfig,
   DatabaseSortConfig,
+  DatabaseLayoutSettings,
+  DatabaseNameColumnConfig,
 } from "./database-view-config"
 import type {
   DatabasePageDragPayload,
@@ -83,11 +85,13 @@ export type DatabaseViewContextValue = {
     groupProperty?: DatabasePropertyListItem | null
   ) => void
   addChartView: () => void
+  addGalleryView: () => void
   addDraggedPageRow: (
     dragPayload: DatabasePageDragPayload,
     position: number
   ) => void | Promise<void>
   addKanbanView: () => void
+  addListView: () => void
   addLinkedDatabaseView: (view: DatabaseLinkedViewConfig) => void
   addTableView: () => void
   addTimelineRow: (
@@ -142,6 +146,7 @@ export type DatabaseViewContextValue = {
   isFetchingNextPage: boolean
   items: DatabaseRow[]
   linkedDatabaseViews: DatabaseLinkedViewConfig[]
+  layoutSettings: DatabaseLayoutSettings
   onOpenPage?: (
     pageId: string,
     options?: { databaseId?: string | null },
@@ -178,7 +183,9 @@ export type DatabaseViewContextValue = {
   setViewDateProperty: (datePropertyId: string | null) => void
   setupTimelineDateProperty: () => void
   setViewGroupProperty: (groupPropertyId: string | null) => void
-  setViewType: (type: "table" | "kanban" | "timeline" | "chart") => void
+  setViewType: (
+    type: "table" | "kanban" | "timeline" | "chart" | "gallery" | "list"
+  ) => void
   timelineDateProperties: DatabasePropertyListItem[]
   timelineDateProperty: DatabasePropertyListItem | null
   setSortPickerOpen: Dispatch<SetStateAction<boolean>>
@@ -204,7 +211,12 @@ export type DatabaseViewContextValue = {
   updateDatabaseChartSettings: (
     settings: Partial<DatabaseChartSettings>
   ) => void
-  updateNameColumnConfig?: (config: unknown) => Promise<unknown> | void
+  updateDatabaseLayoutSettings: (
+    settings: Partial<DatabaseLayoutSettings>
+  ) => void
+  updateNameColumnConfig?: (
+    config: DatabaseNameColumnConfig
+  ) => Promise<unknown> | void
   updateDatabaseFilter: (index: number, patch: DatabaseFilterUpdatePatch) => void
   updateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void
   visibleProperties: DatabaseProperty[]

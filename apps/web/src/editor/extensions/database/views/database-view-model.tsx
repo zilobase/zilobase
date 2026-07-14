@@ -22,6 +22,7 @@ import {
   getDatabaseFilterOperatorLabel,
   getDatabaseConditionalColors,
   getDatabaseFilters,
+  getDatabaseLayoutSettings,
   getDatabasePropertyOrder,
   getDatabaseSorts,
   getMergedDatabaseConfig,
@@ -95,6 +96,7 @@ export function getDatabaseViewModel({
   const isKanbanView = activeView?.type === "kanban"
   const isTimelineView = activeView?.type === "timeline"
   const chartSettings = getDatabaseChartSettings(activeViewConfig)
+  const layoutSettings = getDatabaseLayoutSettings(activeViewConfig)
   const activeVisibilityConfig = getActiveVisibilityConfig({
     activeViewConfig,
     isKanbanView,
@@ -215,6 +217,7 @@ export function getDatabaseViewModel({
     timelineDateProperties,
     timelineDateProperty,
     kanbanOptions,
+    layoutSettings,
     personOptions,
     properties,
     propertyValues,
