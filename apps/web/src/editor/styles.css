@@ -1825,6 +1825,10 @@
     @apply bg-primary;
   }
 
+  [data-editor-surface]:has(
+    .database-table-wrap
+      .database-row-controls:is([data-visible="true"], :focus-within)
+  ) .drag-handle,
   body:has(.tiptap-editor .database-table th:hover) .drag-handle,
   body:has(.database-row-drag-rail:hover) .drag-handle,
   body:has(.database-row-drag-handle:focus-visible) .drag-handle,
