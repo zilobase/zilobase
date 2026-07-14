@@ -1171,6 +1171,66 @@ export function register({ assert, loadModule, test }) {
     });
   });
 
+  test("database view commands persist layout and page icon settings", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-commands.ts",
+    );
+    const updateDatabase = createMutation();
+    const updateDatabaseView = createMutation();
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: { filters: [] },
+        id: "view-gallery",
+        name: "Gallery",
+        type: "gallery",
+      },
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ updateDatabase, updateDatabaseView }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.updateDatabaseLayoutSettings({
+      cardLayout: "list",
+      cardPreview: "none",
+      cardSize: "large",
+      fullLinePropertyIds: ["database-property-status"],
+      wrapAllContent: true,
+    });
+    commands.updateNameColumnConfig({ showPageIcon: false });
+
+    assert.deepEqual(updateDatabaseView.calls[0][0], {
+      config: {
+        filters: [],
+        layout: {
+          cardLayout: "list",
+          cardPreview: "none",
+          cardSize: "large",
+          fullLinePropertyIds: ["database-property-status"],
+          showVerticalLines: true,
+          wrapAllContent: true,
+        },
+      },
+      databaseId,
+      databaseViewId: "view-gallery",
+    });
+    assert.deepEqual(updateDatabase.calls[0][0], {
+      config: { nameColumn: { showPageIcon: false } },
+      databaseId,
+    });
+  });
+
   test("database view commands add a chart view", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/editor/extensions/database/views/database-view-commands.ts",
@@ -1215,6 +1275,50 @@ export function register({ assert, loadModule, test }) {
       type: "chart",
     });
     assert.deepEqual(activeViewIds, ["view-chart"]);
+  });
+
+  test("database view commands add list and gallery views", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-commands.ts",
+    );
+    const addDatabaseView = createMutation();
+    const activeViewIds = [];
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: null,
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addDatabaseView }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: (viewId) => activeViewIds.push(viewId),
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.addListView();
+    addDatabaseView.calls[0][1].onSuccess({
+      views: [{ id: "view-list", name: "List", type: "list" }],
+    });
+    commands.addGalleryView();
+    addDatabaseView.calls[1][1].onSuccess({
+      views: [{ id: "view-gallery", name: "Gallery", type: "gallery" }],
+    });
+
+    assert.deepEqual(
+      addDatabaseView.calls.map(([input]) => input),
+      [
+        { databaseId, name: "List", type: "list" },
+        { databaseId, name: "Gallery", type: "gallery" },
+      ],
+    );
+    assert.deepEqual(activeViewIds, ["view-list", "view-gallery"]);
   });
 }
 
