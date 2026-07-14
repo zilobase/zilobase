@@ -1,11 +1,13 @@
 import {
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
+  type Ref,
 } from "react"
 import { ImagePlus, MessageSquare, SmilePlus, X } from "lucide-react"
 
@@ -53,6 +55,10 @@ import {
   serializePropertyValue,
 } from "../../extensions/database/core/utils"
 
+export type PageMetadataHandle = {
+  focusTitleEnd: () => boolean
+}
+
 type PageMetadataProps = {
   compact?: boolean
   compactSpacing?: "default" | "comfortable"
@@ -73,6 +79,7 @@ type PageMetadataProps = {
   workspaceId?: string | null
   title?: string
   pageId?: string | null
+  ref?: Ref<PageMetadataHandle>
 }
 
 function PageDatabaseRealtimeSubscription({
@@ -182,6 +189,7 @@ export function PageMetadata({
   workspaceId,
   title: titleProp,
   pageId,
+  ref,
 }: PageMetadataProps) {
   const [coverOpen, setCoverOpen] = useState(false)
   const [iconOpen, setIconOpen] = useState(false)
@@ -448,6 +456,21 @@ export function PageMetadata({
       cancelAnimationFrame(resizeFrame)
     }
   }, [])
+
+  useImperativeHandle(ref, () => ({
+    focusTitleEnd: () => {
+      const titleElement = titleRef.current
+
+      if (!showHeading || !titleElement) return false
+
+      titleElement.focus()
+      titleElement.setSelectionRange(
+        titleElement.value.length,
+        titleElement.value.length,
+      )
+      return true
+    },
+  }), [showHeading])
 
   const iconPicker = icon && editable ? (
     <div className="group/icon relative shrink-0">

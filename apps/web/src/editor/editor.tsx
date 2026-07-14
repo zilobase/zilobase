@@ -3,7 +3,10 @@ import { EditorContent } from "@tiptap/react"
 import { TextSelection } from "@tiptap/pm/state"
 import { SelectionAiDiffDock } from "@/packages/editor/components/editor/selection-ai-diff-dock"
 import { MobileActionBar } from "@/packages/editor/components/editor/mobile-action-bar"
-import { PageMetadata } from "@/packages/editor/components/editor/page-metadata"
+import {
+  PageMetadata,
+  type PageMetadataHandle,
+} from "@/packages/editor/components/editor/page-metadata"
 import { PageLayoutModuleCanvas } from "@/packages/editor/components/editor/page-layout-module-canvas"
 import { PageLayoutTabs } from "@/packages/editor/components/editor/page-layout-tabs"
 import { starterContent } from "./constants"
@@ -59,6 +62,7 @@ export function Editor({
 }: EditorProps = {}) {
   const editorId = useId()
   const editorSurfaceRef = useRef<HTMLElement | null>(null)
+  const pageMetadataRef = useRef<PageMetadataHandle | null>(null)
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
   const [dragHandleMenuOpen, setDragHandleMenuOpen] = useState(false)
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
@@ -112,6 +116,7 @@ export function Editor({
     onEditorReady,
     onEmbedPage,
     onOpenPage,
+    onMoveToTitle: () => pageMetadataRef.current?.focusTitleEnd() ?? false,
     setPasteChoice,
     pageId,
   })
@@ -333,26 +338,27 @@ export function Editor({
   const focusPageBodyFromTitle = useCallback(() => {
     if (!editor || !editable) return
 
-    requestAnimationFrame(() => {
-      const hasContent = editor.state.doc.textContent.trim().length > 0
+    const firstNode = editor.state.doc.firstChild
 
-      if (!hasContent) {
-        editor.chain().focus("start").run()
-        return
-      }
+    if (
+      !firstNode ||
+      (firstNode.isTextblock && firstNode.content.size === 0)
+    ) {
+      editor.chain().focus("start").run()
+      return
+    }
 
-      const paragraph = editor.schema.nodes.paragraph?.create()
+    const paragraph = editor.schema.nodes.paragraph?.create()
 
-      if (!paragraph) {
-        editor.chain().focus("start").run()
-        return
-      }
+    if (!paragraph) {
+      editor.chain().focus("start").run()
+      return
+    }
 
-      const transaction = editor.state.tr.insert(0, paragraph)
-      transaction.setSelection(TextSelection.create(transaction.doc, 1))
-      editor.view.dispatch(transaction.scrollIntoView())
-      editor.view.focus()
-    })
+    const transaction = editor.state.tr.insert(0, paragraph)
+    transaction.setSelection(TextSelection.create(transaction.doc, 1))
+    editor.view.dispatch(transaction.scrollIntoView())
+    editor.view.focus()
   }, [editable, editor])
 
   const renderLayoutModule = (
@@ -420,6 +426,7 @@ export function Editor({
         workspaceId={workspaceId}
         title={title}
         pageId={pageId}
+        ref={module.type === "heading" ? pageMetadataRef : undefined}
       />
     )
   }
@@ -522,6 +529,7 @@ export function Editor({
               workspaceId={workspaceId}
               title={title}
               pageId={pageId}
+              ref={pageMetadataRef}
             />
             <div
               className={pageContentLayout.className}

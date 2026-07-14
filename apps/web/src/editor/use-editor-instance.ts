@@ -8,6 +8,11 @@ import {
 } from "react";
 import { useEditor } from "@tiptap/react";
 import type { Content, Editor, Extensions } from "@tiptap/core";
+import {
+  Selection,
+  TextSelection,
+  type EditorState,
+} from "@tiptap/pm/state";
 import { toast } from "sonner";
 import type { DatabaseBlockEditorRuntime } from "@/packages/editor/extensions/database";
 import {
@@ -47,9 +52,20 @@ type UseEditorInstanceOptions = {
   onEditorReady?: (editor: Editor | null) => void;
   onEmbedPage?: (pageId: string) => void | Promise<void>;
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
+  onMoveToTitle?: () => boolean;
   setPasteChoice: (choice: PasteChoiceState | null) => void;
   pageId?: string | null;
 };
+
+function isCaretAtDocumentStart(state: EditorState) {
+  const { doc, selection } = state;
+
+  return (
+    selection instanceof TextSelection &&
+    selection.empty &&
+    selection.from === Selection.atStart(doc).from
+  );
+}
 
 export const useEditorInstance = ({
   databaseEditorRuntime,
@@ -66,6 +82,7 @@ export const useEditorInstance = ({
   onEditorReady,
   onEmbedPage,
   onOpenPage,
+  onMoveToTitle,
   setPasteChoice,
   pageId,
 }: UseEditorInstanceOptions) => {
@@ -76,6 +93,8 @@ export const useEditorInstance = ({
 
   const onContentChangeRef = useLatestRef(onContentChange);
   const onEmbedPageRef = useLatestRef(onEmbedPage);
+  const onMoveToTitleRef = useLatestRef(onMoveToTitle);
+  const editableRef = useLatestRef(editable);
   const dropPageOnDatabaseRef = useLatestRef(dropPageOnDatabase);
   const pageIdRef = useLatestRef(pageId);
   const handleProviderLinkPasteRef = useLatestRef(
@@ -132,10 +151,23 @@ export const useEditorInstance = ({
         handleDrop: dragDrop.handleDrop,
         handleDOMEvents: {
           ...dragDrop.domEvents,
-          keydown: (view, event) =>
-            event.key === "Enter"
-              ? handleTypedLinkChoiceRef.current(view, event)
-              : false,
+          keydown: (view, event) => {
+            if (event.key === "Enter") {
+              return handleTypedLinkChoiceRef.current(view, event);
+            }
+
+            if (
+              event.key === "Backspace" &&
+              editableRef.current &&
+              isCaretAtDocumentStart(view.state) &&
+              onMoveToTitleRef.current?.()
+            ) {
+              event.preventDefault();
+              return true;
+            }
+
+            return false;
+          },
           keyup: (view, event) =>
             event.key === " "
               ? handleTypedLinkChoiceRef.current(view, event)
