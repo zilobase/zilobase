@@ -21,6 +21,7 @@
     "@notelab/connectors": "file:../../packages/connectors",
     "@notelab/features": "file:../../packages/features",
     "@notelab/page-context": "file:../../packages/page-context",
+    "@notelab/tiptap-comment-extension": "file:../../packages/tiptap-comment-extension",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",
