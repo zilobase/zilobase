@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react"
 import { ImagePlus, MessageSquare, SmilePlus, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -10,12 +18,19 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { usePageEditorComments } from "@/components/page-editor-comments"
 import { useSession } from "@notelab/features/auth"
 import {
+  useDatabaseRealtime,
+  type DatabasePresenceCollaborator,
+} from "@notelab/features/databases"
+import {
   useUpdatePagePropertyValue,
   usePagePersonAccessTargets,
   usePageProperties,
   usePageThreads,
 } from "@notelab/features/pages"
-import type { PageLayoutConfig } from "@notelab/features/pages"
+import type {
+  PageLayoutConfig,
+  PagePropertyPresenceTarget,
+} from "@notelab/features/pages"
 import {
   formatCommentButtonLabel,
   PageCommentThread,
@@ -59,6 +74,81 @@ type PageMetadataProps = {
   pageId?: string | null
 }
 
+function PageDatabaseRealtimeSubscription({
+  activePropertyId,
+  editable,
+  enabled,
+  onPresenceChange,
+  target,
+}: {
+  activePropertyId: string | null
+  editable: boolean
+  enabled: boolean
+  onPresenceChange: (
+    databaseId: string,
+    presence: Record<string, DatabasePresenceCollaborator[]> | null,
+  ) => void
+  target: PagePropertyPresenceTarget
+}) {
+  const presence = activePropertyId && target.propertyIds.includes(activePropertyId)
+    ? {
+        columnKey: activePropertyId,
+        rowId: target.rowId,
+        viewId: null,
+      }
+    : null
+  const realtime = useDatabaseRealtime(target.databaseId, {
+    enabled,
+    presence,
+    publishPresence: editable,
+  })
+
+  useEffect(() => {
+    onPresenceChange(target.databaseId, realtime.cellPresenceByKey)
+  }, [onPresenceChange, realtime.cellPresenceByKey, target.databaseId])
+
+  useEffect(
+    () => () => onPresenceChange(target.databaseId, null),
+    [onPresenceChange, target.databaseId],
+  )
+
+  return null
+}
+
+function PagePropertyPresence({
+  collaborators,
+}: {
+  collaborators: DatabasePresenceCollaborator[]
+}) {
+  if (collaborators.length === 0) return null
+
+  return (
+    <div
+      aria-hidden="true"
+      className="database-cell-presence"
+      title={collaborators.map((item) => item.user.name).join(", ")}
+    >
+      <span
+        className="database-cell-presence-border"
+        style={{
+          "--database-presence-color": collaborators[0]?.color,
+        } as CSSProperties}
+      />
+      <span className="database-cell-presence-stack">
+        {collaborators.slice(0, 3).map((collaborator) => (
+          <span
+            className="database-cell-presence-dot"
+            key={collaborator.sessionId}
+            style={{
+              "--database-presence-color": collaborator.color,
+            } as CSSProperties}
+          />
+        ))}
+      </span>
+    </div>
+  )
+}
+
 function resizeTitleTextarea(
   titleElement: HTMLTextAreaElement,
   titleRow: HTMLDivElement,
@@ -98,6 +188,10 @@ export function PageMetadata({
   const [localTitle, setLocalTitle] = useState("")
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [draftValues, setDraftValues] = useState<Record<string, DatabasePropertyValue>>({})
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(null)
+  const [presenceByDatabase, setPresenceByDatabase] = useState<
+    Record<string, Record<string, DatabasePresenceCollaborator[]>>
+  >({})
   const titleRowRef = useRef<HTMLDivElement | null>(null)
   const titleRef = useRef<HTMLTextAreaElement | null>(null)
   const { editorCommentsOpenRequest } = usePageEditorComments()
@@ -115,6 +209,53 @@ export function PageMetadata({
     enabled: needsPersonAccessTargets,
   })
   const { data: session } = useSession()
+  const presenceTargets = propertyPayload?.presenceTargets ?? []
+  const updateDatabasePresence = useCallback((
+    realtimeDatabaseId: string,
+    presence: Record<string, DatabasePresenceCollaborator[]> | null,
+  ) => {
+    setPresenceByDatabase((current) => {
+      if (presence === null) {
+        if (!(realtimeDatabaseId in current)) return current
+
+        const next = { ...current }
+        delete next[realtimeDatabaseId]
+        return next
+      }
+
+      if (current[realtimeDatabaseId] === presence) return current
+
+      return { ...current, [realtimeDatabaseId]: presence }
+    })
+  }, [])
+  const propertyPresenceById = useMemo(() => {
+    const result: Record<string, DatabasePresenceCollaborator[]> = {}
+
+    for (const target of presenceTargets) {
+      const databasePresence = presenceByDatabase[target.databaseId]
+
+      for (const propertyId of target.propertyIds) {
+        const collaborators =
+          databasePresence?.[`${target.rowId}:${propertyId}`] ?? []
+        const existing = result[propertyId] ?? []
+
+        result[propertyId] = [
+          ...existing,
+          ...collaborators.filter(
+            (collaborator) =>
+              !existing.some((item) => item.user.id === collaborator.user.id),
+          ),
+        ]
+      }
+    }
+
+    return result
+  }, [presenceByDatabase, presenceTargets])
+  const setPropertyActive = useCallback((propertyId: string, active: boolean) => {
+    setActivePropertyId((current) =>
+      active ? propertyId : current === propertyId ? null : current,
+    )
+  }, [])
   const commentsEnabled = Boolean(
     enableComments && layoutConfig?.discussionsVisible !== false && pageId && session?.user,
   )
@@ -220,6 +361,7 @@ export function PageMetadata({
 
   useEffect(() => {
     setCommentsOpen(false)
+    setActivePropertyId(null)
   }, [pageId])
 
   useEffect(() => {
@@ -397,6 +539,16 @@ export function PageMetadata({
 
   return (
     <section className="group/metadata" contentEditable={false}>
+      {presenceTargets.map((target) => (
+        <PageDatabaseRealtimeSubscription
+          activePropertyId={activePropertyId}
+          editable={editable}
+          enabled={Boolean(session?.user)}
+          key={`${target.databaseId}:${target.rowId}`}
+          onPresenceChange={updateDatabasePresence}
+          target={target}
+        />
+      ))}
       {showHeading && cover ? (
         <div className="relative h-40 w-full overflow-hidden bg-muted">
           <img alt="Cover" className="size-full object-cover" src={cover} />
@@ -598,7 +750,17 @@ export function PageMetadata({
                     {layoutConfig?.propertyIcons === false ? null : <PropertyIcon />}
                     <span className="truncate">{property.name}</span>
                   </span>
-                  <div className="min-w-0">
+                  <div
+                    className="relative min-w-0 rounded-[3px]"
+                    data-presence={
+                      (propertyPresenceById[property.id]?.length ?? 0) > 0
+                        ? "true"
+                        : undefined
+                    }
+                  >
+                    <PagePropertyPresence
+                      collaborators={propertyPresenceById[property.id] ?? []}
+                    />
                     {isReadOnlyTimeProperty ? (
                       <span className="database-date-cell-trigger">
                         {formatDatabaseDateValue(value, property.config) || (
@@ -611,6 +773,7 @@ export function PageMetadata({
                           aria-label={`${property.name} value`}
                           checked={value === "true"}
                           disabled={!editable}
+                          onBlur={() => setPropertyActive(property.id, false)}
                           onCheckedChange={(nextChecked) =>
                             commitPropertyValue(
                               property.id,
@@ -618,6 +781,7 @@ export function PageMetadata({
                               nextChecked === true ? "true" : "false"
                             )
                           }
+                          onFocus={() => setPropertyActive(property.id, true)}
                         />
                       </div>
                     ) : isButtonProperty ? (
@@ -639,6 +803,9 @@ export function PageMetadata({
                         editable={editable}
                         label={property.name}
                         multiple={isMultiSelectProperty}
+                        onOpenChange={(open) =>
+                          setPropertyActive(property.id, open)
+                        }
                         onSelect={(nextValue) =>
                           commitPropertyValue(property.id, property.type, nextValue)
                         }
@@ -651,6 +818,9 @@ export function PageMetadata({
                       <DatabasePropertyDate
                         editable={editable}
                         label={property.name}
+                        onOpenChange={(open) =>
+                          setPropertyActive(property.id, open)
+                        }
                         onSelect={(nextValue) =>
                           commitPropertyValue(property.id, property.type, nextValue)
                         }
@@ -661,6 +831,9 @@ export function PageMetadata({
                       <DatabasePropertyFiles
                         editable={editable}
                         label={property.name}
+                        onOpenChange={(open) =>
+                          setPropertyActive(property.id, open)
+                        }
                         onSelect={(nextValue) =>
                           commitPropertyValue(property.id, property.type, nextValue)
                         }
@@ -671,6 +844,7 @@ export function PageMetadata({
                       <DatabasePropertyInput
                         editable={editable}
                         label={property.name}
+                        onActivate={() => setPropertyActive(property.id, true)}
                         onChange={(nextValue) =>
                           setDraftValues((drafts) => ({
                             ...drafts,
@@ -679,6 +853,9 @@ export function PageMetadata({
                         }
                         onCommit={() =>
                           commitPropertyValue(property.id, property.type, inputValue)
+                        }
+                        onDeactivate={() =>
+                          setPropertyActive(property.id, false)
                         }
                         propertyConfig={property.config}
                         type={property.type}

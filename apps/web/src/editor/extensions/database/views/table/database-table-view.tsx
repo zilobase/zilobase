@@ -70,7 +70,10 @@ import {
   getNameColumnWrapContent,
   getPropertyWrapContent,
 } from "../database-view-config"
-import { useDatabaseViewContext } from "../database-view-context"
+import {
+  useDatabaseRealtimeState,
+  useDatabaseViewContext,
+} from "../database-view-context"
 import {
   useActiveDatabaseCellKey,
   useDatabaseCellIsActive,
@@ -621,22 +624,52 @@ function DatabaseActiveTableCell({
   cellKey,
   children,
   className,
+  presenceKey,
   wrapContent,
 }: {
   cellKey: string
   children: (setActive: (active: boolean) => void) => ReactNode
   className?: string
+  presenceKey: string
   wrapContent?: boolean
 }) {
   const isActive = useDatabaseCellIsActive(cellKey)
   const setActiveCell = useSetActiveDatabaseCell()
+  const { cellPresenceByKey } = useDatabaseRealtimeState()
+  const presence = cellPresenceByKey[presenceKey] ?? []
 
   return (
     <td
       className={className}
       data-active={isActive ? "true" : undefined}
+      data-presence={presence.length > 0 ? "true" : undefined}
       data-wrap-content={wrapContent ? "true" : undefined}
     >
+      {presence.length > 0 ? (
+        <div
+          aria-hidden="true"
+          className="database-cell-presence"
+          title={presence.map((item) => item.user.name).join(", ")}
+        >
+          <span
+            className="database-cell-presence-border"
+            style={{
+              "--database-presence-color": presence[0]?.color,
+            } as CSSProperties}
+          />
+          <span className="database-cell-presence-stack">
+            {presence.slice(0, 3).map((collaborator) => (
+              <span
+                className="database-cell-presence-dot"
+                key={collaborator.sessionId}
+                style={{
+                  "--database-presence-color": collaborator.color,
+                } as CSSProperties}
+              />
+            ))}
+          </span>
+        </div>
+      ) : null}
       {children((active) => setActiveCell(active ? cellKey : null))}
     </td>
   )
@@ -1969,6 +2002,7 @@ export function DatabaseTableView() {
                       : null}
                     <DatabaseActiveTableCell
                       cellKey={nameCellKey}
+                      presenceKey={`${row.id}:name`}
                       className={cn(
                         "database-page-cell",
                         getConditionalColorClassName(
@@ -2014,6 +2048,7 @@ export function DatabaseTableView() {
                     : null}
                   <DatabaseActiveTableCell
                     cellKey={key}
+                    presenceKey={`${row.id}:${pageProperty.id}`}
                     className={cn(
                       "database-value-cell",
                       getConditionalColorClassName(

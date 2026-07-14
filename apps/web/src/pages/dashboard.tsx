@@ -551,6 +551,7 @@ function buildHomepagePayload({
       workspaceId: workspaceId ?? homepageDatabaseId,
       pageId: homepageDatabaseId,
       updatedAt: "",
+      version: 0,
     },
     properties,
     rows: filteredRows.map((row, index) => ({

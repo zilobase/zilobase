@@ -160,13 +160,13 @@ export function DatabasePropertySelect({
   const closePanel = () => {
     setIsOpen(false)
     setQuery("")
+    onOpenChange?.(false)
   }
 
   const setOpen = (open: boolean) => {
-    onOpenChange?.(open)
-
     if (open) {
       setIsOpen(true)
+      onOpenChange?.(true)
       return
     }
 

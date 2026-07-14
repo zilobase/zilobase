@@ -11,6 +11,11 @@ import type {
   DatabaseRow,
   DatabaseView,
 } from "@notelab/features/databases"
+import {
+  useDatabaseRealtime,
+  type DatabasePresenceCollaborator,
+} from "@notelab/features/databases"
+import { useSession } from "@notelab/features/auth"
 
 import type { DatabasePropertyValue } from "../core/utils"
 import type {
@@ -40,7 +45,10 @@ import type {
 import type {
   SortableDatabaseItem,
 } from "../interactions/database-item-utils"
-import { DatabaseCellStateProvider } from "./database-cell-state"
+import {
+  DatabaseCellStateProvider,
+  useActiveDatabaseCellKey,
+} from "./database-cell-state"
 
 export type DatabaseActiveConditionalColor = Omit<
   DatabaseConditionalColorConfig,
@@ -200,6 +208,10 @@ export type DatabaseViewContextValue = {
 }
 
 const DatabaseViewContext = createContext<DatabaseViewContextValue | null>(null)
+const DatabaseRealtimeContext = createContext<{
+  cellPresenceByKey: Record<string, DatabasePresenceCollaborator[]>
+  status: "connected" | "connecting" | "disconnected" | "offline"
+}>({ cellPresenceByKey: {}, status: "offline" })
 
 export function DatabaseViewProvider({
   children,
@@ -210,8 +222,49 @@ export function DatabaseViewProvider({
 }) {
   return (
     <DatabaseViewContext.Provider value={value}>
-      <DatabaseCellStateProvider>{children}</DatabaseCellStateProvider>
+      <DatabaseCellStateProvider>
+        <DatabaseRealtimeStateProvider value={value}>
+          {children}
+        </DatabaseRealtimeStateProvider>
+      </DatabaseCellStateProvider>
     </DatabaseViewContext.Provider>
+  )
+}
+
+function DatabaseRealtimeStateProvider({
+  children,
+  value,
+}: {
+  children: ReactNode
+  value: DatabaseViewContextValue
+}) {
+  const { data: session } = useSession()
+  const activeKey = useActiveDatabaseCellKey()
+  const separatorIndex = activeKey?.indexOf(":") ?? -1
+  const pageId = separatorIndex >= 0 ? activeKey!.slice(0, separatorIndex) : null
+  const columnKey = separatorIndex >= 0
+    ? activeKey!.slice(separatorIndex + 1)
+    : null
+  const rowId = pageId
+    ? value.items.find((row) => row.pageId === pageId)?.id ?? null
+    : null
+  const presence = rowId && columnKey
+    ? {
+        columnKey,
+        rowId,
+        viewId: value.activeView?.id ?? null,
+      }
+    : null
+  const realtime = useDatabaseRealtime(value.databaseId, {
+    enabled: Boolean(session?.user),
+    presence,
+    publishPresence: value.editable,
+  })
+
+  return (
+    <DatabaseRealtimeContext.Provider value={realtime}>
+      {children}
+    </DatabaseRealtimeContext.Provider>
   )
 }
 
@@ -223,4 +276,8 @@ export function useDatabaseViewContext() {
   }
 
   return value
+}
+
+export function useDatabaseRealtimeState() {
+  return useContext(DatabaseRealtimeContext)
 }

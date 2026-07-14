@@ -205,6 +205,7 @@ export function DatabasePropertyValue({
         aria-label={`${pageProperty.name} value`}
         checked={value === "true"}
         disabled={!editable}
+        onBlur={() => onActiveValueChange(null)}
         onCheckedChange={(nextChecked) =>
           onSaveValue(
             row.id,
@@ -214,6 +215,7 @@ export function DatabasePropertyValue({
             nextChecked === true ? "true" : "false"
           )
         }
+        onFocus={() => onActiveValueChange(key)}
       />
     </div>
   ) : cellKind === "button" ? (

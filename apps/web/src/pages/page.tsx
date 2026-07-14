@@ -30,6 +30,7 @@ import {
   useRemovePageEmbed,
   usePage,
   usePageAccessLevel,
+  usePageDatabaseIds,
   useResolvedPageLayout,
 } from "@notelab/features/pages";
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog";
@@ -278,8 +279,15 @@ export function PageEditorPane({
   const { data: accessLevel } = usePageAccessLevel(pageId, {
     refetchOnMount: false,
   });
+  const { data: pageDatabaseIds = [] } = usePageDatabaseIds(pageId, {
+    refetchOnMount: false,
+  });
+  const effectiveDatabaseId = databaseId ?? pageDatabaseIds[0] ?? null;
   const { data: userSettings } = useUserSettings();
-  const { data: resolvedLayout } = useResolvedPageLayout({ pageId, databaseId });
+  const { data: resolvedLayout } = useResolvedPageLayout({
+    pageId,
+    databaseId: effectiveDatabaseId,
+  });
   const appliedLayout =
     resolvedLayout && Object.keys(resolvedLayout.sources).length > 0
       ? resolvedLayout.config
@@ -598,7 +606,7 @@ export function PageEditorPane({
         }
         content={page.content ?? ""}
         cover={cover}
-        databaseId={databaseId}
+        databaseId={effectiveDatabaseId}
         editorContentRef={editorContentRef}
         editable={pageEditable && liveEditingReady}
         enableComments={enableComments}
