@@ -827,6 +827,19 @@ export function DatabaseTableView() {
   const isTableFiltered = activeDatabaseFilters.length > 0
   const isTableGrouped = Boolean(groupProperty)
   const renderedProperties = visibleProperties
+  const wrapLayoutKey = useMemo(
+    () =>
+      [
+        layoutSettings.wrapAllContent ? "all" : "partial",
+        nameColumnWrapContent ? "name-wrap" : "name-nowrap",
+        ...renderedProperties.map((property) =>
+          getPropertyWrapContent(property.property.config)
+            ? `${property.id}:wrap`
+            : `${property.id}:nowrap`
+        ),
+      ].join("|"),
+    [layoutSettings.wrapAllContent, nameColumnWrapContent, renderedProperties]
+  )
   const propertiesById = useMemo(
     () =>
       new Map(renderedProperties.map((property) => [property.id, property])),
@@ -2026,6 +2039,7 @@ export function DatabaseTableView() {
                           conditionalColors.propertyColors.name
                         )
                       )}
+                      wrapContent={nameColumnWrapContent}
                     >
                       {(setActive) => (
                         <DatabaseTableCellContent
@@ -2181,6 +2195,7 @@ export function DatabaseTableView() {
       <div
         className="database-table-wrap database-inline-scroll-wrap"
         data-inline-scroll={isInlineTableScrollEnabled ? "true" : undefined}
+        data-wrap-content={layoutSettings.wrapAllContent ? "true" : undefined}
         data-vertical-lines={
           layoutSettings.showVerticalLines ? "true" : "false"
         }
@@ -2354,6 +2369,7 @@ export function DatabaseTableView() {
                           <DatabaseVirtualizedTable
                             columnKeys={columnKeys}
                             columnWidths={columnWidths}
+                            key={`${section.id}:${wrapLayoutKey}`}
                             renderRow={renderTableRow}
                             rows={section.rows}
                             tableMinWidth={tableMinWidth}
@@ -2387,6 +2403,7 @@ export function DatabaseTableView() {
               <DatabaseVirtualizedTable
                 columnKeys={columnKeys}
                 columnWidths={columnWidths}
+                key={wrapLayoutKey}
                 renderRow={renderTableRow}
                 rows={sortedRows}
                 tableMinWidth={tableMinWidth}

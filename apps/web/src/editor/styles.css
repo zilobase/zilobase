@@ -1612,6 +1612,13 @@
     @apply relative overflow-visible;
   }
 
+  .tiptap-editor
+    .database-table
+    tbody
+    td:is(.database-page-cell, .database-value-cell)[data-wrap-content="true"] {
+    @apply h-auto align-top;
+  }
+
   .tiptap-editor .database-table tbody td.database-page-cell[data-active="true"],
   .tiptap-editor .database-table tbody td.database-value-cell[data-active="true"] {
     @apply z-20;
@@ -1653,7 +1660,7 @@
   }
 
   .database-cell-scroll[data-wrap-content="true"] {
-    @apply overflow-visible;
+    @apply h-auto overflow-visible;
   }
 
   .database-cell-scroll[data-wrap-content="true"]
@@ -1668,6 +1675,10 @@
     min-width: 0;
     width: 100%;
     overflow-wrap: anywhere;
+  }
+
+  .database-cell-scroll[data-wrap-content="true"] .database-input-cell-trigger {
+    word-break: break-word;
   }
 
   .database-cell-scroll[data-wrap-content="true"] .database-page-title,
