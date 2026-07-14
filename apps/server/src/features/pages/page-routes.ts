@@ -52,6 +52,10 @@ import {
   replacePageContent,
 } from "../../collaboration/service";
 import { getCollaborationWebSocketUrl } from "../../runtime-adapter";
+import {
+  commitDatabaseMutationBatch,
+  mutationResponse,
+} from "../../services/database-commit";
 export const pageRoutes = new Hono<AppBindings>();
 
 const NOTELAB_AI_MODES = new Set(["instruction", "skill"] as const);
@@ -149,10 +153,35 @@ const enforceActiveWorkspace = (
   userId: string,
 ) => rejectActiveWorkspaceMismatch(c, workspaceId, userId);
 
-const getPagePropertyPayload = async (pageId: string, workspaceId: string) => {
+const getPagePropertyPayload = async (
+  pageId: string,
+  workspaceId: string,
+  userId: string,
+) => {
+  // Read versions first. If a mutation commits between these reads, the
+  // payload is conservatively marked with the older version and the realtime
+  // handshake will refetch it instead of treating stale data as current.
+  const memberships = await db
+    .selectDistinct({
+      databaseId: databaseRow.databaseId,
+      rowId: databaseRow.id,
+      version: database.version,
+    })
+    .from(databaseRow)
+    .innerJoin(database, eq(databaseRow.databaseId, database.id))
+    .where(
+      and(
+        eq(databaseRow.pageId, pageId),
+        isNull(databaseRow.deletedAt),
+        isNull(database.deletedAt),
+      ),
+    );
   const [databaseProperties, values] = await Promise.all([
     db
-      .select({ property: pageProperty })
+      .select({
+        databaseId: databaseRow.databaseId,
+        property: pageProperty,
+      })
       .from(databaseRow)
       .innerJoin(
         databaseProperty,
@@ -179,7 +208,52 @@ const getPagePropertyPayload = async (pageId: string, workspaceId: string) => {
       databaseProperties.map(({ property }) => [property.id, property]),
     ).values(),
   );
-  return { properties, values };
+  const accessibleMemberships = (
+    await Promise.all(
+      memberships.map(async (membership) =>
+        (await canAccessDatabaseInWorkspace(
+          membership.databaseId,
+          workspaceId,
+          userId,
+          "view",
+        ))
+          ? membership
+          : null,
+      ),
+    )
+  ).filter((membership): membership is (typeof memberships)[number] =>
+    Boolean(membership),
+  );
+  const databaseIds = accessibleMemberships.map(
+    ({ databaseId }) => databaseId,
+  );
+  const databaseVersions = Object.fromEntries(
+    accessibleMemberships.map(({ databaseId, version }) => [
+      databaseId,
+      version,
+    ]),
+  );
+  const presenceTargets = accessibleMemberships.map(
+    ({ databaseId, rowId }) => ({
+      databaseId,
+      propertyIds: [
+        ...new Set(
+          databaseProperties
+            .filter((item) => item.databaseId === databaseId)
+            .map(({ property }) => property.id),
+        ),
+      ],
+      rowId,
+    }),
+  );
+
+  return {
+    databaseIds,
+    databaseVersions,
+    presenceTargets,
+    properties,
+    values,
+  };
 };
 
 const getNestedFavoriteTargetIds = async (
@@ -1159,7 +1233,12 @@ pageRoutes.get("/:id", async (c) => {
     }
   }
 
-  const [favoriteRecords, parentPlacements, ownerSettingsRecords] =
+  const [
+    favoriteRecords,
+    parentPlacements,
+    ownerSettingsRecords,
+    databaseMemberships,
+  ] =
     await Promise.all([
       user
         ? db
@@ -1193,13 +1272,43 @@ pageRoutes.get("/:id", async (c) => {
             .where(eq(pageSettings.userId, record.createdById))
             .limit(1)
         : Promise.resolve([]),
+      user && hasAccess(accessLevel, "view")
+        ? db
+            .selectDistinct({ databaseId: databaseRow.databaseId })
+            .from(databaseRow)
+            .innerJoin(database, eq(databaseRow.databaseId, database.id))
+            .where(
+              and(
+                eq(databaseRow.pageId, record.id),
+                isNull(databaseRow.deletedAt),
+                isNull(database.deletedAt),
+              ),
+            )
+        : Promise.resolve([]),
     ]);
   const [favoriteRecord] = favoriteRecords;
   const [parentPlacement] = parentPlacements;
   const [ownerSettings] = ownerSettingsRecords;
+  const databaseIds = user
+    ? (
+        await Promise.all(
+          databaseMemberships.map(async ({ databaseId }) =>
+            (await canAccessDatabaseInWorkspace(
+              databaseId,
+              record.workspaceId,
+              user.id,
+              "view",
+            ))
+              ? databaseId
+              : null,
+          ),
+        )
+      ).filter((databaseId): databaseId is string => Boolean(databaseId))
+    : [];
 
   return c.json({
     accessLevel: hasAccess(accessLevel, "view") ? accessLevel : "view",
+    databaseIds,
     page: {
       ...record,
       publishedOwnerPreferences: usesPublishedFallback
@@ -1666,7 +1775,9 @@ pageRoutes.get("/:id/properties", async (c) => {
     return propertiesOrgMismatch;
   }
 
-  return c.json(await getPagePropertyPayload(record.id, record.workspaceId));
+  return c.json(
+    await getPagePropertyPayload(record.id, record.workspaceId, user.id),
+  );
 });
 
 pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
@@ -1711,35 +1822,115 @@ pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
 
   const propertyId = c.req.param("propertyId");
   const { value = null } = body as { value?: unknown };
-  const propertyPayload = await getPagePropertyPayload(
-    record.id,
-    record.workspaceId,
+  const candidateMemberships = await db
+    .select({
+      databaseId: databaseRow.databaseId,
+      property: pageProperty,
+      rowId: databaseRow.id,
+    })
+    .from(databaseRow)
+    .innerJoin(
+      databaseProperty,
+      and(
+        eq(databaseProperty.databaseId, databaseRow.databaseId),
+        eq(databaseProperty.propertyId, propertyId),
+      ),
+    )
+    .innerJoin(pageProperty, eq(pageProperty.id, databaseProperty.propertyId))
+    .innerJoin(database, eq(database.id, databaseRow.databaseId))
+    .where(
+      and(
+        eq(databaseRow.pageId, record.id),
+        eq(pageProperty.workspaceId, record.workspaceId),
+        isNull(databaseRow.deletedAt),
+        isNull(database.deletedAt),
+        isNull(pageProperty.deletedAt),
+      ),
+    );
+  const accessibleDatabaseIds = new Set(
+    (
+      await Promise.all(
+        [...new Set(candidateMemberships.map(({ databaseId }) => databaseId))]
+          .map(async (databaseId) =>
+            await canAccessDatabaseInWorkspace(
+                databaseId,
+                record.workspaceId,
+                user.id,
+                "view",
+              )
+              ? databaseId
+              : null
+          ),
+      )
+    ).filter((databaseId): databaseId is string => Boolean(databaseId)),
   );
-  const property = propertyPayload.properties.find(
-    (item) => item.id === propertyId,
+  const memberships = candidateMemberships.filter(({ databaseId }) =>
+    accessibleDatabaseIds.has(databaseId)
   );
 
-  if (!property) {
+  if (memberships.length === 0) {
     return c.json({ error: "Property not found" }, 404);
   }
 
-  await db
-    .insert(pagePropertyValue)
-    .values({
-      id: crypto.randomUUID(),
-      pageId: record.id,
-      propertyId,
-      value,
-    })
-    .onConflictDoUpdate({
-      target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
-      set: {
-        value,
-        updatedAt: new Date(),
-      },
-    });
+  const now = new Date();
+  const nowIso = now.toISOString();
 
-  return c.json(await getPagePropertyPayload(record.id, record.workspaceId));
+  const { commits } = await commitDatabaseMutationBatch(
+    { actorId: user.id, env: c.env },
+    async (tx) => {
+      const [savedValue] = await tx
+        .insert(pagePropertyValue)
+        .values({
+          id: crypto.randomUUID(),
+          pageId: record.id,
+          propertyId,
+          value,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
+          set: { value, updatedAt: now },
+        })
+        .returning();
+
+      if (!savedValue) {
+        throw new Error("Failed to save page property value");
+      }
+
+      await tx
+        .update(databaseRow)
+        .set({ lastEditedById: user.id, updatedAt: now })
+        .where(inArray(databaseRow.id, memberships.map(({ rowId }) => rowId)));
+      await tx
+        .update(page)
+        .set({ updatedAt: now })
+        .where(eq(page.id, record.id));
+
+      return {
+        mutations: memberships.map(({ databaseId, rowId }) => ({
+          changed: ["rows" as const, "values" as const],
+          databaseId,
+          delta: {
+            rows: [{ id: rowId, lastEditedById: user.id, updatedAt: nowIso }],
+            values: [
+              {
+                createdAt: savedValue.createdAt.toISOString(),
+                id: savedValue.id,
+                pageId: savedValue.pageId,
+                propertyId: savedValue.propertyId,
+                updatedAt: savedValue.updatedAt.toISOString(),
+                value: savedValue.value,
+              },
+            ],
+          },
+        })),
+        result: undefined,
+      };
+    },
+  );
+
+  return c.json({ mutations: commits.map(mutationResponse) });
 });
 
 pageRoutes.post("/:id/collaboration-ticket", async (c) => {
@@ -1967,11 +2158,68 @@ pageRoutes.patch("/:id", async (c) => {
     values.metadata = patch.metadata;
   }
 
-  const [record] = await db
-    .update(page)
-    .set(values)
-    .where(eq(page.id, existing.id))
-    .returning();
+  const updatesDatabaseRow =
+    patch.name !== undefined || patch.metadata !== undefined;
+  const record = updatesDatabaseRow
+    ? (
+        await commitDatabaseMutationBatch(
+          { actorId: user.id, env: c.env },
+          async (tx) => {
+            const [updatedPage] = await tx
+              .update(page)
+              .set(values)
+              .where(eq(page.id, existing.id))
+              .returning();
+
+            if (!updatedPage) {
+              throw new Error("Page disappeared during update");
+            }
+
+            const rows = await tx
+              .select()
+              .from(databaseRow)
+              .where(
+                and(
+                  eq(databaseRow.pageId, existing.id),
+                  isNull(databaseRow.deletedAt),
+                ),
+              );
+
+            return {
+              mutations: rows.map((row) => ({
+                changed: ["rows" as const],
+                databaseId: row.databaseId,
+                delta: {
+                  rows: [
+                    {
+                      ...row,
+                      page: {
+                        createdAt: updatedPage.createdAt,
+                        id: updatedPage.id,
+                        metadata: updatedPage.metadata,
+                        name: updatedPage.name,
+                        updatedAt: updatedPage.updatedAt,
+                      },
+                    },
+                  ],
+                },
+              })),
+              result: updatedPage,
+            };
+          },
+        )
+      ).result
+    : (
+        await db
+          .update(page)
+          .set(values)
+          .where(eq(page.id, existing.id))
+          .returning()
+      )[0];
+
+  if (!record) {
+    return c.json({ error: "Page not found" }, 404);
+  }
 
   if (patch.content !== undefined) {
     await replacePageContent({

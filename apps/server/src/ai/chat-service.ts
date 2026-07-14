@@ -166,6 +166,7 @@ export async function runAiChatTurn(input: {
           ...buildPageEditTools(allowedPageIds),
           ...buildDatabaseConfigTools({
             allowedPageIds: new Set(allowedPageIds),
+            env: input.env,
             workspaceId,
             primaryPageId: requestBody.primaryPageId,
             userId: auth.userId,

@@ -2,6 +2,7 @@ import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
 import { canAccessDatabaseInWorkspace, canAccessPage } from "../access";
+import type { RuntimeEnv } from "../config";
 import { db } from "../db";
 import type { Database } from "../db";
 import {
@@ -444,6 +445,7 @@ export async function createDatabaseService(input: {
 export async function updateDatabaseService(input: {
   config?: unknown;
   databaseId: string;
+  env?: RuntimeEnv;
 
   name?: string;
   userId: string;
@@ -469,6 +471,7 @@ export async function updateDatabaseService(input: {
       actorId: input.userId,
       changed: ["database"],
       databaseId: existing.id,
+      env: input.env,
     },
     async (tx) => {
       await tx.update(database).set(values).where(eq(database.id, existing.id));
@@ -490,6 +493,7 @@ export async function updateDatabaseService(input: {
 export async function createDatabasePropertyService(input: {
   config?: unknown;
   databaseId: string;
+  env?: RuntimeEnv;
 
   name?: string;
   position?: number;
@@ -510,9 +514,15 @@ export async function createDatabasePropertyService(input: {
   const config = normalizePropertyConfig(type, input.config ?? null);
 
   const columns = await db
-    .select({ position: databaseProperty.position })
+    .select({ id: databaseProperty.id, position: databaseProperty.position })
     .from(databaseProperty)
-    .where(eq(databaseProperty.databaseId, existing.id));
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
+    .where(
+      and(
+        eq(databaseProperty.databaseId, existing.id),
+        isNull(pageProperty.deletedAt),
+      ),
+    );
 
   const pagePropertyId = crypto.randomUUID();
   const databasePropertyId = crypto.randomUUID();
@@ -526,6 +536,7 @@ export async function createDatabasePropertyService(input: {
       actorId: input.userId,
       changed: ["properties"],
       databaseId: existing.id,
+      env: input.env,
     },
     async (tx) => {
       const now = new Date();
@@ -563,10 +574,22 @@ export async function createDatabasePropertyService(input: {
       const delta = await fetchDatabasePropertyDelta(
         existing.id,
         databasePropertyId,
+        tx,
       );
 
       return {
-        delta: delta ?? { properties: [] },
+        delta: {
+          properties: [
+            ...columns
+              .filter((column) => column.position >= targetPosition)
+              .map((column) => ({
+                id: column.id,
+                position: column.position + 1,
+                updatedAt: now.toISOString(),
+              })),
+            ...(delta?.properties ?? []),
+          ],
+        },
       };
     },
   );
@@ -584,6 +607,7 @@ export async function updateDatabasePropertyService(input: {
   config?: unknown;
   databaseId: string;
   databasePropertyId: string;
+  env?: RuntimeEnv;
 
   name?: string;
   position?: number;
@@ -679,6 +703,7 @@ export async function updateDatabasePropertyService(input: {
           ? ["properties", "values"]
           : ["properties"],
       databaseId: existing.id,
+      env: input.env,
     },
     async (tx) => {
       const shouldClearValues = Boolean(
@@ -755,7 +780,11 @@ export async function updateDatabasePropertyService(input: {
           );
       }
 
-      const delta = await fetchDatabasePropertyDelta(existing.id, column.id);
+      const delta = await fetchDatabasePropertyDelta(
+        existing.id,
+        column.id,
+        tx,
+      );
 
       return {
         delta: {
@@ -784,6 +813,7 @@ export async function updateDatabasePropertyService(input: {
 export async function createDatabaseViewService(input: {
   config?: unknown;
   databaseId: string;
+  env?: RuntimeEnv;
 
   name?: string;
   type?: string;
@@ -814,6 +844,7 @@ export async function createDatabaseViewService(input: {
       actorId: input.userId,
       changed: ["views"],
       databaseId: existing.id,
+      env: input.env,
     },
     async (tx) => {
       const now = new Date();
@@ -829,7 +860,7 @@ export async function createDatabaseViewService(input: {
         updatedAt: now,
       });
 
-      const delta = await fetchDatabaseViewDelta(viewId);
+      const delta = await fetchDatabaseViewDelta(viewId, tx);
 
       return {
         delta: delta ?? { views: [] },
@@ -843,6 +874,7 @@ export async function createDatabaseViewService(input: {
 export async function updateDatabaseViewService(input: {
   config?: unknown;
   databaseId: string;
+  env?: RuntimeEnv;
 
   name?: string;
   type?: string;
@@ -890,6 +922,7 @@ export async function updateDatabaseViewService(input: {
       actorId: input.userId,
       changed: ["views"],
       databaseId: existing.id,
+      env: input.env,
     },
     async (tx) => {
       await tx
@@ -897,7 +930,7 @@ export async function updateDatabaseViewService(input: {
         .set(values)
         .where(eq(databaseView.id, existingView.id));
 
-      const delta = await fetchDatabaseViewDelta(existingView.id);
+      const delta = await fetchDatabaseViewDelta(existingView.id, tx);
 
       return {
         delta: delta ?? { views: [] },
@@ -910,6 +943,7 @@ export async function updateDatabaseViewService(input: {
 
 export async function createDatabaseRowService(input: {
   databaseId: string;
+  env?: RuntimeEnv;
 
   pageId?: string | null;
   parentRowId?: string | null;
@@ -1033,6 +1067,7 @@ export async function createDatabaseRowService(input: {
       actorId: input.userId,
       changed: defaultStatusValues.length > 0 ? ["rows", "values"] : ["rows"],
       databaseId: existing.id,
+      env: input.env,
     },
     async (tx) => {
       const now = new Date();
@@ -1123,11 +1158,18 @@ export async function createDatabaseRowService(input: {
         );
       }
 
-      const delta = await fetchDatabaseRowDelta(rowId);
+      const delta = await fetchDatabaseRowDelta(rowId, tx);
+      const shiftedRows = rows
+        .filter((row) => row.position >= targetPosition)
+        .map((row) => ({
+          id: row.id,
+          position: row.position + 1,
+          updatedAt: now.toISOString(),
+        }));
 
       return {
         delta: {
-          ...(delta ?? { rows: [] }),
+          rows: [...shiftedRows, ...(delta?.rows ?? [])],
           ...(insertedValues.length > 0 ? { values: insertedValues } : {}),
         },
       };
@@ -1214,6 +1256,7 @@ export function validateCellValue(
 
 export async function setDatabaseCellValueService(input: {
   databaseId: string;
+  env?: RuntimeEnv;
 
   rowId: string;
   userId: string;
@@ -1268,6 +1311,7 @@ export async function setDatabaseCellValueService(input: {
       actorId: input.userId,
       changed: ["values"],
       databaseId: existing.id,
+      env: input.env,
     },
     async (tx) => {
       await tx

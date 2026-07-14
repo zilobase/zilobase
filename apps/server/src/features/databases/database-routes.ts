@@ -32,6 +32,13 @@ import {
 import type { DatabaseChangedArea } from "../../services/database-delta";
 import { encodePageContentAsYjs } from "../../collaboration/service";
 import type { AppBindings } from "../../types";
+import {
+  createDatabaseRealtimeTicket,
+  DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
+  DATABASE_REALTIME_PROTOCOL,
+  verifyDatabaseRealtimeTicket,
+} from "../../database-realtime-ticket";
+import { getDatabaseRealtimeWebSocketUrl } from "../../runtime-adapter";
 import { upsertPageItemPlacement } from "../../page-item-placements";
 import { softDeleteDatabaseTree } from "../../soft-delete-nav-items";
 import { loadWorkspacePageGraph } from "../../page-graph";
@@ -160,7 +167,10 @@ const commitDatabaseMutation = async (
   mutate: (tx: DatabaseTransaction) => Promise<{ delta: DatabaseDelta }>,
 ) => {
   try {
-    const committed = await commitDatabaseMutationCore(options, mutate);
+    const committed = await commitDatabaseMutationCore(
+      { ...options, env: c.env },
+      mutate,
+    );
 
     return { ok: true as const, ...committed };
   } catch (error) {
@@ -850,6 +860,95 @@ databaseRoutes.get("/:id", async (c) => {
   });
 });
 
+databaseRoutes.post("/:id/realtime-ticket", async (c) => {
+  const user = requireUser(c);
+
+  if (!user || c.get("authMethod") !== "session") {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const record = await getDatabaseRecord(c.req.param("id"));
+
+  if (!record) {
+    return c.json({ error: "Database not found" }, 404);
+  }
+
+  const accessLevel = await getEffectiveDatabaseAccessInWorkspace(
+    record.id,
+    record.workspaceId,
+    user.id,
+  );
+  const canView = accessLevel !== "none";
+  const canEdit = accessLevel === "edit" || accessLevel === "full";
+
+  if (!canView) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const body = await c.req.json().catch(() => null);
+  const hasRefreshToken = Boolean(
+    body && typeof body === "object" && "token" in body,
+  );
+  const refreshToken =
+    hasRefreshToken && typeof (body as { token?: unknown }).token === "string"
+      ? body.token
+      : undefined;
+  let sessionId: string | undefined;
+
+  if (hasRefreshToken && (!refreshToken || refreshToken.length > 8 * 1024)) {
+    return c.json({ error: "Invalid realtime session" }, 400);
+  }
+
+  if (refreshToken) {
+    try {
+      const previous = await verifyDatabaseRealtimeTicket(refreshToken, c.env);
+
+      if (
+        previous.databaseId !== record.id ||
+        previous.user.id !== user.id
+      ) {
+        return c.json({ error: "Invalid realtime session" }, 401);
+      }
+
+      sessionId = previous.sessionId;
+    } catch {
+      return c.json({ error: "Invalid realtime session" }, 401);
+    }
+  }
+
+  const ticket = await createDatabaseRealtimeTicket(
+    {
+      canEdit,
+      databaseId: record.id,
+      user: {
+        email: user.email,
+        id: user.id,
+        image: user.image,
+        name: user.name || user.email,
+      },
+      workspaceId: record.workspaceId,
+      sessionId,
+      version: record.version,
+    },
+    c.env,
+  );
+  const websocketUrl = new URL(
+    getDatabaseRealtimeWebSocketUrl(c.req.raw, c.env),
+  );
+  websocketUrl.searchParams.set("database", record.id);
+
+  return c.json({
+    databaseId: record.id,
+    version: record.version,
+    websocketProtocols: [
+      DATABASE_REALTIME_PROTOCOL,
+      `${DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.token}`,
+    ],
+    websocketUrl: websocketUrl.toString(),
+    ...ticket,
+  });
+});
+
 databaseRoutes.get("/:id/published", async (c) => {
   const record = await getDatabaseRecord(c.req.param("id"));
 
@@ -1354,7 +1453,7 @@ databaseRoutes.patch("/:id/views/:viewId", async (c) => {
         .set(values)
         .where(eq(databaseView.id, existingView.id));
 
-      const delta = await fetchDatabaseViewDelta(existingView.id);
+      const delta = await fetchDatabaseViewDelta(existingView.id, tx);
 
       return {
         delta: delta ?? {
@@ -1447,7 +1546,7 @@ databaseRoutes.post("/:id/views", async (c) => {
         updatedAt: now,
       });
 
-      const delta = await fetchDatabaseViewDelta(viewId);
+      const delta = await fetchDatabaseViewDelta(viewId, tx);
 
       return {
         delta: delta ?? {
@@ -1595,9 +1694,15 @@ databaseRoutes.post("/:id/properties", async (c) => {
   }
 
   const columns = await db
-    .select({ position: databaseProperty.position })
+    .select({ id: databaseProperty.id, position: databaseProperty.position })
     .from(databaseProperty)
-    .where(eq(databaseProperty.databaseId, existing.id));
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
+    .where(
+      and(
+        eq(databaseProperty.databaseId, existing.id),
+        isNull(pageProperty.deletedAt),
+      ),
+    );
   const propertyId = crypto.randomUUID();
   const columnId = crypto.randomUUID();
   const targetPosition =
@@ -1645,29 +1750,38 @@ databaseRoutes.post("/:id/properties", async (c) => {
         updatedAt: now,
       });
 
-      const delta = await fetchDatabasePropertyDelta(existing.id, columnId);
+      const delta = await fetchDatabasePropertyDelta(existing.id, columnId, tx);
 
       return {
-        delta: delta ?? {
+        delta: {
           properties: [
-            {
-              createdAt: now.toISOString(),
-              databaseId: existing.id,
-              id: columnId,
-              position: targetPosition,
-              property: {
-                config: normalizedConfig,
-                createdAt: now.toISOString(),
-                id: propertyId,
-                name,
-                workspaceId: existing.workspaceId,
-                type,
+            ...columns
+              .filter((column) => column.position >= targetPosition)
+              .map((column) => ({
+                id: column.id,
+                position: column.position + 1,
                 updatedAt: now.toISOString(),
+              })),
+            ...(delta?.properties ?? [
+              {
+                createdAt: now.toISOString(),
+                databaseId: existing.id,
+                id: columnId,
+                position: targetPosition,
+                property: {
+                  config: normalizedConfig,
+                  createdAt: now.toISOString(),
+                  id: propertyId,
+                  name,
+                  workspaceId: existing.workspaceId,
+                  type,
+                  updatedAt: now.toISOString(),
+                },
+                propertyId,
+                updatedAt: now.toISOString(),
+                visible: true,
               },
-              propertyId,
-              updatedAt: now.toISOString(),
-              visible: true,
-            },
+            ]),
           ],
         },
       };
@@ -1994,7 +2108,7 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
           );
       }
 
-      const delta = await fetchDatabasePropertyDelta(existing.id, column.id);
+      const delta = await fetchDatabasePropertyDelta(existing.id, column.id, tx);
 
       return {
         delta: {
@@ -2080,7 +2194,11 @@ databaseRoutes.post(
     }
 
     const existingProperties = await db
-      .select({ name: pageProperty.name })
+      .select({
+        id: databaseProperty.id,
+        name: pageProperty.name,
+        position: databaseProperty.position,
+      })
       .from(databaseProperty)
       .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
       .where(
@@ -2182,12 +2300,23 @@ databaseRoutes.post(
           );
         }
 
-        const delta = await fetchDatabasePropertyDelta(existing.id, columnId);
+        const delta = await fetchDatabasePropertyDelta(
+          existing.id,
+          columnId,
+          tx,
+        );
 
         return {
           delta: {
-            ...(delta ?? {
-              properties: [
+            properties: [
+              ...existingProperties
+                .filter((property) => property.position >= targetPosition)
+                .map((property) => ({
+                  id: property.id,
+                  position: property.position + 1,
+                  updatedAt: now.toISOString(),
+                })),
+              ...(delta?.properties ?? [
                 {
                   createdAt: now.toISOString(),
                   databaseId: existing.id,
@@ -2206,8 +2335,8 @@ databaseRoutes.post(
                   updatedAt: now.toISOString(),
                   visible: true,
                 },
-              ],
-            }),
+              ]),
+            ],
             ...(insertedValues.length > 0 ? { values: insertedValues } : {}),
           },
         };
@@ -2288,6 +2417,7 @@ databaseRoutes.delete("/:id/properties/:databasePropertyId", async (c) => {
 
       return {
         delta: {
+          removedPagePropertyIds: [column.property.id],
           removedPropertyIds: [column.column.id],
         },
       };
@@ -2370,16 +2500,17 @@ databaseRoutes.post("/:id/rows", async (c) => {
     }
   }
 
-  const [rowCountRecord] = await db
-    .select({ count: sql<number>`count(*)::int` })
+  const activeRows = await db
+    .select({ id: databaseRow.id, position: databaseRow.position })
     .from(databaseRow)
     .where(
       and(
         eq(databaseRow.databaseId, existing.id),
         isNull(databaseRow.deletedAt),
       ),
-    );
-  const rowCount = rowCountRecord?.count ?? 0;
+    )
+    .orderBy(asc(databaseRow.position));
+  const rowCount = activeRows.length;
   const targetPosition =
     position === undefined ? rowCount : Math.min(position as number, rowCount);
   let pageId =
@@ -2852,29 +2983,32 @@ databaseRoutes.post("/:id/rows", async (c) => {
 
       return {
         delta: {
-          ...(sourceDatabase
-            ? {
-                properties: inheritedProperties,
-                rows: [
-                  {
-                    createdAt: nowIso,
-                    createdById: user.id,
-                    databaseId: existing.id,
-                    id: rowId,
-                    lastEditedById: user.id,
-                    page: {
-                      id: pageId,
-                      metadata: pageMetadata,
-                      name: rowTitle,
-                    },
-                    pageId,
-                    parentRowId,
-                    position: targetPosition,
-                    updatedAt: nowIso,
-                  },
-                ],
-              }
-            : {}),
+          ...(sourceDatabase ? { properties: inheritedProperties } : {}),
+          rows: [
+            ...activeRows
+              .filter((row) => row.position >= targetPosition)
+              .map((row) => ({
+                id: row.id,
+                position: row.position + 1,
+                updatedAt: nowIso,
+              })),
+            {
+              createdAt: nowIso,
+              createdById: user.id,
+              databaseId: existing.id,
+              id: rowId,
+              lastEditedById: user.id,
+              page: {
+                id: pageId,
+                metadata: pageMetadata,
+                name: rowTitle,
+              },
+              pageId,
+              parentRowId,
+              position: targetPosition,
+              updatedAt: nowIso,
+            },
+          ],
           ...(insertedValues.length > 0 || inheritedValues.length > 0
             ? { values: [...insertedValues, ...inheritedValues] }
             : {}),
@@ -2887,12 +3021,9 @@ databaseRoutes.post("/:id/rows", async (c) => {
     return databaseMutationErrorResponse(c, mutation.error);
   }
 
-  if (sourceDatabase) {
-    return c.json(mutationResponse(mutation), 201);
-  }
-
   return c.json(
     {
+      ...mutationResponse(mutation),
       createdAt: nowIso,
       databaseId: existing.id,
       isFavorite: shouldInheritFavorite,
@@ -3280,7 +3411,7 @@ databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {
     c,
     {
       actorId: user.id,
-      changed: ["values"],
+      changed: ["rows", "values"],
 
       databaseId: existing.id,
     },

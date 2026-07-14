@@ -1,6 +1,7 @@
 import { tool, type ToolSet } from "ai";
 import * as z from "zod";
 
+import type { RuntimeEnv } from "../config";
 import {
   createDatabasePropertyService,
   createDatabaseRowService,
@@ -42,6 +43,7 @@ const propertyConfigSchema = z
 
 type ToolContext = {
   allowedPageIds: Set<string>;
+  env: RuntimeEnv;
   workspaceId: string;
   primaryPageId: string | null;
   userId: string;
@@ -265,6 +267,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         const result = await createDatabasePropertyService({
           config: input.config ?? null,
           databaseId: input.databaseId,
+          env: context.env,
 
           name: input.name,
           position: input.position,
@@ -316,6 +319,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
           config: input.config,
           databaseId: input.databaseId,
           databasePropertyId: input.databasePropertyId,
+          env: context.env,
 
           name: input.name,
           position: input.position,
@@ -344,6 +348,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         const result = await createDatabaseViewService({
           config: input.config ?? null,
           databaseId: input.databaseId,
+          env: context.env,
 
           name: input.name,
           type: input.type,
@@ -371,6 +376,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         const result = await updateDatabaseViewService({
           config: input.config,
           databaseId: input.databaseId,
+          env: context.env,
 
           name: input.name,
           type: input.type,
@@ -396,6 +402,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         const result = await updateDatabaseService({
           config: input.config,
           databaseId: input.databaseId,
+          env: context.env,
 
           name: input.name,
           userId: context.userId,
@@ -420,6 +427,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       execute: withDbExecute(context, async (input) => {
         const result = await createDatabaseRowService({
           databaseId: input.databaseId,
+          env: context.env,
 
           pageId: input.pageId,
           parentRowId: input.parentRowId,
@@ -450,6 +458,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       execute: withDbExecute(context, async (input) => {
         const result = await setDatabaseCellValueService({
           databaseId: input.databaseId,
+          env: context.env,
 
           rowId: input.rowId,
           userId: context.userId,
