@@ -2110,3 +2110,18 @@
   }
 
 }
+.tiptap-editor .editor-comment-anchor {
+  border-bottom: 2px solid color-mix(in oklab, var(--primary) 55%, transparent);
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+  border-radius: 0.125rem;
+  cursor: pointer;
+}
+
+.tiptap-editor .editor-comment-anchor[data-comment-active="true"] {
+  background: color-mix(in oklab, var(--primary) 24%, transparent);
+}
+
+.tiptap-editor .editor-comment-anchor[data-comment-resolved="true"] {
+  border-bottom-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  background: transparent;
+}

@@ -27,8 +27,8 @@ import {
   useUpdatePagePropertyValue,
   usePagePersonAccessTargets,
   usePageProperties,
-  usePageThreads,
 } from "@notelab/features/pages"
+import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry"
 import type {
   PageLayoutConfig,
   PagePropertyPresenceTarget,
@@ -269,20 +269,20 @@ export function PageMetadata({
   const commentsEnabled = Boolean(
     enableComments && layoutConfig?.discussionsVisible !== false && pageId && session?.user,
   )
-  const { data: threadsData } = usePageThreads(pageId, commentsEnabled)
+  const commentsSnapshot = usePageCommentsSnapshot(commentsEnabled ? pageId : null)
   const updatePropertyValue = useUpdatePagePropertyValue()
   const cover = coverProp ?? localCover
   const icon = iconProp ?? localIcon
   const title = titleProp ?? localTitle
   const unresolvedThreads = useMemo(
     () =>
-      (threadsData?.threads ?? []).filter(
-        (item) => item.thread && !item.thread.resolvedAt,
+      commentsSnapshot.threads.filter(
+        (thread) => thread.kind === "page" && !thread.resolvedAt,
       ),
-    [threadsData?.threads],
+    [commentsSnapshot.threads],
   )
   const totalCommentCount = unresolvedThreads.reduce(
-    (sum, item) => sum + item.commentCount,
+    (sum, thread) => sum + thread.comments.length,
     0,
   )
   const showHeading = !layoutSection || layoutSection === "heading"
@@ -716,16 +716,16 @@ export function PageMetadata({
         {showDiscussions && commentsEnabled && showCommentsSection ? (
           <div className="mt-6 space-y-0 pb-3">
             {unresolvedThreads.length > 0 ? (
-              unresolvedThreads.map((item, index) => (
+              unresolvedThreads.map((thread, index) => (
                 <div
                   className={
                     index > 0 ? "mt-5 border-t border-border pt-4" : ""
                   }
-                  key={item.thread!.id}
+                  key={thread.id}
                 >
                   <PageCommentThread
                     placeholder={index === 0 ? "Add a comment..." : "Reply..."}
-                    threadId={item.thread!.id}
+                    threadId={thread.id}
                     pageId={pageId}
                   />
                 </div>

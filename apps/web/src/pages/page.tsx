@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { ArrowRight, Maximize2 } from "lucide-react";
 
@@ -42,6 +42,8 @@ import { createPageEditorHandle } from "@/hooks/use-page-edit-applier";
 import { Editor, type PageEditPreviewControls } from "@/packages/editor";
 import type { OpenPageOptions } from "@/packages/editor/types";
 import { usePageCollaboration } from "@/packages/editor/use-page-collaboration";
+import { createPageCommentController } from "@/comments/yjs-comments";
+import { usePageCommentsRegistry } from "@/contexts/page-comments-registry";
 
 type PageEditorPaneProps = {
   className?: string;
@@ -305,6 +307,7 @@ export function PageEditorPane({
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
   const { registerEditor, unregisterEditor } = usePageEditorRegistry();
+  const commentsRegistry = usePageCommentsRegistry();
   const [name, setName] = useState("");
   const [cover, setCover] = useState("");
   const [emoji, setEmoji] = useState("");
@@ -359,10 +362,45 @@ export function PageEditorPane({
     !page?.deletedAt &&
     (accessLevel === "edit" || accessLevel === "full");
   const collaboration = usePageCollaboration({
-    enabled: pageEditable,
+    enabled: Boolean(
+      pageEditable ||
+        (enableComments && session?.user && page && !page.deletedAt),
+    ),
     pageId,
     user: session?.user,
   });
+  const commentController = useMemo(() => {
+    if (!enableComments || !collaboration.provider || !session?.user) {
+      return null;
+    }
+
+    return createPageCommentController({
+      canEdit: pageEditable,
+      canModerate: accessLevel === "full",
+      document: collaboration.provider.document,
+      user: {
+        email: session.user.email ?? null,
+        id: session.user.id,
+        image: session.user.image ?? null,
+        name: session.user.name ?? null,
+      },
+    });
+  }, [
+    accessLevel,
+    collaboration.provider,
+    enableComments,
+    pageEditable,
+    session?.user,
+  ]);
+
+  useEffect(() => {
+    if (!commentController) return;
+    const unregister = commentsRegistry.register(pageId, commentController);
+    return () => {
+      unregister();
+      commentController.destroy();
+    };
+  }, [commentController, commentsRegistry, pageId]);
   const liveEditingReady =
     !pageEditable || Boolean(collaboration.provider && !collaboration.error);
 
@@ -604,6 +642,7 @@ export function PageEditorPane({
               }
             : undefined
         }
+        commentController={commentController ?? undefined}
         content={page.content ?? ""}
         cover={cover}
         databaseId={effectiveDatabaseId}

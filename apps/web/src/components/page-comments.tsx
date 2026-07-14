@@ -70,20 +70,14 @@ import {
 import { useOptionalPageEditorComments } from "@/components/page-editor-comments"
 import { useSession } from "@notelab/features/auth"
 import {
-  useAddPageCommentReaction,
-  useCreatePageComment,
-  useDeletePageComment,
-  useRemovePageCommentReaction,
-  useResolvePageCommentThread,
-  useUnresolvePageCommentThread,
-  useUpdatePageComment,
-  usePageComments,
   usePagePersonAccessTargets,
 } from "@notelab/features/pages"
-import type {
-  CommentAuthor,
-  PageCommentMessage,
-} from "@notelab/features/pages"
+import { usePageCommentController, usePageCommentsSnapshot } from "@/contexts/page-comments-registry"
+import type { CommentAuthorSnapshot, CommentMessageSnapshot } from "@/comments/yjs-comments"
+import { toast } from "sonner"
+
+type CommentAuthor = CommentAuthorSnapshot
+type PageCommentMessage = CommentMessageSnapshot
 
 type CommentAvatarAuthor =
   | Pick<CommentAuthor, "email" | "id" | "image" | "name">
@@ -606,6 +600,14 @@ export function formatCommentTime(value: string) {
   }).format(date)
 }
 
+function runCommentAction(action: () => void) {
+  try {
+    action()
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : "Could not update comment")
+  }
+}
+
 // ------------------------------------------------------------------
 // PageCommentThread: reusable full "comment thread" UI + setup
 // This encapsulates fetching, local composer/edit state, all mutations
@@ -623,7 +625,9 @@ export function PageCommentThread({
   className,
   placeholder = "Reply...",
   onThreadResolved,
+  onThreadCreated,
   collapseLongThreads = false,
+  newThreadKind = "page",
 }: {
   pageId?: string | null
   threadId?: string | null
@@ -631,20 +635,24 @@ export function PageCommentThread({
   className?: string
   placeholder?: string
   onThreadResolved?: () => void
+  onThreadCreated?: (threadId: string) => void
   collapseLongThreads?: boolean
+  newThreadKind?: "inline" | "page"
 }) {
   const editorComments = useOptionalPageEditorComments()
   const { data: session } = useSession()
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const commentsEnabled = Boolean(pageId && session?.user)
-  const { data: commentsPayload, isLoading: commentsLoading } =
-    usePageComments(pageId ?? null, threadId ?? undefined, commentsEnabled)
+  const controller = usePageCommentController(pageId)
+  const commentsSnapshot = usePageCommentsSnapshot(pageId)
   const { data: accessTargets } = usePagePersonAccessTargets(
     pageId ?? null
   )
 
-  const comments = commentsPayload?.comments ?? []
-  const thread = commentsPayload?.thread ?? null
+  const thread = threadId
+    ? commentsSnapshot.threads.find((item) => item.id === threadId) ?? null
+    : null
+  const comments = thread?.comments ?? []
+  const commentsLoading = Boolean(pageId && !controller)
 
   const [newCommentBody, setNewCommentBody] = useState("")
   const [newCommentCursor, setNewCommentCursor] = useState(0)
@@ -717,22 +725,7 @@ export function PageCommentThread({
     }
   }
 
-  const createPageComment = useCreatePageComment()
-  const updatePageComment = useUpdatePageComment()
-  const deletePageComment = useDeletePageComment()
-  const addPageCommentReaction = useAddPageCommentReaction()
-  const removePageCommentReaction = useRemovePageCommentReaction()
-  const resolvePageCommentThread = useResolvePageCommentThread()
-  const unresolvePageCommentThread = useUnresolvePageCommentThread()
-
-  const isMutating =
-    createPageComment.isPending ||
-    updatePageComment.isPending ||
-    deletePageComment.isPending ||
-    addPageCommentReaction.isPending ||
-    removePageCommentReaction.isPending ||
-    resolvePageCommentThread.isPending ||
-    unresolvePageCommentThread.isPending
+  const isMutating = false
 
   const threadResolved = Boolean(thread?.resolvedAt)
   const hasComments = comments.length > 0
@@ -743,18 +736,21 @@ export function PageCommentThread({
 
   const createComment = () => {
     const body = newCommentBody.trim()
-    if (!pageId || !body) return
+    if (!controller || !body) return
 
-    createPageComment.mutate(
-      { body, pageId },
-      {
-        onSuccess: () => {
-          setNewCommentBody("")
-          setNewCommentCursor(0)
-          setDismissedMentionKey(null)
-        },
+    runCommentAction(() => {
+      if (thread) controller.reply(thread.id, body)
+      else {
+        const createdThreadId = newThreadKind === "inline"
+          ? controller.createInlineThread(body)
+          : controller.createPageThread(body)
+        if (!createdThreadId) throw new Error("Select text before adding an inline comment")
+        onThreadCreated?.(createdThreadId)
       }
-    )
+      setNewCommentBody("")
+      setNewCommentCursor(0)
+      setDismissedMentionKey(null)
+    })
   }
 
   const selectMentionMember = (member: CommentMentionMember) => {
@@ -802,47 +798,43 @@ export function PageCommentThread({
 
   const saveEditedComment = () => {
     const body = editingComment?.body.trim()
-    if (!pageId || !editingComment || !body) return
+    if (!controller || !thread || !editingComment || !body) return
 
-    updatePageComment.mutate(
-      { body, messageId: editingComment.id, pageId },
-      { onSuccess: () => setEditingComment(null) }
-    )
+    runCommentAction(() => {
+      controller.editMessage(thread.id, editingComment.id, body)
+      setEditingComment(null)
+    })
   }
 
   const removeComment = (commentId: string) => {
-    if (!pageId) return
-    deletePageComment.mutate({ messageId: commentId, pageId })
+    if (!controller || !thread) return
+    runCommentAction(() => controller.deleteMessage(thread.id, commentId))
   }
 
   const addCommentReaction = (commentId: string, emoji: string) => {
-    if (!pageId) return
-    addPageCommentReaction.mutate({ emoji, messageId: commentId, pageId })
+    if (!controller || !thread) return
+    runCommentAction(() => controller.addReaction(thread.id, commentId, emoji))
   }
 
   const removeCommentReaction = (commentId: string, emoji: string) => {
-    if (!pageId) return
-    removePageCommentReaction.mutate({ emoji, messageId: commentId, pageId })
+    if (!controller || !thread) return
+    runCommentAction(() => controller.removeReaction(thread.id, commentId, emoji))
   }
 
   const resolveThread = () => {
-    if (!pageId) return
-    resolvePageCommentThread.mutate(
-      { pageId, threadId: threadId ?? undefined },
-      { onSuccess: () => onThreadResolved?.() },
-    )
+    if (!controller || !thread) return
+    runCommentAction(() => {
+      controller.resolveThread(thread.id)
+      onThreadResolved?.()
+    })
   }
 
   const unresolveThread = () => {
-    if (!pageId) return
-    unresolvePageCommentThread.mutate(
-      { pageId, threadId: threadId ?? undefined },
-      {
-        onSuccess: () => {
-          editorComments?.requestEditorComments()
-        },
-      },
-    )
+    if (!controller || !thread) return
+    runCommentAction(() => {
+      controller.unresolveThread(thread.id)
+      editorComments?.requestEditorComments()
+    })
   }
 
   const shouldCollapse =
@@ -863,10 +855,12 @@ export function PageCommentThread({
       <CommentItem
         key={comment.id}
         canEdit={Boolean(
-          comment.authorId && comment.authorId === session?.user?.id
+          controller?.canEdit &&
+            (controller.canModerate ||
+              (comment.authorId && comment.authorId === session?.user?.id))
         )}
-        canReact={!!pageId}
-        canResolve={!threadResolved && isRoot && !!thread}
+        canReact={Boolean(controller?.canEdit)}
+        canResolve={Boolean(controller?.canEdit && !threadResolved && isRoot && thread)}
         comment={comment}
         editingBody={
           editingComment?.id === comment.id ? editingComment.body : null
@@ -888,7 +882,7 @@ export function PageCommentThread({
         onRemoveReaction={(emoji) => removeCommentReaction(comment.id, emoji)}
         onResolve={resolveThread}
         onSaveEdit={saveEditedComment}
-        onUnresolve={threadResolved && isRoot ? unresolveThread : undefined}
+        onUnresolve={controller?.canEdit && threadResolved && isRoot ? unresolveThread : undefined}
         showResolveUnresolve
       />
     )
@@ -941,7 +935,7 @@ export function PageCommentThread({
 
             {/* Reply composer for the current (active) thread.
                 The single ThreadLine spans to the reply avatar center. */}
-            {pageId && !threadResolved ? (
+            {pageId && controller?.canEdit && !threadResolved ? (
               <div className="mt-1 flex items-center gap-2 pt-1.5">
                 <ThreadAvatar>
                   <CommentAvatar author={session?.user ?? null} small />

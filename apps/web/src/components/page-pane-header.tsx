@@ -59,6 +59,7 @@ export function PagePaneHeader({
   className,
   leadingControl,
   onClose,
+  onOpenDiscussions,
   pathname,
   rowNavigationDatabaseId,
   showPaneControls = Boolean(onClose),
@@ -68,6 +69,7 @@ export function PagePaneHeader({
   className?: string;
   leadingControl?: ReactNode | null;
   onClose?: () => void;
+  onOpenDiscussions?: () => void;
   pathname: string;
   rowNavigationDatabaseId?: string | null;
   showPaneControls?: boolean;
@@ -105,7 +107,7 @@ export function PagePaneHeader({
       </div>
       {showActions ? (
         <div className="ml-auto px-3">
-          <NavActions databaseId={databaseId} pageId={pageId} />
+          <NavActions databaseId={databaseId} onOpenDiscussions={onOpenDiscussions} pageId={pageId} />
         </div>
       ) : null}
     </header>

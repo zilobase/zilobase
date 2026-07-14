@@ -8,6 +8,7 @@ import type { UseEditorExtensionsOptions } from "./types"
 export type { UseEditorExtensionsOptions }
 
 export const useEditorExtensions = ({
+  commentController,
   collaboration,
   content,
   createEditorDatabase,
@@ -24,6 +25,7 @@ export const useEditorExtensions = ({
   const editorExtensions = useMemo<Extensions>(
     () =>
       createBaseExtensions({
+        commentController,
         collaboration,
         createEditorDatabase,
         databaseEditorRuntime,
@@ -36,6 +38,7 @@ export const useEditorExtensions = ({
         pageId,
       }),
     [
+      commentController,
       createEditorDatabase,
       collaboration,
       databaseEditorRuntime,

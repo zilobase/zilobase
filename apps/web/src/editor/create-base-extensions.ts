@@ -23,6 +23,8 @@ import type { Extensions } from "@tiptap/core"
 import StarterKit from "@tiptap/starter-kit"
 import Collaboration from "@tiptap/extension-collaboration"
 import CollaborationCaret from "@tiptap/extension-collaboration-caret"
+import { CommentExtension } from "@notelab/tiptap-comment-extension"
+import type { PageCommentController } from "@/comments/yjs-comments"
 import { AskAiBlock } from "@/packages/editor/extensions/ask-ai-block"
 import { BookmarkBlock } from "@/packages/editor/extensions/bookmark-block"
 import { CodeBlockShiki } from "@/packages/editor/extensions/code-block-shiki"
@@ -48,6 +50,7 @@ import { VideoBlock } from "@/packages/editor/extensions/video-block"
 import type { OpenPageOptions } from "./types"
 
 export type BaseExtensionsOptions = {
+  commentController?: PageCommentController
   collaboration?: import("./types").EditorCollaboration
   createEditorDatabase: () => Promise<string | null>
   databaseEditorRuntime: DatabaseBlockEditorRuntime
@@ -79,6 +82,7 @@ export function normalizeEditorContent(content: unknown) {
 }
 
 export const createBaseExtensions = ({
+  commentController,
   collaboration,
   createEditorDatabase,
   databaseEditorRuntime,
@@ -109,6 +113,12 @@ export const createBaseExtensions = ({
         }),
       ]
     : []),
+  CommentExtension.configure({
+    HTMLAttributes: { class: "editor-comment-anchor" },
+    onCommentActivated: (commentId) => {
+      commentController?.activateThread(commentId || null)
+    },
+  }),
   Placeholder.configure({
     placeholder: ({ node }) =>
       node.type.name === "heading"

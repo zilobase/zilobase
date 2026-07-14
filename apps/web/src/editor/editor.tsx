@@ -33,8 +33,11 @@ import { useMobileNodeActions } from "./use-mobile-node-actions"
 import { CollaborationPresence } from "./collaboration-presence"
 import { DatabaseView } from "@/packages/editor/extensions/database/views/database-view"
 import { cn } from "@/lib/utils"
+import { useOptionalPageEditorComments } from "@/components/page-editor-comments"
+import { getCommentIdsAtSelection } from "@notelab/tiptap-comment-extension"
 
 export function Editor({
+  commentController,
   collaboration,
   content = starterContent,
   cover,
@@ -60,6 +63,7 @@ export function Editor({
   pageEditPreviewRef,
   pageId,
 }: EditorProps = {}) {
+  const editorComments = useOptionalPageEditorComments()
   const editorId = useId()
   const editorSurfaceRef = useRef<HTMLElement | null>(null)
   const pageMetadataRef = useRef<PageMetadataHandle | null>(null)
@@ -89,6 +93,7 @@ export function Editor({
 
   const { editorExtensions, editorLifecycleKey, initialContent, tocItems } =
     useEditorExtensions({
+      commentController,
       collaboration,
       content,
       createEditorDatabase,
@@ -120,6 +125,35 @@ export function Editor({
     setPasteChoice,
     pageId,
   })
+
+  useEffect(() => {
+    commentController?.setEditor(editor ?? null)
+    return () => commentController?.setEditor(null)
+  }, [commentController, editor])
+
+  const handleAddComment = useCallback(() => {
+    if (!editor || !commentController) return
+
+    const selectedCommentIds = getCommentIdsAtSelection(editor)
+    const snapshot = commentController.getSnapshot()
+    const activeThread = snapshot.activeThreadId && selectedCommentIds.includes(snapshot.activeThreadId)
+      ? snapshot.threads.find((thread) => thread.id === snapshot.activeThreadId)
+      : null
+    const selectedThreads = selectedCommentIds.flatMap((threadId) => {
+      const thread = snapshot.threads.find((item) => item.id === threadId)
+      return thread ? [thread] : []
+    })
+    const existingThread = activeThread
+      ?? selectedThreads.find((thread) => !thread.resolvedAt)
+      ?? selectedThreads[0]
+
+    if (existingThread) {
+      commentController.activateThread(existingThread.id)
+      return
+    }
+
+    editorComments?.requestInlineComment()
+  }, [commentController, editor, editorComments])
 
   useEditorMenuEffects({
     dragHandleMenuOpen,
@@ -458,6 +492,11 @@ export function Editor({
           editable={editable}
           editor={editor}
           editorId={editorId}
+          onAddComment={
+            enableComments && commentController?.canEdit
+              ? handleAddComment
+              : undefined
+          }
           onClosePasteChoice={handleClosePasteChoice}
           onSelectionAiPreviewChange={handleSelectionAiPreviewChange}
           workspaceId={workspaceId}

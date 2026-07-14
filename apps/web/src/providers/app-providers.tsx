@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { PageEditorCommentsProvider } from "@/components/page-editor-comments"
 import { PageEditorRegistryProvider } from "@/contexts/page-editor-registry"
+import { PageCommentsRegistryProvider } from "@/contexts/page-comments-registry"
 import { WebFeaturesProvider } from "@/providers/features-provider"
 import { queryClient } from "@/lib/query-client"
 
@@ -20,7 +21,9 @@ export function AppProviders({ children }: React.PropsWithChildren) {
         >
           <TooltipProvider>
             <PageEditorRegistryProvider>
-              <PageEditorCommentsProvider>{children}</PageEditorCommentsProvider>
+              <PageCommentsRegistryProvider>
+                <PageEditorCommentsProvider>{children}</PageEditorCommentsProvider>
+              </PageCommentsRegistryProvider>
             </PageEditorRegistryProvider>
             <Toaster />
           </TooltipProvider>

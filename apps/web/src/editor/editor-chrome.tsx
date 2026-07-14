@@ -22,6 +22,7 @@ type EditorChromeProps = {
   editor: TiptapEditor | null
   editorId: string
   onClosePasteChoice: () => void
+  onAddComment?: () => void
   onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
   workspaceId?: string | null
   pasteChoice: PasteChoiceState | null
@@ -39,6 +40,7 @@ export function EditorChrome({
   editor,
   editorId,
   onClosePasteChoice,
+  onAddComment,
   onSelectionAiPreviewChange,
   workspaceId,
   pasteChoice,
@@ -82,6 +84,7 @@ export function EditorChrome({
         <>
           <SelectionBubbleMenu
             editor={editor}
+            onAddComment={onAddComment}
             onSelectionAiPreviewChange={onSelectionAiPreviewChange}
             workspaceId={workspaceId}
             runCommand={(action, attrs) =>

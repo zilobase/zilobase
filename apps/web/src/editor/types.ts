@@ -9,6 +9,7 @@ import type { CreatedPage } from "@/packages/editor/extensions/page-block"
 import type { HocuspocusProvider } from "@hocuspocus/provider"
 import type { CollaborationUser } from "./use-page-collaboration"
 import type { PageLayoutConfig } from "@notelab/features/pages"
+import type { PageCommentController } from "@/comments/yjs-comments"
 
 export type EditorCollaboration = {
   provider: HocuspocusProvider
@@ -63,6 +64,7 @@ export type OpenPageOptions = {
 }
 
 export type EditorProps = {
+  commentController?: PageCommentController
   content?: unknown
   collaboration?: EditorCollaboration
   cover?: string
@@ -90,6 +92,7 @@ export type EditorProps = {
 }
 
 export type UseEditorExtensionsOptions = {
+  commentController?: PageCommentController
   content: unknown
   collaboration?: EditorCollaboration
   createEditorDatabase: () => Promise<string | null>

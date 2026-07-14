@@ -1,28 +1,88 @@
 "use client"
 
 import {
-  BellIcon,
   FilterIcon,
+  MessageSquarePlusIcon,
   PanelRightCloseIcon,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { PageCommentThread } from "@/components/page-comments"
-import { usePageThreads } from "@notelab/features/pages"
 import { Button } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { usePageCommentController, usePageCommentsSnapshot } from "@/contexts/page-comments-registry"
+import type { CommentThreadSnapshot } from "@/comments/yjs-comments"
 
-const THREADS_PAGE_SIZE = 8
+type DiscussionFilter = "all" | "inline" | "page"
+type DiscussionStatus = "open" | "resolved"
 
 export function DiscussionsSidebarPanel({
+  inlineComposeRequest,
   open,
   pageId,
   onClose,
+  onRequestOpen,
 }: {
+  inlineComposeRequest?: number
   open: boolean
   pageId?: string | null
   onClose: () => void
+  onRequestOpen: (threadId?: string) => void
 }) {
+  const controller = usePageCommentController(pageId)
+  const snapshot = usePageCommentsSnapshot(pageId)
+  const [filter, setFilter] = useState<DiscussionFilter>("all")
+  const [status, setStatus] = useState<DiscussionStatus>("open")
+  const [composePage, setComposePage] = useState(false)
+  const [composeInline, setComposeInline] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setComposeInline(false)
+      setComposePage(false)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (inlineComposeRequest) {
+      setStatus("open")
+      setComposeInline(true)
+      setComposePage(false)
+      onRequestOpen()
+    }
+  }, [inlineComposeRequest, onRequestOpen])
+
+  useEffect(() => {
+    if (!snapshot.activeThreadId) return
+    const activeThread = snapshot.threads.find(
+      (thread) => thread.id === snapshot.activeThreadId,
+    )
+    if (!activeThread) return
+
+    setStatus(activeThread.resolvedAt ? "resolved" : "open")
+    setFilter((current) => matchesFilter(activeThread, current) ? current : "all")
+    setComposeInline(false)
+    setComposePage(false)
+  }, [snapshot.activeThreadId, snapshot.threads])
+
+  const visibleThreads = useMemo(
+    () => snapshot.threads.filter(
+      (thread) => matchesStatus(thread, status) && matchesFilter(thread, filter),
+    ),
+    [filter, snapshot.threads, status],
+  )
+  const openCount = snapshot.threads.filter((thread) => !thread.resolvedAt).length
+  const resolvedCount = snapshot.threads.length - openCount
+  const hasOpenPageDiscussion = snapshot.threads.some(
+    (thread) => thread.kind === "page" && !thread.resolvedAt,
+  )
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
@@ -36,220 +96,162 @@ export function DiscussionsSidebarPanel({
           <PanelRightCloseIcon />
         </Button>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate font-medium text-sm">All discussions</h2>
+          <h2 className="truncate font-medium text-sm">Discussions</h2>
+          <p className="text-[11px] text-muted-foreground">{openCount} open</p>
         </div>
-        <Button
-          aria-label="Filter discussions"
-          className="text-muted-foreground"
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-        >
-          <FilterIcon className="size-4" />
-        </Button>
-        <Button
-          aria-label="Notifications"
-          className="text-muted-foreground"
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-        >
-          <BellIcon className="size-4" />
-        </Button>
+        {controller?.canEdit && !hasOpenPageDiscussion ? (
+          <Button
+            aria-label="New page discussion"
+            className="text-muted-foreground"
+            onClick={() => {
+              setStatus("open")
+              setComposePage(true)
+              setComposeInline(false)
+            }}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          >
+            <MessageSquarePlusIcon className="size-4" />
+          </Button>
+        ) : null}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              aria-label="Filter discussions"
+              className="text-muted-foreground"
+              size="icon-sm"
+              type="button"
+              variant={filter === "all" ? "ghost" : "secondary"}
+            >
+              <FilterIcon className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {(["all", "inline", "page"] as const).map((value) => (
+              <DropdownMenuItem key={value} onClick={() => setFilter(value)}>
+                {filter === value ? "✓ " : ""}{filterLabel(value)}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
-      <div
-        className="min-h-0 flex-1 overflow-y-auto px-3 py-3 text-sm"
-        data-discussions-scroll-shell
+      <Tabs
+        className="shrink-0 gap-0 border-b px-3 py-2"
+        onValueChange={(value) => {
+          const nextStatus = value as DiscussionStatus
+          setStatus(nextStatus)
+          if (nextStatus === "resolved") {
+            setComposeInline(false)
+            setComposePage(false)
+          }
+        }}
+        value={status}
       >
-        <DiscussionsThreads open={open} pageId={pageId} />
-      </div>
-    </div>
-  )
-}
+        <TabsList className="w-full">
+          <TabsTrigger className="flex-1" value="open">
+            Open
+            <span className="text-xs text-muted-foreground">{openCount}</span>
+          </TabsTrigger>
+          <TabsTrigger className="flex-1" value="resolved">
+            Resolved
+            <span className="text-xs text-muted-foreground">{resolvedCount}</span>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-function DiscussionsThreads({
-  open,
-  pageId,
-}: {
-  open: boolean
-  pageId?: string | null
-}) {
-  const scrollShellRef = useRef<HTMLDivElement | null>(null)
-  const [visiblePastCount, setVisiblePastCount] = useState(THREADS_PAGE_SIZE)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const { data: threadsData, isLoading } = usePageThreads(
-    pageId,
-    Boolean(pageId && open),
-  )
-
-  const threadItems = threadsData?.threads ?? []
-
-  const activeUnresolved = threadItems.find((t) => !t.thread?.resolvedAt)
-  const showActiveDiscussion = Boolean(
-    activeUnresolved && activeUnresolved.commentCount > 0,
-  )
-  const past = threadItems.filter(
-    (t) =>
-      t.thread &&
-      t.commentCount > 0 &&
-      t.thread.id !== activeUnresolved?.thread?.id,
-  )
-
-  const pastWithGroupLabels = useMemo(() => {
-    return past.map((item, index) => {
-      const dateStr =
-        item.thread?.lastActivityAt ||
-        item.thread?.createdAt ||
-        new Date().toISOString()
-      const label = getDateLabel(dateStr)
-      const prevItem = index > 0 ? past[index - 1] : null
-      const prevLabel = prevItem
-        ? getDateLabel(
-            prevItem.thread?.lastActivityAt ||
-              prevItem.thread?.createdAt ||
-              new Date().toISOString(),
-          )
-        : null
-      const showLabel = label !== prevLabel
-      return { item, label, showLabel }
-    })
-  }, [past])
-
-  const visiblePast = pastWithGroupLabels.slice(0, visiblePastCount)
-  const hasMorePast = visiblePastCount < pastWithGroupLabels.length
-
-  useEffect(() => {
-    setVisiblePastCount(THREADS_PAGE_SIZE)
-    setIsLoadingMore(false)
-  }, [pageId, open])
-
-  const loadMorePastThreads = useCallback(() => {
-    if (!hasMorePast || isLoadingMore) {
-      return
-    }
-
-    setIsLoadingMore(true)
-
-    window.setTimeout(() => {
-      setVisiblePastCount((current) =>
-        Math.min(current + THREADS_PAGE_SIZE, pastWithGroupLabels.length),
-      )
-      setIsLoadingMore(false)
-    }, 180)
-  }, [hasMorePast, isLoadingMore, pastWithGroupLabels.length])
-
-  useEffect(() => {
-    if (!open) {
-      return
-    }
-
-    const scrollShell = scrollShellRef.current?.closest(
-      "[data-discussions-scroll-shell]",
-    )
-
-    if (!scrollShell) {
-      return
-    }
-
-    const handleScroll = () => {
-      if (!hasMorePast || isLoadingMore) {
-        return
-      }
-
-      const remaining =
-        scrollShell.scrollHeight -
-        scrollShell.scrollTop -
-        scrollShell.clientHeight
-
-      if (remaining <= 120) {
-        loadMorePastThreads()
-      }
-    }
-
-    scrollShell.addEventListener("scroll", handleScroll, { passive: true })
-
-    return () => {
-      scrollShell.removeEventListener("scroll", handleScroll)
-    }
-  }, [hasMorePast, isLoadingMore, loadMorePastThreads, open])
-
-  if (!pageId) {
-    return (
-      <div className="px-3 py-8 text-center text-muted-foreground">
-        Open a page to view its discussions.
-      </div>
-    )
-  }
-
-  if (open && isLoading && threadItems.length === 0) {
-    return (
-      <div className="flex items-center justify-center px-3 py-10 text-muted-foreground">
-        <Spinner className="size-5" />
-      </div>
-    )
-  }
-
-  return (
-    <div ref={scrollShellRef}>
-      {showActiveDiscussion ? (
-        <div className="-mx-3">
-          <div className="px-3 py-3 hover:bg-sidebar hover:text-sidebar-foreground">
-            <PageCommentThread
-              collapseLongThreads
-              pageId={pageId}
-            />
-          </div>
-        </div>
-      ) : null}
-
-      {visiblePast.length > 0 ? (
-        <div className="-mx-3">
-          <div className="divide-y divide-border">
-            {visiblePast.map(({ item, label, showLabel }) => (
-              <div
-                className="px-3 py-3 hover:bg-sidebar hover:text-sidebar-foreground"
-                key={item.thread!.id}
-              >
-                {showLabel ? (
-                  <div className="pb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    {label}
-                  </div>
-                ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 text-sm">
+        {!pageId ? (
+          <EmptyState>Open a page to view its discussions.</EmptyState>
+        ) : !controller ? (
+          <EmptyState>Connecting to discussions…</EmptyState>
+        ) : (
+          <div className="space-y-3">
+            {status === "open" && composeInline ? (
+              <ComposerCard title="Comment on selection" onCancel={() => setComposeInline(false)}>
                 <PageCommentThread
-                  collapseLongThreads
-                  threadId={item.thread!.id}
+                  newThreadKind="inline"
+                  onThreadCreated={() => setComposeInline(false)}
                   pageId={pageId}
+                  placeholder="Add a comment…"
                 />
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+              </ComposerCard>
+            ) : null}
+            {status === "open" && composePage ? (
+              <ComposerCard title="New page discussion" onCancel={() => setComposePage(false)}>
+                <PageCommentThread
+                  onThreadCreated={() => setComposePage(false)}
+                  pageId={pageId}
+                  placeholder="Start a discussion…"
+                />
+              </ComposerCard>
+            ) : null}
 
-      {open && isLoadingMore ? (
-        <div className="flex items-center justify-center py-4 text-muted-foreground">
-          <Spinner className="size-4" />
-        </div>
-      ) : null}
+            {visibleThreads.map((thread) => (
+              <article
+                className={`rounded-lg border p-3 transition-colors ${
+                  snapshot.activeThreadId === thread.id ? "border-primary/50 bg-primary/5" : ""
+                }`}
+                key={thread.id}
+                onClick={() => controller.activateThread(thread.id, { openSidebar: false })}
+              >
+                <div className="mb-2 flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+                  <span>{thread.kind === "inline" ? "Inline comment" : "Page discussion"}</span>
+                  {thread.kind === "inline" && !thread.anchorAttached ? <span>Original text removed</span> : null}
+                </div>
+                {thread.quote ? (
+                  <blockquote className="mb-3 line-clamp-3 border-l-2 pl-2 text-xs text-muted-foreground">
+                    {thread.quote}
+                  </blockquote>
+                ) : null}
+                <PageCommentThread collapseLongThreads pageId={pageId} threadId={thread.id} />
+              </article>
+            ))}
+
+            {!composeInline && !composePage && visibleThreads.length === 0 ? (
+              <EmptyState>No discussions match this filter.</EmptyState>
+            ) : null}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
-function getDateLabel(dateStr: string): string {
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return "Older"
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  const diffDays = Math.floor(
-    (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24),
+function ComposerCard({
+  children,
+  onCancel,
+  title,
+}: {
+  children: React.ReactNode
+  onCancel: () => void
+  title: string
+}) {
+  return (
+    <section className="rounded-lg border bg-muted/20 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-xs font-semibold">{title}</h3>
+        <Button onClick={onCancel} size="sm" type="button" variant="ghost">Cancel</Button>
+      </div>
+      {children}
+    </section>
   )
-  if (diffDays === 0) return "Today"
-  if (diffDays === 1) return "Yesterday"
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: d.getFullYear() !== today.getFullYear() ? "numeric" : undefined,
-  })
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return <div className="px-3 py-8 text-center text-muted-foreground">{children}</div>
+}
+
+function matchesFilter(thread: CommentThreadSnapshot, filter: DiscussionFilter) {
+  if (filter === "inline" || filter === "page") return thread.kind === filter
+  return true
+}
+
+function matchesStatus(thread: CommentThreadSnapshot, status: DiscussionStatus) {
+  return status === "resolved" ? Boolean(thread.resolvedAt) : !thread.resolvedAt
+}
+
+function filterLabel(filter: DiscussionFilter) {
+  return filter === "all" ? "All discussions" : filter[0].toUpperCase() + filter.slice(1)
 }

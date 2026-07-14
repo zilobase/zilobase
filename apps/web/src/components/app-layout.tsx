@@ -39,6 +39,8 @@ import { useRecordItemVisit, usePage } from "@notelab/features/pages"
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
 import { LayoutEditorProvider } from "@/components/layout-editor"
+import { usePageEditorComments } from "@/components/page-editor-comments"
+import { usePageCommentController } from "@/contexts/page-comments-registry"
 
 export function AppLayout({ children }: { children?: ReactNode }) {
   return (
@@ -94,6 +96,24 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   } = sidePaneState
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false)
   const [discussionsSidebarOpen, setDiscussionsSidebarOpen] = useState(false)
+  const { editorCommentsOpenRequest, inlineCommentRequest } = usePageEditorComments()
+  const commentController = usePageCommentController(pageId)
+  const openDiscussionsSidebar = useCallback(() => {
+    if (appSidebarOpen) closeSidePane()
+    setDiscussionsSidebarOpen(true)
+  }, [appSidebarOpen, closeSidePane])
+
+  useEffect(() => {
+    if (!commentController) return
+    commentController.setOpenThreadHandler(() => openDiscussionsSidebar())
+    return () => commentController.setOpenThreadHandler(null)
+  }, [commentController, openDiscussionsSidebar])
+
+  useEffect(() => {
+    if (editorCommentsOpenRequest > 0 || inlineCommentRequest > 0) {
+      openDiscussionsSidebar()
+    }
+  }, [editorCommentsOpenRequest, inlineCommentRequest, openDiscussionsSidebar])
   const openRightPanelCount =
     (chatSidebarOpen ? 1 : 0) +
     (discussionsEnabled && discussionsSidebarOpen ? 1 : 0)
@@ -233,6 +253,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
                 embeddedMobileViewer ? undefined : (
                   <AppHeader
                     isSettingsPage={isSettingsPage || isAiPage}
+                    onOpenDiscussions={discussionsEnabled ? openDiscussionsSidebar : undefined}
                     onCloseSidePane={closeSidePane}
                     pathname={pathname}
                     renderedSidePanePageId={
@@ -268,7 +289,9 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
           discussionsPanel={
             discussionsEnabled ? (
               <DiscussionsSidebarPanel
+                inlineComposeRequest={inlineCommentRequest}
                 onClose={() => setDiscussionsSidebarOpen(false)}
+                onRequestOpen={openDiscussionsSidebar}
                 open={discussionsSidebarOpen}
                 pageId={pageId}
               />
@@ -291,7 +314,9 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
         discussionsPanel={
           discussionsEnabled ? (
             <DiscussionsSidebarPanel
+              inlineComposeRequest={inlineCommentRequest}
               onClose={() => setDiscussionsSidebarOpen(false)}
+              onRequestOpen={openDiscussionsSidebar}
               open={discussionsSidebarOpen}
               pageId={pageId}
             />
@@ -328,6 +353,7 @@ function EmbeddedPageDialogHost({
 
 function AppHeader({
   isSettingsPage,
+  onOpenDiscussions,
   onCloseSidePane,
   pathname,
   renderedSidePaneDatabaseId,
@@ -336,6 +362,7 @@ function AppHeader({
   sidePaneDatabaseId,
 }: {
   isSettingsPage: boolean
+  onOpenDiscussions?: () => void
   onCloseSidePane: () => void
   pathname: string
   renderedSidePaneDatabaseId: string | null
@@ -369,6 +396,7 @@ function AppHeader({
             <MainPaneHeaderLeadingControl splitActive={splitActive} />
           }
           pathname={pathname}
+          onOpenDiscussions={onOpenDiscussions}
           showActions={!isSettingsPage}
         />
       </PageSidePaneHeaderCell>

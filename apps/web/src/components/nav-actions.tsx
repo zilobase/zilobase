@@ -7,6 +7,7 @@ import {
   LinkIcon,
   LockIcon,
   MoreHorizontalIcon,
+  MessageSquareTextIcon,
   Share2Icon,
   SparklesIcon,
   StarIcon,
@@ -94,6 +95,7 @@ import {
 } from "@notelab/features/user-settings";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry";
 import { Switch } from "@/components/ui/switch";
 import { useLayoutEditor } from "@/components/layout-editor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -128,9 +130,11 @@ type ShareTargetValue = `${AccessTargetType}:${string}`;
 
 export function NavActions({
   databaseId,
+  onOpenDiscussions,
   pageId,
 }: {
   databaseId?: string | null;
+  onOpenDiscussions?: () => void;
   pageId?: string | null;
 }) {
   const navigate = useNavigate();
@@ -159,6 +163,8 @@ export function NavActions({
   const listPage = pages.find((item) => item.id === actionPageId);
   const isDatabasePage = Boolean(databaseId);
   const hasPageActions = Boolean(actionPageId || databaseId);
+  const comments = usePageCommentsSnapshot(pageId);
+  const openDiscussionCount = comments.threads.filter((thread) => !thread.resolvedAt).length;
   const pageMetadata = (page?.metadata ?? {}) as PageMetadata;
   const effectiveFullWidth = resolvePageFullWidth(
     page,
@@ -369,6 +375,20 @@ export function NavActions({
       </div>
       {hasPageActions ? (
         <>
+          {pageId && onOpenDiscussions ? (
+            <Button
+              aria-label="Open discussions"
+              className="h-7 gap-1.5 px-2"
+              onClick={onOpenDiscussions}
+              size="sm"
+              title="Open discussions"
+              type="button"
+              variant="ghost"
+            >
+              <MessageSquareTextIcon />
+              {openDiscussionCount > 0 ? <span>{openDiscussionCount}</span> : null}
+            </Button>
+          ) : null}
           {actionPageId || databaseId ? (
             <ItemShareDialog
               databaseId={actionPageId ? undefined : databaseId}
@@ -530,11 +550,31 @@ function getDuplicatePageName(name: string) {
 }
 
 function clonePageContent(content: unknown) {
-  if (typeof structuredClone === "function") {
-    return structuredClone(content);
-  }
+  const cloned = typeof structuredClone === "function"
+    ? structuredClone(content)
+    : JSON.parse(JSON.stringify(content)) as unknown;
 
-  return JSON.parse(JSON.stringify(content)) as unknown;
+  return stripCommentMarks(cloned);
+}
+
+function stripCommentMarks(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripCommentMarks);
+  if (!value || typeof value !== "object") return value;
+
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.entries(record).map(([key, child]) => [
+      key,
+      key === "marks" && Array.isArray(child)
+        ? child.filter(
+            (mark) =>
+              !mark ||
+              typeof mark !== "object" ||
+              (mark as { type?: unknown }).type !== "comment",
+          ).map(stripCommentMarks)
+        : stripCommentMarks(child),
+    ]),
+  );
 }
 
 function ItemShareDialog({

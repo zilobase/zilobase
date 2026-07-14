@@ -1,6 +1,8 @@
 import { BubbleMenu } from "@tiptap/react/menus"
 import { AllSelection } from "@tiptap/pm/state"
 import { useEffect } from "react"
+import { MessageSquareIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 import {
   ButtonGroup,
@@ -23,10 +25,12 @@ export function SelectionBubbleMenu({
   onSelectionAiPreviewChange,
   workspaceId,
   runCommand,
+  onAddComment,
 }: EditorControlProps & {
   onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
   workspaceId?: string | null
   runCommand: RunToolbarCommand
+  onAddComment?: () => void
 }) {
   useEffect(() => {
     if (!editor) {
@@ -112,6 +116,24 @@ export function SelectionBubbleMenu({
           />
         ))}
         <ButtonGroupSeparator />
+        {onAddComment ? (
+          <>
+            <Button
+              aria-label="Add comment"
+              onMouseDown={(event) => {
+                event.preventDefault()
+                onAddComment()
+              }}
+              size="icon-sm"
+              title="Add comment"
+              type="button"
+              variant="ghost"
+            >
+              <MessageSquareIcon />
+            </Button>
+            <ButtonGroupSeparator />
+          </>
+        ) : null}
         <SelectionAiMenu
           editor={editor}
           onPreviewChange={onSelectionAiPreviewChange}

@@ -11,7 +11,9 @@ import {
 
 type PageEditorCommentsContextValue = {
   editorCommentsOpenRequest: number
+  inlineCommentRequest: number
   requestEditorComments: () => void
+  requestInlineComment: () => void
 }
 
 const PageEditorCommentsContext =
@@ -23,17 +25,23 @@ export function PageEditorCommentsProvider({
   children: ReactNode
 }) {
   const [editorCommentsOpenRequest, setEditorCommentsOpenRequest] = useState(0)
+  const [inlineCommentRequest, setInlineCommentRequest] = useState(0)
 
   const requestEditorComments = useCallback(() => {
     setEditorCommentsOpenRequest((count) => count + 1)
+  }, [])
+  const requestInlineComment = useCallback(() => {
+    setInlineCommentRequest((count) => count + 1)
   }, [])
 
   const value = useMemo(
     () => ({
       editorCommentsOpenRequest,
+      inlineCommentRequest,
       requestEditorComments,
+      requestInlineComment,
     }),
-    [editorCommentsOpenRequest, requestEditorComments],
+    [editorCommentsOpenRequest, inlineCommentRequest, requestEditorComments, requestInlineComment],
   )
 
   return (
