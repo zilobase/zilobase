@@ -7,6 +7,7 @@ import type {
   DateFormatValue,
   TimeFormatValue,
 } from "../properties/database-date-config";
+import type { DatabaseChartSettings } from "./chart/database-chart-config";
 
 export type DatabaseSelectOption = {
   color?: string;
@@ -107,6 +108,7 @@ export type DatabasePropertyConfig = {
 };
 
 type DatabaseConfig = {
+  chart?: DatabaseChartSettings;
   conditionalColors?: DatabaseConditionalColorConfig[];
   datePropertyId?: string;
   emoji?: string;

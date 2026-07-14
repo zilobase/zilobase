@@ -15,6 +15,7 @@ import {
   getTimelineDateProperties,
   getTimelineDateProperty,
 } from "./timeline/database-timeline-config"
+import { getDatabaseChartSettings } from "./chart/database-chart-config"
 import { getDatabasePropertyType } from "../core/database-property-types"
 import { getPropertyValue, type DatabasePropertyValue } from "../core/utils"
 import {
@@ -93,6 +94,7 @@ export function getDatabaseViewModel({
   const activeViewConfig = activeView?.config ?? payload?.database.config
   const isKanbanView = activeView?.type === "kanban"
   const isTimelineView = activeView?.type === "timeline"
+  const chartSettings = getDatabaseChartSettings(activeViewConfig)
   const activeVisibilityConfig = getActiveVisibilityConfig({
     activeViewConfig,
     isKanbanView,
@@ -196,6 +198,7 @@ export function getDatabaseViewModel({
     addableSortFieldOptions,
     canAddDatabaseFilter: activeDatabaseFilters.length < filterFieldOptions.length,
     canAddDatabaseSort: activeDatabaseSorts.length < sortFieldOptions.length,
+    chartSettings,
     databaseFilters,
     databaseConditionalColors,
     databaseSorts,

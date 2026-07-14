@@ -53,6 +53,11 @@ import {
 } from "./database-view-config";
 import type { DatabaseFilterUpdatePatch } from "./database-filter-menu";
 import { getRelationLimitTrimUpdates } from "../properties/database-relation-sync";
+import {
+  defaultDatabaseChartSettings,
+  getDatabaseChartSettings,
+  type DatabaseChartSettings,
+} from "./chart/database-chart-config";
 
 type DatabaseMutations = {
   addDatabaseView: ReturnType<typeof useAddDatabaseView>;
@@ -297,6 +302,31 @@ export function getDatabaseViewCommands({
     });
   };
 
+  const updateDatabaseChartSettings = (
+    settings: Partial<DatabaseChartSettings>,
+  ) => {
+    if (!databaseId || !activeView?.id) {
+      return;
+    }
+
+    const currentConfig =
+      getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
+      activeView.config;
+    const nextConfig = getMergedDatabaseConfig(currentConfig, {
+      chart: {
+        ...getDatabaseChartSettings(currentConfig),
+        ...settings,
+      },
+    });
+
+    setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
+    updateDatabaseView.mutate({
+      config: nextConfig,
+      databaseId,
+      databaseViewId: activeView.id,
+    });
+  };
+
   return {
     addDatabaseProperty: (
       type = "text",
@@ -369,6 +399,42 @@ export function getDatabaseViewCommands({
         sourcePropertyMode: sourcePropertyMode ?? undefined,
         title: dragPayload.title,
       });
+    },
+    addChartView: () => {
+      if (!databaseId || addDatabaseView.isPending) {
+        return;
+      }
+
+      const existingViewIds = new Set(
+        (payload?.views ?? []).map((view) => view.id),
+      );
+
+      addDatabaseView.mutate(
+        {
+          config: {
+            chart: {
+              ...defaultDatabaseChartSettings,
+              valueColors: {},
+            },
+          },
+          databaseId,
+          name: "Chart",
+          type: "chart",
+        },
+        {
+          onSuccess: (nextPayload) => {
+            const addedView =
+              nextPayload.views.find(
+                (view) => !existingViewIds.has(view.id),
+              ) ?? nextPayload.views.at(-1);
+
+            setActiveViewId(addedView?.id ?? null);
+          },
+          onError: () => {
+            toast.error("Couldn't add chart view");
+          },
+        },
+      );
     },
     addKanbanView: () => {
       if (!databaseId || addDatabaseView.isPending) {
@@ -707,7 +773,7 @@ export function getDatabaseViewCommands({
         name: nextTitle,
       });
     },
-    setViewType: (type: "table" | "kanban" | "timeline") => {
+    setViewType: (type: "table" | "kanban" | "timeline" | "chart") => {
       if (!databaseId || !activeView?.id || type === activeView.type) {
         return;
       }
@@ -746,6 +812,7 @@ export function getDatabaseViewCommands({
         type,
       });
     },
+    updateDatabaseChartSettings,
     savePropertyValue: (
       rowId: string,
       propertyId: string,

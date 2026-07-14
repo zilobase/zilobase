@@ -5,6 +5,7 @@ import { DatabaseViewToolbar } from "./database-view-toolbar"
 import { DatabaseKanbanView } from "./kanban/database-kanban-view"
 import { DatabaseTableView } from "./table/database-table-view"
 import { DatabaseTimelineView } from "./timeline/database-timeline-view"
+import { DatabaseChartView } from "./chart/database-chart-view"
 import {
   useDatabaseViewController,
   type DatabaseViewProps,
@@ -15,6 +16,7 @@ export type { DatabaseViewProps }
 function DatabaseViewContent({ viewType }: { viewType?: string }) {
   if (viewType === "kanban") return <DatabaseKanbanView />
   if (viewType === "timeline") return <DatabaseTimelineView />
+  if (viewType === "chart") return <DatabaseChartView />
   return <DatabaseTableView />
 }
 

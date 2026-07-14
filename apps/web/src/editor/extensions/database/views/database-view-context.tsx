@@ -42,6 +42,7 @@ import type {
 import type {
   DatabasePageDragPayload,
 } from "../interactions/database-page-drop"
+import type { DatabaseChartSettings } from "./chart/database-chart-config"
 import type {
   SortableDatabaseItem,
 } from "../interactions/database-item-utils"
@@ -81,6 +82,7 @@ export type DatabaseViewContextValue = {
     groupValue?: string,
     groupProperty?: DatabasePropertyListItem | null
   ) => void
+  addChartView: () => void
   addDraggedPageRow: (
     dragPayload: DatabasePageDragPayload,
     position: number
@@ -100,6 +102,7 @@ export type DatabaseViewContextValue = {
   canAddDatabaseRows?: boolean
   canAddDatabaseViews?: boolean
   canAddDatabaseSort: boolean
+  chartSettings: DatabaseChartSettings
   clearDatabaseFilter: () => void
   clearDatabaseSort: () => void
   copyDatabaseViewLink: () => void
@@ -175,7 +178,7 @@ export type DatabaseViewContextValue = {
   setViewDateProperty: (datePropertyId: string | null) => void
   setupTimelineDateProperty: () => void
   setViewGroupProperty: (groupPropertyId: string | null) => void
-  setViewType: (type: "table" | "kanban" | "timeline") => void
+  setViewType: (type: "table" | "kanban" | "timeline" | "chart") => void
   timelineDateProperties: DatabasePropertyListItem[]
   timelineDateProperty: DatabasePropertyListItem | null
   setSortPickerOpen: Dispatch<SetStateAction<boolean>>
@@ -198,6 +201,9 @@ export type DatabaseViewContextValue = {
     databasePropertyId: string,
     config: unknown
   ) => Promise<unknown>
+  updateDatabaseChartSettings: (
+    settings: Partial<DatabaseChartSettings>
+  ) => void
   updateNameColumnConfig?: (config: unknown) => Promise<unknown> | void
   updateDatabaseFilter: (index: number, patch: DatabaseFilterUpdatePatch) => void
   updateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void

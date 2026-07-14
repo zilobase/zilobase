@@ -87,6 +87,21 @@ function DatabaseTimelineSkeleton() {
   )
 }
 
+function DatabaseChartSkeleton() {
+  return (
+    <div className="flex h-[360px] items-end gap-4 px-8 py-8">
+      {[42, 70, 54, 88, 64, 76].map((height, index) => (
+        <div className="flex h-full flex-1 items-end" key={index}>
+          <Skeleton
+            className="w-full rounded-t-md"
+            style={{ height: `${height}%` }}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function DatabaseViewSkeleton({ viewType }: { viewType?: string }) {
   return (
     <div aria-label="Loading database" className="py-2" role="status">
@@ -94,6 +109,8 @@ export function DatabaseViewSkeleton({ viewType }: { viewType?: string }) {
         <DatabaseKanbanSkeleton />
       ) : viewType === "timeline" ? (
         <DatabaseTimelineSkeleton />
+      ) : viewType === "chart" ? (
+        <DatabaseChartSkeleton />
       ) : (
         <DatabaseTableSkeleton />
       )}

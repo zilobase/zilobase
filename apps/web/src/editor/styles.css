@@ -366,9 +366,8 @@
     .node-databaseBlock.editor-block-selection
     .database-inline-scroll-wrap[data-inline-scroll="true"]
     :is(.database-table, .database-page-create-row, .database-kanban-board),
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-timeline-view {
+  .tiptap-editor .node-databaseBlock.editor-block-selection
+    :is(.database-chart-view, .database-timeline-view) {
     isolation: isolate;
     position: relative;
   }
@@ -377,9 +376,8 @@
     .node-databaseBlock.editor-block-selection
     .database-inline-scroll-wrap[data-inline-scroll="true"]
     :is(.database-table, .database-page-create-row, .database-kanban-board)::before,
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-timeline-view::before {
+  .tiptap-editor .node-databaseBlock.editor-block-selection
+    :is(.database-chart-view, .database-timeline-view)::before {
     background-color: var(--editor-selection-background);
     border-radius: 4px;
     content: "";
@@ -393,9 +391,8 @@
     .node-databaseBlock.editor-block-selection
     .database-inline-scroll-wrap[data-inline-scroll="true"]
     :is(.database-table, .database-page-create-row, .database-kanban-board),
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-timeline-view {
+  .tiptap-editor .node-databaseBlock.editor-block-selection
+    :is(.database-chart-view, .database-timeline-view) {
     color: var(--editor-selection-foreground);
   }
 
@@ -758,6 +755,7 @@
 
   .database-table-wrap,
   .database-kanban-wrap,
+  .database-chart-view,
   .database-timeline-view {
     @apply relative mt-2 max-w-full overflow-visible;
   }
