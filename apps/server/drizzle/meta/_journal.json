@@ -218,6 +218,13 @@
       "when": 1784026800000,
       "tag": "0030_database_realtime_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1784030400000,
+      "tag": "0031_repair_database_realtime_outbox",
+      "breakpoints": true
     }
   ]
 }
