@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "../db";
+import type { Database } from "../db";
 import {
   databaseProperty,
   databaseRow,
@@ -9,6 +10,8 @@ import {
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
+
+type DatabaseReader = Pick<Database, "select">;
 
 export type DatabaseChangedArea =
   | "database"
@@ -20,6 +23,7 @@ export type DatabaseChangedArea =
 export type DatabaseDelta = {
   database?: Record<string, unknown>;
   properties?: Array<Record<string, unknown>>;
+  removedPagePropertyIds?: string[];
   removedPropertyIds?: string[];
   removedViewIds?: string[];
   views?: Array<Record<string, unknown>>;
@@ -40,7 +44,25 @@ export type DatabaseMutationResponse = {
   databaseId: string;
   delta: DatabaseDelta;
   mutationId: string;
+  requiresRefetch?: true;
+  version: number;
 };
+
+export type DatabaseRealtimeMutationEvent = DatabaseMutationResponse & {
+  actorId: string;
+  protocolVersion: 1;
+  type: "database.mutation";
+};
+
+export const MAX_DATABASE_REALTIME_DELTA_BYTES = 64 * 1024;
+
+export function prepareDatabaseRealtimeDelta(delta: DatabaseDelta) {
+  const encoded = new TextEncoder().encode(JSON.stringify(delta));
+
+  return encoded.byteLength <= MAX_DATABASE_REALTIME_DELTA_BYTES
+    ? { requiresRefetch: false, value: delta }
+    : { requiresRefetch: true, value: {} };
+}
 
 export const propertyPositionDelta = (
   propertyIds: string[],
@@ -65,6 +87,8 @@ export const toMutationResponse = (
     committedAt: string;
     databaseId: string;
     mutationId: string;
+    requiresRefetch?: true;
+    version: number;
   },
   delta: DatabaseDelta,
 ): DatabaseMutationResponse => ({
@@ -73,13 +97,16 @@ export const toMutationResponse = (
   databaseId: event.databaseId,
   delta,
   mutationId: event.mutationId,
+  ...(event.requiresRefetch ? { requiresRefetch: true as const } : {}),
+  version: event.version,
 });
 
 export async function fetchDatabasePropertyDelta(
   databaseId: string,
   databasePropertyId: string,
+  executor: DatabaseReader = db,
 ) {
-  const [property] = await db
+  const [property] = await executor
     .select({
       column: databaseProperty,
       property: pageProperty,
@@ -112,8 +139,11 @@ export async function fetchDatabasePropertyDelta(
   } satisfies DatabaseDelta;
 }
 
-export async function fetchDatabaseViewDelta(viewId: string) {
-  const [view] = await db
+export async function fetchDatabaseViewDelta(
+  viewId: string,
+  executor: DatabaseReader = db,
+) {
+  const [view] = await executor
     .select()
     .from(databaseView)
     .where(eq(databaseView.id, viewId))
@@ -128,8 +158,11 @@ export async function fetchDatabaseViewDelta(viewId: string) {
   } satisfies DatabaseDelta;
 }
 
-export async function fetchDatabaseRowDelta(rowId: string) {
-  const [row] = await db
+export async function fetchDatabaseRowDelta(
+  rowId: string,
+  executor: DatabaseReader = db,
+) {
+  const [row] = await executor
     .select({
       page: {
         createdAt: page.createdAt,

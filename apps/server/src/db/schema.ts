@@ -732,6 +732,7 @@ export const database = pgTable(
       .references(() => page.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     config: jsonb("config"),
+    version: integer("version").notNull().default(0),
     deletedById: text("deleted_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -751,6 +752,38 @@ export const database = pgTable(
     ),
     index("database_page_id_idx").on(table.pageId),
     index("database_deleted_at_idx").on(table.deletedAt),
+  ],
+);
+
+export const databaseRealtimeOutbox = pgTable(
+  "database_realtime_outbox",
+  {
+    id: text("id").primaryKey(),
+    databaseId: text("database_id")
+      .notNull()
+      .references(() => database.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    actorId: text("actor_id").notNull(),
+    changed: text("changed").array().notNull(),
+    delta: jsonb("delta").notNull().default({}),
+    requiresRefetch: boolean("requires_refetch").notNull().default(false),
+    committedAt: timestamp("committed_at", { withTimezone: true }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("database_realtime_outbox_database_id_idx").on(table.databaseId),
+    index("database_realtime_outbox_ready_idx").on(
+      table.nextAttemptAt,
+      table.committedAt,
+    ),
+    uniqueIndex("database_realtime_outbox_database_version_unique").on(
+      table.databaseId,
+      table.version,
+    ),
   ],
 );
 
