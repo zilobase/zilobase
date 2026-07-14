@@ -21,6 +21,10 @@ export function readBooleanFeatureFlag(value: unknown, fallback = false) {
 
 export const appConfig = {
   featureFlags: {
+    databaseRealtime: readBooleanFeatureFlag(
+      import.meta.env.VITE_FEATURE_DATABASE_REALTIME,
+      false,
+    ),
     notionImport: readBooleanFeatureFlag(
       import.meta.env.VITE_FEATURE_NOTION_IMPORT,
       false,

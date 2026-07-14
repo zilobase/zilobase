@@ -131,6 +131,7 @@ export default defineConfig(async () => ({
       "/search": createBackendProxy(),
       "/pages": createBackendProxy({ ws: true }),
       "/databases": createBackendProxy({ ws: true }),
+      "/database-collaboration": createBackendProxy({ ws: true }),
       "/images": createBackendProxy(),
       "/user-settings": createBackendProxy(),
     },

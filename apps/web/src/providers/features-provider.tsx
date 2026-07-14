@@ -19,6 +19,7 @@ import type {
 import { apiFetch, authFetch } from "@/lib/api"
 import { queryClient } from "@/lib/query-client"
 import { useAppStore } from "@/stores/app-store"
+import { isFeatureEnabled } from "@/config/feature-flags"
 
 export const webAuthClient: NotelabAuthClient = {
   getSession: () => apiFetch<SessionResponse>("/session"),
@@ -90,6 +91,7 @@ export function WebFeaturesProvider({
       value={{
         apiFetch,
         auth: webAuthClient,
+        databaseRealtimeEnabled: isFeatureEnabled("databaseRealtime"),
         preferredActiveWorkspaceId,
         queryClient,
         setPreferredActiveWorkspaceId,
@@ -99,5 +101,4 @@ export function WebFeaturesProvider({
     </NotelabFeaturesProvider>
   )
 }
-
 

@@ -2,6 +2,7 @@ const API_ORIGIN = "https://api.notelab.io";
 const API_PREFIX = "/api";
 const RAW_API_PREFIX = "/api/_raw";
 const COLLABORATION_PATH = "/collaboration";
+const DATABASE_COLLABORATION_PATH = "/database-collaboration";
 const API_PATH_PREFIXES = [
   "/agents",
   "/session",
@@ -23,7 +24,8 @@ export default {
 
     if (
       isApiRoute(url.pathname) ||
-      url.pathname === COLLABORATION_PATH
+      url.pathname === COLLABORATION_PATH ||
+      url.pathname === DATABASE_COLLABORATION_PATH
     ) {
       return proxyApiRequest(request, env);
     }
