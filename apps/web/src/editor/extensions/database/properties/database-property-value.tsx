@@ -186,7 +186,9 @@ export function DatabasePropertyValue({
   const isMultiSelectProperty =
     pageProperty.type === "multi_select" ||
     (cellKind === "person" && getPersonLimit(pageProperty.config) !== "one_person")
-  const wrapContent = getPropertyWrapContent(pageProperty.config)
+  const wrapContent =
+    databaseContext.layoutSettings.wrapAllContent ||
+    getPropertyWrapContent(pageProperty.config)
   const displayValue =
     pageProperty.type === "status" && !persistedValue
       ? defaultStatusOption.name
@@ -384,7 +386,7 @@ export function DatabasePropertyValue({
       propertyConfig={pageProperty.config}
       type={pageProperty.type}
       value={Array.isArray(value) ? value.join(", ") : value}
-      wrapContent
+      wrapContent={wrapContent}
     />
   )
 

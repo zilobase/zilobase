@@ -34,6 +34,7 @@ export function DatabaseInputCell({
   propertyConfig,
   type,
   value,
+  wrapContent = false,
 }: {
   editable?: boolean
   label: string
@@ -73,6 +74,7 @@ export function DatabaseInputCell({
     return actionHref ? (
       <a
         className="database-input-cell-link"
+        data-wrap-content={wrapContent ? "true" : undefined}
         href={actionHref}
         onClick={(event) => event.stopPropagation()}
         {...actionLinkProps}
@@ -80,7 +82,12 @@ export function DatabaseInputCell({
         {displayValue}
       </a>
     ) : (
-      <span className="database-input-cell-trigger">{displayValue}</span>
+      <span
+        className="database-input-cell-trigger"
+        data-wrap-content={wrapContent ? "true" : undefined}
+      >
+        {displayValue}
+      </span>
     )
   }
 
@@ -117,11 +124,13 @@ export function DatabaseInputCell({
         <button
           aria-label={`${label} value`}
           className="database-input-cell-trigger"
+          data-wrap-content={wrapContent ? "true" : undefined}
           type="button"
         >
           {actionHref ? (
             <a
               className="database-input-cell-link"
+              data-wrap-content={wrapContent ? "true" : undefined}
               href={actionHref}
               onClick={(event) => event.stopPropagation()}
               {...actionLinkProps}
