@@ -1,8 +1,7 @@
-import { useMemo } from "react";
 import { type QueryClient, useMutation, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import { useNotelabFeatures } from "../context";
-import { useDatabase } from "../databases/hooks";
 import {
   invalidateDeletedItems,
   invalidateRestoredItems,
@@ -10,11 +9,12 @@ import {
 } from "../item-action-cache";
 import {
   buildPagePropertiesPayloadFromDatabase,
-  findDatabaseIdForRowPage,
   patchDatabaseCachePage,
-  patchDatabaseCachePagePropertyValues,
 } from "../databases/row-page-properties";
+import { useDatabase } from "../databases/hooks";
 import { useDatabaseIdForRowPage } from "../databases/use-database-id-for-row-page";
+import { applyDatabaseRealtimeMutation } from "../databases/realtime";
+import type { DatabaseMutationResponse } from "../databases/mutation-types";
 import {
   defaultUserSettings,
   userSettingsQueryKey,
@@ -31,7 +31,6 @@ import {
   pageCommentsQueryKey,
   pageCommentsQueryOptions,
   pagePersonAccessTargetsQueryOptions,
-  pagePropertiesQueryKey,
   pagePropertiesQueryOptions,
   pageThreadsQueryKey,
   pageThreadsQueryOptions,
@@ -50,7 +49,6 @@ import {
   type PageCommentsPayload,
   type PageCommentMessage,
   type PageMetadata,
-  type PagePropertiesPayload,
 } from "./queries";
 import {
   applyPageFavoriteToNav,
@@ -213,6 +211,19 @@ export function usePageAccessLevel(
   });
 }
 
+export function usePageDatabaseIds(
+  pageId: string | null | undefined,
+  options?: PageQueryHookOptions,
+) {
+  const { apiFetch } = useNotelabFeatures();
+
+  return useQuery({
+    ...pageQueryOptions(apiFetch, pageId),
+    refetchOnMount: options?.refetchOnMount,
+    select: (detail) => detail?.databaseIds ?? [],
+  });
+}
+
 export function usePageAccess(pageId: string | null | undefined) {
   const { apiFetch } = useNotelabFeatures();
 
@@ -256,26 +267,15 @@ export function usePageProperties(
     enabled: Boolean(pageId) && !resolvedDatabaseId,
   });
   const derivedPayload = useMemo(() => {
-    if (!resolvedDatabaseId || !databaseQuery.data) {
-      return undefined;
-    }
+    if (!resolvedDatabaseId || !databaseQuery.data) return undefined;
 
-    return buildPagePropertiesPayloadFromDatabase(databaseQuery.data, pageId);
-  }, [databaseQuery.data, resolvedDatabaseId, pageId]);
+    return buildPagePropertiesPayloadFromDatabase(databaseQuery.data, pageId) ??
+      undefined;
+  }, [databaseQuery.data, pageId, resolvedDatabaseId]);
 
-  if (!resolvedDatabaseId) {
-    return apiQuery;
-  }
-
-  return {
-    ...databaseQuery,
-    data: derivedPayload ?? undefined,
-    isLoading: databaseQuery.isLoading,
-    isFetching: databaseQuery.isFetching,
-    isError: databaseQuery.isError,
-    error: databaseQuery.error,
-    refetch: databaseQuery.refetch,
-  };
+  return resolvedDatabaseId
+    ? { ...databaseQuery, data: derivedPayload }
+    : apiQuery;
 }
 
 export function usePageComments(
@@ -492,6 +492,7 @@ export function useCreatePage() {
         pageQueryKey(pageRecord.id),
         (current) => ({
           accessLevel: current?.accessLevel ?? inheritedAccessLevel,
+          databaseIds: current?.databaseIds ?? [],
           page: {
             ...(current?.page ?? {}),
             ...pageRecord,
@@ -727,6 +728,7 @@ export function useUpdatePage() {
         pageQueryKey(variables.id),
         (): PageDetail => ({
           accessLevel: previous.accessLevel ?? null,
+          databaseIds: previous.databaseIds ?? [],
           page: optimisticPage,
         }),
       );
@@ -778,6 +780,7 @@ export function useUpdatePage() {
         pageQueryKey(page.id),
         (current) => ({
           accessLevel: current?.accessLevel ?? "full",
+          databaseIds: current?.databaseIds ?? [],
           page,
         }),
       );
@@ -981,29 +984,21 @@ export function useUpdatePagePropertyValue() {
       value,
       pageId,
     }: UpdatePagePropertyValueInput) =>
-      apiFetch<PagePropertiesPayload>(
+      apiFetch<{ mutations: DatabaseMutationResponse[] }>(
         `/pages/${pageId}/properties/${propertyId}/value`,
         {
           method: "PUT",
           body: JSON.stringify({ value }),
         },
       ),
-    onSuccess: (payload, variables) => {
-      queryClient.setQueryData(
-        pagePropertiesQueryKey(variables.pageId),
-        payload,
-      );
-
-      const databaseId =
-        findDatabaseIdForRowPage(queryClient, variables.pageId) ?? null;
-
-      if (databaseId) {
-        patchDatabaseCachePagePropertyValues(
-          queryClient,
-          databaseId,
-          variables.pageId,
-          payload,
-        );
+    onSuccess: ({ mutations }) => {
+      for (const mutation of mutations) {
+        applyDatabaseRealtimeMutation(queryClient, {
+          ...mutation,
+          actorId: "http",
+          protocolVersion: 1,
+          type: "database.mutation",
+        });
       }
     },
   });

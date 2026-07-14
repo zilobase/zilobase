@@ -7,7 +7,10 @@ import {
   invalidateRestoredItems,
 } from "../item-action-cache";
 
-import { applyMutationToCache } from "./mutation-cache";
+import {
+  applyMutationToCache,
+  applyVersionedDatabaseMutation,
+} from "./mutation-cache";
 import { setDatabasePayloadQueryData } from "./query-cache";
 import {
   databaseAccessQueryKey,
@@ -25,7 +28,7 @@ import {
   applyConfirmedAddedDatabaseRow,
   applyOptimisticAddedDatabaseRow,
   isAddRowResponse,
-  type AddRowResponse,
+  type AddRowMutationResponse,
 } from "./add-row-cache";
 import { applyCreatedDatabaseToPageNav } from "./create-database-cache";
 import { shouldClearValuesForPropertyTypeChange } from "./property-types";
@@ -158,6 +161,28 @@ async function commitDatabaseMutation(
   }
 
   return payload;
+}
+
+function restoreDatabasePayloadAfterFailedMutation(
+  queryClient: ReturnType<typeof useNotelabFeatures>["queryClient"],
+  databaseId: string,
+  previous: DatabasePayload,
+) {
+  const current = queryClient.getQueryData<DatabasePayload | null>(
+    databaseQueryKey(databaseId),
+  )
+
+  if (
+    !current ||
+    (current.database.version ?? 0) === (previous.database.version ?? 0)
+  ) {
+    setDatabasePayloadQueryData(queryClient, databaseId, previous)
+    return
+  }
+
+  void queryClient.invalidateQueries({
+    queryKey: databasePayloadRootQueryKey(databaseId),
+  })
 }
 
 export function reorderDatabaseRows(
@@ -524,7 +549,7 @@ export function useUpdateDatabase() {
     },
     onError: (_error, variables, context) => {
       if (context?.previous) {
-        setDatabasePayloadQueryData(
+        restoreDatabasePayloadAfterFailedMutation(
           queryClient,
           variables.databaseId,
           context.previous,
@@ -759,7 +784,7 @@ export function useUpdateDatabaseProperty() {
     },
     onError: (_error, variables, context) => {
       if (context?.previous) {
-        setDatabasePayloadQueryData(
+        restoreDatabasePayloadAfterFailedMutation(
           queryClient,
           variables.databaseId,
           context.previous,
@@ -840,11 +865,11 @@ export function useAddDatabaseRow() {
         );
       }
 
-      let response: AddRowResponse | DatabaseMutationResponse;
       let payload: DatabasePayload;
+      let shouldInvalidatePages = false;
 
       try {
-        response = await apiFetch<AddRowResponse | DatabaseMutationResponse>(
+        const response = await apiFetch<AddRowMutationResponse>(
           `/databases/${databaseId}/rows`,
           {
             method: "POST",
@@ -852,51 +877,48 @@ export function useAddDatabaseRow() {
           },
         );
 
-        if (isAddRowResponse(response)) {
-          const latest =
-            queryClient.getQueryData<DatabasePayload | null>(
-              databaseQueryKey(databaseId),
-            ) ??
-            optimistic?.payload ??
-            current;
-
-          if (!latest) {
-            throw new Error("Failed to apply database mutation");
-          }
-
-          payload = applyConfirmedAddedDatabaseRow(
-            latest,
-            optimistic
-              ? { pageId: optimistic.pageId, rowId: optimistic.rowId }
-              : null,
-            response,
-          );
-          setDatabasePayloadQueryData(queryClient, databaseId, payload);
-        } else if (isDatabaseMutationResponse(response)) {
-          if (current) {
-            setDatabasePayloadQueryData(queryClient, databaseId, current);
-          }
-
-          payload = await commitDatabaseMutation(
-            queryClient,
-            databaseId,
-            response,
-          );
-        } else {
+        if (
+          !isAddRowResponse(response) ||
+          !isDatabaseMutationResponse(response)
+        ) {
           throw new Error("Failed to apply database mutation");
         }
+        shouldInvalidatePages = response.isFavorite === true;
+
+        const latest =
+          queryClient.getQueryData<DatabasePayload | null>(
+            databaseQueryKey(databaseId),
+          ) ??
+          optimistic?.payload ??
+          current;
+
+        if (!latest) {
+          throw new Error("Failed to apply database mutation");
+        }
+
+        payload = applyConfirmedAddedDatabaseRow(
+          latest,
+          optimistic
+            ? { pageId: optimistic.pageId, rowId: optimistic.rowId }
+            : null,
+          response,
+        );
+        setDatabasePayloadQueryData(queryClient, databaseId, payload);
+        payload = applyVersionedDatabaseMutation(queryClient, response).payload
+          ?? payload;
       } catch (error) {
         if (current) {
-          setDatabasePayloadQueryData(queryClient, databaseId, current);
+          restoreDatabasePayloadAfterFailedMutation(
+            queryClient,
+            databaseId,
+            current,
+          );
         }
 
         throw error;
       }
 
-      if (
-        (isAddRowResponse(response) && response.isFavorite) ||
-        (!isAddRowResponse(response) && current?.database.isFavorite)
-      ) {
+      if (shouldInvalidatePages) {
         await queryClient.invalidateQueries({
           queryKey: pagesQueryKey(payload.database.workspaceId),
         });
@@ -939,7 +961,7 @@ export function useReorderDatabaseRows() {
     },
     onError: (_error, variables, context) => {
       if (context?.previous) {
-        setDatabasePayloadQueryData(
+        restoreDatabasePayloadAfterFailedMutation(
           queryClient,
           variables.databaseId,
           context.previous,
@@ -991,7 +1013,7 @@ export function useMoveDatabaseRow() {
     },
     onError: (_error, variables, context) => {
       if (context?.previous) {
-        setDatabasePayloadQueryData(
+        restoreDatabasePayloadAfterFailedMutation(
           queryClient,
           variables.databaseId,
           context.previous,
@@ -1038,7 +1060,7 @@ export function useUpdateDatabasePropertyValue() {
     },
     onError: (_error, variables, context) => {
       if (context?.previous) {
-        setDatabasePayloadQueryData(
+        restoreDatabasePayloadAfterFailedMutation(
           queryClient,
           variables.databaseId,
           context.previous,
@@ -1103,7 +1125,7 @@ export function useSetDatabaseFavorite() {
     },
     onError: (_error, variables, context) => {
       if (context?.previous) {
-        setDatabasePayloadQueryData(
+        restoreDatabasePayloadAfterFailedMutation(
           queryClient,
           variables.databaseId,
           context.previous,
