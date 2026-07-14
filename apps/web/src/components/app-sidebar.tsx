@@ -46,6 +46,8 @@ import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
 import {
   BlocksIcon,
   CalendarIcon,
+  CalendarRange,
+  ChartPie,
   DatabaseIcon,
   HomeIcon,
   Kanban,
@@ -64,6 +66,10 @@ const sidebarNavigationIcons = {
   getDatabaseViewIcon: (view: { type?: string | null }) =>
     view.type === "kanban" ? (
       <Kanban className="size-4" />
+    ) : view.type === "timeline" ? (
+      <CalendarRange className="size-4" />
+    ) : view.type === "chart" ? (
+      <ChartPie className="size-4" />
     ) : (
       <Table2 className="size-4" />
     ),

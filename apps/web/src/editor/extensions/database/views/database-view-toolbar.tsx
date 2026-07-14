@@ -17,6 +17,7 @@ import {
   EyeOff,
   Filter,
   CalendarRange,
+  ChartPie,
   Kanban,
   Loader2,
   Maximize2,
@@ -94,12 +95,14 @@ export function DatabaseViewToolbar() {
     addableFilterFieldOptions,
     addableSortFieldOptions,
     addDatabaseRow,
+    addChartView,
     addKanbanView,
     addLinkedDatabaseView,
     addTableView,
     addTimelineView,
     canAddDatabaseSort,
     canAddDatabaseFilter,
+    chartSettings,
     canAddDatabaseRows,
     canAddDatabaseViews,
     clearDatabaseFilter,
@@ -161,6 +164,7 @@ export function DatabaseViewToolbar() {
     toggleFilterPillVisibility,
     toggleSortPillVisibility,
     updateDatabaseFilter,
+    updateDatabaseChartSettings,
     updateDatabaseSort,
     visiblePropertyCount,
     viewTabs,
@@ -364,7 +368,9 @@ export function DatabaseViewToolbar() {
                       ? Kanban
                       : view.type === "timeline"
                         ? CalendarRange
-                        : Table2
+                        : view.type === "chart"
+                          ? ChartPie
+                          : Table2
                   const sourceDatabaseId =
                     view.sourceDatabaseId ?? hostDatabaseId ?? databaseId
                   const sourceDatabaseName =
@@ -512,6 +518,19 @@ export function DatabaseViewToolbar() {
                           ) : null}
                         </DropDrawerItem>
                         <DropDrawerItem
+                          disabled={!editable || view.type === "chart"}
+                          onSelect={() => {
+                            setActiveViewId(view.id)
+                            setViewType("chart")
+                          }}
+                        >
+                          <ChartPie />
+                          <span>Chart</span>
+                          {view.type === "chart" ? (
+                            <Check className="ml-auto text-foreground" />
+                          ) : null}
+                        </DropDrawerItem>
+                        <DropDrawerItem
                           disabled={!editable || view.type === "timeline"}
                           onSelect={() => {
                             setActiveViewId(view.id)
@@ -639,6 +658,13 @@ export function DatabaseViewToolbar() {
                 >
                   <Table2 className="size-4" />
                   <span>Table</span>
+                </DropDrawerItem>
+                <DropDrawerItem
+                  disabled={!databaseId || isAddingDatabaseView}
+                  onSelect={addChartView}
+                >
+                  <ChartPie className="size-4" />
+                  <span>Chart</span>
                 </DropDrawerItem>
                 <DropDrawerItem
                   disabled={
@@ -844,6 +870,7 @@ export function DatabaseViewToolbar() {
                 groupProperties={groupableProperties}
                 groupPropertyId={groupProperty?.property.id ?? null}
                 canAddDatabaseFilter={canAddDatabaseFilter}
+                chartSettings={chartSettings}
                 titlePropertyLabel={titlePropertyLabel}
                 workspaceId={
                   hostDatabaseWorkspaceId ??
@@ -874,6 +901,7 @@ export function DatabaseViewToolbar() {
                 onTogglePropertyTitles={togglePropertyTitles}
                 onTogglePropertyVisibility={togglePropertyVisibility}
                 onUpdateDatabaseFilter={updateDatabaseFilter}
+                onUpdateDatabaseChartSettings={updateDatabaseChartSettings}
                 onUpdateDatabaseSort={updateDatabaseSort}
                 properties={properties}
                 filterFieldOptions={filterFieldOptions}

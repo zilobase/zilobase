@@ -1,6 +1,7 @@
 import {
   ArrowUpRight,
   CalendarRange,
+  ChartPie,
   FileText,
   Kanban,
   Table2,
@@ -62,7 +63,9 @@ export function PageLayoutTabs({
                   ? Kanban
                   : tab.viewType === "timeline"
                     ? CalendarRange
-                    : Table2
+                    : tab.viewType === "chart"
+                      ? ChartPie
+                      : Table2
 
               return (
                 <TabsTrigger

@@ -1,5 +1,14 @@
 import { useMemo, useState } from "react"
-import { ArrowLeft, Database, Kanban, Plus, Search, Table2 } from "lucide-react"
+import {
+  ArrowLeft,
+  CalendarRange,
+  ChartPie,
+  Database,
+  Kanban,
+  Plus,
+  Search,
+  Table2,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -99,7 +108,14 @@ export function LinkedDataSourcePicker({
             <div className="max-h-80 overflow-y-auto p-1">
           {selectedDatabase ? (
             viewOptions.length ? viewOptions.map((option) => {
-              const ViewIcon = option.type === "kanban" ? Kanban : Table2
+              const ViewIcon =
+                option.type === "kanban"
+                  ? Kanban
+                  : option.type === "timeline"
+                    ? CalendarRange
+                    : option.type === "chart"
+                      ? ChartPie
+                      : Table2
               return (
                 <button
                   className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"

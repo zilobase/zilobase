@@ -1,6 +1,7 @@
 import {
   ArrowDownUp,
   ArrowUpRightIcon,
+  BarChart3,
   ChevronLeft,
   CircleHelp,
   Check,
@@ -11,18 +12,23 @@ import {
   Filter,
   GripVertical,
   CalendarRange,
+  ChartLine,
+  ChartPie,
   Kanban,
   Link as LinkIcon,
   Lock,
   MoreHorizontal,
   Palette,
   Plus,
+  Rows3,
   Search,
   Settings2,
   Sparkles,
   Table2,
   Trash2,
+  Type,
   X,
+  Zap,
 } from "lucide-react";
 import { Reorder } from "framer-motion";
 import { useMemo, useState, type ReactNode } from "react";
@@ -51,7 +57,11 @@ import {
 import { cn } from "@/lib/utils";
 import { useDatabase } from "@notelab/features/databases";
 import { usePageNavigation } from "@notelab/features/pages";
-import { cyclingColorTokens, getColorToken } from "@/lib/color-tokens";
+import {
+  cyclingColorTokens,
+  getColorToken,
+  getPaletteColor,
+} from "@/lib/color-tokens";
 
 import { getDatabasePropertyType } from "../core/database-property-types";
 import {
@@ -80,6 +90,10 @@ import {
 } from "./database-sort-menu";
 import { NameColumnGlyph } from "../interactions/name-column-glyph";
 import type { DatabaseActiveConditionalColor } from "./database-view-context";
+import type {
+  DatabaseChartSettings,
+  DatabaseChartType,
+} from "./chart/database-chart-config";
 
 type DatabaseViewProperty = {
   id: string;
@@ -135,6 +149,229 @@ function ViewSettingsRow({
   );
 }
 
+const chartTypeOptions: Array<{
+  icon: typeof BarChart3;
+  label: string;
+  value: DatabaseChartType;
+}> = [
+  { icon: BarChart3, label: "Bar", value: "bar" },
+  { icon: Rows3, label: "Horizontal bar", value: "horizontal-bar" },
+  { icon: ChartLine, label: "Line", value: "line" },
+  { icon: ChartPie, label: "Pie", value: "pie" },
+  { icon: Type, label: "Count", value: "count" },
+];
+
+function DatabaseChartSettingsSection({
+  properties,
+  settings,
+  titlePropertyLabel,
+  onChange,
+}: {
+  properties: DatabaseViewProperty[];
+  settings: DatabaseChartSettings;
+  titlePropertyLabel: string;
+  onChange: (settings: Partial<DatabaseChartSettings>) => void;
+}) {
+  const defaultAxisProperty =
+    properties.find((property) =>
+      ["select", "status", "checkbox", "person"].includes(
+        property.property.type,
+      ),
+    ) ??
+    properties.find((property) => property.property.type !== "number") ??
+    null;
+  const axisPropertyId =
+    settings.groupByPropertyId ?? defaultAxisProperty?.property.id ?? "name";
+  const axisProperty = properties.find(
+    (property) => property.property.id === axisPropertyId,
+  );
+  const measurePropertyId = settings.measurePropertyId ?? "count";
+  const measureProperty = properties.find(
+    (property) => property.property.id === measurePropertyId,
+  );
+  const selectedColorToken =
+    settings.color === "auto" ? null : getColorToken(settings.color);
+  const colorLabel = selectedColorToken?.name ?? "Auto";
+  const colorSwatch = selectedColorToken
+    ? getPaletteColor(selectedColorToken.value) ?? "var(--primary)"
+    : "linear-gradient(90deg, var(--chart-1), var(--chart-2), var(--chart-3), var(--chart-4))";
+
+  return (
+    <>
+      <DropDrawerSeparator />
+      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+        Chart type
+      </DropDrawerLabel>
+      <div className="grid grid-cols-5 gap-1.5 px-2 pb-2">
+        {chartTypeOptions.map((option) => (
+          <button
+            aria-label={option.label}
+            aria-pressed={settings.type === option.value}
+            className={cn(
+              "flex h-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+              settings.type === option.value &&
+                "border-primary text-primary",
+            )}
+            key={option.value}
+            onClick={(event) => {
+              event.preventDefault();
+              onChange({ type: option.value });
+            }}
+            title={option.label}
+            type="button"
+          >
+            <option.icon className="size-4" />
+          </button>
+        ))}
+      </div>
+
+      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+        X axis
+      </DropDrawerLabel>
+      <DropDrawerSub>
+        <DropDrawerSubTrigger>
+          <ViewSettingsRow
+            icon={<Zap />}
+            label="What to show"
+            right={axisProperty?.property.name ?? titlePropertyLabel}
+          />
+        </DropDrawerSubTrigger>
+        <DropDrawerSubContent className="w-72">
+          <DropDrawerItem onSelect={() => onChange({ groupByPropertyId: "name" })}>
+            <NameColumnGlyph />
+            <span>{titlePropertyLabel}</span>
+            {axisPropertyId === "name" ? (
+              <Check className="ml-auto text-foreground" />
+            ) : null}
+          </DropDrawerItem>
+          {properties.map((property) => {
+            const PropertyIcon = getDatabasePropertyType(
+              property.property.type,
+            ).icon;
+            const selected = property.property.id === axisPropertyId;
+
+            return (
+              <DropDrawerItem
+                key={property.id}
+                onSelect={() =>
+                  onChange({ groupByPropertyId: property.property.id })
+                }
+              >
+                <PropertyIcon />
+                <span>{property.property.name}</span>
+                {selected ? (
+                  <Check className="ml-auto text-foreground" />
+                ) : null}
+              </DropDrawerItem>
+            );
+          })}
+        </DropDrawerSubContent>
+      </DropDrawerSub>
+      <DropDrawerItem
+        aria-pressed={settings.omitZeroValues}
+        onSelect={(event) => {
+          event.preventDefault();
+          onChange({ omitZeroValues: !settings.omitZeroValues });
+        }}
+      >
+        <EyeOff />
+        <span>Omit zero values</span>
+        <Switch
+          checked={settings.omitZeroValues}
+          className="ml-auto pointer-events-none"
+          size="sm"
+          tabIndex={-1}
+        />
+      </DropDrawerItem>
+
+      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+        Y axis
+      </DropDrawerLabel>
+      <DropDrawerSub>
+        <DropDrawerSubTrigger>
+          <ViewSettingsRow
+            icon={<ChartLine />}
+            label="What to show"
+            right={measureProperty?.property.name ?? "Task count"}
+          />
+        </DropDrawerSubTrigger>
+        <DropDrawerSubContent className="w-72">
+          <DropDrawerItem onSelect={() => onChange({ measurePropertyId: "count" })}>
+            <ChartLine />
+            <span>Task count</span>
+            {measurePropertyId === "count" ? (
+              <Check className="ml-auto text-foreground" />
+            ) : null}
+          </DropDrawerItem>
+          {properties.map((property) => {
+            const PropertyIcon = getDatabasePropertyType(
+              property.property.type,
+            ).icon;
+            const selected = property.property.id === measurePropertyId;
+
+            return (
+              <DropDrawerItem
+                key={property.id}
+                onSelect={() =>
+                  onChange({ measurePropertyId: property.property.id })
+                }
+              >
+                <PropertyIcon />
+                <span>{property.property.name}</span>
+                {selected ? (
+                  <Check className="ml-auto text-foreground" />
+                ) : null}
+              </DropDrawerItem>
+            );
+          })}
+        </DropDrawerSubContent>
+      </DropDrawerSub>
+
+      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+        Style
+      </DropDrawerLabel>
+      <DropDrawerSub>
+        <DropDrawerSubTrigger>
+          <ViewSettingsRow
+            icon={<Palette />}
+            label="Color"
+            right={colorLabel}
+          />
+        </DropDrawerSubTrigger>
+        <DropDrawerSubContent className="w-64">
+          <DropDrawerItem onSelect={() => onChange({ color: "auto" })}>
+            <span
+              className="size-3 rounded-sm border"
+              style={{ background: colorSwatch }}
+            />
+            <span>Auto</span>
+            {settings.color === "auto" ? (
+              <Check className="ml-auto text-foreground" />
+            ) : null}
+          </DropDrawerItem>
+          {cyclingColorTokens.map((color) => (
+            <DropDrawerItem
+              key={color.value}
+              onSelect={() =>
+                color.value &&
+                onChange({
+                  color: color.value as DatabaseChartSettings["color"],
+                })
+              }
+            >
+              <span className={cn("size-3 rounded-sm border", color.backgroundClass)} />
+              <span>{color.name}</span>
+              {settings.color === color.value ? (
+                <Check className="ml-auto text-foreground" />
+              ) : null}
+            </DropDrawerItem>
+          ))}
+        </DropDrawerSubContent>
+      </DropDrawerSub>
+    </>
+  );
+}
+
 function DataSourceSectionLabel({ children }: { children: ReactNode }) {
   return (
     <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
@@ -173,7 +410,14 @@ function LinkedDataSourceMenuItem({
 }: {
   view: DatabaseLinkedViewConfig;
 }) {
-  const ViewIcon = view.viewType === "kanban" ? Kanban : Table2;
+  const ViewIcon =
+    view.viewType === "kanban"
+      ? Kanban
+      : view.viewType === "timeline"
+        ? CalendarRange
+        : view.viewType === "chart"
+          ? ChartPie
+          : Table2;
 
   return (
     <DropDrawerItem disabled>
@@ -612,6 +856,7 @@ export function DatabaseViewSettingsMenu({
   addableSortFieldOptions,
   canAddDatabaseFilter,
   canAddDatabaseSort,
+  chartSettings,
   databaseId,
   databaseName,
   dataSources,
@@ -643,6 +888,7 @@ export function DatabaseViewSettingsMenu({
   onTogglePropertyTitles,
   onTogglePropertyVisibility,
   onUpdateDatabaseFilter,
+  onUpdateDatabaseChartSettings,
   onUpdateDatabaseSort,
   properties,
   sortFieldOptions,
@@ -661,6 +907,7 @@ export function DatabaseViewSettingsMenu({
   addableSortFieldOptions: DatabaseSearchableMenuOption[];
   canAddDatabaseFilter: boolean;
   canAddDatabaseSort: boolean;
+  chartSettings: DatabaseChartSettings;
   databaseId?: string;
   databaseName?: string;
   dataSources: DatabaseSourceMenuItem[];
@@ -690,12 +937,15 @@ export function DatabaseViewSettingsMenu({
   onSaveDatabaseViewTitle: (title: string) => void;
   onSetViewDateProperty: (datePropertyId: string | null) => void;
   onSetViewGroupProperty: (groupPropertyId: string | null) => void;
-  onSetViewType: (type: "table" | "kanban" | "timeline") => void;
+  onSetViewType: (type: "table" | "kanban" | "timeline" | "chart") => void;
   onTogglePropertyTitles: () => void;
   onTogglePropertyVisibility: (propertyId: string) => void;
   onUpdateDatabaseFilter: (
     index: number,
     patch: DatabaseFilterUpdatePatch,
+  ) => void;
+  onUpdateDatabaseChartSettings: (
+    settings: Partial<DatabaseChartSettings>,
   ) => void;
   onUpdateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void;
   properties: DatabaseViewProperty[];
@@ -731,16 +981,21 @@ export function DatabaseViewSettingsMenu({
   );
   const isKanbanView = activeViewType === "kanban";
   const isTimelineView = activeViewType === "timeline";
+  const isChartView = activeViewType === "chart";
   const ViewTypeIcon = isKanbanView
     ? Kanban
     : isTimelineView
       ? CalendarRange
-      : Table2;
+      : isChartView
+        ? ChartPie
+        : Table2;
   const viewTypeLabel = isKanbanView
     ? "Kanban"
     : isTimelineView
       ? "Timeline"
-      : "Table";
+      : isChartView
+        ? "Chart"
+        : "Table";
   const activeDateProperty = dateProperties.find(
     (property) => property.property.id === datePropertyId,
   );
@@ -781,7 +1036,9 @@ export function DatabaseViewSettingsMenu({
             ? Kanban
             : view.type === "timeline"
               ? CalendarRange
-              : Table2;
+              : view.type === "chart"
+                ? ChartPie
+                : Table2;
 
         return {
           icon: <ViewIcon />,
@@ -836,7 +1093,7 @@ export function DatabaseViewSettingsMenu({
           </button>
         </div>
         <div className="flex items-center gap-1.5 px-1.5 py-1">
-          <Table2 className="size-4 shrink-0 text-muted-foreground" />
+          <ViewTypeIcon className="size-4 shrink-0 text-muted-foreground" />
           <Input
             aria-label="View name"
             className="h-auto rounded-none border-0 bg-transparent px-0 py-0 text-sm font-medium shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
@@ -871,7 +1128,7 @@ export function DatabaseViewSettingsMenu({
             <DropDrawerItem onSelect={() => onSetViewType("table")}>
               <Table2 />
               <span>Table</span>
-              {!isKanbanView && !isTimelineView ? (
+              {!isKanbanView && !isTimelineView && !isChartView ? (
                 <Check className="ml-auto text-foreground" />
               ) : null}
             </DropDrawerItem>
@@ -889,8 +1146,23 @@ export function DatabaseViewSettingsMenu({
                 <Check className="ml-auto text-foreground" />
               ) : null}
             </DropDrawerItem>
+            <DropDrawerItem onSelect={() => onSetViewType("chart")}>
+              <ChartPie />
+              <span>Chart</span>
+              {isChartView ? (
+                <Check className="ml-auto text-foreground" />
+              ) : null}
+            </DropDrawerItem>
           </DropDrawerSubContent>
         </DropDrawerSub>
+        {isChartView ? (
+          <DatabaseChartSettingsSection
+            onChange={onUpdateDatabaseChartSettings}
+            properties={properties}
+            settings={chartSettings}
+            titlePropertyLabel={titlePropertyLabel}
+          />
+        ) : null}
         {isTimelineView ? (
           <DropDrawerSub>
             <DropDrawerSubTrigger>
