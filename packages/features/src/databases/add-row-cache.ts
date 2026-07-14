@@ -3,6 +3,7 @@ import type {
   DatabaseRow,
   PagePropertyValue,
 } from "./queries"
+import type { DatabaseMutationResponse } from "./mutation-types"
 
 export type AddRowCacheInput = {
   pageId?: string
@@ -29,6 +30,8 @@ export type AddRowResponse = {
   updatedAt: string
   values?: PagePropertyValue[]
 }
+
+export type AddRowMutationResponse = AddRowResponse & DatabaseMutationResponse
 
 export type OptimisticAddRowResult = {
   pageId: string
@@ -133,17 +136,22 @@ export function applyConfirmedAddedDatabaseRow(
   optimistic: { pageId: string; rowId: string } | null,
   response: AddRowResponse,
 ): DatabasePayload {
-  const rows = [...payload.rows]
+  let rows = [...payload.rows]
   const optimisticIndex = optimistic
     ? rows.findIndex((row) => row.id === optimistic.rowId)
     : -1
   const existingIndex = rows.findIndex((row) => row.id === response.rowId)
+  const existingRow = existingIndex >= 0 ? rows[existingIndex] : undefined
+  const optimisticRow = optimisticIndex >= 0 ? rows[optimisticIndex] : undefined
+  const rowBase = existingRow ?? optimisticRow
   const confirmedRow: DatabaseRow = {
     createdAt: response.createdAt,
+    createdById: rowBase?.createdById ?? null,
     databaseId: response.databaseId,
     id: response.rowId,
-    lastEditedById: null,
+    lastEditedById: rowBase?.lastEditedById ?? null,
     page: {
+      ...rowBase?.page,
       id: response.pageId,
       name: response.title,
     },
@@ -152,25 +160,14 @@ export function applyConfirmedAddedDatabaseRow(
     position: response.position,
     updatedAt: response.updatedAt,
   }
+  const duplicateOptimisticRow = optimisticIndex >= 0 && existingIndex >= 0
 
-  if (optimisticIndex >= 0) {
-    rows[optimisticIndex] = {
-      ...rows[optimisticIndex],
-      ...confirmedRow,
-      page: {
-        ...rows[optimisticIndex]?.page,
-        ...confirmedRow.page,
-      },
-    }
-  } else if (existingIndex >= 0) {
-    rows[existingIndex] = {
-      ...rows[existingIndex],
-      ...confirmedRow,
-      page: {
-        ...rows[existingIndex]?.page,
-        ...confirmedRow.page,
-      },
-    }
+  if (existingIndex >= 0) {
+    rows = rows
+      .filter((row) => row.id !== optimistic?.rowId)
+      .map((row) => row.id === response.rowId ? confirmedRow : row)
+  } else if (optimisticIndex >= 0) {
+    rows[optimisticIndex] = confirmedRow
   } else {
     const shiftedRows = rows.map((row) =>
       row.position >= response.position
@@ -180,11 +177,24 @@ export function applyConfirmedAddedDatabaseRow(
     rows.splice(0, rows.length, ...shiftedRows, confirmedRow)
   }
 
-  const values = payload.values.map((value) =>
-    optimistic && value.pageId === optimistic.pageId
+  const values: PagePropertyValue[] = []
+
+  for (const value of payload.values) {
+    const mapped = optimistic && value.pageId === optimistic.pageId
       ? { ...value, pageId: response.pageId }
-      : value,
-  )
+      : value
+    const index = values.findIndex(
+      (current) =>
+        current.pageId === mapped.pageId &&
+        current.propertyId === mapped.propertyId,
+    )
+
+    if (index >= 0) {
+      values[index] = { ...values[index], ...mapped }
+    } else {
+      values.push(mapped)
+    }
+  }
 
   for (const value of response.values ?? []) {
     const index = values.findIndex(
@@ -202,6 +212,10 @@ export function applyConfirmedAddedDatabaseRow(
 
   return {
     ...payload,
+    rowCount:
+      duplicateOptimisticRow && payload.rowCount !== undefined
+        ? Math.max(0, payload.rowCount - 1)
+        : payload.rowCount,
     rows: rows.sort((left, right) => left.position - right.position),
     values,
   }

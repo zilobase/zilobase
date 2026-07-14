@@ -15,6 +15,7 @@ export type DatabaseRecord = {
   deletedAt?: string | null
   createdAt: string
   updatedAt: string
+  version: number
 }
 
 export function getDatabaseEmoji(database: Pick<DatabaseRecord, "config">) {

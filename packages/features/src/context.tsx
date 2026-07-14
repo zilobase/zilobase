@@ -46,6 +46,7 @@ export type NotelabFeaturesConfig = {
   auth: NotelabAuthClient
   preferredActiveWorkspaceId?: string | null
   queryClient: QueryClient
+  databaseRealtimeEnabled?: boolean
   setPreferredActiveWorkspaceId?: (workspaceId: string | null) => void
 }
 

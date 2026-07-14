@@ -7,6 +7,7 @@ import { buildPagePropertiesPayloadFromDatabase } from "./row-page-properties"
 const timestamp = "2026-07-13T00:00:00.000Z"
 
 const payload = {
+  database: { id: "database-1", version: 4 },
   properties: [
     {
       position: 1,
@@ -33,7 +34,7 @@ const payload = {
   ],
   rows: [],
   values: [],
-} as DatabasePayload
+} as unknown as DatabasePayload
 
 test("database schemas produce empty page properties without a preview row", () => {
   const result = buildPagePropertiesPayloadFromDatabase(payload, null)

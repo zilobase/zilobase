@@ -11,6 +11,7 @@ export function createTestDatabasePayload(
       workspaceId: "org-1",
       pageId: "page-root",
       updatedAt: "2026-06-01T00:00:00.000Z",
+      version: 0,
       ...overrides.database,
     },
     properties: overrides.properties ?? [

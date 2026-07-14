@@ -7,8 +7,22 @@ export function setDatabasePayloadQueryData(
   databaseId: string,
   payload: DatabasePayload,
 ) {
-  queryClient.setQueriesData<DatabasePayload | null>(
-    { queryKey: databasePayloadRootQueryKey(databaseId) },
-    payload,
-  )
+  const entries = queryClient.getQueriesData<DatabasePayload | null>({
+    queryKey: databasePayloadRootQueryKey(databaseId),
+  })
+
+  for (const [queryKey] of entries) {
+    queryClient.setQueryData(
+      queryKey,
+      queryKey[2] === "schema"
+        ? {
+            ...payload,
+            rowCount: undefined,
+            rows: [],
+            rowsPagination: undefined,
+            values: [],
+          }
+        : payload,
+    )
+  }
 }

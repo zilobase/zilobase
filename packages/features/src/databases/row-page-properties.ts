@@ -39,7 +39,7 @@ export function findDatabaseIdsForRowPage(
     }
   }
 
-  return databaseIds
+  return [...new Set(databaseIds)]
 }
 
 export function isDatabaseRowPage(
@@ -67,8 +67,24 @@ export function buildPagePropertiesPayloadFromDatabase(
   const values = pageId
     ? payload.values.filter((value) => value.pageId === pageId)
     : []
+  const row = pageId
+    ? payload.rows.find((candidate) => candidate.pageId === pageId)
+    : undefined
+  const databaseId = payload.database.id
 
-  return { properties, values }
+  return {
+    databaseIds: [databaseId],
+    databaseVersions: { [databaseId]: payload.database.version ?? 0 },
+    presenceTargets: row
+      ? [{
+          databaseId,
+          propertyIds: properties.map((property) => property.id),
+          rowId: row.id,
+        }]
+      : [],
+    properties,
+    values,
+  }
 }
 
 export function patchDatabaseCachePagePropertyValues(

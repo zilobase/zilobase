@@ -187,8 +187,17 @@ export type PagePropertyValue = {
 };
 
 export type PagePropertiesPayload = {
+  databaseIds?: string[];
+  databaseVersions?: Record<string, number>;
+  presenceTargets?: PagePropertyPresenceTarget[];
   properties: PageProperty[];
   values: PagePropertyValue[];
+};
+
+export type PagePropertyPresenceTarget = {
+  databaseId: string;
+  propertyIds: string[];
+  rowId: string;
 };
 
 export type CommentAuthor = {
@@ -305,6 +314,7 @@ export const pageRootQueryKey = () => ["page"] as const;
 
 export type PageDetail = {
   accessLevel?: AccessLevel | null;
+  databaseIds?: string[];
   page: Page;
 };
 
@@ -448,11 +458,13 @@ export const pageQueryOptions = (
       try {
         const result = await apiFetch<{
           accessLevel?: AccessLevel;
+          databaseIds?: string[];
           page: Page;
         }>(`/pages/${pageId}`, { method: "GET", signal });
 
         return {
           accessLevel: result.accessLevel ?? null,
+          databaseIds: result.databaseIds ?? [],
           page: result.page,
         };
       } catch (error) {

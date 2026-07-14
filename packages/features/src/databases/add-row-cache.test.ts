@@ -6,6 +6,7 @@ import {
   applyOptimisticAddedDatabaseRow,
   isAddRowResponse,
 } from "./add-row-cache"
+import { applyDatabaseDelta } from "./apply-delta"
 import { createTestDatabasePayload } from "./test-helpers"
 
 test("applyOptimisticAddedDatabaseRow appends an optimistic row", () => {
@@ -124,6 +125,79 @@ test("applyConfirmedAddedDatabaseRow replaces optimistic ids and adds values", (
     next.values.some((value) => value.pageId === optimistic.pageId),
     false,
   )
+})
+
+test("row confirmation removes the optimistic duplicate when realtime wins the race", () => {
+  const payload = createTestDatabasePayload({ rowCount: 2 })
+  const optimistic = applyOptimisticAddedDatabaseRow(payload, {
+    position: 1,
+    title: "Draft",
+    values: [{ propertyId: "property-status", value: "In progress" }],
+  })
+  const afterRealtime = applyDatabaseDelta(optimistic.payload, {
+    rows: [
+      {
+        id: "row-2",
+        position: 2,
+        updatedAt: "2026-07-14T12:00:00.000Z",
+      },
+      {
+        createdAt: "2026-07-14T12:00:00.000Z",
+        databaseId: "database-1",
+        id: "row-3",
+        page: { id: "page-3", name: "Gamma" },
+        pageId: "page-3",
+        parentRowId: null,
+        position: 1,
+        updatedAt: "2026-07-14T12:00:00.000Z",
+      },
+    ],
+    values: [{
+      id: "value-server",
+      pageId: "page-3",
+      propertyId: "property-status",
+      updatedAt: "2026-07-14T12:00:00.000Z",
+      value: "In progress",
+    }],
+  })
+  const next = applyConfirmedAddedDatabaseRow(
+    afterRealtime,
+    { pageId: optimistic.pageId, rowId: optimistic.rowId },
+    {
+      createdAt: "2026-07-14T12:00:00.000Z",
+      databaseId: "database-1",
+      pageId: "page-3",
+      parentRowId: null,
+      position: 1,
+      rowId: "row-3",
+      title: "Gamma",
+      updatedAt: "2026-07-14T12:00:00.000Z",
+      values: [{
+        createdAt: "2026-07-14T12:00:00.000Z",
+        id: "value-server",
+        pageId: "page-3",
+        propertyId: "property-status",
+        updatedAt: "2026-07-14T12:00:00.000Z",
+        value: "In progress",
+      }],
+    },
+  )
+
+  assert.equal(next.rowCount, 3)
+  assert.deepEqual(
+    next.rows.map((row) => [row.id, row.position]),
+    [["row-1", 0], ["row-3", 1], ["row-2", 2]],
+  )
+  assert.equal(next.rows.some((row) => row.id === optimistic.rowId), false)
+  assert.equal(
+    next.values.filter(
+      (value) =>
+        value.pageId === "page-3" &&
+        value.propertyId === "property-status",
+    ).length,
+    1,
+  )
+  assert.equal(next.values.some((value) => value.pageId === optimistic.pageId), false)
 })
 
 test("isAddRowResponse detects compact row create responses", () => {

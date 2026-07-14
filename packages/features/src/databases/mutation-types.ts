@@ -8,6 +8,7 @@ export type DatabaseChangedArea =
 export type DatabaseDelta = {
   database?: Record<string, unknown>
   properties?: Array<Record<string, unknown>>
+  removedPagePropertyIds?: string[]
   removedPropertyIds?: string[]
   removedViewIds?: string[]
   rows?: Array<Record<string, unknown>>
@@ -28,6 +29,8 @@ export type DatabaseMutationResponse = {
   databaseId: string
   delta: DatabaseDelta
   mutationId: string
+  requiresRefetch?: true
+  version: number
 }
 
 export function isDatabaseMutationResponse(
@@ -42,6 +45,9 @@ export function isDatabaseMutationResponse(
   return (
     typeof response.mutationId === "string" &&
     typeof response.databaseId === "string" &&
+    typeof response.version === "number" &&
+    (response.requiresRefetch === undefined ||
+      response.requiresRefetch === true) &&
     response.delta !== undefined &&
     Array.isArray(response.changed)
   )

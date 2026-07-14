@@ -141,6 +141,7 @@ export function setPageDetailCache(queryClient: QueryClient, page: Page) {
     pageQueryKey(page.id),
     (current) => ({
       accessLevel: current?.accessLevel ?? null,
+      databaseIds: current?.databaseIds ?? [],
       page,
     }),
   );
