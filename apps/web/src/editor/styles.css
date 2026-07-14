@@ -2014,6 +2014,14 @@
     transform: translate3d(0, 0, 0);
   }
 
+  /* Keep one consistent hover/drag corridor between every block and its controls. */
+  .drag-handle::before {
+    content: "";
+    inset: -0.5rem -0.75rem -0.5rem -3rem;
+    pointer-events: auto;
+    position: absolute;
+  }
+
   .drag-handle-plus,
   .drag-handle-grip {
     @apply pointer-events-auto flex size-7 items-center justify-center rounded-sm bg-transparent;
