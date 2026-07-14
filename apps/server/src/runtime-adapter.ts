@@ -1,5 +1,6 @@
 import { getRequiredStringEnv, getStringEnv, type RuntimeEnv } from "./config";
 import type { ImageStorage } from "./image-storage";
+import type { DatabaseRealtimeMutationEvent } from "./services/database-delta";
 
 export type ServerRuntimeAdapter = {
   applyPageContentUpdate?(input: {
@@ -10,10 +11,41 @@ export type ServerRuntimeAdapter = {
   }): Promise<void>;
   createImageStorage?(env: RuntimeEnv): ImageStorage | null;
   getCollaborationWebSocketUrl?(request: Request, env: RuntimeEnv): string;
+  getDatabaseRealtimeWebSocketUrl?(
+    request: Request,
+    env: RuntimeEnv,
+  ): string;
   getDatabaseUrl?(env: RuntimeEnv): string | null | undefined;
   getImageStorageMode?(env: RuntimeEnv): "s3" | "binding" | null | undefined;
+  publishDatabaseMutation?(input: {
+    env: RuntimeEnv;
+    event: DatabaseRealtimeMutationEvent;
+  }): Promise<void>;
   selfHosted?: false;
 };
+
+export function getDatabaseRealtimeWebSocketUrl(
+  request: Request,
+  env: RuntimeEnv,
+) {
+  const explicitUrl = getStringEnv(env, "DATABASE_REALTIME_WEBSOCKET_URL");
+
+  if (explicitUrl) return explicitUrl;
+
+  const configured = runtimeAdapter.getDatabaseRealtimeWebSocketUrl?.(
+    request,
+    env,
+  );
+
+  if (configured) return configured;
+
+  const url = new URL(request.url);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/database-collaboration";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
 
 export function getCollaborationWebSocketUrl(
   request: Request,
