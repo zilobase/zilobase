@@ -584,50 +584,6 @@ export function TableControls({ editor }: { editor: Editor | null }) {
 
     setDrag(nextDrag)
     setPinnedHandle(null)
-
-    const removeDocumentListeners = () => {
-      window.removeEventListener("pointermove", handleDocumentPointerMove)
-      window.removeEventListener("pointerup", handleDocumentPointerUp)
-      window.removeEventListener("pointercancel", handleDocumentPointerCancel)
-    }
-
-    const handleDocumentPointerMove = (moveEvent: globalThis.PointerEvent) => {
-      const currentDrag = dragState.current
-
-      if (!currentDrag) {
-        removeDocumentListeners()
-        return
-      }
-
-      const target = getTargetIndex(
-        currentDrag.axis,
-        moveEvent.clientX,
-        moveEvent.clientY
-      )
-
-      if (target === null || target === currentDrag.target) {
-        return
-      }
-
-      setDrag({
-        ...currentDrag,
-        target,
-      })
-    }
-
-    const handleDocumentPointerUp = () => {
-      removeDocumentListeners()
-      finishDrag()
-    }
-
-    const handleDocumentPointerCancel = () => {
-      removeDocumentListeners()
-      setDrag(null)
-    }
-
-    window.addEventListener("pointermove", handleDocumentPointerMove)
-    window.addEventListener("pointerup", handleDocumentPointerUp)
-    window.addEventListener("pointercancel", handleDocumentPointerCancel)
   }
 
   const updateDragTarget = (
@@ -759,7 +715,10 @@ export function TableControls({ editor }: { editor: Editor | null }) {
       {dragPreview && dropLinePosition !== null ? (
         <div
           aria-hidden="true"
-          className={`table-drag-drop-line table-drag-drop-line-${dragPreview.axis}`}
+          className="drag-drop-line table-drag-drop-line"
+          data-orientation={
+            dragPreview.axis === "column" ? "vertical" : "horizontal"
+          }
           style={
             dragPreview.axis === "column"
               ? {

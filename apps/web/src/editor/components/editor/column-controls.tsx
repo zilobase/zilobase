@@ -716,71 +716,52 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
     }
     setDrag({ from, target: from })
     setMenu(null)
+  }
 
-    const removeListeners = () => {
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      window.removeEventListener("pointercancel", handlePointerCancel)
+  const updateDragTarget = (event: PointerEvent<HTMLButtonElement>) => {
+    const currentDrag = dragState.current
+    if (!currentDrag) return
+
+    const pointer = pointerState.current
+    if (
+      pointer &&
+      (Math.abs(event.clientX - pointer.x) > 4 ||
+        Math.abs(event.clientY - pointer.y) > 4)
+    ) {
+      pointer.moved = true
     }
 
-    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      const currentDrag = dragState.current
-
-      if (!currentDrag) {
-        removeListeners()
-        return
-      }
-
-      const pointer = pointerState.current
-      const deltaX = pointer ? Math.abs(moveEvent.clientX - pointer.x) : 0
-      const deltaY = pointer ? Math.abs(moveEvent.clientY - pointer.y) : 0
-
-      if (pointer && (deltaX > 4 || deltaY > 4)) {
-        pointer.moved = true
-      }
-
-      const dropPosition = getColumnDropPosition(
-        rect,
-        moveEvent.clientX,
-        moveEvent.clientY,
-      )
-
-      if (dropPosition) {
-        if (currentDrag.dropPosition === dropPosition) {
-          return
-        }
-
+    const dropPosition = getColumnDropPosition(
+      rect,
+      event.clientX,
+      event.clientY,
+    )
+    if (dropPosition) {
+      if (currentDrag.dropPosition !== dropPosition) {
         setDrag({ ...currentDrag, dropPosition })
-        return
       }
+      return
+    }
 
-      const target = getTargetIndex(rect, moveEvent.clientX)
-
-      if (
-        target === currentDrag.target &&
-        currentDrag.dropPosition === undefined
-      ) {
-        return
-      }
-
+    const target = getTargetIndex(rect, event.clientX)
+    if (
+      target !== currentDrag.target ||
+      currentDrag.dropPosition !== undefined
+    ) {
       setDrag({ ...currentDrag, dropPosition: undefined, target })
     }
+  }
 
-    const handlePointerUp = () => {
-      removeListeners()
+  const finishPointerDrag = () => {
+    finishDrag()
+    window.setTimeout(() => {
       pointerState.current = null
-      finishDrag()
-    }
+    }, 0)
+  }
 
-    const handlePointerCancel = () => {
-      removeListeners()
-      setDrag(null)
-      pointerState.current = null
-    }
-
-    window.addEventListener("pointermove", handlePointerMove)
-    window.addEventListener("pointerup", handlePointerUp)
-    window.addEventListener("pointercancel", handlePointerCancel)
+  const cancelPointerDrag = () => {
+    setDrag(null)
+    pointerState.current = null
   }
 
   const openColumnMenu = (
@@ -878,7 +859,8 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
       {dropLinePosition !== null ? (
         <div
           aria-hidden="true"
-          className="column-drag-drop-line column-drag-drop-line-vertical"
+          className="drag-drop-line column-drag-drop-line"
+          data-orientation="vertical"
           style={{
             height: rect.height,
             left: dropLinePosition,
@@ -889,7 +871,8 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
       {extractionDropTop !== null ? (
         <div
           aria-hidden="true"
-          className="column-drag-drop-line column-drag-drop-line-horizontal"
+          className="drag-drop-line column-drag-drop-line"
+          data-orientation="horizontal"
           style={{
             left: rect.left,
             top: extractionDropTop,
@@ -909,7 +892,10 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
           }
           key={column.index}
           onClick={(event) => openColumnMenu(column, event)}
+          onPointerCancel={cancelPointerDrag}
           onPointerDown={(event) => startDrag(column.index, event)}
+          onPointerMove={updateDragTarget}
+          onPointerUp={finishPointerDrag}
           style={{
             height: columnHandleHeight,
             left: column.left,

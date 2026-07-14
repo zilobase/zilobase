@@ -42,7 +42,9 @@ export function TimelineRowDragLayer({
 
       {controller.dropLineTop !== null ? (
         <div
-          className="database-row-drop-line database-timeline-row-drop-line"
+          aria-hidden="true"
+          className="drag-drop-line database-row-drop-line database-timeline-row-drop-line"
+          data-orientation="horizontal"
           style={{ top: controller.dropLineTop }}
         />
       ) : null}

@@ -72,7 +72,9 @@ export function EditorChrome({
       ) : null}
       {blockDropLine ? (
         <div
-          className="block-drag-drop-line"
+          aria-hidden="true"
+          className="drag-drop-line block-drag-drop-line"
+          data-orientation="horizontal"
           style={{
             left: blockDropLine.left,
             top: blockDropLine.top,

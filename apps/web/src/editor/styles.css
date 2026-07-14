@@ -1191,11 +1191,11 @@
   }
 
   .database-kanban-card[data-drop-before="true"]::before {
-    @apply pointer-events-none absolute inset-x-0 top-0 z-40 h-0.5 bg-primary content-[''];
+    @apply absolute inset-x-0 top-0 z-40 content-[''];
   }
 
   .database-kanban-card-drop-line {
-    @apply pointer-events-none h-0.5 shrink-0 rounded-full bg-primary;
+    @apply shrink-0;
   }
 
   .database-kanban-card-title {
@@ -1749,8 +1749,7 @@
   }
 
   .database-row-drop-line {
-    @apply pointer-events-none absolute left-0 right-0 z-30 h-0.5 bg-primary;
-    transform: translateY(-1px);
+    @apply absolute left-0 right-0 z-30;
   }
 
   .database-table-wrap[data-inline-scroll="true"] .database-row-drop-line {
@@ -1938,17 +1937,7 @@
   }
 
   .table-drag-drop-line {
-    @apply pointer-events-none fixed z-40 bg-primary;
-  }
-
-  .table-drag-drop-line-column {
-    @apply w-0.5;
-    transform: translateX(-1px);
-  }
-
-  .table-drag-drop-line-row {
-    @apply h-0.5;
-    transform: translateY(-1px);
+    @apply fixed z-40;
   }
 
   .column-reorder-control {
@@ -1993,38 +1982,37 @@
   }
 
   .column-drag-drop-line {
-    @apply pointer-events-none fixed z-40 bg-primary;
+    @apply fixed z-40;
   }
 
-  .column-drag-drop-line-vertical {
-    @apply w-0.5;
-    transform: translateX(-1px);
+  .block-drag-drop-line {
+    @apply fixed z-10;
   }
 
-  .column-drag-drop-line-horizontal {
+  .drag-drop-line,
+  .database-kanban-card[data-drop-before="true"]::before {
+    @apply pointer-events-none rounded-full bg-primary;
+  }
+
+  .drag-drop-line[data-orientation="horizontal"],
+  .database-kanban-card[data-drop-before="true"]::before {
     @apply h-0.5;
     transform: translateY(-1px);
   }
 
-  .block-drag-drop-line {
-    @apply pointer-events-none fixed z-10 h-0.5 bg-primary;
-    transform: translateY(-1px);
+  .drag-drop-line[data-orientation="vertical"] {
+    @apply w-0.5;
+    transform: translateX(-1px);
   }
 
   .drag-handle {
-    @apply fixed z-10 hidden h-7 w-16 cursor-grab items-center justify-between bg-transparent pr-2 text-muted-foreground opacity-100 active:cursor-grabbing md:flex;
+    @apply pointer-events-none fixed z-10 hidden h-7 w-16 items-center justify-between bg-transparent pr-2 text-muted-foreground opacity-100 md:flex;
     transform: translate3d(0, 0, 0);
-  }
-
-  .drag-handle::before {
-    content: "";
-    inset: -0.5rem -0.75rem -0.5rem -3rem;
-    position: absolute;
   }
 
   .drag-handle-plus,
   .drag-handle-grip {
-    @apply flex size-7 items-center justify-center rounded-sm bg-transparent;
+    @apply pointer-events-auto flex size-7 items-center justify-center rounded-sm bg-transparent;
   }
 
   .drag-handle-plus {
@@ -2039,10 +2027,6 @@
   .drag-handle-plus svg,
   .drag-handle-grip svg {
     @apply size-4;
-  }
-
-  .drag-handle[data-dragging="true"] {
-    transition: none;
   }
 
   .plus-block-menu {
