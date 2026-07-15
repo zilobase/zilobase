@@ -1,9 +1,10 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import * as React from "react";
 
+import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerClose,
@@ -31,12 +32,38 @@ import { cn } from "@/lib/utils";
 const DropDrawerContext = React.createContext<{ isMobile: boolean }>({
   isMobile: false,
 });
+const SubmenuPanelContext = React.createContext(false);
+
+const submenuAnimationVariants = {
+  enter: (direction: "forward" | "backward") => ({
+    x: direction === "forward" ? "100%" : "-100%",
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: "forward" | "backward") => ({
+    x: direction === "forward" ? "-100%" : "100%",
+    opacity: 0,
+  }),
+};
+
+const submenuAnimationTransition = {
+  duration: 0.3,
+  ease: [0.25, 0.1, 0.25, 1.0] as const,
+};
+
+type SubmenuNavigationState = {
+  direction: "forward" | "backward";
+  stack: { id: string; title: string }[];
+};
 
 const useDropDrawerContext = () => {
   const context = React.useContext(DropDrawerContext);
   if (!context) {
     throw new Error(
-      "DropDrawer components cannot be rendered outside the DropDrawer Context"
+      "DropDrawer components cannot be rendered outside the DropDrawer Context",
     );
   }
   return context;
@@ -50,9 +77,10 @@ function DropDrawer({
   | React.ComponentProps<typeof DropdownMenu>) {
   const isMobile = useIsMobile();
   const DropdownComponent = isMobile ? Drawer : DropdownMenu;
+  const contextValue = React.useMemo(() => ({ isMobile }), [isMobile]);
 
   return (
-    <DropDrawerContext.Provider value={{ isMobile }}>
+    <DropDrawerContext.Provider value={contextValue}>
       <DropdownComponent
         data-slot="drop-drawer"
         {...(isMobile && { autoFocus: true })}
@@ -85,14 +113,13 @@ function DropDrawerTrigger({
   );
 }
 
-function DropDrawerContent({
+function MobileDropDrawerContent({
   className,
   children,
   ...props
 }:
   | React.ComponentProps<typeof DrawerContent>
   | React.ComponentProps<typeof DropdownMenuContent>) {
-  const { isMobile } = useDropDrawerContext();
   const {
     align: _align,
     side: _side,
@@ -101,208 +128,78 @@ function DropDrawerContent({
     ...drawerContentProps
   } = props as React.ComponentProps<typeof DropdownMenuContent> &
     React.ComponentProps<typeof DrawerContent>;
-  const [activeSubmenu, setActiveSubmenu] = React.useState<string | null>(null);
-  const [submenuTitle, setSubmenuTitle] = React.useState<string | null>(null);
-  const [submenuStack, setSubmenuStack] = React.useState<
-    { id: string; title: string }[]
-  >([]);
-  // Add animation direction state
-  const [animationDirection, setAnimationDirection] = React.useState<
-    "forward" | "backward"
-  >("forward");
+  const [submenuNavigation, setSubmenuNavigation] =
+    React.useState<SubmenuNavigationState>({
+      direction: "forward",
+      stack: [],
+    });
+  const activeSubmenuEntry = submenuNavigation.stack.at(-1);
+  const activeSubmenu = activeSubmenuEntry?.id ?? null;
+  const submenuTitle = activeSubmenuEntry?.title ?? null;
+  const animationDirection = submenuNavigation.direction;
 
   // Create a ref to store submenu content by ID
-  const submenuContentRef = React.useRef<Map<string, React.ReactNode[]>>(
-    new Map()
+  const submenuContentRef = React.useRef<Map<string, React.ReactNode>>(
+    new Map(),
   );
+  const activeSubmenuRef = React.useRef(activeSubmenu);
+  const [, rerenderActiveSubmenu] = React.useReducer(
+    (version) => version + 1,
+    0,
+  );
+  activeSubmenuRef.current = activeSubmenu;
 
   // Function to navigate to a submenu
   const navigateToSubmenu = React.useCallback((id: string, title: string) => {
-    // Set animation direction to forward when navigating to a submenu
-    setAnimationDirection("forward");
-    setActiveSubmenu(id);
-    setSubmenuTitle(title);
-    setSubmenuStack((prev) => [...prev, { id, title }]);
+    setSubmenuNavigation((currentNavigation) => {
+      if (currentNavigation.stack.at(-1)?.id === id) return currentNavigation;
+
+      return {
+        direction: "forward",
+        stack: [...currentNavigation.stack, { id, title }],
+      };
+    });
   }, []);
 
   // Function to go back to previous menu
   const goBack = React.useCallback(() => {
-    // Set animation direction to backward when going back
-    setAnimationDirection("backward");
-
-    if (submenuStack.length <= 1) {
-      // If we're at the first level, go back to main menu
-      setActiveSubmenu(null);
-      setSubmenuTitle(null);
-      setSubmenuStack([]);
-    } else {
-      // Go back to previous submenu
-      const newStack = [...submenuStack];
-      newStack.pop(); // Remove current
-      const previous = newStack[newStack.length - 1];
-      setActiveSubmenu(previous.id);
-      setSubmenuTitle(previous.title);
-      setSubmenuStack(newStack);
-    }
-  }, [submenuStack]);
+    setSubmenuNavigation((currentNavigation) => ({
+      direction: "backward",
+      stack: currentNavigation.stack.slice(0, -1),
+    }));
+  }, []);
 
   // Function to register submenu content
   const registerSubmenuContent = React.useCallback(
-    (id: string, content: React.ReactNode[]) => {
+    (id: string, content: React.ReactNode) => {
+      const currentContent = submenuContentRef.current.get(id);
+      if (currentContent === content) return;
+
       submenuContentRef.current.set(id, content);
+      if (activeSubmenuRef.current === id) rerenderActiveSubmenu();
     },
-    []
+    [],
+  );
+  const submenuContextValue = React.useMemo(
+    () => ({ navigateToSubmenu, registerSubmenuContent }),
+    [navigateToSubmenu, registerSubmenuContent],
   );
 
-  // Function to extract submenu content
-  const extractSubmenuContent = React.useCallback(
-    (elements: React.ReactNode, targetId: string): React.ReactNode[] => {
-      const result: React.ReactNode[] = [];
-
-      // Recursive function to search through all children
-      const findSubmenuContent = (node: React.ReactNode) => {
-        // Skip if not a valid element
-        if (!React.isValidElement(node)) return;
-
-        const element = node as React.ReactElement;
-        // Use a more specific type to avoid 'any'
-        const props = element.props as {
-          id?: string;
-          "data-submenu-id"?: string;
-          children?: React.ReactNode;
-        };
-
-        // Check if this is a DropDrawerSub
-        if (element.type === DropDrawerSub) {
-          // Get all possible ID values
-          const elementId = props.id;
-          const dataSubmenuId = props["data-submenu-id"];
-
-          // If this is the submenu we're looking for
-          if (elementId === targetId || dataSubmenuId === targetId) {
-            // Find the SubContent within this Sub
-            if (props.children) {
-              React.Children.forEach(props.children, (child) => {
-                if (
-                  React.isValidElement(child) &&
-                  child.type === DropDrawerSubContent
-                ) {
-                  // Add all children of the SubContent to the result
-                  const subContentProps = child.props as {
-                    children?: React.ReactNode;
-                  };
-                  if (subContentProps.children) {
-                    React.Children.forEach(
-                      subContentProps.children,
-                      (contentChild) => {
-                        result.push(contentChild);
-                      }
-                    );
-                  }
-                }
-              });
-            }
-            return; // Found what we needed, no need to search deeper
-          }
-        }
-
-        // If this element has children, search through them
-        if (props.children) {
-          if (Array.isArray(props.children)) {
-            props.children.forEach((child: React.ReactNode) =>
-              findSubmenuContent(child)
-            );
-          } else {
-            findSubmenuContent(props.children);
-          }
-        }
-      };
-
-      // Start the search from the root elements
-      if (Array.isArray(elements)) {
-        elements.forEach((child) => findSubmenuContent(child));
-      } else {
-        findSubmenuContent(elements);
-      }
-
-      return result;
-    },
-    []
-  );
-
-  // Get submenu content (either from cache or extract it)
-  const getSubmenuContent = React.useCallback(
-    (id: string) => {
-      // Check if we have the content in our ref
-      const cachedContent = submenuContentRef.current.get(id || "");
-      if (cachedContent && cachedContent.length > 0) {
-        return cachedContent;
-      }
-
-      // If not in cache, extract it
-      const submenuContent = extractSubmenuContent(children, id);
-
-      if (submenuContent.length === 0) {
-        return [];
-      }
-
-      // Store in cache for future use
-      if (id) {
-        submenuContentRef.current.set(id, submenuContent);
-      }
-
-      return submenuContent;
-    },
-    [children, extractSubmenuContent]
-  );
-
-  // Animation variants for Framer Motion
-  const variants = {
-    enter: (direction: "forward" | "backward") => ({
-      x: direction === "forward" ? "100%" : "-100%",
-      opacity: 0,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-    },
-    exit: (direction: "forward" | "backward") => ({
-      x: direction === "forward" ? "-100%" : "100%",
-      opacity: 0,
-    }),
-  };
-
-  // Animation transition
-  const transition = {
-    duration: 0.3,
-    ease: [0.25, 0.1, 0.25, 1.0] as const,
-  };
-
-  if (isMobile) {
-    return (
-      <SubmenuContext.Provider
-        value={{
-          activeSubmenu,
-          setActiveSubmenu: (id) => {
-            if (id === null) {
-              setActiveSubmenu(null);
-              setSubmenuTitle(null);
-              setSubmenuStack([]);
-            }
-          },
-          submenuTitle,
-          setSubmenuTitle,
-          navigateToSubmenu,
-          registerSubmenuContent,
-        }}
+  return (
+    <SubmenuContext.Provider value={submenuContextValue}>
+      <DrawerContent
+        data-slot="drop-drawer-content"
+        className={cn(
+          "max-h-[85vh] bg-popover px-1 pb-2 text-popover-foreground",
+          className,
+        )}
+        {...drawerContentProps}
       >
-        <DrawerContent
-          data-slot="drop-drawer-content"
-          className="max-h-[85vh] bg-popover px-1 pb-2 text-popover-foreground"
-          {...drawerContentProps}
-        >
           {activeSubmenu ? (
             <>
+              <div aria-hidden hidden inert>
+                {children}
+              </div>
               <DrawerHeader className="px-2 py-2">
                 <div className="flex items-center gap-2">
                   <button
@@ -314,6 +211,17 @@ function DropDrawerContent({
                   <DrawerTitle className="text-sm font-medium">
                     {submenuTitle || "Submenu"}
                   </DrawerTitle>
+                  <DrawerClose asChild>
+                    <Button
+                      aria-label={`Close ${submenuTitle || "submenu"}`}
+                      className="ml-auto text-muted-foreground"
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <XIcon className="size-4" />
+                    </Button>
+                  </DrawerClose>
                 </div>
               </DrawerHeader>
               <div className="relative max-h-[70vh] flex-1 overflow-y-auto">
@@ -326,16 +234,16 @@ function DropDrawerContent({
                   <motion.div
                     key={activeSubmenu || "main"}
                     custom={animationDirection}
-                    variants={variants}
+                    variants={submenuAnimationVariants}
                     initial="enter"
                     animate="center"
                     exit="exit"
-                    transition={transition}
+                    transition={submenuAnimationTransition}
                     className="h-full w-full space-y-0.5 px-1 pb-2"
                   >
-                    {activeSubmenu
-                      ? getSubmenuContent(activeSubmenu)
-                      : children}
+                    <SubmenuPanelContext.Provider value>
+                      {submenuContentRef.current.get(activeSubmenu)}
+                    </SubmenuPanelContext.Provider>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -354,11 +262,11 @@ function DropDrawerContent({
                   <motion.div
                     key="main-menu"
                     custom={animationDirection}
-                    variants={variants}
+                    variants={submenuAnimationVariants}
                     initial="enter"
                     animate="center"
                     exit="exit"
-                    transition={transition}
+                    transition={submenuAnimationTransition}
                     className="w-full space-y-0.5 px-1 pb-2 pt-1"
                   >
                     {children}
@@ -367,31 +275,38 @@ function DropDrawerContent({
               </div>
             </>
           )}
-        </DrawerContent>
-      </SubmenuContext.Provider>
+      </DrawerContent>
+    </SubmenuContext.Provider>
+  );
+}
+
+function DropDrawerContent({
+  className,
+  children,
+  ...props
+}:
+  | React.ComponentProps<typeof DrawerContent>
+  | React.ComponentProps<typeof DropdownMenuContent>) {
+  const { isMobile } = useDropDrawerContext();
+
+  if (isMobile) {
+    return (
+      <MobileDropDrawerContent className={className} {...props}>
+        {children}
+      </MobileDropDrawerContent>
     );
   }
 
   return (
-    <SubmenuContext.Provider
-      value={{
-        activeSubmenu,
-        setActiveSubmenu,
-        submenuTitle,
-        setSubmenuTitle,
-        registerSubmenuContent,
-      }}
+    <DropdownMenuContent
+      data-slot="drop-drawer-content"
+      align="end"
+      sideOffset={4}
+      className={className}
+      {...props}
     >
-      <DropdownMenuContent
-        data-slot="drop-drawer-content"
-        align="end"
-        sideOffset={4}
-        className={className}
-        {...props}
-      >
-        {children}
-      </DropdownMenuContent>
-    </SubmenuContext.Provider>
+      {children}
+    </DropdownMenuContent>
   );
 }
 
@@ -409,6 +324,7 @@ function DropDrawerItem({
   icon?: React.ReactNode;
 }) {
   const { isMobile } = useDropDrawerContext();
+  const isInSubmenu = React.useContext(SubmenuPanelContext);
 
   if (isMobile) {
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -431,7 +347,7 @@ function DropDrawerItem({
             "text-destructive hover:bg-destructive/10 hover:text-destructive [&_svg]:text-destructive",
           disabled &&
             "pointer-events-none text-muted-foreground opacity-60 hover:bg-transparent",
-          className
+          className,
         )}
         onClick={handleClick}
         aria-disabled={disabled}
@@ -441,11 +357,6 @@ function DropDrawerItem({
         {icon && <div className="shrink-0 text-muted-foreground">{icon}</div>}
       </div>
     );
-
-    // Check if this is inside a submenu
-    const isInSubmenu =
-      (props as Record<string, unknown>)["data-parent-submenu-id"] ||
-      (props as Record<string, unknown>)["data-parent-submenu"];
 
     if (isInSubmenu) {
       return content;
@@ -527,7 +438,7 @@ function DropDrawerLabel({
           data-slot="drop-drawer-label"
           className={cn(
             "px-2 py-1.5 text-xs font-medium text-muted-foreground",
-            className
+            className,
           )}
           {...props}
         >
@@ -597,7 +508,7 @@ function DropDrawerGroup({
     // Filter out any existing separators
     const filteredChildren = childArray.filter(
       (child) =>
-        React.isValidElement(child) && child.type !== DropDrawerSeparator
+        React.isValidElement(child) && child.type !== DropDrawerSeparator,
     );
 
     // Add separators between items
@@ -644,108 +555,70 @@ function DropDrawerGroup({
 
 // Context for managing submenu state on mobile
 interface SubmenuContextType {
-  activeSubmenu: string | null;
-  setActiveSubmenu: (id: string | null) => void;
-  submenuTitle: string | null;
-  setSubmenuTitle: (title: string | null) => void;
-  navigateToSubmenu?: (id: string, title: string) => void;
-  registerSubmenuContent?: (id: string, content: React.ReactNode[]) => void;
+  navigateToSubmenu: (id: string, title: string) => void;
+  registerSubmenuContent: (id: string, content: React.ReactNode) => void;
 }
 
-const SubmenuContext = React.createContext<SubmenuContextType>({
-  activeSubmenu: null,
-  setActiveSubmenu: () => {},
-  submenuTitle: null,
-  setSubmenuTitle: () => {},
-  navigateToSubmenu: undefined,
-  registerSubmenuContent: undefined,
-});
+const SubmenuContext = React.createContext<SubmenuContextType | null>(null);
+
+type SubmenuDefinition = {
+  id: string;
+  title: string;
+};
+
+const SubmenuDefinitionContext = React.createContext<SubmenuDefinition | null>(
+  null,
+);
 
 // Submenu components
-// Counter for generating simple numeric IDs
-let submenuIdCounter = 0;
-
 function DropDrawerSub({
   children,
   id,
+  title,
   ...props
 }: React.ComponentProps<typeof DropdownMenuSub> & {
   id?: string;
 }) {
   const { isMobile } = useDropDrawerContext();
-  const { registerSubmenuContent } = React.useContext(SubmenuContext);
+  const submenuNavigation = React.useContext(SubmenuContext);
 
-  // Generate a simple numeric ID instead of using React.useId()
-  const [generatedId] = React.useState(() => `submenu-${submenuIdCounter++}`);
-  const submenuId = id || generatedId;
+  const generatedId = React.useId();
+  const submenuId = id || `submenu-${generatedId}`;
+  const submenuDefinition = React.useMemo(
+    () => ({ id: submenuId, title: title || "Submenu" }),
+    [submenuId, title],
+  );
 
   // Extract submenu content to register with parent
   React.useEffect(() => {
-    if (!registerSubmenuContent) return;
+    if (!isMobile || !submenuNavigation) return;
 
     // Find the SubContent within this Sub
-    const contentItems: React.ReactNode[] = [];
+    let submenuContent: React.ReactNode;
     React.Children.forEach(children, (child) => {
       if (React.isValidElement(child) && child.type === DropDrawerSubContent) {
-        // Add all children of the SubContent to the result
-        React.Children.forEach(
-          (child.props as { children?: React.ReactNode }).children,
-          (contentChild) => {
-            contentItems.push(contentChild);
-          }
-        );
+        submenuContent = (child.props as { children?: React.ReactNode })
+          .children;
       }
     });
 
     // Register the content with the parent
-    if (contentItems.length > 0) {
-      registerSubmenuContent(submenuId, contentItems);
+    if (submenuContent !== undefined) {
+      submenuNavigation.registerSubmenuContent(submenuId, submenuContent);
     }
-  }, [children, registerSubmenuContent, submenuId]);
+  }, [children, isMobile, submenuId, submenuNavigation]);
 
   if (isMobile) {
-    // For mobile, we'll use the context to manage submenu state
-    // Process children to pass the submenu ID to the trigger and content
-    const processedChildren = React.Children.map(children, (child) => {
-      if (!React.isValidElement(child)) return child;
-
-      if (child.type === DropDrawerSubTrigger) {
-        return React.cloneElement(
-          child as React.ReactElement,
-          {
-            ...(child.props as object),
-            "data-parent-submenu-id": submenuId,
-            "data-submenu-id": submenuId,
-            // Use only data attributes, not custom props
-            "data-parent-submenu": submenuId,
-          } as React.HTMLAttributes<HTMLElement>
-        );
-      }
-
-      if (child.type === DropDrawerSubContent) {
-        return React.cloneElement(
-          child as React.ReactElement,
-          {
-            ...(child.props as object),
-            "data-parent-submenu-id": submenuId,
-            "data-submenu-id": submenuId,
-            // Use only data attributes, not custom props
-            "data-parent-submenu": submenuId,
-          } as React.HTMLAttributes<HTMLElement>
-        );
-      }
-
-      return child;
-    });
-
     return (
-      <div
-        data-slot="drop-drawer-sub"
-        data-submenu-id={submenuId}
-        id={submenuId}
-      >
-        {processedChildren}
-      </div>
+      <SubmenuDefinitionContext.Provider value={submenuDefinition}>
+        <div
+          data-slot="drop-drawer-sub"
+          data-submenu-id={submenuId}
+          id={submenuId}
+        >
+          {children}
+        </div>
+      </SubmenuDefinitionContext.Provider>
     );
   }
 
@@ -754,6 +627,7 @@ function DropDrawerSub({
     <DropdownMenuSub
       data-slot="drop-drawer-sub"
       data-submenu-id={submenuId}
+      title={title}
       // Don't pass id to DropdownMenuSub as it doesn't accept this prop
       {...props}
     >
@@ -771,65 +645,23 @@ function DropDrawerSubTrigger({
   icon?: React.ReactNode;
 }) {
   const { isMobile } = useDropDrawerContext();
-  const { navigateToSubmenu } = React.useContext(SubmenuContext);
+  const submenuNavigation = React.useContext(SubmenuContext);
+  const submenuDefinition = React.useContext(SubmenuDefinitionContext);
 
   if (isMobile) {
-    // Find the parent submenu ID
-    const handleClick = (e: React.MouseEvent) => {
+    const { onClick, ...restProps } = props;
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      onClick?.(e);
+      if (e.defaultPrevented || !submenuDefinition || !submenuNavigation)
+        return;
+
       e.preventDefault();
       e.stopPropagation();
-
-      // Get the closest parent with data-submenu-id attribute
-      const element = e.currentTarget as HTMLElement;
-      let submenuId: string | null = null;
-
-      // First check if the element itself has the data attribute
-      if (element.closest("[data-submenu-id]")) {
-        const closestElement = element.closest("[data-submenu-id]");
-        const id = closestElement?.getAttribute("data-submenu-id");
-        if (id) {
-          submenuId = id;
-        }
-      }
-
-      // If not found, try props
-      if (!submenuId) {
-        submenuId =
-          ((props as Record<string, unknown>)[
-            "data-parent-submenu-id"
-          ] as string) ||
-          ((props as Record<string, unknown>)["data-parent-submenu"] as string);
-      }
-
-      if (!submenuId) {
-        return;
-      }
-
-      // Get the title
-      const title = typeof children === "string" ? children : "Submenu";
-
-      // Navigate to the submenu
-      if (navigateToSubmenu) {
-        navigateToSubmenu(submenuId, title);
-      }
+      submenuNavigation.navigateToSubmenu(
+        submenuDefinition.id,
+        submenuDefinition.title,
+      );
     };
-
-    // Combine onClick handlers
-    const combinedOnClick = (e: React.MouseEvent) => {
-      // Call the original onClick if provided
-      const typedProps = props as Record<string, unknown>;
-      if (typedProps.onClick) {
-        const originalOnClick =
-          typedProps.onClick as React.MouseEventHandler<HTMLDivElement>;
-        originalOnClick(e as React.MouseEvent<HTMLDivElement>);
-      }
-
-      // Call our navigation handler
-      handleClick(e);
-    };
-
-    // Remove onClick from props to avoid duplicate handlers
-    const { ...restProps } = props as Record<string, unknown>;
 
     // Don't wrap in DrawerClose for submenu triggers
     return (
@@ -839,9 +671,9 @@ function DropDrawerSubTrigger({
         className={cn(
           "flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-sm text-popover-foreground outline-hidden select-none hover:bg-accent [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
           inset && "pl-8",
-          className
+          className,
         )}
-        onClick={combinedOnClick}
+        onClick={handleClick}
         {...restProps}
       >
         <div className="flex min-w-0 items-center gap-2">{children}</div>

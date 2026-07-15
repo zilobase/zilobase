@@ -1055,8 +1055,8 @@ function ConditionalColorPropertyPicker({
   }, [filterFieldOptions, propertySearch]);
 
   return (
-    <div className="rounded-md border p-2">
-      <div className="mb-1 flex h-8 items-center gap-2 px-2 text-xs">
+    <div>
+      <div className="flex h-8 items-center gap-2 px-2 text-sm">
         <Search className="size-4 shrink-0 text-muted-foreground" />
         <input
           aria-label="Search for a property"
@@ -1067,11 +1067,12 @@ function ConditionalColorPropertyPicker({
           value={propertySearch}
         />
       </div>
-      <div className="max-h-64 overflow-y-auto">
+      <DropDrawerSeparator />
+      <div className="max-h-64 overflow-y-auto py-1">
         {filteredOptions.length > 0 ? (
           filteredOptions.map((option) => (
             <button
-              className="flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
+              className="flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
               key={option.value}
               onClick={() => onSelect(option.value)}
               type="button"
@@ -1081,7 +1082,7 @@ function ConditionalColorPropertyPicker({
             </button>
           ))
         ) : (
-          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">
             No properties found
           </div>
         )}
@@ -1306,12 +1307,6 @@ function ConditionalColorPanel({
 
   return (
     <div className="w-80 max-w-[calc(100vw-2rem)] p-1">
-      <div className="mb-2 flex items-center gap-2 px-1 py-1">
-        <Palette className="size-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0 flex-1 text-sm font-semibold">
-          Conditional color
-        </div>
-      </div>
       {settings.length === 0 && !isChoosingProperty ? (
         <div className="mb-2 px-1">
           <ConditionalColorPreview />
@@ -1341,7 +1336,7 @@ function ConditionalColorPanel({
           />
         ))}
       </Reorder.Group>
-      <div className="mt-2 px-1">
+      <div className={cn(!isChoosingProperty && "mt-2 px-1")}>
         {isChoosingProperty ? (
           <ConditionalColorPropertyPicker
             filterFieldOptions={filterFieldOptions}
@@ -1647,14 +1642,16 @@ export function DatabaseViewSettingsMenu({
           <div className="text-sm font-semibold text-foreground">
             View settings
           </div>
-          <button
+          <Button
             aria-label="Close view settings"
-            className="inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="text-muted-foreground"
             onClick={() => setOpen(false)}
+            size="icon-sm"
             type="button"
+            variant="ghost"
           >
             <X className="size-4" />
-          </button>
+          </Button>
         </div>
         <div className="flex items-center gap-1.5 px-1.5 py-1">
           <ViewTypeIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -1680,7 +1677,7 @@ export function DatabaseViewSettingsMenu({
           />
         </div>
         <DropDrawerSeparator />
-        <DropDrawerSub>
+        <DropDrawerSub displayMode="inline" title="Layout">
           <DropDrawerSubTrigger>
             <ViewSettingsRow
               icon={<ViewTypeIcon />}
@@ -1689,9 +1686,6 @@ export function DatabaseViewSettingsMenu({
             />
           </DropDrawerSubTrigger>
           <DropDrawerSubContent className="max-h-[min(46rem,calc(100vh-2rem))] w-72 max-w-[calc(100vw-1rem)] overflow-y-auto p-1">
-            <div className="px-2 py-1.5 text-sm font-semibold text-foreground">
-              Layout
-            </div>
             <div className="grid grid-cols-3 gap-1.5 px-1 pb-1">
               {[
                 { icon: Table2, label: "Table", type: "table" as const },
@@ -2161,7 +2155,7 @@ export function DatabaseViewSettingsMenu({
             ) : null}
           </DropDrawerSubContent>
         </DropDrawerSub>
-        <DropDrawerSub>
+        <DropDrawerSub displayMode="inline" title="Property visibility">
           <DropDrawerSubTrigger>
             <ViewSettingsRow
               icon={<Eye />}
@@ -2217,6 +2211,8 @@ export function DatabaseViewSettingsMenu({
           onRemoveDatabaseFilter={onRemoveDatabaseFilter}
           onReorderDatabaseFilters={onReorderDatabaseFilters}
           onUpdateDatabaseFilter={onUpdateDatabaseFilter}
+          displayMode="inline"
+          title="Filter"
         >
           <ViewSettingsRow
             icon={<Filter />}
@@ -2237,6 +2233,8 @@ export function DatabaseViewSettingsMenu({
           onRemoveDatabaseSort={onRemoveDatabaseSort}
           onUpdateDatabaseSort={onUpdateDatabaseSort}
           sortFieldOptions={sortFieldOptions}
+          displayMode="inline"
+          title="Sort"
         >
           <ViewSettingsRow
             icon={<ArrowDownUp />}
@@ -2248,7 +2246,7 @@ export function DatabaseViewSettingsMenu({
             }
           />
         </DatabaseSortSubmenu>
-        <DropDrawerSub>
+        <DropDrawerSub displayMode="inline" title="Group">
           <DropDrawerSubTrigger>
             <ViewSettingsRow
               icon={<GripVertical />}
@@ -2293,7 +2291,7 @@ export function DatabaseViewSettingsMenu({
             )}
           </DropDrawerSubContent>
         </DropDrawerSub>
-        <DropDrawerSub>
+        <DropDrawerSub displayMode="inline" title="Conditional color">
           <DropDrawerSubTrigger>
             <ViewSettingsRow
               icon={<Palette />}

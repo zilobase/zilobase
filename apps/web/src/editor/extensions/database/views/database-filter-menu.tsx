@@ -54,16 +54,19 @@ function DatabaseFilterMenuContent({
   onRemoveDatabaseFilter,
   onReorderDatabaseFilters,
   onUpdateDatabaseFilter,
-}: DatabaseFilterMenuProps) {
+  showTitle = true,
+}: DatabaseFilterMenuProps & { showTitle?: boolean }) {
   const [addFilterPickerOpen, setAddFilterPickerOpen] = useState(false)
   const [draggingFilterId, setDraggingFilterId] = useState<string | null>(null)
 
   return (
     <div className="w-80 max-w-[calc(100vw-2rem)] p-1">
-      <div className="mb-2 flex items-center gap-2 px-1 py-1">
-        <Filter className="size-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0 flex-1 text-sm font-semibold">Filter</div>
-      </div>
+      {showTitle ? (
+        <div className="mb-2 flex items-center gap-2 px-1 py-1">
+          <Filter className="size-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1 text-sm font-semibold">Filter</div>
+        </div>
+      ) : null}
       {activeDatabaseFilters.length > 0 ? (
         <Reorder.Group
           as="div"
@@ -217,11 +220,15 @@ export function DatabaseFilterSubmenu({
   onRemoveDatabaseFilter,
   onReorderDatabaseFilters,
   onUpdateDatabaseFilter,
+  displayMode = "nested",
+  title = "Filter",
 }: DatabaseFilterMenuProps & {
   children: ReactNode
+  displayMode?: "inline" | "nested"
+  title?: string
 }) {
   return (
-    <DropDrawerSub>
+    <DropDrawerSub displayMode={displayMode} title={title}>
       <DropDrawerSubTrigger>{children}</DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-80 max-w-[calc(100vw-2rem)]">
         <DatabaseFilterMenuContent
@@ -235,6 +242,7 @@ export function DatabaseFilterSubmenu({
           onRemoveDatabaseFilter={onRemoveDatabaseFilter}
           onReorderDatabaseFilters={onReorderDatabaseFilters}
           onUpdateDatabaseFilter={onUpdateDatabaseFilter}
+          showTitle={displayMode !== "inline"}
         />
       </DropDrawerSubContent>
     </DropDrawerSub>

@@ -312,11 +312,15 @@ export function DatabaseSortSubmenu({
   onRemoveDatabaseSort,
   onUpdateDatabaseSort,
   sortFieldOptions,
+  displayMode = "nested",
+  title = "Sort",
 }: DatabaseSortMenuProps & {
   children: ReactNode
+  displayMode?: "inline" | "nested"
+  title?: string
 }) {
   return (
-    <DropDrawerSub>
+    <DropDrawerSub displayMode={displayMode} title={title}>
       <DropDrawerSubTrigger>{children}</DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-72">
         <DatabaseSortNestedMenuContent
