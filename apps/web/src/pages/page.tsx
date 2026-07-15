@@ -40,7 +40,10 @@ import { useUserSettings } from "@notelab/features/user-settings";
 import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
 import { createPageEditorHandle } from "@/hooks/use-page-edit-applier";
 import { Editor, type PageEditPreviewControls } from "@/packages/editor";
-import type { OpenPageOptions } from "@/packages/editor/types";
+import type {
+  OpenPageOptions,
+  PageLayoutPanelMode,
+} from "@/packages/editor/types";
 import { usePageCollaboration } from "@/packages/editor/use-page-collaboration";
 import { createPageCommentController } from "@/comments/yjs-comments";
 import { usePageCommentsRegistry } from "@/contexts/page-comments-registry";
@@ -49,6 +52,7 @@ type PageEditorPaneProps = {
   className?: string;
   databaseId?: string | null;
   enableComments?: boolean;
+  layoutPanelMode?: PageLayoutPanelMode;
   onOpenPage: (pageId: string, options?: OpenPageOptions) => void;
   readOnly?: boolean;
   pageId: string;
@@ -95,6 +99,7 @@ function AuthenticatedPage() {
             <PageEditorPane
               databaseId={sidePaneDatabaseId}
               enableComments={false}
+              layoutPanelMode="overlay"
               key={renderedSidePanePageId}
               onOpenPage={openPage}
               pageId={renderedSidePanePageId}
@@ -272,6 +277,7 @@ export function PageEditorPane({
   className,
   databaseId,
   enableComments = true,
+  layoutPanelMode = "auto",
   onOpenPage,
   readOnly = false,
   pageId,
@@ -661,6 +667,7 @@ export function PageEditorPane({
         emoji={emoji}
         fullWidth={fullWidth}
         layoutConfig={appliedLayout}
+        layoutPanelMode={layoutPanelMode}
         onContentChange={updateContent}
         onCoverChange={updateCover}
         onCreatePage={createNestedPage}
