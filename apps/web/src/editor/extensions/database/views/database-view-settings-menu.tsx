@@ -37,7 +37,8 @@ import {
   Zap,
 } from "lucide-react";
 import { Reorder } from "framer-motion";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -1413,6 +1414,8 @@ export function DatabaseViewSettingsMenu({
   onUpdateDatabaseLayoutSettings,
   onUpdateDatabaseSort,
   properties,
+  presentation = "menu",
+  portalTarget,
   sortFieldOptions,
   sourceDatabaseId,
   viewConfig,
@@ -1483,6 +1486,8 @@ export function DatabaseViewSettingsMenu({
   ) => void;
   onUpdateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void;
   properties: DatabaseViewProperty[];
+  presentation?: "menu" | "sidebar";
+  portalTarget?: HTMLElement | null;
   sortFieldOptions: DatabaseSearchableMenuOption[];
   sourceDatabaseId?: string;
   viewConfig?: unknown;
@@ -1620,24 +1625,27 @@ export function DatabaseViewSettingsMenu({
     }
   };
 
-  return (
-    <DropDrawer open={open} onOpenChange={handleOpenChange}>
-      <DropDrawerTrigger asChild>
-        <Button
-          aria-label="Open view settings"
-          className="text-muted-foreground"
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <Settings2 />
-        </Button>
-      </DropDrawerTrigger>
-      <DropDrawerContent
-        align="start"
-        className="w-72"
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      >
+  useEffect(() => {
+    if (presentation !== "sidebar" || !open) return;
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") handleOpenChange(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, presentation]);
+
+  useEffect(() => {
+    if (open) return;
+
+    setManageDataSourcesOpen(false);
+    setShowLinkExistingPicker(false);
+    setSelectedLinkDatabaseId(null);
+  }, [open]);
+
+  const settingsContent = (
+    <>
         <div className="flex items-center justify-between px-2 py-1.5">
           <div className="text-sm font-semibold text-foreground">
             View settings
@@ -2618,6 +2626,52 @@ export function DatabaseViewSettingsMenu({
             <DropDrawerItem disabled>Database lock settings</DropDrawerItem>
           </DropDrawerSubContent>
         </DropDrawerSub>
+    </>
+  );
+
+  const trigger = (
+    <Button
+      aria-label="Open view settings"
+      aria-expanded={open}
+      className="text-muted-foreground"
+      onClick={
+        presentation === "sidebar" ? () => handleOpenChange(!open) : undefined
+      }
+      size="icon"
+      type="button"
+      variant="ghost"
+    >
+      <Settings2 />
+    </Button>
+  );
+
+  if (presentation === "sidebar") {
+    return (
+      <>
+        {trigger}
+        {open && portalTarget
+          ? createPortal(
+              <DropDrawer inline>
+                <DropDrawerContent className="h-full w-full">
+                  {settingsContent}
+                </DropDrawerContent>
+              </DropDrawer>,
+              portalTarget,
+            )
+          : null}
+      </>
+    );
+  }
+
+  return (
+    <DropDrawer open={open} onOpenChange={handleOpenChange}>
+      <DropDrawerTrigger asChild>{trigger}</DropDrawerTrigger>
+      <DropDrawerContent
+        align="start"
+        className="w-72"
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
+        {settingsContent}
       </DropDrawerContent>
     </DropDrawer>
   );

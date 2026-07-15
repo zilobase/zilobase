@@ -69,11 +69,14 @@ export type DatabaseViewProps = {
   onDismissSetup?: () => void
   onSetupComplete?: () => void
   onShowTitleChange?: (showTitle: boolean) => void
+  onViewSettingsOpenChange?: (open: boolean) => void
   workspaceId?: string | null
   setupMode?: boolean
   showExpandButton?: boolean
   showTitle?: boolean
   pageId?: string | null
+  viewSettingsOpen?: boolean
+  viewSettingsPanelTarget?: HTMLElement | null
 }
 
 type SourcePropertyMode = "duplicate" | "match"
@@ -136,11 +139,14 @@ export function useDatabaseViewController({
   onDismissSetup,
   onSetupComplete,
   onShowTitleChange,
+  onViewSettingsOpenChange,
   workspaceId,
   setupMode = false,
   showExpandButton = false,
   showTitle = true,
   pageId = null,
+  viewSettingsOpen,
+  viewSettingsPanelTarget,
 }: DatabaseViewProps) {
   const { apiFetch, queryClient } = useNotelabFeatures()
   const [pendingSourcePropertyMode, setPendingSourcePropertyMode] =
@@ -725,6 +731,7 @@ export function useDatabaseViewController({
     filterPickerOpen,
     filterValueOptionsByField,
     filteredItems,
+    fullPage,
     getDatabasePageDragPayload,
     groupOptions,
     groupProperty,
@@ -780,6 +787,7 @@ export function useDatabaseViewController({
     showPropertyTitles,
     showTitle,
     onShowTitleChange,
+    onViewSettingsOpenChange,
     sortFieldOptions,
     sortPickerOpen,
     sortedItems,
@@ -797,6 +805,8 @@ export function useDatabaseViewController({
     visiblePropertyCount,
     viewTabs,
     views: activePayload?.views ?? [],
+    viewSettingsOpen,
+    viewSettingsPanelTarget,
   }
 
   return {

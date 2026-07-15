@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Link, useParams, useSearch } from "@tanstack/react-router"
 import { ArrowRight, Maximize2 } from "lucide-react"
 
@@ -36,22 +36,58 @@ import {
 } from "@/pages/page"
 import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
 import type { OpenPageOptions } from "@/packages/editor/types"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export default function DatabasePage() {
   const { data: session } = useSession()
+  const { databaseId } = useParams({ from: "/d/$databaseId" })
+  const isMobile = useIsMobile()
+  const [viewSettingsOpen, setViewSettingsOpen] = useState(false)
+  const [viewSettingsPanelTarget, setViewSettingsPanelTarget] =
+    useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    setViewSettingsOpen(false)
+  }, [databaseId])
+
+  const settingsSidebar = (
+    <div className="h-full min-h-0 w-full" ref={setViewSettingsPanelTarget} />
+  )
 
   if (!session?.user) {
-    return <PublicDatabasePage />
+    return (
+      <PublicDatabasePage
+        settingsSidebar={settingsSidebar}
+        viewSettingsOpen={viewSettingsOpen}
+        viewSettingsPanelTarget={viewSettingsPanelTarget}
+        onViewSettingsOpenChange={setViewSettingsOpen}
+      />
+    )
   }
 
   return (
-    <AppLayout>
-      <AuthenticatedDatabasePage />
+    <AppLayout
+      utilitySidebar={settingsSidebar}
+      utilitySidebarOpen={!isMobile && viewSettingsOpen}
+    >
+      <AuthenticatedDatabasePage
+        viewSettingsOpen={viewSettingsOpen}
+        viewSettingsPanelTarget={viewSettingsPanelTarget}
+        onViewSettingsOpenChange={setViewSettingsOpen}
+      />
     </AppLayout>
   )
 }
 
-function AuthenticatedDatabasePage() {
+function AuthenticatedDatabasePage({
+  onViewSettingsOpenChange,
+  viewSettingsOpen,
+  viewSettingsPanelTarget,
+}: {
+  onViewSettingsOpenChange: (open: boolean) => void
+  viewSettingsOpen: boolean
+  viewSettingsPanelTarget: HTMLElement | null
+}) {
   const { databaseId } = useParams({ from: "/d/$databaseId" })
   const { view: activeDatabaseViewId } = useSearch({
     from: "/d/$databaseId",
@@ -64,6 +100,7 @@ function AuthenticatedDatabasePage() {
     refetchOnMount: false,
   })
   const {
+    closeSidePane,
     renderedSidePanePageId,
     sidePaneAnimatedOpen,
     sidePaneContentReady,
@@ -74,6 +111,14 @@ function AuthenticatedDatabasePage() {
     databaseId,
     page,
   })
+  const handleViewSettingsOpenChange = (open: boolean) => {
+    if (open) closeSidePane()
+    onViewSettingsOpenChange(open)
+  }
+  const handleOpenPage = (pageId: string, options?: OpenPageOptions) => {
+    onViewSettingsOpenChange(false)
+    openPage(pageId, options)
+  }
 
   if (isLoading) {
     return (
@@ -98,11 +143,14 @@ function AuthenticatedDatabasePage() {
         <DatabaseMainPane
           activeDatabaseViewId={activeDatabaseViewId}
           databaseId={databaseId}
-          onOpenPage={openPage}
+          onOpenPage={handleOpenPage}
+          onViewSettingsOpenChange={handleViewSettingsOpenChange}
+          viewSettingsOpen={viewSettingsOpen}
+          viewSettingsPanelTarget={viewSettingsPanelTarget}
         />
       }
       sidePane={
-        sidePaneContentReady && renderedSidePanePageId ? (
+        !viewSettingsOpen && sidePaneContentReady && renderedSidePanePageId ? (
           <PageEditorPane
             databaseId={sidePaneDatabaseId ?? databaseId}
             enableComments={false}
@@ -112,23 +160,52 @@ function AuthenticatedDatabasePage() {
           />
         ) : null
       }
-      sidePaneOpen={sidePaneAnimatedOpen}
-      sidePaneVisible={renderedSidePanePageId !== null}
+      sidePaneOpen={!viewSettingsOpen && sidePaneAnimatedOpen}
+      sidePaneVisible={!viewSettingsOpen && renderedSidePanePageId !== null}
     />
   )
 }
 
-function PublicDatabasePage() {
+function PublicDatabasePage({
+  onViewSettingsOpenChange,
+  settingsSidebar,
+  viewSettingsOpen,
+  viewSettingsPanelTarget,
+}: {
+  onViewSettingsOpenChange: (open: boolean) => void
+  settingsSidebar: ReactNode
+  viewSettingsOpen: boolean
+  viewSettingsPanelTarget: HTMLElement | null
+}) {
   const { databaseId } = useParams({ from: "/d/$databaseId" })
 
   return (
     <PageSidePaneProvider resetKey={databaseId}>
-      <PublicDatabaseContent databaseId={databaseId} />
+      <PublicDatabaseContent
+        databaseId={databaseId}
+        settingsSidebar={settingsSidebar}
+        viewSettingsOpen={viewSettingsOpen}
+        viewSettingsPanelTarget={viewSettingsPanelTarget}
+        onViewSettingsOpenChange={onViewSettingsOpenChange}
+      />
     </PageSidePaneProvider>
   )
 }
 
-function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
+function PublicDatabaseContent({
+  databaseId,
+  onViewSettingsOpenChange,
+  settingsSidebar,
+  viewSettingsOpen,
+  viewSettingsPanelTarget,
+}: {
+  databaseId: string
+  onViewSettingsOpenChange: (open: boolean) => void
+  settingsSidebar: ReactNode
+  viewSettingsOpen: boolean
+  viewSettingsPanelTarget: HTMLElement | null
+}) {
+  const isMobile = useIsMobile()
   const { view: activeDatabaseViewId } = useSearch({
     from: "/d/$databaseId",
   })
@@ -149,6 +226,14 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
     databaseId,
     page,
   })
+  const handleViewSettingsOpenChange = (open: boolean) => {
+    if (open) closeSidePane()
+    onViewSettingsOpenChange(open)
+  }
+  const handleOpenPage = (pageId: string, options?: OpenPageOptions) => {
+    onViewSettingsOpenChange(false)
+    openPage(pageId, options)
+  }
 
   if (isLoading) {
     return (
@@ -167,72 +252,85 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
   }
 
   return (
-    <>
-      <PageSidePaneLayout
-        className="bg-background animate-in fade-in-0 duration-300"
-        standalone
-        viewportHeightClass="h-svh"
-        main={
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <PublicPaneTopbar pageId={databasePageId} />
-            <DatabaseMainPane
-              activeDatabaseViewId={activeDatabaseViewId}
-              className="min-h-0 min-w-0 flex-1 overflow-y-auto"
-              databaseId={databaseId}
-              onOpenPage={openPage}
-              readOnly
-            />
-          </div>
-        }
-        sidePane={
-          renderedSidePanePageId ? (
-            <div className="flex h-full min-h-0 flex-col">
-              <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    aria-label="Close side pane"
-                    onClick={closeSidePane}
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <ArrowRight />
-                  </Button>
-                  <Button
-                    aria-label="Open as main page"
-                    asChild
-                    size="icon-sm"
-                    variant="ghost"
-                  >
-                    <Link
-                      params={{ pageId: renderedSidePanePageId }}
-                      to="/p/$pageId"
-                    >
-                      <Maximize2 />
-                    </Link>
-                  </Button>
-                </div>
-                <PublicPageBreadcrumb pageId={renderedSidePanePageId} />
-              </div>
-              {sidePaneContentReady ? (
-                <PageEditorPane
-                  className="min-h-0 flex-1"
-                  databaseId={sidePaneDatabaseId ?? databaseId}
-                  enableComments={false}
-                  key={renderedSidePanePageId}
-                  onOpenPage={openPage}
-                  readOnly
-                  pageId={renderedSidePanePageId}
-                />
-              ) : null}
+    <div className="flex h-svh min-h-0 w-full overflow-hidden bg-background">
+      <div className="min-h-0 min-w-0 flex-1">
+        <PageSidePaneLayout
+          className="bg-background animate-in fade-in-0 duration-300"
+          standalone
+          viewportHeightClass="h-svh"
+          main={
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <PublicPaneTopbar pageId={databasePageId} />
+              <DatabaseMainPane
+                activeDatabaseViewId={activeDatabaseViewId}
+                className="min-h-0 min-w-0 flex-1 overflow-y-auto"
+                databaseId={databaseId}
+                onOpenPage={handleOpenPage}
+                onViewSettingsOpenChange={handleViewSettingsOpenChange}
+                readOnly
+                viewSettingsOpen={viewSettingsOpen}
+                viewSettingsPanelTarget={viewSettingsPanelTarget}
+              />
             </div>
-          ) : null
-        }
-        sidePaneOpen={sidePaneAnimatedOpen}
-        sidePaneVisible={renderedSidePanePageId !== null}
-      />
-      <EmbeddedPageDialog onOpenPage={openPage} />
-    </>
+          }
+          sidePane={
+            !viewSettingsOpen && renderedSidePanePageId ? (
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      aria-label="Close side pane"
+                      onClick={closeSidePane}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <ArrowRight />
+                    </Button>
+                    <Button
+                      aria-label="Open as main page"
+                      asChild
+                      size="icon-sm"
+                      variant="ghost"
+                    >
+                      <Link
+                        params={{ pageId: renderedSidePanePageId }}
+                        to="/p/$pageId"
+                      >
+                        <Maximize2 />
+                      </Link>
+                    </Button>
+                  </div>
+                  <PublicPageBreadcrumb pageId={renderedSidePanePageId} />
+                </div>
+                {sidePaneContentReady ? (
+                  <PageEditorPane
+                    className="min-h-0 flex-1"
+                    databaseId={sidePaneDatabaseId ?? databaseId}
+                    enableComments={false}
+                    key={renderedSidePanePageId}
+                    onOpenPage={handleOpenPage}
+                    readOnly
+                    pageId={renderedSidePanePageId}
+                  />
+                ) : null}
+              </div>
+            ) : null
+          }
+          sidePaneOpen={!viewSettingsOpen && sidePaneAnimatedOpen}
+          sidePaneVisible={!viewSettingsOpen && renderedSidePanePageId !== null}
+        />
+      </div>
+      {!isMobile && viewSettingsOpen ? (
+        <aside
+          aria-label="View settings sidebar"
+          className="h-full min-h-0 w-80 shrink-0 overflow-hidden border-l border-border bg-background"
+        >
+          {settingsSidebar}
+        </aside>
+      ) : null}
+      <EmbeddedPageDialog onOpenPage={handleOpenPage} />
+    </div>
   )
 }
 
@@ -242,14 +340,20 @@ export function DatabaseMainPane({
   databaseId,
   embedded = false,
   onOpenPage,
+  onViewSettingsOpenChange,
   readOnly = false,
+  viewSettingsOpen,
+  viewSettingsPanelTarget,
 }: {
   activeDatabaseViewId?: string
   className?: string
   databaseId: string
   embedded?: boolean
   onOpenPage: (pageId: string, options?: OpenPageOptions) => void
+  onViewSettingsOpenChange?: (open: boolean) => void
   readOnly?: boolean
+  viewSettingsOpen?: boolean
+  viewSettingsPanelTarget?: HTMLElement | null
 }) {
   const {
     activeViewId: localActiveViewId,
@@ -406,8 +510,11 @@ export function DatabaseMainPane({
           includeDeleted={Boolean(payload?.database.deletedAt)}
           onActiveViewIdChange={updateActiveViewSearch}
           onOpenPage={onOpenPage}
+          onViewSettingsOpenChange={onViewSettingsOpenChange}
           workspaceId={payload?.database.workspaceId}
           showTitle={false}
+          viewSettingsOpen={viewSettingsOpen}
+          viewSettingsPanelTarget={viewSettingsPanelTarget}
         />
       </div>
     </section>

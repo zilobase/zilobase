@@ -126,6 +126,7 @@ export type DatabaseViewContextValue = {
   filterFieldOptions: DatabaseSearchableMenuOption[]
   filterPickerOpen: boolean
   filterValueOptionsByField: Record<string, DatabaseSearchableMenuOption[]>
+  fullPage?: boolean
   getDatabasePageDragPayload: (
     dataTransfer: DataTransfer | null
   ) => DatabasePageDragPayload | null
@@ -223,6 +224,9 @@ export type DatabaseViewContextValue = {
   visiblePropertyCount: number
   viewTabs: DatabaseViewTab[]
   views: DatabaseView[]
+  viewSettingsOpen?: boolean
+  viewSettingsPanelTarget?: HTMLElement | null
+  onViewSettingsOpenChange?: (open: boolean) => void
 }
 
 const DatabaseViewContext = createContext<DatabaseViewContextValue | null>(null)

@@ -42,7 +42,15 @@ import { LayoutEditorProvider } from "@/components/layout-editor"
 import { usePageEditorComments } from "@/components/page-editor-comments"
 import { usePageCommentController } from "@/contexts/page-comments-registry"
 
-export function AppLayout({ children }: { children?: ReactNode }) {
+export function AppLayout({
+  children,
+  utilitySidebar,
+  utilitySidebarOpen = false,
+}: {
+  children?: ReactNode
+  utilitySidebar?: ReactNode
+  utilitySidebarOpen?: boolean
+}) {
   return (
     <SidebarProvider
       className="h-svh overflow-hidden"
@@ -56,14 +64,27 @@ export function AppLayout({ children }: { children?: ReactNode }) {
     >
       <AppSearchProvider>
         <LayoutEditorProvider>
-          <AppLayoutContent>{children}</AppLayoutContent>
+          <AppLayoutContent
+            utilitySidebar={utilitySidebar}
+            utilitySidebarOpen={utilitySidebarOpen}
+          >
+            {children}
+          </AppLayoutContent>
         </LayoutEditorProvider>
       </AppSearchProvider>
     </SidebarProvider>
   )
 }
 
-function AppLayoutContent({ children }: { children?: ReactNode }) {
+function AppLayoutContent({
+  children,
+  utilitySidebar,
+  utilitySidebarOpen,
+}: {
+  children?: ReactNode
+  utilitySidebar?: ReactNode
+  utilitySidebarOpen: boolean
+}) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
@@ -217,9 +238,9 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
     sidePanePageId,
   ])
 
-  const showSidePaneLayout = Boolean(
-    renderedSidePanePageId || renderedSidePaneDatabaseId,
-  )
+  const showSidePaneLayout =
+    !utilitySidebarOpen &&
+    Boolean(renderedSidePanePageId || renderedSidePaneDatabaseId)
 
   return (
     <PageSidePaneContext.Provider value={sidePaneContext}>
@@ -274,6 +295,28 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
             />
           </SidebarInset>
         </ResizablePanel>
+        {utilitySidebarOpen && utilitySidebar ? (
+          <ResizablePanel
+            className="min-h-0 min-w-0 border-l border-border"
+            defaultSize="320px"
+            id="app-utility-sidebar"
+            maxSize="320px"
+            minSize="320px"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          >
+            <aside
+              aria-label="View settings sidebar"
+              className="h-full min-h-0 w-full overflow-hidden bg-background text-foreground"
+            >
+              {utilitySidebar}
+            </aside>
+          </ResizablePanel>
+        ) : null}
         <RightSidebars
           chatOpen={chatSidebarOpen}
           chatPanel={

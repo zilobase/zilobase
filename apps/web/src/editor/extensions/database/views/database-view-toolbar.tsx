@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dropdrawer"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { getDatabaseEmoji } from "@notelab/features/databases"
 
 import { DatabaseSearchableMenuItems } from "./database-searchable-menu-items"
@@ -90,7 +91,7 @@ export function DatabaseViewToolbar() {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   const [titleActionsOpen, setTitleActionsOpen] = useState(false)
   const [openViewMenuId, setOpenViewMenuId] = useState<string | null>(null)
-  const [viewSettingsOpen, setViewSettingsOpen] = useState(false)
+  const [localViewSettingsOpen, setLocalViewSettingsOpen] = useState(false)
   const {
     activeConditionalColors,
     activeDatabaseFilters,
@@ -129,6 +130,7 @@ export function DatabaseViewToolbar() {
     filterFieldOptions,
     filterPickerOpen,
     filterValueOptionsByField,
+    fullPage,
     groupProperty,
     groupableProperties,
     hostDatabaseId,
@@ -141,6 +143,7 @@ export function DatabaseViewToolbar() {
     linkedDatabaseViews,
     layoutSettings,
     onShowTitleChange,
+    onViewSettingsOpenChange,
     titlePropertyLabel,
     workspaceId,
     properties,
@@ -181,7 +184,16 @@ export function DatabaseViewToolbar() {
     updateNameColumnConfig,
     visiblePropertyCount,
     viewTabs,
+    viewSettingsOpen: controlledViewSettingsOpen,
+    viewSettingsPanelTarget,
   } = useDatabaseViewContext()
+  const isMobile = useIsMobile()
+  const viewSettingsOpen =
+    controlledViewSettingsOpen ?? localViewSettingsOpen
+  const setViewSettingsOpen =
+    onViewSettingsOpenChange ?? setLocalViewSettingsOpen
+  const viewSettingsPresentation =
+    fullPage && !isMobile && onViewSettingsOpenChange ? "sidebar" : "menu"
   const canRenderAddView = canAddDatabaseViews ?? editable
   const canRenderAddRow = canAddDatabaseRows ?? editable
   const allContentWrapped =
@@ -921,7 +933,7 @@ export function DatabaseViewToolbar() {
                 activeConditionalColors={activeConditionalColors}
                 allContentWrapped={allContentWrapped}
                 activeDatabaseSorts={activeDatabaseSorts}
-                activeViewType={activeView?.type}
+                activeViewType={activeView?.type ?? activeViewTab?.type}
                 activeDatabaseFilters={activeDatabaseFilters}
                 addableFilterFieldOptions={addableFilterFieldOptions}
                 databaseId={databaseId ?? undefined}
@@ -984,6 +996,8 @@ export function DatabaseViewToolbar() {
                 onUpdateDatabaseLayoutSettings={updateDatabaseLayoutSettings}
                 onUpdateDatabaseSort={updateDatabaseSort}
                 properties={properties}
+                presentation={viewSettingsPresentation}
+                portalTarget={viewSettingsPanelTarget}
                 filterFieldOptions={filterFieldOptions}
                 filterValueOptionsByField={filterValueOptionsByField}
                 sortFieldOptions={sortFieldOptions}
