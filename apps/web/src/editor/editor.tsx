@@ -33,8 +33,6 @@ import { useMobileNodeActions } from "./use-mobile-node-actions"
 import { CollaborationPresence } from "./collaboration-presence"
 import { DatabaseView } from "@/packages/editor/extensions/database/views/database-view"
 import { cn } from "@/lib/utils"
-import { useOptionalPageEditorComments } from "@/components/page-editor-comments"
-import { getCommentIdsAtSelection } from "@notelab/tiptap-comment-extension"
 
 export function Editor({
   commentController,
@@ -63,12 +61,12 @@ export function Editor({
   pageEditPreviewRef,
   pageId,
 }: EditorProps = {}) {
-  const editorComments = useOptionalPageEditorComments()
   const editorId = useId()
   const editorSurfaceRef = useRef<HTMLElement | null>(null)
   const pageMetadataRef = useRef<PageMetadataHandle | null>(null)
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
   const [dragHandleMenuOpen, setDragHandleMenuOpen] = useState(false)
+  const [blockCommentOpen, setBlockCommentOpen] = useState(false)
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
   const [selectionAiPreview, setSelectionAiPreview] =
     useState<SelectionAiDiffPreview | null>(null)
@@ -93,7 +91,6 @@ export function Editor({
 
   const { editorExtensions, editorLifecycleKey, initialContent, tocItems } =
     useEditorExtensions({
-      commentController,
       collaboration,
       content,
       createEditorDatabase,
@@ -131,30 +128,6 @@ export function Editor({
     return () => commentController?.setEditor(null)
   }, [commentController, editor])
 
-  const handleAddComment = useCallback(() => {
-    if (!editor || !commentController) return
-
-    const selectedCommentIds = getCommentIdsAtSelection(editor)
-    const snapshot = commentController.getSnapshot()
-    const activeThread = snapshot.activeThreadId && selectedCommentIds.includes(snapshot.activeThreadId)
-      ? snapshot.threads.find((thread) => thread.id === snapshot.activeThreadId)
-      : null
-    const selectedThreads = selectedCommentIds.flatMap((threadId) => {
-      const thread = snapshot.threads.find((item) => item.id === threadId)
-      return thread ? [thread] : []
-    })
-    const existingThread = activeThread
-      ?? selectedThreads.find((thread) => !thread.resolvedAt)
-      ?? selectedThreads[0]
-
-    if (existingThread) {
-      commentController.activateThread(existingThread.id)
-      return
-    }
-
-    editorComments?.requestInlineComment()
-  }, [commentController, editor, editorComments])
-
   useEditorMenuEffects({
     dragHandleMenuOpen,
     editorSurfaceRef,
@@ -167,7 +140,7 @@ export function Editor({
     clearDesktopDragHandle,
     resolveDragTargetFromPoint,
     updateDragTargetFromPointer,
-  } = useEditorDragHandle(editor, dragHandleMenuOpen)
+  } = useEditorDragHandle(editor, dragHandleMenuOpen || blockCommentOpen)
 
   const {
     mobileNodeTarget,
@@ -478,7 +451,9 @@ export function Editor({
         onDragLeave={surfaceDragHandlers.onDragLeave}
         onDragOver={surfaceDragHandlers.onDragOver}
         onDrop={surfaceDragHandlers.onDrop}
-        onPointerLeave={() => !dragHandleMenuOpen && clearDesktopDragHandle()}
+        onPointerLeave={() =>
+          !dragHandleMenuOpen && !blockCommentOpen && clearDesktopDragHandle()
+        }
         onClickCapture={handleMobileNodeClick}
         onPointerMoveCapture={updateDragTargetFromPointer}
       >
@@ -487,22 +462,25 @@ export function Editor({
         ) : null}
         <EditorChrome
           blockDropLine={blockDropLine}
+          blockCommentOpen={blockCommentOpen}
+          commentController={
+            enableComments && commentController?.canEdit
+              ? commentController
+              : undefined
+          }
           createEditorDatabase={createEditorDatabase}
           dragHandle={dragHandle}
           editable={editable}
           editor={editor}
           editorId={editorId}
-          onAddComment={
-            enableComments && commentController?.canEdit
-              ? handleAddComment
-              : undefined
-          }
           onClosePasteChoice={handleClosePasteChoice}
           onSelectionAiPreviewChange={handleSelectionAiPreviewChange}
+          pageId={pageId}
           workspaceId={workspaceId}
           pasteChoice={pasteChoice}
           plusMenuOpen={plusMenuOpen}
           setDragHandleMenuOpen={setDragHandleMenuOpen}
+          setBlockCommentOpen={setBlockCommentOpen}
           setPlusMenuOpen={setPlusMenuOpen}
           tocItems={layoutPreview ? [] : tocItems}
         />

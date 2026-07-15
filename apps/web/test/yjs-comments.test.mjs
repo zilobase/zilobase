@@ -70,6 +70,93 @@ export function register({ assert, loadModule, test }) {
     writable.destroy()
     readonly.destroy()
   })
+
+  test("deleting a thread's first comment deletes the entire thread", async () => {
+    const { createCommentDocument, createPageCommentController } = await loadModule(
+      "/src/comments/yjs-comments.ts",
+    )
+    const controller = createPageCommentController({
+      canEdit: true,
+      canModerate: false,
+      document: createCommentDocument(),
+      user: author("user-1", "One"),
+    })
+    const threadId = controller.createPageThread("Root comment")
+    const rootMessageId = controller.getSnapshot().threads[0].comments[0].id
+    const replyId = controller.reply(threadId, "A reply")
+
+    controller.deleteMessage(threadId, replyId)
+    assert.deepEqual(
+      controller.getSnapshot().threads[0].comments.map((comment) => comment.body),
+      ["Root comment"],
+    )
+
+    controller.reply(threadId, "Another reply")
+    controller.deleteMessage(threadId, rootMessageId)
+    assert.deepEqual(controller.getSnapshot().threads, [])
+    controller.destroy()
+  })
+
+  test("block comments anchor a range without opening the discussions sidebar", async () => {
+    const { Schema } = await import("@tiptap/pm/model")
+    const { EditorState } = await import("@tiptap/pm/state")
+    const { createCommentDocument, createPageCommentController } = await loadModule(
+      "/src/comments/yjs-comments.ts",
+    )
+    const schema = new Schema({
+      nodes: {
+        doc: { content: "block+" },
+        paragraph: { content: "inline*", group: "block" },
+        text: { group: "inline" },
+      },
+      marks: {
+        comment: { attrs: { commentId: {} } },
+      },
+    })
+    let state = EditorState.create({
+      doc: schema.node("doc", null, [
+        schema.node("paragraph", null, schema.text("A whole block")),
+      ]),
+    })
+    const editor = {
+      get state() {
+        return state
+      },
+      isDestroyed: false,
+      schema,
+      view: {
+        dispatch(transaction) {
+          state = state.apply(transaction)
+        },
+        dom: { querySelectorAll: () => [] },
+      },
+    }
+    const controller = createPageCommentController({
+      canEdit: true,
+      canModerate: false,
+      document: createCommentDocument(),
+      user: author("user-1", "One"),
+    })
+    let sidebarOpenCount = 0
+    controller.setEditor(editor)
+    controller.setOpenThreadHandler(() => {
+      sidebarOpenCount += 1
+    })
+
+    const threadId = controller.createBlockThread("On this block", {
+      from: 1,
+      to: 14,
+    })
+    const thread = controller.getSnapshot().threads[0]
+
+    assert.ok(threadId)
+    assert.equal(thread.kind, "block")
+    assert.equal(thread.quote, "A whole block")
+    assert.equal(thread.anchorAttached, true)
+    assert.equal(sidebarOpenCount, 0)
+    assert.equal(state.doc.firstChild.firstChild.marks[0].attrs.commentId, threadId)
+    controller.destroy()
+  })
 }
 
 function author(id, name) {

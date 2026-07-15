@@ -19,44 +19,29 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { usePageCommentController, usePageCommentsSnapshot } from "@/contexts/page-comments-registry"
 import type { CommentThreadSnapshot } from "@/comments/yjs-comments"
 
-type DiscussionFilter = "all" | "inline" | "page"
+type DiscussionFilter = "all" | "block" | "page"
 type DiscussionStatus = "open" | "resolved"
 
 export function DiscussionsSidebarPanel({
-  inlineComposeRequest,
   open,
   pageId,
   onClose,
-  onRequestOpen,
 }: {
-  inlineComposeRequest?: number
   open: boolean
   pageId?: string | null
   onClose: () => void
-  onRequestOpen: (threadId?: string) => void
 }) {
   const controller = usePageCommentController(pageId)
   const snapshot = usePageCommentsSnapshot(pageId)
   const [filter, setFilter] = useState<DiscussionFilter>("all")
   const [status, setStatus] = useState<DiscussionStatus>("open")
   const [composePage, setComposePage] = useState(false)
-  const [composeInline, setComposeInline] = useState(false)
 
   useEffect(() => {
     if (!open) {
-      setComposeInline(false)
       setComposePage(false)
     }
   }, [open])
-
-  useEffect(() => {
-    if (inlineComposeRequest) {
-      setStatus("open")
-      setComposeInline(true)
-      setComposePage(false)
-      onRequestOpen()
-    }
-  }, [inlineComposeRequest, onRequestOpen])
 
   useEffect(() => {
     if (!snapshot.activeThreadId) return
@@ -67,7 +52,6 @@ export function DiscussionsSidebarPanel({
 
     setStatus(activeThread.resolvedAt ? "resolved" : "open")
     setFilter((current) => matchesFilter(activeThread, current) ? current : "all")
-    setComposeInline(false)
     setComposePage(false)
   }, [snapshot.activeThreadId, snapshot.threads])
 
@@ -106,7 +90,6 @@ export function DiscussionsSidebarPanel({
             onClick={() => {
               setStatus("open")
               setComposePage(true)
-              setComposeInline(false)
             }}
             size="icon-sm"
             type="button"
@@ -128,7 +111,7 @@ export function DiscussionsSidebarPanel({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {(["all", "inline", "page"] as const).map((value) => (
+            {(["all", "block", "page"] as const).map((value) => (
               <DropdownMenuItem key={value} onClick={() => setFilter(value)}>
                 {filter === value ? "✓ " : ""}{filterLabel(value)}
               </DropdownMenuItem>
@@ -143,7 +126,6 @@ export function DiscussionsSidebarPanel({
           const nextStatus = value as DiscussionStatus
           setStatus(nextStatus)
           if (nextStatus === "resolved") {
-            setComposeInline(false)
             setComposePage(false)
           }
         }}
@@ -168,16 +150,6 @@ export function DiscussionsSidebarPanel({
           <EmptyState>Connecting to discussions…</EmptyState>
         ) : (
           <div className="space-y-3">
-            {status === "open" && composeInline ? (
-              <ComposerCard title="Comment on selection" onCancel={() => setComposeInline(false)}>
-                <PageCommentThread
-                  newThreadKind="inline"
-                  onThreadCreated={() => setComposeInline(false)}
-                  pageId={pageId}
-                  placeholder="Add a comment…"
-                />
-              </ComposerCard>
-            ) : null}
             {status === "open" && composePage ? (
               <ComposerCard title="New page discussion" onCancel={() => setComposePage(false)}>
                 <PageCommentThread
@@ -197,8 +169,14 @@ export function DiscussionsSidebarPanel({
                 onClick={() => controller.activateThread(thread.id, { openSidebar: false })}
               >
                 <div className="mb-2 flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-                  <span>{thread.kind === "inline" ? "Inline comment" : "Page discussion"}</span>
-                  {thread.kind === "inline" && !thread.anchorAttached ? <span>Original text removed</span> : null}
+                  <span>
+                    {thread.kind === "block"
+                      ? "Block comment"
+                      : thread.kind === "inline"
+                        ? "Inline comment"
+                        : "Page discussion"}
+                  </span>
+                  {thread.kind !== "page" && !thread.anchorAttached ? <span>Original text removed</span> : null}
                 </div>
                 {thread.quote ? (
                   <blockquote className="mb-3 line-clamp-3 border-l-2 pl-2 text-xs text-muted-foreground">
@@ -209,7 +187,7 @@ export function DiscussionsSidebarPanel({
               </article>
             ))}
 
-            {!composeInline && !composePage && visibleThreads.length === 0 ? (
+            {!composePage && visibleThreads.length === 0 ? (
               <EmptyState>No discussions match this filter.</EmptyState>
             ) : null}
           </div>
@@ -244,7 +222,7 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 }
 
 function matchesFilter(thread: CommentThreadSnapshot, filter: DiscussionFilter) {
-  if (filter === "inline" || filter === "page") return thread.kind === filter
+  if (filter !== "all") return thread.kind === filter
   return true
 }
 

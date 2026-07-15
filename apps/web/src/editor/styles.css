@@ -2306,6 +2306,29 @@
     @apply size-4;
   }
 
+  .block-comment-handle {
+    @apply pointer-events-auto fixed z-10 hidden h-7 w-7 items-center justify-center text-muted-foreground md:flex;
+    transform: translate3d(0, 0, 0);
+  }
+
+  .block-comment-handle::before {
+    content: "";
+    inset: -0.5rem -1rem;
+    position: absolute;
+  }
+
+  .block-comment-button {
+    @apply relative z-10 size-7 bg-background/80 text-muted-foreground shadow-sm ring-1 ring-border/70 backdrop-blur-sm hover:text-foreground;
+  }
+
+  .block-comment-button svg {
+    @apply size-4;
+  }
+
+  .block-comment-count {
+    @apply absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground;
+  }
+
   .plus-block-menu {
     @apply !absolute left-0 top-8;
   }
@@ -2372,17 +2395,8 @@
 
 }
 .tiptap-editor .editor-comment-anchor {
-  border-bottom: 2px solid color-mix(in oklab, var(--primary) 55%, transparent);
-  background: color-mix(in oklab, var(--primary) 12%, transparent);
-  border-radius: 0.125rem;
-  cursor: pointer;
-}
-
-.tiptap-editor .editor-comment-anchor[data-comment-active="true"] {
-  background: color-mix(in oklab, var(--primary) 24%, transparent);
-}
-
-.tiptap-editor .editor-comment-anchor[data-comment-resolved="true"] {
-  border-bottom-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  border-bottom: 2px solid transparent;
   background: transparent;
+  border-radius: 0.125rem;
+  cursor: text;
 }

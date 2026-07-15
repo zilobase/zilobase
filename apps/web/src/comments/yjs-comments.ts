@@ -46,7 +46,7 @@ export type CommentThreadSnapshot = {
   createdAt: string
   createdBy: CommentAuthorSnapshot
   id: string
-  kind: "inline" | "page"
+  kind: "block" | "inline" | "page"
   quote: string | null
   resolvedAt: string | null
   resolvedBy: CommentAuthorSnapshot | null
@@ -63,7 +63,7 @@ export type PageCommentController = {
   addReaction: (threadId: string, messageId: string, emoji: string) => void
   canEdit: boolean
   canModerate: boolean
-  createInlineThread: (body: string) => string | null
+  createBlockThread: (body: string, range: { from: number; to: number }) => string | null
   createPageThread: (body: string) => string
   deleteMessage: (threadId: string, messageId: string) => void
   destroy: () => void
@@ -146,6 +146,7 @@ export function createPageCommentController({
     body: string,
     quote: string | null,
     applyAnchor?: (threadId: string) => void,
+    options?: { openSidebar?: boolean },
   ) => {
     requireWritable()
     const value = normalizeCommentBody(body)
@@ -169,6 +170,7 @@ export function createPageCommentController({
       thread.set("id", threadId)
       thread.set("kind", kind)
       thread.set("quote", quote)
+      thread.set("rootMessageId", messageId)
       thread.set("createdBy", user)
       thread.set("createdAt", now)
       thread.set("updatedAt", now)
@@ -182,7 +184,7 @@ export function createPageCommentController({
 
     activeThreadId = threadId
     emit()
-    openThreadHandler?.(threadId)
+    if (options?.openSidebar !== false) openThreadHandler?.(threadId)
     return threadId
   }
 
@@ -221,14 +223,25 @@ export function createPageCommentController({
         thread.set("updatedAt", now)
       }, "comments")
     },
-    createInlineThread(body) {
-      if (!editor || editor.isDestroyed || editor.state.selection.empty) return null
-      const { from, to } = editor.state.selection
+    createBlockThread(body, range) {
+      if (!editor || editor.isDestroyed) return null
+
+      const from = Math.max(0, Math.min(range.from, editor.state.doc.content.size))
+      const to = Math.max(from, Math.min(range.to, editor.state.doc.content.size))
       const quote = editor.state.doc.textBetween(from, to, " ").trim()
-      if (!quote) return null
-      return createThread("inline", body, quote, (threadId) => {
-        editor?.commands.setComment(threadId)
-      })
+      const commentMark = editor.schema.marks.comment
+      if (!quote || !commentMark) return null
+
+      return createThread("block", body, quote, (threadId) => {
+        if (!editor || editor.isDestroyed) return
+        editor.view.dispatch(
+          editor.state.tr.addMark(
+            from,
+            to,
+            commentMark.create({ commentId: threadId, commentKind: "block" }),
+          ),
+        )
+      }, { openSidebar: false })
     },
     createPageThread(body) {
       return createThread("page", body, null) as string
@@ -241,14 +254,15 @@ export function createPageCommentController({
       if (!message) return
       const author = readAuthor(message.get("author"))
       if (author.id !== user.id && !canModerate) throw new Error("Forbidden")
+      const deleteEntireThread = getRootMessageId(thread, messages) === messageId
 
       document.transact(() => {
-        messages.delete(messageId)
-        if (messages.size === 0) {
+        if (deleteEntireThread) {
           threads.delete(threadId)
           editor?.commands.unsetComment(threadId)
           if (activeThreadId === threadId) activeThreadId = null
         } else {
+          messages.delete(messageId)
           thread.set("updatedAt", new Date().toISOString())
         }
       }, "comments")
@@ -336,7 +350,10 @@ function readSnapshot(
             : [],
         ).sort(compareCreated)
       : []
-    const kind = value.get("kind") === "inline" ? "inline" : "page"
+    const storedKind = value.get("kind")
+    const kind = storedKind === "block" || storedKind === "inline"
+      ? storedKind
+      : "page"
     const createdAt = readString(value.get("createdAt"))
     const updatedAt = readString(value.get("updatedAt")) || createdAt
 
@@ -403,6 +420,30 @@ function getMessage(thread: Y.Map<unknown>, messageId: string) {
   return message
 }
 
+function getRootMessageId(
+  thread: Y.Map<unknown>,
+  messages: Y.Map<Y.Map<unknown>>,
+) {
+  const storedRootMessageId = readString(thread.get("rootMessageId"))
+  if (storedRootMessageId && messages.has(storedRootMessageId)) {
+    return storedRootMessageId
+  }
+
+  let root: { createdAt: string; id: string } | null = null
+  for (const [id, message] of messages.entries()) {
+    if (!(message instanceof Y.Map)) continue
+    const createdAt = readString(message.get("createdAt"))
+    if (
+      !root ||
+      createdAt < root.createdAt ||
+      (createdAt === root.createdAt && id < root.id)
+    ) {
+      root = { createdAt, id }
+    }
+  }
+  return root?.id ?? null
+}
+
 function getOrCreateMap<T>(parent: Y.Map<unknown>, key: string): Y.Map<T> {
   const existing = parent.get(key)
   if (existing instanceof Y.Map) return existing as Y.Map<T>
@@ -431,6 +472,7 @@ function syncCommentAnchorDomState(editor: Editor | null, snapshot: PageComments
     const id = element.dataset.commentId ?? ""
     const thread = threadById.get(id)
     element.dataset.commentActive = id === snapshot.activeThreadId ? "true" : "false"
+    element.dataset.commentKind = thread?.kind ?? ""
     element.dataset.commentResolved = thread?.resolvedAt ? "true" : "false"
   })
 }

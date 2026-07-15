@@ -111,6 +111,7 @@ type CommentItemProps = {
   canResolve: boolean
   className?: string
   comment: PageCommentMessage
+  deletesThread?: boolean
   editingBody: string | null
   isMutating: boolean
   mentionLabels?: string[]
@@ -132,6 +133,7 @@ function CommentItemComponent({
   canResolve,
   className,
   comment,
+  deletesThread = false,
   editingBody,
   isMutating,
   mentionLabels,
@@ -263,9 +265,13 @@ function CommentItemComponent({
               </span>
               <AlertDialogContent size="sm">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete comment?</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {deletesThread ? "Delete thread?" : "Delete comment?"}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will permanently delete the comment.
+                    {deletesThread
+                      ? "This will permanently delete the first comment and all of its replies."
+                      : "This will permanently delete the comment."}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -626,8 +632,8 @@ export function PageCommentThread({
   placeholder = "Reply...",
   onThreadResolved,
   onThreadCreated,
+  onCreateThread,
   collapseLongThreads = false,
-  newThreadKind = "page",
 }: {
   pageId?: string | null
   threadId?: string | null
@@ -636,8 +642,8 @@ export function PageCommentThread({
   placeholder?: string
   onThreadResolved?: () => void
   onThreadCreated?: (threadId: string) => void
+  onCreateThread?: (body: string) => string | null
   collapseLongThreads?: boolean
-  newThreadKind?: "inline" | "page"
 }) {
   const editorComments = useOptionalPageEditorComments()
   const { data: session } = useSession()
@@ -741,10 +747,10 @@ export function PageCommentThread({
     runCommentAction(() => {
       if (thread) controller.reply(thread.id, body)
       else {
-        const createdThreadId = newThreadKind === "inline"
-          ? controller.createInlineThread(body)
+        const createdThreadId = onCreateThread
+          ? onCreateThread(body)
           : controller.createPageThread(body)
-        if (!createdThreadId) throw new Error("Select text before adding an inline comment")
+        if (!createdThreadId) throw new Error("Could not attach the comment")
         onThreadCreated?.(createdThreadId)
       }
       setNewCommentBody("")
@@ -862,6 +868,7 @@ export function PageCommentThread({
         canReact={Boolean(controller?.canEdit)}
         canResolve={Boolean(controller?.canEdit && !threadResolved && isRoot && thread)}
         comment={comment}
+        deletesThread={isRoot}
         editingBody={
           editingComment?.id === comment.id ? editingComment.body : null
         }

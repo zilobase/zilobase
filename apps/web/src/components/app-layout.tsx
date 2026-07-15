@@ -96,7 +96,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   } = sidePaneState
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false)
   const [discussionsSidebarOpen, setDiscussionsSidebarOpen] = useState(false)
-  const { editorCommentsOpenRequest, inlineCommentRequest } = usePageEditorComments()
+  const { editorCommentsOpenRequest } = usePageEditorComments()
   const commentController = usePageCommentController(pageId)
   const openDiscussionsSidebar = useCallback(() => {
     if (appSidebarOpen) closeSidePane()
@@ -110,10 +110,10 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
   }, [commentController, openDiscussionsSidebar])
 
   useEffect(() => {
-    if (editorCommentsOpenRequest > 0 || inlineCommentRequest > 0) {
+    if (editorCommentsOpenRequest > 0) {
       openDiscussionsSidebar()
     }
-  }, [editorCommentsOpenRequest, inlineCommentRequest, openDiscussionsSidebar])
+  }, [editorCommentsOpenRequest, openDiscussionsSidebar])
   const openRightPanelCount =
     (chatSidebarOpen ? 1 : 0) +
     (discussionsEnabled && discussionsSidebarOpen ? 1 : 0)
@@ -289,9 +289,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
           discussionsPanel={
             discussionsEnabled ? (
               <DiscussionsSidebarPanel
-                inlineComposeRequest={inlineCommentRequest}
                 onClose={() => setDiscussionsSidebarOpen(false)}
-                onRequestOpen={openDiscussionsSidebar}
                 open={discussionsSidebarOpen}
                 pageId={pageId}
               />
@@ -314,9 +312,7 @@ function AppLayoutContent({ children }: { children?: ReactNode }) {
         discussionsPanel={
           discussionsEnabled ? (
             <DiscussionsSidebarPanel
-              inlineComposeRequest={inlineCommentRequest}
               onClose={() => setDiscussionsSidebarOpen(false)}
-              onRequestOpen={openDiscussionsSidebar}
               open={discussionsSidebarOpen}
               pageId={pageId}
             />

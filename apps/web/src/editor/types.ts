@@ -92,7 +92,6 @@ export type EditorProps = {
 }
 
 export type UseEditorExtensionsOptions = {
-  commentController?: PageCommentController
   content: unknown
   collaboration?: EditorCollaboration
   createEditorDatabase: () => Promise<string | null>

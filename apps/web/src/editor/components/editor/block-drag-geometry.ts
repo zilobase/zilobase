@@ -58,7 +58,7 @@ const STRUCTURAL_NODE_TYPES = new Set([
 
 const DATABASE_BLOCK_SELECTOR = ".database-block, .node-databaseBlock"
 const DIALOG_CONTENT_SELECTOR = '[data-slot="dialog-content"]'
-const DRAG_HANDLE_SELECTOR = ".drag-handle"
+const BLOCK_CONTROL_SELECTOR = ".drag-handle, .block-comment-handle"
 const DRAG_HANDLE_WIDTH = 64
 const LIST_DRAG_HANDLE_MARKER_GAP = 16
 const MIN_COORD_INSET = 4
@@ -344,7 +344,7 @@ export function resolveBlockDragTargetFromPoint({
     elements.some(
       (element) =>
         element instanceof HTMLElement &&
-        Boolean(element.closest(DRAG_HANDLE_SELECTOR)),
+        Boolean(element.closest(BLOCK_CONTROL_SELECTOR)),
     )
   ) {
     return currentTarget ?? null
@@ -408,5 +408,26 @@ export function getBlockDragHandleRect(
       Math.max(editorRect.left + MIN_COORD_INSET, left - handleOffset) -
       offset.left,
     top: top + numberStyle(topInsetElement, "paddingTop") - offset.top,
+  }
+}
+
+export function getBlockCommentHandleRect(
+  view: EditorView,
+  target: DragHandleTarget,
+) {
+  const nodeDom = view.nodeDOM(target.pos)
+  if (!(nodeDom instanceof HTMLElement)) return null
+
+  const editorRect = view.dom.getBoundingClientRect()
+  const nodeRect = nodeDom.getBoundingClientRect()
+  const offset = dialogOffset(view.dom)
+  const right = nodeRect.right - numberStyle(nodeDom, "paddingRight")
+  const viewportRight = view.root instanceof Document
+    ? view.root.documentElement.clientWidth
+    : view.root.host.getBoundingClientRect().right
+
+  return {
+    left: Math.min(viewportRight - 36, Math.max(editorRect.left, right + 8)) - offset.left,
+    top: nodeRect.top + numberStyle(nodeDom, "paddingTop") - offset.top,
   }
 }

@@ -20,6 +20,7 @@ import { setDatabaseBlockDragImage } from "./block-drag-preview"
 import type { DragHandleTarget } from "./types"
 
 export {
+  getBlockCommentHandleRect,
   getBlockDragHandleRect,
   getEditorInsertDropTarget,
   resolveBlockInsertPos,
