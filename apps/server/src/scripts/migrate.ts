@@ -1,11 +1,11 @@
 import { migrate } from "drizzle-orm/node-postgres/migrator";
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { createDbClientForUrl } from "../db";
 
 const databaseUrl = readRequiredEnv("DATABASE_URL");
 const migrationsFolder =
   process.env.DRIZZLE_MIGRATIONS_DIR ??
-  path.resolve("apps/server/drizzle");
+  fileURLToPath(new URL("../../drizzle", import.meta.url));
 
 main().catch((error) => {
   console.error("Notelab database migrations failed", error);

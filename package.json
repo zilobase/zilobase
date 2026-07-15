@@ -28,6 +28,7 @@
     "build:desktop": "npm run build --workspace @notelab/desktop",
     "dev:server": "npm run dev --workspace @notelab/server",
     "build:server": "npm run build --workspace @notelab/server",
+    "db:migrate": "npm run db:migrate --workspace @notelab/server",
     "release": "node scripts/release.mjs",
     "version:set": "node scripts/set-version.mjs"
   }

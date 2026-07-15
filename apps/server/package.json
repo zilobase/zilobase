@@ -28,6 +28,7 @@
     "test:flow": "tsx src/scripts/simulate-user-flow.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:production": "tsx src/scripts/migrate.ts",
     "db:reset": "tsx src/scripts/reset-database.ts && drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
   },
