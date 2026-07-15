@@ -103,11 +103,13 @@ function DialogContent({
   className,
   children,
   hideMobileDragHandle = false,
+  overlayClassName,
   showCloseButton = true,
   unstyledContent = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   hideMobileDragHandle?: boolean
+  overlayClassName?: string
   showCloseButton?: boolean
   unstyledContent?: boolean
 }) {
@@ -126,6 +128,7 @@ function DialogContent({
           "max-h-[85vh] bg-popover px-4 pb-4 text-popover-foreground",
           className
         )}
+        overlayClassName={overlayClassName}
         {...drawerContentProps}
       >
         {unstyledContent ? (
@@ -151,7 +154,7 @@ function DialogContent({
 
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
