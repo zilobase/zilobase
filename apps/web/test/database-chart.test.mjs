@@ -76,6 +76,70 @@ export function register({ assert, loadModule, test }) {
     );
   });
 
+  test("database chart config normalizes advanced chart controls", async () => {
+    const { getDatabaseChartSettings } = await loadModule(
+      "/src/editor/extensions/database/views/chart/database-chart-config.ts",
+    );
+    const settings = getDatabaseChartSettings({
+      chart: {
+        rangeMax: 20,
+        rangeMin: "invalid",
+        referenceLines: [
+          {
+            color: "blue",
+            id: "target",
+            label: "Target",
+            style: "dotted",
+            value: 12,
+          },
+          { value: "invalid" },
+        ],
+        sort: "axis-asc",
+        splitByDateInterval: "month",
+        splitByPropertyId: "due-date",
+      },
+    });
+
+    assert.equal(settings.rangeMin, undefined);
+    assert.equal(settings.rangeMax, 20);
+    assert.equal(settings.sort, "axis-asc");
+    assert.equal(settings.splitByDateInterval, "month");
+    assert.equal(settings.splitByPropertyId, "due-date");
+    assert.deepEqual(settings.referenceLines, [
+      {
+        color: "blue",
+        id: "target",
+        label: "Target",
+        style: "dotted",
+        value: 12,
+      },
+    ]);
+  });
+
+  test("database chart sorting supports labels, values, and manual order", async () => {
+    const { sortDatabaseChartData } = await loadModule(
+      "/src/editor/extensions/database/views/chart/database-chart-data.ts",
+    );
+    const data = [
+      { color: "red", count: 2, name: "Beta" },
+      { color: "blue", count: 1, name: "Alpha" },
+      { color: "green", count: 3, name: "Gamma" },
+    ];
+
+    assert.deepEqual(
+      sortDatabaseChartData(data, "axis-asc").map((item) => item.name),
+      ["Alpha", "Beta", "Gamma"],
+    );
+    assert.deepEqual(
+      sortDatabaseChartData(data, "value-desc").map((item) => item.name),
+      ["Gamma", "Beta", "Alpha"],
+    );
+    assert.deepEqual(
+      sortDatabaseChartData(data, "manual").map((item) => item.name),
+      ["Beta", "Alpha", "Gamma"],
+    );
+  });
+
   test("database chart data groups rows and sums numeric measures", async () => {
     const { createChartData } = await loadModule(
       "/src/editor/extensions/database/views/chart/database-chart-data.ts",

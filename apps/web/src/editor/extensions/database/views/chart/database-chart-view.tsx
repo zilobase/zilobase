@@ -15,19 +15,25 @@ import {
   RadarChart,
   RadialBar,
   RadialBarChart,
+  ReferenceLine,
   XAxis,
   YAxis,
 } from "recharts"
 
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
 import { getPaletteColor } from "@/lib/color-tokens"
 import { useDatabaseViewContext } from "../database-view-context"
-import { shouldSplitDatabaseChartSeries } from "./database-chart-config"
+import {
+  shouldSplitDatabaseChartSeries,
+  type DatabaseChartReferenceLine,
+} from "./database-chart-config"
 import {
   DEFAULT_CHART_COLOR,
   createChartData,
@@ -42,18 +48,10 @@ import {
   type DatabaseChartSeriesItem,
 } from "./database-chart-data"
 
-const CHART_CONFIG = {
-  count: {
-    color: DEFAULT_CHART_COLOR,
-    label: "Task count",
-  },
-} satisfies ChartConfig
-
 export function DatabaseChartView() {
   const {
     chartSettings,
     filteredItems,
-    groupProperty,
     personOptions,
     properties,
     propertyValuesByKey,
@@ -77,8 +75,12 @@ export function DatabaseChartView() {
             property.property.id === chartSettings.measurePropertyId,
         ) ?? null
   const splitProperty =
-    groupProperty && groupProperty.id !== "name"
-      ? properties.find((property) => property.id === groupProperty.id) ?? null
+    chartSettings.splitByPropertyId &&
+    chartSettings.splitByPropertyId !== "name"
+      ? properties.find(
+          (property) =>
+            property.property.id === chartSettings.splitByPropertyId,
+        ) ?? null
       : null
   const shouldSplitSeries = shouldSplitDatabaseChartSeries({
     axisPropertyId: axisProperty?.property.id,
@@ -89,18 +91,22 @@ export function DatabaseChartView() {
     () =>
       createChartData({
         groupByPropertyId: chartSettings.groupByPropertyId,
+        hiddenGroupNames: chartSettings.hiddenGroupNames,
         measurePropertyId: chartSettings.measurePropertyId,
         omitZeroValues: chartSettings.omitZeroValues,
         personNamesById,
         properties,
         propertyValuesByKey,
         rows: filteredItems,
+        sort: chartSettings.sort,
         valueColors: chartSettings.valueColors,
       }),
     [
       chartSettings.groupByPropertyId,
+      chartSettings.hiddenGroupNames,
       chartSettings.measurePropertyId,
       chartSettings.omitZeroValues,
+      chartSettings.sort,
       chartSettings.valueColors,
       filteredItems,
       personNamesById,
@@ -113,11 +119,14 @@ export function DatabaseChartView() {
       splitProperty && shouldSplitSeries
         ? createSplitChartData({
             axisProperty,
+            dateInterval: chartSettings.splitByDateInterval,
+            hiddenGroupNames: chartSettings.hiddenGroupNames,
             measureProperty,
             omitZeroValues: chartSettings.omitZeroValues,
             personNamesById,
             propertyValuesByKey,
             rows: filteredItems,
+            sort: chartSettings.sort,
             splitProperty,
             valueColors: chartSettings.valueColors,
           })
@@ -126,6 +135,9 @@ export function DatabaseChartView() {
       axisProperty,
       chartData,
       chartSettings.omitZeroValues,
+      chartSettings.hiddenGroupNames,
+      chartSettings.sort,
+      chartSettings.splitByDateInterval,
       chartSettings.valueColors,
       filteredItems,
       measureProperty,
@@ -221,6 +233,41 @@ export function DatabaseChartView() {
     series: DatabaseChartSeriesItem,
     index = 0,
   ) => (selectedColor ? getColorVariant(selectedColor, index) : series.color)
+  const chartConfig = Object.fromEntries([
+    [
+      "count",
+      {
+        color: DEFAULT_CHART_COLOR,
+        label: metricLabel,
+      },
+    ],
+    ...chartSeries.map((series, index) => [
+      series.key,
+      {
+        color: getSeriesDisplayColor(series, index),
+        label: series.label,
+      },
+    ]),
+  ]) satisfies ChartConfig
+  const numericDomain: [number | "auto", number | "auto"] = [
+    chartSettings.rangeMin ?? "auto",
+    chartSettings.rangeMax ?? "auto",
+  ]
+  const hasCustomRange =
+    chartSettings.rangeMin !== undefined ||
+    chartSettings.rangeMax !== undefined
+  const renderReferenceLines = (axis: "x" | "y") =>
+    (chartSettings.referenceLines ?? []).map((line) => (
+      <ReferenceLine
+        ifOverflow={hasCustomRange ? "discard" : "extendDomain"}
+        key={line.id}
+        label={line.label || undefined}
+        stroke={getReferenceLineColor(line)}
+        strokeDasharray={getReferenceLineDash(line.style)}
+        strokeWidth={1.5}
+        {...(axis === "x" ? { x: line.value } : { y: line.value })}
+      />
+    ))
 
   if (chartSettings.type === "count") {
     const metricValue = filteredItems.reduce(
@@ -256,6 +303,7 @@ export function DatabaseChartView() {
           <XAxis
             allowDecimals={allowMeasureDecimals}
             axisLine={false}
+            domain={numericDomain}
             tickLine={false}
             type="number"
           />
@@ -271,6 +319,7 @@ export function DatabaseChartView() {
             content={<ChartTooltipContent indicator="line" />}
             cursor={false}
           />
+          {renderReferenceLines("x")}
           {shouldSplitSeries ? (
             chartSeries.map((series, index) => (
               <Bar
@@ -298,6 +347,9 @@ export function DatabaseChartView() {
               ))}
             </Bar>
           )}
+          {shouldSplitSeries ? (
+            <ChartLegend content={<ChartLegendContent />} />
+          ) : null}
         </BarChart>
       )
     }
@@ -319,6 +371,7 @@ export function DatabaseChartView() {
           <YAxis
             allowDecimals={allowMeasureDecimals}
             axisLine={false}
+            domain={numericDomain}
             tickLine={false}
             tickMargin={10}
             width={34}
@@ -327,6 +380,7 @@ export function DatabaseChartView() {
             content={<ChartTooltipContent indicator="line" />}
             cursor={false}
           />
+          {renderReferenceLines("y")}
           <defs>
             {(shouldSplitSeries
               ? chartSeries
@@ -381,6 +435,9 @@ export function DatabaseChartView() {
               type="natural"
             />
           )}
+          {shouldSplitSeries ? (
+            <ChartLegend content={<ChartLegendContent />} />
+          ) : null}
         </AreaChart>
       )
     }
@@ -470,6 +527,9 @@ export function DatabaseChartView() {
               strokeWidth={2}
             />
           )}
+          {shouldSplitSeries ? (
+            <ChartLegend content={<ChartLegendContent />} />
+          ) : null}
         </RadarChart>
       )
     }
@@ -521,6 +581,7 @@ export function DatabaseChartView() {
         <YAxis
           allowDecimals={allowMeasureDecimals}
           axisLine={false}
+          domain={numericDomain}
           tickLine={false}
           tickMargin={10}
           width={34}
@@ -529,6 +590,7 @@ export function DatabaseChartView() {
           content={<ChartTooltipContent indicator="line" />}
           cursor={false}
         />
+        {renderReferenceLines("y")}
         {shouldSplitSeries ? (
           chartSeries.map((series, index) => (
             <Bar
@@ -554,6 +616,9 @@ export function DatabaseChartView() {
             ))}
           </Bar>
         )}
+        {shouldSplitSeries ? (
+          <ChartLegend content={<ChartLegendContent />} />
+        ) : null}
       </BarChart>
     )
   }
@@ -562,13 +627,23 @@ export function DatabaseChartView() {
     <div className="database-chart-view w-full py-4">
       <ChartContainer
         className="h-[360px] w-full aspect-auto"
-        config={CHART_CONFIG}
+        config={chartConfig}
         initialDimension={{ height: 360, width: 720 }}
       >
         {renderChart()}
       </ChartContainer>
     </div>
   )
+}
+
+function getReferenceLineColor(line: DatabaseChartReferenceLine) {
+  return line.color === "black"
+    ? "var(--foreground)"
+    : getPaletteColor(line.color) ?? "var(--foreground)"
+}
+
+function getReferenceLineDash(style: DatabaseChartReferenceLine["style"]) {
+  return style === "dashed" ? "6 4" : style === "dotted" ? "2 4" : undefined
 }
 
 function useIdWithoutColons() {

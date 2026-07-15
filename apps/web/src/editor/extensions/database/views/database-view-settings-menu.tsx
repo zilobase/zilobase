@@ -2,6 +2,7 @@ import {
   ArrowDownUp,
   ArrowUpRightIcon,
   BarChart3,
+  ChevronDown,
   ChevronLeft,
   CircleHelp,
   Check,
@@ -39,6 +40,11 @@ import { Reorder } from "framer-motion";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -97,7 +103,10 @@ import {
 import { NameColumnGlyph } from "../interactions/name-column-glyph";
 import type { DatabaseActiveConditionalColor } from "./database-view-context";
 import type {
+  DatabaseChartDateInterval,
+  DatabaseChartReferenceLine,
   DatabaseChartSettings,
+  DatabaseChartSort,
   DatabaseChartType,
 } from "./chart/database-chart-config";
 
@@ -169,6 +178,26 @@ const chartTypeOptions: Array<{
   { icon: Type, label: "Count", value: "count" },
 ];
 
+const chartDateIntervalOptions: Array<{
+  label: string;
+  value: DatabaseChartDateInterval;
+}> = [
+  { label: "Day", value: "day" },
+  { label: "Week", value: "week" },
+  { label: "Month", value: "month" },
+  { label: "Quarter", value: "quarter" },
+  { label: "Year", value: "year" },
+];
+
+const referenceLineStyleOptions: Array<{
+  label: string;
+  value: DatabaseChartReferenceLine["style"];
+}> = [
+  { label: "Solid", value: "solid" },
+  { label: "Dash", value: "dashed" },
+  { label: "Dot", value: "dotted" },
+];
+
 function DatabaseChartSettingsSection({
   properties,
   settings,
@@ -197,12 +226,46 @@ function DatabaseChartSettingsSection({
   const measureProperty = properties.find(
     (property) => property.property.id === measurePropertyId,
   );
+  const splitProperty = properties.find(
+    (property) => property.property.id === settings.splitByPropertyId,
+  );
+  const splitDateInterval = settings.splitByDateInterval ?? "day";
+  const splitPropertyLabel = splitProperty
+    ? isChartDateProperty(splitProperty)
+      ? `${splitProperty.property.name} (${getChartDateIntervalLabel(splitDateInterval)})`
+      : splitProperty.property.name
+    : "None";
+  const sort = settings.sort ?? "value-desc";
+  const sortOptions = getChartSortOptions(
+    axisProperty?.property.name ?? titlePropertyLabel,
+    measureProperty?.property.name ?? "Task count",
+  );
+  const sortLabel =
+    sortOptions.find((option) => option.value === sort)?.label ??
+    sortOptions.at(-1)?.label;
+  const axisGroups = getChartAxisGroups(axisProperty);
+  const hiddenGroupNames = settings.hiddenGroupNames ?? [];
+  const referenceLines = settings.referenceLines ?? [];
+  const supportsCartesianControls = [
+    "bar",
+    "horizontal-bar",
+    "line",
+  ].includes(settings.type);
   const selectedColorToken =
     settings.color === "auto" ? null : getColorToken(settings.color);
   const colorLabel = selectedColorToken?.name ?? "Auto";
   const colorSwatch = selectedColorToken
     ? getPaletteColor(selectedColorToken.value) ?? "var(--primary)"
     : "linear-gradient(90deg, var(--chart-1), var(--chart-2), var(--chart-3), var(--chart-4))";
+  const updateReferenceLine = (
+    id: string,
+    patch: Partial<DatabaseChartReferenceLine>,
+  ) =>
+    onChange({
+      referenceLines: referenceLines.map((line) =>
+        line.id === id ? { ...line, ...patch } : line,
+      ),
+    });
 
   return (
     <>
@@ -245,7 +308,14 @@ function DatabaseChartSettingsSection({
           />
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
-          <DropDrawerItem onSelect={() => onChange({ groupByPropertyId: "name" })}>
+          <DropDrawerItem
+            onSelect={() =>
+              onChange({
+                groupByPropertyId: "name",
+                hiddenGroupNames: undefined,
+              })
+            }
+          >
             <NameColumnGlyph />
             <span>{titlePropertyLabel}</span>
             {axisPropertyId === "name" ? (
@@ -262,7 +332,10 @@ function DatabaseChartSettingsSection({
               <DropDrawerItem
                 key={property.id}
                 onSelect={() =>
-                  onChange({ groupByPropertyId: property.property.id })
+                  onChange({
+                    groupByPropertyId: property.property.id,
+                    hiddenGroupNames: undefined,
+                  })
                 }
               >
                 <PropertyIcon />
@@ -273,6 +346,86 @@ function DatabaseChartSettingsSection({
               </DropDrawerItem>
             );
           })}
+        </DropDrawerSubContent>
+      </DropDrawerSub>
+      <DropDrawerSub>
+        <DropDrawerSubTrigger>
+          <ViewSettingsRow
+            icon={<ArrowDownUp />}
+            label="Sort by"
+            right={sortLabel}
+          />
+        </DropDrawerSubTrigger>
+        <DropDrawerSubContent className="w-72">
+          {sortOptions.map((option) => (
+            <DropDrawerItem
+              key={option.value}
+              onSelect={() => onChange({ sort: option.value })}
+            >
+              <span>{option.label}</span>
+              {sort === option.value ? (
+                <Check className="ml-auto text-foreground" />
+              ) : null}
+            </DropDrawerItem>
+          ))}
+          {axisGroups.length > 0 ? (
+            <>
+              <DropDrawerSeparator />
+              <div className="flex items-center justify-between px-2 py-1 text-xs font-medium text-muted-foreground">
+                <span>Groups</span>
+                <button
+                  className="text-primary hover:underline"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onChange({
+                      hiddenGroupNames:
+                        hiddenGroupNames.length === axisGroups.length
+                          ? []
+                          : axisGroups.map((group) => group.name),
+                    });
+                  }}
+                  type="button"
+                >
+                  {hiddenGroupNames.length === axisGroups.length
+                    ? "Show all"
+                    : "Hide all"}
+                </button>
+              </div>
+              {axisGroups.map((group) => {
+                const hidden = hiddenGroupNames.includes(group.name);
+
+                return (
+                  <DropDrawerItem
+                    key={group.name}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      onChange({
+                        hiddenGroupNames: hidden
+                          ? hiddenGroupNames.filter(
+                              (name) => name !== group.name,
+                            )
+                          : [...hiddenGroupNames, group.name],
+                      });
+                    }}
+                  >
+                    <span
+                      className="size-2.5 rounded-full"
+                      style={{
+                        backgroundColor:
+                          getPaletteColor(group.color) ?? "var(--muted-foreground)",
+                      }}
+                    />
+                    <span>{group.name}</span>
+                    {hidden ? (
+                      <EyeOff className="ml-auto" />
+                    ) : (
+                      <Eye className="ml-auto" />
+                    )}
+                  </DropDrawerItem>
+                );
+              })}
+            </>
+          ) : null}
         </DropDrawerSubContent>
       </DropDrawerSub>
       <DropDrawerItem
@@ -335,6 +488,274 @@ function DatabaseChartSettingsSection({
         </DropDrawerSubContent>
       </DropDrawerSub>
 
+      <DropDrawerSub>
+        <DropDrawerSubTrigger>
+          <ViewSettingsRow
+            icon={<Rows3 />}
+            label="Group by"
+            right={splitPropertyLabel}
+          />
+        </DropDrawerSubTrigger>
+        <DropDrawerSubContent className="max-h-80 w-72 overflow-y-auto">
+          <DropDrawerItem
+            onSelect={() =>
+              onChange({
+                splitByDateInterval: undefined,
+                splitByPropertyId: undefined,
+              })
+            }
+          >
+            <X />
+            <span>None</span>
+            {!settings.splitByPropertyId ? (
+              <Check className="ml-auto text-foreground" />
+            ) : null}
+          </DropDrawerItem>
+          {properties.map((property) => {
+            const PropertyIcon = getDatabasePropertyType(
+              property.property.type,
+            ).icon;
+            const selected =
+              property.property.id === settings.splitByPropertyId;
+
+            if (isChartDateProperty(property)) {
+              return (
+                <DropDrawerSub key={property.id}>
+                  <DropDrawerSubTrigger>
+                    <PropertyIcon />
+                    <span>{property.property.name}</span>
+                    {selected ? (
+                      <Check className="ml-auto text-foreground" />
+                    ) : null}
+                  </DropDrawerSubTrigger>
+                  <DropDrawerSubContent className="w-56">
+                    {chartDateIntervalOptions.map((option) => (
+                      <DropDrawerItem
+                        key={option.value}
+                        onSelect={() =>
+                          onChange({
+                            splitByDateInterval: option.value,
+                            splitByPropertyId: property.property.id,
+                          })
+                        }
+                      >
+                        <span>{option.label}</span>
+                        {selected && splitDateInterval === option.value ? (
+                          <Check className="ml-auto text-foreground" />
+                        ) : null}
+                      </DropDrawerItem>
+                    ))}
+                  </DropDrawerSubContent>
+                </DropDrawerSub>
+              );
+            }
+
+            return (
+              <DropDrawerItem
+                key={property.id}
+                onSelect={() =>
+                  onChange({
+                    splitByDateInterval: undefined,
+                    splitByPropertyId: property.property.id,
+                  })
+                }
+              >
+                <PropertyIcon />
+                <span>{property.property.name}</span>
+                {selected ? (
+                  <Check className="ml-auto text-foreground" />
+                ) : null}
+              </DropDrawerItem>
+            );
+          })}
+        </DropDrawerSubContent>
+      </DropDrawerSub>
+
+      {supportsCartesianControls ? (
+        <>
+          <DropDrawerSub>
+            <DropDrawerSubTrigger>
+              <ViewSettingsRow
+                icon={<ArrowDownUp />}
+                label="Range"
+                right={getChartRangeLabel(settings)}
+              />
+            </DropDrawerSubTrigger>
+            <DropDrawerSubContent className="w-72 p-3">
+              <div className="mb-2 text-xs font-medium text-muted-foreground">
+                Set custom range
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  aria-label="Minimum chart value"
+                  defaultValue={settings.rangeMin ?? ""}
+                  key={`range-min-${settings.rangeMin ?? "auto"}`}
+                  onBlur={(event) =>
+                    onChange({
+                      rangeMin: parseOptionalChartNumber(event.target.value),
+                    })
+                  }
+                  placeholder="Min"
+                  type="number"
+                />
+                <span className="text-muted-foreground">–</span>
+                <Input
+                  aria-label="Maximum chart value"
+                  defaultValue={settings.rangeMax ?? ""}
+                  key={`range-max-${settings.rangeMax ?? "auto"}`}
+                  onBlur={(event) =>
+                    onChange({
+                      rangeMax: parseOptionalChartNumber(event.target.value),
+                    })
+                  }
+                  placeholder="Max"
+                  type="number"
+                />
+              </div>
+            </DropDrawerSubContent>
+          </DropDrawerSub>
+
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <button
+                className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-popover-foreground outline-none hover:bg-accent [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
+                type="button"
+              >
+                <MoreHorizontal />
+                <span>Reference line</span>
+                <span className="ml-auto text-muted-foreground">
+                  {referenceLines.length === 1
+                    ? "1 line"
+                    : `${referenceLines.length} lines`}
+                </span>
+                <ChevronDown className="transition-transform group-data-[state=open]:rotate-180" />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mx-2 space-y-2 rounded-lg border bg-muted/20 p-2">
+              {referenceLines.map((line) => (
+                <div className="space-y-2 rounded-md bg-muted/30 p-2" key={line.id}>
+                  <div className="flex items-end gap-2">
+                    <label className="grid flex-1 gap-1 text-xs font-medium text-muted-foreground">
+                      Value
+                      <Input
+                        defaultValue={line.value}
+                        key={`${line.id}-${line.value}`}
+                        onBlur={(event) => {
+                          const value = Number(event.target.value);
+
+                          if (Number.isFinite(value)) {
+                            updateReferenceLine(line.id, { value });
+                          }
+                        }}
+                        type="number"
+                      />
+                    </label>
+                    <Button
+                      aria-label="Delete reference line"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        onChange({
+                          referenceLines: referenceLines.filter(
+                            (item) => item.id !== line.id,
+                          ),
+                        });
+                      }}
+                      size="icon-sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                  <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                    Label
+                    <Input
+                      defaultValue={line.label}
+                      key={`${line.id}-${line.label}`}
+                      onBlur={(event) =>
+                        updateReferenceLine(line.id, {
+                          label: event.target.value,
+                        })
+                      }
+                      placeholder="Label"
+                    />
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                      Style
+                      <Select
+                        onValueChange={(value) =>
+                          updateReferenceLine(line.id, {
+                            style: value as DatabaseChartReferenceLine["style"],
+                          })
+                        }
+                        value={line.style}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {referenceLineStyleOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                      Color
+                      <Select
+                        onValueChange={(value) =>
+                          updateReferenceLine(line.id, {
+                            color: value as DatabaseChartReferenceLine["color"],
+                          })
+                        }
+                        value={line.color}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="black">Black</SelectItem>
+                          {cyclingColorTokens.flatMap((color) =>
+                            color.value ? (
+                              <SelectItem key={color.value} value={color.value}>
+                                {color.name}
+                              </SelectItem>
+                            ) : (
+                              []
+                            ),
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </label>
+                  </div>
+                </div>
+              ))}
+              <Button
+                className="w-full"
+                onClick={(event) => {
+                  event.preventDefault();
+                  onChange({
+                    referenceLines: [
+                      ...referenceLines,
+                      createDatabaseChartReferenceLine(),
+                    ],
+                  });
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <Plus />
+                Add reference line
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
+        </>
+      ) : null}
+
       <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
         Style
       </DropDrawerLabel>
@@ -378,6 +799,94 @@ function DatabaseChartSettingsSection({
       </DropDrawerSub>
     </>
   );
+}
+
+function getChartSortOptions(axisLabel: string, measureLabel: string) {
+  return [
+    { label: "Manual", value: "manual" },
+    { label: `${axisLabel} ascending`, value: "axis-asc" },
+    { label: `${axisLabel} descending`, value: "axis-desc" },
+    { label: `${measureLabel} low → high`, value: "value-asc" },
+    { label: `${measureLabel} high → low`, value: "value-desc" },
+  ] satisfies Array<{ label: string; value: DatabaseChartSort }>;
+}
+
+function isChartDateProperty(property: DatabaseViewProperty) {
+  return ["date", "created_time", "edited_time"].includes(
+    property.property.type,
+  );
+}
+
+function getChartAxisGroups(property: DatabaseViewProperty | undefined) {
+  if (property?.property.type === "checkbox") {
+    return [
+      { color: "green", name: "True" },
+      { color: "gray", name: "False" },
+    ];
+  }
+
+  const config = property?.property.config;
+
+  if (!config || typeof config !== "object" || !("options" in config)) {
+    return [];
+  }
+
+  const options = (config as { options?: unknown }).options;
+
+  return Array.isArray(options)
+    ? options.flatMap((option) =>
+        option &&
+        typeof option === "object" &&
+        typeof (option as { name?: unknown }).name === "string"
+          ? [
+              {
+                color:
+                  typeof (option as { color?: unknown }).color === "string"
+                    ? (option as { color: string }).color
+                    : undefined,
+                name: (option as { name: string }).name,
+              },
+            ]
+          : [],
+      )
+    : [];
+}
+
+function getChartDateIntervalLabel(interval: DatabaseChartDateInterval) {
+  return (
+    chartDateIntervalOptions.find((option) => option.value === interval)
+      ?.label ?? "Day"
+  );
+}
+
+function getChartRangeLabel(settings: DatabaseChartSettings) {
+  if (settings.rangeMin === undefined && settings.rangeMax === undefined) {
+    return "Auto";
+  }
+
+  return `${settings.rangeMin ?? "Auto"} – ${settings.rangeMax ?? "Auto"}`;
+}
+
+function parseOptionalChartNumber(value: string) {
+  if (!value.trim()) {
+    return undefined;
+  }
+
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function createDatabaseChartReferenceLine(): DatabaseChartReferenceLine {
+  return {
+    color: "black",
+    id:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `reference-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    label: "",
+    style: "dashed",
+    value: 0,
+  };
 }
 
 function DataSourceSectionLabel({ children }: { children: ReactNode }) {
