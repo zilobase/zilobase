@@ -45,6 +45,7 @@ export function Editor({
   emoji,
   fullWidth = true,
   layoutConfig,
+  layoutPanelMode = "auto",
   layoutPreview = false,
   onLayoutChange,
   onContentChange,
@@ -528,6 +529,7 @@ export function Editor({
               ) : undefined
             }
             onChange={onLayoutChange}
+            panelMode={layoutPanelMode}
             renderModule={renderLayoutModule}
           />
         ) : (

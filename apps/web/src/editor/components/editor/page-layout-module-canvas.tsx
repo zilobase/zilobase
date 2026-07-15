@@ -1,6 +1,7 @@
 import {
   Fragment,
   useEffect,
+  useMemo,
   useState,
   type ReactElement,
   type ReactNode,
@@ -23,6 +24,7 @@ import { GripVertical, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useOptionalPageLayoutSidebar } from "@/contexts/page-layout-sidebar"
+import type { PageLayoutPanelMode } from "@/packages/editor/types"
 import {
   canMovePageLayoutModuleToRegion,
   movePageLayoutModule,
@@ -38,6 +40,7 @@ type PageLayoutModuleCanvasProps = {
   fullWidth?: boolean
   mainContentOverride?: ReactNode
   onChange?: (config: PageLayoutConfig) => void
+  panelMode?: PageLayoutPanelMode
   pageId?: string | null
   renderModule: (module: PageLayoutModule) => ReactNode
 }
@@ -275,12 +278,14 @@ export function PageLayoutModuleCanvas({
   fullWidth = true,
   mainContentOverride,
   onChange,
+  panelMode = "auto",
   pageId,
   renderModule,
 }: PageLayoutModuleCanvasProps) {
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null)
   const pageLayoutSidebar = useOptionalPageLayoutSidebar()
   const registeredPageId = pageLayoutSidebar?.pageId
+  const registerOverlaySidebar = pageLayoutSidebar?.registerOverlaySidebar
   const setHasPageLayoutSidebar = pageLayoutSidebar?.setHasSidebar
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -289,19 +294,30 @@ export function PageLayoutModuleCanvas({
   const activeModule = config.modules.find(
     (module) => module.id === activeModuleId,
   )
-  const panelVisible =
-    Boolean(onChange) || config.modules.some((module) => module.region === "panel")
-  const mainModules = config.modules.filter(
-    (module) => module.region === "main",
-  )
-  const panelModules = config.modules.filter(
-    (module) => module.region === "panel",
-  )
+  const { mainModules, panelModules } = useMemo(() => {
+    const main: PageLayoutModule[] = []
+    const panel: PageLayoutModule[] = []
+
+    for (const module of config.modules) {
+      if (module.region === "panel") panel.push(module)
+      else main.push(module)
+    }
+
+    return { mainModules: main, panelModules: panel }
+  }, [config.modules])
+  const panelVisible = Boolean(onChange) || panelModules.length > 0
   const usesAppSidebar = Boolean(
     !onChange &&
+      panelMode === "auto" &&
       pageId &&
       pageLayoutSidebar &&
       registeredPageId === pageId,
+  )
+  const usesOverlayDrawer = Boolean(
+    !onChange &&
+      panelMode === "overlay" &&
+      pageId &&
+      pageLayoutSidebar,
   )
 
   useEffect(() => {
@@ -315,6 +331,24 @@ export function PageLayoutModuleCanvas({
     setHasPageLayoutSidebar,
     usesAppSidebar,
   ])
+
+  useEffect(() => {
+    if (
+      !usesOverlayDrawer ||
+      !pageId ||
+      !registerOverlaySidebar ||
+      panelModules.length === 0
+    ) {
+      return
+    }
+
+    return registerOverlaySidebar(pageId)
+  }, [
+    pageId,
+    panelModules.length,
+    registerOverlaySidebar,
+    usesOverlayDrawer,
+  ])
   const heading = mainModules.find((module) => module.type === "heading")
   const propertyGroup = mainModules.find(
     (module) => module.type === "property_group",
@@ -325,7 +359,13 @@ export function PageLayoutModuleCanvas({
   )
 
   if (!onChange) {
-    const inlinePanelVisible = panelVisible && !usesAppSidebar
+    const inlinePanelVisible =
+      panelVisible && !usesAppSidebar && !usesOverlayDrawer
+    const externalPanelTarget = usesAppSidebar
+      ? pageLayoutSidebar?.panelTarget
+      : pageLayoutSidebar?.overlayPageId === pageId
+        ? pageLayoutSidebar?.overlayPanelTarget
+        : null
 
     return (
       <>
@@ -351,14 +391,14 @@ export function PageLayoutModuleCanvas({
             </aside>
           ) : null}
         </div>
-        {usesAppSidebar && pageLayoutSidebar?.panelTarget
+        {(usesAppSidebar || usesOverlayDrawer) && externalPanelTarget
           ? createPortal(
               <div className="min-w-0">
                 {panelModules.map((module) => (
                   <Fragment key={module.id}>{renderModule(module)}</Fragment>
                 ))}
               </div>,
-              pageLayoutSidebar.panelTarget,
+              externalPanelTarget,
             )
           : null}
       </>
