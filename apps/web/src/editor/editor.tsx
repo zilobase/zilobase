@@ -30,7 +30,6 @@ import { useEditorInstance } from "./use-editor-instance"
 import { useEditorMenuEffects } from "./use-editor-menu-effects"
 import { useEditorRuntime } from "./use-editor-runtime"
 import { useMobileNodeActions } from "./use-mobile-node-actions"
-import { CollaborationPresence } from "./collaboration-presence"
 import { DatabaseView } from "@/packages/editor/extensions/database/views/database-view"
 import { cn } from "@/lib/utils"
 
@@ -415,6 +414,9 @@ export function Editor({
       <PageMetadata
         compact={module.region === "panel" || Boolean(onLayoutChange)}
         compactSpacing={onLayoutChange ? "comfortable" : "default"}
+        collaborationUsers={
+          module.type === "heading" ? collaboration?.users : undefined
+        }
         contentClassName={module.region === "panel" ? undefined : pageContentLayout.className}
         cover={cover}
         databaseId={databaseId}
@@ -457,9 +459,6 @@ export function Editor({
         onClickCapture={handleMobileNodeClick}
         onPointerMoveCapture={updateDragTargetFromPointer}
       >
-        {collaboration ? (
-          <CollaborationPresence users={collaboration.users} />
-        ) : null}
         <EditorChrome
           blockDropLine={blockDropLine}
           blockCommentOpen={blockCommentOpen}
@@ -533,6 +532,7 @@ export function Editor({
         ) : (
           <>
             <PageMetadata
+              collaborationUsers={collaboration?.users}
               contentClassName={pageContentLayout.className}
               cover={cover}
               databaseId={databaseId}

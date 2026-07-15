@@ -54,6 +54,8 @@ import {
   parsePropertyValue,
   serializePropertyValue,
 } from "../../extensions/database/core/utils"
+import { CollaborationPresence } from "../../collaboration-presence"
+import type { CollaborationUser } from "../../use-page-collaboration"
 
 export type PageMetadataHandle = {
   focusTitleEnd: () => boolean
@@ -63,6 +65,7 @@ type PageMetadataProps = {
   compact?: boolean
   compactSpacing?: "default" | "comfortable"
   contentClassName?: string
+  collaborationUsers?: CollaborationUser[]
   cover?: string
   databaseId?: string | null
   editable?: boolean
@@ -172,6 +175,7 @@ function resizeTitleTextarea(
 export function PageMetadata({
   compact = false,
   compactSpacing = "default",
+  collaborationUsers = [],
   contentClassName,
   cover: coverProp,
   databaseId,
@@ -563,7 +567,7 @@ export function PageMetadata({
     "opacity-0 transition-opacity pointer-events-none group-focus-within/metadata:opacity-100 group-focus-within/metadata:pointer-events-auto group-has-[[data-state=open]]/metadata:opacity-100 group-has-[[data-state=open]]/metadata:pointer-events-auto group-hover/metadata:opacity-100 group-hover/metadata:pointer-events-auto"
 
   return (
-    <section className="group/metadata" contentEditable={false}>
+    <section className="group/metadata relative" contentEditable={false}>
       {presenceTargets.map((target) => (
         <PageDatabaseRealtimeSubscription
           activePropertyId={activePropertyId}
@@ -593,8 +597,21 @@ export function PageMetadata({
         </div>
       ) : null}
 
+      {showHeading && collaborationUsers.length > 0 ? (
+        <CollaborationPresence
+          className={
+            compact
+              ? "absolute right-4 top-4"
+              : cover
+                ? "absolute right-5 top-[calc(10rem+1.5rem)] sm:right-8 md:top-[calc(10rem+2rem)]"
+                : "absolute right-5 top-6 sm:right-8 md:top-8"
+          }
+          users={collaborationUsers}
+        />
+      ) : null}
+
       <div
-        className={`${contentClassName ?? ""} ${compact ? compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4" : "px-5 py-6 sm:px-8 md:px-20 md:py-8 lg:px-24"}`}
+        className={`${contentClassName ?? ""} relative ${compact ? compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4" : "px-5 py-6 sm:px-8 md:px-20 md:py-8 lg:px-24"}`}
       >
         {showHeading && showMetadataActions ? (
           <div className="relative mb-3 min-h-8">

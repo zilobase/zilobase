@@ -5,11 +5,14 @@ import {
   AvatarGroupCount,
   AvatarImage,
 } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 import type { CollaborationUser } from "./use-page-collaboration"
 
 export function CollaborationPresence({
+  className,
   users,
 }: {
+  className?: string
   users: CollaborationUser[]
 }) {
   const visibleUsers = users.slice(0, 4)
@@ -17,7 +20,10 @@ export function CollaborationPresence({
 
   return (
     <div
-      className="absolute right-4 top-4 z-10 flex h-8 items-center gap-2"
+      className={cn(
+        "absolute right-4 top-4 z-10 flex h-8 items-center gap-2",
+        className,
+      )}
       contentEditable={false}
     >
       {visibleUsers.length > 0 ? (
