@@ -60,6 +60,8 @@ export function PagePaneHeader({
   leadingControl,
   onClose,
   onOpenDiscussions,
+  onTogglePageSidebar,
+  pageSidebarOpen,
   pathname,
   rowNavigationDatabaseId,
   showPaneControls = Boolean(onClose),
@@ -70,6 +72,8 @@ export function PagePaneHeader({
   leadingControl?: ReactNode | null;
   onClose?: () => void;
   onOpenDiscussions?: () => void;
+  onTogglePageSidebar?: () => void;
+  pageSidebarOpen?: boolean;
   pathname: string;
   rowNavigationDatabaseId?: string | null;
   showPaneControls?: boolean;
@@ -107,7 +111,13 @@ export function PagePaneHeader({
       </div>
       {showActions ? (
         <div className="ml-auto px-3">
-          <NavActions databaseId={databaseId} onOpenDiscussions={onOpenDiscussions} pageId={pageId} />
+          <NavActions
+            databaseId={databaseId}
+            onOpenDiscussions={onOpenDiscussions}
+            onTogglePageSidebar={onTogglePageSidebar}
+            pageSidebarOpen={pageSidebarOpen}
+            pageId={pageId}
+          />
         </div>
       ) : null}
     </header>

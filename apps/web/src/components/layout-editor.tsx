@@ -11,6 +11,7 @@ import { Check, ChevronDown, LayoutPanelLeft, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { LayoutEditorSettings } from "@/components/layout-editor-settings"
+import { DiscussionVisibilityDialog } from "@/components/discussion-visibility-dialog"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -176,6 +177,9 @@ function LayoutEditor({
     useDatabase(databaseId)
   const { data: userSettings = defaultUserSettings } = useUserSettings()
   const [draft, setDraft] = useState<PageLayoutConfig | null>(null)
+  const [pendingDiscussionsVisible, setPendingDiscussionsVisible] = useState<
+    boolean | null
+  >(null)
   const saveLayout = useSavePageLayout()
   const resetLayout = useResetPageLayout()
   const updateUserSettings = useUpdateUserSettings()
@@ -190,7 +194,6 @@ function LayoutEditor({
     setPreviewPageId(pageId ?? null)
   }, [pageId])
 
-  const properties = databasePayload?.properties ?? []
   const previewName =
     page?.name?.trim() || (databaseId ? "Untitled" : "New page")
   const previewIcon = page ? getPageEmoji(page) : null
@@ -224,8 +227,11 @@ function LayoutEditor({
     onClose()
   }
 
-  const save = async (scope: PageLayoutScope) => {
-    if (!draft || !resolved) return
+  const save = async (
+    scope: PageLayoutScope,
+    config: PageLayoutConfig | null = draft,
+  ) => {
+    if (!config || !resolved) return
     const scopeId =
       scope === "workspace"
         ? resolved.workspaceId
@@ -235,7 +241,7 @@ function LayoutEditor({
     if (!scopeId) return
     try {
       await saveLayout.mutateAsync({
-        config: withoutLayoutFullWidth(draft),
+        config: withoutLayoutFullWidth(config),
         scope,
         scopeId,
       })
@@ -356,7 +362,16 @@ function LayoutEditor({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <main className="min-w-0 flex-1 overflow-hidden bg-background">
+        <LayoutEditorSettings
+          draft={draft}
+          fullWidth={fullWidth}
+          fullWidthPending={updateUserSettings.isPending}
+          onChange={setDraft}
+          onDiscussionsVisibleChange={setPendingDiscussionsVisible}
+          onFullWidthChange={setFullWidth}
+        />
+
+        <main className="min-w-0 flex-1 overflow-hidden bg-muted/10">
           <div className="h-full w-full">
             <Editor
               content={page?.content ?? ""}
@@ -374,16 +389,22 @@ function LayoutEditor({
             />
           </div>
         </main>
-
-        <LayoutEditorSettings
-          draft={draft}
-          fullWidth={fullWidth}
-          fullWidthPending={updateUserSettings.isPending}
-          onChange={setDraft}
-          onFullWidthChange={setFullWidth}
-          properties={properties}
-        />
       </div>
+
+      <DiscussionVisibilityDialog
+        databaseAvailable={Boolean(databaseId)}
+        enabled={pendingDiscussionsVisible ?? draft.discussionsVisible}
+        onApply={(scope) => {
+          const discussionsVisible =
+            pendingDiscussionsVisible ?? draft.discussionsVisible
+          void save(scope, { ...draft, discussionsVisible })
+        }}
+        onOpenChange={(open) => {
+          if (!open && !saveLayout.isPending) setPendingDiscussionsVisible(null)
+        }}
+        open={pendingDiscussionsVisible !== null}
+        pending={saveLayout.isPending}
+      />
     </div>
   )
 }

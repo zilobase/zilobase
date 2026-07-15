@@ -497,6 +497,7 @@ export function Editor({
               ) : undefined
             }
             fullWidth={fullWidth}
+            pageId={pageId}
             mainContentOverride={
               activeLinkedTab ? (
                 <div

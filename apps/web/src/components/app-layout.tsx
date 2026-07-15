@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import { Outlet, useRouterState } from "@tanstack/react-router"
+import { PanelRightIcon, XIcon } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppSearchProvider } from "@/components/app-search"
@@ -16,6 +17,7 @@ import {
   getRightSidebarEditorDefaultSize,
   getRightSidebarEditorMinSize,
   RightSidebarMobilePanels,
+  RightSidebarSurface,
   RightSidebars,
 } from "@/components/right-sidebars"
 
@@ -35,12 +37,21 @@ import {
 } from "@/components/ui/sidebar"
 import { isEmbeddedMobileViewer } from "@/lib/embedded-view"
 import { useDatabase } from "@notelab/features/databases"
-import { useRecordItemVisit, usePage } from "@notelab/features/pages"
+import {
+  usePage,
+  useRecordItemVisit,
+  useResolvedPageLayout,
+} from "@notelab/features/pages"
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
 import { LayoutEditorProvider } from "@/components/layout-editor"
 import { usePageEditorComments } from "@/components/page-editor-comments"
 import { usePageCommentController } from "@/contexts/page-comments-registry"
+import {
+  PageLayoutSidebarProvider,
+  useOptionalPageLayoutSidebar,
+} from "@/contexts/page-layout-sidebar"
+import { Button } from "@/components/ui/button"
 
 export function AppLayout({
   children,
@@ -51,6 +62,10 @@ export function AppLayout({
   utilitySidebar?: ReactNode
   utilitySidebarOpen?: boolean
 }) {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+
   return (
     <SidebarProvider
       className="h-svh overflow-hidden"
@@ -63,14 +78,19 @@ export function AppLayout({
       }
     >
       <AppSearchProvider>
-        <LayoutEditorProvider>
-          <AppLayoutContent
-            utilitySidebar={utilitySidebar}
-            utilitySidebarOpen={utilitySidebarOpen}
-          >
-            {children}
-          </AppLayoutContent>
-        </LayoutEditorProvider>
+        <PageLayoutSidebarProvider
+          key={getPageId(pathname) ?? pathname}
+          pageId={getPageId(pathname)}
+        >
+          <LayoutEditorProvider>
+            <AppLayoutContent
+              utilitySidebar={utilitySidebar}
+              utilitySidebarOpen={utilitySidebarOpen}
+            >
+              {children}
+            </AppLayoutContent>
+          </LayoutEditorProvider>
+        </PageLayoutSidebarProvider>
       </AppSearchProvider>
     </SidebarProvider>
   )
@@ -101,9 +121,14 @@ function AppLayoutContent({
   const { data: hostPage } = usePage(hostPageId, {
     refetchOnMount: false,
   })
+  const { data: resolvedPageLayout } = useResolvedPageLayout({ pageId })
   const recordItemVisit = useRecordItemVisit()
   const recordedVisitKeyRef = useRef<string | null>(null)
-  const discussionsEnabled = Boolean(pageId && !databaseId)
+  const discussionsEnabled = Boolean(
+    pageId &&
+      !databaseId &&
+      resolvedPageLayout?.config.discussionsVisible === true,
+  )
   const sidePaneState = usePageSidePaneState(pageId)
   const {
     closeSidePane,
@@ -117,12 +142,27 @@ function AppLayoutContent({
   } = sidePaneState
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false)
   const [discussionsSidebarOpen, setDiscussionsSidebarOpen] = useState(false)
+  const pageLayoutSidebar = useOptionalPageLayoutSidebar()
+  const pageLayoutSidebarOpen = Boolean(
+    pageLayoutSidebar?.hasSidebar && pageLayoutSidebar.open,
+  )
   const { editorCommentsOpenRequest } = usePageEditorComments()
   const commentController = usePageCommentController(pageId)
   const openDiscussionsSidebar = useCallback(() => {
+    if (!discussionsEnabled) return
     if (appSidebarOpen) closeSidePane()
+    pageLayoutSidebar?.setOpen(false)
     setDiscussionsSidebarOpen(true)
-  }, [appSidebarOpen, closeSidePane])
+  }, [
+    appSidebarOpen,
+    closeSidePane,
+    discussionsEnabled,
+    pageLayoutSidebar,
+  ])
+
+  useEffect(() => {
+    if (!discussionsEnabled) setDiscussionsSidebarOpen(false)
+  }, [discussionsEnabled])
 
   useEffect(() => {
     if (!commentController) return
@@ -137,7 +177,8 @@ function AppLayoutContent({
   }, [editorCommentsOpenRequest, openDiscussionsSidebar])
   const openRightPanelCount =
     (chatSidebarOpen ? 1 : 0) +
-    (discussionsEnabled && discussionsSidebarOpen ? 1 : 0)
+    (discussionsEnabled && discussionsSidebarOpen ? 1 : 0) +
+    (pageLayoutSidebarOpen ? 1 : 0)
   const desktopRightPanelCount = isMobile ? 0 : openRightPanelCount
   const openSidePane = useCallback(
     (nextPageId: string, options?: { databaseId?: string | null }) => {
@@ -146,9 +187,11 @@ function AppLayoutContent({
         setDiscussionsSidebarOpen(false)
       }
 
+      pageLayoutSidebar?.setOpen(false)
+
       openSidePaneBase(nextPageId, options)
     },
-    [appSidebarOpen, openSidePaneBase],
+    [appSidebarOpen, openSidePaneBase, pageLayoutSidebar],
   )
   const openDatabaseSidePane = useCallback(
     (nextDatabaseId: string) => {
@@ -157,16 +200,31 @@ function AppLayoutContent({
         setDiscussionsSidebarOpen(false)
       }
 
+      pageLayoutSidebar?.setOpen(false)
+
       openDatabaseSidePaneBase(nextDatabaseId)
     },
-    [appSidebarOpen, openDatabaseSidePaneBase],
+    [appSidebarOpen, openDatabaseSidePaneBase, pageLayoutSidebar],
   )
   const openChatSidebar = useCallback(() => {
     if (appSidebarOpen) {
       closeSidePane()
     }
+    pageLayoutSidebar?.setOpen(false)
     setChatSidebarOpen(true)
-  }, [appSidebarOpen, closeSidePane])
+  }, [appSidebarOpen, closeSidePane, pageLayoutSidebar])
+
+  const togglePageLayoutSidebar = useCallback(() => {
+    if (!pageLayoutSidebar?.hasSidebar) return
+
+    const nextOpen = !pageLayoutSidebar.open
+    if (nextOpen) {
+      closeSidePane()
+      setChatSidebarOpen(false)
+      setDiscussionsSidebarOpen(false)
+    }
+    pageLayoutSidebar.setOpen(nextOpen)
+  }, [closeSidePane, pageLayoutSidebar])
   const sidePaneContext = useMemo(
     () => ({
       ...sidePaneState,
@@ -240,7 +298,32 @@ function AppLayoutContent({
 
   const showSidePaneLayout =
     !utilitySidebarOpen &&
+    !pageLayoutSidebarOpen &&
     Boolean(renderedSidePanePageId || renderedSidePaneDatabaseId)
+  const pageSidebarPanel = pageLayoutSidebarOpen ? (
+    <div className="flex h-full min-h-0 flex-col">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+        <PanelRightIcon className="size-4 text-muted-foreground" />
+        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">
+          Page sidebar
+        </h2>
+        <Button
+          aria-label="Close page sidebar"
+          onClick={() => pageLayoutSidebar?.setOpen(false)}
+          size="icon-sm"
+          title="Close page sidebar"
+          type="button"
+          variant="ghost"
+        >
+          <XIcon />
+        </Button>
+      </header>
+      <div
+        className="min-h-0 flex-1 overflow-y-auto"
+        ref={pageLayoutSidebar?.setPanelTarget}
+      />
+    </div>
+  ) : undefined
 
   return (
     <PageSidePaneContext.Provider value={sidePaneContext}>
@@ -275,6 +358,12 @@ function AppLayoutContent({
                   <AppHeader
                     isSettingsPage={isSettingsPage || isAiPage}
                     onOpenDiscussions={discussionsEnabled ? openDiscussionsSidebar : undefined}
+                    onTogglePageSidebar={
+                      pageLayoutSidebar?.hasSidebar
+                        ? togglePageLayoutSidebar
+                        : undefined
+                    }
+                    pageSidebarOpen={pageLayoutSidebarOpen}
                     onCloseSidePane={closeSidePane}
                     pathname={pathname}
                     renderedSidePanePageId={
@@ -309,12 +398,12 @@ function AppLayoutContent({
               overflow: "hidden",
             }}
           >
-            <aside
+            <RightSidebarSurface
               aria-label="View settings sidebar"
-              className="h-full min-h-0 w-full overflow-hidden bg-background text-foreground"
+              className="w-full"
             >
               {utilitySidebar}
-            </aside>
+            </RightSidebarSurface>
           </ResizablePanel>
         ) : null}
         <RightSidebars
@@ -338,6 +427,8 @@ function AppLayoutContent({
               />
             ) : undefined
           }
+          pageSidebarOpen={pageLayoutSidebarOpen}
+          pageSidebarPanel={pageSidebarPanel}
         />
       </ResizablePanelGroup>
       <RightSidebarMobilePanels
@@ -361,10 +452,15 @@ function AppLayoutContent({
             />
           ) : undefined
         }
+        pageSidebarOpen={pageLayoutSidebarOpen}
+        pageSidebarPanel={pageSidebarPanel}
       />
       {chatSidebarOpen ? null : (
         <ChatSidebarTrigger
-          discussionsSidebarOpen={discussionsEnabled && discussionsSidebarOpen}
+          adjacentSidebarOpen={
+            pageLayoutSidebarOpen ||
+            (discussionsEnabled && discussionsSidebarOpen)
+          }
           onOpen={openChatSidebar}
         />
       )}
@@ -393,6 +489,8 @@ function EmbeddedPageDialogHost({
 function AppHeader({
   isSettingsPage,
   onOpenDiscussions,
+  onTogglePageSidebar,
+  pageSidebarOpen,
   onCloseSidePane,
   pathname,
   renderedSidePaneDatabaseId,
@@ -402,6 +500,8 @@ function AppHeader({
 }: {
   isSettingsPage: boolean
   onOpenDiscussions?: () => void
+  onTogglePageSidebar?: () => void
+  pageSidebarOpen?: boolean
   onCloseSidePane: () => void
   pathname: string
   renderedSidePaneDatabaseId: string | null
@@ -436,6 +536,8 @@ function AppHeader({
           }
           pathname={pathname}
           onOpenDiscussions={onOpenDiscussions}
+          onTogglePageSidebar={onTogglePageSidebar}
+          pageSidebarOpen={pageSidebarOpen}
           showActions={!isSettingsPage}
         />
       </PageSidePaneHeaderCell>

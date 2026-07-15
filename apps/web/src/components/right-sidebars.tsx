@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef } from "react"
-import type { ReactNode } from "react"
+import type { ComponentProps, ReactNode } from "react"
 
 import {
   ResizableHandle,
@@ -17,6 +17,21 @@ export const RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE = 22
 
 const RIGHT_SIDEBAR_MIN_SIZE = 18
 const panelPercentage = (size: number) => `${size}%`
+
+export function RightSidebarSurface({
+  className,
+  ...props
+}: ComponentProps<"aside">) {
+  return (
+    <aside
+      className={cn(
+        "flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground",
+        className,
+      )}
+      {...props}
+    />
+  )
+}
 
 export function getRightSidebarEditorMinSize(openPanelCount: number) {
   if (openPanelCount >= 2) {
@@ -100,12 +115,9 @@ function RightSidebarDesktopPanel({
           overflow: "hidden",
         }}
       >
-        <aside
-          aria-label={ariaLabel}
-          className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground"
-        >
+        <RightSidebarSurface aria-label={ariaLabel}>
           {children}
-        </aside>
+        </RightSidebarSurface>
       </ResizablePanel>
     </>
   )
@@ -125,11 +137,11 @@ function RightSidebarMobilePanel({
   zIndexClassName?: string
 }) {
   return (
-    <aside
+    <RightSidebarSurface
       aria-hidden={!open}
       aria-label={ariaLabel}
       className={cn(
-        "fixed inset-y-0 flex h-svh w-[min(100vw,var(--right-sidebar-panel-width))] flex-col border-l border-sidebar-border bg-background text-foreground transition-[right] duration-200 ease-linear",
+        "fixed inset-y-0 h-svh w-[min(100vw,var(--right-sidebar-panel-width))] border-l border-sidebar-border transition-[right] duration-200 ease-linear",
         zIndexClassName,
         open
           ? rightOffset
@@ -140,7 +152,7 @@ function RightSidebarMobilePanel({
       inert={open ? undefined : true}
     >
       {children}
-    </aside>
+    </RightSidebarSurface>
   )
 }
 
@@ -150,30 +162,36 @@ export function RightSidebars({
   discussionsEnabled,
   discussionsOpen,
   discussionsPanel,
+  pageSidebarOpen = false,
+  pageSidebarPanel,
 }: {
   chatOpen: boolean
   chatPanel: ReactNode
   discussionsEnabled: boolean
   discussionsOpen: boolean
   discussionsPanel?: ReactNode
+  pageSidebarOpen?: boolean
+  pageSidebarPanel?: ReactNode
 }) {
   const isMobile = useIsMobile()
   const openPanelCount =
-    (chatOpen ? 1 : 0) + (discussionsEnabled && discussionsOpen ? 1 : 0)
-  const updateDiscussionsPanelWidth = useCallback((width: number) => {
+    (chatOpen ? 1 : 0) +
+    (discussionsEnabled && discussionsOpen ? 1 : 0) +
+    (pageSidebarOpen ? 1 : 0)
+  const updateAdjacentPanelWidth = useCallback((width: number) => {
     document.documentElement.style.setProperty(
-      "--right-sidebar-discussions-panel-width",
+      "--right-sidebar-adjacent-panel-width",
       `${width}px`,
     )
   }, [])
 
   useEffect(() => {
-    if (!discussionsOpen) {
+    if (!discussionsOpen && !pageSidebarOpen) {
       document.documentElement.style.removeProperty(
-        "--right-sidebar-discussions-panel-width",
+        "--right-sidebar-adjacent-panel-width",
       )
     }
-  }, [discussionsOpen])
+  }, [discussionsOpen, pageSidebarOpen])
 
   if (isMobile) {
     return null
@@ -181,10 +199,21 @@ export function RightSidebars({
 
   return (
     <>
+      {pageSidebarOpen && pageSidebarPanel ? (
+        <RightSidebarDesktopPanel
+          ariaLabel="Page sidebar"
+          onWidthChange={updateAdjacentPanelWidth}
+          openPanelCount={openPanelCount}
+          panelId="right-sidebar-page"
+        >
+          {pageSidebarPanel}
+        </RightSidebarDesktopPanel>
+      ) : null}
+
       {discussionsEnabled && discussionsOpen && discussionsPanel ? (
         <RightSidebarDesktopPanel
           ariaLabel="Discussions sidebar"
-          onWidthChange={updateDiscussionsPanelWidth}
+          onWidthChange={updateAdjacentPanelWidth}
           openPanelCount={openPanelCount}
           panelId="right-sidebar-discussions"
         >
@@ -211,12 +240,16 @@ export function RightSidebarMobilePanels({
   discussionsEnabled,
   discussionsOpen,
   discussionsPanel,
+  pageSidebarOpen = false,
+  pageSidebarPanel,
 }: {
   chatOpen: boolean
   chatPanel: ReactNode
   discussionsEnabled: boolean
   discussionsOpen: boolean
   discussionsPanel?: ReactNode
+  pageSidebarOpen?: boolean
+  pageSidebarPanel?: ReactNode
 }) {
   const isMobile = useIsMobile()
 
@@ -227,6 +260,14 @@ export function RightSidebarMobilePanels({
   return (
     <>
       <div className="md:hidden">
+        {pageSidebarPanel ? (
+          <RightSidebarMobilePanel
+            ariaLabel="Page sidebar"
+            open={pageSidebarOpen}
+          >
+            {pageSidebarPanel}
+          </RightSidebarMobilePanel>
+        ) : null}
         {discussionsEnabled && discussionsPanel ? (
           <RightSidebarMobilePanel
             ariaLabel="Discussions sidebar"

@@ -1,4 +1,11 @@
-import { Fragment, useState, type ReactElement, type ReactNode } from "react"
+import {
+  Fragment,
+  useEffect,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react"
+import { createPortal } from "react-dom"
 import {
   closestCenter,
   DndContext,
@@ -15,6 +22,7 @@ import { GripVertical, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useOptionalPageLayoutSidebar } from "@/contexts/page-layout-sidebar"
 import {
   canMovePageLayoutModuleToRegion,
   movePageLayoutModule,
@@ -30,6 +38,7 @@ type PageLayoutModuleCanvasProps = {
   fullWidth?: boolean
   mainContentOverride?: ReactNode
   onChange?: (config: PageLayoutConfig) => void
+  pageId?: string | null
   renderModule: (module: PageLayoutModule) => ReactNode
 }
 
@@ -211,7 +220,7 @@ function LayoutRegion({
     <div
       className={cn(
         "relative h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain",
-        region === "panel" && "border-l bg-muted/10",
+        region === "panel" && "border-l bg-background",
       )}
     >
       <div
@@ -266,9 +275,13 @@ export function PageLayoutModuleCanvas({
   fullWidth = true,
   mainContentOverride,
   onChange,
+  pageId,
   renderModule,
 }: PageLayoutModuleCanvasProps) {
   const [activeModuleId, setActiveModuleId] = useState<string | null>(null)
+  const pageLayoutSidebar = useOptionalPageLayoutSidebar()
+  const registeredPageId = pageLayoutSidebar?.pageId
+  const setHasPageLayoutSidebar = pageLayoutSidebar?.setHasSidebar
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
@@ -284,6 +297,24 @@ export function PageLayoutModuleCanvas({
   const panelModules = config.modules.filter(
     (module) => module.region === "panel",
   )
+  const usesAppSidebar = Boolean(
+    !onChange &&
+      pageId &&
+      pageLayoutSidebar &&
+      registeredPageId === pageId,
+  )
+
+  useEffect(() => {
+    if (!usesAppSidebar || !setHasPageLayoutSidebar) return
+
+    setHasPageLayoutSidebar(panelModules.length > 0)
+    return () => setHasPageLayoutSidebar(false)
+  }, [
+    panelModules.length,
+    registeredPageId,
+    setHasPageLayoutSidebar,
+    usesAppSidebar,
+  ])
   const heading = mainModules.find((module) => module.type === "heading")
   const propertyGroup = mainModules.find(
     (module) => module.type === "property_group",
@@ -294,29 +325,43 @@ export function PageLayoutModuleCanvas({
   )
 
   if (!onChange) {
+    const inlinePanelVisible = panelVisible && !usesAppSidebar
+
     return (
-      <div
-        className={cn(
-          "grid min-w-0",
-          panelVisible && "md:grid-cols-[minmax(0,1fr)_24rem]",
-        )}
-      >
-        <div className="min-w-0">
-          {heading ? renderModule(heading) : null}
-          {fixedAfterHeading}
-          {propertyGroup ? renderModule(propertyGroup) : null}
-          {mainContentOverride ?? movableMainModules.map((module) => (
-            <Fragment key={module.id}>{renderModule(module)}</Fragment>
-          ))}
-        </div>
-        {panelVisible ? (
-          <aside className="min-w-0 border-l bg-muted/10">
-            {panelModules.map((module) => (
+      <>
+        <div
+          className={cn(
+            "grid min-w-0",
+            inlinePanelVisible && "md:grid-cols-[minmax(0,1fr)_24rem]",
+          )}
+        >
+          <div className="min-w-0">
+            {heading ? renderModule(heading) : null}
+            {fixedAfterHeading}
+            {propertyGroup ? renderModule(propertyGroup) : null}
+            {mainContentOverride ?? movableMainModules.map((module) => (
               <Fragment key={module.id}>{renderModule(module)}</Fragment>
             ))}
-          </aside>
-        ) : null}
-      </div>
+          </div>
+          {inlinePanelVisible ? (
+            <aside className="min-w-0 border-l bg-muted/10">
+              {panelModules.map((module) => (
+                <Fragment key={module.id}>{renderModule(module)}</Fragment>
+              ))}
+            </aside>
+          ) : null}
+        </div>
+        {usesAppSidebar && pageLayoutSidebar?.panelTarget
+          ? createPortal(
+              <div className="min-w-0">
+                {panelModules.map((module) => (
+                  <Fragment key={module.id}>{renderModule(module)}</Fragment>
+                ))}
+              </div>,
+              pageLayoutSidebar.panelTarget,
+            )
+          : null}
+      </>
     )
   }
 
