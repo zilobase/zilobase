@@ -142,7 +142,6 @@ export type ModelSelectorLogoProps = Omit<
     | "fastrouter"
     | "google"
     | "google-vertex"
-    | "cloudflare-workers-ai"
     | "inception"
     | "wandb"
     | "openai"

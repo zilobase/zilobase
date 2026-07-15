@@ -834,7 +834,7 @@ export function DatabaseViewToolbar() {
             </div>
           ) : null}
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-0">
           {editable ? (
             <>
               {activeDatabaseFilters.length === 0 ? (
@@ -1012,17 +1012,20 @@ export function DatabaseViewToolbar() {
               />
               {canRenderAddRow ? (
               <Button
-                className="database-new-button"
+                aria-label="New page"
+                className="text-muted-foreground"
                 disabled={!databaseId || isAddingDatabaseRow}
                 onClick={() => addDatabaseRow()}
+                size="icon"
+                title="New page"
                 type="button"
+                variant="ghost"
               >
                 {isAddingDatabaseRow ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   <Plus />
                 )}
-                <span>New</span>
               </Button>
               ) : null}
             </>
