@@ -28,7 +28,7 @@ export function ChatSidebarTrigger({
     <Button
       aria-label="Open chat sidebar"
       className={cn(
-        "fixed bottom-4 z-40 h-10 rounded-full border-sidebar-border bg-sidebar px-3 text-sidebar-foreground shadow-lg ring-1 ring-foreground/10 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "fixed bottom-4 z-40 h-10 rounded-full border-sidebar-border bg-sidebar px-3 text-sidebar-foreground shadow-lg ring-1 ring-foreground/10 transition-[right,background-color,color,transform] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         adjacentSidebarOpen
           ? "right-[calc(var(--right-sidebar-adjacent-panel-width,var(--right-sidebar-panel-width))+1rem)] max-md:right-4"
           : "right-4",

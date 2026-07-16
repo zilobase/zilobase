@@ -14,12 +14,14 @@ import {
 } from "@/contexts/page-side-pane"
 import { DiscussionsSidebarPanel } from "@/components/discussions-sidebar"
 import {
-  getRightSidebarEditorDefaultSize,
-  getRightSidebarEditorMinSize,
   RightSidebarMobilePanels,
-  RightSidebarSurface,
   RightSidebars,
 } from "@/components/right-sidebars"
+import {
+  getRightSidebarEditorDefaultSize,
+  getRightSidebarEditorMinSize,
+  type SidebarResizeIntent,
+} from "@/components/sidebar-panel-sizing"
 
 import {
   getDatabaseId,
@@ -115,7 +117,11 @@ function AppLayoutContent({
     select: (state) => state.location.pathname,
   })
   const embeddedMobileViewer = isEmbeddedMobileViewer()
-  const { isMobile, open: appSidebarOpen } = useSidebar()
+  const {
+    isMobile,
+    open: appSidebarOpen,
+    setOpen: setAppSidebarOpen,
+  } = useSidebar()
   const isSettingsPage = pathname.startsWith("/settings")
   const isAiPage = pathname === "/ai"
   const pageId = getPageId(pathname)
@@ -160,6 +166,20 @@ function AppLayoutContent({
     discussionsEnabled,
     pageLayoutSidebar,
   ])
+  const toggleDiscussionsSidebar = useCallback(() => {
+    if (!discussionsEnabled) return
+
+    if (discussionsSidebarOpen) {
+      setDiscussionsSidebarOpen(false)
+      return
+    }
+
+    openDiscussionsSidebar()
+  }, [
+    discussionsEnabled,
+    discussionsSidebarOpen,
+    openDiscussionsSidebar,
+  ])
 
   useEffect(() => {
     if (!discussionsEnabled) setDiscussionsSidebarOpen(false)
@@ -176,11 +196,22 @@ function AppLayoutContent({
       openDiscussionsSidebar()
     }
   }, [editorCommentsOpenRequest, openDiscussionsSidebar])
-  const openRightPanelCount =
-    (chatSidebarOpen ? 1 : 0) +
-    (discussionsEnabled && discussionsSidebarOpen ? 1 : 0) +
-    (pageLayoutSidebarOpen ? 1 : 0)
-  const desktopRightPanelCount = isMobile ? 0 : openRightPanelCount
+  const primaryRightPanelOpen = Boolean(
+    (utilitySidebarOpen && utilitySidebar) ||
+      pageLayoutSidebarOpen ||
+      (discussionsEnabled && discussionsSidebarOpen),
+  )
+  const desktopRightPanelCount = isMobile
+    ? 0
+    : Number(chatSidebarOpen) + Number(primaryRightPanelOpen)
+  const handleRightSidebarResizeIntent = useCallback(
+    (intent: SidebarResizeIntent) => {
+      if (isMobile) return
+      const nextOpen = intent === "decrease"
+      if (appSidebarOpen !== nextOpen) setAppSidebarOpen(nextOpen)
+    },
+    [appSidebarOpen, isMobile, setAppSidebarOpen],
+  )
   const openSidePane = useCallback(
     (nextPageId: string, options?: { databaseId?: string | null }) => {
       if (appSidebarOpen) {
@@ -211,9 +242,8 @@ function AppLayoutContent({
     if (appSidebarOpen) {
       closeSidePane()
     }
-    pageLayoutSidebar?.setOpen(false)
     setChatSidebarOpen(true)
-  }, [appSidebarOpen, closeSidePane, pageLayoutSidebar])
+  }, [appSidebarOpen, closeSidePane])
 
   const togglePageLayoutSidebar = useCallback(() => {
     if (!pageLayoutSidebar?.hasSidebar) return
@@ -221,7 +251,6 @@ function AppLayoutContent({
     const nextOpen = !pageLayoutSidebar.open
     if (nextOpen) {
       closeSidePane()
-      setChatSidebarOpen(false)
       setDiscussionsSidebarOpen(false)
     }
     pageLayoutSidebar.setOpen(nextOpen)
@@ -301,7 +330,7 @@ function AppLayoutContent({
     !utilitySidebarOpen &&
     !pageLayoutSidebarOpen &&
     Boolean(renderedSidePanePageId || renderedSidePaneDatabaseId)
-  const pageSidebarPanel = pageLayoutSidebarOpen ? (
+  const pageSidebarPanel = pageLayoutSidebar?.hasSidebar ? (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
         <PanelRightIcon className="size-4 text-muted-foreground" />
@@ -324,6 +353,21 @@ function AppLayoutContent({
         ref={pageLayoutSidebar?.setPanelTarget}
       />
     </div>
+  ) : undefined
+  const chatPanel = (
+    <ChatSidebarPanel
+      databaseId={databaseId}
+      onClose={() => setChatSidebarOpen(false)}
+      open={chatSidebarOpen}
+      pageId={pageId}
+    />
+  )
+  const discussionsPanel = discussionsEnabled ? (
+    <DiscussionsSidebarPanel
+      onClose={() => setDiscussionsSidebarOpen(false)}
+      open={discussionsSidebarOpen}
+      pageId={pageId}
+    />
   ) : undefined
 
   return (
@@ -358,8 +402,11 @@ function AppLayoutContent({
               header={
                 embeddedMobileViewer ? undefined : (
                   <AppHeader
+                    discussionsOpen={discussionsSidebarOpen}
                     isSettingsPage={isSettingsPage || isAiPage}
-                    onOpenDiscussions={discussionsEnabled ? openDiscussionsSidebar : undefined}
+                    onToggleDiscussions={
+                      discussionsEnabled ? toggleDiscussionsSidebar : undefined
+                    }
                     onTogglePageSidebar={
                       pageLayoutSidebar?.hasSidebar
                         ? togglePageLayoutSidebar
@@ -386,80 +433,35 @@ function AppLayoutContent({
             />
           </SidebarInset>
         </ResizablePanel>
-        {utilitySidebarOpen && utilitySidebar ? (
-          <ResizablePanel
-            className="min-h-0 min-w-0 border-l border-border"
-            defaultSize="320px"
-            id="app-utility-sidebar"
-            maxSize="320px"
-            minSize="320px"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              minHeight: 0,
-              overflow: "hidden",
-            }}
-          >
-            <RightSidebarSurface
-              aria-label="View settings sidebar"
-              className="w-full"
-            >
-              {utilitySidebar}
-            </RightSidebarSurface>
-          </ResizablePanel>
-        ) : null}
         <RightSidebars
           chatOpen={chatSidebarOpen}
-          chatPanel={
-            <ChatSidebarPanel
-              databaseId={databaseId}
-              onClose={() => setChatSidebarOpen(false)}
-              open={chatSidebarOpen}
-              pageId={pageId}
-            />
-          }
+          chatPanel={chatPanel}
           discussionsEnabled={discussionsEnabled}
           discussionsOpen={discussionsSidebarOpen}
-          discussionsPanel={
-            discussionsEnabled ? (
-              <DiscussionsSidebarPanel
-                onClose={() => setDiscussionsSidebarOpen(false)}
-                open={discussionsSidebarOpen}
-                pageId={pageId}
-              />
-            ) : undefined
-          }
+          discussionsPanel={discussionsPanel}
+          isMobile={isMobile}
+          navigationSidebarOpen={appSidebarOpen}
           pageSidebarOpen={pageLayoutSidebarOpen}
           pageSidebarPanel={pageSidebarPanel}
+          onResizeIntent={handleRightSidebarResizeIntent}
+          utilitySidebarOpen={utilitySidebarOpen}
+          utilitySidebarPanel={utilitySidebar}
         />
       </ResizablePanelGroup>
       <RightSidebarMobilePanels
         chatOpen={chatSidebarOpen}
-        chatPanel={
-          <ChatSidebarPanel
-            databaseId={databaseId}
-            onClose={() => setChatSidebarOpen(false)}
-            open={chatSidebarOpen}
-            pageId={pageId}
-          />
-        }
+        chatPanel={chatPanel}
         discussionsEnabled={discussionsEnabled}
         discussionsOpen={discussionsSidebarOpen}
-        discussionsPanel={
-          discussionsEnabled ? (
-            <DiscussionsSidebarPanel
-              onClose={() => setDiscussionsSidebarOpen(false)}
-              open={discussionsSidebarOpen}
-              pageId={pageId}
-            />
-          ) : undefined
-        }
+        discussionsPanel={discussionsPanel}
+        isMobile={isMobile}
         pageSidebarOpen={pageLayoutSidebarOpen}
         pageSidebarPanel={pageSidebarPanel}
       />
       {chatSidebarOpen ? null : (
         <ChatSidebarTrigger
           adjacentSidebarOpen={
+            utilitySidebarOpen ||
             pageLayoutSidebarOpen ||
             (discussionsEnabled && discussionsSidebarOpen)
           }
@@ -519,8 +521,9 @@ function EmbeddedPageDialogHost({
 }
 
 function AppHeader({
+  discussionsOpen,
   isSettingsPage,
-  onOpenDiscussions,
+  onToggleDiscussions,
   onTogglePageSidebar,
   pageSidebarOpen,
   onCloseSidePane,
@@ -530,8 +533,9 @@ function AppHeader({
   sidePaneAnimatedOpen,
   sidePaneDatabaseId,
 }: {
+  discussionsOpen: boolean
   isSettingsPage: boolean
-  onOpenDiscussions?: () => void
+  onToggleDiscussions?: () => void
   onTogglePageSidebar?: () => void
   pageSidebarOpen?: boolean
   onCloseSidePane: () => void
@@ -569,8 +573,9 @@ function AppHeader({
           leadingControl={
             <MainPaneHeaderLeadingControl splitActive={splitActive} />
           }
+          discussionsOpen={discussionsOpen}
           pathname={pathname}
-          onOpenDiscussions={onOpenDiscussions}
+          onToggleDiscussions={onToggleDiscussions}
           onTogglePageSidebar={onTogglePageSidebar}
           pageSidebarOpen={pageSidebarOpen}
           showActions={!isSettingsPage}

@@ -57,9 +57,10 @@ import {
 export function PagePaneHeader({
   bordered = true,
   className,
+  discussionsOpen = false,
   leadingControl,
   onClose,
-  onOpenDiscussions,
+  onToggleDiscussions,
   onTogglePageSidebar,
   pageSidebarOpen,
   pathname,
@@ -69,9 +70,10 @@ export function PagePaneHeader({
 }: {
   bordered?: boolean;
   className?: string;
+  discussionsOpen?: boolean;
   leadingControl?: ReactNode | null;
   onClose?: () => void;
-  onOpenDiscussions?: () => void;
+  onToggleDiscussions?: () => void;
   onTogglePageSidebar?: () => void;
   pageSidebarOpen?: boolean;
   pathname: string;
@@ -113,7 +115,8 @@ export function PagePaneHeader({
         <div className="ml-auto px-3">
           <NavActions
             databaseId={databaseId}
-            onOpenDiscussions={onOpenDiscussions}
+            discussionsOpen={discussionsOpen}
+            onToggleDiscussions={onToggleDiscussions}
             onTogglePageSidebar={onTogglePageSidebar}
             pageSidebarOpen={pageSidebarOpen}
             pageId={pageId}

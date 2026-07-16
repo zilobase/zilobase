@@ -3,6 +3,7 @@ import { Link, useParams, useSearch } from "@tanstack/react-router"
 import { ArrowRight, Maximize2 } from "lucide-react"
 
 import { AppLayout } from "@/components/app-layout"
+import { ResizableRightSidebarPanel } from "@/components/right-sidebars"
 import {
   PageSidePaneLayout,
   PageSidePaneProvider,
@@ -10,6 +11,7 @@ import {
 } from "@/contexts/page-side-pane"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { TrashedItemBanner } from "@/components/trashed-item-banner"
 import { cn } from "@/lib/utils"
 import { getDatabaseCover, getDatabaseEmoji } from "@notelab/features/databases"
@@ -234,6 +236,7 @@ function PublicDatabaseContent({
     onViewSettingsOpenChange(false)
     openPage(pageId, options)
   }
+  const desktopViewSettingsOpen = !isMobile && viewSettingsOpen
 
   if (isLoading) {
     return (
@@ -252,84 +255,119 @@ function PublicDatabaseContent({
   }
 
   return (
-    <div className="flex h-svh min-h-0 w-full overflow-hidden bg-background">
-      <div className="min-h-0 min-w-0 flex-1">
-        <PageSidePaneLayout
-          className="bg-background animate-in fade-in-0 duration-300"
-          standalone
-          viewportHeightClass="h-svh"
-          main={
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <PublicPaneTopbar pageId={databasePageId} />
-              <DatabaseMainPane
-                activeDatabaseViewId={activeDatabaseViewId}
-                className="min-h-0 min-w-0 flex-1 overflow-y-auto"
-                databaseId={databaseId}
-                onOpenPage={handleOpenPage}
-                onViewSettingsOpenChange={handleViewSettingsOpenChange}
-                readOnly
-                viewSettingsOpen={viewSettingsOpen}
-                viewSettingsPanelTarget={viewSettingsPanelTarget}
-              />
-            </div>
-          }
-          sidePane={
-            !viewSettingsOpen && renderedSidePanePageId ? (
-              <div className="flex h-full min-h-0 flex-col">
-                <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      aria-label="Close side pane"
-                      onClick={closeSidePane}
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <ArrowRight />
-                    </Button>
-                    <Button
-                      aria-label="Open as main page"
-                      asChild
-                      size="icon-sm"
-                      variant="ghost"
-                    >
-                      <Link
-                        params={{ pageId: renderedSidePanePageId }}
-                        to="/p/$pageId"
-                      >
-                        <Maximize2 />
-                      </Link>
-                    </Button>
-                  </div>
-                  <PublicPageBreadcrumb pageId={renderedSidePanePageId} />
-                </div>
-                {sidePaneContentReady ? (
-                  <PageEditorPane
-                    className="min-h-0 flex-1"
-                    databaseId={sidePaneDatabaseId ?? databaseId}
-                    enableComments={false}
-                    key={renderedSidePanePageId}
-                    onOpenPage={handleOpenPage}
-                    readOnly
-                    pageId={renderedSidePanePageId}
-                  />
-                ) : null}
+    <>
+      <ResizablePanelGroup
+        className="h-svh min-h-0 w-full overflow-hidden bg-background"
+        orientation="horizontal"
+      >
+        <ResizablePanel
+          className="h-full min-h-0 min-w-0"
+          defaultSize="100%"
+          id="public-database-main"
+          minSize="50%"
+        >
+          <PageSidePaneLayout
+            className="bg-background animate-in fade-in-0 duration-300"
+            standalone
+            viewportHeightClass="h-svh"
+            main={
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <PublicPaneTopbar pageId={databasePageId} />
+                <DatabaseMainPane
+                  activeDatabaseViewId={activeDatabaseViewId}
+                  className="min-h-0 min-w-0 flex-1 overflow-y-auto"
+                  databaseId={databaseId}
+                  onOpenPage={handleOpenPage}
+                  onViewSettingsOpenChange={handleViewSettingsOpenChange}
+                  readOnly
+                  viewSettingsOpen={viewSettingsOpen}
+                  viewSettingsPanelTarget={viewSettingsPanelTarget}
+                />
               </div>
-            ) : null
-          }
-          sidePaneOpen={!viewSettingsOpen && sidePaneAnimatedOpen}
-          sidePaneVisible={!viewSettingsOpen && renderedSidePanePageId !== null}
-        />
-      </div>
-      {!isMobile && viewSettingsOpen ? (
-        <aside
-          aria-label="View settings sidebar"
-          className="h-full min-h-0 w-80 shrink-0 overflow-hidden border-l border-border bg-background"
+            }
+            sidePane={
+              !viewSettingsOpen && renderedSidePanePageId ? (
+                <PublicDatabaseSidePane
+                  databaseId={sidePaneDatabaseId ?? databaseId}
+                  onClose={closeSidePane}
+                  onOpenPage={handleOpenPage}
+                  pageId={renderedSidePanePageId}
+                  ready={sidePaneContentReady}
+                />
+              ) : null
+            }
+            sidePaneOpen={!viewSettingsOpen && sidePaneAnimatedOpen}
+            sidePaneVisible={
+              !viewSettingsOpen && renderedSidePanePageId !== null
+            }
+          />
+        </ResizablePanel>
+        <ResizableRightSidebarPanel
+          ariaLabel="View settings sidebar"
+          defaultSize="320px"
+          maxSize="480px"
+          minSize="280px"
+          open={desktopViewSettingsOpen}
+          panelId="public-database-view-settings"
         >
           {settingsSidebar}
-        </aside>
-      ) : null}
+        </ResizableRightSidebarPanel>
+      </ResizablePanelGroup>
       <EmbeddedPageDialog onOpenPage={handleOpenPage} />
+    </>
+  )
+}
+
+function PublicDatabaseSidePane({
+  databaseId,
+  onClose,
+  onOpenPage,
+  pageId,
+  ready,
+}: {
+  databaseId: string
+  onClose: () => void
+  onOpenPage: (pageId: string, options?: OpenPageOptions) => void
+  pageId: string
+  ready: boolean
+}) {
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            aria-label="Close side pane"
+            onClick={onClose}
+            size="icon-sm"
+            type="button"
+            variant="ghost"
+          >
+            <ArrowRight />
+          </Button>
+          <Button
+            aria-label="Open as main page"
+            asChild
+            size="icon-sm"
+            variant="ghost"
+          >
+            <Link params={{ pageId }} to="/p/$pageId">
+              <Maximize2 />
+            </Link>
+          </Button>
+        </div>
+        <PublicPageBreadcrumb pageId={pageId} />
+      </div>
+      {ready ? (
+        <PageEditorPane
+          className="min-h-0 flex-1"
+          databaseId={databaseId}
+          enableComments={false}
+          key={pageId}
+          onOpenPage={onOpenPage}
+          readOnly
+          pageId={pageId}
+        />
+      ) : null}
     </div>
   )
 }

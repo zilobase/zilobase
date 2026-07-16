@@ -131,13 +131,15 @@ type ShareTargetValue = `${AccessTargetType}:${string}`;
 
 export function NavActions({
   databaseId,
-  onOpenDiscussions,
+  discussionsOpen = false,
+  onToggleDiscussions,
   onTogglePageSidebar,
   pageSidebarOpen = false,
   pageId,
 }: {
   databaseId?: string | null;
-  onOpenDiscussions?: () => void;
+  discussionsOpen?: boolean;
+  onToggleDiscussions?: () => void;
   onTogglePageSidebar?: () => void;
   pageSidebarOpen?: boolean;
   pageId?: string | null;
@@ -373,6 +375,10 @@ export function NavActions({
     );
   };
 
+  const discussionsActionLabel = discussionsOpen
+    ? "Close discussions"
+    : "Open discussions";
+
   return (
     <div className="flex items-center gap-2 text-sm">
       <div className="hidden font-medium text-muted-foreground md:inline-block">
@@ -380,13 +386,17 @@ export function NavActions({
       </div>
       {hasPageActions ? (
         <>
-          {pageId && onOpenDiscussions ? (
+          {pageId && onToggleDiscussions ? (
             <Button
-              aria-label="Open discussions"
-              className="h-7 gap-1.5 px-2"
-              onClick={onOpenDiscussions}
+              aria-label={discussionsActionLabel}
+              aria-pressed={discussionsOpen}
+              className={cn(
+                "h-7 gap-1.5 px-2",
+                discussionsOpen && "bg-accent",
+              )}
+              onClick={onToggleDiscussions}
               size="sm"
-              title="Open discussions"
+              title={discussionsActionLabel}
               type="button"
               variant="ghost"
             >

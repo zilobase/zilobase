@@ -1,21 +1,34 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
-import type { ComponentProps, ReactNode } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import type {
+  ComponentProps,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+} from "react"
+import type { PanelImperativeHandle, PanelSize } from "react-resizable-panels"
 
+import {
+  getRightSidebarDockMinSize,
+  getSidebarResizeIntent,
+  interpolateSidebarPanelPercentage,
+  resolveSidebarPanelPercentage,
+  RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE,
+  RIGHT_SIDEBAR_SINGLE_MAX_SIZE,
+  RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE,
+  RIGHT_SIDEBAR_SPLIT_MAX_SIZE,
+  RIGHT_SIDEBAR_TRANSITION_MS,
+  type SidebarResizeIntent,
+} from "@/components/sidebar-panel-sizing"
 import {
   ResizableHandle,
   ResizablePanel,
 } from "@/components/ui/resizable"
-import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 
-export const RIGHT_SIDEBAR_SINGLE_MAX_SIZE = 100 / 3
-export const RIGHT_SIDEBAR_SPLIT_MAX_SIZE = 25
-export const RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE = 28
-export const RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE = 22
-
-const RIGHT_SIDEBAR_MIN_SIZE = 18
+const noOp = () => {}
+const hiddenGridTrack = "minmax(0, 0fr)"
+const visibleGridTrack = "minmax(0, 1fr)"
 const panelPercentage = (size: number) => `${size}%`
 
 export function RightSidebarSurface({
@@ -33,81 +46,168 @@ export function RightSidebarSurface({
   )
 }
 
-export function getRightSidebarEditorMinSize(openPanelCount: number) {
-  if (openPanelCount >= 2) {
-    return panelPercentage(100 - RIGHT_SIDEBAR_SPLIT_MAX_SIZE * 2)
-  }
-
-  if (openPanelCount === 1) {
-    return panelPercentage(100 - RIGHT_SIDEBAR_SINGLE_MAX_SIZE)
-  }
-
-  return "0%"
-}
-
-export function getRightSidebarEditorDefaultSize(openPanelCount: number) {
-  if (openPanelCount >= 2) {
-    return panelPercentage(100 - RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE * 2)
-  }
-
-  if (openPanelCount === 1) {
-    return panelPercentage(100 - RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE)
-  }
-
-  return "100%"
-}
-
-function RightSidebarDesktopPanel({
-  ariaLabel,
-  children,
-  onWidthChange,
-  openPanelCount,
-  panelId,
-}: {
+type ResizableRightSidebarPanelProps = {
   ariaLabel: string
   children: ReactNode
+  defaultSize: string
+  maxSize: string
+  minSize: string
+  onResizeIntent?: (intent: SidebarResizeIntent) => void
   onWidthChange?: (width: number) => void
-  openPanelCount: number
+  open: boolean
   panelId: string
-}) {
-  const panelRef = useRef<HTMLDivElement | null>(null)
-  const maxSize =
-    openPanelCount >= 2
-      ? RIGHT_SIDEBAR_SPLIT_MAX_SIZE
-      : RIGHT_SIDEBAR_SINGLE_MAX_SIZE
-  const defaultSize =
-    openPanelCount >= 2
-      ? RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE
-      : RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE
+}
+
+export function ResizableRightSidebarPanel({
+  ariaLabel,
+  children,
+  defaultSize,
+  maxSize,
+  minSize,
+  onResizeIntent,
+  onWidthChange,
+  open,
+  panelId,
+}: ResizableRightSidebarPanelProps) {
+  const panelElementRef = useRef<HTMLDivElement | null>(null)
+  const panelHandleRef = useRef<PanelImperativeHandle | null>(null)
+  const pointerCleanupRef = useRef<() => void>(noOp)
+  const previousStateRef = useRef({ defaultSize, open })
+  const [animating, setAnimating] = useState(false)
+  const previousState = previousStateRef.current
+  const layoutChanged =
+    previousState.open !== open ||
+    (open && previousState.defaultSize !== defaultSize)
+  const transitioning = animating || layoutChanged
+
+  useEffect(() => () => pointerCleanupRef.current(), [])
+
+  const handleResizePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!onResizeIntent || event.button !== 0) return
+
+      const startX = event.clientX
+      pointerCleanupRef.current()
+
+      const cleanup = () => {
+        window.removeEventListener("pointermove", handlePointerMove)
+        window.removeEventListener("pointerup", cleanup)
+        window.removeEventListener("pointercancel", cleanup)
+        pointerCleanupRef.current = noOp
+      }
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        const intent = getSidebarResizeIntent(moveEvent.clientX - startX)
+        if (!intent) return
+
+        onResizeIntent(intent)
+        cleanup()
+      }
+
+      window.addEventListener("pointermove", handlePointerMove)
+      window.addEventListener("pointerup", cleanup)
+      window.addEventListener("pointercancel", cleanup)
+      pointerCleanupRef.current = cleanup
+    },
+    [onResizeIntent],
+  )
+
+  const handlePanelResize = useCallback(
+    ({ inPixels }: PanelSize) => onWidthChange?.(inPixels),
+    [onWidthChange],
+  )
 
   useEffect(() => {
-    if (!onWidthChange || !panelRef.current) {
+    const stateChanged =
+      previousStateRef.current.open !== open ||
+      (open && previousStateRef.current.defaultSize !== defaultSize)
+
+    previousStateRef.current = { defaultSize, open }
+    if (stateChanged) setAnimating(true)
+  }, [defaultSize, open])
+
+  useEffect(() => {
+    if (!animating) return
+
+    const element = panelElementRef.current
+    const panel = panelHandleRef.current
+
+    if (!element || !panel) {
+      setAnimating(false)
       return
     }
 
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry) {
-        onWidthChange(entry.contentRect.width)
-      }
-    })
+    const startSize = panel.getSize().asPercentage
+    const targetSize = open
+      ? resolveSidebarPanelPercentage(
+          defaultSize,
+          element.parentElement?.getBoundingClientRect().width ?? 0,
+        )
+      : 0
+    const skipAnimation =
+      document.hidden ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      Math.abs(startSize - targetSize) < 0.01
+    let animationFrame = 0
 
-    observer.observe(panelRef.current)
-
-    return () => {
-      observer.disconnect()
+    if (skipAnimation) {
+      panel.resize(`${targetSize}%`)
+      setAnimating(false)
+      return
     }
-  }, [onWidthChange])
+
+    const startedAt = performance.now()
+    const animate = (now: number) => {
+      const progress = Math.min(
+        (now - startedAt) / RIGHT_SIDEBAR_TRANSITION_MS,
+        1,
+      )
+      const nextSize = interpolateSidebarPanelPercentage(
+        startSize,
+        targetSize,
+        progress,
+      )
+
+      panel.resize(`${nextSize}%`)
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate)
+      } else {
+        setAnimating(false)
+      }
+    }
+
+    animationFrame = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(animationFrame)
+  }, [animating, defaultSize, open])
 
   return (
     <>
-      <ResizableHandle withHandle />
+      <ResizableHandle
+        className={
+          open
+            ? "opacity-100 transition-opacity duration-200 motion-reduce:transition-none"
+            : "pointer-events-none w-0 opacity-0 transition-opacity duration-200 after:hidden motion-reduce:transition-none"
+        }
+        disabled={!open || transitioning}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft") {
+            onResizeIntent?.("increase")
+          } else if (event.key === "ArrowRight") {
+            onResizeIntent?.("decrease")
+          }
+        }}
+        onPointerDown={onResizeIntent ? handleResizePointerDown : undefined}
+        withHandle={open}
+      />
       <ResizablePanel
         className="min-h-0 min-w-0"
-        defaultSize={panelPercentage(defaultSize)}
-        elementRef={panelRef}
+        defaultSize={open ? defaultSize : "0%"}
+        elementRef={panelElementRef}
         id={panelId}
-        maxSize={panelPercentage(maxSize)}
-        minSize={panelPercentage(RIGHT_SIDEBAR_MIN_SIZE)}
+        maxSize={maxSize}
+        minSize={!open || transitioning ? "0%" : minSize}
+        onResize={onWidthChange ? handlePanelResize : undefined}
+        panelRef={panelHandleRef}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -115,7 +215,16 @@ function RightSidebarDesktopPanel({
           overflow: "hidden",
         }}
       >
-        <RightSidebarSurface aria-label={ariaLabel}>
+        <RightSidebarSurface
+          aria-hidden={!open}
+          aria-label={ariaLabel}
+          className={
+            open
+              ? "translate-x-0 opacity-100 transition-[transform,opacity] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+              : "pointer-events-none translate-x-3 opacity-0 transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none"
+          }
+          inert={open ? undefined : true}
+        >
           {children}
         </RightSidebarSurface>
       </ResizablePanel>
@@ -123,31 +232,36 @@ function RightSidebarDesktopPanel({
   )
 }
 
-function RightSidebarMobilePanel({
-  ariaLabel,
-  children,
-  open,
-  rightOffset = false,
-  zIndexClassName = "z-40",
-}: {
+type OverlayRightSidebarPanelProps = {
   ariaLabel: string
   children: ReactNode
   open: boolean
+  panelId: string
   rightOffset?: boolean
   zIndexClassName?: string
-}) {
+}
+
+function OverlayRightSidebarPanel({
+  ariaLabel,
+  children,
+  open,
+  panelId,
+  rightOffset = false,
+  zIndexClassName = "z-40",
+}: OverlayRightSidebarPanelProps) {
   return (
     <RightSidebarSurface
       aria-hidden={!open}
       aria-label={ariaLabel}
+      id={panelId}
       className={cn(
-        "fixed inset-y-0 h-svh w-[min(100vw,var(--right-sidebar-panel-width))] border-l border-sidebar-border transition-[right] duration-200 ease-linear",
+        "fixed inset-y-0 right-0 h-svh w-[min(100vw,var(--right-sidebar-panel-width))] border-l border-sidebar-border transition-[transform,opacity] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
         zIndexClassName,
         open
           ? rightOffset
-            ? "right-(--right-sidebar-panel-width)"
-            : "right-0"
-          : "pointer-events-none right-[calc(min(100vw,var(--right-sidebar-panel-width))*-1)]",
+            ? "-translate-x-full"
+            : "translate-x-0"
+          : "pointer-events-none translate-x-full opacity-0",
       )}
       inert={open ? undefined : true}
     >
@@ -156,81 +270,190 @@ function RightSidebarMobilePanel({
   )
 }
 
+type SidebarPanelSelection = {
+  ariaLabel: string
+  key: "discussions" | "page" | "view-settings"
+  panel: ReactNode
+}
+
+type PrimarySidebarPanelOptions = {
+  discussionsEnabled: boolean
+  discussionsOpen: boolean
+  discussionsPanel?: ReactNode
+  pageSidebarOpen: boolean
+  pageSidebarPanel?: ReactNode
+  utilitySidebarOpen?: boolean
+  utilitySidebarPanel?: ReactNode
+}
+
+function selectPrimarySidebarPanel({
+  discussionsEnabled,
+  discussionsOpen,
+  discussionsPanel,
+  pageSidebarOpen,
+  pageSidebarPanel,
+  utilitySidebarOpen = false,
+  utilitySidebarPanel,
+}: PrimarySidebarPanelOptions): SidebarPanelSelection | null {
+  if (utilitySidebarOpen && utilitySidebarPanel != null) {
+    return {
+      ariaLabel: "View settings sidebar",
+      key: "view-settings",
+      panel: utilitySidebarPanel,
+    }
+  }
+
+  if (pageSidebarOpen && pageSidebarPanel != null) {
+    return {
+      ariaLabel: "Page sidebar",
+      key: "page",
+      panel: pageSidebarPanel,
+    }
+  }
+
+  if (discussionsEnabled && discussionsOpen && discussionsPanel != null) {
+    return {
+      ariaLabel: "Discussions sidebar",
+      key: "discussions",
+      panel: discussionsPanel,
+    }
+  }
+
+  return null
+}
+
+function useAdjacentPanelWidth(enabled: boolean) {
+  const lastWidthRef = useRef<number | null>(null)
+  const updateWidth = useCallback((width: number) => {
+    const roundedWidth = Math.round(width)
+    if (lastWidthRef.current === roundedWidth) return
+
+    lastWidthRef.current = roundedWidth
+    document.documentElement.style.setProperty(
+      "--right-sidebar-adjacent-panel-width",
+      `${roundedWidth}px`,
+    )
+  }, [])
+
+  useEffect(() => {
+    if (!enabled) {
+      lastWidthRef.current = null
+      document.documentElement.style.removeProperty(
+        "--right-sidebar-adjacent-panel-width",
+      )
+    }
+
+    return () => {
+      lastWidthRef.current = null
+      document.documentElement.style.removeProperty(
+        "--right-sidebar-adjacent-panel-width",
+      )
+    }
+  }, [enabled])
+
+  return enabled ? updateWidth : undefined
+}
+
 export function RightSidebars({
   chatOpen,
   chatPanel,
   discussionsEnabled,
   discussionsOpen,
   discussionsPanel,
+  isMobile,
+  navigationSidebarOpen,
+  onResizeIntent,
   pageSidebarOpen = false,
   pageSidebarPanel,
+  utilitySidebarOpen = false,
+  utilitySidebarPanel,
 }: {
   chatOpen: boolean
   chatPanel: ReactNode
   discussionsEnabled: boolean
   discussionsOpen: boolean
   discussionsPanel?: ReactNode
+  isMobile: boolean
+  navigationSidebarOpen: boolean
+  onResizeIntent?: (intent: SidebarResizeIntent) => void
   pageSidebarOpen?: boolean
   pageSidebarPanel?: ReactNode
+  utilitySidebarOpen?: boolean
+  utilitySidebarPanel?: ReactNode
 }) {
-  const isMobile = useIsMobile()
-  const openPanelCount =
-    (chatOpen ? 1 : 0) +
-    (discussionsEnabled && discussionsOpen ? 1 : 0) +
-    (pageSidebarOpen ? 1 : 0)
-  const updateAdjacentPanelWidth = useCallback((width: number) => {
-    document.documentElement.style.setProperty(
-      "--right-sidebar-adjacent-panel-width",
-      `${width}px`,
-    )
-  }, [])
+  const primaryPanel = selectPrimarySidebarPanel({
+    discussionsEnabled,
+    discussionsOpen,
+    discussionsPanel,
+    pageSidebarOpen,
+    pageSidebarPanel,
+    utilitySidebarOpen,
+    utilitySidebarPanel,
+  })
+  const openPanelCount = Number(chatOpen) + Number(primaryPanel !== null)
+  const dockOpen = openPanelCount > 0
+  const splitDock = openPanelCount === 2
+  const updateAdjacentPanelWidth = useAdjacentPanelWidth(
+    !isMobile && primaryPanel !== null,
+  )
 
-  useEffect(() => {
-    if (!discussionsOpen && !pageSidebarOpen) {
-      document.documentElement.style.removeProperty(
-        "--right-sidebar-adjacent-panel-width",
-      )
-    }
-  }, [discussionsOpen, pageSidebarOpen])
-
-  if (isMobile) {
-    return null
-  }
+  if (isMobile) return null
 
   return (
-    <>
-      {pageSidebarOpen && pageSidebarPanel ? (
-        <RightSidebarDesktopPanel
-          ariaLabel="Page sidebar"
-          onWidthChange={updateAdjacentPanelWidth}
-          openPanelCount={openPanelCount}
-          panelId="right-sidebar-page"
+    <ResizableRightSidebarPanel
+      ariaLabel="Right sidebar dock"
+      defaultSize={panelPercentage(
+        splitDock
+          ? RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE * 2
+          : RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE,
+      )}
+      maxSize={panelPercentage(
+        splitDock
+          ? RIGHT_SIDEBAR_SPLIT_MAX_SIZE * 2
+          : RIGHT_SIDEBAR_SINGLE_MAX_SIZE,
+      )}
+      minSize={panelPercentage(
+        getRightSidebarDockMinSize(splitDock, navigationSidebarOpen),
+      )}
+      onResizeIntent={onResizeIntent}
+      onWidthChange={updateAdjacentPanelWidth}
+      open={dockOpen}
+      panelId="right-sidebar-dock"
+    >
+      <div
+        className="grid min-h-0 min-w-0 flex-1 overflow-hidden transition-[grid-template-columns] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+        style={{
+          gridTemplateColumns: `${primaryPanel ? visibleGridTrack : hiddenGridTrack} ${chatOpen ? visibleGridTrack : hiddenGridTrack}`,
+        }}
+      >
+        <section
+          aria-hidden={!primaryPanel}
+          aria-label={primaryPanel?.ariaLabel}
+          className="min-h-0 min-w-0 overflow-hidden"
+          inert={primaryPanel ? undefined : true}
         >
-          {pageSidebarPanel}
-        </RightSidebarDesktopPanel>
-      ) : null}
-
-      {discussionsEnabled && discussionsOpen && discussionsPanel ? (
-        <RightSidebarDesktopPanel
-          ariaLabel="Discussions sidebar"
-          onWidthChange={updateAdjacentPanelWidth}
-          openPanelCount={openPanelCount}
-          panelId="right-sidebar-discussions"
-        >
-          {discussionsPanel}
-        </RightSidebarDesktopPanel>
-      ) : null}
-
-      {chatOpen ? (
-        <RightSidebarDesktopPanel
-          ariaLabel="Chat sidebar"
-          openPanelCount={openPanelCount}
-          panelId="right-sidebar-chat"
+          {primaryPanel ? (
+            <div
+              className="h-full min-h-0 animate-in fade-in-0 slide-in-from-right-1 duration-200 motion-reduce:animate-none"
+              key={primaryPanel.key}
+            >
+              {primaryPanel.panel}
+            </div>
+          ) : null}
+        </section>
+        <section
+          aria-hidden={!chatOpen}
+          aria-label="Chat sidebar"
+          className={cn(
+            "min-h-0 min-w-0 overflow-hidden",
+            splitDock && "border-l border-border",
+          )}
+          inert={chatOpen ? undefined : true}
         >
           {chatPanel}
-        </RightSidebarDesktopPanel>
-      ) : null}
-    </>
+        </section>
+      </div>
+    </ResizableRightSidebarPanel>
   )
 }
 
@@ -240,6 +463,7 @@ export function RightSidebarMobilePanels({
   discussionsEnabled,
   discussionsOpen,
   discussionsPanel,
+  isMobile,
   pageSidebarOpen = false,
   pageSidebarPanel,
 }: {
@@ -248,43 +472,49 @@ export function RightSidebarMobilePanels({
   discussionsEnabled: boolean
   discussionsOpen: boolean
   discussionsPanel?: ReactNode
+  isMobile: boolean
   pageSidebarOpen?: boolean
   pageSidebarPanel?: ReactNode
 }) {
-  const isMobile = useIsMobile()
+  const primaryPanel = selectPrimarySidebarPanel({
+    discussionsEnabled,
+    discussionsOpen,
+    discussionsPanel,
+    pageSidebarOpen,
+    pageSidebarPanel,
+  })
+  const primaryPanelAvailable =
+    pageSidebarPanel != null || discussionsPanel != null
 
-  if (!isMobile) {
-    return null
-  }
+  if (!isMobile) return null
 
   return (
-    <>
-      <div className="md:hidden">
-        {pageSidebarPanel ? (
-          <RightSidebarMobilePanel
-            ariaLabel="Page sidebar"
-            open={pageSidebarOpen}
-          >
-            {pageSidebarPanel}
-          </RightSidebarMobilePanel>
-        ) : null}
-        {discussionsEnabled && discussionsPanel ? (
-          <RightSidebarMobilePanel
-            ariaLabel="Discussions sidebar"
-            open={discussionsOpen}
-            rightOffset={chatOpen}
-          >
-            {discussionsPanel}
-          </RightSidebarMobilePanel>
-        ) : null}
-        <RightSidebarMobilePanel
-          ariaLabel="Chat sidebar"
-          open={chatOpen}
-          zIndexClassName="z-50"
+    <div className="md:hidden">
+      {primaryPanelAvailable ? (
+        <OverlayRightSidebarPanel
+          ariaLabel={primaryPanel?.ariaLabel ?? "Right sidebar"}
+          open={primaryPanel !== null}
+          panelId="mobile-right-sidebar-primary"
+          rightOffset={chatOpen}
         >
-          {chatPanel}
-        </RightSidebarMobilePanel>
-      </div>
-    </>
+          {primaryPanel ? (
+            <div
+              className="h-full min-h-0 animate-in fade-in-0 slide-in-from-right-1 duration-200 motion-reduce:animate-none"
+              key={primaryPanel.key}
+            >
+              {primaryPanel.panel}
+            </div>
+          ) : null}
+        </OverlayRightSidebarPanel>
+      ) : null}
+      <OverlayRightSidebarPanel
+        ariaLabel="Chat sidebar"
+        open={chatOpen}
+        panelId="mobile-right-sidebar-chat"
+        zIndexClassName="z-50"
+      >
+        {chatPanel}
+      </OverlayRightSidebarPanel>
+    </div>
   )
 }
