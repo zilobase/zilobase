@@ -1,0 +1,18 @@
+{
+  "name": "@zilobase/license",
+  "type": "module",
+  "version": "0.0.0",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@zilobase/core-ports": "*"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.ts"
+  }
+}

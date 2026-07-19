@@ -8,6 +8,7 @@ import {
   organization as organizationPlugin,
 } from "better-auth/plugins";
 import { API_KEY_PREFIX } from "./api-keys";
+import { getEEPlugins } from "./edition";
 import { db, type Database } from "./db";
 import * as schema from "./db/schema";
 import { sendEmail } from "./email";
@@ -53,6 +54,9 @@ function sharedAuthOptions(env: AuthEnv) {
       autoSignInAfterVerification: true,
     },
     plugins: [
+      // Enterprise-edition plugins (SSO, ...). Empty in the Community build; each
+      // EE plugin self-gates on the active license tier. See ./edition.ts.
+      ...(getEEPlugins() as never[]),
       apiKey({
         defaultPrefix: API_KEY_PREFIX,
         enableMetadata: true,

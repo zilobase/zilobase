@@ -12,9 +12,12 @@
   },
   "workspaces": [
     "apps/*",
+    "packages/core-ports",
     "packages/features",
+    "packages/license",
     "packages/markdown-text-splitter",
     "packages/page-context",
+    "packages/registry",
     "packages/tiptap-comment-extension"
   ],
   "scripts": {
