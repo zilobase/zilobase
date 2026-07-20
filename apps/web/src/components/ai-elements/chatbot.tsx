@@ -94,24 +94,6 @@ import { useQuery } from "@tanstack/react-query";
 import { integrationIcons } from "@/lib/integration-icons";
 import { useChat } from "@ai-sdk/react";
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api";
-import { GmailToolOutput, isGmailToolName } from "@zilobase/toolkit-connector-runtime/gmail/ui";
-import {
-  GithubToolOutput,
-  isGithubToolName,
-} from "@zilobase/toolkit-connector-runtime/github/ui";
-import {
-  GoogleCalendarToolOutput,
-  isGoogleCalendarToolName,
-} from "@zilobase/toolkit-connector-runtime/google-calendar/ui";
-import {
-  GoogleDriveToolOutput,
-  isGoogleDriveToolName,
-} from "@zilobase/toolkit-connector-runtime/google-drive/ui";
-import {
-  isLinearToolName,
-  LinearToolOutput,
-} from "@zilobase/toolkit-connector-runtime/linear/ui";
-import { isSlackToolName, SlackToolOutput } from "@zilobase/toolkit-connector-runtime/slack/ui";
 import {
   type ChatStatus,
   DefaultChatTransport,
@@ -134,7 +116,6 @@ import {
   PlusIcon,
   XIcon,
 } from "lucide-react";
-import { useGenerativeToolUiEnabled } from "@/lib/debug-settings";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -605,83 +586,6 @@ const SourceSelector = ({
   );
 };
 
-const GenerativeToolOutput = ({
-  errorText,
-  input,
-  output,
-  showGenerativeToolUi,
-  toolName,
-}: {
-  errorText: ToolPart["errorText"];
-  input: ToolPart["input"];
-  output: ToolPart["output"];
-  showGenerativeToolUi: boolean;
-  toolName: string;
-}) => {
-  if (!showGenerativeToolUi) {
-    return null;
-  }
-
-  if (isSlackToolName(toolName) && errorText) {
-    return (
-      <div className="w-full">
-        <SlackToolOutput
-          errorText={errorText}
-          input={input}
-          output={output}
-          toolName={toolName}
-        />
-      </div>
-    );
-  }
-
-  if (errorText || !output) {
-    return null;
-  }
-
-  if (isGmailToolName(toolName)) {
-    return (
-      <div className="w-full">
-        <GmailToolOutput output={output} toolName={toolName} />
-      </div>
-    );
-  }
-
-  if (isGithubToolName(toolName)) {
-    return (
-      <div className="w-full">
-        <GithubToolOutput output={output} toolName={toolName} />
-      </div>
-    );
-  }
-
-  if (isLinearToolName(toolName)) {
-    return (
-      <div className="w-full">
-        <LinearToolOutput output={output} toolName={toolName} />
-      </div>
-    );
-  }
-
-  if (isGoogleCalendarToolName(toolName)) {
-    return (
-      <div className="w-full">
-        <GoogleCalendarToolOutput output={output} toolName={toolName} />
-      </div>
-    );
-  }
-
-  if (isGoogleDriveToolName(toolName)) {
-    return (
-      <div className="w-full">
-        <GoogleDriveToolOutput output={output} toolName={toolName} />
-      </div>
-    );
-  }
-
-  return null;
-};
-
 const PendingAssistantStatus = () => {
   const [phraseIndex, setPhraseIndex] = useState(0);
   const phrase = pendingPhrases[phraseIndex % pendingPhrases.length];
@@ -832,7 +736,6 @@ const ChatMessage = ({
   onDiscardPageEdit,
   onTogglePageEditChanges,
   onUndoPageEdit,
-  showGenerativeToolUi,
   snapshotByToolCallId,
   visibleDiffToolCallId,
 }: {
@@ -844,7 +747,6 @@ const ChatMessage = ({
   onDiscardPageEdit: (toolCallId: string) => void | Promise<void>;
   onTogglePageEditChanges: (toolCallId: string) => void;
   onUndoPageEdit: (toolCallId: string) => void | Promise<void>;
-  showGenerativeToolUi: boolean;
   snapshotByToolCallId: Map<string, PageEditSnapshotPart>;
   visibleDiffToolCallId: string | null;
 }) => {
@@ -868,58 +770,18 @@ const ChatMessage = ({
           }
 
           if (group.type === "integration-tools") {
-            const slackAccessErrors = group.parts.filter(
-              isSlackNotInChannelToolPart,
-            );
-            const slackAccessChannels = slackAccessErrors
-              .map((part) => getToolInputChannel(part.input))
-              .filter((channel): channel is string => Boolean(channel));
-
             return (
               <IntegrationToolTaskGroup
                 getToolPresentation={(part, toolName) =>
                   resolveIntegrationToolPresentation({
-                    legacySource: toolSources[toolName],
-                    legacyTitle: toolTitles[toolName],
                     part,
+                    source: toolSources[toolName],
+                    title: toolTitles[toolName],
                     toolName,
                   })
                 }
                 key={`${message.id}-integration-${group.startIndex}`}
                 parts={group.parts}
-                renderGenerativeOutput={
-                  showGenerativeToolUi
-                    ? (part, toolName) => {
-                        if (
-                          isSlackNotInChannelToolPart(part) &&
-                          isSlackToolName(toolName)
-                        ) {
-                          if (part !== slackAccessErrors[0]) {
-                            return null;
-                          }
-
-                          return (
-                            <SlackToolOutput
-                              channels={slackAccessChannels}
-                              errorText={part.errorText}
-                              input={part.input}
-                              toolName={toolName}
-                            />
-                          );
-                        }
-
-                        return (
-                          <GenerativeToolOutput
-                            errorText={part.errorText}
-                            input={part.input}
-                            output={part.output}
-                            showGenerativeToolUi={showGenerativeToolUi}
-                            toolName={toolName}
-                          />
-                        );
-                      }
-                    : undefined
-                }
               />
             );
           }
@@ -978,29 +840,6 @@ const ChatMessage = ({
     </Message>
   );
 };
-
-function isSlackNotInChannelToolPart(part: ToolPart) {
-  const staticToolName =
-    part.type === "dynamic-tool"
-      ? part.toolName
-      : part.type.replace(/^tool-/, "");
-
-  return (
-    isSlackToolName(staticToolName) &&
-    Boolean(part.errorText?.includes("not_in_channel"))
-  );
-}
-
-function getToolInputChannel(input: ToolPart["input"]) {
-  if (!input || typeof input !== "object" || !("channel" in input)) {
-    return undefined;
-  }
-
-  const channel = input.channel;
-  return typeof channel === "string" && channel.trim()
-    ? channel.trim()
-    : undefined;
-}
 
 const EmptyState = () => (
   <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-5 px-4 pb-6 text-center">
@@ -1101,8 +940,6 @@ const ChatbotInner = ({
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
-  const showGenerativeToolUi = useGenerativeToolUiEnabled();
-
   const [model, setModel] = useState<string>(fallbackModels[0].id);
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [selectedSources, setSelectedSources] = useState<SourceId[]>([]);
@@ -2018,7 +1855,6 @@ const ChatbotInner = ({
                 onDiscardPageEdit={handleDiscardPageEdit}
                 onTogglePageEditChanges={handleTogglePageEditChanges}
                 onUndoPageEdit={handleUndoPageEdit}
-                showGenerativeToolUi={showGenerativeToolUi}
                 snapshotByToolCallId={snapshotByToolCallId}
                 visibleDiffToolCallId={visibleDiffToolCallId}
               />

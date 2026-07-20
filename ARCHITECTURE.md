@@ -9,8 +9,6 @@ Zilobase is an npm-workspaces monorepo for a notes, pages, databases, comments, 
 - `apps/mobile`: Expo client that reuses shared feature packages and talks to the Zilobase API.
 - `apps/desktop`: Tauri shell for the desktop app.
 - `packages/features`: shared TanStack Query hooks, query keys, mutations, cache update logic, and small database contracts used by clients and server.
-- `../toolkit`: private Toolkit platform; `packages/connector-runtime` provides the provider catalog and result UI consumed as `@zilobase/toolkit-connector-runtime`.
-- `../toolkit-sdk`: public remote SDK and framework adapters; Zilobase product code does not import it.
 - `packages/page-context`: editor/page context extraction, database markdown construction, and ProseMirror-to-markdown helpers.
 - `packages/markdown-text-splitter`: standalone markdown text splitting utilities.
 

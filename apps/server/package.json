@@ -42,7 +42,6 @@
     "@hocuspocus/extension-database": "^4.3.0",
     "@hocuspocus/server": "^4.3.0",
     "@hocuspocus/transformer": "^4.3.0",
-    "@zilobase/toolkit-connector-runtime": "file:../../../toolkit/packages/connector-runtime",
     "@zilobase/features": "file:../../packages/features",
     "@tiptap/pm": "^3.23.6",
     "ai": "^6.0.193",

@@ -22,13 +22,7 @@
         "./../../packages/features/src/databases/property-types.ts"
       ],
       "@zilobase/features": ["./../../packages/features/src/index.ts"],
-      "@zilobase/features/*": ["./../../packages/features/src/*/index.ts"],
-      "@zilobase/toolkit-connector-runtime/gmail/ui": ["./../../../toolkit/packages/connector-runtime/src/connectors/gmail/src/ui.tsx"],
-      "@zilobase/toolkit-connector-runtime/github/ui": ["./../../../toolkit/packages/connector-runtime/src/connectors/github/src/ui.tsx"],
-      "@zilobase/toolkit-connector-runtime/google-calendar/ui": ["./../../../toolkit/packages/connector-runtime/src/connectors/google-calendar/src/ui.tsx"],
-      "@zilobase/toolkit-connector-runtime/google-drive/ui": ["./../../../toolkit/packages/connector-runtime/src/connectors/google-drive/src/ui.tsx"],
-      "@zilobase/toolkit-connector-runtime/linear/ui": ["./../../../toolkit/packages/connector-runtime/src/connectors/linear/src/ui.tsx"],
-      "@zilobase/toolkit-connector-runtime/slack/ui": ["./../../../toolkit/packages/connector-runtime/src/connectors/slack/src/ui.tsx"]
+      "@zilobase/features/*": ["./../../packages/features/src/*/index.ts"]
     },
 
     /* Linting */

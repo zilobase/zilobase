@@ -12,9 +12,6 @@ const featuresDir = fileURLToPath(
 const pageContextDir = fileURLToPath(
   new URL("../../packages/page-context/src", import.meta.url),
 );
-const toolkitConnectorsDir = fileURLToPath(
-  new URL("../../../toolkit/packages/connector-runtime/src/connectors", import.meta.url),
-);
 const backendTarget = process.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:3000";
 const expectedWsProxyErrorCodes = new Set(["ECONNRESET", "EPIPE"]);
 
@@ -83,10 +80,6 @@ export default defineConfig(async () => ({
       {
         find: "@zilobase/page-context",
         replacement: `${pageContextDir}/index.ts`,
-      },
-      {
-        find: /^@zilobase\/connectors\/(.+)\/ui$/,
-        replacement: `${toolkitConnectorsDir}/$1/src/ui.tsx`,
       },
     ],
   },

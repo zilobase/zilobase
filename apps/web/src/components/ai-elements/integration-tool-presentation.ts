@@ -1,5 +1,3 @@
-import { getToolkitToolMetadata } from "ai-toolkit-sdk/vercel/metadata";
-
 import { integrationIcons } from "@/lib/integration-icons";
 
 export type IntegrationToolSource = keyof typeof integrationIcons;
@@ -8,44 +6,24 @@ export type IntegrationToolPresentation = {
   progressPhrases: string[];
   source?: IntegrationToolSource;
   title: string;
-  toolId?: string;
 };
 
 export function resolveIntegrationToolPresentation(input: {
-  legacySource?: IntegrationToolSource;
-  legacyTitle?: string;
-  part: { title?: string; toolMetadata?: unknown };
+  part: { title?: string };
+  source?: IntegrationToolSource;
+  title?: string;
   toolName: string;
 }): IntegrationToolPresentation {
-  const metadata = getToolkitToolMetadata(input.part.toolMetadata);
-
-  if (metadata) {
-    return {
-      progressPhrases: [...metadata.presentation.progressPhrases],
-      source: getIntegrationSource(metadata.connectorId),
-      title: metadata.presentation.title,
-      toolId: metadata.toolId,
-    };
-  }
-
   const title =
     input.part.title?.trim() ||
-    input.legacyTitle?.trim() ||
+    input.title?.trim() ||
     humanizeToolName(input.toolName);
 
   return {
     progressPhrases: [`Running ${title}`],
-    source: input.legacySource,
+    source: input.source,
     title,
   };
-}
-
-function getIntegrationSource(
-  connectorId: string,
-): IntegrationToolSource | undefined {
-  return connectorId in integrationIcons
-    ? (connectorId as IntegrationToolSource)
-    : undefined;
 }
 
 function humanizeToolName(toolName: string) {

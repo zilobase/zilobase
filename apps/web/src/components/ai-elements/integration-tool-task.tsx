@@ -12,7 +12,7 @@ import { integrationIcons } from "@/lib/integration-icons";
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import { isProposePageContentUpdateToolName } from "@zilobase/features/ai-chat";
 import { isDatabaseConfigToolPart } from "@/components/ai-elements/database-tool-steps";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import type { IntegrationToolPresentation } from "@/components/ai-elements/integration-tool-presentation";
 
 type IntegrationToolTaskGroupProps = {
@@ -21,7 +21,6 @@ type IntegrationToolTaskGroupProps = {
     toolName: string,
   ) => IntegrationToolPresentation;
   parts: ToolPart[];
-  renderGenerativeOutput?: (part: ToolPart, toolName: string) => ReactNode;
 };
 
 const finishedLabels: Partial<Record<ToolPart["state"], string>> = {
@@ -48,14 +47,12 @@ function isIntegrationToolPart(part: ToolPart) {
 const IntegrationToolTaskItem = ({
   getToolPresentation,
   part,
-  renderGenerativeOutput,
 }: {
   getToolPresentation: (
     part: ToolPart,
     toolName: string,
   ) => IntegrationToolPresentation;
   part: ToolPart;
-  renderGenerativeOutput?: (part: ToolPart, toolName: string) => ReactNode;
 }) => {
   const toolName = getStaticToolName(part);
   const { progressPhrases, source, title } = getToolPresentation(part, toolName);
@@ -85,55 +82,47 @@ const IntegrationToolTaskItem = ({
       ? `${finishedLabel}: ${title}`
       : progressPhrases[phraseIndex % progressPhrases.length] ?? `Running ${title}`;
 
-  const generativeOutput = renderGenerativeOutput?.(part, toolName);
-
   return (
-    <div className="space-y-2">
-      <TaskItem className="flex items-start gap-2">
-        {source ? (
-          <img
-            alt=""
-            aria-hidden="true"
-            className="mt-0.5 size-4 shrink-0"
-            src={integrationIcons[source]}
-          />
+    <TaskItem className="flex items-start gap-2">
+      {source ? (
+        <img
+          alt=""
+          aria-hidden="true"
+          className="mt-0.5 size-4 shrink-0"
+          src={integrationIcons[source]}
+        />
+      ) : (
+        <span className="mt-2 size-2 shrink-0 rounded-full bg-muted-foreground/60" />
+      )}
+      <span className="min-w-0 flex-1">
+        {isRunning ? (
+          <Shimmer
+            as="span"
+            className="font-medium text-sm"
+            duration={1.35}
+            spread={1.1}
+          >
+            {statusText}
+          </Shimmer>
         ) : (
-          <span className="mt-2 size-2 shrink-0 rounded-full bg-muted-foreground/60" />
+          <span
+            className={
+              part.errorText
+                ? "text-destructive text-sm"
+                : "text-muted-foreground text-sm"
+            }
+          >
+            {statusText}
+          </span>
         )}
-        <span className="min-w-0 flex-1">
-          {isRunning ? (
-            <Shimmer
-              as="span"
-              className="font-medium text-sm"
-              duration={1.35}
-              spread={1.1}
-            >
-              {statusText}
-            </Shimmer>
-          ) : (
-            <span
-              className={
-                part.errorText
-                  ? "text-destructive text-sm"
-                  : "text-muted-foreground text-sm"
-              }
-            >
-              {statusText}
-            </span>
-          )}
-        </span>
-      </TaskItem>
-      {generativeOutput ? (
-        <div className="pl-6">{generativeOutput}</div>
-      ) : null}
-    </div>
+      </span>
+    </TaskItem>
   );
 };
 
 export const IntegrationToolTaskGroup = ({
   getToolPresentation,
   parts,
-  renderGenerativeOutput,
 }: IntegrationToolTaskGroupProps) => {
   const hasActiveStep = parts.some(
     (part) =>
@@ -159,7 +148,6 @@ export const IntegrationToolTaskGroup = ({
             getToolPresentation={getToolPresentation}
             key={part.toolCallId}
             part={part}
-            renderGenerativeOutput={renderGenerativeOutput}
           />
         ))}
       </TaskContent>
