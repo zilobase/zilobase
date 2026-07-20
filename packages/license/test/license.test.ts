@@ -2,14 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 
-import { signLicense } from "../src/sign.ts";
-import { verifyLicense, isInGrace, LicenseError } from "../src/verify.ts";
+import { signLicense } from "../src/sign";
+import { verifyLicense, isInGrace, LicenseError } from "../src/verify";
 import {
   loadEntitlements,
   entitlementsFromPayload,
   createLicenseResolver,
-} from "../src/entitlements.ts";
-import type { LicensePayload } from "../src/payload.ts";
+} from "../src/entitlements";
+import type { LicensePayload } from "../src/payload";
 
 function devKeys() {
   const { publicKey, privateKey } = generateKeyPairSync("ed25519");

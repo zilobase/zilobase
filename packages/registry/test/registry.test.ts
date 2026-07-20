@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createRegistry } from "../src/registry.ts";
+import { createRegistry } from "../src/registry";
 
 // Local port keys so the test needs no runtime import from @zilobase/core-ports.
 const HelloPort = { id: "hello" } as { id: string; __type?: { hi(): string } };

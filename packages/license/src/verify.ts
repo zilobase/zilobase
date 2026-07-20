@@ -1,8 +1,8 @@
 import { createPublicKey, verify as edVerify } from "node:crypto";
 
-import { fromBase64Url } from "./encode.ts";
-import { EMBEDDED_PUBLIC_KEY } from "./keys.ts";
-import type { LicensePayload } from "./payload.ts";
+import { fromBase64Url } from "./encode";
+import { EMBEDDED_PUBLIC_KEY } from "./keys";
+import type { LicensePayload } from "./payload";
 
 export class LicenseError extends Error {
   constructor(message: string) {

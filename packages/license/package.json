@@ -13,6 +13,6 @@
     "@zilobase/core-ports": "*"
   },
   "scripts": {
-    "test": "node --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts"
   }
 }

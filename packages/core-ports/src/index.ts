@@ -1,11 +1,11 @@
-export type { Tier, Feature } from "./feature.ts";
-export type { Entitlements } from "./entitlements.ts";
-export type { EntitlementResolver, EntitlementContext } from "./resolver.ts";
+export type { Tier, Feature } from "./feature";
+export type { Entitlements } from "./entitlements";
+export type { EntitlementResolver, EntitlementContext } from "./resolver";
 export type {
   PortKey,
   AuditEvent,
   AuditSink,
   AuthProvider,
   SsoAuthorization,
-} from "./ports.ts";
-export { definePort, AuditSinkPort, AuthProviderPort } from "./ports.ts";
+} from "./ports";
+export { definePort, AuditSinkPort, AuthProviderPort } from "./ports";

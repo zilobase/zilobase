@@ -1,7 +1,7 @@
 import { createPrivateKey, sign as edSign } from "node:crypto";
 
-import { toBase64Url } from "./encode.ts";
-import type { LicensePayload } from "./payload.ts";
+import { toBase64Url } from "./encode";
+import type { LicensePayload } from "./payload";
 
 /**
  * Sign a license payload with the issuer's Ed25519 private key, producing a

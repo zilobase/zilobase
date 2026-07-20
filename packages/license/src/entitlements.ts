@@ -6,9 +6,9 @@ import type {
   Tier,
 } from "@zilobase/core-ports";
 
-import type { LicensePayload } from "./payload.ts";
-import { featuresForTier, TIER_RANK } from "./tiers.ts";
-import { verifyLicense, type VerifyOptions } from "./verify.ts";
+import type { LicensePayload } from "./payload";
+import { featuresForTier, TIER_RANK } from "./tiers";
+import { verifyLicense, type VerifyOptions } from "./verify";
 
 /** Entitlements for an unlicensed (Community) instance. */
 export const COMMUNITY_ENTITLEMENTS: Entitlements = {

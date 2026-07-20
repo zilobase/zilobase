@@ -1,4 +1,4 @@
-import type { Entitlements } from "./entitlements.ts";
+import type { Entitlements } from "./entitlements";
 
 export interface EntitlementContext {
   /**

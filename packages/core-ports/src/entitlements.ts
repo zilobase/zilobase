@@ -1,4 +1,4 @@
-import type { Feature, Tier } from "./feature.ts";
+import type { Feature, Tier } from "./feature";
 
 /**
  * The read-only view of what a running instance (self-host) or workspace
