@@ -1,0 +1,59 @@
+# Enterprise edition image: composes the OSS core (zilobase) with the private
+# EE packages (zilobase-ee) in one clean `npm ci`, then runs with
+# ZILOBASE_EDITION=enterprise so `edition.ts` loads @zilobase/ee at boot.
+#
+# BUILD CONTEXT MUST BE THE PARENT DIR that contains both repos:
+#   docker build -f zilobase/Dockerfile.enterprise -t zilobase-enterprise .
+# (run from /platform, so both ./zilobase and ./zilobase-ee are in context)
+
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+
+# Bring in both repositories.
+COPY zilobase/package.json zilobase/package-lock.json ./
+COPY zilobase/apps ./apps
+COPY zilobase/packages ./packages
+COPY zilobase-ee ./ee-src
+
+# Add the EE packages to the workspace set so a single install hoists the whole
+# dependency tree together (fixes the split-tree / nested-plugin resolution that
+# bites local dev). @zilobase/ee then resolves from node_modules at runtime.
+RUN node -e "const fs=require('fs');const p=require('./package.json');\
+p.workspaces=[...new Set([...(p.workspaces||[]),'ee-src/packages/*'])];\
+fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
+
+# --ignore-scripts avoids drizzle-kit's esbuild postinstall (unused at runtime).
+RUN npm install --ignore-scripts
+
+ARG VITE_FEATURE_DATABASE_REALTIME=true
+ENV VITE_FEATURE_DATABASE_REALTIME=${VITE_FEATURE_DATABASE_REALTIME}
+RUN npm run build:web
+
+FROM node:22-bookworm-slim AS runtime
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=3000 \
+    ZILOBASE_EDITION=enterprise \
+    ZILOBASE_WEB_DIST_DIR=/app/apps/web/dist \
+    DRIZZLE_MIGRATIONS_DIR=/app/apps/server/drizzle
+WORKDIR /app
+
+RUN groupadd --system zilobase \
+    && useradd --system --gid zilobase --home /app zilobase
+
+# Ship source + node_modules (the EE dynamic import needs the module present).
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps ./apps
+COPY --from=build /app/packages ./packages
+COPY --from=build /app/ee-src ./ee-src
+COPY --from=build /app/package.json ./package.json
+COPY zilobase/docker/entrypoint.sh ./docker/entrypoint.sh
+
+RUN chmod +x ./docker/entrypoint.sh && chown -R zilobase:zilobase /app
+USER zilobase
+EXPOSE 3000
+
+# Run the server via tsx (source), so the ZILOBASE_EDITION dynamic import of
+# @zilobase/ee resolves from node_modules. Migrations run in the entrypoint.
+ENTRYPOINT ["./docker/entrypoint.sh"]
+CMD ["node", "--import", "tsx", "apps/server/src/serverful.ts"]

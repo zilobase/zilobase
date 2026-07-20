@@ -1,17 +1,20 @@
-import { getEntitlements } from "./entitlements";
-
 /**
  * Edition composition seam.
  *
- * The OSS core never imports `zilobase-ee` statically. When
- * `ZILOBASE_EDITION=enterprise` and the private `@zilobase/ee` package is
- * installed (Enterprise build), we load it through a guarded dynamic import and
- * collect its Better Auth plugin contributions. In the Community build the
- * package is absent, the import fails, and the core runs unchanged.
+ * When `ZILOBASE_EDITION=enterprise`, load the enterprise plugin contributions
+ * and expose them to `auth.ts`. In the Community build this stays empty and the
+ * app runs unchanged. The license tier still decides Professional vs Enterprise
+ * at runtime — the EE plugins self-gate against `getEntitlements()`.
  *
- * The license tier still decides Professional vs Enterprise at runtime — the EE
- * plugins self-gate against `getEntitlements()`.
+ * Resolution order:
+ *   1. `@zilobase/ee` — the real private package (Enterprise Docker/cloud build,
+ *      where both repos are installed together via `npm ci`).
+ *   2. `./edition-enterprise` — a local dev fallback that resolves
+ *      `@better-auth/sso` from the server's own node_modules, so SSO can be
+ *      exercised with `npm run dev` without linking the sibling repo.
  */
+import { getEntitlements } from "./entitlements";
+
 let eePlugins: unknown[] = [];
 let initialized = false;
 
@@ -21,17 +24,34 @@ export async function initEdition(): Promise<void> {
 
   if (process.env.ZILOBASE_EDITION !== "enterprise") return;
 
+  // 1. Real package (indirect specifier so the Community build never tries to
+  //    statically resolve a package that is only present in the EE build).
   try {
-    // Indirect specifier so the OSS build does not statically resolve (and fail
-    // to typecheck on) a package that is only present in the Enterprise build.
     const specifier = "@zilobase/ee";
-    const mod: { registerEnterprise: (ctx: { getEntitlements: typeof getEntitlements }) => { plugins: unknown[] } } =
-      await import(specifier);
+    const mod = (await import(specifier)) as {
+      registerEnterprise: (ctx: {
+        getEntitlements: typeof getEntitlements;
+      }) => { plugins: unknown[] };
+    };
     eePlugins = mod.registerEnterprise({ getEntitlements }).plugins ?? [];
-    console.info(`[edition] Enterprise features loaded (${eePlugins.length} plugin(s)).`);
+    console.info(
+      `[edition] Enterprise features loaded from @zilobase/ee (${eePlugins.length} plugin(s)).`,
+    );
+    return;
+  } catch {
+    // fall through to the local dev composition
+  }
+
+  // 2. Local dev fallback.
+  try {
+    const { enterprisePlugins } = await import("./edition-enterprise");
+    eePlugins = enterprisePlugins();
+    console.info(
+      `[edition] Enterprise features loaded from local composition (${eePlugins.length} plugin(s)).`,
+    );
   } catch (error) {
     console.warn(
-      "[edition] ZILOBASE_EDITION=enterprise but @zilobase/ee is unavailable; running Community.",
+      "[edition] ZILOBASE_EDITION=enterprise but no enterprise composition is available; running Community.",
       error,
     );
   }

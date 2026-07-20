@@ -12,9 +12,10 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { getApiErrorMessage } from "@/lib/api"
+import { apiFetch, getApiErrorMessage } from "@/lib/api"
 import { useSignInWithPassword } from "@zilobase/features/auth"
 import { GalleryVerticalEndIcon } from "lucide-react"
+import { useState } from "react"
 
 export function LoginForm({
   className,
@@ -22,6 +23,38 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const navigate = useNavigate()
   const signInWithPassword = useSignInWithPassword()
+  const [ssoPending, setSsoPending] = useState(false)
+  const [ssoError, setSsoError] = useState<string | null>(null)
+
+  async function handleSso() {
+    setSsoError(null)
+    setSsoPending(true)
+    try {
+      const emailInput = document.getElementById("email") as HTMLInputElement | null
+      const email = emailInput?.value.trim().toLowerCase()
+      // Email-first (home-realm discovery): the email's domain selects the IdP.
+      if (!email) {
+        setSsoError("Enter your work email to continue with SSO.")
+        emailInput?.focus()
+        setSsoPending(false)
+        return
+      }
+      const callbackURL = `${window.location.origin}/dashboard`
+      const result = await apiFetch<{ url?: string }>("/api/auth/sign-in/sso", {
+        method: "POST",
+        body: JSON.stringify({ email, callbackURL }),
+      })
+      if (result?.url) {
+        window.location.assign(result.url)
+        return
+      }
+      setSsoError("No SSO provider is configured for that email domain.")
+    } catch (error) {
+      setSsoError(getApiErrorMessage(error))
+    } finally {
+      setSsoPending(false)
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -115,6 +148,20 @@ export function LoginForm({
               </svg>
               Continue with Google
             </Button>
+          </Field>
+          <Field>
+            <Button
+              variant="outline"
+              type="button"
+              onClick={handleSso}
+              disabled={ssoPending}
+            >
+              {ssoPending ? "Redirecting to your SSO provider..." : "Continue with SSO"}
+            </Button>
+            <FieldDescription>
+              Enter your work email above, then continue with your company&apos;s SSO.
+            </FieldDescription>
+            {ssoError && <FieldError>{ssoError}</FieldError>}
           </Field>
         </FieldGroup>
       </form>

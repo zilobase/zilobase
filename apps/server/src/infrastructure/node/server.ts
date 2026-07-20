@@ -5,6 +5,7 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import path from "node:path";
 import { createApp } from "../../app";
+import { initEdition } from "../../edition";
 import { attachNodeCollaborationRuntime } from "../../collaboration/node-runtime";
 import { attachNodeDatabaseRealtimeRuntime } from "../../database-realtime/node-runtime";
 import { runWithDbEnv } from "../../db";
@@ -95,9 +96,12 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
-server.listen(port, hostname, () => {
-  console.log(`Zilobase server listening on http://${hostname}:${port}`);
-  console.log(`Serving Zilobase web assets from ${webDistDir}`);
+// Load edition (enterprise plugins) before serving, so auth includes them.
+void initEdition().finally(() => {
+  server.listen(port, hostname, () => {
+    console.log(`Zilobase server listening on http://${hostname}:${port}`);
+    console.log(`Serving Zilobase web assets from ${webDistDir}`);
+  });
 });
 
 function startDatabaseRealtimeOutboxDrainer() {
