@@ -21,6 +21,7 @@ import ZilobaseAiSettingsPage from "@/pages/settings/zilobase-ai"
 import WorkspaceSettingsPage from "@/pages/settings/workspace"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
+import PlanSettingsPage from "@/pages/settings/plan"
 import SignupPage from "@/pages/signup"
 import Page from "@/pages/page"
 import { sessionQueryOptions } from "@zilobase/features/auth"
@@ -257,6 +258,12 @@ const teamSettingsRoute = createRoute({
   component: TeamSettingsPage,
 })
 
+const planSettingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/plan",
+  component: PlanSettingsPage,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -276,6 +283,7 @@ const routeTree = rootRoute.addChildren([
     apiKeysSettingsRoute,
     zilobaseAiSettingsRoute,
     teamSettingsRoute,
+    planSettingsRoute,
   ]),
   pageRoute,
   databaseRoute,

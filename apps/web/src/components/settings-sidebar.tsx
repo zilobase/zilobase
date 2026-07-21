@@ -3,6 +3,7 @@ import { useRouterState } from "@tanstack/react-router"
 import {
   ArrowLeftIcon,
   Building2Icon,
+  CreditCardIcon,
   KeyRoundIcon,
   PlugIcon,
   SparklesIcon,
@@ -57,6 +58,11 @@ const settingsItems = [
     title: "Team",
     href: "/settings/team",
     icon: <UsersIcon />,
+  },
+  {
+    title: "Plan & License",
+    href: "/settings/plan",
+    icon: <CreditCardIcon />,
   },
 ]
 
