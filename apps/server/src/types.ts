@@ -22,6 +22,8 @@ export type AppBindings = {
     DATABASE_URL?: string;
     EMAIL_FROM?: string;
     OPENAI_API_KEY?: string;
+    TOOLKIT_API_KEY?: string;
+    TOOLKIT_BASE_URL?: string;
     SMTP_HOST?: string;
     SMTP_PASSWORD?: string;
     SMTP_PORT?: string;

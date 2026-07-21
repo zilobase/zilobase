@@ -11,8 +11,11 @@ import {
   providerCatalog,
 } from "./ai-providers";
 import { requireActiveWorkspace } from "./shared";
+import { workspaceIntegrationRoutes } from "./integrations";
 
 export const workspaceSettingsRoutes = new Hono<AppBindings>();
+
+workspaceSettingsRoutes.route("/", workspaceIntegrationRoutes);
 
 workspaceSettingsRoutes.get("/ai", async (c) => {
   const auth = await requireActiveWorkspace(c);

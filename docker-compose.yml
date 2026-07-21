@@ -44,6 +44,8 @@ services:
       S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-zilobase}
       S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-zilobase-minio-password}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TOOLKIT_API_KEY: ${TOOLKIT_API_KEY:-}
+      TOOLKIT_BASE_URL: ${TOOLKIT_BASE_URL:-}
       EMAIL_FROM: ${EMAIL_FROM:-Zilobase <hello@example.com>}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
