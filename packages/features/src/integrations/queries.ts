@@ -160,12 +160,27 @@ export type LinearIntegrationStatus = {
 }
 
 export type IntegrationStatuses = {
-  gmail: GmailIntegrationStatus | null
-  github: GithubIntegrationStatus | null
-  googleCalendar: GoogleCalendarIntegrationStatus | null
-  googleDrive: GoogleDriveIntegrationStatus | null
-  linear: LinearIntegrationStatus | null
-  slack: SlackIntegrationStatus | null
+  accounts: ToolkitConnectedAccount[]
+  configured: boolean
+  connectors: ToolkitConnector[]
+}
+
+export type ToolkitConnector = {
+  authMethods: string[]
+  description: string
+  id: string
+  logoUrl?: string
+  name: string
+}
+
+export type ToolkitConnectedAccount = {
+  connectorId: string
+  createdAt: string
+  id: string
+  isDefault: boolean
+  status: "active" | "expired" | "revoked"
+  updatedAt: string
+  userId: string
 }
 
 export type AiProviderModel = {
@@ -227,35 +242,10 @@ export const integrationsQueryOptions = (
       throw new Error("Select an workspace before loading integrations.")
     }
 
-    const [gmail, github, googleCalendar, googleDrive, slack, linear] =
-      await Promise.all([
-        apiFetch<GmailIntegrationStatus>(
-          "/api/workspace/settings/integrations/gmail",
-          integrationRequestOptions(workspaceId, { signal }),
-        ),
-        apiFetch<GithubIntegrationStatus>(
-          "/api/workspace/settings/integrations/github",
-          integrationRequestOptions(workspaceId, { signal }),
-        ),
-        apiFetch<GoogleCalendarIntegrationStatus>(
-          "/api/workspace/settings/integrations/google-calendar",
-          integrationRequestOptions(workspaceId, { signal }),
-        ),
-        apiFetch<GoogleDriveIntegrationStatus>(
-          "/api/workspace/settings/integrations/google-drive",
-          integrationRequestOptions(workspaceId, { signal }),
-        ),
-        apiFetch<SlackIntegrationStatus>(
-          "/api/workspace/settings/integrations/slack",
-          integrationRequestOptions(workspaceId, { signal }),
-        ),
-        apiFetch<LinearIntegrationStatus>(
-          "/api/workspace/settings/integrations/linear",
-          integrationRequestOptions(workspaceId, { signal }),
-        ),
-      ])
-
-    return { gmail, github, googleCalendar, googleDrive, slack, linear }
+    return apiFetch<IntegrationStatuses>(
+      "/api/workspace/settings/integrations",
+      integrationRequestOptions(workspaceId, { signal }),
+    )
   },
 })
 

@@ -272,13 +272,7 @@ export function useUpdateWorkspaceAiProvider() {
   })
 }
 
-export type IntegrationEndpoint =
-  | "gmail"
-  | "github"
-  | "google-calendar"
-  | "google-drive"
-  | "linear"
-  | "slack"
+export type IntegrationEndpoint = string
 
 export function useActiveWorkspaceId() {
   const { auth, preferredActiveWorkspaceId } = useZilobaseFeatures()
