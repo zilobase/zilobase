@@ -3,6 +3,7 @@ import test from "node:test";
 import type { ConnectedAccount } from "@zilobase/toolkit";
 
 import {
+  buildToolkitTools,
   createToolkit,
   getToolkitUserId,
   selectToolkitConnectors,
@@ -55,6 +56,59 @@ test("Toolkit chat selects only active connected sources", () => {
     selectToolkitConnectors(accounts, ["github", "gmail", "gmail"]),
     ["gmail"],
   );
+});
+
+test("Toolkit chat accepts current tool descriptors without intent phrases", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const pathname = new URL(String(input)).pathname;
+
+    if (pathname === "/v1/connected-accounts") {
+      return Response.json({ items: [account("gmail", "active")] });
+    }
+
+    if (pathname === "/v1/tools/query") {
+      return Response.json({
+        items: [
+          {
+            access: "read",
+            connectorId: "gmail",
+            description: "List Gmail messages.",
+            id: "gmail.messages.list",
+            inputSchema: { properties: {}, type: "object" },
+            name: "listMessages",
+            presentation: {
+              progressPhrases: ["Listing Gmail messages"],
+              title: "List Gmail messages",
+            },
+            requiredScopes: [],
+          },
+        ],
+      });
+    }
+
+    throw new Error(`Unexpected Toolkit request: ${pathname}`);
+  };
+
+  try {
+    const tools = await buildToolkitTools({
+      env: {
+        TOOLKIT_API_KEY: "nlc_test_current-descriptor",
+        TOOLKIT_BASE_URL: "http://localhost:3100",
+      },
+      sources: ["gmail"],
+      userId: "user-1",
+      workspaceId: "workspace-a",
+    });
+
+    assert.deepEqual(Object.keys(tools), ["gmail_messages_list"]);
+    assert.equal(
+      tools.gmail_messages_list?.description,
+      "List Gmail messages.",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 function account(

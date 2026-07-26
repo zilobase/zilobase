@@ -34,8 +34,30 @@ export function createToolkit(env: RuntimeEnv) {
   return new Toolkit({
     apiKey,
     baseUrl: baseUrl || undefined,
-    provider: vercelProvider(),
+    provider: createCompatibleVercelProvider(),
   });
+}
+
+function createCompatibleVercelProvider() {
+  const provider = vercelProvider();
+
+  return {
+    createTools(
+      context: Parameters<typeof provider.createTools>[0],
+    ): ReturnType<typeof provider.createTools> {
+      return provider.createTools({
+        ...context,
+        tools: context.tools.map((descriptor) => ({
+          ...descriptor,
+          // Toolkit API descriptors no longer include these legacy discovery
+          // hints, while the published 0.1.2 provider still reads the array.
+          intentPhrases: Array.isArray(descriptor.intentPhrases)
+            ? descriptor.intentPhrases
+            : [],
+        })),
+      });
+    },
+  };
 }
 
 export async function buildToolkitTools(input: {
