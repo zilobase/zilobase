@@ -35,14 +35,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   DropDrawer,
@@ -422,7 +414,7 @@ export function NavActions({
             </Button>
           ) : null}
           {actionPageId || databaseId ? (
-            <ItemShareDialog
+            <ItemShareDropdown
               databaseId={actionPageId ? undefined : databaseId}
               pageId={actionPageId}
             />
@@ -609,7 +601,7 @@ function stripCommentMarks(value: unknown): unknown {
   );
 }
 
-function ItemShareDialog({
+function ItemShareDropdown({
   databaseId,
   pageId,
 }: {
@@ -619,21 +611,25 @@ function ItemShareDialog({
   const [open, setOpen] = React.useState(false);
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger asChild>
-        <Button className="h-8 gap-2" size="sm" variant="outline">
+    <Popover onOpenChange={setOpen} open={open}>
+      <PopoverTrigger asChild>
+        <Button
+          className="h-8 gap-2 data-[state=open]:bg-accent"
+          size="sm"
+          variant="outline"
+        >
           <LockIcon />
           Share
         </Button>
-      </DialogTrigger>
+      </PopoverTrigger>
       {open ? (
-        <ItemShareDialogContent databaseId={databaseId} pageId={pageId} />
+        <ItemShareDropdownContent databaseId={databaseId} pageId={pageId} />
       ) : null}
-    </Dialog>
+    </Popover>
   );
 }
 
-function ItemShareDialogContent({
+function ItemShareDropdownContent({
   databaseId,
   pageId,
 }: {
@@ -784,17 +780,20 @@ function ItemShareDialogContent({
   };
 
   return (
-    <DialogContent
-      className="sm:max-w-xl"
+    <PopoverContent
+      align="end"
+      className="w-[min(36rem,calc(100vw-2rem))] p-4"
       onOpenAutoFocus={(event) => event.preventDefault()}
     >
-      <DialogHeader>
-        <DialogTitle>Share {isDatabase ? "database" : "page"}</DialogTitle>
-        <DialogDescription>
+      <div className="mb-4 grid gap-1.5">
+        <div className="font-semibold leading-none tracking-tight">
+          Share {isDatabase ? "database" : "page"}
+        </div>
+        <div className="text-sm text-muted-foreground">
           Access applies to this{" "}
           {isDatabase ? "database" : "page and nested pages"}.
-        </DialogDescription>
-      </DialogHeader>
+        </div>
+      </div>
 
       <Tabs defaultValue="share">
         <TabsList>
@@ -994,7 +993,7 @@ function ItemShareDialogContent({
           </div>
         </TabsContent>
       </Tabs>
-    </DialogContent>
+    </PopoverContent>
   );
 }
 
