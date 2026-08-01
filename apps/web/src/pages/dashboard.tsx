@@ -8,6 +8,7 @@ import { PageSidePaneLayout, usePageSidePane } from "@/contexts/page-side-pane";
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";
 import { PageEditorPane } from "@/pages/page";
 import { DatabaseMainPane } from "@/pages/database";
+import { buildHomepageHierarchy } from "@/pages/homepage-hierarchy";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +66,8 @@ type HomepageRow = {
   name: string;
   openDatabaseId: string | null;
   openPageId: string | null;
+  parentRowId: string | null;
+  position: number;
   source: string;
   sourcePage: HomepageSourcePage | null;
   updatedAt: string;
@@ -134,11 +137,28 @@ export default function DashboardPage({
   const [propertyConfigs, setPropertyConfigs] = useState<
     Record<string, unknown>
   >({});
-  const [viewConfigs, setViewConfigs] = useState<Record<string, unknown>>({
-    recents: {
-      sorts: [{ column: "lastVisitedAt", direction: "descending" }],
-    },
-  });
+  const [viewConfigs, setViewConfigs] = useState<Record<string, unknown>>(() =>
+    Object.fromEntries(
+      homepageViews.map((view) => [
+        view.id,
+        {
+          ...(view.id === "recents"
+            ? {
+                sorts: [
+                  { column: "lastVisitedAt", direction: "descending" },
+                ],
+              }
+            : {}),
+          subItems: {
+            display: "nested",
+            enabled: true,
+            filter: "parents-only",
+            property: "sub-item",
+          },
+        },
+      ]),
+    ),
+  );
   const rows = useMemo(
     () =>
       buildHomepageRows(
@@ -384,7 +404,15 @@ export default function DashboardPage({
                   updateDatabaseLayoutSettings: () => {},
                   updateDatabasePropertyConfig,
                   updateDatabaseSort: () => {},
-                  updateDatabaseSubItemsSettings: () => {},
+                  updateDatabaseSubItemsSettings: (settings) =>
+                    updateActiveViewConfig(
+                      getMergedDatabaseConfig(activeView?.config, {
+                        subItems: {
+                          ...viewModel.subItemsSettings,
+                          ...settings,
+                        },
+                      }),
+                    ),
                   updateNameColumnConfig,
                   viewTabs: homepageViews.map((view) => ({
                     id: view.id,
@@ -573,7 +601,9 @@ function buildHomepagePayload({
         updatedAt: row.updatedAt,
       },
       pageId: row.id,
-      position: index,
+      parentRowId: row.parentRowId,
+      position:
+        row.position === Number.MAX_SAFE_INTEGER ? index : row.position,
       updatedAt: row.updatedAt,
     })),
     values,
@@ -612,6 +642,7 @@ function buildHomepageRows(
   const databasesById = new Map(
     databases.map(({ database, page }) => [database.id, { database, page }]),
   );
+  const hierarchy = buildHomepageHierarchy(placements);
   const parentKeys = new Set(
     placements.map(
       (placement) => `${placement.parentKind}:${placement.parentId}`,
@@ -646,6 +677,12 @@ function buildHomepageRows(
           name: page.name || "Untitled",
           openDatabaseId: null,
           openPageId: page.id,
+          parentRowId:
+            hierarchy.parentRowIdByRowId[`page:${page.id}`] ??
+            (page.parentPageId ? `page:${page.parentPageId}` : null),
+          position:
+            hierarchy.positionByRowId[`page:${page.id}`] ??
+            Number.MAX_SAFE_INTEGER,
           source: sourcePage?.id ?? "",
           sourcePage,
           updatedAt: page.updatedAt,
@@ -679,6 +716,11 @@ function buildHomepageRows(
           name: database.name || "Untitled",
           openDatabaseId: database.id,
           openPageId: database.pageId,
+          parentRowId:
+            hierarchy.parentRowIdByRowId[`database:${database.id}`] ?? null,
+          position:
+            hierarchy.positionByRowId[`database:${database.id}`] ??
+            Number.MAX_SAFE_INTEGER,
           source: sourcePage?.id ?? "",
           sourcePage,
           updatedAt: database.updatedAt,
