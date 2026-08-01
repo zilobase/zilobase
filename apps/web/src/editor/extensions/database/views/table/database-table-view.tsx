@@ -411,6 +411,7 @@ function DatabaseTable({
 function DatabaseVirtualizedTable({
   columnKeys,
   columnWidths,
+  footerRow,
   measurementKey,
   renderRow,
   rows,
@@ -419,6 +420,7 @@ function DatabaseVirtualizedTable({
 }: {
   columnKeys: string[]
   columnWidths: Record<string, number>
+  footerRow?: ReactNode
   measurementKey: string
   renderRow: (
     row: TableRow,
@@ -567,6 +569,7 @@ function DatabaseVirtualizedTable({
               />
             </tr>
           ) : null}
+          {footerRow}
         </tbody>
       </DatabaseTable>
     </div>
@@ -684,31 +687,30 @@ function DatabaseActiveTableCell({
 }
 
 function CreateDatabaseRowButton({
+  columnCount,
   disabled,
   isPending,
   onClick,
-  tableMinWidth,
 }: {
+  columnCount: number
   disabled: boolean
   isPending: boolean
   onClick: () => void
-  tableMinWidth: number
 }) {
   return (
-    <div
-      className="database-page-create-row"
-      style={getTableMinWidthStyle(tableMinWidth)}
-    >
-      <button
-        className="database-page-create database-page-create-full"
-        disabled={disabled}
-        onClick={onClick}
-        type="button"
-      >
-        {isPending ? <Loader2 className="animate-spin" /> : <Plus />}
-        <span>New page</span>
-      </button>
-    </div>
+    <tr className="database-table-create-row">
+      <td colSpan={columnCount}>
+        <button
+          className="database-table-create"
+          disabled={disabled}
+          onClick={onClick}
+          type="button"
+        >
+          {isPending ? <Loader2 className="animate-spin" /> : <Plus />}
+          <span>New page</span>
+        </button>
+      </td>
+    </tr>
   )
 }
 
@@ -768,6 +770,9 @@ export function DatabaseTableView() {
     saveDatabaseSorts,
     setViewGroupProperty,
     sortedItems: sortedRows,
+    subItemChildRowIdsByParentId,
+    subItemDepthByRowId,
+    subItemsSettings,
     renameDatabaseProperty,
     updateDatabasePropertyConfig,
     updateNameColumnConfig,
@@ -819,6 +824,12 @@ export function DatabaseTableView() {
   const [collapsedGroups, setCollapsedGroups] = useState<
     Record<string, boolean>
   >({})
+  const [collapsedSubItemRowIds, setCollapsedSubItemRowIds] = useState<
+    Set<string>
+  >(() => new Set())
+  const [expandedEmptySubItemRowIds, setExpandedEmptySubItemRowIds] = useState<
+    Set<string>
+  >(() => new Set())
   const stickyHeaderScrollRef = useRef<HTMLDivElement | null>(null)
   const tableScrollRef = useRef<HTMLDivElement | null>(null)
   const tableWrapRef = useRef<HTMLDivElement | null>(null)
@@ -831,6 +842,10 @@ export function DatabaseTableView() {
   const isTableSorted = activeDatabaseSorts.length > 0
   const isTableFiltered = activeDatabaseFilters.length > 0
   const isTableGrouped = Boolean(groupProperty)
+  const isSubItemsNested =
+    subItemsSettings.enabled &&
+    subItemsSettings.display === "nested" &&
+    !isTableGrouped
   const renderedProperties = visibleProperties
   const tableMeasurementKey = useMemo(
     () =>
@@ -984,18 +999,37 @@ export function DatabaseTableView() {
     propertyValuesByKey,
     sortedRows,
   ])
+  const rowsById = useMemo(
+    () => new Map(rows.map((row) => [row.id, row])),
+    [rows]
+  )
+  const nestedVisibleRows = useMemo(() => {
+    if (!isSubItemsNested || collapsedSubItemRowIds.size === 0) {
+      return sortedRows
+    }
+
+    return sortedRows.filter((row) => {
+      const seen = new Set<string>()
+      let parentRowId = row.parentRowId
+
+      while (parentRowId && !seen.has(parentRowId)) {
+        if (collapsedSubItemRowIds.has(parentRowId)) return false
+
+        seen.add(parentRowId)
+        parentRowId = rowsById.get(parentRowId)?.parentRowId
+      }
+
+      return true
+    })
+  }, [collapsedSubItemRowIds, isSubItemsNested, rowsById, sortedRows])
   const visibleRows = useMemo(
     () =>
       isTableGrouped
         ? groupedSections.flatMap((section) =>
             collapsedGroups[section.id] === true ? [] : section.rows
           )
-        : sortedRows,
-    [collapsedGroups, groupedSections, isTableGrouped, sortedRows]
-  )
-  const rowsById = useMemo(
-    () => new Map(rows.map((row) => [row.id, row])),
-    [rows]
+        : nestedVisibleRows,
+    [collapsedGroups, groupedSections, isTableGrouped, nestedVisibleRows]
   )
   const visibleRowIndexById = useMemo(
     () => new Map(visibleRows.map((row, index) => [row.id, index])),
@@ -2007,7 +2041,38 @@ export function DatabaseTableView() {
         }
         const nameCellKey = `${row.pageId}:name`
 
-        return (
+        const childRowIds = subItemChildRowIdsByParentId[row.id] ?? []
+        const hasSubItems = childRowIds.length > 0
+        const subItemDepth = isSubItemsNested
+          ? subItemDepthByRowId[row.id] ?? 0
+          : 0
+        const subItemsExpanded = hasSubItems
+          ? !collapsedSubItemRowIds.has(row.id)
+          : expandedEmptySubItemRowIds.has(row.id)
+        const toggleSubItems = () => {
+          if (hasSubItems) {
+            setCollapsedSubItemRowIds((current) => {
+              const next = new Set(current)
+
+              if (next.has(row.id)) next.delete(row.id)
+              else next.add(row.id)
+
+              return next
+            })
+            return
+          }
+
+          setExpandedEmptySubItemRowIds((current) => {
+            const next = new Set(current)
+
+            if (next.has(row.id)) next.delete(row.id)
+            else next.add(row.id)
+
+            return next
+          })
+        }
+
+        const tableRow = (
           <tr
             className={getConditionalColorClassName(conditionalColors.rowColor)}
             data-index={index}
@@ -2051,18 +2116,53 @@ export function DatabaseTableView() {
                       wrapContent={nameColumnWrapContent}
                     >
                       {(setActive) => (
-                        <DatabaseCellContent
-                          wrapContent={nameColumnWrapContent}
+                        <div
+                          className="database-sub-item-name"
+                          data-sub-item-depth={subItemDepth}
+                          style={
+                            isSubItemsNested
+                              ? ({
+                                  "--database-sub-item-depth": subItemDepth,
+                                } as CSSProperties)
+                              : undefined
+                          }
                         >
-                          <DatabasePageLink
-                            editable={editable}
-                            onActiveChange={setActive}
-                            onOpen={onOpenPage}
-                            pageId={row.pageId}
-                            pageSummary={row.page}
-                            showPageIcon={nameColumnShowPageIcon}
-                          />
-                        </DatabaseCellContent>
+                          {isSubItemsNested ? (
+                            <button
+                              aria-expanded={subItemsExpanded}
+                              aria-label={`${subItemsExpanded ? "Collapse" : "Expand"} sub-items for ${getRowTitle(row)}`}
+                              className="database-sub-item-toggle"
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                toggleSubItems()
+                              }}
+                              onPointerDown={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                              }}
+                              type="button"
+                            >
+                              {subItemsExpanded ? (
+                                <ChevronDown />
+                              ) : (
+                                <ChevronRight />
+                              )}
+                            </button>
+                          ) : null}
+                          <DatabaseCellContent
+                            wrapContent={nameColumnWrapContent}
+                          >
+                            <DatabasePageLink
+                              editable={editable}
+                              onActiveChange={setActive}
+                              onOpen={onOpenPage}
+                              pageId={row.pageId}
+                              pageSummary={row.page}
+                              showPageIcon={nameColumnShowPageIcon}
+                            />
+                          </DatabaseCellContent>
+                        </div>
                       )}
                     </DatabaseActiveTableCell>
                     {showRightInsert
@@ -2128,6 +2228,38 @@ export function DatabaseTableView() {
             })}
             {editable ? <td /> : null}
           </tr>
+        )
+
+        if (!isSubItemsNested || !subItemsExpanded || !editable) {
+          return tableRow
+        }
+
+        return (
+          <Fragment key={row.id}>
+            {tableRow}
+            <tr className="database-sub-item-create-row">
+              <td colSpan={columnKeys.length}>
+                <button
+                  className="database-sub-item-create"
+                  disabled={!databaseId || isAddingDatabaseRow}
+                  onClick={() => addDatabaseRow(undefined, undefined, row.id)}
+                  style={
+                    {
+                      "--database-sub-item-depth": subItemDepth + 1,
+                    } as CSSProperties
+                  }
+                  type="button"
+                >
+                  {isAddingDatabaseRow ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Plus />
+                  )}
+                  <span>New sub-item</span>
+                </button>
+              </td>
+            </tr>
+          </Fragment>
         )
   }
 
@@ -2376,6 +2508,24 @@ export function DatabaseTableView() {
                           <DatabaseVirtualizedTable
                             columnKeys={columnKeys}
                             columnWidths={columnWidths}
+                            footerRow={
+                              editable &&
+                              !section.isEmpty &&
+                              groupProperty &&
+                              canCreateRowInKanbanGroup(groupProperty) ? (
+                                <CreateDatabaseRowButton
+                                  columnCount={columnKeys.length}
+                                  disabled={!databaseId || isAddingDatabaseRow}
+                                  isPending={isAddingDatabaseRow}
+                                  onClick={() =>
+                                    addDatabaseRow(
+                                      section.groupValue,
+                                      groupProperty
+                                    )
+                                  }
+                                />
+                              ) : undefined
+                            }
                             measurementKey={tableMeasurementKey}
                             renderRow={renderTableRow}
                             rows={section.rows}
@@ -2384,22 +2534,6 @@ export function DatabaseTableView() {
                               !draggedRowId && !isExternalRowDragActive
                             }
                           />
-                          {editable &&
-                          !section.isEmpty &&
-                          groupProperty &&
-                          canCreateRowInKanbanGroup(groupProperty) ? (
-                            <CreateDatabaseRowButton
-                              disabled={!databaseId || isAddingDatabaseRow}
-                              isPending={isAddingDatabaseRow}
-                              onClick={() =>
-                                addDatabaseRow(
-                                  section.groupValue,
-                                  groupProperty
-                                )
-                              }
-                              tableMinWidth={tableMinWidth}
-                            />
-                          ) : null}
                         </>
                       ) : null}
                     </section>
@@ -2410,12 +2544,24 @@ export function DatabaseTableView() {
               <DatabaseVirtualizedTable
                 columnKeys={columnKeys}
                 columnWidths={columnWidths}
+                footerRow={
+                  editable ? (
+                    <CreateDatabaseRowButton
+                      columnCount={columnKeys.length}
+                      disabled={!databaseId || isAddingDatabaseRow}
+                      isPending={isAddingDatabaseRow}
+                      onClick={() => addDatabaseRow()}
+                    />
+                  ) : undefined
+                }
                 measurementKey={tableMeasurementKey}
                 renderRow={renderTableRow}
-                rows={sortedRows}
+                rows={visibleRows}
                 tableMinWidth={tableMinWidth}
                 virtualizationEnabled={
-                  !draggedRowId && !isExternalRowDragActive
+                  !draggedRowId &&
+                  !isExternalRowDragActive &&
+                  !isSubItemsNested
                 }
               />
             )}
@@ -2433,14 +2579,6 @@ export function DatabaseTableView() {
                   </>
                 ) : null}
               </div>
-            ) : null}
-            {editable && !isTableGrouped ? (
-              <CreateDatabaseRowButton
-                disabled={!databaseId || isAddingDatabaseRow}
-                isPending={isAddingDatabaseRow}
-                onClick={() => addDatabaseRow()}
-                tableMinWidth={tableMinWidth}
-              />
             ) : null}
           </div>
         </div>

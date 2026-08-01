@@ -611,7 +611,7 @@ export function PageMetadata({
       ) : null}
 
       <div
-        className={`${contentClassName ?? ""} relative ${compact ? compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4" : "px-5 py-6 sm:px-8 md:px-20 md:py-8 lg:px-24"}`}
+        className={`${contentClassName ?? ""} relative ${compact ? compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4" : "px-5 py-6 sm:px-8 md:px-20 md:pt-4 md:pb-8 lg:px-24"}`}
       >
         {showHeading && showMetadataActions ? (
           <div className="relative mb-3 min-h-8">

@@ -1955,6 +1955,45 @@
     @apply relative text-foreground;
   }
 
+  .database-sub-item-name {
+    @apply flex min-w-0 items-stretch;
+    padding-left: calc(var(--database-sub-item-depth, 0) * 1.25rem);
+  }
+
+  .database-sub-item-name > .database-cell-content {
+    @apply min-w-0 flex-1;
+  }
+
+  .database-sub-item-toggle {
+    @apply relative z-20 flex w-6 shrink-0 cursor-pointer select-none items-center justify-center text-muted-foreground outline-none hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+
+  .database-sub-item-toggle svg {
+    @apply size-3.5;
+  }
+
+  .tiptap-editor
+    .database-table
+    tbody
+    tr:is(.database-sub-item-create-row, .database-table-create-row)
+    td {
+    @apply h-8 p-0;
+  }
+
+  .database-sub-item-create,
+  .database-table-create {
+    @apply flex h-8 w-full items-center gap-2 px-3 text-left text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground disabled:opacity-60;
+  }
+
+  .database-sub-item-create {
+    padding-left: calc(0.75rem + var(--database-sub-item-depth, 1) * 1.25rem);
+  }
+
+  .database-sub-item-create svg,
+  .database-table-create svg {
+    @apply size-4 shrink-0;
+  }
+
   .database-page-create {
     @apply text-muted-foreground hover:bg-muted/60 hover:text-foreground disabled:opacity-70;
   }
@@ -1988,7 +2027,7 @@
 
   .database-row-controls::after {
     @apply absolute content-[''];
-    inset: -0.5rem -2rem -0.5rem -3rem;
+    inset: -0.5rem -0.5rem -0.5rem -3rem;
   }
 
   .database-row-controls[data-visible="true"],

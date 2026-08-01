@@ -90,6 +90,7 @@ export function DatabaseViewSettingsMenu({
   onUpdateDatabaseChartSettings,
   onUpdateDatabaseLayoutSettings,
   onUpdateDatabaseSort,
+  onUpdateDatabaseSubItemsSettings,
   properties,
   presentation = "menu",
   portalTarget,
@@ -100,6 +101,7 @@ export function DatabaseViewSettingsMenu({
   showPropertyTitles,
   showPageIcon,
   showTitle,
+  subItemsSettings,
 }: DatabaseViewSettingsMenuProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
@@ -365,11 +367,13 @@ export function DatabaseViewSettingsMenu({
           dataSources={dataSources}
           linkedViews={linkedViews}
           onAddLinkedDatabaseView={onAddLinkedDatabaseView}
+          onUpdateDatabaseSubItemsSettings={onUpdateDatabaseSubItemsSettings}
           onCloseSettings={() => setOpen(false)}
           open={open}
           properties={properties}
           sourceDatabaseId={sourceDatabaseId}
           workspaceId={workspaceId}
+          subItemsSettings={subItemsSettings}
         />
         <DropDrawerSub>
           <DropDrawerSubTrigger>
@@ -430,7 +434,6 @@ export function DatabaseViewSettingsMenu({
     </DropDrawer>
   );
 }
-
 
 
 

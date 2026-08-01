@@ -3,6 +3,7 @@ import type {
   DatabaseConditionalColorConfig,
   DatabaseLinkedViewConfig,
   DatabaseLayoutSettings,
+  DatabaseSubItemsSettings,
 } from "../database-view-config";
 import type {
   DatabaseActiveFilter,
@@ -93,6 +94,9 @@ export type DatabaseViewSettingsMenuProps = {
     settings: Partial<DatabaseLayoutSettings>,
   ) => void;
   onUpdateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void;
+  onUpdateDatabaseSubItemsSettings: (
+    settings: Partial<DatabaseSubItemsSettings>,
+  ) => void;
   properties: DatabaseViewProperty[];
   presentation?: "menu" | "sidebar";
   portalTarget?: HTMLElement | null;
@@ -103,4 +107,5 @@ export type DatabaseViewSettingsMenuProps = {
   showPropertyTitles: boolean;
   showPageIcon: boolean;
   showTitle: boolean;
+  subItemsSettings: DatabaseSubItemsSettings;
 };

@@ -64,6 +64,30 @@ export type DatabaseLinkedViewConfig = {
   viewType: string;
 };
 
+export type DatabaseSubItemsDisplay =
+  | "nested"
+  | "flattened"
+  | "disabled";
+export type DatabaseSubItemsFilter =
+  | "parents-only"
+  | "parents-and-sub-items"
+  | "sub-items-only";
+export type DatabaseSubItemsProperty = "sub-item" | "parent-item";
+
+export type DatabaseSubItemsSettings = {
+  display: DatabaseSubItemsDisplay;
+  enabled: boolean;
+  filter: DatabaseSubItemsFilter;
+  property: DatabaseSubItemsProperty;
+};
+
+export const defaultDatabaseSubItemsSettings: DatabaseSubItemsSettings = {
+  display: "nested",
+  enabled: false,
+  filter: "parents-only",
+  property: "sub-item",
+};
+
 export type DatabasePropertyConfig = {
   dateFormat?: DateFormatValue;
   defaultOptionId?: string;
@@ -122,6 +146,7 @@ type DatabaseConfig = {
   showPropertyTitles?: boolean;
   setupDismissed?: boolean;
   sorts?: DatabaseSortConfig[];
+  subItems?: DatabaseSubItemsSettings;
 };
 
 export type DatabaseNameColumnConfig = {
@@ -388,6 +413,36 @@ export function getDatabaseLinkedViewKey(view: DatabaseLinkedViewConfig) {
   }
 
   return `linked:${view.databaseId}:${view.viewId}`;
+}
+
+export function getDatabaseSubItemsSettings(
+  config: unknown,
+): DatabaseSubItemsSettings {
+  const subItems =
+    config && typeof config === "object" && !Array.isArray(config)
+      ? (config as DatabaseConfig).subItems
+      : undefined;
+
+  if (!subItems || typeof subItems !== "object" || Array.isArray(subItems)) {
+    return defaultDatabaseSubItemsSettings;
+  }
+
+  return {
+    display: ["nested", "flattened", "disabled"].includes(subItems.display)
+      ? subItems.display
+      : defaultDatabaseSubItemsSettings.display,
+    enabled: subItems.enabled === true,
+    filter: [
+      "parents-only",
+      "parents-and-sub-items",
+      "sub-items-only",
+    ].includes(subItems.filter)
+      ? subItems.filter
+      : defaultDatabaseSubItemsSettings.filter,
+    property: ["sub-item", "parent-item"].includes(subItems.property)
+      ? subItems.property
+      : defaultDatabaseSubItemsSettings.property,
+  };
 }
 
 export function getDatabaseSetupDismissed(config: unknown) {

@@ -384,6 +384,7 @@ export default function DashboardPage({
                   updateDatabaseLayoutSettings: () => {},
                   updateDatabasePropertyConfig,
                   updateDatabaseSort: () => {},
+                  updateDatabaseSubItemsSettings: () => {},
                   updateNameColumnConfig,
                   viewTabs: homepageViews.map((view) => ({
                     id: view.id,

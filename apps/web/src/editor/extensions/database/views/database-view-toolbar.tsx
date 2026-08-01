@@ -172,6 +172,7 @@ export function DatabaseViewToolbar() {
     showTitle,
     sortFieldOptions,
     sortPickerOpen,
+    subItemsSettings,
     togglePropertyVisibility,
     togglePropertyTitles,
     toggleFilterPillVisibility,
@@ -181,6 +182,7 @@ export function DatabaseViewToolbar() {
     updateDatabaseLayoutSettings,
     updateDatabasePropertyConfig,
     updateDatabaseSort,
+    updateDatabaseSubItemsSettings,
     updateNameColumnConfig,
     visiblePropertyCount,
     viewTabs,
@@ -995,6 +997,7 @@ export function DatabaseViewToolbar() {
                 onUpdateDatabaseChartSettings={updateDatabaseChartSettings}
                 onUpdateDatabaseLayoutSettings={updateDatabaseLayoutSettings}
                 onUpdateDatabaseSort={updateDatabaseSort}
+                onUpdateDatabaseSubItemsSettings={updateDatabaseSubItemsSettings}
                 properties={properties}
                 presentation={viewSettingsPresentation}
                 portalTarget={viewSettingsPanelTarget}
@@ -1009,6 +1012,7 @@ export function DatabaseViewToolbar() {
                 showPropertyTitles={showPropertyTitles}
                 showPageIcon={showPageIconInTitle}
                 showTitle={showTitle}
+                subItemsSettings={subItemsSettings}
               />
               {canRenderAddRow ? (
               <Button

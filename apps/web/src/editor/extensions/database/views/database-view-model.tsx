@@ -25,6 +25,7 @@ import {
   getDatabaseLayoutSettings,
   getDatabasePropertyOrder,
   getDatabaseSorts,
+  getDatabaseSubItemsSettings,
   getMergedDatabaseConfig,
   getNameColumnLabel,
   getNameColumnShowPageIcon,
@@ -37,6 +38,7 @@ import {
   type DatabasePropertyFilterConfig,
   type DatabaseConditionalColorConfig,
 } from "./database-view-config"
+import { getDatabaseSubItemsView } from "./database-sub-items"
 import type { DatabaseSearchableMenuOption } from "./database-searchable-menu-items"
 import type { DatabaseActiveFilter } from "./database-filter-menu"
 import type { DatabaseActiveSort } from "./database-sort-menu"
@@ -181,13 +183,22 @@ export function getDatabaseViewModel({
     activeDatabaseFilters,
     personOptionsById
   )
-  const sortedItems = getSortedDatabaseItems(
+  const baseSortedItems = getSortedDatabaseItems(
     filteredItems,
     properties,
     propertyValuesByKey,
     activeDatabaseSorts,
     personOptionsById
   )
+  const subItemsSettings = getDatabaseSubItemsSettings(activeViewConfig)
+  const subItemsView = getDatabaseSubItemsView({
+    filteredRows: filteredItems,
+    hasFilters: activeDatabaseFilters.length > 0,
+    rows: items,
+    settings: subItemsSettings,
+    sortedRows: baseSortedItems,
+  })
+  const sortedItems = subItemsView.rows
 
   return {
     activeDatabaseFilters,
@@ -226,6 +237,9 @@ export function getDatabaseViewModel({
     showPropertyTitles,
     sortFieldOptions,
     sortedItems,
+    subItemChildRowIdsByParentId: subItemsView.childRowIdsByParentId,
+    subItemDepthByRowId: subItemsView.depthByRowId,
+    subItemsSettings,
     titlePropertyLabel,
     visibleProperties,
     visiblePropertyCount:

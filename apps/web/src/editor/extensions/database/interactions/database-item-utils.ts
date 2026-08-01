@@ -27,6 +27,7 @@ export type SortableDatabaseItem = {
     updatedAt?: string
   }
   pageId: string
+  parentRowId?: string | null
   position: number
   updatedAt: string
 }

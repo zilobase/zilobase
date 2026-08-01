@@ -41,6 +41,7 @@ import type { DatabasePageDragPayload } from "../interactions/database-page-drop
 import {
   getDatabaseFilterOperatorsForType,
   getDatabaseLayoutSettings,
+  getDatabaseSubItemsSettings,
   getMergedDatabaseConfig,
   getMergedNameColumnConfig,
   getMergedPropertyConfig,
@@ -54,6 +55,7 @@ import {
   type DatabaseLayoutSettings,
   type DatabaseNameColumnConfig,
   type DatabaseSortConfig,
+  type DatabaseSubItemsSettings,
 } from "./database-view-config";
 import type { DatabaseFilterUpdatePatch } from "./database-filter-menu";
 import { getRelationLimitTrimUpdates } from "../properties/database-relation-sync";
@@ -79,6 +81,7 @@ type NewRowPropertyValue = {
 };
 
 type NewRowSetup = {
+  parentRowId?: string | null;
   propertyValues: NewRowPropertyValue[];
   title: string;
 };
@@ -157,6 +160,7 @@ export function getDatabaseViewCommands({
   });
 
   const addRowWithValues = ({
+    parentRowId,
     propertyValues,
     title,
   }: NewRowSetup) => {
@@ -175,6 +179,7 @@ export function getDatabaseViewCommands({
     addRow.mutate(
       {
         databaseId,
+        ...(parentRowId !== undefined ? { parentRowId } : {}),
         ...(uniquePropertyValues.size > 0
           ? { optimisticValues: [...uniquePropertyValues.values()] }
           : {}),
@@ -377,6 +382,7 @@ export function getDatabaseViewCommands({
     addDatabaseRow: (
       groupValue?: string,
       groupPropertyOverride?: DatabasePropertyListItem | null,
+      parentRowId?: string | null,
     ) => {
       const defaultStatusValue = defaultStatusOption.name;
       const nextGroupProperty =
@@ -386,9 +392,10 @@ export function getDatabaseViewCommands({
         (isKanbanView && kanbanGroupProperty?.property.type === "status"
           ? defaultStatusValue
           : null);
-      addRowWithValues(
-        getNewRowGroupSetup(nextGroupValue, nextGroupProperty),
-      );
+      addRowWithValues({
+        ...getNewRowGroupSetup(nextGroupValue, nextGroupProperty),
+        parentRowId,
+      });
     },
     addDraggedPageRow: async (
       dragPayload: DatabasePageDragPayload,
@@ -905,6 +912,30 @@ export function getDatabaseViewCommands({
     },
     updateDatabaseChartSettings,
     updateDatabaseLayoutSettings,
+    updateDatabaseSubItemsSettings: (
+      settings: Partial<DatabaseSubItemsSettings>,
+    ) => {
+      if (!databaseId || !activeView?.id) {
+        return;
+      }
+
+      const currentConfig =
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
+        activeView.config;
+      const nextConfig = getMergedDatabaseConfig(currentConfig, {
+        subItems: {
+          ...getDatabaseSubItemsSettings(currentConfig),
+          ...settings,
+        },
+      });
+
+      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
+      updateDatabaseView.mutate({
+        config: nextConfig,
+        databaseId,
+        databaseViewId: activeView.id,
+      });
+    },
     updateNameColumnConfig: (config: DatabaseNameColumnConfig) => {
       if (!editable || !databaseId) {
         return;

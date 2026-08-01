@@ -39,6 +39,7 @@ import {
 import type { DatabaseViewSettingsMenuProps } from "./types";
 import { getDatabaseViewTypePresentation } from "./view-type-options";
 import { ViewSettingsRow } from "./view-settings-row";
+import { SubItemsSettingsSection } from "./sub-items-settings";
 
 type LinkableDatabaseOption = DatabaseSearchableMenuOption & {
   pageName: string;
@@ -55,9 +56,11 @@ type DataSourceSettingsSectionProps = Pick<
   | "dataSources"
   | "linkedViews"
   | "onAddLinkedDatabaseView"
+  | "onUpdateDatabaseSubItemsSettings"
   | "properties"
   | "sourceDatabaseId"
   | "workspaceId"
+  | "subItemsSettings"
 > & {
   onCloseSettings: () => void;
   open: boolean;
@@ -69,11 +72,13 @@ export function DataSourceSettingsSection({
   dataSources,
   linkedViews = [],
   onAddLinkedDatabaseView,
+  onUpdateDatabaseSubItemsSettings,
   onCloseSettings,
   open,
   properties,
   sourceDatabaseId,
   workspaceId,
+  subItemsSettings,
 }: DataSourceSettingsSectionProps) {
   const [manageDataSourcesOpen, setManageDataSourcesOpen] = useState(false);
   const [showLinkExistingPicker, setShowLinkExistingPicker] = useState(false);
@@ -156,7 +161,7 @@ export function DataSourceSettingsSection({
             }
           />
         </DropDrawerItem>
-        <DropDrawerSub>
+        <DropDrawerSub id="database-edit-properties" title="Edit properties">
           <DropDrawerSubTrigger>
             <Settings2 />
             <span>Edit properties</span>
@@ -243,13 +248,16 @@ export function DataSourceSettingsSection({
             <DropDrawerItem disabled>Archived pages</DropDrawerItem>
           </DropDrawerSubContent>
         </DropDrawerSub>
-        <DropDrawerSub>
+        <DropDrawerSub id="database-more-settings" title="More settings">
           <DropDrawerSubTrigger>
             <MoreHorizontal />
             <span>More settings</span>
           </DropDrawerSubTrigger>
           <DropDrawerSubContent>
-            <DropDrawerItem disabled>More database settings</DropDrawerItem>
+            <SubItemsSettingsSection
+              onSettingsChange={onUpdateDatabaseSubItemsSettings}
+              settings={subItemsSettings}
+            />
           </DropDrawerSubContent>
         </DropDrawerSub>
         <DropDrawerSeparator />

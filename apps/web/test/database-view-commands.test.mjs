@@ -1320,6 +1320,59 @@ export function register({ assert, loadModule, test }) {
     );
     assert.deepEqual(activeViewIds, ["view-list", "view-gallery"]);
   });
+
+  test("database view commands persist sub-item settings and create children", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-commands.ts",
+    );
+    const addRow = createMutation();
+    const updateDatabaseView = createMutation();
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: { emoji: "pin" },
+        id: "view-1",
+        name: "Table",
+        type: "table",
+      },
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addRow, updateDatabaseView }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.updateDatabaseSubItemsSettings({ enabled: true });
+    commands.addDatabaseRow(undefined, undefined, "parent-row");
+
+    assert.deepEqual(updateDatabaseView.calls[0][0], {
+      config: {
+        emoji: "pin",
+        subItems: {
+          display: "nested",
+          enabled: true,
+          filter: "parents-only",
+          property: "sub-item",
+        },
+      },
+      databaseId,
+      databaseViewId: "view-1",
+    });
+    assert.deepEqual(addRow.calls[0][0], {
+      databaseId,
+      parentRowId: "parent-row",
+      title: "Untitled",
+    });
+  });
 }
 
 function createMutation() {

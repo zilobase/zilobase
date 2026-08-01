@@ -40,6 +40,7 @@ import type {
   DatabaseSortConfig,
   DatabaseLayoutSettings,
   DatabaseNameColumnConfig,
+  DatabaseSubItemsSettings,
 } from "./database-view-config"
 import type {
   DatabasePageDragPayload,
@@ -82,7 +83,8 @@ export type DatabaseViewContextValue = {
   addDatabaseProperty: (type?: string, label?: string, position?: number) => void
   addDatabaseRow: (
     groupValue?: string,
-    groupProperty?: DatabasePropertyListItem | null
+    groupProperty?: DatabasePropertyListItem | null,
+    parentRowId?: string | null,
   ) => void
   addChartView: () => void
   addGalleryView: () => void
@@ -200,6 +202,9 @@ export type DatabaseViewContextValue = {
   sortFieldOptions: DatabaseSearchableMenuOption[]
   sortPickerOpen: boolean
   sortedItems: SortableDatabaseItem[]
+  subItemChildRowIdsByParentId: Record<string, string[]>
+  subItemDepthByRowId: Record<string, number>
+  subItemsSettings: DatabaseSubItemsSettings
   titlePropertyLabel: string
   toggleFilterPillVisibility: () => void
   togglePropertyTitles: () => void
@@ -220,6 +225,9 @@ export type DatabaseViewContextValue = {
   ) => Promise<unknown> | void
   updateDatabaseFilter: (index: number, patch: DatabaseFilterUpdatePatch) => void
   updateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void
+  updateDatabaseSubItemsSettings: (
+    settings: Partial<DatabaseSubItemsSettings>
+  ) => void
   visibleProperties: DatabaseProperty[]
   visiblePropertyCount: number
   viewTabs: DatabaseViewTab[]
