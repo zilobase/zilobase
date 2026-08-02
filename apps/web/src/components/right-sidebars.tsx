@@ -1,6 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
 import type {
   ComponentProps,
   PointerEvent as ReactPointerEvent,
@@ -77,6 +83,25 @@ export function ResizableRightSidebarPanel({
 
   useEffect(() => () => pointerCleanupRef.current(), [])
 
+  useLayoutEffect(() => {
+    const element = panelElementRef.current
+    const groupWidth =
+      element?.parentElement?.getBoundingClientRect().width ?? 0
+
+    if (!element || groupWidth <= 0) return
+
+    const targetPercentage = resolveSidebarPanelPercentage(
+      defaultSize,
+      groupWidth,
+    )
+    const targetWidth = (groupWidth * targetPercentage) / 100
+
+    element.style.setProperty(
+      "--right-sidebar-surface-width",
+      `${targetWidth}px`,
+    )
+  }, [defaultSize, open])
+
   const handleResizePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!onResizeIntent || event.button !== 0) return
@@ -108,15 +133,25 @@ export function ResizableRightSidebarPanel({
 
   useEffect(() => {
     const element = panelElementRef.current
-    if (!element || !onWidthChange) return
+    if (!element) return
 
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) onWidthChange(entry.contentRect.width)
+      if (!entry) return
+
+      const width = entry.contentRect.width
+      onWidthChange?.(width)
+
+      if (!transitioning && width > 0) {
+        element.style.setProperty(
+          "--right-sidebar-surface-width",
+          `${width}px`,
+        )
+      }
     })
 
     observer.observe(element)
     return () => observer.disconnect()
-  }, [onWidthChange])
+  }, [onWidthChange, transitioning])
 
   useEffect(() => {
     const stateChanged =
@@ -212,16 +247,18 @@ export function ResizableRightSidebarPanel({
           flexDirection: "column",
           minHeight: 0,
           overflow: "hidden",
+          position: "relative",
         }}
       >
         <RightSidebarSurface
           aria-hidden={!open}
           aria-label={ariaLabel}
-          className={
+          className={cn(
+            "absolute inset-y-0 right-0 w-[min(100vw,var(--right-sidebar-surface-width,100%))] will-change-transform transition-transform duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
             open
-              ? "translate-x-0 opacity-100 transition-[transform,opacity] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
-              : "pointer-events-none translate-x-3 opacity-0 transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none"
-          }
+              ? "translate-x-0"
+              : "pointer-events-none translate-x-full",
+          )}
           inert={open ? undefined : true}
         >
           {children}
@@ -446,7 +483,7 @@ export function RightSidebars({
       panelId="right-sidebar-dock"
     >
       <div
-        className="grid min-h-0 min-w-0 flex-1 overflow-hidden transition-[grid-template-columns] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+        className="grid min-h-0 min-w-0 flex-1 overflow-hidden"
         style={{
           gridTemplateColumns: `${primaryPanel ? visibleGridTrack : hiddenGridTrack} ${chatOpen ? visibleGridTrack : hiddenGridTrack}`,
         }}
