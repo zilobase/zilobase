@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 
-import { canAccessDatabaseInWorkspace, canAccessPage } from "../access";
+import { canAccessPage } from "../access";
 import type { RuntimeEnv } from "../config";
 import { db } from "../db";
 import type { Database } from "../db";
@@ -19,6 +19,7 @@ import type { DatabaseChangedArea } from "./database-delta";
 import { upsertPageItemPlacement } from "../page-item-placements";
 import { encodePageContentAsYjs } from "../collaboration/service";
 import { commitDatabaseMutation } from "./database-commit";
+import { requireDatabaseEditAccess } from "./database-access";
 import {
   normalizeDatabasePropertyType,
   shouldClearValuesForPropertyTypeChange,
@@ -40,6 +41,7 @@ import { getNextDatabaseViewName } from "./database-view-naming";
 import { ServiceMutationError } from "./mutation-error";
 
 export { isDatabaseHostPageId } from "./database-host-page";
+export { getDatabaseRecord } from "./database-access";
 export {
   defaultStatusOptions,
   formatDatePropertyValueAsText,
@@ -62,37 +64,6 @@ const getPositionValuesSql = (ids: string[]) =>
     ids.map((id, position) => sql`(${id}::text, ${position}::integer)`),
     sql`, `,
   );
-
-export const getDatabaseRecord = async (id: string) => {
-  const [record] = await db
-    .select()
-    .from(database)
-    .where(and(eq(database.id, id), isNull(database.deletedAt)))
-    .limit(1);
-
-  return record;
-};
-
-async function requireDatabaseEditAccess(databaseId: string, userId: string) {
-  const record = await getDatabaseRecord(databaseId);
-
-  if (!record) {
-    throw new ServiceMutationError("Database not found", 404);
-  }
-
-  if (
-    !(await canAccessDatabaseInWorkspace(
-      record.id,
-      record.workspaceId,
-      userId,
-      "edit",
-    ))
-  ) {
-    throw new ServiceMutationError("Forbidden", 403);
-  }
-
-  return record;
-}
 
 export async function createDatabaseService(input: {
   name?: string;
