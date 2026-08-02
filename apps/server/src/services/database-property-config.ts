@@ -35,6 +35,9 @@ type PropertySelectOption = {
   name: string;
 };
 
+type StatusOption = { id: string; name: string };
+type StatusPropertyConfig = { defaultOptionId?: unknown; options?: unknown };
+
 const statusOptionAliases: Record<string, string> = {
   complete: "done",
   completed: "done",
@@ -222,6 +225,46 @@ export function formatDatePropertyValueAsText(value: unknown) {
   }
 
   return startText || null;
+}
+
+function getStatusOptions(config: unknown) {
+  const options =
+    config && typeof config === "object" && "options" in config
+      ? (config as StatusPropertyConfig).options
+      : null;
+
+  if (!Array.isArray(options)) {
+    return defaultStatusOptions;
+  }
+
+  const validOptions = options.filter(
+    (option): option is StatusOption =>
+      Boolean(option) &&
+      typeof option === "object" &&
+      typeof (option as StatusOption).id === "string" &&
+      typeof (option as StatusOption).name === "string",
+  );
+
+  return validOptions.length > 0 ? validOptions : defaultStatusOptions;
+}
+
+export function getStatusDefaultValue(config: unknown) {
+  const options = getStatusOptions(config);
+  const defaultOptionId =
+    config && typeof config === "object" && "defaultOptionId" in config
+      ? (config as StatusPropertyConfig).defaultOptionId
+      : defaultStatusOptions[0]?.id;
+
+  if (typeof defaultOptionId === "string") {
+    const defaultOption = options.find(
+      (option) => option.id === defaultOptionId,
+    );
+    if (defaultOption) {
+      return defaultOption.name;
+    }
+  }
+
+  return options[0]?.name ?? null;
 }
 
 function readSelectOptionNames(config: unknown): Set<string> {

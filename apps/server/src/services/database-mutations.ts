@@ -31,11 +31,12 @@ import {
 } from "./database-delta";
 import { isDatabaseHostPageId } from "./database-host-page";
 import {
-  defaultStatusOptions,
   formatDatePropertyValueAsText,
+  getStatusDefaultValue,
   normalizePropertyConfig,
   validateCellValue,
 } from "./database-property-config";
+import { getNextDatabaseViewName } from "./database-view-naming";
 import { ServiceMutationError } from "./mutation-error";
 
 export { isDatabaseHostPageId } from "./database-host-page";
@@ -56,72 +57,11 @@ type SqlExecutor = {
   execute: (query: SQL) => Promise<unknown>;
 };
 
-type StatusOption = { id: string; name: string };
-type StatusPropertyConfig = { defaultOptionId?: unknown; options?: unknown };
-
 const getPositionValuesSql = (ids: string[]) =>
   sql.join(
     ids.map((id, position) => sql`(${id}::text, ${position}::integer)`),
     sql`, `,
   );
-
-const getStatusOptions = (config: unknown) => {
-  const options =
-    config && typeof config === "object" && "options" in config
-      ? (config as StatusPropertyConfig).options
-      : null;
-
-  if (!Array.isArray(options)) {
-    return defaultStatusOptions;
-  }
-
-  const validOptions = options.filter(
-    (option): option is StatusOption =>
-      Boolean(option) &&
-      typeof option === "object" &&
-      typeof (option as StatusOption).id === "string" &&
-      typeof (option as StatusOption).name === "string",
-  );
-
-  return validOptions.length > 0 ? validOptions : defaultStatusOptions;
-};
-
-const getStatusDefaultValue = (config: unknown) => {
-  const options = getStatusOptions(config);
-  const defaultOptionId =
-    config && typeof config === "object" && "defaultOptionId" in config
-      ? (config as StatusPropertyConfig).defaultOptionId
-      : defaultStatusOptions[0]?.id;
-
-  if (typeof defaultOptionId === "string") {
-    const defaultOption = options.find(
-      (option) => option.id === defaultOptionId,
-    );
-    if (defaultOption) {
-      return defaultOption.name;
-    }
-  }
-
-  return options[0]?.name ?? null;
-};
-
-const getNextDatabaseViewName = (
-  baseName: string,
-  existingNames: Set<string>,
-) => {
-  const trimmedName = baseName.trim() || "Table";
-
-  if (!existingNames.has(trimmedName)) {
-    return trimmedName;
-  }
-
-  let index = 2;
-  while (existingNames.has(`${trimmedName} ${index}`)) {
-    index += 1;
-  }
-
-  return `${trimmedName} ${index}`;
-};
 
 export const getDatabaseRecord = async (id: string) => {
   const [record] = await db

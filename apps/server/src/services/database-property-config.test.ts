@@ -3,6 +3,7 @@ import { test } from "vitest";
 
 import {
   formatDatePropertyValueAsText,
+  getStatusDefaultValue,
   normalizePropertyConfig,
   validateCellValue,
 } from "./database-property-config";
@@ -250,4 +251,26 @@ test("formatDatePropertyValueAsText normalizes object and blank inputs", () => {
     null,
   );
   assert.equal(formatDatePropertyValueAsText([123, "2026-08-03"]), null);
+});
+
+test("getStatusDefaultValue resolves configured and fallback options", () => {
+  assert.equal(getStatusDefaultValue(null), "Not started");
+  assert.equal(
+    getStatusDefaultValue({
+      defaultOptionId: "done",
+      options: [
+        { id: "todo", name: "Todo" },
+        { id: "done", name: "Done" },
+      ],
+    }),
+    "Done",
+  );
+  assert.equal(
+    getStatusDefaultValue({
+      defaultOptionId: "missing",
+      options: [null, { id: "review", name: "Review" }, { id: 1 }],
+    }),
+    "Review",
+  );
+  assert.equal(getStatusDefaultValue({ options: [] }), "Not started");
 });
