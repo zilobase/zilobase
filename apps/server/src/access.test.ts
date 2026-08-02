@@ -39,6 +39,9 @@ vi.mock("./page-graph-loader", () => ({
 import {
   getEffectiveDatabaseAccessInWorkspace,
   getEffectivePageAccessInWorkspace,
+  hasAccess,
+  isPrivilegedOrgRole,
+  normalizeAccessLevel,
 } from "./access";
 
 beforeEach(() => {
@@ -47,6 +50,15 @@ beforeEach(() => {
   mocks.hasOwnedRootAccess.mockReturnValue(false);
   mocks.selectCalls = 0;
   mocks.selectResults.length = 0;
+});
+
+test("access primitives normalize and rank supported levels", () => {
+  assert.equal(normalizeAccessLevel("edit"), "edit");
+  assert.equal(normalizeAccessLevel("invalid"), null);
+  assert.equal(hasAccess("edit", "view"), true);
+  assert.equal(hasAccess("view", "full"), false);
+  assert.equal(isPrivilegedOrgRole("owner"), true);
+  assert.equal(isPrivilegedOrgRole("member"), false);
 });
 
 test("page access stops when workspace membership is missing", async () => {
@@ -146,4 +158,35 @@ test("direct standalone database access verifies membership", async () => {
     "full",
   );
   assert.equal(mocks.selectCalls, 2);
+});
+
+test("direct standalone database access resolves team rules", async () => {
+  mocks.selectResults.push(
+    [{ createdById: "user-2", pageId: null }],
+    [{ id: "membership-1" }],
+    [{ teamId: "team-1" }],
+    [{ accessLevel: "view" }, { accessLevel: "edit" }],
+  );
+
+  assert.equal(
+    await getEffectiveDatabaseAccessInWorkspace(
+      "database-1",
+      "workspace-1",
+      "user-1",
+    ),
+    "edit",
+  );
+  assert.equal(mocks.selectCalls, 4);
+
+  mocks.selectCalls = 0;
+  mocks.selectResults.push([]);
+  assert.equal(
+    await getEffectiveDatabaseAccessInWorkspace(
+      "missing",
+      "workspace-1",
+      "user-1",
+    ),
+    "none",
+  );
+  assert.equal(mocks.selectCalls, 1);
 });
