@@ -68,3 +68,68 @@ test("insertDatabaseBlockInContent rejects unknown heading", () => {
     /Could not find section heading/,
   );
 });
+
+test("insertDatabaseBlockInContent validates IDs and scans nested blocks", () => {
+  assert.throws(
+    () => insertDatabaseBlockInContent({}, { databaseId: "not-a-uuid" }),
+    /databaseId must be a valid UUID/,
+  );
+
+  const result = insertDatabaseBlockInContent(
+    {
+      type: "doc",
+      content: [
+        {
+          type: "blockquote",
+          content: [
+            {
+              attrs: { databaseId: DATABASE_ID },
+              type: "databaseBlock",
+            },
+          ],
+        },
+      ],
+    },
+    { databaseId: DATABASE_ID },
+  );
+
+  assert.equal(result.alreadyEmbedded, true);
+});
+
+test("insertDatabaseBlockInContent normalizes heading markup and boundaries", () => {
+  const result = insertDatabaseBlockInContent(
+    {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ text: "before" }] },
+        {
+          type: "heading2",
+          content: [{ text: "## Road" }, { text: "map" }],
+        },
+        { type: "paragraph", content: [{ text: "section" }] },
+        { type: "heading3", content: [{ text: "Next" }] },
+      ],
+    },
+    { afterHeading: " # Roadmap ", databaseId: DATABASE_ID },
+  );
+
+  assert.equal(result.content.content?.[3]?.type, "databaseBlock");
+  assert.equal(result.content.content?.[5]?.type, "heading3");
+});
+
+test("insertDatabaseBlockInContent handles sparse valid documents", () => {
+  const appended = insertDatabaseBlockInContent(
+    { type: "doc" },
+    { databaseId: DATABASE_ID },
+  );
+  assert.equal(appended.content.content?.[0]?.type, "databaseBlock");
+
+  assert.throws(
+    () =>
+      insertDatabaseBlockInContent(
+        { type: "doc", content: [{ type: "heading2" }] },
+        { afterHeading: "Roadmap", databaseId: DATABASE_ID },
+      ),
+    /Could not find section heading/,
+  );
+});

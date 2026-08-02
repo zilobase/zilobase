@@ -29,4 +29,12 @@ test("recognizes PostgreSQL and nested Hyperdrive availability failures", () => 
 test("does not hide ordinary application errors", () => {
   assert.equal(isDatabaseUnavailableError(new Error("Database not found")), false);
   assert.equal(isDatabaseUnavailableError({ code: "23505" }), false);
+  assert.equal(isDatabaseUnavailableError(null), false);
+
+  const cyclic: { cause?: unknown } = {};
+  cyclic.cause = cyclic;
+  assert.equal(isDatabaseUnavailableError(cyclic), false);
+  assert.equal(getDatabaseErrorCode({ cause: { code: "08006" } }), "08006");
+  assert.equal(getDatabaseErrorCode(cyclic), null);
+  assert.equal(getDatabaseErrorCode("not an error"), null);
 });

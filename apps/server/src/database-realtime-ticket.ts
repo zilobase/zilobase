@@ -93,20 +93,12 @@ async function sign(value: string, secret: string) {
 }
 
 async function verify(value: string, signature: string, secret: string) {
-  let signatureBytes: Uint8Array<ArrayBuffer>;
-
-  try {
-    signatureBytes = Uint8Array.from(Buffer.from(signature, "base64url"));
-  } catch {
-    return false;
-  }
-
   const key = await importSigningKey(secret, ["verify"]);
 
   return crypto.subtle.verify(
     "HMAC",
     key,
-    signatureBytes,
+    Uint8Array.from(Buffer.from(signature, "base64url")),
     new TextEncoder().encode(value),
   );
 }
