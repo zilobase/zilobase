@@ -53,6 +53,10 @@ import {
   normalizePropertyConfig,
   validateCellValue,
 } from "../../services/database-property-config";
+import {
+  getDatabasePayload,
+  getDatabaseSchemaPayload,
+} from "../../services/database-payload";
 import { isDatabaseHostPageId } from "../../services/database-host-page";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
@@ -479,152 +483,6 @@ const getNextDatabaseViewName = (
   return `${trimmedName} ${index}`;
 };
 
-const getDatabasePayload = async (
-  id: string,
-  userId?: string,
-  existingRecord?: NonNullable<Awaited<ReturnType<typeof getDatabaseRecord>>>,
-  options?: { includeDeleted?: boolean },
-) => {
-  const record = existingRecord ?? (await getDatabaseRecord(id, options));
-
-  if (!record) {
-    return null;
-  }
-
-  const [properties, views, rows, favoriteRecords] = await Promise.all([
-    db
-      .select({
-        column: databaseProperty,
-        property: pageProperty,
-      })
-      .from(databaseProperty)
-      .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-      .where(
-        and(
-          eq(databaseProperty.databaseId, id),
-          isNull(pageProperty.deletedAt),
-        ),
-      )
-      .orderBy(asc(databaseProperty.position)),
-    db
-      .select()
-      .from(databaseView)
-      .where(eq(databaseView.databaseId, id))
-      .orderBy(asc(databaseView.position)),
-    db
-      .select({
-        row: databaseRow,
-        page: {
-          createdAt: page.createdAt,
-          deletedAt: page.deletedAt,
-          id: page.id,
-          name: page.name,
-          metadata: page.metadata,
-          updatedAt: page.updatedAt,
-        },
-      })
-      .from(databaseRow)
-      .innerJoin(page, eq(databaseRow.pageId, page.id))
-      .where(
-        and(
-          eq(databaseRow.databaseId, id),
-          options?.includeDeleted ? undefined : isNull(databaseRow.deletedAt),
-        ),
-      )
-      .orderBy(asc(databaseRow.position)),
-    userId
-      ? db
-          .select({ id: favorite.id })
-          .from(favorite)
-          .where(and(eq(favorite.userId, userId), eq(favorite.databaseId, id)))
-          .limit(1)
-      : Promise.resolve([]),
-  ]);
-
-  const pageIds = rows.map(({ row }) => row.pageId);
-  const propertyIds = properties.map(({ property }) => property.id);
-  const values =
-    pageIds.length > 0 && propertyIds.length > 0
-      ? await db
-          .select()
-          .from(pagePropertyValue)
-          .where(
-            and(
-              inArray(pagePropertyValue.pageId, pageIds),
-              inArray(pagePropertyValue.propertyId, propertyIds),
-            ),
-          )
-      : [];
-  const [favoriteRecord] = favoriteRecords;
-
-  return {
-    database: { ...record, isFavorite: Boolean(favoriteRecord) },
-    properties: properties.map(({ column, property }) => ({
-      ...column,
-      property,
-    })),
-    views,
-    rows: rows.map(({ row, page }) => ({
-      ...row,
-      page,
-    })),
-    values,
-  };
-};
-
-const getDatabaseSchemaPayload = async (
-  id: string,
-  userId?: string,
-  existingRecord?: NonNullable<Awaited<ReturnType<typeof getDatabaseRecord>>>,
-  options?: { includeDeleted?: boolean },
-) => {
-  const record = existingRecord ?? (await getDatabaseRecord(id, options));
-
-  if (!record) {
-    return null;
-  }
-
-  const [properties, views, favoriteRecords] = await Promise.all([
-    db
-      .select({
-        column: databaseProperty,
-        property: pageProperty,
-      })
-      .from(databaseProperty)
-      .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-      .where(
-        and(
-          eq(databaseProperty.databaseId, id),
-          isNull(pageProperty.deletedAt),
-        ),
-      )
-      .orderBy(asc(databaseProperty.position)),
-    db
-      .select()
-      .from(databaseView)
-      .where(eq(databaseView.databaseId, id))
-      .orderBy(asc(databaseView.position)),
-    userId
-      ? db
-          .select({ id: favorite.id })
-          .from(favorite)
-          .where(and(eq(favorite.userId, userId), eq(favorite.databaseId, id)))
-          .limit(1)
-      : Promise.resolve([]),
-  ]);
-  const [favoriteRecord] = favoriteRecords;
-
-  return {
-    database: { ...record, isFavorite: Boolean(favoriteRecord) },
-    properties: properties.map(({ column, property }) => ({
-      ...column,
-      property,
-    })),
-    views,
-    rows: [],
-    values: [],
-  };
-};
 
 databaseRoutes.post("/", async (c) => {
   const user = requireUser(c);
