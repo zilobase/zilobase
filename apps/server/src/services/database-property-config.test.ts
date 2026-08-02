@@ -92,6 +92,16 @@ test("normalizePropertyConfig maps status aliases and fills missing colors", () 
   ]);
 });
 
+test("normalizePropertyConfig recognizes canonical status IDs", () => {
+  const config = normalizePropertyConfig("status", {
+    options: [{ id: "done", name: "Custom complete label" }],
+  }) as { options: unknown[] };
+
+  assert.deepEqual(config.options, [
+    { color: "green", group: "Complete", id: "done", name: "Done" },
+  ]);
+});
+
 test("normalizePropertyConfig assigns cycling colors to select options", () => {
   const config = normalizePropertyConfig("select", {
     options: [

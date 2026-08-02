@@ -53,7 +53,7 @@ const normalizeOptionKey = (value: string) =>
   value.trim().toLowerCase().replace(/[_-]+/g, " ");
 
 const getNextSelectOptionColor = (index: number) =>
-  selectOptionColors[index % selectOptionColors.length] ?? "gray";
+  selectOptionColors[index % selectOptionColors.length]!;
 
 const resolveDefaultStatusOption = (
   id: string,
