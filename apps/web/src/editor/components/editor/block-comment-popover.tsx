@@ -1,8 +1,8 @@
 import type { Editor as TiptapEditor } from "@tiptap/react"
 import {
+  ChevronsLeftIcon,
   MessageSquareIcon,
   MessageSquarePlusIcon,
-  PanelRightOpenIcon,
 } from "lucide-react"
 
 import type { PageCommentController } from "@/comments/yjs-comments"
@@ -109,7 +109,7 @@ export function BlockCommentPopover({
             type="button"
             variant="ghost"
           >
-            <PanelRightOpenIcon />
+            <ChevronsLeftIcon />
           </Button>
         </PopoverHeader>
         {activeThread ? (

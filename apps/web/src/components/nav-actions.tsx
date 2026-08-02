@@ -2,13 +2,14 @@ import * as React from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   CheckIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
   ChevronsUpDownIcon,
   Globe2Icon,
   LinkIcon,
   LockIcon,
   MoreHorizontalIcon,
   MessageSquareTextIcon,
-  PanelRightIcon,
   Share2Icon,
   SparklesIcon,
   StarIcon,
@@ -410,7 +411,11 @@ export function NavActions({
               type="button"
               variant="ghost"
             >
-              <PanelRightIcon />
+              {pageSidebarOpen ? (
+                <ChevronsRightIcon />
+              ) : (
+                <ChevronsLeftIcon />
+              )}
             </Button>
           ) : null}
           {actionPageId || databaseId ? (

@@ -1,5 +1,10 @@
 import { addMonths, format } from "date-fns"
-import { ChevronLeft, ChevronRight, ChevronsLeft } from "lucide-react"
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react"
 import { useContext, useMemo } from "react"
 
 import {
@@ -113,7 +118,7 @@ function DatabaseTimelineToolbar({
             type="button"
             variant="ghost"
           >
-            <ChevronsLeft className="size-4" />
+            <ChevronsRight className="size-4" />
           </Button>
         ) : null}
         <p className="database-timeline-toolbar-title">

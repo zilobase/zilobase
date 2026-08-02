@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils"
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions"
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
 import {
+  ChevronsRightIcon,
   HistoryIcon,
-  PanelRightCloseIcon,
   PlusIcon,
   SparklesIcon,
 } from "lucide-react"
@@ -89,7 +89,7 @@ export function ChatSidebarPanel({
           type="button"
           variant="ghost"
         >
-          <PanelRightCloseIcon />
+          <ChevronsRightIcon />
         </Button>
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-medium text-sm">

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import { Outlet, useRouterState } from "@tanstack/react-router"
-import { PanelRightIcon, XIcon } from "lucide-react"
+import { ChevronsRightIcon, PanelRightIcon } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppSearchProvider } from "@/components/app-search"
@@ -345,7 +345,7 @@ function AppLayoutContent({
           type="button"
           variant="ghost"
         >
-          <XIcon />
+          <ChevronsRightIcon />
         </Button>
       </header>
       <div

@@ -1,10 +1,10 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
-  ArrowRight,
   CheckIcon,
   ChevronDown,
   ChevronUp,
+  ChevronsRight,
   Maximize2,
   PanelRightIcon,
   SquareIcon,
@@ -220,7 +220,7 @@ function PagePaneControls({
           type="button"
           variant="ghost"
         >
-          <ArrowRight />
+          <ChevronsRight />
         </Button>
       ) : (
         leadingControl

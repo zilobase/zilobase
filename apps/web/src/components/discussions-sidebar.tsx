@@ -1,9 +1,9 @@
 "use client"
 
 import {
+  ChevronsRightIcon,
   FilterIcon,
   MessageSquarePlusIcon,
-  PanelRightCloseIcon,
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 
@@ -77,7 +77,7 @@ export function DiscussionsSidebarPanel({
           type="button"
           variant="ghost"
         >
-          <PanelRightCloseIcon />
+          <ChevronsRightIcon />
         </Button>
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-medium text-sm">Discussions</h2>

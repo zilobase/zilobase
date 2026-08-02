@@ -1,6 +1,7 @@
 import {
   ArrowDownUp,
   Check,
+  ChevronsRight,
   Eye,
   EyeOff,
   Filter,
@@ -9,7 +10,6 @@ import {
   Lock,
   Palette,
   Settings2,
-  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -145,7 +145,7 @@ export function DatabaseViewSettingsMenu({
             type="button"
             variant="ghost"
           >
-            <X className="size-4" />
+            <ChevronsRight className="size-4" />
           </Button>
         </div>
         <div className="flex items-center gap-1.5 px-1.5 py-1">
@@ -434,6 +434,5 @@ export function DatabaseViewSettingsMenu({
     </DropDrawer>
   );
 }
-
 
 
