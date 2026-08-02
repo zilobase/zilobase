@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { buildNavigationPlacements } from "./page-item-placements";
 
 test("buildNavigationPlacements keeps database row and page linked appearances", () => {

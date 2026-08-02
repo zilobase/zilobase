@@ -1,0 +1,51 @@
+name: Backend
+
+on:
+  pull_request:
+    paths:
+      - "apps/server/**"
+      - "packages/features/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/backend.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/server/**"
+      - "packages/features/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: zilobase_test
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d zilobase_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/zilobase_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run db:migrate --workspace @zilobase/server
+      - run: npm run build --workspace @zilobase/server
+      - run: npm run test:coverage --workspace @zilobase/server

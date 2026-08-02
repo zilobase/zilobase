@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test, vi } from "vitest";
 import { Hono } from "hono";
 
 import { appErrorHandler, createApp } from "./app";
@@ -56,4 +56,29 @@ test("database availability failures use the stable 503 contract", async () => {
     code: "DATABASE_UNAVAILABLE",
     message: "The database is temporarily unavailable.",
   });
+});
+
+test("unexpected failures use a private stable 500 response", async () => {
+  const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  const app = new Hono<AppBindings>();
+  app.use("*", async (c, next) => {
+    c.set("requestId", "request-2");
+    await next();
+  });
+  app.get("/failure", () => {
+    throw new Error("private implementation detail");
+  });
+  app.onError(appErrorHandler);
+
+  const response = await app.request("/failure");
+
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: "Internal server error" });
+  assert.deepEqual(JSON.parse(String(log.mock.calls[0]?.[0])), {
+    error: "private implementation detail",
+    event: "unhandled_request_error",
+    requestId: "request-2",
+    route: "/failure",
+  });
+  log.mockRestore();
 });

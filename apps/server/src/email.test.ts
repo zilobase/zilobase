@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test, vi } from "vitest";
 
 import { sendEmail } from "./email";
 import { setRuntimeAdapter, type OutboundEmailMessage } from "./runtime-adapter";
@@ -10,13 +10,17 @@ const message = {
   to: "user@example.com",
 };
 
-test("prints email locally when SMTP is not configured", async (context) => {
-  const info = context.mock.method(console, "info", () => undefined);
+test("prints email locally when SMTP is not configured", async () => {
+  const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
 
-  await sendEmail({}, message);
+  try {
+    await sendEmail({}, message);
 
-  assert.equal(info.mock.callCount(), 5);
-  assert.equal(info.mock.calls[1]?.arguments[0], "To: user@example.com");
+    assert.equal(info.mock.calls.length, 5);
+    assert.equal(info.mock.calls[1]?.[0], "To: user@example.com");
+  } finally {
+    info.mockRestore();
+  }
 });
 
 test("validates SMTP configuration before connecting", async () => {
