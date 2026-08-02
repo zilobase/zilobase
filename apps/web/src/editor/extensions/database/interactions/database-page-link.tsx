@@ -13,6 +13,11 @@ import {
   type PageMetadata,
 } from "@zilobase/features/pages"
 import { PageIconDisplay } from "@/lib/page-icon"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 type DatabasePageSummary = {
   iconKind?: "database" | "page"
@@ -40,7 +45,7 @@ export function DatabasePageLink({
 }) {
   const sidePane = useOptionalPageSidePane()
   const updatePage = useUpdatePage()
-  const inputRef = useRef<HTMLInputElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const titleEditFinishedRef = useRef(false)
   const [draftTitle, setDraftTitle] = useState("")
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -70,21 +75,6 @@ export function DatabasePageLink({
       setDraftTitle(pageSummary?.name ?? "")
     }
   }, [isEditingTitle, pageSummary?.name])
-
-  useEffect(() => {
-    if (!isEditingTitle) {
-      return
-    }
-
-    const inputElement = inputRef.current
-
-    if (!inputElement) {
-      return
-    }
-
-    inputElement.focus()
-    inputElement.select()
-  }, [isEditingTitle])
 
   const handleClick = (event?: { stopPropagation: () => void }) => {
     event?.stopPropagation()
@@ -151,6 +141,10 @@ export function DatabasePageLink({
       }
     )
   }
+  const resizeTitleTextarea = (element: HTMLTextAreaElement) => {
+    element.style.height = "auto"
+    element.style.height = `${element.scrollHeight}px`
+  }
 
   return (
     <div className="database-page-link">
@@ -160,43 +154,81 @@ export function DatabasePageLink({
             {icon}
           </span>
         ) : null}
-        {isEditingTitle ? (
-          <input
-            aria-label="Page title"
-            className="database-page-title-input"
-            onBlur={commitTitleEdit}
-            onChange={(event) => setDraftTitle(event.target.value)}
-            onClick={(event) => event.stopPropagation()}
-            onFocus={() => onActiveChange?.(true)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                event.preventDefault()
-                cancelTitleEdit()
+        {canEditTitle ? (
+          <Popover
+            open={isEditingTitle}
+            onOpenChange={(open) => {
+              if (open) {
+                startTitleEdit()
                 return
               }
 
-              if (event.key !== "Enter") {
-                return
-              }
-
-              event.preventDefault()
               commitTitleEdit()
             }}
-            ref={inputRef}
-            value={draftTitle}
-          />
-        ) : canEditTitle ? (
-          <button
-            className="database-page-title database-page-title-button"
-            onClick={(event) => {
-              event.stopPropagation()
-              startTitleEdit()
-            }}
-            title="Edit page title"
-            type="button"
           >
-            {title}
-          </button>
+            <PopoverTrigger asChild>
+              <button
+                className="database-page-title database-page-title-button"
+                onClick={(event) => event.stopPropagation()}
+                title="Edit page title"
+                type="button"
+              >
+                {title}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="start"
+              className="database-input-cell-popover w-72 p-0"
+              onOpenAutoFocus={(event) => {
+                event.preventDefault()
+                requestAnimationFrame(() => {
+                  const element = textareaRef.current
+
+                  if (!element) return
+
+                  element.focus()
+                  element.setSelectionRange(
+                    element.value.length,
+                    element.value.length
+                  )
+                  resizeTitleTextarea(element)
+                })
+              }}
+              sideOffset={0}
+            >
+              <div
+                className="database-input-cell-wrap"
+                data-popover-open="true"
+              >
+                <textarea
+                  aria-label="Page title"
+                  className="database-input-cell"
+                  data-database-cell-input
+                  onChange={(event) => setDraftTitle(event.target.value)}
+                  onFocus={() => onActiveChange?.(true)}
+                  onInput={(event) =>
+                    resizeTitleTextarea(event.currentTarget)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault()
+                      cancelTitleEdit()
+                      return
+                    }
+
+                    if (event.key !== "Enter") return
+
+                    event.preventDefault()
+                    commitTitleEdit()
+                  }}
+                  ref={textareaRef}
+                  rows={1}
+                  value={draftTitle}
+                  wrap="soft"
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
         ) : openMode === "title" ? (
           <button
             className="database-page-title database-page-title-link"
