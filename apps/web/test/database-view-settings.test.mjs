@@ -137,6 +137,45 @@ export function register({ assert, loadModule, test }) {
       ["parent", "child"],
     );
   });
+
+  test("database sub-item create rows follow the existing child rows", async () => {
+    const { getSubItemCreateRowsAfterRow } = await loadModule(
+      "/src/editor/extensions/database/views/database-sub-items.ts",
+    );
+    const rows = [
+      createSubItemRow("parent", null, 0),
+      createSubItemRow("child-1", "parent", 1),
+      createSubItemRow("child-2", "parent", 2),
+      createSubItemRow("sibling", null, 3),
+    ];
+
+    assert.deepEqual(
+      getSubItemCreateRowsAfterRow({
+        expandedRowIds: new Set(["parent"]),
+        rows,
+      }),
+      { "child-2": ["parent"] },
+    );
+  });
+
+  test("database nested create rows close from the deepest branch outward", async () => {
+    const { getSubItemCreateRowsAfterRow } = await loadModule(
+      "/src/editor/extensions/database/views/database-sub-items.ts",
+    );
+    const rows = [
+      createSubItemRow("parent", null, 0),
+      createSubItemRow("child", "parent", 1),
+      createSubItemRow("grandchild", "child", 2),
+    ];
+
+    assert.deepEqual(
+      getSubItemCreateRowsAfterRow({
+        expandedRowIds: new Set(["parent", "child"]),
+        rows,
+      }),
+      { grandchild: ["child", "parent"] },
+    );
+  });
 }
 
 function createSubItemRow(id, parentRowId, position) {

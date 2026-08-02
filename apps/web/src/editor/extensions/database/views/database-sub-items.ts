@@ -6,10 +6,65 @@ type SubItemRow = {
   position: number
 }
 
+type SubItemHierarchyRow = Pick<SubItemRow, "id" | "parentRowId">
+
 export type DatabaseSubItemsView<Row extends SubItemRow> = {
   childRowIdsByParentId: Record<string, string[]>
   depthByRowId: Record<string, number>
   rows: Row[]
+}
+
+export function getSubItemCreateRowsAfterRow<Row extends SubItemHierarchyRow>({
+  expandedRowIds,
+  rows,
+}: {
+  expandedRowIds: ReadonlySet<string>
+  rows: Row[]
+}): Record<string, string[]> {
+  const rowsById = new Map(rows.map((row) => [row.id, row]))
+  const createRowIdsByAfterRowId: Record<string, string[]> = {}
+
+  const isDescendantOf = (row: Row | undefined, ancestorRowId: string) => {
+    const seen = new Set<string>()
+    let parentRowId = row?.parentRowId
+
+    while (parentRowId && !seen.has(parentRowId)) {
+      if (parentRowId === ancestorRowId) return true
+
+      seen.add(parentRowId)
+      parentRowId = rowsById.get(parentRowId)?.parentRowId
+    }
+
+    return false
+  }
+
+  rows.forEach((row, index) => {
+    const nextRow = rows[index + 1]
+    const createRowIds: string[] = []
+    const seen = new Set<string>()
+    let currentRow: Row | undefined = row
+
+    while (currentRow && !seen.has(currentRow.id)) {
+      seen.add(currentRow.id)
+
+      if (
+        expandedRowIds.has(currentRow.id) &&
+        !isDescendantOf(nextRow, currentRow.id)
+      ) {
+        createRowIds.push(currentRow.id)
+      }
+
+      currentRow = currentRow.parentRowId
+        ? rowsById.get(currentRow.parentRowId)
+        : undefined
+    }
+
+    if (createRowIds.length > 0) {
+      createRowIdsByAfterRowId[row.id] = createRowIds
+    }
+  })
+
+  return createRowIdsByAfterRowId
 }
 
 export function getDatabaseSubItemsView<Row extends SubItemRow>({

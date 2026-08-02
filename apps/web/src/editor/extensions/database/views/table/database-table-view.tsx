@@ -76,6 +76,7 @@ import {
   useDatabaseRealtimeState,
   useDatabaseViewContext,
 } from "../database-view-context"
+import { getSubItemCreateRowsAfterRow } from "../database-sub-items"
 import {
   useActiveDatabaseCellKey,
   useDatabaseCellIsActive,
@@ -1030,6 +1031,37 @@ export function DatabaseTableView() {
           )
         : nestedVisibleRows,
     [collapsedGroups, groupedSections, isTableGrouped, nestedVisibleRows]
+  )
+  const expandedSubItemRowIds = useMemo(() => {
+    const expandedRowIds = new Set<string>()
+
+    if (!isSubItemsNested) return expandedRowIds
+
+    for (const row of visibleRows) {
+      const hasSubItems =
+        (subItemChildRowIdsByParentId[row.id]?.length ?? 0) > 0
+      const isExpanded = hasSubItems
+        ? !collapsedSubItemRowIds.has(row.id)
+        : expandedEmptySubItemRowIds.has(row.id)
+
+      if (isExpanded) expandedRowIds.add(row.id)
+    }
+
+    return expandedRowIds
+  }, [
+    collapsedSubItemRowIds,
+    expandedEmptySubItemRowIds,
+    isSubItemsNested,
+    subItemChildRowIdsByParentId,
+    visibleRows,
+  ])
+  const subItemCreateRowIdsByAfterRowId = useMemo(
+    () =>
+      getSubItemCreateRowsAfterRow({
+        expandedRowIds: expandedSubItemRowIds,
+        rows: visibleRows,
+      }),
+    [expandedSubItemRowIds, visibleRows]
   )
   const visibleRowIndexById = useMemo(
     () => new Map(visibleRows.map((row, index) => [row.id, index])),
@@ -2230,35 +2262,46 @@ export function DatabaseTableView() {
           </tr>
         )
 
-        if (!isSubItemsNested || !subItemsExpanded || !editable) {
+        const subItemCreateRowIds =
+          subItemCreateRowIdsByAfterRowId[row.id] ?? []
+
+        if (!editable || subItemCreateRowIds.length === 0) {
           return tableRow
         }
 
         return (
           <Fragment key={row.id}>
             {tableRow}
-            <tr className="database-sub-item-create-row">
-              <td colSpan={columnKeys.length}>
-                <button
-                  className="database-sub-item-create"
-                  disabled={!databaseId || isAddingDatabaseRow}
-                  onClick={() => addDatabaseRow(undefined, undefined, row.id)}
-                  style={
-                    {
-                      "--database-sub-item-depth": subItemDepth + 1,
-                    } as CSSProperties
-                  }
-                  type="button"
-                >
-                  {isAddingDatabaseRow ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Plus />
-                  )}
-                  <span>New sub-item</span>
-                </button>
-              </td>
-            </tr>
+            {subItemCreateRowIds.map((parentRowId) => (
+              <tr
+                className="database-sub-item-create-row"
+                key={`create-sub-item:${parentRowId}`}
+              >
+                <td colSpan={columnKeys.length}>
+                  <button
+                    className="database-sub-item-create"
+                    disabled={!databaseId || isAddingDatabaseRow}
+                    onClick={() =>
+                      addDatabaseRow(undefined, undefined, parentRowId)
+                    }
+                    style={
+                      {
+                        "--database-sub-item-depth":
+                          (subItemDepthByRowId[parentRowId] ?? 0) + 1,
+                      } as CSSProperties
+                    }
+                    type="button"
+                  >
+                    {isAddingDatabaseRow ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Plus />
+                    )}
+                    <span>New sub-item</span>
+                  </button>
+                </td>
+              </tr>
+            ))}
           </Fragment>
         )
   }
