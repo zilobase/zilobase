@@ -40,7 +40,6 @@ import {
 import { getDatabaseRealtimeWebSocketUrl } from "../../runtime-adapter";
 import { upsertPageItemPlacement } from "../../page-item-placements";
 import { softDeleteDatabaseTree } from "../../soft-delete-nav-items";
-import { loadWorkspacePageGraph } from "../../page-graph-loader";
 import {
   commitDatabaseMutation as commitDatabaseMutationCore,
   DatabaseMutationError,
@@ -93,16 +92,6 @@ const canAccessDatabaseRecord = (
   required: "view" | "edit" | "full",
 ) =>
   canAccessDatabaseInWorkspace(record.id, record.workspaceId, userId, required);
-
-const getNestedDatabasePageIds = async (
-  rootDatabaseId: string,
-  workspaceId: string,
-  accessibleIds: Set<string>,
-) => {
-  const graph = await loadWorkspacePageGraph(workspaceId);
-
-  return graph.getNestedDatabasePageIds(rootDatabaseId, accessibleIds);
-};
 
 type DatabaseTransaction = Parameters<
   Parameters<Database["transaction"]>[0]
