@@ -237,15 +237,6 @@ function getS3Config(env: RuntimeEnv): S3Config {
   };
 }
 
-function hasS3Config(env: RuntimeEnv) {
-  return Boolean(
-    getStringEnv(env, "S3_ACCESS_KEY_ID") &&
-      getStringEnv(env, "S3_SECRET_ACCESS_KEY") &&
-      getStringEnv(env, "S3_BUCKET_NAME") &&
-      getStringEnv(env, "S3_ENDPOINT"),
-  );
-}
-
 function getExpiresAt(expiresInSeconds: number) {
   return new Date(Date.now() + expiresInSeconds * 1000).toISOString();
 }

@@ -41,6 +41,7 @@ export {
   getDatabaseRealtimeWebSocketUrl,
   getDatabaseUrl,
   getRuntimeAdapter,
+  runWithRuntimeAdapter,
   setRuntimeAdapter,
   type OutboundEmailMessage,
   type ServerRuntimeAdapter,

@@ -96,19 +96,9 @@ export async function runWithDbClient<T>(
   }
 
   if (databaseClient.lifecycle === "pooled") {
-    const connectStartedAt = performance.now();
-    const client = await databaseClient.client.connect();
-    options?.onTiming?.(
-      "db_connect",
-      Math.round(performance.now() - connectStartedAt),
-    );
-    const releaseStartedAt = performance.now();
-    client.release();
-    options?.onTiming?.(
-      "db_release",
-      Math.round(performance.now() - releaseStartedAt),
-    );
-
+    // Drizzle acquires and releases pool connections for the queries it runs.
+    // Pre-acquiring a connection here only to release it before the callback
+    // adds a pool round trip to every request without protecting any query.
     return runWithDb(databaseClient.db, callback);
   }
 

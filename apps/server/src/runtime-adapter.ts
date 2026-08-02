@@ -2,6 +2,7 @@ import { getRequiredStringEnv, getStringEnv, type RuntimeEnv } from "./config";
 import type { ImageStorage } from "./image-storage";
 import type { DatabaseRealtimeMutationEvent } from "./services/database-delta";
 import type { ToolSet } from "ai";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 export type OutboundEmailMessage = {
   from: string;
@@ -51,7 +52,7 @@ export function getDatabaseRealtimeWebSocketUrl(
 
   if (explicitUrl) return explicitUrl;
 
-  const configured = runtimeAdapter.getDatabaseRealtimeWebSocketUrl?.(
+  const configured = getRuntimeAdapter().getDatabaseRealtimeWebSocketUrl?.(
     request,
     env,
   );
@@ -76,7 +77,10 @@ export function getCollaborationWebSocketUrl(
     return explicitUrl;
   }
 
-  const configured = runtimeAdapter.getCollaborationWebSocketUrl?.(request, env);
+  const configured = getRuntimeAdapter().getCollaborationWebSocketUrl?.(
+    request,
+    env,
+  );
 
   if (configured) {
     return configured;
@@ -91,13 +95,21 @@ export function getCollaborationWebSocketUrl(
 }
 
 let runtimeAdapter: ServerRuntimeAdapter = {};
+const runtimeAdapterStore = new AsyncLocalStorage<ServerRuntimeAdapter>();
 
 export function setRuntimeAdapter(adapter: ServerRuntimeAdapter) {
   runtimeAdapter = adapter;
 }
 
+export function runWithRuntimeAdapter<T>(
+  adapter: ServerRuntimeAdapter,
+  callback: () => T,
+) {
+  return runtimeAdapterStore.run(adapter, callback);
+}
+
 export function getDatabaseUrl(env: RuntimeEnv) {
-  const adapterUrl = runtimeAdapter.getDatabaseUrl?.(env);
+  const adapterUrl = getRuntimeAdapter().getDatabaseUrl?.(env);
 
   if (adapterUrl) {
     return adapterUrl;
@@ -107,11 +119,11 @@ export function getDatabaseUrl(env: RuntimeEnv) {
 }
 
 export function getRuntimeAdapter() {
-  return runtimeAdapter;
+  return runtimeAdapterStore.getStore() ?? runtimeAdapter;
 }
 
 export function isSelfHostedRuntime() {
-  return runtimeAdapter.selfHosted !== false;
+  return getRuntimeAdapter().selfHosted !== false;
 }
 
 export function getConfiguredImageStorageMode(env: RuntimeEnv) {

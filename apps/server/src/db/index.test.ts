@@ -64,3 +64,25 @@ test("a connection failure never runs the callback", async () => {
   assert.equal(callbackCalled, false);
   assert.deepEqual(calls, { connect: 1, end: 0 });
 });
+
+test("pooled execution does not acquire a redundant connection", async () => {
+  let connects = 0;
+  const databaseClient = {
+    client: {
+      async connect() {
+        connects += 1;
+        return { release() {} };
+      },
+    },
+    db: {},
+    lifecycle: "pooled",
+  };
+
+  const result = await runWithDbClient(
+    databaseClient as never,
+    async () => "pooled",
+  );
+
+  assert.equal(result, "pooled");
+  assert.equal(connects, 0);
+});
