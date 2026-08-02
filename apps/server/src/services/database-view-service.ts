@@ -37,7 +37,7 @@ export async function createDatabaseViewService(input: {
     new Set(existingViews.map((view) => view.name)),
   );
 
-  await commitDatabaseMutation(
+  const commit = await commitDatabaseMutation(
     {
       actorId: input.userId,
       changed: ["views"],
@@ -66,7 +66,13 @@ export async function createDatabaseViewService(input: {
     },
   );
 
-  return { databaseId: existing.id, name: nextName, type, viewId };
+  return {
+    commit,
+    databaseId: existing.id,
+    name: nextName,
+    type,
+    viewId,
+  };
 }
 
 export async function updateDatabaseViewService(input: {
@@ -114,7 +120,7 @@ export async function updateDatabaseViewService(input: {
     values.type = input.type;
   }
 
-  await commitDatabaseMutation(
+  const commit = await commitDatabaseMutation(
     {
       actorId: input.userId,
       changed: ["views"],
@@ -135,5 +141,49 @@ export async function updateDatabaseViewService(input: {
     },
   );
 
-  return { databaseId: existing.id, viewId: existingView.id };
+  return { commit, databaseId: existing.id, viewId: existingView.id };
+}
+
+export async function deleteDatabaseViewService(input: {
+  databaseId: string;
+  env?: RuntimeEnv;
+  userId: string;
+  viewId: string;
+}) {
+  const existing = await requireDatabaseEditAccess(
+    input.databaseId,
+    input.userId,
+  );
+  const views = await db
+    .select({ id: databaseView.id })
+    .from(databaseView)
+    .where(eq(databaseView.databaseId, existing.id));
+  const existingView = views.find((view) => view.id === input.viewId);
+
+  if (!existingView) {
+    throw new ServiceMutationError("Database view not found", 404);
+  }
+
+  if (views.length <= 1) {
+    throw new ServiceMutationError(
+      "A database must have at least one view",
+      400,
+    );
+  }
+
+  const commit = await commitDatabaseMutation(
+    {
+      actorId: input.userId,
+      changed: ["views"],
+      databaseId: existing.id,
+      env: input.env,
+    },
+    async (tx) => {
+      await tx.delete(databaseView).where(eq(databaseView.id, existingView.id));
+
+      return { delta: { removedViewIds: [existingView.id] } };
+    },
+  );
+
+  return { commit, databaseId: existing.id, viewId: existingView.id };
 }

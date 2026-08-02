@@ -19,6 +19,7 @@ export {
 } from "./database-service";
 export {
   createDatabaseViewService,
+  deleteDatabaseViewService,
   updateDatabaseViewService,
 } from "./database-view-service";
 export { ServiceMutationError } from "./mutation-error";

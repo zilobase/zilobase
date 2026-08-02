@@ -70,8 +70,12 @@ import {
   updateDatabaseRowPositions,
 } from "../../services/database-position-service";
 import { isDatabaseHostPageId } from "../../services/database-host-page";
-import { getNextDatabaseViewName } from "../../services/database-view-naming";
 import { ServiceMutationError } from "../../services/mutation-error";
+import {
+  createDatabaseViewService,
+  deleteDatabaseViewService,
+  updateDatabaseViewService,
+} from "../../services/database-view-service";
 import {
   isReadOnlyPropertyType,
   normalizeDatabasePropertyType,
@@ -80,7 +84,6 @@ import {
 import { upsertPagePropertyValues } from "../../services/page-property-value-upsert";
 import {
   fetchDatabasePropertyDelta,
-  fetchDatabaseViewDelta,
   propertyPositionDelta,
   rowPositionDelta,
   type DatabaseDelta,
@@ -105,6 +108,15 @@ const databaseMutationErrorResponse = (
   c: Context<AppBindings>,
   error: DatabaseMutationError,
 ) => c.json({ error: error.message }, error.status === 404 ? 404 : 400);
+
+const serviceMutationErrorResponse = (
+  c: Context<AppBindings>,
+  error: ServiceMutationError,
+) =>
+  c.json(
+    { error: error.message },
+    error.status === 403 ? 403 : error.status === 404 ? 404 : 400,
+  );
 
 const commitDatabaseMutation = async (
   c: Context<AppBindings>,
@@ -889,31 +901,6 @@ databaseRoutes.patch("/:id/views/:viewId", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  const [existingView] = await db
-    .select({ id: databaseView.id })
-    .from(databaseView)
-    .where(
-      and(
-        eq(databaseView.id, c.req.param("viewId")),
-        eq(databaseView.databaseId, existing.id),
-      ),
-    )
-    .limit(1);
-
-  if (!existingView) {
-    return c.json({ error: "Database view not found" }, 404);
-  }
-
   const body = await c.req.json().catch(() => null);
 
   if (!body || typeof body !== "object") {
@@ -921,65 +908,34 @@ databaseRoutes.patch("/:id/views/:viewId", async (c) => {
   }
 
   const patch = body as { name?: unknown; config?: unknown; type?: unknown };
-  const values: Partial<typeof databaseView.$inferInsert> = {
-    updatedAt: new Date(),
-  };
 
-  if (patch.name !== undefined) {
-    if (typeof patch.name !== "string") {
-      return c.json({ error: "name must be a string" }, 400);
+  if (patch.name !== undefined && typeof patch.name !== "string") {
+    return c.json({ error: "name must be a string" }, 400);
+  }
+
+  if (patch.type !== undefined && typeof patch.type !== "string") {
+    return c.json({ error: "type must be a string" }, 400);
+  }
+
+  try {
+    const result = await updateDatabaseViewService({
+      databaseId: c.req.param("id"),
+      env: c.env,
+      userId: user.id,
+      viewId: c.req.param("viewId"),
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
+      ...(patch.config !== undefined ? { config: patch.config } : {}),
+      ...(patch.type !== undefined ? { type: patch.type } : {}),
+    });
+
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
     }
 
-    values.name = patch.name;
+    throw error;
   }
-
-  if (patch.config !== undefined) {
-    values.config = patch.config;
-  }
-
-  if (patch.type !== undefined) {
-    if (typeof patch.type !== "string") {
-      return c.json({ error: "type must be a string" }, 400);
-    }
-
-    values.type = patch.type;
-  }
-
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: ["views"],
-
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      await tx
-        .update(databaseView)
-        .set(values)
-        .where(eq(databaseView.id, existingView.id));
-
-      const delta = await fetchDatabaseViewDelta(existingView.id, tx);
-
-      return {
-        delta: delta ?? {
-          views: [
-            {
-              ...values,
-              databaseId: existing.id,
-              id: existingView.id,
-            },
-          ],
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
-  }
-
-  return c.json(mutationResponse(mutation));
 });
 
 databaseRoutes.post("/:id/views", async (c) => {
@@ -989,18 +945,7 @@ databaseRoutes.post("/:id/views", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
   const body = await c.req.json().catch(() => ({}));
-
   const {
     config = null,
     name = "Table",
@@ -1015,69 +960,24 @@ databaseRoutes.post("/:id/views", async (c) => {
     return c.json({ error: "name and type must be strings" }, 400);
   }
 
-  const existingViews = await db
-    .select({
-      name: databaseView.name,
-      position: databaseView.position,
-    })
-    .from(databaseView)
-    .where(eq(databaseView.databaseId, existing.id))
-    .orderBy(asc(databaseView.position));
-  const nextPosition = existingViews.length;
-  const nextName = getNextDatabaseViewName(
-    name,
-    new Set(existingViews.map((view) => view.name)),
-  );
+  try {
+    const result = await createDatabaseViewService({
+      config,
+      databaseId: c.req.param("id"),
+      env: c.env,
+      name,
+      type,
+      userId: user.id,
+    });
 
-  const viewId = crypto.randomUUID();
-  const now = new Date();
+    return c.json(mutationResponse(result.commit), 201);
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
 
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: ["views"],
-
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      await tx.insert(databaseView).values({
-        id: viewId,
-        databaseId: existing.id,
-        name: nextName,
-        type,
-        config,
-        position: nextPosition,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      const delta = await fetchDatabaseViewDelta(viewId, tx);
-
-      return {
-        delta: delta ?? {
-          views: [
-            {
-              config,
-              createdAt: now.toISOString(),
-              databaseId: existing.id,
-              id: viewId,
-              name: nextName,
-              position: nextPosition,
-              type,
-              updatedAt: now.toISOString(),
-            },
-          ],
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
+    throw error;
   }
-
-  return c.json(mutationResponse(mutation), 201);
 });
 
 databaseRoutes.delete("/:id/views/:viewId", async (c) => {
@@ -1087,66 +987,22 @@ databaseRoutes.delete("/:id/views/:viewId", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
+  try {
+    const result = await deleteDatabaseViewService({
+      databaseId: c.req.param("id"),
+      env: c.env,
+      userId: user.id,
+      viewId: c.req.param("viewId"),
+    });
 
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
   }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  const [existingView] = await db
-    .select({ id: databaseView.id })
-    .from(databaseView)
-    .where(
-      and(
-        eq(databaseView.id, c.req.param("viewId")),
-        eq(databaseView.databaseId, existing.id),
-      ),
-    )
-    .limit(1);
-
-  if (!existingView) {
-    return c.json({ error: "Database view not found" }, 404);
-  }
-
-  const remainingViews = await db
-    .select({ id: databaseView.id })
-    .from(databaseView)
-    .where(eq(databaseView.databaseId, existing.id));
-
-  if (remainingViews.length <= 1) {
-    return c.json({ error: "A database must have at least one view" }, 400);
-  }
-
-  const body = await c.req.json().catch(() => null);
-
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: ["views"],
-
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      await tx.delete(databaseView).where(eq(databaseView.id, existingView.id));
-
-      return {
-        delta: {
-          removedViewIds: [existingView.id],
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
-  }
-
-  return c.json(mutationResponse(mutation));
 });
 
 databaseRoutes.post("/:id/properties", async (c) => {

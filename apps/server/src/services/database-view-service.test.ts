@@ -26,6 +26,9 @@ vi.mock("../db", () => ({
         where() { return builder; },
         async orderBy() { return rows; },
         async limit() { return rows; },
+        then(resolve: (value: unknown[]) => unknown) {
+          return Promise.resolve(rows).then(resolve);
+        },
       };
       return builder;
     },
@@ -34,6 +37,7 @@ vi.mock("../db", () => ({
 
 import {
   createDatabaseViewService,
+  deleteDatabaseViewService,
   updateDatabaseViewService,
 } from "./database-view-service";
 import { ServiceMutationError } from "./mutation-error";
@@ -51,9 +55,15 @@ beforeEach(() => {
 });
 
 function transactionRecorder() {
+  const deletes: unknown[] = [];
   const inserts: unknown[] = [];
   const updates: unknown[] = [];
   const tx = {
+    delete() {
+      return {
+        async where(value: unknown) { deletes.push(value); },
+      };
+    },
     insert() {
       return {
         async values(value: unknown) { inserts.push(value); },
@@ -69,7 +79,7 @@ function transactionRecorder() {
     },
   };
   mocks.commit.mockImplementation(async (_options, mutate) => mutate(tx));
-  return { inserts, updates };
+  return { deletes, inserts, updates };
 }
 
 test("createDatabaseViewService creates a uniquely named trailing view", async () => {
@@ -93,6 +103,7 @@ test("createDatabaseViewService creates a uniquely named trailing view", async (
   });
 
   assert.deepEqual(result, {
+    commit: { delta: { views: [{ id: "view-1" }] } },
     databaseId: "database-1",
     name: "Board 3",
     type: "board",
@@ -152,7 +163,11 @@ test("updateDatabaseViewService updates supplied view fields", async () => {
     viewId: "view-1",
   });
 
-  assert.deepEqual(result, { databaseId: "database-1", viewId: "view-1" });
+  assert.deepEqual(result, {
+    commit: { delta: { views: [{ id: "view-1" }] } },
+    databaseId: "database-1",
+    viewId: "view-1",
+  });
   assert.deepEqual(updates[0], {
     config: { filter: true },
     name: "Filtered",
@@ -172,6 +187,56 @@ test("updateDatabaseViewService rejects missing views", async () => {
     }),
     (error: unknown) =>
       error instanceof ServiceMutationError && error.status === 404,
+  );
+  assert.equal(mocks.commit.mock.calls.length, 0);
+});
+
+test("deleteDatabaseViewService deletes a view while preserving one remaining view", async () => {
+  const { deletes } = transactionRecorder();
+  mocks.selectResults.push([{ id: "view-1" }, { id: "view-2" }]);
+
+  const result = await deleteDatabaseViewService({
+    databaseId: "database-1",
+    env: { ENV: "test" },
+    userId: "user-1",
+    viewId: "view-1",
+  });
+
+  assert.deepEqual(result, {
+    commit: { delta: { removedViewIds: ["view-1"] } },
+    databaseId: "database-1",
+    viewId: "view-1",
+  });
+  assert.equal(deletes.length, 1);
+  assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
+    actorId: "user-1",
+    changed: ["views"],
+    databaseId: "database-1",
+    env: { ENV: "test" },
+  });
+});
+
+test("deleteDatabaseViewService rejects missing and last views", async () => {
+  mocks.selectResults.push([{ id: "view-2" }]);
+  await assert.rejects(
+    deleteDatabaseViewService({
+      databaseId: "database-1",
+      userId: "user-1",
+      viewId: "missing",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 404,
+  );
+
+  mocks.selectResults.push([{ id: "view-1" }]);
+  await assert.rejects(
+    deleteDatabaseViewService({
+      databaseId: "database-1",
+      userId: "user-1",
+      viewId: "view-1",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 400,
   );
   assert.equal(mocks.commit.mock.calls.length, 0);
 });
