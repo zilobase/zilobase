@@ -76,11 +76,11 @@ import {
   type DatabasePropertyConfig,
   type DatabaseSortDirection,
 } from "../views/database-view-config";
-import { DatabasePropertyEditSubmenu } from "./database-property-edit-submenu";
+import { DatabasePropertyEditSubmenu } from "./property-settings";
 import { useClearDatabasePropertyDrafts } from "../views/database-cell-state";
 
 export { DatabaseNamePropertyMenu } from "./database-name-property-menu";
-export { DatabasePropertyEditSubmenu } from "./database-property-edit-submenu";
+export { DatabasePropertyEditSubmenu } from "./property-settings";
 
 export function DatabasePropertyMenu({
   config,

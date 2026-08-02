@@ -45,7 +45,7 @@ import {
 import {
   getReadOnlyTimePropertyRawValue,
 } from "./read-only-time-property"
-import { DatabaseRollupPropertySettings } from "./database-property-edit-submenu"
+import { DatabaseRollupPropertySettings } from "./property-settings";
 import { useDatabaseViewContext } from "../views/database-view-context"
 import {
   useDatabaseCellDraft,

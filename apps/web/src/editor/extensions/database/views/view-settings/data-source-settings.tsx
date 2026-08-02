@@ -23,7 +23,7 @@ import { useDatabase } from "@zilobase/features/databases";
 import { usePageNavigation } from "@zilobase/features/pages";
 
 import { getDatabasePropertyType } from "../../core/database-property-types";
-import { hasDatabasePropertyEditSettings } from "../../properties/database-property-edit-submenu";
+import { hasDatabasePropertyEditSettings } from "../../properties/property-settings";
 import { DatabasePropertyEditSubmenu } from "../../properties/database-property-menu";
 import { getDatabaseLinkedViewKey } from "../database-view-config";
 import {
