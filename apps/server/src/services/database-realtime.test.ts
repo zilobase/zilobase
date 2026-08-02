@@ -236,7 +236,7 @@ test("outbox draining delivers, retries, discards, and reports health", async ()
 
   assert.equal(state.claimedLimit, 1);
   assert.equal(state.claimed, true);
-  assert.equal(state.deleted.length, 2);
+  assert.equal(state.deleted.length, 1);
   assert.deepEqual(state.retryUpdates, [
     { nextAttemptAt: new Date("2026-08-02T00:11:00.000Z") },
   ]);
@@ -255,4 +255,34 @@ test("outbox draining delivers, retries, discards, and reports health", async ()
     JSON.parse(String(errorLog.mock.calls[1]?.[0])).event,
     "database_realtime_publish_discarded",
   );
+});
+
+test("outbox draining groups retries by backoff attempt", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-08-02T00:00:00.000Z"));
+  const committedAt = new Date("2026-08-02T00:00:00.000Z");
+  const state = drainExecutor([
+    { ...event, attempts: 0, committedAt, id: "retry-1" },
+    { ...event, attempts: 0, committedAt, id: "retry-2" },
+    { ...event, attempts: 1, committedAt, id: "retry-3" },
+  ]);
+  const errorLog = vi
+    .spyOn(console, "error")
+    .mockImplementation(() => undefined);
+
+  const result = await runWithRuntimeAdapter(
+    { publishDatabaseMutation: async () => { throw new Error("temporary"); } },
+    () =>
+      drainDatabaseRealtimeOutbox({}, {
+        database: state.executor as never,
+      }),
+  );
+
+  assert.equal(state.deleted.length, 0);
+  assert.deepEqual(state.retryUpdates, [
+    { nextAttemptAt: new Date("2026-08-02T00:01:00.000Z") },
+    { nextAttemptAt: new Date("2026-08-02T00:02:00.000Z") },
+  ]);
+  assert.equal(result.failed, 3);
+  assert.equal(errorLog.mock.calls.length, 3);
 });

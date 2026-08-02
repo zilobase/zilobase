@@ -102,28 +102,26 @@ export async function drainDatabaseRealtimeOutbox(
   let delivered = 0;
   let discarded = 0;
   let failed = 0;
+  const deleteIds: string[] = [];
+  const retryIdsByAttempts = new Map<number, string[]>();
 
   for (const entry of entries) {
     try {
       await publish({ env, event: toRealtimeEvent(entry as StoredRealtimeEvent) });
-      await executor
-        .delete(databaseRealtimeOutbox)
-        .where(eq(databaseRealtimeOutbox.id, entry.id));
+      deleteIds.push(entry.id);
       delivered += 1;
     } catch (error) {
       failed += 1;
       const discard = entry.attempts >= MAX_DELIVERY_ATTEMPTS;
 
       if (discard) {
-        await executor
-          .delete(databaseRealtimeOutbox)
-          .where(eq(databaseRealtimeOutbox.id, entry.id));
+        deleteIds.push(entry.id);
         discarded += 1;
       } else {
-        await executor
-          .update(databaseRealtimeOutbox)
-          .set({ nextAttemptAt: retryAt(entry.attempts, attemptedAt) })
-          .where(eq(databaseRealtimeOutbox.id, entry.id));
+        retryIdsByAttempts.set(entry.attempts, [
+          ...(retryIdsByAttempts.get(entry.attempts) ?? []),
+          entry.id,
+        ]);
       }
       console.error(JSON.stringify({
         attempts: entry.attempts,
@@ -136,6 +134,19 @@ export async function drainDatabaseRealtimeOutbox(
         version: entry.version,
       }));
     }
+  }
+
+  if (deleteIds.length > 0) {
+    await executor
+      .delete(databaseRealtimeOutbox)
+      .where(inArray(databaseRealtimeOutbox.id, deleteIds));
+  }
+
+  for (const [attempts, retryIds] of retryIdsByAttempts) {
+    await executor
+      .update(databaseRealtimeOutbox)
+      .set({ nextAttemptAt: retryAt(attempts, attemptedAt) })
+      .where(inArray(databaseRealtimeOutbox.id, retryIds));
   }
 
   const [health] = await executor
