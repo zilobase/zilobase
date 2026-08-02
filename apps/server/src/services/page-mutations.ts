@@ -10,7 +10,7 @@ import { database, page, pageCollaborationDocument } from "../db/schema";
 import { encodePageContentAsYjs } from "../collaboration/service";
 import { upsertPageItemPlacement } from "../page-item-placements";
 import { insertDatabaseBlockInContent } from "./insert-database-block";
-import { ServiceMutationError } from "./database-mutations";
+import { ServiceMutationError } from "./mutation-error";
 
 export async function createPageService(input: {
   content?: unknown;

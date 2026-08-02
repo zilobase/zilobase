@@ -4,9 +4,9 @@ import { test } from "vitest";
 import {
   formatDatePropertyValueAsText,
   normalizePropertyConfig,
-  ServiceMutationError,
   validateCellValue,
 } from "./database-mutations";
+import { ServiceMutationError } from "./mutation-error";
 import {
   databasePropertyTypes,
   normalizeDatabasePropertyType,

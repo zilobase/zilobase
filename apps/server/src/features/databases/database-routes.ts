@@ -50,11 +50,11 @@ import {
 } from "../../services/database-commit";
 import {
   formatDatePropertyValueAsText,
-  isDatabaseHostPageId,
   normalizePropertyConfig,
-  ServiceMutationError,
   validateCellValue,
 } from "../../services/database-mutations";
+import { isDatabaseHostPageId } from "../../services/database-host-page";
+import { ServiceMutationError } from "../../services/mutation-error";
 import {
   isReadOnlyPropertyType,
   isSelectLikePropertyType,

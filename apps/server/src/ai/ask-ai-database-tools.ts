@@ -9,12 +9,12 @@ import {
   createDatabaseViewService,
   defaultStatusOptions,
   selectOptionColors,
-  ServiceMutationError,
   setDatabaseCellValueService,
   updateDatabasePropertyService,
   updateDatabaseService,
   updateDatabaseViewService,
 } from "../services/database-mutations";
+import { ServiceMutationError } from "../services/mutation-error";
 import {
   createPageService,
   embedDatabaseInPageService,

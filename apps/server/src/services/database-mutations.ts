@@ -31,15 +31,11 @@ import {
   fetchDatabaseViewDelta,
   type DatabaseDelta,
 } from "./database-delta";
-export class ServiceMutationError extends Error {
-  constructor(
-    message: string,
-    readonly status = 400,
-  ) {
-    super(message);
-    this.name = "ServiceMutationError";
-  }
-}
+import { isDatabaseHostPageId } from "./database-host-page";
+import { ServiceMutationError } from "./mutation-error";
+
+export { isDatabaseHostPageId } from "./database-host-page";
+export { ServiceMutationError } from "./mutation-error";
 
 type DatabaseTransaction = Parameters<
   Parameters<Database["transaction"]>[0]
@@ -81,14 +77,6 @@ type PropertySelectOption = {
 
 type StatusOption = { id: string; name: string };
 type StatusPropertyConfig = { defaultOptionId?: unknown; options?: unknown };
-
-export const isDatabaseHostPageId = (
-  candidatePageId: unknown,
-  databasePageId: string | null,
-) =>
-  typeof candidatePageId === "string" &&
-  candidatePageId.length > 0 &&
-  candidatePageId === databasePageId;
 
 const statusOptionAliases: Record<string, string> = {
   complete: "done",
