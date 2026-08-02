@@ -18,6 +18,7 @@ import {
   RightSidebars,
 } from "@/components/right-sidebars"
 import {
+  APP_SIDEBAR_PANEL_WIDTH,
   getRightSidebarEditorDefaultSize,
   type SidebarResizeIntent,
 } from "@/components/sidebar-panel-sizing"
@@ -78,7 +79,7 @@ export function AppLayout({
       className="h-svh overflow-hidden"
       style={
         {
-          "--app-sidebar-panel-width": "18rem",
+          "--app-sidebar-panel-width": APP_SIDEBAR_PANEL_WIDTH,
           "--right-sidebar-panel-width": "24rem",
           "--sidebar-width": "var(--app-sidebar-panel-width)",
         } as React.CSSProperties

@@ -25,6 +25,39 @@ export function register({ assert, loadModule, test }) {
     assert.equal(getRightSidebarDockMinSize(true, true), 50)
   })
 
+  test("a single view settings sidebar matches the navigation sidebar width", async () => {
+    const {
+      APP_SIDEBAR_PANEL_WIDTH,
+      getRightSidebarDockSizes,
+    } = await loadModule("/src/components/sidebar-panel-sizing.ts")
+
+    assert.equal(APP_SIDEBAR_PANEL_WIDTH, "288px")
+    assert.deepEqual(
+      getRightSidebarDockSizes({
+        fixedSinglePanelWidth: APP_SIDEBAR_PANEL_WIDTH,
+        navigationSidebarOpen: true,
+        splitDock: false,
+      }),
+      {
+        defaultSize: "288px",
+        maxSize: "288px",
+        minSize: "288px",
+      },
+    )
+    assert.deepEqual(
+      getRightSidebarDockSizes({
+        fixedSinglePanelWidth: APP_SIDEBAR_PANEL_WIDTH,
+        navigationSidebarOpen: true,
+        splitDock: true,
+      }),
+      {
+        defaultSize: "50%",
+        maxSize: "50%",
+        minSize: "50%",
+      },
+    )
+  })
+
   test("right sidebar resize gestures resolve directional intent", async () => {
     const { getSidebarResizeIntent } = await loadModule(
       "/src/components/sidebar-panel-sizing.ts",

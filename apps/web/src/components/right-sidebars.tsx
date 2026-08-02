@@ -9,13 +9,10 @@ import type {
 import type { PanelImperativeHandle } from "react-resizable-panels"
 
 import {
-  getRightSidebarDockMinSize,
+  APP_SIDEBAR_PANEL_WIDTH,
+  getRightSidebarDockSizes,
   getSidebarResizeIntent,
   resolveSidebarPanelPercentage,
-  RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE,
-  RIGHT_SIDEBAR_SINGLE_MAX_SIZE,
-  RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE,
-  RIGHT_SIDEBAR_SPLIT_MAX_SIZE,
   RIGHT_SIDEBAR_TRANSITION_MS,
   type SidebarResizeIntent,
 } from "@/components/sidebar-panel-sizing"
@@ -28,8 +25,6 @@ import { cn } from "@/lib/utils"
 const noOp = () => {}
 const hiddenGridTrack = "minmax(0, 0fr)"
 const visibleGridTrack = "minmax(0, 1fr)"
-const panelPercentage = (size: number) => `${size}%`
-
 export function RightSidebarSurface({
   className,
   ...props
@@ -74,6 +69,7 @@ export function ResizableRightSidebarPanel({
   const previousStateRef = useRef({ defaultSize, open })
   const [animating, setAnimating] = useState(false)
   const previousState = previousStateRef.current
+  const fixedSize = minSize === maxSize
   const layoutChanged =
     previousState.open !== open ||
     (open && previousState.defaultSize !== defaultSize)
@@ -191,7 +187,7 @@ export function ResizableRightSidebarPanel({
             ? "opacity-100 transition-opacity duration-200 motion-reduce:transition-none"
             : "pointer-events-none w-0 opacity-0 transition-opacity duration-200 after:hidden motion-reduce:transition-none"
         }
-        disabled={!open || transitioning}
+        disabled={!open || transitioning || fixedSize}
         onKeyDown={(event) => {
           if (event.key === "ArrowLeft") {
             onResizeIntent?.("increase")
@@ -424,6 +420,14 @@ export function RightSidebars({
   const openPanelCount = Number(chatOpen) + Number(primaryPanel !== null)
   const dockOpen = openPanelCount > 0
   const splitDock = openPanelCount === 2
+  const dockSizes = getRightSidebarDockSizes({
+    fixedSinglePanelWidth:
+      primaryPanel?.key === "view-settings"
+        ? APP_SIDEBAR_PANEL_WIDTH
+        : undefined,
+    navigationSidebarOpen,
+    splitDock,
+  })
   const updateAdjacentPanelWidth = useAdjacentPanelWidth(
     !isMobile && primaryPanel !== null,
   )
@@ -433,19 +437,9 @@ export function RightSidebars({
   return (
     <ResizableRightSidebarPanel
       ariaLabel="Right sidebar dock"
-      defaultSize={panelPercentage(
-        splitDock
-          ? RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE * 2
-          : RIGHT_SIDEBAR_SINGLE_DEFAULT_SIZE,
-      )}
-      maxSize={panelPercentage(
-        splitDock
-          ? RIGHT_SIDEBAR_SPLIT_MAX_SIZE * 2
-          : RIGHT_SIDEBAR_SINGLE_MAX_SIZE,
-      )}
-      minSize={panelPercentage(
-        getRightSidebarDockMinSize(splitDock, navigationSidebarOpen),
-      )}
+      defaultSize={dockSizes.defaultSize}
+      maxSize={dockSizes.maxSize}
+      minSize={dockSizes.minSize}
       onResizeIntent={onResizeIntent}
       onWidthChange={updateAdjacentPanelWidth}
       open={dockOpen}
