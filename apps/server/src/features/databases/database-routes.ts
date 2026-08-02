@@ -74,6 +74,7 @@ import {
   normalizeDatabasePropertyType,
   shouldClearValuesForPropertyTypeChange,
 } from "../../services/database-property-types";
+import { upsertPagePropertyValues } from "../../services/page-property-value-upsert";
 import {
   fetchDatabasePropertyDelta,
   fetchDatabaseViewDelta,
@@ -2414,6 +2415,9 @@ databaseRoutes.post("/:id/rows", async (c) => {
           column: (typeof missingColumns)[number]["column"];
           property: (typeof missingColumns)[number]["property"];
         }> = [];
+        const matchedValuesToUpsert: Array<
+          typeof pagePropertyValue.$inferInsert
+        > = [];
 
         for (const sourceColumn of missingColumns) {
           const targetColumn =
@@ -2493,20 +2497,14 @@ databaseRoutes.post("/:id/rows", async (c) => {
             });
           }
 
-          await tx
-            .insert(pagePropertyValue)
-            .values({
-              id: crypto.randomUUID(),
-              pageId,
-              propertyId: targetColumn.property.id,
-              value: nextValue,
-              createdAt: now,
-              updatedAt: now,
-            })
-            .onConflictDoUpdate({
-              target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
-              set: { value: nextValue, updatedAt: now },
-            });
+          matchedValuesToUpsert.push({
+            id: crypto.randomUUID(),
+            pageId,
+            propertyId: targetColumn.property.id,
+            value: nextValue,
+            createdAt: now,
+            updatedAt: now,
+          });
 
           inheritedValues.push({
             propertyId: targetColumn.property.id,
@@ -2515,6 +2513,8 @@ databaseRoutes.post("/:id/rows", async (c) => {
             pageId,
           });
         }
+
+        await upsertPagePropertyValues(tx, matchedValuesToUpsert);
 
         if (columnsToInsert.length > 0) {
           const insertedColumns = columnsToInsert.map(({ column }, index) => ({
