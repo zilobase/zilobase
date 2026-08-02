@@ -37,10 +37,13 @@ vi.mock("./page-graph-loader", () => ({
 }));
 
 import {
+  canAccessDatabaseInWorkspace,
+  canAccessPageInWorkspace,
   getEffectiveDatabaseAccessInWorkspace,
   getEffectivePageAccessInWorkspace,
   hasAccess,
   isPrivilegedOrgRole,
+  isWorkspaceMember,
   normalizeAccessLevel,
 } from "./access";
 
@@ -59,6 +62,37 @@ test("access primitives normalize and rank supported levels", () => {
   assert.equal(hasAccess("view", "full"), false);
   assert.equal(isPrivilegedOrgRole("owner"), true);
   assert.equal(isPrivilegedOrgRole("member"), false);
+});
+
+test("public access wrappers preserve membership and rank decisions", async () => {
+  mocks.selectResults.push([{ id: "membership-1" }]);
+  assert.equal(
+    await isWorkspaceMember("workspace-1", "user-1"),
+    true,
+  );
+
+  mocks.hasOwnedRootAccess.mockReturnValue(true);
+  mocks.selectResults.push([{ id: "membership-1" }], []);
+  assert.equal(
+    await canAccessPageInWorkspace(
+      "page-1",
+      "workspace-1",
+      "user-1",
+      "edit",
+    ),
+    true,
+  );
+
+  mocks.selectResults.push([]);
+  assert.equal(
+    await canAccessDatabaseInWorkspace(
+      "missing",
+      "workspace-1",
+      "user-1",
+      "view",
+    ),
+    false,
+  );
 });
 
 test("page access stops when workspace membership is missing", async () => {
