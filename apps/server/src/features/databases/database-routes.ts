@@ -24,7 +24,6 @@ import {
   member,
   page,
   pageCollaborationDocument,
-  pageItemPlacement,
   pageProperty,
   pagePropertyValue,
   team,
@@ -46,7 +45,6 @@ import {
   commitDatabaseMutation as commitDatabaseMutationCore,
   DatabaseMutationError,
   mutationResponse,
-  type SqlExecutor,
 } from "../../services/database-commit";
 import { getDatabaseRecord } from "../../services/database-access";
 import {
@@ -60,6 +58,13 @@ import {
   getDatabasePayload,
   getDatabaseSchemaPayload,
 } from "../../services/database-payload";
+import {
+  hasDuplicateValues,
+  incrementDatabaseRowPlacementPositions,
+  updateDatabasePropertyPositions,
+  updateDatabaseRowPlacementPositions,
+  updateDatabaseRowPositions,
+} from "../../services/database-position-service";
 import { isDatabaseHostPageId } from "../../services/database-host-page";
 import { getNextDatabaseViewName } from "../../services/database-view-naming";
 import { ServiceMutationError } from "../../services/mutation-error";
@@ -107,15 +112,6 @@ const databaseMutationErrorResponse = (
   error: DatabaseMutationError,
 ) => c.json({ error: error.message }, error.status === 404 ? 404 : 400);
 
-const hasDuplicateValues = (values: string[]) =>
-  new Set(values).size !== values.length;
-
-const getPositionValuesSql = (ids: string[]) =>
-  sql.join(
-    ids.map((id, position) => sql`(${id}::text, ${position}::integer)`),
-    sql`, `,
-  );
-
 const commitDatabaseMutation = async (
   c: Context<AppBindings>,
   options: {
@@ -139,90 +135,6 @@ const commitDatabaseMutation = async (
 
     throw error;
   }
-};
-
-const updateDatabasePropertyPositions = async (
-  executor: SqlExecutor,
-  databaseId: string,
-  propertyIds: string[],
-  updatedAt: Date,
-) => {
-  if (propertyIds.length === 0) {
-    return;
-  }
-
-  await executor.execute(sql`
-    update ${databaseProperty}
-    set "position" = positions.position,
-        "updated_at" = ${updatedAt}
-    from (values ${getPositionValuesSql(propertyIds)}) as positions(id, position)
-    where ${databaseProperty.id} = positions.id
-      and ${databaseProperty.databaseId} = ${databaseId}
-      and ${databaseProperty.position} <> positions.position
-  `);
-};
-
-const updateDatabaseRowPositions = async (
-  executor: SqlExecutor,
-  databaseId: string,
-  rowIds: string[],
-  updatedAt: Date,
-) => {
-  if (rowIds.length === 0) {
-    return;
-  }
-
-  await executor.execute(sql`
-    update ${databaseRow}
-    set "position" = positions.position,
-        "updated_at" = ${updatedAt}
-    from (values ${getPositionValuesSql(rowIds)}) as positions(id, position)
-    where ${databaseRow.id} = positions.id
-      and ${databaseRow.databaseId} = ${databaseId}
-      and ${databaseRow.position} <> positions.position
-  `);
-};
-
-const updateDatabaseRowPlacementPositions = async (
-  executor: SqlExecutor,
-  databaseId: string,
-  rowIds: string[],
-  updatedAt: Date,
-) => {
-  if (rowIds.length === 0) {
-    return;
-  }
-
-  await executor.execute(sql`
-    update ${pageItemPlacement}
-    set "position" = positions.position,
-        "updated_at" = ${updatedAt}
-    from (values ${getPositionValuesSql(rowIds)}) as positions(id, position)
-    where ${pageItemPlacement.sourceRowId} = positions.id
-      and ${pageItemPlacement.parentKind} = 'database'
-      and ${pageItemPlacement.parentId} = ${databaseId}
-      and ${pageItemPlacement.placementKind} = 'database_row'
-      and ${pageItemPlacement.deletedAt} is null
-      and ${pageItemPlacement.position} <> positions.position
-  `);
-};
-
-const incrementDatabaseRowPlacementPositions = async (
-  executor: SqlExecutor,
-  databaseId: string,
-  fromPosition: number,
-  updatedAt: Date,
-) => {
-  await executor.execute(sql`
-    update ${pageItemPlacement}
-    set "position" = ${pageItemPlacement.position} + 1,
-        "updated_at" = ${updatedAt}
-    where ${pageItemPlacement.parentKind} = 'database'
-      and ${pageItemPlacement.parentId} = ${databaseId}
-      and ${pageItemPlacement.placementKind} = 'database_row'
-      and ${pageItemPlacement.deletedAt} is null
-      and ${pageItemPlacement.position} >= ${fromPosition}
-  `);
 };
 
 const getPropertyNameKey = (name: string) => name.trim().toLowerCase();
