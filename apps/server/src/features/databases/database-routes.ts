@@ -19,7 +19,6 @@ import {
   databaseAccess,
   databaseProperty,
   databaseRow,
-  databaseView,
   favorite,
   member,
   page,
@@ -71,6 +70,10 @@ import {
 } from "../../services/database-position-service";
 import { isDatabaseHostPageId } from "../../services/database-host-page";
 import { ServiceMutationError } from "../../services/mutation-error";
+import {
+  createDatabaseService,
+  updateDatabaseService,
+} from "../../services/database-service";
 import {
   createDatabaseViewService,
   deleteDatabaseViewService,
@@ -190,137 +193,49 @@ databaseRoutes.post("/", async (c) => {
     return c.json({ error: "name must be a string" }, 400);
   }
 
-  const [pageRecord] =
-    typeof pageId === "string"
-      ? await db
-          .select({ id: page.id })
-          .from(page)
-          .where(
-            and(
-              eq(page.id, pageId),
-              eq(page.workspaceId, workspaceId),
-              isNull(page.deletedAt),
-            ),
-          )
-          .limit(1)
-      : [];
-
-  if (standalone !== true && !pageRecord) {
-    return c.json({ error: "Page not found" }, 404);
-  }
-
-  if (standalone === true) {
-    if (!(await getMembership(workspaceId, user.id))) {
-      return c.json({ error: "Forbidden" }, 403);
-    }
-  } else if (
-    !pageRecord ||
-    !(await canAccessPageInWorkspace(
-      pageRecord.id,
-      workspaceId,
-      user.id,
-      "edit",
-    ))
-  ) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  const databaseId = crypto.randomUUID();
-  const parentPlacementId = standalone === true ? null : crypto.randomUUID();
-  const [parentFavorite] = await db
-    .select({ id: favorite.id })
-    .from(favorite)
-    .where(
-      and(
-        eq(favorite.userId, user.id),
-        eq(favorite.pageId, typeof pageId === "string" ? pageId : ""),
-      ),
-    )
-    .limit(1);
-  const shouldInheritFavorite = Boolean(parentFavorite);
-
-  await db.transaction(async (tx) => {
-    await tx.insert(database).values({
-      id: databaseId,
-      workspaceId,
-      createdById: user.id,
-      pageId: standalone === true ? null : (pageId as string),
+  try {
+    const created = await createDatabaseService({
       name,
-      config: {},
+      pageId: typeof pageId === "string" ? pageId : undefined,
+      standalone: standalone === true,
+      userId: user.id,
+      workspaceId,
     });
-    await tx.insert(databaseView).values({
-      id: crypto.randomUUID(),
-      databaseId,
-      type: "table",
-      name: "Table",
-      position: 0,
-    });
-    if (parentPlacementId && typeof pageId === "string") {
-      await upsertPageItemPlacement(tx, {
-        id: parentPlacementId,
-        workspaceId,
-        parentKind: "page",
-        parentId: pageId,
-        itemKind: "database",
-        itemId: databaseId,
-        placementKind: "primary",
-      });
-    }
-    if (shouldInheritFavorite) {
-      await tx
-        .insert(favorite)
-        .values({
-          databaseId,
-          id: crypto.randomUUID(),
-          userId: user.id,
-        })
-        .onConflictDoNothing({
-          target: [favorite.userId, favorite.databaseId],
-        });
-    }
-  });
+    const payload = await getDatabasePayload(created.databaseId, user.id);
 
-  const payload = await getDatabasePayload(databaseId, user.id);
+    if (!payload) {
+      return c.json({ error: "Database not found" }, 404);
+    }
 
-  if (!payload) {
-    return c.json({ error: "Database not found" }, 404);
+    return c.json(
+      {
+        ...payload,
+        database: {
+          ...payload.database,
+          accessLevel: "full" as const,
+        },
+        navDelta: {
+          upsertDatabases: [
+            {
+              ...payload.database,
+              accessLevel: "full" as const,
+              views: payload.views,
+            },
+          ],
+          upsertPlacements: created.parentPlacement
+            ? [created.parentPlacement]
+            : [],
+        },
+      },
+      201,
+    );
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
   }
-
-  const parentPlacement =
-    standalone === true || typeof pageId !== "string"
-      ? null
-      : {
-          id: parentPlacementId as string,
-          workspaceId,
-          parentKind: "page" as const,
-          parentId: pageId,
-          itemKind: "database" as const,
-          itemId: databaseId,
-          placementKind: "primary" as const,
-          sourceRowId: null,
-          position: 0,
-        };
-
-  return c.json(
-    {
-      ...payload,
-      database: {
-        ...payload.database,
-        accessLevel: "full" as const,
-      },
-      navDelta: {
-        upsertDatabases: [
-          {
-            ...payload.database,
-            accessLevel: "full" as const,
-            views: payload.views,
-          },
-        ],
-        upsertPlacements: parentPlacement ? [parentPlacement] : [],
-      },
-    },
-    201,
-  );
 });
 
 databaseRoutes.get("/:id", async (c) => {
@@ -832,16 +747,6 @@ databaseRoutes.patch("/:id", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
   const body = await c.req.json().catch(() => null);
 
   if (!body || typeof body !== "object") {
@@ -849,49 +754,29 @@ databaseRoutes.patch("/:id", async (c) => {
   }
 
   const patch = body as { name?: unknown; config?: unknown };
-  const values: Partial<typeof database.$inferInsert> = {
-    updatedAt: new Date(),
-  };
-
   if (patch.name !== undefined) {
     if (typeof patch.name !== "string") {
       return c.json({ error: "name must be a string" }, 400);
     }
-
-    values.name = patch.name;
   }
 
-  if (patch.config !== undefined) {
-    values.config = patch.config;
+  try {
+    const result = await updateDatabaseService({
+      databaseId: c.req.param("id"),
+      env: c.env,
+      userId: user.id,
+      ...(patch.name !== undefined ? { name: patch.name } : {}),
+      ...(patch.config !== undefined ? { config: patch.config } : {}),
+    });
+
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
   }
-
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: ["database"],
-
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      await tx.update(database).set(values).where(eq(database.id, existing.id));
-
-      return {
-        delta: {
-          database: {
-            id: existing.id,
-            ...values,
-          },
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
-  }
-
-  return c.json(mutationResponse(mutation));
 });
 
 databaseRoutes.patch("/:id/views/:viewId", async (c) => {

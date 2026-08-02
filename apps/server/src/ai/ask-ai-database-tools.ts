@@ -175,7 +175,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         return toToolResult(`Created database "${result.name}".`, {
           databaseId: result.databaseId,
           defaultViewId: result.defaultViewId,
-          pageId: result.pageId,
+          pageId,
         }, [
           "Default Table view already exists as defaultViewId.",
           "Do not embed unless the user asked to embed or add to the page.",
