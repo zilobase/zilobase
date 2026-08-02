@@ -48,8 +48,11 @@ import {
   mutationResponse,
   type SqlExecutor,
 } from "../../services/database-commit";
+import { getDatabaseRecord } from "../../services/database-access";
 import {
+  defaultStatusOptions,
   formatDatePropertyValueAsText,
+  getStatusDefaultValue,
   normalizePropertyConfig,
   validateCellValue,
 } from "../../services/database-property-config";
@@ -58,6 +61,7 @@ import {
   getDatabaseSchemaPayload,
 } from "../../services/database-payload";
 import { isDatabaseHostPageId } from "../../services/database-host-page";
+import { getNextDatabaseViewName } from "../../services/database-view-naming";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
   isReadOnlyPropertyType,
@@ -84,45 +88,6 @@ const canAccessDatabaseRecord = (
 ) =>
   canAccessDatabaseInWorkspace(record.id, record.workspaceId, userId, required);
 
-const defaultStatusOptions = [
-  {
-    color: "gray",
-    group: "To-do",
-    id: "not-started",
-    name: "Not started",
-  },
-  {
-    color: "blue",
-    group: "In progress",
-    id: "in-progress",
-    name: "In progress",
-  },
-  {
-    color: "green",
-    group: "Complete",
-    id: "done",
-    name: "Done",
-  },
-];
-
-const getDatabaseRecord = async (
-  id: string,
-  options?: { includeDeleted?: boolean },
-) => {
-  const [record] = await db
-    .select()
-    .from(database)
-    .where(
-      and(
-        eq(database.id, id),
-        options?.includeDeleted ? undefined : isNull(database.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  return record;
-};
-
 const getNestedDatabasePageIds = async (
   rootDatabaseId: string,
   workspaceId: string,
@@ -131,16 +96,6 @@ const getNestedDatabasePageIds = async (
   const graph = await loadWorkspacePageGraph(workspaceId);
 
   return graph.getNestedDatabasePageIds(rootDatabaseId, accessibleIds);
-};
-
-type StatusOption = {
-  id: string;
-  name: string;
-};
-
-type StatusPropertyConfig = {
-  defaultOptionId?: unknown;
-  options?: unknown;
 };
 
 type DatabaseTransaction = Parameters<
@@ -268,47 +223,6 @@ const incrementDatabaseRowPlacementPositions = async (
       and ${pageItemPlacement.deletedAt} is null
       and ${pageItemPlacement.position} >= ${fromPosition}
   `);
-};
-
-const getStatusOptions = (config: unknown) => {
-  const options =
-    config && typeof config === "object" && "options" in config
-      ? (config as StatusPropertyConfig).options
-      : null;
-
-  if (!Array.isArray(options)) {
-    return defaultStatusOptions;
-  }
-
-  const validOptions = options.filter(
-    (option): option is StatusOption =>
-      Boolean(option) &&
-      typeof option === "object" &&
-      typeof (option as StatusOption).id === "string" &&
-      typeof (option as StatusOption).name === "string",
-  );
-
-  return validOptions.length > 0 ? validOptions : defaultStatusOptions;
-};
-
-const getStatusDefaultValue = (config: unknown) => {
-  const options = getStatusOptions(config);
-  const defaultOptionId =
-    config && typeof config === "object" && "defaultOptionId" in config
-      ? (config as StatusPropertyConfig).defaultOptionId
-      : defaultStatusOptions[0]?.id;
-
-  if (typeof defaultOptionId === "string") {
-    const defaultOption = options.find(
-      (option) => option.id === defaultOptionId,
-    );
-
-    if (defaultOption) {
-      return defaultOption.name;
-    }
-  }
-
-  return options[0]?.name ?? null;
 };
 
 const getPropertyNameKey = (name: string) => name.trim().toLowerCase();
@@ -463,26 +377,6 @@ const getDuplicatePropertyName = (name: string, existingNames: Set<string>) => {
 
   return `${baseName} ${index}`;
 };
-
-const getNextDatabaseViewName = (
-  baseName: string,
-  existingNames: Set<string>,
-) => {
-  const trimmedName = baseName.trim() || "Table";
-
-  if (!existingNames.has(trimmedName)) {
-    return trimmedName;
-  }
-
-  let index = 2;
-
-  while (existingNames.has(`${trimmedName} ${index}`)) {
-    index += 1;
-  }
-
-  return `${trimmedName} ${index}`;
-};
-
 
 databaseRoutes.post("/", async (c) => {
   const user = requireUser(c);

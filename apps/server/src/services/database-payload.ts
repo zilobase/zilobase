@@ -11,6 +11,7 @@ import {
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
+import { getDatabaseRecord } from "./database-access";
 
 type DatabaseRecord = typeof database.$inferSelect;
 type PayloadOptions = { includeDeleted?: boolean };
@@ -24,18 +25,7 @@ async function loadDatabasePayload(
 ) {
   const record =
     existingRecord ??
-    (
-      await db
-        .select()
-        .from(database)
-        .where(
-          and(
-            eq(database.id, id),
-            options?.includeDeleted ? undefined : isNull(database.deletedAt),
-          ),
-        )
-        .limit(1)
-    )[0];
+    (await getDatabaseRecord(id, db, options));
 
   if (!record) {
     return null;

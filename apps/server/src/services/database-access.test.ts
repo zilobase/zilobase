@@ -28,6 +28,18 @@ test("getDatabaseRecord returns active records and absence", async () => {
   );
 });
 
+test("getDatabaseRecord supports include-deleted options", async () => {
+  const record = { id: "database-1", workspaceId: "workspace-1" };
+
+  assert.equal(
+    await getDatabaseRecord("database-1", {
+      executor: executor([record]) as never,
+      includeDeleted: true,
+    }),
+    record,
+  );
+});
+
 test("requireDatabaseEditAccess returns authorized records", async () => {
   const record = { id: "database-1", workspaceId: "workspace-1" };
   const canAccess = vi.fn(async () => true);
