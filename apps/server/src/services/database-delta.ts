@@ -195,12 +195,13 @@ export async function fetchDatabaseRowDelta(
 export async function fetchDatabaseValuesForPage(
   pageId: string,
   propertyIds: string[],
+  executor: DatabaseReader = db,
 ) {
   if (propertyIds.length === 0) {
     return [];
   }
 
-  return db
+  return executor
     .select()
     .from(pagePropertyValue)
     .where(
