@@ -158,6 +158,30 @@ test("same-database batches reserve contiguous versions with one update", async 
   );
 });
 
+test("multi-database batches reserve locks deterministically and preserve commit order", async () => {
+  const transaction = transactionExecutor([5, 12]);
+
+  const result = await commitDatabaseMutationBatch(
+    { actorId: "user-1" },
+    async () => ({
+      mutations: ["database-b", "database-a", "database-b"].map(
+        (databaseId) => ({ changed: ["rows"] as const, databaseId, delta: {} }),
+      ),
+      result: undefined,
+    }),
+  );
+
+  assert.deepEqual(
+    result.commits.map(({ databaseId, version }) => ({ databaseId, version })),
+    [
+      { databaseId: "database-b", version: 11 },
+      { databaseId: "database-a", version: 5 },
+      { databaseId: "database-b", version: 12 },
+    ],
+  );
+  assert.equal(transaction.updateCalls, 2);
+});
+
 test("empty batches avoid version and outbox writes", async () => {
   const transaction = transactionExecutor([]);
 

@@ -120,8 +120,12 @@ export async function commitDatabaseMutationBatch<T>(
     }
 
     const nextVersionByDatabase = new Map<string, number>();
+    const versionReservations = [...mutationCountsByDatabase].sort(
+      ([firstDatabaseId], [secondDatabaseId]) =>
+        firstDatabaseId.localeCompare(secondDatabaseId),
+    );
 
-    for (const [databaseId, mutationCount] of mutationCountsByDatabase) {
+    for (const [databaseId, mutationCount] of versionReservations) {
       const [versioned] = await tx
         .update(database)
         .set({ version: sql`${database.version} + ${mutationCount}` })
