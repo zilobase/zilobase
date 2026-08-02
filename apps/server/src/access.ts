@@ -185,10 +185,14 @@ export async function getEffectivePageAccessInWorkspace(
     .limit(1);
 
   return standaloneDatabaseRow
-    ? getEffectiveDatabaseAccessInWorkspace(
+    ? resolveEffectiveDatabaseAccessInWorkspace(
         standaloneDatabaseRow.databaseId,
         workspaceId,
         userId,
+        {
+          membershipVerified: true,
+          teamIds: teamRows.map((row) => row.teamId),
+        },
       )
     : "none";
 }
@@ -277,6 +281,19 @@ export async function getEffectiveDatabaseAccessInWorkspace(
   workspaceId: string,
   userId: string,
 ): Promise<AccessLevel> {
+  return resolveEffectiveDatabaseAccessInWorkspace(
+    databaseId,
+    workspaceId,
+    userId,
+  );
+}
+
+async function resolveEffectiveDatabaseAccessInWorkspace(
+  databaseId: string,
+  workspaceId: string,
+  userId: string,
+  context?: { membershipVerified: true; teamIds: string[] },
+): Promise<AccessLevel> {
   const [record] = await db
     .select({ createdById: database.createdById, pageId: database.pageId })
     .from(database)
@@ -293,15 +310,21 @@ export async function getEffectiveDatabaseAccessInWorkspace(
   if (record.pageId) {
     return getEffectivePageAccessInWorkspace(record.pageId, workspaceId, userId);
   }
-  if (!(await getMembership(workspaceId, userId))) return "none";
+  if (!context?.membershipVerified && !(await getMembership(workspaceId, userId))) {
+    return "none";
+  }
   if (record.createdById === userId) return "full";
 
-  const teamRows = await db
-    .select({ teamId: teamMember.teamId })
-    .from(teamMember)
-    .where(eq(teamMember.userId, userId));
-  const targetTypes = ["user", ...(teamRows.length ? ["team"] : [])];
-  const targetIds = [userId, ...teamRows.map((row) => row.teamId)];
+  const teamIds =
+    context?.teamIds ??
+    (
+      await db
+        .select({ teamId: teamMember.teamId })
+        .from(teamMember)
+        .where(eq(teamMember.userId, userId))
+    ).map((row) => row.teamId);
+  const targetTypes = ["user", ...(teamIds.length ? ["team"] : [])];
+  const targetIds = [userId, ...teamIds];
   const rules = await db
     .select({ accessLevel: databaseAccess.accessLevel })
     .from(databaseAccess)
