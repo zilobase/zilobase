@@ -110,22 +110,47 @@ export async function commitDatabaseMutationBatch<T>(
   const committedAt = new Date().toISOString();
   const { commits, result } = await db.transaction(async (tx) => {
     const mutationResult = await mutate(tx);
-    const commits: DatabaseMutationCommitResult[] = [];
+    const mutationCountsByDatabase = new Map<string, number>();
 
     for (const mutation of mutationResult.mutations) {
-      const mutationId = crypto.randomUUID();
-      const delta = prepareDatabaseRealtimeDelta(mutation.delta);
+      mutationCountsByDatabase.set(
+        mutation.databaseId,
+        (mutationCountsByDatabase.get(mutation.databaseId) ?? 0) + 1,
+      );
+    }
+
+    const nextVersionByDatabase = new Map<string, number>();
+
+    for (const [databaseId, mutationCount] of mutationCountsByDatabase) {
       const [versioned] = await tx
         .update(database)
-        .set({ version: sql`${database.version} + 1` })
-        .where(eq(database.id, mutation.databaseId))
+        .set({ version: sql`${database.version} + ${mutationCount}` })
+        .where(eq(database.id, databaseId))
         .returning({ version: database.version });
 
       if (!versioned) {
         throw new DatabaseMutationError("Database not found", 404);
       }
 
-      await tx.insert(databaseRealtimeOutbox).values({
+      nextVersionByDatabase.set(databaseId, versioned.version - mutationCount);
+    }
+
+    const commits: DatabaseMutationCommitResult[] = [];
+    const outboxRows: Array<typeof databaseRealtimeOutbox.$inferInsert> = [];
+
+    for (const mutation of mutationResult.mutations) {
+      const previousVersion = nextVersionByDatabase.get(mutation.databaseId);
+
+      if (previousVersion === undefined) {
+        throw new Error("Database mutation version was not allocated");
+      }
+
+      const version = previousVersion + 1;
+      nextVersionByDatabase.set(mutation.databaseId, version);
+      const mutationId = crypto.randomUUID();
+      const delta = prepareDatabaseRealtimeDelta(mutation.delta);
+
+      outboxRows.push({
         actorId: options.actorId,
         changed: mutation.changed,
         committedAt: new Date(committedAt),
@@ -133,7 +158,7 @@ export async function commitDatabaseMutationBatch<T>(
         delta: delta.value,
         id: mutationId,
         requiresRefetch: delta.requiresRefetch,
-        version: versioned.version,
+        version,
       });
 
       commits.push({
@@ -144,8 +169,12 @@ export async function commitDatabaseMutationBatch<T>(
         delta: delta.value,
         mutationId,
         ...(delta.requiresRefetch ? { requiresRefetch: true as const } : {}),
-        version: versioned.version,
+        version,
       });
+    }
+
+    if (outboxRows.length > 0) {
+      await tx.insert(databaseRealtimeOutbox).values(outboxRows);
     }
 
     return { commits, result: mutationResult.result };
