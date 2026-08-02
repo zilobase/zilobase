@@ -27,6 +27,7 @@ const MAX_DELIVERY_ATTEMPTS = 8;
 export async function publishDatabaseRealtimeEvent(
   event: DatabaseRealtimeMutationEvent,
   env: RuntimeEnv,
+  executor = db,
 ) {
   const publish = getRuntimeAdapter().publishDatabaseMutation;
 
@@ -34,12 +35,12 @@ export async function publishDatabaseRealtimeEvent(
 
   try {
     await publish({ env, event });
-    await db
+    await executor
       .delete(databaseRealtimeOutbox)
       .where(eq(databaseRealtimeOutbox.id, event.mutationId));
   } catch (error) {
     const attemptedAt = new Date();
-    await db
+    await executor
       .update(databaseRealtimeOutbox)
       .set({
         attempts: 1,
@@ -55,8 +56,9 @@ export async function publishDatabaseRealtimeEvent(
 
 export async function drainDatabaseRealtimeOutbox(
   env: RuntimeEnv,
-  options?: { limit?: number },
+  options?: { database?: typeof db; limit?: number },
 ) {
+  const executor = options?.database ?? db;
   const publish = getRuntimeAdapter().publishDatabaseMutation;
 
   if (!publish) {
@@ -71,7 +73,7 @@ export async function drainDatabaseRealtimeOutbox(
   }
 
   const attemptedAt = new Date();
-  const entries = await db.transaction(async (tx) => {
+  const entries = await executor.transaction(async (tx) => {
     const ready = await tx
       .select()
       .from(databaseRealtimeOutbox)
@@ -104,7 +106,7 @@ export async function drainDatabaseRealtimeOutbox(
   for (const entry of entries) {
     try {
       await publish({ env, event: toRealtimeEvent(entry as StoredRealtimeEvent) });
-      await db
+      await executor
         .delete(databaseRealtimeOutbox)
         .where(eq(databaseRealtimeOutbox.id, entry.id));
       delivered += 1;
@@ -113,12 +115,12 @@ export async function drainDatabaseRealtimeOutbox(
       const discard = entry.attempts >= MAX_DELIVERY_ATTEMPTS;
 
       if (discard) {
-        await db
+        await executor
           .delete(databaseRealtimeOutbox)
           .where(eq(databaseRealtimeOutbox.id, entry.id));
         discarded += 1;
       } else {
-        await db
+        await executor
           .update(databaseRealtimeOutbox)
           .set({ nextAttemptAt: retryAt(entry.attempts, attemptedAt) })
           .where(eq(databaseRealtimeOutbox.id, entry.id));
@@ -136,7 +138,7 @@ export async function drainDatabaseRealtimeOutbox(
     }
   }
 
-  const [health] = await db
+  const [health] = await executor
     .select({
       backlog: sql<number>`count(*)::int`,
       maxAttempts: sql<number>`coalesce(max(${databaseRealtimeOutbox.attempts}), 0)::int`,
