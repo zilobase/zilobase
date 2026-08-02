@@ -1,5 +1,15 @@
 import type { UIMessage } from "ai";
-import { and, asc, desc, eq, inArray, isNull, ne, notInArray } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  ne,
+  notInArray,
+  sql,
+} from "drizzle-orm";
 
 import { db } from "../db";
 import { aiChatMessage, aiChatThread } from "../db/schema";
@@ -243,27 +253,32 @@ export async function syncAiChatThreadMessages(
 
   const now = new Date();
   const keepIds = new Set(messages.map((message) => message.id));
+  const persistableMessages = new Map<string, UIMessage>();
 
   for (const message of messages) {
-    if (!isPersistableUiMessage(message)) {
-      continue;
+    if (isPersistableUiMessage(message)) {
+      persistableMessages.set(message.id, message);
     }
+  }
 
+  if (persistableMessages.size > 0) {
     await db
       .insert(aiChatMessage)
-      .values({
-        id: message.id,
-        threadId,
-        role: message.role,
-        parts: message.parts,
-        createdAt: now,
-        updatedAt: now,
-      })
+      .values(
+        [...persistableMessages.values()].map((message) => ({
+          id: message.id,
+          threadId,
+          role: message.role,
+          parts: message.parts,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      )
       .onConflictDoUpdate({
         target: aiChatMessage.id,
         set: {
-          role: message.role,
-          parts: message.parts,
+          role: sql`excluded.${aiChatMessage.role}`,
+          parts: sql`excluded.${aiChatMessage.parts}`,
           updatedAt: now,
         },
       });
