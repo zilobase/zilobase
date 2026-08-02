@@ -208,6 +208,34 @@ test("updateDatabasePropertyService updates supplied metadata", async () => {
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0].changed, ["properties"]);
 });
 
+test("updateDatabasePropertyService normalizes retained status config", async () => {
+  const { updates } = transactionRecorder();
+  mocks.selectResults.push(
+    [{ id: "column-1", propertyId: "property-1" }],
+    [{
+      config: {
+        defaultOptionId: "todo",
+        options: [{ id: "todo", name: "Todo" }],
+      },
+      type: "text",
+    }],
+  );
+  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
+
+  await updateDatabasePropertyService({
+    databaseId: "database-1",
+    databasePropertyId: "column-1",
+    type: "status",
+    userId: "user-1",
+  });
+
+  assert.equal((updates[1] as Record<string, unknown>).type, "status");
+  assert.equal(
+    typeof (updates[1] as Record<string, unknown>).config,
+    "object",
+  );
+});
+
 test("updateDatabasePropertyService rejects missing records and invalid types", async () => {
   mocks.selectResults.push([]);
   await assert.rejects(
