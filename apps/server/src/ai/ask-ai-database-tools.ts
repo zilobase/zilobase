@@ -7,13 +7,15 @@ import {
   createDatabaseRowService,
   createDatabaseService,
   createDatabaseViewService,
-  defaultStatusOptions,
-  selectOptionColors,
   setDatabaseCellValueService,
   updateDatabasePropertyService,
   updateDatabaseService,
   updateDatabaseViewService,
 } from "../services/database-mutations";
+import {
+  defaultStatusOptions,
+  selectOptionColors,
+} from "../services/database-property-config";
 import { ServiceMutationError } from "../services/mutation-error";
 import {
   createPageService,

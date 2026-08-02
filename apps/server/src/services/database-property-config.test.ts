@@ -5,7 +5,7 @@ import {
   formatDatePropertyValueAsText,
   normalizePropertyConfig,
   validateCellValue,
-} from "./database-mutations";
+} from "./database-property-config";
 import { ServiceMutationError } from "./mutation-error";
 import {
   databasePropertyTypes,
@@ -121,6 +121,47 @@ test("normalizePropertyConfig preserves explicit select colors", () => {
   ]);
 });
 
+test("normalizePropertyConfig filters malformed options and preserves metadata", () => {
+  const status = normalizePropertyConfig("status", {
+    defaultOptionId: "custom-default",
+    label: "Workflow",
+    options: [
+      null,
+      { id: "", name: "Missing ID" },
+      { id: "review", name: "Review", color: " purple ", group: " QA " },
+      { id: "anything", name: "Completed" },
+    ],
+  }) as Record<string, any>;
+
+  assert.equal(status.defaultOptionId, "custom-default");
+  assert.equal(status.label, "Workflow");
+  assert.deepEqual(status.options, [
+    { color: "purple", group: "QA", id: "review", name: "Review" },
+    { color: "green", group: "Complete", id: "done", name: "Done" },
+  ]);
+
+  assert.deepEqual(
+    normalizePropertyConfig("select", {
+      label: "Priority",
+      options: [false, { id: "valid", name: " Valid " }, { id: 1, name: "No" }],
+    }),
+    {
+      label: "Priority",
+      options: [{ color: "brown", id: "valid", name: "Valid" }],
+    },
+  );
+  assert.equal(normalizePropertyConfig("text", "unchanged"), "unchanged");
+});
+
+test("normalizePropertyConfig preserves explicit status defaults without options", () => {
+  const config = normalizePropertyConfig("status", {
+    defaultOptionId: "done",
+    options: [],
+  }) as { defaultOptionId: string };
+
+  assert.equal(config.defaultOptionId, "done");
+});
+
 test("normalizePropertyConfig rejects unknown property types", () => {
   assert.throws(
     () => normalizePropertyConfig("made_up", {}),
@@ -174,4 +215,39 @@ test("validateCellValue validates select-like option values", () => {
       error.status === 400 &&
       error.message === "multi_select values must be an array of option names.",
   );
+});
+
+test("validateCellValue accepts writable scalar types and reports empty options", () => {
+  assert.doesNotThrow(() => validateCellValue("text", null, { anything: true }));
+  assert.doesNotThrow(() => validateCellValue("multi_select", { options: [] }, []));
+
+  assert.throws(
+    () => validateCellValue("select", {}, "Missing"),
+    /Known options: \(none\)/,
+  );
+  assert.throws(
+    () => validateCellValue("status", { options: "invalid" }, "Missing"),
+    /Known options: \(none\)/,
+  );
+  assert.throws(
+    () =>
+      validateCellValue(
+        "multi_select",
+        { options: [null, { name: "Known" }, { name: "" }] },
+        ["Known", 1],
+      ),
+    /Invalid multi_select option/,
+  );
+});
+
+test("formatDatePropertyValueAsText normalizes object and blank inputs", () => {
+  assert.equal(
+    formatDatePropertyValueAsText({ date: " 2026-08-02 " }),
+    "2026-08-02",
+  );
+  assert.equal(
+    formatDatePropertyValueAsText({ start: " ", end: "2026-08-03" }),
+    null,
+  );
+  assert.equal(formatDatePropertyValueAsText([123, "2026-08-03"]), null);
 });

@@ -52,7 +52,7 @@ import {
   formatDatePropertyValueAsText,
   normalizePropertyConfig,
   validateCellValue,
-} from "../../services/database-mutations";
+} from "../../services/database-property-config";
 import { isDatabaseHostPageId } from "../../services/database-host-page";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
