@@ -2,7 +2,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "./db";
 import { database, databaseRow, page } from "./db/schema";
-import { loadWorkspacePageGraph } from "./page-graph";
+import { loadWorkspacePageGraph } from "./page-graph-loader";
 
 type SoftDeleteResult = {
   deletedDatabaseIds: string[];

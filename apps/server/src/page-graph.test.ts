@@ -143,3 +143,132 @@ test("database indexes preserve rows and de-duplicate requested page ids", () =>
     "second-row",
   ]);
 });
+
+test("accessible traversal stops at inaccessible parents and children", () => {
+  const graph = new PageGraph({
+    databaseRecords: [{ id: "database", pageId: "database-page" }],
+    databaseRows: [{ databaseId: "database", pageId: "row-page" }],
+    pages: [
+      { id: "root" },
+      { id: "child" },
+      { id: "grandchild" },
+      { id: "database-page" },
+      { id: "row-page" },
+    ],
+    placements: [
+      {
+        itemId: "child",
+        itemKind: "page",
+        parentId: "root",
+        parentKind: "page",
+        placementKind: "primary",
+      },
+      {
+        itemId: "grandchild",
+        itemKind: "page",
+        parentId: "child",
+        parentKind: "page",
+        placementKind: "primary",
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    graph.getNestedPageIds("root", new Set(["root", "grandchild"])),
+    ["root"],
+  );
+  assert.deepEqual(
+    graph.getNestedDatabasePageIds("database", new Set()),
+    [],
+  );
+  assert.deepEqual(graph.getPrimaryNestedDatabasePageIds("database"), [
+    "row-page",
+  ]);
+  assert.deepEqual(
+    graph.getDatabaseIdsForPageIds(
+      ["database-page", "database-page"],
+      new Set(),
+    ),
+    [],
+  );
+  assert.deepEqual(graph.getNestedDatabasePageIds("missing"), []);
+});
+
+test("primary paths are cycle-safe and include database row parents", () => {
+  const graph = new PageGraph({
+    databaseRecords: [{ id: "database", pageId: "database-page" }],
+    databaseRows: [{ databaseId: "database", pageId: "row-page" }],
+    pages: [
+      { id: "root", name: "Root" },
+      { id: "child", name: "Child" },
+      { id: "database-page", name: "Database" },
+      { id: "row-page", name: "Row" },
+    ],
+    placements: [
+      {
+        itemId: "child",
+        itemKind: "page",
+        parentId: "root",
+        parentKind: "page",
+        placementKind: "primary",
+      },
+      {
+        itemId: "root",
+        itemKind: "page",
+        parentId: "child",
+        parentKind: "page",
+        placementKind: "primary",
+      },
+    ],
+  });
+
+  assert.equal(graph.getPrimaryParentId("child"), "root");
+  assert.equal(graph.getPrimaryParentId("missing"), null);
+  assert.equal(
+    graph.getPagePath(
+      { id: "child", name: "Child" },
+      (title) => title.toUpperCase(),
+    ),
+    "ROOT / CHILD",
+  );
+  assert.equal(graph.getPrimaryParentId("row-page"), "database-page");
+  assert.equal(
+    graph.getPagePath({ id: "row-page", name: "Row" }, (title) => title),
+    "Database / Row",
+  );
+});
+
+test("invalid placements and orphan database rows do not enter the graph", () => {
+  const graph = new PageGraph({
+    databaseRows: [{ databaseId: "orphan", pageId: "row-page" }],
+    pages: [{ id: "root" }, { id: "page" }, { id: "row-page" }],
+    placements: [
+      {
+        itemId: "page",
+        itemKind: "page",
+        parentId: "root",
+        parentKind: "database",
+        placementKind: "primary",
+      },
+      {
+        itemId: "database",
+        itemKind: "database",
+        parentId: "root",
+        parentKind: "page",
+        placementKind: "linked",
+      },
+      {
+        itemId: "page",
+        itemKind: "page",
+        parentId: "root",
+        parentKind: "page",
+        placementKind: "database_row",
+      },
+    ],
+  });
+
+  assert.deepEqual(graph.getNestedPageIds("root"), ["root"]);
+  assert.deepEqual(graph.getAncestorIds("missing"), []);
+  assert.equal(graph.hasOwnedRootAccess(["missing"], "user"), false);
+  assert.equal(graph.getPrimaryParentId("row-page"), null);
+});

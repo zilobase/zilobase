@@ -41,7 +41,7 @@ import {
 import { getDatabaseRealtimeWebSocketUrl } from "../../runtime-adapter";
 import { upsertPageItemPlacement } from "../../page-item-placements";
 import { softDeleteDatabaseTree } from "../../soft-delete-nav-items";
-import { loadWorkspacePageGraph } from "../../page-graph";
+import { loadWorkspacePageGraph } from "../../page-graph-loader";
 import {
   commitDatabaseMutation as commitDatabaseMutationCore,
   DatabaseMutationError,

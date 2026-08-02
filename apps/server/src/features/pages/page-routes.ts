@@ -43,7 +43,7 @@ import {
   type ItemRef,
 } from "../../page-item-placements";
 import { softDeletePageTree } from "../../soft-delete-nav-items";
-import { loadWorkspacePageGraph } from "../../page-graph";
+import { loadWorkspacePageGraph } from "../../page-graph-loader";
 import {
   createCollaborationTicket,
   documentNameForPage,

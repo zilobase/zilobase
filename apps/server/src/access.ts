@@ -12,7 +12,7 @@ import {
   pageAccess,
   workspace,
 } from "./db/schema";
-import { loadWorkspacePageGraph } from "./page-graph";
+import { loadWorkspacePageGraph } from "./page-graph-loader";
 
 export type AccessLevel = "none" | "view" | "edit" | "full";
 
