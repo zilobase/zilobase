@@ -68,8 +68,10 @@ test("database realtime tickets reject tampering", async () => {
     env,
   );
 
+  const [payload, signature] = token.split(".");
+  const tamperedSignature = `${signature?.startsWith("A") ? "B" : "A"}${signature?.slice(1)}`;
   await assert.rejects(
-    verifyDatabaseRealtimeTicket(`${token.slice(0, -1)}x`, env),
+    verifyDatabaseRealtimeTicket(`${payload}.${tamperedSignature}`, env),
     /Invalid database realtime ticket/,
   );
 });
