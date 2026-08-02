@@ -46,12 +46,19 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  children,
+  trailingDivider = false,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    trailingDivider?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
+  const content =
+    trailingDivider && !asChild
+      ? addTrailingDivider(children)
+      : children
 
   return (
     <Comp
@@ -60,7 +67,31 @@ function Button({
       data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
+    >
+      {content}
+    </Comp>
+  )
+}
+
+function addTrailingDivider(children: React.ReactNode) {
+  const items = React.Children.toArray(children)
+
+  if (items.length < 2) {
+    return children
+  }
+
+  const trailingItem = items.pop()
+
+  return (
+    <>
+      {items}
+      <span
+        aria-hidden="true"
+        className="mx-1 w-px self-stretch bg-current opacity-25"
+        data-slot="button-trailing-divider"
+      />
+      {trailingItem}
+    </>
   )
 }
 

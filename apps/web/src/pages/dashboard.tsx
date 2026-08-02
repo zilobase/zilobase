@@ -434,6 +434,7 @@ export default function DashboardPage({
                             <Button
                               className="database-new-button mt-2 shrink-0"
                               disabled={!workspaceId || isCreating}
+                              trailingDivider
                               type="button"
                             >
                               {isCreating ? (

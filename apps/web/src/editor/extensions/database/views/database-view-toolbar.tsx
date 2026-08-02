@@ -1015,22 +1015,20 @@ export function DatabaseViewToolbar() {
                 subItemsSettings={subItemsSettings}
               />
               {canRenderAddRow ? (
-              <Button
-                aria-label="New page"
-                className="text-muted-foreground"
-                disabled={!databaseId || isAddingDatabaseRow}
-                onClick={() => addDatabaseRow()}
-                size="icon"
-                title="New page"
-                type="button"
-                variant="ghost"
-              >
-                {isAddingDatabaseRow ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Plus />
-                )}
-              </Button>
+                <Button
+                  aria-label="New page"
+                  className="database-new-button"
+                  disabled={!databaseId || isAddingDatabaseRow}
+                  onClick={() => addDatabaseRow()}
+                  type="button"
+                >
+                  {isAddingDatabaseRow ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Plus />
+                  )}
+                  <span>New</span>
+                </Button>
               ) : null}
             </>
           ) : null}
