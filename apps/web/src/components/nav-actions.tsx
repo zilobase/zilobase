@@ -796,7 +796,7 @@ function ItemShareDropdownContent({
       </div>
 
       <Tabs defaultValue="share">
-        <TabsList>
+        <TabsList className="dark:bg-input/30">
           <TabsTrigger value="share">Share</TabsTrigger>
           <TabsTrigger value="publish">Publishing</TabsTrigger>
         </TabsList>
