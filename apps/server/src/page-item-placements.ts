@@ -110,9 +110,11 @@ export async function softDeletePageItemPlacement(
     parentKind: NavItemKind;
   },
 ) {
+  const now = new Date();
+
   await tx
     .update(pageItemPlacement)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .set({ deletedAt: now, updatedAt: now })
     .where(
       and(
         eq(pageItemPlacement.workspaceId, input.workspaceId),
