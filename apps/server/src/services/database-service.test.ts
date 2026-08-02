@@ -2,21 +2,27 @@ import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  canAccessDatabase: vi.fn(),
   canAccessPage: vi.fn(),
   commit: vi.fn(),
+  getRecord: vi.fn(),
   getMembership: vi.fn(),
+  payload: vi.fn(),
   placement: vi.fn(),
   requireAccess: vi.fn(),
   select: vi.fn(),
   selectResults: [] as unknown[][],
+  softDelete: vi.fn(),
   transaction: vi.fn(),
 }));
 
 vi.mock("../access", () => ({
+  canAccessDatabaseInWorkspace: mocks.canAccessDatabase,
   canAccessPage: mocks.canAccessPage,
   getMembership: mocks.getMembership,
 }));
 vi.mock("./database-access", () => ({
+  getDatabaseRecord: mocks.getRecord,
   requireDatabaseEditAccess: mocks.requireAccess,
 }));
 vi.mock("./database-commit", () => ({
@@ -24,6 +30,12 @@ vi.mock("./database-commit", () => ({
 }));
 vi.mock("../page-item-placements", () => ({
   upsertPageItemPlacement: mocks.placement,
+}));
+vi.mock("../soft-delete-nav-items", () => ({
+  softDeleteDatabaseTree: mocks.softDelete,
+}));
+vi.mock("./database-payload", () => ({
+  getDatabasePayload: mocks.payload,
 }));
 vi.mock("../db", () => ({
   db: {
@@ -42,21 +54,28 @@ vi.mock("../db", () => ({
 
 import {
   createDatabaseService,
+  deleteDatabaseService,
+  restoreDatabaseService,
   updateDatabaseService,
 } from "./database-service";
 import { ServiceMutationError } from "./mutation-error";
 
 beforeEach(() => {
+  mocks.canAccessDatabase.mockReset();
+  mocks.canAccessDatabase.mockResolvedValue(true);
   mocks.canAccessPage.mockReset();
   mocks.canAccessPage.mockResolvedValue(true);
   mocks.commit.mockReset();
+  mocks.getRecord.mockReset();
   mocks.getMembership.mockReset();
   mocks.getMembership.mockResolvedValue(true);
+  mocks.payload.mockReset();
   mocks.placement.mockReset();
   mocks.requireAccess.mockReset();
   mocks.requireAccess.mockResolvedValue({ id: "database-1" });
   mocks.select.mockReset();
   mocks.selectResults = [];
+  mocks.softDelete.mockReset();
   mocks.transaction.mockReset();
   vi.restoreAllMocks();
 });
@@ -85,6 +104,26 @@ function transactionRecorder() {
   mocks.transaction.mockImplementation(async (callback) => callback(tx));
   mocks.commit.mockImplementation(async (_options, mutate) => mutate(tx));
   return { inserts, tx, updates };
+}
+
+function restoreTransactionRecorder(returningResults: unknown[][]) {
+  const updates: unknown[] = [];
+  const tx = {
+    update() {
+      return {
+        set(value: unknown) {
+          updates.push(value);
+          const builder = {
+            where() { return builder; },
+            async returning() { return returningResults.shift() ?? []; },
+          };
+          return builder;
+        },
+      };
+    },
+  };
+  mocks.transaction.mockImplementation(async (callback) => callback(tx));
+  return { updates };
 }
 
 test("createDatabaseService creates database, default view, and placement atomically", async () => {
@@ -303,4 +342,208 @@ test("updateDatabaseService permits a timestamp-only touch", async () => {
   });
 
   assert.deepEqual(Object.keys(updates[0] as object), ["updatedAt"]);
+});
+
+test("deleteDatabaseService returns the deleted record without reloading it", async () => {
+  const deletedAt = new Date("2026-08-03T00:00:00.000Z");
+  const updatedAt = new Date("2026-08-02T00:00:00.000Z");
+  mocks.getRecord.mockResolvedValue({
+    deletedAt: null,
+    deletedById: null,
+    id: "database-1",
+    updatedAt,
+    workspaceId: "workspace-1",
+  });
+  mocks.softDelete.mockResolvedValue({
+    deletedAt,
+    deletedDatabaseIds: ["database-1", "database-2"],
+    deletedPageIds: ["page-1"],
+  });
+
+  const result = await deleteDatabaseService({
+    databaseId: "database-1",
+    userId: "user-1",
+  });
+
+  assert.deepEqual(mocks.canAccessDatabase.mock.calls[0], [
+    "database-1",
+    "workspace-1",
+    "user-1",
+    "full",
+  ]);
+  assert.deepEqual(result, {
+    database: {
+      deletedAt,
+      deletedById: "user-1",
+      id: "database-1",
+      updatedAt: deletedAt,
+      workspaceId: "workspace-1",
+    },
+    deletedDatabaseIds: ["database-1", "database-2"],
+    deletedPageIds: ["page-1"],
+  });
+});
+
+test("deleteDatabaseService rejects missing and forbidden databases", async () => {
+  await assert.rejects(
+    deleteDatabaseService({
+      databaseId: "missing",
+      userId: "user-1",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 404,
+  );
+
+  mocks.getRecord.mockResolvedValue({
+    id: "database-1",
+    workspaceId: "workspace-1",
+  });
+  mocks.canAccessDatabase.mockResolvedValue(false);
+  await assert.rejects(
+    deleteDatabaseService({
+      databaseId: "database-1",
+      userId: "user-1",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 403,
+  );
+
+  assert.equal(mocks.softDelete.mock.calls.length, 0);
+});
+
+test("restoreDatabaseService returns an active database without writing", async () => {
+  const existing = {
+    deletedAt: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  };
+  const restoredDatabase = { ...existing, isFavorite: true };
+  mocks.getRecord.mockResolvedValue(existing);
+  mocks.payload.mockResolvedValue({ database: restoredDatabase });
+
+  const result = await restoreDatabaseService({
+    databaseId: "database-1",
+    userId: "user-1",
+  });
+
+  assert.deepEqual(mocks.getRecord.mock.calls[0], ["database-1", {
+    includeDeleted: true,
+  }]);
+  assert.equal(mocks.transaction.mock.calls.length, 0);
+  assert.deepEqual(result, {
+    database: restoredDatabase,
+    restoredDatabaseIds: [],
+    restoredPageIds: [],
+  });
+});
+
+test("restoreDatabaseService falls back to the active database record", async () => {
+  const existing = {
+    deletedAt: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  };
+  mocks.getRecord.mockResolvedValue(existing);
+  mocks.payload.mockResolvedValue(null);
+
+  const result = await restoreDatabaseService({
+    databaseId: "database-1",
+    userId: "user-1",
+  });
+
+  assert.deepEqual(result.database, existing);
+});
+
+test("restoreDatabaseService restores the deletion batch without reloading the root", async () => {
+  const deletedAt = new Date("2026-08-03T00:00:00.000Z");
+  const existing = {
+    deletedAt,
+    deletedById: "user-1",
+    id: "database-1",
+    updatedAt: deletedAt,
+    workspaceId: "workspace-1",
+  };
+  const { updates } = restoreTransactionRecorder([
+    [{ id: "database-1" }, { id: "database-2" }],
+    [{ id: "page-1" }],
+  ]);
+  mocks.getRecord.mockResolvedValue(existing);
+  mocks.payload.mockResolvedValue({
+    database: { id: "database-1", isFavorite: false },
+  });
+
+  const result = await restoreDatabaseService({
+    databaseId: "database-1",
+    userId: "user-1",
+  });
+
+  assert.equal(updates.length, 3);
+  const restoredAt = (updates[0] as { updatedAt: Date }).updatedAt;
+  assert.deepEqual(mocks.payload.mock.calls[0], [
+    "database-1",
+    "user-1",
+    {
+      ...existing,
+      deletedAt: null,
+      deletedById: null,
+      updatedAt: restoredAt,
+    },
+    { includeDeleted: true },
+  ]);
+  assert.deepEqual(result, {
+    database: { id: "database-1", isFavorite: false },
+    restoredDatabaseIds: ["database-1", "database-2"],
+    restoredPageIds: ["page-1"],
+  });
+});
+
+test("restoreDatabaseService rejects missing or inaccessible databases", async () => {
+  await assert.rejects(
+    restoreDatabaseService({
+      databaseId: "missing",
+      userId: "user-1",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 404,
+  );
+
+  mocks.getRecord.mockResolvedValue({
+    deletedAt: new Date(),
+    id: "database-1",
+    workspaceId: "workspace-1",
+  });
+  mocks.getMembership.mockResolvedValue(false);
+  await assert.rejects(
+    restoreDatabaseService({
+      databaseId: "database-1",
+      userId: "user-1",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 403,
+  );
+
+  assert.equal(mocks.transaction.mock.calls.length, 0);
+});
+
+test("restoreDatabaseService rejects a missing post-restore payload", async () => {
+  const deletedAt = new Date("2026-08-03T00:00:00.000Z");
+  const { updates } = restoreTransactionRecorder([[], []]);
+  mocks.getRecord.mockResolvedValue({
+    deletedAt,
+    deletedById: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  });
+  mocks.payload.mockResolvedValue(null);
+
+  await assert.rejects(
+    restoreDatabaseService({
+      databaseId: "database-1",
+      userId: "user-1",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 404,
+  );
+
+  assert.equal(updates.length, 2);
 });

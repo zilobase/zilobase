@@ -5,6 +5,7 @@ import { database, databaseRow, page } from "./db/schema";
 import { loadWorkspacePageGraph } from "./page-graph-loader";
 
 type SoftDeleteResult = {
+  deletedAt: Date;
   deletedDatabaseIds: string[];
   deletedPageIds: string[];
 };
@@ -92,6 +93,8 @@ async function softDeleteRecords({
         );
     }
   });
+
+  return now;
 }
 
 export async function softDeletePageTree({
@@ -126,13 +129,13 @@ export async function softDeletePageTree({
   const deletedPageIds = [...pageIds];
   const deletedDatabaseIds = [...databaseIds];
 
-  await softDeleteRecords({
+  const deletedAt = await softDeleteRecords({
     databaseIds: deletedDatabaseIds,
     userId,
     pageIds: deletedPageIds,
   });
 
-  return { deletedDatabaseIds, deletedPageIds };
+  return { deletedAt, deletedDatabaseIds, deletedPageIds };
 }
 
 export async function softDeleteDatabaseTree({
@@ -166,11 +169,11 @@ export async function softDeleteDatabaseTree({
   const deletedPageIds = [...pageIds];
   const deletedDatabaseIds = [...databaseIds];
 
-  await softDeleteRecords({
+  const deletedAt = await softDeleteRecords({
     databaseIds: deletedDatabaseIds,
     userId,
     pageIds: deletedPageIds,
   });
 
-  return { deletedDatabaseIds, deletedPageIds };
+  return { deletedAt, deletedDatabaseIds, deletedPageIds };
 }

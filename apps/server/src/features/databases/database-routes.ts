@@ -38,7 +38,6 @@ import {
 } from "../../database-realtime-ticket";
 import { getDatabaseRealtimeWebSocketUrl } from "../../runtime-adapter";
 import { upsertPageItemPlacement } from "../../page-item-placements";
-import { softDeleteDatabaseTree } from "../../soft-delete-nav-items";
 import {
   commitDatabaseMutation as commitDatabaseMutationCore,
   DatabaseMutationError,
@@ -72,6 +71,8 @@ import { isDatabaseHostPageId } from "../../services/database-host-page";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
   createDatabaseService,
+  deleteDatabaseService,
+  restoreDatabaseService,
   updateDatabaseService,
 } from "../../services/database-service";
 import {
@@ -576,33 +577,20 @@ databaseRoutes.delete("/:id", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
+  try {
+    return c.json(
+      await deleteDatabaseService({
+        databaseId: c.req.param("id"),
+        userId: user.id,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
 
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
+    throw error;
   }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "full"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  const { deletedDatabaseIds, deletedPageIds } = await softDeleteDatabaseTree({
-    databaseId: existing.id,
-    workspaceId: existing.workspaceId,
-    userId: user.id,
-  });
-
-  const [record] = await db
-    .select()
-    .from(database)
-    .where(eq(database.id, existing.id))
-    .limit(1);
-
-  return c.json({
-    database: record,
-    deletedDatabaseIds,
-    deletedPageIds,
-  });
 });
 
 databaseRoutes.post("/:id/restore", async (c) => {
@@ -612,104 +600,20 @@ databaseRoutes.post("/:id/restore", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"), {
-    includeDeleted: true,
-  });
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await getMembership(existing.workspaceId, user.id))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  if (!existing.deletedAt) {
-    const payload = await getDatabasePayload(existing.id, user.id, existing, {
-      includeDeleted: true,
-    });
-
-    return c.json({
-      database: payload?.database ?? existing,
-      restoredDatabaseIds: [],
-      restoredPageIds: [],
-    });
-  }
-
-  const deletedAt = existing.deletedAt;
-  const now = new Date();
-  const restored = await db.transaction(async (tx) => {
-    const restoredDatabases = await tx
-      .update(database)
-      .set({
-        deletedAt: null,
-        deletedById: null,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(database.workspaceId, existing.workspaceId),
-          eq(database.deletedAt, deletedAt),
-          existing.deletedById
-            ? eq(database.deletedById, existing.deletedById)
-            : undefined,
-        ),
-      )
-      .returning({ id: database.id });
-    const restoredDatabaseIds = restoredDatabases.map((record) => record.id);
-
-    if (restoredDatabaseIds.length > 0) {
-      await tx
-        .update(databaseRow)
-        .set({
-          deletedAt: null,
-          deletedById: null,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            inArray(databaseRow.databaseId, restoredDatabaseIds),
-            eq(databaseRow.deletedAt, deletedAt),
-            existing.deletedById
-              ? eq(databaseRow.deletedById, existing.deletedById)
-              : undefined,
-          ),
-        );
+  try {
+    return c.json(
+      await restoreDatabaseService({
+        databaseId: c.req.param("id"),
+        userId: user.id,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
     }
 
-    const restoredPages = await tx
-      .update(page)
-      .set({
-        deletedAt: null,
-        deletedById: null,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(page.workspaceId, existing.workspaceId),
-          eq(page.deletedAt, deletedAt),
-          existing.deletedById
-            ? eq(page.deletedById, existing.deletedById)
-            : undefined,
-        ),
-      )
-      .returning({ id: page.id });
-
-    return {
-      restoredDatabaseIds,
-      restoredPageIds: restoredPages.map((record) => record.id),
-    };
-  });
-
-  const payload = await getDatabasePayload(existing.id, user.id, undefined, {
-    includeDeleted: true,
-  });
-
-  if (!payload) {
-    return c.json({ error: "Database not found" }, 404);
+    throw error;
   }
-
-  return c.json({ database: payload.database, ...restored });
 });
 
 databaseRoutes.delete("/:id/favorite", async (c) => {

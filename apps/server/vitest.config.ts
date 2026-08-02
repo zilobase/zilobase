@@ -15,8 +15,8 @@ export default defineConfig({
       thresholds: {
         branches: fullCoverage ? 100 : 27,
         functions: fullCoverage ? 100 : 30,
-        lines: fullCoverage ? 100 : 30,
-        statements: fullCoverage ? 100 : 30,
+        lines: fullCoverage ? 100 : 31,
+        statements: fullCoverage ? 100 : 31,
       },
     },
     include: ["src/**/*.test.ts"],

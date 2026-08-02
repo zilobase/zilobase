@@ -1,13 +1,28 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
-import { canAccessPage, getMembership } from "../access";
+import {
+  canAccessDatabaseInWorkspace,
+  canAccessPage,
+  getMembership,
+} from "../access";
 import type { RuntimeEnv } from "../config";
 import { db } from "../db";
-import { database, databaseView, favorite, page } from "../db/schema";
+import {
+  database,
+  databaseRow,
+  databaseView,
+  favorite,
+  page,
+} from "../db/schema";
 import { upsertPageItemPlacement } from "../page-item-placements";
-import { requireDatabaseEditAccess } from "./database-access";
+import { softDeleteDatabaseTree } from "../soft-delete-nav-items";
+import {
+  getDatabaseRecord,
+  requireDatabaseEditAccess,
+} from "./database-access";
 import { commitDatabaseMutation } from "./database-commit";
 import type { DatabaseDelta } from "./database-delta";
+import { getDatabasePayload } from "./database-payload";
 import { ServiceMutationError } from "./mutation-error";
 
 export async function createDatabaseService(input: {
@@ -176,4 +191,159 @@ export async function updateDatabaseService(input: {
   );
 
   return { commit, databaseId: existing.id };
+}
+
+export async function deleteDatabaseService(input: {
+  databaseId: string;
+  userId: string;
+}) {
+  const existing = await getDatabaseRecord(input.databaseId);
+
+  if (!existing) {
+    throw new ServiceMutationError("Database not found", 404);
+  }
+
+  if (
+    !(await canAccessDatabaseInWorkspace(
+      existing.id,
+      existing.workspaceId,
+      input.userId,
+      "full",
+    ))
+  ) {
+    throw new ServiceMutationError("Forbidden", 403);
+  }
+
+  const deleted = await softDeleteDatabaseTree({
+    databaseId: existing.id,
+    workspaceId: existing.workspaceId,
+    userId: input.userId,
+  });
+
+  return {
+    database: {
+      ...existing,
+      deletedAt: deleted.deletedAt,
+      deletedById: input.userId,
+      updatedAt: deleted.deletedAt,
+    },
+    deletedDatabaseIds: deleted.deletedDatabaseIds,
+    deletedPageIds: deleted.deletedPageIds,
+  };
+}
+
+export async function restoreDatabaseService(input: {
+  databaseId: string;
+  userId: string;
+}) {
+  const existing = await getDatabaseRecord(input.databaseId, {
+    includeDeleted: true,
+  });
+
+  if (!existing) {
+    throw new ServiceMutationError("Database not found", 404);
+  }
+
+  if (!(await getMembership(existing.workspaceId, input.userId))) {
+    throw new ServiceMutationError("Forbidden", 403);
+  }
+
+  if (!existing.deletedAt) {
+    const payload = await getDatabasePayload(
+      existing.id,
+      input.userId,
+      existing,
+      { includeDeleted: true },
+    );
+
+    return {
+      database: payload?.database ?? existing,
+      restoredDatabaseIds: [],
+      restoredPageIds: [],
+    };
+  }
+
+  const deletedAt = existing.deletedAt;
+  const now = new Date();
+  const restored = await db.transaction(async (tx) => {
+    const restoredDatabases = await tx
+      .update(database)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(database.workspaceId, existing.workspaceId),
+          eq(database.deletedAt, deletedAt),
+          existing.deletedById
+            ? eq(database.deletedById, existing.deletedById)
+            : undefined,
+        ),
+      )
+      .returning({ id: database.id });
+    const restoredDatabaseIds = restoredDatabases.map((record) => record.id);
+
+    if (restoredDatabaseIds.length > 0) {
+      await tx
+        .update(databaseRow)
+        .set({
+          deletedAt: null,
+          deletedById: null,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            inArray(databaseRow.databaseId, restoredDatabaseIds),
+            eq(databaseRow.deletedAt, deletedAt),
+            existing.deletedById
+              ? eq(databaseRow.deletedById, existing.deletedById)
+              : undefined,
+          ),
+        );
+    }
+
+    const restoredPages = await tx
+      .update(page)
+      .set({
+        deletedAt: null,
+        deletedById: null,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(page.workspaceId, existing.workspaceId),
+          eq(page.deletedAt, deletedAt),
+          existing.deletedById
+            ? eq(page.deletedById, existing.deletedById)
+            : undefined,
+        ),
+      )
+      .returning({ id: page.id });
+
+    return {
+      restoredDatabaseIds,
+      restoredPageIds: restoredPages.map((record) => record.id),
+    };
+  });
+
+  const restoredRecord = {
+    ...existing,
+    deletedAt: null,
+    deletedById: null,
+    updatedAt: now,
+  };
+  const payload = await getDatabasePayload(
+    existing.id,
+    input.userId,
+    restoredRecord,
+    { includeDeleted: true },
+  );
+
+  if (!payload) {
+    throw new ServiceMutationError("Database not found", 404);
+  }
+
+  return { database: payload.database, ...restored };
 }

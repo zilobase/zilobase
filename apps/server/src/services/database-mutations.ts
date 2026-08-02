@@ -15,6 +15,8 @@ export { isDatabaseHostPageId } from "./database-host-page";
 export { createDatabaseRowService } from "./database-row-service";
 export {
   createDatabaseService,
+  deleteDatabaseService,
+  restoreDatabaseService,
   updateDatabaseService,
 } from "./database-service";
 export {
