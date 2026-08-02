@@ -53,9 +53,9 @@ export async function requireDatabaseEditAccess(
     executor?: DatabaseReader;
   },
 ) {
-  const record = dependencies?.executor
-    ? await getDatabaseRecord(databaseId, dependencies.executor)
-    : await getDatabaseRecord(databaseId);
+  const record = await getDatabaseRecord(databaseId, {
+    executor: dependencies?.executor,
+  });
 
   if (!record) {
     throw new ServiceMutationError("Database not found", 404);
