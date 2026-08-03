@@ -119,6 +119,7 @@ test("createDatabasePropertyService inserts and shifts a positioned property", a
   });
 
   assert.deepEqual(result, {
+    commit: await mocks.commit.mock.results[0]?.value,
     databaseId: "database-1",
     databasePropertyId: "00000000-0000-4000-8000-000000000002",
     name: "Cost",
@@ -198,6 +199,7 @@ test("updateDatabasePropertyService updates supplied metadata", async () => {
   });
 
   assert.deepEqual(result, {
+    commit: await mocks.commit.mock.results[0]?.value,
     databaseId: "database-1",
     databasePropertyId: "column-1",
     pagePropertyId: "property-1",

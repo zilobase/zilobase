@@ -60,7 +60,7 @@ export async function createDatabasePropertyService(input: {
       ? columns.length
       : Math.min(input.position, columns.length);
 
-  await commitDatabaseMutation(
+  const commit = await commitDatabaseMutation(
     {
       actorId: input.userId,
       changed: ["properties"],
@@ -124,6 +124,7 @@ export async function createDatabasePropertyService(input: {
   );
 
   return {
+    commit,
     databaseId: existing.id,
     databasePropertyId,
     name,
@@ -219,7 +220,7 @@ export async function updateDatabasePropertyService(input: {
     columnValues.position = input.position;
   }
 
-  await commitDatabaseMutation(
+  const commit = await commitDatabaseMutation(
     {
       actorId: input.userId,
       changed:
@@ -332,6 +333,7 @@ export async function updateDatabasePropertyService(input: {
   );
 
   return {
+    commit,
     databaseId: existing.id,
     databasePropertyId: column.id,
     pagePropertyId: column.propertyId,

@@ -41,9 +41,7 @@ import {
 } from "../../services/database-commit";
 import { getDatabaseRecord } from "../../services/database-access";
 import {
-  formatDatePropertyValueAsText,
   getStatusDefaultValue,
-  normalizePropertyConfig,
   validateCellValue,
 } from "../../services/database-property-config";
 import {
@@ -65,6 +63,10 @@ import {
 } from "../../services/database-position-service";
 import { isDatabaseHostPageId } from "../../services/database-host-page";
 import { updateDatabaseFavoriteService } from "../../services/database-favorite-service";
+import {
+  createDatabasePropertyService,
+  updateDatabasePropertyService,
+} from "../../services/database-property-service";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
   deleteDatabaseAccessRuleService,
@@ -86,7 +88,6 @@ import {
 import {
   isReadOnlyPropertyType,
   normalizeDatabasePropertyType,
-  shouldClearValuesForPropertyTypeChange,
 } from "../../services/database-property-types";
 import { upsertPagePropertyValues } from "../../services/page-property-value-upsert";
 import {
@@ -722,16 +723,6 @@ databaseRoutes.post("/:id/properties", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
   const body = await c.req.json().catch(() => ({}));
 
   const {
@@ -750,14 +741,6 @@ databaseRoutes.post("/:id/properties", async (c) => {
     return c.json({ error: "name and type must be strings" }, 400);
   }
 
-  const normalizedType = normalizeDatabasePropertyType(type);
-
-  if (!normalizedType) {
-    return c.json({ error: "Unsupported property type" }, 400);
-  }
-
-  const normalizedConfig = normalizePropertyConfig(normalizedType, config);
-
   if (
     position !== undefined &&
     (!Number.isInteger(position) || (position as number) < 0)
@@ -765,106 +748,25 @@ databaseRoutes.post("/:id/properties", async (c) => {
     return c.json({ error: "position must be a non-negative integer" }, 400);
   }
 
-  const columns = await db
-    .select({ id: databaseProperty.id, position: databaseProperty.position })
-    .from(databaseProperty)
-    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-    .where(
-      and(
-        eq(databaseProperty.databaseId, existing.id),
-        isNull(pageProperty.deletedAt),
-      ),
-    );
-  const propertyId = crypto.randomUUID();
-  const columnId = crypto.randomUUID();
-  const targetPosition =
-    position === undefined
-      ? columns.length
-      : Math.min(position as number, columns.length);
-  const now = new Date();
+  try {
+    const result = await createDatabasePropertyService({
+      config,
+      databaseId: c.req.param("id"),
+      env: c.env,
+      name,
+      position: position as number | undefined,
+      type,
+      userId: user.id,
+    });
 
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: ["properties"],
+    return c.json(mutationResponse(result.commit), 201);
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
 
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      await tx
-        .update(databaseProperty)
-        .set({
-          position: sql`${databaseProperty.position} + 1`,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(databaseProperty.databaseId, existing.id),
-            gte(databaseProperty.position, targetPosition),
-          ),
-        );
-      await tx.insert(pageProperty).values({
-        id: propertyId,
-        workspaceId: existing.workspaceId,
-        name,
-        type: normalizedType,
-        config: normalizedConfig,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await tx.insert(databaseProperty).values({
-        id: columnId,
-        databaseId: existing.id,
-        propertyId,
-        position: targetPosition,
-        createdAt: now,
-        updatedAt: now,
-      });
-
-      const delta = await fetchDatabasePropertyDelta(existing.id, columnId, tx);
-
-      return {
-        delta: {
-          properties: [
-            ...columns
-              .filter((column) => column.position >= targetPosition)
-              .map((column) => ({
-                id: column.id,
-                position: column.position + 1,
-                updatedAt: now.toISOString(),
-              })),
-            ...(delta?.properties ?? [
-              {
-                createdAt: now.toISOString(),
-                databaseId: existing.id,
-                id: columnId,
-                position: targetPosition,
-                property: {
-                  config: normalizedConfig,
-                  createdAt: now.toISOString(),
-                  id: propertyId,
-                  name,
-                  workspaceId: existing.workspaceId,
-                  type,
-                  updatedAt: now.toISOString(),
-                },
-                propertyId,
-                updatedAt: now.toISOString(),
-                visible: true,
-              },
-            ]),
-          ],
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
+    throw error;
   }
-
-  return c.json(mutationResponse(mutation), 201);
 });
 
 databaseRoutes.patch("/:id/properties/reorder", async (c) => {
@@ -969,50 +871,10 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
   const body = await c.req.json().catch(() => null);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
-  }
-
-  const [column] = await db
-    .select()
-    .from(databaseProperty)
-    .where(
-      and(
-        eq(databaseProperty.id, c.req.param("databasePropertyId")),
-        eq(databaseProperty.databaseId, existing.id),
-      ),
-    )
-    .limit(1);
-
-  if (!column) {
-    return c.json({ error: "Property not found" }, 404);
-  }
-
-  const [pagePropertyRecord] = await db
-    .select({ config: pageProperty.config, type: pageProperty.type })
-    .from(pageProperty)
-    .where(
-      and(
-        eq(pageProperty.id, column.propertyId),
-        eq(pageProperty.workspaceId, existing.workspaceId),
-      ),
-    )
-    .limit(1);
-
-  if (!pagePropertyRecord) {
-    return c.json({ error: "Property not found" }, 404);
   }
 
   const patch = body as {
@@ -1021,27 +883,15 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
     position?: unknown;
     type?: unknown;
   };
-  const columnValues: Partial<typeof databaseProperty.$inferInsert> = {
-    updatedAt: new Date(),
-  };
-  const propertyValues: Partial<typeof pageProperty.$inferInsert> = {
-    updatedAt: new Date(),
-  };
   const normalizedPatchType =
     patch.type === undefined
       ? undefined
       : normalizeDatabasePropertyType(patch.type);
-  const previousType = normalizeDatabasePropertyType(
-    pagePropertyRecord.type,
-    "",
-  );
 
   if (patch.name !== undefined) {
     if (typeof patch.name !== "string") {
       return c.json({ error: "name must be a string" }, 400);
     }
-
-    propertyValues.name = patch.name;
   }
 
   if (patch.type !== undefined) {
@@ -1052,169 +902,36 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
     if (!normalizedPatchType) {
       return c.json({ error: "Unsupported property type" }, 400);
     }
-
-    propertyValues.type = normalizedPatchType;
-  }
-
-  if (patch.config !== undefined) {
-    const effectiveType =
-      normalizedPatchType ??
-      normalizeDatabasePropertyType(pagePropertyRecord.type, "");
-
-    if (!effectiveType) {
-      return c.json({ error: "Unsupported property type" }, 400);
-    }
-
-    propertyValues.config = normalizePropertyConfig(
-      effectiveType,
-      patch.config,
-    );
-  } else if (normalizedPatchType === "status") {
-    propertyValues.config = normalizePropertyConfig(
-      "status",
-      pagePropertyRecord.config,
-    );
   }
 
   if (patch.position !== undefined) {
     if (!Number.isInteger(patch.position) || (patch.position as number) < 0) {
       return c.json({ error: "position must be a non-negative integer" }, 400);
     }
-
-    columnValues.position = patch.position as number;
   }
 
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed:
-        normalizedPatchType &&
-        previousType &&
-        normalizedPatchType !== previousType &&
-        (shouldClearValuesForPropertyTypeChange(
-          previousType,
-          normalizedPatchType,
-        ) ||
-          (previousType === "date" && normalizedPatchType === "text"))
-          ? ["properties", "values"]
-          : ["properties"],
+  try {
+    const result = await updateDatabasePropertyService({
+      databaseId: c.req.param("id"),
+      databasePropertyId: c.req.param("databasePropertyId"),
+      env: c.env,
+      userId: user.id,
+      ...(patch.config !== undefined ? { config: patch.config } : {}),
+      ...(patch.name !== undefined ? { name: patch.name as string } : {}),
+      ...(patch.position !== undefined
+        ? { position: patch.position as number }
+        : {}),
+      ...(patch.type !== undefined ? { type: patch.type as string } : {}),
+    });
 
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      const shouldClearValues = Boolean(
-        normalizedPatchType &&
-        previousType &&
-        normalizedPatchType !== previousType &&
-        shouldClearValuesForPropertyTypeChange(
-          previousType,
-          normalizedPatchType,
-        ),
-      );
-      const shouldConvertDateToText =
-        previousType === "date" && normalizedPatchType === "text";
-      const changedValues = shouldClearValues
-        ? await tx
-            .update(pagePropertyValue)
-            .set({ value: null, updatedAt: new Date() })
-            .where(eq(pagePropertyValue.propertyId, column.propertyId))
-            .returning({
-              createdAt: pagePropertyValue.createdAt,
-              id: pagePropertyValue.id,
-              pageId: pagePropertyValue.pageId,
-              propertyId: pagePropertyValue.propertyId,
-              updatedAt: pagePropertyValue.updatedAt,
-              value: pagePropertyValue.value,
-            })
-        : shouldConvertDateToText
-          ? await Promise.all(
-              (
-                await tx
-                  .select({
-                    id: pagePropertyValue.id,
-                    value: pagePropertyValue.value,
-                  })
-                  .from(pagePropertyValue)
-                  .where(eq(pagePropertyValue.propertyId, column.propertyId))
-              ).map(async (propertyValue) => {
-                const [updatedValue] = await tx
-                  .update(pagePropertyValue)
-                  .set({
-                    value: formatDatePropertyValueAsText(propertyValue.value),
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(pagePropertyValue.id, propertyValue.id))
-                  .returning({
-                    createdAt: pagePropertyValue.createdAt,
-                    id: pagePropertyValue.id,
-                    pageId: pagePropertyValue.pageId,
-                    propertyId: pagePropertyValue.propertyId,
-                    updatedAt: pagePropertyValue.updatedAt,
-                    value: pagePropertyValue.value,
-                  });
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
 
-                return updatedValue;
-              }),
-            )
-          : [];
-
-      await tx
-        .update(databaseProperty)
-        .set(columnValues)
-        .where(eq(databaseProperty.id, column.id));
-
-      if (
-        patch.name !== undefined ||
-        patch.type !== undefined ||
-        patch.config !== undefined
-      ) {
-        await tx
-          .update(pageProperty)
-          .set(propertyValues)
-          .where(
-            and(
-              eq(pageProperty.id, column.propertyId),
-              eq(pageProperty.workspaceId, existing.workspaceId),
-            ),
-          );
-      }
-
-      const delta = await fetchDatabasePropertyDelta(existing.id, column.id, tx);
-
-      return {
-        delta: {
-          ...(delta ?? {
-            properties: [
-              {
-                ...column,
-                ...columnValues,
-                property: {
-                  id: column.propertyId,
-                  ...propertyValues,
-                },
-              },
-            ],
-          }),
-          ...(changedValues.length > 0
-            ? {
-                values: changedValues.map((value) => ({
-                  ...value,
-                  createdAt: value.createdAt.toISOString(),
-                  updatedAt: value.updatedAt.toISOString(),
-                })),
-              }
-            : {}),
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
+    throw error;
   }
-
-  return c.json(mutationResponse(mutation));
 });
 
 databaseRoutes.post(
