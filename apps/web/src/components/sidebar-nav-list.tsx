@@ -1,0 +1,349 @@
+"use client"
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+  type ReactNode,
+} from "react"
+import { Link } from "@tanstack/react-router"
+import { ArrowUpRightIcon, ChevronRightIcon } from "lucide-react"
+
+import { getSidebarDatabaseViewSearchId } from "@/components/database-view-navigation"
+import {
+  readExpandedSidebarItems,
+  setSidebarItemExpanded,
+  writeExpandedSidebarItems,
+} from "@/components/sidebar-expansion-state"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  SidebarMenuAction,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
+import { type ZilobaseAiMode } from "@zilobase/features/pages"
+
+export type SidebarNavItem = {
+  databaseId?: string | null
+  databaseViewId?: string | null
+  emoji: ReactNode
+  id: string
+  isDatabase?: boolean
+  isDatabaseView?: boolean
+  isFavorite?: boolean
+  isLinked?: boolean
+  isTeamspace: boolean
+  name: string
+  navNodeId?: string
+  pageId: string | null
+  pages: SidebarNavItem[]
+  zilobaseai?: ZilobaseAiMode | null
+}
+
+type LinkProps = Partial<
+  Omit<ComponentProps<typeof Link>, "params" | "title" | "to">
+>
+
+type SidebarNavListProps = {
+  activeDatabaseId: string | null
+  activeDatabaseViewId?: string | null
+  activePageId: string | null
+  getLinkProps?: (input: {
+    displayName: string
+    item: SidebarNavItem
+  }) => LinkProps | undefined
+  items: SidebarNavItem[]
+  renderItemMenu: (input: {
+    item: SidebarNavItem
+    nested: boolean
+  }) => ReactNode
+  storageKey: string
+}
+
+const rowClassName =
+  "peer/menu-button pr-8 data-[active=false]:text-sidebar-foreground/70 group-hover/nav-row:bg-sidebar-accent group-hover/nav-row:text-sidebar-accent-foreground group-has-[>[data-nav-menu-action=more][aria-expanded=true]]/nav-row:bg-sidebar-accent group-has-[>[data-nav-menu-action=more][aria-expanded=true]]/nav-row:text-sidebar-accent-foreground"
+
+export function SidebarNavList(props: SidebarNavListProps) {
+  return <SidebarNavListContent key={props.storageKey} {...props} />
+}
+
+function SidebarNavListContent({
+  activeDatabaseId,
+  activeDatabaseViewId = null,
+  activePageId,
+  getLinkProps,
+  items,
+  renderItemMenu,
+  storageKey,
+}: SidebarNavListProps) {
+  const defaultViewIds = useMemo(() => getDefaultViewIds(items), [items])
+  const [expandedIds, setExpandedIds] = useState(
+    () => new Set(readExpandedSidebarItems(storageKey)),
+  )
+
+  useEffect(() => {
+    writeExpandedSidebarItems(storageKey, expandedIds)
+  }, [expandedIds, storageKey])
+
+  const setExpanded = useCallback((id: string, expanded: boolean) => {
+    setExpandedIds((current) => setSidebarItemExpanded(current, id, expanded))
+  }, [])
+
+  return items.map((item) => (
+    <SidebarNavRow
+      activeDatabaseId={activeDatabaseId}
+      activeDatabaseViewId={activeDatabaseViewId}
+      activePageId={activePageId}
+      defaultViewIds={defaultViewIds}
+      depth={0}
+      expandedIds={expandedIds}
+      getLinkProps={getLinkProps}
+      item={item}
+      key={item.navNodeId ?? item.id}
+      renderItemMenu={renderItemMenu}
+      setExpanded={setExpanded}
+    />
+  ))
+}
+
+function SidebarNavRow({
+  activeDatabaseId,
+  activeDatabaseViewId,
+  activePageId,
+  defaultViewIds,
+  depth,
+  expandedIds,
+  getLinkProps,
+  item,
+  renderItemMenu,
+  setExpanded,
+}: Omit<SidebarNavListProps, "items" | "storageKey"> & {
+  defaultViewIds: Map<string, string>
+  depth: number
+  expandedIds: ReadonlySet<string>
+  item: SidebarNavItem
+  setExpanded: (id: string, expanded: boolean) => void
+}) {
+  const id = item.navNodeId ?? item.id
+  const displayName = item.name.trim() || "Untitled"
+  const hasChildren = item.pages.length > 0
+  const expanded = expandedIds.has(id)
+  const defaultViewId = item.databaseId
+    ? defaultViewIds.get(item.databaseId)
+    : undefined
+  const viewId = getSidebarDatabaseViewSearchId({
+    databaseId: item.databaseId,
+    databaseViewId: item.databaseViewId,
+    defaultDatabaseViewId: defaultViewId,
+    isDatabaseView: item.isDatabaseView,
+  })
+  const selectedViewId = item.databaseId
+    ? viewId ?? defaultViewId ?? null
+    : null
+  const linkProps = getLinkProps?.({ displayName, item })
+  const linkStyle = {
+    ...linkProps?.style,
+    paddingLeft: `${8 + depth * 16}px`,
+  } as CSSProperties
+  const active = isActiveItem(
+    item,
+    activePageId,
+    activeDatabaseId,
+    activeDatabaseViewId ?? null,
+    defaultViewIds,
+  )
+
+  const content = (
+    <>
+      <span
+        className={`flex size-5 shrink-0 items-center justify-center ${
+          hasChildren
+            ? "group-hover/nav-row:opacity-0 group-has-[>[data-nav-menu-action=disclosure]:focus-visible]/nav-row:opacity-0"
+            : ""
+        }`}
+      >
+        {item.emoji}
+      </span>
+      <span className="min-w-0 truncate">{displayName}</span>
+      <ItemIndicators item={item} />
+    </>
+  )
+
+  return (
+    <Collapsible
+      asChild
+      onOpenChange={(open) => setExpanded(id, open)}
+      open={expanded}
+    >
+      <SidebarMenuItem>
+        <div className="group/nav-row relative">
+          <SidebarMenuButton asChild className={rowClassName} isActive={active}>
+            {(item.isDatabase || item.isDatabaseView) && item.databaseId ? (
+              <Link
+                params={{ databaseId: item.databaseId } as never}
+                search={{ view: viewId } as never}
+                state={
+                  ((previous: Record<string, unknown>) => ({
+                    ...previous,
+                    zilobaseDatabaseViewSelection: {
+                      databaseId: item.databaseId,
+                      token: crypto.randomUUID(),
+                      viewId: selectedViewId,
+                    },
+                  })) as never
+                }
+                title={displayName}
+                to="/d/$databaseId"
+                {...linkProps}
+                style={linkStyle}
+              >
+                {content}
+              </Link>
+            ) : (
+              <Link
+                params={{ pageId: item.pageId as string } as never}
+                title={displayName}
+                to="/p/$pageId"
+                {...linkProps}
+                style={linkStyle}
+              >
+                {content}
+              </Link>
+            )}
+          </SidebarMenuButton>
+          {hasChildren ? (
+            <CollapsibleTrigger asChild>
+              <SidebarMenuAction
+                className="right-auto rounded-sm opacity-0 text-sidebar-foreground/55 data-[state=open]:rotate-90 group-hover/nav-row:opacity-100 group-hover/nav-row:text-sidebar-accent-foreground hover:bg-sidebar-foreground/10 hover:text-sidebar-accent-foreground focus-visible:bg-sidebar-foreground/10 focus-visible:opacity-100"
+                data-nav-menu-action="disclosure"
+                style={{ left: `${6 + depth * 16}px` }}
+                title={`${expanded ? "Collapse" : "Expand"} ${displayName}`}
+                type="button"
+              >
+                <ChevronRightIcon />
+                <span className="sr-only">
+                  {expanded ? "Collapse" : "Expand"} {displayName}
+                </span>
+              </SidebarMenuAction>
+            </CollapsibleTrigger>
+          ) : null}
+          {renderItemMenu({ item, nested: depth > 0 })}
+        </div>
+        {hasChildren ? (
+          <CollapsibleContent className="pt-0.5">
+            <ul className="flex min-w-0 flex-col gap-0.5">
+              {item.pages.map((child) => (
+                <SidebarNavRow
+                  activeDatabaseId={activeDatabaseId}
+                  activeDatabaseViewId={activeDatabaseViewId}
+                  activePageId={activePageId}
+                  defaultViewIds={defaultViewIds}
+                  depth={depth + 1}
+                  expandedIds={expandedIds}
+                  getLinkProps={getLinkProps}
+                  item={child}
+                  key={child.navNodeId ?? child.id}
+                  renderItemMenu={renderItemMenu}
+                  setExpanded={setExpanded}
+                />
+              ))}
+            </ul>
+          </CollapsibleContent>
+        ) : null}
+      </SidebarMenuItem>
+    </Collapsible>
+  )
+}
+
+function ItemIndicators({ item }: { item: SidebarNavItem }) {
+  const showAiMode = item.zilobaseai && !item.isDatabase
+
+  if (!showAiMode && !item.isLinked) {
+    return null
+  }
+
+  return (
+    <span className="ml-auto flex shrink-0 items-center gap-1.5">
+      {showAiMode ? (
+        <span className="text-xs text-sidebar-foreground/60">
+          {item.zilobaseai}
+        </span>
+      ) : null}
+      {item.isLinked ? (
+        <ArrowUpRightIcon
+          aria-label="Linked from another parent"
+          className="size-3 text-sidebar-foreground/45"
+        />
+      ) : null}
+    </span>
+  )
+}
+
+function isActiveItem(
+  item: SidebarNavItem,
+  activePageId: string | null,
+  activeDatabaseId: string | null,
+  activeDatabaseViewId: string | null,
+  defaultViewIds: Map<string, string>,
+) {
+  if (item.isDatabaseView) {
+    return (
+      activeDatabaseId === item.databaseId &&
+      item.databaseViewId ===
+        (activeDatabaseViewId || defaultViewIds.get(item.databaseId ?? ""))
+    )
+  }
+
+  return item.isDatabase
+    ? activeDatabaseId === item.databaseId
+    : activePageId === item.pageId
+}
+
+function getDefaultViewIds(items: SidebarNavItem[]) {
+  const viewIds = new Map<string, string>()
+
+  const visit = (item: SidebarNavItem) => {
+    if (item.isDatabase && item.databaseId) {
+      const defaultView = item.pages.find((child) => child.isDatabaseView)
+      if (defaultView?.databaseViewId) {
+        viewIds.set(item.databaseId, defaultView.databaseViewId)
+      }
+    }
+    item.pages.forEach(visit)
+  }
+
+  items.forEach(visit)
+  return viewIds
+}
+
+export function getActivePageId(pathname: string) {
+  const match = pathname.match(/^\/p\/([^/?#]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+export function getActiveDatabaseId(pathname: string) {
+  const match = pathname.match(/^\/d\/([^/?#]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+export function getActiveDatabaseViewId(search: unknown) {
+  if (
+    search &&
+    typeof search === "object" &&
+    "view" in search &&
+    typeof search.view === "string"
+  ) {
+    return search.view
+  }
+
+  return typeof search === "string"
+    ? new URLSearchParams(search).get("view")
+    : null
+}

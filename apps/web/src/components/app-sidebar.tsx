@@ -9,6 +9,11 @@ import {
   AppSidebarHeader,
   AppSidebarShell,
 } from "@/components/app-sidebar-shell";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useAppSearch } from "@/components/app-search";
 import { NavFavorites } from "@/components/nav-favorites";
 import { NavSecondary } from "@/components/nav-secondary";
@@ -48,6 +53,7 @@ import {
   CalendarIcon,
   CalendarRange,
   ChartPie,
+  ChevronRightIcon,
   DatabaseIcon,
   GalleryThumbnails,
   HomeIcon,
@@ -291,6 +297,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               favorites={favorites}
               onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite}
               onRemoveFavorite={handleRemoveFavorite}
+              workspaceId={workspaceId}
             />
             <NavPages
               onCreateDatabase={handleCreateDatabase}
@@ -298,6 +305,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               onDropPageOnDatabase={handleDropPageOnDatabase}
               privatePages={pageSections.privatePages}
               teamspacePages={pageSections.teamspacePages}
+              workspaceId={workspaceId}
             />
             <NavSecondary items={data.navSecondary} className="mt-auto" />
           </>
@@ -341,7 +349,7 @@ function NavMain({
   return (
     <SidebarGroup>
       <SidebarGroupContent>
-        <SidebarMenu className="gap-1">
+        <SidebarMenu aria-label="Main navigation">
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
@@ -391,16 +399,30 @@ function AiSidebarHistory() {
           </SidebarMenu>
         </SidebarGroupContent>
       </SidebarGroup>
-      <SidebarGroup className="min-h-0 flex-1 overflow-hidden pt-0">
-        <SidebarGroupLabel>History</SidebarGroupLabel>
-        <SidebarGroupContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <AiChatHistoryList
-            activeThreadId={activeThreadId}
-            className="px-0 py-0"
-            onSelectThread={setActiveThreadId}
-          />
-        </SidebarGroupContent>
-      </SidebarGroup>
+      <Collapsible asChild defaultOpen>
+        <SidebarGroup className="min-h-0 flex-1 overflow-hidden pt-0">
+          <CollapsibleTrigger asChild>
+            <SidebarGroupLabel asChild>
+              <button
+                className="group/section-label w-full cursor-pointer"
+                type="button"
+              >
+                <span>History</span>
+                <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
+              </button>
+            </SidebarGroupLabel>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="min-h-0 flex-1 pt-0.5">
+            <SidebarGroupContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <AiChatHistoryList
+                activeThreadId={activeThreadId}
+                className="px-0 py-0"
+                onSelectThread={setActiveThreadId}
+              />
+            </SidebarGroupContent>
+          </CollapsibleContent>
+        </SidebarGroup>
+      </Collapsible>
     </>
   );
 }

@@ -7,13 +7,23 @@ import {
   SidebarHeader,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
 
 export function AppSidebarShell({
   children,
+  className,
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="offcanvas" className="overflow-hidden" {...props}>
+    <Sidebar
+      aria-label="Application sidebar"
+      collapsible="offcanvas"
+      className={cn(
+        "overflow-hidden [&_[data-sidebar=content]]:gap-0.5 [&_[data-sidebar=content]]:py-1 [&_[data-sidebar=content]_[data-sidebar=menu-button]]:h-8 [&_[data-sidebar=content]_[data-sidebar=menu-button]]:p-2 [&_[data-sidebar=footer]]:gap-0.5 [&_[data-sidebar=footer]]:border-t [&_[data-sidebar=footer]]:border-sidebar-border/60 [&_[data-sidebar=footer]_[data-sidebar=menu-button]]:h-8 [&_[data-sidebar=footer]_[data-sidebar=menu-button]]:p-2 [&_[data-sidebar=group]]:py-0 [&_[data-sidebar=group-action]]:top-1.5 [&_[data-sidebar=group-label]]:h-8 [&_[data-sidebar=group-label]]:rounded-md [&_[data-sidebar=group-label]]:px-2 [&_[data-sidebar=group-label]]:text-xs [&_[data-sidebar=group-label]]:text-sidebar-foreground/55 [&_[data-sidebar=group-label]]:hover:bg-sidebar-accent [&_[data-sidebar=group-label]]:hover:text-sidebar-accent-foreground [&_[data-sidebar=menu]]:gap-0.5",
+        className,
+      )}
+      {...props}
+    >
       {children}
     </Sidebar>
   )
@@ -21,7 +31,7 @@ export function AppSidebarShell({
 
 export function AppSidebarHeader({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarHeader>
+    <SidebarHeader className="gap-0 border-b border-sidebar-border/60">
       <div className="flex items-center gap-1">
         <div className="min-w-0 flex-1">{children}</div>
         <SidebarTrigger className="shrink-0" />

@@ -6,11 +6,11 @@ import type {
 } from "@zilobase/features/pages"
 import type { ReactNode } from "react"
 
-import type { PageNavItem } from "@/components/nav-tree"
+import type { SidebarNavItem } from "@/components/sidebar-nav-list"
 
 export type SidebarPageSections = {
-  privatePages: PageNavItem[]
-  teamspacePages: PageNavItem[]
+  privatePages: SidebarNavItem[]
+  teamspacePages: SidebarNavItem[]
 }
 
 export type SidebarNavigationIcons = {
@@ -27,23 +27,36 @@ export function buildSidebarNavigation(
 ) {
   const activePages = pages.filter((page) => !page.deletedAt)
   const activeDatabases = databases.filter((database) => !database.deletedAt)
-  const sections = buildPageTreeSections(
+  const sections = buildPageSections(
     activePages,
     activeDatabases,
     placements,
     icons,
   )
+  const favorites = buildFavoriteItems([
+    ...sections.privatePages,
+    ...sections.teamspacePages,
+  ])
+  const representedFavoriteIds = new Set<string>()
+
+  favorites.forEach((item) => collectItemIds(item, representedFavoriteIds))
+  const detachedFavorites = activePages
+    .filter(
+      (page) => page.isFavorite && !representedFavoriteIds.has(page.id),
+    )
+    .sort(
+      (first, second) =>
+        getPageCreatedTime(first) - getPageCreatedTime(second),
+    )
+    .map((page) => createPageNode(page, icons))
 
   return {
-    favorites: buildFavoriteTreeItems([
-      ...sections.privatePages,
-      ...sections.teamspacePages,
-    ]),
+    favorites: [...favorites, ...detachedFavorites],
     sections,
   }
 }
 
-export function buildPageTreeSections(
+export function buildPageSections(
   pages: Page[],
   databases: PageDatabase[],
   placements: PageItemPlacement[],
@@ -86,7 +99,7 @@ export function buildPageTreeSections(
     databaseId: string,
     navNodeId: string,
     isLinked = false,
-  ): PageNavItem | null => {
+  ): SidebarNavItem | null => {
     const node = databaseNodesById.get(databaseId)
 
     return node ? { ...node, isLinked, navNodeId } : null
@@ -97,7 +110,7 @@ export function buildPageTreeSections(
     pageId: string,
     navNodeId: string,
     isLinked = false,
-  ): PageNavItem | null => {
+  ): SidebarNavItem | null => {
     const node = pageNodesById.get(pageId)
 
     if (!node) {
@@ -169,23 +182,14 @@ export function buildPageTreeSections(
   }
 }
 
-export function buildFavoriteTreeItems(items: PageNavItem[]) {
-  const favoriteItems = items.flatMap((item) =>
-    cloneFavoriteTreeItems(item, false),
-  )
-  const nestedFavoriteIds = new Set<string>()
-
-  for (const item of favoriteItems) {
-    collectFavoriteDescendantIds(item, nestedFavoriteIds)
-  }
-
-  return favoriteItems.filter((item) => !nestedFavoriteIds.has(item.id))
+export function buildFavoriteItems(items: SidebarNavItem[]) {
+  return items.flatMap(collectFavoriteItems)
 }
 
 function createPageNode(
   page: Page,
   icons: SidebarNavigationIcons,
-): PageNavItem {
+): SidebarNavItem {
   return {
     id: page.id,
     isFavorite: Boolean(page.isFavorite),
@@ -202,7 +206,7 @@ function createDatabaseNode(
   database: PageDatabase,
   page: Page | undefined,
   icons: SidebarNavigationIcons,
-): PageNavItem {
+): SidebarNavItem {
   return {
     databaseId: database.id,
     id: `database:${database.id}`,
@@ -256,40 +260,32 @@ function groupPagePlacements(placements: PageItemPlacement[]) {
   return grouped
 }
 
-function cloneFavoriteTreeItems(
-  item: PageNavItem,
-  hasFavoriteAncestor: boolean,
-): PageNavItem[] {
+function collectFavoriteItems(item: SidebarNavItem): SidebarNavItem[] {
   if (item.isDatabaseView) {
     return []
   }
 
-  if (hasFavoriteAncestor || item.isFavorite) {
-    return [
-      {
-        ...item,
-        isFavorite: true,
-        pages: item.pages.flatMap((page) => cloneFavoriteTreeItems(page, true)),
-      },
-    ]
-  }
-
-  const favoritePages = item.pages.flatMap((page) =>
-    cloneFavoriteTreeItems(page, false),
+  const nestedFavorites = item.pages.flatMap((child) =>
+    collectFavoriteItems(child),
   )
 
-  if (item.isDatabase && favoritePages.length > 0) {
-    return [{ ...item, pages: favoritePages }]
-  }
-
-  return favoritePages
+  return item.isFavorite
+    ? [cloneFavoriteHierarchy(item), ...nestedFavorites]
+    : nestedFavorites
 }
 
-function collectFavoriteDescendantIds(item: PageNavItem, ids: Set<string>) {
-  for (const page of item.pages) {
-    ids.add(page.id)
-    collectFavoriteDescendantIds(page, ids)
+function cloneFavoriteHierarchy(item: SidebarNavItem): SidebarNavItem {
+  return {
+    ...item,
+    pages: item.pages
+      .filter((child) => !child.isDatabaseView)
+      .map(cloneFavoriteHierarchy),
   }
+}
+
+function collectItemIds(item: SidebarNavItem, ids: Set<string>) {
+  ids.add(item.id)
+  item.pages.forEach((child) => collectItemIds(child, ids))
 }
 
 function getPageCreatedTime(page: Page) {

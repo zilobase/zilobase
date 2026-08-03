@@ -28,7 +28,7 @@ export function NavSecondary({
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>
-        <SidebarMenu>
+        <SidebarMenu aria-label="Secondary navigation">
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton

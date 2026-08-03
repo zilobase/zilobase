@@ -1,24 +1,19 @@
 "use client"
 
-import { useState } from "react"
 import { useLocation } from "@tanstack/react-router"
 import {
   ArrowUpRightIcon,
+  ChevronRightIcon,
   LinkIcon,
   MoreHorizontalIcon,
   StarOffIcon,
 } from "lucide-react"
 
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   DropDrawer,
   DropDrawerContent,
@@ -39,18 +34,21 @@ import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,
   getActivePageId,
-  NavTree,
-  type PageNavItem,
-} from "@/components/nav-tree"
+  SidebarNavList,
+  type SidebarNavItem,
+} from "@/components/sidebar-nav-list"
+import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
 
 export function NavFavorites({
   favorites,
   onRemoveDatabaseFavorite,
   onRemoveFavorite,
+  workspaceId,
 }: {
-  favorites: PageNavItem[]
+  favorites: SidebarNavItem[]
   onRemoveDatabaseFavorite: (databaseId: string) => void
   onRemoveFavorite: (pageId: string) => void
+  workspaceId: string | null
 }) {
   const location = useLocation()
   const activePageId = getActivePageId(location.pathname)
@@ -58,32 +56,49 @@ export function NavFavorites({
   const activeDatabaseViewId = getActiveDatabaseViewId(location.search)
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Favorites</SidebarGroupLabel>
-      <SidebarMenu>
-        <NavTree
-          activeDatabaseId={activeDatabaseId}
-          activeDatabaseViewId={activeDatabaseViewId}
-          activePageId={activePageId}
-          items={favorites}
-          renderItemMenu={({ item, nested }) => (
-            <FavoriteItemMenu
-              item={item}
-              onRemoveDatabaseFavorite={onRemoveDatabaseFavorite}
-              onRemoveFavorite={onRemoveFavorite}
-              requireRemoveConfirmation={nested}
+    <Collapsible asChild defaultOpen>
+      <SidebarGroup>
+        <CollapsibleTrigger asChild>
+          <SidebarGroupLabel asChild>
+            <button
+              className="group/section-label w-full cursor-pointer"
+              type="button"
+            >
+              <span>Favorites</span>
+              <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
+            </button>
+          </SidebarGroupLabel>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-0.5">
+          <SidebarMenu aria-label="Favorite pages">
+            <SidebarNavList
+              activeDatabaseId={activeDatabaseId}
+              activeDatabaseViewId={activeDatabaseViewId}
+              activePageId={activePageId}
+              items={favorites}
+              renderItemMenu={({ item }) => (
+                <FavoriteItemMenu
+                  item={item}
+                  onRemoveDatabaseFavorite={onRemoveDatabaseFavorite}
+                  onRemoveFavorite={onRemoveFavorite}
+                />
+              )}
+              storageKey={getSidebarExpansionStorageKey(
+                workspaceId,
+                "favorites",
+              )}
             />
-          )}
-        />
-        {favorites.length === 0 ? (
-          <SidebarMenuItem>
-            <SidebarMenuButton className="text-sidebar-foreground/50">
-              <span>No favorites</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ) : null}
-      </SidebarMenu>
-    </SidebarGroup>
+            {favorites.length === 0 ? (
+              <SidebarMenuItem>
+                <SidebarMenuButton className="text-sidebar-foreground/50">
+                  <span>No favorites</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ) : null}
+          </SidebarMenu>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
   )
 }
 
@@ -91,20 +106,16 @@ function FavoriteItemMenu({
   item,
   onRemoveDatabaseFavorite,
   onRemoveFavorite,
-  requireRemoveConfirmation,
 }: {
-  item: PageNavItem
+  item: SidebarNavItem
   onRemoveDatabaseFavorite: (databaseId: string) => void
   onRemoveFavorite: (pageId: string) => void
-  requireRemoveConfirmation: boolean
 }) {
   const { isMobile } = useSidebar()
-  const [confirmOpen, setConfirmOpen] = useState(false)
   const linkPath =
     item.isDatabase && item.databaseId
       ? `/d/${item.databaseId}`
       : `/p/${item.pageId}`
-  const displayName = item.name.trim() || "Untitled"
   const removeFavorite = () => {
     if (item.isDatabase && item.databaseId) {
       onRemoveDatabaseFavorite(item.databaseId)
@@ -117,73 +128,49 @@ function FavoriteItemMenu({
   }
 
   return (
-    <>
-      <DropDrawer>
-        <DropDrawerTrigger asChild>
-          <SidebarMenuAction
-            className="opacity-0 group-hover/nav-row:opacity-100 focus-visible:opacity-100 aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground"
-            data-nav-menu-action="more"
-          >
-            <MoreHorizontalIcon />
-            <span className="sr-only">More</span>
-          </SidebarMenuAction>
-        </DropDrawerTrigger>
-        <DropDrawerContent
-          align={isMobile ? "end" : "start"}
-          className="w-56 rounded-lg"
-          side={isMobile ? "bottom" : "right"}
+    <DropDrawer>
+      <DropDrawerTrigger asChild>
+        <SidebarMenuAction
+          className="opacity-0 group-hover/nav-row:opacity-100 focus-visible:opacity-100 aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground"
+          data-nav-menu-action="more"
         >
-          <DropDrawerItem
-            onSelect={() => {
-              if (requireRemoveConfirmation) {
-                setConfirmOpen(true)
-                return
-              }
-
-              removeFavorite()
-            }}
-          >
-            <StarOffIcon className="text-muted-foreground" />
-            <span>Remove from Favorites</span>
-          </DropDrawerItem>
-          <DropDrawerSeparator />
-          <DropDrawerItem
-            onSelect={() => {
-              void navigator.clipboard?.writeText(
-                `${window.location.origin}${linkPath}`,
-              )
-            }}
-          >
-            <LinkIcon className="text-muted-foreground" />
-            <span>Copy Link</span>
-          </DropDrawerItem>
-          <DropDrawerItem
-            onSelect={() => {
-              window.open(linkPath, "_blank", "noopener")
-            }}
-          >
-            <ArrowUpRightIcon className="text-muted-foreground" />
-            <span>Open in New Tab</span>
-          </DropDrawerItem>
-        </DropDrawerContent>
-      </DropDrawer>
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Parent is favorited</AlertDialogTitle>
-            <AlertDialogDescription>
-              {displayName} is inside a favorited parent. Unfavorite it anyway?
-              This will also remove its nested items from Favorites.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={removeFavorite}>
-              Unfavorite anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+          <MoreHorizontalIcon />
+          <span className="sr-only">More</span>
+        </SidebarMenuAction>
+      </DropDrawerTrigger>
+      <DropDrawerContent
+        align={isMobile ? "end" : "start"}
+        className="w-56 rounded-lg"
+        side={isMobile ? "bottom" : "right"}
+      >
+        {item.isFavorite ? (
+          <>
+            <DropDrawerItem onSelect={removeFavorite}>
+              <StarOffIcon className="text-muted-foreground" />
+              <span>Remove from Favorites</span>
+            </DropDrawerItem>
+            <DropDrawerSeparator />
+          </>
+        ) : null}
+        <DropDrawerItem
+          onSelect={() => {
+            void navigator.clipboard?.writeText(
+              `${window.location.origin}${linkPath}`,
+            )
+          }}
+        >
+          <LinkIcon className="text-muted-foreground" />
+          <span>Copy Link</span>
+        </DropDrawerItem>
+        <DropDrawerItem
+          onSelect={() => {
+            window.open(linkPath, "_blank", "noopener")
+          }}
+        >
+          <ArrowUpRightIcon className="text-muted-foreground" />
+          <span>Open in New Tab</span>
+        </DropDrawerItem>
+      </DropDrawerContent>
+    </DropDrawer>
   )
 }
