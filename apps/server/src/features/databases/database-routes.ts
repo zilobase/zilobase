@@ -49,7 +49,6 @@ import {
   getDatabaseSchemaPayload,
 } from "../../services/database-payload";
 import {
-  getDuplicatePropertyName,
   getPropertyNameKey,
   mergeSelectOptionsForValue,
   normalizeValueForPropertyType,
@@ -70,6 +69,7 @@ import {
   deleteDatabasePropertyService,
   reorderDatabasePropertiesService,
 } from "../../services/database-property-structure-service";
+import { duplicateDatabasePropertyService } from "../../services/database-property-duplication-service";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
   deleteDatabaseAccessRuleService,
@@ -94,7 +94,6 @@ import {
 } from "../../services/database-property-types";
 import { upsertPagePropertyValues } from "../../services/page-property-value-upsert";
 import {
-  fetchDatabasePropertyDelta,
   rowPositionDelta,
   type DatabaseDelta,
 } from "../../services/database-delta";
@@ -896,16 +895,6 @@ databaseRoutes.post(
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const existing = await getDatabaseRecord(c.req.param("id"));
-
-    if (!existing) {
-      return c.json({ error: "Database not found" }, 404);
-    }
-
-    if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-      return c.json({ error: "Forbidden" }, 403);
-    }
-
     const body = await c.req.json().catch(() => ({}));
 
     const { includeValues = false } = body as { includeValues?: unknown };
@@ -914,182 +903,23 @@ databaseRoutes.post(
       return c.json({ error: "includeValues must be a boolean" }, 400);
     }
 
-    const [source] = await db
-      .select({
-        column: databaseProperty,
-        property: pageProperty,
-      })
-      .from(databaseProperty)
-      .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-      .where(
-        and(
-          eq(databaseProperty.id, c.req.param("databasePropertyId")),
-          eq(databaseProperty.databaseId, existing.id),
-          eq(pageProperty.workspaceId, existing.workspaceId),
-          isNull(pageProperty.deletedAt),
-        ),
-      )
-      .limit(1);
+    try {
+      const result = await duplicateDatabasePropertyService({
+        databaseId: c.req.param("id"),
+        databasePropertyId: c.req.param("databasePropertyId"),
+        env: c.env,
+        includeValues,
+        userId: user.id,
+      });
 
-    if (!source) {
-      return c.json({ error: "Property not found" }, 404);
+      return c.json(mutationResponse(result.commit), 201);
+    } catch (error) {
+      if (error instanceof ServiceMutationError) {
+        return serviceMutationErrorResponse(c, error);
+      }
+
+      throw error;
     }
-
-    const existingProperties = await db
-      .select({
-        id: databaseProperty.id,
-        name: pageProperty.name,
-        position: databaseProperty.position,
-      })
-      .from(databaseProperty)
-      .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-      .where(
-        and(
-          eq(databaseProperty.databaseId, existing.id),
-          eq(pageProperty.workspaceId, existing.workspaceId),
-          isNull(pageProperty.deletedAt),
-        ),
-      );
-    const sourceValues = includeValues
-      ? await db
-          .select({
-            value: pagePropertyValue.value,
-            pageId: pagePropertyValue.pageId,
-          })
-          .from(pagePropertyValue)
-          .innerJoin(
-            databaseRow,
-            eq(pagePropertyValue.pageId, databaseRow.pageId),
-          )
-          .where(
-            and(
-              eq(pagePropertyValue.propertyId, source.property.id),
-              eq(databaseRow.databaseId, existing.id),
-              isNull(databaseRow.deletedAt),
-            ),
-          )
-      : [];
-    const newPropertyId = crypto.randomUUID();
-    const columnId = crypto.randomUUID();
-    const targetPosition = source.column.position + 1;
-    const now = new Date();
-    const duplicateName = getDuplicatePropertyName(
-      source.property.name,
-      new Set(existingProperties.map((property) => property.name)),
-    );
-
-    const mutation = await commitDatabaseMutation(
-      c,
-      {
-        actorId: user.id,
-        changed: includeValues ? ["properties", "values"] : ["properties"],
-
-        databaseId: existing.id,
-      },
-      async (tx) => {
-        await tx
-          .update(databaseProperty)
-          .set({
-            position: sql`${databaseProperty.position} + 1`,
-            updatedAt: now,
-          })
-          .where(
-            and(
-              eq(databaseProperty.databaseId, existing.id),
-              gte(databaseProperty.position, targetPosition),
-            ),
-          );
-        await tx.insert(pageProperty).values({
-          id: newPropertyId,
-          workspaceId: existing.workspaceId,
-          name: duplicateName,
-          type: source.property.type,
-          config: source.property.config,
-          createdAt: now,
-          updatedAt: now,
-        });
-        await tx.insert(databaseProperty).values({
-          id: columnId,
-          databaseId: existing.id,
-          propertyId: newPropertyId,
-          position: targetPosition,
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        const insertedValues =
-          sourceValues.length > 0
-            ? sourceValues.map((propertyValue) => ({
-                createdAt: now.toISOString(),
-                id: crypto.randomUUID(),
-                propertyId: newPropertyId,
-                updatedAt: now.toISOString(),
-                value: propertyValue.value,
-                pageId: propertyValue.pageId,
-              }))
-            : [];
-
-        if (insertedValues.length > 0) {
-          await tx.insert(pagePropertyValue).values(
-            insertedValues.map((propertyValue) => ({
-              id: propertyValue.id,
-              propertyId: propertyValue.propertyId,
-              value: propertyValue.value,
-              pageId: propertyValue.pageId,
-              createdAt: now,
-              updatedAt: now,
-            })),
-          );
-        }
-
-        const delta = await fetchDatabasePropertyDelta(
-          existing.id,
-          columnId,
-          tx,
-        );
-
-        return {
-          delta: {
-            properties: [
-              ...existingProperties
-                .filter((property) => property.position >= targetPosition)
-                .map((property) => ({
-                  id: property.id,
-                  position: property.position + 1,
-                  updatedAt: now.toISOString(),
-                })),
-              ...(delta?.properties ?? [
-                {
-                  createdAt: now.toISOString(),
-                  databaseId: existing.id,
-                  id: columnId,
-                  position: targetPosition,
-                  property: {
-                    config: source.property.config,
-                    createdAt: now.toISOString(),
-                    id: newPropertyId,
-                    name: duplicateName,
-                    workspaceId: existing.workspaceId,
-                    type: source.property.type,
-                    updatedAt: now.toISOString(),
-                  },
-                  propertyId: newPropertyId,
-                  updatedAt: now.toISOString(),
-                  visible: true,
-                },
-              ]),
-            ],
-            ...(insertedValues.length > 0 ? { values: insertedValues } : {}),
-          },
-        };
-      },
-    );
-
-    if (!mutation.ok) {
-      return databaseMutationErrorResponse(c, mutation.error);
-    }
-
-    return c.json(mutationResponse(mutation), 201);
   },
 );
 
