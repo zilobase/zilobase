@@ -2,7 +2,7 @@
 
 @layer components {
   .tiptap-editor {
-    @apply min-h-[520px] px-5 py-5 text-base leading-7 text-foreground outline-none sm:px-8 md:px-20 md:py-6 lg:px-24;
+    @apply min-h-[520px] px-5 pt-4 pb-5 text-base leading-7 text-foreground outline-none sm:px-8 md:px-20 md:pt-4 md:pb-6 lg:px-24;
     --editor-selection-background: color-mix(in srgb, #0078d7 35%, transparent);
     --editor-selection-solid-background: color-mix(in srgb, #0078d7 35%, var(--background));
     --editor-selection-foreground: inherit;
@@ -1596,6 +1596,14 @@
 
   .tiptap-editor .database-table tbody td:last-child {
     @apply border-r-0;
+  }
+
+  .tiptap-editor
+    .database-table
+    tbody
+    tr[data-side-pane-open="true"]
+    > td {
+    @apply bg-accent;
   }
 
   .tiptap-editor .database-table tbody td.database-virtual-spacer {

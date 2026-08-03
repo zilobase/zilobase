@@ -13,6 +13,7 @@ import {
   TextSelection,
   type EditorState,
 } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { toast } from "sonner";
 import type { DatabaseBlockEditorRuntime } from "@/packages/editor/extensions/database";
 import {
@@ -64,6 +65,23 @@ function isCaretAtDocumentStart(state: EditorState) {
     selection instanceof TextSelection &&
     selection.empty &&
     selection.from === Selection.atStart(doc).from
+  );
+}
+
+function isClickAboveFirstNonTextBlock(
+  view: EditorView,
+  pos: number,
+  event: MouseEvent,
+) {
+  const firstNode = view.state.doc.firstChild;
+
+  if (pos !== 0 || !firstNode || firstNode.isTextblock) return false;
+
+  const firstNodeDom = view.nodeDOM(0);
+
+  return (
+    firstNodeDom instanceof HTMLElement &&
+    event.clientY < firstNodeDom.getBoundingClientRect().top
   );
 }
 
@@ -149,6 +167,15 @@ export const useEditorInstance = ({
       editorProps: {
         attributes: { class: "tiptap-editor", "aria-label": "Document editor" },
         handleDrop: dragDrop.handleDrop,
+        handleClick: (view, pos, event) => {
+          if (!isClickAboveFirstNonTextBlock(view, pos, event)) return false;
+
+          // StarterKit's gap cursor otherwise turns the editor padding above an
+          // atomic first block into an invisible insertion point.
+          event.preventDefault();
+          view.dom.blur();
+          return true;
+        },
         handleDOMEvents: {
           ...dragDrop.domEvents,
           keydown: (view, event) => {

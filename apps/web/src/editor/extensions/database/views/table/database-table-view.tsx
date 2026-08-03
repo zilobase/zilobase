@@ -42,6 +42,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
 import { cn } from "@/lib/utils"
 import {
   getColorToken,
@@ -737,6 +738,7 @@ function areRowLayoutsEqual(left: RowLayout, right: RowLayout) {
 }
 
 export function DatabaseTableView() {
+  const sidePane = useOptionalPageSidePane()
   const {
     activeConditionalColors,
     activeDatabaseFilters,
@@ -2109,6 +2111,9 @@ export function DatabaseTableView() {
             className={getConditionalColorClassName(conditionalColors.rowColor)}
             data-index={index}
             data-database-row-id={row.id}
+            data-side-pane-open={
+              sidePane?.sidePanePageId === row.pageId ? "true" : undefined
+            }
             key={row.id}
             onMouseEnter={
               editable
