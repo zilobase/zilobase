@@ -52,5 +52,5 @@ export function resolveOpenAiChatModel(
 }
 
 function normalizeApiKey(apiKey?: string) {
-  return apiKey?.trim().replace(/^Bearer\s+/i, "") ?? "";
+  return apiKey?.trim().replace(/^Bearer(?:\s+|$)/i, "") ?? "";
 }
