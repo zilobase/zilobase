@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../access", () => ({
-  canAccessDatabaseInWorkspace: mocks.canAccessDatabase,
+  canAccessDatabaseRecord: mocks.canAccessDatabase,
   canAccessPage: mocks.canAccessPage,
   getMembership: mocks.getMembership,
 }));
@@ -366,8 +366,13 @@ test("deleteDatabaseService returns the deleted record without reloading it", as
   });
 
   assert.deepEqual(mocks.canAccessDatabase.mock.calls[0], [
-    "database-1",
-    "workspace-1",
+    {
+      deletedAt: null,
+      deletedById: null,
+      id: "database-1",
+      updatedAt,
+      workspaceId: "workspace-1",
+    },
     "user-1",
     "full",
   ]);

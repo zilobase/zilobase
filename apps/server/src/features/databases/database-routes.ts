@@ -3,10 +3,10 @@ import type { SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import {
-  canAccessDatabaseInWorkspace,
+  canAccessDatabaseRecord,
   canAccessPageInWorkspace,
   getAccessiblePageIds,
-  getEffectiveDatabaseAccessInWorkspace,
+  getEffectiveDatabaseAccessForRecord,
   getMembership,
   isDatabasePublishedInWorkspace,
   normalizeAccessLevel,
@@ -96,13 +96,6 @@ import {
 export const databaseRoutes = new Hono<AppBindings>();
 
 const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
-
-const canAccessDatabaseRecord = (
-  record: { id: string; workspaceId: string },
-  userId: string,
-  required: "view" | "edit" | "full",
-) =>
-  canAccessDatabaseInWorkspace(record.id, record.workspaceId, userId, required);
 
 type DatabaseTransaction = Parameters<
   Parameters<Database["transaction"]>[0]
@@ -281,11 +274,9 @@ databaseRoutes.get("/:id", async (c) => {
     : await getDatabasePayload(record.id, user?.id, record, { includeDeleted });
 
   const accessLevel = user
-    ? await getEffectiveDatabaseAccessInWorkspace(
-        record.id,
-        record.workspaceId,
-        user.id,
-      )
+    ? record.deletedAt
+      ? "none"
+      : await getEffectiveDatabaseAccessForRecord(record, user.id)
     : null;
 
   return c.json({
@@ -307,11 +298,7 @@ databaseRoutes.post("/:id/realtime-ticket", async (c) => {
     return c.json({ error: "Database not found" }, 404);
   }
 
-  const accessLevel = await getEffectiveDatabaseAccessInWorkspace(
-    record.id,
-    record.workspaceId,
-    user.id,
-  );
+  const accessLevel = await getEffectiveDatabaseAccessForRecord(record, user.id);
   const canView = accessLevel !== "none";
   const canEdit = accessLevel === "edit" || accessLevel === "full";
 

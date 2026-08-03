@@ -14,7 +14,7 @@ export default defineConfig({
       // switches the same suite to the final literal-100% acceptance gate.
       thresholds: {
         branches: fullCoverage ? 100 : 27,
-        functions: fullCoverage ? 100 : 30,
+        functions: fullCoverage ? 100 : 31,
         lines: fullCoverage ? 100 : 31,
         statements: fullCoverage ? 100 : 31,
       },

@@ -42,21 +42,16 @@ test("getDatabaseRecord supports include-deleted options", async () => {
 
 test("requireDatabaseEditAccess returns authorized records", async () => {
   const record = { id: "database-1", workspaceId: "workspace-1" };
-  const canAccess = vi.fn(async () => true);
+  const canAccessRecord = vi.fn(async () => true);
 
   assert.equal(
     await requireDatabaseEditAccess("database-1", "user-1", {
-      canAccess,
+      canAccessRecord,
       executor: executor([record]) as never,
     }),
     record,
   );
-  assert.deepEqual(canAccess.mock.calls[0], [
-    "database-1",
-    "workspace-1",
-    "user-1",
-    "edit",
-  ]);
+  assert.deepEqual(canAccessRecord.mock.calls[0], [record, "user-1", "edit"]);
 });
 
 test("requireDatabaseEditAccess distinguishes missing and forbidden databases", async () => {
@@ -69,7 +64,7 @@ test("requireDatabaseEditAccess distinguishes missing and forbidden databases", 
   );
   await assert.rejects(
     requireDatabaseEditAccess("database-1", "user-1", {
-      canAccess: async () => false,
+      canAccessRecord: async () => false,
       executor: executor([
         { id: "database-1", workspaceId: "workspace-1" },
       ]) as never,

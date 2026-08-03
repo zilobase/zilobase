@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import {
-  canAccessDatabaseInWorkspace,
+  canAccessDatabaseRecord,
   canAccessPage,
   getMembership,
 } from "../access";
@@ -203,14 +203,7 @@ export async function deleteDatabaseService(input: {
     throw new ServiceMutationError("Database not found", 404);
   }
 
-  if (
-    !(await canAccessDatabaseInWorkspace(
-      existing.id,
-      existing.workspaceId,
-      input.userId,
-      "full",
-    ))
-  ) {
+  if (!(await canAccessDatabaseRecord(existing, input.userId, "full"))) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 

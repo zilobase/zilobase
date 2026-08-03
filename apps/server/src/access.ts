@@ -307,10 +307,44 @@ async function resolveEffectiveDatabaseAccessInWorkspace(
     .limit(1);
 
   if (!record) return "none";
+  return resolveEffectiveDatabaseAccessForRecord(
+    { ...record, id: databaseId, workspaceId },
+    userId,
+    context,
+  );
+}
+
+export type DatabaseAccessRecord = Pick<
+  typeof database.$inferSelect,
+  "createdById" | "id" | "pageId" | "workspaceId"
+> &
+  Partial<Pick<typeof database.$inferSelect, "deletedAt">>;
+
+export function getEffectiveDatabaseAccessForRecord(
+  record: DatabaseAccessRecord,
+  userId: string,
+): Promise<AccessLevel> {
+  return resolveEffectiveDatabaseAccessForRecord(record, userId);
+}
+
+async function resolveEffectiveDatabaseAccessForRecord(
+  record: DatabaseAccessRecord,
+  userId: string,
+  context?: { membershipVerified: true; teamIds: string[] },
+): Promise<AccessLevel> {
+  if (record.deletedAt) return "none";
+
   if (record.pageId) {
-    return getEffectivePageAccessInWorkspace(record.pageId, workspaceId, userId);
+    return getEffectivePageAccessInWorkspace(
+      record.pageId,
+      record.workspaceId,
+      userId,
+    );
   }
-  if (!context?.membershipVerified && !(await getMembership(workspaceId, userId))) {
+  if (
+    !context?.membershipVerified &&
+    !(await getMembership(record.workspaceId, userId))
+  ) {
     return "none";
   }
   if (record.createdById === userId) return "full";
@@ -330,7 +364,7 @@ async function resolveEffectiveDatabaseAccessInWorkspace(
     .from(databaseAccess)
     .where(
       and(
-        eq(databaseAccess.databaseId, databaseId),
+        eq(databaseAccess.databaseId, record.id),
         inArray(databaseAccess.targetType, targetTypes),
         inArray(databaseAccess.targetId, targetIds),
       ),
@@ -350,6 +384,17 @@ export async function canAccessDatabaseInWorkspace(
 ) {
   return hasAccess(
     await getEffectiveDatabaseAccessInWorkspace(databaseId, workspaceId, userId),
+    required,
+  );
+}
+
+export async function canAccessDatabaseRecord(
+  record: DatabaseAccessRecord,
+  userId: string,
+  required: Exclude<AccessLevel, "none">,
+) {
+  return hasAccess(
+    await getEffectiveDatabaseAccessForRecord(record, userId),
     required,
   );
 }

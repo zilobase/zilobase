@@ -38,7 +38,9 @@ vi.mock("./page-graph-loader", () => ({
 
 import {
   canAccessDatabaseInWorkspace,
+  canAccessDatabaseRecord,
   canAccessPageInWorkspace,
+  getEffectiveDatabaseAccessForRecord,
   getEffectiveDatabaseAccessInWorkspace,
   getEffectivePageAccessInWorkspace,
   hasAccess,
@@ -218,6 +220,80 @@ test("direct standalone database access resolves team rules", async () => {
     await getEffectiveDatabaseAccessInWorkspace(
       "missing",
       "workspace-1",
+      "user-1",
+    ),
+    "none",
+  );
+  assert.equal(mocks.selectCalls, 1);
+});
+
+test("record-based database access skips the database reload", async () => {
+  mocks.hasOwnedRootAccess.mockReturnValue(true);
+  mocks.selectResults.push([{ id: "membership-1" }], []);
+
+  assert.equal(
+    await getEffectiveDatabaseAccessForRecord(
+      {
+        createdById: "user-2",
+        id: "database-1",
+        pageId: "page-1",
+        workspaceId: "workspace-1",
+      },
+      "user-1",
+    ),
+    "full",
+  );
+  assert.equal(mocks.selectCalls, 2);
+
+  mocks.hasOwnedRootAccess.mockReturnValue(false);
+  mocks.selectCalls = 0;
+  mocks.selectResults.push(
+    [{ id: "membership-1" }],
+    [{ teamId: "team-1" }],
+    [{ accessLevel: "edit" }],
+  );
+  assert.equal(
+    await getEffectiveDatabaseAccessForRecord(
+      {
+        createdById: "user-2",
+        id: "database-1",
+        pageId: null,
+        workspaceId: "workspace-1",
+      },
+      "user-1",
+    ),
+    "edit",
+  );
+  assert.equal(mocks.selectCalls, 3);
+});
+
+test("record-based database access preserves required-level checks", async () => {
+  mocks.selectResults.push([{ id: "membership-1" }]);
+
+  assert.equal(
+    await canAccessDatabaseRecord(
+      {
+        createdById: "user-1",
+        id: "database-1",
+        pageId: null,
+        workspaceId: "workspace-1",
+      },
+      "user-1",
+      "full",
+    ),
+    true,
+  );
+  assert.equal(mocks.selectCalls, 1);
+
+  assert.equal(
+    await getEffectiveDatabaseAccessForRecord(
+      {
+        createdById: "user-1",
+        deletedAt: new Date(),
+        id: "database-1",
+        pageId: null,
+        workspaceId: "workspace-1",
+      },
       "user-1",
     ),
     "none",

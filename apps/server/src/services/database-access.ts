@@ -1,6 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 
-import { canAccessDatabaseInWorkspace } from "../access";
+import { canAccessDatabaseRecord } from "../access";
 import { db, type Database } from "../db";
 import { database } from "../db/schema";
 import { ServiceMutationError } from "./mutation-error";
@@ -49,7 +49,7 @@ export async function requireDatabaseEditAccess(
   databaseId: string,
   userId: string,
   dependencies?: {
-    canAccess?: typeof canAccessDatabaseInWorkspace;
+    canAccessRecord?: typeof canAccessDatabaseRecord;
     executor?: DatabaseReader;
   },
 ) {
@@ -61,8 +61,9 @@ export async function requireDatabaseEditAccess(
     throw new ServiceMutationError("Database not found", 404);
   }
 
-  const canAccess = dependencies?.canAccess ?? canAccessDatabaseInWorkspace;
-  if (!(await canAccess(record.id, record.workspaceId, userId, "edit"))) {
+  const canAccessRecord =
+    dependencies?.canAccessRecord ?? canAccessDatabaseRecord;
+  if (!(await canAccessRecord(record, userId, "edit"))) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 
