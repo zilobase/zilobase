@@ -25,6 +25,7 @@ import { useAppSearchResults } from "@zilobase/features/search"
 import type { AppSearchResult } from "@zilobase/features/search"
 import { PageIconDisplay } from "@/lib/page-icon"
 import { useAppStore } from "@/stores/app-store"
+import { useAppShortcut } from "@/shortcuts"
 
 type AppSearchContextValue = {
   openSearch: () => void
@@ -45,20 +46,14 @@ export function AppSearchProvider({ children }: { children: ReactNode }) {
   )
   const contextValue = useMemo(() => ({ openSearch: () => setOpen(true) }), [])
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== "k" || (!event.metaKey && !event.ctrlKey)) {
-        return
-      }
-
-      event.preventDefault()
+  useAppShortcut(
+    "openSearch",
+    () => {
       setOpen((current) => !current)
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [])
+      return true
+    },
+    { allowInEditable: true }
+  )
 
   const openResult = (result: AppSearchResult) => {
     setOpen(false)

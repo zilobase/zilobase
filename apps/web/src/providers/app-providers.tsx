@@ -8,26 +8,31 @@ import { PageEditorRegistryProvider } from "@/contexts/page-editor-registry"
 import { PageCommentsRegistryProvider } from "@/contexts/page-comments-registry"
 import { WebFeaturesProvider } from "@/providers/features-provider"
 import { queryClient } from "@/lib/query-client"
+import { ShortcutProvider } from "@/shortcuts"
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
     <QueryClientProvider client={queryClient}>
       <WebFeaturesProvider>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <TooltipProvider>
-            <PageEditorRegistryProvider>
-              <PageCommentsRegistryProvider>
-                <PageEditorCommentsProvider>{children}</PageEditorCommentsProvider>
-              </PageCommentsRegistryProvider>
-            </PageEditorRegistryProvider>
-            <Toaster />
-          </TooltipProvider>
-        </ThemeProvider>
+        <ShortcutProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TooltipProvider>
+              <PageEditorRegistryProvider>
+                <PageCommentsRegistryProvider>
+                  <PageEditorCommentsProvider>
+                    {children}
+                  </PageEditorCommentsProvider>
+                </PageCommentsRegistryProvider>
+              </PageEditorRegistryProvider>
+              <Toaster />
+            </TooltipProvider>
+          </ThemeProvider>
+        </ShortcutProvider>
       </WebFeaturesProvider>
     </QueryClientProvider>
   )
