@@ -222,9 +222,7 @@ export function ResizableRightSidebarPanel({
             ? "opacity-100 transition-opacity duration-200 motion-reduce:transition-none"
             : "pointer-events-none w-0 opacity-0 transition-opacity duration-200 after:hidden motion-reduce:transition-none"
         }
-        disabled={
-          !open || transitioning || (fixedSize && !onResizeIntent)
-        }
+        disabled={!open || transitioning || fixedSize}
         onKeyDown={(event) => {
           if (event.key === "ArrowLeft") {
             onResizeIntent?.("increase")
