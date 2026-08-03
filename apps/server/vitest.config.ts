@@ -16,7 +16,7 @@ export default defineConfig({
         branches: fullCoverage ? 100 : 31,
         functions: fullCoverage ? 100 : 34,
         lines: fullCoverage ? 100 : 35,
-        statements: fullCoverage ? 100 : 34,
+        statements: fullCoverage ? 100 : 35,
       },
     },
     include: ["src/**/*.test.ts"],

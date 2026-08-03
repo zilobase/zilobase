@@ -1,41 +1,9 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
-import {
-  canAccessDatabaseRecord,
-  getAccessiblePageIds,
-  getEffectiveDatabaseAccessForRecord,
-  getMembership,
-  isDatabasePublishedInWorkspace,
-} from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
-import { db } from "../../db";
-import type { Database } from "../../db";
-import {
-  database,
-  favorite,
-} from "../../db/schema";
-import type { DatabaseChangedArea } from "../../services/database-delta";
 import type { AppBindings } from "../../types";
-import {
-  createDatabaseRealtimeTicket,
-  DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
-  DATABASE_REALTIME_PROTOCOL,
-  verifyDatabaseRealtimeTicket,
-} from "../../database-realtime-ticket";
-import { getDatabaseRealtimeWebSocketUrl } from "../../runtime-adapter";
-import { upsertPageItemPlacement } from "../../page-item-placements";
-import {
-  commitDatabaseMutation as commitDatabaseMutationCore,
-  DatabaseMutationError,
-  mutationResponse,
-} from "../../services/database-commit";
-import { getDatabaseRecord } from "../../services/database-access";
-import {
-  getDatabasePayload,
-  getDatabaseSchemaPayload,
-} from "../../services/database-payload";
+import { mutationResponse } from "../../services/database-commit";
+import { getDatabasePayload } from "../../services/database-payload";
 import { hasDuplicateValues } from "../../services/database-position-service";
 import { updateDatabaseFavoriteService } from "../../services/database-favorite-service";
 import {
@@ -72,20 +40,11 @@ import {
   updateDatabaseViewService,
 } from "../../services/database-view-service";
 import { normalizeDatabasePropertyType } from "../../services/database-property-types";
-import type { DatabaseDelta } from "../../services/database-delta";
+import { databaseReadRoutes } from "./database-read-routes";
 
 export const databaseRoutes = new Hono<AppBindings>();
 
 const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
-
-type DatabaseTransaction = Parameters<
-  Parameters<Database["transaction"]>[0]
->[0];
-
-const databaseMutationErrorResponse = (
-  c: Context<AppBindings>,
-  error: DatabaseMutationError,
-) => c.json({ error: error.message }, error.status === 404 ? 404 : 400);
 
 const serviceMutationErrorResponse = (
   c: Context<AppBindings>,
@@ -95,32 +54,6 @@ const serviceMutationErrorResponse = (
     { error: error.message },
     error.status === 403 ? 403 : error.status === 404 ? 404 : 400,
   );
-
-const commitDatabaseMutation = async (
-  c: Context<AppBindings>,
-  options: {
-    actorId: string;
-    changed: DatabaseChangedArea[];
-    databaseId: string;
-  },
-  mutate: (tx: DatabaseTransaction) => Promise<{ delta: DatabaseDelta }>,
-) => {
-  try {
-    const committed = await commitDatabaseMutationCore(
-      { ...options, env: c.env },
-      mutate,
-    );
-
-    return { ok: true as const, ...committed };
-  } catch (error) {
-    if (error instanceof DatabaseMutationError) {
-      return { ok: false as const, error };
-    }
-
-    throw error;
-  }
-};
-
 
 databaseRoutes.post("/", async (c) => {
   const user = requireUser(c);
@@ -213,158 +146,7 @@ databaseRoutes.post("/", async (c) => {
   }
 });
 
-databaseRoutes.get("/:id", async (c) => {
-  const user = requireUser(c);
-  const includeDeleted = c.req.query("includeDeleted") === "1";
-  const record = await getDatabaseRecord(c.req.param("id"), {
-    includeDeleted,
-  });
-
-  if (!record) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  const canView = record.deletedAt
-    ? user
-      ? Boolean(await getMembership(record.workspaceId, user.id))
-      : false
-    : user
-      ? await canAccessDatabaseRecord(record, user.id, "view")
-      : false;
-
-  if (!canView) {
-    const published = await isDatabasePublishedInWorkspace(
-      record.id,
-      record.workspaceId,
-    );
-
-    if (!published) {
-      if (!user) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
-      return c.json({ error: "Forbidden" }, 403);
-    }
-  }
-
-  const schemaOnly = c.req.query("schemaOnly") === "1";
-  const payload = schemaOnly
-    ? await getDatabaseSchemaPayload(record.id, user?.id, record, {
-        includeDeleted,
-      })
-    : await getDatabasePayload(record.id, user?.id, record, { includeDeleted });
-
-  const accessLevel = user
-    ? record.deletedAt
-      ? "none"
-      : await getEffectiveDatabaseAccessForRecord(record, user.id)
-    : null;
-
-  return c.json({
-    ...payload,
-    database: payload ? { ...payload.database, accessLevel } : payload,
-  });
-});
-
-databaseRoutes.post("/:id/realtime-ticket", async (c) => {
-  const user = requireUser(c);
-
-  if (!user || c.get("authMethod") !== "session") {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const record = await getDatabaseRecord(c.req.param("id"));
-
-  if (!record) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  const accessLevel = await getEffectiveDatabaseAccessForRecord(record, user.id);
-  const canView = accessLevel !== "none";
-  const canEdit = accessLevel === "edit" || accessLevel === "full";
-
-  if (!canView) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  const body = await c.req.json().catch(() => null);
-  const hasRefreshToken = Boolean(
-    body && typeof body === "object" && "token" in body,
-  );
-  const refreshToken =
-    hasRefreshToken && typeof (body as { token?: unknown }).token === "string"
-      ? body.token
-      : undefined;
-  let sessionId: string | undefined;
-
-  if (hasRefreshToken && (!refreshToken || refreshToken.length > 8 * 1024)) {
-    return c.json({ error: "Invalid realtime session" }, 400);
-  }
-
-  if (refreshToken) {
-    try {
-      const previous = await verifyDatabaseRealtimeTicket(refreshToken, c.env);
-
-      if (
-        previous.databaseId !== record.id ||
-        previous.user.id !== user.id
-      ) {
-        return c.json({ error: "Invalid realtime session" }, 401);
-      }
-
-      sessionId = previous.sessionId;
-    } catch {
-      return c.json({ error: "Invalid realtime session" }, 401);
-    }
-  }
-
-  const ticket = await createDatabaseRealtimeTicket(
-    {
-      canEdit,
-      databaseId: record.id,
-      user: {
-        email: user.email,
-        id: user.id,
-        image: user.image,
-        name: user.name || user.email,
-      },
-      workspaceId: record.workspaceId,
-      sessionId,
-      version: record.version,
-    },
-    c.env,
-  );
-  const websocketUrl = new URL(
-    getDatabaseRealtimeWebSocketUrl(c.req.raw, c.env),
-  );
-  websocketUrl.searchParams.set("database", record.id);
-
-  return c.json({
-    databaseId: record.id,
-    version: record.version,
-    websocketProtocols: [
-      DATABASE_REALTIME_PROTOCOL,
-      `${DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.token}`,
-    ],
-    websocketUrl: websocketUrl.toString(),
-    ...ticket,
-  });
-});
-
-databaseRoutes.get("/:id/published", async (c) => {
-  const record = await getDatabaseRecord(c.req.param("id"));
-
-  if (!record) {
-    return c.json({ published: false }, 404);
-  }
-
-  return c.json({
-    published: await isDatabasePublishedInWorkspace(
-      record.id,
-      record.workspaceId,
-    ),
-  });
-});
+databaseRoutes.route("/", databaseReadRoutes);
 
 databaseRoutes.get("/:id/access", async (c) => {
   const user = requireUser(c);
