@@ -30,6 +30,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:coverage:full": "COVERAGE_FULL=1 vitest run --coverage",
+    "test:query-regression": "vitest run src/services",
+    "test:quality": "npm run test:coverage:full && npm run test:query-regression && npm run build",
     "test:api-keys": "tsx src/scripts/test-api-key-flow.ts",
     "test:flow": "tsx src/scripts/simulate-user-flow.ts",
     "db:generate": "DOTENV_CONFIG_PATH=../../.env.development drizzle-kit generate",

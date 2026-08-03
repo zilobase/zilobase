@@ -47,5 +47,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run db:migrate --workspace @zilobase/server
-      - run: npm run build --workspace @zilobase/server
-      - run: npm run test:coverage --workspace @zilobase/server
+      - run: npm run test:quality --workspace @zilobase/server

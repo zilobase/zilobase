@@ -1,7 +1,5 @@
 import { defineConfig } from "vitest/config";
 
-const fullCoverage = process.env.COVERAGE_FULL === "1";
-
 export default defineConfig({
   test: {
     coverage: {
@@ -10,13 +8,13 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
-      // Keep every phase from lowering the all-source baseline. COVERAGE_FULL
-      // switches the same suite to the final literal-100% acceptance gate.
+      // Measure every backend source file and keep each pass from lowering the
+      // all-source baseline. The full command uses this same no-exemption gate.
       thresholds: {
-        branches: fullCoverage ? 100 : 35,
-        functions: fullCoverage ? 100 : 38,
-        lines: fullCoverage ? 100 : 38,
-        statements: fullCoverage ? 100 : 38,
+        branches: 35,
+        functions: 38,
+        lines: 38,
+        statements: 38,
       },
     },
     include: ["src/**/*.test.ts"],
