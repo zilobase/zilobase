@@ -1,0 +1,5 @@
+.agents/
+coverage/
+skills-lock.json
+src/**/*.test.ts
+drizzle/meta/*_snapshot.json
