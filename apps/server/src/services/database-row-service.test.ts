@@ -7,8 +7,11 @@ const mocks = vi.hoisted(() => ({
   commit: vi.fn(),
   encode: vi.fn(),
   fetchDelta: vi.fn(),
+  incrementPlacements: vi.fn(),
   placement: vi.fn(),
   selectResults: [] as unknown[][],
+  sourceAccess: vi.fn(),
+  inherit: vi.fn(),
 }));
 
 vi.mock("../access", () => ({ canAccessPage: mocks.canAccessPage }));
@@ -19,6 +22,7 @@ vi.mock("../page-item-placements", () => ({
   upsertPageItemPlacement: mocks.placement,
 }));
 vi.mock("./database-access", () => ({
+  requireDatabaseAccess: mocks.sourceAccess,
   requireDatabaseEditAccess: mocks.access,
 }));
 vi.mock("./database-commit", () => ({
@@ -26,6 +30,12 @@ vi.mock("./database-commit", () => ({
 }));
 vi.mock("./database-delta", () => ({
   fetchDatabaseRowDelta: mocks.fetchDelta,
+}));
+vi.mock("./database-position-service", () => ({
+  incrementDatabaseRowPlacementPositions: mocks.incrementPlacements,
+}));
+vi.mock("./database-row-import-service", () => ({
+  inheritDatabaseRowProperties: mocks.inherit,
 }));
 vi.mock("../db", () => ({
   db: {
@@ -62,7 +72,15 @@ beforeEach(() => {
   mocks.encode.mockReset();
   mocks.encode.mockReturnValue(new Uint8Array([1, 2, 3]));
   mocks.fetchDelta.mockReset();
+  mocks.incrementPlacements.mockReset();
   mocks.placement.mockReset();
+  mocks.sourceAccess.mockReset();
+  mocks.sourceAccess.mockResolvedValue({
+    id: "database-source",
+    workspaceId: "workspace-1",
+  });
+  mocks.inherit.mockReset();
+  mocks.inherit.mockResolvedValue({ properties: [], values: [] });
   mocks.selectResults.length = 0;
   vi.restoreAllMocks();
 });
@@ -103,6 +121,7 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
       },
       id: "status-property",
     }],
+    [],
   );
   mocks.fetchDelta.mockResolvedValue({
     rows: [{ id: "new-row", position: 1 }],
@@ -122,10 +141,16 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
   });
 
   assert.deepEqual(result, {
+    commit: await mocks.commit.mock.results[0]?.value,
+    createdAt: result.createdAt,
     databaseId: "database-1",
+    isFavorite: false,
+    parentRowId: "parent-row",
+    position: 1,
     rowId: "00000000-0000-4000-8000-000000000002",
     rowPageId: "00000000-0000-4000-8000-000000000001",
     title: "New task",
+    updatedAt: result.createdAt,
   });
   assert.deepEqual(inserts[0], {
     content: null,
@@ -182,6 +207,7 @@ test("createDatabaseRowService attaches an editable existing page", async () => 
       workspaceId: "workspace-1",
     }],
     [],
+    [],
   );
   mocks.fetchDelta.mockResolvedValue(null);
   vi.spyOn(crypto, "randomUUID").mockReturnValue(
@@ -215,7 +241,7 @@ test("createDatabaseRowService attaches an editable existing page", async () => 
 
 test("createDatabaseRowService defaults new and blank existing page titles", async () => {
   transactionRecorder();
-  mocks.selectResults.push([], []);
+  mocks.selectResults.push([], [], []);
   const created = await createDatabaseRowService({
     databaseId: "database-1",
     userId: "user-1",
@@ -226,6 +252,7 @@ test("createDatabaseRowService defaults new and blank existing page titles", asy
   mocks.selectResults.push(
     [],
     [{ id: "page-1", metadata: [], name: " ", workspaceId: "workspace-1" }],
+    [],
     [],
   );
   const attached = await createDatabaseRowService({
@@ -291,4 +318,40 @@ test("createDatabaseRowService rejects duplicate pages", async () => {
       error instanceof ServiceMutationError && error.status === 409,
   );
   assert.equal(mocks.commit.mock.calls.length, 0);
+});
+
+test("createDatabaseRowService imports source properties and values", async () => {
+  transactionRecorder();
+  mocks.selectResults.push(
+    [],
+    [{ id: "page-1", metadata: null, name: "Page", workspaceId: "workspace-1" }],
+    [],
+    [],
+  );
+  mocks.inherit.mockResolvedValue({
+    properties: [{ id: "column-imported" }],
+    values: [{ pageId: "page-1", propertyId: "property-imported", value: 7 }],
+  });
+
+  const result = await createDatabaseRowService({
+    databaseId: "database-1",
+    pageId: "page-1",
+    sourceDatabaseId: "database-source",
+    sourcePropertyMode: "match",
+    userId: "user-1",
+  });
+
+  assert.deepEqual(mocks.sourceAccess.mock.calls[0], [
+    "database-source",
+    "user-1",
+    "view",
+  ]);
+  assert.equal(mocks.inherit.mock.calls[0]?.[0].sourcePropertyMode, "match");
+  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].changed, [
+    "rows",
+    "properties",
+    "values",
+  ]);
+  assert.deepEqual(result.commit.delta.properties, [{ id: "column-imported" }]);
+  assert.equal(result.commit.delta.values?.[0]?.value, 7);
 });

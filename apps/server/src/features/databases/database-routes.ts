@@ -1,10 +1,9 @@
-import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import {
   canAccessDatabaseRecord,
-  canAccessPageInWorkspace,
   getAccessiblePageIds,
   getEffectiveDatabaseAccessForRecord,
   getMembership,
@@ -19,12 +18,10 @@ import {
   databaseRow,
   favorite,
   page,
-  pageCollaborationDocument,
   pageProperty,
   pagePropertyValue,
 } from "../../db/schema";
 import type { DatabaseChangedArea } from "../../services/database-delta";
-import { encodePageContentAsYjs } from "../../collaboration/service";
 import type { AppBindings } from "../../types";
 import {
   createDatabaseRealtimeTicket,
@@ -40,26 +37,16 @@ import {
   mutationResponse,
 } from "../../services/database-commit";
 import { getDatabaseRecord } from "../../services/database-access";
-import {
-  getStatusDefaultValue,
-  validateCellValue,
-} from "../../services/database-property-config";
+import { validateCellValue } from "../../services/database-property-config";
 import {
   getDatabasePayload,
   getDatabaseSchemaPayload,
 } from "../../services/database-payload";
 import {
-  getPropertyNameKey,
-  mergeSelectOptionsForValue,
-  normalizeValueForPropertyType,
-} from "../../services/database-property-import";
-import {
   hasDuplicateValues,
-  incrementDatabaseRowPlacementPositions,
   updateDatabaseRowPlacementPositions,
   updateDatabaseRowPositions,
 } from "../../services/database-position-service";
-import { isDatabaseHostPageId } from "../../services/database-host-page";
 import { updateDatabaseFavoriteService } from "../../services/database-favorite-service";
 import {
   createDatabasePropertyService,
@@ -70,6 +57,7 @@ import {
   reorderDatabasePropertiesService,
 } from "../../services/database-property-structure-service";
 import { duplicateDatabasePropertyService } from "../../services/database-property-duplication-service";
+import { createDatabaseRowService } from "../../services/database-row-service";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
   deleteDatabaseAccessRuleService,
@@ -88,11 +76,7 @@ import {
   deleteDatabaseViewService,
   updateDatabaseViewService,
 } from "../../services/database-view-service";
-import {
-  isReadOnlyPropertyType,
-  normalizeDatabasePropertyType,
-} from "../../services/database-property-types";
-import { upsertPagePropertyValues } from "../../services/page-property-value-upsert";
+import { normalizeDatabasePropertyType } from "../../services/database-property-types";
 import {
   rowPositionDelta,
   type DatabaseDelta,
@@ -955,24 +939,14 @@ databaseRoutes.post("/:id/rows", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
   const body = await c.req.json().catch(() => ({}));
-
   const {
-    pageId: existingPageId = null,
+    pageId = null,
     parentRowId = null,
     position,
     sourceDatabaseId = null,
     sourcePropertyMode = "duplicate",
+    title,
   } = body as {
     pageId?: unknown;
     parentRowId?: unknown;
@@ -981,11 +955,10 @@ databaseRoutes.post("/:id/rows", async (c) => {
     sourcePropertyMode?: unknown;
     title?: unknown;
   };
-  let { title } = body as { title?: unknown };
 
   if (
     (title !== undefined && typeof title !== "string") ||
-    (existingPageId !== null && typeof existingPageId !== "string") ||
+    (pageId !== null && typeof pageId !== "string") ||
     (parentRowId !== null && typeof parentRowId !== "string") ||
     (sourceDatabaseId !== null && typeof sourceDatabaseId !== "string") ||
     (sourcePropertyMode !== "duplicate" && sourcePropertyMode !== "match") ||
@@ -995,564 +968,42 @@ databaseRoutes.post("/:id/rows", async (c) => {
     return c.json({ error: "Invalid row input" }, 400);
   }
 
-  if (isDatabaseHostPageId(existingPageId, existing.pageId)) {
-    return c.json({ error: "A page cannot be nested inside itself" }, 400);
-  }
+  try {
+    const result = await createDatabaseRowService({
+      databaseId: c.req.param("id"),
+      env: c.env,
+      pageId: pageId as string | null,
+      parentRowId: parentRowId as string | null,
+      position: position as number | undefined,
+      sourceDatabaseId: sourceDatabaseId as string | null,
+      sourcePropertyMode,
+      title: title as string | undefined,
+      userId: user.id,
+    });
 
-  const sourceDatabase =
-    typeof sourceDatabaseId === "string" && sourceDatabaseId !== existing.id
-      ? await getDatabaseRecord(sourceDatabaseId)
-      : null;
-
-  if (sourceDatabaseId && sourceDatabaseId !== existing.id) {
-    if (
-      !sourceDatabase ||
-      sourceDatabase.workspaceId !== existing.workspaceId
-    ) {
-      return c.json({ error: "Source database not found" }, 404);
-    }
-
-    if (!(await canAccessDatabaseRecord(sourceDatabase, user.id, "view"))) {
-      return c.json({ error: "Forbidden" }, 403);
-    }
-  }
-
-  const activeRows = await db
-    .select({ id: databaseRow.id, position: databaseRow.position })
-    .from(databaseRow)
-    .where(
-      and(
-        eq(databaseRow.databaseId, existing.id),
-        isNull(databaseRow.deletedAt),
-      ),
-    )
-    .orderBy(asc(databaseRow.position));
-  const rowCount = activeRows.length;
-  const targetPosition =
-    position === undefined ? rowCount : Math.min(position as number, rowCount);
-  let pageId =
-    typeof existingPageId === "string" ? existingPageId : crypto.randomUUID();
-  let pageMetadata: Record<string, unknown> = {};
-
-  if (existingPageId) {
-    const [pageRecord] = await db
-      .select({
-        id: page.id,
-        metadata: page.metadata,
-        name: page.name,
-        workspaceId: page.workspaceId,
-      })
-      .from(page)
-      .where(
-        and(
-          eq(page.id, existingPageId),
-          eq(page.workspaceId, existing.workspaceId),
-          isNull(page.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!pageRecord) {
-      return c.json({ error: "Page not found" }, 404);
-    }
-
-    if (
-      !(await canAccessPageInWorkspace(
-        pageRecord.id,
-        pageRecord.workspaceId,
-        user.id,
-        "edit",
-      ))
-    ) {
-      return c.json({ error: "Forbidden" }, 403);
-    }
-
-    if (title === undefined) {
-      title = pageRecord.name.trim() || "Untitled";
-    }
-
-    if (
-      pageRecord.metadata &&
-      typeof pageRecord.metadata === "object" &&
-      !Array.isArray(pageRecord.metadata)
-    ) {
-      pageMetadata = pageRecord.metadata as Record<string, unknown>;
-    }
-  } else {
-    title = title ?? "Untitled";
-  }
-
-  const [existingRow] =
-    typeof existingPageId === "string"
-      ? await db
-          .select({ id: databaseRow.id })
-          .from(databaseRow)
-          .where(
-            and(
-              eq(databaseRow.databaseId, existing.id),
-              eq(databaseRow.pageId, pageId),
-              isNull(databaseRow.deletedAt),
-            ),
-          )
-          .limit(1)
-      : [];
-
-  if (existingRow) {
-    return c.json({ error: "This page is already in this database" }, 409);
-  }
-
-  const statusProperties = await db
-    .select({
-      config: pageProperty.config,
-      id: pageProperty.id,
-    })
-    .from(databaseProperty)
-    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-    .where(
-      and(
-        eq(databaseProperty.databaseId, existing.id),
-        eq(pageProperty.type, "status"),
-        isNull(pageProperty.deletedAt),
-      ),
+    return c.json(
+      {
+        ...mutationResponse(result.commit),
+        createdAt: result.createdAt,
+        databaseId: result.databaseId,
+        isFavorite: result.isFavorite,
+        pageId: result.rowPageId,
+        parentRowId: result.parentRowId,
+        position: result.position,
+        rowId: result.rowId,
+        title: result.title,
+        updatedAt: result.updatedAt,
+        values: result.commit.delta.values ?? [],
+      },
+      201,
     );
-  const defaultStatusValues = statusProperties
-    .map((property) => ({
-      propertyId: property.id,
-      value: getStatusDefaultValue(property.config),
-    }))
-    .filter(
-      (property): property is { propertyId: string; value: string } =>
-        typeof property.value === "string" && property.value.length > 0,
-    );
-  const [databaseFavorite] = await db
-    .select({ id: favorite.id })
-    .from(favorite)
-    .where(
-      and(eq(favorite.userId, user.id), eq(favorite.databaseId, existing.id)),
-    )
-    .limit(1);
-  const shouldInheritFavorite = Boolean(databaseFavorite);
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
 
-  const rowId = crypto.randomUUID();
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const rowTitle = title as string;
-  const changed = new Set<DatabaseChangedArea>(["rows"]);
-
-  if (defaultStatusValues.length > 0) {
-    changed.add("values");
+    throw error;
   }
-
-  if (sourceDatabase) {
-    changed.add("properties");
-    changed.add("values");
-  }
-
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: [...changed],
-
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      const inheritedProperties: NonNullable<DatabaseDelta["properties"]> = [];
-      let inheritedValues: NonNullable<DatabaseDelta["values"]> = [];
-
-      if (!existingPageId) {
-        await tx.insert(page).values({
-          id: pageId,
-          workspaceId: existing.workspaceId,
-          createdById: user.id,
-          type: "pageblock",
-          name: rowTitle,
-          url: "#",
-          content: null,
-          metadata: pageMetadata,
-          createdAt: now,
-          updatedAt: now,
-        });
-        await tx.insert(pageCollaborationDocument).values({
-          pageId,
-          state: Buffer.from(encodePageContentAsYjs(null)),
-          updatedAt: now,
-        });
-      }
-
-      if (sourceDatabase) {
-        const targetColumns = await tx
-          .select({ column: databaseProperty, property: pageProperty })
-          .from(databaseProperty)
-          .innerJoin(
-            pageProperty,
-            eq(databaseProperty.propertyId, pageProperty.id),
-          )
-          .where(
-            and(
-              eq(databaseProperty.databaseId, existing.id),
-              eq(pageProperty.workspaceId, existing.workspaceId),
-              isNull(pageProperty.deletedAt),
-            ),
-          );
-        const sourceColumns = await tx
-          .select({ column: databaseProperty, property: pageProperty })
-          .from(databaseProperty)
-          .innerJoin(
-            pageProperty,
-            eq(databaseProperty.propertyId, pageProperty.id),
-          )
-          .where(
-            and(
-              eq(databaseProperty.databaseId, sourceDatabase.id),
-              eq(pageProperty.workspaceId, existing.workspaceId),
-              isNull(pageProperty.deletedAt),
-            ),
-          )
-          .orderBy(asc(databaseProperty.position));
-        const targetPropertyIds = new Set(
-          targetColumns.map(({ column }) => column.propertyId),
-        );
-        const targetValues =
-          targetPropertyIds.size > 0
-            ? await tx
-                .select()
-                .from(pagePropertyValue)
-                .where(
-                  and(
-                    eq(pagePropertyValue.pageId, pageId),
-                    inArray(pagePropertyValue.propertyId, [
-                      ...targetPropertyIds,
-                    ]),
-                  ),
-                )
-            : [];
-
-        inheritedValues.push(
-          ...targetValues.map((value) => ({
-            ...value,
-            createdAt: value.createdAt.toISOString(),
-            updatedAt: value.updatedAt.toISOString(),
-          })),
-        );
-
-        const targetColumnsByName = new Map(
-          targetColumns.map((column) => [
-            getPropertyNameKey(column.property.name),
-            column,
-          ]),
-        );
-        const missingColumns = sourceColumns.filter(
-          ({ column }) => !targetPropertyIds.has(column.propertyId),
-        );
-        const sourceValues =
-          missingColumns.length > 0
-            ? await tx
-                .select()
-                .from(pagePropertyValue)
-                .where(
-                  and(
-                    eq(pagePropertyValue.pageId, pageId),
-                    inArray(
-                      pagePropertyValue.propertyId,
-                      missingColumns.map(({ column }) => column.propertyId),
-                    ),
-                  ),
-                )
-            : [];
-        const sourceValueByPropertyId = new Map(
-          sourceValues.map((value) => [value.propertyId, value]),
-        );
-        const columnsToInsert: Array<{
-          column: (typeof missingColumns)[number]["column"];
-          property: (typeof missingColumns)[number]["property"];
-        }> = [];
-        const matchedValuesToUpsert: Array<
-          typeof pagePropertyValue.$inferInsert
-        > = [];
-
-        for (const sourceColumn of missingColumns) {
-          const targetColumn =
-            sourcePropertyMode === "match"
-              ? targetColumnsByName.get(
-                  getPropertyNameKey(sourceColumn.property.name),
-                )
-              : null;
-          const sourceValue = sourceValueByPropertyId.get(
-            sourceColumn.column.propertyId,
-          );
-          const targetPropertyType = targetColumn
-            ? normalizeDatabasePropertyType(targetColumn.property.type)
-            : null;
-
-          if (!targetColumn) {
-            columnsToInsert.push(sourceColumn);
-            continue;
-          }
-
-          if (
-            !sourceValue ||
-            sourceValue.value === null ||
-            !targetPropertyType
-          ) {
-            continue;
-          }
-
-          if (isReadOnlyPropertyType(targetPropertyType)) {
-            continue;
-          }
-
-          const nextValue = normalizeValueForPropertyType(
-            targetPropertyType,
-            sourceValue.value,
-          );
-          const mergedConfig = mergeSelectOptionsForValue(
-            targetPropertyType,
-            targetColumn.property.config,
-            nextValue,
-          );
-
-          try {
-            validateCellValue(
-              targetPropertyType,
-              mergedConfig.config,
-              nextValue,
-            );
-          } catch (error) {
-            if (error instanceof ServiceMutationError) {
-              throw new DatabaseMutationError(error.message, error.status);
-            }
-
-            throw error;
-          }
-
-          if (mergedConfig.changed) {
-            await tx
-              .update(pageProperty)
-              .set({ config: mergedConfig.config, updatedAt: now })
-              .where(eq(pageProperty.id, targetColumn.property.id));
-            await tx
-              .update(databaseProperty)
-              .set({ updatedAt: now })
-              .where(eq(databaseProperty.id, targetColumn.column.id));
-
-            inheritedProperties.push({
-              ...targetColumn.column,
-              createdAt: targetColumn.column.createdAt.toISOString(),
-              updatedAt: nowIso,
-              property: {
-                ...targetColumn.property,
-                config: mergedConfig.config,
-                createdAt: targetColumn.property.createdAt.toISOString(),
-                updatedAt: nowIso,
-              },
-            });
-          }
-
-          matchedValuesToUpsert.push({
-            id: crypto.randomUUID(),
-            pageId,
-            propertyId: targetColumn.property.id,
-            value: nextValue,
-            createdAt: now,
-            updatedAt: now,
-          });
-
-          inheritedValues.push({
-            propertyId: targetColumn.property.id,
-            updatedAt: nowIso,
-            value: nextValue,
-            pageId,
-          });
-        }
-
-        await upsertPagePropertyValues(tx, matchedValuesToUpsert);
-
-        if (columnsToInsert.length > 0) {
-          const insertedColumns = columnsToInsert.map(({ column }, index) => ({
-            id: crypto.randomUUID(),
-            databaseId: existing.id,
-            propertyId: column.propertyId,
-            position: targetColumns.length + index,
-            width: column.width,
-            visible: column.visible,
-            createdAt: now,
-            updatedAt: now,
-          }));
-
-          await tx.insert(databaseProperty).values(insertedColumns);
-
-          inheritedProperties.push(
-            ...insertedColumns.map((column, index) => ({
-              ...column,
-              createdAt: nowIso,
-              updatedAt: nowIso,
-              property: columnsToInsert[index].property,
-            })),
-          );
-
-          inheritedValues.push(
-            ...sourceValues
-              .filter((value) =>
-                insertedColumns.some(
-                  (column) => column.propertyId === value.propertyId,
-                ),
-              )
-              .map((value) => ({
-                ...value,
-                createdAt: value.createdAt.toISOString(),
-                updatedAt: value.updatedAt.toISOString(),
-              })),
-          );
-        }
-      }
-
-      await tx
-        .update(databaseRow)
-        .set({
-          position: sql`${databaseRow.position} + 1`,
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(databaseRow.databaseId, existing.id),
-            isNull(databaseRow.deletedAt),
-            gte(databaseRow.position, targetPosition),
-          ),
-        );
-      await incrementDatabaseRowPlacementPositions(
-        tx,
-        existing.id,
-        targetPosition,
-        now,
-      );
-      await tx.insert(databaseRow).values({
-        id: rowId,
-        databaseId: existing.id,
-        pageId,
-        parentRowId,
-        position: targetPosition,
-        createdById: user.id,
-        lastEditedById: user.id,
-        createdAt: now,
-        updatedAt: now,
-      });
-      await upsertPageItemPlacement(tx, {
-        workspaceId: existing.workspaceId,
-        parentKind: "database",
-        parentId: existing.id,
-        itemKind: "page",
-        itemId: pageId,
-        placementKind: "database_row",
-        sourceRowId: rowId,
-        position: targetPosition,
-      });
-
-      const inheritedValuePropertyIds = new Set(
-        inheritedValues
-          .filter((value) => value.pageId === pageId)
-          .map((value) => value.propertyId),
-      );
-      const insertedValues = defaultStatusValues
-        .filter(
-          (property) => !inheritedValuePropertyIds.has(property.propertyId),
-        )
-        .map((property) => ({
-          createdAt: nowIso,
-          id: crypto.randomUUID(),
-          propertyId: property.propertyId,
-          updatedAt: nowIso,
-          value: property.value,
-          pageId: pageId,
-        }));
-
-      if (insertedValues.length > 0) {
-        await tx
-          .insert(pagePropertyValue)
-          .values(
-            insertedValues.map((propertyValue) => ({
-              id: propertyValue.id,
-              propertyId: propertyValue.propertyId,
-              value: propertyValue.value,
-              pageId: propertyValue.pageId,
-              createdAt: now,
-              updatedAt: now,
-            })),
-          )
-          .onConflictDoNothing({
-            target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
-          });
-      }
-
-      if (shouldInheritFavorite) {
-        await tx
-          .insert(favorite)
-          .values({
-            id: crypto.randomUUID(),
-            userId: user.id,
-            pageId: pageId,
-          })
-          .onConflictDoNothing({
-            target: [favorite.userId, favorite.pageId],
-          });
-      }
-
-      return {
-        delta: {
-          ...(sourceDatabase ? { properties: inheritedProperties } : {}),
-          rows: [
-            ...activeRows
-              .filter((row) => row.position >= targetPosition)
-              .map((row) => ({
-                id: row.id,
-                position: row.position + 1,
-                updatedAt: nowIso,
-              })),
-            {
-              createdAt: nowIso,
-              createdById: user.id,
-              databaseId: existing.id,
-              id: rowId,
-              lastEditedById: user.id,
-              page: {
-                id: pageId,
-                metadata: pageMetadata,
-                name: rowTitle,
-              },
-              pageId,
-              parentRowId,
-              position: targetPosition,
-              updatedAt: nowIso,
-            },
-          ],
-          ...(insertedValues.length > 0 || inheritedValues.length > 0
-            ? { values: [...insertedValues, ...inheritedValues] }
-            : {}),
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
-  }
-
-  return c.json(
-    {
-      ...mutationResponse(mutation),
-      createdAt: nowIso,
-      databaseId: existing.id,
-      isFavorite: shouldInheritFavorite,
-      pageId,
-      parentRowId,
-      position: targetPosition,
-      rowId,
-      title: rowTitle,
-      updatedAt: nowIso,
-      values: mutation.delta.values ?? [],
-    },
-    201,
-  );
 });
 
 databaseRoutes.patch("/:id/rows/reorder", async (c) => {

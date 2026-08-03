@@ -7,17 +7,23 @@ import { db } from "../db";
 import {
   databaseProperty,
   databaseRow,
+  favorite,
   page,
   pageCollaborationDocument,
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
 import { upsertPageItemPlacement } from "../page-item-placements";
-import { requireDatabaseEditAccess } from "./database-access";
+import {
+  requireDatabaseAccess,
+  requireDatabaseEditAccess,
+} from "./database-access";
 import { commitDatabaseMutation } from "./database-commit";
 import { fetchDatabaseRowDelta } from "./database-delta";
 import { isDatabaseHostPageId } from "./database-host-page";
 import { getStatusDefaultValue } from "./database-property-config";
+import { incrementDatabaseRowPlacementPositions } from "./database-position-service";
+import { inheritDatabaseRowProperties } from "./database-row-import-service";
 import { ServiceMutationError } from "./mutation-error";
 
 export async function createDatabaseRowService(input: {
@@ -26,6 +32,8 @@ export async function createDatabaseRowService(input: {
   pageId?: string | null;
   parentRowId?: string | null;
   position?: number;
+  sourceDatabaseId?: string | null;
+  sourcePropertyMode?: "duplicate" | "match";
   title?: string;
   userId: string;
 }) {
@@ -33,6 +41,28 @@ export async function createDatabaseRowService(input: {
     input.databaseId,
     input.userId,
   );
+  let sourceDatabase: Awaited<ReturnType<typeof requireDatabaseAccess>> | null =
+    null;
+
+  if (input.sourceDatabaseId && input.sourceDatabaseId !== existing.id) {
+    try {
+      sourceDatabase = await requireDatabaseAccess(
+        input.sourceDatabaseId,
+        input.userId,
+        "view",
+      );
+    } catch (error) {
+      if (error instanceof ServiceMutationError && error.status === 404) {
+        throw new ServiceMutationError("Source database not found", 404);
+      }
+
+      throw error;
+    }
+
+    if (sourceDatabase.workspaceId !== existing.workspaceId) {
+      throw new ServiceMutationError("Source database not found", 404);
+    }
+  }
 
   if (isDatabaseHostPageId(input.pageId, existing.pageId)) {
     throw new ServiceMutationError(
@@ -138,17 +168,48 @@ export async function createDatabaseRowService(input: {
         typeof property.value === "string" && property.value.length > 0,
     );
 
-  const rowId = crypto.randomUUID();
+  const [databaseFavorite] = await db
+    .select({ id: favorite.id })
+    .from(favorite)
+    .where(
+      and(
+        eq(favorite.userId, input.userId),
+        eq(favorite.databaseId, existing.id),
+      ),
+    )
+    .limit(1);
+  const shouldInheritFavorite = Boolean(databaseFavorite);
 
-  await commitDatabaseMutation(
+  const rowId = crypto.randomUUID();
+  let createdAt = "";
+
+  const commit = await commitDatabaseMutation(
     {
       actorId: input.userId,
-      changed: defaultStatusValues.length > 0 ? ["rows", "values"] : ["rows"],
+      changed: sourceDatabase
+        ? ["rows", "properties", "values"]
+        : defaultStatusValues.length > 0
+          ? ["rows", "values"]
+          : ["rows"],
       databaseId: existing.id,
       env: input.env,
     },
     async (tx) => {
       const now = new Date();
+      createdAt = now.toISOString();
+      const inherited = sourceDatabase
+        ? await inheritDatabaseRowProperties(
+            {
+              now,
+              pageId,
+              sourceDatabaseId: sourceDatabase.id,
+              sourcePropertyMode: input.sourcePropertyMode ?? "duplicate",
+              targetDatabaseId: existing.id,
+              workspaceId: existing.workspaceId,
+            },
+            tx,
+          )
+        : { properties: [], values: [] };
 
       if (input.pageId) {
         await tx
@@ -191,6 +252,12 @@ export async function createDatabaseRowService(input: {
             gte(databaseRow.position, targetPosition),
           ),
         );
+      await incrementDatabaseRowPlacementPositions(
+        tx,
+        existing.id,
+        targetPosition,
+        now,
+      );
 
       await tx.insert(databaseRow).values({
         id: rowId,
@@ -214,14 +281,23 @@ export async function createDatabaseRowService(input: {
         position: targetPosition,
       });
 
-      const insertedValues = defaultStatusValues.map((property) => ({
+      const inheritedValuePropertyIds = new Set(
+        inherited.values
+          .filter((value) => value.pageId === pageId)
+          .map((value) => value.propertyId),
+      );
+      const insertedValues = defaultStatusValues
+        .filter(
+          (property) => !inheritedValuePropertyIds.has(property.propertyId),
+        )
+        .map((property) => ({
         createdAt: now.toISOString(),
         id: crypto.randomUUID(),
         propertyId: property.propertyId,
         updatedAt: now.toISOString(),
         value: property.value,
         pageId,
-      }));
+        }));
 
       if (insertedValues.length > 0) {
         await tx.insert(pagePropertyValue).values(
@@ -236,6 +312,19 @@ export async function createDatabaseRowService(input: {
         );
       }
 
+      if (shouldInheritFavorite) {
+        await tx
+          .insert(favorite)
+          .values({
+            id: crypto.randomUUID(),
+            pageId,
+            userId: input.userId,
+          })
+          .onConflictDoNothing({
+            target: [favorite.userId, favorite.pageId],
+          });
+      }
+
       const delta = await fetchDatabaseRowDelta(rowId, tx);
       const shiftedRows = rows
         .filter((row) => row.position >= targetPosition)
@@ -247,17 +336,26 @@ export async function createDatabaseRowService(input: {
 
       return {
         delta: {
+          ...(sourceDatabase ? { properties: inherited.properties } : {}),
           rows: [...shiftedRows, ...(delta?.rows ?? [])],
-          ...(insertedValues.length > 0 ? { values: insertedValues } : {}),
+          ...(insertedValues.length > 0 || inherited.values.length > 0
+            ? { values: [...insertedValues, ...inherited.values] }
+            : {}),
         },
       };
     },
   );
 
   return {
+    commit,
+    createdAt,
+    isFavorite: shouldInheritFavorite,
+    parentRowId: input.parentRowId ?? null,
+    position: targetPosition,
     databaseId: existing.id,
     rowId,
     rowPageId: pageId,
     title: title as string,
+    updatedAt: createdAt,
   };
 }
