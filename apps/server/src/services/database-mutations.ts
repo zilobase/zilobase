@@ -1,5 +1,6 @@
 export { getDatabaseRecord } from "./database-access";
 export { setDatabaseCellValueService } from "./database-cell-service";
+export { updateDatabaseFavoriteService } from "./database-favorite-service";
 export {
   defaultStatusOptions,
   formatDatePropertyValueAsText,

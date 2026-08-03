@@ -15,7 +15,7 @@ export default defineConfig({
       thresholds: {
         branches: fullCoverage ? 100 : 28,
         functions: fullCoverage ? 100 : 31,
-        lines: fullCoverage ? 100 : 31,
+        lines: fullCoverage ? 100 : 32,
         statements: fullCoverage ? 100 : 31,
       },
     },

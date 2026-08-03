@@ -64,6 +64,7 @@ import {
   updateDatabaseRowPositions,
 } from "../../services/database-position-service";
 import { isDatabaseHostPageId } from "../../services/database-host-page";
+import { updateDatabaseFavoriteService } from "../../services/database-favorite-service";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
   deleteDatabaseAccessRuleService,
@@ -477,30 +478,21 @@ databaseRoutes.put("/:id/favorite", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
+  try {
+    return c.json(
+      await updateDatabaseFavoriteService({
+        databaseId: c.req.param("id"),
+        favorite: true,
+        userId: user.id,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
 
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
+    throw error;
   }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "view"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  await db
-    .insert(favorite)
-    .values({
-      databaseId: existing.id,
-      id: crypto.randomUUID(),
-      userId: user.id,
-    })
-    .onConflictDoNothing({
-      target: [favorite.userId, favorite.databaseId],
-    });
-
-  const payload = await getDatabasePayload(existing.id, user.id, existing);
-
-  return c.json(payload);
 });
 
 databaseRoutes.delete("/:id", async (c) => {
@@ -556,25 +548,21 @@ databaseRoutes.delete("/:id/favorite", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "view"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  await db
-    .delete(favorite)
-    .where(
-      and(eq(favorite.userId, user.id), eq(favorite.databaseId, existing.id)),
+  try {
+    return c.json(
+      await updateDatabaseFavoriteService({
+        databaseId: c.req.param("id"),
+        favorite: false,
+        userId: user.id,
+      }),
     );
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
 
-  const payload = await getDatabasePayload(existing.id, user.id, existing);
-
-  return c.json(payload);
+    throw error;
+  }
 });
 
 databaseRoutes.patch("/:id", async (c) => {
