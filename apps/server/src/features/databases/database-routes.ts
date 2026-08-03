@@ -57,7 +57,6 @@ import {
 import {
   hasDuplicateValues,
   incrementDatabaseRowPlacementPositions,
-  updateDatabasePropertyPositions,
   updateDatabaseRowPlacementPositions,
   updateDatabaseRowPositions,
 } from "../../services/database-position-service";
@@ -67,6 +66,10 @@ import {
   createDatabasePropertyService,
   updateDatabasePropertyService,
 } from "../../services/database-property-service";
+import {
+  deleteDatabasePropertyService,
+  reorderDatabasePropertiesService,
+} from "../../services/database-property-structure-service";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
   deleteDatabaseAccessRuleService,
@@ -92,7 +95,6 @@ import {
 import { upsertPagePropertyValues } from "../../services/page-property-value-upsert";
 import {
   fetchDatabasePropertyDelta,
-  propertyPositionDelta,
   rowPositionDelta,
   type DatabaseDelta,
 } from "../../services/database-delta";
@@ -776,16 +778,6 @@ databaseRoutes.patch("/:id/properties/reorder", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
   const body = await c.req.json().catch(() => null);
 
   if (!body || typeof body !== "object") {
@@ -807,61 +799,22 @@ databaseRoutes.patch("/:id/properties/reorder", async (c) => {
     return c.json({ error: "propertyIds must not contain duplicates" }, 400);
   }
 
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: ["properties"],
+  try {
+    const result = await reorderDatabasePropertiesService({
+      databaseId: c.req.param("id"),
+      env: c.env,
+      propertyIds: nextPropertyIds,
+      userId: user.id,
+    });
 
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      const properties = await tx
-        .select({ id: databaseProperty.id })
-        .from(databaseProperty)
-        .innerJoin(
-          pageProperty,
-          eq(databaseProperty.propertyId, pageProperty.id),
-        )
-        .where(
-          and(
-            eq(databaseProperty.databaseId, existing.id),
-            isNull(pageProperty.deletedAt),
-          ),
-        );
-      const existingPropertyIds = new Set(
-        properties.map((property) => property.id),
-      );
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
 
-      if (
-        nextPropertyIds.length !== existingPropertyIds.size ||
-        nextPropertyIds.some(
-          (propertyId) => !existingPropertyIds.has(propertyId),
-        )
-      ) {
-        throw new DatabaseMutationError(
-          "propertyIds must include every active database property",
-        );
-      }
-
-      await updateDatabasePropertyPositions(
-        tx,
-        existing.id,
-        nextPropertyIds,
-        new Date(),
-      );
-
-      return {
-        delta: propertyPositionDelta(nextPropertyIds),
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
+    throw error;
   }
-
-  return c.json(mutationResponse(mutation));
 });
 
 databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
@@ -1147,77 +1100,22 @@ databaseRoutes.delete("/:id/properties/:databasePropertyId", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const existing = await getDatabaseRecord(c.req.param("id"));
+  try {
+    const result = await deleteDatabasePropertyService({
+      databaseId: c.req.param("id"),
+      databasePropertyId: c.req.param("databasePropertyId"),
+      env: c.env,
+      userId: user.id,
+    });
 
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
   }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  const body = await c.req.json().catch(() => null);
-
-  const [column] = await db
-    .select({
-      column: databaseProperty,
-      property: pageProperty,
-    })
-    .from(databaseProperty)
-    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-    .where(
-      and(
-        eq(databaseProperty.id, c.req.param("databasePropertyId")),
-        eq(databaseProperty.databaseId, existing.id),
-        eq(pageProperty.workspaceId, existing.workspaceId),
-        isNull(pageProperty.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  if (!column) {
-    return c.json({ error: "Property not found" }, 404);
-  }
-
-  const now = new Date();
-
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: ["properties"],
-
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      await tx
-        .update(pageProperty)
-        .set({
-          deletedAt: now,
-          deletedById: user.id,
-          updatedAt: now,
-        })
-        .where(eq(pageProperty.id, column.property.id));
-      await tx
-        .update(databaseProperty)
-        .set({ updatedAt: now })
-        .where(eq(databaseProperty.id, column.column.id));
-
-      return {
-        delta: {
-          removedPagePropertyIds: [column.property.id],
-          removedPropertyIds: [column.column.id],
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
-  }
-
-  return c.json(mutationResponse(mutation));
 });
 
 databaseRoutes.post("/:id/rows", async (c) => {

@@ -12,6 +12,10 @@ export {
   createDatabasePropertyService,
   updateDatabasePropertyService,
 } from "./database-property-service";
+export {
+  deleteDatabasePropertyService,
+  reorderDatabasePropertiesService,
+} from "./database-property-structure-service";
 export { isDatabaseHostPageId } from "./database-host-page";
 export { createDatabaseRowService } from "./database-row-service";
 export {
