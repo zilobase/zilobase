@@ -1603,7 +1603,31 @@
     tbody
     tr[data-side-pane-open="true"]
     > td {
-    @apply bg-accent;
+    box-shadow:
+      inset 0 2px var(--database-selection-color, #2383e2),
+      inset 0 -2px var(--database-selection-color, #2383e2);
+  }
+
+  .tiptap-editor
+    .database-table
+    tbody
+    tr[data-side-pane-open="true"]
+    > td:first-child {
+    box-shadow:
+      inset 2px 0 var(--database-selection-color, #2383e2),
+      inset 0 2px var(--database-selection-color, #2383e2),
+      inset 0 -2px var(--database-selection-color, #2383e2);
+  }
+
+  .tiptap-editor
+    .database-table
+    tbody
+    tr[data-side-pane-open="true"]
+    > td:last-child {
+    box-shadow:
+      inset -2px 0 var(--database-selection-color, #2383e2),
+      inset 0 2px var(--database-selection-color, #2383e2),
+      inset 0 -2px var(--database-selection-color, #2383e2);
   }
 
   .tiptap-editor .database-table tbody td.database-virtual-spacer {
@@ -1630,6 +1654,39 @@
   .tiptap-editor .database-table tbody td.database-page-cell[data-active="true"],
   .tiptap-editor .database-table tbody td.database-value-cell[data-active="true"] {
     @apply z-20;
+  }
+
+  .tiptap-editor
+    .database-table
+    tbody
+    td:is(.database-page-cell, .database-value-cell)[data-selected="true"] {
+    @apply z-30;
+    box-shadow: inset 0 0 0 2px var(--database-selection-color, #2383e2);
+  }
+
+  .tiptap-editor
+    .database-table
+    tbody
+    td.database-value-cell[data-fill-target="true"] {
+    @apply bg-blue-500/10;
+    box-shadow:
+      inset 2px 0 var(--database-selection-color, #2383e2),
+      inset -2px 0 var(--database-selection-color, #2383e2);
+  }
+
+  .database-cell-fill-handle {
+    @apply absolute -bottom-1.5 -right-1.5 z-40 size-3 cursor-crosshair rounded-full border-2 border-background outline-none;
+    background: var(--database-selection-color, #2383e2);
+    touch-action: none;
+  }
+
+  .database-cell-fill-handle::after {
+    @apply absolute content-[''];
+    inset: -0.375rem;
+  }
+
+  .database-cell-fill-handle:focus-visible {
+    @apply ring-2 ring-blue-500/40 ring-offset-1;
   }
 
   .database-cell-presence {
@@ -2153,6 +2210,12 @@
 
   .database-row-dragging,
   .database-row-dragging * {
+    user-select: none !important;
+  }
+
+  .database-cell-fill-cursor,
+  .database-cell-fill-cursor * {
+    cursor: crosshair !important;
     user-select: none !important;
   }
 

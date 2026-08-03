@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { useOptionalUndoHistory } from "@/shortcuts"
 
 type DatabasePageSummary = {
   iconKind?: "database" | "page"
@@ -45,6 +46,7 @@ export function DatabasePageLink({
 }) {
   const sidePane = useOptionalPageSidePane()
   const updatePage = useUpdatePage()
+  const undoHistory = useOptionalUndoHistory()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const titleEditFinishedRef = useRef(false)
   const [draftTitle, setDraftTitle] = useState("")
@@ -129,6 +131,15 @@ export function DatabasePageLink({
     if (nextTitle === currentTitle) {
       setDraftTitle(currentTitle)
       return
+    }
+
+    if (undoHistory?.shouldRecord()) {
+      undoHistory.pushAction({
+        label: "Rename database page",
+        undo: () => {
+          updatePage.mutate({ id: pageId, name: currentTitle })
+        },
+      })
     }
 
     updatePage.mutate(

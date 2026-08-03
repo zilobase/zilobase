@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useMemo,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
@@ -53,6 +54,8 @@ import {
   DatabaseCellStateProvider,
   useActiveDatabaseCellKey,
 } from "./database-cell-state"
+import { UndoHistoryScope, useUndoHistory } from "@/shortcuts"
+import { areSerializedPropertyValuesEqual } from "../interactions/database-item-utils"
 
 export type DatabaseActiveConditionalColor = Omit<
   DatabaseConditionalColorConfig,
@@ -251,9 +254,125 @@ export function DatabaseViewProvider({
   value: DatabaseViewContextValue
 }) {
   return (
-    <DatabaseViewContext.Provider value={value}>
+    <UndoHistoryScope resetKey={value.databaseId}>
+      <UndoableDatabaseViewProvider value={value}>
+        {children}
+      </UndoableDatabaseViewProvider>
+    </UndoHistoryScope>
+  )
+}
+
+function cloneDatabasePropertyValue(value: DatabasePropertyValue) {
+  return Array.isArray(value) ? [...value] : value
+}
+
+function UndoableDatabaseViewProvider({
+  children,
+  value,
+}: {
+  children: ReactNode
+  value: DatabaseViewContextValue
+}) {
+  const undoHistory = useUndoHistory()
+  const undoableValue = useMemo<DatabaseViewContextValue>(
+    () => ({
+      ...value,
+      renameDatabaseProperty: (databasePropertyId, name) => {
+        const currentName = value.properties.find(
+          (property) => property.id === databasePropertyId
+        )?.property.name
+
+        if (
+          undoHistory.shouldRecord() &&
+          currentName !== undefined &&
+          currentName !== name
+        ) {
+          undoHistory.pushAction({
+            label: "Rename database property",
+            undo: () => {
+              value.renameDatabaseProperty(databasePropertyId, currentName)
+            },
+          })
+        }
+
+        value.renameDatabaseProperty(databasePropertyId, name)
+      },
+      saveDatabaseTitle: (nextTitle) => {
+        const currentTitle = value.databaseName ?? ""
+
+        if (undoHistory.shouldRecord() && currentTitle !== nextTitle) {
+          undoHistory.pushAction({
+            label: "Rename database",
+            undo: () => {
+              value.saveDatabaseTitle(currentTitle)
+            },
+          })
+        }
+
+        value.saveDatabaseTitle(nextTitle)
+      },
+      saveDatabaseViewTitle: (nextTitle) => {
+        const currentTitle = value.activeView?.name ?? ""
+
+        if (undoHistory.shouldRecord() && currentTitle !== nextTitle) {
+          undoHistory.pushAction({
+            label: "Rename database view",
+            undo: () => {
+              value.saveDatabaseViewTitle(currentTitle)
+            },
+          })
+        }
+
+        value.saveDatabaseViewTitle(nextTitle)
+      },
+      savePropertyValue: (
+        rowId,
+        propertyId,
+        propertyType,
+        currentValue,
+        nextValue
+      ) => {
+        if (
+          undoHistory.shouldRecord() &&
+          !areSerializedPropertyValuesEqual(
+            propertyType,
+            currentValue,
+            nextValue
+          )
+        ) {
+          const previousValue = cloneDatabasePropertyValue(currentValue)
+          const savedValue = cloneDatabasePropertyValue(nextValue)
+
+          undoHistory.pushAction({
+            label: "Update database value",
+            undo: () => {
+              value.savePropertyValue(
+                rowId,
+                propertyId,
+                propertyType,
+                savedValue,
+                previousValue
+              )
+            },
+          })
+        }
+
+        value.savePropertyValue(
+          rowId,
+          propertyId,
+          propertyType,
+          currentValue,
+          nextValue
+        )
+      },
+    }),
+    [undoHistory, value]
+  )
+
+  return (
+    <DatabaseViewContext.Provider value={undoableValue}>
       <DatabaseCellStateProvider>
-        <DatabaseRealtimeStateProvider value={value}>
+        <DatabaseRealtimeStateProvider value={undoableValue}>
           {children}
         </DatabaseRealtimeStateProvider>
       </DatabaseCellStateProvider>

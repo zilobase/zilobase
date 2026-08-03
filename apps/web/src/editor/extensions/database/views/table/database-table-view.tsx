@@ -44,6 +44,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
 import { cn } from "@/lib/utils"
+import { useUndoHistory } from "@/shortcuts"
 import {
   getColorToken,
   getColorTokenBadgeClassName,
@@ -86,6 +87,7 @@ import {
 import { useDatabaseRowsScroll } from "../../interactions/use-database-rows-scroll"
 import { useInlineDatabaseScroll } from "../../interactions/use-inline-database-scroll"
 import {
+  areSerializedPropertyValuesEqual,
   databaseItemMatchesFilter,
   type SortableDatabaseItem,
 } from "../../interactions/database-item-utils"
@@ -94,6 +96,12 @@ import {
   getDatabaseTableGroupSections,
   type DatabaseTableGroupSection,
 } from "../../interactions/database-table-group-sections"
+import {
+  getDatabaseCellFillRowIds,
+  getUndoableDatabaseCellFillChanges,
+  isDatabasePropertyFillable,
+  type DatabaseCellFillHistoryChange,
+} from "../../interactions/database-cell-fill"
 import { getDatabaseRowDropTargetIndex as getDropTargetIndex } from "../../interactions/database-table-layout"
 import {
   getAnchoredReorderedRowIds,
@@ -152,7 +160,13 @@ type GroupRowDropTarget = {
   sectionId: string
   top: number
 }
-
+type CellFillDrag = {
+  propertyId: string
+  propertyType: string
+  sourceRowId: string
+  sourceValue: string | string[]
+  targetRowId: string
+}
 function DatabaseHeaderReorderItem({
   children,
   canReorder,
@@ -637,13 +651,23 @@ function DatabaseActiveTableCell({
   cellKey,
   children,
   className,
+  isFillTarget,
+  isSelected,
+  onFillStart,
+  onSelect,
   presenceKey,
+  selectOnPointerDown,
   wrapContent,
 }: {
   cellKey: string
   children: (setActive: (active: boolean) => void) => ReactNode
   className?: string
+  isFillTarget?: boolean
+  isSelected: boolean
+  onFillStart?: (event: ReactPointerEvent<HTMLButtonElement>) => void
+  onSelect: () => void
   presenceKey: string
+  selectOnPointerDown?: boolean
   wrapContent?: boolean
 }) {
   const isActive = useDatabaseCellIsActive(cellKey)
@@ -655,8 +679,26 @@ function DatabaseActiveTableCell({
     <td
       className={className}
       data-active={isActive ? "true" : undefined}
+      data-fill-target={isFillTarget ? "true" : undefined}
       data-presence={presence.length > 0 ? "true" : undefined}
+      data-selected={isSelected ? "true" : undefined}
       data-wrap-content={wrapContent ? "true" : undefined}
+      onClick={onSelect}
+      onPointerDownCapture={
+        selectOnPointerDown
+          ? (event) => {
+              if (
+                (event.target as Element).closest(
+                  ".database-page-open, .database-sub-item-toggle"
+                )
+              ) {
+                return
+              }
+
+              onSelect()
+            }
+          : undefined
+      }
     >
       {presence.length > 0 ? (
         <div
@@ -684,6 +726,16 @@ function DatabaseActiveTableCell({
         </div>
       ) : null}
       {children((active) => setActiveCell(active ? cellKey : null))}
+      {isSelected && onFillStart ? (
+        <button
+          aria-label="Drag vertically to fill value"
+          className="database-cell-fill-handle"
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={onFillStart}
+          title="Drag vertically to fill value"
+          type="button"
+        />
+      ) : null}
     </td>
   )
 }
@@ -785,6 +837,7 @@ export function DatabaseTableView() {
   } = useDatabaseViewContext()
   const moveRow = useMoveDatabaseRow()
   const reorderRows = useReorderDatabaseRows()
+  const undoHistory = useUndoHistory()
   const loadedDatabaseId = requireDatabaseId(databaseId)
   const canEditStructure = editable && (canAddDatabaseProperties ?? true)
   const canUseHeaderMenus = headerMenusEnabled ?? editable
@@ -796,6 +849,11 @@ export function DatabaseTableView() {
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(
     () => new Set()
   )
+  const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null)
+  const [cellFillDrag, setCellFillDrag] = useState<CellFillDrag | null>(null)
+  const cellFillDragRef = useRef<CellFillDrag | null>(null)
+  const propertyValuesByKeyRef = useRef(propertyValuesByKey)
+  propertyValuesByKeyRef.current = propertyValuesByKey
   const [rowDragOverlay, setRowDragOverlay] =
     useState<DatabaseRowDragOverlay | null>(null)
   const [rowDropTargetIndex, setRowDropTargetIndex] = useState<number | null>(
@@ -1068,6 +1126,23 @@ export function DatabaseTableView() {
   const visibleRowIndexById = useMemo(
     () => new Map(visibleRows.map((row, index) => [row.id, index])),
     [visibleRows]
+  )
+  const visibleRowIds = useMemo(
+    () => visibleRows.map((row) => row.id),
+    [visibleRows]
+  )
+  const fillTargetRowIds = useMemo(
+    () =>
+      new Set(
+        cellFillDrag
+          ? getDatabaseCellFillRowIds(
+              visibleRowIds,
+              cellFillDrag.sourceRowId,
+              cellFillDrag.targetRowId
+            )
+          : []
+      ),
+    [cellFillDrag, visibleRowIds]
   )
   const groupSectionByRowId = useMemo(() => {
     const sectionsByRowId = new Map<string, GroupSection>()
@@ -1436,6 +1511,43 @@ export function DatabaseTableView() {
   }, [activeEditingPropertyKey, renderedProperties])
 
   useEffect(() => {
+    if (!selectedCellKey) {
+      return
+    }
+
+    const cellStillExists = visibleRows.some((row) =>
+      selectedCellKey.startsWith(`${row.pageId}:`)
+    )
+
+    if (!cellStillExists) {
+      setSelectedCellKey(null)
+    }
+  }, [selectedCellKey, visibleRows])
+
+  useEffect(() => {
+    const clearSelectionInAnotherTable = (event: PointerEvent) => {
+      if (!(event.target instanceof Element)) {
+        return
+      }
+
+      const targetTable = event.target.closest(".database-table-wrap")
+
+      if (targetTable && targetTable !== tableWrapRef.current) {
+        setSelectedCellKey(null)
+      }
+    }
+
+    document.addEventListener("pointerdown", clearSelectionInAnotherTable, true)
+
+    return () =>
+      document.removeEventListener(
+        "pointerdown",
+        clearSelectionInAnotherTable,
+        true
+      )
+  }, [])
+
+  useEffect(() => {
     if (!pendingFormulaSetup) {
       return
     }
@@ -1503,6 +1615,167 @@ export function DatabaseTableView() {
 
     return () => window.removeEventListener("dragover", moveOverlay)
   }, [rowDragOverlay])
+
+  const isCellFillDragging = cellFillDrag !== null
+
+  useEffect(() => {
+    if (!isCellFillDragging) {
+      return
+    }
+
+    const clearCellFillDrag = () => {
+      cellFillDragRef.current = null
+      setCellFillDrag(null)
+      document.body.classList.remove("database-cell-fill-cursor")
+    }
+    const getTargetRowId = (event: globalThis.PointerEvent) =>
+      document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLTableRowElement>("tr[data-database-row-id]")
+        ?.dataset.databaseRowId ?? null
+    const handlePointerMove = (event: globalThis.PointerEvent) => {
+      const targetRowId = getTargetRowId(event)
+      const currentDrag = cellFillDragRef.current
+
+      if (
+        !targetRowId ||
+        !currentDrag ||
+        !visibleRowIndexById.has(targetRowId) ||
+        currentDrag.targetRowId === targetRowId
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      const nextDrag = { ...currentDrag, targetRowId }
+
+      cellFillDragRef.current = nextDrag
+      setCellFillDrag(nextDrag)
+    }
+    const handlePointerUp = (event: globalThis.PointerEvent) => {
+      const currentDrag = cellFillDragRef.current
+      const pointerTargetRowId = getTargetRowId(event)
+
+      if (!currentDrag) {
+        clearCellFillDrag()
+        return
+      }
+
+      const targetRowId =
+        pointerTargetRowId && visibleRowIndexById.has(pointerTargetRowId)
+          ? pointerTargetRowId
+          : currentDrag.targetRowId
+      const targetRowIds = getDatabaseCellFillRowIds(
+        visibleRowIds,
+        currentDrag.sourceRowId,
+        targetRowId
+      )
+      const historyChanges: DatabaseCellFillHistoryChange[] = []
+
+      undoHistory.runWithoutRecording(() => {
+        for (const targetRowId of targetRowIds) {
+          const targetRow = rowsById.get(targetRowId)
+
+          if (!targetRow) {
+            continue
+          }
+
+          const currentValue =
+            propertyValuesByKey[
+              `${targetRow.pageId}:${currentDrag.propertyId}`
+            ] ?? ""
+          const nextValue = Array.isArray(currentDrag.sourceValue)
+            ? [...currentDrag.sourceValue]
+            : currentDrag.sourceValue
+
+          if (
+            areSerializedPropertyValuesEqual(
+              currentDrag.propertyType,
+              currentValue,
+              nextValue
+            )
+          ) {
+            continue
+          }
+
+          historyChanges.push({
+            nextValue: Array.isArray(nextValue) ? [...nextValue] : nextValue,
+            pageId: targetRow.pageId,
+            previousValue: Array.isArray(currentValue)
+              ? [...currentValue]
+              : currentValue,
+            propertyId: currentDrag.propertyId,
+            propertyType: currentDrag.propertyType,
+            rowId: targetRow.id,
+          })
+
+          savePropertyValue(
+            targetRow.id,
+            currentDrag.propertyId,
+            currentDrag.propertyType,
+            currentValue,
+            nextValue
+          )
+        }
+      })
+
+      if (historyChanges.length > 0) {
+        undoHistory.pushAction({
+          label: "Fill database cells",
+          undo: () => {
+            const undoableChanges = getUndoableDatabaseCellFillChanges(
+              historyChanges,
+              propertyValuesByKeyRef.current
+            )
+
+            undoHistory.runWithoutRecording(() => {
+              for (const change of undoableChanges) {
+                const currentValue =
+                  propertyValuesByKeyRef.current[
+                    `${change.pageId}:${change.propertyId}`
+                  ] ?? ""
+
+                savePropertyValue(
+                  change.rowId,
+                  change.propertyId,
+                  change.propertyType,
+                  currentValue,
+                  change.previousValue
+                )
+              }
+            })
+
+            return undoableChanges.length > 0
+          },
+        })
+      }
+
+      clearCellFillDrag()
+    }
+    const handlePointerCancel = () => clearCellFillDrag()
+
+    document.body.classList.add("database-cell-fill-cursor")
+    window.addEventListener("pointermove", handlePointerMove, {
+      passive: false,
+    })
+    window.addEventListener("pointerup", handlePointerUp)
+    window.addEventListener("pointercancel", handlePointerCancel)
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
+      window.removeEventListener("pointercancel", handlePointerCancel)
+      document.body.classList.remove("database-cell-fill-cursor")
+    }
+  }, [
+    isCellFillDragging,
+    propertyValuesByKey,
+    rowsById,
+    savePropertyValue,
+    undoHistory,
+    visibleRowIds,
+    visibleRowIndexById,
+  ])
 
   useLayoutEffect(() => {
     measureRows()
@@ -1716,6 +1989,34 @@ export function DatabaseTableView() {
 
       return next
     })
+  }
+
+  const startCellFill = (
+    row: TableRow,
+    propertyId: string,
+    propertyType: string,
+    sourceValue: string | string[],
+    event: ReactPointerEvent<HTMLButtonElement>
+  ) => {
+    if (event.button !== 0) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    const nextDrag = {
+      propertyId,
+      propertyType,
+      sourceRowId: row.id,
+      sourceValue: Array.isArray(sourceValue)
+        ? [...sourceValue]
+        : sourceValue,
+      targetRowId: row.id,
+    }
+
+    cellFillDragRef.current = nextDrag
+    setCellFillDrag(nextDrag)
   }
 
   const startRowDrag = (
@@ -2143,7 +2444,10 @@ export function DatabaseTableView() {
                       : null}
                     <DatabaseActiveTableCell
                       cellKey={nameCellKey}
+                      isSelected={selectedCellKey === nameCellKey}
+                      onSelect={() => setSelectedCellKey(nameCellKey)}
                       presenceKey={`${row.id}:name`}
+                      selectOnPointerDown
                       className={cn(
                         "database-page-cell",
                         getConditionalColorClassName(
@@ -2225,6 +2529,25 @@ export function DatabaseTableView() {
                     : null}
                   <DatabaseActiveTableCell
                     cellKey={key}
+                    isFillTarget={
+                      cellFillDrag?.propertyId === pageProperty.id &&
+                      fillTargetRowIds.has(row.id)
+                    }
+                    isSelected={selectedCellKey === key}
+                    onFillStart={
+                      editable &&
+                      isDatabasePropertyFillable(pageProperty.type)
+                        ? (event) =>
+                            startCellFill(
+                              row,
+                              pageProperty.id,
+                              pageProperty.type,
+                              persistedValue,
+                              event
+                            )
+                        : undefined
+                    }
+                    onSelect={() => setSelectedCellKey(key)}
                     presenceKey={`${row.id}:${pageProperty.id}`}
                     className={cn(
                       "database-value-cell",
