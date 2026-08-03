@@ -20,6 +20,10 @@ export { duplicateDatabasePropertyService } from "./database-property-duplicatio
 export { isDatabaseHostPageId } from "./database-host-page";
 export { createDatabaseRowService } from "./database-row-service";
 export {
+  moveDatabaseRowService,
+  reorderDatabaseRowsService,
+} from "./database-row-position-service";
+export {
   deleteDatabaseAccessRuleService,
   deletePublicDatabaseAccessService,
   listDatabaseAccessRulesService,

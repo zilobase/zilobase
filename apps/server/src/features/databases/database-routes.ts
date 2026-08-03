@@ -44,8 +44,6 @@ import {
 } from "../../services/database-payload";
 import {
   hasDuplicateValues,
-  updateDatabaseRowPlacementPositions,
-  updateDatabaseRowPositions,
 } from "../../services/database-position-service";
 import { updateDatabaseFavoriteService } from "../../services/database-favorite-service";
 import {
@@ -58,6 +56,10 @@ import {
 } from "../../services/database-property-structure-service";
 import { duplicateDatabasePropertyService } from "../../services/database-property-duplication-service";
 import { createDatabaseRowService } from "../../services/database-row-service";
+import {
+  moveDatabaseRowService,
+  reorderDatabaseRowsService,
+} from "../../services/database-row-position-service";
 import { ServiceMutationError } from "../../services/mutation-error";
 import {
   deleteDatabaseAccessRuleService,
@@ -77,10 +79,7 @@ import {
   updateDatabaseViewService,
 } from "../../services/database-view-service";
 import { normalizeDatabasePropertyType } from "../../services/database-property-types";
-import {
-  rowPositionDelta,
-  type DatabaseDelta,
-} from "../../services/database-delta";
+import type { DatabaseDelta } from "../../services/database-delta";
 
 export const databaseRoutes = new Hono<AppBindings>();
 
@@ -1008,298 +1007,52 @@ databaseRoutes.post("/:id/rows", async (c) => {
 
 databaseRoutes.patch("/:id/rows/reorder", async (c) => {
   const user = requireUser(c);
-
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
   const body = await c.req.json().catch(() => null);
-
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-
   const { rowIds } = body as { rowIds?: unknown };
-
-  if (
-    !Array.isArray(rowIds) ||
-    rowIds.some((rowId) => typeof rowId !== "string")
-  ) {
+  if (!Array.isArray(rowIds) || rowIds.some((rowId) => typeof rowId !== "string")) {
     return c.json({ error: "rowIds must be an array of strings" }, 400);
   }
-
-  const nextRowIds = rowIds as string[];
-
-  if (hasDuplicateValues(nextRowIds)) {
-    return c.json({ error: "rowIds must not contain duplicates" }, 400);
+  try {
+    const result = await reorderDatabaseRowsService({
+      databaseId: c.req.param("id"), env: c.env,
+      rowIds: rowIds as string[], userId: user.id,
+    });
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) return serviceMutationErrorResponse(c, error);
+    throw error;
   }
-
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: ["rows"],
-
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      const rows = await tx
-        .select({ id: databaseRow.id })
-        .from(databaseRow)
-        .where(
-          and(
-            eq(databaseRow.databaseId, existing.id),
-            isNull(databaseRow.deletedAt),
-          ),
-        );
-      const existingRowIds = new Set(rows.map((row) => row.id));
-
-      if (
-        nextRowIds.length !== existingRowIds.size ||
-        nextRowIds.some((rowId) => !existingRowIds.has(rowId))
-      ) {
-        throw new DatabaseMutationError(
-          "rowIds must include every active database row",
-        );
-      }
-
-      const now = new Date();
-
-      await updateDatabaseRowPositions(tx, existing.id, nextRowIds, now);
-      await updateDatabaseRowPlacementPositions(
-        tx,
-        existing.id,
-        nextRowIds,
-        now,
-      );
-
-      return {
-        delta: rowPositionDelta(nextRowIds),
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
-  }
-
-  return c.json(mutationResponse(mutation));
 });
 
 databaseRoutes.patch("/:id/rows/:rowId/move", async (c) => {
   const user = requireUser(c);
-
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
   const body = await c.req.json().catch(() => null);
-
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-
-  const {
-    groupPropertyId,
-    groupValue = null,
-    rowIds,
-  } = body as {
-    groupPropertyId?: unknown;
-    groupValue?: unknown;
-    rowIds?: unknown;
+  const { groupPropertyId, groupValue = null, rowIds } = body as {
+    groupPropertyId?: unknown; groupValue?: unknown; rowIds?: unknown;
   };
-
-  if (
-    !Array.isArray(rowIds) ||
-    rowIds.some((rowId) => typeof rowId !== "string") ||
-    (groupPropertyId !== undefined && typeof groupPropertyId !== "string")
-  ) {
+  if (!Array.isArray(rowIds) || rowIds.some((rowId) => typeof rowId !== "string") ||
+      (groupPropertyId !== undefined && typeof groupPropertyId !== "string")) {
     return c.json({ error: "Invalid row move input" }, 400);
   }
-
-  const rowId = c.req.param("rowId");
-  const nextRowIds = rowIds as string[];
-  const nextGroupPropertyId = groupPropertyId as string | undefined;
-
-  if (hasDuplicateValues(nextRowIds)) {
-    return c.json({ error: "rowIds must not contain duplicates" }, 400);
+  try {
+    const result = await moveDatabaseRowService({
+      databaseId: c.req.param("id"), env: c.env,
+      groupPropertyId: groupPropertyId as string | undefined, groupValue,
+      rowId: c.req.param("rowId"), rowIds: rowIds as string[], userId: user.id,
+    });
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) return serviceMutationErrorResponse(c, error);
+    throw error;
   }
-
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: nextGroupPropertyId ? ["rows", "values"] : ["rows"],
-
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      const rows = await tx
-        .select({ id: databaseRow.id, pageId: databaseRow.pageId })
-        .from(databaseRow)
-        .where(
-          and(
-            eq(databaseRow.databaseId, existing.id),
-            isNull(databaseRow.deletedAt),
-          ),
-        );
-      const row = rows.find((item) => item.id === rowId);
-      const existingRowIds = new Set(rows.map((item) => item.id));
-
-      if (!row) {
-        throw new DatabaseMutationError("Row not found", 404);
-      }
-
-      if (
-        nextRowIds.length !== existingRowIds.size ||
-        nextRowIds.some((nextRowId) => !existingRowIds.has(nextRowId))
-      ) {
-        throw new DatabaseMutationError(
-          "rowIds must include every active database row",
-        );
-      }
-
-      let property: { config: unknown; id: string; type: string } | null = null;
-
-      if (nextGroupPropertyId) {
-        const [groupProperty] = await tx
-          .select({
-            config: pageProperty.config,
-            id: pageProperty.id,
-            type: pageProperty.type,
-          })
-          .from(databaseProperty)
-          .innerJoin(
-            pageProperty,
-            eq(databaseProperty.propertyId, pageProperty.id),
-          )
-          .where(
-            and(
-              eq(databaseProperty.databaseId, existing.id),
-              eq(databaseProperty.propertyId, nextGroupPropertyId),
-              eq(pageProperty.workspaceId, existing.workspaceId),
-              isNull(pageProperty.deletedAt),
-            ),
-          )
-          .limit(1);
-
-        if (!groupProperty) {
-          throw new DatabaseMutationError("Property not found", 404);
-        }
-
-        try {
-          validateCellValue(
-            groupProperty.type,
-            groupProperty.config,
-            groupValue,
-          );
-        } catch (error) {
-          if (error instanceof ServiceMutationError) {
-            throw new DatabaseMutationError(error.message, error.status);
-          }
-
-          throw error;
-        }
-
-        property = groupProperty;
-      }
-
-      const now = new Date();
-
-      await updateDatabaseRowPositions(tx, existing.id, nextRowIds, now);
-      await updateDatabaseRowPlacementPositions(
-        tx,
-        existing.id,
-        nextRowIds,
-        now,
-      );
-
-      if (property) {
-        await tx
-          .insert(pagePropertyValue)
-          .values({
-            id: crypto.randomUUID(),
-            pageId: row.pageId,
-            propertyId: property.id,
-            value: groupValue,
-          })
-          .onConflictDoUpdate({
-            target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
-            set: {
-              value: groupValue,
-              updatedAt: now,
-            },
-          });
-        await tx
-          .update(databaseRow)
-          .set({
-            lastEditedById: user.id,
-            updatedAt: now,
-          })
-          .where(
-            and(
-              eq(databaseRow.id, rowId),
-              eq(databaseRow.databaseId, existing.id),
-            ),
-          );
-        await tx
-          .update(page)
-          .set({ updatedAt: now })
-          .where(eq(page.id, row.pageId));
-      }
-
-      return {
-        delta: {
-          ...rowPositionDelta(nextRowIds),
-          ...(property
-            ? {
-                rows: [
-                  {
-                    id: rowId,
-                    lastEditedById: user.id,
-                    updatedAt: now.toISOString(),
-                  },
-                ],
-                values: [
-                  {
-                    propertyId: property.id,
-                    updatedAt: now.toISOString(),
-                    value: groupValue,
-                    pageId: row.pageId,
-                  },
-                ],
-              }
-            : {}),
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
-  }
-
-  return c.json(mutationResponse(mutation));
 });
 
 databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {

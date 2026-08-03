@@ -13,10 +13,10 @@ export default defineConfig({
       // Keep every phase from lowering the all-source baseline. COVERAGE_FULL
       // switches the same suite to the final literal-100% acceptance gate.
       thresholds: {
-        branches: fullCoverage ? 100 : 30,
-        functions: fullCoverage ? 100 : 33,
-        lines: fullCoverage ? 100 : 34,
-        statements: fullCoverage ? 100 : 33,
+        branches: fullCoverage ? 100 : 31,
+        functions: fullCoverage ? 100 : 34,
+        lines: fullCoverage ? 100 : 35,
+        statements: fullCoverage ? 100 : 34,
       },
     },
     include: ["src/**/*.test.ts"],
