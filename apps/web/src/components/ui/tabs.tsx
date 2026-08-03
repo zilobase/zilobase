@@ -37,7 +37,7 @@ export function TabsList({
         "group/tabs-list relative z-0 flex w-fit items-center justify-center gap-x-0.5 text-muted-foreground",
         "data-[orientation=vertical]:flex-col",
         variant === "default" &&
-          "rounded-lg bg-muted p-0.5 text-muted-foreground/72",
+          "rounded-lg bg-muted p-0.5 text-muted-foreground/72 dark:bg-input/30",
         variant === "tab" &&
           "rounded-lg p-0.5 text-muted-foreground/72",
         variant === "underline" &&
