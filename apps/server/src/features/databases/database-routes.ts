@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -14,12 +14,7 @@ import { db } from "../../db";
 import type { Database } from "../../db";
 import {
   database,
-  databaseProperty,
-  databaseRow,
   favorite,
-  page,
-  pageProperty,
-  pagePropertyValue,
 } from "../../db/schema";
 import type { DatabaseChangedArea } from "../../services/database-delta";
 import type { AppBindings } from "../../types";
@@ -37,14 +32,11 @@ import {
   mutationResponse,
 } from "../../services/database-commit";
 import { getDatabaseRecord } from "../../services/database-access";
-import { validateCellValue } from "../../services/database-property-config";
 import {
   getDatabasePayload,
   getDatabaseSchemaPayload,
 } from "../../services/database-payload";
-import {
-  hasDuplicateValues,
-} from "../../services/database-position-service";
+import { hasDuplicateValues } from "../../services/database-position-service";
 import { updateDatabaseFavoriteService } from "../../services/database-favorite-service";
 import {
   createDatabasePropertyService,
@@ -56,6 +48,7 @@ import {
 } from "../../services/database-property-structure-service";
 import { duplicateDatabasePropertyService } from "../../services/database-property-duplication-service";
 import { createDatabaseRowService } from "../../services/database-row-service";
+import { setDatabaseCellValueService } from "../../services/database-cell-service";
 import {
   moveDatabaseRowService,
   reorderDatabaseRowsService,
@@ -1057,137 +1050,21 @@ databaseRoutes.patch("/:id/rows/:rowId/move", async (c) => {
 
 databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {
   const user = requireUser(c);
-
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
-  const existing = await getDatabaseRecord(c.req.param("id"));
-
-  if (!existing) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  if (!(await canAccessDatabaseRecord(existing, user.id, "edit"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
   const body = await c.req.json().catch(() => null);
-
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-
   const { value = null } = body as { value?: unknown };
-  const rowId = c.req.param("rowId");
-  const propertyId = c.req.param("propertyId");
-
-  const [row] = await db
-    .select({ id: databaseRow.id, pageId: databaseRow.pageId })
-    .from(databaseRow)
-    .where(
-      and(
-        eq(databaseRow.id, rowId),
-        eq(databaseRow.databaseId, existing.id),
-        isNull(databaseRow.deletedAt),
-      ),
-    )
-    .limit(1);
-  const [property] = await db
-    .select({
-      config: pageProperty.config,
-      id: pageProperty.id,
-      type: pageProperty.type,
-    })
-    .from(databaseProperty)
-    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-    .where(
-      and(
-        eq(databaseProperty.databaseId, existing.id),
-        eq(databaseProperty.propertyId, propertyId),
-        eq(pageProperty.workspaceId, existing.workspaceId),
-        isNull(pageProperty.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  if (!row || !property) {
-    return c.json({ error: "Row or property not found" }, 404);
-  }
-
   try {
-    validateCellValue(property.type, property.config, value);
+    const result = await setDatabaseCellValueService({
+      databaseId: c.req.param("id"), env: c.env,
+      pagePropertyId: c.req.param("propertyId"),
+      rowId: c.req.param("rowId"), userId: user.id, value,
+    });
+    return c.json(mutationResponse(result.commit));
   } catch (error) {
-    if (error instanceof ServiceMutationError) {
-      return c.json({ error: error.message }, error.status === 404 ? 404 : 400);
-    }
-
+    if (error instanceof ServiceMutationError) return serviceMutationErrorResponse(c, error);
     throw error;
   }
-
-  const now = new Date();
-
-  const mutation = await commitDatabaseMutation(
-    c,
-    {
-      actorId: user.id,
-      changed: ["rows", "values"],
-
-      databaseId: existing.id,
-    },
-    async (tx) => {
-      await tx
-        .insert(pagePropertyValue)
-        .values({
-          id: crypto.randomUUID(),
-          pageId: row.pageId,
-          propertyId,
-          value,
-        })
-        .onConflictDoUpdate({
-          target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
-          set: {
-            value,
-            updatedAt: now,
-          },
-        });
-      await tx
-        .update(databaseRow)
-        .set({
-          lastEditedById: user.id,
-          updatedAt: now,
-        })
-        .where(eq(databaseRow.id, row.id));
-      await tx
-        .update(page)
-        .set({ updatedAt: now })
-        .where(eq(page.id, row.pageId));
-
-      return {
-        delta: {
-          rows: [
-            {
-              id: row.id,
-              lastEditedById: user.id,
-              updatedAt: now.toISOString(),
-            },
-          ],
-          values: [
-            {
-              propertyId,
-              updatedAt: now.toISOString(),
-              value,
-              pageId: row.pageId,
-            },
-          ],
-        },
-      };
-    },
-  );
-
-  if (!mutation.ok) {
-    return databaseMutationErrorResponse(c, mutation.error);
-  }
-
-  return c.json(mutationResponse(mutation));
 });

@@ -66,10 +66,10 @@ export async function setDatabaseCellValueService(input: {
 
   const now = new Date();
 
-  await commitDatabaseMutation(
+  const commit = await commitDatabaseMutation(
     {
       actorId: input.userId,
-      changed: ["values"],
+      changed: ["rows", "values"],
       databaseId: existing.id,
       env: input.env,
     },
@@ -118,6 +118,7 @@ export async function setDatabaseCellValueService(input: {
   );
 
   return {
+    commit,
     databaseId: existing.id,
     rowId: row.id,
     rowPageId: row.pageId,

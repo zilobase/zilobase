@@ -97,6 +97,7 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
   });
 
   assert.deepEqual(result, {
+    commit: await mocks.commit.mock.results[0]?.value,
     databaseId: "database-1",
     pagePropertyId: "property-1",
     rowId: "row-1",
@@ -121,7 +122,7 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
   );
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
     actorId: "user-1",
-    changed: ["values"],
+    changed: ["rows", "values"],
     databaseId: "database-1",
     env: { ENV: "test" },
   });
