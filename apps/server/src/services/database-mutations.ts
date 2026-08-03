@@ -14,6 +14,12 @@ export {
 export { isDatabaseHostPageId } from "./database-host-page";
 export { createDatabaseRowService } from "./database-row-service";
 export {
+  deleteDatabaseAccessRuleService,
+  deletePublicDatabaseAccessService,
+  listDatabaseAccessRulesService,
+  upsertDatabaseAccessRuleService,
+} from "./database-sharing-service";
+export {
   createDatabaseService,
   deleteDatabaseService,
   restoreDatabaseService,

@@ -3,6 +3,7 @@ import { test, vi } from "vitest";
 
 import {
   getDatabaseRecord,
+  requireDatabaseAccess,
   requireDatabaseEditAccess,
 } from "./database-access";
 import { ServiceMutationError } from "./mutation-error";
@@ -52,6 +53,20 @@ test("requireDatabaseEditAccess returns authorized records", async () => {
     record,
   );
   assert.deepEqual(canAccessRecord.mock.calls[0], [record, "user-1", "edit"]);
+});
+
+test("requireDatabaseAccess supports full-access operations", async () => {
+  const record = { id: "database-1", workspaceId: "workspace-1" };
+  const canAccessRecord = vi.fn(async () => true);
+
+  assert.equal(
+    await requireDatabaseAccess("database-1", "user-1", "full", {
+      canAccessRecord,
+      executor: executor([record]) as never,
+    }),
+    record,
+  );
+  assert.deepEqual(canAccessRecord.mock.calls[0], [record, "user-1", "full"]);
 });
 
 test("requireDatabaseEditAccess distinguishes missing and forbidden databases", async () => {

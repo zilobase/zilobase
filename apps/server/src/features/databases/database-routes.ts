@@ -9,23 +9,19 @@ import {
   getEffectiveDatabaseAccessForRecord,
   getMembership,
   isDatabasePublishedInWorkspace,
-  normalizeAccessLevel,
 } from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
 import { db } from "../../db";
 import type { Database } from "../../db";
 import {
   database,
-  databaseAccess,
   databaseProperty,
   databaseRow,
   favorite,
-  member,
   page,
   pageCollaborationDocument,
   pageProperty,
   pagePropertyValue,
-  team,
 } from "../../db/schema";
 import type { DatabaseChangedArea } from "../../services/database-delta";
 import { encodePageContentAsYjs } from "../../collaboration/service";
@@ -69,6 +65,12 @@ import {
 } from "../../services/database-position-service";
 import { isDatabaseHostPageId } from "../../services/database-host-page";
 import { ServiceMutationError } from "../../services/mutation-error";
+import {
+  deleteDatabaseAccessRuleService,
+  deletePublicDatabaseAccessService,
+  listDatabaseAccessRulesService,
+  upsertDatabaseAccessRuleService,
+} from "../../services/database-sharing-service";
 import {
   createDatabaseService,
   deleteDatabaseService,
@@ -388,140 +390,84 @@ databaseRoutes.get("/:id/published", async (c) => {
 databaseRoutes.get("/:id/access", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const record = await getDatabaseRecord(c.req.param("id"));
-  if (!record) return c.json({ error: "Database not found" }, 404);
-  if (!(await canAccessDatabaseRecord(record, user.id, "full"))) {
-    return c.json({ error: "Forbidden" }, 403);
+
+  try {
+    return c.json(
+      await listDatabaseAccessRulesService({
+        databaseId: c.req.param("id"),
+        userId: user.id,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
   }
-  const rules = await db
-    .select()
-    .from(databaseAccess)
-    .where(eq(databaseAccess.databaseId, record.id))
-    .orderBy(asc(databaseAccess.createdAt));
-  return c.json({ access: rules });
 });
 
 databaseRoutes.put("/:id/access", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const record = await getDatabaseRecord(c.req.param("id"));
-  if (!record) return c.json({ error: "Database not found" }, 404);
-  if (!(await canAccessDatabaseRecord(record, user.id, "full"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
   const body = await c.req.json().catch(() => null);
-  if (!body || typeof body !== "object") {
-    return c.json({ error: "A JSON body is required" }, 400);
+
+  try {
+    return c.json(
+      await upsertDatabaseAccessRuleService({
+        body,
+        databaseId: c.req.param("id"),
+        userId: user.id,
+      }),
+    );
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
   }
-  const { targetType, targetId, accessLevel } = body as {
-    accessLevel?: unknown;
-    targetId?: unknown;
-    targetType?: unknown;
-  };
-  const normalizedAccessLevel = normalizeAccessLevel(accessLevel);
-  if (
-    targetType !== "public" &&
-    targetType !== "user" &&
-    targetType !== "team"
-  ) {
-    return c.json({ error: "targetType must be public, user, or team" }, 400);
-  }
-  if (typeof targetId !== "string" || !targetId) {
-    return c.json({ error: "targetId is required" }, 400);
-  }
-  if (!normalizedAccessLevel) {
-    return c.json({ error: "accessLevel must be view, edit, or full" }, 400);
-  }
-  if (
-    targetType === "public" &&
-    (targetId !== "*" || normalizedAccessLevel !== "view")
-  ) {
-    return c.json({ error: "public access must be view for *" }, 400);
-  }
-  const [target] =
-    targetType === "public"
-      ? [{ id: "*" }]
-      : targetType === "user"
-        ? await db
-            .select({ id: member.id })
-            .from(member)
-            .where(
-              and(
-                eq(member.organizationId, record.workspaceId),
-                eq(member.userId, targetId),
-              ),
-            )
-            .limit(1)
-        : await db
-            .select({ id: team.id })
-            .from(team)
-            .where(
-              and(
-                eq(team.organizationId, record.workspaceId),
-                eq(team.id, targetId),
-              ),
-            )
-            .limit(1);
-  if (!target) return c.json({ error: "Target not found" }, 404);
-  const [rule] = await db
-    .insert(databaseAccess)
-    .values({
-      id: crypto.randomUUID(),
-      accessLevel: normalizedAccessLevel,
-      workspaceId: record.workspaceId,
-      targetId,
-      targetType,
-      databaseId: record.id,
-    })
-    .onConflictDoUpdate({
-      target: [
-        databaseAccess.databaseId,
-        databaseAccess.targetType,
-        databaseAccess.targetId,
-      ],
-      set: { accessLevel: normalizedAccessLevel, updatedAt: new Date() },
-    })
-    .returning();
-  return c.json({ access: rule });
 });
 
 databaseRoutes.delete("/:id/access/public", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const record = await getDatabaseRecord(c.req.param("id"));
-  if (!record) return c.json({ error: "Database not found" }, 404);
-  if (!(await canAccessDatabaseRecord(record, user.id, "full"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-  await db
-    .delete(databaseAccess)
-    .where(
-      and(
-        eq(databaseAccess.databaseId, record.id),
-        eq(databaseAccess.targetType, "public"),
-        eq(databaseAccess.targetId, "*"),
-      ),
+
+  try {
+    return c.json(
+      await deletePublicDatabaseAccessService({
+        databaseId: c.req.param("id"),
+        userId: user.id,
+      }),
     );
-  return c.json({ access: null });
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
+  }
 });
 
 databaseRoutes.delete("/:id/access/:ruleId", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const record = await getDatabaseRecord(c.req.param("id"));
-  if (!record) return c.json({ error: "Database not found" }, 404);
-  if (!(await canAccessDatabaseRecord(record, user.id, "full"))) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-  await db
-    .delete(databaseAccess)
-    .where(
-      and(
-        eq(databaseAccess.id, c.req.param("ruleId")),
-        eq(databaseAccess.databaseId, record.id),
-      ),
+
+  try {
+    return c.json(
+      await deleteDatabaseAccessRuleService({
+        databaseId: c.req.param("id"),
+        ruleId: c.req.param("ruleId"),
+        userId: user.id,
+      }),
     );
-  return c.json({ access: null });
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
+  }
 });
 
 databaseRoutes.put("/:id/favorite", async (c) => {

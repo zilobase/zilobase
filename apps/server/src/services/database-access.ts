@@ -1,6 +1,9 @@
 import { and, eq, isNull } from "drizzle-orm";
 
-import { canAccessDatabaseRecord } from "../access";
+import {
+  canAccessDatabaseRecord,
+  type AccessLevel,
+} from "../access";
 import { db, type Database } from "../db";
 import { database } from "../db/schema";
 import { ServiceMutationError } from "./mutation-error";
@@ -48,10 +51,21 @@ export async function getDatabaseRecord(
 export async function requireDatabaseEditAccess(
   databaseId: string,
   userId: string,
-  dependencies?: {
-    canAccessRecord?: typeof canAccessDatabaseRecord;
-    executor?: DatabaseReader;
-  },
+  dependencies?: DatabaseAccessDependencies,
+) {
+  return requireDatabaseAccess(databaseId, userId, "edit", dependencies);
+}
+
+type DatabaseAccessDependencies = {
+  canAccessRecord?: typeof canAccessDatabaseRecord;
+  executor?: DatabaseReader;
+};
+
+export async function requireDatabaseAccess(
+  databaseId: string,
+  userId: string,
+  required: Exclude<AccessLevel, "none">,
+  dependencies?: DatabaseAccessDependencies,
 ) {
   const record = await getDatabaseRecord(databaseId, {
     executor: dependencies?.executor,
@@ -63,7 +77,7 @@ export async function requireDatabaseEditAccess(
 
   const canAccessRecord =
     dependencies?.canAccessRecord ?? canAccessDatabaseRecord;
-  if (!(await canAccessRecord(record, userId, "edit"))) {
+  if (!(await canAccessRecord(record, userId, required))) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 
