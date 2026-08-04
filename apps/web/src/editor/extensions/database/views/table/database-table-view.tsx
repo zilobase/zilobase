@@ -117,6 +117,10 @@ import {
   canCreateRowInKanbanGroup,
   canUpdateKanbanGroupProperty,
 } from "../kanban/database-kanban-config"
+import {
+  isVerticalScrollContainer,
+  shouldRenderVirtualizedDatabaseRows,
+} from "../database-view-scroll"
 
 type InsertPropertySide = "left" | "right"
 
@@ -494,7 +498,13 @@ function DatabaseVirtualizedTable({
     while (parent) {
       const overflowY = window.getComputedStyle(parent).overflowY
 
-      if (overflowY === "auto" || overflowY === "scroll") {
+      if (
+        isVerticalScrollContainer({
+          clientHeight: parent.clientHeight,
+          overflowY,
+          scrollHeight: parent.scrollHeight,
+        })
+      ) {
         nextScrollElement = parent
         break
       }
@@ -530,6 +540,11 @@ function DatabaseVirtualizedTable({
   }, [])
 
   const virtualRows = virtualizer.getVirtualItems()
+  const renderVirtualRows = shouldRenderVirtualizedDatabaseRows({
+    hasScrollElement: scrollElement !== null,
+    virtualRowCount: virtualRows.length,
+    virtualizationEnabled,
+  })
   const getLocalVirtualStart = (start: number) => start - scrollMargin
   const getLocalVirtualEnd = (end: number) => end - scrollMargin
   const paddingBottom =
@@ -546,7 +561,7 @@ function DatabaseVirtualizedTable({
         tableMinWidth={tableMinWidth}
       >
         <tbody>
-          {virtualizationEnabled
+          {renderVirtualRows
             ? virtualRows.map((virtualRow, virtualIndex) => {
                 const previousEnd =
                   virtualIndex === 0
@@ -577,7 +592,7 @@ function DatabaseVirtualizedTable({
             : rows.map((row, index) =>
                 renderRow(row, index, virtualizer.measureElement)
               )}
-          {virtualizationEnabled && paddingBottom > 0 ? (
+          {renderVirtualRows && paddingBottom > 0 ? (
             <tr aria-hidden="true">
               <td
                 className="database-virtual-spacer"

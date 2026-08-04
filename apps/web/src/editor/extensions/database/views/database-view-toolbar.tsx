@@ -1,4 +1,5 @@
 import {
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -59,6 +60,11 @@ import { DatabaseSortPopover } from "./database-sort-menu"
 import { useDatabaseViewContext } from "./database-view-context"
 import { DatabaseViewSettingsMenu } from "./view-settings"
 import {
+  captureDatabaseViewScroll,
+  restoreDatabaseViewScroll,
+  type DatabaseViewScrollSnapshot,
+} from "./database-view-scroll"
+import {
   getNameColumnWrapContent,
   getPropertyWrapContent,
 } from "./database-view-config"
@@ -88,6 +94,8 @@ function ToolbarMenuRow({
 export function DatabaseViewToolbar() {
   const navigate = useNavigate()
   const databaseTitleInputRef = useRef<HTMLInputElement | null>(null)
+  const toolbarRef = useRef<HTMLDivElement | null>(null)
+  const pendingViewScrollRef = useRef<DatabaseViewScrollSnapshot | null>(null)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
   const [titleActionsOpen, setTitleActionsOpen] = useState(false)
   const [openViewMenuId, setOpenViewMenuId] = useState<string | null>(null)
@@ -212,6 +220,26 @@ export function DatabaseViewToolbar() {
     }
   }
   const activeViewTab = viewTabs.find((view) => view.id === activeViewTabId)
+  const selectActiveView = (viewId: string) => {
+    if (viewId === activeViewTabId) {
+      return
+    }
+
+    pendingViewScrollRef.current = captureDatabaseViewScroll(toolbarRef.current)
+    setActiveViewId(viewId)
+  }
+
+  useLayoutEffect(() => {
+    const scrollSnapshot = pendingViewScrollRef.current
+
+    if (!scrollSnapshot) {
+      return
+    }
+
+    restoreDatabaseViewScroll(scrollSnapshot)
+    pendingViewScrollRef.current = null
+  }, [activeViewTabId])
+
   const hostDisplayTitle =
     activeViewTab?.isLinked
       ? hostDatabaseName || "Untitled"
@@ -298,7 +326,7 @@ export function DatabaseViewToolbar() {
   ) : null
 
   return (
-    <div className="database-toolbar">
+    <div className="database-toolbar" ref={toolbarRef}>
       {showTitle ? (
         <div className="group/title flex min-w-0 items-center gap-3">
           {databaseEmojiPicker}
@@ -396,7 +424,7 @@ export function DatabaseViewToolbar() {
                 }
 
                 setOpenViewMenuId(null)
-                setActiveViewId(String(value))
+                selectActiveView(String(value))
               }}
               value={activeViewTabId}
             >
@@ -429,7 +457,7 @@ export function DatabaseViewToolbar() {
                       return
                     }
 
-                    setActiveViewId(view.id)
+                    selectActiveView(view.id)
                     setDraftViewTitle(nextTitle)
                     window.setTimeout(() => saveDatabaseViewTitle(nextTitle), 0)
                   }
@@ -437,7 +465,7 @@ export function DatabaseViewToolbar() {
                     event: MouseEvent<HTMLButtonElement>
                   ) => {
                     event.preventDefault()
-                    setActiveViewId(view.id)
+                    selectActiveView(view.id)
                     setOpenViewMenuId(view.id)
                   }
                   const handleViewClick = (
@@ -450,11 +478,11 @@ export function DatabaseViewToolbar() {
                     event.preventDefault()
                     event.stopPropagation()
                     setOpenViewMenuId(null)
-                    setActiveViewId(view.id)
+                    selectActiveView(view.id)
                   }
                   const selectInactiveView = () => {
                     setOpenViewMenuId(null)
-                    setActiveViewId(view.id)
+                    selectActiveView(view.id)
                   }
                   const handleViewPointerDownCapture = (
                     event: PointerEvent<HTMLButtonElement>
@@ -489,7 +517,7 @@ export function DatabaseViewToolbar() {
                         setOpenViewMenuId(open ? view.id : null)
 
                         if (open) {
-                          setActiveViewId(view.id)
+                          selectActiveView(view.id)
                         }
                       }}
                       open={openViewMenuId === view.id}
@@ -538,7 +566,7 @@ export function DatabaseViewToolbar() {
                         <DropDrawerItem
                           disabled={!editable || view.type === "table"}
                           onSelect={() => {
-                            setActiveViewId(view.id)
+                            selectActiveView(view.id)
                             setViewType("table")
                           }}
                         >
@@ -551,7 +579,7 @@ export function DatabaseViewToolbar() {
                         <DropDrawerItem
                           disabled={!editable || view.type === "kanban"}
                           onSelect={() => {
-                            setActiveViewId(view.id)
+                            selectActiveView(view.id)
                             setViewType("kanban")
                           }}
                         >
@@ -564,7 +592,7 @@ export function DatabaseViewToolbar() {
                         <DropDrawerItem
                           disabled={!editable || view.type === "gallery"}
                           onSelect={() => {
-                            setActiveViewId(view.id)
+                            selectActiveView(view.id)
                             setViewType("gallery")
                           }}
                         >
@@ -577,7 +605,7 @@ export function DatabaseViewToolbar() {
                         <DropDrawerItem
                           disabled={!editable || view.type === "list"}
                           onSelect={() => {
-                            setActiveViewId(view.id)
+                            selectActiveView(view.id)
                             setViewType("list")
                           }}
                         >
@@ -590,7 +618,7 @@ export function DatabaseViewToolbar() {
                         <DropDrawerItem
                           disabled={!editable || view.type === "chart"}
                           onSelect={() => {
-                            setActiveViewId(view.id)
+                            selectActiveView(view.id)
                             setViewType("chart")
                           }}
                         >
@@ -603,7 +631,7 @@ export function DatabaseViewToolbar() {
                         <DropDrawerItem
                           disabled={!editable || view.type === "timeline"}
                           onSelect={() => {
-                            setActiveViewId(view.id)
+                            selectActiveView(view.id)
                             setViewType("timeline")
                           }}
                         >
@@ -617,7 +645,7 @@ export function DatabaseViewToolbar() {
                     </DropDrawerSub>
                     <DropDrawerItem
                       onSelect={() => {
-                        setActiveViewId(view.id)
+                        selectActiveView(view.id)
                         setViewSettingsOpen(true)
                       }}
                     >
