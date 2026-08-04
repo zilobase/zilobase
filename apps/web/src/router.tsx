@@ -12,6 +12,7 @@ import AiPage from "@/pages/ai"
 import CanvasPage from "@/pages/canvas"
 import ApiKeysSettingsPage from "@/pages/settings/api-keys"
 import DashboardPage from "@/pages/dashboard"
+import { libraryViewIds } from "@zilobase/features/user-settings"
 import DatabasePage from "@/pages/database"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import LoginPage from "@/pages/login"
@@ -134,6 +135,13 @@ const appRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/dashboard",
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { view?: (typeof libraryViewIds)[number] } =>
+    typeof search.view === "string" &&
+    libraryViewIds.includes(search.view as (typeof libraryViewIds)[number])
+      ? { view: search.view as (typeof libraryViewIds)[number] }
+      : {},
   component: DashboardPage,
 })
 

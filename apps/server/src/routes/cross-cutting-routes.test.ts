@@ -145,6 +145,13 @@ test("user settings routes validate settings and profile payloads", async () => 
   });
   assert.equal(settings.status, 400);
 
+  const sidebarSettings = await appFor(pageSettingsRoutes).request("/", {
+    body: JSON.stringify({ sidebarConfig: [] }),
+    headers: { "content-type": "application/json" },
+    method: "PATCH",
+  });
+  assert.equal(sidebarSettings.status, 400);
+
   const profile = await appFor(pageSettingsRoutes).request("/profile", {
     body: JSON.stringify({ email: "not-an-email" }),
     headers: { "content-type": "application/json" },
@@ -157,10 +164,29 @@ test("user settings route returns existing normalized preferences", async () => 
   mocks.selectResults.push([{
     embeddedItemsOpenAs: "dialog",
     pageFullWidth: true,
+    sidebarConfig: {
+      hiddenItems: ["calendar", "unknown"],
+      libraryView: "shared",
+      sectionOrder: ["shared", "private"],
+    },
   }]);
   const response = await appFor(pageSettingsRoutes).request("/");
   assert.deepEqual(await response.json(), {
-    settings: { embeddedItemsOpenAs: "dialog", pageFullWidth: true },
+    settings: {
+      embeddedItemsOpenAs: "dialog",
+      pageFullWidth: true,
+      sidebarConfig: {
+        hiddenItems: ["calendar"],
+        libraryView: "shared",
+        sectionLimits: { favorites: 10, private: 10, shared: 10 },
+        sectionOrder: ["shared", "private", "favorites"],
+        sectionSorts: {
+          favorites: "lastEdited",
+          private: "lastEdited",
+          shared: "lastEdited",
+        },
+      },
+    },
   });
 });
 

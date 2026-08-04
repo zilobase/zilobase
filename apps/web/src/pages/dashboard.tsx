@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, Database, FileText, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,8 +47,16 @@ import type {
   DatabaseView,
   PagePropertyValue,
 } from "@zilobase/features/databases";
+import {
+  defaultUserSettings,
+  libraryViewIds,
+  normalizeSidebarConfig,
+  useUpdateUserSettings,
+  useUserSettings,
+  type LibraryView,
+} from "@zilobase/features/user-settings";
 
-type HomepageView = "recents" | "favourites" | "shared" | "private";
+type HomepageView = LibraryView;
 
 type DashboardMode = "home" | "trash";
 
@@ -108,7 +116,19 @@ export default function DashboardPage({
   mode?: DashboardMode;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const workspaceId = useActiveWorkspaceId();
+  const { data: userSettings = defaultUserSettings, isLoading: settingsLoading } =
+    useUserSettings();
+  const updateUserSettings = useUpdateUserSettings();
+  const sidebarConfig = useMemo(
+    () => normalizeSidebarConfig(userSettings.sidebarConfig),
+    [userSettings.sidebarConfig],
+  );
+  const requestedView =
+    mode === "home" && isHomepageView(location.search.view)
+      ? location.search.view
+      : null;
   const { data: navigation, isLoading } = usePageNavigation(workspaceId, {
     deleted: mode === "trash" ? "only" : "active",
   });
@@ -167,7 +187,46 @@ export default function DashboardPage({
       ),
     [navigation, mode],
   );
-  const pageTitle = mode === "trash" ? "Trash" : "Home";
+  const pageTitle = mode === "trash" ? "Trash" : "Library";
+
+  useEffect(() => {
+    if (mode !== "home") return;
+
+    const nextView = requestedView ?? sidebarConfig.libraryView;
+    setActiveViewId((current) => (current === nextView ? current : nextView));
+
+    if (!requestedView && !settingsLoading) {
+      void navigate({
+        replace: true,
+        search: { view: nextView },
+        to: "/dashboard",
+      });
+    }
+  }, [
+    mode,
+    navigate,
+    requestedView,
+    settingsLoading,
+    sidebarConfig.libraryView,
+  ]);
+
+  const selectLibraryView = (viewId: string | null) => {
+    if (!viewId || !isHomepageView(viewId)) return;
+
+    setActiveViewId(viewId);
+    if (mode !== "home") return;
+
+    void navigate({
+      replace: true,
+      search: { view: viewId },
+      to: "/dashboard",
+    });
+    if (sidebarConfig.libraryView !== viewId) {
+      updateUserSettings.mutate({
+        sidebarConfig: { ...sidebarConfig, libraryView: viewId },
+      });
+    }
+  };
   const payload = useMemo(
     () =>
       buildHomepagePayload({
@@ -377,7 +436,12 @@ export default function DashboardPage({
                   saveDatabaseTitle: () => {},
                   saveDatabaseViewTitle: () => {},
                   savePropertyValue: () => {},
-                  setActiveViewId,
+                  setActiveViewId: (nextView) =>
+                    selectLibraryView(
+                      typeof nextView === "function"
+                        ? nextView(activeViewId)
+                        : nextView,
+                    ),
                   setDraftDatabaseTitle: () => {},
                   setDraftViewTitle: () => {},
                   setFilterPickerOpen: () => {},
@@ -582,7 +646,7 @@ function buildHomepagePayload({
       config: databaseConfig,
       createdAt: "",
       id: homepageDatabaseId,
-      name: mode === "trash" ? "Trash" : "Home",
+      name: mode === "trash" ? "Trash" : "Library",
       workspaceId: workspaceId ?? homepageDatabaseId,
       pageId: homepageDatabaseId,
       updatedAt: "",
@@ -728,6 +792,10 @@ function buildHomepageRows(
         };
       }),
   ];
+}
+
+function isHomepageView(value: unknown): value is HomepageView {
+  return libraryViewIds.includes(value as HomepageView);
 }
 
 function resolveSourcePage(

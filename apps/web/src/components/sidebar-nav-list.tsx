@@ -23,11 +23,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
 import {
-  SidebarMenuAction,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
+  SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
+  SidebarNavItemAction,
+} from "@/components/sidebar-nav-item-action"
+import { cn } from "@/lib/utils"
 import { type ZilobaseAiMode } from "@zilobase/features/pages"
 
 export type SidebarNavItem = {
@@ -44,6 +45,7 @@ export type SidebarNavItem = {
   navNodeId?: string
   pageId: string | null
   pages: SidebarNavItem[]
+  updatedAt?: string
   zilobaseai?: ZilobaseAiMode | null
 }
 
@@ -67,8 +69,10 @@ type SidebarNavListProps = {
   storageKey: string
 }
 
-const rowClassName =
-  "peer/menu-button pr-8 data-[active=false]:text-sidebar-foreground/70 group-hover/nav-row:bg-sidebar-accent group-hover/nav-row:text-sidebar-accent-foreground group-has-[>[data-nav-menu-action=more][aria-expanded=true]]/nav-row:bg-sidebar-accent group-has-[>[data-nav-menu-action=more][aria-expanded=true]]/nav-row:text-sidebar-accent-foreground"
+const rowClassName = cn(
+  "peer/menu-button pr-8 data-[active=false]:text-sidebar-foreground/70",
+  SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
+)
 
 export function SidebarNavList(props: SidebarNavListProps) {
   return <SidebarNavListContent key={props.storageKey} {...props} />
@@ -145,7 +149,7 @@ function SidebarNavRow({
     isDatabaseView: item.isDatabaseView,
   })
   const selectedViewId = item.databaseId
-    ? viewId ?? defaultViewId ?? null
+    ? (viewId ?? defaultViewId ?? null)
     : null
   const linkProps = getLinkProps?.({ displayName, item })
   const linkStyle = {
@@ -220,18 +224,18 @@ function SidebarNavRow({
           </SidebarMenuButton>
           {hasChildren ? (
             <CollapsibleTrigger asChild>
-              <SidebarMenuAction
-                className="right-auto rounded-sm opacity-0 text-sidebar-foreground/55 data-[state=open]:rotate-90 group-hover/nav-row:opacity-100 group-hover/nav-row:text-sidebar-accent-foreground hover:bg-sidebar-foreground/10 hover:text-sidebar-accent-foreground focus-visible:bg-sidebar-foreground/10 focus-visible:opacity-100"
-                data-nav-menu-action="disclosure"
-                style={{ left: `${6 + depth * 16}px` }}
+              <SidebarNavItemAction
+                depth={depth}
+                position="start"
                 title={`${expanded ? "Collapse" : "Expand"} ${displayName}`}
                 type="button"
+                variant="disclosure"
               >
                 <ChevronRightIcon />
                 <span className="sr-only">
                   {expanded ? "Collapse" : "Expand"} {displayName}
                 </span>
-              </SidebarMenuAction>
+              </SidebarNavItemAction>
             </CollapsibleTrigger>
           ) : null}
           {renderItemMenu({ item, nested: depth > 0 })}
@@ -279,7 +283,7 @@ function ItemIndicators({ item }: { item: SidebarNavItem }) {
       {item.isLinked ? (
         <ArrowUpRightIcon
           aria-label="Linked from another parent"
-          className="size-3 text-sidebar-foreground/45"
+          className="size-3 text-sidebar-foreground/45 group-hover/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu]:focus-visible]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:opacity-0"
         />
       ) : null}
     </span>

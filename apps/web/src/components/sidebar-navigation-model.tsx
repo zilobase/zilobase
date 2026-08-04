@@ -199,6 +199,7 @@ function createPageNode(
     zilobaseai: page.metadata?.zilobaseai ?? null,
     pageId: page.id,
     pages: [],
+    updatedAt: page.updatedAt,
   }
 }
 
@@ -229,7 +230,9 @@ function createDatabaseNode(
         pageId: database.pageId,
         navNodeId: `database-view:${database.id}:${view.id}`,
         pages: [],
+        updatedAt: view.updatedAt,
       })),
+    updatedAt: database.updatedAt,
   }
 }
 

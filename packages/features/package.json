@@ -53,6 +53,10 @@
       "types": "./src/user-settings/index.ts",
       "default": "./src/user-settings/index.ts"
     },
+    "./user-settings/sidebar-config": {
+      "types": "./src/user-settings/sidebar-config.ts",
+      "default": "./src/user-settings/sidebar-config.ts"
+    },
     "./pages": {
       "types": "./src/pages/index.ts",
       "default": "./src/pages/index.ts"

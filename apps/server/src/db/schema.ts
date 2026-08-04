@@ -36,6 +36,7 @@ export const pageSettings = pgTable("page_settings", {
     .notNull()
     .default("sidepanel"),
   pageFullWidth: boolean("page_full_width").notNull().default(false),
+  sidebarConfig: jsonb("sidebar_config").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true })
     .$defaultFn(() => new Date())
     .notNull(),

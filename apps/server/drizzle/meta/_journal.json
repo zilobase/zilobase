@@ -232,6 +232,13 @@
       "when": 1784034000000,
       "tag": "0032_drop_legacy_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1785791388000,
+      "tag": "0033_sidebar_config",
+      "breakpoints": true
     }
   ]
 }

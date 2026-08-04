@@ -1,0 +1,46 @@
+import type { ComponentProps, CSSProperties } from "react"
+
+import { SidebarMenuAction } from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
+
+export const SIDEBAR_NAV_ACTION_EDGE_INSET = 6
+
+export const SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME =
+  "group-hover/nav-row:bg-sidebar-accent group-hover/nav-row:text-sidebar-accent-foreground group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:bg-sidebar-accent group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:text-sidebar-accent-foreground group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:bg-sidebar-accent group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:text-sidebar-accent-foreground"
+
+type SidebarNavItemActionProps = ComponentProps<typeof SidebarMenuAction> & {
+  depth?: number
+  position?: "start" | "end"
+  variant: "disclosure" | "menu"
+}
+
+export function SidebarNavItemAction({
+  className,
+  depth = 0,
+  position = "end",
+  style,
+  variant,
+  ...props
+}: SidebarNavItemActionProps) {
+  const edgeOffset =
+    SIDEBAR_NAV_ACTION_EDGE_INSET + (position === "start" ? depth * 16 : 0)
+  const positionStyle: CSSProperties =
+    position === "start"
+      ? { left: `${edgeOffset}px`, right: "auto" }
+      : { right: `${edgeOffset}px` }
+
+  return (
+    <SidebarMenuAction
+      className={cn(
+        "rounded-sm opacity-0 text-sidebar-foreground/55 group-hover/nav-row:opacity-100 group-hover/nav-row:text-sidebar-accent-foreground hover:bg-sidebar-foreground/10 hover:text-sidebar-accent-foreground focus-visible:bg-sidebar-foreground/10 focus-visible:opacity-100 focus-visible:text-sidebar-accent-foreground",
+        variant === "disclosure" && "data-[state=open]:rotate-90",
+        variant === "menu" &&
+          "aria-expanded:bg-sidebar-foreground/10 aria-expanded:opacity-100 aria-expanded:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-foreground/10 data-[state=open]:opacity-100 data-[state=open]:text-sidebar-accent-foreground",
+        className,
+      )}
+      data-nav-menu-action={variant}
+      style={{ ...positionStyle, ...style }}
+      {...props}
+    />
+  )
+}

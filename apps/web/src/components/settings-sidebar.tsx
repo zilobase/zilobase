@@ -72,10 +72,10 @@ export function SettingsSidebar({
       <AppSidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Home">
+            <SidebarMenuButton asChild tooltip="Library">
               <Link to="/dashboard">
                 <ArrowLeftIcon />
-                <span>Home</span>
+                <span>Library</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

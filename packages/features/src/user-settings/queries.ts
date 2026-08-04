@@ -3,15 +3,22 @@ import { queryOptions } from "@tanstack/react-query"
 import type { ApiFetcher } from "../context"
 
 import type { EmbeddedItemsOpenAs } from "../pages/queries"
+import {
+  defaultSidebarConfig,
+  normalizeSidebarConfig,
+  type SidebarConfig,
+} from "./sidebar-config"
 
 export type UserSettings = {
   embeddedItemsOpenAs: EmbeddedItemsOpenAs
   pageFullWidth: boolean
+  sidebarConfig: SidebarConfig
 }
 
 export const defaultUserSettings: UserSettings = {
   embeddedItemsOpenAs: "sidepanel",
   pageFullWidth: false,
+  sidebarConfig: defaultSidebarConfig,
 }
 
 export const userSettingsQueryKey = ["user-settings"] as const
@@ -26,7 +33,11 @@ export const userSettingsQueryOptions = (apiFetch: ApiFetcher) =>
           { signal },
         )
 
-        return result.settings
+        return {
+          ...defaultUserSettings,
+          ...result.settings,
+          sidebarConfig: normalizeSidebarConfig(result.settings.sidebarConfig),
+        }
       } catch (error) {
         if (
           typeof error === "object" &&

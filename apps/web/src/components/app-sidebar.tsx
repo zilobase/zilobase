@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list";
@@ -17,8 +22,15 @@ import {
 import { useAppSearch } from "@/components/app-search";
 import { NavFavorites } from "@/components/nav-favorites";
 import { NavSecondary } from "@/components/nav-secondary";
-import { NavPages } from "@/components/nav-pages";
+import { NavPageSection } from "@/components/nav-pages";
 import { buildSidebarNavigation } from "@/components/sidebar-navigation-model";
+import {
+  getActiveDatabaseId,
+  getActiveDatabaseViewId,
+  getActivePageId,
+} from "@/components/sidebar-nav-list";
+import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state";
+import { SidebarCustomizeDialog } from "@/components/sidebar-customize-dialog";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { ThemeDropdown } from "@/components/theme-dropdown";
 import {
@@ -33,6 +45,14 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { useSession } from "@zilobase/features/auth";
+import {
+  defaultUserSettings,
+  normalizeSidebarConfig,
+  useUpdateUserSettings,
+  useUserSettings,
+  type SidebarConfig,
+  type SidebarItemId,
+} from "@zilobase/features/user-settings";
 import { useWorkspaces } from "@zilobase/features/workspaces";
 import {
   useAddDatabaseRow,
@@ -91,11 +111,13 @@ const sidebarNavigationIcons = {
 const data = {
   navMain: [
     {
-      title: "Home",
+      id: "library" as const,
+      title: "Library",
       url: "/dashboard",
       icon: <HomeIcon />,
     },
     {
+      id: "askAi" as const,
       title: "Ask AI",
       url: "/ai",
       icon: <SparklesIcon />,
@@ -103,21 +125,25 @@ const data = {
   ],
   navSecondary: [
     {
+      id: "calendar" as const,
       title: "Calendar",
       url: "#",
       icon: <CalendarIcon />,
     },
     {
+      id: "templates" as const,
       title: "Templates",
       url: "#",
       icon: <BlocksIcon />,
     },
     {
+      id: "trash" as const,
       title: "Trash",
       url: "/trash",
       icon: <Trash2Icon />,
     },
     {
+      id: "help" as const,
       title: "Help",
       url: "#",
       icon: <MessageCircleQuestionIcon />,
@@ -127,6 +153,7 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { openSearch } = useAppSearch();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -134,6 +161,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const activeWorkspaceId = useAppStore((state) => state.activeWorkspaceId);
   const { data: session } = useSession();
   const { data: rawWorkspaces = [] } = useWorkspaces();
+  const { data: userSettings = defaultUserSettings } = useUserSettings();
+  const updateUserSettings = useUpdateUserSettings();
+  const [customizeSidebarOpen, setCustomizeSidebarOpen] = React.useState(false);
+  const [databaseDropTargetId, setDatabaseDropTargetId] = React.useState<
+    string | null
+  >(null);
+  const sidebarConfig = React.useMemo(
+    () => normalizeSidebarConfig(userSettings.sidebarConfig),
+    [userSettings.sidebarConfig],
+  );
   const workspaces = React.useMemo(
     () => rawWorkspaces.filter(Boolean),
     [rawWorkspaces],
@@ -168,6 +205,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     [navigation],
   );
   const isAiPage = pathname === "/ai";
+  const hiddenSidebarItems = React.useMemo(
+    () => new Set(sidebarConfig.hiddenItems),
+    [sidebarConfig.hiddenItems],
+  );
+
+  const handleSidebarConfigChange = React.useCallback(
+    (nextConfig: SidebarConfig) => {
+      updateUserSettings.mutate(
+        { sidebarConfig: nextConfig },
+        {
+          onError: (error) => {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Could not save sidebar preferences.",
+            );
+          },
+        },
+      );
+    },
+    [updateUserSettings],
+  );
 
   const handleCreatePage = React.useCallback(async () => {
     if (!workspaceId || isCreatingPage) {
@@ -285,7 +344,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </AppSidebarHeader>
       <SidebarContent>
         <NavMain
-          items={data.navMain}
+          items={data.navMain.filter(
+            (item) => !hiddenSidebarItems.has(item.id),
+          )}
+          libraryView={sidebarConfig.libraryView}
           onOpenSearch={openSearch}
           pathname={pathname}
         />
@@ -293,21 +355,63 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <AiSidebarHistory />
         ) : (
           <>
-            <NavFavorites
-              favorites={favorites}
-              onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite}
-              onRemoveFavorite={handleRemoveFavorite}
-              workspaceId={workspaceId}
+            {sidebarConfig.sectionOrder.map((sectionId) =>
+              hiddenSidebarItems.has(sectionId)
+                ? null
+                : sectionId === "favorites"
+                  ? (
+                    <NavFavorites
+                      favorites={favorites}
+                      key={sectionId}
+                      onCustomizeSidebar={() => setCustomizeSidebarOpen(true)}
+                      onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite}
+                      onRemoveFavorite={handleRemoveFavorite}
+                      onSidebarConfigChange={handleSidebarConfigChange}
+                      sidebarConfig={sidebarConfig}
+                      workspaceId={workspaceId}
+                    />
+                  )
+                  : (
+                    <NavPageSection
+                      activeDatabaseId={getActiveDatabaseId(location.pathname)}
+                      activeDatabaseViewId={getActiveDatabaseViewId(
+                        location.search,
+                      )}
+                      activePageId={getActivePageId(location.pathname)}
+                      databaseDropTargetId={databaseDropTargetId}
+                      key={sectionId}
+                      label={sectionId === "private" ? "Private" : "Shared"}
+                      onCreateDatabase={
+                        sectionId === "private" ? handleCreateDatabase : undefined
+                      }
+                      onCreatePage={
+                        sectionId === "private" ? handleCreatePage : undefined
+                      }
+                      onCustomizeSidebar={() => setCustomizeSidebarOpen(true)}
+                      onDatabaseDropTargetChange={setDatabaseDropTargetId}
+                      onDropPageOnDatabase={handleDropPageOnDatabase}
+                      onSidebarConfigChange={handleSidebarConfigChange}
+                      pages={
+                        sectionId === "private"
+                          ? pageSections.privatePages
+                          : pageSections.teamspacePages
+                      }
+                      sectionId={sectionId}
+                      showCreateAction={sectionId === "private"}
+                      sidebarConfig={sidebarConfig}
+                      storageKey={getSidebarExpansionStorageKey(
+                        workspaceId,
+                        sectionId === "shared" ? "team" : "private",
+                      )}
+                    />
+                  ),
+            )}
+            <NavSecondary
+              className="mt-auto"
+              items={data.navSecondary.filter(
+                (item) => !hiddenSidebarItems.has(item.id),
+              )}
             />
-            <NavPages
-              onCreateDatabase={handleCreateDatabase}
-              onCreatePage={handleCreatePage}
-              onDropPageOnDatabase={handleDropPageOnDatabase}
-              privatePages={pageSections.privatePages}
-              teamspacePages={pageSections.teamspacePages}
-              workspaceId={workspaceId}
-            />
-            <NavSecondary items={data.navSecondary} className="mt-auto" />
           </>
         )}
       </SidebarContent>
@@ -329,20 +433,30 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
         <ThemeDropdown />
       </SidebarFooter>
+      <SidebarCustomizeDialog
+        config={sidebarConfig}
+        disabled={updateUserSettings.isPending}
+        onChange={handleSidebarConfigChange}
+        onOpenChange={setCustomizeSidebarOpen}
+        open={customizeSidebarOpen}
+      />
     </AppSidebarShell>
   );
 }
 
 function NavMain({
   items,
+  libraryView,
   onOpenSearch,
   pathname,
 }: {
   items: {
+    id: SidebarItemId;
     title: string;
     url: string;
     icon: React.ReactNode;
   }[];
+  libraryView: SidebarConfig["libraryView"];
   onOpenSearch: () => void;
   pathname: string;
 }) {
@@ -356,10 +470,17 @@ function NavMain({
                 asChild
                 isActive={isNavigationItemActive(item.url, pathname)}
               >
-                <Link to={item.url as never}>
-                  {item.icon}
-                  <span>{item.title}</span>
-                </Link>
+                {item.id === "library" ? (
+                  <Link search={{ view: libraryView }} to="/dashboard">
+                    {item.icon}
+                    <span>{item.title}</span>
+                  </Link>
+                ) : (
+                  <Link to={item.url as never}>
+                    {item.icon}
+                    <span>{item.title}</span>
+                  </Link>
+                )}
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

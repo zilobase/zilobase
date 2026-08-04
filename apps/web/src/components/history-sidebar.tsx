@@ -9,6 +9,10 @@ import {
 } from "lucide-react"
 
 import { AppSidebarShell } from "@/components/app-sidebar-shell"
+import {
+  SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
+  SidebarNavItemAction,
+} from "@/components/sidebar-nav-item-action"
 import { ThemeDropdown } from "@/components/theme-dropdown"
 import {
   DropDrawer,
@@ -26,7 +30,6 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
@@ -34,6 +37,7 @@ import {
 } from "@/components/ui/sidebar"
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions"
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
+import { cn } from "@/lib/utils"
 import type { AiChatThread } from "@zilobase/features/ai-chat"
 
 function HistoryThreadMenu({
@@ -50,13 +54,10 @@ function HistoryThreadMenu({
   return (
     <DropDrawer>
       <DropDrawerTrigger asChild>
-        <SidebarMenuAction
-          className="top-1.5 opacity-0 group-hover/nav-row:opacity-100 focus-visible:opacity-100 aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground"
-          data-nav-menu-action="more"
-        >
+        <SidebarNavItemAction variant="menu">
           <MoreHorizontalIcon />
           <span className="sr-only">More</span>
-        </SidebarMenuAction>
+        </SidebarNavItemAction>
       </DropDrawerTrigger>
       <DropDrawerContent
         align={isMobile ? "end" : "start"}
@@ -145,6 +146,10 @@ export function HistorySidebar({
                 threads.map((thread) => (
                   <SidebarMenuItem key={thread.id} className="group/nav-row">
                     <SidebarMenuButton
+                      className={cn(
+                        "pr-8",
+                        SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
+                      )}
                       isActive={activeThreadId === thread.id}
                       onClick={() => setActiveThreadId(thread.id)}
                     >

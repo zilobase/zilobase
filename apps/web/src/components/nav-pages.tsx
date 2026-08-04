@@ -44,7 +44,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
@@ -56,8 +55,19 @@ import {
   SidebarNavList,
   type SidebarNavItem,
 } from "@/components/sidebar-nav-list"
+import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
+import { cn } from "@/lib/utils"
+import {
+  SidebarSectionLibraryButton,
+  SidebarSectionMenu,
+} from "@/components/sidebar-section-menu"
+import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
+import type {
+  SidebarConfig,
+  SidebarSectionId,
+} from "@zilobase/features/user-settings"
 
 export type { SidebarNavItem } from "@/components/sidebar-nav-list"
 
@@ -95,12 +105,13 @@ export function NavPages({
 
   return (
     <>
-      <PageSection
+      <NavPageSection
         activeDatabaseId={activeDatabaseId}
         activeDatabaseViewId={activeDatabaseViewId}
         activePageId={activePageId}
         databaseDropTargetId={databaseDropTargetId}
         label="Private"
+        sectionId="private"
         onCreateDatabase={onCreateDatabase}
         onCreatePage={onCreatePage}
         onImportNotion={onImportNotion}
@@ -110,12 +121,13 @@ export function NavPages({
         pages={privatePages}
         storageKey={getSidebarExpansionStorageKey(workspaceId, "private")}
       />
-      <PageSection
+      <NavPageSection
         activeDatabaseId={activeDatabaseId}
         activeDatabaseViewId={activeDatabaseViewId}
         activePageId={activePageId}
         databaseDropTargetId={databaseDropTargetId}
-        label="Team"
+        label="Shared"
+        sectionId="shared"
         onDatabaseDropTargetChange={setDatabaseDropTargetId}
         onDropPageOnDatabase={onDropPageOnDatabase}
         pages={teamspacePages}
@@ -125,7 +137,7 @@ export function NavPages({
   )
 }
 
-function PageSection({
+export function NavPageSection({
   activeDatabaseId,
   activeDatabaseViewId,
   activePageId,
@@ -138,6 +150,10 @@ function PageSection({
   onDropPageOnDatabase,
   showCreateAction = false,
   pages,
+  sectionId,
+  sidebarConfig,
+  onSidebarConfigChange,
+  onCustomizeSidebar,
   storageKey,
 }: {
   activeDatabaseId: string | null
@@ -152,8 +168,15 @@ function PageSection({
   onDropPageOnDatabase?: (input: DatabaseDropInput) => void
   showCreateAction?: boolean
   pages: SidebarNavItem[]
+  sectionId: SidebarSectionId
+  sidebarConfig?: SidebarConfig
+  onSidebarConfigChange?: (config: SidebarConfig) => void
+  onCustomizeSidebar?: () => void
   storageKey: string
 }) {
+  const displayedPages = sidebarConfig
+    ? getConfiguredSidebarItems(pages, sectionId, sidebarConfig)
+    : pages
   const getLinkProps = ({
     displayName,
     item,
@@ -232,57 +255,83 @@ function PageSection({
   return (
     <Collapsible asChild defaultOpen>
       <SidebarGroup>
-        <CollapsibleTrigger asChild>
-          <SidebarGroupLabel
-            asChild
-            className={showCreateAction ? "pr-8" : undefined}
-          >
-            <button
-              className="group/section-label w-full cursor-pointer"
-              type="button"
+        <div className="group/section-header relative">
+          <CollapsibleTrigger asChild>
+            <SidebarGroupLabel
+              asChild
+              className={cn(
+                "group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground",
+                showCreateAction ? "pr-24" : "pr-16",
+              )}
             >
-              <span>{label}</span>
-              <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
-            </button>
-          </SidebarGroupLabel>
-        </CollapsibleTrigger>
-        {showCreateAction ? (
-          <DropDrawer>
-            <DropDrawerTrigger asChild>
-              <SidebarGroupAction aria-label="Create" title="Create">
-                <PlusIcon />
-              </SidebarGroupAction>
-            </DropDrawerTrigger>
-            <DropDrawerContent align="end" className="w-44 rounded-lg">
-              <DropDrawerItem
-                onSelect={() => {
-                  onCreatePage?.()
-                }}
+              <button
+                className="group/section-label w-full cursor-pointer"
+                type="button"
               >
-                <FileIcon className="text-muted-foreground" />
-                <span>Page</span>
-              </DropDrawerItem>
-              <DropDrawerItem
-                onSelect={() => {
-                  onCreateDatabase?.()
-                }}
-              >
-                <DatabaseIcon className="text-muted-foreground" />
-                <span>Database</span>
-              </DropDrawerItem>
-              {onImportNotion ? (
+                <span>{label}</span>
+                <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
+              </button>
+            </SidebarGroupLabel>
+          </CollapsibleTrigger>
+          {sidebarConfig && onSidebarConfigChange && onCustomizeSidebar ? (
+            <>
+              <SidebarSectionLibraryButton
+                className={showCreateAction ? "right-16" : "right-9"}
+                config={sidebarConfig}
+                onChange={onSidebarConfigChange}
+                sectionId={sectionId}
+              />
+              <SidebarSectionMenu
+                className={showCreateAction ? "right-9" : "right-2"}
+                config={sidebarConfig}
+                onChange={onSidebarConfigChange}
+                onCustomize={onCustomizeSidebar}
+                sectionId={sectionId}
+              />
+            </>
+          ) : null}
+          {showCreateAction ? (
+            <DropDrawer>
+              <DropDrawerTrigger asChild>
+                <SidebarGroupAction
+                  aria-label="Create"
+                  className="right-2 transition-opacity md:opacity-0 md:group-hover/section-header:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
+                  title="Create"
+                >
+                  <PlusIcon />
+                </SidebarGroupAction>
+              </DropDrawerTrigger>
+              <DropDrawerContent align="end" className="w-44 rounded-lg">
                 <DropDrawerItem
                   onSelect={() => {
-                    onImportNotion()
+                    onCreatePage?.()
                   }}
                 >
-                  <UploadIcon className="text-muted-foreground" />
-                  <span>Import Notion</span>
+                  <FileIcon className="text-muted-foreground" />
+                  <span>Page</span>
                 </DropDrawerItem>
-              ) : null}
-            </DropDrawerContent>
-          </DropDrawer>
-        ) : null}
+                <DropDrawerItem
+                  onSelect={() => {
+                    onCreateDatabase?.()
+                  }}
+                >
+                  <DatabaseIcon className="text-muted-foreground" />
+                  <span>Database</span>
+                </DropDrawerItem>
+                {onImportNotion ? (
+                  <DropDrawerItem
+                    onSelect={() => {
+                      onImportNotion()
+                    }}
+                  >
+                    <UploadIcon className="text-muted-foreground" />
+                    <span>Import Notion</span>
+                  </DropDrawerItem>
+                ) : null}
+              </DropDrawerContent>
+            </DropDrawer>
+          ) : null}
+        </div>
         <CollapsibleContent className="pt-0.5">
           <SidebarGroupContent>
             <SidebarMenu aria-label={`${label} pages`}>
@@ -291,28 +340,45 @@ function PageSection({
                 activeDatabaseViewId={activeDatabaseViewId}
                 activePageId={activePageId}
                 getLinkProps={getLinkProps}
-                items={pages}
+                items={displayedPages}
                 renderItemMenu={({ item }) =>
-                  item.isDatabaseView ? null : (
-                    <PageItemMenu item={item} />
-                  )
+                  item.isDatabaseView ? null : <PageItemMenu item={item} />
                 }
                 storageKey={storageKey}
               />
-              {pages.length === 0 ? (
+              {displayedPages.length === 0 ? (
                 <SidebarMenuItem>
                   <SidebarMenuButton className="text-sidebar-foreground/50">
                     <span>No pages</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ) : null}
-              {pages.length > 0 ? (
+              {displayedPages.length > 0 ? (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
                     className="text-sidebar-foreground/70"
                   >
-                    <Link to="/dashboard">
+                    <Link
+                      onClick={() => {
+                        const view =
+                          sectionId === "shared" ? "shared" : "private"
+                        if (
+                          sidebarConfig &&
+                          onSidebarConfigChange &&
+                          sidebarConfig.libraryView !== view
+                        ) {
+                          onSidebarConfigChange({
+                            ...sidebarConfig,
+                            libraryView: view,
+                          })
+                        }
+                      }}
+                      search={{
+                        view: sectionId === "shared" ? "shared" : "private",
+                      }}
+                      to="/dashboard"
+                    >
                       <MoreHorizontalIcon />
                       <span>More</span>
                     </Link>
@@ -327,9 +393,7 @@ function PageSection({
   )
 }
 
-function PageItemMenu({ item }: {
-  item: SidebarNavItem
-}) {
+function PageItemMenu({ item }: { item: SidebarNavItem }) {
   const { isMobile } = useSidebar()
   const location = useLocation()
   const navigate = useNavigate()
@@ -350,8 +414,7 @@ function PageItemMenu({ item }: {
     deletedPageIds: string[]
   }) => {
     const deletedActivePage =
-      activePageId &&
-      result.deletedPageIds.includes(activePageId)
+      activePageId && result.deletedPageIds.includes(activePageId)
     const deletedActiveDatabase =
       activeDatabaseId && result.deletedDatabaseIds.includes(activeDatabaseId)
 
@@ -370,7 +433,9 @@ function PageItemMenu({ item }: {
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Could not delete database.",
+            error instanceof Error
+              ? error.message
+              : "Could not delete database.",
           )
         },
       })
@@ -399,13 +464,10 @@ function PageItemMenu({ item }: {
     <>
       <DropDrawer>
         <DropDrawerTrigger asChild>
-          <SidebarMenuAction
-            className="opacity-0 group-hover/nav-row:opacity-100 focus-visible:opacity-100 aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground"
-            data-nav-menu-action="more"
-          >
+          <SidebarNavItemAction variant="menu">
             <MoreHorizontalIcon />
             <span className="sr-only">More</span>
-          </SidebarMenuAction>
+          </SidebarNavItemAction>
         </DropDrawerTrigger>
         <DropDrawerContent
           align={isMobile ? "end" : "start"}

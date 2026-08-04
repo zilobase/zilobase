@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
+import {
+  normalizeSidebarConfig,
+  type SidebarConfig,
+} from "@zilobase/features/user-settings/sidebar-config";
 import { db } from "../db";
 import { account, user, pageSettings } from "../db/schema";
 import type { AppBindings } from "../types";
@@ -12,6 +16,7 @@ type EmbeddedItemsOpenAs = "dialog" | "sidepanel";
 type UserSettingsPayload = {
   embeddedItemsOpenAs: EmbeddedItemsOpenAs;
   pageFullWidth: boolean;
+  sidebarConfig: SidebarConfig;
 };
 
 const updateProfileSchema = z
@@ -50,6 +55,7 @@ pageSettingsRoutes.patch("/", async (c) => {
   const patch = body as {
     embeddedItemsOpenAs?: unknown;
     pageFullWidth?: unknown;
+    sidebarConfig?: unknown;
   };
   const values: Partial<typeof pageSettings.$inferInsert> = {
     updatedAt: new Date(),
@@ -77,6 +83,18 @@ pageSettingsRoutes.patch("/", async (c) => {
     values.embeddedItemsOpenAs = patch.embeddedItemsOpenAs;
   }
 
+  if (patch.sidebarConfig !== undefined) {
+    if (
+      typeof patch.sidebarConfig !== "object" ||
+      patch.sidebarConfig === null ||
+      Array.isArray(patch.sidebarConfig)
+    ) {
+      return c.json({ error: "sidebarConfig must be an object" }, 400);
+    }
+
+    values.sidebarConfig = normalizeSidebarConfig(patch.sidebarConfig);
+  }
+
   const [settings] = await db
     .insert(pageSettings)
     .values({
@@ -84,6 +102,7 @@ pageSettingsRoutes.patch("/", async (c) => {
       userId: user.id,
       embeddedItemsOpenAs: values.embeddedItemsOpenAs ?? "sidepanel",
       pageFullWidth: values.pageFullWidth ?? false,
+      sidebarConfig: values.sidebarConfig ?? {},
     })
     .onConflictDoUpdate({
       target: pageSettings.userId,
@@ -176,6 +195,7 @@ function toUserSettingsPayload(
     embeddedItemsOpenAs:
       settings.embeddedItemsOpenAs === "dialog" ? "dialog" : "sidepanel",
     pageFullWidth: settings.pageFullWidth,
+    sidebarConfig: normalizeSidebarConfig(settings.sidebarConfig),
   };
 }
 

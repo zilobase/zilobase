@@ -25,7 +25,6 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
@@ -37,45 +36,83 @@ import {
   SidebarNavList,
   type SidebarNavItem,
 } from "@/components/sidebar-nav-list"
+import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action"
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
+import {
+  SidebarSectionLibraryButton,
+  SidebarSectionMenu,
+} from "@/components/sidebar-section-menu"
+import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
+import type { SidebarConfig } from "@zilobase/features/user-settings"
 
 export function NavFavorites({
   favorites,
   onRemoveDatabaseFavorite,
   onRemoveFavorite,
+  onCustomizeSidebar,
+  onSidebarConfigChange,
+  sidebarConfig,
   workspaceId,
 }: {
   favorites: SidebarNavItem[]
   onRemoveDatabaseFavorite: (databaseId: string) => void
   onRemoveFavorite: (pageId: string) => void
+  onCustomizeSidebar?: () => void
+  onSidebarConfigChange?: (config: SidebarConfig) => void
+  sidebarConfig?: SidebarConfig
   workspaceId: string | null
 }) {
   const location = useLocation()
   const activePageId = getActivePageId(location.pathname)
   const activeDatabaseId = getActiveDatabaseId(location.pathname)
   const activeDatabaseViewId = getActiveDatabaseViewId(location.search)
+  const displayedFavorites = sidebarConfig
+    ? getConfiguredSidebarItems(favorites, "favorites", sidebarConfig)
+    : favorites
 
   return (
     <Collapsible asChild defaultOpen>
       <SidebarGroup>
-        <CollapsibleTrigger asChild>
-          <SidebarGroupLabel asChild>
-            <button
-              className="group/section-label w-full cursor-pointer"
-              type="button"
+        <div className="group/section-header relative">
+          <CollapsibleTrigger asChild>
+            <SidebarGroupLabel
+              asChild
+              className="pr-16 group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground"
             >
-              <span>Favorites</span>
-              <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
-            </button>
-          </SidebarGroupLabel>
-        </CollapsibleTrigger>
+              <button
+                className="group/section-label w-full cursor-pointer"
+                type="button"
+              >
+                <span>Favorites</span>
+                <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
+              </button>
+            </SidebarGroupLabel>
+          </CollapsibleTrigger>
+          {sidebarConfig && onSidebarConfigChange && onCustomizeSidebar ? (
+            <>
+              <SidebarSectionLibraryButton
+                className="right-9"
+                config={sidebarConfig}
+                onChange={onSidebarConfigChange}
+                sectionId="favorites"
+              />
+              <SidebarSectionMenu
+                className="right-2"
+                config={sidebarConfig}
+                onChange={onSidebarConfigChange}
+                onCustomize={onCustomizeSidebar}
+                sectionId="favorites"
+              />
+            </>
+          ) : null}
+        </div>
         <CollapsibleContent className="pt-0.5">
           <SidebarMenu aria-label="Favorite pages">
             <SidebarNavList
               activeDatabaseId={activeDatabaseId}
               activeDatabaseViewId={activeDatabaseViewId}
               activePageId={activePageId}
-              items={favorites}
+              items={displayedFavorites}
               renderItemMenu={({ item }) => (
                 <FavoriteItemMenu
                   item={item}
@@ -88,7 +125,7 @@ export function NavFavorites({
                 "favorites",
               )}
             />
-            {favorites.length === 0 ? (
+            {displayedFavorites.length === 0 ? (
               <SidebarMenuItem>
                 <SidebarMenuButton className="text-sidebar-foreground/50">
                   <span>No favorites</span>
@@ -130,13 +167,10 @@ function FavoriteItemMenu({
   return (
     <DropDrawer>
       <DropDrawerTrigger asChild>
-        <SidebarMenuAction
-          className="opacity-0 group-hover/nav-row:opacity-100 focus-visible:opacity-100 aria-expanded:bg-sidebar-accent aria-expanded:text-sidebar-accent-foreground"
-          data-nav-menu-action="more"
-        >
+        <SidebarNavItemAction variant="menu">
           <MoreHorizontalIcon />
           <span className="sr-only">More</span>
-        </SidebarMenuAction>
+        </SidebarNavItemAction>
       </DropDrawerTrigger>
       <DropDrawerContent
         align={isMobile ? "end" : "start"}
