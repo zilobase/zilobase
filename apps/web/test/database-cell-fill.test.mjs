@@ -63,4 +63,36 @@ export function register({ assert, loadModule, test }) {
       [changes[0]]
     )
   })
+
+  test("database cell fill redo preserves values edited after undo", async () => {
+    const { getRedoableDatabaseCellFillChanges } = await loadModule(
+      "/src/editor/extensions/database/interactions/database-cell-fill.ts"
+    )
+    const changes = [
+      {
+        nextValue: "Done",
+        pageId: "first-page",
+        previousValue: "To do",
+        propertyId: "status",
+        propertyType: "status",
+        rowId: "first-row",
+      },
+      {
+        nextValue: "Done",
+        pageId: "second-page",
+        previousValue: "In progress",
+        propertyId: "status",
+        propertyType: "status",
+        rowId: "second-row",
+      },
+    ]
+
+    assert.deepEqual(
+      getRedoableDatabaseCellFillChanges(changes, {
+        "first-page:status": "To do",
+        "second-page:status": "Blocked",
+      }),
+      [changes[0]]
+    )
+  })
 }

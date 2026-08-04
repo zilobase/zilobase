@@ -289,6 +289,9 @@ function UndoableDatabaseViewProvider({
         ) {
           undoHistory.pushAction({
             label: "Rename database property",
+            redo: () => {
+              value.renameDatabaseProperty(databasePropertyId, name)
+            },
             undo: () => {
               value.renameDatabaseProperty(databasePropertyId, currentName)
             },
@@ -303,6 +306,9 @@ function UndoableDatabaseViewProvider({
         if (undoHistory.shouldRecord() && currentTitle !== nextTitle) {
           undoHistory.pushAction({
             label: "Rename database",
+            redo: () => {
+              value.saveDatabaseTitle(nextTitle)
+            },
             undo: () => {
               value.saveDatabaseTitle(currentTitle)
             },
@@ -317,6 +323,9 @@ function UndoableDatabaseViewProvider({
         if (undoHistory.shouldRecord() && currentTitle !== nextTitle) {
           undoHistory.pushAction({
             label: "Rename database view",
+            redo: () => {
+              value.saveDatabaseViewTitle(nextTitle)
+            },
             undo: () => {
               value.saveDatabaseViewTitle(currentTitle)
             },
@@ -345,6 +354,15 @@ function UndoableDatabaseViewProvider({
 
           undoHistory.pushAction({
             label: "Update database value",
+            redo: () => {
+              value.savePropertyValue(
+                rowId,
+                propertyId,
+                propertyType,
+                previousValue,
+                savedValue
+              )
+            },
             undo: () => {
               value.savePropertyValue(
                 rowId,

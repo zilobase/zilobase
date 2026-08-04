@@ -62,3 +62,19 @@ export function getUndoableDatabaseCellFillChanges(
     )
   })
 }
+
+export function getRedoableDatabaseCellFillChanges(
+  changes: DatabaseCellFillHistoryChange[],
+  propertyValuesByKey: Record<string, DatabasePropertyValue>
+) {
+  return changes.filter((change) => {
+    const currentValue =
+      propertyValuesByKey[`${change.pageId}:${change.propertyId}`] ?? ""
+
+    return areSerializedPropertyValuesEqual(
+      change.propertyType,
+      currentValue,
+      change.previousValue
+    )
+  })
+}

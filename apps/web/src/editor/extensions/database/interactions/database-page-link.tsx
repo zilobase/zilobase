@@ -136,6 +136,9 @@ export function DatabasePageLink({
     if (undoHistory?.shouldRecord()) {
       undoHistory.pushAction({
         label: "Rename database page",
+        redo: () => {
+          updatePage.mutate({ id: pageId, name: nextTitle })
+        },
         undo: () => {
           updatePage.mutate({ id: pageId, name: currentTitle })
         },

@@ -23,7 +23,7 @@ export function register({ assert, loadModule, test }) {
     assert.equal(matchesAppShortcut(event(), "undo"), false)
   })
 
-  test("undo does not consume redo or alternate modifier chords", async () => {
+  test("redo matches Command or Control Shift Z", async () => {
     const { matchesAppShortcut } = await loadModule(
       "/src/shortcuts/shortcut-definitions.ts"
     )
@@ -38,10 +38,36 @@ export function register({ assert, loadModule, test }) {
     assert.equal(
       matchesAppShortcut(
         { ...baseEvent, shiftKey: true },
-        "undo"
+        "redo"
       ),
+      true
+    )
+    assert.equal(
+      matchesAppShortcut(
+        { ...baseEvent, ctrlKey: false, metaKey: true, shiftKey: true },
+        "redo"
+      ),
+      true
+    )
+    assert.equal(matchesAppShortcut(baseEvent, "redo"), false)
+    assert.equal(
+      matchesAppShortcut({ ...baseEvent, shiftKey: true }, "undo"),
       false
     )
+  })
+
+  test("shortcuts reject alternate modifier chords", async () => {
+    const { matchesAppShortcut } = await loadModule(
+      "/src/shortcuts/shortcut-definitions.ts"
+    )
+    const baseEvent = {
+      altKey: false,
+      ctrlKey: true,
+      key: "z",
+      metaKey: false,
+      shiftKey: false,
+    }
+
     assert.equal(
       matchesAppShortcut({ ...baseEvent, altKey: true }, "undo"),
       false

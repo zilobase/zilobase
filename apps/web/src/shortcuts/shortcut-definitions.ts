@@ -2,10 +2,17 @@ export const appShortcutDefinitions = {
   openSearch: {
     key: "k",
     primaryModifier: true,
+    shiftKey: false,
+  },
+  redo: {
+    key: "z",
+    primaryModifier: true,
+    shiftKey: true,
   },
   undo: {
     key: "z",
     primaryModifier: true,
+    shiftKey: false,
   },
 } as const
 
@@ -27,6 +34,6 @@ export function matchesAppShortcut(
     event.key.toLowerCase() === shortcut.key &&
     (!shortcut.primaryModifier || hasPrimaryModifier) &&
     !event.altKey &&
-    !event.shiftKey
+    event.shiftKey === shortcut.shiftKey
   )
 }

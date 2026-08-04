@@ -12,6 +12,7 @@ import { useAppShortcut } from "./shortcut-provider"
 
 type UndoAction = {
   label: string
+  redo: () => boolean | void
   undo: () => boolean | void
 }
 
@@ -33,7 +34,8 @@ export function UndoHistoryScope({
   resetKey: unknown
 }) {
   const scopeIdRef = useRef(Symbol("undo-history-scope"))
-  const actionsRef = useRef<UndoAction[]>([])
+  const redoActionsRef = useRef<UndoAction[]>([])
+  const undoActionsRef = useRef<UndoAction[]>([])
   const recordingSuppressionDepthRef = useRef(0)
   const activate = useCallback(() => {
     activeUndoHistoryScope = scopeIdRef.current
@@ -44,11 +46,12 @@ export function UndoHistoryScope({
         return
       }
 
-      actionsRef.current.push(action)
+      undoActionsRef.current.push(action)
+      redoActionsRef.current = []
       activeUndoHistoryScope = scopeIdRef.current
 
-      if (actionsRef.current.length > UNDO_HISTORY_LIMIT) {
-        actionsRef.current.shift()
+      if (undoActionsRef.current.length > UNDO_HISTORY_LIMIT) {
+        undoActionsRef.current.shift()
       }
     },
     []
@@ -78,13 +81,38 @@ export function UndoHistoryScope({
         return false
       }
 
-      while (actionsRef.current.length > 0) {
-        const action = actionsRef.current.pop()
+      while (undoActionsRef.current.length > 0) {
+        const action = undoActionsRef.current.pop()
 
         if (
           action &&
           runWithoutRecording(() => action.undo()) !== false
         ) {
+          redoActionsRef.current.push(action)
+          return true
+        }
+      }
+
+      return false
+    },
+    { priority: 100 }
+  )
+
+  useAppShortcut(
+    "redo",
+    () => {
+      if (activeUndoHistoryScope !== scopeIdRef.current) {
+        return false
+      }
+
+      while (redoActionsRef.current.length > 0) {
+        const action = redoActionsRef.current.pop()
+
+        if (
+          action &&
+          runWithoutRecording(() => action.redo()) !== false
+        ) {
+          undoActionsRef.current.push(action)
           return true
         }
       }
@@ -95,7 +123,8 @@ export function UndoHistoryScope({
   )
 
   useEffect(() => {
-    actionsRef.current = []
+    redoActionsRef.current = []
+    undoActionsRef.current = []
   }, [resetKey])
 
   useEffect(

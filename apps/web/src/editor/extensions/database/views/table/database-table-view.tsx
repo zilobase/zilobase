@@ -98,6 +98,7 @@ import {
 } from "../../interactions/database-table-group-sections"
 import {
   getDatabaseCellFillRowIds,
+  getRedoableDatabaseCellFillChanges,
   getUndoableDatabaseCellFillChanges,
   isDatabasePropertyFillable,
   type DatabaseCellFillHistoryChange,
@@ -1720,11 +1721,39 @@ export function DatabaseTableView() {
       })
 
       if (historyChanges.length > 0) {
+        let appliedChanges = historyChanges
+        let undoneChanges: DatabaseCellFillHistoryChange[] = []
+
         undoHistory.pushAction({
           label: "Fill database cells",
+          redo: () => {
+            const redoableChanges = getRedoableDatabaseCellFillChanges(
+              undoneChanges,
+              propertyValuesByKeyRef.current
+            )
+
+            for (const change of redoableChanges) {
+              const currentValue =
+                propertyValuesByKeyRef.current[
+                  `${change.pageId}:${change.propertyId}`
+                ] ?? ""
+
+              savePropertyValue(
+                change.rowId,
+                change.propertyId,
+                change.propertyType,
+                currentValue,
+                change.nextValue
+              )
+            }
+
+            appliedChanges = redoableChanges
+            undoneChanges = []
+            return redoableChanges.length > 0
+          },
           undo: () => {
             const undoableChanges = getUndoableDatabaseCellFillChanges(
-              historyChanges,
+              appliedChanges,
               propertyValuesByKeyRef.current
             )
 
@@ -1745,6 +1774,8 @@ export function DatabaseTableView() {
               }
             })
 
+            appliedChanges = []
+            undoneChanges = undoableChanges
             return undoableChanges.length > 0
           },
         })
