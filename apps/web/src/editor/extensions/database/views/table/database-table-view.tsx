@@ -2644,6 +2644,8 @@ export function DatabaseTableView() {
         const subItemsExpanded = hasSubItems
           ? !collapsedSubItemRowIds.has(row.id)
           : expandedEmptySubItemRowIds.has(row.id)
+        const showSubItemToggle =
+          isSubItemsNested && (hasSubItems || editable)
         const toggleSubItems = () => {
           if (hasSubItems) {
             setCollapsedSubItemRowIds((current) => {
@@ -2728,7 +2730,7 @@ export function DatabaseTableView() {
                               : undefined
                           }
                         >
-                          {isSubItemsNested ? (
+                          {showSubItemToggle ? (
                             <button
                               aria-expanded={subItemsExpanded}
                               aria-label={`${subItemsExpanded ? "Collapse" : "Expand"} sub-items for ${getRowTitle(row)}`}
