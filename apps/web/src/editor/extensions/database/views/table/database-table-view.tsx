@@ -86,6 +86,7 @@ import {
 } from "../database-cell-state"
 import { useDatabaseRowsScroll } from "../../interactions/use-database-rows-scroll"
 import { useInlineDatabaseScroll } from "../../interactions/use-inline-database-scroll"
+import { getDatabaseHorizontalScrollSync } from "../../interactions/database-wheel-scroll"
 import {
   areSerializedPropertyValuesEqual,
   databaseItemMatchesFilter,
@@ -609,58 +610,59 @@ function DatabaseVirtualizedTable({
 }
 
 function useSyncedHorizontalScroll(
-  primaryRef: RefObject<HTMLElement | null>,
-  secondaryRef: RefObject<HTMLElement | null>,
+  headerRef: RefObject<HTMLElement | null>,
+  bodyRef: RefObject<HTMLElement | null>,
   syncVersion: unknown
 ) {
-  const isSyncingRef = useRef(false)
-
   useLayoutEffect(() => {
-    const primary = primaryRef.current
-    const secondary = secondaryRef.current
+    const header = headerRef.current
+    const body = bodyRef.current
 
-    if (!primary || !secondary) {
+    if (!header || !body) {
       return
     }
 
-    let frame: number | null = null
     const syncScroll = (source: HTMLElement, target: HTMLElement) => {
-      if (
-        isSyncingRef.current ||
-        target.scrollLeft === source.scrollLeft
-      ) {
+      const syncState = getDatabaseHorizontalScrollSync(
+        source,
+        target.scrollLeft
+      )
+
+      source.style.removeProperty("--database-horizontal-rubber-band-offset")
+      delete source.dataset.databaseRubberBand
+
+      if (syncState.isRubberBanding) {
+        target.style.setProperty(
+          "--database-horizontal-rubber-band-offset",
+          `${syncState.rubberBandOffset}px`
+        )
+        target.dataset.databaseRubberBand = "true"
         return
       }
 
-      isSyncingRef.current = true
-      target.scrollLeft = source.scrollLeft
+      target.style.removeProperty("--database-horizontal-rubber-band-offset")
+      delete target.dataset.databaseRubberBand
 
-      if (frame !== null) {
-        window.cancelAnimationFrame(frame)
+      if (target.scrollLeft !== syncState.scrollLeft) {
+        target.scrollLeft = syncState.scrollLeft
       }
-
-      frame = window.requestAnimationFrame(() => {
-        frame = null
-        isSyncingRef.current = false
-      })
     }
+    const syncHeaderToBody = () => syncScroll(body, header)
+    const syncBodyToHeader = () => syncScroll(header, body)
 
-    const syncSecondary = () => syncScroll(primary, secondary)
-    const syncPrimary = () => syncScroll(secondary, primary)
-
-    primary.scrollLeft = secondary.scrollLeft
-    primary.addEventListener("scroll", syncSecondary, { passive: true })
-    secondary.addEventListener("scroll", syncPrimary, { passive: true })
+    syncHeaderToBody()
+    body.addEventListener("scroll", syncHeaderToBody, { passive: true })
+    header.addEventListener("scroll", syncBodyToHeader, { passive: true })
 
     return () => {
-      primary.removeEventListener("scroll", syncSecondary)
-      secondary.removeEventListener("scroll", syncPrimary)
-      if (frame !== null) {
-        window.cancelAnimationFrame(frame)
-      }
-      isSyncingRef.current = false
+      body.removeEventListener("scroll", syncHeaderToBody)
+      header.removeEventListener("scroll", syncBodyToHeader)
+      body.style.removeProperty("--database-horizontal-rubber-band-offset")
+      header.style.removeProperty("--database-horizontal-rubber-band-offset")
+      delete body.dataset.databaseRubberBand
+      delete header.dataset.databaseRubberBand
     }
-  }, [primaryRef, secondaryRef, syncVersion])
+  }, [bodyRef, headerRef, syncVersion])
 }
 
 function DatabaseActiveTableCell({

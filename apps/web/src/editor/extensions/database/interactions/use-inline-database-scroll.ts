@@ -8,13 +8,12 @@ import {
   type RefObject,
 } from "react"
 
-import {
-  getDatabaseHorizontalWheelDelta,
-} from "./database-wheel-scroll"
+import { getDatabaseHorizontalWheelScrollLeft } from "./database-wheel-scroll"
 
 export type InlineDatabaseScrollLayout = {
   contentWidth: number
   offset: number
+  trailingOffset: number
   viewWidth: number
   viewportWidth: number
 }
@@ -36,6 +35,7 @@ function isSameLayout(
     currentLayout &&
     Math.abs(currentLayout.contentWidth - nextLayout.contentWidth) < 0.5 &&
     Math.abs(currentLayout.offset - nextLayout.offset) < 0.5 &&
+    Math.abs(currentLayout.trailingOffset - nextLayout.trailingOffset) < 0.5 &&
     Math.abs(currentLayout.viewWidth - nextLayout.viewWidth) < 0.5 &&
     Math.abs(currentLayout.viewportWidth - nextLayout.viewportWidth) < 0.5
   )
@@ -86,6 +86,7 @@ export function useInlineDatabaseScroll({
     const nextLayout = {
       contentWidth,
       offset,
+      trailingOffset,
       viewWidth,
       viewportWidth,
     }
@@ -159,6 +160,7 @@ export function useInlineDatabaseScroll({
         ? ({
             "--database-inline-scroll-content-width": `${layout.contentWidth}px`,
             "--database-inline-scroll-offset": `${layout.offset}px`,
+            "--database-inline-scroll-trailing-offset": `${layout.trailingOffset}px`,
             "--database-inline-scroll-view-width": `${layout.viewWidth}px`,
             "--database-inline-scroll-viewport-width": `${layout.viewportWidth}px`,
           } as CSSProperties)
@@ -174,33 +176,24 @@ export function useInlineDatabaseScroll({
   }
 }
 
-function handleInlineDatabaseScrollWheel(
+export function handleInlineDatabaseScrollWheel(
   event: WheelEvent,
   scrollElement: HTMLElement
 ) {
-  const horizontalDelta = getDatabaseHorizontalWheelDelta(event)
-
-  if (!horizontalDelta) {
-    return
-  }
-
-  const maxScrollLeft = scrollElement.scrollWidth - scrollElement.clientWidth
-
-  if (maxScrollLeft <= 1) {
-    return
-  }
-
-  const nextScrollLeft = Math.min(
-    maxScrollLeft,
-    Math.max(0, scrollElement.scrollLeft + horizontalDelta)
+  const nextScroll = getDatabaseHorizontalWheelScrollLeft(
+    event,
+    scrollElement
   )
 
-  if (nextScrollLeft === scrollElement.scrollLeft) {
-    return
+  if (!nextScroll?.shouldConsume) {
+    return false
   }
 
-  scrollElement.scrollLeft = nextScrollLeft
+  scrollElement.scrollLeft = nextScroll.scrollLeft
+
   if (event.cancelable) {
     event.preventDefault()
   }
+
+  return true
 }

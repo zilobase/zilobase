@@ -1325,6 +1325,15 @@
     @apply relative min-w-full;
   }
 
+  .database-inline-scroll[data-database-rubber-band="true"]
+    > .database-inline-scroll-content {
+    transform: translate3d(
+      var(--database-horizontal-rubber-band-offset, 0px),
+      0,
+      0
+    );
+  }
+
   .database-inline-scroll-wrap[data-inline-scroll="true"]
     .database-inline-scroll {
     width: var(--database-inline-scroll-viewport-width, 100%);
@@ -1343,6 +1352,21 @@
   .database-table-wrap[data-inline-scroll="true"] .database-page-create-row {
     width: var(--database-inline-scroll-view-width, 100%);
     min-width: var(--database-inline-scroll-view-width, 100%);
+  }
+
+  .database-table-wrap[data-inline-scroll="true"]::before,
+  .database-table-wrap[data-inline-scroll="true"]::after {
+    @apply pointer-events-none absolute bottom-0 top-0 z-[35] bg-background content-[''];
+  }
+
+  .database-table-wrap[data-inline-scroll="true"]::before {
+    left: calc(var(--database-inline-scroll-offset, 0px) * -1);
+    width: var(--database-inline-scroll-offset, 0px);
+  }
+
+  .database-table-wrap[data-inline-scroll="true"]::after {
+    right: calc(var(--database-inline-scroll-trailing-offset, 0px) * -1);
+    width: var(--database-inline-scroll-trailing-offset, 0px);
   }
 
   .database-table-scroll {
