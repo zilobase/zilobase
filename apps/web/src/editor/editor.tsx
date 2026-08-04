@@ -453,6 +453,7 @@ export function Editor({
         onDragEnd={surfaceDragHandlers.onDragEnd}
         onDragLeave={surfaceDragHandlers.onDragLeave}
         onDragOver={surfaceDragHandlers.onDragOver}
+        onDragOverCapture={surfaceDragHandlers.onDragOverCapture}
         onDrop={surfaceDragHandlers.onDrop}
         onPointerLeave={() =>
           !dragHandleMenuOpen && !blockCommentOpen && clearDesktopDragHandle()

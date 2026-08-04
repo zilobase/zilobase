@@ -8,6 +8,57 @@ export type DatabaseRowDragOverlay = {
   width: number
 }
 
+export type DatabaseRowDropOwner = object
+
+type DatabaseRowDropOwnerListener = (
+  owner: DatabaseRowDropOwner | null
+) => void
+
+let activeDatabaseRowDropOwner: DatabaseRowDropOwner | null = null
+const databaseRowDropOwnerListeners = new Set<DatabaseRowDropOwnerListener>()
+
+function notifyDatabaseRowDropOwnerChange() {
+  for (const listener of databaseRowDropOwnerListeners) {
+    listener(activeDatabaseRowDropOwner)
+  }
+}
+
+export function claimDatabaseRowDropOwner(owner: DatabaseRowDropOwner) {
+  if (activeDatabaseRowDropOwner === owner) {
+    return
+  }
+
+  activeDatabaseRowDropOwner = owner
+  notifyDatabaseRowDropOwnerChange()
+}
+
+export function releaseDatabaseRowDropOwner(owner: DatabaseRowDropOwner) {
+  if (activeDatabaseRowDropOwner !== owner) {
+    return
+  }
+
+  activeDatabaseRowDropOwner = null
+  notifyDatabaseRowDropOwnerChange()
+}
+
+export function subscribeDatabaseRowDropOwner(
+  listener: DatabaseRowDropOwnerListener
+) {
+  databaseRowDropOwnerListeners.add(listener)
+  return () => {
+    databaseRowDropOwnerListeners.delete(listener)
+  }
+}
+
+export function resetDatabaseRowDropOwner() {
+  if (activeDatabaseRowDropOwner === null) {
+    return
+  }
+
+  activeDatabaseRowDropOwner = null
+  notifyDatabaseRowDropOwnerChange()
+}
+
 type RowIdItem = {
   id: string
 }
@@ -160,4 +211,5 @@ export function startDatabaseRowDrag() {
 
 export function finishDatabaseRowDrag() {
   document.body.classList.remove("database-row-dragging")
+  resetDatabaseRowDropOwner()
 }

@@ -3,6 +3,30 @@ function rows(ids) {
 }
 
 export function register({ assert, loadModule, test }) {
+  test("database row drag gives drop feedback to exactly one table", async () => {
+    const {
+      claimDatabaseRowDropOwner,
+      releaseDatabaseRowDropOwner,
+      subscribeDatabaseRowDropOwner,
+    } = await loadModule(
+      "/src/editor/extensions/database/interactions/database-row-drag.ts"
+    )
+    const firstTable = {}
+    const secondTable = {}
+    const owners = []
+    const unsubscribe = subscribeDatabaseRowDropOwner((owner) => {
+      owners.push(owner)
+    })
+
+    claimDatabaseRowDropOwner(firstTable)
+    claimDatabaseRowDropOwner(secondTable)
+    releaseDatabaseRowDropOwner(firstTable)
+    releaseDatabaseRowDropOwner(secondTable)
+    unsubscribe()
+
+    assert.deepEqual(owners, [firstTable, secondTable, null])
+  })
+
   test("database table row drag reorders a visible subset before the next visible anchor", async () => {
     const { getFilteredReorderedRowIds } = await loadModule(
       "/src/editor/extensions/database/interactions/database-row-drag.ts"

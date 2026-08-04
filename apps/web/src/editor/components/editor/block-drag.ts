@@ -498,6 +498,20 @@ export function createEditorDragDrop(
       onDragEnd: () => endDrag(bridge.getView()),
       onDragLeave: (event: ReactDragEvent<HTMLElement>) =>
         onLeave(bridge.surfaceRef?.current ?? null, event.nativeEvent),
+      onDragOverCapture: (event: ReactDragEvent<HTMLElement>) => {
+        const nativeEvent = event.nativeEvent
+
+        // Database node views own their internal drag events, so ProseMirror's
+        // dragover handler may not see this transition. Clear the page-level
+        // insertion line at the surface boundary before the database renders
+        // its row drop line.
+        if (
+          bridge.isDraggingPage(nativeEvent) &&
+          bridge.isOverDatabaseDrop(nativeEvent)
+        ) {
+          clearDropLine()
+        }
+      },
       onDragOver: (event: ReactDragEvent<HTMLElement>) => {
         const view = bridge.getView()
         if (view && !isInsideEditor(view, event.target)) {

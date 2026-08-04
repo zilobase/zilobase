@@ -12,6 +12,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react"
+import { createPortal } from "react-dom"
 import { Reorder, useDragControls } from "framer-motion"
 import {
   defaultRangeExtractor,
@@ -104,14 +105,20 @@ import {
   isDatabasePropertyFillable,
   type DatabaseCellFillHistoryChange,
 } from "../../interactions/database-cell-fill"
-import { getDatabaseRowDropTargetIndex as getDropTargetIndex } from "../../interactions/database-table-layout"
 import {
+  getDatabaseRowDropTarget,
+  type DatabaseRowDropTarget,
+} from "../../interactions/database-table-layout"
+import {
+  claimDatabaseRowDropOwner,
   getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
   getReorderedRowIds,
   finishDatabaseRowDrag,
   hideNativeDatabaseRowDragPreview,
+  releaseDatabaseRowDropOwner,
   startDatabaseRowDrag,
+  subscribeDatabaseRowDropOwner,
   type DatabaseRowDragOverlay,
 } from "../../interactions/database-row-drag"
 import {
@@ -770,7 +777,10 @@ function CreateDatabaseRowButton({
   onClick: () => void
 }) {
   return (
-    <tr className="database-table-create-row">
+    <tr
+      className="database-table-create-row"
+      data-database-row-drop-footer
+    >
       <td colSpan={columnCount}>
         <button
           className="database-table-create"
@@ -874,11 +884,22 @@ export function DatabaseTableView() {
   propertyValuesByKeyRef.current = propertyValuesByKey
   const [rowDragOverlay, setRowDragOverlay] =
     useState<DatabaseRowDragOverlay | null>(null)
-  const [rowDropTargetIndex, setRowDropTargetIndex] = useState<number | null>(
-    null
-  )
+  const rowDragOverlayElementRef = useRef<HTMLDivElement | null>(null)
+  const rowDragOverlaySnapshotRef = useRef<DatabaseRowDragOverlay | null>(null)
+  const pendingRowDragOverlayPositionRef = useRef<{
+    left: number
+    top: number
+  } | null>(null)
+  const rowDragOverlayPositionRef = useRef({ left: 0, top: 0 })
+  const rowDragOverlayFrameRef = useRef<number | null>(null)
+  const [rowDropTarget, setRowDropTarget] =
+    useState<DatabaseRowDropTarget | null>(null)
+  const rowDropTargetRef = useRef<DatabaseRowDropTarget | null>(null)
   const [groupRowDropTarget, setGroupRowDropTarget] =
     useState<GroupRowDropTarget | null>(null)
+  const groupRowDropTargetRef = useRef<GroupRowDropTarget | null>(null)
+  const isExternalRowDragActiveRef = useRef(false)
+  const rowDropOwner = useMemo(() => ({}), [])
   const [pendingInsertProperty, setPendingInsertProperty] =
     useState<PendingInsertProperty | null>(null)
   const [pendingPropertyInsertOrder, setPendingPropertyInsertOrder] =
@@ -916,6 +937,8 @@ export function DatabaseTableView() {
     centers: {},
     dropTops: [],
   })
+  const rowLayoutRef = useRef(rowLayout)
+  rowLayoutRef.current = rowLayout
   const activeEditingPropertyKey =
     getPropertyKeyFromHeaderEditingKey(editingPropertyKey)
   const isTableSorted = activeDatabaseSorts.length > 0
@@ -1195,7 +1218,9 @@ export function DatabaseTableView() {
     const layoutElement = getRowLayoutElement()
 
     if (!layoutElement) {
-      return { centers: {}, dropTops: [] }
+      const emptyLayout = { centers: {}, dropTops: [] }
+      rowLayoutRef.current = emptyLayout
+      return emptyLayout
     }
 
     const layoutRect = layoutElement.getBoundingClientRect()
@@ -1220,7 +1245,19 @@ export function DatabaseTableView() {
       }
     })
 
+    if (rowElements.length === 0) {
+      const footerElement = layoutElement.querySelector<HTMLElement>(
+        "[data-database-row-drop-footer]"
+      )
+
+      if (footerElement) {
+        dropTops[0] =
+          footerElement.getBoundingClientRect().top - layoutRect.top
+      }
+    }
+
     const nextLayout = { centers, dropTops }
+    rowLayoutRef.current = nextLayout
 
     setRowLayout((currentLayout) =>
       areRowLayoutsEqual(currentLayout, nextLayout) ? currentLayout : nextLayout
@@ -1228,16 +1265,38 @@ export function DatabaseTableView() {
 
     return nextLayout
   }, [getRowElements, getRowLayoutElement])
-  const getRowDropTargetIndex = (clientY: number) => {
+  const resolveRowDropTarget = (clientY: number) => {
     const layoutElement = getRowLayoutElement()
 
-    if (!layoutElement || rowLayout.dropTops.length < 2) {
-      return 0
+    if (!layoutElement) {
+      return null
     }
 
     const relativeY = clientY - layoutElement.getBoundingClientRect().top
 
-    return getDropTargetIndex(rowLayout.dropTops, relativeY)
+    return getDatabaseRowDropTarget(
+      rowLayoutRef.current.dropTops,
+      relativeY
+    )
+  }
+  const updateRowDropTarget = (nextTarget: DatabaseRowDropTarget | null) => {
+    rowDropTargetRef.current = nextTarget
+    setRowDropTarget((currentTarget) =>
+      currentTarget?.index === nextTarget?.index &&
+      currentTarget?.lineTop === nextTarget?.lineTop
+        ? currentTarget
+        : nextTarget
+    )
+  }
+  const updateGroupRowDropTarget = (nextTarget: GroupRowDropTarget | null) => {
+    groupRowDropTargetRef.current = nextTarget
+    setGroupRowDropTarget((currentTarget) =>
+      currentTarget?.localTargetIndex === nextTarget?.localTargetIndex &&
+      currentTarget?.sectionId === nextTarget?.sectionId &&
+      currentTarget?.top === nextTarget?.top
+        ? currentTarget
+        : nextTarget
+    )
   }
   const getGroupRowDropTarget = (clientY: number): GroupRowDropTarget | null => {
     const wrapperElement = tableWrapRef.current
@@ -1318,7 +1377,9 @@ export function DatabaseTableView() {
     return groupSectionByRowId.get(rowId) ?? null
   }
   const getDraggedRowGroupDropTarget = () => {
-    if (!draggedRowId || !groupRowDropTarget || !isTableGrouped) {
+    const activeGroupDropTarget = groupRowDropTargetRef.current
+
+    if (!draggedRowId || !activeGroupDropTarget || !isTableGrouped) {
       return null
     }
 
@@ -1329,7 +1390,7 @@ export function DatabaseTableView() {
     }
 
     const targetSection = groupedSections.find(
-      (section) => section.id === groupRowDropTarget.sectionId
+      (section) => section.id === activeGroupDropTarget.sectionId
     )
 
     if (!targetSection) {
@@ -1338,7 +1399,7 @@ export function DatabaseTableView() {
 
     return {
       isCrossGroup: targetSection.id !== sourceSection.id,
-      localTargetIndex: groupRowDropTarget.localTargetIndex,
+      localTargetIndex: activeGroupDropTarget.localTargetIndex,
       section: targetSection,
       sourceSection,
     }
@@ -1347,8 +1408,8 @@ export function DatabaseTableView() {
     if (
       !draggedRowId ||
       (isTableGrouped
-        ? groupRowDropTarget === null
-        : rowDropTargetIndex === null)
+        ? groupRowDropTargetRef.current === null
+        : rowDropTargetRef.current === null)
     ) {
       return null
     }
@@ -1413,7 +1474,7 @@ export function DatabaseTableView() {
         rows,
         sortedRows,
         draggedRowId,
-        rowDropTargetIndex ?? 0
+        rowDropTargetRef.current?.index ?? 0
       )
 
       return rowIds ? { rowId: draggedRowId, rowIds } : null
@@ -1422,7 +1483,7 @@ export function DatabaseTableView() {
     const rowIds = getReorderedRowIds(
       isTableSorted ? sortedRows : rows,
       draggedRowId,
-      rowDropTargetIndex ?? 0
+      rowDropTargetRef.current?.index ?? 0
     )
 
     return rowIds ? { rowId: draggedRowId, rowIds } : null
@@ -1464,17 +1525,25 @@ export function DatabaseTableView() {
   }
   const clearRowDrag = () => {
     finishDatabaseRowDrag()
+    if (rowDragOverlayFrameRef.current !== null) {
+      window.cancelAnimationFrame(rowDragOverlayFrameRef.current)
+      rowDragOverlayFrameRef.current = null
+    }
+    pendingRowDragOverlayPositionRef.current = null
+    rowDragOverlaySnapshotRef.current = null
     setDraggedRowId(null)
     setRowDragOverlay(null)
-    setRowDropTargetIndex(null)
-    setGroupRowDropTarget(null)
+    updateRowDropTarget(null)
+    updateGroupRowDropTarget(null)
+    isExternalRowDragActiveRef.current = false
+    setIsExternalRowDragActive(false)
   }
   const rowDropLineTop =
-    (isTableGrouped ? !groupRowDropTarget : rowDropTargetIndex === null)
+    (isTableGrouped ? !groupRowDropTarget : rowDropTarget === null)
       ? null
       : isTableGrouped
         ? groupRowDropTarget?.top ?? null
-        : (rowLayout.dropTops[rowDropTargetIndex ?? 0] ?? null)
+        : rowDropTarget?.lineTop ?? null
   const conditionalColorsByRowId = useMemo(() => {
     const colorsByRowId = new Map<
       string,
@@ -1617,22 +1686,150 @@ export function DatabaseTableView() {
       return
     }
 
+    let dropCleanupTimer: number | null = null
+
     const moveOverlay = (event: DragEvent) => {
-      setRowDragOverlay((overlay) =>
-        overlay
-          ? {
-              ...overlay,
-              left: event.clientX - overlay.offsetX,
-              top: event.clientY - overlay.offsetY,
-            }
-          : overlay
-      )
+      const overlay = rowDragOverlaySnapshotRef.current
+
+      // Some browsers emit a final drag event at 0,0 before dragend.
+      if (!overlay || (event.clientX === 0 && event.clientY === 0)) {
+        return
+      }
+
+      pendingRowDragOverlayPositionRef.current = {
+        left: event.clientX - overlay.offsetX,
+        top: event.clientY - overlay.offsetY,
+      }
+      rowDragOverlayPositionRef.current =
+        pendingRowDragOverlayPositionRef.current
+
+      if (rowDragOverlayFrameRef.current !== null) {
+        return
+      }
+
+      rowDragOverlayFrameRef.current = window.requestAnimationFrame(() => {
+        rowDragOverlayFrameRef.current = null
+        const position = pendingRowDragOverlayPositionRef.current
+        pendingRowDragOverlayPositionRef.current = null
+
+        if (!position || !rowDragOverlayElementRef.current) {
+          return
+        }
+
+        rowDragOverlayElementRef.current.style.transform =
+          `translate3d(${position.left}px, ${position.top}px, 0)`
+      })
+    }
+    const finishAfterDrop = () => {
+      if (dropCleanupTimer !== null) {
+        window.clearTimeout(dropCleanupTimer)
+      }
+
+      // Run after the destination's drop handler has read the source refs.
+      dropCleanupTimer = window.setTimeout(clearRowDrag, 0)
     }
 
-    window.addEventListener("dragover", moveOverlay)
+    // Capture before a destination table handles the event so the source
+    // overlay keeps following the pointer across editor and database surfaces.
+    window.addEventListener("drag", moveOverlay, true)
+    window.addEventListener("dragover", moveOverlay, true)
+    window.addEventListener("dragend", clearRowDrag, true)
+    window.addEventListener("drop", finishAfterDrop, true)
+    window.addEventListener("blur", clearRowDrag)
 
-    return () => window.removeEventListener("dragover", moveOverlay)
+    return () => {
+      window.removeEventListener("drag", moveOverlay, true)
+      window.removeEventListener("dragover", moveOverlay, true)
+      window.removeEventListener("dragend", clearRowDrag, true)
+      window.removeEventListener("drop", finishAfterDrop, true)
+      window.removeEventListener("blur", clearRowDrag)
+
+      if (rowDragOverlayFrameRef.current !== null) {
+        window.cancelAnimationFrame(rowDragOverlayFrameRef.current)
+        rowDragOverlayFrameRef.current = null
+      }
+
+      if (dropCleanupTimer !== null) {
+        window.clearTimeout(dropCleanupTimer)
+      }
+    }
   }, [rowDragOverlay])
+
+  useEffect(() => {
+    if (!draggedRowId && !isExternalRowDragActive) {
+      return
+    }
+
+    let dropCleanupTimer: number | null = null
+    const clearDropVisuals = () => {
+      releaseDatabaseRowDropOwner(rowDropOwner)
+      updateRowDropTarget(null)
+      updateGroupRowDropTarget(null)
+
+      if (!draggedRowId) {
+        isExternalRowDragActiveRef.current = false
+        setIsExternalRowDragActive(false)
+      }
+    }
+    const clearWhenPointerLeavesTable = (event: DragEvent) => {
+      const tableElement = tableWrapRef.current
+      const pointerElement = document.elementFromPoint(
+        event.clientX,
+        event.clientY
+      )
+
+      if (
+        tableElement &&
+        pointerElement &&
+        tableElement.contains(pointerElement)
+      ) {
+        return
+      }
+
+      clearDropVisuals()
+    }
+    const clearAfterDrop = () => {
+      if (dropCleanupTimer !== null) {
+        window.clearTimeout(dropCleanupTimer)
+      }
+
+      dropCleanupTimer = window.setTimeout(clearDropVisuals, 0)
+    }
+
+    window.addEventListener("dragover", clearWhenPointerLeavesTable, true)
+    window.addEventListener("dragend", clearDropVisuals, true)
+    window.addEventListener("drop", clearAfterDrop, true)
+
+    return () => {
+      window.removeEventListener("dragover", clearWhenPointerLeavesTable, true)
+      window.removeEventListener("dragend", clearDropVisuals, true)
+      window.removeEventListener("drop", clearAfterDrop, true)
+
+      if (dropCleanupTimer !== null) {
+        window.clearTimeout(dropCleanupTimer)
+      }
+    }
+  }, [draggedRowId, isExternalRowDragActive, rowDropOwner])
+
+  useEffect(
+    () =>
+      subscribeDatabaseRowDropOwner((owner) => {
+        if (owner === rowDropOwner) {
+          return
+        }
+
+        // Exactly one table owns row-drop feedback. When another database
+        // claims the drag, synchronously release this table's previous line.
+        updateRowDropTarget(null)
+        updateGroupRowDropTarget(null)
+
+        if (!draggedRowId) {
+          isExternalRowDragActiveRef.current = false
+          setIsExternalRowDragActive(false)
+        }
+      }),
+    [draggedRowId, rowDropOwner]
+  )
 
   const isCellFillDragging = cellFillDrag !== null
 
@@ -2075,7 +2272,7 @@ export function DatabaseTableView() {
       return
     }
 
-    measureRows()
+    const measuredLayout = measureRows()
     const rowElement = tableWrapRef.current?.querySelector(
       `tr[data-database-row-id="${row.id}"]`
     )
@@ -2085,7 +2282,7 @@ export function DatabaseTableView() {
       ?.getBoundingClientRect()
 
     if (rowRect && tableRect) {
-      setRowDragOverlay({
+      const nextOverlay = {
         height: rowRect.height,
         left: rowRect.left,
         offsetX: event.clientX - rowRect.left,
@@ -2093,24 +2290,39 @@ export function DatabaseTableView() {
         title: getRowTitle(row),
         top: rowRect.top,
         width: tableRect.width,
-      })
+      }
+
+      rowDragOverlaySnapshotRef.current = nextOverlay
+      rowDragOverlayPositionRef.current = {
+        left: nextOverlay.left,
+        top: nextOverlay.top,
+      }
+      setRowDragOverlay(nextOverlay)
     }
 
     startDatabaseRowDrag()
     hideNativeDatabaseRowDragPreview(event.dataTransfer)
     setDraggedRowId(row.id)
-    setRowDropTargetIndex(visibleRowIndexById.get(row.id) ?? 0)
+    claimDatabaseRowDropOwner(rowDropOwner)
+    const sourceRowIndex = visibleRowIndexById.get(row.id) ?? 0
+    updateRowDropTarget({
+      index: sourceRowIndex,
+      lineTop: measuredLayout.dropTops[sourceRowIndex] ?? 0,
+    })
     const sourceSection = groupSectionByRowId.get(row.id)
     const sourceLocalIndex = sourceSection?.rows.findIndex(
       (sourceRow) => sourceRow.id === row.id
     )
 
-    setGroupRowDropTarget(
+    updateGroupRowDropTarget(
       sourceSection && sourceLocalIndex !== undefined
         ? {
             localTargetIndex: sourceLocalIndex,
             sectionId: sourceSection.id,
-            top: rowLayout.dropTops[visibleRowIndexById.get(row.id) ?? 0] ?? 0,
+            top:
+              measuredLayout.dropTops[
+                sourceRowIndex
+              ] ?? 0,
           }
         : null
     )
@@ -2770,8 +2982,10 @@ export function DatabaseTableView() {
               event.relatedTarget as globalThis.Node | null
             )
           ) {
-            setRowDropTargetIndex(null)
-            setGroupRowDropTarget(null)
+            releaseDatabaseRowDropOwner(rowDropOwner)
+            updateRowDropTarget(null)
+            updateGroupRowDropTarget(null)
+            isExternalRowDragActiveRef.current = false
             setIsExternalRowDragActive(false)
           }
         }}
@@ -2783,29 +2997,25 @@ export function DatabaseTableView() {
             return
           }
 
-          if (!draggedRowId && hasDragPayload && !isExternalRowDragActive) {
+          if (
+            !draggedRowId &&
+            hasDragPayload &&
+            !isExternalRowDragActiveRef.current
+          ) {
+            isExternalRowDragActiveRef.current = true
             setIsExternalRowDragActive(true)
-            return
+            measureRows()
           }
 
           event.preventDefault()
-          event.stopPropagation()
+          claimDatabaseRowDropOwner(rowDropOwner)
+          // Keep propagating so the editor clears its previous block drop line
+          // and the source table can release its local drop indicator.
           event.dataTransfer.dropEffect = "move"
-          if (draggedRowId) {
-            setRowDragOverlay((overlay) =>
-              overlay
-                ? {
-                    ...overlay,
-                    left: event.clientX - overlay.offsetX,
-                    top: event.clientY - overlay.offsetY,
-                  }
-                : overlay
-            )
-          }
           if (isTableGrouped) {
-            setGroupRowDropTarget(getGroupRowDropTarget(event.clientY))
+            updateGroupRowDropTarget(getGroupRowDropTarget(event.clientY))
           } else {
-            setRowDropTargetIndex(getRowDropTargetIndex(event.clientY))
+            updateRowDropTarget(resolveRowDropTarget(event.clientY))
           }
         }}
         onDrop={(event) => {
@@ -2814,10 +3024,19 @@ export function DatabaseTableView() {
           }
 
           const dragPayload = getDatabasePageDragPayload(event.dataTransfer)
+          const resolvedRowTarget = isTableGrouped
+            ? null
+            : resolveRowDropTarget(event.clientY)
+
+          if (isTableGrouped) {
+            updateGroupRowDropTarget(getGroupRowDropTarget(event.clientY))
+          } else {
+            updateRowDropTarget(resolvedRowTarget)
+          }
 
           const hasDropTarget = isTableGrouped
-            ? groupRowDropTarget !== null
-            : rowDropTargetIndex !== null
+            ? groupRowDropTargetRef.current !== null
+            : resolvedRowTarget !== null
 
           if ((!draggedRowId && !dragPayload) || !hasDropTarget) {
             return
@@ -2836,29 +3055,11 @@ export function DatabaseTableView() {
               applyRowMove(nextMove)
             }
           } else if (dragPayload) {
-            addDraggedPageRow(dragPayload, rowDropTargetIndex ?? 0)
+            addDraggedPageRow(dragPayload, resolvedRowTarget?.index ?? 0)
           }
           clearRowDrag()
-          setIsExternalRowDragActive(false)
         }}
       >
-        {rowDragOverlay ? (
-          <div
-            aria-hidden="true"
-            className="database-row-drag-overlay"
-            style={{
-              height: rowDragOverlay.height,
-              left: rowDragOverlay.left,
-              top: rowDragOverlay.top,
-              width: rowDragOverlay.width,
-            }}
-          >
-            <span className="database-row-drag-overlay-cell">
-              <FileText />
-              <span>{rowDragOverlay.title}</span>
-            </span>
-          </div>
-        ) : null}
         {!isInlineTableScrollEnabled ? renderRowDragRail() : null}
         {!isInlineTableScrollEnabled ? renderRowDropLine() : null}
         <div
@@ -3002,6 +3203,28 @@ export function DatabaseTableView() {
           </div>
         </div>
       </div>
+      {rowDragOverlay
+        ? createPortal(
+            <div
+              aria-hidden="true"
+              className="database-row-drag-overlay"
+              ref={rowDragOverlayElementRef}
+              style={{
+                height: rowDragOverlay.height,
+                left: 0,
+                top: 0,
+                transform: `translate3d(${rowDragOverlayPositionRef.current.left}px, ${rowDragOverlayPositionRef.current.top}px, 0)`,
+                width: rowDragOverlay.width,
+              }}
+            >
+              <span className="database-row-drag-overlay-cell">
+                <FileText />
+                <span>{rowDragOverlay.title}</span>
+              </span>
+            </div>,
+            document.body
+          )
+        : null}
       <DatabaseFormulaDialog
         databasePropertyId={formulaSetupPropertyId}
         onOpenChange={(open) => {
