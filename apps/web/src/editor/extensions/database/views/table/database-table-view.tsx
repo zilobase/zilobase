@@ -119,8 +119,8 @@ import {
   releaseDatabaseRowDropOwner,
   startDatabaseRowDrag,
   subscribeDatabaseRowDropOwner,
-  type DatabaseRowDragOverlay,
 } from "../../interactions/database-row-drag"
+import { useDatabaseRowDragOverlay } from "../../interactions/use-database-row-drag-overlay"
 import {
   canCreateRowInKanbanGroup,
   canUpdateKanbanGroupProperty,
@@ -882,16 +882,8 @@ export function DatabaseTableView() {
   const cellFillDragRef = useRef<CellFillDrag | null>(null)
   const propertyValuesByKeyRef = useRef(propertyValuesByKey)
   propertyValuesByKeyRef.current = propertyValuesByKey
-  const [rowDragOverlay, setRowDragOverlay] =
-    useState<DatabaseRowDragOverlay | null>(null)
-  const rowDragOverlayElementRef = useRef<HTMLDivElement | null>(null)
-  const rowDragOverlaySnapshotRef = useRef<DatabaseRowDragOverlay | null>(null)
-  const pendingRowDragOverlayPositionRef = useRef<{
-    left: number
-    top: number
-  } | null>(null)
-  const rowDragOverlayPositionRef = useRef({ left: 0, top: 0 })
-  const rowDragOverlayFrameRef = useRef<number | null>(null)
+  const finishRowDragRef = useRef<() => void>(() => {})
+  const rowDragOverlay = useDatabaseRowDragOverlay(finishRowDragRef)
   const [rowDropTarget, setRowDropTarget] =
     useState<DatabaseRowDropTarget | null>(null)
   const rowDropTargetRef = useRef<DatabaseRowDropTarget | null>(null)
@@ -1525,19 +1517,14 @@ export function DatabaseTableView() {
   }
   const clearRowDrag = () => {
     finishDatabaseRowDrag()
-    if (rowDragOverlayFrameRef.current !== null) {
-      window.cancelAnimationFrame(rowDragOverlayFrameRef.current)
-      rowDragOverlayFrameRef.current = null
-    }
-    pendingRowDragOverlayPositionRef.current = null
-    rowDragOverlaySnapshotRef.current = null
+    rowDragOverlay.clear()
     setDraggedRowId(null)
-    setRowDragOverlay(null)
     updateRowDropTarget(null)
     updateGroupRowDropTarget(null)
     isExternalRowDragActiveRef.current = false
     setIsExternalRowDragActive(false)
   }
+  finishRowDragRef.current = clearRowDrag
   const rowDropLineTop =
     (isTableGrouped ? !groupRowDropTarget : rowDropTarget === null)
       ? null
@@ -1680,80 +1667,6 @@ export function DatabaseTableView() {
       window.removeEventListener("resize", measureRows)
     }
   }, [measureRows])
-
-  useEffect(() => {
-    if (!rowDragOverlay) {
-      return
-    }
-
-    let dropCleanupTimer: number | null = null
-
-    const moveOverlay = (event: DragEvent) => {
-      const overlay = rowDragOverlaySnapshotRef.current
-
-      // Some browsers emit a final drag event at 0,0 before dragend.
-      if (!overlay || (event.clientX === 0 && event.clientY === 0)) {
-        return
-      }
-
-      pendingRowDragOverlayPositionRef.current = {
-        left: event.clientX - overlay.offsetX,
-        top: event.clientY - overlay.offsetY,
-      }
-      rowDragOverlayPositionRef.current =
-        pendingRowDragOverlayPositionRef.current
-
-      if (rowDragOverlayFrameRef.current !== null) {
-        return
-      }
-
-      rowDragOverlayFrameRef.current = window.requestAnimationFrame(() => {
-        rowDragOverlayFrameRef.current = null
-        const position = pendingRowDragOverlayPositionRef.current
-        pendingRowDragOverlayPositionRef.current = null
-
-        if (!position || !rowDragOverlayElementRef.current) {
-          return
-        }
-
-        rowDragOverlayElementRef.current.style.transform =
-          `translate3d(${position.left}px, ${position.top}px, 0)`
-      })
-    }
-    const finishAfterDrop = () => {
-      if (dropCleanupTimer !== null) {
-        window.clearTimeout(dropCleanupTimer)
-      }
-
-      // Run after the destination's drop handler has read the source refs.
-      dropCleanupTimer = window.setTimeout(clearRowDrag, 0)
-    }
-
-    // Capture before a destination table handles the event so the source
-    // overlay keeps following the pointer across editor and database surfaces.
-    window.addEventListener("drag", moveOverlay, true)
-    window.addEventListener("dragover", moveOverlay, true)
-    window.addEventListener("dragend", clearRowDrag, true)
-    window.addEventListener("drop", finishAfterDrop, true)
-    window.addEventListener("blur", clearRowDrag)
-
-    return () => {
-      window.removeEventListener("drag", moveOverlay, true)
-      window.removeEventListener("dragover", moveOverlay, true)
-      window.removeEventListener("dragend", clearRowDrag, true)
-      window.removeEventListener("drop", finishAfterDrop, true)
-      window.removeEventListener("blur", clearRowDrag)
-
-      if (rowDragOverlayFrameRef.current !== null) {
-        window.cancelAnimationFrame(rowDragOverlayFrameRef.current)
-        rowDragOverlayFrameRef.current = null
-      }
-
-      if (dropCleanupTimer !== null) {
-        window.clearTimeout(dropCleanupTimer)
-      }
-    }
-  }, [rowDragOverlay])
 
   useEffect(() => {
     if (!draggedRowId && !isExternalRowDragActive) {
@@ -2292,12 +2205,7 @@ export function DatabaseTableView() {
         width: tableRect.width,
       }
 
-      rowDragOverlaySnapshotRef.current = nextOverlay
-      rowDragOverlayPositionRef.current = {
-        left: nextOverlay.left,
-        top: nextOverlay.top,
-      }
-      setRowDragOverlay(nextOverlay)
+      rowDragOverlay.start(nextOverlay)
     }
 
     startDatabaseRowDrag()
@@ -3205,23 +3113,23 @@ export function DatabaseTableView() {
           </div>
         </div>
       </div>
-      {rowDragOverlay
+      {rowDragOverlay.overlay
         ? createPortal(
             <div
               aria-hidden="true"
               className="database-row-drag-overlay"
-              ref={rowDragOverlayElementRef}
+              ref={rowDragOverlay.elementRef}
               style={{
-                height: rowDragOverlay.height,
+                height: rowDragOverlay.overlay.height,
                 left: 0,
                 top: 0,
-                transform: `translate3d(${rowDragOverlayPositionRef.current.left}px, ${rowDragOverlayPositionRef.current.top}px, 0)`,
-                width: rowDragOverlay.width,
+                transform: `translate3d(${rowDragOverlay.positionRef.current.left}px, ${rowDragOverlay.positionRef.current.top}px, 0)`,
+                width: rowDragOverlay.overlay.width,
               }}
             >
               <span className="database-row-drag-overlay-cell">
                 <FileText />
-                <span>{rowDragOverlay.title}</span>
+                <span>{rowDragOverlay.overlay.title}</span>
               </span>
             </div>,
             document.body

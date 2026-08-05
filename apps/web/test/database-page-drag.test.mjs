@@ -41,4 +41,34 @@ export function register({ assert, loadModule, test }) {
 
     assert.equal(getDatabasePageDragPayload(dataTransfer), null)
   })
+
+  test("database page drops target row midpoints", async () => {
+    const { getDatabasePageDropPosition } = await loadModule(
+      "/src/editor/database-page-drop-target.ts",
+    )
+    const rows = [
+      {
+        getBoundingClientRect: () => ({ top: 100 }),
+        offsetHeight: 40,
+      },
+      {
+        getBoundingClientRect: () => ({ top: 140 }),
+        offsetHeight: 60,
+      },
+    ]
+    const databaseElement = { querySelectorAll: () => rows }
+
+    assert.equal(getDatabasePageDropPosition(databaseElement, 119), 0)
+    assert.equal(getDatabasePageDropPosition(databaseElement, 120), 1)
+    assert.equal(getDatabasePageDropPosition(databaseElement, 170), 2)
+  })
+
+  test("database page drops target the start of an empty table", async () => {
+    const { getDatabasePageDropPosition } = await loadModule(
+      "/src/editor/database-page-drop-target.ts",
+    )
+    const databaseElement = { querySelectorAll: () => [] }
+
+    assert.equal(getDatabasePageDropPosition(databaseElement, 500), 0)
+  })
 }

@@ -1,0 +1,344 @@
+import { useCallback, useState, type DragEvent as ReactDragEvent } from "react"
+import { toast } from "sonner"
+import {
+  useMoveDatabaseRow,
+  useReorderDatabaseRows,
+} from "@zilobase/features/databases"
+import { useUpdatePage } from "@zilobase/features/pages"
+
+import { serializePropertyValue } from "../../core/utils"
+import { getDatabaseGroupMoveValue } from "../../interactions/database-group-values"
+import { setDatabasePageDragPayload } from "../../interactions/database-page-drop"
+import {
+  finishDatabaseRowDrag,
+  getAnchoredReorderedRowIds,
+  getFilteredReorderedRowIds,
+  startDatabaseRowDrag,
+} from "../../interactions/database-row-drag"
+import {
+  canMoveRowsAcrossKanbanGroups,
+  type DatabasePropertyListItem,
+} from "./database-kanban-config"
+import { getKanbanCardDropTargetIndex } from "./database-kanban-card-drag"
+
+type KanbanDragRow = {
+  id: string
+  page: { name?: string }
+  pageId: string
+}
+
+type KanbanDragOption = {
+  groupValue: string
+  id: string
+}
+
+type DraggedKanbanCard = {
+  pageId: string
+  rowId: string
+  sourceOptionId: string
+  sourceGroupValue: string
+}
+
+export type KanbanCardDropTarget = {
+  optionId: string
+  targetIndex: number
+}
+
+export type KanbanCardMove = {
+  groupPropertyId?: string
+  groupValue?: unknown
+  pageId?: string
+  pageTitle?: string
+  rowId: string
+  rowIds: string[]
+}
+
+type KanbanCardDragInput<
+  Row extends KanbanDragRow,
+  Option extends KanbanDragOption,
+> = {
+  allRows: Row[]
+  databaseId: string | null | undefined
+  editable: boolean
+  getOptionItems: (option: Option) => Row[]
+  groupProperty: DatabasePropertyListItem | null
+  isSorted: boolean
+  options: Option[]
+  propertyValuesByKey: Record<string, string | string[]>
+  saveDatabaseSorts: (sorts: []) => Promise<unknown>
+}
+
+function isInteractiveCardTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.closest(".database-kanban-card-drag-handle")) return false
+
+  return Boolean(
+    target.closest(
+      [
+        "a",
+        "button",
+        "input",
+        "select",
+        "textarea",
+        "[contenteditable='true']",
+        "[data-database-cell-input]",
+        ".database-checkbox-cell",
+        ".database-date-cell-trigger",
+        ".database-input-cell-trigger",
+        ".database-select-cell-trigger",
+      ].join(","),
+    ),
+  )
+}
+
+export function useDatabaseKanbanCardDrag<
+  Row extends KanbanDragRow,
+  Option extends KanbanDragOption,
+>(input: KanbanCardDragInput<Row, Option>) {
+  const [draggedCard, setDraggedCard] = useState<DraggedKanbanCard | null>(null)
+  const [dragOverOptionId, setDragOverOptionId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<KanbanCardDropTarget | null>(null)
+  const [pendingSortedMove, setPendingSortedMove] =
+    useState<KanbanCardMove | null>(null)
+  const moveRow = useMoveDatabaseRow()
+  const reorderRows = useReorderDatabaseRows()
+  const updatePage = useUpdatePage()
+
+  const clearDrag = useCallback(() => {
+    finishDatabaseRowDrag()
+    setDraggedCard(null)
+    setDragOverOptionId(null)
+    setDropTarget(null)
+  }, [])
+
+  const getMove = useCallback(
+    (target = dropTarget): KanbanCardMove | null => {
+      if (!draggedCard || !target || !input.groupProperty) return null
+
+      const targetOption =
+        input.options.find((option) => option.id === target.optionId) ?? null
+      if (!targetOption) return null
+
+      const targetRows = input.getOptionItems(targetOption)
+      if (draggedCard.sourceOptionId === targetOption.id) {
+        const rowIds = getFilteredReorderedRowIds(
+          input.allRows,
+          targetRows,
+          draggedCard.rowId,
+          target.targetIndex,
+        )
+        return rowIds ? { rowId: draggedCard.rowId, rowIds } : null
+      }
+
+      if (!canMoveRowsAcrossKanbanGroups(input.groupProperty)) return null
+
+      const draggedRow = input.allRows.find((row) => row.id === draggedCard.rowId)
+      if (!draggedRow) return null
+
+      const rowIds =
+        getAnchoredReorderedRowIds(
+          input.allRows,
+          draggedCard.rowId,
+          targetRows,
+          target.targetIndex,
+        ) ?? input.allRows.map((row) => row.id)
+      const targetGroupValue = targetOption.groupValue
+
+      if (input.groupProperty.id === "name") {
+        return {
+          pageId: draggedRow.pageId,
+          pageTitle: targetGroupValue,
+          rowId: draggedCard.rowId,
+          rowIds,
+        }
+      }
+
+      const property = input.groupProperty.property
+      const key = `${draggedRow.pageId}:${property.id}`
+      const nextValue = getDatabaseGroupMoveValue({
+        currentValue: input.propertyValuesByKey[key] ?? "",
+        propertyType: property.type,
+        sourceGroupValue: draggedCard.sourceGroupValue,
+        targetGroupValue,
+      })
+
+      return {
+        groupPropertyId: property.id,
+        groupValue: serializePropertyValue(property.type, nextValue),
+        rowId: draggedCard.rowId,
+        rowIds,
+      }
+    }, [draggedCard, dropTarget, input],
+  )
+
+  const applyMove = useCallback(
+    (move: KanbanCardMove) => {
+      const databaseId = input.databaseId
+      if (!databaseId) return
+
+      if (move.pageId && typeof move.pageTitle === "string") {
+        updatePage.mutate(
+          { id: move.pageId, name: move.pageTitle },
+          {
+            onError: () => toast.error("Couldn't rename page"),
+            onSuccess: () => {
+              reorderRows.mutate({
+                databaseId,
+                rowIds: move.rowIds,
+              })
+            },
+          },
+        )
+        return
+      }
+
+      if (move.groupPropertyId) {
+        moveRow.mutate({
+          databaseId,
+          groupPropertyId: move.groupPropertyId,
+          groupValue: move.groupValue,
+          rowId: move.rowId,
+          rowIds: move.rowIds,
+        })
+        return
+      }
+
+      reorderRows.mutate({ databaseId, rowIds: move.rowIds })
+    }, [input.databaseId, moveRow, reorderRows, updatePage],
+  )
+
+  const confirmSortedMove = useCallback(() => {
+    if (!input.databaseId || !pendingSortedMove) {
+      setPendingSortedMove(null)
+      return
+    }
+
+    const move = pendingSortedMove
+    setPendingSortedMove(null)
+    void input
+      .saveDatabaseSorts([])
+      .then(() => applyMove(move))
+      .catch(() => toast.error("Couldn't clear sort"))
+  }, [applyMove, input, pendingSortedMove])
+
+  const startDrag = useCallback(
+    (row: Row, option: Option, event: ReactDragEvent<HTMLElement>) => {
+      if (!input.editable || !input.databaseId || !input.groupProperty) {
+        event.preventDefault()
+        return
+      }
+      if (isInteractiveCardTarget(event.target)) {
+        event.preventDefault()
+        return
+      }
+
+      const title = row.page.name?.trim() || "Untitled"
+      event.stopPropagation()
+      startDatabaseRowDrag()
+      setDatabasePageDragPayload(event.dataTransfer, {
+        databaseId: input.databaseId,
+        pageId: row.pageId,
+        rowId: row.id,
+        title,
+      })
+      setDraggedCard({
+        pageId: row.pageId,
+        rowId: row.id,
+        sourceOptionId: option.id,
+        sourceGroupValue: option.groupValue,
+      })
+      setDragOverOptionId(option.id)
+      setDropTarget({
+        optionId: option.id,
+        targetIndex: Math.max(
+          0,
+          input.getOptionItems(option).findIndex((item) => item.id === row.id),
+        ),
+      })
+    },
+    [input],
+  )
+
+  const dragOver = useCallback(
+    (option: Option, event: ReactDragEvent<HTMLElement>) => {
+      if (!input.editable || !input.groupProperty || !draggedCard) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      event.dataTransfer.dropEffect = "move"
+      setDragOverOptionId(option.id)
+      setDropTarget({
+        optionId: option.id,
+        targetIndex: getKanbanCardDropTargetIndex(
+          event.currentTarget,
+          event.clientY,
+        ),
+      })
+    },
+    [draggedCard, input.editable, input.groupProperty],
+  )
+
+  const drop = useCallback(
+    (option: Option, event: ReactDragEvent<HTMLElement>) => {
+      if (
+        !input.editable ||
+        !input.databaseId ||
+        !input.groupProperty ||
+        !draggedCard
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+      const target = dropTarget ?? {
+        optionId: option.id,
+        targetIndex: getKanbanCardDropTargetIndex(
+          event.currentTarget,
+          event.clientY,
+        ),
+      }
+      const move = getMove(target)
+
+      if (input.isSorted) {
+        if (move) setPendingSortedMove(move)
+      } else if (move) {
+        applyMove(move)
+      }
+      clearDrag()
+    }, [applyMove, clearDrag, draggedCard, dropTarget, getMove, input],
+  )
+
+  const leave = useCallback(
+    (option: Option, event: ReactDragEvent<HTMLElement>) => {
+      if (
+        event.currentTarget.contains(
+          event.relatedTarget as globalThis.Node | null,
+        )
+      ) {
+        return
+      }
+
+      setDragOverOptionId(null)
+      setDropTarget((current) =>
+        current?.optionId === option.id ? null : current,
+      )
+    },
+    [],
+  )
+
+  return {
+    clearDrag,
+    confirmSortedMove,
+    dragOver,
+    draggedCard,
+    dragOverOptionId,
+    drop,
+    dropTarget,
+    getMove,
+    leave,
+    pendingSortedMove,
+    setPendingSortedMove,
+    startDrag,
+  }
+}

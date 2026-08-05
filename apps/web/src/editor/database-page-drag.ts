@@ -9,7 +9,13 @@ import {
   getDatabasePageDragPayload as getNativeDatabasePageDragPayload,
   hasDatabasePageDragPayload,
 } from "@/packages/editor/extensions/database/interactions/database-page-drop";
+import {
+  getDatabasePageDropPosition,
+  getDropDatabaseElement,
+} from "./database-page-drop-target";
 import type { DatabasePageDropPayload } from "./types";
+
+export { getDropDatabaseElement } from "./database-page-drop-target";
 
 const insertPageBlockAt = (
   view: EditorView,
@@ -108,29 +114,6 @@ const getDatabasePageDropPayload = (
   getDraggedPageBlockPayload(event) ??
   getNativeDatabasePageDragPayload(event.dataTransfer);
 
-export const getDropDatabaseElement = (event: DragEvent) =>
-  event.target instanceof HTMLElement
-    ? event.target.closest<HTMLElement>(".database-block[data-database-id]")
-    : null;
-
-const getDatabaseDropPosition = (
-  databaseElement: HTMLElement,
-  event: DragEvent,
-) => {
-  const rows = Array.from(
-    databaseElement.querySelectorAll<HTMLTableRowElement>(
-      ".database-table tbody tr[data-database-row-id]",
-    ),
-  );
-  if (rows.length === 0) return 0;
-
-  const targetIndex = rows.findIndex(
-    (row) =>
-      event.clientY < row.getBoundingClientRect().top + row.offsetHeight / 2,
-  );
-  return targetIndex === -1 ? rows.length : targetIndex;
-};
-
 export const isDraggingPageToEditor = (event: DragEvent) =>
   hasDatabasePageDragPayload(event.dataTransfer) ||
   getDraggedPageBlockPayload(event) !== null;
@@ -175,7 +158,7 @@ export const dropPageOnDatabase = (
     {
       databaseId,
       pageId: dropPayload.pageId,
-      position: getDatabaseDropPosition(databaseElement, event),
+      position: getDatabasePageDropPosition(databaseElement, event.clientY),
       title: dropPayload.title,
     },
     {

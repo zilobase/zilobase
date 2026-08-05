@@ -43,6 +43,25 @@ export function register({ assert, loadModule, test }) {
       false
     )
   })
+
+  test("database kanban drag targets card midpoints", async () => {
+    const { getKanbanCardDropTargetIndex } = await loadModule(
+      "/src/editor/extensions/database/views/kanban/database-kanban-card-drag.ts"
+    )
+    const cards = [
+      { getBoundingClientRect: () => ({ height: 40, top: 100 }) },
+      { getBoundingClientRect: () => ({ height: 60, top: 140 }) },
+    ]
+    const column = { querySelectorAll: () => cards }
+
+    assert.equal(getKanbanCardDropTargetIndex(column, 119), 0)
+    assert.equal(getKanbanCardDropTargetIndex(column, 120), 1)
+    assert.equal(getKanbanCardDropTargetIndex(column, 500), 2)
+    assert.equal(
+      getKanbanCardDropTargetIndex({ querySelectorAll: () => [] }, 100),
+      0
+    )
+  })
 }
 
 function createProperty(propertyId, type) {

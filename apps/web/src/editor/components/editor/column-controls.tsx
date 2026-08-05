@@ -10,30 +10,17 @@ import {
   PanelRight,
   Trash2,
 } from "lucide-react"
-
-type ColumnAxisRect = {
-  height: number
-  index: number
-  left: number
-  top: number
-  width: number
-}
-
-type ColumnBlockRect = {
-  columns: ColumnAxisRect[]
-  height: number
-  left: number
-  node: ProseMirrorNode
-  pos: number
-  top: number
-  width: number
-}
-
-type ColumnDragState = {
-  dropPosition?: "before" | "after"
-  from: number
-  target: number
-}
+import {
+  columnHandleGap,
+  columnHandleHeight,
+  getColumnDragTargetIndex,
+  getColumnExtractionDropPosition,
+  getColumnIndexAtPoint,
+  reorderColumnItems,
+  type ColumnAxisRect,
+  type ColumnBlockRect,
+  type ColumnDragState,
+} from "./column-drag"
 
 type ColumnMenuState = {
   index: number
@@ -41,8 +28,6 @@ type ColumnMenuState = {
   top: number
 }
 
-const columnHandleGap = 4
-const columnHandleHeight = 14
 const minColumnWidth = 12
 const columnMenuOffset = 8
 
@@ -178,87 +163,6 @@ function getColumnControlIndex(target: EventTarget | null) {
   const index = Number.parseInt(rawIndex, 10)
 
   return Number.isInteger(index) ? index : null
-}
-
-function getColumnIndexAtPoint(
-  rect: ColumnBlockRect,
-  clientX: number,
-  clientY: number,
-) {
-  const isInsideColumnControlZone =
-    clientX >= rect.left &&
-    clientX <= rect.left + rect.width &&
-    clientY >= rect.top - columnHandleHeight - columnHandleGap &&
-    clientY <= rect.top + rect.height
-
-  if (!isInsideColumnControlZone) {
-    return null
-  }
-
-  const directColumn = rect.columns.find(
-    (column) =>
-      clientX >= column.left && clientX <= column.left + column.width,
-  )
-
-  if (directColumn) {
-    return directColumn.index
-  }
-
-  const closestColumn = rect.columns.reduce<ColumnAxisRect | null>(
-    (closest, column) => {
-      const center = column.left + column.width / 2
-      const closestCenter = closest
-        ? closest.left + closest.width / 2
-        : Number.POSITIVE_INFINITY
-
-      return Math.abs(clientX - center) < Math.abs(clientX - closestCenter)
-        ? column
-        : closest
-    },
-    null,
-  )
-
-  return closestColumn?.index ?? null
-}
-
-function getTargetIndex(rect: ColumnBlockRect, clientX: number) {
-  const target = rect.columns.find((column) => {
-    const center = column.left + column.width / 2
-
-    return clientX < center
-  })
-
-  return target?.index ?? rect.columns.length - 1
-}
-
-function getColumnDropPosition(
-  rect: ColumnBlockRect,
-  clientX: number,
-  clientY: number,
-) {
-  const isInsideRearrangeArea =
-    clientX >= rect.left &&
-    clientX <= rect.left + rect.width &&
-    clientY >= rect.top - columnHandleHeight - columnHandleGap &&
-    clientY <= rect.top + rect.height
-
-  if (isInsideRearrangeArea) {
-    return null
-  }
-
-  return clientY < rect.top + rect.height / 2 ? "before" : "after"
-}
-
-function reorder<T>(items: T[], from: number, to: number) {
-  const nextItems = [...items]
-  const [item] = nextItems.splice(from, 1)
-
-  if (!item) {
-    return nextItems
-  }
-
-  nextItems.splice(to, 0, item)
-  return nextItems
 }
 
 function getChildNodes(node: ProseMirrorNode) {
@@ -679,8 +583,12 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
     updateColumnBlock(
       editor,
       rect,
-      reorder(children, currentDrag.from, currentDrag.target),
-      reorder(getColumnWidths(rect.node), currentDrag.from, currentDrag.target),
+      reorderColumnItems(children, currentDrag.from, currentDrag.target),
+      reorderColumnItems(
+        getColumnWidths(rect.node),
+        currentDrag.from,
+        currentDrag.target,
+      ),
     )
     setHoveredColumnIndex(nextHoveredIndex)
     requestAnimationFrame(() => {
@@ -731,7 +639,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
       pointer.moved = true
     }
 
-    const dropPosition = getColumnDropPosition(
+    const dropPosition = getColumnExtractionDropPosition(
       rect,
       event.clientX,
       event.clientY,
@@ -743,7 +651,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
       return
     }
 
-    const target = getTargetIndex(rect, event.clientX)
+    const target = getColumnDragTargetIndex(rect, event.clientX)
     if (
       target !== currentDrag.target ||
       currentDrag.dropPosition !== undefined

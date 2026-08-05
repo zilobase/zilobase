@@ -11,62 +11,22 @@ import {
 } from "@tiptap/pm/tables"
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
 import { MoreHorizontal, MoreVertical, Plus } from "lucide-react"
+import {
+  getAddControlVisibility,
+  getHoveredTableCell,
+  getTableDragTargetIndex,
+  getTableDropLinePosition,
+  isInsideTableControls,
+  tableControlGap,
+  tableReorderHandleSize,
+  type AddControlVisibility,
+  type HoveredTableCell,
+  type PinnedReorderHandle,
+  type TableControlRect,
+  type TableDragState,
+} from "./table-drag"
 
-type TableAxisRect = {
-  index: number
-  left: number
-  top: number
-  width: number
-  height: number
-}
-
-type TableControlRect = {
-  bottom: number
-  columns: TableAxisRect[]
-  left: number
-  right: number
-  rows: TableAxisRect[]
-  selectedBottom: number
-  selectedColumn: number
-  selectedLeft: number
-  selectedRight: number
-  selectedRow: number
-  selectedTop: number
-  top: number
-  width: number
-  height: number
-  hasSelection: boolean
-  map: TableMap
-  table: ProseMirrorNode
-  tablePos: number
-  tableStart: number
-  cellSize: number
-}
-
-type TableDragState = {
-  axis: "column" | "row"
-  from: number
-  target: number
-}
-
-type AddControlVisibility = {
-  column: boolean
-  row: boolean
-}
-
-type HoveredTableCell = {
-  column: number
-  row: number
-}
-
-type PinnedReorderHandle = {
-  axis: TableDragState["axis"]
-  index: number
-}
-
-const tableControlGap = 4
 const tableColumnMinWidth = 180
-const tableReorderHandleSize = 14
 
 const hiddenAddControls: AddControlVisibility = {
   column: false,
@@ -235,83 +195,6 @@ function isTableControlElement(target: EventTarget | null) {
       ),
     )
   )
-}
-
-function isInsideTableControls(rect: TableControlRect, clientX: number, clientY: number) {
-  return (
-    clientX >= rect.left - tableReorderHandleSize - tableControlGap &&
-    clientX <= rect.left + rect.width + tableControlGap + rect.cellSize &&
-    clientY >= rect.top - tableReorderHandleSize - tableControlGap &&
-    clientY <= rect.top + rect.height + tableControlGap + rect.cellSize
-  )
-}
-
-function getAddControlVisibility(
-  rect: TableControlRect,
-  clientX: number,
-  clientY: number
-): AddControlVisibility {
-  const lastRow = rect.rows[rect.rows.length - 1]
-  const lastColumn = rect.columns[rect.columns.length - 1]
-  const row =
-    !!lastRow &&
-    clientX >= rect.left &&
-    clientX <= rect.left + rect.width &&
-    clientY >= lastRow.top &&
-    clientY <= rect.top + rect.height + tableControlGap + rect.cellSize
-  const column =
-    !!lastColumn &&
-    clientX >= lastColumn.left &&
-    clientX <= rect.left + rect.width + tableControlGap + rect.cellSize &&
-    clientY >= rect.top &&
-    clientY <= rect.top + rect.height
-
-  return {
-    column,
-    row,
-  }
-}
-
-function getHoveredTableCell(
-  rect: TableControlRect,
-  clientX: number,
-  clientY: number,
-  currentHover: HoveredTableCell | null
-): HoveredTableCell | null {
-  const column = rect.columns.find((segment) => {
-    return clientX >= segment.left && clientX <= segment.left + segment.width
-  })
-  const row = rect.rows.find((segment) => {
-    return clientY >= segment.top && clientY <= segment.top + segment.height
-  })
-
-  if (column && row) {
-    return {
-      column: column.index,
-      row: row.index,
-    }
-  }
-
-  if (!currentHover) {
-    return null
-  }
-
-  const activeColumn = rect.columns[currentHover.column]
-  const activeRow = rect.rows[currentHover.row]
-  const isOverColumnHandle =
-    !!activeColumn &&
-    clientX >= activeColumn.left &&
-    clientX <= activeColumn.left + activeColumn.width &&
-    clientY >= rect.top - tableReorderHandleSize - tableControlGap &&
-    clientY <= rect.top
-  const isOverRowHandle =
-    !!activeRow &&
-    clientX >= rect.left - tableReorderHandleSize - tableControlGap &&
-    clientX <= rect.left &&
-    clientY >= activeRow.top &&
-    clientY <= activeRow.top + activeRow.height
-
-  return isOverColumnHandle || isOverRowHandle ? currentHover : null
 }
 
 export function TableControls({ editor }: { editor: Editor | null }) {
@@ -518,24 +401,6 @@ export function TableControls({ editor }: { editor: Editor | null }) {
     updateRect()
   }
 
-  const getTargetIndex = (
-    axis: TableDragState["axis"],
-    clientX: number,
-    clientY: number
-  ) => {
-    const segments = axis === "column" ? rect.columns : rect.rows
-    const pointerPosition = axis === "column" ? clientX : clientY
-
-    return (
-      segments.find((segment) => {
-        const start = axis === "column" ? segment.left : segment.top
-        const size = axis === "column" ? segment.width : segment.height
-
-        return pointerPosition >= start && pointerPosition <= start + size
-      })?.index ?? null
-    )
-  }
-
   const finishDrag = () => {
     const currentDrag = dragState.current
 
@@ -597,7 +462,8 @@ export function TableControls({ editor }: { editor: Editor | null }) {
 
     event.preventDefault()
 
-    const target = getTargetIndex(
+    const target = getTableDragTargetIndex(
+      rect,
       currentDrag.axis,
       event.clientX,
       event.clientY
@@ -642,17 +508,7 @@ export function TableControls({ editor }: { editor: Editor | null }) {
   const dragSegments =
     dragPreview?.axis === "column" ? rect.columns : rect.rows
   const dragSource = dragPreview ? dragSegments[dragPreview.from] : null
-  const dragTarget = dragPreview ? dragSegments[dragPreview.target] : null
-  const dropLinePosition =
-    dragPreview && dragTarget
-      ? dragPreview.axis === "column"
-        ? dragPreview.target > dragPreview.from
-          ? dragTarget.left + dragTarget.width
-          : dragTarget.left
-        : dragPreview.target > dragPreview.from
-          ? dragTarget.top + dragTarget.height
-          : dragTarget.top
-      : null
+  const dropLinePosition = getTableDropLinePosition(rect, dragPreview)
 
   return (
     <>

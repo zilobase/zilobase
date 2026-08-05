@@ -74,4 +74,33 @@ export function register({ assert, loadModule, test }) {
 
     assert.deepEqual(getDraggedEditorBlockPayload(dataTransfer), payload)
   })
+
+  test("block drag session bridges browsers that hide custom transfer data", async () => {
+    const {
+      armBlockDrag,
+      endBlockDrag,
+      getDraggedEditorBlockPayload,
+    } = await loadModule("/src/editor/components/editor/block-drag.ts")
+    const target = {
+      node: {
+        textContent: "Hello",
+        toJSON: () => ({ type: "paragraph" }),
+        type: { name: "paragraph" },
+      },
+      pos: 4,
+    }
+
+    armBlockDrag("editor-1", target)
+
+    assert.deepEqual(getDraggedEditorBlockPayload(null), {
+      editorId: "editor-1",
+      node: { type: "paragraph" },
+      pos: 4,
+      textContent: "Hello",
+      typeName: "paragraph",
+    })
+
+    endBlockDrag()
+    assert.equal(getDraggedEditorBlockPayload(null), null)
+  })
 }

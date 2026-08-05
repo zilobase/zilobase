@@ -1,0 +1,115 @@
+type RowIdItem = {
+  id: string
+}
+
+function areRowIdsEqual(rows: RowIdItem[], rowIds: string[]) {
+  return rowIds.every((rowId, index) => rowId === rows[index]?.id)
+}
+
+function moveRowBetweenAnchors(
+  allRows: RowIdItem[],
+  draggedRowId: string,
+  previousAnchorId?: string,
+  nextAnchorId?: string,
+) {
+  const draggedRow = allRows.find((row) => row.id === draggedRowId)
+  if (!draggedRow) return null
+
+  const nextRows = allRows.filter((row) => row.id !== draggedRowId)
+  const anchorId = nextAnchorId ?? previousAnchorId
+  const anchorIndex = anchorId
+    ? nextRows.findIndex((row) => row.id === anchorId)
+    : 0
+  if (anchorIndex === -1) return null
+
+  const insertAfterAnchor = !nextAnchorId && Boolean(previousAnchorId)
+  nextRows.splice(anchorIndex + (insertAfterAnchor ? 1 : 0), 0, draggedRow)
+  const rowIds = nextRows.map((row) => row.id)
+  return areRowIdsEqual(allRows, rowIds) ? null : rowIds
+}
+
+export function getReorderedRowIds(
+  sourceRows: RowIdItem[],
+  draggedRowId: string,
+  targetIndex: number,
+) {
+  const sourceIndex = sourceRows.findIndex((row) => row.id === draggedRowId)
+  if (sourceIndex === -1) return null
+
+  const nextRows = [...sourceRows]
+  const [draggedRow] = nextRows.splice(sourceIndex, 1)
+  const nextTargetIndex = Math.min(
+    nextRows.length,
+    Math.max(0, targetIndex > sourceIndex ? targetIndex - 1 : targetIndex),
+  )
+
+  nextRows.splice(nextTargetIndex, 0, draggedRow)
+  const rowIds = nextRows.map((row) => row.id)
+  return areRowIdsEqual(sourceRows, rowIds) ? null : rowIds
+}
+
+export function getFilteredReorderedRowIds(
+  allRows: RowIdItem[],
+  visibleRows: RowIdItem[],
+  draggedRowId: string,
+  targetIndex: number,
+) {
+  const nextVisibleRowIds = getReorderedRowIds(
+    visibleRows,
+    draggedRowId,
+    targetIndex,
+  )
+  if (!nextVisibleRowIds) return null
+
+  const nextVisibleIndex = nextVisibleRowIds.indexOf(draggedRowId)
+  return moveRowBetweenAnchors(
+    allRows,
+    draggedRowId,
+    nextVisibleRowIds[nextVisibleIndex - 1],
+    nextVisibleRowIds[nextVisibleIndex + 1],
+  )
+}
+
+export function getAnchoredReorderedRowIds(
+  allRows: RowIdItem[],
+  draggedRowId: string,
+  anchorRows: RowIdItem[],
+  targetIndex: number,
+) {
+  return moveRowBetweenAnchors(
+    allRows,
+    draggedRowId,
+    anchorRows[targetIndex - 1]?.id,
+    anchorRows[targetIndex]?.id,
+  )
+}
+
+export function getGroupedReorderedRowIds({
+  allRows,
+  draggedRowId,
+  groupRows,
+  targetIndex,
+  visibleRows,
+}: {
+  allRows: RowIdItem[]
+  draggedRowId: string
+  groupRows: RowIdItem[]
+  targetIndex: number
+  visibleRows: RowIdItem[]
+}) {
+  const groupRowIds = new Set(groupRows.map((row) => row.id))
+  if (!groupRowIds.has(draggedRowId)) return null
+
+  const groupStartIndex = visibleRows.findIndex((row) => groupRowIds.has(row.id))
+  if (groupStartIndex === -1) return null
+
+  const groupEndIndex = groupStartIndex + groupRows.length
+  if (targetIndex < groupStartIndex || targetIndex > groupEndIndex) return null
+
+  return getFilteredReorderedRowIds(
+    allRows,
+    groupRows,
+    draggedRowId,
+    targetIndex - groupStartIndex,
+  )
+}

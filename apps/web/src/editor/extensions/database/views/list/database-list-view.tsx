@@ -1,17 +1,11 @@
-import { useMemo, useState, type DragEvent } from "react"
+import { useMemo } from "react"
 import { GripVertical, Loader2, Plus } from "lucide-react"
-import { useReorderDatabaseRows } from "@zilobase/features/databases"
 
 import { DatabasePageLink } from "../../interactions/database-page-link"
-import {
-  finishDatabaseRowDrag,
-  getFilteredReorderedRowIds,
-  getReorderedRowIds,
-  startDatabaseRowDrag,
-} from "../../interactions/database-row-drag"
 import { DatabasePropertyValue } from "../../properties/database-property-value"
 import { useDatabaseRowsScroll } from "../../interactions/use-database-rows-scroll"
 import { useDatabaseViewContext } from "../database-view-context"
+import { useDatabaseListRowDrag } from "./use-database-list-row-drag"
 
 export function DatabaseListView() {
   const {
@@ -37,9 +31,6 @@ export function DatabaseListView() {
     updateDatabasePropertyConfig,
     visibleProperties,
   } = useDatabaseViewContext()
-  const reorderRows = useReorderDatabaseRows()
-  const [draggedRowId, setDraggedRowId] = useState<string | null>(null)
-  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   const rows = useMemo(() => {
     const rowsById = new Map(items.map((row) => [row.id, row]))
 
@@ -49,75 +40,18 @@ export function DatabaseListView() {
     })
   }, [items, sortedItems])
   const canReorderRows = editable && activeDatabaseSorts.length === 0
+  const rowDrag = useDatabaseListRowDrag({
+    databaseId,
+    hasActiveFilters: activeDatabaseFilters.length > 0,
+    items,
+    reorderEnabled: canReorderRows,
+    visibleRows: rows,
+  })
   const { sentinelRef } = useDatabaseRowsScroll({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   })
-
-  const clearDrag = () => {
-    finishDatabaseRowDrag()
-    setDraggedRowId(null)
-    setDropTargetIndex(null)
-  }
-
-  const handleDragStart = (
-    event: DragEvent<HTMLButtonElement>,
-    rowId: string,
-  ) => {
-    if (!canReorderRows) {
-      event.preventDefault()
-      return
-    }
-
-    event.dataTransfer.effectAllowed = "move"
-    event.dataTransfer.setData("text/plain", rowId)
-    startDatabaseRowDrag()
-    setDraggedRowId(rowId)
-  }
-
-  const handleDragOver = (
-    event: DragEvent<HTMLDivElement>,
-    rowIndex: number,
-  ) => {
-    if (!draggedRowId) {
-      return
-    }
-
-    event.preventDefault()
-    event.dataTransfer.dropEffect = "move"
-    const rowRect = event.currentTarget.getBoundingClientRect()
-    const nextIndex =
-      event.clientY < rowRect.top + rowRect.height / 2
-        ? rowIndex
-        : rowIndex + 1
-
-    setDropTargetIndex(nextIndex)
-  }
-
-  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
-    if (!databaseId || !draggedRowId || dropTargetIndex === null) {
-      clearDrag()
-      return
-    }
-
-    event.preventDefault()
-    const rowIds =
-      activeDatabaseFilters.length > 0
-        ? getFilteredReorderedRowIds(
-            items,
-            rows,
-            draggedRowId,
-            dropTargetIndex,
-          )
-        : getReorderedRowIds(items, draggedRowId, dropTargetIndex)
-
-    if (rowIds) {
-      reorderRows.mutate({ databaseId, rowIds })
-    }
-
-    clearDrag()
-  }
 
   return (
     <div
@@ -128,20 +62,22 @@ export function DatabaseListView() {
         {rows.map((row, rowIndex) => (
           <div
             className="database-list-row"
-            data-dragging={draggedRowId === row.id ? "true" : undefined}
+            data-dragging={rowDrag.draggedRowId === row.id ? "true" : undefined}
             data-drop-after={
-              draggedRowId &&
-              dropTargetIndex === rowIndex + 1 &&
+              rowDrag.draggedRowId &&
+              rowDrag.dropTargetIndex === rowIndex + 1 &&
               rowIndex === rows.length - 1
                 ? "true"
                 : undefined
             }
             data-drop-before={
-              draggedRowId && dropTargetIndex === rowIndex ? "true" : undefined
+              rowDrag.draggedRowId && rowDrag.dropTargetIndex === rowIndex
+                ? "true"
+                : undefined
             }
             key={row.id}
-            onDragOver={(event) => handleDragOver(event, rowIndex)}
-            onDrop={handleDrop}
+            onDragOver={(event) => rowDrag.updateDropTarget(event, rowIndex)}
+            onDrop={rowDrag.drop}
           >
             {editable ? (
               <button
@@ -149,8 +85,8 @@ export function DatabaseListView() {
                 className="database-list-drag-handle"
                 disabled={!canReorderRows}
                 draggable={canReorderRows}
-                onDragEnd={clearDrag}
-                onDragStart={(event) => handleDragStart(event, row.id)}
+                onDragEnd={rowDrag.clearDrag}
+                onDragStart={(event) => rowDrag.startDrag(event, row.id)}
                 title={
                   canReorderRows
                     ? "Drag to reorder"
