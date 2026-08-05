@@ -1,8 +1,4 @@
-import type {
-  DatabasePayload,
-  DatabaseRow,
-  PagePropertyValue,
-} from "./queries"
+import type { DatabasePayload, DatabaseRow, PagePropertyValue } from "./queries"
 import type { DatabaseMutationResponse } from "./mutation-types"
 
 export type AddRowCacheInput = {
@@ -11,6 +7,7 @@ export type AddRowCacheInput = {
   position?: number
   sourceDatabaseId?: string
   sourcePropertyMode?: "duplicate" | "match"
+  sourceRowId?: string
   title?: string
   values?: Array<{
     propertyId: string
@@ -31,7 +28,10 @@ export type AddRowResponse = {
   values?: PagePropertyValue[]
 }
 
-export type AddRowMutationResponse = AddRowResponse & DatabaseMutationResponse
+export type AddRowMutationResponse = AddRowResponse &
+  DatabaseMutationResponse & {
+    sourceMutation?: DatabaseMutationResponse
+  }
 
 export type OptimisticAddRowResult = {
   pageId: string
@@ -39,7 +39,9 @@ export type OptimisticAddRowResult = {
   rowId: string
 }
 
-export function isAddRowResponse(response: unknown): response is AddRowResponse {
+export function isAddRowResponse(
+  response: unknown,
+): response is AddRowResponse {
   if (!response || typeof response !== "object") {
     return false
   }
@@ -165,7 +167,7 @@ export function applyConfirmedAddedDatabaseRow(
   if (existingIndex >= 0) {
     rows = rows
       .filter((row) => row.id !== optimistic?.rowId)
-      .map((row) => row.id === response.rowId ? confirmedRow : row)
+      .map((row) => (row.id === response.rowId ? confirmedRow : row))
   } else if (optimisticIndex >= 0) {
     rows[optimisticIndex] = confirmedRow
   } else {
@@ -180,9 +182,10 @@ export function applyConfirmedAddedDatabaseRow(
   const values: PagePropertyValue[] = []
 
   for (const value of payload.values) {
-    const mapped = optimistic && value.pageId === optimistic.pageId
-      ? { ...value, pageId: response.pageId }
-      : value
+    const mapped =
+      optimistic && value.pageId === optimistic.pageId
+        ? { ...value, pageId: response.pageId }
+        : value
     const index = values.findIndex(
       (current) =>
         current.pageId === mapped.pageId &&

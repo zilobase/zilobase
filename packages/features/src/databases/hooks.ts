@@ -110,6 +110,7 @@ type AddRowInput = {
   position?: number;
   sourceDatabaseId?: string;
   sourcePropertyMode?: "duplicate" | "match";
+  sourceRowId?: string;
   title?: string;
 };
 
@@ -170,19 +171,19 @@ function restoreDatabasePayloadAfterFailedMutation(
 ) {
   const current = queryClient.getQueryData<DatabasePayload | null>(
     databaseQueryKey(databaseId),
-  )
+  );
 
   if (
     !current ||
     (current.database.version ?? 0) === (previous.database.version ?? 0)
   ) {
-    setDatabasePayloadQueryData(queryClient, databaseId, previous)
-    return
+    setDatabasePayloadQueryData(queryClient, databaseId, previous);
+    return;
   }
 
   void queryClient.invalidateQueries({
     queryKey: databasePayloadRootQueryKey(databaseId),
-  })
+  });
 }
 
 export function reorderDatabaseRows(
@@ -318,10 +319,10 @@ export function updateDatabasePropertyInPayload(
   );
   const shouldUpdateValues = Boolean(
     input.type &&
-      previousType &&
-      input.type !== previousType &&
-      (shouldClearValuesForPropertyTypeChange(previousType, input.type) ||
-        (previousType === "date" && input.type === "text")),
+    previousType &&
+    input.type !== previousType &&
+    (shouldClearValuesForPropertyTypeChange(previousType, input.type) ||
+      (previousType === "date" && input.type === "text")),
   );
   const values = shouldUpdateValues
     ? payload.values.map((propertyValue) =>
@@ -364,9 +365,7 @@ function formatDatePropertyValueAsText(value: unknown) {
   const startText = typeof start === "string" ? start.trim() : "";
   const endText = typeof end === "string" ? end.trim() : "";
 
-  return startText && endText
-    ? `${startText} - ${endText}`
-    : startText || null;
+  return startText && endText ? `${startText} - ${endText}` : startText || null;
 }
 
 export function useDatabase(
@@ -904,8 +903,12 @@ export function useAddDatabaseRow() {
           response,
         );
         setDatabasePayloadQueryData(queryClient, databaseId, payload);
-        payload = applyVersionedDatabaseMutation(queryClient, response).payload
-          ?? payload;
+        payload =
+          applyVersionedDatabaseMutation(queryClient, response).payload ??
+          payload;
+        if (response.sourceMutation) {
+          applyVersionedDatabaseMutation(queryClient, response.sourceMutation);
+        }
       } catch (error) {
         if (current) {
           restoreDatabasePayloadAfterFailedMutation(

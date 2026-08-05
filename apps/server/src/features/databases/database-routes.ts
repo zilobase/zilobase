@@ -719,7 +719,8 @@ databaseRoutes.post("/:id/rows", async (c) => {
     parentRowId = null,
     position,
     sourceDatabaseId = null,
-    sourcePropertyMode = "duplicate",
+    sourcePropertyMode = "match",
+    sourceRowId = null,
     title,
   } = body as {
     pageId?: unknown;
@@ -727,6 +728,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
     position?: unknown;
     sourceDatabaseId?: unknown;
     sourcePropertyMode?: unknown;
+    sourceRowId?: unknown;
     title?: unknown;
   };
 
@@ -735,7 +737,8 @@ databaseRoutes.post("/:id/rows", async (c) => {
     (pageId !== null && typeof pageId !== "string") ||
     (parentRowId !== null && typeof parentRowId !== "string") ||
     (sourceDatabaseId !== null && typeof sourceDatabaseId !== "string") ||
-    (sourcePropertyMode !== "duplicate" && sourcePropertyMode !== "match") ||
+    (sourceRowId !== null && typeof sourceRowId !== "string") ||
+    sourcePropertyMode !== "match" ||
     (position !== undefined &&
       (!Number.isInteger(position) || (position as number) < 0))
   ) {
@@ -751,6 +754,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
       position: position as number | undefined,
       sourceDatabaseId: sourceDatabaseId as string | null,
       sourcePropertyMode,
+      sourceRowId: sourceRowId as string | null,
       title: title as string | undefined,
       userId: user.id,
     });
@@ -768,6 +772,9 @@ databaseRoutes.post("/:id/rows", async (c) => {
         title: result.title,
         updatedAt: result.updatedAt,
         values: result.commit.delta.values ?? [],
+        ...(result.sourceCommit
+          ? { sourceMutation: mutationResponse(result.sourceCommit) }
+          : {}),
       },
       201,
     );
@@ -788,17 +795,23 @@ databaseRoutes.patch("/:id/rows/reorder", async (c) => {
     return c.json({ error: "A JSON body is required" }, 400);
   }
   const { rowIds } = body as { rowIds?: unknown };
-  if (!Array.isArray(rowIds) || rowIds.some((rowId) => typeof rowId !== "string")) {
+  if (
+    !Array.isArray(rowIds) ||
+    rowIds.some((rowId) => typeof rowId !== "string")
+  ) {
     return c.json({ error: "rowIds must be an array of strings" }, 400);
   }
   try {
     const result = await reorderDatabaseRowsService({
-      databaseId: c.req.param("id"), env: c.env,
-      rowIds: rowIds as string[], userId: user.id,
+      databaseId: c.req.param("id"),
+      env: c.env,
+      rowIds: rowIds as string[],
+      userId: user.id,
     });
     return c.json(mutationResponse(result.commit));
   } catch (error) {
-    if (error instanceof ServiceMutationError) return serviceMutationErrorResponse(c, error);
+    if (error instanceof ServiceMutationError)
+      return serviceMutationErrorResponse(c, error);
     throw error;
   }
 });
@@ -810,22 +823,36 @@ databaseRoutes.patch("/:id/rows/:rowId/move", async (c) => {
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-  const { groupPropertyId, groupValue = null, rowIds } = body as {
-    groupPropertyId?: unknown; groupValue?: unknown; rowIds?: unknown;
+  const {
+    groupPropertyId,
+    groupValue = null,
+    rowIds,
+  } = body as {
+    groupPropertyId?: unknown;
+    groupValue?: unknown;
+    rowIds?: unknown;
   };
-  if (!Array.isArray(rowIds) || rowIds.some((rowId) => typeof rowId !== "string") ||
-      (groupPropertyId !== undefined && typeof groupPropertyId !== "string")) {
+  if (
+    !Array.isArray(rowIds) ||
+    rowIds.some((rowId) => typeof rowId !== "string") ||
+    (groupPropertyId !== undefined && typeof groupPropertyId !== "string")
+  ) {
     return c.json({ error: "Invalid row move input" }, 400);
   }
   try {
     const result = await moveDatabaseRowService({
-      databaseId: c.req.param("id"), env: c.env,
-      groupPropertyId: groupPropertyId as string | undefined, groupValue,
-      rowId: c.req.param("rowId"), rowIds: rowIds as string[], userId: user.id,
+      databaseId: c.req.param("id"),
+      env: c.env,
+      groupPropertyId: groupPropertyId as string | undefined,
+      groupValue,
+      rowId: c.req.param("rowId"),
+      rowIds: rowIds as string[],
+      userId: user.id,
     });
     return c.json(mutationResponse(result.commit));
   } catch (error) {
-    if (error instanceof ServiceMutationError) return serviceMutationErrorResponse(c, error);
+    if (error instanceof ServiceMutationError)
+      return serviceMutationErrorResponse(c, error);
     throw error;
   }
 });
@@ -840,13 +867,17 @@ databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {
   const { value = null } = body as { value?: unknown };
   try {
     const result = await setDatabaseCellValueService({
-      databaseId: c.req.param("id"), env: c.env,
+      databaseId: c.req.param("id"),
+      env: c.env,
       pagePropertyId: c.req.param("propertyId"),
-      rowId: c.req.param("rowId"), userId: user.id, value,
+      rowId: c.req.param("rowId"),
+      userId: user.id,
+      value,
     });
     return c.json(mutationResponse(result.commit));
   } catch (error) {
-    if (error instanceof ServiceMutationError) return serviceMutationErrorResponse(c, error);
+    if (error instanceof ServiceMutationError)
+      return serviceMutationErrorResponse(c, error);
     throw error;
   }
 });

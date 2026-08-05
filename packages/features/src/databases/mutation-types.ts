@@ -10,6 +10,7 @@ export type DatabaseDelta = {
   properties?: Array<Record<string, unknown>>
   removedPagePropertyIds?: string[]
   removedPropertyIds?: string[]
+  removedRowIds?: string[]
   removedViewIds?: string[]
   rows?: Array<Record<string, unknown>>
   values?: Array<{

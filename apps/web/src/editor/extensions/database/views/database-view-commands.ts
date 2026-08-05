@@ -415,26 +415,41 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const sourcePropertyMode =
-        dragPayload.databaseId && dragPayload.databaseId !== databaseId
-          ? await getSourcePropertyMode?.(dragPayload)
-          : undefined;
+      const isCrossDatabaseMove = Boolean(
+        dragPayload.databaseId && dragPayload.databaseId !== databaseId,
+      );
+
+      if (isCrossDatabaseMove && !dragPayload.rowId) {
+        toast.error("Couldn't identify the source row to move.");
+        return;
+      }
+
+      const sourcePropertyMode = isCrossDatabaseMove
+        ? await getSourcePropertyMode?.(dragPayload)
+        : undefined;
 
       if (sourcePropertyMode === null) {
         return;
       }
 
-      addRow.mutate({
-        databaseId,
-        pageId: dragPayload.pageId,
-        position,
-        sourceDatabaseId:
-          dragPayload.databaseId && dragPayload.databaseId !== databaseId
+      addRow.mutate(
+        {
+          databaseId,
+          pageId: dragPayload.pageId,
+          position,
+          sourceDatabaseId: isCrossDatabaseMove
             ? dragPayload.databaseId
             : undefined,
-        sourcePropertyMode: sourcePropertyMode ?? undefined,
-        title: dragPayload.title,
-      });
+          sourceRowId: isCrossDatabaseMove ? dragPayload.rowId : undefined,
+          sourcePropertyMode: sourcePropertyMode ?? undefined,
+          title: dragPayload.title,
+        },
+        {
+          onError: () => {
+            toast.error("Couldn't move this row to the database.");
+          },
+        },
+      );
     },
     addChartView: () => {
       if (!databaseId || addDatabaseView.isPending) {
@@ -460,9 +475,8 @@ export function getDatabaseViewCommands({
         {
           onSuccess: (nextPayload) => {
             const addedView =
-              nextPayload.views.find(
-                (view) => !existingViewIds.has(view.id),
-              ) ?? nextPayload.views.at(-1);
+              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
+              nextPayload.views.at(-1);
 
             setActiveViewId(addedView?.id ?? null);
           },
@@ -490,9 +504,8 @@ export function getDatabaseViewCommands({
         {
           onSuccess: (nextPayload) => {
             const addedView =
-              nextPayload.views.find(
-                (view) => !existingViewIds.has(view.id),
-              ) ?? nextPayload.views.at(-1);
+              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
+              nextPayload.views.at(-1);
 
             setActiveViewId(addedView?.id ?? null);
           },
@@ -579,9 +592,8 @@ export function getDatabaseViewCommands({
         {
           onSuccess: (nextPayload) => {
             const addedView =
-              nextPayload.views.find(
-                (view) => !existingViewIds.has(view.id),
-              ) ?? nextPayload.views.at(-1);
+              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
+              nextPayload.views.at(-1);
 
             setActiveViewId(addedView?.id ?? null);
           },
@@ -942,10 +954,7 @@ export function getDatabaseViewCommands({
       }
 
       updateDatabase.mutate({
-        config: getMergedNameColumnConfig(
-          payload?.database.config,
-          config,
-        ),
+        config: getMergedNameColumnConfig(payload?.database.config, config),
         databaseId,
       });
     },
@@ -1136,10 +1145,7 @@ function getNewRowGroupSetup(
     propertyValues: [
       {
         propertyId: groupProperty.property.id,
-        value: serializePropertyValue(
-          groupProperty.property.type,
-          groupValue,
-        ),
+        value: serializePropertyValue(groupProperty.property.type, groupValue),
       },
     ],
     title: "Untitled",

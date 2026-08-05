@@ -50,8 +50,7 @@ test("applyDatabaseDelta inserts a new cell value", () => {
   assert.deepEqual(
     next.values.find(
       (value) =>
-        value.pageId === "page-2" &&
-        value.propertyId === "property-name",
+        value.pageId === "page-2" && value.propertyId === "property-name",
     ),
     {
       createdAt: next.values[1]?.createdAt,
@@ -97,6 +96,25 @@ test("applyDatabaseDelta inserts a new row with nested page data", () => {
 
   assert.equal(next.rows.length, 3)
   assert.equal(next.rows[2]?.page.name, "Gamma")
+})
+
+test("applyDatabaseDelta removes a moved row and its source values", () => {
+  const payload = createTestDatabasePayload({ rowCount: 2 })
+  const removedPageId = payload.rows[0]!.pageId
+  const next = applyDatabaseDelta(payload, {
+    removedRowIds: [payload.rows[0]!.id],
+    rows: [{ id: payload.rows[1]!.id, position: 0 }],
+  })
+
+  assert.deepEqual(
+    next.rows.map((row) => ({ id: row.id, position: row.position })),
+    [{ id: payload.rows[1]!.id, position: 0 }],
+  )
+  assert.equal(
+    next.values.some((value) => value.pageId === removedPageId),
+    false,
+  )
+  assert.equal(next.rowCount, 1)
 })
 
 test("applyDatabaseDelta adds source database columns with dragged row values", () => {

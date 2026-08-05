@@ -3,11 +3,14 @@ import { beforeEach, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   access: vi.fn(),
+  batch: vi.fn(),
   canAccessPage: vi.fn(),
   commit: vi.fn(),
   encode: vi.fn(),
   fetchDelta: vi.fn(),
   incrementPlacements: vi.fn(),
+  placementPositions: vi.fn(),
+  rowPositions: vi.fn(),
   placement: vi.fn(),
   selectResults: [] as unknown[][],
   sourceAccess: vi.fn(),
@@ -27,12 +30,15 @@ vi.mock("./database-access", () => ({
 }));
 vi.mock("./database-commit", () => ({
   commitDatabaseMutation: mocks.commit,
+  commitDatabaseMutationBatch: mocks.batch,
 }));
 vi.mock("./database-delta", () => ({
   fetchDatabaseRowDelta: mocks.fetchDelta,
 }));
 vi.mock("./database-position-service", () => ({
   incrementDatabaseRowPlacementPositions: mocks.incrementPlacements,
+  updateDatabaseRowPlacementPositions: mocks.placementPositions,
+  updateDatabaseRowPositions: mocks.rowPositions,
 }));
 vi.mock("./database-row-import-service", () => ({
   inheritDatabaseRowProperties: mocks.inherit,
@@ -42,11 +48,21 @@ vi.mock("../db", () => ({
     select() {
       const rows = mocks.selectResults.shift() ?? [];
       const builder = {
-        from() { return builder; },
-        innerJoin() { return builder; },
-        where() { return builder; },
-        async limit() { return rows; },
-        async orderBy() { return rows; },
+        from() {
+          return builder;
+        },
+        innerJoin() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        async limit() {
+          return rows;
+        },
+        async orderBy() {
+          return rows;
+        },
         then(resolve: (value: unknown[]) => unknown) {
           return Promise.resolve(rows).then(resolve);
         },
@@ -69,10 +85,13 @@ beforeEach(() => {
   mocks.canAccessPage.mockReset();
   mocks.canAccessPage.mockResolvedValue(true);
   mocks.commit.mockReset();
+  mocks.batch.mockReset();
   mocks.encode.mockReset();
   mocks.encode.mockReturnValue(new Uint8Array([1, 2, 3]));
   mocks.fetchDelta.mockReset();
   mocks.incrementPlacements.mockReset();
+  mocks.placementPositions.mockReset();
+  mocks.rowPositions.mockReset();
   mocks.placement.mockReset();
   mocks.sourceAccess.mockReset();
   mocks.sourceAccess.mockResolvedValue({
@@ -89,9 +108,14 @@ function transactionRecorder() {
   const inserts: unknown[] = [];
   const updates: unknown[] = [];
   const tx = {
+    delete() {
+      return { async where() {} };
+    },
     insert() {
       return {
-        async values(value: unknown) { inserts.push(value); },
+        async values(value: unknown) {
+          inserts.push(value);
+        },
       };
     },
     update() {
@@ -104,6 +128,19 @@ function transactionRecorder() {
     },
   };
   mocks.commit.mockImplementation(async (_options, mutate) => mutate(tx));
+  mocks.batch.mockImplementation(async (_options, mutate) => {
+    const result = await mutate(tx);
+    return {
+      commits: result.mutations.map((mutation: any) => ({
+        ...mutation,
+        actorId: "user-1",
+        committedAt: new Date().toISOString(),
+        mutationId: crypto.randomUUID(),
+        version: 1,
+      })),
+      result: result.result,
+    };
+  });
   return { inserts, tx, updates };
 }
 
@@ -114,13 +151,15 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
       { id: "row-1", pageId: "page-1", position: 0 },
       { id: "row-2", pageId: "page-2", position: 1 },
     ],
-    [{
-      config: {
-        defaultOptionId: "todo",
-        options: [{ id: "todo", name: "Todo" }],
+    [
+      {
+        config: {
+          defaultOptionId: "todo",
+          options: [{ id: "todo", name: "Todo" }],
+        },
+        id: "status-property",
       },
-      id: "status-property",
-    }],
+    ],
     [],
   );
   mocks.fetchDelta.mockResolvedValue({
@@ -164,11 +203,20 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
     url: "#",
     workspaceId: "workspace-1",
   });
-  assert.equal(Buffer.isBuffer((inserts[1] as Record<string, unknown>).state), true);
+  assert.equal(
+    Buffer.isBuffer((inserts[1] as Record<string, unknown>).state),
+    true,
+  );
   assert.equal((inserts[2] as Record<string, unknown>).position, 1);
-  assert.equal((inserts[2] as Record<string, unknown>).parentRowId, "parent-row");
+  assert.equal(
+    (inserts[2] as Record<string, unknown>).parentRowId,
+    "parent-row",
+  );
   assert.equal(Array.isArray(inserts[3]), true);
-  assert.deepEqual((inserts[3] as Array<Record<string, unknown>>)[0]?.value, "Todo");
+  assert.deepEqual(
+    (inserts[3] as Array<Record<string, unknown>>)[0]?.value,
+    "Todo",
+  );
   assert.deepEqual(mocks.placement.mock.calls[0], [
     tx,
     {
@@ -189,10 +237,13 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
     env: { ENV: "test" },
   });
   const delta = (await mocks.commit.mock.results[0]?.value)?.delta;
-  assert.deepEqual(delta.rows.map(({ id, position }: any) => ({ id, position })), [
-    { id: "row-2", position: 2 },
-    { id: "new-row", position: 1 },
-  ]);
+  assert.deepEqual(
+    delta.rows.map(({ id, position }: any) => ({ id, position })),
+    [
+      { id: "row-2", position: 2 },
+      { id: "new-row", position: 1 },
+    ],
+  );
   assert.equal(delta.values[0].value, "Todo");
 });
 
@@ -200,12 +251,14 @@ test("createDatabaseRowService attaches an editable existing page", async () => 
   const { inserts, updates } = transactionRecorder();
   mocks.selectResults.push(
     [],
-    [{
-      id: "existing-page",
-      metadata: { icon: "check" },
-      name: " Existing task ",
-      workspaceId: "workspace-1",
-    }],
+    [
+      {
+        id: "existing-page",
+        metadata: { icon: "check" },
+        name: " Existing task ",
+        workspaceId: "workspace-1",
+      },
+    ],
     [],
     [],
   );
@@ -288,7 +341,14 @@ test("createDatabaseRowService rejects host, missing, and forbidden pages", asyn
   mocks.canAccessPage.mockResolvedValue(false);
   mocks.selectResults.push(
     [],
-    [{ id: "page-1", metadata: null, name: "Page", workspaceId: "workspace-1" }],
+    [
+      {
+        id: "page-1",
+        metadata: null,
+        name: "Page",
+        workspaceId: "workspace-1",
+      },
+    ],
   );
   await assert.rejects(
     createDatabaseRowService({
@@ -305,7 +365,14 @@ test("createDatabaseRowService rejects host, missing, and forbidden pages", asyn
 test("createDatabaseRowService rejects duplicate pages", async () => {
   mocks.selectResults.push(
     [{ id: "row-1", pageId: "page-1", position: 0 }],
-    [{ id: "page-1", metadata: null, name: "Page", workspaceId: "workspace-1" }],
+    [
+      {
+        id: "page-1",
+        metadata: null,
+        name: "Page",
+        workspaceId: "workspace-1",
+      },
+    ],
   );
 
   await assert.rejects(
@@ -324,7 +391,15 @@ test("createDatabaseRowService imports source properties and values", async () =
   transactionRecorder();
   mocks.selectResults.push(
     [],
-    [{ id: "page-1", metadata: null, name: "Page", workspaceId: "workspace-1" }],
+    [{ id: "source-row", pageId: "page-1", parentRowId: null, position: 0 }],
+    [
+      {
+        id: "page-1",
+        metadata: null,
+        name: "Page",
+        workspaceId: "workspace-1",
+      },
+    ],
     [],
     [],
   );
@@ -338,20 +413,18 @@ test("createDatabaseRowService imports source properties and values", async () =
     pageId: "page-1",
     sourceDatabaseId: "database-source",
     sourcePropertyMode: "match",
+    sourceRowId: "source-row",
     userId: "user-1",
   });
 
   assert.deepEqual(mocks.sourceAccess.mock.calls[0], [
     "database-source",
     "user-1",
-    "view",
+    "edit",
   ]);
   assert.equal(mocks.inherit.mock.calls[0]?.[0].sourcePropertyMode, "match");
-  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].changed, [
-    "rows",
-    "properties",
-    "values",
-  ]);
+  assert.equal(mocks.batch.mock.calls.length, 1);
   assert.deepEqual(result.commit.delta.properties, [{ id: "column-imported" }]);
   assert.equal(result.commit.delta.values?.[0]?.value, 7);
+  assert.deepEqual(result.sourceCommit?.delta.removedRowIds, ["source-row"]);
 });

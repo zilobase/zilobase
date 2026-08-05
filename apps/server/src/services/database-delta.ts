@@ -25,6 +25,7 @@ export type DatabaseDelta = {
   properties?: Array<Record<string, unknown>>;
   removedPagePropertyIds?: string[];
   removedPropertyIds?: string[];
+  removedRowIds?: string[];
   removedViewIds?: string[];
   views?: Array<Record<string, unknown>>;
   rows?: Array<Record<string, unknown>>;
@@ -112,10 +113,7 @@ export async function fetchDatabasePropertyDelta(
       property: pageProperty,
     })
     .from(databaseProperty)
-    .innerJoin(
-      pageProperty,
-      eq(databaseProperty.propertyId, pageProperty.id),
-    )
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
         eq(databaseProperty.id, databasePropertyId),

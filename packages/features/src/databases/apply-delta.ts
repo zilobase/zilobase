@@ -22,12 +22,15 @@ function mergeProperty(
   const nestedProperty =
     patch.property && typeof patch.property === "object"
       ? (patch.property as DatabaseProperty["property"])
-      : undefined;
+      : undefined
 
   return mergeRecord(current ?? ({} as DatabaseProperty), {
     ...patch,
     property: nestedProperty
-      ? mergeRecord(current?.property, nestedProperty as Record<string, unknown>)
+      ? mergeRecord(
+          current?.property,
+          nestedProperty as Record<string, unknown>,
+        )
       : current?.property,
   })
 }
@@ -95,7 +98,9 @@ export function applyDatabaseDelta(
 
     next = {
       ...next,
-      properties: properties.sort((left, right) => left.position - right.position),
+      properties: properties.sort(
+        (left, right) => left.position - right.position,
+      ),
     }
   }
 
@@ -104,7 +109,9 @@ export function applyDatabaseDelta(
 
     next = {
       ...next,
-      properties: next.properties.filter((property) => !removed.has(property.id)),
+      properties: next.properties.filter(
+        (property) => !removed.has(property.id),
+      ),
     }
   }
 
@@ -173,6 +180,22 @@ export function applyDatabaseDelta(
       rowCount:
         next.rowCount === undefined ? undefined : next.rowCount + addedRowCount,
       rows: rows.sort((left, right) => left.position - right.position),
+    }
+  }
+
+  if (delta.removedRowIds?.length) {
+    const removed = new Set(delta.removedRowIds)
+    const removedRows = next.rows.filter((row) => removed.has(row.id))
+    const removedPageIds = new Set(removedRows.map((row) => row.pageId))
+
+    next = {
+      ...next,
+      rowCount:
+        next.rowCount === undefined
+          ? undefined
+          : Math.max(0, next.rowCount - removedRows.length),
+      rows: next.rows.filter((row) => !removed.has(row.id)),
+      values: next.values.filter((value) => !removedPageIds.has(value.pageId)),
     }
   }
 

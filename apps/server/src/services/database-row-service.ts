@@ -18,11 +18,19 @@ import {
   requireDatabaseAccess,
   requireDatabaseEditAccess,
 } from "./database-access";
-import { commitDatabaseMutation } from "./database-commit";
+import {
+  commitDatabaseMutation,
+  commitDatabaseMutationBatch,
+  type DatabaseMutationCommitResult,
+} from "./database-commit";
 import { fetchDatabaseRowDelta } from "./database-delta";
 import { isDatabaseHostPageId } from "./database-host-page";
 import { getStatusDefaultValue } from "./database-property-config";
-import { incrementDatabaseRowPlacementPositions } from "./database-position-service";
+import {
+  incrementDatabaseRowPlacementPositions,
+  updateDatabaseRowPlacementPositions,
+  updateDatabaseRowPositions,
+} from "./database-position-service";
 import { inheritDatabaseRowProperties } from "./database-row-import-service";
 import { ServiceMutationError } from "./mutation-error";
 
@@ -34,6 +42,7 @@ export async function createDatabaseRowService(input: {
   position?: number;
   sourceDatabaseId?: string | null;
   sourcePropertyMode?: "duplicate" | "match";
+  sourceRowId?: string | null;
   title?: string;
   userId: string;
 }) {
@@ -49,7 +58,7 @@ export async function createDatabaseRowService(input: {
       sourceDatabase = await requireDatabaseAccess(
         input.sourceDatabaseId,
         input.userId,
-        "view",
+        input.sourceRowId ? "edit" : "view",
       );
     } catch (error) {
       if (error instanceof ServiceMutationError && error.status === 404) {
@@ -62,6 +71,14 @@ export async function createDatabaseRowService(input: {
     if (sourceDatabase.workspaceId !== existing.workspaceId) {
       throw new ServiceMutationError("Source database not found", 404);
     }
+  }
+
+  if (input.sourceRowId && !sourceDatabase) {
+    throw new ServiceMutationError("Source database not found", 404);
+  }
+
+  if (sourceDatabase && !input.sourceRowId) {
+    throw new ServiceMutationError("A source row is required for a move", 400);
   }
 
   if (isDatabaseHostPageId(input.pageId, existing.pageId)) {
@@ -85,6 +102,33 @@ export async function createDatabaseRowService(input: {
       ),
     )
     .orderBy(asc(databaseRow.position));
+
+  const sourceRows =
+    sourceDatabase && input.sourceRowId
+      ? await db
+          .select({
+            id: databaseRow.id,
+            pageId: databaseRow.pageId,
+            parentRowId: databaseRow.parentRowId,
+            position: databaseRow.position,
+          })
+          .from(databaseRow)
+          .where(
+            and(
+              eq(databaseRow.databaseId, sourceDatabase.id),
+              isNull(databaseRow.deletedAt),
+            ),
+          )
+          .orderBy(asc(databaseRow.position))
+      : [];
+  const sourceRow = sourceRows.find((row) => row.id === input.sourceRowId);
+
+  if (
+    input.sourceRowId &&
+    (!sourceRow || (input.pageId && sourceRow.pageId !== input.pageId))
+  ) {
+    throw new ServiceMutationError("Source row not found", 404);
+  }
 
   const targetPosition =
     input.position === undefined
@@ -183,171 +227,259 @@ export async function createDatabaseRowService(input: {
   const rowId = crypto.randomUUID();
   let createdAt = "";
 
-  const commit = await commitDatabaseMutation(
-    {
-      actorId: input.userId,
-      changed: sourceDatabase
-        ? ["rows", "properties", "values"]
-        : defaultStatusValues.length > 0
-          ? ["rows", "values"]
-          : ["rows"],
-      databaseId: existing.id,
-      env: input.env,
-    },
-    async (tx) => {
-      const now = new Date();
-      createdAt = now.toISOString();
-      const inherited = sourceDatabase
-        ? await inheritDatabaseRowProperties(
-            {
-              now,
-              pageId,
-              sourceDatabaseId: sourceDatabase.id,
-              sourcePropertyMode: input.sourcePropertyMode ?? "duplicate",
-              targetDatabaseId: existing.id,
-              workspaceId: existing.workspaceId,
-            },
-            tx,
-          )
-        : { properties: [], values: [] };
+  const targetChanged = sourceDatabase
+    ? (["rows", "properties", "values"] as const)
+    : defaultStatusValues.length > 0
+      ? (["rows", "values"] as const)
+      : (["rows"] as const);
+  const createTargetRow = async (
+    tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  ) => {
+    const now = new Date();
+    createdAt = now.toISOString();
+    const inherited = sourceDatabase
+      ? await inheritDatabaseRowProperties(
+          {
+            now,
+            pageId,
+            sourceDatabaseId: sourceDatabase.id,
+            sourcePropertyMode: input.sourcePropertyMode ?? "match",
+            targetDatabaseId: existing.id,
+            workspaceId: existing.workspaceId,
+          },
+          tx,
+        )
+      : { properties: [], values: [] };
 
-      if (input.pageId) {
-        await tx
-          .update(page)
-          .set({
-            metadata: pageMetadata,
-            updatedAt: now,
-          })
-          .where(eq(page.id, pageId));
-      } else {
-        await tx.insert(page).values({
-          id: pageId,
-          workspaceId: existing.workspaceId,
-          createdById: input.userId,
-          type: "pageblock",
-          name: title as string,
-          url: "#",
-          content: null,
-          metadata: null,
-          createdAt: now,
-          updatedAt: now,
-        });
-        await tx.insert(pageCollaborationDocument).values({
-          pageId,
-          state: Buffer.from(encodePageContentAsYjs(null)),
-          updatedAt: now,
-        });
-      }
-
+    if (input.pageId) {
       await tx
-        .update(databaseRow)
+        .update(page)
         .set({
-          position: sql`${databaseRow.position} + 1`,
+          metadata: pageMetadata,
           updatedAt: now,
         })
-        .where(
-          and(
-            eq(databaseRow.databaseId, existing.id),
-            isNull(databaseRow.deletedAt),
-            gte(databaseRow.position, targetPosition),
-          ),
-        );
-      await incrementDatabaseRowPlacementPositions(
-        tx,
-        existing.id,
-        targetPosition,
-        now,
-      );
-
-      await tx.insert(databaseRow).values({
-        id: rowId,
-        databaseId: existing.id,
-        pageId,
-        parentRowId: input.parentRowId ?? null,
-        position: targetPosition,
+        .where(eq(page.id, pageId));
+    } else {
+      await tx.insert(page).values({
+        id: pageId,
+        workspaceId: existing.workspaceId,
         createdById: input.userId,
-        lastEditedById: input.userId,
+        type: "pageblock",
+        name: title as string,
+        url: "#",
+        content: null,
+        metadata: null,
         createdAt: now,
         updatedAt: now,
       });
-      await upsertPageItemPlacement(tx, {
-        workspaceId: existing.workspaceId,
-        parentKind: "database",
-        parentId: existing.id,
-        itemKind: "page",
-        itemId: pageId,
-        placementKind: "database_row",
-        sourceRowId: rowId,
-        position: targetPosition,
+      await tx.insert(pageCollaborationDocument).values({
+        pageId,
+        state: Buffer.from(encodePageContentAsYjs(null)),
+        updatedAt: now,
       });
+    }
 
-      const inheritedValuePropertyIds = new Set(
-        inherited.values
-          .filter((value) => value.pageId === pageId)
-          .map((value) => value.propertyId),
+    await tx
+      .update(databaseRow)
+      .set({
+        position: sql`${databaseRow.position} + 1`,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(databaseRow.databaseId, existing.id),
+          isNull(databaseRow.deletedAt),
+          gte(databaseRow.position, targetPosition),
+        ),
       );
-      const insertedValues = defaultStatusValues
-        .filter(
-          (property) => !inheritedValuePropertyIds.has(property.propertyId),
-        )
-        .map((property) => ({
+    await incrementDatabaseRowPlacementPositions(
+      tx,
+      existing.id,
+      targetPosition,
+      now,
+    );
+
+    await tx.insert(databaseRow).values({
+      id: rowId,
+      databaseId: existing.id,
+      pageId,
+      parentRowId: input.parentRowId ?? null,
+      position: targetPosition,
+      createdById: input.userId,
+      lastEditedById: input.userId,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await upsertPageItemPlacement(tx, {
+      workspaceId: existing.workspaceId,
+      parentKind: "database",
+      parentId: existing.id,
+      itemKind: "page",
+      itemId: pageId,
+      placementKind: "database_row",
+      sourceRowId: rowId,
+      position: targetPosition,
+    });
+
+    const inheritedValuePropertyIds = new Set(
+      inherited.values
+        .filter((value) => value.pageId === pageId)
+        .map((value) => value.propertyId),
+    );
+    const insertedValues = defaultStatusValues
+      .filter((property) => !inheritedValuePropertyIds.has(property.propertyId))
+      .map((property) => ({
         createdAt: now.toISOString(),
         id: crypto.randomUUID(),
         propertyId: property.propertyId,
         updatedAt: now.toISOString(),
         value: property.value,
         pageId,
-        }));
+      }));
 
-      if (insertedValues.length > 0) {
-        await tx.insert(pagePropertyValue).values(
-          insertedValues.map((propertyValue) => ({
-            id: propertyValue.id,
-            propertyId: propertyValue.propertyId,
-            value: propertyValue.value,
-            pageId: propertyValue.pageId,
-            createdAt: now,
-            updatedAt: now,
-          })),
+    if (insertedValues.length > 0) {
+      await tx.insert(pagePropertyValue).values(
+        insertedValues.map((propertyValue) => ({
+          id: propertyValue.id,
+          propertyId: propertyValue.propertyId,
+          value: propertyValue.value,
+          pageId: propertyValue.pageId,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      );
+    }
+
+    if (shouldInheritFavorite) {
+      await tx
+        .insert(favorite)
+        .values({
+          id: crypto.randomUUID(),
+          pageId,
+          userId: input.userId,
+        })
+        .onConflictDoNothing({
+          target: [favorite.userId, favorite.pageId],
+        });
+    }
+
+    const delta = await fetchDatabaseRowDelta(rowId, tx);
+    const shiftedRows = rows
+      .filter((row) => row.position >= targetPosition)
+      .map((row) => ({
+        id: row.id,
+        position: row.position + 1,
+        updatedAt: now.toISOString(),
+      }));
+
+    return {
+      delta: {
+        ...(sourceDatabase ? { properties: inherited.properties } : {}),
+        rows: [...shiftedRows, ...(delta?.rows ?? [])],
+        ...(insertedValues.length > 0 || inherited.values.length > 0
+          ? { values: [...insertedValues, ...inherited.values] }
+          : {}),
+      },
+    };
+  };
+
+  let commit: DatabaseMutationCommitResult;
+  let sourceCommit: DatabaseMutationCommitResult | undefined;
+
+  if (sourceDatabase && sourceRow && input.sourceRowId) {
+    const sourceDatabaseId = sourceDatabase.id;
+    const sourceRowId = input.sourceRowId;
+    const batch = await commitDatabaseMutationBatch(
+      { actorId: input.userId, env: input.env },
+      async (tx) => {
+        const targetResult = await createTargetRow(tx);
+        const now = new Date();
+        const remainingSourceRows = sourceRows.filter(
+          (row) => row.id !== sourceRowId,
         );
-      }
 
-      if (shouldInheritFavorite) {
         await tx
-          .insert(favorite)
-          .values({
-            id: crypto.randomUUID(),
-            pageId,
-            userId: input.userId,
-          })
-          .onConflictDoNothing({
-            target: [favorite.userId, favorite.pageId],
-          });
-      }
+          .delete(databaseRow)
+          .where(
+            and(
+              eq(databaseRow.id, sourceRowId),
+              eq(databaseRow.databaseId, sourceDatabaseId),
+            ),
+          );
 
-      const delta = await fetchDatabaseRowDelta(rowId, tx);
-      const shiftedRows = rows
-        .filter((row) => row.position >= targetPosition)
-        .map((row) => ({
-          id: row.id,
-          position: row.position + 1,
-          updatedAt: now.toISOString(),
-        }));
+        await tx
+          .update(databaseRow)
+          .set({ parentRowId: null, updatedAt: now })
+          .where(
+            and(
+              eq(databaseRow.databaseId, sourceDatabaseId),
+              eq(databaseRow.parentRowId, sourceRowId),
+              isNull(databaseRow.deletedAt),
+            ),
+          );
 
-      return {
-        delta: {
-          ...(sourceDatabase ? { properties: inherited.properties } : {}),
-          rows: [...shiftedRows, ...(delta?.rows ?? [])],
-          ...(insertedValues.length > 0 || inherited.values.length > 0
-            ? { values: [...insertedValues, ...inherited.values] }
-            : {}),
-        },
-      };
-    },
-  );
+        const remainingSourceRowIds = remainingSourceRows.map((row) => row.id);
+        await updateDatabaseRowPositions(
+          tx,
+          sourceDatabaseId,
+          remainingSourceRowIds,
+          now,
+        );
+        await updateDatabaseRowPlacementPositions(
+          tx,
+          sourceDatabaseId,
+          remainingSourceRowIds,
+          now,
+        );
+
+        return {
+          mutations: [
+            {
+              changed: [...targetChanged],
+              databaseId: existing.id,
+              delta: targetResult.delta,
+            },
+            {
+              changed: ["rows"],
+              databaseId: sourceDatabaseId,
+              delta: {
+                removedRowIds: [sourceRowId],
+                rows: remainingSourceRows.map((row, position) => ({
+                  id: row.id,
+                  ...(row.parentRowId === sourceRowId
+                    ? { parentRowId: null }
+                    : {}),
+                  position,
+                  updatedAt: now.toISOString(),
+                })),
+              },
+            },
+          ],
+          result: undefined,
+        };
+      },
+    );
+    commit = batch.commits.find(
+      (candidate) => candidate.databaseId === existing.id,
+    )!;
+    sourceCommit = batch.commits.find(
+      (candidate) => candidate.databaseId === sourceDatabaseId,
+    );
+  } else {
+    commit = await commitDatabaseMutation(
+      {
+        actorId: input.userId,
+        changed: [...targetChanged],
+        databaseId: existing.id,
+        env: input.env,
+      },
+      createTargetRow,
+    );
+  }
 
   return {
     commit,
+    ...(sourceCommit ? { sourceCommit } : {}),
     createdAt,
     isFavorite: shouldInheritFavorite,
     parentRowId: input.parentRowId ?? null,
