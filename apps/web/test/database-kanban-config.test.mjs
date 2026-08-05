@@ -45,7 +45,10 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("database kanban drag targets card midpoints", async () => {
-    const { getKanbanCardDropTargetIndex } = await loadModule(
+    const {
+      getKanbanCardDropTargetIndex,
+      getKanbanExternalDropPosition,
+    } = await loadModule(
       "/src/editor/extensions/database/views/kanban/database-kanban-card-drag.ts"
     )
     const cards = [
@@ -61,6 +64,13 @@ export function register({ assert, loadModule, test }) {
       getKanbanCardDropTargetIndex({ querySelectorAll: () => [] }, 100),
       0
     )
+
+    const allRows = [{ id: "row-1" }, { id: "row-2" }, { id: "row-3" }]
+    const columnRows = [allRows[0], allRows[2]]
+    assert.equal(getKanbanExternalDropPosition(allRows, columnRows, 0), 0)
+    assert.equal(getKanbanExternalDropPosition(allRows, columnRows, 1), 2)
+    assert.equal(getKanbanExternalDropPosition(allRows, columnRows, 2), 3)
+    assert.equal(getKanbanExternalDropPosition(allRows, [], 0), 3)
   })
 }
 

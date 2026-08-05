@@ -14,3 +14,23 @@ export function getKanbanCardDropTargetIndex(
 
   return targetIndex === -1 ? cards.length : targetIndex
 }
+
+export function getKanbanExternalDropPosition<Row extends { id: string }>(
+  allRows: Row[],
+  columnRows: Row[],
+  targetIndex: number,
+) {
+  const targetRow = columnRows[targetIndex]
+  if (targetRow) {
+    const index = allRows.findIndex((row) => row.id === targetRow.id)
+    if (index >= 0) return index
+  }
+
+  const previousRow = columnRows[targetIndex - 1]
+  if (previousRow) {
+    const index = allRows.findIndex((row) => row.id === previousRow.id)
+    if (index >= 0) return index + 1
+  }
+
+  return allRows.length
+}

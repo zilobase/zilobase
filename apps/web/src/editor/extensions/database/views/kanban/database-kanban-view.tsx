@@ -243,6 +243,7 @@ export function DatabaseKanbanView() {
     showPageIconInTitle,
     showPropertyTitles,
     addDatabaseRow,
+    addDraggedPageRow,
     onOpenPage,
     personOptions,
     properties,
@@ -520,6 +521,7 @@ export function DatabaseKanbanView() {
     [groupProperty, items, propertyValuesByKey]
   )
   const cardDrag = useDatabaseKanbanCardDrag({
+    addDraggedPageRow,
     allRows,
     databaseId,
     editable,
@@ -658,7 +660,8 @@ export function DatabaseKanbanView() {
                   !isEmptyOption && canCreateRowInKanbanGroup(groupProperty)
                 const activeCardDropTarget =
                   cardDrag.dropTarget?.optionId === option.id &&
-                  cardDrag.getMove(cardDrag.dropTarget)
+                  (cardDrag.isExternalDragActive ||
+                    cardDrag.getMove(cardDrag.dropTarget))
                     ? cardDrag.dropTarget
                     : null
 

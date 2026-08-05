@@ -400,6 +400,8 @@ export function getDatabaseViewCommands({
     addDraggedPageRow: async (
       dragPayload: DatabasePageDragPayload,
       position: number,
+      groupValue?: string,
+      groupPropertyOverride?: DatabasePropertyListItem | null,
     ) => {
       if (!databaseId || addRow.isPending) {
         return;
@@ -432,9 +434,24 @@ export function getDatabaseViewCommands({
         return;
       }
 
+      const groupSetup = getNewRowGroupSetup(
+        groupValue,
+        groupPropertyOverride,
+      );
+      const groupValues = new Map(
+        groupSetup.propertyValues.map((propertyValue) => [
+          propertyValue.propertyId,
+          propertyValue,
+        ]),
+      );
+      const existingItemIds = new Set(items.map((row) => row.id));
+
       addRow.mutate(
         {
           databaseId,
+          ...(groupValues.size > 0
+            ? { optimisticValues: [...groupValues.values()] }
+            : {}),
           pageId: dragPayload.pageId,
           position,
           sourceDatabaseId: isCrossDatabaseMove
@@ -447,6 +464,22 @@ export function getDatabaseViewCommands({
         {
           onError: () => {
             toast.error("Couldn't move this row to the database.");
+          },
+          onSuccess: (nextPayload) => {
+            const addedItem = findAddedDatabaseRow(
+              nextPayload.rows,
+              existingItemIds,
+            );
+            if (!addedItem) return;
+
+            for (const propertyValue of groupValues.values()) {
+              updateValue.mutate({
+                databaseId,
+                propertyId: propertyValue.propertyId,
+                rowId: addedItem.id,
+                value: propertyValue.value,
+              });
+            }
           },
         },
       );

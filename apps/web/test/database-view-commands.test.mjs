@@ -1,6 +1,76 @@
 const databaseId = "database-1";
 
 export function register({ assert, loadModule, test }) {
+  test("database view commands place an imported row in its Kanban group", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-commands.ts",
+    );
+    const addRow = createMutation();
+    const updateValue = createMutation();
+    const statusProperty = createProperty(
+      "database-property-status",
+      "property-status",
+      "Status",
+      "status",
+    );
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: { groupPropertyId: "property-status" },
+        id: "view-kanban",
+        name: "Kanban",
+        type: "kanban",
+      },
+      databaseId,
+      editable: true,
+      getSourcePropertyMode: async () => "match",
+      isKanbanView: true,
+      items: [{ id: "existing-row" }],
+      kanbanGroupProperty: statusProperty,
+      mutations: createMutations({ addRow, updateValue }),
+      payload: createPayload({ properties: [statusProperty] }),
+      properties: [statusProperty],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    await commands.addDraggedPageRow(
+      {
+        databaseId: "source-database",
+        pageId: "source-page",
+        rowId: "source-row",
+        title: "Imported task",
+      },
+      1,
+      "Done",
+      statusProperty,
+    );
+    addRow.calls[0][1].onSuccess({
+      rows: [{ id: "existing-row" }, { id: "imported-row" }],
+    });
+
+    assert.deepEqual(addRow.calls[0][0], {
+      databaseId,
+      optimisticValues: [{ propertyId: "property-status", value: "Done" }],
+      pageId: "source-page",
+      position: 1,
+      sourceDatabaseId: "source-database",
+      sourcePropertyMode: "match",
+      sourceRowId: "source-row",
+      title: "Imported task",
+    });
+    assert.deepEqual(updateValue.calls[0][0], {
+      databaseId,
+      propertyId: "property-status",
+      rowId: "imported-row",
+      value: "Done",
+    });
+  });
+
   test("database view commands update sort config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/editor/extensions/database/views/database-view-commands.ts",

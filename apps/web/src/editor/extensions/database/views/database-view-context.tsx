@@ -97,7 +97,9 @@ export type DatabaseViewContextValue = {
   addGalleryView: () => void
   addDraggedPageRow: (
     dragPayload: DatabasePageDragPayload,
-    position: number
+    position: number,
+    groupValue?: string,
+    groupProperty?: DatabasePropertyListItem | null,
   ) => void | Promise<void>
   addKanbanView: () => void
   addListView: () => void
