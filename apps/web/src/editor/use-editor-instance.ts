@@ -34,6 +34,15 @@ import {
 import { updateExtensionOptions } from "./update-extension-options";
 import type { BlockDropLine, OpenPageOptions, PasteChoiceState } from "./types";
 import { useLatestRef } from "./use-latest-ref";
+import {
+  closeEditorHistory,
+  getEditorHistoryDepths,
+  getEditorHistoryTransition,
+  isEditorHistoryOperation,
+  recordActiveUndoHistoryEditorTransition,
+  registerEditorHistoryBoundary,
+  type EditorHistoryDepths,
+} from "@/shortcuts";
 
 type UseEditorInstanceOptions = {
   databaseEditorRuntime: DatabaseBlockEditorRuntime;
@@ -108,6 +117,10 @@ export const useEditorInstance = ({
     null,
   );
   const editorRef = useRef<Editor | null>(null);
+  const editorHistoryDepthsRef = useRef<EditorHistoryDepths>({
+    redo: 0,
+    undo: 0,
+  });
 
   const onContentChangeRef = useLatestRef(onContentChange);
   const onEmbedPageRef = useLatestRef(onEmbedPage);
@@ -160,6 +173,29 @@ export const useEditorInstance = ({
       shouldRerenderOnTransaction: false,
       onCreate: ({ editor: currentEditor }) => {
         editorRef.current = currentEditor;
+        editorHistoryDepthsRef.current = getEditorHistoryDepths(currentEditor);
+      },
+      onTransaction: ({ editor: currentEditor, transaction }) => {
+        const nextDepths = getEditorHistoryDepths(currentEditor);
+        const transition = getEditorHistoryTransition(
+          editorHistoryDepthsRef.current,
+          nextDepths,
+          isEditorHistoryOperation(currentEditor, transaction),
+        );
+
+        editorHistoryDepthsRef.current = nextDepths;
+
+        if (!transition) return;
+
+        recordActiveUndoHistoryEditorTransition({
+          ...transition,
+          label: "Edit page",
+          owner: currentEditor,
+          redo: () =>
+            !currentEditor.isDestroyed && currentEditor.commands.redo(),
+          undo: () =>
+            !currentEditor.isDestroyed && currentEditor.commands.undo(),
+        });
       },
       onUpdate: ({ editor: currentEditor }) => {
         if (editable) onContentChangeRef.current?.(currentEditor.getJSON());
@@ -212,6 +248,11 @@ export const useEditorInstance = ({
 
   useEffect(() => {
     editorRef.current = editor;
+  }, [editor]);
+
+  useEffect(() => {
+    if (!editor) return;
+    return registerEditorHistoryBoundary(() => closeEditorHistory(editor));
   }, [editor]);
 
   useEffect(() => {

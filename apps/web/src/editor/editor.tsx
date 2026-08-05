@@ -32,6 +32,7 @@ import { useEditorRuntime } from "./use-editor-runtime"
 import { useMobileNodeActions } from "./use-mobile-node-actions"
 import { DatabaseView } from "@/packages/editor/extensions/database/views/database-view"
 import { cn } from "@/lib/utils"
+import { UndoHistoryScope } from "@/shortcuts"
 
 export function Editor({
   commentController,
@@ -441,7 +442,7 @@ export function Editor({
     )
   }
 
-  return (
+  const editorBody = (
     <div className={cn("flex w-full flex-col text-foreground", layoutPreview ? "h-full min-h-0" : "min-h-[calc(100svh-3rem)]")}>
       <section
         className={cn(
@@ -579,6 +580,12 @@ export function Editor({
         ) : null}
       </section>
     </div>
+  )
+
+  return (
+    <UndoHistoryScope resetKey={pageId ?? editorId}>
+      {editorBody}
+    </UndoHistoryScope>
   )
 }
 

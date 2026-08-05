@@ -54,7 +54,11 @@ import {
   DatabaseCellStateProvider,
   useActiveDatabaseCellKey,
 } from "./database-cell-state"
-import { UndoHistoryScope, useUndoHistory } from "@/shortcuts"
+import {
+  UndoHistoryScope,
+  useOptionalUndoHistory,
+  useUndoHistory,
+} from "@/shortcuts"
 import { areSerializedPropertyValuesEqual } from "../interactions/database-item-utils"
 
 export type DatabaseActiveConditionalColor = Omit<
@@ -253,6 +257,16 @@ export function DatabaseViewProvider({
   children: ReactNode
   value: DatabaseViewContextValue
 }) {
+  const parentUndoHistory = useOptionalUndoHistory()
+
+  if (parentUndoHistory) {
+    return (
+      <UndoableDatabaseViewProvider value={value}>
+        {children}
+      </UndoableDatabaseViewProvider>
+    )
+  }
+
   return (
     <UndoHistoryScope resetKey={value.databaseId}>
       <UndoableDatabaseViewProvider value={value}>
