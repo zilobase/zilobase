@@ -193,6 +193,7 @@ export function DatabasePageLink({
             <PopoverContent
               align="start"
               className="database-input-cell-popover w-72 p-0"
+              onCloseAutoFocus={(event) => event.preventDefault()}
               onOpenAutoFocus={(event) => {
                 event.preventDefault()
                 requestAnimationFrame(() => {
