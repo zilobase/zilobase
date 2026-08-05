@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { test } from "vitest";
 
 import { upsertPagePropertyValues } from "./page-property-value-upsert";
@@ -69,6 +70,18 @@ test("upsertPagePropertyValues deduplicates keys with last-value-wins semantics"
   assert.equal(count, 3);
   assert.equal(inserts.length, 1);
   assert.equal(conflicts.length, 1);
+  const conflict = conflicts[0] as {
+    set: { updatedAt: unknown; value: unknown };
+  };
+  const dialect = new PgDialect();
+  assert.equal(
+    dialect.sqlToQuery(conflict.set.updatedAt as never).sql,
+    'excluded."updated_at"',
+  );
+  assert.equal(
+    dialect.sqlToQuery(conflict.set.value as never).sql,
+    'excluded."value"',
+  );
   assert.deepEqual(
     (inserts[0] as Array<Record<string, unknown>>).map(
       ({ id, pageId, propertyId, value }) => ({

@@ -32,8 +32,8 @@ export async function upsertPagePropertyValues(
     .onConflictDoUpdate({
       target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
       set: {
-        updatedAt: sql`excluded.${pagePropertyValue.updatedAt}`,
-        value: sql`excluded.${pagePropertyValue.value}`,
+        updatedAt: sql`excluded.${sql.identifier(pagePropertyValue.updatedAt.name)}`,
+        value: sql`excluded.${sql.identifier(pagePropertyValue.value.name)}`,
       },
     });
 
