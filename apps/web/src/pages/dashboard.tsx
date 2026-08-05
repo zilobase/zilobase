@@ -190,7 +190,7 @@ export default function DashboardPage({
   const pageTitle = mode === "trash" ? "Trash" : "Library";
 
   useEffect(() => {
-    if (mode !== "home") return;
+    if (mode !== "home" || location.pathname !== "/dashboard") return;
 
     const nextView = requestedView ?? sidebarConfig.libraryView;
     setActiveViewId((current) => (current === nextView ? current : nextView));
@@ -204,6 +204,7 @@ export default function DashboardPage({
     }
   }, [
     mode,
+    location.pathname,
     navigate,
     requestedView,
     settingsLoading,
