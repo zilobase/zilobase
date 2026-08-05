@@ -1,7 +1,4 @@
-import { Link } from "@tanstack/react-router"
-import { useRouterState } from "@tanstack/react-router"
 import {
-  ArrowLeftIcon,
   Building2Icon,
   KeyRoundIcon,
   PlugIcon,
@@ -10,99 +7,76 @@ import {
   UsersIcon,
 } from "lucide-react"
 
-import {
-  AppSidebarHeader,
-  AppSidebarShell,
-} from "@/components/app-sidebar-shell"
-import { ThemeDropdown } from "@/components/theme-dropdown"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar"
+import { cn } from "@/lib/utils"
 
-const settingsItems = [
-  {
-    title: "Profile",
-    href: "/settings/profile",
-    icon: <UserIcon />,
-  },
-  {
-    title: "Workspace",
-    href: "/settings/workspace",
-    icon: <Building2Icon />,
-  },
-  {
-    title: "Integrations",
-    href: "/settings/integrations",
-    icon: <PlugIcon />,
-  },
-  {
-    title: "Zilobase AI",
-    href: "/settings/zilobase-ai",
-    icon: <SparklesIcon />,
-  },
-  {
-    title: "API Keys",
-    href: "/settings/api-keys",
-    icon: <KeyRoundIcon />,
-  },
-  {
-    title: "Team",
-    href: "/settings/team",
-    icon: <UsersIcon />,
-  },
+export type SettingsSection =
+  | "profile"
+  | "workspace"
+  | "integrations"
+  | "zilobase-ai"
+  | "api-keys"
+  | "team"
+
+const settingsItems: Array<{
+  title: string
+  section: SettingsSection
+  icon: typeof UserIcon
+}> = [
+  { title: "Profile", section: "profile", icon: UserIcon },
+  { title: "Workspace", section: "workspace", icon: Building2Icon },
+  { title: "Integrations", section: "integrations", icon: PlugIcon },
+  { title: "Zilobase AI", section: "zilobase-ai", icon: SparklesIcon },
+  { title: "API Keys", section: "api-keys", icon: KeyRoundIcon },
+  { title: "Team", section: "team", icon: UsersIcon },
 ]
 
 export function SettingsSidebar({
-  ...props
-}: React.ComponentProps<typeof Sidebar>) {
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
-  })
-
+  activeSection,
+  onSectionChange,
+}: {
+  activeSection: SettingsSection
+  onSectionChange: (section: SettingsSection) => void
+}) {
   return (
-    <AppSidebarShell {...props}>
-      <AppSidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Library">
-              <Link to="/dashboard">
-                <ArrowLeftIcon />
-                <span>Library</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </AppSidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {settingsItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href}>
-                    <Link to={item.href}>
-                      {item.icon}
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter>
-        <ThemeDropdown />
-      </SidebarFooter>
-    </AppSidebarShell>
+    <aside className="min-w-0 border-b bg-muted/35 p-2 sm:h-full sm:w-60 sm:border-r sm:border-b-0 sm:p-3">
+      <div className="mb-2 hidden px-2 pt-1 text-xs font-medium text-muted-foreground sm:block">
+        Settings
+      </div>
+      <nav
+        aria-label="Settings sections"
+        className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-x-visible"
+      >
+        {settingsItems.map((item) => {
+          const Icon = item.icon
+          const active = activeSection === item.section
+
+          return (
+            <button
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex h-9 shrink-0 items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors",
+                active
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+              )}
+              key={item.section}
+              onClick={() => onSectionChange(item.section)}
+              type="button"
+            >
+              <Icon className="size-4" />
+              <span>{item.title}</span>
+            </button>
+          )
+        })}
+      </nav>
+    </aside>
   )
+}
+
+export function getSettingsSection(pathname: string): SettingsSection {
+  const section = pathname.split("/")[2]
+
+  return settingsItems.some((item) => item.section === section)
+    ? (section as SettingsSection)
+    : "profile"
 }

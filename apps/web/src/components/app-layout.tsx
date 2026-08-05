@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
-import { Outlet, useRouterState } from "@tanstack/react-router"
+import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
 import { ChevronsRightIcon, PanelRightIcon } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
@@ -28,7 +28,11 @@ import {
   getPageId,
   PagePaneHeader,
 } from "@/components/page-pane-header"
-import { SettingsSidebar } from "@/components/settings-sidebar"
+import { SettingsDialog } from "@/components/settings-dialog"
+import {
+  getSettingsSection,
+  type SettingsSection,
+} from "@/components/settings-sidebar"
 import { Separator } from "@/components/ui/separator"
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import {
@@ -60,6 +64,12 @@ import {
   useOptionalPageLayoutSidebar,
 } from "@/contexts/page-layout-sidebar"
 import { Button } from "@/components/ui/button"
+import ApiKeysSettingsPage from "@/pages/settings/api-keys"
+import IntegrationsSettingsPage from "@/pages/settings/integrations"
+import ProfileSettingsPage from "@/pages/settings/profile"
+import TeamSettingsPage from "@/pages/settings/team"
+import WorkspaceSettingsPage from "@/pages/settings/workspace"
+import ZilobaseAiSettingsPage from "@/pages/settings/zilobase-ai"
 
 export function AppLayout({
   children,
@@ -116,6 +126,7 @@ function AppLayoutContent({
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
+  const navigate = useNavigate()
   const embeddedMobileViewer = isEmbeddedMobileViewer()
   const {
     isMobile,
@@ -123,6 +134,9 @@ function AppLayoutContent({
     setOpen: setAppSidebarOpen,
   } = useSidebar()
   const isSettingsPage = pathname.startsWith("/settings")
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(isSettingsPage)
+  const [activeSettingsSection, setActiveSettingsSection] =
+    useState<SettingsSection>(() => getSettingsSection(pathname))
   const isAiPage = pathname === "/ai"
   const pageId = getPageId(pathname)
   const databaseId = getDatabaseId(pathname)
@@ -155,6 +169,23 @@ function AppLayoutContent({
   )
   const { editorCommentsOpenRequest } = usePageEditorComments()
   const commentController = usePageCommentController(pageId)
+
+  useEffect(() => {
+    if (!isSettingsPage) return
+    setActiveSettingsSection(getSettingsSection(pathname))
+    setSettingsDialogOpen(true)
+  }, [isSettingsPage, pathname])
+
+  const handleSettingsOpenChange = useCallback(
+    (open: boolean) => {
+      setSettingsDialogOpen(open)
+
+      if (!open && isSettingsPage) {
+        void navigate({ to: "/dashboard", replace: true })
+      }
+    },
+    [isSettingsPage, navigate],
+  )
   const openDiscussionsSidebar = useCallback(() => {
     if (!discussionsEnabled) return
     if (appSidebarOpen) closeSidePane()
@@ -378,7 +409,21 @@ function AppLayoutContent({
         hostPage={hostPage}
       />
       <PageLayoutOverlayDrawer />
-      {isSettingsPage ? <SettingsSidebar /> : <AppSidebar />}
+      <SettingsDialog
+        activeSection={activeSettingsSection}
+        onOpenChange={handleSettingsOpenChange}
+        onSectionChange={setActiveSettingsSection}
+        open={settingsDialogOpen}
+      >
+        <SettingsSectionContent section={activeSettingsSection} />
+      </SettingsDialog>
+      <AppSidebar
+        onOpenSettings={() => {
+          setActiveSettingsSection("profile")
+          setSettingsDialogOpen(true)
+        }}
+        settingsOpen={settingsDialogOpen}
+      />
       <ResizablePanelGroup
         className="min-h-0 min-w-0 flex-1 overflow-hidden"
         orientation="horizontal"
@@ -400,7 +445,13 @@ function AppLayoutContent({
         >
           <SidebarInset className="flex h-full min-h-0 flex-col overflow-hidden">
             <PageSidePaneShell
-              body={children ?? <Outlet />}
+              body={
+                isSettingsPage ? (
+                  <div className="h-full bg-background" />
+                ) : (
+                  children ?? <Outlet />
+                )
+              }
               header={
                 embeddedMobileViewer ? undefined : (
                   <AppHeader
@@ -472,6 +523,24 @@ function AppLayoutContent({
       )}
     </PageSidePaneContext.Provider>
   )
+}
+
+function SettingsSectionContent({ section }: { section: SettingsSection }) {
+  switch (section) {
+    case "workspace":
+      return <WorkspaceSettingsPage />
+    case "integrations":
+      return <IntegrationsSettingsPage />
+    case "zilobase-ai":
+      return <ZilobaseAiSettingsPage />
+    case "api-keys":
+      return <ApiKeysSettingsPage />
+    case "team":
+      return <TeamSettingsPage />
+    case "profile":
+    default:
+      return <ProfileSettingsPage />
+  }
 }
 
 function PageLayoutOverlayDrawer() {

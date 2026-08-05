@@ -151,7 +151,14 @@ const data = {
   ],
 };
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  onOpenSettings,
+  settingsOpen = false,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  onOpenSettings?: () => void;
+  settingsOpen?: boolean;
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { openSearch } = useAppSearch();
@@ -421,13 +428,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton
               asChild
               isActive={
-                pathname === "/settings" || pathname.startsWith("/settings/")
+                settingsOpen ||
+                pathname === "/settings" ||
+                pathname.startsWith("/settings/")
               }
             >
-              <Link to="/settings/profile">
+              <button
+                aria-expanded={settingsOpen}
+                onClick={onOpenSettings}
+                type="button"
+              >
                 <Settings2Icon />
                 <span>Settings</span>
-              </Link>
+              </button>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
