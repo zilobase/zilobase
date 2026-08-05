@@ -1,5 +1,5 @@
 import { memo, type CSSProperties } from "react"
-import { ChevronDown, ChevronRight, Loader2, Plus } from "lucide-react"
+import { ChevronDown, ChevronRight, Plus } from "lucide-react"
 
 import {
   getColorTokenBadgeClassName,
@@ -152,11 +152,7 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
             }
             type="button"
           >
-            {isAddingDatabaseRow ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Plus />
-            )}
+            <Plus />
             <span>New page</span>
           </button>
         </div>

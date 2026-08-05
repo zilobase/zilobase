@@ -133,10 +133,40 @@ export function applyOptimisticAddedDatabaseRow(
   }
 }
 
+export function applyOptimisticRemovedDatabaseRow(
+  payload: DatabasePayload,
+  rowId: string,
+): DatabasePayload {
+  const removedRow = payload.rows.find((row) => row.id === rowId)
+
+  if (!removedRow) {
+    return payload
+  }
+
+  return {
+    ...payload,
+    rowCount:
+      payload.rowCount === undefined
+        ? undefined
+        : Math.max(0, payload.rowCount - 1),
+    rows: payload.rows
+      .filter((row) => row.id !== rowId)
+      .map((row) =>
+        row.position > removedRow.position
+          ? { ...row, position: row.position - 1 }
+          : row,
+      ),
+    values: payload.values.filter(
+      (value) => value.pageId !== removedRow.pageId,
+    ),
+  }
+}
+
 export function applyConfirmedAddedDatabaseRow(
   payload: DatabasePayload,
   optimistic: { pageId: string; rowId: string } | null,
   response: AddRowResponse,
+  intendedValues: AddRowCacheInput["values"] = [],
 ): DatabasePayload {
   let rows = [...payload.rows]
   const optimisticIndex = optimistic
@@ -208,6 +238,31 @@ export function applyConfirmedAddedDatabaseRow(
 
     if (index >= 0) {
       values[index] = { ...values[index], ...value }
+    } else {
+      values.push(value)
+    }
+  }
+
+  for (const intendedValue of intendedValues) {
+    const index = values.findIndex(
+      (current) =>
+        current.pageId === response.pageId &&
+        current.propertyId === intendedValue.propertyId,
+    )
+    const current = index >= 0 ? values[index] : undefined
+    const value: PagePropertyValue = {
+      createdAt: current?.createdAt ?? response.createdAt,
+      id:
+        current?.id ??
+        `optimistic-property-value-${crypto.randomUUID()}`,
+      pageId: response.pageId,
+      propertyId: intendedValue.propertyId,
+      updatedAt: response.updatedAt,
+      value: intendedValue.value,
+    }
+
+    if (index >= 0) {
+      values[index] = value
     } else {
       values.push(value)
     }

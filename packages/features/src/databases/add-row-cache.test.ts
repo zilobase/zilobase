@@ -4,6 +4,7 @@ import test from "node:test"
 import {
   applyConfirmedAddedDatabaseRow,
   applyOptimisticAddedDatabaseRow,
+  applyOptimisticRemovedDatabaseRow,
   isAddRowResponse,
 } from "./add-row-cache"
 import { applyDatabaseDelta } from "./apply-delta"
@@ -68,6 +69,18 @@ test("applyOptimisticAddedDatabaseRow inserts in the middle and shifts rows", ()
       ["page-2", 2],
     ],
   )
+})
+
+test("applyOptimisticRemovedDatabaseRow removes the source row and its values", () => {
+  const payload = createTestDatabasePayload({ rowCount: 2 })
+  const next = applyOptimisticRemovedDatabaseRow(payload, "row-1")
+
+  assert.equal(next.rowCount, 1)
+  assert.deepEqual(
+    next.rows.map((row) => [row.id, row.position]),
+    [["row-2", 0]],
+  )
+  assert.equal(next.values.some((value) => value.pageId === "page-1"), false)
 })
 
 test("applyConfirmedAddedDatabaseRow replaces optimistic ids and adds values", () => {
@@ -198,6 +211,49 @@ test("row confirmation removes the optimistic duplicate when realtime wins the r
     1,
   )
   assert.equal(next.values.some((value) => value.pageId === optimistic.pageId), false)
+})
+
+test("row confirmation preserves intended values over imported server values", () => {
+  const payload = createTestDatabasePayload({ rowCount: 2 })
+  const intendedValues = [
+    { propertyId: "property-status", value: "In progress" },
+  ]
+  const optimistic = applyOptimisticAddedDatabaseRow(payload, {
+    title: "Draft",
+    values: intendedValues,
+  })
+  const next = applyConfirmedAddedDatabaseRow(
+    optimistic.payload,
+    { pageId: optimistic.pageId, rowId: optimistic.rowId },
+    {
+      createdAt: "2026-07-14T12:00:00.000Z",
+      databaseId: "database-1",
+      pageId: "page-3",
+      parentRowId: null,
+      position: 2,
+      rowId: "row-3",
+      title: "Gamma",
+      updatedAt: "2026-07-14T12:00:00.000Z",
+      values: [{
+        createdAt: "2026-07-14T12:00:00.000Z",
+        id: "value-server",
+        pageId: "page-3",
+        propertyId: "property-status",
+        updatedAt: "2026-07-14T12:00:00.000Z",
+        value: "Not started",
+      }],
+    },
+    intendedValues,
+  )
+
+  assert.equal(
+    next.values.find(
+      (value) =>
+        value.pageId === "page-3" &&
+        value.propertyId === "property-status",
+    )?.value,
+    "In progress",
+  )
 })
 
 test("isAddRowResponse detects compact row create responses", () => {

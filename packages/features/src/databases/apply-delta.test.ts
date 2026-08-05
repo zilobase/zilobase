@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { applyDatabaseDelta } from "./apply-delta"
+import { applyOptimisticAddedDatabaseRow } from "./add-row-cache"
 import { createTestDatabasePayload } from "./test-helpers"
 
 test("applyDatabaseDelta updates database metadata", () => {
@@ -96,6 +97,52 @@ test("applyDatabaseDelta inserts a new row with nested page data", () => {
 
   assert.equal(next.rows.length, 3)
   assert.equal(next.rows[2]?.page.name, "Gamma")
+})
+
+test("applyDatabaseDelta replaces a matching optimistic row from realtime", () => {
+  const payload = createTestDatabasePayload({ rowCount: 2 })
+  const optimistic = applyOptimisticAddedDatabaseRow(payload, {
+    title: "Untitled",
+    values: [
+      { propertyId: "property-status", value: "In progress" },
+    ],
+  })
+  const next = applyDatabaseDelta(optimistic.payload, {
+    rows: [
+      {
+        id: "row-3",
+        page: { id: "page-3", name: "Untitled" },
+        pageId: "page-3",
+        position: 2,
+      },
+    ],
+    values: [
+      {
+        id: "value-server",
+        pageId: "page-3",
+        propertyId: "property-status",
+        updatedAt: "2026-08-06T12:00:00.000Z",
+        value: "Not started",
+      },
+    ],
+  })
+
+  assert.equal(next.rowCount, 3)
+  assert.equal(next.rows.length, 3)
+  assert.equal(next.rows.some((row) => row.id === optimistic.rowId), false)
+  assert.equal(next.rows.at(-1)?.id, "row-3")
+  assert.equal(
+    next.values.find(
+      (value) =>
+        value.pageId === "page-3" &&
+        value.propertyId === "property-status",
+    )?.value,
+    "In progress",
+  )
+  assert.equal(
+    next.values.some((value) => value.pageId === optimistic.pageId),
+    false,
+  )
 })
 
 test("applyDatabaseDelta removes a moved row and its source values", () => {

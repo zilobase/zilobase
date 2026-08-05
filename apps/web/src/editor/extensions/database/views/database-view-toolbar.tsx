@@ -1050,11 +1050,7 @@ export function DatabaseViewToolbar() {
                   onClick={() => addDatabaseRow()}
                   type="button"
                 >
-                  {isAddingDatabaseRow ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Plus />
-                  )}
+                  <Plus />
                   <span>New</span>
                 </Button>
               ) : null}

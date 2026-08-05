@@ -203,11 +203,7 @@ export function DatabaseGalleryView() {
         }
         type="button"
       >
-        {isAddingDatabaseRow ? (
-          <Loader2 className="animate-spin" />
-        ) : (
-          <Plus />
-        )}
+        <Plus />
         <span>New page</span>
       </button>
     ) : null

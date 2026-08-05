@@ -784,11 +784,7 @@ export function DatabaseKanbanView() {
                           }
                           type="button"
                         >
-                          {isAddingDatabaseRow ? (
-                            <Loader2 className="animate-spin" />
-                          ) : (
-                            <Plus />
-                          )}
+                          <Plus />
                           <span>New page</span>
                         </button>
                       ) : null}
@@ -816,7 +812,7 @@ export function DatabaseKanbanView() {
                           ?.click()
                       }}
                     >
-                      {isCreatingKanbanOption || isAddingDatabaseRow ? (
+                      {isCreatingKanbanOption ? (
                         <Loader2 className="animate-spin" />
                       ) : (
                         <Plus aria-hidden="true" />

@@ -768,12 +768,10 @@ function DatabaseActiveTableCell({
 function CreateDatabaseRowButton({
   columnCount,
   disabled,
-  isPending,
   onClick,
 }: {
   columnCount: number
   disabled: boolean
-  isPending: boolean
   onClick: () => void
 }) {
   return (
@@ -788,7 +786,7 @@ function CreateDatabaseRowButton({
           onClick={onClick}
           type="button"
         >
-          {isPending ? <Loader2 className="animate-spin" /> : <Plus />}
+          <Plus />
           <span>New page</span>
         </button>
       </td>
@@ -2790,11 +2788,7 @@ export function DatabaseTableView() {
                     }
                     type="button"
                   >
-                    {isAddingDatabaseRow ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Plus />
-                    )}
+                    <Plus />
                     <span>New sub-item</span>
                   </button>
                 </td>
@@ -3046,7 +3040,6 @@ export function DatabaseTableView() {
                                 <CreateDatabaseRowButton
                                   columnCount={columnKeys.length}
                                   disabled={!databaseId || isAddingDatabaseRow}
-                                  isPending={isAddingDatabaseRow}
                                   onClick={() =>
                                     addDatabaseRow(
                                       section.groupValue,
@@ -3079,7 +3072,6 @@ export function DatabaseTableView() {
                     <CreateDatabaseRowButton
                       columnCount={columnKeys.length}
                       disabled={!databaseId || isAddingDatabaseRow}
-                      isPending={isAddingDatabaseRow}
                       onClick={() => addDatabaseRow()}
                     />
                   ) : undefined

@@ -27,6 +27,7 @@ import {
 import {
   applyConfirmedAddedDatabaseRow,
   applyOptimisticAddedDatabaseRow,
+  applyOptimisticRemovedDatabaseRow,
   isAddRowResponse,
   type AddRowMutationResponse,
 } from "./add-row-cache";
@@ -842,13 +843,30 @@ export function useAddDatabaseRow() {
       optimisticValues,
       ...input
     }: AddRowInput) => {
-      await queryClient.cancelQueries({
-        queryKey: databaseQueryKey(databaseId),
-      });
+      const sourceDatabaseId =
+        input.sourceDatabaseId && input.sourceDatabaseId !== databaseId
+          ? input.sourceDatabaseId
+          : null;
+
+      await Promise.all([
+        queryClient.cancelQueries({
+          queryKey: databaseQueryKey(databaseId),
+        }),
+        sourceDatabaseId
+          ? queryClient.cancelQueries({
+              queryKey: databaseQueryKey(sourceDatabaseId),
+            })
+          : Promise.resolve(),
+      ]);
 
       const current = queryClient.getQueryData<DatabasePayload | null>(
         databaseQueryKey(databaseId),
       );
+      const sourceCurrent = sourceDatabaseId
+        ? queryClient.getQueryData<DatabasePayload | null>(
+            databaseQueryKey(sourceDatabaseId),
+          )
+        : null;
       const optimistic = current
         ? applyOptimisticAddedDatabaseRow(current, {
             ...input,
@@ -861,6 +879,16 @@ export function useAddDatabaseRow() {
           queryClient,
           databaseId,
           optimistic.payload,
+        );
+      }
+      if (sourceDatabaseId && sourceCurrent && input.sourceRowId) {
+        setDatabasePayloadQueryData(
+          queryClient,
+          sourceDatabaseId,
+          applyOptimisticRemovedDatabaseRow(
+            sourceCurrent,
+            input.sourceRowId,
+          ),
         );
       }
 
@@ -901,11 +929,21 @@ export function useAddDatabaseRow() {
             ? { pageId: optimistic.pageId, rowId: optimistic.rowId }
             : null,
           response,
+          optimisticValues,
         );
         setDatabasePayloadQueryData(queryClient, databaseId, payload);
         payload =
           applyVersionedDatabaseMutation(queryClient, response).payload ??
           payload;
+        if (optimisticValues?.length) {
+          payload = applyConfirmedAddedDatabaseRow(
+            payload,
+            null,
+            response,
+            optimisticValues,
+          );
+          setDatabasePayloadQueryData(queryClient, databaseId, payload);
+        }
         if (response.sourceMutation) {
           applyVersionedDatabaseMutation(queryClient, response.sourceMutation);
         }
@@ -915,6 +953,13 @@ export function useAddDatabaseRow() {
             queryClient,
             databaseId,
             current,
+          );
+        }
+        if (sourceDatabaseId && sourceCurrent) {
+          restoreDatabasePayloadAfterFailedMutation(
+            queryClient,
+            sourceDatabaseId,
+            sourceCurrent,
           );
         }
 

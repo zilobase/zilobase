@@ -56,11 +56,57 @@ function mergeRow(
   })
 }
 
+function findMatchingOptimisticRowIndex(
+  rows: DatabaseRow[],
+  patch: Record<string, unknown>,
+) {
+  if (
+    typeof patch.pageId !== "string" ||
+    typeof patch.position !== "number"
+  ) {
+    return -1
+  }
+
+  const optimisticRows = rows
+    .map((row, index) => ({ index, row }))
+    .filter(({ row }) => row.id.startsWith("optimistic-row-"))
+  const exactPageMatches = optimisticRows.filter(
+    ({ row }) => row.pageId === patch.pageId,
+  )
+
+  if (exactPageMatches.length === 1) {
+    return exactPageMatches[0]!.index
+  }
+
+  const patchPage =
+    patch.page && typeof patch.page === "object"
+      ? (patch.page as Record<string, unknown>)
+      : null
+  const patchPageName =
+    typeof patchPage?.name === "string" ? patchPage.name : null
+
+  if (!patchPageName) {
+    return -1
+  }
+
+  const positionalMatches = optimisticRows.filter(
+    ({ row }) =>
+      row.position === patch.position && row.page.name === patchPageName,
+  )
+
+  return positionalMatches.length === 1 ? positionalMatches[0]!.index : -1
+}
+
 export function applyDatabaseDelta(
   payload: DatabasePayload,
   delta: DatabaseDelta,
 ): DatabasePayload {
   let next = payload
+  const optimisticValueOverrides: Array<{
+    pageId: string
+    propertyId: string
+    value: unknown
+  }> = []
 
   if (delta.database) {
     next = {
@@ -160,7 +206,31 @@ export function applyDatabaseDelta(
         continue
       }
 
-      const index = rows.findIndex((row) => row.id === id)
+      let index = rows.findIndex((row) => row.id === id)
+      if (index < 0) {
+        index = findMatchingOptimisticRowIndex(rows, patch)
+
+        if (index >= 0 && typeof patch.pageId === "string") {
+          const optimisticPageId = rows[index]!.pageId
+
+          next = {
+            ...next,
+            values: next.values.map((value) => {
+              if (value.pageId !== optimisticPageId) {
+                return value
+              }
+
+              optimisticValueOverrides.push({
+                pageId: patch.pageId as string,
+                propertyId: value.propertyId,
+                value: value.value,
+              })
+
+              return { ...value, pageId: patch.pageId as string }
+            }),
+          }
+        }
+      }
       const merged = mergeRow(index >= 0 ? rows[index] : undefined, patch)
 
       if (!merged) {
@@ -232,6 +302,24 @@ export function applyDatabaseDelta(
       ...next,
       values,
     }
+  }
+
+  if (optimisticValueOverrides.length) {
+    const values = [...next.values]
+
+    for (const override of optimisticValueOverrides) {
+      const index = values.findIndex(
+        (value) =>
+          value.pageId === override.pageId &&
+          value.propertyId === override.propertyId,
+      )
+
+      if (index >= 0) {
+        values[index] = { ...values[index], value: override.value }
+      }
+    }
+
+    next = { ...next, values }
   }
 
   return next
