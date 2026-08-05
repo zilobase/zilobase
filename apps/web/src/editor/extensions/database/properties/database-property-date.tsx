@@ -29,9 +29,11 @@ type DatabasePropertyDateProps = {
   editable?: boolean
   label: string
   onOpenChange?: (open: boolean) => void
+  open?: boolean
   onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown
   onSelect: (value: string | string[]) => void
   propertyConfig?: unknown
+  trigger?: ReactNode
   value: string | string[]
 }
 
@@ -39,12 +41,14 @@ export function DatabasePropertyDate({
   editable = true,
   label,
   onOpenChange,
+  open: controlledOpen,
   onPropertyConfigChange,
   onSelect,
   propertyConfig,
+  trigger,
   value,
 }: DatabasePropertyDateProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [isRange, setIsRange] = useState(Array.isArray(value) && value.length > 1)
   const [draftStartValue, setDraftStartValue] = useState(getStartValue(value))
   const [draftEndValue, setDraftEndValue] = useState(getEndValue(value))
@@ -65,9 +69,10 @@ export function DatabasePropertyDate({
   const dateFormatLabel = getDateFormatLabel(dateFormat)
   const timeFormatLabel = getTimeFormatLabel(timeFormat)
   const hasTime = timeFormat !== "hidden"
+  const isOpen = controlledOpen ?? uncontrolledOpen
 
   const setOpen = (open: boolean) => {
-    setIsOpen(open)
+    if (controlledOpen === undefined) setUncontrolledOpen(open)
     onOpenChange?.(open)
 
     if (open) {
@@ -159,13 +164,15 @@ export function DatabasePropertyDate({
   return (
     <Popover open={isOpen} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
-          aria-label={`${label} value`}
-          className="database-date-cell-trigger"
-          type="button"
-        >
-          {displayValue}
-        </button>
+        {trigger ?? (
+          <button
+            aria-label={`${label} value`}
+            className="database-date-cell-trigger"
+            type="button"
+          >
+            {displayValue}
+          </button>
+        )}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 gap-1 p-1" sideOffset={0}>
         <div

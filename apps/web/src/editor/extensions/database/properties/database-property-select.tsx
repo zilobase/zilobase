@@ -1,5 +1,5 @@
 import { Check, GripVertical } from "lucide-react"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 
 import {
   Popover,
@@ -85,10 +85,12 @@ export function DatabasePropertySelect({
   label,
   value,
   multiple = false,
+  open: controlledOpen,
   onOpenChange,
   onSelect,
   onPropertyConfigChange,
   showStatusDot = false,
+  trigger: customTrigger,
   valueKey = "name",
 }: {
   allowCreate?: boolean
@@ -96,6 +98,7 @@ export function DatabasePropertySelect({
   editable?: boolean
   label: string
   multiple?: boolean
+  open?: boolean
   onOpenChange?: (open: boolean) => void
   onPropertyConfigChange?: (
     config: unknown,
@@ -105,9 +108,10 @@ export function DatabasePropertySelect({
   value: string | string[]
   onSelect: (value: string | string[]) => void
   showStatusDot?: boolean
+  trigger?: ReactNode
   valueKey?: "id" | "name"
 }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [query, setQuery] = useState("")
   const configuredOptions = getSelectOptions(propertyConfig)
@@ -135,6 +139,7 @@ export function DatabasePropertySelect({
     Boolean(onPropertyConfigChange) &&
     query.trim().length > 0 &&
     !matchingSelectOption
+  const isOpen = controlledOpen ?? uncontrolledOpen
 
   if (!editable) {
     return (
@@ -158,14 +163,14 @@ export function DatabasePropertySelect({
   }
 
   const closePanel = () => {
-    setIsOpen(false)
+    if (controlledOpen === undefined) setUncontrolledOpen(false)
     setQuery("")
     onOpenChange?.(false)
   }
 
   const setOpen = (open: boolean) => {
     if (open) {
-      setIsOpen(true)
+      if (controlledOpen === undefined) setUncontrolledOpen(true)
       onOpenChange?.(true)
       return
     }
@@ -332,7 +337,7 @@ export function DatabasePropertySelect({
 
   return (
     <Popover open={isOpen} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverTrigger asChild>{customTrigger ?? trigger}</PopoverTrigger>
       <PopoverContent align="start" className="w-72 gap-1 p-1" sideOffset={0}>
         {panel}
       </PopoverContent>

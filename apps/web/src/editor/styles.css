@@ -763,6 +763,62 @@
     @apply relative mt-2 max-w-full overflow-visible;
   }
 
+  .database-selection-toolbar {
+    @apply absolute flex min-w-0 items-center overflow-x-auto rounded-md border bg-background shadow-lg;
+    left: 0;
+    top: 0;
+    transform: translateY(calc(-100% - 0.5rem));
+    width: fit-content;
+    max-width: 100%;
+    z-index: 60;
+  }
+
+  .database-scroll-section:has(> .database-selection-toolbar) {
+    z-index: 50;
+  }
+
+  .database-selection-count,
+  .database-selection-property-action,
+  .database-selection-more {
+    @apply flex h-9 shrink-0 items-center gap-2 border-r px-3 text-sm transition-colors hover:bg-muted/60 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .database-selection-count {
+    @apply font-medium text-primary;
+  }
+
+  .database-selection-property-group {
+    @apply relative flex min-w-0 items-center;
+  }
+
+  .database-selection-menu-anchor {
+    @apply pointer-events-none absolute size-px;
+    bottom: 0;
+    right: 0;
+  }
+
+  .database-selection-property-action svg,
+  .database-selection-more svg,
+  .database-selection-value-option svg {
+    @apply size-4 shrink-0;
+  }
+
+  .database-selection-property-action span {
+    @apply max-w-36 truncate;
+  }
+
+  .database-selection-more {
+    @apply border-r-0 px-2.5;
+  }
+
+  .database-selection-value-option {
+    @apply flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+
+  .database-selection-apply {
+    @apply shrink-0 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+
   .database-list-view {
     @apply overflow-x-auto py-1;
   }
@@ -1605,6 +1661,14 @@
 
   .tiptap-editor .database-table tbody td:last-child {
     @apply border-r-0;
+  }
+
+  .tiptap-editor .database-table tbody tr[data-row-selected="true"] > td {
+    background-color: color-mix(
+      in srgb,
+      var(--database-selection-color, #2383e2) 12%,
+      var(--background)
+    );
   }
 
   .tiptap-editor
