@@ -10,6 +10,7 @@ import {
   getPropertyNameKey,
   mergeSelectOptionsForValue,
   normalizeValueForPropertyType,
+  shouldInsertUnmatchedSourceProperty,
 } from "./database-property-import";
 import {
   isReadOnlyPropertyType,
@@ -19,16 +20,21 @@ import { validateCellValue } from "./database-property-config";
 import type { DatabaseDelta } from "./database-delta";
 import { upsertPagePropertyValues } from "./page-property-value-upsert";
 
-type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+type DatabaseTransaction = Parameters<
+  Parameters<Database["transaction"]>[0]
+>[0];
 
-export async function inheritDatabaseRowProperties(input: {
-  now: Date;
-  pageId: string;
-  sourceDatabaseId: string;
-  sourcePropertyMode: "duplicate" | "match";
-  targetDatabaseId: string;
-  workspaceId: string;
-}, tx: DatabaseTransaction) {
+export async function inheritDatabaseRowProperties(
+  input: {
+    now: Date;
+    pageId: string;
+    sourceDatabaseId: string;
+    sourcePropertyMode: "duplicate" | "match";
+    targetDatabaseId: string;
+    workspaceId: string;
+  },
+  tx: DatabaseTransaction,
+) {
   const nowIso = input.now.toISOString();
   const properties: NonNullable<DatabaseDelta["properties"]> = [];
   const values: NonNullable<DatabaseDelta["values"]> = [];
@@ -107,12 +113,15 @@ export async function inheritDatabaseRowProperties(input: {
     sourceValues.map((value) => [value.propertyId, value]),
   );
   const columnsToInsert: typeof missingColumns = [];
-  const matchedValuesToUpsert: Array<typeof pagePropertyValue.$inferInsert> = [];
+  const matchedValuesToUpsert: Array<typeof pagePropertyValue.$inferInsert> =
+    [];
 
   for (const sourceColumn of missingColumns) {
     const targetColumn =
       input.sourcePropertyMode === "match"
-        ? targetColumnsByName.get(getPropertyNameKey(sourceColumn.property.name))
+        ? targetColumnsByName.get(
+            getPropertyNameKey(sourceColumn.property.name),
+          )
         : null;
     const sourceValue = sourceValueByPropertyId.get(
       sourceColumn.column.propertyId,
@@ -122,7 +131,9 @@ export async function inheritDatabaseRowProperties(input: {
       : null;
 
     if (!targetColumn) {
-      columnsToInsert.push(sourceColumn);
+      if (shouldInsertUnmatchedSourceProperty(input.sourcePropertyMode)) {
+        columnsToInsert.push(sourceColumn);
+      }
       continue;
     }
 
@@ -138,6 +149,11 @@ export async function inheritDatabaseRowProperties(input: {
       targetPropertyType,
       sourceValue.value,
     );
+
+    if (nextValue === null) {
+      continue;
+    }
+
     const mergedConfig = mergeSelectOptionsForValue(
       targetPropertyType,
       targetColumn.property.config,

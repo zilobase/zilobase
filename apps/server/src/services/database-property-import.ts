@@ -6,6 +6,10 @@ import { isSelectLikePropertyType } from "./database-property-types";
 
 export const getPropertyNameKey = (name: string) => name.trim().toLowerCase();
 
+export const shouldInsertUnmatchedSourceProperty = (
+  mode: "duplicate" | "match",
+) => mode === "duplicate";
+
 const readPropertyOptions = (
   type: string,
   config: unknown,
@@ -74,15 +78,29 @@ export const normalizeValueForPropertyType = (
   propertyType: string,
   value: unknown,
 ) => {
-  if (propertyType === "multi_select" && typeof value === "string") {
-    return [value];
+  if (propertyType === "multi_select") {
+    if (typeof value === "string") {
+      return [value];
+    }
+
+    return Array.isArray(value) &&
+      value.every((item) => typeof item === "string")
+      ? value
+      : null;
   }
 
-  if (
-    (propertyType === "select" || propertyType === "status") &&
-    Array.isArray(value)
-  ) {
-    return value[0] ?? null;
+  if (propertyType === "select" || propertyType === "status") {
+    if (typeof value === "string") {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return (
+        value.find((item): item is string => typeof item === "string") ?? null
+      );
+    }
+
+    return null;
   }
 
   return value;

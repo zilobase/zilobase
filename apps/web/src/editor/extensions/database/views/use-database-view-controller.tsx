@@ -13,32 +13,13 @@ import {
   useAddDatabaseProperty,
   useAddDatabaseRow,
   useDatabase,
-  databaseQueryOptions,
-  type DatabasePayload,
   useDeleteDatabaseView,
   useUpdateDatabase,
   useUpdateDatabaseView,
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
 } from "@zilobase/features/databases"
-import { useZilobaseFeatures } from "@zilobase/features"
-import {
-  usePage,
-  usePagePersonAccessTargets,
-} from "@zilobase/features/pages"
-import { ArrowRight, Columns3, Link2 } from "lucide-react"
-import { toast } from "sonner"
-
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
+import { usePage, usePagePersonAccessTargets } from "@zilobase/features/pages"
 import {
   getDatabasePageDragPayload,
   hasDatabasePageDragPayload,
@@ -79,55 +60,6 @@ export type DatabaseViewProps = {
   viewSettingsPanelTarget?: HTMLElement | null
 }
 
-type SourcePropertyMode = "duplicate" | "match"
-
-type SourcePropertyConflict = {
-  name: string
-  sourceType: string
-  targetType: string
-}
-
-type PendingSourcePropertyMode = {
-  conflicts: SourcePropertyConflict[]
-  sourceDatabaseName: string
-  targetDatabaseName: string
-}
-
-const getPropertyNameKey = (name: string) => name.trim().toLowerCase()
-
-function getSourcePropertyConflicts(
-  sourcePayload: DatabasePayload,
-  targetPayload: DatabasePayload,
-) {
-  const targetPropertiesByName = new Map(
-    targetPayload.properties.map((property) => [
-      getPropertyNameKey(property.property.name),
-      property,
-    ]),
-  )
-
-  return sourcePayload.properties.flatMap((sourceProperty) => {
-    const targetProperty = targetPropertiesByName.get(
-      getPropertyNameKey(sourceProperty.property.name),
-    )
-
-    if (
-      !targetProperty ||
-      targetProperty.property.id === sourceProperty.property.id
-    ) {
-      return []
-    }
-
-    return [
-      {
-        name: sourceProperty.property.name,
-        sourceType: sourceProperty.property.type,
-        targetType: targetProperty.property.type,
-      },
-    ]
-  })
-}
-
 export function useDatabaseViewController({
   activeViewId: requestedActiveViewId,
   databaseId,
@@ -148,12 +80,6 @@ export function useDatabaseViewController({
   viewSettingsOpen,
   viewSettingsPanelTarget,
 }: DatabaseViewProps) {
-  const { apiFetch, queryClient } = useZilobaseFeatures()
-  const [pendingSourcePropertyMode, setPendingSourcePropertyMode] =
-    useState<PendingSourcePropertyMode | null>(null)
-  const sourcePropertyModeResolverRef = useRef<
-    ((mode: SourcePropertyMode | null) => void) | null
-  >(null)
   const updateDatabase = useUpdateDatabase()
   const updateDatabaseView = useUpdateDatabaseView()
   const addDatabaseView = useAddDatabaseView()
@@ -190,7 +116,7 @@ export function useDatabaseViewController({
   const isControlledActiveView = Boolean(onActiveViewIdChange)
   const linkedDatabaseViews = useMemo(
     () => getDatabaseLinkedViews(payload?.database.config),
-    [payload?.database.config]
+    [payload?.database.config],
   )
   const viewTabs = useMemo(
     () => [
@@ -209,7 +135,7 @@ export function useDatabaseViewController({
         type: linkedView.viewType,
       })),
     ],
-    [linkedDatabaseViews, payload?.views]
+    [linkedDatabaseViews, payload?.views],
   )
   const requestedViewId =
     requestedActiveViewId &&
@@ -217,25 +143,28 @@ export function useDatabaseViewController({
       ? requestedActiveViewId
       : null
   const resolvedActiveViewId = isControlledActiveView
-    ? requestedViewId ?? viewTabs[0]?.id ?? null
+    ? (requestedViewId ?? viewTabs[0]?.id ?? null)
     : activeViewId
   const setupDismissed = getDatabaseSetupDismissed(payload?.database.config)
   const hasDatabaseSetupContent = Boolean(
     payload &&
-      (payload.properties.length > 0 ||
-        (payload.rowCount ?? payload.rows.length) > 0 ||
-        linkedDatabaseViews.length > 0),
+    (payload.properties.length > 0 ||
+      (payload.rowCount ?? payload.rows.length) > 0 ||
+      linkedDatabaseViews.length > 0),
   )
   const effectiveSetupMode = Boolean(
-    editable && payload && !setupDismissed && (setupMode || !hasDatabaseSetupContent),
+    editable &&
+    payload &&
+    !setupDismissed &&
+    (setupMode || !hasDatabaseSetupContent),
   )
   const activeLinkedDatabaseView = useMemo(
     () =>
       linkedDatabaseViews.find(
         (linkedView) =>
-          getDatabaseLinkedViewKey(linkedView) === resolvedActiveViewId
+          getDatabaseLinkedViewKey(linkedView) === resolvedActiveViewId,
       ) ?? null,
-    [linkedDatabaseViews, resolvedActiveViewId]
+    [linkedDatabaseViews, resolvedActiveViewId],
   )
   const {
     data: linkedPayload,
@@ -284,9 +213,7 @@ export function useDatabaseViewController({
         const nextViewId =
           typeof value === "function"
             ? value(
-                isControlledActiveView
-                  ? resolvedActiveViewId
-                  : currentViewId
+                isControlledActiveView ? resolvedActiveViewId : currentViewId,
               )
             : value
 
@@ -308,7 +235,7 @@ export function useDatabaseViewController({
         currentUserId: session?.user?.id,
         payload: activePayload,
       }),
-    [accessTargets, activePayload, activeViewLookupId, session?.user?.id]
+    [accessTargets, activePayload, activeViewLookupId, session?.user?.id],
   )
   const {
     activeConditionalColors,
@@ -375,7 +302,7 @@ export function useDatabaseViewController({
     setActiveViewId((currentViewId) => {
       return currentViewId && viewTabs.some((view) => view.id === currentViewId)
         ? currentViewId
-        : viewTabs[0]?.id ?? null
+        : (viewTabs[0]?.id ?? null)
     })
   }, [isControlledActiveView, viewTabs])
 
@@ -406,7 +333,11 @@ export function useDatabaseViewController({
   }, [activePayload?.views, updateDatabaseView.isPending])
 
   const getLatestViewConfig = useCallback(
-    (nextDatabaseId: string, databaseViewId: string, fallbackConfig: unknown) => {
+    (
+      nextDatabaseId: string,
+      databaseViewId: string,
+      fallbackConfig: unknown,
+    ) => {
       const configKey = `${nextDatabaseId}:${databaseViewId}`
 
       if (latestViewConfigRef.current.has(configKey)) {
@@ -414,8 +345,8 @@ export function useDatabaseViewController({
       }
 
       return (
-        activePayload?.views.find((view) => view.id === databaseViewId)?.config ??
-        fallbackConfig
+        activePayload?.views.find((view) => view.id === databaseViewId)
+          ?.config ?? fallbackConfig
       )
     },
     [activePayload?.views],
@@ -431,61 +362,9 @@ export function useDatabaseViewController({
     [],
   )
 
-  const resolvePendingSourcePropertyMode = useCallback(
-    (mode: SourcePropertyMode | null) => {
-      sourcePropertyModeResolverRef.current?.(mode)
-      sourcePropertyModeResolverRef.current = null
-      setPendingSourcePropertyMode(null)
-    },
-    [],
-  )
-
   const getSourcePropertyMode = useCallback(
-    async (dragPayload: DatabasePageDragPayload) => {
-      if (!dragPayload.databaseId || !activePayload) {
-        return "duplicate" as const
-      }
-
-      let sourcePayload: DatabasePayload | null = null
-
-      try {
-        sourcePayload = await queryClient.ensureQueryData(
-          databaseQueryOptions(apiFetch, dragPayload.databaseId, {
-            schemaOnly: true,
-          }),
-        )
-      } catch {
-        toast.error("Couldn't inspect source database properties.")
-        return null
-      }
-
-      if (!sourcePayload) {
-        return null
-      }
-
-      const conflicts = getSourcePropertyConflicts(sourcePayload, activePayload)
-
-      if (conflicts.length === 0) {
-        return "duplicate" as const
-      }
-
-      sourcePropertyModeResolverRef.current?.(null)
-
-      return new Promise<SourcePropertyMode | null>((resolve) => {
-        sourcePropertyModeResolverRef.current = resolve
-        setPendingSourcePropertyMode({
-          conflicts,
-          sourceDatabaseName: sourcePayload.database.name,
-          targetDatabaseName: activePayload.database.name,
-        })
-      })
-    },
-    [activePayload, apiFetch, queryClient],
-  )
-
-  useEffect(
-    () => () => {
-      sourcePropertyModeResolverRef.current?.(null)
+    async (_dragPayload: DatabasePageDragPayload) => {
+      return "match" as const
     },
     [],
   )
@@ -499,7 +378,8 @@ export function useDatabaseViewController({
 
     if (
       linkedDatabaseViews.some(
-        (existingView) => getDatabaseLinkedViewKey(existingView) === linkedViewKey
+        (existingView) =>
+          getDatabaseLinkedViewKey(existingView) === linkedViewKey,
       )
     ) {
       setSelectedActiveViewId(linkedViewKey)
@@ -515,18 +395,20 @@ export function useDatabaseViewController({
       },
       {
         onSuccess: () => setSelectedActiveViewId(linkedViewKey),
-      }
+      },
     )
   }
 
-  const duplicateDatabaseView = (view: DatabaseViewContextValue["viewTabs"][number]) => {
+  const duplicateDatabaseView = (
+    view: DatabaseViewContextValue["viewTabs"][number],
+  ) => {
     if (!databaseId || addDatabaseView.isPending || updateDatabase.isPending) {
       return
     }
 
     if (view.isLinked) {
       const sourceLinkedView = linkedDatabaseViews.find(
-        (linkedView) => getDatabaseLinkedViewKey(linkedView) === view.id
+        (linkedView) => getDatabaseLinkedViewKey(linkedView) === view.id,
       )
 
       if (!sourceLinkedView) {
@@ -554,13 +436,13 @@ export function useDatabaseViewController({
         },
         {
           onSuccess: () => setSelectedActiveViewId(`linked:${linkedViewId}`),
-        }
+        },
       )
       return
     }
 
     const sourceView = (payload?.views ?? []).find(
-      (databaseView) => databaseView.id === view.id
+      (databaseView) => databaseView.id === view.id,
     )
 
     if (!sourceView) {
@@ -568,7 +450,7 @@ export function useDatabaseViewController({
     }
 
     const existingViewIds = new Set(
-      (payload?.views ?? []).map((databaseView) => databaseView.id)
+      (payload?.views ?? []).map((databaseView) => databaseView.id),
     )
 
     addDatabaseView.mutate(
@@ -581,19 +463,24 @@ export function useDatabaseViewController({
       {
         onSuccess: (nextPayload) => {
           const addedView =
-            nextPayload.views.find((databaseView) => !existingViewIds.has(databaseView.id)) ??
-            nextPayload.views.at(-1)
+            nextPayload.views.find(
+              (databaseView) => !existingViewIds.has(databaseView.id),
+            ) ?? nextPayload.views.at(-1)
 
           setSelectedActiveViewId(addedView?.id ?? null)
         },
-      }
+      },
     )
   }
 
   const deleteDatabaseViewByTab = (
-    view: DatabaseViewContextValue["viewTabs"][number]
+    view: DatabaseViewContextValue["viewTabs"][number],
   ) => {
-    if (!databaseId || deleteDatabaseView.isPending || updateDatabase.isPending) {
+    if (
+      !databaseId ||
+      deleteDatabaseView.isPending ||
+      updateDatabase.isPending
+    ) {
       return
     }
 
@@ -603,7 +490,7 @@ export function useDatabaseViewController({
 
     const nextActiveViewId =
       activeViewTabId === view.id
-        ? viewTabs.find((viewTab) => viewTab.id !== view.id)?.id ?? null
+        ? (viewTabs.find((viewTab) => viewTab.id !== view.id)?.id ?? null)
         : activeViewTabId
 
     if (view.isLinked) {
@@ -611,14 +498,14 @@ export function useDatabaseViewController({
         {
           config: getMergedDatabaseConfig(payload?.database.config, {
             linkedDatabaseViews: linkedDatabaseViews.filter(
-              (linkedView) => getDatabaseLinkedViewKey(linkedView) !== view.id
+              (linkedView) => getDatabaseLinkedViewKey(linkedView) !== view.id,
             ),
           }),
           databaseId,
         },
         {
           onSuccess: () => setSelectedActiveViewId(nextActiveViewId),
-        }
+        },
       )
       return
     }
@@ -630,7 +517,7 @@ export function useDatabaseViewController({
       },
       {
         onSuccess: () => setSelectedActiveViewId(nextActiveViewId),
-      }
+      },
     )
   }
 
@@ -666,7 +553,7 @@ export function useDatabaseViewController({
   })
 
   const handleDatabaseBlockDragOver = (
-    event: ReactDragEvent<HTMLDivElement>
+    event: ReactDragEvent<HTMLDivElement>,
   ) => {
     if (!hasDatabasePageDragPayload(event.dataTransfer)) {
       return
@@ -826,130 +713,15 @@ export function useDatabaseViewController({
     isError: activeLinkedDatabaseView ? isLinkedError : isError,
     handleDatabaseBlockDragOver,
     handleDatabaseBlockDrop,
-    isLoading: isLoading || Boolean(activeLinkedDatabaseView && isLoadingLinkedPayload),
+    isLoading:
+      isLoading || Boolean(activeLinkedDatabaseView && isLoadingLinkedPayload),
     onDismissSetup,
     onSetupComplete,
     workspaceId,
     payload: activePayload,
-    sourcePropertyDialog: pendingSourcePropertyMode ? (
-      <SourcePropertyModeDialog
-        conflicts={pendingSourcePropertyMode.conflicts}
-        onChoose={resolvePendingSourcePropertyMode}
-        sourceDatabaseName={pendingSourcePropertyMode.sourceDatabaseName}
-        targetDatabaseName={pendingSourcePropertyMode.targetDatabaseName}
-      />
-    ) : null,
+    sourcePropertyDialog: null,
     setupMode: effectiveSetupMode,
     viewType: activeView?.type,
     pageId,
   }
-}
-
-function SourcePropertyModeDialog({
-  conflicts,
-  onChoose,
-  sourceDatabaseName,
-  targetDatabaseName,
-}: PendingSourcePropertyMode & {
-  onChoose: (mode: SourcePropertyMode | null) => void
-}) {
-  return (
-    <Dialog open onOpenChange={(open) => !open && onChoose(null)}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Match properties?</DialogTitle>
-          <DialogDescription>
-            Some properties from {sourceDatabaseName} already exist in{" "}
-            {targetDatabaseName}.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid gap-3">
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <div className="mb-2 text-xs font-medium text-muted-foreground">
-              Same-name properties
-            </div>
-            <div className="grid gap-2">
-              {conflicts.slice(0, 4).map((conflict) => (
-                <div
-                  className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs"
-                  key={`${conflict.name}:${conflict.sourceType}:${conflict.targetType}`}
-                >
-                  <PropertyPill label={conflict.name} type={conflict.sourceType} />
-                  <ArrowRight className="size-3 text-muted-foreground" />
-                  <PropertyPill label={conflict.name} type={conflict.targetType} />
-                </div>
-              ))}
-              {conflicts.length > 4 ? (
-                <div className="text-xs text-muted-foreground">
-                  +{conflicts.length - 4} more
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <ModeButton
-              description="Use the existing target columns and copy this page's values into them."
-              icon={Link2}
-              label="Match existing"
-              onClick={() => onChoose("match")}
-            />
-            <ModeButton
-              description="Add the source columns too, keeping both sets of properties."
-              icon={Columns3}
-              label="Add as separate"
-              onClick={() => onChoose("duplicate")}
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onChoose(null)}>
-            Cancel
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function PropertyPill({ label, type }: { label: string; type: string }) {
-  return (
-    <div className="min-w-0 rounded-md border bg-background px-2 py-1.5">
-      <div className="truncate font-medium">{label}</div>
-      <div className="truncate text-muted-foreground">{type}</div>
-    </div>
-  )
-}
-
-function ModeButton({
-  description,
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  description: string
-  icon: typeof Link2
-  label: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      className={cn(
-        "grid gap-2 rounded-lg border bg-background p-3 text-left transition-colors",
-        "hover:border-foreground/30 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      )}
-      onClick={onClick}
-      type="button"
-    >
-      <span className="flex items-center gap-2 text-sm font-medium">
-        <Icon className="size-4" />
-        {label}
-      </span>
-      <span className="text-xs leading-5 text-muted-foreground">
-        {description}
-      </span>
-    </button>
-  )
 }
