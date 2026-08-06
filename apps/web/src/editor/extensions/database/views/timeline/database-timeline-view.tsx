@@ -49,6 +49,7 @@ export function DatabaseTimelineView() {
     activeDatabaseFilters,
     activeDatabaseSorts,
     activeView,
+    addDraggedPageRow,
     addDatabaseRow,
     databaseConfig,
     editable,
@@ -230,6 +231,7 @@ export function DatabaseTimelineView() {
 
   const rowDragInput = useMemo(
     () => ({
+      addDraggedPageRow,
       databaseId,
       editable,
       getDropTargetIndex: getRowDropTargetIndex,
@@ -250,6 +252,7 @@ export function DatabaseTimelineView() {
       visibleRowIndexById,
     }),
     [
+      addDraggedPageRow,
       databaseId,
       editable,
       getRowDropTargetIndex,

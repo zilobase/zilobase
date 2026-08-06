@@ -12,45 +12,56 @@ import {
   finishDatabaseRowDrag,
   getAnchoredRowInsertPosition,
   getFilteredReorderedRowIds,
-  getReorderedRowIds,
   startDatabaseRowDrag,
 } from "../../interactions/database-row-drag"
+import type { DatabaseTableGroupSection } from "../../interactions/database-table-group-sections"
+import type { DatabasePropertyListItem } from "../kanban/database-kanban-config"
 
-type DatabaseListRowDragInput = {
+type GallerySection = DatabaseTableGroupSection<SortableDatabaseItem>
+
+type GalleryDropTarget = {
+  sectionId: string | null
+  targetIndex: number
+}
+
+type DatabaseGalleryCardDragInput = {
   addDraggedPageRow: (
     dragPayload: DatabasePageDragPayload,
     position: number,
+    groupValue?: string,
+    groupProperty?: DatabasePropertyListItem | null,
   ) => void | Promise<void>
   databaseId: string | null | undefined
   editable: boolean
-  hasActiveFilters: boolean
+  groupProperty: DatabasePropertyListItem | null
+  groupedSections: GallerySection[]
   items: SortableDatabaseItem[]
-  reorderEnabled: boolean
   visibleRows: SortableDatabaseItem[]
 }
 
-export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
+export function useDatabaseGalleryCardDrag(
+  input: DatabaseGalleryCardDragInput,
+) {
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null)
   const [isExternalDragActive, setIsExternalDragActive] = useState(false)
-  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
+  const [dropTarget, setDropTarget] = useState<GalleryDropTarget | null>(null)
   const reorderRows = useReorderDatabaseRows()
 
   const clearDrag = useCallback(() => {
     finishDatabaseRowDrag()
     setDraggedRowId(null)
     setIsExternalDragActive(false)
-    setDropTargetIndex(null)
+    setDropTarget(null)
   }, [])
 
   const startDrag = useCallback(
-    (event: DragEvent<HTMLButtonElement>, rowId: string) => {
-      const row = input.items.find((item) => item.id === rowId)
-
-      if (!input.editable || !input.databaseId || !row) {
+    (row: SortableDatabaseItem, event: DragEvent<HTMLButtonElement>) => {
+      if (!input.editable || !input.databaseId) {
         event.preventDefault()
         return
       }
 
+      event.stopPropagation()
       startDatabaseRowDrag()
       setDatabasePageDragPayload(event.dataTransfer, {
         databaseId: input.databaseId,
@@ -58,13 +69,17 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
         rowId: row.id,
         title: row.page.name?.trim() || "Untitled",
       })
-      setDraggedRowId(rowId)
+      setDraggedRowId(row.id)
     },
-    [input.databaseId, input.editable, input.items],
+    [input.databaseId, input.editable],
   )
 
-  const updateDropTarget = useCallback(
-    (event: DragEvent<HTMLDivElement>, rowIndex: number) => {
+  const dragOver = useCallback(
+    (
+      event: DragEvent<HTMLElement>,
+      sectionId: string | null,
+      targetIndex: number,
+    ) => {
       const hasExternalPayload =
         !draggedRowId && hasDatabasePageDragPayload(event.dataTransfer)
 
@@ -74,30 +89,36 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
       event.stopPropagation()
       event.dataTransfer.dropEffect = "move"
       setIsExternalDragActive(hasExternalPayload)
-      const rowRect = event.currentTarget.getBoundingClientRect()
-      const nextIndex =
-        event.clientY < rowRect.top + rowRect.height / 2
-          ? rowIndex
-          : rowIndex + 1
-
-      setDropTargetIndex(nextIndex)
+      setDropTarget({ sectionId, targetIndex })
     },
     [draggedRowId, input.editable],
   )
 
-  const leave = useCallback((event: DragEvent<HTMLDivElement>) => {
+  const leave = useCallback((event: DragEvent<HTMLElement>) => {
     if (
       !event.currentTarget.contains(
         event.relatedTarget as globalThis.Node | null,
       )
     ) {
       setIsExternalDragActive(false)
-      setDropTargetIndex(null)
+      setDropTarget(null)
     }
   }, [])
 
   const drop = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
+    (
+      event: DragEvent<HTMLElement>,
+      sectionId: string | null,
+      fallbackTargetIndex: number,
+    ) => {
+      const target =
+        dropTarget?.sectionId === sectionId
+          ? dropTarget
+          : { sectionId, targetIndex: fallbackTargetIndex }
+      const section = sectionId
+        ? input.groupedSections.find((candidate) => candidate.id === sectionId)
+        : null
+      const anchorRows = section?.rows ?? input.visibleRows
       const externalPayload = !draggedRowId
         ? getDatabasePageDragPayload(event.dataTransfer)
         : null
@@ -105,8 +126,7 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
       if (
         input.databaseId &&
         externalPayload &&
-        externalPayload.databaseId !== input.databaseId &&
-        dropTargetIndex !== null
+        externalPayload.databaseId !== input.databaseId
       ) {
         event.preventDefault()
         event.stopPropagation()
@@ -114,53 +134,55 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
           externalPayload,
           getAnchoredRowInsertPosition(
             input.items,
-            input.visibleRows,
-            dropTargetIndex,
+            anchorRows,
+            target.targetIndex,
           ),
+          section?.groupValue,
+          section ? input.groupProperty : undefined,
         )
         clearDrag()
         return
       }
 
-      if (!input.databaseId || !draggedRowId || dropTargetIndex === null) {
+      if (!input.databaseId || !draggedRowId) {
+        clearDrag()
+        return
+      }
+
+      const sourceSection = input.groupedSections.find((candidate) =>
+        candidate.rows.some((row) => row.id === draggedRowId),
+      )
+
+      if (section?.id !== sourceSection?.id) {
         clearDrag()
         return
       }
 
       event.preventDefault()
       event.stopPropagation()
-      if (!input.reorderEnabled) {
-        clearDrag()
-        return
-      }
-      const rowIds = input.hasActiveFilters
-        ? getFilteredReorderedRowIds(
-            input.items,
-            input.visibleRows,
-            draggedRowId,
-            dropTargetIndex,
-          )
-        : getReorderedRowIds(
-            input.items,
-            draggedRowId,
-            dropTargetIndex,
-          )
+      const rowIds = getFilteredReorderedRowIds(
+        input.items,
+        anchorRows,
+        draggedRowId,
+        target.targetIndex,
+      )
 
       if (rowIds) {
         reorderRows.mutate({ databaseId: input.databaseId, rowIds })
       }
-
       clearDrag()
-    }, [clearDrag, draggedRowId, dropTargetIndex, input, reorderRows])
+    },
+    [clearDrag, draggedRowId, dropTarget, input, reorderRows],
+  )
 
   return {
     clearDrag,
+    dragOver,
     draggedRowId,
     drop,
-    dropTargetIndex,
+    dropTarget,
     isExternalDragActive,
     leave,
     startDrag,
-    updateDropTarget,
   }
 }

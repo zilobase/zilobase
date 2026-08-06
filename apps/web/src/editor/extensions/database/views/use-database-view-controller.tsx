@@ -19,7 +19,11 @@ import {
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
 } from "@zilobase/features/databases"
-import { usePage, usePagePersonAccessTargets } from "@zilobase/features/pages"
+import {
+  usePage,
+  usePagePersonAccessTargets,
+  useUpdatePage,
+} from "@zilobase/features/pages"
 import {
   getDatabasePageDragPayload,
   hasDatabasePageDragPayload,
@@ -88,6 +92,7 @@ export function useDatabaseViewController({
   const updateProperty = useUpdateDatabaseProperty()
   const addRow = useAddDatabaseRow()
   const updateValue = useUpdateDatabasePropertyValue()
+  const updatePage = useUpdatePage()
   const { data: hostPage } = usePage(pageId, {
     refetchOnMount: false,
   })
@@ -537,6 +542,7 @@ export function useDatabaseViewController({
       addRow,
       updateDatabase,
       updateDatabaseView,
+      updatePage,
       updateProperty,
       updateValue,
     },
@@ -555,7 +561,7 @@ export function useDatabaseViewController({
   const handleDatabaseBlockDragOver = (
     event: ReactDragEvent<HTMLDivElement>,
   ) => {
-    if (!hasDatabasePageDragPayload(event.dataTransfer)) {
+    if (!editable || !hasDatabasePageDragPayload(event.dataTransfer)) {
       return
     }
 
@@ -564,6 +570,10 @@ export function useDatabaseViewController({
   }
 
   const handleDatabaseBlockDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    if (!editable) {
+      return
+    }
+
     const dragPayload = getDatabasePageDragPayload(event.dataTransfer)
 
     if (!dragPayload) {

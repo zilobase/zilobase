@@ -11,6 +11,7 @@ export function DatabaseListView() {
   const {
     activeDatabaseFilters,
     activeDatabaseSorts,
+    addDraggedPageRow,
     addDatabaseRow,
     databaseId,
     editable,
@@ -41,7 +42,9 @@ export function DatabaseListView() {
   }, [items, sortedItems])
   const canReorderRows = editable && activeDatabaseSorts.length === 0
   const rowDrag = useDatabaseListRowDrag({
+    addDraggedPageRow,
     databaseId,
+    editable,
     hasActiveFilters: activeDatabaseFilters.length > 0,
     items,
     reorderEnabled: canReorderRows,
@@ -57,6 +60,7 @@ export function DatabaseListView() {
     <div
       className="database-list-view"
       data-wrap-content={layoutSettings.wrapAllContent ? "true" : undefined}
+      onDragLeave={rowDrag.leave}
     >
       <div className="database-list-rows">
         {rows.map((row, rowIndex) => (
@@ -64,14 +68,15 @@ export function DatabaseListView() {
             className="database-list-row"
             data-dragging={rowDrag.draggedRowId === row.id ? "true" : undefined}
             data-drop-after={
-              rowDrag.draggedRowId &&
+              (rowDrag.draggedRowId || rowDrag.isExternalDragActive) &&
               rowDrag.dropTargetIndex === rowIndex + 1 &&
               rowIndex === rows.length - 1
                 ? "true"
                 : undefined
             }
             data-drop-before={
-              rowDrag.draggedRowId && rowDrag.dropTargetIndex === rowIndex
+              (rowDrag.draggedRowId || rowDrag.isExternalDragActive) &&
+              rowDrag.dropTargetIndex === rowIndex
                 ? "true"
                 : undefined
             }
@@ -83,14 +88,13 @@ export function DatabaseListView() {
               <button
                 aria-label={`Drag ${row.page.name || "row"}`}
                 className="database-list-drag-handle"
-                disabled={!canReorderRows}
-                draggable={canReorderRows}
+                draggable={editable}
                 onDragEnd={rowDrag.clearDrag}
                 onDragStart={(event) => rowDrag.startDrag(event, row.id)}
                 title={
                   canReorderRows
-                    ? "Drag to reorder"
-                    : "Clear sorting to reorder rows"
+                    ? "Drag page"
+                    : "Drag page. Clear sorting to reorder in this view"
                 }
                 type="button"
               >

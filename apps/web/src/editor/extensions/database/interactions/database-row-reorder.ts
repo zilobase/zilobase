@@ -84,6 +84,32 @@ export function getAnchoredReorderedRowIds(
   )
 }
 
+export function getAnchoredRowInsertPosition(
+  allRows: RowIdItem[],
+  anchorRows: RowIdItem[],
+  targetIndex: number,
+) {
+  const nextAnchorId = anchorRows[targetIndex]?.id
+
+  if (nextAnchorId) {
+    const nextAnchorIndex = allRows.findIndex((row) => row.id === nextAnchorId)
+    return nextAnchorIndex === -1 ? allRows.length : nextAnchorIndex
+  }
+
+  const previousAnchorId = anchorRows[targetIndex - 1]?.id
+
+  if (previousAnchorId) {
+    const previousAnchorIndex = allRows.findIndex(
+      (row) => row.id === previousAnchorId,
+    )
+    return previousAnchorIndex === -1
+      ? allRows.length
+      : previousAnchorIndex + 1
+  }
+
+  return allRows.length
+}
+
 export function getGroupedReorderedRowIds({
   allRows,
   draggedRowId,

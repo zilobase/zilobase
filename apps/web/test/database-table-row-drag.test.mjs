@@ -140,4 +140,15 @@ export function register({ assert, loadModule, test }) {
       ["A", "C", "D", "B", "E", "F"]
     )
   })
+
+  test("database row imports resolve a visible drop point to its absolute position", async () => {
+    const { getAnchoredRowInsertPosition } = await loadModule(
+      "/src/editor/extensions/database/interactions/database-row-drag.ts"
+    )
+    const allRows = rows(["A", "B", "C", "D", "E", "F"])
+    const visibleRows = rows(["A", "D", "F"])
+
+    assert.equal(getAnchoredRowInsertPosition(allRows, visibleRows, 1), 3)
+    assert.equal(getAnchoredRowInsertPosition(allRows, visibleRows, 3), 6)
+  })
 }

@@ -71,6 +71,58 @@ export function register({ assert, loadModule, test }) {
     });
   });
 
+  test("database view commands rename an imported row dropped into a name group", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-commands.ts",
+    );
+    const addRow = createMutation();
+    const updatePage = createMutation();
+    const nameProperty = createProperty("name", "name", "Name", "text");
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: { groupPropertyId: "name" },
+        id: "view-table",
+        name: "Table",
+        type: "table",
+      },
+      databaseId,
+      editable: true,
+      getSourcePropertyMode: async () => "match",
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addRow, updatePage }),
+      payload: createPayload({ properties: [nameProperty] }),
+      properties: [nameProperty],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    await commands.addDraggedPageRow(
+      {
+        databaseId: "source-database",
+        pageId: "source-page",
+        rowId: "source-row",
+        title: "Original title",
+      },
+      0,
+      "Renamed task",
+      nameProperty,
+    );
+    addRow.calls[0][1].onSuccess({ rows: [{ id: "imported-row" }] });
+
+    assert.equal(addRow.calls[0][0].title, "Renamed task");
+    assert.deepEqual(updatePage.calls[0][0], {
+      id: "source-page",
+      name: "Renamed task",
+    });
+  });
+
   test("database view commands update sort config", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/editor/extensions/database/views/database-view-commands.ts",
@@ -1467,6 +1519,7 @@ function createMutations(overrides = {}) {
     addRow: createMutation(),
     updateDatabase: createMutation(),
     updateDatabaseView: createMutation(),
+    updatePage: createMutation(),
     updateProperty: createMutation(),
     updateValue: createMutation(),
     ...overrides,

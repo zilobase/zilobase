@@ -14,6 +14,7 @@ export {
 export type { DatabaseRowDragOverlay } from "./database-row-drag-preview"
 
 export {
+  getAnchoredRowInsertPosition,
   getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
   getGroupedReorderedRowIds,

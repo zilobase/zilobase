@@ -13,9 +13,15 @@ import {
 } from "@zilobase/features/databases"
 
 import type { SortableDatabaseItem } from "../../interactions/database-item-utils"
-import { setDatabasePageDragPayload } from "../../interactions/database-page-drop"
+import {
+  getDatabasePageDragPayload,
+  hasDatabasePageDragPayload,
+  setDatabasePageDragPayload,
+  type DatabasePageDragPayload,
+} from "../../interactions/database-page-drop"
 import {
   finishDatabaseRowDrag,
+  getAnchoredRowInsertPosition,
   hideNativeDatabaseRowDragPreview,
   startDatabaseRowDrag,
   type DatabaseRowDragOverlay,
@@ -30,6 +36,12 @@ import {
 } from "./database-timeline-row-move"
 
 type TimelineRowDragInput = {
+  addDraggedPageRow: (
+    dragPayload: DatabasePageDragPayload,
+    position: number,
+    groupValue?: string,
+    groupProperty?: DatabasePropertyListItem | null,
+  ) => void | Promise<void>
   databaseId: string | null | undefined
   editable: boolean
   getDropTargetIndex: (clientY: number) => number
@@ -53,6 +65,7 @@ type TimelineRowDragInput = {
 export function useTimelineRowDrag(input: TimelineRowDragInput) {
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null)
+  const [isExternalDragActive, setIsExternalDragActive] = useState(false)
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null)
   const [overlay, setOverlay] = useState<DatabaseRowDragOverlay | null>(null)
   const [pendingSortedMove, setPendingSortedMove] =
@@ -102,6 +115,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
   const clearDrag = useCallback(() => {
     finishDatabaseRowDrag()
     setDraggedRowId(null)
+    setIsExternalDragActive(false)
     setHoveredRowId(null)
     setDropTargetIndex(null)
     setOverlay(null)
@@ -154,6 +168,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
         )
       ) {
         setDropTargetIndex(null)
+        setIsExternalDragActive(false)
       }
     },
     [],
@@ -161,11 +176,15 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
 
   const handleDragOver = useCallback(
     (event: ReactDragEvent<HTMLDivElement>) => {
-      if (!draggedRowId) return
+      const hasExternalPayload =
+        !draggedRowId && hasDatabasePageDragPayload(event.dataTransfer)
+
+      if (!input.editable || (!draggedRowId && !hasExternalPayload)) return
 
       event.preventDefault()
       event.stopPropagation()
       event.dataTransfer.dropEffect = "move"
+      setIsExternalDragActive(hasExternalPayload)
       const nextTargetIndex = input.getDropTargetIndex(event.clientY)
       setDropTargetIndex((current) =>
         current === nextTargetIndex ? current : nextTargetIndex,
@@ -176,11 +195,53 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
         overlayRef.current.style.top = `${event.clientY - overlay.offsetY}px`
       }
     },
-    [draggedRowId, input.getDropTargetIndex, overlay],
+    [draggedRowId, input.editable, input.getDropTargetIndex, overlay],
   )
 
   const handleDrop = useCallback(
     (event: ReactDragEvent<HTMLDivElement>) => {
+      const externalPayload = !draggedRowId
+        ? getDatabasePageDragPayload(event.dataTransfer)
+        : null
+
+      if (
+        input.databaseId &&
+        externalPayload &&
+        externalPayload.databaseId !== input.databaseId &&
+        dropTargetIndex !== null
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+        const targetRow =
+          input.visibleRows[
+            Math.min(dropTargetIndex, input.visibleRows.length - 1)
+          ]
+        const targetSection = targetRow
+          ? groupSectionByRowId.get(targetRow.id)
+          : input.groupedSections.at(-1)
+        const anchorRows = targetSection?.rows ?? input.visibleRows
+        const localTargetIndex = targetSection
+          ? input.visibleRows
+              .slice(0, dropTargetIndex)
+              .filter(
+                (row) => groupSectionByRowId.get(row.id)?.id === targetSection.id,
+              ).length
+          : dropTargetIndex
+
+        void input.addDraggedPageRow(
+          externalPayload,
+          getAnchoredRowInsertPosition(
+            input.items,
+            anchorRows,
+            localTargetIndex,
+          ),
+          targetSection?.groupValue,
+          targetSection ? input.groupProperty : undefined,
+        )
+        clearDrag()
+        return
+      }
+
       if (!draggedRowId || dropTargetIndex === null) return
 
       event.preventDefault()
@@ -196,7 +257,8 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
       clearDrag,
       draggedRowId,
       dropTargetIndex,
-      input.isSorted,
+      groupSectionByRowId,
+      input,
       rowMove,
     ],
   )
@@ -226,7 +288,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
   }, [draggedRowId, hoveredRowId, input.rowsById, input.visibleRowIndexById])
 
   const dropLineTop =
-    dropTargetIndex === null || !rowMove
+    dropTargetIndex === null || (!rowMove && !isExternalDragActive)
       ? null
       : (input.layout.dropTops[dropTargetIndex] ?? null)
 
@@ -240,6 +302,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
     handleDragOver,
     handleDrop,
     hoveredRowId,
+    isExternalDragActive,
     overlay,
     overlayRef,
     pendingSortedMove,

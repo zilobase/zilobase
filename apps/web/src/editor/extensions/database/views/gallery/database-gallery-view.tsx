@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  GripVertical,
   Loader2,
   Plus,
 } from "lucide-react"
@@ -23,9 +24,11 @@ import { canCreateRowInKanbanGroup } from "../kanban/database-kanban-config"
 import { useDatabaseViewContext } from "../database-view-context"
 import { DatabasePropertyValue } from "../../properties/database-property-value"
 import { DatabaseCellContent } from "../database-cell-content"
+import { useDatabaseGalleryCardDrag } from "./use-database-gallery-card-drag"
 
 export function DatabaseGalleryView() {
   const {
+    addDraggedPageRow,
     addDatabaseRow,
     databaseId,
     editable,
@@ -77,6 +80,15 @@ export function DatabaseGalleryView() {
     hasNextPage,
     isFetchingNextPage,
   })
+  const cardDrag = useDatabaseGalleryCardDrag({
+    addDraggedPageRow,
+    databaseId,
+    editable,
+    groupProperty,
+    groupedSections,
+    items,
+    visibleRows: rows,
+  })
   const toggleGroup = (groupId: string) => {
     setCollapsedGroups((current) => {
       const next = new Set(current)
@@ -90,7 +102,12 @@ export function DatabaseGalleryView() {
       return next
     })
   }
-  const renderCard = (row: (typeof items)[number]) => {
+  const renderCard = (
+    row: (typeof items)[number],
+    rowIndex: number,
+    sectionId: string | null,
+    sectionRowCount: number,
+  ) => {
     const emoji = getPageEmoji({
       metadata: row.page.metadata as PageMetadata | null | undefined,
     })
@@ -101,8 +118,52 @@ export function DatabaseGalleryView() {
     return (
       <article
         className="database-gallery-card"
+        data-dragging={cardDrag.draggedRowId === row.id ? "true" : undefined}
+        data-drop-after={
+          (cardDrag.draggedRowId || cardDrag.isExternalDragActive) &&
+          cardDrag.dropTarget?.sectionId === sectionId &&
+          cardDrag.dropTarget.targetIndex === rowIndex + 1 &&
+          rowIndex === sectionRowCount - 1
+            ? "true"
+            : undefined
+        }
+        data-drop-before={
+          (cardDrag.draggedRowId || cardDrag.isExternalDragActive) &&
+          cardDrag.dropTarget?.sectionId === sectionId &&
+          cardDrag.dropTarget.targetIndex === rowIndex
+            ? "true"
+            : undefined
+        }
         key={row.id}
+        onDragOver={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          cardDrag.dragOver(
+            event,
+            sectionId,
+            event.clientY < rect.top + rect.height / 2
+              ? rowIndex
+              : rowIndex + 1,
+          )
+        }}
+        onDrop={(event) => cardDrag.drop(event, sectionId, rowIndex)}
       >
+        {editable ? (
+          <button
+            aria-label={`Drag ${row.page.name?.trim() || "Untitled"}`}
+            className="database-gallery-card-drag-handle"
+            draggable
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            onDragEnd={cardDrag.clearDrag}
+            onDragStart={(event) => cardDrag.startDrag(row, event)}
+            title="Drag page"
+            type="button"
+          >
+            <GripVertical />
+          </button>
+        ) : null}
         {layoutSettings.cardPreview === "page-cover" ? (
           <button
             aria-label={`Open ${row.page.name?.trim() || "Untitled"}`}
@@ -215,6 +276,7 @@ export function DatabaseGalleryView() {
       data-card-preview={layoutSettings.cardPreview}
       data-card-size={layoutSettings.cardSize}
       data-wrap-content={layoutSettings.wrapAllContent ? "true" : undefined}
+      onDragLeave={cardDrag.leave}
     >
       {groupProperty ? (
         <div className="database-gallery-groups">
@@ -246,8 +308,23 @@ export function DatabaseGalleryView() {
                   </span>
                 </button>
                 {!isCollapsed ? (
-                  <div className="database-gallery-grid">
-                    {section.rows.map(renderCard)}
+                  <div
+                    className="database-gallery-grid"
+                    onDragOver={(event) =>
+                      cardDrag.dragOver(event, section.id, section.rows.length)
+                    }
+                    onDrop={(event) =>
+                      cardDrag.drop(event, section.id, section.rows.length)
+                    }
+                  >
+                    {section.rows.map((row, rowIndex) =>
+                      renderCard(
+                        row,
+                        rowIndex,
+                        section.id,
+                        section.rows.length,
+                      ),
+                    )}
                     {renderNewCard(section.groupValue, true)}
                   </div>
                 ) : null}
@@ -256,8 +333,14 @@ export function DatabaseGalleryView() {
           })}
         </div>
       ) : (
-        <div className="database-gallery-grid">
-          {rows.map(renderCard)}
+        <div
+          className="database-gallery-grid"
+          onDragOver={(event) => cardDrag.dragOver(event, null, rows.length)}
+          onDrop={(event) => cardDrag.drop(event, null, rows.length)}
+        >
+          {rows.map((row, rowIndex) =>
+            renderCard(row, rowIndex, null, rows.length),
+          )}
           {renderNewCard()}
         </div>
       )}

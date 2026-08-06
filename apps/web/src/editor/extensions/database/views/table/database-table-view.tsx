@@ -147,6 +147,7 @@ import {
 } from "../../interactions/database-table-layout"
 import {
   claimDatabaseRowDropOwner,
+  getAnchoredRowInsertPosition,
   getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
   getReorderedRowIds,
@@ -3511,7 +3512,7 @@ export function DatabaseTableView() {
         }}
         onDragOver={(event: ReactDragEvent<HTMLDivElement>) => {
           const hasDragPayload =
-            !isTableGrouped && hasDatabasePageDragPayload(event.dataTransfer)
+            editable && hasDatabasePageDragPayload(event.dataTransfer)
 
           if (!draggedRowId && !hasDragPayload) {
             return
@@ -3539,10 +3540,6 @@ export function DatabaseTableView() {
           }
         }}
         onDrop={(event) => {
-          if (isTableGrouped && !draggedRowId) {
-            return
-          }
-
           const dragPayload = getDatabasePageDragPayload(event.dataTransfer)
           const resolvedRowTarget = isTableGrouped
             ? null
@@ -3575,7 +3572,27 @@ export function DatabaseTableView() {
               applyRowMove(nextMove)
             }
           } else if (dragPayload) {
-            addDraggedPageRow(dragPayload, resolvedRowTarget?.index ?? 0)
+            if (isTableGrouped) {
+              const target = groupRowDropTargetRef.current
+              const section = groupedSections.find(
+                (candidate) => candidate.id === target?.sectionId,
+              )
+
+              if (target && section) {
+                addDraggedPageRow(
+                  dragPayload,
+                  getAnchoredRowInsertPosition(
+                    rows,
+                    section.rows,
+                    target.localTargetIndex,
+                  ),
+                  section.groupValue,
+                  groupProperty,
+                )
+              }
+            } else {
+              addDraggedPageRow(dragPayload, resolvedRowTarget?.index ?? 0)
+            }
           }
           clearRowDrag()
         }}

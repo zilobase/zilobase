@@ -14,6 +14,7 @@ import type {
   useUpdateDatabasePropertyValue,
   useUpdateDatabaseView,
 } from "@zilobase/features/databases";
+import type { useUpdatePage } from "@zilobase/features/pages";
 
 import { defaultStatusOption } from "../core/database-property-types";
 import {
@@ -71,6 +72,7 @@ type DatabaseMutations = {
   addRow: ReturnType<typeof useAddDatabaseRow>;
   updateDatabase: ReturnType<typeof useUpdateDatabase>;
   updateDatabaseView: ReturnType<typeof useUpdateDatabaseView>;
+  updatePage: ReturnType<typeof useUpdatePage>;
   updateProperty: ReturnType<typeof useUpdateDatabaseProperty>;
   updateValue: ReturnType<typeof useUpdateDatabasePropertyValue>;
 };
@@ -147,6 +149,7 @@ export function getDatabaseViewCommands({
     addRow,
     updateDatabase,
     updateDatabaseView,
+    updatePage,
     updateProperty,
     updateValue,
   } = mutations;
@@ -403,7 +406,7 @@ export function getDatabaseViewCommands({
       groupValue?: string,
       groupPropertyOverride?: DatabasePropertyListItem | null,
     ) => {
-      if (!databaseId || addRow.isPending) {
+      if (!editable || !databaseId || addRow.isPending) {
         return;
       }
 
@@ -434,7 +437,7 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const groupSetup = getNewRowGroupSetup(
+      const groupSetup = getDraggedRowGroupSetup(
         groupValue,
         groupPropertyOverride,
       );
@@ -459,7 +462,7 @@ export function getDatabaseViewCommands({
             : undefined,
           sourceRowId: isCrossDatabaseMove ? dragPayload.rowId : undefined,
           sourcePropertyMode: sourcePropertyMode ?? undefined,
-          title: dragPayload.title,
+          title: groupSetup.pageTitle ?? dragPayload.title,
         },
         {
           onError: () => {
@@ -471,6 +474,16 @@ export function getDatabaseViewCommands({
               existingItemIds,
             );
             if (!addedItem) return;
+
+            if (groupSetup.pageTitle !== undefined) {
+              updatePage.mutate(
+                { id: dragPayload.pageId, name: groupSetup.pageTitle },
+                {
+                  onError: () =>
+                    toast.error("Moved the row, but couldn't update its group."),
+                },
+              );
+            }
 
             for (const propertyValue of groupValues.values()) {
               updateValue.mutate({
@@ -1168,6 +1181,37 @@ function getNewRowGroupSetup(
 
   if (groupProperty.id === "name") {
     return { propertyValues: [], title: groupValue };
+  }
+
+  if (!canUpdateKanbanGroupProperty(groupProperty)) {
+    return { propertyValues: [], title: "Untitled" };
+  }
+
+  return {
+    propertyValues: [
+      {
+        propertyId: groupProperty.property.id,
+        value: serializePropertyValue(groupProperty.property.type, groupValue),
+      },
+    ],
+    title: "Untitled",
+  };
+}
+
+function getDraggedRowGroupSetup(
+  groupValue?: string,
+  groupProperty?: DatabasePropertyListItem | null,
+): NewRowSetup & { pageTitle?: string } {
+  if (groupValue === undefined || !groupProperty) {
+    return { propertyValues: [], title: "Untitled" };
+  }
+
+  if (groupProperty.id === "name") {
+    return {
+      pageTitle: groupValue,
+      propertyValues: [],
+      title: groupValue,
+    };
   }
 
   if (!canUpdateKanbanGroupProperty(groupProperty)) {

@@ -939,7 +939,36 @@
   }
 
   .database-gallery-card {
-    @apply hover:border-foreground/20 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40;
+    @apply relative hover:border-foreground/20 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40;
+  }
+
+  .database-gallery-card[data-dragging="true"] {
+    @apply opacity-50;
+  }
+
+  .database-gallery-card[data-drop-before="true"]::before,
+  .database-gallery-card[data-drop-after="true"]::after {
+    @apply pointer-events-none absolute inset-x-0 z-40 h-0.5 rounded-full bg-primary content-[''];
+  }
+
+  .database-gallery-card[data-drop-before="true"]::before {
+    @apply top-0;
+  }
+
+  .database-gallery-card[data-drop-after="true"]::after {
+    @apply bottom-0;
+  }
+
+  .database-gallery-card-drag-handle {
+    @apply absolute left-2 top-2 z-40 hidden size-7 cursor-grab items-center justify-center rounded-sm bg-background/90 text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none;
+  }
+
+  .database-gallery-card:hover .database-gallery-card-drag-handle {
+    @apply flex;
+  }
+
+  .database-gallery-card-drag-handle svg {
+    @apply size-4;
   }
 
   .database-gallery-preview {
