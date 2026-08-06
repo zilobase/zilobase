@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to publish (for example, v0.0.6)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,13 +22,21 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: Set release variables
         id: vars
         shell: bash
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $tag" >&2
+            exit 1
+          fi
+          version="${tag#v}"
           image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "image=$image" >> "$GITHUB_OUTPUT"
           if [[ "$version" != *-* ]]; then
@@ -47,7 +61,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ steps.vars.outputs.image }}:${{ github.ref_name }}
+            ${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.tag }}
             ${{ steps.vars.outputs.latest == 'true' && format('{0}:latest', steps.vars.outputs.image) || '' }}
 
       - name: Extract changelog notes
@@ -66,4 +80,4 @@ jobs:
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" --title "Zilobase ${{ github.ref_name }}" --notes-file release-notes.md
+        run: gh release create "${{ steps.vars.outputs.tag }}" --title "Zilobase ${{ steps.vars.outputs.tag }}" --notes-file release-notes.md
