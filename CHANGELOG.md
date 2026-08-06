@@ -4,6 +4,24 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, desktop, and mobile apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.6
+
+### Added
+
+- Added realtime database updates, collaborative page comments, block comments, integration management, and configurable sidebar navigation.
+- Added database chart, list, and gallery views, sub-items, cell fill, undo and redo, cross-view row drag and drop, and configurable page layouts and icon positions.
+
+### Changed
+
+- Centralized web color, typography, editor palette, radius, and shadow values in semantic design tokens while preserving the established light and dark palette.
+- Refreshed the web component system and normalized navigation, menus, dialogs, forms, sidebars, and database controls.
+- Modularized database mutation services, improved server query and persistence performance, and expanded backend quality coverage.
+
+### Fixed
+
+- Improved mobile page routing, sidebar navigation persistence, editor pane interactions, database scrolling, row transfers, and desktop drag-and-drop behavior.
+- Synchronized theme initialization and semantic selection and icon colors across web surfaces.
+
 ## 0.0.5
 
 ### Added
