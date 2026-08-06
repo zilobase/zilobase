@@ -2160,17 +2160,21 @@
   }
 
   .database-row-controls {
-    @apply pointer-events-none absolute flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity;
+    @apply pointer-events-auto absolute flex -translate-y-1/2 items-center gap-1 opacity-0 transition-opacity;
   }
 
   .database-row-controls::after {
     @apply absolute content-[''];
-    inset: -0.5rem -0.5rem -0.5rem -3rem;
+    height: var(--database-row-hit-height, 2rem);
+    left: -4rem;
+    right: -0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
   }
 
   .database-row-controls[data-visible="true"],
   .database-row-controls:focus-within {
-    @apply pointer-events-auto opacity-100;
+    @apply opacity-100;
   }
 
   .database-row-drag-handle {

@@ -208,6 +208,7 @@ type GroupSection = DatabaseTableGroupSection<TableRow>
 type RowLayout = {
   centers: Record<string, number>
   dropTops: number[]
+  heights: Record<string, number>
 }
 type GroupRowDropTarget = {
   localTargetIndex: number
@@ -1235,7 +1236,10 @@ function areRowLayoutsEqual(left: RowLayout, right: RowLayout) {
   }
 
   for (const key of leftCenterKeys) {
-    if (left.centers[key] !== right.centers[key]) {
+    if (
+      left.centers[key] !== right.centers[key] ||
+      left.heights[key] !== right.heights[key]
+    ) {
       return false
     }
   }
@@ -1358,6 +1362,7 @@ export function DatabaseTableView() {
   const [rowLayout, setRowLayout] = useState<RowLayout>({
     centers: {},
     dropTops: [],
+    heights: {},
   })
   const rowLayoutRef = useRef(rowLayout)
   rowLayoutRef.current = rowLayout
@@ -1795,7 +1800,7 @@ export function DatabaseTableView() {
     const layoutElement = getRowLayoutElement()
 
     if (!layoutElement) {
-      const emptyLayout = { centers: {}, dropTops: [] }
+      const emptyLayout = { centers: {}, dropTops: [], heights: {} }
       rowLayoutRef.current = emptyLayout
       return emptyLayout
     }
@@ -1804,6 +1809,7 @@ export function DatabaseTableView() {
     const rowElements = getRowElements()
     const centers: Record<string, number> = {}
     const dropTops: number[] = []
+    const heights: Record<string, number> = {}
 
     rowElements.forEach((rowElement, index) => {
       const rect = rowElement.getBoundingClientRect()
@@ -1813,6 +1819,7 @@ export function DatabaseTableView() {
 
       if (rowId) {
         centers[rowId] = top + height / 2
+        heights[rowId] = height
       }
 
       dropTops[index] = top
@@ -1833,7 +1840,7 @@ export function DatabaseTableView() {
       }
     }
 
-    const nextLayout = { centers, dropTops }
+    const nextLayout = { centers, dropTops, heights }
     rowLayoutRef.current = nextLayout
 
     setRowLayout((currentLayout) =>
@@ -3416,7 +3423,12 @@ export function DatabaseTableView() {
                   setHoveredRowId(null)
                 }
               }}
-              style={{ top: rowCenter }}
+              style={
+                {
+                  "--database-row-hit-height": `${rowLayout.heights[row.id] ?? 28}px`,
+                  top: rowCenter,
+                } as CSSProperties
+              }
             >
               <button
                 aria-label={`Drag ${getRowTitle(row)}`}
