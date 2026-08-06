@@ -12,6 +12,7 @@ import {
 import { useLocation, useRouter } from "@tanstack/react-router"
 
 import { cn } from "@/lib/utils"
+import { isMobileViewport, useIsMobile } from "@/hooks/use-mobile"
 
 export type OpenPageSidePaneOptions = {
   databaseId?: string | null
@@ -46,6 +47,12 @@ export const WORKSPACE_SIDE_PANE_TRANSITION_MS = 200
 
 const SIDE_PANE_PAGE_PARAM = "p"
 const SIDE_PANE_DATABASE_PARAM = "d"
+
+export const getFullPagePath = (pageId: string) =>
+  `/p/${encodeURIComponent(pageId)}`
+
+export const getFullDatabasePath = (databaseId: string) =>
+  `/d/${encodeURIComponent(databaseId)}`
 
 export const pageSidePaneGridShellClass =
   "grid min-h-0 flex-1 overflow-hidden [grid-template-rows:3rem_minmax(0,1fr)]"
@@ -197,6 +204,7 @@ export function PageSidePaneSideCell({
         getPageSidePaneMobilePanelClassName(open),
         className,
       )}
+      data-page-side-pane-panel
       inert={open ? undefined : true}
     >
       <div className="flex h-full min-h-0 w-full flex-col overflow-y-auto [scrollbar-gutter:stable]">
@@ -258,6 +266,7 @@ export function usePageSidePaneState(
   _resetKey?: string | null,
 ): PageSidePaneContextValue {
   const router = useRouter()
+  const isMobile = useIsMobile()
   const location = useLocation({
     select: ({ hash, pathname, searchStr }) => ({
       hash,
@@ -331,25 +340,57 @@ export function usePageSidePaneState(
   const openSidePane = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
       closeEmbeddedPageDialog()
+
+      if (isMobile || isMobileViewport()) {
+        router.history.push(getFullPagePath(nextPageId))
+        return
+      }
+
       writeSidePaneParams(nextPageId, options?.databaseId)
     },
-    [closeEmbeddedPageDialog, writeSidePaneParams],
+    [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
   )
   const openDatabaseSidePane = useCallback(
     (databaseId: string) => {
       closeEmbeddedPageDialog()
+
+      if (isMobile || isMobileViewport()) {
+        router.history.push(getFullDatabasePath(databaseId))
+        return
+      }
+
       writeSidePaneParams(null, databaseId)
     },
-    [closeEmbeddedPageDialog, writeSidePaneParams],
+    [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
   )
   const openEmbeddedPageDialog = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
+      if (isMobile || isMobileViewport()) {
+        setDialogPageId(null)
+        setDialogDatabaseId(null)
+        router.history.push(getFullPagePath(nextPageId))
+        return
+      }
+
       closeSidePane()
       setDialogPageId(nextPageId)
       setDialogDatabaseId(options?.databaseId ?? null)
     },
-    [closeSidePane],
+    [closeSidePane, isMobile, router.history],
   )
+
+  useEffect(() => {
+    if (!isMobile) return
+
+    if (sidePanePageId) {
+      router.history.replace(getFullPagePath(sidePanePageId))
+      return
+    }
+
+    if (sidePaneDatabaseId) {
+      router.history.replace(getFullDatabasePath(sidePaneDatabaseId))
+    }
+  }, [isMobile, router.history, sidePaneDatabaseId, sidePanePageId])
 
   useEffect(() => {
     const sidePaneTargetKey = sidePanePageId

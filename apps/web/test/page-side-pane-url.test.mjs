@@ -24,4 +24,13 @@ export function register({ assert, loadModule, test }) {
       "database-1"
     )
   })
+
+  test("mobile side pane targets resolve to full-page routes", async () => {
+    const { getFullDatabasePath, getFullPagePath } = await loadModule(
+      "/src/contexts/page-side-pane.tsx"
+    )
+
+    assert.equal(getFullPagePath("page id"), "/p/page%20id")
+    assert.equal(getFullDatabasePath("database id"), "/d/database%20id")
+  })
 }

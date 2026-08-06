@@ -58,6 +58,7 @@ const STRUCTURAL_NODE_TYPES = new Set([
 
 const DATABASE_BLOCK_SELECTOR = ".database-block, .node-databaseBlock"
 const DIALOG_CONTENT_SELECTOR = '[data-slot="dialog-content"]'
+const SIDE_PANE_PANEL_SELECTOR = "[data-page-side-pane-panel]"
 const BLOCK_CONTROL_SELECTOR = ".drag-handle, .block-comment-handle"
 const DRAG_HANDLE_WIDTH = 64
 const LIST_DRAG_HANDLE_MARKER_GAP = 16
@@ -74,11 +75,13 @@ const numberStyle = (
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
-function dialogOffset(element: HTMLElement) {
-  const dialog = element.closest(DIALOG_CONTENT_SELECTOR)
-  if (!(dialog instanceof HTMLElement)) return { left: 0, top: 0 }
+function fixedContainerOffset(element: HTMLElement) {
+  const container = element.closest(
+    `${DIALOG_CONTENT_SELECTOR}, ${SIDE_PANE_PANEL_SELECTOR}`,
+  )
+  if (!(container instanceof HTMLElement)) return { left: 0, top: 0 }
 
-  const rect = dialog.getBoundingClientRect()
+  const rect = container.getBoundingClientRect()
   return { left: rect.left, top: rect.top }
 }
 
@@ -88,7 +91,7 @@ function dropLineAt(
   anchor?: HorizontalAnchor,
 ): BlockDropLine {
   const editorRect = view.dom.getBoundingClientRect()
-  const offset = dialogOffset(view.dom)
+  const offset = fixedContainerOffset(view.dom)
   const left =
     anchor?.left ?? editorRect.left + numberStyle(view.dom, "paddingLeft")
   const right =
@@ -400,7 +403,7 @@ export function getBlockDragHandleRect(
   }
 
   const anchorRect = anchor.getBoundingClientRect()
-  const offset = dialogOffset(view.dom)
+  const offset = fixedContainerOffset(view.dom)
   const left = anchorRect.left + numberStyle(anchor, "paddingLeft")
 
   return {
@@ -420,7 +423,7 @@ export function getBlockCommentHandleRect(
 
   const editorRect = view.dom.getBoundingClientRect()
   const nodeRect = nodeDom.getBoundingClientRect()
-  const offset = dialogOffset(view.dom)
+  const offset = fixedContainerOffset(view.dom)
   const right = nodeRect.right - numberStyle(nodeDom, "paddingRight")
   const viewportRight = view.root instanceof Document
     ? view.root.documentElement.clientWidth
