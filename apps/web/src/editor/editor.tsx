@@ -44,6 +44,7 @@ export function Editor({
   editable = true,
   enableComments = true,
   emoji,
+  iconPosition,
   fullWidth = true,
   layoutConfig,
   layoutPanelMode = "auto",
@@ -55,6 +56,7 @@ export function Editor({
   onEmbedPage,
   onEditorReady,
   onEmojiChange,
+  onIconPositionChange,
   onOpenPage,
   onTitleChange,
   workspaceId,
@@ -426,12 +428,14 @@ export function Editor({
         enableComments={enableComments}
         forceDiscussionsExpanded={module.type === "discussions"}
         icon={emoji}
+        iconPosition={iconPosition}
         key={module.id}
         layoutConfig={layoutConfig}
         layoutPropertyId={module.type === "property" ? module.propertyId : undefined}
         layoutSection={layoutSection}
         onCoverChange={onCoverChange}
         onIconChange={onEmojiChange}
+        onIconPositionChange={onIconPositionChange}
         onTitleEnter={focusPageBodyFromTitle}
         onTitleChange={onTitleChange}
         workspaceId={workspaceId}
@@ -544,8 +548,10 @@ export function Editor({
               editable={editable}
               enableComments={enableComments}
               icon={emoji}
+              iconPosition={iconPosition}
               onCoverChange={onCoverChange}
               onIconChange={onEmojiChange}
+              onIconPositionChange={onIconPositionChange}
               onTitleEnter={focusPageBodyFromTitle}
               onTitleChange={onTitleChange}
               workspaceId={workspaceId}

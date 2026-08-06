@@ -14,11 +14,16 @@ import { Button } from "@/components/ui/button"
 import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { TrashedItemBanner } from "@/components/trashed-item-banner"
 import { cn } from "@/lib/utils"
-import { getDatabaseCover, getDatabaseEmoji } from "@zilobase/features/databases"
+import {
+  getDatabaseCover,
+  getDatabaseEmoji,
+  getDatabaseIconPosition,
+} from "@zilobase/features/databases"
 import {
   useUpdatePage,
   usePage,
   usePageAccessLevel,
+  type PageIconPosition,
 } from "@zilobase/features/pages"
 import {
   useDatabase,
@@ -412,6 +417,8 @@ export function DatabaseMainPane({
   const [title, setTitle] = useState("")
   const [cover, setCover] = useState("")
   const [emoji, setEmoji] = useState("")
+  const [iconPosition, setIconPosition] =
+    useState<PageIconPosition>("inline")
   const [embeddedViewId, setEmbeddedViewId] = useState<string | undefined>()
   const editable =
     !readOnly &&
@@ -429,11 +436,13 @@ export function DatabaseMainPane({
     if (!payload) {
       setCover("")
       setEmoji("")
+      setIconPosition("inline")
       return
     }
 
     setCover(getDatabaseCover(payload.database) ?? "")
     setEmoji(getDatabaseEmoji(payload.database) ?? "")
+    setIconPosition(getDatabaseIconPosition(payload.database))
   }, [payload])
 
   useEffect(() => {
@@ -488,6 +497,22 @@ export function DatabaseMainPane({
       },
     })
   }
+
+  const updateIconPosition = (nextPosition: PageIconPosition) => {
+    setIconPosition(nextPosition)
+
+    if (!payload || !editable) {
+      return
+    }
+
+    updateDatabase.mutate({
+      databaseId: payload.database.id,
+      config: {
+        ...((payload.database.config ?? {}) as Record<string, unknown>),
+        iconPosition: nextPosition,
+      },
+    })
+  }
   const updateActiveViewSearch = (viewId: string | null) => {
     if (embedded) {
       setEmbeddedViewId(viewId ?? undefined)
@@ -532,8 +557,10 @@ export function DatabaseMainPane({
         editable={editable}
         enableComments={false}
         icon={emoji}
+        iconPosition={iconPosition}
         onCoverChange={updateCover}
         onIconChange={updateEmoji}
+        onIconPositionChange={updateIconPosition}
         onTitleChange={setTitle}
         workspaceId={payload?.database.workspaceId}
         title={title}

@@ -1,4 +1,5 @@
 import * as React from "react"
+import { ChevronRight, PanelTop } from "lucide-react"
 
 import {
   EmojiPicker,
@@ -7,8 +8,16 @@ import {
   EmojiPickerSearch,
 } from "@/components/ui/emoji-picker"
 import { IconUploadPicker } from "@/components/ui/icon-upload-picker"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import type { PageIconPosition } from "@zilobase/features/pages"
 
 const ReiconIconPicker = React.lazy(() =>
   import("@/components/ui/reicon-icon-picker").then((module) => ({
@@ -18,14 +27,18 @@ const ReiconIconPicker = React.lazy(() =>
 
 type IconEmojiPickerProps = {
   className?: string
+  iconPosition?: PageIconPosition
   onEmojiSelect: (emoji: string) => void
   onIconSelect: (svg: string) => void
+  onIconPositionChange?: (position: PageIconPosition) => void
 }
 
 export function IconEmojiPicker({
   className,
+  iconPosition,
   onEmojiSelect,
   onIconSelect,
+  onIconPositionChange,
 }: IconEmojiPickerProps) {
   const [activeTab, setActiveTab] = React.useState("emoji")
 
@@ -68,6 +81,45 @@ export function IconEmojiPicker({
           <IconUploadPicker onIconSelect={onIconSelect} />
         </TabsContent>
       </Tabs>
+      {iconPosition && onIconPositionChange ? (
+        <div className="border-t p-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent focus-visible:bg-accent"
+                type="button"
+              >
+                <PanelTop className="size-4" />
+                <span>Icon position</span>
+                <span className="ml-auto text-muted-foreground">
+                  {iconPosition === "inline" ? "Inline" : "Top"}
+                </span>
+                <ChevronRight className="size-4 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-40"
+              side="right"
+              sideOffset={6}
+            >
+              <DropdownMenuRadioGroup
+                onValueChange={(value) => {
+                  if (value === "inline" || value === "top") {
+                    onIconPositionChange(value)
+                  }
+                }}
+                value={iconPosition}
+              >
+                <DropdownMenuRadioItem value="inline">
+                  Inline
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="top">Top</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ) : null}
     </div>
   )
 }

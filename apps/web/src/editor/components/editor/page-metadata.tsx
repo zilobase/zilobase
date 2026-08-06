@@ -30,6 +30,7 @@ import {
 } from "@zilobase/features/pages"
 import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry"
 import type {
+  PageIconPosition,
   PageLayoutConfig,
   PagePropertyPresenceTarget,
 } from "@zilobase/features/pages"
@@ -72,11 +73,13 @@ type PageMetadataProps = {
   enableComments?: boolean
   forceDiscussionsExpanded?: boolean
   icon?: string
+  iconPosition?: PageIconPosition
   layoutConfig?: PageLayoutConfig
   layoutPropertyId?: string
   layoutSection?: "heading" | "properties" | "discussions"
   onCoverChange?: (cover: string) => void
   onIconChange?: (icon: string) => void
+  onIconPositionChange?: (position: PageIconPosition) => void
   onTitleEnter?: () => void
   onTitleChange?: (title: string) => void
   workspaceId?: string | null
@@ -183,11 +186,13 @@ export function PageMetadata({
   enableComments = true,
   forceDiscussionsExpanded = false,
   icon: iconProp,
+  iconPosition: iconPositionProp,
   layoutConfig,
   layoutPropertyId,
   layoutSection,
   onCoverChange,
   onIconChange,
+  onIconPositionChange,
   onTitleEnter,
   onTitleChange,
   workspaceId,
@@ -199,6 +204,8 @@ export function PageMetadata({
   const [iconOpen, setIconOpen] = useState(false)
   const [localCover, setLocalCover] = useState("")
   const [localIcon, setLocalIcon] = useState("")
+  const [localIconPosition, setLocalIconPosition] =
+    useState<PageIconPosition>("inline")
   const [localTitle, setLocalTitle] = useState("")
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [draftValues, setDraftValues] = useState<Record<string, DatabasePropertyValue>>({})
@@ -277,6 +284,7 @@ export function PageMetadata({
   const updatePropertyValue = useUpdatePagePropertyValue()
   const cover = coverProp ?? localCover
   const icon = iconProp ?? localIcon
+  const iconPosition = iconPositionProp ?? localIconPosition
   const title = titleProp ?? localTitle
   const unresolvedThreads = useMemo(
     () =>
@@ -408,6 +416,18 @@ export function PageMetadata({
     }
   }
 
+  const updateIconPosition = (nextPosition: PageIconPosition) => {
+    if (!editable) {
+      return
+    }
+
+    onIconPositionChange?.(nextPosition)
+
+    if (iconPositionProp === undefined) {
+      setLocalIconPosition(nextPosition)
+    }
+  }
+
   const updateTitle = (nextTitle: string) => {
     if (!editable) {
       return
@@ -482,11 +502,14 @@ export function PageMetadata({
         <PopoverTrigger asChild>
           <button
             aria-label="Change page icon"
-            className="flex size-11 items-center justify-center rounded-md text-3xl transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+            className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex items-center justify-center rounded-md transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none`}
             disabled={!editable}
             type="button"
           >
-            <PageIconDisplay size="xl" value={icon} />
+            <PageIconDisplay
+              size={iconPosition === "top" ? "2xl" : "xl"}
+              value={icon}
+            />
           </button>
         </PopoverTrigger>
         <PopoverContent
@@ -497,6 +520,7 @@ export function PageMetadata({
           sideOffset={6}
         >
           <IconEmojiPicker
+            iconPosition={iconPosition}
             onEmojiSelect={(emoji) => {
               updateIcon(emoji)
               setIconOpen(false)
@@ -505,6 +529,7 @@ export function PageMetadata({
               updateIcon(svg)
               setIconOpen(false)
             }}
+            onIconPositionChange={updateIconPosition}
           />
         </PopoverContent>
       </Popover>
@@ -543,6 +568,7 @@ export function PageMetadata({
         sideOffset={6}
       >
         <IconEmojiPicker
+          iconPosition={iconPosition}
           onEmojiSelect={(emoji) => {
             updateIcon(emoji)
             setIconOpen(false)
@@ -551,9 +577,25 @@ export function PageMetadata({
             updateIcon(svg)
             setIconOpen(false)
           }}
+          onIconPositionChange={updateIconPosition}
         />
       </PopoverContent>
     </Popover>
+  ) : null
+
+  const pageIcon = icon ? (
+    editable ? (
+      iconPicker
+    ) : (
+      <div
+        className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex shrink-0 items-center justify-center rounded-md`}
+      >
+        <PageIconDisplay
+          size={iconPosition === "top" ? "2xl" : "xl"}
+          value={icon}
+        />
+      </div>
+    )
   ) : null
 
   const showMetadataActions =
@@ -613,6 +655,16 @@ export function PageMetadata({
       <div
         className={`${contentClassName ?? ""} relative ${compact ? compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4" : "px-5 pt-4 pb-0 sm:px-8 md:px-20 lg:px-24"}`}
       >
+        {showHeading && iconPosition === "top" && pageIcon ? (
+          <div
+            className={cover
+              ? `${compact && compactSpacing === "comfortable" ? "-mt-5" : "-mt-4"} relative z-10 mb-4 w-fit -translate-y-1/2`
+              : "mb-4 w-fit"}
+          >
+            {pageIcon}
+          </div>
+        ) : null}
+
         {showHeading && showMetadataActions ? (
           <div className="relative mb-4 min-h-8">
             <div
@@ -677,15 +729,7 @@ export function PageMetadata({
         ) : null}
 
         {showHeading ? <div className="flex items-start gap-3" ref={titleRowRef}>
-          {icon ? (
-            editable ? (
-              iconPicker
-            ) : (
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-md text-3xl">
-                <PageIconDisplay size="xl" value={icon} />
-              </div>
-            )
-          ) : null}
+          {iconPosition === "inline" ? pageIcon : null}
           <textarea
             aria-label="Page title"
             className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus-visible:ring-0 dark:bg-transparent"
@@ -760,7 +804,7 @@ export function PageMetadata({
         {showProperties && (layoutPropertyId
           ? propertyPayload?.properties.some((property) => property.id === layoutPropertyId)
           : visibleProperties.length) ? (
-          <div className="mt-6 grid gap-1 border-y py-2">
+          <div className="mt-6 grid gap-1 py-2">
             {(layoutPropertyId
               ? propertyPayload?.properties.filter((property) => property.id === layoutPropertyId) ?? []
               : visibleProperties

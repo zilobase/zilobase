@@ -27,6 +27,7 @@ import {
 import {
   getPageCover,
   getPageEmoji,
+  getPageIconPosition,
   resolvePageFullWidth,
   usePage,
   usePageNavigation,
@@ -203,6 +204,7 @@ function LayoutEditor({
     page?.name?.trim() || (databaseId ? "Untitled" : "New page")
   const previewIcon = page ? getPageEmoji(page) : null
   const previewCover = page ? getPageCover(page) : null
+  const previewIconPosition = page ? getPageIconPosition(page) : "inline"
   const previewWorkspaceId =
     page?.workspaceId ?? databasePayload?.database.workspaceId ?? null
   const fullWidth = resolvePageFullWidth(page, userSettings.pageFullWidth)
@@ -366,6 +368,7 @@ function LayoutEditor({
               databaseId={databaseId}
               editable={false}
               emoji={previewIcon ?? undefined}
+              iconPosition={previewIconPosition}
               fullWidth={fullWidth}
               layoutConfig={draft}
               layoutPreview

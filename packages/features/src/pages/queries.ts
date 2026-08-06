@@ -11,6 +11,7 @@ export type {
   EmbeddedItemsOpenAs,
   ItemRef,
   NavItemKind,
+  PageIconPosition,
   PageMetadata,
 } from "./item-relationships";
 
@@ -555,4 +556,8 @@ export function getPageEmoji(page: Pick<Page, "metadata">) {
 
 export function getPageCover(page: Pick<Page, "metadata">) {
   return page.metadata?.cover ?? null;
+}
+
+export function getPageIconPosition(page: Pick<Page, "metadata">) {
+  return page.metadata?.iconPosition === "top" ? "top" : "inline";
 }

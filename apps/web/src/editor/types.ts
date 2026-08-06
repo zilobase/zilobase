@@ -9,6 +9,7 @@ import type { CreatedPage } from "@/packages/editor/extensions/page-block"
 import type { HocuspocusProvider } from "@hocuspocus/provider"
 import type { CollaborationUser } from "./use-page-collaboration"
 import type { PageLayoutConfig } from "@zilobase/features/pages"
+import type { PageIconPosition } from "@zilobase/features/pages"
 import type { PageCommentController } from "@/comments/yjs-comments"
 
 export type EditorCollaboration = {
@@ -74,6 +75,7 @@ export type EditorProps = {
   editorContentRef?: MutableRefObject<(() => unknown) | null>
   onEditorReady?: (editor: Editor | null) => void
   emoji?: string
+  iconPosition?: PageIconPosition
   editable?: boolean
   enableComments?: boolean
   fullWidth?: boolean
@@ -86,6 +88,7 @@ export type EditorProps = {
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onEmojiChange?: (emoji: string) => void
+  onIconPositionChange?: (position: PageIconPosition) => void
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
   onTitleChange?: (title: string) => void
   workspaceId?: string | null

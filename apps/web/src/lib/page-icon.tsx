@@ -54,6 +54,7 @@ const iconSizeClasses = {
   md: "size-5 text-lg [&_svg]:size-5",
   lg: "size-9 text-2xl [&_svg]:size-9",
   xl: "size-11 text-3xl [&_svg]:size-11",
+  "2xl": "size-20 text-6xl [&_svg]:size-20",
 } as const
 
 const svgIconSizeClasses = {
@@ -61,6 +62,7 @@ const svgIconSizeClasses = {
   md: "size-5 [&_svg]:size-5",
   lg: "size-7 [&_svg]:size-7",
   xl: "size-9 [&_svg]:size-9",
+  "2xl": "size-16 [&_svg]:size-16",
 } as const
 
 export function PageIconDisplay({

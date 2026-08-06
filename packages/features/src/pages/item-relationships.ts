@@ -7,11 +7,14 @@ export type ItemRef = {
 
 export type EmbeddedItemsOpenAs = "dialog" | "sidepanel";
 
+export type PageIconPosition = "inline" | "top";
+
 export type PageMetadata = {
   cover?: string | null;
   emoji?: string | null;
   embeddedItemsOpenAs?: EmbeddedItemsOpenAs | null;
   fullWidth?: boolean | null;
+  iconPosition?: PageIconPosition | null;
   zilobaseai?: "instruction" | "skill" | null;
   useUserEmbeddedItemsPreference?: boolean | null;
   useUserFullWidthPreference?: boolean | null;

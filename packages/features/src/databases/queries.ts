@@ -46,6 +46,22 @@ export function getDatabaseCover(database: Pick<DatabaseRecord, "config">) {
   return typeof cover === "string" && cover.length > 0 ? cover : null
 }
 
+export function getDatabaseIconPosition(
+  database: Pick<DatabaseRecord, "config">,
+) {
+  if (
+    !database.config ||
+    typeof database.config !== "object" ||
+    Array.isArray(database.config)
+  ) {
+    return "inline" as const
+  }
+
+  return (database.config as { iconPosition?: unknown }).iconPosition === "top"
+    ? "top" as const
+    : "inline" as const
+}
+
 export type DatabaseProperty = {
   id: string
   databaseId: string

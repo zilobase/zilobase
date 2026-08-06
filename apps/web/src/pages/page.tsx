@@ -19,7 +19,9 @@ import { formatPageBreadcrumbLabel } from "@/lib/page-icon";
 import {
   getPageCover,
   getPageEmoji,
+  getPageIconPosition,
   resolvePageFullWidth,
+  type PageIconPosition,
   type PageMetadata,
 } from "@zilobase/features/pages";
 import {
@@ -319,6 +321,8 @@ export function PageEditorPane({
   const [name, setName] = useState("");
   const [cover, setCover] = useState("");
   const [emoji, setEmoji] = useState("");
+  const [iconPosition, setIconPosition] =
+    useState<PageIconPosition>("inline");
   const fullWidth = resolvePageFullWidth(page, userSettings?.pageFullWidth);
 
   const flushContentSaveTimeout = useCallback(() => {
@@ -350,6 +354,7 @@ export function PageEditorPane({
 
   const pageCover = page ? (getPageCover(page) ?? "") : "";
   const pageEmoji = page ? (getPageEmoji(page) ?? "") : "";
+  const pageIconPosition = page ? getPageIconPosition(page) : "inline";
 
   useEffect(() => {
     if (!page) {
@@ -359,7 +364,8 @@ export function PageEditorPane({
     setName(page.name);
     setCover(pageCover);
     setEmoji(pageEmoji);
-  }, [page, page?.name, page?.updatedAt, pageCover, pageEmoji]);
+    setIconPosition(pageIconPosition);
+  }, [page, page?.name, page?.updatedAt, pageCover, pageEmoji, pageIconPosition]);
 
   useEffect(() => {
     return flushContentSaveTimeout;
@@ -485,6 +491,27 @@ export function PageEditorPane({
       metadata: {
         ...((page.metadata ?? {}) as PageMetadata),
         emoji: nextEmoji,
+      },
+    });
+  };
+
+  const updateIconPosition = (nextPosition: PageIconPosition) => {
+    setIconPosition(nextPosition);
+
+    if (
+      readOnly ||
+      !page ||
+      page.deletedAt ||
+      (accessLevel !== "edit" && accessLevel !== "full")
+    ) {
+      return;
+    }
+
+    updatePage.mutate({
+      id: page.id,
+      metadata: {
+        ...((page.metadata ?? {}) as PageMetadata),
+        iconPosition: nextPosition,
       },
     });
   };
@@ -667,6 +694,7 @@ export function PageEditorPane({
             : new Set();
         }}
         emoji={emoji}
+        iconPosition={iconPosition}
         fullWidth={fullWidth}
         layoutConfig={appliedLayout}
         layoutPanelMode={layoutPanelMode}
@@ -675,6 +703,7 @@ export function PageEditorPane({
         onCreatePage={createNestedPage}
         onEmbedPage={embedLinkedPage}
         onEmojiChange={updateEmoji}
+        onIconPositionChange={updateIconPosition}
         onOpenPage={onOpenPage}
         onTitleChange={setName}
         workspaceId={page.workspaceId}
