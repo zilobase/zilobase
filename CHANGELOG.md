@@ -4,6 +4,18 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, desktop, and mobile apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.7
+
+### Changed
+
+- Matched the edited timestamp typography to breadcrumbs and strengthened active database tab text in dark mode.
+
+### Fixed
+
+- Separated database tab and context-menu refs to keep view configuration rerenders stable.
+- Stopped chart grouping changes from repeatedly persisting generated colors, preventing request floods and maximum update depth errors.
+- Made automatic chart colors deterministic while preserving configured option and persisted colors.
+
 ## 0.0.6
 
 ### Added
