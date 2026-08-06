@@ -266,6 +266,41 @@ export function register({ assert, loadModule, test }) {
       ],
     );
   });
+
+  test("database chart automatic colors are stable without persisting view settings", async () => {
+    const { createChartData, getAutomaticChartColor } = await loadModule(
+      "/src/editor/extensions/database/views/chart/database-chart-data.ts",
+    );
+    const status = createProperty("status", "Status", "status", {
+      options: [{ id: "backlog", name: "Backlog", color: "default" }],
+    });
+    const input = {
+      groupByPropertyId: "status",
+      measurePropertyId: "count",
+      omitZeroValues: false,
+      personNamesById: new Map(),
+      properties: [status],
+      propertyValuesByKey: { "page-a:status": "Backlog" },
+      rows: [createRow("a", "First")],
+      valueColors: {},
+    };
+
+    const firstColor = createChartData(input)[0].color;
+    const secondColor = createChartData(input)[0].color;
+
+    assert.equal(firstColor, secondColor);
+    assert.equal(
+      firstColor,
+      `var(--editor-${getAutomaticChartColor(status, "Backlog")})`,
+    );
+    assert.equal(
+      createChartData({
+        ...input,
+        valueColors: { "status:Backlog": "purple" },
+      })[0].color,
+      "var(--editor-purple)",
+    );
+  });
 }
 
 function createProperty(id, name, type, config = {}) {

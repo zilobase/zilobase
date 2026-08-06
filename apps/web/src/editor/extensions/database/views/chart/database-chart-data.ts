@@ -300,16 +300,22 @@ function getChartSeriesKey(property: DatabaseProperty, label: string) {
   return `series-${property.property.id}-${labelKey || "empty"}`
 }
 
-export function getRandomChartColor(): ColorTokenId {
+export function getAutomaticChartColor(
+  property: DatabaseProperty | null,
+  label: string,
+): ColorTokenId {
   const colors = cyclingColorTokens.flatMap((color) =>
     color.value ? [color.value as ColorTokenId] : [],
   )
-  const index =
-    typeof crypto !== "undefined" && "getRandomValues" in crypto
-      ? crypto.getRandomValues(new Uint32Array(1))[0] % colors.length
-      : Math.floor(Math.random() * colors.length)
+  const colorKey = getChartValueColorKey(property, label)
+  let hash = 2166136261
 
-  return colors[index] ?? "blue"
+  for (let index = 0; index < colorKey.length; index += 1) {
+    hash ^= colorKey.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return colors[(hash >>> 0) % colors.length] ?? "blue"
 }
 
 export function getColorVariant(color: string, index: number) {
@@ -360,7 +366,8 @@ function getOptionColor(
   return getChartColor(
     configuredColor && configuredColor !== "default"
       ? configuredColor
-      : valueColors[getChartValueColorKey(property, label)],
+      : valueColors[getChartValueColorKey(property, label)] ??
+          getAutomaticChartColor(property, label),
   )
 }
 
@@ -406,11 +413,7 @@ export function createChartData({
       counts.set(option.name, 0)
       colors.set(
         option.name,
-        getChartColor(
-          option.color && option.color !== "default"
-            ? option.color
-            : valueColors[getChartValueColorKey(groupProperty, option.name)],
-        ),
+        getOptionColor(groupProperty, option.name, valueColors),
       )
     }
 

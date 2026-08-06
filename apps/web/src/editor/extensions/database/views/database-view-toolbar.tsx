@@ -523,25 +523,32 @@ export function DatabaseViewToolbar() {
                       open={openViewMenuId === view.id}
                     >
                       <DropDrawerTrigger asChild>
-                        <TabsTrigger
-                          className="h-8 shrink-0 grow-0 gap-2 px-3"
-                          onClick={handleViewClick}
-                          onContextMenu={handleViewContextMenu}
-                          onKeyDownCapture={handleViewKeyDownCapture}
-                          onPointerDownCapture={handleViewPointerDownCapture}
-                          value={view.id}
-                        >
-                          <ViewIcon className="size-4 shrink-0" />
-                          <span className="truncate">
-                            {isActiveView ? draftViewTitle : view.name}
-                          </span>
-                          {view.isLinked ? (
-                            <ArrowUpRightIcon
-                              aria-label={`Linked from ${view.sourceDatabaseName ?? "another database"}`}
-                              className="size-3 shrink-0 text-muted-foreground"
-                            />
-                          ) : null}
-                        </TabsTrigger>
+                        {/* Keep the Radix menu anchor separate from the Base UI
+                            tab trigger so their stateful refs cannot feed back
+                            into each other when view configuration rerenders. */}
+                        <div className="inline-flex shrink-0">
+                          <TabsTrigger
+                            aria-expanded={openViewMenuId === view.id}
+                            aria-haspopup="menu"
+                            className="h-8 shrink-0 grow-0 gap-2 px-3"
+                            onClick={handleViewClick}
+                            onContextMenu={handleViewContextMenu}
+                            onKeyDownCapture={handleViewKeyDownCapture}
+                            onPointerDownCapture={handleViewPointerDownCapture}
+                            value={view.id}
+                          >
+                            <ViewIcon className="size-4 shrink-0" />
+                            <span className="truncate">
+                              {isActiveView ? draftViewTitle : view.name}
+                            </span>
+                            {view.isLinked ? (
+                              <ArrowUpRightIcon
+                                aria-label={`Linked from ${view.sourceDatabaseName ?? "another database"}`}
+                                className="size-3 shrink-0 text-muted-foreground"
+                              />
+                            ) : null}
+                          </TabsTrigger>
+                        </div>
                       </DropDrawerTrigger>
                       <DropDrawerContent
                         align="start"

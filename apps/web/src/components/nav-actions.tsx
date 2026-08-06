@@ -374,7 +374,7 @@ export function NavActions({
 
   return (
     <div className="flex items-center gap-2 text-sm">
-      <div className="hidden font-medium text-muted-foreground md:inline-block">
+      <div className="hidden text-xs/relaxed font-normal text-muted-foreground md:inline-block">
         Edited recently
       </div>
       {hasPageActions ? (

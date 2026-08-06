@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef } from "react"
+import { useId, useMemo } from "react"
 import {
   Area,
   AreaChart,
@@ -41,9 +41,7 @@ import {
   createSplitChartData,
   getChartGroupProperty,
   getChartMeasureValue,
-  getChartValueColorKey,
   getColorVariant,
-  getRandomChartColor,
   type DatabaseChartDataItem,
   type DatabaseChartSeriesItem,
 } from "./database-chart-data"
@@ -55,10 +53,8 @@ export function DatabaseChartView() {
     personOptions,
     properties,
     propertyValuesByKey,
-    updateDatabaseChartSettings,
   } = useDatabaseViewContext()
   const gradientId = useIdWithoutColons()
-  const assignedColorKeysRef = useRef(new Set<string>())
   const personNamesById = useMemo(
     () => new Map(personOptions.map((person) => [person.id, person.name])),
     [personOptions],
@@ -156,62 +152,6 @@ export function DatabaseChartView() {
         : [],
     [chartSeries, chartSettings.type, shouldSplitSeries, splitChart.data],
   )
-  const missingValueColorKeys = useMemo(() => {
-    const colorProperty = shouldSplitSeries ? splitProperty : axisProperty
-    const configuredOptions = colorProperty
-      ? new Map(
-          getConfiguredChartOptions(colorProperty).map((option) => [
-            option.name,
-            option.color,
-          ]),
-        )
-      : new Map<string, string | undefined>()
-    const labels = shouldSplitSeries
-      ? chartSeries.map((series) => series.label)
-      : chartData.map((item) => item.name)
-
-    return labels.flatMap((label) => {
-      if (label === "True" || label === "False") {
-        return []
-      }
-
-      const optionColor = configuredOptions.get(label)
-      const colorKey = getChartValueColorKey(colorProperty, label)
-
-      return (!optionColor || optionColor === "default") &&
-        !chartSettings.valueColors[colorKey] &&
-        !assignedColorKeysRef.current.has(colorKey)
-        ? [colorKey]
-        : []
-    })
-  }, [
-    axisProperty,
-    chartData,
-    chartSeries,
-    chartSettings.valueColors,
-    shouldSplitSeries,
-    splitProperty,
-  ])
-
-  useEffect(() => {
-    if (missingValueColorKeys.length === 0) {
-      return
-    }
-
-    const nextValueColors = { ...chartSettings.valueColors }
-
-    for (const colorKey of missingValueColorKeys) {
-      assignedColorKeysRef.current.add(colorKey)
-      nextValueColors[colorKey] = getRandomChartColor()
-    }
-
-    updateDatabaseChartSettings({ valueColors: nextValueColors })
-  }, [
-    chartSettings.valueColors,
-    missingValueColorKeys,
-    updateDatabaseChartSettings,
-  ])
-
   if (displayChartData.length === 0) {
     return (
       <div className="flex min-h-52 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
@@ -648,25 +588,4 @@ function getReferenceLineDash(style: DatabaseChartReferenceLine["style"]) {
 
 function useIdWithoutColons() {
   return useId().replace(/:/g, "")
-}
-
-function getConfiguredChartOptions(property: {
-  property: { config?: unknown }
-}) {
-  const config = property.property.config
-
-  if (!config || typeof config !== "object" || !("options" in config)) {
-    return []
-  }
-
-  const options = (config as { options?: unknown }).options
-
-  return Array.isArray(options)
-    ? options.filter(
-        (option): option is { color?: string; name: string } =>
-          Boolean(option) &&
-          typeof option === "object" &&
-          typeof (option as { name?: unknown }).name === "string",
-      )
-    : []
 }
