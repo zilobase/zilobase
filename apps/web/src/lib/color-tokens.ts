@@ -11,80 +11,60 @@ export type ColorTokenId =
 
 type PaletteEntry = {
   name: string
-  light: string
-  dark: string
   textClass: string
   backgroundClass: string
 }
 
-// ponytail: one palette, one file — edit colors here only
+// Values live in design-tokens.css; this file only maps editor concepts to utilities.
 export const PALETTE: Record<ColorTokenId, PaletteEntry> = {
   gray: {
     name: "Gray",
-    light: "zinc-500",
-    dark: "zinc-600",
-    textClass: "text-zinc-500 dark:text-zinc-600",
-    backgroundClass: "bg-zinc-500 dark:bg-zinc-600",
+    textClass: "text-editor-gray",
+    backgroundClass: "bg-editor-gray-solid",
   },
   brown: {
     name: "Brown",
-    light: "stone-500",
-    dark: "stone-600",
-    textClass: "text-stone-500 dark:text-stone-600",
-    backgroundClass: "bg-stone-500 dark:bg-stone-600",
+    textClass: "text-editor-brown",
+    backgroundClass: "bg-editor-brown-solid",
   },
   orange: {
     name: "Orange",
-    light: "orange-500",
-    dark: "orange-700",
-    textClass: "text-orange-500 dark:text-orange-700",
-    backgroundClass: "bg-orange-500 dark:bg-orange-700",
+    textClass: "text-editor-orange",
+    backgroundClass: "bg-editor-orange-solid",
   },
   yellow: {
     name: "Yellow",
-    light: "yellow-500",
-    dark: "yellow-500",
-    textClass: "text-yellow-500 dark:text-yellow-500",
-    backgroundClass: "bg-yellow-500 dark:bg-yellow-500",
+    textClass: "text-editor-yellow",
+    backgroundClass: "bg-editor-yellow-solid",
   },
   green: {
     name: "Green",
-    light: "emerald-500",
-    dark: "emerald-700",
-    textClass: "text-emerald-500 dark:text-emerald-700",
-    backgroundClass: "bg-emerald-500 dark:bg-emerald-700",
+    textClass: "text-editor-green",
+    backgroundClass: "bg-editor-green-solid",
   },
   blue: {
     name: "Blue",
-    light: "sky-500",
-    dark: "sky-700",
-    textClass: "text-sky-500 dark:text-sky-700",
-    backgroundClass: "bg-sky-500 dark:bg-sky-700",
+    textClass: "text-editor-blue",
+    backgroundClass: "bg-editor-blue-solid",
   },
   purple: {
     name: "Purple",
-    light: "violet-500",
-    dark: "violet-700",
-    textClass: "text-violet-500 dark:text-violet-700",
-    backgroundClass: "bg-violet-500 dark:bg-violet-700",
+    textClass: "text-editor-purple",
+    backgroundClass: "bg-editor-purple-solid",
   },
   pink: {
     name: "Pink",
-    light: "pink-500",
-    dark: "pink-700",
-    textClass: "text-pink-500 dark:text-pink-700",
-    backgroundClass: "bg-pink-500 dark:bg-pink-700",
+    textClass: "text-editor-pink",
+    backgroundClass: "bg-editor-pink-solid",
   },
   red: {
     name: "Red",
-    light: "red-500",
-    dark: "red-700",
-    textClass: "text-red-500 dark:text-red-700",
-    backgroundClass: "bg-red-500 dark:bg-red-700",
+    textClass: "text-editor-red",
+    backgroundClass: "bg-editor-red-solid",
   },
 }
 
-const SOLID_FG = "text-white dark:text-foreground"
+const SOLID_FG = "text-editor-color-foreground"
 
 const isPaletteColor = (value: string): value is ColorTokenId => value in PALETTE
 
@@ -131,9 +111,7 @@ export function getPaletteColor(color?: string | null) {
     return null
   }
 
-  const entry = PALETTE[color]
-
-  return `light-dark(var(--color-${entry.light}), var(--color-${entry.dark}))`
+  return `var(--editor-${color})`
 }
 
 export function getColorToken(color?: string | null) {

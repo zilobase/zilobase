@@ -304,9 +304,17 @@ function openToolkitPopup() {
   );
 
   if (popup) {
+    const rootStyles = window.getComputedStyle(document.documentElement);
     popup.document.title = "Opening Toolkit";
-    popup.document.body.style.cssText =
-      "margin:0;min-height:100vh;display:grid;place-items:center;background:#0a0a0a;color:#fafafa;font:14px system-ui,sans-serif";
+    popup.document.body.style.cssText = [
+      "margin:0",
+      "min-height:100vh",
+      "display:grid",
+      "place-items:center",
+      `background:${rootStyles.getPropertyValue("--surface-canvas")}`,
+      `color:${rootStyles.getPropertyValue("--text-primary")}`,
+      `font:14px ${rootStyles.getPropertyValue("--font-family-sans")}`,
+    ].join(";");
     popup.document.body.textContent = "Opening Toolkit…";
   }
 

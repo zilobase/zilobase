@@ -3,15 +3,9 @@
 @layer components {
   .tiptap-editor {
     @apply min-h-[520px] px-5 pt-4 pb-5 text-base leading-7 text-foreground outline-none sm:px-8 md:px-20 md:pt-4 md:pb-6 lg:px-24;
-    --editor-selection-background: color-mix(in srgb, #0078d7 35%, transparent);
-    --editor-selection-solid-background: color-mix(in srgb, #0078d7 35%, var(--background));
+    --editor-selection-background: color-mix(in srgb, var(--selection) 35%, transparent);
+    --editor-selection-solid-background: color-mix(in srgb, var(--selection) 35%, var(--background));
     --editor-selection-foreground: inherit;
-  }
-
-  .dark .tiptap-editor {
-    --editor-selection-background: color-mix(in srgb, #4b9fff 42%, transparent);
-    --editor-selection-solid-background: color-mix(in srgb, #4b9fff 42%, var(--background));
-    --editor-selection-foreground: #ffffff;
   }
 
   .collaboration-carets__caret {
@@ -19,7 +13,7 @@
   }
 
   .collaboration-carets__label {
-    @apply absolute -left-0.5 -top-6 rounded px-1.5 py-0.5 text-xs font-medium text-white shadow-sm whitespace-nowrap;
+    @apply absolute -left-0.5 -top-6 rounded px-1.5 py-0.5 text-xs font-medium text-editor-color-foreground shadow-sm whitespace-nowrap;
   }
 
   .collaboration-carets__selection {
@@ -1695,7 +1689,7 @@
   .tiptap-editor .database-table tbody tr[data-row-selected="true"] > td {
     background-color: color-mix(
       in srgb,
-      var(--database-selection-color, #2383e2) 12%,
+      var(--database-selection-color, var(--selection)) 12%,
       var(--background)
     );
   }
@@ -1706,8 +1700,8 @@
     tr[data-side-pane-open="true"]
     > td {
     box-shadow:
-      inset 0 2px var(--database-selection-color, #2383e2),
-      inset 0 -2px var(--database-selection-color, #2383e2);
+      inset 0 2px var(--database-selection-color, var(--selection)),
+      inset 0 -2px var(--database-selection-color, var(--selection));
   }
 
   .tiptap-editor
@@ -1716,9 +1710,9 @@
     tr[data-side-pane-open="true"]
     > td:first-child {
     box-shadow:
-      inset 2px 0 var(--database-selection-color, #2383e2),
-      inset 0 2px var(--database-selection-color, #2383e2),
-      inset 0 -2px var(--database-selection-color, #2383e2);
+      inset 2px 0 var(--database-selection-color, var(--selection)),
+      inset 0 2px var(--database-selection-color, var(--selection)),
+      inset 0 -2px var(--database-selection-color, var(--selection));
   }
 
   .tiptap-editor
@@ -1727,9 +1721,9 @@
     tr[data-side-pane-open="true"]
     > td:last-child {
     box-shadow:
-      inset -2px 0 var(--database-selection-color, #2383e2),
-      inset 0 2px var(--database-selection-color, #2383e2),
-      inset 0 -2px var(--database-selection-color, #2383e2);
+      inset -2px 0 var(--database-selection-color, var(--selection)),
+      inset 0 2px var(--database-selection-color, var(--selection)),
+      inset 0 -2px var(--database-selection-color, var(--selection));
   }
 
   .tiptap-editor .database-table tbody td.database-virtual-spacer {
@@ -1763,22 +1757,22 @@
     tbody
     td:is(.database-page-cell, .database-value-cell)[data-selected="true"] {
     @apply z-30;
-    box-shadow: inset 0 0 0 2px var(--database-selection-color, #2383e2);
+    box-shadow: inset 0 0 0 2px var(--database-selection-color, var(--selection));
   }
 
   .tiptap-editor
     .database-table
     tbody
     td.database-value-cell[data-fill-target="true"] {
-    @apply bg-blue-500/10;
+    @apply bg-selection/10;
     box-shadow:
-      inset 2px 0 var(--database-selection-color, #2383e2),
-      inset -2px 0 var(--database-selection-color, #2383e2);
+      inset 2px 0 var(--database-selection-color, var(--selection)),
+      inset -2px 0 var(--database-selection-color, var(--selection));
   }
 
   .database-cell-fill-handle {
     @apply absolute -bottom-1.5 -right-1.5 z-40 size-3 cursor-crosshair rounded-full border-2 border-background outline-none;
-    background: var(--database-selection-color, #2383e2);
+    background: var(--database-selection-color, var(--selection));
     touch-action: none;
   }
 

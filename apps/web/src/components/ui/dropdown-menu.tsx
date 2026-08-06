@@ -43,9 +43,7 @@ function createInlineSubmenuNavigationStore(): InlineSubmenuNavigationContextVal
   const listeners = new Set<() => void>()
   let navigationStack: string[] = []
 
-  const notify = () => {
-    listeners.forEach((listener) => listener())
-  }
+  const notify = () => listeners.forEach((listener) => listener())
 
   return {
     getActivePanel: () => {
@@ -64,7 +62,6 @@ function createInlineSubmenuNavigationStore(): InlineSubmenuNavigationContextVal
     },
     registerPanel: (panel) => {
       const currentPanel = panels.get(panel.id)
-
       if (
         currentPanel &&
         currentPanel.children === panel.children &&
@@ -151,7 +148,7 @@ function DropdownMenuContent({
   const activePanel = React.useSyncExternalStore(
     inlineNavigation?.subscribe ?? subscribeNoop,
     inlineNavigation?.getActivePanel ?? getNoActivePanel,
-    inlineNavigation?.getActivePanel ?? getNoActivePanel
+    inlineNavigation?.getActivePanel ?? getNoActivePanel,
   )
 
   return (
@@ -163,62 +160,58 @@ function DropdownMenuContent({
         className={cn(
           "z-50 max-h-(--radix-dropdown-menu-content-available-height) w-(--radix-dropdown-menu-trigger-width) min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
-          activePanel && "w-max"
+          activePanel && "w-max",
         )}
         {...props}
       >
-        <>
-          <InlineSubmenuRegistrationContext.Provider
-            value={Boolean(activePanel)}
+        <InlineSubmenuRegistrationContext.Provider value={Boolean(activePanel)}>
+          <div
+            aria-hidden={activePanel ? true : undefined}
+            className={cn(!activePanel && "contents")}
+            hidden={Boolean(activePanel)}
+            inert={activePanel ? true : undefined}
           >
-            <div
-              aria-hidden={activePanel ? true : undefined}
-              className={cn(!activePanel && "contents")}
-              hidden={Boolean(activePanel)}
-              inert={activePanel ? true : undefined}
-            >
-              {props.children}
-            </div>
-          </InlineSubmenuRegistrationContext.Provider>
-          {activePanel ? (
-            <>
-              <div className="flex items-center gap-1 px-1 py-1.5">
+            {props.children}
+          </div>
+        </InlineSubmenuRegistrationContext.Provider>
+        {activePanel ? (
+          <>
+            <div className="flex items-center gap-1 px-1 py-1">
+              <Button
+                aria-label={`Back from ${activePanel.title}`}
+                className="text-muted-foreground"
+                onClick={inlineNavigation?.goBack}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <ChevronLeftIcon />
+              </Button>
+              <div className="min-w-0 flex-1 truncate px-1 text-xs font-medium text-foreground">
+                {activePanel.title}
+              </div>
+              <DropdownMenuPrimitive.Item asChild>
                 <Button
-                  aria-label={`Back from ${activePanel.title}`}
+                  aria-label={`Close ${activePanel.title}`}
                   className="text-muted-foreground"
-                  onClick={inlineNavigation?.goBack}
                   size="icon-sm"
                   type="button"
                   variant="ghost"
                 >
-                  <ChevronLeftIcon className="size-4" />
+                  <XIcon />
                 </Button>
-                <div className="min-w-0 flex-1 truncate px-1 text-sm font-semibold text-foreground">
-                  {activePanel.title}
-                </div>
-                <DropdownMenuPrimitive.Item asChild>
-                  <Button
-                    aria-label={`Close ${activePanel.title}`}
-                    className="text-muted-foreground"
-                    size="icon-sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <XIcon className="size-4" />
-                  </Button>
-                </DropdownMenuPrimitive.Item>
-              </div>
-              <div
-                className={activePanel.className}
-                data-slot="dropdown-menu-inline-sub-content"
-              >
-                <InlineSubmenuPanelContext.Provider value>
-                  {activePanel.children}
-                </InlineSubmenuPanelContext.Provider>
-              </div>
-            </>
-          ) : null}
-        </>
+              </DropdownMenuPrimitive.Item>
+            </div>
+            <div
+              className={activePanel.className}
+              data-slot="dropdown-menu-inline-sub-content"
+            >
+              <InlineSubmenuPanelContext.Provider value>
+                {activePanel.children}
+              </InlineSubmenuPanelContext.Provider>
+            </div>
+          </>
+        ) : null}
       </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   )
@@ -253,13 +246,12 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "group/dropdown-menu-item relative flex cursor-default items-center gap-1.5 rounded-md px-2 py-1 text-sm outline-hidden select-none focus:bg-accent data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive",
+        "group/dropdown-menu-item relative flex min-h-7 cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs/relaxed outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-7.5 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-[variant=destructive]:*:[svg]:text-destructive",
         className
       )}
       {...props}
       onSelect={(event) => {
         onSelect?.(event)
-
         if (!shouldCloseOnSelect) event.preventDefault()
       }}
     />
@@ -280,7 +272,7 @@ function DropdownMenuCheckboxItem({
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-7 cursor-default items-center gap-2 rounded-md py-1.5 pr-8 pl-2 text-xs outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7.5 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         className
       )}
       checked={checked}
@@ -291,7 +283,8 @@ function DropdownMenuCheckboxItem({
         data-slot="dropdown-menu-checkbox-item-indicator"
       >
         <DropdownMenuPrimitive.ItemIndicator>
-          <CheckIcon />
+          <CheckIcon
+          />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}
@@ -323,7 +316,7 @@ function DropdownMenuRadioItem({
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
       className={cn(
-        "relative flex cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-7 cursor-default items-center gap-2 rounded-md py-1.5 pr-8 pl-2 text-xs outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-inset:pl-7.5 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         className
       )}
       {...props}
@@ -333,7 +326,8 @@ function DropdownMenuRadioItem({
         data-slot="dropdown-menu-radio-item-indicator"
       >
         <DropdownMenuPrimitive.ItemIndicator>
-          <CheckIcon />
+          <CheckIcon
+          />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       {children}
@@ -353,7 +347,7 @@ function DropdownMenuLabel({
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
-        "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
+        "px-2 py-1.5 text-xs text-muted-foreground data-inset:pl-7.5",
         className
       )}
       {...props}
@@ -368,7 +362,7 @@ function DropdownMenuSeparator({
   return (
     <DropdownMenuPrimitive.Separator
       data-slot="dropdown-menu-separator"
-      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      className={cn("-mx-1 my-1 h-px bg-border/50", className)}
       {...props}
     />
   )
@@ -382,7 +376,7 @@ function DropdownMenuShortcut({
     <span
       data-slot="dropdown-menu-shortcut"
       className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground",
+        "ml-auto text-[0.625rem] tracking-widest text-muted-foreground group-focus/dropdown-menu-item:text-accent-foreground",
         className
       )}
       {...props}
@@ -402,7 +396,7 @@ function DropdownMenuSub({
   const id = React.useId()
   const contextValue = React.useMemo(
     () => ({ displayMode, id, title }),
-    [displayMode, id, title]
+    [displayMode, id, title],
   )
 
   if (displayMode === "inline") {
@@ -434,8 +428,8 @@ function DropdownMenuSubTrigger({
   const inlineNavigation = React.useContext(InlineSubmenuNavigationContext)
   const registrationOnly = React.useContext(InlineSubmenuRegistrationContext)
   const triggerClassName = cn(
-    "flex cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden select-none focus:bg-accent data-inset:pl-7 data-open:bg-accent [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-    className
+    "flex min-h-7 cursor-default items-center gap-2 rounded-md px-2 py-1 text-xs outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-inset:pl-7.5 data-open:bg-accent data-open:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+    className,
   )
 
   if (submenu?.displayMode === "inline") {
@@ -483,14 +477,9 @@ function DropdownMenuSubContent({
   const panel = React.useMemo(
     () =>
       submenu
-        ? {
-            children,
-            className,
-            id: submenu.id,
-            title: submenu.title,
-          }
+        ? { children, className, id: submenu.id, title: submenu.title }
         : null,
-    [children, className, submenu]
+    [children, className, submenu],
   )
 
   React.useEffect(() => {
@@ -503,10 +492,7 @@ function DropdownMenuSubContent({
   return (
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
-      className={cn(
-        "z-50 min-w-[96px] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-lg ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-        className
-      )}
+      className={cn("z-50 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
       {...props}
     >
       {children}

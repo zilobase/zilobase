@@ -1129,10 +1129,8 @@ export function PageCommentThread({
                   <Button
                     aria-label="Send reply"
                     className={cn(
-                      "rounded-full",
-                      compact
-                        ? "bg-foreground text-background hover:bg-foreground/90"
-                        : "h-7 w-7 bg-white text-black hover:bg-white/90",
+                      "rounded-full bg-surface-inverse text-text-inverse hover:bg-surface-inverse/90",
+                      !compact && "h-7 w-7",
                     )}
                     disabled={isMutating || !newCommentBody.trim()}
                     onClick={createComment}

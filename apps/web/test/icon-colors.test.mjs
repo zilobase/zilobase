@@ -5,7 +5,7 @@ export function register({ assert, loadModule, test }) {
     assert.equal(getPaletteColor(null), null)
     assert.equal(
       getPaletteColor("pink"),
-      "light-dark(var(--color-pink-500), var(--color-pink-700))",
+      "var(--editor-pink)",
     )
     assert.equal(getPaletteColor("var(--event-pink)"), null)
     assert.equal(getPaletteColor("#ff00ff"), null)
@@ -21,15 +21,15 @@ export function register({ assert, loadModule, test }) {
     assert.equal(isPaletteColorActive("blue", "pink"), false)
   })
 
-  test("yellow is yellow-500 in both themes", async () => {
+  test("yellow consumes semantic editor tokens", async () => {
     const { colorTokens } = await loadModule("/src/lib/color-tokens.ts")
     const yellowToken = colorTokens.find((token) => token.value === "yellow")
 
-    assert.equal(yellowToken?.textClass, "text-yellow-500 dark:text-yellow-500")
-    assert.equal(yellowToken?.backgroundClass, "bg-yellow-500 dark:bg-yellow-500")
+    assert.equal(yellowToken?.textClass, "text-editor-yellow")
+    assert.equal(yellowToken?.backgroundClass, "bg-editor-yellow-solid")
     assert.equal(
       yellowToken?.solidClass,
-      "bg-yellow-500 dark:bg-yellow-500 text-white dark:text-foreground",
+      "bg-editor-yellow-solid text-editor-color-foreground",
     )
   })
 
@@ -38,7 +38,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.equal(
       colorWithAlpha("pink", 0.18),
-      "color-mix(in oklab, light-dark(var(--color-pink-500), var(--color-pink-700)) 18%, transparent)",
+      "color-mix(in oklab, var(--editor-pink) 18%, transparent)",
     )
     assert.equal(colorWithAlpha("var(--event-pink)", 0.18), null)
   })
@@ -48,7 +48,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.equal(
       getColorTokenBadgeClassName("blue"),
-      "database-select-badge text-white dark:text-foreground bg-sky-500 dark:bg-sky-700",
+      "database-select-badge text-editor-color-foreground bg-editor-blue-solid",
     )
     assert.equal(
       getColorTokenBadgeClassName("default"),

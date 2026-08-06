@@ -4,11 +4,30 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/mark.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f4f1ea" />
+    <meta name="theme-color" content="#ffffff" />
     <meta
       name="description"
       content="Zilobase is the open-source workspace for notes, structured data, AI, and connected tools."
     />
+    <script>
+      (() => {
+        try {
+          const savedTheme = localStorage.getItem("theme");
+          const isDark =
+            savedTheme === "dark" ||
+            (savedTheme !== "light" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+          document.documentElement.classList.toggle("dark", isDark);
+          document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+          document
+            .querySelector('meta[name="theme-color"]')
+            ?.setAttribute("content", isDark ? "#0d0d0f" : "#ffffff");
+        } catch {
+          // The default light tokens remain valid when storage is unavailable.
+        }
+      })();
+    </script>
     <title>Zilobase</title>
   </head>
 
