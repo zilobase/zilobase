@@ -73,6 +73,33 @@ export function hasEditorBlockDragData(dataTransfer: DataTransfer | null) {
   )
 }
 
+export function getBlockDragDatabaseId(payload: BlockDragPayload) {
+  if (
+    payload.typeName !== "databaseBlock" ||
+    !payload.node ||
+    typeof payload.node !== "object"
+  ) {
+    return null
+  }
+
+  const attrs = (payload.node as { attrs?: unknown }).attrs
+  if (!attrs || typeof attrs !== "object") return null
+
+  const databaseId = (attrs as { databaseId?: unknown }).databaseId
+  return typeof databaseId === "string" && databaseId ? databaseId : null
+}
+
+export function canMoveDatabaseBlockToPage(
+  sourceDatabaseId: string,
+  currentDatabaseId: string | null | undefined,
+  containingDatabaseIds: readonly string[],
+) {
+  return (
+    sourceDatabaseId !== currentDatabaseId &&
+    !containingDatabaseIds.includes(sourceDatabaseId)
+  )
+}
+
 export function resetBlockDragSession(view?: EditorView | null) {
   view?.dom.classList.remove(EDITOR_DRAGGING_CLASS)
   activeDragPayload = null

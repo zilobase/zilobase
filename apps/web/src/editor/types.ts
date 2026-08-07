@@ -72,6 +72,7 @@ export type EditorProps = {
   collaboration?: EditorCollaboration
   cover?: string
   databaseId?: string | null
+  databaseIds?: string[]
   editorContentRef?: MutableRefObject<(() => unknown) | null>
   onEditorReady?: (editor: Editor | null) => void
   emoji?: string
@@ -86,6 +87,7 @@ export type EditorProps = {
   onContentChange?: (content: unknown) => void
   onCoverChange?: (cover: string) => void
   onCreatePage?: () => Promise<CreatedPage>
+  onEmbedDatabase?: (databaseId: string) => void | Promise<void>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onEmojiChange?: (emoji: string) => void
   onIconPositionChange?: (position: PageIconPosition) => void

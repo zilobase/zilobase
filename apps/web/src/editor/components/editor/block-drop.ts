@@ -85,6 +85,45 @@ export function dropEditorBlock(
   return true
 }
 
+export function dropCrossEditorBlock(
+  view: EditorView,
+  payload: NonNullable<ReturnType<typeof getDraggedEditorBlockPayload>>,
+  pos: number,
+  mode: "copy" | "move",
+) {
+  const source = getBlockDragSourceEditor(payload.editorId)
+  if (!source || source.view === view) return false
+
+  if (mode === "move" && !findBlockDragSourceNode(source.view, payload)) {
+    return false
+  }
+
+  let node: ProseMirrorNode
+  try {
+    node = view.state.schema.nodeFromJSON(payload.node)
+  } catch {
+    return false
+  }
+
+  if (!canInsertNodeAt(view, pos, node)) return false
+
+  try {
+    view.dispatch(view.state.tr.insert(pos, node).scrollIntoView())
+  } catch {
+    return false
+  }
+
+  view.focus()
+
+  if (mode === "move") {
+    deleteBlockDragSource(source.view, payload)
+  }
+
+  resetBlockDragSession(source.view)
+  resetBlockDragSession(view)
+  return true
+}
+
 function flattenList(fragment: Fragment, schema: Schema) {
   const nodes: ProseMirrorNode[] = []
 

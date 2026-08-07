@@ -19,6 +19,7 @@ import type { DatabaseBlockEditorRuntime } from "@/packages/editor/extensions/da
 import {
   createEditorDragDrop,
   registerBlockDragSource,
+  type BlockDragPayload,
 } from "@/packages/editor/components/editor/block-drag";
 import {
   getDropDatabaseElement,
@@ -59,6 +60,10 @@ type UseEditorInstanceOptions = {
   }>;
   initialContent: Content | undefined;
   onContentChange?: (content: unknown) => void;
+  onCrossEditorDatabaseDrop?: (input: {
+    payload: BlockDragPayload;
+    pos: number;
+  }) => boolean;
   onEditorReady?: (editor: Editor | null) => void;
   onEmbedPage?: (pageId: string) => void | Promise<void>;
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
@@ -106,6 +111,7 @@ export const useEditorInstance = ({
   editorRuntimeRef,
   initialContent,
   onContentChange,
+  onCrossEditorDatabaseDrop,
   onEditorReady,
   onEmbedPage,
   onOpenPage,
@@ -123,6 +129,9 @@ export const useEditorInstance = ({
   });
 
   const onContentChangeRef = useLatestRef(onContentChange);
+  const onCrossEditorDatabaseDropRef = useLatestRef(
+    onCrossEditorDatabaseDrop,
+  );
   const onEmbedPageRef = useLatestRef(onEmbedPage);
   const onMoveToTitleRef = useLatestRef(onMoveToTitle);
   const editableRef = useLatestRef(editable);
@@ -142,6 +151,9 @@ export const useEditorInstance = ({
   const dragDrop = useMemo(
     () =>
       createEditorDragDrop(setBlockDropLine, {
+        deferCrossEditorDatabaseDrop: (_view, payload, pos) =>
+          payload.editorId !== editorId &&
+          (onCrossEditorDatabaseDropRef.current?.({ payload, pos }) ?? false),
         dropPageOnDatabase: (event) => dropPageOnDatabaseRef.current(event),
         getView: () =>
           editorRef.current && !editorRef.current.isDestroyed
@@ -160,7 +172,7 @@ export const useEditorInstance = ({
         shouldSkipDropLine: shouldSkipEditorDropLine,
         surfaceRef: editorSurfaceRef,
       }),
-    [editorSurfaceRef],
+    [editorId, editorSurfaceRef],
   );
 
   const editor = useEditor(

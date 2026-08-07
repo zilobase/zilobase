@@ -103,4 +103,122 @@ export function register({ assert, loadModule, test }) {
     endBlockDrag()
     assert.equal(getDraggedEditorBlockPayload(null), null)
   })
+
+  test("database block drags expose their source database id", async () => {
+    const { canMoveDatabaseBlockToPage, getBlockDragDatabaseId } =
+      await loadModule("/src/editor/components/editor/block-drag.ts")
+    const payload = {
+      editorId: "editor-1",
+      node: {
+        attrs: { databaseId: "tasks" },
+        type: "databaseBlock",
+      },
+      pos: 4,
+      textContent: "",
+      typeName: "databaseBlock",
+    }
+
+    assert.equal(getBlockDragDatabaseId(payload), "tasks")
+    assert.equal(
+      getBlockDragDatabaseId({ ...payload, node: { type: "databaseBlock" } }),
+      null
+    )
+    assert.equal(
+      getBlockDragDatabaseId({ ...payload, typeName: "paragraph" }),
+      null
+    )
+    assert.equal(
+      canMoveDatabaseBlockToPage("tasks", "tasks", ["tasks"]),
+      false
+    )
+    assert.equal(
+      canMoveDatabaseBlockToPage("tasks", null, ["tasks"]),
+      false
+    )
+    assert.equal(
+      canMoveDatabaseBlockToPage("tasks", "projects", ["projects"]),
+      true
+    )
+  })
+
+  test("cross-editor database drops copy or move the source block", async () => {
+    const { dropCrossEditorBlock, registerBlockDragSource } = await loadModule(
+      "/src/editor/components/editor/block-drag.ts"
+    )
+    const payload = {
+      editorId: "source-editor",
+      node: {
+        attrs: { databaseId: "tasks" },
+        type: "databaseBlock",
+      },
+      pos: 2,
+      textContent: "",
+      typeName: "databaseBlock",
+    }
+    const source = fakeEditorView()
+    const firstTarget = fakeEditorView()
+    const unregister = registerBlockDragSource("source-editor", {
+      view: source.view,
+    })
+
+    assert.equal(
+      dropCrossEditorBlock(firstTarget.view, payload, 5, "copy"),
+      true
+    )
+    assert.equal(firstTarget.dispatches.length, 1)
+    assert.equal(source.dispatches.length, 0)
+
+    const secondTarget = fakeEditorView()
+    assert.equal(
+      dropCrossEditorBlock(secondTarget.view, payload, 5, "move"),
+      true
+    )
+    assert.equal(secondTarget.dispatches.length, 1)
+    assert.equal(source.dispatches.length, 1)
+
+    unregister()
+  })
+}
+
+function fakeEditorView() {
+  const dispatches = []
+  const node = {
+    marks: [],
+    nodeSize: 1,
+    sameMarkup: () => true,
+    textContent: "",
+    type: { name: "databaseBlock" },
+  }
+  const transaction = {
+    delete() {
+      return transaction
+    },
+    insert() {
+      return transaction
+    },
+    scrollIntoView() {
+      return transaction
+    },
+  }
+  const view = {
+    dispatch(value) {
+      dispatches.push(value)
+    },
+    dom: { classList: { remove() {} } },
+    focus() {},
+    state: {
+      doc: {
+        nodeAt: () => node,
+        resolve: () => ({
+          depth: 0,
+          index: () => 0,
+          node: () => ({ canReplaceWith: () => true }),
+        }),
+      },
+      schema: { nodeFromJSON: () => node },
+      tr: transaction,
+    },
+  }
+
+  return { dispatches, view }
 }

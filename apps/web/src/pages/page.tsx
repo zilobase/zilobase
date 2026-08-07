@@ -33,8 +33,10 @@ import {
   usePage,
   usePageAccessLevel,
   usePageDatabaseIds,
+  usePageNavigation,
   useResolvedPageLayout,
 } from "@zilobase/features/pages";
+import { extractDatabaseIds } from "@zilobase/page-context";
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog";
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";
 import { useSession } from "@zilobase/features/auth";
@@ -292,6 +294,7 @@ export function PageEditorPane({
   const { data: pageDatabaseIds = [] } = usePageDatabaseIds(pageId, {
     refetchOnMount: false,
   });
+  const { data: navigation } = usePageNavigation(page?.workspaceId);
   const effectiveDatabaseId = databaseId ?? pageDatabaseIds[0] ?? null;
   const { data: userSettings } = useUserSettings();
   const { data: resolvedLayout } = useResolvedPageLayout({
@@ -312,6 +315,7 @@ export function PageEditorPane({
   const contentSaveTimeoutRef = useRef<number | null>(null);
   const lastSavedContentRef = useRef<string | null>(null);
   const lastPageBlockIdsRef = useRef<Set<string>>(new Set());
+  const requestedDatabaseEmbedKeysRef = useRef<Set<string>>(new Set());
   const pendingContentRef = useRef<unknown>(null);
   const editorContentRef = useRef<(() => unknown) | null>(null);
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
@@ -375,6 +379,45 @@ export function PageEditorPane({
     !readOnly &&
     !page?.deletedAt &&
     (accessLevel === "edit" || accessLevel === "full");
+
+  useEffect(() => {
+    if (!pageEditable || !page || !navigation) {
+      return;
+    }
+
+    const placedDatabaseIds = new Set(
+      navigation.placements
+        .filter(
+          (placement) =>
+            placement.parentKind === "page" &&
+            placement.parentId === page.id &&
+            placement.itemKind === "database",
+        )
+        .map((placement) => placement.itemId),
+    );
+
+    for (const databaseId of extractDatabaseIds(page.content)) {
+      const requestKey = `${page.id}:${databaseId}`;
+
+      if (
+        placedDatabaseIds.has(databaseId) ||
+        requestedDatabaseEmbedKeysRef.current.has(requestKey)
+      ) {
+        continue;
+      }
+
+      requestedDatabaseEmbedKeysRef.current.add(requestKey);
+      void embedPageItem
+        .mutateAsync({
+          hostPageId: page.id,
+          itemId: databaseId,
+          kind: "database",
+        })
+        .catch(() => {
+          requestedDatabaseEmbedKeysRef.current.delete(requestKey);
+        });
+    }
+  }, [embedPageItem, navigation, page, pageEditable]);
   const collaboration = usePageCollaboration({
     enabled: Boolean(
       pageEditable ||
@@ -618,6 +661,21 @@ export function PageEditorPane({
     [embedPageItem, page],
   );
 
+  const embedLinkedDatabase = useCallback(
+    async (databaseId: string) => {
+      if (!page) {
+        return;
+      }
+
+      await embedPageItem.mutateAsync({
+        hostPageId: page.id,
+        itemId: databaseId,
+        kind: "database",
+      });
+    },
+    [embedPageItem, page],
+  );
+
   const createNestedPage = useCallback(async () => {
     if (
       readOnly ||
@@ -681,6 +739,7 @@ export function PageEditorPane({
         content={page.content ?? ""}
         cover={cover}
         databaseId={effectiveDatabaseId}
+        databaseIds={pageDatabaseIds}
         editorContentRef={editorContentRef}
         editable={pageEditable && liveEditingReady}
         enableComments={enableComments}
@@ -701,6 +760,7 @@ export function PageEditorPane({
         onContentChange={updateContent}
         onCoverChange={updateCover}
         onCreatePage={createNestedPage}
+        onEmbedDatabase={embedLinkedDatabase}
         onEmbedPage={embedLinkedPage}
         onEmojiChange={updateEmoji}
         onIconPositionChange={updateIconPosition}

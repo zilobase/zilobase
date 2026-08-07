@@ -1,5 +1,11 @@
 export { createEditorDragDrop } from "./block-drag-controller"
 export type { DragDropBridge } from "./block-drag-controller"
+export { dropCrossEditorBlock } from "./block-drop"
+export {
+  canMoveDatabaseBlockToPage,
+  getBlockDragDatabaseId,
+  type BlockDragPayload,
+} from "./block-drag-session"
 
 export {
   getBlockCommentHandleRect,
@@ -20,4 +26,3 @@ export {
   registerBlockDragSource,
   startBlockDrag,
 } from "./block-drag-session"
-export type { BlockDragPayload } from "./block-drag-session"

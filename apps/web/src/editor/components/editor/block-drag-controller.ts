@@ -12,6 +12,11 @@ import {
 } from "./block-drag-session"
 
 export type DragDropBridge = {
+  deferCrossEditorDatabaseDrop: (
+    view: EditorView,
+    payload: NonNullable<ReturnType<typeof getDraggedEditorBlockPayload>>,
+    pos: number,
+  ) => boolean
   dropPageOnDatabase: (event: DragEvent) => boolean
   getView: () => EditorView | null
   insertDraggedPage: (view: EditorView, event: DragEvent) => boolean
@@ -120,6 +125,14 @@ export function createEditorDragDrop(
     const payload = getDraggedEditorBlockPayload(event.dataTransfer)
     if (payload && !isListItemType(payload.typeName)) {
       const target = getEditorInsertDropTarget(view, event)
+      if (
+        target &&
+        payload.typeName === "databaseBlock" &&
+        bridge.deferCrossEditorDatabaseDrop(view, payload, target.pos)
+      ) {
+        event.preventDefault()
+        return true
+      }
       if (target && dropEditorBlock(view, event, target.pos)) return true
     }
 

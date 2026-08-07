@@ -31,8 +31,32 @@ import { useEditorMenuEffects } from "./use-editor-menu-effects"
 import { useEditorRuntime } from "./use-editor-runtime"
 import { useMobileNodeActions } from "./use-mobile-node-actions"
 import { DatabaseView } from "@/packages/editor/extensions/database/views/database-view"
+import {
+  canMoveDatabaseBlockToPage,
+  dropCrossEditorBlock,
+  getBlockDragDatabaseId,
+  type BlockDragPayload,
+} from "@/packages/editor/components/editor/block-drag"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { UndoHistoryScope } from "@/shortcuts"
+import { toast } from "sonner"
+
+type PendingDatabaseBlockDrop = {
+  canMove: boolean
+  databaseId: string
+  payload: BlockDragPayload
+  pos: number
+}
 
 export function Editor({
   commentController,
@@ -40,6 +64,7 @@ export function Editor({
   content = starterContent,
   cover,
   databaseId,
+  databaseIds = [],
   editorContentRef,
   editable = true,
   enableComments = true,
@@ -53,6 +78,7 @@ export function Editor({
   onContentChange,
   onCoverChange,
   onCreatePage,
+  onEmbedDatabase,
   onEmbedPage,
   onEditorReady,
   onEmojiChange,
@@ -73,6 +99,8 @@ export function Editor({
   const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
   const [selectionAiPreview, setSelectionAiPreview] =
     useState<SelectionAiDiffPreview | null>(null)
+  const [pendingDatabaseBlockDrop, setPendingDatabaseBlockDrop] =
+    useState<PendingDatabaseBlockDrop | null>(null)
   const [activeLayoutTab, setActiveLayoutTab] = useState("content")
   const pendingPageEditRef = useRef<PageEditPreviewRequest | null>(null)
   const pageContentLayout = fullWidth
@@ -118,6 +146,22 @@ export function Editor({
     editorRuntimeRef,
     initialContent,
     onContentChange,
+    onCrossEditorDatabaseDrop: ({ payload, pos }) => {
+      const sourceDatabaseId = getBlockDragDatabaseId(payload)
+      if (!sourceDatabaseId) return false
+
+      setPendingDatabaseBlockDrop({
+        canMove: canMoveDatabaseBlockToPage(
+          sourceDatabaseId,
+          databaseId,
+          databaseIds,
+        ),
+        databaseId: sourceDatabaseId,
+        payload,
+        pos,
+      })
+      return true
+    },
     onEditorReady,
     onEmbedPage,
     onOpenPage,
@@ -125,6 +169,43 @@ export function Editor({
     setPasteChoice,
     pageId,
   })
+
+  const completeDatabaseBlockDrop = async (mode: "copy" | "move") => {
+    if (!editor || !pendingDatabaseBlockDrop) return
+
+    const pendingDrop = pendingDatabaseBlockDrop
+
+    if (mode === "copy" && onEmbedDatabase) {
+      try {
+        await onEmbedDatabase(pendingDrop.databaseId)
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not create the linked database view.",
+        )
+        return
+      }
+    }
+
+    const completed = dropCrossEditorBlock(
+      editor.view,
+      pendingDrop.payload,
+      pendingDrop.pos,
+      mode,
+    )
+
+    if (!completed) {
+      toast.error(
+        mode === "move"
+          ? "Could not move the database."
+          : "Could not create the linked database view.",
+      )
+      return
+    }
+
+    setPendingDatabaseBlockDrop(null)
+  }
 
   useEffect(() => {
     commentController?.setEditor(editor ?? null)
@@ -591,6 +672,45 @@ export function Editor({
   return (
     <UndoHistoryScope resetKey={pageId ?? editorId}>
       {editorBody}
+      <AlertDialog
+        onOpenChange={(open) => {
+          if (!open) setPendingDatabaseBlockDrop(null)
+        }}
+        open={pendingDatabaseBlockDrop !== null}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingDatabaseBlockDrop?.canMove
+                ? "Move database or create a linked view?"
+                : "This database can’t be moved here"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDatabaseBlockDrop?.canMove
+                ? "Move the database into this page, or leave the original where it is and create a linked view here."
+                : "This page is part of the database. Moving the database here would create a circular hierarchy, but you can create a linked view instead."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void completeDatabaseBlockDrop("copy")}
+              variant={
+                pendingDatabaseBlockDrop?.canMove ? "outline" : "default"
+              }
+            >
+              Create linked view
+            </AlertDialogAction>
+            {pendingDatabaseBlockDrop?.canMove ? (
+              <AlertDialogAction
+                onClick={() => void completeDatabaseBlockDrop("move")}
+              >
+                Move
+              </AlertDialogAction>
+            ) : null}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </UndoHistoryScope>
   )
 }
