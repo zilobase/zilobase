@@ -4,6 +4,18 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, desktop, and mobile apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.8
+
+### Changed
+
+- Strengthened inactive sidebar and database view tab text while preserving active-state emphasis.
+
+### Fixed
+
+- Guarded database section drops into sidepanel pages with explicit move and linked-view choices, preventing circular database hierarchies.
+- Persisted linked database placements and retained them beneath favorited database-row pages in sidebar navigation.
+- Made GitHub release publication idempotent so reruns update an existing release instead of failing after the image is published.
+
 ## 0.0.7
 
 ### Changed
