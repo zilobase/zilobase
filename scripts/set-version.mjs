@@ -32,6 +32,13 @@ for (const file of ["apps/desktop/src-tauri/Cargo.toml", "apps/desktop/src-tauri
   writeFileSync(file, text)
 }
 
+const cargoLockFile = "apps/desktop/src-tauri/Cargo.lock"
+const cargoLock = readFileSync(cargoLockFile, "utf8").replace(
+  /(\[\[package\]\]\nname = "zilobase-client"\nversion = ")[^"]+("\n)/,
+  `$1${version}$2`,
+)
+writeFileSync(cargoLockFile, cargoLock)
+
 const lock = JSON.parse(readFileSync("package-lock.json", "utf8"))
 lock.version = version
 lock.packages[""].version = version
