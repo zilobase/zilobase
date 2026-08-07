@@ -54,6 +54,12 @@
   will-change: flex-grow;
 }
 
+/* Keep secondary navigation legible while preserving the active-state emphasis. */
+[data-sidebar="menu-button"][data-active="false"],
+.database-toolbar [data-slot="tabs-tab"]:not([data-active]) {
+  font-weight: 450;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-panel][data-sidebar-transitioning] {
     transition: none;
