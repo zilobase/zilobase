@@ -40,7 +40,7 @@ export function buildSidebarNavigation(
   const representedFavoriteIds = new Set<string>()
 
   favorites.forEach((item) => collectItemIds(item, representedFavoriteIds))
-  const detachedFavorites = activePages
+  const detachedFavoritePages = activePages
     .filter(
       (page) => page.isFavorite && !representedFavoriteIds.has(page.id),
     )
@@ -48,7 +48,27 @@ export function buildSidebarNavigation(
       (first, second) =>
         getPageCreatedTime(first) - getPageCreatedTime(second),
     )
-    .map((page) => createPageNode(page, icons))
+  const detachedFavoriteIds = new Set(
+    detachedFavoritePages.map((page) => page.id),
+  )
+  const detachedSections = buildPageSections(
+    activePages,
+    activeDatabases,
+    placements.filter(
+      (placement) =>
+        placement.itemKind !== "page" ||
+        !detachedFavoriteIds.has(placement.itemId),
+    ),
+    icons,
+  )
+  const detachedNodesById = new Map(
+    [...detachedSections.privatePages, ...detachedSections.teamspacePages].map(
+      (item) => [item.id, item],
+    ),
+  )
+  const detachedFavorites = detachedFavoritePages.map(
+    (page) => detachedNodesById.get(page.id) ?? createPageNode(page, icons),
+  )
 
   return {
     favorites: [...favorites, ...detachedFavorites],

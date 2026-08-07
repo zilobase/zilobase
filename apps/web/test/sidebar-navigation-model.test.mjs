@@ -157,6 +157,59 @@ export function register({ assert, loadModule, test }) {
     )
     assert.equal(result.favorites[0].name, "Row page")
   })
+
+  test("detached database-row favorites keep linked database children", async () => {
+    const { buildSidebarNavigation } = await loadModule(
+      "/src/components/sidebar-navigation-model.tsx"
+    )
+    const parent = createPage(
+      "parent",
+      "Parent",
+      "2026-01-01T00:00:00.000Z"
+    )
+    const rowPage = {
+      ...createPage("row-page", "Row page", "2026-01-02T00:00:00.000Z"),
+      isFavorite: true,
+    }
+    const database = {
+      createdAt: "2026-01-01T00:00:00.000Z",
+      id: "database",
+      name: "Tasks",
+      pageId: parent.id,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      views: [],
+      workspaceId: "workspace",
+    }
+    const placements = [
+      {
+        ...createPlacement("database-placement", parent.id, database.id, 0),
+        itemKind: "database",
+      },
+      {
+        ...createPlacement("row-placement", database.id, rowPage.id, 0),
+        parentKind: "database",
+        placementKind: "database_row",
+      },
+      {
+        ...createPlacement("linked-database", rowPage.id, database.id, 0),
+        itemKind: "database",
+        placementKind: "linked",
+      },
+    ]
+
+    const result = buildSidebarNavigation(
+      [parent, rowPage],
+      [database],
+      placements,
+      icons
+    )
+
+    assert.deepEqual(
+      result.favorites[0].pages.map((item) => item.id),
+      ["database:database"]
+    )
+    assert.equal(result.favorites[0].pages[0].isLinked, true)
+  })
 }
 
 const icons = {
