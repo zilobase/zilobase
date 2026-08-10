@@ -54,6 +54,45 @@
   will-change: flex-grow;
 }
 
+[data-desktop-tabs] {
+  --desktop-tab-border: color-mix(in oklab, var(--border) 60%, transparent);
+  background-image: linear-gradient(
+    to bottom,
+    transparent calc(100% - 1px),
+    var(--desktop-tab-border) calc(100% - 1px)
+  );
+}
+
+.desktop-tab-active::before,
+.desktop-tab-active::after {
+  position: absolute;
+  bottom: 0;
+  width: 9px;
+  height: 8px;
+  pointer-events: none;
+  content: "";
+}
+
+.desktop-tab-active::before {
+  left: -8px;
+  background: radial-gradient(
+    circle at 0 0,
+    transparent 7px,
+    var(--desktop-tab-border) 7px 8px,
+    var(--background) 8px
+  );
+}
+
+.desktop-tab-active::after {
+  right: -8px;
+  background: radial-gradient(
+    circle at 100% 0,
+    transparent 7px,
+    var(--desktop-tab-border) 7px 8px,
+    var(--background) 8px
+  );
+}
+
 /* Keep secondary navigation legible while preserving the active-state emphasis. */
 [data-sidebar="menu-button"][data-active="false"],
 .database-toolbar [data-slot="tabs-tab"]:not([data-active]) {

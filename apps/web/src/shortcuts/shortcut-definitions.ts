@@ -23,6 +23,20 @@ type ShortcutKeyboardEvent = Pick<
   "altKey" | "ctrlKey" | "key" | "metaKey" | "shiftKey"
 >
 
+type ShortcutPointerEvent = Pick<
+  MouseEvent,
+  "altKey" | "button" | "ctrlKey" | "metaKey" | "shiftKey"
+>
+
+export function isOpenInNewTabShortcut(event: ShortcutPointerEvent) {
+  return (
+    event.button === 0 &&
+    (event.metaKey || event.ctrlKey) &&
+    !event.altKey &&
+    !event.shiftKey
+  )
+}
+
 export function matchesAppShortcut(
   event: ShortcutKeyboardEvent,
   shortcutId: AppShortcutId

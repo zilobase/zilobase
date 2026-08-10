@@ -5,6 +5,10 @@ import { ChevronsRightIcon, PanelRightIcon } from "lucide-react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppSearchProvider } from "@/components/app-search"
+import {
+  DesktopTabs,
+  getDesktopTabTitle,
+} from "@/components/desktop-tabs"
 import { ChatSidebarPanel, ChatSidebarTrigger } from "@/components/chat-sidebar"
 import {
   usePageSidePaneState,
@@ -49,8 +53,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { isEmbeddedMobileViewer } from "@/lib/embedded-view"
-import { useDatabase } from "@zilobase/features/databases"
 import {
+  getDatabaseEmoji,
+  useDatabase,
+} from "@zilobase/features/databases"
+import {
+  getPageEmoji,
   usePage,
   useRecordItemVisit,
 } from "@zilobase/features/pages"
@@ -147,6 +155,17 @@ function AppLayoutContent({
   const { data: hostPage } = usePage(hostPageId, {
     refetchOnMount: false,
   })
+  const desktopTabTitle =
+    (databaseId
+      ? databasePayload?.database.name.trim()
+      : pageId
+        ? hostPage?.name.trim()
+        : null) || getDesktopTabTitle(pathname)
+  const desktopTabIcon = databasePayload?.database
+    ? getDatabaseEmoji(databasePayload.database)
+    : hostPage
+      ? getPageEmoji(hostPage)
+      : null
   const recordItemVisit = useRecordItemVisit()
   const recordedVisitKeyRef = useRef<string | null>(null)
   const discussionsEnabled = Boolean(pageId && !databaseId)
@@ -425,10 +444,11 @@ function AppLayoutContent({
         settingsOpen={settingsDialogOpen}
       />
       <ResizablePanelGroup
-        className="min-h-0 min-w-0 flex-1 overflow-hidden"
+        className="relative min-h-0 min-w-0 flex-1 overflow-hidden has-data-[desktop-tabs]:pt-9"
         orientation="horizontal"
         style={{ height: "100svh" }}
       >
+        <DesktopTabs icon={desktopTabIcon} title={desktopTabTitle} />
         {/* The dock owns the width limit; keeping this minimum relaxed avoids
             clamping the layout before a sidebar transition can run. */}
         <ResizablePanel

@@ -1,4 +1,23 @@
 export function register({ assert, loadModule, test }) {
+  test("open-in-new-tab accepts an unmodified primary click", async () => {
+    const { isOpenInNewTabShortcut } = await loadModule(
+      "/src/shortcuts/shortcut-definitions.ts"
+    )
+    const event = (overrides = {}) => ({
+      altKey: false,
+      button: 0,
+      ctrlKey: false,
+      metaKey: true,
+      shiftKey: false,
+      ...overrides,
+    })
+
+    assert.equal(isOpenInNewTabShortcut(event()), true)
+    assert.equal(isOpenInNewTabShortcut(event({ metaKey: false })), false)
+    assert.equal(isOpenInNewTabShortcut(event({ button: 1 })), false)
+    assert.equal(isOpenInNewTabShortcut(event({ shiftKey: true })), false)
+  })
+
   test("app shortcuts match Command or Control primary modifiers", async () => {
     const { matchesAppShortcut } = await loadModule(
       "/src/shortcuts/shortcut-definitions.ts"

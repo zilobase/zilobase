@@ -56,6 +56,7 @@ import {
   type SidebarNavItem,
 } from "@/components/sidebar-nav-list"
 import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action"
+import { useOpenInNewTab } from "@/components/desktop-tabs"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
 import { cn } from "@/lib/utils"
@@ -395,6 +396,7 @@ export function NavPageSection({
 
 function PageItemMenu({ item }: { item: SidebarNavItem }) {
   const { isMobile } = useSidebar()
+  const openInNewTab = useOpenInNewTab()
   const location = useLocation()
   const navigate = useNavigate()
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -487,7 +489,7 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
           <DropDrawerSeparator />
           <DropDrawerItem
             onSelect={() => {
-              window.open(linkPath, "_blank", "noopener")
+              openInNewTab({ href: linkPath, title: displayName })
             }}
           >
             <ArrowUpRightIcon className="text-muted-foreground" />

@@ -37,6 +37,7 @@ import {
   type SidebarNavItem,
 } from "@/components/sidebar-nav-list"
 import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action"
+import { useOpenInNewTab } from "@/components/desktop-tabs"
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
 import {
   SidebarSectionLibraryButton,
@@ -149,6 +150,7 @@ function FavoriteItemMenu({
   onRemoveFavorite: (pageId: string) => void
 }) {
   const { isMobile } = useSidebar()
+  const openInNewTab = useOpenInNewTab()
   const linkPath =
     item.isDatabase && item.databaseId
       ? `/d/${item.databaseId}`
@@ -198,7 +200,10 @@ function FavoriteItemMenu({
         </DropDrawerItem>
         <DropDrawerItem
           onSelect={() => {
-            window.open(linkPath, "_blank", "noopener")
+            openInNewTab({
+              href: linkPath,
+              title: item.name.trim() || "Untitled",
+            })
           }}
         >
           <ArrowUpRightIcon className="text-muted-foreground" />
