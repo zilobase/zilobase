@@ -247,6 +247,8 @@ export function DatabasePageLink({
         ) : openMode === "title" ? (
           <button
             className="database-page-title database-page-title-link"
+            data-open-in-new-tab-href={`/p/${encodeURIComponent(targetPageId)}`}
+            data-open-in-new-tab-title={title}
             onClick={handleClick}
             type="button"
           >
@@ -260,6 +262,8 @@ export function DatabasePageLink({
         <button
           aria-label={`${actionLabel} ${title}`}
           className="database-page-open"
+          data-open-in-new-tab-href={`/p/${encodeURIComponent(targetPageId)}`}
+          data-open-in-new-tab-title={title}
           onClick={handleClick}
           type="button"
         >

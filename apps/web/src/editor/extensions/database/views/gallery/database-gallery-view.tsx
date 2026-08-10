@@ -168,6 +168,8 @@ export function DatabaseGalleryView() {
           <button
             aria-label={`Open ${row.page.name?.trim() || "Untitled"}`}
             className="database-gallery-preview"
+            data-open-in-new-tab-href={`/p/${encodeURIComponent(row.pageId)}`}
+            data-open-in-new-tab-title={row.page.name?.trim() || "Untitled"}
             onClick={() => onOpenPage?.(row.pageId, { databaseId })}
             type="button"
           >
@@ -183,6 +185,8 @@ export function DatabaseGalleryView() {
         <div className="database-gallery-card-content">
           <button
             className="database-gallery-card-title"
+            data-open-in-new-tab-href={`/p/${encodeURIComponent(row.pageId)}`}
+            data-open-in-new-tab-title={row.page.name?.trim() || "Untitled"}
             onClick={() => onOpenPage?.(row.pageId, { databaseId })}
             type="button"
           >

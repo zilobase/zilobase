@@ -245,6 +245,8 @@ function PageBlockView({
         <button
           className="flex h-10 w-full items-center gap-2 rounded-md bg-muted/50 px-3 text-left text-sm text-foreground transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none [&_svg]:size-4"
           contentEditable={false}
+          data-open-in-new-tab-href={`/p/${encodeURIComponent(pageId)}`}
+          data-open-in-new-tab-title={title}
           draggable
           onClick={openPage}
           onDragStart={startPageDrag}

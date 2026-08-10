@@ -227,6 +227,8 @@ const TimelineGridRowCell = memo(function TimelineGridRowCell({
       >
         <button
           className="flex h-full w-full items-center px-2 text-left"
+          data-open-in-new-tab-href={`/p/${encodeURIComponent(viewRow.item.pageId)}`}
+          data-open-in-new-tab-title={timelineItem.name}
           onClick={() => onSelectItem(viewRow.item.id)}
           type="button"
         >
