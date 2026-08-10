@@ -42,7 +42,6 @@ export function getDatabaseRowDropTarget(
   }
 
   const index = getDatabaseRowDropTargetIndex(dropTops, pointerTop)
-
   return {
     index,
     lineTop: dropTops[index] ?? dropTops[dropTops.length - 1],

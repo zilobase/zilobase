@@ -32,6 +32,7 @@ import {
 } from "../core/database-property-types";
 import {
   serializePropertyValue,
+  toStringArray,
   type DatabasePropertyValue,
 } from "../core/utils";
 import {
@@ -65,6 +66,18 @@ import {
   getDatabaseChartSettings,
   type DatabaseChartSettings,
 } from "./chart/database-chart-config";
+import {
+  getDatabaseFormHeaderSettings,
+  type DatabaseFormHeaderSettings,
+} from "./form/database-form-header-config";
+import {
+  getDatabaseFormQuestionSettingsById,
+  type DatabaseFormQuestionSettingsPatch,
+} from "./form/database-form-question-config";
+import {
+  getDatabaseFormShareSettings,
+  type DatabaseFormShareSettings,
+} from "./form/database-form-share-config";
 
 type DatabaseMutations = {
   addDatabaseView: ReturnType<typeof useAddDatabaseView>;
@@ -84,6 +97,11 @@ type NewRowPropertyValue = {
 
 type NewRowSetup = {
   parentRowId?: string | null;
+  parentRelation?: {
+    parentPropertyId: string;
+    parentRow: DatabaseRow;
+    subItemPropertyId: string;
+  };
   propertyValues: NewRowPropertyValue[];
   title: string;
 };
@@ -164,6 +182,7 @@ export function getDatabaseViewCommands({
 
   const addRowWithValues = ({
     parentRowId,
+    parentRelation,
     propertyValues,
     title,
   }: NewRowSetup) => {
@@ -190,10 +209,6 @@ export function getDatabaseViewCommands({
       },
       {
         onSuccess: (nextPayload) => {
-          if (uniquePropertyValues.size === 0) {
-            return;
-          }
-
           const addedItem = findAddedDatabaseRow(
             nextPayload.rows,
             existingItemIds,
@@ -208,6 +223,27 @@ export function getDatabaseViewCommands({
               propertyId: propertyValue.propertyId,
               rowId: addedItem.id,
               value: propertyValue.value,
+            });
+          }
+
+          if (parentRelation) {
+            const currentValue = payload?.values.find(
+              (value) =>
+                value.pageId === parentRelation.parentRow.pageId &&
+                value.propertyId === parentRelation.subItemPropertyId,
+            )?.value;
+            const nextSubItemPageIds = [
+              ...new Set([
+                ...toStringArray(currentValue as DatabasePropertyValue),
+                addedItem.pageId,
+              ]),
+            ];
+
+            updateValue.mutate({
+              databaseId,
+              propertyId: parentRelation.subItemPropertyId,
+              rowId: parentRelation.parentRow.id,
+              value: nextSubItemPageIds,
             });
           }
         },
@@ -395,8 +431,37 @@ export function getDatabaseViewCommands({
         (isKanbanView && kanbanGroupProperty?.property.type === "status"
           ? defaultStatusValue
           : null);
+      const groupSetup = getNewRowGroupSetup(nextGroupValue, nextGroupProperty);
+      const subItemsSettings = getDatabaseSubItemsSettings(
+        activeView?.config ?? payload?.database.config,
+      );
+      const parentRow = parentRowId
+        ? items.find((row) => row.id === parentRowId)
+        : undefined;
+      const parentRelation =
+        parentRow &&
+        subItemsSettings.parentPropertyId &&
+        subItemsSettings.subItemPropertyId
+          ? {
+              parentPropertyId: subItemsSettings.parentPropertyId,
+              parentRow,
+              subItemPropertyId: subItemsSettings.subItemPropertyId,
+            }
+          : undefined;
       addRowWithValues({
-        ...getNewRowGroupSetup(nextGroupValue, nextGroupProperty),
+        ...(parentRelation ? { parentRelation } : {}),
+        ...groupSetup,
+        ...(parentRelation
+          ? {
+              propertyValues: [
+                ...groupSetup.propertyValues,
+                {
+                  propertyId: parentRelation.parentPropertyId,
+                  value: [parentRelation.parentRow.pageId],
+                },
+              ],
+            }
+          : {}),
         parentRowId,
       });
     },
@@ -480,7 +545,9 @@ export function getDatabaseViewCommands({
                 { id: dragPayload.pageId, name: groupSetup.pageTitle },
                 {
                   onError: () =>
-                    toast.error("Moved the row, but couldn't update its group."),
+                    toast.error(
+                      "Moved the row, but couldn't update its group.",
+                    ),
                 },
               );
             }
@@ -557,6 +624,36 @@ export function getDatabaseViewCommands({
           },
           onError: () => {
             toast.error("Couldn't add gallery view");
+          },
+        },
+      );
+    },
+    addFormView: (hiddenPropertyIds: string[]) => {
+      if (!databaseId || addDatabaseView.isPending) {
+        return;
+      }
+
+      const existingViewIds = new Set(
+        (payload?.views ?? []).map((view) => view.id),
+      );
+
+      addDatabaseView.mutate(
+        {
+          config: { hiddenPropertyIds },
+          databaseId,
+          name: "Form",
+          type: "form",
+        },
+        {
+          onSuccess: (nextPayload) => {
+            const addedView =
+              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
+              nextPayload.views.at(-1);
+
+            setActiveViewId(addedView?.id ?? null);
+          },
+          onError: () => {
+            toast.error("Couldn't add form view");
           },
         },
       );
@@ -928,7 +1025,14 @@ export function getDatabaseViewCommands({
       });
     },
     setViewType: (
-      type: "table" | "kanban" | "timeline" | "chart" | "gallery" | "list",
+      type:
+        | "table"
+        | "kanban"
+        | "timeline"
+        | "chart"
+        | "gallery"
+        | "list"
+        | "form",
     ) => {
       if (!databaseId || !activeView?.id || type === activeView.type) {
         return;
@@ -970,6 +1074,94 @@ export function getDatabaseViewCommands({
     },
     updateDatabaseChartSettings,
     updateDatabaseLayoutSettings,
+    updateDatabaseFormHeaderSettings: (
+      settings: Partial<DatabaseFormHeaderSettings>,
+    ) => {
+      if (
+        !editable ||
+        !databaseId ||
+        !activeView?.id ||
+        activeView.type !== "form"
+      ) {
+        return;
+      }
+
+      const currentConfig =
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
+        activeView.config;
+      const nextConfig = getMergedDatabaseConfig(currentConfig, {
+        formHeader: {
+          ...getDatabaseFormHeaderSettings(currentConfig),
+          ...settings,
+        },
+      });
+
+      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
+      updateDatabaseView.mutate({
+        config: nextConfig,
+        databaseId,
+        databaseViewId: activeView.id,
+      });
+    },
+    updateDatabaseFormQuestionSettings: (
+      propertyId: string,
+      settings: DatabaseFormQuestionSettingsPatch,
+    ) => {
+      if (
+        !editable ||
+        !databaseId ||
+        !activeView?.id ||
+        activeView.type !== "form"
+      ) {
+        return;
+      }
+
+      const currentConfig =
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
+        activeView.config;
+      const currentQuestions =
+        getDatabaseFormQuestionSettingsById(currentConfig);
+      const nextConfig = getMergedDatabaseConfig(currentConfig, {
+        formQuestions: {
+          ...currentQuestions,
+          [propertyId]: {
+            ...currentQuestions[propertyId],
+            ...settings,
+          },
+        },
+      });
+
+      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
+      updateDatabaseView.mutate({
+        config: nextConfig,
+        databaseId,
+        databaseViewId: activeView.id,
+      });
+    },
+    updateDatabaseFormShareSettings: (
+      settings: Partial<DatabaseFormShareSettings>,
+    ) => {
+      if (!databaseId || !activeView?.id || activeView.type !== "form") {
+        return;
+      }
+
+      const currentConfig =
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
+        activeView.config;
+      const nextConfig = getMergedDatabaseConfig(currentConfig, {
+        formShare: {
+          ...getDatabaseFormShareSettings(currentConfig),
+          ...settings,
+        },
+      });
+
+      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
+      updateDatabaseView.mutate({
+        config: nextConfig,
+        databaseId,
+        databaseViewId: activeView.id,
+      });
+    },
     updateDatabaseSubItemsSettings: (
       settings: Partial<DatabaseSubItemsSettings>,
     ) => {

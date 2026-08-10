@@ -194,6 +194,7 @@ export function getDatabaseViewModel({
   const subItemsView = getDatabaseSubItemsView({
     filteredRows: filteredItems,
     hasFilters: activeDatabaseFilters.length > 0,
+    propertyValuesByKey,
     rows: items,
     settings: subItemsSettings,
     sortedRows: baseSortedItems,
@@ -239,6 +240,7 @@ export function getDatabaseViewModel({
     sortedItems,
     subItemChildRowIdsByParentId: subItemsView.childRowIdsByParentId,
     subItemDepthByRowId: subItemsView.depthByRowId,
+    subItemParentRowIdsByRowId: subItemsView.parentRowIdsByRowId,
     subItemsSettings,
     titlePropertyLabel,
     visibleProperties,

@@ -47,6 +47,9 @@ import type {
   DatabasePageDragPayload,
 } from "../interactions/database-page-drop"
 import type { DatabaseChartSettings } from "./chart/database-chart-config"
+import type { DatabaseFormHeaderSettings } from "./form/database-form-header-config"
+import type { DatabaseFormQuestionSettingsPatch } from "./form/database-form-question-config"
+import type { DatabaseFormShareSettings } from "./form/database-form-share-config"
 import type {
   SortableDatabaseItem,
 } from "../interactions/database-item-utils"
@@ -95,6 +98,7 @@ export type DatabaseViewContextValue = {
   ) => void
   addChartView: () => void
   addGalleryView: () => void
+  addFormView: (hiddenPropertyIds: string[]) => void
   addDraggedPageRow: (
     dragPayload: DatabasePageDragPayload,
     position: number,
@@ -126,6 +130,7 @@ export type DatabaseViewContextValue = {
   databaseConfig?: unknown
   databaseId: string | null | undefined
   databaseName?: string
+  databasePageId?: string | null
   databaseWorkspaceId?: string
   deleteDatabaseView: (view: DatabaseViewTab) => void
   duplicateDatabaseView: (view: DatabaseViewTab) => void
@@ -196,7 +201,14 @@ export type DatabaseViewContextValue = {
   setupTimelineDateProperty: () => void
   setViewGroupProperty: (groupPropertyId: string | null) => void
   setViewType: (
-    type: "table" | "kanban" | "timeline" | "chart" | "gallery" | "list"
+    type:
+      | "table"
+      | "kanban"
+      | "timeline"
+      | "chart"
+      | "gallery"
+      | "list"
+      | "form"
   ) => void
   timelineDateProperties: DatabasePropertyListItem[]
   timelineDateProperty: DatabasePropertyListItem | null
@@ -213,6 +225,7 @@ export type DatabaseViewContextValue = {
   sortedItems: SortableDatabaseItem[]
   subItemChildRowIdsByParentId: Record<string, string[]>
   subItemDepthByRowId: Record<string, number>
+  subItemParentRowIdsByRowId: Record<string, string[]>
   subItemsSettings: DatabaseSubItemsSettings
   titlePropertyLabel: string
   toggleFilterPillVisibility: () => void
@@ -233,6 +246,16 @@ export type DatabaseViewContextValue = {
     config: DatabaseNameColumnConfig
   ) => Promise<unknown> | void
   updateDatabaseFilter: (index: number, patch: DatabaseFilterUpdatePatch) => void
+  updateDatabaseFormHeaderSettings?: (
+    settings: Partial<DatabaseFormHeaderSettings>
+  ) => void
+  updateDatabaseFormQuestionSettings?: (
+    propertyId: string,
+    settings: DatabaseFormQuestionSettingsPatch
+  ) => void
+  updateDatabaseFormShareSettings?: (
+    settings: Partial<DatabaseFormShareSettings>
+  ) => void
   updateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void
   updateDatabaseSubItemsSettings: (
     settings: Partial<DatabaseSubItemsSettings>

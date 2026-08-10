@@ -555,7 +555,7 @@ function getRollupPageLinks({
   })
 }
 
-function DatabaseRelationPropertyValue({
+export function DatabaseRelationPropertyValue({
   editable,
   label,
   onOpenChange,
@@ -589,7 +589,9 @@ function DatabaseRelationPropertyValue({
     relatedDatabaseId,
     { schemaOnly: false }
   )
-  const pageOptions = relatedDatabasePayload?.rows ?? []
+  const pageOptions = (relatedDatabasePayload?.rows ?? []).filter(
+    (candidate) => candidate.pageId !== row.pageId
+  )
   const normalizedQuery = query.trim().toLowerCase()
   const filteredPageOptions = normalizedQuery
     ? pageOptions.filter((row) =>
@@ -665,17 +667,23 @@ function DatabaseRelationPropertyValue({
     }
   }
 
-  const selectedLinks = selectedPageIds.map((pageId) => (
-    <DatabasePageLink
-      editable={false}
-      key={pageId}
-      onOpen={onOpen}
-      openMode={wrapContent ? "button" : "title"}
-      pageId={pageId}
-      pageSummary={getRelationPageSummary(propertyConfig, pageId)}
-      showPageIcon
-    />
-  ))
+  const selectedLinks = selectedPageIds.map((pageId) => {
+    const relatedPage = relatedDatabasePayload?.rows.find(
+      (candidate) => candidate.pageId === pageId
+    )?.page
+
+    return (
+      <DatabasePageLink
+        editable={false}
+        key={pageId}
+        onOpen={onOpen}
+        openMode={wrapContent ? "button" : "title"}
+        pageId={pageId}
+        pageSummary={relatedPage ?? getRelationPageSummary(propertyConfig, pageId)}
+        showPageIcon
+      />
+    )
+  })
 
   if (!editable) {
     return selectedLinks.length > 0 ? (

@@ -20,18 +20,6 @@
     @apply pointer-events-none;
   }
 
-  .tiptap-editor ::selection,
-  .tiptap-editor *::selection {
-    background-color: var(--editor-selection-background);
-    color: var(--editor-selection-foreground);
-  }
-
-  .tiptap-editor ::-moz-selection,
-  .tiptap-editor *::-moz-selection {
-    background-color: var(--editor-selection-background);
-    color: var(--editor-selection-foreground);
-  }
-
   .tiptap-editor .is-editor-empty:first-child::before,
   .tiptap-editor .is-empty::before {
     @apply pointer-events-none float-left h-0 text-muted-foreground;
@@ -2117,8 +2105,18 @@
   }
 
   .database-sub-item-name {
-    @apply flex min-w-0 items-stretch;
+    @apply flex min-w-0 items-center;
     padding-left: calc(var(--database-sub-item-depth, 0) * 1.25rem);
+  }
+
+  .database-page-cell .database-page-main {
+    @apply translate-y-0.5;
+  }
+
+  .database-sub-item-name-has-toggle {
+    padding-left: calc(
+      var(--database-sub-item-depth, 0) * 1.25rem + 1.5rem
+    );
   }
 
   .database-sub-item-name > .database-cell-content {
@@ -2126,7 +2124,8 @@
   }
 
   .database-sub-item-toggle {
-    @apply relative z-20 flex w-6 shrink-0 cursor-pointer select-none items-center justify-center text-muted-foreground outline-none hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40;
+    @apply absolute inset-y-0 z-20 flex w-6 cursor-pointer select-none items-center justify-center text-muted-foreground outline-none hover:bg-muted/50 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40;
+    left: calc(var(--database-sub-item-depth, 0) * 1.25rem);
   }
 
   .database-sub-item-toggle svg {
@@ -2219,10 +2218,14 @@
 
   .database-row-drop-line {
     @apply absolute left-0 right-0 z-30;
+    left: calc(var(--database-row-drop-depth, 0) * 1.25rem);
   }
 
   .database-table-wrap[data-inline-scroll="true"] .database-row-drop-line {
-    left: var(--database-inline-scroll-offset, 0px);
+    left: calc(
+      var(--database-inline-scroll-offset, 0px) +
+        var(--database-row-drop-depth, 0) * 1.25rem
+    );
     right: auto;
     width: var(--database-inline-scroll-view-width, 100%);
   }

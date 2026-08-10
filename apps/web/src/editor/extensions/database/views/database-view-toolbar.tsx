@@ -10,12 +10,15 @@ import {
 import { Link, useNavigate } from "@tanstack/react-router"
 import {
   ArrowDownUp,
+  ArrowRight,
   ArrowUpRightIcon,
   Check,
   Copy,
   CopyPlus,
   Database,
+  Eye,
   EyeOff,
+  FilePenLine,
   Filter,
   CalendarRange,
   ChartPie,
@@ -36,6 +39,13 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker"
 import { PageIconDisplay } from "@/lib/page-icon"
@@ -68,6 +78,8 @@ import {
   getNameColumnWrapContent,
   getPropertyWrapContent,
 } from "./database-view-config"
+import { DatabaseFormShareMenu } from "./form/database-form-share-menu"
+import { DatabaseFormView } from "./form/database-form-view"
 
 function ToolbarMenuRow({
   icon,
@@ -100,6 +112,8 @@ export function DatabaseViewToolbar() {
   const [titleActionsOpen, setTitleActionsOpen] = useState(false)
   const [openViewMenuId, setOpenViewMenuId] = useState<string | null>(null)
   const [localViewSettingsOpen, setLocalViewSettingsOpen] = useState(false)
+  const [formDialogOpen, setFormDialogOpen] = useState(false)
+  const [formPreviewOpen, setFormPreviewOpen] = useState(false)
   const {
     activeConditionalColors,
     activeDatabaseFilters,
@@ -111,6 +125,7 @@ export function DatabaseViewToolbar() {
     addableSortFieldOptions,
     addDatabaseRow,
     addChartView,
+    addFormView,
     addGalleryView,
     addKanbanView,
     addListView,
@@ -206,6 +221,7 @@ export function DatabaseViewToolbar() {
     fullPage && !isMobile && onViewSettingsOpenChange ? "sidebar" : "menu"
   const canRenderAddView = canAddDatabaseViews ?? editable
   const canRenderAddRow = canAddDatabaseRows ?? editable
+  const formQuestionCount = properties.length + 1
   const allContentWrapped =
     getNameColumnWrapContent(databaseConfig) &&
     properties.every((property) =>
@@ -220,6 +236,7 @@ export function DatabaseViewToolbar() {
     }
   }
   const activeViewTab = viewTabs.find((view) => view.id === activeViewTabId)
+  const isFormView = (activeView?.type ?? activeViewTab?.type) === "form"
   const selectActiveView = (viewId: string) => {
     if (viewId === activeViewTabId) {
       return
@@ -440,6 +457,8 @@ export function DatabaseViewToolbar() {
                           ? ChartPie
                           : view.type === "gallery"
                             ? GalleryThumbnails
+                            : view.type === "form"
+                              ? FilePenLine
                             : view.type === "list"
                               ? List
                               : Table2
@@ -648,6 +667,19 @@ export function DatabaseViewToolbar() {
                             <Check className="ml-auto text-foreground" />
                           ) : null}
                         </DropDrawerItem>
+                        <DropDrawerItem
+                          disabled={!editable || view.type === "form"}
+                          onSelect={() => {
+                            selectActiveView(view.id)
+                            setViewType("form")
+                          }}
+                        >
+                          <FilePenLine />
+                          <span>Form</span>
+                          {view.type === "form" ? (
+                            <Check className="ml-auto text-foreground" />
+                          ) : null}
+                        </DropDrawerItem>
                       </DropDrawerSubContent>
                     </DropDrawerSub>
                     <DropDrawerItem
@@ -795,6 +827,13 @@ export function DatabaseViewToolbar() {
                 >
                   <ChartPie className="size-4" />
                   <span>Chart</span>
+                </DropDrawerItem>
+                <DropDrawerItem
+                  disabled={!databaseId || isAddingDatabaseView}
+                  onSelect={() => setFormDialogOpen(true)}
+                >
+                  <FilePenLine className="size-4" />
+                  <span>Form</span>
                 </DropDrawerItem>
                 <DropDrawerItem
                   disabled={
@@ -1049,7 +1088,21 @@ export function DatabaseViewToolbar() {
                 showTitle={showTitle}
                 subItemsSettings={subItemsSettings}
               />
-              {canRenderAddRow ? (
+              {isFormView ? (
+                <div className="ml-2 flex items-center gap-2">
+                  <Button
+                    aria-label="Preview form"
+                    className="h-8 gap-1.5 px-3"
+                    onClick={() => setFormPreviewOpen(true)}
+                    type="button"
+                    variant="outline"
+                  >
+                    <Eye />
+                    <span>Preview</span>
+                  </Button>
+                  <DatabaseFormShareMenu />
+                </div>
+              ) : canRenderAddRow ? (
                 <Button
                   aria-label="New page"
                   className="database-new-button"
@@ -1084,6 +1137,68 @@ export function DatabaseViewToolbar() {
           ) : null}
         </div>
       </div>
+      <Dialog open={formDialogOpen} onOpenChange={setFormDialogOpen}>
+        <DialogContent
+          className="gap-5 p-5 sm:max-w-sm"
+          showCloseButton={false}
+        >
+          <DialogHeader className="items-center gap-3 text-center">
+            <div
+              aria-hidden
+              className="flex items-center justify-center gap-3 text-muted-foreground"
+            >
+              <Table2 className="size-7" />
+              <ArrowRight className="size-5" />
+              <FilePenLine className="size-7" />
+            </div>
+            <div className="space-y-2">
+              <DialogTitle className="text-base font-semibold">
+                Auto-create form questions based on existing properties?
+              </DialogTitle>
+              <DialogDescription className="text-sm">
+                Every database property will be added as a form question.
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button
+              className="w-full"
+              disabled={isAddingDatabaseView}
+              onClick={() => {
+                setFormDialogOpen(false)
+                addFormView([])
+              }}
+              type="button"
+            >
+              Create {formQuestionCount}{" "}
+              {formQuestionCount === 1 ? "question" : "questions"}
+            </Button>
+            <Button
+              className="w-full text-muted-foreground"
+              disabled={isAddingDatabaseView}
+              onClick={() => {
+                setFormDialogOpen(false)
+                addFormView(properties.map((property) => property.id))
+              }}
+              type="button"
+              variant="ghost"
+            >
+              Start from scratch
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={formPreviewOpen} onOpenChange={setFormPreviewOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto p-0 sm:max-w-3xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Form preview</DialogTitle>
+            <DialogDescription>
+              Preview how this form appears to respondents.
+            </DialogDescription>
+          </DialogHeader>
+          <DatabaseFormView preview />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

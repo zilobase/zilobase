@@ -5,7 +5,9 @@ const mocks = vi.hoisted(() => ({
   access: vi.fn(),
   commit: vi.fn(),
   fetchDelta: vi.fn(),
+  fetchPropertyDelta: vi.fn(),
   selectResults: [] as unknown[][],
+  upsertValues: vi.fn(),
 }));
 
 vi.mock("./database-access", () => ({
@@ -15,17 +17,32 @@ vi.mock("./database-commit", () => ({
   commitDatabaseMutation: mocks.commit,
 }));
 vi.mock("./database-delta", () => ({
+  fetchDatabasePropertyDelta: mocks.fetchPropertyDelta,
   fetchDatabaseViewDelta: mocks.fetchDelta,
+}));
+vi.mock("./page-property-value-upsert", () => ({
+  upsertPagePropertyValues: mocks.upsertValues,
 }));
 vi.mock("../db", () => ({
   db: {
     select() {
       const rows = mocks.selectResults.shift() ?? [];
       const builder = {
-        from() { return builder; },
-        where() { return builder; },
-        async orderBy() { return rows; },
-        async limit() { return rows; },
+        from() {
+          return builder;
+        },
+        innerJoin() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        async orderBy() {
+          return rows;
+        },
+        async limit() {
+          return rows;
+        },
         then(resolve: (value: unknown[]) => unknown) {
           return Promise.resolve(rows).then(resolve);
         },
@@ -46,10 +63,13 @@ beforeEach(() => {
   mocks.access.mockReset();
   mocks.access.mockResolvedValue({
     id: "database-1",
+    name: "Tasks",
     workspaceId: "workspace-1",
   });
   mocks.commit.mockReset();
   mocks.fetchDelta.mockReset();
+  mocks.fetchPropertyDelta.mockReset();
+  mocks.upsertValues.mockReset();
   mocks.selectResults.length = 0;
   vi.restoreAllMocks();
 });
@@ -61,12 +81,16 @@ function transactionRecorder() {
   const tx = {
     delete() {
       return {
-        async where(value: unknown) { deletes.push(value); },
+        async where(value: unknown) {
+          deletes.push(value);
+        },
       };
     },
     insert() {
       return {
-        async values(value: unknown) { inserts.push(value); },
+        async values(value: unknown) {
+          inserts.push(value);
+        },
       };
     },
     update() {
@@ -174,6 +198,82 @@ test("updateDatabaseViewService updates supplied view fields", async () => {
     type: "board",
     updatedAt: (updates[0] as Record<string, unknown>).updatedAt,
   });
+});
+
+test("updateDatabaseViewService creates multi-value sub-item relation properties", async () => {
+  const { inserts, updates } = transactionRecorder();
+  mocks.selectResults.push(
+    [{ id: "view-1" }],
+    [],
+    [
+      { pageId: "parent-page", parentRowId: null, rowId: "parent-row" },
+      {
+        pageId: "child-page",
+        parentRowId: "parent-row",
+        rowId: "child-row",
+      },
+    ],
+    [],
+  );
+  mocks.fetchDelta.mockResolvedValue({ views: [{ id: "view-1" }] });
+  mocks.fetchPropertyDelta
+    .mockResolvedValueOnce({ properties: [{ id: "parent-column" }] })
+    .mockResolvedValueOnce({ properties: [{ id: "sub-item-column" }] });
+  vi.spyOn(crypto, "randomUUID")
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000001")
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000002")
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000003")
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000004")
+    .mockReturnValue("00000000-0000-4000-8000-000000000005");
+
+  await updateDatabaseViewService({
+    config: {
+      subItems: {
+        display: "nested",
+        enabled: true,
+        filter: "parents-only",
+        property: "sub-item",
+      },
+    },
+    databaseId: "database-1",
+    userId: "user-1",
+    viewId: "view-1",
+  });
+
+  assert.equal((inserts[0] as Record<string, unknown>).name, "Parent item");
+  assert.equal((inserts[2] as Record<string, unknown>).name, "Sub-item");
+  assert.deepEqual(
+    (updates.at(-1) as { config: { subItems: unknown } }).config.subItems,
+    {
+      display: "nested",
+      enabled: true,
+      filter: "parents-only",
+      parentPropertyId: "00000000-0000-4000-8000-000000000001",
+      property: "sub-item",
+      subItemPropertyId: "00000000-0000-4000-8000-000000000002",
+    },
+  );
+  assert.deepEqual(
+    mocks.upsertValues.mock.calls[0]?.[1].map(
+      ({ pageId, propertyId, value }: Record<string, unknown>) => ({
+        pageId,
+        propertyId,
+        value,
+      }),
+    ),
+    [
+      {
+        pageId: "child-page",
+        propertyId: "00000000-0000-4000-8000-000000000001",
+        value: ["parent-page"],
+      },
+      {
+        pageId: "parent-page",
+        propertyId: "00000000-0000-4000-8000-000000000002",
+        value: ["child-page"],
+      },
+    ],
+  );
 });
 
 test("updateDatabaseViewService rejects missing views", async () => {

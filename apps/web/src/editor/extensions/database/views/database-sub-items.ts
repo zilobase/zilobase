@@ -2,6 +2,7 @@ import type { DatabaseSubItemsSettings } from "./database-view-config"
 
 type SubItemRow = {
   id: string
+  pageId?: string
   parentRowId?: string | null
   position: number
 }
@@ -11,28 +12,214 @@ type SubItemHierarchyRow = Pick<SubItemRow, "id" | "parentRowId">
 export type DatabaseSubItemsView<Row extends SubItemRow> = {
   childRowIdsByParentId: Record<string, string[]>
   depthByRowId: Record<string, number>
+  parentRowIdsByRowId: Record<string, string[]>
   rows: Row[]
+}
+
+export type DatabaseSubItemRelationChange = {
+  currentValue: string | string[]
+  nextValue: string[]
+  propertyId: string
+  rowId: string
+}
+
+export function getDatabaseSubItemLineParentRowId<Row extends { id: string }>({
+  childRowIdsByParentId,
+  collapsedRowIds,
+  parentRowIdsByRowId,
+  preferPreviousRowAsParent = false,
+  rows,
+  targetIndex,
+}: {
+  childRowIdsByParentId: Record<string, string[]>
+  collapsedRowIds: ReadonlySet<string>
+  parentRowIdsByRowId: Record<string, string[]>
+  preferPreviousRowAsParent?: boolean
+  rows: Row[]
+  targetIndex: number
+}): string | null {
+  const nextRow = rows[targetIndex]
+  const previousRow = rows[targetIndex - 1]
+
+  if (preferPreviousRowAsParent && previousRow) return previousRow.id
+
+  const nextParentRowId = nextRow
+    ? parentRowIdsByRowId[nextRow.id]?.[0]
+    : undefined
+
+  if (nextParentRowId) return nextParentRowId
+
+  if (
+    previousRow &&
+    collapsedRowIds.has(previousRow.id) &&
+    (childRowIdsByParentId[previousRow.id]?.length ?? 0) > 0
+  ) {
+    return previousRow.id
+  }
+
+  return nextRow
+    ? null
+    : previousRow
+      ? parentRowIdsByRowId[previousRow.id]?.[0] ?? null
+      : null
+}
+
+export function getDatabaseSubItemRelationChanges<Row extends SubItemRow>({
+  draggedRowId,
+  parentPropertyId,
+  propertyValuesByKey,
+  rows,
+  subItemPropertyId,
+  targetParentRowId,
+}: {
+  draggedRowId: string
+  parentPropertyId: string
+  propertyValuesByKey: Record<string, string | string[]>
+  rows: Row[]
+  subItemPropertyId: string
+  targetParentRowId: string | null
+}): DatabaseSubItemRelationChange[] | null {
+  const rowsById = new Map(rows.map((row) => [row.id, row]))
+  const draggedRow = rowsById.get(draggedRowId)
+  const targetParentRow = targetParentRowId
+    ? rowsById.get(targetParentRowId)
+    : undefined
+
+  if (
+    !draggedRow?.pageId ||
+    (targetParentRowId && !targetParentRow?.pageId) ||
+    draggedRow.id === targetParentRow?.id
+  ) {
+    return null
+  }
+
+  const childrenByPageId = new Map<string, Set<string>>()
+  const addChild = (parentPageId: string, childPageId: string) => {
+    const children = childrenByPageId.get(parentPageId) ?? new Set<string>()
+    children.add(childPageId)
+    childrenByPageId.set(parentPageId, children)
+  }
+
+  for (const row of rows) {
+    if (!row.pageId) continue
+
+    for (const parentPageId of toRelationPageIds(
+      propertyValuesByKey[`${row.pageId}:${parentPropertyId}`]
+    )) {
+      addChild(parentPageId, row.pageId)
+    }
+
+    for (const childPageId of toRelationPageIds(
+      propertyValuesByKey[`${row.pageId}:${subItemPropertyId}`]
+    )) {
+      addChild(row.pageId, childPageId)
+    }
+  }
+
+  if (targetParentRow?.pageId) {
+    const pending = [draggedRow.pageId]
+    const visited = new Set<string>()
+
+    while (pending.length > 0) {
+      const pageId = pending.shift()!
+      if (visited.has(pageId)) continue
+      if (pageId === targetParentRow.pageId) return null
+      visited.add(pageId)
+      pending.push(...(childrenByPageId.get(pageId) ?? []))
+    }
+  }
+
+  const changes: DatabaseSubItemRelationChange[] = []
+  const currentParentValue =
+    propertyValuesByKey[`${draggedRow.pageId}:${parentPropertyId}`] ?? ""
+  const currentParentPageIds = toRelationPageIds(currentParentValue)
+  const nextParentValue = targetParentRow?.pageId
+    ? [
+        targetParentRow.pageId,
+        ...currentParentPageIds.filter(
+          (pageId) => pageId !== targetParentRow.pageId
+        ),
+      ]
+    : []
+
+  addRelationChange(changes, {
+    currentValue: currentParentValue,
+    nextValue: nextParentValue,
+    propertyId: parentPropertyId,
+    rowId: draggedRow.id,
+  })
+
+  for (const row of rows) {
+    if (!row.pageId) continue
+
+    const currentValue =
+      propertyValuesByKey[`${row.pageId}:${subItemPropertyId}`] ?? ""
+    const currentPageIds = toRelationPageIds(currentValue)
+    const nextValue = targetParentRow?.pageId
+      ? row.id === targetParentRow.id &&
+        !currentPageIds.includes(draggedRow.pageId)
+        ? [...currentPageIds, draggedRow.pageId]
+        : currentPageIds
+      : currentPageIds.filter((pageId) => pageId !== draggedRow.pageId)
+
+    addRelationChange(changes, {
+      currentValue,
+      nextValue,
+      propertyId: subItemPropertyId,
+      rowId: row.id,
+    })
+  }
+
+  return changes
+}
+
+function addRelationChange(
+  changes: DatabaseSubItemRelationChange[],
+  change: DatabaseSubItemRelationChange
+) {
+  const currentPageIds = toRelationPageIds(change.currentValue)
+
+  if (
+    currentPageIds.length !== change.nextValue.length ||
+    currentPageIds.some((pageId, index) => pageId !== change.nextValue[index])
+  ) {
+    changes.push(change)
+  }
+}
+
+function toRelationPageIds(value: string | string[] | undefined) {
+  return [...new Set(Array.isArray(value) ? value : value ? [value] : [])]
 }
 
 export function getSubItemCreateRowsAfterRow<Row extends SubItemHierarchyRow>({
   expandedRowIds,
+  parentRowIdsByRowId,
   rows,
 }: {
   expandedRowIds: ReadonlySet<string>
+  parentRowIdsByRowId?: Record<string, string[]>
   rows: Row[]
 }): Record<string, string[]> {
   const rowsById = new Map(rows.map((row) => [row.id, row]))
   const createRowIdsByAfterRowId: Record<string, string[]> = {}
 
+  const getParentRowIds = (row: Row | undefined) =>
+    row
+      ? (parentRowIdsByRowId?.[row.id] ??
+        (row.parentRowId ? [row.parentRowId] : []))
+      : []
+
   const isDescendantOf = (row: Row | undefined, ancestorRowId: string) => {
     const seen = new Set<string>()
-    let parentRowId = row?.parentRowId
+    const pending = [...getParentRowIds(row)]
 
-    while (parentRowId && !seen.has(parentRowId)) {
+    while (pending.length > 0) {
+      const parentRowId = pending.shift()!
+      if (seen.has(parentRowId)) continue
       if (parentRowId === ancestorRowId) return true
 
       seen.add(parentRowId)
-      parentRowId = rowsById.get(parentRowId)?.parentRowId
+      pending.push(...getParentRowIds(rowsById.get(parentRowId)))
     }
 
     return false
@@ -42,10 +229,14 @@ export function getSubItemCreateRowsAfterRow<Row extends SubItemHierarchyRow>({
     const nextRow = rows[index + 1]
     const createRowIds: string[] = []
     const seen = new Set<string>()
-    let currentRow: Row | undefined = row
+    const pending = [row.id]
 
-    while (currentRow && !seen.has(currentRow.id)) {
-      seen.add(currentRow.id)
+    while (pending.length > 0) {
+      const currentRowId = pending.shift()!
+      if (seen.has(currentRowId)) continue
+      const currentRow = rowsById.get(currentRowId)
+      if (!currentRow) continue
+      seen.add(currentRowId)
 
       if (
         expandedRowIds.has(currentRow.id) &&
@@ -54,9 +245,7 @@ export function getSubItemCreateRowsAfterRow<Row extends SubItemHierarchyRow>({
         createRowIds.push(currentRow.id)
       }
 
-      currentRow = currentRow.parentRowId
-        ? rowsById.get(currentRow.parentRowId)
-        : undefined
+      pending.push(...getParentRowIds(currentRow))
     }
 
     if (createRowIds.length > 0) {
@@ -73,12 +262,14 @@ export function getDatabaseSubItemsView<Row extends SubItemRow>({
   rows,
   settings,
   sortedRows,
+  propertyValuesByKey,
 }: {
   filteredRows: Row[]
   hasFilters: boolean
   rows: Row[]
   settings: DatabaseSubItemsSettings
   sortedRows: Row[]
+  propertyValuesByKey?: Record<string, string | string[]>
 }): DatabaseSubItemsView<Row> {
   const hierarchyEnabled = settings.enabled && settings.display !== "disabled"
 
@@ -86,19 +277,71 @@ export function getDatabaseSubItemsView<Row extends SubItemRow>({
     return {
       childRowIdsByParentId: {},
       depthByRowId: Object.fromEntries(sortedRows.map((row) => [row.id, 0])),
+      parentRowIdsByRowId: {},
       rows: sortedRows,
     }
   }
 
   const rowsById = new Map(rows.map((row) => [row.id, row]))
+  const rowByPageId = new Map(
+    rows.flatMap((row) => (row.pageId ? [[row.pageId, row] as const] : [])),
+  )
   const childrenByParentId = new Map<string, Row[]>()
+  const parentRowIdsByRowId: Record<string, string[]> = {}
+  const usesRelationProperties = Boolean(
+    settings.parentPropertyId || settings.subItemPropertyId,
+  )
 
-  for (const row of rows) {
-    if (!row.parentRowId || !rowsById.has(row.parentRowId)) continue
+  const addRelationship = (parent: Row | undefined, child: Row | undefined) => {
+    if (!parent || !child || parent.id === child.id) return
 
-    const children = childrenByParentId.get(row.parentRowId) ?? []
-    children.push(row)
-    childrenByParentId.set(row.parentRowId, children)
+    const parentIds = parentRowIdsByRowId[child.id] ?? []
+    if (!parentIds.includes(parent.id)) parentIds.push(parent.id)
+    parentRowIdsByRowId[child.id] = parentIds
+
+    const children = childrenByParentId.get(parent.id) ?? []
+    if (!children.some((row) => row.id === child.id)) children.push(child)
+    childrenByParentId.set(parent.id, children)
+  }
+
+  if (
+    usesRelationProperties &&
+    propertyValuesByKey &&
+    settings.property === "parent-item" &&
+    settings.parentPropertyId
+  ) {
+    for (const child of rows) {
+      if (!child.pageId) continue
+      const value =
+        propertyValuesByKey[`${child.pageId}:${settings.parentPropertyId}`]
+      const parentPageIds = Array.isArray(value) ? value : value ? [value] : []
+
+      for (const parentPageId of parentPageIds) {
+        addRelationship(rowByPageId.get(parentPageId), child)
+      }
+    }
+  } else if (
+    usesRelationProperties &&
+    propertyValuesByKey &&
+    settings.subItemPropertyId
+  ) {
+    for (const parent of rows) {
+      if (!parent.pageId) continue
+      const value =
+        propertyValuesByKey[`${parent.pageId}:${settings.subItemPropertyId}`]
+      const childPageIds = Array.isArray(value) ? value : value ? [value] : []
+
+      for (const childPageId of childPageIds) {
+        addRelationship(parent, rowByPageId.get(childPageId))
+      }
+    }
+  } else {
+    for (const row of rows) {
+      addRelationship(
+        row.parentRowId ? rowsById.get(row.parentRowId) : undefined,
+        row,
+      )
+    }
   }
 
   const selectedRowIds = getSelectedRowIds({
@@ -108,6 +351,7 @@ export function getDatabaseSubItemsView<Row extends SubItemRow>({
     rows,
     rowsById,
     settings,
+    parentRowIdsByRowId,
   })
   const sortIndexByRowId = new Map(
     sortedRows.map((row, index) => [row.id, index]),
@@ -135,35 +379,59 @@ export function getDatabaseSubItemsView<Row extends SubItemRow>({
     return {
       childRowIdsByParentId,
       depthByRowId: Object.fromEntries(selectedRows.map((row) => [row.id, 0])),
+      parentRowIdsByRowId,
       rows: selectedRows,
     }
   }
 
   const selectedRowsById = new Map(selectedRows.map((row) => [row.id, row]))
+  const getDisplayedParentRowId = (row: Row) =>
+    (parentRowIdsByRowId[row.id] ?? []).find((parentRowId) =>
+      selectedRowsById.has(parentRowId)
+    )
   const rootRows = selectedRows.filter(
-    (row) => !row.parentRowId || !selectedRowsById.has(row.parentRowId),
+    (row) => !getDisplayedParentRowId(row)
   )
   const orderedRows: Row[] = []
   const depthByRowId: Record<string, number> = {}
+  const displayedChildRowIdsByParentId: Record<string, string[]> = {}
+  const displayedParentRowIdsByRowId: Record<string, string[]> = {}
   const visited = new Set<string>()
 
-  const visit = (row: Row, depth: number) => {
-    if (visited.has(row.id)) return
+  const visit = (row: Row, depth: number, parentRowId?: string) => {
+    if (visited.has(row.id)) return false
 
     visited.add(row.id)
     orderedRows.push(row)
     depthByRowId[row.id] = depth
+    if (parentRowId) displayedParentRowIdsByRowId[row.id] = [parentRowId]
 
     for (const childRowId of childRowIdsByParentId[row.id] ?? []) {
       const child = selectedRowsById.get(childRowId)
-      if (child) visit(child, depth + 1)
+      if (
+        child &&
+        getDisplayedParentRowId(child) === row.id &&
+        visit(child, depth + 1, row.id)
+      ) {
+        displayedChildRowIdsByParentId[row.id] = [
+          ...(displayedChildRowIdsByParentId[row.id] ?? []),
+          child.id,
+        ]
+      }
     }
+
+    return true
   }
 
   rootRows.sort(compareRows).forEach((row) => visit(row, 0))
   selectedRows.forEach((row) => visit(row, 0))
 
-  return { childRowIdsByParentId, depthByRowId, rows: orderedRows }
+  return {
+    childRowIdsByParentId: displayedChildRowIdsByParentId,
+    depthByRowId,
+    parentRowIdsByRowId: displayedParentRowIdsByRowId,
+    rows: orderedRows,
+  }
 }
 
 function getSelectedRowIds<Row extends SubItemRow>({
@@ -173,6 +441,7 @@ function getSelectedRowIds<Row extends SubItemRow>({
   rows,
   rowsById,
   settings,
+  parentRowIdsByRowId,
 }: {
   childrenByParentId: Map<string, Row[]>
   filteredRows: Row[]
@@ -180,6 +449,7 @@ function getSelectedRowIds<Row extends SubItemRow>({
   rows: Row[]
   rowsById: Map<string, Row>
   settings: DatabaseSubItemsSettings
+  parentRowIdsByRowId: Record<string, string[]>
 }) {
   if (!hasFilters) return new Set(rows.map((row) => row.id))
 
@@ -187,15 +457,12 @@ function getSelectedRowIds<Row extends SubItemRow>({
   const selectedRowIds = new Set<string>()
 
   const addAncestors = (row: Row) => {
-    const seen = new Set<string>()
-    let current: Row | undefined = row
+    if (selectedRowIds.has(row.id)) return
 
-    while (current && !seen.has(current.id)) {
-      seen.add(current.id)
-      selectedRowIds.add(current.id)
-      current = current.parentRowId
-        ? rowsById.get(current.parentRowId)
-        : undefined
+    selectedRowIds.add(row.id)
+    for (const parentRowId of parentRowIdsByRowId[row.id] ?? []) {
+      const parent = rowsById.get(parentRowId)
+      if (parent) addAncestors(parent)
     }
   }
   const addDescendants = (row: Row) => {
@@ -209,7 +476,11 @@ function getSelectedRowIds<Row extends SubItemRow>({
 
   if (settings.filter === "parents-only") {
     rows
-      .filter((row) => !row.parentRowId && matchingRowIds.has(row.id))
+      .filter(
+        (row) =>
+          (parentRowIdsByRowId[row.id]?.length ?? 0) === 0 &&
+          matchingRowIds.has(row.id),
+      )
       .forEach(addDescendants)
     return selectedRowIds
   }
@@ -218,7 +489,8 @@ function getSelectedRowIds<Row extends SubItemRow>({
     .filter(
       (row) =>
         matchingRowIds.has(row.id) &&
-        (settings.filter !== "sub-items-only" || Boolean(row.parentRowId)),
+        (settings.filter !== "sub-items-only" ||
+          (parentRowIdsByRowId[row.id]?.length ?? 0) > 0),
     )
     .forEach(addAncestors)
 

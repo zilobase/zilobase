@@ -1,6 +1,7 @@
 import {
   CalendarRange,
   ChartPie,
+  FilePenLine,
   GalleryThumbnails,
   Kanban,
   List,
@@ -14,6 +15,7 @@ export const databaseViewTypeOptions = [
   { icon: List, label: "List", type: "list" },
   { icon: GalleryThumbnails, label: "Gallery", type: "gallery" },
   { icon: ChartPie, label: "Chart", type: "chart" },
+  { icon: FilePenLine, label: "Form", type: "form" },
 ] as const;
 
 export type DatabaseViewType = (typeof databaseViewTypeOptions)[number]["type"];

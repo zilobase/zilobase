@@ -93,6 +93,7 @@ export function useDatabaseViewController({
   const addRow = useAddDatabaseRow()
   const updateValue = useUpdateDatabasePropertyValue()
   const updatePage = useUpdatePage()
+  const subItemMigrationRequestsRef = useRef(new Set<string>())
   const { data: hostPage } = usePage(pageId, {
     refetchOnMount: false,
   })
@@ -276,11 +277,50 @@ export function useDatabaseViewController({
     sortedItems,
     subItemChildRowIdsByParentId,
     subItemDepthByRowId,
+    subItemParentRowIdsByRowId,
     subItemsSettings,
     titlePropertyLabel,
     visibleProperties,
     visiblePropertyCount,
   } = viewModel
+  useEffect(() => {
+    if (
+      !editable ||
+      !activeDatabaseId ||
+      !activeView?.id ||
+      !subItemsSettings.enabled ||
+      (subItemsSettings.parentPropertyId &&
+        subItemsSettings.subItemPropertyId)
+    ) {
+      return
+    }
+
+    const requestKey = `${activeDatabaseId}:${activeView.id}`
+    if (subItemMigrationRequestsRef.current.has(requestKey)) return
+
+    subItemMigrationRequestsRef.current.add(requestKey)
+    updateDatabaseView.mutate(
+      {
+        config: getMergedDatabaseConfig(activeView.config, {
+          subItems: subItemsSettings,
+        }),
+        databaseId: activeDatabaseId,
+        databaseViewId: activeView.id,
+      },
+      {
+        onError: () => {
+          subItemMigrationRequestsRef.current.delete(requestKey)
+        },
+      },
+    )
+  }, [
+    activeDatabaseId,
+    activeView?.config,
+    activeView?.id,
+    editable,
+    subItemsSettings,
+    updateDatabaseView,
+  ])
   useEffect(() => {
     const nextDatabaseTitle =
       activePayload?.database.name ?? activeLinkedDatabaseView?.databaseName
@@ -596,6 +636,7 @@ export function useDatabaseViewController({
     addableSortFieldOptions,
     addDatabaseProperty: commands.addDatabaseProperty,
     addChartView: commands.addChartView,
+    addFormView: commands.addFormView,
     addGalleryView: commands.addGalleryView,
     addDraggedPageRow: commands.addDraggedPageRow,
     addKanbanView: commands.addKanbanView,
@@ -620,6 +661,7 @@ export function useDatabaseViewController({
     databaseConfig: activePayload?.database.config,
     databaseId: activeDatabaseId,
     databaseName: activePayload?.database.name,
+    databasePageId: activePayload?.database.pageId,
     databaseWorkspaceId: activePayload?.database.workspaceId,
     deleteDatabaseView: deleteDatabaseViewByTab,
     duplicateDatabaseView,
@@ -693,6 +735,7 @@ export function useDatabaseViewController({
     sortedItems,
     subItemChildRowIdsByParentId,
     subItemDepthByRowId,
+    subItemParentRowIdsByRowId,
     subItemsSettings,
     togglePropertyVisibility: commands.togglePropertyVisibility,
     toggleFilterPillVisibility: commands.toggleFilterPillVisibility,
@@ -702,6 +745,10 @@ export function useDatabaseViewController({
     updateDatabaseChartSettings: commands.updateDatabaseChartSettings,
     updateDatabaseLayoutSettings: commands.updateDatabaseLayoutSettings,
     updateDatabaseFilter: commands.updateDatabaseFilter,
+    updateDatabaseFormHeaderSettings: commands.updateDatabaseFormHeaderSettings,
+    updateDatabaseFormQuestionSettings:
+      commands.updateDatabaseFormQuestionSettings,
+    updateDatabaseFormShareSettings: commands.updateDatabaseFormShareSettings,
     updateNameColumnConfig: commands.updateNameColumnConfig,
     updateDatabaseSort: commands.updateDatabaseSort,
     updateDatabaseSubItemsSettings: commands.updateDatabaseSubItemsSettings,

@@ -1399,6 +1399,206 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(activeViewIds, ["view-chart"]);
   });
 
+  test("database view commands create forms with normal view visibility", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-commands.ts",
+    );
+    const addDatabaseView = createMutation();
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: null,
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addDatabaseView }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.addFormView([]);
+    commands.addFormView(["property-status", "property-rollup"]);
+
+    assert.deepEqual(
+      addDatabaseView.calls.map(([input]) => input),
+      [
+        {
+          config: { hiddenPropertyIds: [] },
+          databaseId,
+          name: "Form",
+          type: "form",
+        },
+        {
+          config: {
+            hiddenPropertyIds: ["property-status", "property-rollup"],
+          },
+          databaseId,
+          name: "Form",
+          type: "form",
+        },
+      ],
+    );
+  });
+
+  test("database view commands persist form sharing per view", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-commands.ts",
+    );
+    const updateDatabaseView = createMutation();
+    let latestViewConfig;
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: {
+          hiddenPropertyIds: ["property-rollup"],
+          formShare: {
+            anonymousResponses: true,
+            fillAccess: "workspace",
+            submissionAccess: "none",
+          },
+        },
+        id: "view-form",
+        name: "Form",
+        type: "form",
+      },
+      databaseId,
+      editable: true,
+      getLatestViewConfig: (_databaseId, _viewId, fallbackConfig) =>
+        latestViewConfig ?? fallbackConfig,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ updateDatabaseView }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+      setLatestViewConfig: (_databaseId, _viewId, config) => {
+        latestViewConfig = config;
+      },
+    });
+
+    commands.updateDatabaseFormShareSettings({ anonymousResponses: false });
+    commands.updateDatabaseFormShareSettings({ submissionAccess: "comment" });
+
+    assert.deepEqual(
+      updateDatabaseView.calls.map(([input]) => input),
+      [
+        {
+          config: {
+            hiddenPropertyIds: ["property-rollup"],
+            formShare: {
+              anonymousResponses: false,
+              fillAccess: "workspace",
+              submissionAccess: "none",
+            },
+          },
+          databaseId,
+          databaseViewId: "view-form",
+        },
+        {
+          config: {
+            hiddenPropertyIds: ["property-rollup"],
+            formShare: {
+              anonymousResponses: false,
+              fillAccess: "workspace",
+              submissionAccess: "comment",
+            },
+          },
+          databaseId,
+          databaseViewId: "view-form",
+        },
+      ],
+    );
+  });
+
+  test("database view commands persist form page headers per view", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-commands.ts",
+    );
+    const updateDatabaseView = createMutation();
+    let latestViewConfig;
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: {
+          formHeader: {
+            cover: "",
+            description: "",
+            icon: "",
+            iconPosition: "inline",
+            title: "",
+          },
+          hiddenPropertyIds: ["property-rollup"],
+        },
+        id: "view-form",
+        name: "Form",
+        type: "form",
+      },
+      databaseId,
+      editable: true,
+      getLatestViewConfig: (_databaseId, _viewId, fallbackConfig) =>
+        latestViewConfig ?? fallbackConfig,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ updateDatabaseView }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+      setLatestViewConfig: (_databaseId, _viewId, config) => {
+        latestViewConfig = config;
+      },
+    });
+
+    commands.updateDatabaseFormHeaderSettings({ title: "Project request" });
+    commands.updateDatabaseFormHeaderSettings({
+      description: "Tell us what you need.",
+    });
+
+    assert.deepEqual(
+      updateDatabaseView.calls.map(([input]) => input.config),
+      [
+        {
+          formHeader: {
+            cover: "",
+            description: "",
+            icon: "",
+            iconPosition: "inline",
+            title: "Project request",
+          },
+          hiddenPropertyIds: ["property-rollup"],
+        },
+        {
+          formHeader: {
+            cover: "",
+            description: "Tell us what you need.",
+            icon: "",
+            iconPosition: "inline",
+            title: "Project request",
+          },
+          hiddenPropertyIds: ["property-rollup"],
+        },
+      ],
+    );
+  });
+
   test("database view commands add list and gallery views", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/editor/extensions/database/views/database-view-commands.ts",

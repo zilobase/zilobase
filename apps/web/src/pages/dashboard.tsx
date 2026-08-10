@@ -379,6 +379,7 @@ export default function DashboardPage({
                   addDatabaseProperty: () => {},
                   addDatabaseRow: () => {},
                   addChartView: () => {},
+                  addFormView: () => {},
                   addGalleryView: () => {},
                   addDraggedPageRow: () => {},
                   addKanbanView: () => {},

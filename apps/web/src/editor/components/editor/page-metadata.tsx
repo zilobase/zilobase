@@ -15,7 +15,11 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker"
 import { PageIconDisplay } from "@/lib/page-icon"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 import { usePageEditorComments } from "@/components/page-editor-comments"
 import { useSession } from "@zilobase/features/auth"
@@ -45,6 +49,7 @@ import { DatabasePropertyDate } from "../../extensions/database/properties/datab
 import { DatabasePropertyButton } from "../../extensions/database/properties/database-property-button"
 import { DatabasePropertyFiles } from "../../extensions/database/properties/database-property-files"
 import { DatabasePropertyInput } from "../../extensions/database/properties/database-property-input"
+import { DatabaseRelationPropertyValue } from "../../extensions/database/properties/database-property-value"
 import { DatabasePropertySelect } from "../../extensions/database/properties/database-property-select"
 import { getDatabasePropertyType } from "../../extensions/database/core/database-property-types"
 import { defaultStatusOptions } from "../../extensions/database/core/database-property-types"
@@ -69,21 +74,26 @@ type PageMetadataProps = {
   collaborationUsers?: CollaborationUser[]
   cover?: string
   databaseId?: string | null
+  description?: string
+  descriptionPlaceholder?: string
   editable?: boolean
   enableComments?: boolean
   forceDiscussionsExpanded?: boolean
+  headingLabel?: string
   icon?: string
   iconPosition?: PageIconPosition
   layoutConfig?: PageLayoutConfig
   layoutPropertyId?: string
   layoutSection?: "heading" | "properties" | "discussions"
   onCoverChange?: (cover: string) => void
+  onDescriptionChange?: (description: string) => void
   onIconChange?: (icon: string) => void
   onIconPositionChange?: (position: PageIconPosition) => void
   onTitleEnter?: () => void
   onTitleChange?: (title: string) => void
   workspaceId?: string | null
   title?: string
+  titlePlaceholder?: string
   pageId?: string | null
   ref?: Ref<PageMetadataHandle>
 }
@@ -104,7 +114,8 @@ function PageDatabaseRealtimeSubscription({
   ) => void
   target: PagePropertyPresenceTarget
 }) {
-  const presence = activePropertyId && target.propertyIds.includes(activePropertyId)
+  const presence =
+    activePropertyId && target.propertyIds.includes(activePropertyId)
     ? {
         columnKey: activePropertyId,
         rowId: target.rowId,
@@ -144,18 +155,22 @@ function PagePropertyPresence({
     >
       <span
         className="database-cell-presence-border"
-        style={{
+        style={
+          {
           "--database-presence-color": collaborators[0]?.color,
-        } as CSSProperties}
+          } as CSSProperties
+        }
       />
       <span className="database-cell-presence-stack">
         {collaborators.slice(0, 3).map((collaborator) => (
           <span
             className="database-cell-presence-dot"
             key={collaborator.sessionId}
-            style={{
+            style={
+              {
               "--database-presence-color": collaborator.color,
-            } as CSSProperties}
+              } as CSSProperties
+            }
           />
         ))}
       </span>
@@ -182,21 +197,26 @@ export function PageMetadata({
   contentClassName,
   cover: coverProp,
   databaseId,
+  description: descriptionProp,
+  descriptionPlaceholder = "Description (optional)",
   editable = true,
   enableComments = true,
   forceDiscussionsExpanded = false,
+  headingLabel,
   icon: iconProp,
   iconPosition: iconPositionProp,
   layoutConfig,
   layoutPropertyId,
   layoutSection,
   onCoverChange,
+  onDescriptionChange,
   onIconChange,
   onIconPositionChange,
   onTitleEnter,
   onTitleChange,
   workspaceId,
   title: titleProp,
+  titlePlaceholder,
   pageId,
   ref,
 }: PageMetadataProps) {
@@ -206,15 +226,20 @@ export function PageMetadata({
   const [localIcon, setLocalIcon] = useState("")
   const [localIconPosition, setLocalIconPosition] =
     useState<PageIconPosition>("inline")
+  const [localDescription, setLocalDescription] = useState("")
   const [localTitle, setLocalTitle] = useState("")
   const [commentsOpen, setCommentsOpen] = useState(false)
-  const [draftValues, setDraftValues] = useState<Record<string, DatabasePropertyValue>>({})
+  const [draftValues, setDraftValues] = useState<
+    Record<string, DatabasePropertyValue>
+  >({})
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null)
   const [presenceByDatabase, setPresenceByDatabase] = useState<
     Record<string, Record<string, DatabasePresenceCollaborator[]>>
   >({})
   const titleRowRef = useRef<HTMLDivElement | null>(null)
   const titleRef = useRef<HTMLTextAreaElement | null>(null)
+  const descriptionRowRef = useRef<HTMLDivElement | null>(null)
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null)
   const { editorCommentsOpenRequest } = usePageEditorComments()
   const { data: propertyPayload } = usePageProperties(pageId, {
     databaseId,
@@ -231,7 +256,8 @@ export function PageMetadata({
   })
   const { data: session } = useSession()
   const presenceTargets = propertyPayload?.presenceTargets ?? []
-  const updateDatabasePresence = useCallback((
+  const updateDatabasePresence = useCallback(
+    (
     realtimeDatabaseId: string,
     presence: Record<string, DatabasePresenceCollaborator[]> | null,
   ) => {
@@ -248,7 +274,9 @@ export function PageMetadata({
 
       return { ...current, [realtimeDatabaseId]: presence }
     })
-  }, [])
+    },
+    [],
+  )
   const propertyPresenceById = useMemo(() => {
     const result: Record<string, DatabasePresenceCollaborator[]> = {}
 
@@ -272,20 +300,33 @@ export function PageMetadata({
 
     return result
   }, [presenceByDatabase, presenceTargets])
-  const setPropertyActive = useCallback((propertyId: string, active: boolean) => {
+  const setPropertyActive = useCallback(
+    (propertyId: string, active: boolean) => {
     setActivePropertyId((current) =>
       active ? propertyId : current === propertyId ? null : current,
     )
-  }, [])
-  const commentsEnabled = Boolean(
-    enableComments && layoutConfig?.discussionsVisible !== false && pageId && session?.user,
+    },
+    [],
   )
-  const commentsSnapshot = usePageCommentsSnapshot(commentsEnabled ? pageId : null)
+  const commentsEnabled = Boolean(
+    enableComments &&
+    layoutConfig?.discussionsVisible !== false &&
+    pageId &&
+    session?.user,
+  )
+  const commentsSnapshot = usePageCommentsSnapshot(
+    commentsEnabled ? pageId : null,
+  )
   const updatePropertyValue = useUpdatePagePropertyValue()
   const cover = coverProp ?? localCover
+  const description = descriptionProp ?? localDescription
   const icon = iconProp ?? localIcon
   const iconPosition = iconPositionProp ?? localIconPosition
   const title = titleProp ?? localTitle
+  const hasDescription =
+    descriptionProp !== undefined || onDescriptionChange !== undefined
+  const metadataSubject = headingLabel ?? "page"
+  const metadataSubjectLowercase = metadataSubject.toLowerCase()
   const unresolvedThreads = useMemo(
     () =>
       commentsSnapshot.threads.filter(
@@ -307,7 +348,7 @@ export function PageMetadata({
 
     for (const value of propertyPayload?.values ?? []) {
       const property = propertyPayload?.properties.find(
-        (item) => item.id === value.propertyId
+        (item) => item.id === value.propertyId,
       )
       values[value.propertyId] = parsePropertyValue(value.value, property?.type)
     }
@@ -315,7 +356,8 @@ export function PageMetadata({
     return values
   }, [propertyPayload?.properties, propertyPayload?.values])
   const standalonePropertyIds = useMemo(
-    () => new Set(
+    () =>
+      new Set(
       (layoutConfig?.modules ?? [])
         .filter((module) => module.type === "property" && module.propertyId)
         .map((module) => module.propertyId as string),
@@ -323,19 +365,41 @@ export function PageMetadata({
     [layoutConfig?.modules],
   )
   const visibleProperties = useMemo(
-    () => [...(propertyPayload?.properties ?? [])].sort((left, right) => {
+    () =>
+      [...(propertyPayload?.properties ?? [])]
+        .sort((left, right) => {
       const leftIndex = layoutConfig?.propertyOrder.indexOf(left.id) ?? -1
       const rightIndex = layoutConfig?.propertyOrder.indexOf(right.id) ?? -1
-      return (leftIndex < 0 ? Number.MAX_SAFE_INTEGER : leftIndex) -
+          return (
+            (leftIndex < 0 ? Number.MAX_SAFE_INTEGER : leftIndex) -
         (rightIndex < 0 ? Number.MAX_SAFE_INTEGER : rightIndex)
-    }).filter((property) => {
+          )
+        })
+        .filter((property) => {
       const setting = layoutConfig?.propertySettings[property.id]
       const value = propertyValues[property.id]
       if (setting?.display === "hidden") return false
-      if (setting?.display === "hide_when_empty" && (value === "" || value === null || value === undefined || (Array.isArray(value) && value.length === 0))) return false
-      return !layoutConfig?.pinnedPropertyIds.includes(property.id) && !standalonePropertyIds.has(property.id)
+          if (
+            setting?.display === "hide_when_empty" &&
+            (value === "" ||
+              value === null ||
+              value === undefined ||
+              (Array.isArray(value) && value.length === 0))
+          )
+            return false
+          return (
+            !layoutConfig?.pinnedPropertyIds.includes(property.id) &&
+            !standalonePropertyIds.has(property.id)
+          )
     }),
-    [layoutConfig?.pinnedPropertyIds, layoutConfig?.propertyOrder, layoutConfig?.propertySettings, propertyPayload?.properties, propertyValues, standalonePropertyIds],
+    [
+      layoutConfig?.pinnedPropertyIds,
+      layoutConfig?.propertyOrder,
+      layoutConfig?.propertySettings,
+      propertyPayload?.properties,
+      propertyValues,
+      standalonePropertyIds,
+    ],
   )
   const personOptions = useMemo(
     () =>
@@ -344,13 +408,13 @@ export function PageMetadata({
         name: member.name || member.email,
         suffix: member.id === session?.user?.id ? "(you)" : undefined,
       })),
-    [accessTargets?.members, session?.user?.id]
+    [accessTargets?.members, session?.user?.id],
   )
 
   const commitPropertyValue = (
     propertyId: string,
     propertyType: string,
-    value: DatabasePropertyValue
+    value: DatabasePropertyValue,
   ) => {
     if (!pageId || !editable) {
       return
@@ -377,7 +441,7 @@ export function PageMetadata({
             return nextDrafts
           })
         },
-      }
+      },
     )
   }
 
@@ -401,6 +465,18 @@ export function PageMetadata({
 
     if (coverProp === undefined) {
       setLocalCover(nextCover)
+    }
+  }
+
+  const updateDescription = (nextDescription: string) => {
+    if (!editable) {
+      return
+    }
+
+    onDescriptionChange?.(nextDescription)
+
+    if (descriptionProp === undefined) {
+      setLocalDescription(nextDescription)
     }
   }
 
@@ -449,6 +525,15 @@ export function PageMetadata({
     }
   }, [title])
 
+  useLayoutEffect(() => {
+    const descriptionElement = descriptionRef.current
+    const descriptionRow = descriptionRowRef.current
+
+    if (descriptionElement && descriptionRow) {
+      resizeTitleTextarea(descriptionElement, descriptionRow)
+    }
+  }, [description])
+
   useEffect(() => {
     const titleElement = titleRef.current
     const titleRow = titleRowRef.current
@@ -481,7 +566,41 @@ export function PageMetadata({
     }
   }, [])
 
-  useImperativeHandle(ref, () => ({
+  useEffect(() => {
+    const descriptionElement = descriptionRef.current
+    const descriptionRow = descriptionRowRef.current
+
+    if (!descriptionElement || !descriptionRow) {
+      return
+    }
+
+    let resizeFrame = 0
+    let previousWidth = descriptionRow.clientWidth
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? descriptionRow.clientWidth
+
+      if (width === previousWidth) {
+        return
+      }
+
+      previousWidth = width
+      cancelAnimationFrame(resizeFrame)
+      resizeFrame = requestAnimationFrame(() => {
+        resizeTitleTextarea(descriptionElement, descriptionRow)
+      })
+    })
+
+    observer.observe(descriptionRow)
+
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(resizeFrame)
+    }
+  }, [hasDescription])
+
+  useImperativeHandle(
+    ref,
+    () => ({
     focusTitleEnd: () => {
       const titleElement = titleRef.current
 
@@ -494,14 +613,17 @@ export function PageMetadata({
       )
       return true
     },
-  }), [showHeading])
+    }),
+    [showHeading],
+  )
 
-  const iconPicker = icon && editable ? (
+  const iconPicker =
+    icon && editable ? (
     <div className="group/icon relative shrink-0">
       <Popover open={iconOpen} onOpenChange={setIconOpen}>
         <PopoverTrigger asChild>
           <button
-            aria-label="Change page icon"
+              aria-label={`Change ${metadataSubjectLowercase} icon`}
             className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex items-center justify-center rounded-md transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none`}
             disabled={!editable}
             type="button"
@@ -534,7 +656,7 @@ export function PageMetadata({
         </PopoverContent>
       </Popover>
       <button
-        aria-label="Remove page icon"
+          aria-label={`Remove ${metadataSubjectLowercase} icon`}
         className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none group-focus-within/metadata:flex group-hover/icon:flex group-hover/metadata:flex [&_svg]:size-3"
         onClick={() => {
           updateIcon("")
@@ -557,7 +679,7 @@ export function PageMetadata({
           variant="ghost"
         >
           <SmilePlus />
-          Add icon
+            {headingLabel ? `${headingLabel} icon` : "Add icon"}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -601,7 +723,8 @@ export function PageMetadata({
   const showMetadataActions =
     (!icon && editable) ||
     (!cover && editable) ||
-    (commentsEnabled && !layoutSection &&
+    (commentsEnabled &&
+      !layoutSection &&
       !showCommentsSection &&
       (editable || totalCommentCount > 0))
 
@@ -625,7 +748,7 @@ export function PageMetadata({
           <img alt="Cover" className="size-full object-cover" src={cover} />
           {editable ? (
             <Button
-              aria-label="Remove cover"
+              aria-label={`Remove ${metadataSubjectLowercase} cover`}
               className="absolute right-3 top-3 bg-background/80 opacity-0 shadow-sm backdrop-blur transition-opacity group-focus-within/metadata:opacity-100 group-hover/metadata:opacity-100 focus-visible:opacity-100"
               disabled={!editable}
               onClick={() => updateCover("")}
@@ -653,13 +776,15 @@ export function PageMetadata({
       ) : null}
 
       <div
-        className={`${contentClassName ?? ""} relative ${compact ? compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4" : "px-5 pt-4 pb-0 sm:px-8 md:px-20 lg:px-24"}`}
+        className={`${contentClassName ?? ""} relative ${compact ? (compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4") : "px-5 pt-4 pb-0 sm:px-8 md:px-20 lg:px-24"}`}
       >
         {showHeading && iconPosition === "top" && pageIcon ? (
           <div
-            className={cover
+            className={
+              cover
               ? `${compact && compactSpacing === "comfortable" ? "-mt-5" : "-mt-4"} relative z-10 mb-4 w-fit -translate-y-1/2`
-              : "mb-4 w-fit"}
+                : "mb-4 w-fit"
+            }
           >
             {pageIcon}
           </div>
@@ -682,7 +807,7 @@ export function PageMetadata({
                     variant="ghost"
                   >
                     <ImagePlus />
-                    Add cover
+                      {headingLabel ? `${headingLabel} cover` : "Add cover"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -705,7 +830,8 @@ export function PageMetadata({
                 </PopoverContent>
               </Popover>
             ) : null}
-            {commentsEnabled && !layoutSection &&
+              {commentsEnabled &&
+              !layoutSection &&
             !showCommentsSection &&
             (editable || totalCommentCount > 0) ? (
               <Button
@@ -728,10 +854,11 @@ export function PageMetadata({
           </div>
         ) : null}
 
-        {showHeading ? <div className="flex items-start gap-3" ref={titleRowRef}>
+        {showHeading ? (
+          <div className="flex items-start gap-3" ref={titleRowRef}>
           {iconPosition === "inline" ? pageIcon : null}
           <textarea
-            aria-label="Page title"
+              aria-label={headingLabel ? `${headingLabel} title` : "Page title"}
             className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus-visible:ring-0 dark:bg-transparent"
             onChange={(event) => updateTitle(event.target.value)}
             onKeyDown={(event) => {
@@ -741,13 +868,36 @@ export function PageMetadata({
                 onTitleEnter?.()
               }
             }}
-            placeholder="New page"
+              placeholder={
+                titlePlaceholder ??
+                (headingLabel ? `${headingLabel} title` : "New page")
+              }
             readOnly={!editable}
             ref={titleRef}
             rows={1}
             value={title}
           />
-        </div> : null}
+          </div>
+        ) : null}
+
+        {showHeading && hasDescription && (editable || description) ? (
+          <div className="mt-3 flex" ref={descriptionRowRef}>
+            <textarea
+              aria-label={
+                headingLabel
+                  ? `${headingLabel} description`
+                  : "Page description"
+              }
+              className="min-h-6 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-base leading-relaxed text-muted-foreground shadow-none outline-none placeholder:text-muted-foreground/55 focus-visible:ring-0 dark:bg-transparent"
+              onChange={(event) => updateDescription(event.target.value)}
+              placeholder={descriptionPlaceholder}
+              readOnly={!editable}
+              ref={descriptionRef}
+              rows={1}
+              value={description}
+            />
+          </div>
+        ) : null}
 
         {showHeading && layoutConfig?.pinnedPropertyIds.length ? (
           <div className="mt-3 flex flex-wrap gap-2 pl-3">
@@ -763,10 +913,14 @@ export function PageMetadata({
                   className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
                   key={property.id}
                 >
-                  {layoutConfig.propertyIcons ? <PropertyIcon className="size-3.5" /> : null}
+                  {layoutConfig.propertyIcons ? (
+                    <PropertyIcon className="size-3.5" />
+                  ) : null}
                   <span>{property.name}</span>
                   <span className="text-foreground">
-                    {Array.isArray(value) ? value.join(", ") : String(value || "Empty")}
+                    {Array.isArray(value)
+                      ? value.join(", ")
+                      : String(value || "Empty")}
                   </span>
                 </span>,
               ]
@@ -801,12 +955,17 @@ export function PageMetadata({
           </div>
         ) : null}
 
-        {showProperties && (layoutPropertyId
-          ? propertyPayload?.properties.some((property) => property.id === layoutPropertyId)
+        {showProperties &&
+        (layoutPropertyId
+          ? propertyPayload?.properties.some(
+              (property) => property.id === layoutPropertyId,
+            )
           : visibleProperties.length) ? (
           <div className="mt-6 grid gap-1 py-2">
             {(layoutPropertyId
-              ? propertyPayload?.properties.filter((property) => property.id === layoutPropertyId) ?? []
+              ? (propertyPayload?.properties.filter(
+                  (property) => property.id === layoutPropertyId,
+                ) ?? [])
               : visibleProperties
             ).map((property) => {
               const PropertyIcon = getDatabasePropertyType(property.type).icon
@@ -821,11 +980,14 @@ export function PageMetadata({
               const isDateProperty = property.type === "date"
               const isFilesProperty = property.type === "files"
               const isPersonProperty = property.type === "person"
+              const isRelationProperty = property.type === "relation"
               const isReadOnlyTimeProperty =
-                property.type === "created_time" || property.type === "edited_time"
+                property.type === "created_time" ||
+                property.type === "edited_time"
               const isMultiSelectProperty =
                 property.type === "multi_select" ||
-                (isPersonProperty && getPersonLimit(property.config) !== "one_person")
+                (isPersonProperty &&
+                  getPersonLimit(property.config) !== "one_person")
               const inputValue = Array.isArray(value) ? value.join(", ") : value
 
               return (
@@ -834,7 +996,9 @@ export function PageMetadata({
                   key={property.id}
                 >
                   <span className="flex min-w-0 items-center gap-2 text-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0">
-                    {layoutConfig?.propertyIcons === false ? null : <PropertyIcon />}
+                    {layoutConfig?.propertyIcons === false ? null : (
+                      <PropertyIcon />
+                    )}
                     <span className="truncate">{property.name}</span>
                   </span>
                   <div
@@ -865,7 +1029,7 @@ export function PageMetadata({
                             commitPropertyValue(
                               property.id,
                               property.type,
-                              nextChecked === true ? "true" : "false"
+                              nextChecked === true ? "true" : "false",
                             )
                           }
                           onFocus={() => setPropertyActive(property.id, true)}
@@ -894,7 +1058,11 @@ export function PageMetadata({
                           setPropertyActive(property.id, open)
                         }
                         onSelect={(nextValue) =>
-                          commitPropertyValue(property.id, property.type, nextValue)
+                          commitPropertyValue(
+                            property.id,
+                            property.type,
+                            nextValue,
+                          )
                         }
                         propertyConfig={property.config}
                         showStatusDot={property.type === "status"}
@@ -909,7 +1077,11 @@ export function PageMetadata({
                           setPropertyActive(property.id, open)
                         }
                         onSelect={(nextValue) =>
-                          commitPropertyValue(property.id, property.type, nextValue)
+                          commitPropertyValue(
+                            property.id,
+                            property.type,
+                            nextValue,
+                          )
                         }
                         propertyConfig={property.config}
                         value={value}
@@ -922,10 +1094,41 @@ export function PageMetadata({
                           setPropertyActive(property.id, open)
                         }
                         onSelect={(nextValue) =>
-                          commitPropertyValue(property.id, property.type, nextValue)
+                          commitPropertyValue(
+                            property.id,
+                            property.type,
+                            nextValue,
+                          )
                         }
                         propertyConfig={property.config}
                         value={value}
+                      />
+                    ) : isRelationProperty && pageId ? (
+                      <DatabaseRelationPropertyValue
+                        editable={editable}
+                        label={property.name}
+                        onOpenChange={(open) =>
+                          setPropertyActive(property.id, open)
+                        }
+                        onSelect={(nextValue) =>
+                          commitPropertyValue(
+                            property.id,
+                            property.type,
+                            nextValue,
+                          )
+                        }
+                        propertyConfig={property.config}
+                        row={{
+                          createdAt: "",
+                          id:
+                            propertyPayload?.presenceTargets?.[0]?.rowId ??
+                            pageId,
+                          page: { id: pageId, name: title },
+                          pageId,
+                          updatedAt: "",
+                        }}
+                        value={value}
+                        wrapContent
                       />
                     ) : (
                       <DatabasePropertyInput
@@ -939,7 +1142,11 @@ export function PageMetadata({
                           }))
                         }
                         onCommit={() =>
-                          commitPropertyValue(property.id, property.type, inputValue)
+                          commitPropertyValue(
+                            property.id,
+                            property.type,
+                            inputValue,
+                          )
                         }
                         onDeactivate={() =>
                           setPropertyActive(property.id, false)

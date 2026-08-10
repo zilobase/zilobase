@@ -77,7 +77,14 @@ export type DatabaseViewSettingsMenuProps = {
   onSetViewDateProperty: (datePropertyId: string | null) => void;
   onSetViewGroupProperty: (groupPropertyId: string | null) => void;
   onSetViewType: (
-    type: "table" | "kanban" | "timeline" | "chart" | "gallery" | "list",
+    type:
+      | "table"
+      | "kanban"
+      | "timeline"
+      | "chart"
+      | "gallery"
+      | "list"
+      | "form",
   ) => void;
   onShowPageIconChange: (showPageIcon: boolean) => void;
   onShowTitleChange?: (showTitle: boolean) => void;

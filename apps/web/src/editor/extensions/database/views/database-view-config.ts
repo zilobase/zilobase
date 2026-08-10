@@ -8,6 +8,9 @@ import type {
   TimeFormatValue,
 } from "../properties/database-date-config";
 import type { DatabaseChartSettings } from "./chart/database-chart-config";
+import type { DatabaseFormHeaderSettings } from "./form/database-form-header-config";
+import type { DatabaseFormQuestionSettingsPatch } from "./form/database-form-question-config";
+import type { DatabaseFormShareSettings } from "./form/database-form-share-config";
 
 export type DatabaseSelectOption = {
   color?: string;
@@ -64,10 +67,7 @@ export type DatabaseLinkedViewConfig = {
   viewType: string;
 };
 
-export type DatabaseSubItemsDisplay =
-  | "nested"
-  | "flattened"
-  | "disabled";
+export type DatabaseSubItemsDisplay = "nested" | "flattened" | "disabled";
 export type DatabaseSubItemsFilter =
   | "parents-only"
   | "parents-and-sub-items"
@@ -78,7 +78,9 @@ export type DatabaseSubItemsSettings = {
   display: DatabaseSubItemsDisplay;
   enabled: boolean;
   filter: DatabaseSubItemsFilter;
+  parentPropertyId?: string;
   property: DatabaseSubItemsProperty;
+  subItemPropertyId?: string;
 };
 
 export const defaultDatabaseSubItemsSettings: DatabaseSubItemsSettings = {
@@ -137,6 +139,9 @@ type DatabaseConfig = {
   datePropertyId?: string;
   emoji?: string;
   filters?: DatabaseFilterItemConfig[];
+  formHeader?: DatabaseFormHeaderSettings;
+  formQuestions?: Record<string, DatabaseFormQuestionSettingsPatch>;
+  formShare?: DatabaseFormShareSettings;
   groupPropertyId?: string;
   hiddenPropertyIds?: string[];
   linkedDatabaseViews?: DatabaseLinkedViewConfig[];
@@ -439,9 +444,17 @@ export function getDatabaseSubItemsSettings(
     ].includes(subItems.filter)
       ? subItems.filter
       : defaultDatabaseSubItemsSettings.filter,
+    ...(typeof subItems.parentPropertyId === "string" &&
+    subItems.parentPropertyId
+      ? { parentPropertyId: subItems.parentPropertyId }
+      : {}),
     property: ["sub-item", "parent-item"].includes(subItems.property)
       ? subItems.property
       : defaultDatabaseSubItemsSettings.property,
+    ...(typeof subItems.subItemPropertyId === "string" &&
+    subItems.subItemPropertyId
+      ? { subItemPropertyId: subItems.subItemPropertyId }
+      : {}),
   };
 }
 
@@ -626,6 +639,8 @@ export function getPropertyHiddenForView(
   propertyConfig: unknown,
   viewConfig: unknown,
 ) {
+  if (getSubItemRelationRole(propertyConfig)) return true;
+
   const hasViewVisibilityConfig =
     viewConfig !== null &&
     typeof viewConfig === "object" &&
@@ -636,6 +651,22 @@ export function getPropertyHiddenForView(
   return hasViewVisibilityConfig
     ? hiddenPropertyIds.includes(propertyId)
     : getPropertyHidden(propertyConfig);
+}
+
+export function getSubItemRelationRole(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return null;
+  }
+
+  const subItems = (config as { subItems?: unknown }).subItems;
+
+  if (!subItems || typeof subItems !== "object" || Array.isArray(subItems)) {
+    return null;
+  }
+
+  const role = (subItems as { role?: unknown }).role;
+
+  return role === "parent-item" || role === "sub-item" ? role : null;
 }
 
 export function getPersonLimit(config: unknown) {

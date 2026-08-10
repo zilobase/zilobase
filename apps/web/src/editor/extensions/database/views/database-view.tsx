@@ -8,6 +8,7 @@ import { DatabaseTimelineView } from "./timeline/database-timeline-view"
 import { DatabaseChartView } from "./chart/database-chart-view"
 import { DatabaseGalleryView } from "./gallery/database-gallery-view"
 import { DatabaseListView } from "./list/database-list-view"
+import { DatabaseFormView } from "./form/database-form-view"
 import {
   useDatabaseViewController,
   type DatabaseViewProps,
@@ -21,6 +22,7 @@ function DatabaseViewContent({ viewType }: { viewType?: string }) {
   if (viewType === "chart") return <DatabaseChartView />
   if (viewType === "gallery") return <DatabaseGalleryView />
   if (viewType === "list") return <DatabaseListView />
+  if (viewType === "form") return <DatabaseFormView />
   return <DatabaseTableView />
 }
 

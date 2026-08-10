@@ -115,7 +115,11 @@ import {
   useDatabaseRealtimeState,
   useDatabaseViewContext,
 } from "../database-view-context"
-import { getSubItemCreateRowsAfterRow } from "../database-sub-items"
+import {
+  getDatabaseSubItemLineParentRowId,
+  getDatabaseSubItemRelationChanges,
+  getSubItemCreateRowsAfterRow,
+} from "../database-sub-items"
 import {
   useActiveDatabaseCellKey,
   useDatabaseCellIsActive,
@@ -150,7 +154,6 @@ import {
   getAnchoredRowInsertPosition,
   getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
-  getReorderedRowIds,
   finishDatabaseRowDrag,
   hideNativeDatabaseRowDragPreview,
   releaseDatabaseRowDropOwner,
@@ -196,6 +199,7 @@ type PendingSortedRowReorder = {
   groupValue?: unknown
   rowId: string
   rowIds: string[]
+  subItemParentRowId?: string | null
 }
 
 type RowMove = PendingSortedRowReorder
@@ -203,6 +207,7 @@ type RowMove = PendingSortedRowReorder
 const DATABASE_NAME_COLUMN_ID = "name"
 const ADD_PROPERTY_COLUMN_ID = "add-property"
 const INSERT_PROPERTY_COLUMN_PREFIX = "insert-property"
+const DATABASE_SUB_ITEM_DRAG_INDENT = 20
 
 type TableRow = SortableDatabaseItem
 type GroupSection = DatabaseTableGroupSection<TableRow>
@@ -210,6 +215,9 @@ type RowLayout = {
   centers: Record<string, number>
   dropTops: number[]
   heights: Record<string, number>
+}
+type TableRowDropTarget = DatabaseRowDropTarget & {
+  subItemParentRowId?: string | null
 }
 type GroupRowDropTarget = {
   localTargetIndex: number
@@ -1290,6 +1298,7 @@ export function DatabaseTableView() {
     sortedItems: sortedRows,
     subItemChildRowIdsByParentId,
     subItemDepthByRowId,
+    subItemParentRowIdsByRowId,
     subItemsSettings,
     renameDatabaseProperty,
     updateDatabasePropertyConfig,
@@ -1320,8 +1329,9 @@ export function DatabaseTableView() {
   const finishRowDragRef = useRef<() => void>(() => {})
   const rowDragOverlay = useDatabaseRowDragOverlay(finishRowDragRef)
   const [rowDropTarget, setRowDropTarget] =
-    useState<DatabaseRowDropTarget | null>(null)
-  const rowDropTargetRef = useRef<DatabaseRowDropTarget | null>(null)
+    useState<TableRowDropTarget | null>(null)
+  const rowDropTargetRef = useRef<TableRowDropTarget | null>(null)
+  const rowDragStartClientXRef = useRef<number | null>(null)
   const [groupRowDropTarget, setGroupRowDropTarget] =
     useState<GroupRowDropTarget | null>(null)
   const groupRowDropTargetRef = useRef<GroupRowDropTarget | null>(null)
@@ -1695,18 +1705,25 @@ export function DatabaseTableView() {
 
     return sortedRows.filter((row) => {
       const seen = new Set<string>()
-      let parentRowId = row.parentRowId
+      const pending = [...(subItemParentRowIdsByRowId[row.id] ?? [])]
 
-      while (parentRowId && !seen.has(parentRowId)) {
+      while (pending.length > 0) {
+        const parentRowId = pending.shift()!
+        if (seen.has(parentRowId)) continue
         if (collapsedSubItemRowIds.has(parentRowId)) return false
 
         seen.add(parentRowId)
-        parentRowId = rowsById.get(parentRowId)?.parentRowId
+        pending.push(...(subItemParentRowIdsByRowId[parentRowId] ?? []))
       }
 
       return true
     })
-  }, [collapsedSubItemRowIds, isSubItemsNested, rowsById, sortedRows])
+  }, [
+    collapsedSubItemRowIds,
+    isSubItemsNested,
+    sortedRows,
+    subItemParentRowIdsByRowId,
+  ])
   const visibleRows = useMemo(
     () =>
       isTableGrouped
@@ -1743,9 +1760,10 @@ export function DatabaseTableView() {
     () =>
       getSubItemCreateRowsAfterRow({
         expandedRowIds: expandedSubItemRowIds,
+        parentRowIdsByRowId: subItemParentRowIdsByRowId,
         rows: visibleRows,
       }),
-    [expandedSubItemRowIds, visibleRows]
+    [expandedSubItemRowIds, subItemParentRowIdsByRowId, visibleRows]
   )
   const visibleRowIndexById = useMemo(
     () => new Map(visibleRows.map((row, index) => [row.id, index])),
@@ -1850,7 +1868,23 @@ export function DatabaseTableView() {
 
     return nextLayout
   }, [getRowElements, getRowLayoutElement])
-  const resolveRowDropTarget = (clientY: number) => {
+  const getSubItemDropParentRowId = (
+    targetIndex: number,
+    preferPreviousRowAsParent = false
+  ) =>
+    isSubItemsNested &&
+    subItemsSettings.parentPropertyId &&
+    subItemsSettings.subItemPropertyId
+      ? getDatabaseSubItemLineParentRowId({
+          childRowIdsByParentId: subItemChildRowIdsByParentId,
+          collapsedRowIds: collapsedSubItemRowIds,
+          parentRowIdsByRowId: subItemParentRowIdsByRowId,
+          preferPreviousRowAsParent,
+          rows: visibleRows,
+          targetIndex,
+        })
+      : undefined
+  const resolveRowDropTarget = (clientY: number, clientX: number) => {
     const layoutElement = getRowLayoutElement()
 
     if (!layoutElement) {
@@ -1858,17 +1892,40 @@ export function DatabaseTableView() {
     }
 
     const relativeY = clientY - layoutElement.getBoundingClientRect().top
-
-    return getDatabaseRowDropTarget(
+    const target = getDatabaseRowDropTarget(
       rowLayoutRef.current.dropTops,
       relativeY
     )
+
+    if (!target) return null
+
+    const previousRow = visibleRows[target.index - 1]
+    const dragStartClientX = rowDragStartClientXRef.current
+    const preferPreviousRowAsParent = Boolean(
+      draggedRowId &&
+        previousRow &&
+        previousRow.id !== draggedRowId &&
+        dragStartClientX !== null &&
+        clientX >= dragStartClientX + DATABASE_SUB_ITEM_DRAG_INDENT
+    )
+    const subItemParentRowId = draggedRowId
+      ? getSubItemDropParentRowId(
+          target.index,
+          preferPreviousRowAsParent
+        )
+      : undefined
+
+    return {
+      ...target,
+      ...(subItemParentRowId !== undefined ? { subItemParentRowId } : {}),
+    }
   }
-  const updateRowDropTarget = (nextTarget: DatabaseRowDropTarget | null) => {
+  const updateRowDropTarget = (nextTarget: TableRowDropTarget | null) => {
     rowDropTargetRef.current = nextTarget
     setRowDropTarget((currentTarget) =>
       currentTarget?.index === nextTarget?.index &&
-      currentTarget?.lineTop === nextTarget?.lineTop
+      currentTarget?.lineTop === nextTarget?.lineTop &&
+      currentTarget?.subItemParentRowId === nextTarget?.subItemParentRowId
         ? currentTarget
         : nextTarget
     )
@@ -2054,24 +2111,25 @@ export function DatabaseTableView() {
       }
     }
 
-    if (isTableFiltered) {
-      const rowIds = getFilteredReorderedRowIds(
-        rows,
-        sortedRows,
-        draggedRowId,
-        rowDropTargetRef.current?.index ?? 0
-      )
-
-      return rowIds ? { rowId: draggedRowId, rowIds } : null
-    }
-
-    const rowIds = getReorderedRowIds(
-      isTableSorted ? sortedRows : rows,
+    const targetIndex = rowDropTargetRef.current?.index ?? 0
+    const rowIds = getFilteredReorderedRowIds(
+      rows,
+      visibleRows,
       draggedRowId,
-      rowDropTargetRef.current?.index ?? 0
+      targetIndex
     )
+    const subItemParentRowId =
+      rowDropTargetRef.current?.subItemParentRowId
 
-    return rowIds ? { rowId: draggedRowId, rowIds } : null
+    return rowIds || subItemParentRowId !== undefined
+      ? {
+          rowId: draggedRowId,
+          rowIds: rowIds ?? rows.map((row) => row.id),
+          ...(subItemParentRowId !== undefined
+            ? { subItemParentRowId }
+            : {}),
+        }
+      : null
   }
   const applyRowMove = (nextMove: RowMove) => {
     if (!databaseId) {
@@ -2089,7 +2147,48 @@ export function DatabaseTableView() {
       return
     }
 
-    reorderRows.mutate({ databaseId, rowIds: nextMove.rowIds })
+    if (nextMove.subItemParentRowId !== undefined) {
+      const parentPropertyId = subItemsSettings.parentPropertyId
+      const subItemPropertyId = subItemsSettings.subItemPropertyId
+      const changes =
+        parentPropertyId && subItemPropertyId
+          ? getDatabaseSubItemRelationChanges({
+              draggedRowId: nextMove.rowId,
+              parentPropertyId,
+              propertyValuesByKey: propertyValuesByKeyRef.current,
+              rows,
+              subItemPropertyId,
+              targetParentRowId: nextMove.subItemParentRowId,
+            })
+          : []
+
+      if (changes === null) {
+        toast.error("A page can't be moved below itself or one of its sub-items")
+        return
+      }
+
+      for (const change of changes) {
+        savePropertyValue(
+          change.rowId,
+          change.propertyId,
+          "relation",
+          change.currentValue,
+          change.nextValue
+        )
+      }
+
+      if (nextMove.subItemParentRowId) {
+        setCollapsedSubItemRowIds((current) => {
+          const next = new Set(current)
+          next.delete(nextMove.subItemParentRowId!)
+          return next
+        })
+      }
+    }
+
+    if (nextMove.rowIds.some((rowId, index) => rowId !== rows[index]?.id)) {
+      reorderRows.mutate({ databaseId, rowIds: nextMove.rowIds })
+    }
   }
   const confirmSortedRowReorder = () => {
     if (!databaseId || !pendingSortedRowReorder) {
@@ -2114,6 +2213,7 @@ export function DatabaseTableView() {
     setDraggedRowId(null)
     updateRowDropTarget(null)
     updateGroupRowDropTarget(null)
+    rowDragStartClientXRef.current = null
     isExternalRowDragActiveRef.current = false
     setIsExternalRowDragActive(false)
   }
@@ -2124,6 +2224,10 @@ export function DatabaseTableView() {
       : isTableGrouped
         ? groupRowDropTarget?.top ?? null
         : rowDropTarget?.lineTop ?? null
+  const rowDropParentRowId = rowDropTarget?.subItemParentRowId
+  const rowDropLineDepth = rowDropParentRowId
+    ? (subItemDepthByRowId[rowDropParentRowId] ?? 0) + 1
+    : 0
   const conditionalColorsByRowId = useMemo(() => {
     const colorsByRowId = new Map<
       string,
@@ -2803,6 +2907,7 @@ export function DatabaseTableView() {
 
     startDatabaseRowDrag()
     hideNativeDatabaseRowDragPreview(event.dataTransfer)
+    rowDragStartClientXRef.current = event.clientX
     setDraggedRowId(row.id)
     claimDatabaseRowDropOwner(rowDropOwner)
     const sourceRowIndex = visibleRowIndexById.get(row.id) ?? 0
@@ -3224,7 +3329,11 @@ export function DatabaseTableView() {
                     >
                       {(setActive) => (
                         <div
-                          className="database-sub-item-name"
+                          className={cn(
+                            "database-sub-item-name",
+                            showSubItemToggle &&
+                              "database-sub-item-name-has-toggle"
+                          )}
                           data-sub-item-depth={subItemDepth}
                           style={
                             isSubItemsNested
@@ -3466,7 +3575,12 @@ export function DatabaseTableView() {
         aria-hidden="true"
         className="drag-drop-line database-row-drop-line"
         data-orientation="horizontal"
-        style={{ top: rowDropLineTop }}
+        style={
+          {
+            "--database-row-drop-depth": rowDropLineDepth,
+            top: rowDropLineTop,
+          } as CSSProperties
+        }
       />
     ) : null
 
@@ -3536,14 +3650,16 @@ export function DatabaseTableView() {
           if (isTableGrouped) {
             updateGroupRowDropTarget(getGroupRowDropTarget(event.clientY))
           } else {
-            updateRowDropTarget(resolveRowDropTarget(event.clientY))
+            updateRowDropTarget(
+              resolveRowDropTarget(event.clientY, event.clientX)
+            )
           }
         }}
         onDrop={(event) => {
           const dragPayload = getDatabasePageDragPayload(event.dataTransfer)
           const resolvedRowTarget = isTableGrouped
             ? null
-            : resolveRowDropTarget(event.clientY)
+            : resolveRowDropTarget(event.clientY, event.clientX)
 
           if (isTableGrouped) {
             updateGroupRowDropTarget(getGroupRowDropTarget(event.clientY))
@@ -3591,7 +3707,14 @@ export function DatabaseTableView() {
                 )
               }
             } else {
-              addDraggedPageRow(dragPayload, resolvedRowTarget?.index ?? 0)
+              addDraggedPageRow(
+                dragPayload,
+                getAnchoredRowInsertPosition(
+                  rows,
+                  visibleRows,
+                  resolvedRowTarget?.index ?? 0
+                )
+              )
             }
           }
           clearRowDrag()
