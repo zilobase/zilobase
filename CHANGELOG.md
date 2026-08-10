@@ -4,6 +4,18 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, desktop, and mobile apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.9
+
+### Changed
+
+- Activated desktop tabs when a dragged editor block hovers over them, allowing the block to be dropped into another tab.
+- Refined the default primary button color and hover state.
+
+### Fixed
+
+- Opened related sub-items in the current side panel from page metadata.
+- Enforced a single parent for database sub-items, removed the legacy row-parent fallback, and repaired existing multi-parent relationships during migration.
+
 ## 0.0.8
 
 ### Changed
