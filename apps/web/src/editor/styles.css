@@ -3,9 +3,9 @@
 @layer components {
   .tiptap-editor {
     @apply min-h-[520px] px-5 pt-4 pb-5 text-base leading-7 text-foreground outline-none sm:px-8 md:px-20 md:pt-4 md:pb-6 lg:px-24;
-    --editor-selection-background: color-mix(in srgb, var(--selection) 35%, transparent);
-    --editor-selection-solid-background: color-mix(in srgb, var(--selection) 35%, var(--background));
-    --editor-selection-foreground: inherit;
+    --editor-selection-background: Highlight;
+    --editor-selection-solid-background: Highlight;
+    --editor-selection-foreground: HighlightText;
   }
 
   .collaboration-carets__caret {
@@ -1658,6 +1658,7 @@
 
   .database-table {
     @apply w-full table-fixed border-collapse overflow-hidden;
+    --database-selection-color: #2383e2;
     min-width: max(100%, var(--database-table-min-width, 100%));
   }
 

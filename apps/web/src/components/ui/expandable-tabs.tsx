@@ -59,7 +59,7 @@ export function ExpandableTabs({
   tabs,
   selected: selectedProp,
   defaultSelected = null,
-  activeColor = "text-active-foreground",
+  activeColor = "text-foreground dark:text-foreground!",
   onChange,
   className,
   ...props
