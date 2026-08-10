@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { isTauri } from "@tauri-apps/api/core"
 
 import {
   Sidebar,
@@ -30,8 +31,13 @@ export function AppSidebarShell({
 }
 
 export function AppSidebarHeader({ children }: { children: React.ReactNode }) {
+  const hasOverlayTitleBar = isTauri() && navigator.userAgent.includes("Mac")
+
   return (
-    <SidebarHeader className="gap-0">
+    <SidebarHeader
+      className={cn("gap-0", hasOverlayTitleBar && "pt-9")}
+      data-tauri-drag-region={hasOverlayTitleBar || undefined}
+    >
       <div className="flex items-center gap-1">
         <div className="min-w-0 flex-1">{children}</div>
         <SidebarTrigger className="shrink-0" />
