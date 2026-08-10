@@ -172,7 +172,7 @@ export async function updateDatabaseViewService(input: {
     values: Array<{
       pageId: string;
       propertyId: string;
-      value: string[];
+      value: string | string[];
     }>;
   } | null = null;
   let effectiveConfig = input.config;
@@ -203,7 +203,6 @@ export async function updateDatabaseViewService(input: {
     const parentName = parentColumn?.property.name ?? "Parent item";
     const subItemName = subItemColumn?.property.name ?? "Sub-item";
     const relationBase = {
-      limit: "no_limit",
       relatedDatabaseId: existing.id,
       relatedDatabaseName: existing.name,
       relatedPageName: existing.name,
@@ -213,6 +212,7 @@ export async function updateDatabaseViewService(input: {
     const parentConfig = {
       relation: {
         ...relationBase,
+        limit: "one_page",
         relatedPropertyId: subItemPropertyId,
         relatedPropertyName: subItemName,
       },
@@ -221,6 +221,7 @@ export async function updateDatabaseViewService(input: {
     const subItemConfig = {
       relation: {
         ...relationBase,
+        limit: "no_limit",
         relatedPropertyId: parentPropertyId,
         relatedPropertyName: parentName,
       },
@@ -229,8 +230,6 @@ export async function updateDatabaseViewService(input: {
     const rows = await db
       .select({
         pageId: databaseRow.pageId,
-        parentRowId: databaseRow.parentRowId,
-        rowId: databaseRow.id,
       })
       .from(databaseRow)
       .where(
@@ -248,7 +247,6 @@ export async function updateDatabaseViewService(input: {
           subItemPropertyId,
         ]),
       );
-    const pageIdByRowId = new Map(rows.map((row) => [row.rowId, row.pageId]));
     const validPageIds = new Set(rows.map((row) => row.pageId));
     const parentPageIdsByPageId = new Map<string, Set<string>>();
     const subItemPageIdsByPageId = new Map<string, Set<string>>();
@@ -258,52 +256,43 @@ export async function updateDatabaseViewService(input: {
         value.propertyId === parentPropertyId
           ? parentPageIdsByPageId
           : subItemPageIdsByPageId;
+      const pageIds = toStringArray(value.value).filter((pageId) =>
+        validPageIds.has(pageId),
+      );
       target.set(
         value.pageId,
         new Set(
-          toStringArray(value.value).filter((pageId) =>
-            validPageIds.has(pageId),
-          ),
+          value.propertyId === parentPropertyId ? pageIds.slice(0, 1) : pageIds,
         ),
       );
     }
 
-    for (const row of rows) {
-      const legacyParentPageId = row.parentRowId
-        ? pageIdByRowId.get(row.parentRowId)
-        : undefined;
-
-      if (legacyParentPageId) {
-        const parentIds = parentPageIdsByPageId.get(row.pageId) ?? new Set();
-        parentIds.add(legacyParentPageId);
-        parentPageIdsByPageId.set(row.pageId, parentIds);
-      }
-    }
-
-    for (const [childPageId, parentPageIds] of parentPageIdsByPageId) {
-      for (const parentPageId of parentPageIds) {
-        const childPageIds =
-          subItemPageIdsByPageId.get(parentPageId) ?? new Set<string>();
-        childPageIds.add(childPageId);
-        subItemPageIdsByPageId.set(parentPageId, childPageIds);
-      }
-    }
-
     for (const [parentPageId, childPageIds] of subItemPageIdsByPageId) {
       for (const childPageId of childPageIds) {
-        const parentPageIds =
-          parentPageIdsByPageId.get(childPageId) ?? new Set<string>();
-        parentPageIds.add(parentPageId);
-        parentPageIdsByPageId.set(childPageId, parentPageIds);
+        if ((parentPageIdsByPageId.get(childPageId)?.size ?? 0) === 0) {
+          parentPageIdsByPageId.set(childPageId, new Set([parentPageId]));
+        }
       }
+    }
+
+    subItemPageIdsByPageId.clear();
+    for (const [childPageId, parentPageIds] of parentPageIdsByPageId) {
+      const parentPageId = [...parentPageIds][0];
+      if (!parentPageId) continue;
+
+      const childPageIds =
+        subItemPageIdsByPageId.get(parentPageId) ?? new Set<string>();
+      childPageIds.add(childPageId);
+      subItemPageIdsByPageId.set(parentPageId, childPageIds);
     }
 
     const values = [
-      ...[...parentPageIdsByPageId].map(([pageId, pageIds]) => ({
-        pageId,
-        propertyId: parentPropertyId,
-        value: [...pageIds],
-      })),
+      ...[...parentPageIdsByPageId].flatMap(([pageId, pageIds]) => {
+        const parentPageId = [...pageIds][0];
+        return parentPageId
+          ? [{ pageId, propertyId: parentPropertyId, value: parentPageId }]
+          : [];
+      }),
       ...[...subItemPageIdsByPageId].map(([pageId, pageIds]) => ({
         pageId,
         propertyId: subItemPropertyId,

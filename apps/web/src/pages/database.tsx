@@ -561,6 +561,7 @@ export function DatabaseMainPane({
         onCoverChange={updateCover}
         onIconChange={updateEmoji}
         onIconPositionChange={updateIconPosition}
+        onOpenPage={onOpenPage}
         onTitleChange={setTitle}
         workspaceId={payload?.database.workspaceId}
         title={title}

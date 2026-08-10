@@ -228,6 +228,25 @@ test("validateCellValue validates select-like option values", () => {
   );
 });
 
+test("validateCellValue rejects multiple parents for parent-item relations", () => {
+  const legacyParentConfig = {
+    relation: { limit: "no_limit" },
+    subItems: { role: "parent-item" },
+  };
+
+  assert.doesNotThrow(() =>
+    validateCellValue("relation", legacyParentConfig, ["page-a"]),
+  );
+  assert.throws(
+    () =>
+      validateCellValue("relation", legacyParentConfig, ["page-a", "page-b"]),
+    (error) =>
+      error instanceof ServiceMutationError &&
+      error.status === 400 &&
+      error.message === "Relation accepts only one page.",
+  );
+});
+
 test("validateCellValue accepts writable scalar types and reports empty options", () => {
   assert.doesNotThrow(() => validateCellValue("text", null, { anything: true }));
   assert.doesNotThrow(() => validateCellValue("multi_select", { options: [] }, []));

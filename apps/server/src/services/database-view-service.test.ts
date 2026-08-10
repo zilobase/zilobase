@@ -200,7 +200,7 @@ test("updateDatabaseViewService updates supplied view fields", async () => {
   });
 });
 
-test("updateDatabaseViewService creates multi-value sub-item relation properties", async () => {
+test("updateDatabaseViewService creates single-parent sub-item relation properties", async () => {
   const { inserts, updates } = transactionRecorder();
   mocks.selectResults.push(
     [{ id: "view-1" }],
@@ -242,6 +242,16 @@ test("updateDatabaseViewService creates multi-value sub-item relation properties
 
   assert.equal((inserts[0] as Record<string, unknown>).name, "Parent item");
   assert.equal((inserts[2] as Record<string, unknown>).name, "Sub-item");
+  assert.equal(
+    (inserts[0] as { config: { relation: { limit: string } } }).config.relation
+      .limit,
+    "one_page",
+  );
+  assert.equal(
+    (inserts[2] as { config: { relation: { limit: string } } }).config.relation
+      .limit,
+    "no_limit",
+  );
   assert.deepEqual(
     (updates.at(-1) as { config: { subItems: unknown } }).config.subItems,
     {
@@ -253,27 +263,7 @@ test("updateDatabaseViewService creates multi-value sub-item relation properties
       subItemPropertyId: "00000000-0000-4000-8000-000000000002",
     },
   );
-  assert.deepEqual(
-    mocks.upsertValues.mock.calls[0]?.[1].map(
-      ({ pageId, propertyId, value }: Record<string, unknown>) => ({
-        pageId,
-        propertyId,
-        value,
-      }),
-    ),
-    [
-      {
-        pageId: "child-page",
-        propertyId: "00000000-0000-4000-8000-000000000001",
-        value: ["parent-page"],
-      },
-      {
-        pageId: "parent-page",
-        propertyId: "00000000-0000-4000-8000-000000000002",
-        value: ["child-page"],
-      },
-    ],
-  );
+  assert.equal(mocks.upsertValues.mock.calls.length, 0);
 });
 
 test("updateDatabaseViewService rejects missing views", async () => {

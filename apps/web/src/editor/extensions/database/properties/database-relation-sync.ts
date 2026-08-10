@@ -516,8 +516,21 @@ export function getRelationConfigWithTwoWayRelation(
 
 export function getRelationLimit(propertyConfig: unknown) {
   const relation = getRelationObject(propertyConfig)
+  const subItems =
+    propertyConfig &&
+    typeof propertyConfig === "object" &&
+    !Array.isArray(propertyConfig) &&
+    "subItems" in propertyConfig
+      ? (propertyConfig as { subItems?: unknown }).subItems
+      : null
+  const isParentItem =
+    subItems &&
+    typeof subItems === "object" &&
+    !Array.isArray(subItems) &&
+    "role" in subItems &&
+    (subItems as { role?: unknown }).role === "parent-item"
 
-  return relation?.limit === "one_page"
+  return isParentItem || relation?.limit === "one_page"
     ? "one_page"
     : "no_limit"
 }

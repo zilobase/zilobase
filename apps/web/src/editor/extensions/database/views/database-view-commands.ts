@@ -96,7 +96,6 @@ type NewRowPropertyValue = {
 };
 
 type NewRowSetup = {
-  parentRowId?: string | null;
   parentRelation?: {
     parentPropertyId: string;
     parentRow: DatabaseRow;
@@ -181,7 +180,6 @@ export function getDatabaseViewCommands({
   });
 
   const addRowWithValues = ({
-    parentRowId,
     parentRelation,
     propertyValues,
     title,
@@ -201,7 +199,6 @@ export function getDatabaseViewCommands({
     addRow.mutate(
       {
         databaseId,
-        ...(parentRowId !== undefined ? { parentRowId } : {}),
         ...(uniquePropertyValues.size > 0
           ? { optimisticValues: [...uniquePropertyValues.values()] }
           : {}),
@@ -457,12 +454,11 @@ export function getDatabaseViewCommands({
                 ...groupSetup.propertyValues,
                 {
                   propertyId: parentRelation.parentPropertyId,
-                  value: [parentRelation.parentRow.pageId],
+                  value: parentRelation.parentRow.pageId,
                 },
               ],
             }
           : {}),
-        parentRowId,
       });
     },
     addDraggedPageRow: async (

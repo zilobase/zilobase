@@ -305,6 +305,28 @@ export function validateCellValue(
     throw new ServiceMutationError("This property is read-only", 400);
   }
 
+  if (
+    normalizedType === "relation" &&
+    config &&
+    typeof config === "object" &&
+    !Array.isArray(config)
+  ) {
+    const relationConfig = config as {
+      relation?: { limit?: unknown };
+      subItems?: { role?: unknown };
+    };
+    const isSinglePage =
+      relationConfig.relation?.limit === "one_page" ||
+      relationConfig.subItems?.role === "parent-item";
+    const pageIds = Array.isArray(value)
+      ? value.filter((pageId) => typeof pageId === "string" && pageId.length > 0)
+      : [];
+
+    if (isSinglePage && pageIds.length > 1) {
+      throw new ServiceMutationError("Relation accepts only one page.", 400);
+    }
+  }
+
   if (isSelectLikePropertyType(normalizedType)) {
     const optionNames = readSelectOptionNames(config);
 

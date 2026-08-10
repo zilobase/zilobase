@@ -89,6 +89,7 @@ type PageMetadataProps = {
   onDescriptionChange?: (description: string) => void
   onIconChange?: (icon: string) => void
   onIconPositionChange?: (position: PageIconPosition) => void
+  onOpenPage?: (pageId: string) => void
   onTitleEnter?: () => void
   onTitleChange?: (title: string) => void
   workspaceId?: string | null
@@ -212,6 +213,7 @@ export function PageMetadata({
   onDescriptionChange,
   onIconChange,
   onIconPositionChange,
+  onOpenPage,
   onTitleEnter,
   onTitleChange,
   workspaceId,
@@ -1107,6 +1109,7 @@ export function PageMetadata({
                       <DatabaseRelationPropertyValue
                         editable={editable}
                         label={property.name}
+                        onOpen={onOpenPage}
                         onOpenChange={(open) =>
                           setPropertyActive(property.id, open)
                         }

@@ -239,6 +239,13 @@
       "when": 1785791388000,
       "tag": "0033_sidebar_config",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1786400000000,
+      "tag": "0034_single_parent_sub_items",
+      "breakpoints": true
     }
   ]
 }

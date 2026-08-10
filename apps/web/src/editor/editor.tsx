@@ -517,6 +517,7 @@ export function Editor({
         onCoverChange={onCoverChange}
         onIconChange={onEmojiChange}
         onIconPositionChange={onIconPositionChange}
+        onOpenPage={onOpenPage}
         onTitleEnter={focusPageBodyFromTitle}
         onTitleChange={onTitleChange}
         workspaceId={workspaceId}
@@ -633,6 +634,7 @@ export function Editor({
               onCoverChange={onCoverChange}
               onIconChange={onEmojiChange}
               onIconPositionChange={onIconPositionChange}
+              onOpenPage={onOpenPage}
               onTitleEnter={focusPageBodyFromTitle}
               onTitleChange={onTitleChange}
               workspaceId={workspaceId}

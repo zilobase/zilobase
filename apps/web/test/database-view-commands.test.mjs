@@ -1691,7 +1691,6 @@ export function register({ assert, loadModule, test }) {
     });
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
-      parentRowId: "parent-row",
       title: "Untitled",
     });
   });

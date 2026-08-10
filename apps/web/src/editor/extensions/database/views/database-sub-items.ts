@@ -3,11 +3,10 @@ import type { DatabaseSubItemsSettings } from "./database-view-config"
 type SubItemRow = {
   id: string
   pageId?: string
-  parentRowId?: string | null
   position: number
 }
 
-type SubItemHierarchyRow = Pick<SubItemRow, "id" | "parentRowId">
+type SubItemHierarchyRow = Pick<SubItemRow, "id">
 
 export type DatabaseSubItemsView<Row extends SubItemRow> = {
   childRowIdsByParentId: Record<string, string[]>
@@ -132,14 +131,8 @@ export function getDatabaseSubItemRelationChanges<Row extends SubItemRow>({
   const changes: DatabaseSubItemRelationChange[] = []
   const currentParentValue =
     propertyValuesByKey[`${draggedRow.pageId}:${parentPropertyId}`] ?? ""
-  const currentParentPageIds = toRelationPageIds(currentParentValue)
   const nextParentValue = targetParentRow?.pageId
-    ? [
-        targetParentRow.pageId,
-        ...currentParentPageIds.filter(
-          (pageId) => pageId !== targetParentRow.pageId
-        ),
-      ]
+    ? [targetParentRow.pageId]
     : []
 
   addRelationChange(changes, {
@@ -155,12 +148,12 @@ export function getDatabaseSubItemRelationChanges<Row extends SubItemRow>({
     const currentValue =
       propertyValuesByKey[`${row.pageId}:${subItemPropertyId}`] ?? ""
     const currentPageIds = toRelationPageIds(currentValue)
-    const nextValue = targetParentRow?.pageId
-      ? row.id === targetParentRow.id &&
-        !currentPageIds.includes(draggedRow.pageId)
-        ? [...currentPageIds, draggedRow.pageId]
-        : currentPageIds
-      : currentPageIds.filter((pageId) => pageId !== draggedRow.pageId)
+    const nextValue =
+      row.id === targetParentRow?.id
+        ? currentPageIds.includes(draggedRow.pageId)
+          ? currentPageIds
+          : [...currentPageIds, draggedRow.pageId]
+        : currentPageIds.filter((pageId) => pageId !== draggedRow.pageId)
 
     addRelationChange(changes, {
       currentValue,
@@ -197,17 +190,14 @@ export function getSubItemCreateRowsAfterRow<Row extends SubItemHierarchyRow>({
   rows,
 }: {
   expandedRowIds: ReadonlySet<string>
-  parentRowIdsByRowId?: Record<string, string[]>
+  parentRowIdsByRowId: Record<string, string[]>
   rows: Row[]
 }): Record<string, string[]> {
   const rowsById = new Map(rows.map((row) => [row.id, row]))
   const createRowIdsByAfterRowId: Record<string, string[]> = {}
 
   const getParentRowIds = (row: Row | undefined) =>
-    row
-      ? (parentRowIdsByRowId?.[row.id] ??
-        (row.parentRowId ? [row.parentRowId] : []))
-      : []
+    row ? parentRowIdsByRowId[row.id] ?? [] : []
 
   const isDescendantOf = (row: Row | undefined, ancestorRowId: string) => {
     const seen = new Set<string>()
@@ -294,10 +284,9 @@ export function getDatabaseSubItemsView<Row extends SubItemRow>({
 
   const addRelationship = (parent: Row | undefined, child: Row | undefined) => {
     if (!parent || !child || parent.id === child.id) return
+    if (parentRowIdsByRowId[child.id]) return
 
-    const parentIds = parentRowIdsByRowId[child.id] ?? []
-    if (!parentIds.includes(parent.id)) parentIds.push(parent.id)
-    parentRowIdsByRowId[child.id] = parentIds
+    parentRowIdsByRowId[child.id] = [parent.id]
 
     const children = childrenByParentId.get(parent.id) ?? []
     if (!children.some((row) => row.id === child.id)) children.push(child)
@@ -334,13 +323,6 @@ export function getDatabaseSubItemsView<Row extends SubItemRow>({
       for (const childPageId of childPageIds) {
         addRelationship(parent, rowByPageId.get(childPageId))
       }
-    }
-  } else {
-    for (const row of rows) {
-      addRelationship(
-        row.parentRowId ? rowsById.get(row.parentRowId) : undefined,
-        row,
-      )
     }
   }
 

@@ -576,6 +576,20 @@ export function register({ assert, loadModule, test }) {
 
     assert.deepEqual(updates, [])
   })
+
+  test("parent-item relations are always single-page", async () => {
+    const { getRelationLimit } = await loadModule(
+      "/src/editor/extensions/database/properties/database-relation-sync.ts"
+    )
+
+    assert.equal(
+      getRelationLimit({
+        relation: { limit: "no_limit" },
+        subItems: { role: "parent-item" },
+      }),
+      "one_page"
+    )
+  })
 }
 
 function relationConfig({

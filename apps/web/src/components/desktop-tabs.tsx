@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils"
 import { isOpenInNewTabShortcut } from "@/shortcuts"
 import { useAppStore, type DesktopTab } from "@/stores/app-store"
 import { useSidebar } from "@/components/ui/sidebar"
+import { hasEditorBlockDragData } from "@/packages/editor/components/editor/block-drag-session"
 
 export function DesktopTabs({
   icon,
@@ -170,6 +171,9 @@ export function DesktopTabs({
               )}
               dragMomentum={false}
               key={tab.id}
+              onDragEnter={(event) => {
+                if (hasEditorBlockDragData(event.dataTransfer)) selectTab(tab)
+              }}
               value={tab.id}
               whileDrag={{ zIndex: 30 }}
             >

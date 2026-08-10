@@ -166,12 +166,18 @@ export function register({ assert, loadModule, test }) {
         display: "nested",
         enabled: true,
         filter: "parents-only",
-        property: "sub-item",
+        parentPropertyId: "parent-property",
+        property: "parent-item",
+        subItemPropertyId: "sub-item-property",
       },
     });
     const view = getDatabaseSubItemsView({
       filteredRows: rows,
       hasFilters: false,
+      propertyValuesByKey: {
+        "page-child:parent-property": "page-parent",
+        "page-grandchild:parent-property": "page-child",
+      },
       rows,
       settings,
       sortedRows: [rows[1], rows[0], rows[2], rows[3]],
@@ -210,7 +216,13 @@ export function register({ assert, loadModule, test }) {
         display: "nested",
         enabled: true,
         filter: "parents-only",
-        property: "sub-item",
+        parentPropertyId: "parent-property",
+        property: "parent-item",
+        subItemPropertyId: "sub-item-property",
+      },
+      propertyValuesByKey: {
+        "page-child:parent-property": "page-parent",
+        "page-hidden-child:parent-property": "page-hidden-parent",
       },
       sortedRows: [parent],
     });
@@ -221,7 +233,7 @@ export function register({ assert, loadModule, test }) {
     );
   });
 
-  test("database sub-items use multi-value parent relation properties", async () => {
+  test("database sub-items use only the first parent relation value", async () => {
     const { getDatabaseSubItemsSettings } = await loadModule(
       "/src/editor/extensions/database/views/database-view-config.ts",
     );
@@ -282,6 +294,10 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(
       getSubItemCreateRowsAfterRow({
         expandedRowIds: new Set(["parent"]),
+        parentRowIdsByRowId: {
+          "child-1": ["parent"],
+          "child-2": ["parent"],
+        },
         rows,
       }),
       { "child-2": ["parent"] },
@@ -301,6 +317,10 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(
       getSubItemCreateRowsAfterRow({
         expandedRowIds: new Set(["parent", "child"]),
+        parentRowIdsByRowId: {
+          child: ["parent"],
+          grandchild: ["child"],
+        },
         rows,
       }),
       { grandchild: ["child", "parent"] },
@@ -375,9 +395,15 @@ export function register({ assert, loadModule, test }) {
       [
         {
           currentValue: ["page-a"],
-          nextValue: ["page-b", "page-a"],
+          nextValue: ["page-b"],
           propertyId: "parent-property",
           rowId: "dragged",
+        },
+        {
+          currentValue: ["page-dragged"],
+          nextValue: [],
+          propertyId: "sub-item-property",
+          rowId: "parent-a",
         },
         {
           currentValue: "",
@@ -428,5 +454,5 @@ export function register({ assert, loadModule, test }) {
 }
 
 function createSubItemRow(id, parentRowId, position) {
-  return { id, parentRowId, position };
+  return { id, pageId: `page-${id}`, parentRowId, position };
 }
