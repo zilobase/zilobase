@@ -44,7 +44,7 @@ export const webAuthClient: ZilobaseAuthClient = {
     }),
   verifyEmailOtp: (input: VerifyEmailOtpInput) =>
     authFetch<{ user: unknown }>("/email-otp/verify-email", input),
-  signOut: () => authFetch("/sign-out"),
+  signOut: () => authFetch("/sign-out", {}),
   createWorkspace: <TWorkspace,>(input: { name: string; slug: string }) =>
     authFetch<Workspace>("/workspace/create", input) as Promise<TWorkspace>,
   setActiveWorkspace: (workspaceId: string) =>
@@ -101,4 +101,3 @@ export function WebFeaturesProvider({
     </ZilobaseFeaturesProvider>
   )
 }
-

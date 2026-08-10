@@ -14,6 +14,7 @@ import { sendEmail } from "./email";
 import {
   getPrimaryClientOrigin,
   getRequiredStringEnv,
+  getStringEnv,
   getTrustedOrigins,
   isLocalDevelopmentHost,
 } from "./config";
@@ -44,6 +45,9 @@ function createAuthInstance(env: AuthEnv, request: Request, database: Database) 
 }
 
 function sharedAuthOptions(env: AuthEnv) {
+  const googleClientId = getStringEnv(env, "GOOGLE_CLIENT_ID");
+  const googleClientSecret = getStringEnv(env, "GOOGLE_CLIENT_SECRET");
+
   return {
     emailAndPassword: {
       enabled: true,
@@ -52,6 +56,15 @@ function sharedAuthOptions(env: AuthEnv) {
     emailVerification: {
       autoSignInAfterVerification: true,
     },
+    socialProviders:
+      googleClientId && googleClientSecret
+        ? {
+            google: {
+              clientId: googleClientId,
+              clientSecret: googleClientSecret,
+            },
+          }
+        : {},
     plugins: [
       apiKey({
         defaultPrefix: API_KEY_PREFIX,

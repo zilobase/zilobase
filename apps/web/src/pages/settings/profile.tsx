@@ -1,4 +1,6 @@
 import * as React from "react"
+import { useNavigate } from "@tanstack/react-router"
+import { LogOutIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
@@ -19,14 +21,28 @@ import {
   useChangePassword,
   useSetPassword,
   useSession,
+  useSignOut,
   useUpdateUserProfile,
 } from "@zilobase/features/auth"
 
 export default function ProfileSettingsPage() {
+  const navigate = useNavigate()
   const { data: sessionData } = useSession()
+  const signOut = useSignOut()
+
+  const handleSignOut = () => {
+    signOut.mutate(undefined, {
+      onSuccess: () => {
+        void navigate({ to: "/login", replace: true })
+      },
+      onError: (error) => {
+        toast.error(getApiErrorMessage(error))
+      },
+    })
+  }
 
   return (
-    <main className="flex flex-1 flex-col gap-6 px-4 py-8">
+    <main className="flex min-h-full flex-1 flex-col gap-6 px-4 py-8">
       <SettingsHeader
         title="Profile"
         description="Update your personal details and account preferences."
@@ -43,6 +59,18 @@ export default function ProfileSettingsPage() {
           hasPassword={sessionData?.user?.hasPassword ?? true}
           isReady={Boolean(sessionData?.user)}
         />
+      </div>
+
+      <div className="mx-auto mt-auto flex w-full max-w-4xl justify-end pt-2">
+        <Button
+          disabled={signOut.isPending}
+          onClick={handleSignOut}
+          type="button"
+          variant="destructive"
+        >
+          {signOut.isPending ? <Spinner /> : <LogOutIcon />}
+          {signOut.isPending ? "Logging out..." : "Log out"}
+        </Button>
       </div>
     </main>
   )

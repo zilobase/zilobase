@@ -1,9 +1,9 @@
 "use client"
 
-import { GalleryVerticalEndIcon } from "lucide-react"
 import { useNavigate } from "@tanstack/react-router"
 
 import { Button } from "@/components/ui/button"
+import { ZilobaseLogo } from "@/components/zilobase-logo"
 import {
   Field,
   FieldDescription,
@@ -46,9 +46,7 @@ export function OnboardingForm({
               href="#"
               className="flex flex-col items-center gap-2 font-medium"
             >
-              <div className="flex size-8 items-center justify-center rounded-md">
-                <GalleryVerticalEndIcon className="size-6" />
-              </div>
+              <ZilobaseLogo className="h-8 w-auto" />
               <span className="sr-only">Zilobase</span>
             </a>
             <h1 className="text-xl font-bold">Set up your page</h1>
