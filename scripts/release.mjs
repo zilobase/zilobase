@@ -40,7 +40,7 @@ try {
   if (error.status !== 1) throw error
 }
 
-const dirty = run("git", ["status", "--porcelain"]).trim().split("\n").filter(Boolean)
+const dirty = run("git", ["status", "--porcelain"]).trimEnd().split("\n").filter(Boolean)
 const unexpectedDirty = dirty.filter((line) => line.slice(3) !== "CHANGELOG.md")
 
 if (unexpectedDirty.length) {
