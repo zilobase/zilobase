@@ -220,7 +220,7 @@ function ConditionalColorRuleItem({
                 <span
                   className={cn(
                     "size-3 rounded-sm border",
-                    color.backgroundClass,
+                    color.swatchClass,
                   )}
                 />
                 <SelectValue />
@@ -234,7 +234,7 @@ function ConditionalColorRuleItem({
                     <span
                       className={cn(
                         "mr-2 inline-flex size-3 rounded-sm border align-middle",
-                        option.backgroundClass,
+                        option.swatchClass,
                       )}
                     />
                     {option.name}
@@ -437,4 +437,3 @@ export function ConditionalColorPanel({
     </div>
   );
 }
-

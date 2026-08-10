@@ -13,6 +13,7 @@ type PaletteEntry = {
   name: string
   textClass: string
   backgroundClass: string
+  swatchClass: string
 }
 
 // Values live in design-tokens.css; this file only maps editor concepts to utilities.
@@ -20,59 +21,68 @@ export const PALETTE: Record<ColorTokenId, PaletteEntry> = {
   gray: {
     name: "Gray",
     textClass: "text-editor-gray",
-    backgroundClass: "bg-editor-gray-solid",
+    backgroundClass: "bg-editor-gray-surface",
+    swatchClass: "bg-editor-gray-swatch",
   },
   brown: {
     name: "Brown",
     textClass: "text-editor-brown",
-    backgroundClass: "bg-editor-brown-solid",
+    backgroundClass: "bg-editor-brown-surface",
+    swatchClass: "bg-editor-brown-swatch",
   },
   orange: {
     name: "Orange",
     textClass: "text-editor-orange",
-    backgroundClass: "bg-editor-orange-solid",
+    backgroundClass: "bg-editor-orange-surface",
+    swatchClass: "bg-editor-orange-swatch",
   },
   yellow: {
     name: "Yellow",
     textClass: "text-editor-yellow",
-    backgroundClass: "bg-editor-yellow-solid",
+    backgroundClass: "bg-editor-yellow-surface",
+    swatchClass: "bg-editor-yellow-swatch",
   },
   green: {
     name: "Green",
     textClass: "text-editor-green",
-    backgroundClass: "bg-editor-green-solid",
+    backgroundClass: "bg-editor-green-surface",
+    swatchClass: "bg-editor-green-swatch",
   },
   blue: {
     name: "Blue",
     textClass: "text-editor-blue",
-    backgroundClass: "bg-editor-blue-solid",
+    backgroundClass: "bg-editor-blue-surface",
+    swatchClass: "bg-editor-blue-swatch",
   },
   purple: {
     name: "Purple",
     textClass: "text-editor-purple",
-    backgroundClass: "bg-editor-purple-solid",
+    backgroundClass: "bg-editor-purple-surface",
+    swatchClass: "bg-editor-purple-swatch",
   },
   pink: {
     name: "Pink",
     textClass: "text-editor-pink",
-    backgroundClass: "bg-editor-pink-solid",
+    backgroundClass: "bg-editor-pink-surface",
+    swatchClass: "bg-editor-pink-swatch",
   },
   red: {
     name: "Red",
     textClass: "text-editor-red",
-    backgroundClass: "bg-editor-red-solid",
+    backgroundClass: "bg-editor-red-surface",
+    swatchClass: "bg-editor-red-swatch",
   },
 }
 
-const SOLID_FG = "text-editor-color-foreground"
-
 const isPaletteColor = (value: string): value is ColorTokenId => value in PALETTE
+const SOLID_FG = "text-editor-color-foreground"
 
 export type ColorToken = {
   name: string
   value: string | null
   textClass: string
   backgroundClass: string
+  swatchClass: string
   dotClass: string
   solidClass: string
 }
@@ -83,6 +93,7 @@ export const colorTokens: ColorToken[] = [
     value: null,
     textClass: "text-foreground",
     backgroundClass: "bg-background",
+    swatchClass: "bg-background",
     dotClass: "text-muted-foreground",
     solidClass: "bg-muted text-muted-foreground",
   },
@@ -91,6 +102,7 @@ export const colorTokens: ColorToken[] = [
     value: id,
     textClass: entry.textClass,
     backgroundClass: entry.backgroundClass,
+    swatchClass: entry.swatchClass,
     dotClass: SOLID_FG,
     solidClass: `${entry.backgroundClass} ${SOLID_FG}`,
   })),
@@ -161,7 +173,7 @@ export function isPaletteColorActive(
 
 export function getColorTokenBadgeClassName(color?: string | null) {
   const token = getColorToken(color)
-  const textClass = token.value ? SOLID_FG : "text-foreground"
+  const textClass = token.value ? token.dotClass : "text-foreground"
 
   return `database-select-badge ${textClass} ${token.backgroundClass}`
 }

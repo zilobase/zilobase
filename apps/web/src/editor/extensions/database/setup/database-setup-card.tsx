@@ -28,7 +28,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getColorToken } from "@/lib/color-tokens";
+import { getIconSolidClassName } from "@/lib/color-tokens";
 import { cn } from "@/lib/utils";
 import {
   useAddDatabaseProperty,
@@ -299,7 +299,7 @@ function TemplateIcon({
     <span
       className={cn(
         "flex size-7 shrink-0 items-center justify-center rounded-md",
-        getColorToken(colorId).solidClass,
+        getIconSolidClassName(colorId),
       )}
     >
       {icon}

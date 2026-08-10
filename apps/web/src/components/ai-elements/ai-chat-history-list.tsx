@@ -171,7 +171,7 @@ export function AiChatHistoryList({
                   key={thread.id}
                   className={cn(
                     "group px-3 py-3 hover:bg-sidebar hover:text-sidebar-foreground",
-                    isActive && "bg-sidebar/70",
+                    isActive && "bg-active text-active-foreground",
                   )}
                 >
                   {showLabel ? (

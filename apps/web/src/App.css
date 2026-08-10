@@ -43,10 +43,6 @@
   html {
     @apply font-sans;
     }
-  ::selection {
-    background: color-mix(in srgb, var(--selection) 35%, transparent);
-    color: inherit;
-    }
 }
 
 [data-panel][data-sidebar-transitioning] {

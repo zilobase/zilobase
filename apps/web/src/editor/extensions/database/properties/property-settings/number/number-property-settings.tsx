@@ -262,7 +262,7 @@ const numberColorOptions = colorTokens.map((color) => ({
   icon: (
     <span
       aria-hidden="true"
-      className={`size-4 rounded-sm border border-foreground/10 ${color.backgroundClass}`}
+      className={`size-4 rounded-sm border border-foreground/10 ${color.swatchClass}`}
     />
   ),
   label: color.name,
@@ -326,8 +326,8 @@ function getColorSwatchClassName(color?: string | null) {
 
   return (
     colorTokens.find((token) => (token.value ?? "default") === resolvedColor)
-      ?.backgroundClass ??
-    colorTokens[0]?.backgroundClass ??
+      ?.swatchClass ??
+    colorTokens[0]?.swatchClass ??
     "bg-background"
   );
 }

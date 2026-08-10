@@ -1,4 +1,20 @@
 export function register({ assert, loadModule, test }) {
+  test("database charts use the semantic palette for defaults and variants", async () => {
+    const { DEFAULT_CHART_COLOR, getColorVariant } = await loadModule(
+      "/src/editor/extensions/database/views/chart/database-chart-data.ts",
+    );
+
+    assert.equal(DEFAULT_CHART_COLOR, "var(--editor-blue)");
+    assert.equal(
+      getColorVariant("var(--editor-blue)", 0),
+      "var(--editor-blue)",
+    );
+    assert.equal(
+      getColorVariant("var(--editor-blue)", 1),
+      "color-mix(in oklab, var(--editor-blue) 82%, var(--background))",
+    );
+  });
+
   test("database chart config normalizes persisted settings", async () => {
     const { getDatabaseChartSettings } = await loadModule(
       "/src/editor/extensions/database/views/chart/database-chart-config.ts",

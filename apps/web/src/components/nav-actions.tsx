@@ -385,7 +385,7 @@ export function NavActions({
               aria-pressed={discussionsOpen}
               className={cn(
                 "h-7 gap-1.5 px-2",
-                discussionsOpen && "bg-accent",
+                discussionsOpen && "bg-active text-active-foreground",
               )}
               onClick={onToggleDiscussions}
               size="sm"
@@ -402,7 +402,10 @@ export function NavActions({
               aria-label={
                 pageSidebarOpen ? "Close page sidebar" : "Open page sidebar"
               }
-              className={cn("h-7 w-7", pageSidebarOpen && "bg-accent")}
+              className={cn(
+                "h-7 w-7",
+                pageSidebarOpen && "bg-active text-active-foreground",
+              )}
               onClick={onTogglePageSidebar}
               size="icon"
               title={

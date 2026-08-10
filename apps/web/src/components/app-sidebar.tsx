@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  Link,
   useLocation,
   useNavigate,
   useRouterState,
@@ -33,6 +32,10 @@ import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-st
 import { SidebarCustomizeDialog } from "@/components/sidebar-customize-dialog";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { ThemeDropdown } from "@/components/theme-dropdown";
+import {
+  ExpandableTabs,
+  type ExpandableTabItem,
+} from "@/components/ui/expandable-tabs";
 import {
   Sidebar,
   SidebarContent,
@@ -70,6 +73,7 @@ import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
 import {
   BlocksIcon,
+  BookOpenIcon,
   CalendarIcon,
   CalendarRange,
   ChartPie,
@@ -86,6 +90,7 @@ import {
   SparklesIcon,
   Table2,
   Trash2Icon,
+  type LucideIcon,
 } from "lucide-react";
 
 const sidebarNavigationIcons = {
@@ -111,16 +116,16 @@ const sidebarNavigationIcons = {
 const data = {
   navMain: [
     {
-      id: "library" as const,
-      title: "Library",
+      id: "home" as const,
+      title: "Home",
       url: "/dashboard",
-      icon: <HomeIcon />,
+      icon: HomeIcon,
     },
     {
       id: "askAi" as const,
       title: "Ask AI",
       url: "/ai",
-      icon: <SparklesIcon />,
+      icon: SparklesIcon,
     },
   ],
   navSecondary: [
@@ -211,7 +216,15 @@ export function AppSidebar({
       ),
     [navigation],
   );
-  const isAiPage = pathname === "/ai";
+  const [sidebarMode, setSidebarMode] = React.useState<"home" | "askAi">(
+    pathname === "/ai" ? "askAi" : "home",
+  );
+
+  React.useEffect(() => {
+    setSidebarMode(pathname === "/ai" ? "askAi" : "home");
+  }, [pathname]);
+
+  const isAiPage = sidebarMode === "askAi";
   const hiddenSidebarItems = React.useMemo(
     () => new Set(sidebarConfig.hiddenItems),
     [sidebarConfig.hiddenItems],
@@ -352,11 +365,15 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain
           items={data.navMain.filter(
-            (item) => !hiddenSidebarItems.has(item.id),
+            (item) =>
+              item.id === "home" || !hiddenSidebarItems.has(item.id),
           )}
           libraryView={sidebarConfig.libraryView}
           onOpenSearch={openSearch}
+          onSidebarModeChange={setSidebarMode}
           pathname={pathname}
+          sidebarMode={sidebarMode}
+          showLibrary={!hiddenSidebarItems.has("library")}
         />
         {isAiPage ? (
           <AiSidebarHistory />
@@ -461,49 +478,94 @@ function NavMain({
   items,
   libraryView,
   onOpenSearch,
+  onSidebarModeChange,
   pathname,
+  sidebarMode,
+  showLibrary,
 }: {
   items: {
-    id: SidebarItemId;
+    id: "home" | SidebarItemId;
     title: string;
     url: string;
-    icon: React.ReactNode;
+    icon: LucideIcon;
   }[];
   libraryView: SidebarConfig["libraryView"];
   onOpenSearch: () => void;
+  onSidebarModeChange: (mode: "home" | "askAi") => void;
   pathname: string;
+  sidebarMode: "home" | "askAi";
+  showLibrary: boolean;
 }) {
+  const navigate = useNavigate();
+  const routeSelected = items.findIndex((item) =>
+    sidebarMode === "home" ? item.id === "home" : item.id === "askAi",
+  );
+  const [selected, setSelected] = React.useState<number | null>(routeSelected);
+  const tabs = React.useMemo<ExpandableTabItem[]>(
+    () => [
+      ...items.map((item) => ({ title: item.title, icon: item.icon })),
+      { title: "Search", icon: SearchIcon },
+    ],
+    [items],
+  );
+
+  React.useEffect(() => {
+    setSelected(routeSelected);
+  }, [routeSelected]);
+
+  const handleChange = (index: number | null) => {
+    if (index === null) {
+      setSelected(routeSelected);
+      return;
+    }
+
+    setSelected(index);
+    const item = items[index];
+
+    if (!item) {
+      onOpenSearch();
+      return;
+    }
+
+    if (item.id === "home") {
+      onSidebarModeChange("home");
+      return;
+    }
+
+    onSidebarModeChange("askAi");
+    void navigate({ to: item.url as never });
+  };
+
   return (
-    <SidebarGroup>
+    <SidebarGroup className="pb-1 pt-0.5">
       <SidebarGroupContent>
-        <SidebarMenu aria-label="Main navigation">
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton
-                asChild
-                isActive={isNavigationItemActive(item.url, pathname)}
-              >
-                {item.id === "library" ? (
-                  <Link search={{ view: libraryView }} to="/dashboard">
-                    {item.icon}
-                    <span>{item.title}</span>
-                  </Link>
-                ) : (
-                  <Link to={item.url as never}>
-                    {item.icon}
-                    <span>{item.title}</span>
-                  </Link>
-                )}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={onOpenSearch} type="button">
-              <SearchIcon />
-              <span>Search</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <nav aria-label="Main navigation">
+          <ExpandableTabs
+            className="w-full"
+            onChange={handleChange}
+            selected={selected}
+            tabs={tabs}
+          />
+          {showLibrary ? (
+            <SidebarMenu className="mt-1">
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={pathname === "/dashboard"}
+                  onClick={() =>
+                    void navigate({
+                      search: { view: libraryView },
+                      to: "/dashboard",
+                    })
+                  }
+                  type="button"
+                >
+                  <BookOpenIcon />
+                  <span>Library</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          ) : null}
+        </nav>
       </SidebarGroupContent>
     </SidebarGroup>
   );
@@ -559,8 +621,4 @@ function AiSidebarHistory() {
       </Collapsible>
     </>
   );
-}
-
-function isNavigationItemActive(url: string, pathname: string) {
-  return url !== "#" && (pathname === url || pathname.startsWith(`${url}/`));
 }

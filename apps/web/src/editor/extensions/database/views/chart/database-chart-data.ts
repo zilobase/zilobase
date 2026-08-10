@@ -47,7 +47,7 @@ export type DatabaseChartRow = {
   updatedAt: string
 }
 
-export const DEFAULT_CHART_COLOR = "var(--primary)"
+export const DEFAULT_CHART_COLOR = "var(--editor-blue)"
 
 function getChartColor(color?: string | null) {
   return getPaletteColor(color) ?? DEFAULT_CHART_COLOR
@@ -319,15 +319,14 @@ export function getAutomaticChartColor(
 }
 
 export function getColorVariant(color: string, index: number) {
-  const mixPercentages = [0, 18, 32, 46, 60, 12, 26, 40]
-  const mixTarget = index % 2 === 0 ? "black" : "white"
-  const mixPercentage = mixPercentages[index % mixPercentages.length]
+  const colorPercentages = [100, 82, 68, 54, 88, 74, 60, 46]
+  const colorPercentage = colorPercentages[index % colorPercentages.length]
 
-  if (mixPercentage === 0) {
+  if (colorPercentage === 100) {
     return color
   }
 
-  return `color-mix(in srgb, ${color} ${100 - mixPercentage}%, ${mixTarget})`
+  return `color-mix(in oklab, ${color} ${colorPercentage}%, var(--background))`
 }
 
 export function getChartGroupProperty(

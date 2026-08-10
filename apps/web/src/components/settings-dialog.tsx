@@ -24,7 +24,7 @@ export function SettingsDialog({
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent
-        className="h-[min(820px,calc(100svh-2rem))] gap-0 overflow-hidden p-0 sm:max-h-[calc(100svh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-6xl sm:grid-cols-[15rem_minmax(0,1fr)]"
+        className="h-[min(820px,calc(100svh-2rem))] gap-0 overflow-hidden p-0 sm:max-h-[calc(100svh-2rem)] sm:w-[calc(100vw-2rem)] sm:max-w-6xl sm:grid-cols-[16rem_minmax(0,1fr)]"
         hideMobileDragHandle
         overlayClassName="bg-scrim/80 backdrop-blur-[1px]"
         unstyledContent
@@ -37,7 +37,7 @@ export function SettingsDialog({
           activeSection={activeSection}
           onSectionChange={onSectionChange}
         />
-        <div className="min-h-0 min-w-0 overflow-y-auto bg-background">
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto bg-background">
           {children}
         </div>
       </DialogContent>

@@ -682,7 +682,7 @@ export function DatabaseChartSettingsSection({
                 })
               }
             >
-              <span className={cn("size-3 rounded-sm border", color.backgroundClass)} />
+              <span className={cn("size-3 rounded-sm border", color.swatchClass)} />
               <span>{color.name}</span>
               {settings.color === color.value ? (
                 <Check className="ml-auto text-foreground" />

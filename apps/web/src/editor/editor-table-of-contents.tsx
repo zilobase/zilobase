@@ -73,7 +73,7 @@ export function EditorTableOfContents({
                     "flex h-9 w-full items-center rounded-md px-2 text-left text-sm transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
                     item.level === 2 && "pl-5",
                     item.level >= 3 && "pl-8",
-                    item.isActive && "bg-muted text-foreground"
+                    item.isActive && "bg-active text-active-foreground"
                   )}
                   key={item.id}
                   onClick={() => jumpToItem(item)}

@@ -62,6 +62,8 @@
   --interactive-subtle: var(--primitive-neutral-100);
   --interactive-subtle-hover: var(--primitive-neutral-200);
   --interactive-subtle-foreground: var(--primitive-neutral-800);
+  --interactive-active: var(--primitive-neutral-200);
+  --interactive-active-foreground: var(--primitive-neutral-800);
 
   --status-destructive: var(--primitive-red-500);
   --status-destructive-foreground: var(--primitive-neutral-0);
@@ -70,26 +72,35 @@
   --selection-foreground: var(--primitive-neutral-0);
   --control-knob: var(--primitive-neutral-0);
 
-  /* Theme-aware editor colors: readable text and stable solid fills. */
-  --editor-gray: #71717a;
-  --editor-brown: #735d49;
-  --editor-orange: #9a3412;
-  --editor-yellow: #735c0f;
-  --editor-green: #047857;
-  --editor-blue: #0369a1;
-  --editor-purple: #6d28d9;
-  --editor-pink: #be185d;
-  --editor-red: #b91c1c;
-  --editor-gray-solid: #71717a;
-  --editor-brown-solid: #735d49;
-  --editor-orange-solid: #9a3412;
-  --editor-yellow-solid: #8a6508;
-  --editor-green-solid: #047857;
-  --editor-blue-solid: #0369a1;
-  --editor-purple-solid: #6d28d9;
-  --editor-pink-solid: #be185d;
-  --editor-red-solid: #b91c1c;
-  --editor-color-foreground: var(--primitive-neutral-0);
+  /* Notion-style editor palette: accent, tag surface, and picker swatch. */
+  --editor-gray: #787774;
+  --editor-brown: #9f6b53;
+  --editor-orange: #d9730d;
+  --editor-yellow: #cb912f;
+  --editor-green: #448361;
+  --editor-blue: #337ea9;
+  --editor-purple: #9065b0;
+  --editor-pink: #c14c8a;
+  --editor-red: #d44c47;
+  --editor-gray-surface: #e3e2e0;
+  --editor-brown-surface: #eee0da;
+  --editor-orange-surface: #fadec9;
+  --editor-yellow-surface: #fdecc8;
+  --editor-green-surface: #dbeddb;
+  --editor-blue-surface: #d3e5ef;
+  --editor-purple-surface: #e8deee;
+  --editor-pink-surface: #f5e0e9;
+  --editor-red-surface: #ffe2dd;
+  --editor-gray-swatch: #787774;
+  --editor-brown-swatch: #9f6b53;
+  --editor-orange-swatch: #d9730d;
+  --editor-yellow-swatch: #cb912f;
+  --editor-green-swatch: #448361;
+  --editor-blue-swatch: #337ea9;
+  --editor-purple-swatch: #9065b0;
+  --editor-pink-swatch: #c14c8a;
+  --editor-red-swatch: #d44c47;
+  --editor-color-foreground: #37352f;
 
   /* Original blue chart palette. */
   --data-1: oklch(0.81 0.1 252);
@@ -113,6 +124,8 @@
   --muted-foreground: var(--text-muted);
   --accent: var(--interactive-subtle);
   --accent-foreground: var(--interactive-subtle-foreground);
+  --active: var(--interactive-active);
+  --active-foreground: var(--interactive-active-foreground);
   --destructive: var(--status-destructive);
   --destructive-foreground: var(--status-destructive-foreground);
   --border: var(--border-muted);
@@ -189,6 +202,8 @@
   --interactive-subtle: #27272a;
   --interactive-subtle-hover: #3f3f46;
   --interactive-subtle-foreground: #ffffff;
+  --interactive-active: #27272a;
+  --interactive-active-foreground: #ffffff;
 
   --status-destructive: #ef4444;
   --status-destructive-foreground: #ffffff;
@@ -197,15 +212,34 @@
   --selection-foreground: #ffffff;
   --control-knob: var(--text-primary);
 
-  --editor-gray: #71717a;
-  --editor-brown: #d8b99b;
-  --editor-orange: #fb923c;
-  --editor-yellow: #facc15;
-  --editor-green: #34d399;
-  --editor-blue: #38bdf8;
-  --editor-purple: #b69cff;
-  --editor-pink: #f472b6;
-  --editor-red: #ff827a;
+  --editor-gray: #9b9a97;
+  --editor-brown: #ba856f;
+  --editor-orange: #c77d48;
+  --editor-yellow: #c29343;
+  --editor-green: #529e72;
+  --editor-blue: #529cca;
+  --editor-purple: #9a6dd7;
+  --editor-pink: #e255a1;
+  --editor-red: #e03e3e;
+  --editor-gray-surface: #5a5a5a;
+  --editor-brown-surface: #603b2c;
+  --editor-orange-surface: #854c1d;
+  --editor-yellow-surface: #89632a;
+  --editor-green-surface: #2b593f;
+  --editor-blue-surface: #28456c;
+  --editor-purple-surface: #492f64;
+  --editor-pink-surface: #69314c;
+  --editor-red-surface: #6e3630;
+  --editor-gray-swatch: #9b9a97;
+  --editor-brown-swatch: #ba856f;
+  --editor-orange-swatch: #c77d48;
+  --editor-yellow-swatch: #c29343;
+  --editor-green-swatch: #529e72;
+  --editor-blue-swatch: #529cca;
+  --editor-purple-swatch: #9a6dd7;
+  --editor-pink-swatch: #e255a1;
+  --editor-red-swatch: #e03e3e;
+  --editor-color-foreground: #ffffff;
 
   --data-1: oklch(0.81 0.1 252);
   --data-2: oklch(0.62 0.19 260);
@@ -227,6 +261,8 @@
   --muted-foreground: var(--text-muted);
   --accent: var(--interactive-subtle);
   --accent-foreground: var(--interactive-subtle-foreground);
+  --active: var(--interactive-active);
+  --active-foreground: var(--interactive-active-foreground);
   --destructive: var(--status-destructive);
   --destructive-foreground: var(--status-destructive-foreground);
   --border: var(--border-muted);
@@ -278,6 +314,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-active: var(--active);
+  --color-active-foreground: var(--active-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -330,15 +368,24 @@
   --color-editor-purple: var(--editor-purple);
   --color-editor-pink: var(--editor-pink);
   --color-editor-red: var(--editor-red);
-  --color-editor-gray-solid: var(--editor-gray-solid);
-  --color-editor-brown-solid: var(--editor-brown-solid);
-  --color-editor-orange-solid: var(--editor-orange-solid);
-  --color-editor-yellow-solid: var(--editor-yellow-solid);
-  --color-editor-green-solid: var(--editor-green-solid);
-  --color-editor-blue-solid: var(--editor-blue-solid);
-  --color-editor-purple-solid: var(--editor-purple-solid);
-  --color-editor-pink-solid: var(--editor-pink-solid);
-  --color-editor-red-solid: var(--editor-red-solid);
+  --color-editor-gray-surface: var(--editor-gray-surface);
+  --color-editor-brown-surface: var(--editor-brown-surface);
+  --color-editor-orange-surface: var(--editor-orange-surface);
+  --color-editor-yellow-surface: var(--editor-yellow-surface);
+  --color-editor-green-surface: var(--editor-green-surface);
+  --color-editor-blue-surface: var(--editor-blue-surface);
+  --color-editor-purple-surface: var(--editor-purple-surface);
+  --color-editor-pink-surface: var(--editor-pink-surface);
+  --color-editor-red-surface: var(--editor-red-surface);
+  --color-editor-gray-swatch: var(--editor-gray-swatch);
+  --color-editor-brown-swatch: var(--editor-brown-swatch);
+  --color-editor-orange-swatch: var(--editor-orange-swatch);
+  --color-editor-yellow-swatch: var(--editor-yellow-swatch);
+  --color-editor-green-swatch: var(--editor-green-swatch);
+  --color-editor-blue-swatch: var(--editor-blue-swatch);
+  --color-editor-purple-swatch: var(--editor-purple-swatch);
+  --color-editor-pink-swatch: var(--editor-pink-swatch);
+  --color-editor-red-swatch: var(--editor-red-swatch);
   --color-editor-color-foreground: var(--editor-color-foreground);
 
   --font-sans: var(--font-family-sans);

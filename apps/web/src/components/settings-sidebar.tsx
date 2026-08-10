@@ -7,7 +7,15 @@ import {
   UsersIcon,
 } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import {
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar"
 
 export type SettingsSection =
   | "profile"
@@ -38,37 +46,39 @@ export function SettingsSidebar({
   onSectionChange: (section: SettingsSection) => void
 }) {
   return (
-    <aside className="min-w-0 border-b bg-muted/35 p-2 sm:h-full sm:w-60 sm:border-r sm:border-b-0 sm:p-3">
-      <div className="mb-2 hidden px-2 pt-1 text-xs font-medium text-muted-foreground sm:block">
-        Settings
-      </div>
-      <nav
-        aria-label="Settings sections"
-        className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-x-visible"
-      >
-        {settingsItems.map((item) => {
-          const Icon = item.icon
-          const active = activeSection === item.section
+    <aside className="min-w-0 border-b border-sidebar-border bg-sidebar text-sidebar-foreground sm:h-full sm:w-64 sm:border-r sm:border-b-0">
+      <SidebarContent className="overflow-visible sm:overflow-auto">
+        <SidebarGroup className="p-2 sm:py-0">
+          <SidebarGroupLabel className="hidden h-8 rounded-md px-2 text-xs text-sidebar-foreground/55 sm:flex">
+            Settings
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <nav aria-label="Settings sections">
+              <SidebarMenu className="flex-row gap-1 overflow-x-auto sm:flex-col sm:gap-0.5 sm:overflow-x-visible">
+                {settingsItems.map((item) => {
+                  const Icon = item.icon
+                  const active = activeSection === item.section
 
-          return (
-            <button
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex h-9 shrink-0 items-center gap-2 rounded-md px-2.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-              )}
-              key={item.section}
-              onClick={() => onSectionChange(item.section)}
-              type="button"
-            >
-              <Icon className="size-4" />
-              <span>{item.title}</span>
-            </button>
-          )
-        })}
-      </nav>
+                  return (
+                    <SidebarMenuItem className="shrink-0" key={item.section}>
+                      <SidebarMenuButton
+                        aria-current={active ? "page" : undefined}
+                        className="w-auto sm:w-full"
+                        isActive={active}
+                        onClick={() => onSectionChange(item.section)}
+                        type="button"
+                      >
+                        <Icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )
+                })}
+              </SidebarMenu>
+            </nav>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
     </aside>
   )
 }
