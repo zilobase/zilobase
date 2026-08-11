@@ -1,4 +1,9 @@
+import { isTauri } from "@tauri-apps/api/core"
+import { openUrl } from "@tauri-apps/plugin-opener"
+
 import { authFetch } from "@/lib/api"
+
+const WEB_APP_URL = "https://app.zilobase.com"
 
 type SocialSignInResponse = {
   redirect: boolean
@@ -6,6 +11,13 @@ type SocialSignInResponse = {
 }
 
 export async function signInWithGoogle(callbackURL: string) {
+  if (isTauri()) {
+    const url = new URL("/desktop-auth", WEB_APP_URL)
+    url.searchParams.set("path", callbackURL)
+    await openUrl(url.toString())
+    return
+  }
+
   const response = await authFetch<SocialSignInResponse>("/sign-in/social", {
     provider: "google",
     callbackURL: new URL(callbackURL, window.location.origin).toString(),
@@ -21,4 +33,17 @@ export async function signInWithGoogle(callbackURL: string) {
   }
 
   window.location.assign(response.url)
+}
+
+export function getAuthReturnPath(
+  fallback: string,
+  search = window.location.search,
+) {
+  const returnTo = new URLSearchParams(search).get("returnTo")
+  if (!returnTo?.startsWith("/") || returnTo.startsWith("//")) return fallback
+
+  const url = new URL(returnTo, WEB_APP_URL)
+  return url.origin === WEB_APP_URL
+    ? `${url.pathname}${url.search}${url.hash}`
+    : fallback
 }

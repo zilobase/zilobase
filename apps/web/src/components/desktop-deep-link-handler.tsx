@@ -2,7 +2,12 @@ import { useEffect } from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link"
 
-import { getDesktopDeepLinkPath } from "@/lib/desktop-deep-link"
+import { authFetch } from "@/lib/api"
+import {
+  getDesktopAuthDeepLink,
+  getDesktopDeepLinkPath,
+} from "@/lib/desktop-deep-link"
+import { queryClient } from "@/lib/query-client"
 
 export function DesktopDeepLinkHandler({
   openPath,
@@ -14,15 +19,27 @@ export function DesktopDeepLinkHandler({
 
     let disposed = false
     let unlisten: (() => void) | undefined
-    const openFirstValidPath = (urls: string[]) => {
+    const openFirstValidPath = async (urls: string[]) => {
+      const authLink = urls.map(getDesktopAuthDeepLink).find(Boolean)
+      if (authLink) {
+        try {
+          await authFetch("/one-time-token/verify", { token: authLink.token })
+          await queryClient.invalidateQueries({ queryKey: ["session"] })
+          openPath(authLink.path)
+        } catch {
+          openPath("/login?desktopAuthError=1")
+        }
+        return
+      }
+
       const path = urls.map(getDesktopDeepLinkPath).find(Boolean)
       if (path) openPath(path)
     }
 
     void getCurrent().then((urls) => {
-      if (!disposed && urls) openFirstValidPath(urls)
+      if (!disposed && urls) void openFirstValidPath(urls)
     })
-    void onOpenUrl(openFirstValidPath).then((stopListening) => {
+    void onOpenUrl((urls) => void openFirstValidPath(urls)).then((stopListening) => {
       if (disposed) stopListening()
       else unlisten = stopListening
     })

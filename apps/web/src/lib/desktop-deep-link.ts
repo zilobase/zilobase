@@ -16,6 +16,35 @@ export function getDesktopDeepLinkPath(value: string) {
   }
 }
 
+export function buildDesktopAuthDeepLink(token: string, path: string) {
+  const url = new URL("zilobase://auth")
+  url.searchParams.set("token", token)
+  url.searchParams.set("path", normalizeAppPath(path) ?? "/dashboard")
+  return url.toString()
+}
+
+export function getDesktopAuthDeepLink(value: string) {
+  try {
+    const url = new URL(value)
+    const token = url.searchParams.get("token")
+    if (
+      url.protocol !== "zilobase:" ||
+      url.hostname !== "auth" ||
+      !token ||
+      token.length > 512
+    ) {
+      return null
+    }
+
+    return {
+      path: normalizeAppPath(url.searchParams.get("path")) ?? "/dashboard",
+      token,
+    }
+  } catch {
+    return null
+  }
+}
+
 function normalizeAppPath(path: string | null) {
   if (!path?.startsWith("/") || path.startsWith("//")) return null
 

@@ -1,8 +1,10 @@
 export function register({ assert, loadModule, test }) {
   test("desktop tabs close safely and persist drag reordering", async () => {
-    const { closeDesktopTabState, setDesktopTabOrderState } = await loadModule(
-      "/src/stores/app-store.ts",
-    )
+    const {
+      closeDesktopTabState,
+      setDesktopTabOrderState,
+      useAppStore,
+    } = await loadModule("/src/stores/app-store.ts")
     const tabs = [
       { href: "/p/one", id: "one", title: "One" },
       { href: "/p/two", id: "two", title: "Two" },
@@ -39,5 +41,24 @@ export function register({ assert, loadModule, test }) {
       ["two", "three", "one"],
     )
     assert.equal(reordered.activeDesktopTabId, "two")
+
+    useAppStore.setState({
+      activeDesktopTabId: "two",
+      activeWorkspaceId: "workspace-one",
+      desktopTabs: tabs,
+    })
+    useAppStore.getState().resetAccountState()
+    assert.deepEqual(
+      {
+        activeDesktopTabId: useAppStore.getState().activeDesktopTabId,
+        activeWorkspaceId: useAppStore.getState().activeWorkspaceId,
+        desktopTabs: useAppStore.getState().desktopTabs,
+      },
+      {
+        activeDesktopTabId: null,
+        activeWorkspaceId: null,
+        desktopTabs: [],
+      },
+    )
   })
 }

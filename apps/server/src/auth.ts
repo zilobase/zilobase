@@ -3,8 +3,10 @@ import { expo } from "@better-auth/expo";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import {
+  bearer,
   emailOTP,
   magicLink,
+  oneTimeToken,
   organization as organizationPlugin,
 } from "better-auth/plugins";
 import { API_KEY_PREFIX } from "./api-keys";
@@ -75,6 +77,8 @@ function sharedAuthOptions(env: AuthEnv) {
           }
         : {},
     plugins: [
+      bearer(),
+      oneTimeToken({ storeToken: "hashed" }),
       apiKey({
         defaultPrefix: API_KEY_PREFIX,
         enableMetadata: true,

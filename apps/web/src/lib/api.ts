@@ -1,3 +1,11 @@
+import {
+  clearDesktopAuthToken,
+  getDesktopAuthToken,
+  setDesktopAuthToken,
+} from "@/lib/desktop-auth-token"
+
+const HOSTED_API_BASE_URL = "https://api.zilobase.com"
+
 export const API_BASE_URL = resolveApiBaseUrl()
 
 declare global {
@@ -53,6 +61,9 @@ export async function apiFetch<T>(
     headers: requestHeaders,
   })
 
+  const desktopAuthToken = response.headers.get("set-auth-token")
+  if (desktopAuthToken) await setDesktopAuthToken(desktopAuthToken)
+
   const text = await response.text()
   const data = text ? parseJson(text) : null
 
@@ -66,12 +77,21 @@ export async function apiFetch<T>(
 export function getApiRequestHeaders(headers?: HeadersInit) {
   const requestHeaders = new Headers(headers)
   const mobileViewerCookie = readEmbeddedMobileAuthCookie()
+  const desktopAuthToken = getDesktopAuthToken()
+
+  if (desktopAuthToken && !requestHeaders.has("authorization")) {
+    requestHeaders.set("authorization", `Bearer ${desktopAuthToken}`)
+  }
 
   if (mobileViewerCookie && !requestHeaders.has("x-mobile-auth-cookie")) {
     requestHeaders.set("x-mobile-auth-cookie", mobileViewerCookie)
   }
 
   return requestHeaders
+}
+
+export async function clearApiAuthToken() {
+  await clearDesktopAuthToken()
 }
 
 export function authFetch<T>(path: string, body?: unknown, init?: RequestInit) {
@@ -94,10 +114,18 @@ export function toApiUrl(path: string) {
     : normalizedPath
 }
 
-function resolveApiBaseUrl() {
+export function resolveApiBaseUrl(
+  location = typeof window !== "undefined" ? window.location : undefined,
+) {
   if (
-    typeof window !== "undefined" &&
-    window.location.hostname === "app.zilobase.com"
+    location?.protocol === "tauri:" ||
+    location?.hostname === "tauri.localhost"
+  ) {
+    return HOSTED_API_BASE_URL
+  }
+
+  if (
+    location?.hostname === "app.zilobase.com"
   ) {
     return ""
   }

@@ -18,6 +18,7 @@ type AppState = {
   activateDesktopTab: (tabId: string) => void
   closeDesktopTab: (tabId: string) => DesktopTab | null
   openDesktopTab: (tab: Omit<DesktopTab, "id">) => DesktopTab
+  resetAccountState: () => void
   setDesktopTabOrder: (orderedTabIds: string[]) => void
   setActiveWorkspaceId: (workspaceId: string | null) => void
   syncDesktopTab: (tab: Omit<DesktopTab, "id">) => void
@@ -95,6 +96,12 @@ export const useAppStore = create<AppState>()(
         }))
         return tab
       },
+      resetAccountState: () =>
+        set({
+          activeDesktopTabId: null,
+          activeWorkspaceId: null,
+          desktopTabs: [],
+        }),
       setDesktopTabOrder: (orderedTabIds) =>
         set((state) => setDesktopTabOrderState(state, orderedTabIds)),
       setActiveWorkspaceId: (activeWorkspaceId) => set({ activeWorkspaceId }),

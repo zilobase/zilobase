@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Link, useNavigate } from "@tanstack/react-router"
+import { Link } from "@tanstack/react-router"
 import { EyeIcon, EyeOffIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/input-group"
 import { Input } from "@/components/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
-import { signInWithGoogle } from "@/lib/google-auth"
+import { getAuthReturnPath, signInWithGoogle } from "@/lib/google-auth"
 import { cn } from "@/lib/utils"
 import { useSignInWithPassword } from "@zilobase/features/auth"
 
@@ -31,19 +31,21 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const navigate = useNavigate()
   const signInWithPassword = useSignInWithPassword()
   const [showPassword, setShowPassword] = useState(false)
   const [googleError, setGoogleError] = useState<unknown>(null)
   const [isGooglePending, setIsGooglePending] = useState(false)
   const isPending = signInWithPassword.isPending || isGooglePending
+  const desktopAuthFailed = new URLSearchParams(window.location.search).has(
+    "desktopAuthError",
+  )
 
   async function handleGoogleSignIn() {
     setGoogleError(null)
     setIsGooglePending(true)
 
     try {
-      await signInWithGoogle("/dashboard")
+      await signInWithGoogle(getAuthReturnPath("/dashboard"))
     } catch (error) {
       setGoogleError(error)
       setIsGooglePending(false)
@@ -56,15 +58,11 @@ export function LoginForm({
     const formData = new FormData(event.currentTarget)
     const email = String(formData.get("email") ?? "").trim().toLowerCase()
     const password = String(formData.get("password") ?? "")
-    const returnTo = new URLSearchParams(window.location.search).get("returnTo")
+    const returnTo = getAuthReturnPath("/dashboard")
 
     try {
       await signInWithPassword.mutateAsync({ email, password })
-      if (returnTo) {
-        window.location.assign(returnTo)
-      } else {
-        void navigate({ to: "/dashboard" })
-      }
+      window.location.assign(returnTo)
     } catch {
       // React Query owns the visible error state.
     }
@@ -123,9 +121,11 @@ export function LoginForm({
             </InputGroup>
           </Field>
 
-          {(signInWithPassword.isError || googleError !== null) && (
+          {(signInWithPassword.isError || googleError !== null || desktopAuthFailed) && (
             <FieldError>
-              {getApiErrorMessage(signInWithPassword.error ?? googleError)}
+              {desktopAuthFailed
+                ? "Desktop sign-in could not be completed. Try again."
+                : getApiErrorMessage(signInWithPassword.error ?? googleError)}
             </FieldError>
           )}
 

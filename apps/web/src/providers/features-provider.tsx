@@ -16,7 +16,7 @@ import type {
   VerifyEmailOtpInput,
 } from "@zilobase/features/auth"
 
-import { apiFetch, authFetch } from "@/lib/api"
+import { apiFetch, authFetch, clearApiAuthToken } from "@/lib/api"
 import { queryClient } from "@/lib/query-client"
 import { useAppStore } from "@/stores/app-store"
 import { isFeatureEnabled } from "@/config/feature-flags"
@@ -44,7 +44,12 @@ export const webAuthClient: ZilobaseAuthClient = {
     }),
   verifyEmailOtp: (input: VerifyEmailOtpInput) =>
     authFetch<{ user: unknown }>("/email-otp/verify-email", input),
-  signOut: () => authFetch("/sign-out", {}),
+  signOut: async () => {
+    const result = await authFetch("/sign-out", {})
+    await clearApiAuthToken()
+    useAppStore.getState().resetAccountState()
+    return result
+  },
   createWorkspace: <TWorkspace,>(input: { name: string; slug: string }) =>
     authFetch<Workspace>("/workspace/create", input) as Promise<TWorkspace>,
   setActiveWorkspace: (workspaceId: string) =>
