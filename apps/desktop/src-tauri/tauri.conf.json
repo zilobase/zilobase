@@ -15,8 +15,10 @@
         "title": "zilobase-client",
         "hiddenTitle": true,
         "titleBarStyle": "Overlay",
-        "width": 800,
-        "height": 600,
+        "width": 900,
+        "height": 650,
+        "minWidth": 900,
+        "minHeight": 650,
         "dragDropEnabled": false
       }
     ],
@@ -27,6 +29,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -34,5 +37,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM3QkQ4Mjk3QjVCN0ExQjcKUldTM29iZTFsNEs5TnlDdUNWQjBLVUxGRzlpdkhzTUJXMmJtQmVONjlLanFuRTMxOVd2SnJDTlkK",
+      "endpoints": [
+        "https://github.com/zilobase/zilobase/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

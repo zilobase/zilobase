@@ -502,10 +502,7 @@ function NavMain({
   );
   const [selected, setSelected] = React.useState<number | null>(routeSelected);
   const tabs = React.useMemo<ExpandableTabItem[]>(
-    () => [
-      ...items.map((item) => ({ title: item.title, icon: item.icon })),
-      { title: "Search", icon: SearchIcon },
-    ],
+    () => items.map((item) => ({ title: item.title, icon: item.icon })),
     [items],
   );
 
@@ -522,10 +519,7 @@ function NavMain({
     setSelected(index);
     const item = items[index];
 
-    if (!item) {
-      onOpenSearch();
-      return;
-    }
+    if (!item) return;
 
     if (item.id === "home") {
       onSidebarModeChange("home");
@@ -540,14 +534,24 @@ function NavMain({
     <SidebarGroup className="pb-1 pt-0.5">
       <SidebarGroupContent>
         <nav aria-label="Main navigation">
-          <ExpandableTabs
-            className="w-full"
-            onChange={handleChange}
-            selected={selected}
-            tabs={tabs}
-          />
+          <div className="flex items-center gap-0.5">
+            <ExpandableTabs
+              onChange={handleChange}
+              selected={selected}
+              tabs={tabs}
+            />
+            <button
+              aria-label="Search"
+              className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-md text-foreground/60 outline-none transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
+              onClick={onOpenSearch}
+              title="Search"
+              type="button"
+            >
+              <SearchIcon className="size-4" />
+            </button>
+          </div>
           {showLibrary ? (
-            <SidebarMenu className="mt-1">
+            <SidebarMenu className="mt-0.5">
               <SidebarMenuItem>
                 <SidebarMenuButton
                   isActive={pathname === "/dashboard"}

@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { PageEditorCommentsProvider } from "@/components/page-editor-comments"
 import { PageEditorRegistryProvider } from "@/contexts/page-editor-registry"
 import { PageCommentsRegistryProvider } from "@/contexts/page-comments-registry"
+import { DesktopUpdater } from "@/components/desktop-updater"
 import { WebFeaturesProvider } from "@/providers/features-provider"
 import { queryClient } from "@/lib/query-client"
 import { ShortcutProvider } from "@/shortcuts"
@@ -31,6 +32,7 @@ export function AppProviders({ children }: React.PropsWithChildren) {
                   </PageEditorCommentsProvider>
                 </PageCommentsRegistryProvider>
               </PageEditorRegistryProvider>
+              <DesktopUpdater />
               <Toaster />
             </TooltipProvider>
           </ThemeProvider>

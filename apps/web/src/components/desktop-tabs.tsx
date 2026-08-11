@@ -144,14 +144,14 @@ export function DesktopTabs({
         macDesktopApp && (isMobile || !sidebarOpen) && "pl-20",
       )}
       data-desktop-tabs
-      data-tauri-drag-region
+      data-tauri-drag-region="deep"
     >
       <Reorder.Group
         aria-label="Open tabs"
         as="div"
         axis="x"
         className="flex min-w-0 flex-1 self-stretch items-end gap-1 overflow-x-auto pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        data-tauri-drag-region
+        data-tauri-drag-region="deep"
         layoutScroll
         onReorder={setTabOrder}
         role="tablist"

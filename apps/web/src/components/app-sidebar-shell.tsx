@@ -36,7 +36,7 @@ export function AppSidebarHeader({ children }: { children: React.ReactNode }) {
   return (
     <SidebarHeader
       className={cn("gap-0", hasOverlayTitleBar && "pt-9")}
-      data-tauri-drag-region={hasOverlayTitleBar || undefined}
+      data-tauri-drag-region={hasOverlayTitleBar ? "deep" : undefined}
     >
       <div className="flex items-center gap-1">
         <div className="min-w-0 flex-1">{children}</div>

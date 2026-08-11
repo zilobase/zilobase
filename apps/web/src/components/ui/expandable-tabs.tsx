@@ -32,13 +32,13 @@ interface ExpandableTabsProps
 const buttonVariants = {
   initial: {
     gap: 0,
-    paddingLeft: ".375rem",
-    paddingRight: ".375rem",
+    paddingLeft: ".5rem",
+    paddingRight: ".5rem",
   },
   animate: (isSelected: boolean) => ({
     gap: isSelected ? ".5rem" : 0,
-    paddingLeft: ".375rem",
-    paddingRight: ".375rem",
+    paddingLeft: ".5rem",
+    paddingRight: ".5rem",
   }),
 }
 
@@ -97,7 +97,7 @@ export function ExpandableTabs({
     <div
       ref={rootRef}
       className={cn(
-        "flex flex-wrap items-center gap-0.5 rounded-lg p-[3px] text-muted-foreground",
+        "flex h-8 items-center gap-0.5 text-muted-foreground",
         className,
       )}
       {...props}
@@ -122,7 +122,7 @@ export function ExpandableTabs({
             aria-current={isSelected ? "page" : undefined}
             aria-label={tab.title}
             className={cn(
-              "relative inline-flex h-7 min-w-7 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-transparent py-0.5 text-xs font-medium text-foreground/60 outline-none transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 dark:text-muted-foreground dark:hover:text-foreground",
+              "relative inline-flex h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-transparent py-0.5 text-xs font-medium text-foreground/60 outline-none transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 dark:text-muted-foreground dark:hover:text-foreground",
               isSelected
                 ? cn("bg-active", activeColor)
                 : undefined,
@@ -135,7 +135,7 @@ export function ExpandableTabs({
             type="button"
             variants={buttonVariants}
           >
-            <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+            <Icon aria-hidden="true" className="size-4 shrink-0" />
             <AnimatePresence initial={false}>
               {isSelected ? (
                 <motion.span
