@@ -4,6 +4,17 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, desktop, and mobile apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.11
+
+### Added
+
+- Added an **Open in desktop app** action that preserves the current Zilobase route through a validated desktop deep link.
+
+### Fixed
+
+- Returned successful and cancelled Google sign-in flows to the web app instead of API-hosted pages.
+- Shared hosted authentication cookies across the app and API subdomains so Google sessions remain signed in after redirecting.
+
 ## 0.0.10
 
 ### Added
