@@ -8,7 +8,11 @@ type SocialSignInResponse = {
 export async function signInWithGoogle(callbackURL: string) {
   const response = await authFetch<SocialSignInResponse>("/sign-in/social", {
     provider: "google",
-    callbackURL,
+    callbackURL: new URL(callbackURL, window.location.origin).toString(),
+    errorCallbackURL: new URL(
+      window.location.pathname,
+      window.location.origin,
+    ).toString(),
     disableRedirect: true,
   })
 

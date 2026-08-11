@@ -47,8 +47,17 @@ function createAuthInstance(env: AuthEnv, request: Request, database: Database) 
 function sharedAuthOptions(env: AuthEnv) {
   const googleClientId = getStringEnv(env, "GOOGLE_CLIENT_ID");
   const googleClientSecret = getStringEnv(env, "GOOGLE_CLIENT_SECRET");
+  const isHosted = getPrimaryClientOrigin(env) === "https://app.zilobase.com";
 
   return {
+    advanced: isHosted
+      ? {
+          crossSubDomainCookies: {
+            domain: ".zilobase.com",
+            enabled: true,
+          },
+        }
+      : undefined,
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
