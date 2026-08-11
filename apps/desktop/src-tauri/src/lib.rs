@@ -7,6 +7,53 @@ fn greet(name: &str) -> String {
 const AUTH_SERVICE: &str = "com.zilobase";
 const AUTH_ACCOUNT: &str = "session";
 
+#[cfg(all(desktop, debug_assertions))]
+fn start_development_auth_callback(app: tauri::AppHandle) -> std::io::Result<()> {
+    use std::{
+        io::{Read, Write},
+        net::TcpListener,
+    };
+    use tauri::{Emitter, Manager};
+
+    let listener = TcpListener::bind("127.0.0.1:1422")?;
+
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { continue };
+            let mut request = [0; 8192];
+            let Ok(size) = stream.read(&mut request) else {
+                continue;
+            };
+            let request = String::from_utf8_lossy(&request[..size]);
+            let target = request
+                .lines()
+                .next()
+                .and_then(|line| line.split_whitespace().nth(1));
+
+            if let Some(query) = target.and_then(|target| target.strip_prefix("/auth?")) {
+                let _ = app.emit(
+                    "deep-link://new-url",
+                    vec![format!("zilobase://auth?{query}")],
+                );
+
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+
+            let body = "<!doctype html><title>Zilobase</title><p>You can close this tab and return to Zilobase.</p>";
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            let _ = stream.write_all(response.as_bytes());
+        }
+    });
+
+    Ok(())
+}
+
 #[tauri::command]
 fn get_auth_token() -> Result<Option<String>, String> {
     let entry =
@@ -55,6 +102,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(|app| {
+            #[cfg(all(desktop, debug_assertions))]
+            start_development_auth_callback(app.handle().clone())?;
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             get_auth_token,

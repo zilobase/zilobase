@@ -12,7 +12,10 @@ type SocialSignInResponse = {
 
 export async function signInWithGoogle(callbackURL: string) {
   if (isTauri()) {
-    const url = new URL("/desktop-auth", WEB_APP_URL)
+    const url = new URL(
+      "/desktop-auth",
+      import.meta.env.DEV ? window.location.origin : WEB_APP_URL,
+    )
     url.searchParams.set("path", callbackURL)
     await openUrl(url.toString())
     return

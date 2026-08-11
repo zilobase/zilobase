@@ -17,7 +17,11 @@ export function getDesktopDeepLinkPath(value: string) {
 }
 
 export function buildDesktopAuthDeepLink(token: string, path: string) {
-  const url = new URL("zilobase://auth")
+  const url = new URL(
+    import.meta.env.DEV
+      ? "http://127.0.0.1:1422/auth"
+      : "zilobase://auth",
+  )
   url.searchParams.set("token", token)
   url.searchParams.set("path", normalizeAppPath(path) ?? "/dashboard")
   return url.toString()

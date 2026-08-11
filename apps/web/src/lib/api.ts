@@ -121,7 +121,7 @@ export function resolveApiBaseUrl(
     location?.protocol === "tauri:" ||
     location?.hostname === "tauri.localhost"
   ) {
-    return HOSTED_API_BASE_URL
+    return import.meta.env.DEV ? "" : HOSTED_API_BASE_URL
   }
 
   if (
