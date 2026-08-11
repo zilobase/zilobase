@@ -31,6 +31,10 @@ test("production CORS allows configured origins and rejects others", async () =>
     "https://app.example.com",
   );
   assert.equal(allowed.headers.get("access-control-allow-credentials"), "true");
+  assert.match(
+    allowed.headers.get("access-control-expose-headers") ?? "",
+    /set-auth-token/i,
+  );
   assert.equal(rejected.headers.has("access-control-allow-origin"), false);
 });
 
