@@ -4,6 +4,13 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, desktop, and mobile apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.15
+
+### Fixed
+
+- Persisted desktop sessions in Apple Keychain instead of the in-memory fallback.
+- Prevented local development builds from taking the installed app's single-instance lock.
+
 ## 0.0.14
 
 ### Fixed
