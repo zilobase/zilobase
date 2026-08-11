@@ -4,26 +4,13 @@ import {
   readApiKeyFromHeaders,
   readApiKeyWorkspaceId,
 } from "../api-keys";
+import { getAuthHeaders } from "../auth-headers";
 import { createAuth } from "../auth";
 import { getMembership } from "../access";
 import { runWithDbEnv } from "../db";
 import { db } from "../db";
 import { user as userTable } from "../db/schema";
 import type { AppBindings } from "../types";
-
-function getAuthHeaders(headers: Headers) {
-  const nextHeaders = new Headers(headers);
-
-  if (!nextHeaders.has("cookie")) {
-    const mobileAuthCookie = nextHeaders.get("x-mobile-auth-cookie")?.trim();
-
-    if (mobileAuthCookie) {
-      nextHeaders.set("cookie", mobileAuthCookie);
-    }
-  }
-
-  return nextHeaders;
-}
 
 function normalizeAuthSession<TSession extends Record<string, unknown>>(
   session: TSession | null | undefined,
@@ -54,7 +41,6 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (
     c.set("authMethod", null);
 
     const rawApiKey = readApiKeyFromHeaders(c.req.raw.headers);
-    const authHeaders = getAuthHeaders(c.req.raw.headers);
     const auth = createAuth(c.env, c.req.raw);
 
     if (rawApiKey) {
@@ -137,8 +123,10 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (
       return;
     }
 
-    const session = await timed(c, "session_auth", () =>
-      auth.api.getSession({ headers: authHeaders }),
+    const session = await timed(c, "session_auth", async () =>
+      auth.api.getSession({
+        headers: await getAuthHeaders(auth, c.req.raw.headers),
+      }),
     );
 
     c.set("user", session?.user ?? null);

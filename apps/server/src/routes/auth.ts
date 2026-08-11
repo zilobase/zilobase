@@ -1,5 +1,6 @@
 import { asc } from "drizzle-orm";
 import { Hono } from "hono";
+import { getAuthHeaders } from "../auth-headers";
 import { createAuth } from "../auth";
 import { db, runWithDbEnv } from "../db";
 import { workspace } from "../db/schema";
@@ -7,20 +8,6 @@ import { isSelfHostedRuntime } from "../runtime-adapter";
 import type { AppBindings } from "../types";
 
 export const authRoutes = new Hono<AppBindings>();
-
-function getAuthHeaders(headers: Headers) {
-  const nextHeaders = new Headers(headers);
-
-  if (!nextHeaders.has("cookie")) {
-    const mobileAuthCookie = nextHeaders.get("x-mobile-auth-cookie")?.trim();
-
-    if (mobileAuthCookie) {
-      nextHeaders.set("cookie", mobileAuthCookie);
-    }
-  }
-
-  return nextHeaders;
-}
 
 function rewriteWorkspaceAuthUrl(request: Request) {
   const url = new URL(request.url);
@@ -141,13 +128,13 @@ function renameOrganizationFields(value: unknown): unknown {
 
 authRoutes.post("/api/auth/set-password", async (c) => {
   const body = await c.req.json().catch(() => null);
-  return runWithDbEnv(c.env, () => {
+  return runWithDbEnv(c.env, async () => {
     const auth = createAuth(c.env, c.req.raw);
 
     return auth.api.setPassword({
       asResponse: true,
       body,
-      headers: getAuthHeaders(c.req.raw.headers),
+      headers: await getAuthHeaders(auth, c.req.raw.headers),
     });
   });
 });

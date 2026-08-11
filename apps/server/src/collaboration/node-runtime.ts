@@ -5,6 +5,7 @@ import type {
 import type { Duplex } from "node:stream";
 import crossws from "crossws/adapters/node";
 import type { WebSocketLike } from "@hocuspocus/server";
+import { getAuthHeaders } from "../auth-headers";
 import { createAuth } from "../auth";
 import { runWithDbEnv } from "../db";
 import { getDefaultCollaborationHocuspocus } from "./service";
@@ -117,28 +118,17 @@ export function attachNodeCollaborationRuntime(
 }
 
 async function authenticateUpgrade(request: Request, env: RuntimeEnv) {
-  const headers = getAuthHeaders(request.headers);
-
-  if (!headers.has("cookie")) {
-    return null;
-  }
-
   return runWithDbEnv(env, async () => {
     const auth = createAuth(env, request);
+    const headers = await getAuthHeaders(auth, request.headers);
+
+    if (!headers.has("cookie")) {
+      return null;
+    }
+
     const session = await auth.api.getSession({ headers });
     return session?.user?.id ?? null;
   });
-}
-
-function getAuthHeaders(headers: Headers) {
-  const nextHeaders = new Headers(headers);
-  const mobileAuthCookie = nextHeaders.get("x-mobile-auth-cookie")?.trim();
-
-  if (!nextHeaders.has("cookie") && mobileAuthCookie) {
-    nextHeaders.set("cookie", mobileAuthCookie);
-  }
-
-  return nextHeaders;
 }
 
 function toUpgradeRequest(request: IncomingMessage) {
