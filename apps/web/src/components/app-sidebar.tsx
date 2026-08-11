@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { isTauri } from "@tauri-apps/api/core";
 import {
   useLocation,
   useNavigate,
@@ -69,6 +70,7 @@ import {
 } from "@zilobase/features/pages";
 import { useAppStore } from "@/stores/app-store";
 import { getDatabaseIconNode, getPageIconNode } from "@/lib/page-icon";
+import { buildDesktopDeepLink } from "@/lib/desktop-deep-link";
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
 import {
@@ -84,6 +86,7 @@ import {
   Kanban,
   List,
   MessageCircleQuestionIcon,
+  MonitorUpIcon,
   PlusIcon,
   SearchIcon,
   Settings2Icon,
@@ -441,6 +444,16 @@ export function AppSidebar({
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          {!isTauri() ? (
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <a href={buildDesktopDeepLink(location.href)}>
+                  <MonitorUpIcon />
+                  <span>Open in desktop app</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ) : null}
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
