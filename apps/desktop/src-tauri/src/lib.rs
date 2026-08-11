@@ -83,28 +83,28 @@ fn set_auth_token(token: Option<String>) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder = tauri::Builder::default();
+    let builder = tauri::Builder::default();
 
-    #[cfg(desktop)]
-    {
+    #[cfg(all(desktop, not(debug_assertions)))]
+    let builder = {
         use tauri::Manager;
 
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
             }
-        }));
-    }
+        }))
+    };
 
     builder
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|app| {
+        .setup(|_app| {
             #[cfg(all(desktop, debug_assertions))]
-            start_development_auth_callback(app.handle().clone())?;
+            start_development_auth_callback(_app.handle().clone())?;
 
             Ok(())
         })
