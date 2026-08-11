@@ -14,9 +14,14 @@ export function readApiKeyFromHeaders(headers: Headers) {
 
   if (authorization) {
     const [scheme, ...rest] = authorization.split(/\s+/);
+    const token = rest[0];
 
-    if (scheme?.toLowerCase() === "bearer" && rest.length === 1) {
-      return rest[0] ?? null;
+    if (
+      scheme?.toLowerCase() === "bearer" &&
+      rest.length === 1 &&
+      token?.startsWith(API_KEY_PREFIX)
+    ) {
+      return token;
     }
   }
 
