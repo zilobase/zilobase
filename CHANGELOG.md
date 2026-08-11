@@ -4,6 +4,12 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, desktop, and mobile apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.14
+
+### Fixed
+
+- Recovered browser authentication callbacks when macOS returns focus to the desktop app, so Google sign-in completes reliably.
+
 ## 0.0.13
 
 ### Fixed
