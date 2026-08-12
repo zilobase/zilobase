@@ -14,6 +14,12 @@ export {
 } from "./ai/chat-persistence";
 export { createAuth } from "./auth";
 export {
+  COLLABORATION_WEBSOCKET_PROTOCOL,
+  getAuthHeaders,
+  readWebSocketSessionToken,
+  SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX,
+} from "./auth-headers";
+export {
   isAllowedClientOrigin,
   isLocalDevelopmentHost,
   type RuntimeEnv,

@@ -49,6 +49,7 @@ import type {
   PageLayoutPanelMode,
 } from "@/packages/editor/types";
 import { usePageCollaboration } from "@/packages/editor/use-page-collaboration";
+import { canEditOnlineDatabase } from "@/packages/editor/database-editability";
 import {
   useConnectivity,
   useOfflineManifest,
@@ -426,11 +427,12 @@ export function PageEditorPane({
         });
     }
   }, [embedPageItem, navigation, page, pageEditable]);
+  const collaborationEnabled = Boolean(
+    pageEditable ||
+      (enableComments && session?.user && page && !page.deletedAt),
+  );
   const collaboration = usePageCollaboration({
-    enabled: Boolean(
-      pageEditable ||
-        (enableComments && session?.user && page && !page.deletedAt),
-    ),
+    enabled: collaborationEnabled,
     pageId,
     user: session?.user,
     workspaceId: page?.workspaceId,
@@ -473,6 +475,11 @@ export function PageEditorPane({
   const offlineEditing =
     collaboration.downloaded &&
     (connectivity !== "online" || collaboration.status === "blocked");
+  const databaseEditingReady = canEditOnlineDatabase({
+    connectivity,
+    offlineSessionLocked,
+    pageEditable,
+  });
 
   const restoreTrashedPage = () => {
     if (!page || restorePage.isPending) {
@@ -749,7 +756,11 @@ export function PageEditorPane({
         />
       ) : null}
       <Editor
-        key={page.id}
+        key={[
+          page.id,
+          collaboration.document?.clientID ?? "standalone",
+          collaboration.provider?.sessionId ?? "without-provider",
+        ].join(":")}
         collaboration={
           collaboration.document
             ? {
@@ -773,7 +784,7 @@ export function PageEditorPane({
         metadataEditable={pageEditable && liveEditingReady && !offlineEditing}
         structuralEditingEnabled={pageEditable && liveEditingReady && !offlineEditing}
         commentsEditable={pageEditable && liveEditingReady && !offlineEditing && enableComments}
-        databaseEditable={pageEditable && liveEditingReady && !offlineEditing}
+        databaseEditable={databaseEditingReady}
         enableComments={enableComments && !offlineEditing}
         onEditorReady={(editor) => {
           editorInstanceRef.current = editor;

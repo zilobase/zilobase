@@ -1,4 +1,8 @@
-import { HocuspocusProvider, type StatesArray } from "@hocuspocus/provider"
+import {
+  HocuspocusProvider,
+  type HocuspocusProviderConfiguration,
+  type StatesArray,
+} from "@hocuspocus/provider"
 import { IndexeddbPersistence, storeState } from "y-indexeddb"
 import * as Y from "yjs"
 
@@ -8,8 +12,11 @@ import {
   offlineDocumentName,
   patchOfflineItem,
 } from "@/lib/offline-store"
+import { getDesktopAuthToken } from "@/lib/desktop-auth-token"
 
 const COLLABORATION_TICKET_REFRESH_BUFFER_MS = 75_000
+const COLLABORATION_WEBSOCKET_PROTOCOL = "zilobase.collaboration.v1"
+const SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX = "zilobase.session.v1."
 
 export type CollaborationTicket = {
   documentName: string
@@ -74,6 +81,7 @@ export function connectLocalPageDocument(input: {
 }) {
   let currentTicket = input.ticket
   const provider = new HocuspocusProvider({
+    WebSocketPolyfill: CollaborationWebSocket,
     document: input.document,
     name: input.ticket.documentName,
     token: async () => {
@@ -94,9 +102,34 @@ export function connectLocalPageDocument(input: {
     onStatus: ({ status }) => input.onStatus?.(status),
     onUnsyncedChanges: ({ number }) => input.onUnsyncedChanges?.(number),
     onAwarenessUpdate: ({ states }) => input.onUsers?.(states),
-  })
+  } as HocuspocusProviderConfiguration)
 
   return provider
+}
+
+class CollaborationWebSocket extends WebSocket {
+  constructor(url: string | URL) {
+    const sessionToken = getDesktopAuthToken()
+
+    if (sessionToken) {
+      const encodedToken = bytesToBase64(
+        new TextEncoder().encode(sessionToken),
+      )
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "")
+      super(
+        url,
+        [
+          COLLABORATION_WEBSOCKET_PROTOCOL,
+          `${SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX}${encodedToken}`,
+        ],
+      )
+      return
+    }
+
+    super(url)
+  }
 }
 
 export async function waitForProviderSync(

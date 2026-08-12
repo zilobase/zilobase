@@ -52,6 +52,7 @@ export function usePageCollaboration({
     (item) => item.kind === "page" && item.id === pageId,
   )
   const downloaded = Boolean(offlineItem && workspaceId)
+  const preparationConnectivity = downloaded ? "downloaded" : connectivity
   const [document, setDocument] = useState<Y.Doc | null>(null)
   const [localPage, setLocalPage] = useState<Awaited<ReturnType<typeof openLocalPageDocument>> | null>(null)
   const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
@@ -61,9 +62,14 @@ export function usePageCollaboration({
   const [users, setUsers] = useState<CollaborationUser[]>([])
   const [error, setError] = useState<string | null>(null)
   const dirtyMarked = useRef(Boolean(offlineItem?.dirty))
+  const preparedTicketRef = useRef<{
+    pageId: string
+    ticket: CollaborationTicket
+  } | null>(null)
 
   useEffect(() => {
     if (!enabled || !user) {
+      preparedTicketRef.current = null
       setDocument(null)
       setError(null)
       return
@@ -86,23 +92,30 @@ export function usePageCollaboration({
           if (differs && !offlineItem?.dirty) {
             await patchOfflineItem("page", pageId, { dirty: true })
           }
-          setStatus(connectivity === "online" ? "connecting" : "local")
+          setStatus("local")
           setLocalPage(local)
           setDocument(local.document)
           return
         }
 
-        if (connectivity !== "online") return
+        if (preparationConnectivity !== "online") return
         const ticket = await getTicket(pageId)
         ephemeral = new Y.Doc()
         applyTicketState(ephemeral, ticket)
-        if (!disposed) setDocument(ephemeral)
+        if (!disposed) {
+          preparedTicketRef.current = { pageId, ticket }
+          setDocument(ephemeral)
+        }
       } catch (reason) {
         if (!disposed) {
           setError(
-            reason instanceof Error
-              ? `Local storage failed — editing paused: ${reason.message}`
-              : "Local storage failed — editing paused.",
+            downloaded
+              ? reason instanceof Error
+                ? `Local storage failed — editing paused: ${reason.message}`
+                : "Local storage failed — editing paused."
+              : reason instanceof Error
+                ? reason.message
+                : "Could not start collaboration.",
           )
         }
       }
@@ -113,13 +126,19 @@ export function usePageCollaboration({
       disposed = true
       setDocument(null)
       setLocalPage(null)
+      preparedTicketRef.current = null
       local?.persistence.destroy()
       local?.document.destroy()
       ephemeral?.destroy()
     }
-    // Keep a downloaded document stable through connectivity changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [downloaded, enabled, pageId, user?.id, workspaceId])
+  }, [
+    downloaded,
+    enabled,
+    pageId,
+    preparationConnectivity,
+    user?.id,
+    workspaceId,
+  ])
 
   useEffect(() => {
     if (!document || !downloaded || !localPage) return
@@ -164,7 +183,13 @@ export function usePageCollaboration({
     setStatus("connecting")
     setError(null)
 
-    void getTicket(pageId)
+    const preparedTicket =
+      preparedTicketRef.current?.pageId === pageId
+        ? preparedTicketRef.current.ticket
+        : null
+    preparedTicketRef.current = null
+
+    void (preparedTicket ? Promise.resolve(preparedTicket) : getTicket(pageId))
       .then((ticket) => {
         if (disposed) return
         applyTicketState(document, ticket)
@@ -196,6 +221,12 @@ export function usePageCollaboration({
           pageId,
           refreshTicket: () => getTicket(pageId),
           ticket,
+        })
+        activeProvider.setAwarenessField("user", {
+          avatar: user.image,
+          color: collaborationColor(user.id),
+          id: user.id,
+          name: user.name || user.email,
         })
         activeProvider.on("synced", ({ state }: { state: boolean }) => {
           if (disposed || !state) return
