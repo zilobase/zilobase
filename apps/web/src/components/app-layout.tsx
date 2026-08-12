@@ -74,6 +74,7 @@ import {
 import { Button } from "@/components/ui/button"
 import ApiKeysSettingsPage from "@/pages/settings/api-keys"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
+import PreferencesSettingsPage from "@/pages/settings/preferences"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
 import WorkspaceSettingsPage from "@/pages/settings/workspace"
@@ -438,7 +439,7 @@ function AppLayoutContent({
       </SettingsDialog>
       <AppSidebar
         onOpenSettings={() => {
-          setActiveSettingsSection("profile")
+          setActiveSettingsSection("preferences")
           setSettingsDialogOpen(true)
         }}
         settingsOpen={settingsDialogOpen}
@@ -547,6 +548,8 @@ function AppLayoutContent({
 
 function SettingsSectionContent({ section }: { section: SettingsSection }) {
   switch (section) {
+    case "preferences":
+      return <PreferencesSettingsPage />
     case "workspace":
       return <WorkspaceSettingsPage />
     case "integrations":

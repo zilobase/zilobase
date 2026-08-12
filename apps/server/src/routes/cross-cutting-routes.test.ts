@@ -47,6 +47,7 @@ vi.mock("../db", () => ({
 import { apiKeyRoutes } from "./api-keys";
 import { sessionRoutes } from "./session";
 import { pageSettingsRoutes } from "./user-settings";
+import { profileImageRoutes } from "./profile-images";
 import { workspaceRoutes } from "./workspaces";
 
 const user = {
@@ -158,6 +159,39 @@ test("user settings routes validate settings and profile payloads", async () => 
     method: "PATCH",
   });
   assert.equal(profile.status, 400);
+});
+
+test("profile image uploads validate file type and size", async () => {
+  const app = appFor(profileImageRoutes);
+  const unsupported = await app.request(
+    "/image/uploads",
+    {
+      body: JSON.stringify({
+        byteSize: 100,
+        contentType: "image/svg+xml",
+        filename: "avatar.svg",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+    {},
+  );
+  assert.equal(unsupported.status, 400);
+
+  const tooLarge = await app.request(
+    "/image/uploads",
+    {
+      body: JSON.stringify({
+        byteSize: 5 * 1024 * 1024 + 1,
+        contentType: "image/png",
+        filename: "avatar.png",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+    {},
+  );
+  assert.equal(tooLarge.status, 400);
 });
 
 test("user settings route returns existing normalized preferences", async () => {

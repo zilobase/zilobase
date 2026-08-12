@@ -6,12 +6,6 @@ import { SettingsHeader } from "@/components/settings-header"
 import { isFeatureEnabled } from "@/config/feature-flags"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
   Field,
   FieldDescription,
   FieldError,
@@ -19,6 +13,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { getApiErrorMessage } from "@/lib/api"
@@ -42,10 +37,13 @@ export default function WorkspaceSettingsPage() {
         description="Manage page details, billing identity, and defaults."
       />
 
-      <div className="mx-auto grid w-full max-w-4xl gap-6">
+      <div className="mx-auto grid w-full max-w-3xl gap-6">
         <WorkspaceDetailsSection workspace={workspace} />
         {isFeatureEnabled("notionImport") ? (
-          <WorkspaceImportSection workspaceId={activeWorkspaceId} />
+          <>
+            <Separator />
+            <WorkspaceImportSection workspaceId={activeWorkspaceId} />
+          </>
         ) : null}
       </div>
     </main>
@@ -65,13 +63,15 @@ function WorkspaceImportSection({
   } = useNotionImport({ workspaceId })
 
   return (
-    <Card>
-      <CardHeader className="items-start gap-4 sm:flex-row sm:justify-between">
+    <section className="grid gap-3">
+      <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <CardTitle>Import</CardTitle>
-          <CardDescription>
+          <h3 className="font-heading text-base leading-snug font-medium">
+            Import
+          </h3>
+          <p className="text-sm text-muted-foreground">
             Bring pages into this workspace from a Notion HTML zip export.
-          </CardDescription>
+          </p>
         </div>
         <Button
           className="shrink-0"
@@ -82,7 +82,7 @@ function WorkspaceImportSection({
           {isImporting ? <Spinner /> : <UploadIcon />}
           Import Notion
         </Button>
-      </CardHeader>
+      </div>
       <input
         accept=".zip,application/zip"
         className="sr-only"
@@ -92,7 +92,7 @@ function WorkspaceImportSection({
         ref={inputRef}
         type="file"
       />
-    </Card>
+    </section>
   )
 }
 

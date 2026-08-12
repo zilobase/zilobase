@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/emoji-picker"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { getUserImageUrl } from "@/lib/image-upload"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
@@ -100,7 +101,9 @@ export function CommentAvatar({
 
   return (
     <Avatar aria-hidden className={className} size={small ? "sm" : "default"}>
-      {author?.image ? <AvatarImage alt={label} src={author.image} /> : null}
+      {author?.image ? (
+        <AvatarImage alt={label} src={getUserImageUrl(author.image)} />
+      ) : null}
       <AvatarFallback gradientSeed={getCommentAvatarSeed(author, authorId, label)}>
         {getCommentInitials(label)}
       </AvatarFallback>

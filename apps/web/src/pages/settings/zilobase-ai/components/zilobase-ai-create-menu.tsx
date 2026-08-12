@@ -227,7 +227,7 @@ export function ZilobaseAiCreateMenu({
   return (
     <DropDrawer onOpenChange={setOpen} open={open}>
       <DropDrawerTrigger asChild>
-        <Button disabled={!workspaceId || isBusy} size="sm" type="button">
+        <Button disabled={!workspaceId || isBusy} type="button">
           {isBusy ? <Loader2Icon className="animate-spin" /> : <PlusIcon />}
           {config.buttonLabel}
         </Button>

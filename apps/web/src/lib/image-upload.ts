@@ -29,6 +29,18 @@ type CompleteImageUploadResponse = {
   asset: ImageAsset
 }
 
+type ProfileImage = {
+  byteSize: number
+  contentType: string
+  filename: string
+  id: string
+}
+
+type CreateProfileImageUploadResponse = {
+  image: ProfileImage
+  upload: ImageUploadTarget
+}
+
 export type UploadPageImageInput = {
   databaseId?: string | null
   file: File
@@ -39,6 +51,59 @@ export type UploadPageImageInput = {
 export type UploadedPageImage = {
   asset: ImageAsset
   url: string
+}
+
+export const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024
+const PROFILE_IMAGE_CONTENT_TYPES = new Set([
+  "image/avif",
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+])
+
+export async function uploadProfileImage(file: File) {
+  validateProfileImage(file)
+
+  const { image, upload } = await apiFetch<CreateProfileImageUploadResponse>(
+    "/user-settings/profile/image/uploads",
+    {
+      body: JSON.stringify({
+        byteSize: file.size,
+        contentType: file.type,
+        filename: file.name,
+      }),
+      method: "POST",
+    },
+  )
+
+  await putImageBody(upload, file)
+
+  return apiFetch<{ image: string }>(
+    `/user-settings/profile/image/uploads/${encodeURIComponent(image.id)}/complete`,
+    {
+      body: JSON.stringify({
+        byteSize: image.byteSize,
+        contentType: image.contentType,
+        filename: image.filename,
+      }),
+      method: "POST",
+    },
+  )
+}
+
+export function removeProfileImage() {
+  return apiFetch<{ image: null }>("/user-settings/profile/image", {
+    method: "DELETE",
+  })
+}
+
+export function getUserImageUrl(image: string | null | undefined) {
+  if (!image) {
+    return undefined
+  }
+
+  return /^(?:https?:|blob:|data:)/.test(image) ? image : toApiUrl(image)
 }
 
 export async function uploadPageImage({
@@ -95,6 +160,16 @@ async function putImageBody(upload: ImageUploadTarget, file: File) {
 
   if (!response.ok) {
     throw new Error(`Image upload failed with status ${response.status}.`)
+  }
+}
+
+function validateProfileImage(file: File) {
+  if (!PROFILE_IMAGE_CONTENT_TYPES.has(file.type)) {
+    throw new Error("Choose a JPG, PNG, GIF, WebP or AVIF image.")
+  }
+
+  if (file.size > MAX_PROFILE_IMAGE_BYTES) {
+    throw new Error("Profile pictures must be 5 MB or smaller.")
   }
 }
 

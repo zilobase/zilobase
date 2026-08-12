@@ -14,6 +14,7 @@ test("createApp registers every public feature route group", () => {
     "POST /api/keys",
     "GET /databases/:id",
     "POST /images/uploads",
+    "POST /user-settings/profile/image/uploads",
     "GET /metadata/bookmark",
     "GET /pages",
     "GET /search",

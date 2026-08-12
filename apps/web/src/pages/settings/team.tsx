@@ -6,13 +6,6 @@ import { SettingsHeader } from "@/components/settings-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -44,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { useSession } from "@zilobase/features/auth"
 import {
@@ -72,46 +66,50 @@ export default function TeamSettingsPage() {
         description="Invite collaborators and manage team access."
       />
 
-      <div className="mx-auto grid w-full max-w-4xl gap-4">
-        <InviteMemberCard workspaceId={activeWorkspaceId} />
+      <div className="mx-auto grid w-full max-w-3xl gap-6">
+        <InviteMemberSection workspaceId={activeWorkspaceId} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Members</CardTitle>
-            <CardDescription>
+        <Separator />
+
+        <section className="grid gap-3">
+          <div className="space-y-1">
+            <h3 className="font-heading text-base leading-snug font-medium">
+              Members
+            </h3>
+            <p className="text-sm text-muted-foreground">
               People with access to this workspace.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <MemberList
-              isLoading={isLoadingAccessTargets}
-              members={accessTargets?.members ?? []}
-            />
-          </CardContent>
-        </Card>
+            </p>
+          </div>
+          <MemberList
+            isLoading={isLoadingAccessTargets}
+            members={accessTargets?.members ?? []}
+          />
+        </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending invitations</CardTitle>
-            <CardDescription>
+        <Separator />
+
+        <section className="grid gap-3">
+          <div className="space-y-1">
+            <h3 className="font-heading text-base leading-snug font-medium">
+              Pending invitations
+            </h3>
+            <p className="text-sm text-muted-foreground">
               Invitations waiting to be accepted.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <InvitationList
-              invitations={(invitations ?? []).filter(
-                (invitation) => invitation.status === "pending",
-              )}
-              isLoading={isLoadingInvitations}
-            />
-          </CardContent>
-        </Card>
+            </p>
+          </div>
+          <InvitationList
+            invitations={(invitations ?? []).filter(
+              (invitation) => invitation.status === "pending",
+            )}
+            isLoading={isLoadingInvitations}
+          />
+        </section>
       </div>
     </main>
   )
 }
 
-function InviteMemberCard({
+function InviteMemberSection({
   workspaceId,
 }: {
   workspaceId: string | null | undefined
@@ -159,67 +157,67 @@ function InviteMemberCard({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Invite member</CardTitle>
-        <CardDescription>
+    <section className="grid gap-3">
+      <div className="space-y-1">
+        <h3 className="font-heading text-base leading-snug font-medium">
+          Invite member
+        </h3>
+        <p className="text-sm text-muted-foreground">
           Send an invitation with admin or member access.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="grid gap-4" onSubmit={invite}>
-          <FieldGroup>
-            <Field data-invalid={Boolean(emailError)}>
-              <FieldLabel htmlFor="team-invite-email">Email</FieldLabel>
-              <Input
-                autoComplete="email"
-                disabled={!workspaceId || inviteMember.isPending}
-                id="team-invite-email"
-                onChange={(event) => {
-                  setEmail(event.target.value)
-                  if (emailError) {
-                    setEmailError("")
-                  }
-                }}
-                placeholder="teammate@example.com"
-                type="email"
-                value={email}
-              />
-              <FieldError>{emailError}</FieldError>
-            </Field>
+        </p>
+      </div>
+      <form className="grid gap-4" onSubmit={invite}>
+        <FieldGroup>
+          <Field data-invalid={Boolean(emailError)}>
+            <FieldLabel htmlFor="team-invite-email">Email</FieldLabel>
+            <Input
+              autoComplete="email"
+              disabled={!workspaceId || inviteMember.isPending}
+              id="team-invite-email"
+              onChange={(event) => {
+                setEmail(event.target.value)
+                if (emailError) {
+                  setEmailError("")
+                }
+              }}
+              placeholder="teammate@example.com"
+              type="email"
+              value={email}
+            />
+            <FieldError>{emailError}</FieldError>
+          </Field>
 
-            <Field>
-              <FieldLabel>Role</FieldLabel>
-              <Select
-                disabled={!workspaceId || inviteMember.isPending}
-                onValueChange={(value) => setRole(value as WorkspaceRole)}
-                value={role}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <FieldDescription>
-                Admins can manage workspace settings and invitations.
-              </FieldDescription>
-            </Field>
-          </FieldGroup>
+          <Field>
+            <FieldLabel>Role</FieldLabel>
+            <Select
+              disabled={!workspaceId || inviteMember.isPending}
+              onValueChange={(value) => setRole(value as WorkspaceRole)}
+              value={role}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              Admins can manage workspace settings and invitations.
+            </FieldDescription>
+          </Field>
+        </FieldGroup>
 
-          <Button
-            className="w-fit"
-            disabled={!canSubmit || inviteMember.isPending}
-            type="submit"
-          >
-            {inviteMember.isPending ? <Spinner /> : <SendIcon />}
-            Send invite
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+        <Button
+          className="w-fit"
+          disabled={!canSubmit || inviteMember.isPending}
+          type="submit"
+        >
+          {inviteMember.isPending ? <Spinner /> : <SendIcon />}
+          Send invite
+        </Button>
+      </form>
+    </section>
   )
 }
 

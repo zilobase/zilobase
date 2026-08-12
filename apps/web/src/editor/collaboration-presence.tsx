@@ -6,6 +6,7 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
+import { getUserImageUrl } from "@/lib/image-upload"
 import type { CollaborationUser } from "./use-page-collaboration"
 
 export function CollaborationPresence({
@@ -30,7 +31,9 @@ export function CollaborationPresence({
         <AvatarGroup>
           {visibleUsers.map((user) => (
             <Avatar key={user.id} size="sm" title={user.name}>
-              {user.avatar ? <AvatarImage alt="" src={user.avatar} /> : null}
+              {user.avatar ? (
+                <AvatarImage alt="" src={getUserImageUrl(user.avatar)} />
+              ) : null}
               <AvatarFallback gradientSeed={user.id}>
                 {initials(user.name)}
               </AvatarFallback>

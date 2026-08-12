@@ -2,11 +2,18 @@ import {
   Building2Icon,
   KeyRoundIcon,
   PlugIcon,
+  SlidersHorizontalIcon,
   SparklesIcon,
   UserIcon,
   UsersIcon,
 } from "lucide-react"
+import { useSession } from "@zilobase/features/auth"
 
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar"
 import {
   SidebarContent,
   SidebarGroup,
@@ -16,9 +23,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { getUserImageUrl } from "@/lib/image-upload"
 
 export type SettingsSection =
   | "profile"
+  | "preferences"
   | "workspace"
   | "integrations"
   | "zilobase-ai"
@@ -31,6 +40,11 @@ const settingsItems: Array<{
   icon: typeof UserIcon
 }> = [
   { title: "Profile", section: "profile", icon: UserIcon },
+  {
+    title: "Preferences",
+    section: "preferences",
+    icon: SlidersHorizontalIcon,
+  },
   { title: "Workspace", section: "workspace", icon: Building2Icon },
   { title: "Integrations", section: "integrations", icon: PlugIcon },
   { title: "Zilobase AI", section: "zilobase-ai", icon: SparklesIcon },
@@ -45,6 +59,10 @@ export function SettingsSidebar({
   activeSection: SettingsSection
   onSectionChange: (section: SettingsSection) => void
 }) {
+  const { data: sessionData } = useSession()
+  const profileTitle = sessionData?.user?.name.trim() || "Profile"
+  const profileImage = sessionData?.user?.image
+
   return (
     <aside className="min-w-0 border-b border-sidebar-border bg-sidebar text-sidebar-foreground sm:h-full sm:w-64 sm:border-r sm:border-b-0">
       <SidebarContent className="overflow-visible sm:overflow-auto">
@@ -68,8 +86,22 @@ export function SettingsSidebar({
                         onClick={() => onSectionChange(item.section)}
                         type="button"
                       >
-                        <Icon />
-                        <span>{item.title}</span>
+                        {item.section === "profile" && profileImage ? (
+                          <Avatar className="size-4">
+                            <AvatarImage
+                              alt=""
+                              src={getUserImageUrl(profileImage)}
+                            />
+                            <AvatarFallback>
+                              <UserIcon />
+                            </AvatarFallback>
+                          </Avatar>
+                        ) : (
+                          <Icon />
+                        )}
+                        <span className="min-w-0 truncate">
+                          {item.section === "profile" ? profileTitle : item.title}
+                        </span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   )
@@ -88,5 +120,5 @@ export function getSettingsSection(pathname: string): SettingsSection {
 
   return settingsItems.some((item) => item.section === section)
     ? (section as SettingsSection)
-    : "profile"
+    : "preferences"
 }

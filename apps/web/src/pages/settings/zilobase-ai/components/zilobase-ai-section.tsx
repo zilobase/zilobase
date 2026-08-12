@@ -1,7 +1,6 @@
 import * as React from "react"
 import { BookOpenIcon, WandSparklesIcon } from "lucide-react"
 
-import { Card, CardContent } from "@/components/ui/card"
 import {
   Empty,
   EmptyDescription,
@@ -84,8 +83,7 @@ export function ZilobaseAiSection({
         ) : null}
       </div>
 
-      <Card className={cn(showList && "gap-0 overflow-hidden py-0")}>
-        <CardContent className={cn(showList && "p-0")}>
+      <div className={cn(showList && "overflow-hidden rounded-md border")}>
           {isLoading ? (
             <ZilobaseAiSectionSkeleton />
           ) : isEmpty ? (
@@ -110,8 +108,7 @@ export function ZilobaseAiSection({
               ))}
             </ZilobaseAiItemList>
           )}
-        </CardContent>
-      </Card>
+      </div>
     </section>
   )
 }

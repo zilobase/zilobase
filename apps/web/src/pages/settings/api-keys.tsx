@@ -23,13 +23,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -47,7 +40,6 @@ import {
 } from "@/components/ui/empty"
 import {
   Field,
-  FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field"
@@ -91,20 +83,11 @@ const expirationOptions = [
 export default function ApiKeysSettingsPage() {
   const activeWorkspaceId = useActiveWorkspaceId()
   const { data: workspaces = [] } = useWorkspaces()
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = React.useState<
-    string | null
-  >(activeWorkspaceId ?? null)
-
-  React.useEffect(() => {
-    if (!selectedWorkspaceId && activeWorkspaceId) {
-      setSelectedWorkspaceId(activeWorkspaceId)
-    }
-  }, [activeWorkspaceId, selectedWorkspaceId])
-
-  const apiKeys = useApiKeys(selectedWorkspaceId)
-  const selectedWorkspace = workspaces.find(
-    (workspace) => workspace.id === selectedWorkspaceId,
+  const apiKeys = useApiKeys(activeWorkspaceId ?? null)
+  const activeWorkspace = workspaces.find(
+    (workspace) => workspace.id === activeWorkspaceId,
   )
+  const workspaceName = activeWorkspace?.name ?? "Current workspace"
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">
@@ -113,51 +96,31 @@ export default function ApiKeysSettingsPage() {
         description="Create user-scoped keys for programmatic Zilobase access."
       />
 
-      <div className="mx-auto grid w-full max-w-4xl gap-4">
-        <Card>
-          <CardHeader className="items-start gap-4 sm:flex-row sm:justify-between">
+      <div className="mx-auto grid w-full max-w-3xl gap-6">
+        <section className="grid gap-4">
+          <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <CardTitle>Keys</CardTitle>
-              <CardDescription>
-                Keys inherit your current permissions in the selected workspace.
-              </CardDescription>
+              <h3 className="font-heading text-base leading-snug font-medium">
+                Keys for {workspaceName}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {activeWorkspace
+                  ? `These keys are scoped to your current workspace, ${workspaceName}, and inherit your permissions there.`
+                  : "These keys are scoped to your current workspace and inherit your permissions there."}
+              </p>
             </div>
             <CreateApiKeyDialog
-              disabled={!selectedWorkspaceId}
-              workspaceId={selectedWorkspaceId}
+              disabled={!activeWorkspaceId}
+              workspaceId={activeWorkspaceId ?? null}
+              workspaceName={workspaceName}
             />
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            <Field>
-              <FieldLabel>Workspace</FieldLabel>
-              <Select
-                disabled={workspaces.length === 0}
-                onValueChange={setSelectedWorkspaceId}
-                value={selectedWorkspaceId ?? undefined}
-              >
-                <SelectTrigger className="w-full sm:max-w-sm">
-                  <SelectValue placeholder="Select workspace" />
-                </SelectTrigger>
-                <SelectContent>
-                  {workspaces.map((workspace) => (
-                    <SelectItem key={workspace.id} value={workspace.id}>
-                      {workspace.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FieldDescription>
-                External requests made with a key stay pinned to this workspace.
-              </FieldDescription>
-            </Field>
-
-            <ApiKeyList
-              isLoading={apiKeys.isLoading}
-              keys={apiKeys.data?.keys ?? []}
-              workspaceName={selectedWorkspace?.name ?? "this workspace"}
-            />
-          </CardContent>
-        </Card>
+          </div>
+          <ApiKeyList
+            isLoading={apiKeys.isLoading}
+            keys={apiKeys.data?.keys ?? []}
+            workspaceName={workspaceName}
+          />
+        </section>
       </div>
     </main>
   )
@@ -166,9 +129,11 @@ export default function ApiKeysSettingsPage() {
 function CreateApiKeyDialog({
   disabled,
   workspaceId,
+  workspaceName,
 }: {
   disabled: boolean
   workspaceId: string | null
+  workspaceName: string
 }) {
   const createApiKey = useCreateApiKey()
   const [open, setOpen] = React.useState(false)
@@ -183,7 +148,7 @@ function CreateApiKeyDialog({
     event.preventDefault()
 
     if (!workspaceId) {
-      toast.error("Select an workspace before creating a key.")
+      toast.error("The current workspace is unavailable.")
       return
     }
 
@@ -218,16 +183,17 @@ function CreateApiKeyDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button disabled={disabled} size="sm" type="button">
+        <Button disabled={disabled} type="button">
           <PlusIcon />
           New key
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create API key</DialogTitle>
+          <DialogTitle>Create API key for {workspaceName}</DialogTitle>
           <DialogDescription>
-            The full key is shown once after creation.
+            This key is scoped to {workspaceName}. The full key is shown once
+            after creation.
           </DialogDescription>
         </DialogHeader>
 
@@ -415,7 +381,6 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
           <Button
             disabled={isBusy || isExpired}
             onClick={toggleEnabled}
-            size="sm"
             type="button"
             variant="outline"
           >
@@ -425,7 +390,6 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
           <Button
             disabled={isBusy}
             onClick={() => setConfirmOpen(true)}
-            size="sm"
             type="button"
             variant="outline"
           >

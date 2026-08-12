@@ -21,7 +21,6 @@ import { SettingsHeader } from "@/components/settings-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { getApiErrorMessage } from "@/lib/api";
 import { integrationIcons } from "@/lib/integration-icons";
 
@@ -110,7 +109,7 @@ export default function WorkspaceIntegrationsSettingsPage() {
         description="Connect accounts through Toolkit so Zilobase chat can use their read-only tools."
         title="Integrations"
       />
-      <div className="mx-auto grid w-full max-w-4xl gap-4">
+      <div className="mx-auto grid w-full max-w-3xl gap-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 space-y-1">
             <h3 className="font-heading text-base leading-snug font-medium">
@@ -123,7 +122,6 @@ export default function WorkspaceIntegrationsSettingsPage() {
           <Button
             disabled={integrations.isFetching}
             onClick={() => void integrations.refetch()}
-            size="sm"
             type="button"
             variant="outline"
           >
@@ -152,8 +150,7 @@ export default function WorkspaceIntegrationsSettingsPage() {
           </Alert>
         ) : null}
 
-        <Card className="gap-0 overflow-hidden py-0">
-          <CardContent className="divide-y p-0">
+        <div className="divide-y overflow-hidden rounded-md border">
             {integrations.isLoading ? (
               <div className="flex items-center gap-2 px-4 py-6 text-sm text-muted-foreground">
                 <Loader2Icon className="size-4 animate-spin" />
@@ -184,8 +181,7 @@ export default function WorkspaceIntegrationsSettingsPage() {
                 No Toolkit connectors are available.
               </div>
             )}
-          </CardContent>
-        </Card>
+        </div>
       </div>
     </main>
   );
@@ -237,7 +233,6 @@ function ConnectorRow({
         <Button
           disabled={disconnecting}
           onClick={onDisconnect}
-          size="sm"
           type="button"
           variant="outline"
         >
@@ -252,7 +247,6 @@ function ConnectorRow({
         <Button
           disabled={starting}
           onClick={onConnect}
-          size="sm"
           type="button"
         >
           {starting ? <Loader2Icon className="animate-spin" /> : <PlugIcon />}

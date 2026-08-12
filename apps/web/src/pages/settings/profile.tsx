@@ -1,9 +1,10 @@
 import * as React from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { DownloadIcon, HardDriveIcon, LogOutIcon, Trash2Icon, UploadIcon } from "lucide-react"
+import { CameraIcon, DownloadIcon, LogOutIcon, Trash2Icon } from "lucide-react"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -28,15 +29,16 @@ import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { getApiErrorMessage } from "@/lib/api"
 import {
+  getUserImageUrl,
+  removeProfileImage,
+  uploadProfileImage,
+} from "@/lib/image-upload"
+import {
   clearAllOfflineData,
-  disableOfflineWorkspace,
-  enableOfflineWorkspace,
   getConnectivityState,
-  isDesktopOfflineSupported,
 } from "@/lib/offline-store"
 import {
   downloadRecoveryArchive,
-  importRecoveryArchive,
   syncDirtyOfflinePages,
 } from "@/lib/offline-recovery"
 import { clearApiAuthToken } from "@/lib/api"
@@ -44,13 +46,14 @@ import { queryClient } from "@/lib/query-client"
 import { useAppStore } from "@/stores/app-store"
 import { useOfflineManifest } from "@/providers/offline-provider"
 import {
+  sessionQueryKey,
+  type SessionResponse,
   useChangePassword,
   useSetPassword,
   useSession,
   useSignOut,
   useUpdateUserProfile,
 } from "@zilobase/features/auth"
-import { useWorkspaces } from "@zilobase/features/workspaces"
 
 export default function ProfileSettingsPage() {
   const navigate = useNavigate()
@@ -93,12 +96,13 @@ export default function ProfileSettingsPage() {
     <main className="flex min-h-full flex-1 flex-col gap-6 px-4 py-8">
       <SettingsHeader
         title="Profile"
-        description="Update your personal details and account preferences."
+        description="Update your personal details and account security."
       />
 
-      <div className="mx-auto grid w-full max-w-4xl gap-6">
+      <div className="mx-auto grid w-full max-w-3xl gap-6">
         <ProfileDetailsCard
           initialEmail={sessionData?.user?.email ?? ""}
+          initialImage={sessionData?.user?.image ?? null}
           initialName={sessionData?.user?.name ?? ""}
           isReady={Boolean(sessionData?.user)}
         />
@@ -107,15 +111,9 @@ export default function ProfileSettingsPage() {
           hasPassword={sessionData?.user?.hasPassword ?? true}
           isReady={Boolean(sessionData?.user)}
         />
-        {isDesktopOfflineSupported() ? (
-          <>
-            <Separator />
-            <OfflineAccessCard />
-          </>
-        ) : null}
       </div>
 
-      <div className="mx-auto mt-auto flex w-full max-w-4xl justify-end pt-2">
+      <div className="mx-auto mt-auto flex w-full max-w-3xl justify-end pt-2">
         <Button
           disabled={signOut.isPending}
           onClick={handleSignOut}
@@ -179,191 +177,82 @@ export default function ProfileSettingsPage() {
   )
 }
 
-function OfflineAccessCard() {
-  const { data: sessionData } = useSession()
-  const { data: workspaces = [] } = useWorkspaces()
-  const manifest = useOfflineManifest()
-  const [pendingId, setPendingId] = React.useState<string | null>(null)
-  const importInput = React.useRef<HTMLInputElement | null>(null)
-  const [storageUsage, setStorageUsage] = React.useState<number | null>(null)
-  const dirtyCount = manifest.items.filter(
-    (item) => item.kind === "page" && (item.dirty || item.blocked),
-  ).length
-
-  React.useEffect(() => {
-    void navigator.storage?.estimate?.().then((estimate) => {
-      setStorageUsage(estimate.usage ?? null)
-    })
-  }, [manifest.items])
-
-  const toggleWorkspace = async (workspace: (typeof workspaces)[number]) => {
-    const enabled = manifest.workspaces.some((item) => item.id === workspace.id)
-    setPendingId(workspace.id)
-    try {
-      if (enabled) {
-        const removedItems = manifest.items.filter(
-          (item) => item.workspaceId === workspace.id,
-        )
-        await disableOfflineWorkspace(workspace.id)
-        queryClient.removeQueries({ queryKey: ["pages", workspace.id] })
-        for (const item of removedItems) {
-          queryClient.removeQueries({
-            queryKey: [item.kind === "page" ? "page" : "database", item.id],
-          })
-        }
-      } else {
-        if (
-          getConnectivityState() !== "online" ||
-          !sessionData?.session ||
-          !sessionData.user
-        ) {
-          throw new Error("Connect and sign in before enabling offline access.")
-        }
-        await enableOfflineWorkspace({
-          accountId: sessionData.user.id,
-          session: {
-            session: sessionData.session,
-            user: sessionData.user,
-            validatedAt: new Date().toISOString(),
-            workspacePinned: sessionData.workspacePinned,
-          },
-          workspace: {
-            id: workspace.id,
-            name: workspace.name,
-            slug: workspace.slug,
-          },
-        })
-      }
-    } catch (error) {
-      toast.error(getApiErrorMessage(error))
-    } finally {
-      setPendingId(null)
-    }
-  }
-
-  const removeAll = async () => {
-    if (dirtyCount) {
-      toast.error("Sync or export local drafts before removing offline data.")
-      return
-    }
-    if (!window.confirm("Remove all offline content stored for this account?")) return
-    await clearAllOfflineData()
-    toast.success("Offline data removed from this Mac.")
-  }
-
-  return (
-    <section className="grid gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h3 className="flex items-center gap-2 font-heading text-base font-medium">
-            <HardDriveIcon className="size-4" />
-            Offline access on this Mac
-          </h3>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Choose workspaces that may store downloaded pages and databases locally.
-            Content is not application-encrypted; protection relies on your macOS
-            account and FileVault.
-            {storageUsage !== null
-              ? ` Approximate app storage: ${formatBytes(storageUsage)}.`
-              : ""}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <input
-            accept=".zip,application/zip"
-            className="hidden"
-            onChange={async (event) => {
-              const file = event.target.files?.[0]
-              if (!file) return
-              try {
-                const results = await importRecoveryArchive(file)
-                const failed = results.filter((result) => !result.success)
-                if (failed.length) toast.error(`${failed.length} page(s) could not be imported.`)
-                else toast.success(`${results.length} page(s) imported and synced.`)
-              } catch (error) { toast.error(getApiErrorMessage(error)) }
-              event.target.value = ""
-            }}
-            ref={importInput}
-            type="file"
-          />
-          <Button onClick={() => importInput.current?.click()} size="sm" type="button" variant="outline">
-            <UploadIcon /> Import recovery
-          </Button>
-          <Button
-            disabled={!manifest.workspaces.length}
-            onClick={() => void removeAll()}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            <Trash2Icon /> Remove all
-          </Button>
-        </div>
-      </div>
-      <div className="divide-y rounded-md border">
-        {workspaces.map((workspace) => {
-          const enabled = manifest.workspaces.some((item) => item.id === workspace.id)
-          const items = manifest.items.filter((item) => item.workspaceId === workspace.id)
-          const lastSync = items
-            .map((item) => item.lastSyncedAt)
-            .filter((value): value is string => Boolean(value))
-            .sort()
-            .at(-1)
-          return (
-            <div className="flex items-center justify-between gap-3 p-3" key={workspace.id}>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{workspace.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {items.length} downloaded · {items.filter((item) => item.dirty || item.blocked).length} unsynced
-                  {lastSync ? ` · Last sync ${new Date(lastSync).toLocaleString()}` : ""}
-                </p>
-              </div>
-              <Button
-                disabled={pendingId === workspace.id}
-                onClick={() => void toggleWorkspace(workspace)}
-                size="sm"
-                type="button"
-                variant={enabled ? "outline" : "default"}
-              >
-                {pendingId === workspace.id ? <Spinner /> : null}
-                {enabled ? "Disable" : "Enable"}
-              </Button>
-            </div>
-          )
-        })}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Offline access ends when the cached session expires. Drafts stay stored but
-        locked until you reconnect and sign in.
-      </p>
-    </section>
-  )
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 function ProfileDetailsCard({
   initialEmail,
+  initialImage,
   initialName,
   isReady,
 }: {
   initialEmail: string
+  initialImage: string | null
   initialName: string
   isReady: boolean
 }) {
   const updateUserProfile = useUpdateUserProfile()
+  const imageInputRef = React.useRef<HTMLInputElement | null>(null)
   const [name, setName] = React.useState(initialName)
   const [email, setEmail] = React.useState(initialEmail)
+  const [profileImage, setProfileImage] = React.useState<string | null>(initialImage)
+  const [imageAction, setImageAction] = React.useState<"remove" | "upload" | null>(null)
   const [error, setError] = React.useState("")
 
   React.useEffect(() => {
     setName(initialName)
     setEmail(initialEmail)
-  }, [initialEmail, initialName])
+    setProfileImage(initialImage)
+  }, [initialEmail, initialImage, initialName])
+
+  const updateSessionImage = (image: string | null) => {
+    queryClient.setQueryData<SessionResponse>(sessionQueryKey, (current) => {
+      if (!current?.user) {
+        return current
+      }
+
+      return {
+        ...current,
+        user: { ...current.user, image },
+      }
+    })
+  }
+
+  const selectProfileImage = async (file: File | undefined) => {
+    if (!file) {
+      return
+    }
+
+    const previousImage = profileImage
+    const previewUrl = URL.createObjectURL(file)
+    setProfileImage(previewUrl)
+    setImageAction("upload")
+
+    try {
+      const result = await uploadProfileImage(file)
+      setProfileImage(result.image)
+      updateSessionImage(result.image)
+      toast.success("Profile picture updated.")
+    } catch (uploadError) {
+      setProfileImage(previousImage)
+      toast.error(getApiErrorMessage(uploadError))
+    } finally {
+      URL.revokeObjectURL(previewUrl)
+      setImageAction(null)
+    }
+  }
+
+  const deleteProfileImage = async () => {
+    setImageAction("remove")
+
+    try {
+      await removeProfileImage()
+      setProfileImage(null)
+      updateSessionImage(null)
+      toast.success("Profile picture removed.")
+    } catch (removeError) {
+      toast.error(getApiErrorMessage(removeError))
+    } finally {
+      setImageAction(null)
+    }
+  }
 
   const hasChanges =
     name.trim() !== initialName.trim() ||
@@ -410,7 +299,7 @@ function ProfileDetailsCard({
             Personal details
           </h3>
           <p className="text-sm text-muted-foreground">
-            Update the name and email tied to your account.
+            Update the photo, name and email tied to your account.
           </p>
         </div>
         <Button
@@ -428,6 +317,62 @@ function ProfileDetailsCard({
         id="profile-details-form"
         onSubmit={saveProfile}
       >
+        <div className="flex items-center gap-4">
+          <Avatar className="size-16">
+            {profileImage ? (
+              <AvatarImage
+                alt={`${name || "Your"} profile picture`}
+                src={getUserImageUrl(profileImage)}
+              />
+            ) : null}
+            <AvatarFallback
+              className="text-base"
+              gradientSeed={name || initialEmail}
+            >
+              {getInitials(name || initialEmail)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="grid gap-2">
+            <input
+              accept="image/avif,image/gif,image/jpeg,image/png,image/webp"
+              className="hidden"
+              disabled={!isReady || imageAction !== null}
+              onChange={(event) => {
+                void selectProfileImage(event.target.files?.[0])
+                event.target.value = ""
+              }}
+              ref={imageInputRef}
+              type="file"
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={!isReady || imageAction !== null}
+                onClick={() => imageInputRef.current?.click()}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {imageAction === "upload" ? <Spinner /> : <CameraIcon />}
+                {profileImage ? "Change photo" : "Upload photo"}
+              </Button>
+              {profileImage ? (
+                <Button
+                  disabled={!isReady || imageAction !== null}
+                  onClick={() => void deleteProfileImage()}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {imageAction === "remove" ? <Spinner /> : <Trash2Icon />}
+                  Remove
+                </Button>
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              JPG, PNG, GIF, WebP or AVIF. Maximum 5 MB.
+            </p>
+          </div>
+        </div>
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="profile-name">Name</FieldLabel>
@@ -649,4 +594,13 @@ function PasswordCard({
 
 function isValidEmail(value: string) {
   return /\S+@\S+\.\S+/.test(value)
+}
+
+function getInitials(value: string) {
+  return value
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "?"
 }

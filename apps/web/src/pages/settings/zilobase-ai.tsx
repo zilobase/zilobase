@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { SettingsHeader } from "@/components/settings-header"
+import { Separator } from "@/components/ui/separator"
 import { useActiveWorkspaceId } from "@zilobase/features/integrations"
 import {
   useZilobaseAiPages,
@@ -42,7 +43,7 @@ export default function ZilobaseAiSettingsPage() {
         description="Manage pages used as AI instructions and skills."
       />
 
-      <div className="mx-auto grid w-full max-w-4xl gap-4">
+      <div className="mx-auto grid w-full max-w-3xl gap-6">
         <ZilobaseAiSection
           isLoading={isLoading}
           items={instructions}
@@ -50,6 +51,7 @@ export default function ZilobaseAiSettingsPage() {
           workspaceId={workspaceId ?? null}
           pagesById={pagesById}
         />
+        <Separator />
         <ZilobaseAiSection
           isLoading={isLoading}
           items={skills}

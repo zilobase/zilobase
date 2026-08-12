@@ -74,6 +74,57 @@ export function register({ assert, loadModule, test }) {
       restoreFetch()
     }
   })
+
+  test("profile image uploads complete and resolve account image URLs", async () => {
+    const { getUserImageUrl, uploadProfileImage } = await loadModule(
+      "/src/lib/image-upload.ts",
+    )
+    const imagePath = "/user-settings/profile/images/user-1/image-1/avatar.png"
+    const calls = mockFetch([
+      jsonResponse({
+        image: {
+          byteSize: 4,
+          contentType: "image/png",
+          filename: "avatar.png",
+          id: "image-1",
+        },
+        upload: {
+          expiresAt: "2026-06-17T01:00:00.000Z",
+          headers: { "Content-Type": "image/png" },
+          method: "PUT",
+          storageMode: "s3",
+          url: "https://objects.example/profile-upload",
+        },
+      }),
+      new Response(null, { status: 200 }),
+      jsonResponse({ image: imagePath }),
+    ])
+
+    try {
+      assert.deepEqual(await uploadProfileImage(createImageFile()), {
+        image: imagePath,
+      })
+      assert.equal(
+        calls[0].url,
+        "https://api.zilobase.test/user-settings/profile/image/uploads",
+      )
+      assert.equal(calls[1].url, "https://objects.example/profile-upload")
+      assert.equal(
+        calls[2].url,
+        "https://api.zilobase.test/user-settings/profile/image/uploads/image-1/complete",
+      )
+      assert.equal(
+        getUserImageUrl(imagePath),
+        `https://api.zilobase.test${imagePath}`,
+      )
+      assert.equal(
+        getUserImageUrl("https://images.example/avatar.png"),
+        "https://images.example/avatar.png",
+      )
+    } finally {
+      restoreFetch()
+    }
+  })
 }
 
 const originalFetch = globalThis.fetch

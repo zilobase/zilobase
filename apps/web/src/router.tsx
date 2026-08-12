@@ -16,6 +16,7 @@ import { libraryViewIds } from "@zilobase/features/user-settings"
 import DatabasePage from "@/pages/database"
 import DesktopAuthPage from "@/pages/desktop-auth"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
+import PreferencesSettingsPage from "@/pages/settings/preferences"
 import LoginPage from "@/pages/login"
 import OnboardingPage from "@/pages/onboarding"
 import OtpPage from "@/pages/otp"
@@ -238,8 +239,14 @@ const settingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings",
   beforeLoad: () => {
-    throw redirect({ to: "/settings/profile" })
+    throw redirect({ to: "/settings/preferences" })
   },
+})
+
+const preferencesSettingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/preferences",
+  component: PreferencesSettingsPage,
 })
 
 const profileSettingsRoute = createRoute({
@@ -292,6 +299,7 @@ const routeTree = rootRoute.addChildren([
     dashboardRoute,
     trashRoute,
     settingsRoute,
+    preferencesSettingsRoute,
     profileSettingsRoute,
     workspaceSettingsRoute,
     integrationsSettingsRoute,

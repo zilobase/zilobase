@@ -541,6 +541,7 @@ function getSettingsPageTitle(pathname: string) {
   }
 
   const titles: Record<string, string> = {
+    preferences: "Preferences",
     integrations: "Integrations",
     "zilobase-ai": "Zilobase AI",
     workspace: "Workspace",

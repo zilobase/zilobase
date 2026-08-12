@@ -34,7 +34,6 @@ export function RefreshIntegrationsCard({
       <Button
         disabled={isLoading}
         onClick={onRefresh}
-        size="sm"
         type="button"
         variant="outline"
       >
@@ -118,7 +117,6 @@ export function IntegrationGridCard({
         <Button
           disabled={isConnected || integration.connectDisabled}
           onClick={integration.onConnect}
-          size="sm"
           type="button"
           variant={isConnected ? "secondary" : "default"}
         >
@@ -133,7 +131,6 @@ export function IntegrationGridCard({
         </Button>
         <Button
           onClick={integration.onManage}
-          size="sm"
           type="button"
           variant="outline"
         >
@@ -156,7 +153,7 @@ export function IntegrationDetailShell({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <Button onClick={onBack} size="sm" type="button" variant="ghost">
+        <Button onClick={onBack} type="button" variant="ghost">
           <ArrowLeftIcon />
           Integrations
         </Button>
