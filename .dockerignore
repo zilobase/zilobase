@@ -6,7 +6,6 @@
 **/.cache
 **/.DS_Store
 apps/desktop/src-tauri/target
-apps/mobile/.expo
 coverage
 Dockerfile
 docker-compose*.yml

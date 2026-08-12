@@ -1,7 +1,9 @@
 export type PageEditLogMeta = Record<string, unknown>
 
+declare const __DEV__: boolean
+
 function shouldLogPageEdit() {
-  if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+  if (typeof __DEV__ !== "undefined" && __DEV__) {
     return true
   }
 

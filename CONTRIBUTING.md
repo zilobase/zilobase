@@ -41,7 +41,6 @@ Then open `http://localhost`.
 
 - `apps/web`: Vite React web client.
 - `apps/server`: Hono API, auth, database access, AI tools, integrations, and serverful runtime.
-- `apps/mobile`: Expo mobile client.
 - `apps/desktop`: Tauri desktop shell.
 - `packages/features`: shared client-side feature queries, hooks, and cache logic.
 - `packages/page-context`: editor/page context extraction and markdown helpers.
@@ -76,7 +75,7 @@ Use a focused branch name:
 
 ```sh
 git checkout -b fix/page-title-save
-git checkout -b feature/mobile-inbox-filter
+git checkout -b feature/inbox-filter
 ```
 
 Before opening a PR:

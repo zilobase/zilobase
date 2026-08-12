@@ -3,12 +3,9 @@
   "version": "0.0.15",
   "private": true,
   "license": "MIT",
-  "dependencies": {
-    "expo-router": "~56.2.8"
-  },
   "overrides": {
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   },
   "workspaces": [
     "apps/*",

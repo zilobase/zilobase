@@ -123,7 +123,6 @@ zilobase/
 |-- apps/
 |   |-- web       # Vite React web client
 |   |-- server    # Hono API, auth, persistence, AI, integrations
-|   |-- mobile    # Expo mobile client
 |   `-- desktop   # Tauri desktop shell
 |-- packages/
 |   |-- features  # Shared client feature hooks and cache logic

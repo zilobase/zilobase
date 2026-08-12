@@ -6,7 +6,6 @@ Zilobase is an npm-workspaces monorepo for a notes, pages, databases, comments, 
 
 - `apps/web`: Vite React client. It contains the main workspace UI, page editor, database views, settings, auth screens, and client-side routing.
 - `apps/server`: Hono server. It owns auth, workspace APIs, database persistence, image upload signing, AI chat tools, integration OAuth flows, and the serverful runtime.
-- `apps/mobile`: Expo client that reuses shared feature packages and talks to the Zilobase API.
 - `apps/desktop`: Tauri shell for the desktop app.
 - `packages/features`: shared TanStack Query hooks, query keys, mutations, cache update logic, and small database contracts used by clients and server.
 - `packages/page-context`: editor/page context extraction, database markdown construction, and ProseMirror-to-markdown helpers.
@@ -14,7 +13,7 @@ Zilobase is an npm-workspaces monorepo for a notes, pages, databases, comments, 
 
 ## Data Flow
 
-The web and mobile clients call the server API through shared feature hooks. The server validates sessions or API keys, reads and writes Postgres through Drizzle, and returns JSON payloads to clients. Client cache behavior should live in `packages/features` when it is shared across clients.
+The web client calls the server API through shared feature hooks. The server validates sessions or API keys, reads and writes Postgres through Drizzle, and returns JSON payloads to clients. Client cache behavior should live in `packages/features` when it is shared across clients.
 
 Editable web page bodies additionally connect to Hocuspocus over WebSockets.
 Yjs binary state is authoritative for those bodies; the server materializes the

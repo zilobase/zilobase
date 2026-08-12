@@ -13,8 +13,6 @@ const jsonFiles = [
   ["apps/web/package.json", ["version"]],
   ["apps/server/package.json", ["version"]],
   ["apps/desktop/package.json", ["version"]],
-  ["apps/mobile/package.json", ["version"]],
-  ["apps/mobile/app.json", ["expo", "version"]],
 ]
 
 for (const [file, path] of jsonFiles) {
@@ -45,5 +43,4 @@ lock.packages[""].version = version
 lock.packages["apps/web"].version = version
 lock.packages["apps/server"].version = version
 lock.packages["apps/desktop"].version = version
-lock.packages["apps/mobile"].version = version
 writeFileSync("package-lock.json", `${JSON.stringify(lock, null, 2)}\n`)
