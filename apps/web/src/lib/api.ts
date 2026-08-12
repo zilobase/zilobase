@@ -85,6 +85,10 @@ export async function apiFetch<T>(
       headers: requestHeaders,
     })
   } catch (error) {
+    if (isRequestAbort(error)) {
+      throw error
+    }
+
     if (isDesktopOfflineSupported()) {
       setConnectivityState(
         navigator.onLine === false ? "offline" : "service-unavailable",
@@ -97,7 +101,9 @@ export async function apiFetch<T>(
   }
 
   if (isDesktopOfflineSupported()) {
-    setConnectivityState(response.status >= 500 ? "service-unavailable" : "online")
+    // Any HTTP response proves the service is reachable. Individual 5xx errors
+    // must not tear down live sockets and put the whole desktop app offline.
+    setConnectivityState("online")
     if (response.status === 401) {
       window.dispatchEvent(new Event("zilobase:authentication-required"))
     }
@@ -114,6 +120,15 @@ export async function apiFetch<T>(
   }
 
   return data as T
+}
+
+export function isRequestAbort(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "AbortError"
+  )
 }
 
 export function getApiRequestHeaders(headers?: HeadersInit) {

@@ -9,6 +9,7 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { toast } from "sonner"
 
 import { toApiUrl } from "@/lib/api"
+import { connectivityStateDuringProbe } from "@/lib/connectivity-probe"
 import { setDesktopAuthOwner } from "@/lib/desktop-auth-token"
 import { syncDirtyOfflinePages } from "@/lib/offline-recovery"
 import {
@@ -99,7 +100,12 @@ export function OfflineQueryProvider({
 
   if (!ready) return null
   if (!desktop) {
-    return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    return (
+      <QueryClientProvider client={client}>
+        <OfflineRuntime />
+        {children}
+      </QueryClientProvider>
+    )
   }
 
   return (
@@ -159,6 +165,7 @@ function OfflineRuntime() {
   React.useEffect(() => {
     let disposed = false
     let retryTimer: number | null = null
+    let probePromise: Promise<void> | null = null
     let attempt = 0
 
     const scheduleRetry = () => {
@@ -170,14 +177,16 @@ function OfflineRuntime() {
       }, delay)
     }
 
-    const probe = async () => {
+    const runProbe = async () => {
       if (navigator.onLine === false) {
         setConnectivityState("offline")
         scheduleRetry()
         return
       }
 
-      setConnectivityState("checking")
+      setConnectivityState(
+        connectivityStateDuringProbe(getConnectivityState()),
+      )
       const controller = new AbortController()
       const timeout = window.setTimeout(() => controller.abort(), 5_000)
 
@@ -188,6 +197,10 @@ function OfflineRuntime() {
         })
         if (response.ok) {
           attempt = 0
+          if (retryTimer !== null) {
+            window.clearTimeout(retryTimer)
+            retryTimer = null
+          }
           setConnectivityState("online")
           return
         }
@@ -199,6 +212,14 @@ function OfflineRuntime() {
       }
 
       scheduleRetry()
+    }
+
+    const probe = () => {
+      if (probePromise) return probePromise
+      probePromise = runProbe().finally(() => {
+        probePromise = null
+      })
+      return probePromise
     }
 
     const handleOffline = () => {

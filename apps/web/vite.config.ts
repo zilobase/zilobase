@@ -94,6 +94,7 @@ export default defineConfig(async () => ({
     strictPort: true,
     host: host || process.env.VITE_DEV_HOST || "0.0.0.0",
     proxy: {
+      "/health": createBackendProxy(),
       "/api": createBackendProxy(),
       "/agents": createBackendProxy({ ws: true }),
       "/session": createBackendProxy(),
