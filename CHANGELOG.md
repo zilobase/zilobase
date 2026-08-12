@@ -4,6 +4,18 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.18
+
+### Added
+
+- Added authenticated Yjs collaboration for desktop clients with live page edits, collaborator presence, and cursor awareness across web and desktop.
+
+### Fixed
+
+- Restored editable embedded databases, including database view controls and **New page** actions, for users with edit access.
+- Stabilized browser and desktop connectivity detection so health checks and canceled requests no longer cause online/offline loops or repeatedly restart collaboration sockets.
+- Negotiated a stable WebSocket protocol while keeping desktop session authentication out of the selected collaboration protocol.
+
 ## 0.0.17
 
 ### Added
