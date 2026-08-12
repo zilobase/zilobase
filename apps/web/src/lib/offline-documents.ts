@@ -70,6 +70,7 @@ export function applyTicketState(document: Y.Doc, ticket: CollaborationTicket) {
 }
 
 export function connectLocalPageDocument(input: {
+  autoConnect?: boolean
   document: Y.Doc
   onAuthenticationFailed?: (reason: string) => void
   onStatus?: (status: "connected" | "connecting" | "disconnected") => void
@@ -81,6 +82,7 @@ export function connectLocalPageDocument(input: {
 }) {
   let currentTicket = input.ticket
   const provider = new HocuspocusProvider({
+    autoConnect: input.autoConnect ?? true,
     WebSocketPolyfill: CollaborationWebSocket,
     document: input.document,
     name: input.ticket.documentName,

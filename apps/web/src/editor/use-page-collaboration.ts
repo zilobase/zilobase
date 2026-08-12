@@ -7,6 +7,7 @@ import type { SessionUser } from "@zilobase/features/auth"
 import * as Y from "yjs"
 
 import { ApiError, apiFetch } from "@/lib/api"
+import { scheduleRealtimeAfterPagePaint } from "@/lib/deferred-realtime"
 import {
   applyTicketState,
   connectLocalPageDocument,
@@ -76,6 +77,7 @@ export function usePageCollaboration({
     }
 
     let disposed = false
+    const controller = new AbortController()
     let local: Awaited<ReturnType<typeof openLocalPageDocument>> | null = null
     let ephemeral: Y.Doc | null = null
 
@@ -99,7 +101,7 @@ export function usePageCollaboration({
         }
 
         if (preparationConnectivity !== "online") return
-        const ticket = await getTicket(pageId)
+        const ticket = await getTicket(pageId, controller.signal)
         ephemeral = new Y.Doc()
         applyTicketState(ephemeral, ticket)
         if (!disposed) {
@@ -120,10 +122,15 @@ export function usePageCollaboration({
         }
       }
     }
-    void prepare()
+    const cancelPreparation = downloaded
+      ? null
+      : scheduleRealtimeAfterPagePaint(() => void prepare())
+    if (downloaded) void prepare()
 
     return () => {
       disposed = true
+      cancelPreparation?.()
+      controller.abort()
       setDocument(null)
       setLocalPage(null)
       preparedTicketRef.current = null
@@ -179,6 +186,7 @@ export function usePageCollaboration({
     }
 
     let disposed = false
+    const controller = new AbortController()
     let activeProvider: HocuspocusProvider | null = null
     setStatus("connecting")
     setError(null)
@@ -189,79 +197,112 @@ export function usePageCollaboration({
         : null
     preparedTicketRef.current = null
 
-    void (preparedTicket ? Promise.resolve(preparedTicket) : getTicket(pageId))
-      .then((ticket) => {
-        if (disposed) return
-        applyTicketState(document, ticket)
-        activeProvider = connectLocalPageDocument({
-          document,
-          onAuthenticationFailed: (reason) => {
-            if (!disposed) {
-              setStatus("blocked")
-              setError(reason)
-              if (downloaded) {
-                void patchOfflineItem("page", pageId, { blocked: true })
+    const cancelProviderStart = scheduleRealtimeAfterPagePaint(() => {
+      void (
+        preparedTicket
+          ? Promise.resolve(preparedTicket)
+          : getTicket(pageId, controller.signal)
+      )
+        .then((ticket) => {
+          if (disposed) return
+          applyTicketState(document, ticket)
+          activeProvider = connectLocalPageDocument({
+            autoConnect: false,
+            document,
+            onAuthenticationFailed: (reason) => {
+              if (!disposed) {
+                setStatus("blocked")
+                setError(reason)
+                if (downloaded) {
+                  void patchOfflineItem("page", pageId, { blocked: true })
+                }
               }
-            }
-          },
-          onStatus: (nextStatus) => {
-            if (!disposed) setStatus(nextStatus)
-          },
-          onUnsyncedChanges: (count) => {
-            if (disposed) return
-            setUnsyncedChanges(count)
-            if (downloaded && count === 0 && activeProvider?.synced) {
+            },
+            onStatus: (nextStatus) => {
+              if (!disposed) setStatus(nextStatus)
+            },
+            onUnsyncedChanges: (count) => {
+              if (disposed) return
+              setUnsyncedChanges(count)
+              if (downloaded && count === 0 && activeProvider?.synced) {
+                dirtyMarked.current = false
+                void recordConfirmedDocument(pageId, document)
+              }
+            },
+            onUsers: (states) => {
+              if (!disposed) setUsers(readCollaborationUsers(states))
+            },
+            pageId,
+            refreshTicket: () => getTicket(pageId),
+            ticket,
+          })
+          activeProvider.setAwarenessField("user", {
+            avatar: user.image,
+            color: collaborationColor(user.id),
+            id: user.id,
+            name: user.name || user.email,
+          })
+          activeProvider.on("synced", ({ state }: { state: boolean }) => {
+            if (disposed || !state) return
+            setSynced(true)
+            if (downloaded && !activeProvider?.hasUnsyncedChanges) {
               dirtyMarked.current = false
               void recordConfirmedDocument(pageId, document)
             }
-          },
-          onUsers: (states) => {
-            if (!disposed) setUsers(readCollaborationUsers(states))
-          },
-          pageId,
-          refreshTicket: () => getTicket(pageId),
-          ticket,
+          })
+          setProvider(activeProvider)
         })
-        activeProvider.setAwarenessField("user", {
-          avatar: user.image,
-          color: collaborationColor(user.id),
-          id: user.id,
-          name: user.name || user.email,
-        })
-        activeProvider.on("synced", ({ state }: { state: boolean }) => {
-          if (disposed || !state) return
-          setSynced(true)
-          if (downloaded && !activeProvider?.hasUnsyncedChanges) {
-            dirtyMarked.current = false
-            void recordConfirmedDocument(pageId, document)
+        .catch((reason: unknown) => {
+          if (disposed) return
+          const blocked =
+            reason instanceof ApiError &&
+            (reason.status === 403 || reason.status === 404)
+          setStatus(
+            blocked ? "blocked" : downloaded ? "local" : "disconnected",
+          )
+          setError(
+            blocked || !downloaded
+              ? reason instanceof Error
+                ? reason.message
+                : "Could not start collaboration."
+              : null,
+          )
+          if (downloaded && blocked) {
+            void patchOfflineItem("page", pageId, { blocked: true })
           }
         })
-        setProvider(activeProvider)
-      })
-      .catch((reason: unknown) => {
-        if (disposed) return
-        const blocked = reason instanceof ApiError && (reason.status === 403 || reason.status === 404)
-        setStatus(blocked ? "blocked" : downloaded ? "local" : "disconnected")
-        setError(
-          blocked || !downloaded
-            ? reason instanceof Error
-              ? reason.message
-              : "Could not start collaboration."
-            : null,
-        )
-        if (downloaded && blocked) {
-          void patchOfflineItem("page", pageId, { blocked: true })
-        }
-      })
+    })
 
     return () => {
       disposed = true
+      cancelProviderStart()
+      controller.abort()
       activeProvider?.destroy()
       setProvider(null)
       setSynced(false)
       setUsers([])
     }
   }, [connectivity, document, downloaded, enabled, pageId, user?.id])
+
+  useEffect(() => {
+    if (!provider || connectivity !== "online") return
+
+    let disposed = false
+    const cancel = scheduleRealtimeAfterPagePaint(() => {
+      if (disposed) return
+      setStatus("connecting")
+      void provider.connect().catch(() => {
+        if (!disposed) {
+          setStatus(downloaded ? "local" : "disconnected")
+        }
+      })
+    })
+
+    return () => {
+      disposed = true
+      cancel()
+    }
+  }, [connectivity, downloaded, provider])
 
   const collaborationUser = useMemo(
     () =>
@@ -289,10 +330,10 @@ export function usePageCollaboration({
   }
 }
 
-function getTicket(pageId: string) {
+function getTicket(pageId: string, signal?: AbortSignal) {
   return apiFetch<CollaborationTicket>(
     `/pages/${encodeURIComponent(pageId)}/collaboration-ticket`,
-    { method: "POST" },
+    { method: "POST", signal },
   )
 }
 
