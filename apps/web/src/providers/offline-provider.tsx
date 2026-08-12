@@ -126,11 +126,20 @@ function OfflineSyncCoordinator() {
   const manifest = useOfflineManifest()
   const connectivity = useConnectivity()
   const running = React.useRef(false)
+  const manifestRef = React.useRef(manifest)
+  const previousConnectivity = React.useRef<ConnectivityState | null>(null)
+
+  manifestRef.current = manifest
+
   React.useEffect(() => {
+    const cameOnline =
+      connectivity === "online" && previousConnectivity.current !== "online"
+    previousConnectivity.current = connectivity
+
     if (
+      !cameOnline ||
       running.current ||
-      connectivity !== "online" ||
-      !manifest.items.some(
+      !manifestRef.current.items.some(
         (item) => item.kind === "page" && (item.dirty || item.blocked),
       )
     ) return
@@ -138,7 +147,7 @@ function OfflineSyncCoordinator() {
     void syncDirtyOfflinePages().finally(() => {
       running.current = false
     })
-  }, [connectivity, manifest])
+  }, [connectivity])
   return null
 }
 

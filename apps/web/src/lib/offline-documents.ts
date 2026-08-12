@@ -9,6 +9,8 @@ import {
   patchOfflineItem,
 } from "@/lib/offline-store"
 
+const COLLABORATION_TICKET_REFRESH_BUFFER_MS = 75_000
+
 export type CollaborationTicket = {
   documentName: string
   expiresAt: string
@@ -75,7 +77,10 @@ export function connectLocalPageDocument(input: {
     document: input.document,
     name: input.ticket.documentName,
     token: async () => {
-      if (new Date(currentTicket.expiresAt).getTime() > Date.now() + 30_000) {
+      if (
+        new Date(currentTicket.expiresAt).getTime() >
+          Date.now() + COLLABORATION_TICKET_REFRESH_BUFFER_MS
+      ) {
         return currentTicket.token
       }
       if (input.refreshTicket) {
@@ -145,4 +150,10 @@ export function documentDiffersFromConfirmed(
     document,
     base64ToBytes(confirmedStateVector),
   ).byteLength > 2
+}
+
+export function shouldMarkOfflineDocumentDirty(
+  transaction: Pick<Y.Transaction, "local">,
+) {
+  return transaction.local
 }

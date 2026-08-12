@@ -14,6 +14,7 @@ import {
   flushLocalPageDocument,
   openLocalPageDocument,
   recordConfirmedDocument,
+  shouldMarkOfflineDocumentDirty,
   type CollaborationTicket,
 } from "@/lib/offline-documents"
 import { patchOfflineItem } from "@/lib/offline-store"
@@ -123,8 +124,13 @@ export function usePageCollaboration({
   useEffect(() => {
     if (!document || !downloaded || !localPage) return
     let flushTimer: number | null = null
-    const markDirty = (_update: Uint8Array, origin: unknown) => {
-      if (!(origin instanceof HocuspocusProvider) && !dirtyMarked.current) {
+    const markDirty = (
+      _update: Uint8Array,
+      _origin: unknown,
+      _document: Y.Doc,
+      transaction: Y.Transaction,
+    ) => {
+      if (shouldMarkOfflineDocumentDirty(transaction) && !dirtyMarked.current) {
         dirtyMarked.current = true
         setUnsyncedChanges((count) => Math.max(1, count))
         void patchOfflineItem("page", pageId, { dirty: true })
@@ -224,7 +230,7 @@ export function usePageCollaboration({
       setSynced(false)
       setUsers([])
     }
-  }, [connectivity, document, downloaded, enabled, pageId, user])
+  }, [connectivity, document, downloaded, enabled, pageId, user?.id])
 
   const collaborationUser = useMemo(
     () =>

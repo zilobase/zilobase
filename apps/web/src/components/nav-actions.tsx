@@ -5,8 +5,11 @@ import {
   ChevronsLeftIcon,
   ChevronsRightIcon,
   ChevronsUpDownIcon,
+  CircleAlertIcon,
+  CloudCheckIcon,
   Globe2Icon,
   LinkIcon,
+  LoaderCircleIcon,
   LockIcon,
   MoreHorizontalIcon,
   MessageSquareTextIcon,
@@ -14,6 +17,7 @@ import {
   SparklesIcon,
   StarIcon,
   Trash2Icon,
+  WifiOffIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -93,6 +97,11 @@ import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry";
 import { Switch } from "@/components/ui/switch";
 import { useLayoutEditor } from "@/components/layout-editor";
 import { OfflineAvailabilityAction } from "@/components/offline-availability-action";
+import {
+  useConnectivity,
+  useOfflineManifest,
+  useOfflineSessionLocked,
+} from "@/providers/offline-provider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getPrimaryPageParentId,
@@ -161,6 +170,9 @@ export function NavActions({
   const { data: userSettings } = useUserSettings();
   const updateUserSettings = useUpdateUserSettings();
   const isMobile = useIsMobile();
+  const manifest = useOfflineManifest();
+  const connectivity = useConnectivity();
+  const offlineSessionLocked = useOfflineSessionLocked();
   const listPage = pages.find((item) => item.id === actionPageId);
   const isDatabasePage = Boolean(databaseId);
   const hasPageActions = Boolean(actionPageId || databaseId);
@@ -372,9 +384,32 @@ export function NavActions({
   const discussionsActionLabel = discussionsOpen
     ? "Close discussions"
     : "Open discussions";
+  const offlineItem = isDatabasePage
+    ? manifest.items.find(
+        (item) => item.kind === "database" && item.id === databaseId,
+      )
+    : manifest.items.find(
+        (item) => item.kind === "page" && item.id === actionPageId,
+      );
 
   return (
     <div className="flex items-center gap-2 text-sm">
+      {offlineItem ? (
+        <>
+          <OfflineHeaderStatus
+            blocked={Boolean(offlineItem.blocked)}
+            connectivity={connectivity}
+            dirty={Boolean(offlineItem.dirty)}
+            sessionLocked={offlineSessionLocked}
+          />
+          <span
+            aria-hidden="true"
+            className="hidden text-xs text-muted-foreground/60 md:inline"
+          >
+            ·
+          </span>
+        </>
+      ) : null}
       <div className="hidden text-xs/relaxed font-normal text-muted-foreground md:inline-block">
         Edited recently
       </div>
@@ -543,6 +578,75 @@ export function NavActions({
           </AlertDialog>
         </>
       ) : null}
+    </div>
+  );
+}
+
+function OfflineHeaderStatus({
+  blocked,
+  connectivity,
+  dirty,
+  sessionLocked,
+}: {
+  blocked: boolean;
+  connectivity: ReturnType<typeof useConnectivity>;
+  dirty: boolean;
+  sessionLocked: boolean;
+}) {
+  const status = sessionLocked
+    ? {
+        className: "text-destructive",
+        icon: WifiOffIcon,
+        label: "Session expired",
+        title: "Offline session expired — reconnect and sign in",
+      }
+    : blocked
+      ? {
+          className: "text-destructive",
+          icon: CircleAlertIcon,
+          label: "Sync blocked",
+          title: "Sync blocked — page access may have changed",
+        }
+      : connectivity === "offline" || connectivity === "service-unavailable"
+        ? {
+            className: "text-muted-foreground",
+            icon: WifiOffIcon,
+            label: "Offline",
+            title: "Offline — this item is stored on this Mac",
+          }
+        : connectivity === "checking" || dirty
+          ? {
+              className: "text-muted-foreground",
+              icon: LoaderCircleIcon,
+              label: "Syncing",
+              title: "Syncing offline changes",
+            }
+          : {
+              className: "text-muted-foreground",
+              icon: CloudCheckIcon,
+              label: "Synced",
+              title: "Available offline and synced",
+            };
+  const StatusIcon = status.icon;
+
+  return (
+    <div
+      aria-live="polite"
+      className={cn(
+        "flex shrink-0 items-center gap-1.5 text-xs/relaxed font-normal",
+        status.className,
+      )}
+      role="status"
+      title={status.title}
+    >
+      <StatusIcon
+        aria-hidden="true"
+        className={cn(
+          "size-3.5",
+          StatusIcon === LoaderCircleIcon && "animate-spin",
+        )}
+      />
+      <span className="hidden sm:inline">{status.label}</span>
     </div>
   );
 }

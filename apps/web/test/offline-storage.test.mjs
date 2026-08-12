@@ -3,6 +3,73 @@ import { IndexeddbPersistence } from "y-indexeddb"
 import * as Y from "yjs"
 
 export function register({ assert, loadModule, test }) {
+  test("only local Yjs transactions mark an offline page dirty", async () => {
+    const { shouldMarkOfflineDocumentDirty } = await loadModule(
+      "/src/lib/offline-documents.ts",
+    )
+    const local = new Y.Doc()
+    const remote = new Y.Doc()
+    const transactionKinds = []
+    local.on("update", (_update, _origin, _document, transaction) => {
+      transactionKinds.push(shouldMarkOfflineDocumentDirty(transaction))
+    })
+
+    local.getText("body").insert(0, "local")
+    remote.getText("body").insert(0, "remote")
+    Y.applyUpdate(local, Y.encodeStateAsUpdate(remote))
+
+    assert.deepEqual(transactionKinds, [true, false])
+    local.destroy()
+    remote.destroy()
+  })
+
+  test("offline manifest updates build on the latest in-memory state", async () => {
+    const {
+      clearAllOfflineData,
+      enableOfflineWorkspace,
+      getOfflineManifest,
+      setOfflineItem,
+    } = await loadModule("/src/lib/offline-store.ts")
+    await clearAllOfflineData()
+
+    await enableOfflineWorkspace({
+      accountId: "account-1",
+      session: {
+        session: {
+          expiresAt: "2030-01-01T00:00:00.000Z",
+          id: "session-1",
+          userId: "account-1",
+        },
+        user: {
+          email: "person@example.com",
+          emailVerified: true,
+          hasPassword: true,
+          id: "account-1",
+          name: "Person",
+        },
+        validatedAt: "2029-01-01T00:00:00.000Z",
+      },
+      workspace: {
+        id: "workspace-1",
+        name: "Workspace",
+        slug: "workspace",
+      },
+    })
+    await setOfflineItem({
+      availableAt: "2029-01-01T00:00:00.000Z",
+      id: "page-1",
+      kind: "page",
+      name: "Page",
+      workspaceId: "workspace-1",
+    })
+
+    const manifest = getOfflineManifest()
+    assert.equal(manifest.workspaces.length, 1)
+    assert.equal(manifest.workspaces[0].id, "workspace-1")
+    assert.equal(manifest.items.length, 1)
+    assert.equal(manifest.items[0].id, "page-1")
+  })
+
   test("offline session fallback requires a matching owner, token, and unexpired session", async () => {
     const { isOfflineSessionAllowed } = await loadModule("/src/lib/offline-store.ts")
     const base = {

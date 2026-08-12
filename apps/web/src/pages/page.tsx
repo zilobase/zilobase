@@ -748,19 +748,6 @@ export function PageEditorPane({
           showRestore={!readOnly}
         />
       ) : null}
-      {collaboration.downloaded ? (
-        <div className="border-b bg-muted/40 px-4 py-1.5 text-center text-xs text-muted-foreground">
-          {offlineSessionLocked
-            ? "Offline session expired — reconnect and sign in"
-            : collaboration.status === "blocked"
-            ? "Sync blocked — access changed"
-            : collaboration.status === "local"
-              ? "Offline — stored on this Mac"
-              : collaboration.status === "connecting" || collaboration.unsyncedChanges > 0
-                ? "Syncing…"
-                : "Synced"}
-        </div>
-      ) : null}
       <Editor
         key={page.id}
         collaboration={

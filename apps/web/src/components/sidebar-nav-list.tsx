@@ -281,7 +281,7 @@ function ItemIndicators({ item }: { item: SidebarNavItem }) {
   }
 
   return (
-    <span className="ml-auto flex shrink-0 items-center gap-1.5">
+    <span className="ml-auto flex shrink-0 items-center gap-1.5 transition-opacity group-hover/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu]:focus-visible]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:opacity-0">
       {availableOffline ? (
         <HardDriveDownloadIcon
           aria-label="Available offline"
@@ -296,7 +296,7 @@ function ItemIndicators({ item }: { item: SidebarNavItem }) {
       {item.isLinked ? (
         <ArrowUpRightIcon
           aria-label="Linked from another parent"
-          className="size-3 text-sidebar-foreground/45 group-hover/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu]:focus-visible]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:opacity-0"
+          className="size-3 text-sidebar-foreground/45"
         />
       ) : null}
     </span>

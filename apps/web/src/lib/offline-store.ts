@@ -98,22 +98,20 @@ export function isDesktopOfflineSupported() {
 }
 
 export async function initializeOfflineStore() {
-  if (manifestLoad) return manifestLoad
-
-  manifestLoad = (async () => {
-    if (!isDesktopOfflineSupported()) {
+  if (!manifestLoad) {
+    manifestLoad = (async () => {
+      if (isDesktopOfflineSupported()) {
+        const stored = await get<unknown>(MANIFEST_KEY).catch(() => null)
+        manifest = normalizeManifest(stored)
+      }
       manifestLoaded = true
+      emit(manifestListeners)
       return manifest
-    }
+    })()
+  }
 
-    const stored = await get<unknown>(MANIFEST_KEY).catch(() => null)
-    manifest = normalizeManifest(stored)
-    manifestLoaded = true
-    emit(manifestListeners)
-    return manifest
-  })()
-
-  return manifestLoad
+  await manifestLoad
+  return manifest
 }
 
 export function isOfflineStoreLoaded() {
