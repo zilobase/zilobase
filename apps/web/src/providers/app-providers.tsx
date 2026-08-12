@@ -1,5 +1,4 @@
 import * as React from "react"
-import { QueryClientProvider } from "@tanstack/react-query"
 import { ThemeProvider, useTheme } from "next-themes"
 
 import { Toaster } from "@/components/ui/sonner"
@@ -11,10 +10,11 @@ import { DesktopUpdater } from "@/components/desktop-updater"
 import { WebFeaturesProvider } from "@/providers/features-provider"
 import { queryClient } from "@/lib/query-client"
 import { ShortcutProvider } from "@/shortcuts"
+import { OfflineQueryProvider } from "@/providers/offline-provider"
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
-    <QueryClientProvider client={queryClient}>
+    <OfflineQueryProvider client={queryClient}>
       <WebFeaturesProvider>
         <ShortcutProvider>
           <ThemeProvider
@@ -38,7 +38,7 @@ export function AppProviders({ children }: React.PropsWithChildren) {
           </ThemeProvider>
         </ShortcutProvider>
       </WebFeaturesProvider>
-    </QueryClientProvider>
+    </OfflineQueryProvider>
   )
 }
 

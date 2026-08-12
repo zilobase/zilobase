@@ -44,6 +44,7 @@ import {
 import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
 import type { OpenPageOptions } from "@/packages/editor/types"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider"
 
 export default function DatabasePage() {
   const { data: session } = useSession()
@@ -95,6 +96,8 @@ function AuthenticatedDatabasePage({
   viewSettingsOpen: boolean
   viewSettingsPanelTarget: HTMLElement | null
 }) {
+  const connectivity = useConnectivity()
+  const offlineManifest = useOfflineManifest()
   const { databaseId } = useParams({ from: "/d/$databaseId" })
   const { view: activeDatabaseViewId } = useSearch({
     from: "/d/$databaseId",
@@ -128,6 +131,18 @@ function AuthenticatedDatabasePage({
   }
 
   if (isLoading) {
+    if (
+      (connectivity === "offline" || connectivity === "service-unavailable") &&
+      !offlineManifest.items.some(
+        (item) => item.kind === "database" && item.id === databaseId,
+      )
+    ) {
+      return (
+        <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center px-4 text-sm text-muted-foreground">
+          Not available offline.
+        </main>
+      )
+    }
     return (
       <main className="min-h-[calc(100svh-3rem)] animate-in fade-in duration-200">
         <DatabasePageSkeleton />
@@ -398,6 +413,7 @@ export function DatabaseMainPane({
   viewSettingsOpen?: boolean
   viewSettingsPanelTarget?: HTMLElement | null
 }) {
+  const connectivity = useConnectivity()
   const {
     activeViewId: localActiveViewId,
     selectView: selectLocalView,
@@ -422,6 +438,7 @@ export function DatabaseMainPane({
   const [embeddedViewId, setEmbeddedViewId] = useState<string | undefined>()
   const editable =
     !readOnly &&
+    connectivity === "online" &&
     !payload?.database.deletedAt &&
     (payload?.database.accessLevel === "edit" ||
       payload?.database.accessLevel === "full" ||

@@ -1,20 +1,23 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   HocuspocusProvider,
   type StatesArray,
-  WebSocketStatus,
 } from "@hocuspocus/provider"
 import type { SessionUser } from "@zilobase/features/auth"
 import * as Y from "yjs"
-import { apiFetch } from "@/lib/api"
 
-type CollaborationTicket = {
-  documentName: string
-  expiresAt: string
-  initialState: string
-  token: string
-  websocketUrl: string
-}
+import { ApiError, apiFetch } from "@/lib/api"
+import {
+  applyTicketState,
+  connectLocalPageDocument,
+  documentDiffersFromConfirmed,
+  flushLocalPageDocument,
+  openLocalPageDocument,
+  recordConfirmedDocument,
+  type CollaborationTicket,
+} from "@/lib/offline-documents"
+import { patchOfflineItem } from "@/lib/offline-store"
+import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider"
 
 export type CollaborationUser = {
   avatar?: string | null
@@ -24,86 +27,193 @@ export type CollaborationUser = {
   name: string
 }
 
+type CollaborationStatus =
+  | "local"
+  | "connecting"
+  | "connected"
+  | "disconnected"
+  | "blocked"
+
 export function usePageCollaboration({
   enabled,
   pageId,
   user,
+  workspaceId,
 }: {
   enabled: boolean
   pageId: string
   user: SessionUser | null | undefined
+  workspaceId?: string | null
 }) {
-  const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
-  const [status, setStatus] = useState<WebSocketStatus>(
-    WebSocketStatus.Disconnected,
+  const manifest = useOfflineManifest()
+  const connectivity = useConnectivity()
+  const offlineItem = manifest.items.find(
+    (item) => item.kind === "page" && item.id === pageId,
   )
+  const downloaded = Boolean(offlineItem && workspaceId)
+  const [document, setDocument] = useState<Y.Doc | null>(null)
+  const [localPage, setLocalPage] = useState<Awaited<ReturnType<typeof openLocalPageDocument>> | null>(null)
+  const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
+  const [status, setStatus] = useState<CollaborationStatus>("disconnected")
   const [synced, setSynced] = useState(false)
+  const [unsyncedChanges, setUnsyncedChanges] = useState(0)
   const [users, setUsers] = useState<CollaborationUser[]>([])
   const [error, setError] = useState<string | null>(null)
+  const dirtyMarked = useRef(Boolean(offlineItem?.dirty))
 
   useEffect(() => {
     if (!enabled || !user) {
-      setProvider(null)
-      setSynced(false)
-      setUsers([])
+      setDocument(null)
       setError(null)
       return
     }
 
     let disposed = false
-    let activeProvider: HocuspocusProvider | null = null
+    let local: Awaited<ReturnType<typeof openLocalPageDocument>> | null = null
+    let ephemeral: Y.Doc | null = null
 
-    void apiFetch<CollaborationTicket>(
-      `/pages/${encodeURIComponent(pageId)}/collaboration-ticket`,
-      { method: "POST" },
-    )
+    const prepare = async () => {
+      try {
+        if (downloaded && workspaceId) {
+          local = await openLocalPageDocument(workspaceId, pageId)
+          if (disposed) return
+          const differs = documentDiffersFromConfirmed(
+            local.document,
+            offlineItem?.confirmedStateVector,
+          )
+          dirtyMarked.current = differs || Boolean(offlineItem?.dirty)
+          if (differs && !offlineItem?.dirty) {
+            await patchOfflineItem("page", pageId, { dirty: true })
+          }
+          setStatus(connectivity === "online" ? "connecting" : "local")
+          setLocalPage(local)
+          setDocument(local.document)
+          return
+        }
+
+        if (connectivity !== "online") return
+        const ticket = await getTicket(pageId)
+        ephemeral = new Y.Doc()
+        applyTicketState(ephemeral, ticket)
+        if (!disposed) setDocument(ephemeral)
+      } catch (reason) {
+        if (!disposed) {
+          setError(
+            reason instanceof Error
+              ? `Local storage failed — editing paused: ${reason.message}`
+              : "Local storage failed — editing paused.",
+          )
+        }
+      }
+    }
+    void prepare()
+
+    return () => {
+      disposed = true
+      setDocument(null)
+      setLocalPage(null)
+      local?.persistence.destroy()
+      local?.document.destroy()
+      ephemeral?.destroy()
+    }
+    // Keep a downloaded document stable through connectivity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [downloaded, enabled, pageId, user?.id, workspaceId])
+
+  useEffect(() => {
+    if (!document || !downloaded || !localPage) return
+    let flushTimer: number | null = null
+    const markDirty = (_update: Uint8Array, origin: unknown) => {
+      if (!(origin instanceof HocuspocusProvider) && !dirtyMarked.current) {
+        dirtyMarked.current = true
+        setUnsyncedChanges((count) => Math.max(1, count))
+        void patchOfflineItem("page", pageId, { dirty: true })
+      }
+      if (flushTimer !== null) window.clearTimeout(flushTimer)
+      flushTimer = window.setTimeout(() => {
+        flushTimer = null
+        void flushLocalPageDocument(localPage).catch(() => {
+          setError("Local storage failed — editing paused.")
+        })
+      }, 750)
+    }
+    document.on("update", markDirty)
+    return () => {
+      if (flushTimer !== null) window.clearTimeout(flushTimer)
+      document.off("update", markDirty)
+    }
+  }, [document, downloaded, localPage, pageId])
+
+  useEffect(() => {
+    if (!document || !enabled || !user || connectivity !== "online") {
+      setProvider(null)
+      setSynced(false)
+      setUsers([])
+      if (document && downloaded) setStatus("local")
+      return
+    }
+
+    let disposed = false
+    let activeProvider: HocuspocusProvider | null = null
+    setStatus("connecting")
+    setError(null)
+
+    void getTicket(pageId)
       .then((ticket) => {
         if (disposed) return
-
-        let currentTicket = ticket
-        const document = new Y.Doc()
-        Y.applyUpdate(document, decodeBase64(ticket.initialState))
-
-        activeProvider = new HocuspocusProvider({
+        applyTicketState(document, ticket)
+        activeProvider = connectLocalPageDocument({
           document,
-          name: ticket.documentName,
-          token: async () => {
-            if (
-              new Date(currentTicket.expiresAt).getTime() >
-              Date.now() + 30_000
-            ) {
-              return currentTicket.token
+          onAuthenticationFailed: (reason) => {
+            if (!disposed) {
+              setStatus("blocked")
+              setError(reason)
+              if (downloaded) {
+                void patchOfflineItem("page", pageId, { blocked: true })
+              }
             }
-
-            currentTicket = await apiFetch<CollaborationTicket>(
-              `/pages/${encodeURIComponent(pageId)}/collaboration-ticket`,
-              { method: "POST" },
-            )
-            return currentTicket.token
           },
-          url: ticket.websocketUrl,
-          onAuthenticationFailed: ({ reason }) => {
-            if (!disposed) setError(reason || "Collaboration access was denied.")
-          },
-          onStatus: ({ status: nextStatus }) => {
+          onStatus: (nextStatus) => {
             if (!disposed) setStatus(nextStatus)
           },
-          onSynced: ({ state }) => {
-            if (!disposed && state) setSynced(true)
+          onUnsyncedChanges: (count) => {
+            if (disposed) return
+            setUnsyncedChanges(count)
+            if (downloaded && count === 0 && activeProvider?.synced) {
+              dirtyMarked.current = false
+              void recordConfirmedDocument(pageId, document)
+            }
           },
-          onAwarenessUpdate: ({ states }) => {
+          onUsers: (states) => {
             if (!disposed) setUsers(readCollaborationUsers(states))
           },
+          pageId,
+          refreshTicket: () => getTicket(pageId),
+          ticket,
+        })
+        activeProvider.on("synced", ({ state }: { state: boolean }) => {
+          if (disposed || !state) return
+          setSynced(true)
+          if (downloaded && !activeProvider?.hasUnsyncedChanges) {
+            dirtyMarked.current = false
+            void recordConfirmedDocument(pageId, document)
+          }
         })
         setProvider(activeProvider)
       })
       .catch((reason: unknown) => {
-        if (!disposed) {
-          setError(
-            reason instanceof Error
+        if (disposed) return
+        const blocked = reason instanceof ApiError && (reason.status === 403 || reason.status === 404)
+        setStatus(blocked ? "blocked" : downloaded ? "local" : "disconnected")
+        setError(
+          blocked || !downloaded
+            ? reason instanceof Error
               ? reason.message
-              : "Could not start collaboration.",
-          )
+              : "Could not start collaboration."
+            : null,
+        )
+        if (downloaded && blocked) {
+          void patchOfflineItem("page", pageId, { blocked: true })
         }
       })
 
@@ -114,88 +224,60 @@ export function usePageCollaboration({
       setSynced(false)
       setUsers([])
     }
-  }, [
-    enabled,
-    pageId,
-    user?.email,
-    user?.id,
-    user?.image,
-    user?.name,
-  ])
+  }, [connectivity, document, downloaded, enabled, pageId, user])
+
+  const collaborationUser = useMemo(
+    () =>
+      user
+        ? {
+            avatar: user.image,
+            color: collaborationColor(user.id),
+            id: user.id,
+            name: user.name || user.email,
+          }
+        : undefined,
+    [user],
+  )
 
   return {
+    document,
+    downloaded,
     error,
     provider,
     status,
     synced,
-    user: user
-      ? {
-          avatar: user.image,
-          color: collaborationColor(user.id),
-          id: user.id,
-          name: user.name || user.email,
-        }
-      : null,
+    unsyncedChanges,
+    user: collaborationUser,
     users,
   }
 }
 
+function getTicket(pageId: string) {
+  return apiFetch<CollaborationTicket>(
+    `/pages/${encodeURIComponent(pageId)}/collaboration-ticket`,
+    { method: "POST" },
+  )
+}
+
 function readCollaborationUsers(states: StatesArray) {
   const users = new Map<string, CollaborationUser>()
-
   for (const state of states) {
     const user = state.user as Partial<CollaborationUser> | undefined
-
-    if (
-      !user ||
-      typeof user.id !== "string" ||
-      typeof user.name !== "string" ||
-      typeof user.color !== "string"
-    ) {
-      continue
-    }
-
-    // Yjs awareness is connection-scoped, so the same account gets a distinct
-    // clientId in every tab. Presence avatars represent people, not sessions.
+    if (!user || typeof user.id !== "string" || typeof user.name !== "string" || typeof user.color !== "string") continue
     users.set(user.id, {
-      avatar: typeof user.avatar === "string" ? user.avatar : null,
+      avatar: user.avatar,
       clientId: state.clientId,
       color: user.color,
       id: user.id,
       name: user.name,
     })
   }
-
   return [...users.values()]
 }
 
-function collaborationColor(id: string) {
-  const colors = [
-    "#2563eb",
-    "#059669",
-    "#dc2626",
-    "#7c3aed",
-    "#c2410c",
-    "#0f766e",
-    "#be185d",
-    "#4f46e5",
-  ]
+function collaborationColor(userId: string) {
+  const colors = ["#0ea5e9", "#8b5cf6", "#ec4899", "#f97316", "#22c55e", "#eab308"]
   let hash = 0
-
-  for (let index = 0; index < id.length; index += 1) {
-    hash = (hash * 31 + id.charCodeAt(index)) >>> 0
-  }
-
-  return colors[hash % colors.length]
-}
-
-function decodeBase64(value: string) {
-  const binary = window.atob(value)
-  const bytes = new Uint8Array(binary.length)
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-
-  return bytes
+  for (const character of userId) hash = (hash * 31 + character.charCodeAt(0)) | 0
+  return colors[Math.abs(hash) % colors.length] ?? colors[0]
 }

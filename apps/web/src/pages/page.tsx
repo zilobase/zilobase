@@ -49,6 +49,11 @@ import type {
   PageLayoutPanelMode,
 } from "@/packages/editor/types";
 import { usePageCollaboration } from "@/packages/editor/use-page-collaboration";
+import {
+  useConnectivity,
+  useOfflineManifest,
+  useOfflineSessionLocked,
+} from "@/providers/offline-provider";
 import { createPageCommentController } from "@/comments/yjs-comments";
 import { usePageCommentsRegistry } from "@/contexts/page-comments-registry";
 
@@ -286,6 +291,9 @@ export function PageEditorPane({
   readOnly = false,
   pageId,
 }: PageEditorPaneProps) {
+  const connectivity = useConnectivity();
+  const offlineSessionLocked = useOfflineSessionLocked();
+  const offlineManifest = useOfflineManifest();
   const { data: page, isLoading } = usePage(pageId);
   const { data: session } = useSession();
   const { data: accessLevel } = usePageAccessLevel(pageId, {
@@ -425,16 +433,17 @@ export function PageEditorPane({
     ),
     pageId,
     user: session?.user,
+    workspaceId: page?.workspaceId,
   });
   const commentController = useMemo(() => {
-    if (!enableComments || !collaboration.provider || !session?.user) {
+    if (!enableComments || !collaboration.provider || !collaboration.document || !session?.user) {
       return null;
     }
 
     return createPageCommentController({
       canEdit: pageEditable,
       canModerate: accessLevel === "full",
-      document: collaboration.provider.document,
+      document: collaboration.document,
       user: {
         email: session.user.email ?? null,
         id: session.user.id,
@@ -445,6 +454,7 @@ export function PageEditorPane({
   }, [
     accessLevel,
     collaboration.provider,
+    collaboration.document,
     enableComments,
     pageEditable,
     session?.user,
@@ -459,7 +469,10 @@ export function PageEditorPane({
     };
   }, [commentController, commentsRegistry, pageId]);
   const liveEditingReady =
-    !pageEditable || Boolean(collaboration.provider && !collaboration.error);
+    !pageEditable || Boolean(collaboration.document && !collaboration.error);
+  const offlineEditing =
+    collaboration.downloaded &&
+    (connectivity !== "online" || collaboration.status === "blocked");
 
   const restoreTrashedPage = () => {
     if (!page || restorePage.isPending) {
@@ -599,7 +612,7 @@ export function PageEditorPane({
         });
       }
 
-      if (collaboration.provider) {
+      if (collaboration.document) {
         return;
       }
 
@@ -615,7 +628,7 @@ export function PageEditorPane({
     [
       accessLevel,
       clearContentSaveTimeout,
-      collaboration.provider,
+      collaboration.document,
       readOnly,
       removePageEmbed,
       updatePage,
@@ -696,6 +709,18 @@ export function PageEditorPane({
   }, [accessLevel, createPage, readOnly, page]);
 
   if (isLoading) {
+    if (
+      (connectivity === "offline" || connectivity === "service-unavailable") &&
+      !offlineManifest.items.some(
+        (item) => item.kind === "page" && item.id === pageId,
+      )
+    ) {
+      return (
+        <section className={`${className ?? ""} flex items-center justify-center px-4 text-sm text-muted-foreground`}>
+          Not available offline.
+        </section>
+      );
+    }
     return (
       <section className={cn(className, "animate-in fade-in duration-200")}>
         <PageEditorSkeleton fullWidth={Boolean(userSettings?.pageFullWidth)} />
@@ -723,14 +748,29 @@ export function PageEditorPane({
           showRestore={!readOnly}
         />
       ) : null}
+      {collaboration.downloaded ? (
+        <div className="border-b bg-muted/40 px-4 py-1.5 text-center text-xs text-muted-foreground">
+          {offlineSessionLocked
+            ? "Offline session expired — reconnect and sign in"
+            : collaboration.status === "blocked"
+            ? "Sync blocked — access changed"
+            : collaboration.status === "local"
+              ? "Offline — stored on this Mac"
+              : collaboration.status === "connecting" || collaboration.unsyncedChanges > 0
+                ? "Syncing…"
+                : "Synced"}
+        </div>
+      ) : null}
       <Editor
-        key={`${page.id}:${collaboration.provider ? "live" : "preview"}`}
+        key={page.id}
         collaboration={
-          collaboration.provider && collaboration.user
+          collaboration.document
             ? {
-                provider: collaboration.provider,
+                document: collaboration.document,
+                provider: collaboration.provider ?? undefined,
                 status: collaboration.status,
                 user: collaboration.user,
+                unsyncedChanges: collaboration.unsyncedChanges,
                 users: collaboration.users,
               }
             : undefined
@@ -742,7 +782,12 @@ export function PageEditorPane({
         databaseIds={pageDatabaseIds}
         editorContentRef={editorContentRef}
         editable={pageEditable && liveEditingReady}
-        enableComments={enableComments}
+        contentEditable={pageEditable && liveEditingReady && !offlineSessionLocked}
+        metadataEditable={pageEditable && liveEditingReady && !offlineEditing}
+        structuralEditingEnabled={pageEditable && liveEditingReady && !offlineEditing}
+        commentsEditable={pageEditable && liveEditingReady && !offlineEditing && enableComments}
+        databaseEditable={pageEditable && liveEditingReady && !offlineEditing}
+        enableComments={enableComments && !offlineEditing}
         onEditorReady={(editor) => {
           editorInstanceRef.current = editor;
           lastSavedContentRef.current = editor

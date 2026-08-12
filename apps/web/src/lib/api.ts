@@ -3,6 +3,11 @@ import {
   getDesktopAuthToken,
   setDesktopAuthToken,
 } from "@/lib/desktop-auth-token"
+import {
+  isDesktopOfflineSupported,
+  isOfflineMode,
+  setConnectivityState,
+} from "@/lib/offline-store"
 
 const HOSTED_API_BASE_URL = "https://api.zilobase.com"
 
@@ -36,6 +41,13 @@ export class ApiError extends Error {
   }
 }
 
+export class NetworkUnavailableError extends Error {
+  constructor(message = "Zilobase is offline. This action requires a connection.") {
+    super(message)
+    this.name = "NetworkUnavailableError"
+  }
+}
+
 export function getApiErrorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message
@@ -48,18 +60,48 @@ export async function apiFetch<T>(
   path: string,
   { auth = true, headers, body, ...init }: ApiFetchOptions = {},
 ) {
+  const method = (init.method ?? "GET").toUpperCase()
+  if (
+    isDesktopOfflineSupported() &&
+    isOfflineMode() &&
+    method !== "GET" &&
+    method !== "HEAD"
+  ) {
+    throw new NetworkUnavailableError()
+  }
+
   const requestHeaders = getApiRequestHeaders(headers)
 
   if (body && !requestHeaders.has("content-type")) {
     requestHeaders.set("content-type", "application/json")
   }
 
-  const response = await fetch(toApiUrl(path), {
-    ...init,
-    body,
-    credentials: auth ? "include" : "same-origin",
-    headers: requestHeaders,
-  })
+  let response: Response
+  try {
+    response = await fetch(toApiUrl(path), {
+      ...init,
+      body,
+      credentials: auth ? "include" : "same-origin",
+      headers: requestHeaders,
+    })
+  } catch (error) {
+    if (isDesktopOfflineSupported()) {
+      setConnectivityState(
+        navigator.onLine === false ? "offline" : "service-unavailable",
+      )
+      throw new NetworkUnavailableError(
+        error instanceof Error ? error.message : undefined,
+      )
+    }
+    throw error
+  }
+
+  if (isDesktopOfflineSupported()) {
+    setConnectivityState(response.status >= 500 ? "service-unavailable" : "online")
+    if (response.status === 401) {
+      window.dispatchEvent(new Event("zilobase:authentication-required"))
+    }
+  }
 
   const desktopAuthToken = response.headers.get("set-auth-token")
   if (desktopAuthToken) await setDesktopAuthToken(desktopAuthToken)

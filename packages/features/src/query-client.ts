@@ -31,7 +31,9 @@ export function createZilobaseQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        gcTime: 5 * 60_000,
+        // Persisted desktop queries may be restored for as long as a session is
+        // valid. Browser clients still release the data when the tab closes.
+        gcTime: 24 * 24 * 60 * 60_000,
         refetchOnWindowFocus: false,
         retry: shouldRetryQuery,
         staleTime: 30_000,

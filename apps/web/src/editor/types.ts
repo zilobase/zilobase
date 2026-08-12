@@ -11,11 +11,14 @@ import type { CollaborationUser } from "./use-page-collaboration"
 import type { PageLayoutConfig } from "@zilobase/features/pages"
 import type { PageIconPosition } from "@zilobase/features/pages"
 import type { PageCommentController } from "@/comments/yjs-comments"
+import type * as Y from "yjs"
 
 export type EditorCollaboration = {
-  provider: HocuspocusProvider
-  status: "connected" | "connecting" | "disconnected"
-  user: { avatar?: string | null; color: string; id: string; name: string }
+  document: Y.Doc
+  provider?: HocuspocusProvider
+  status: "local" | "connected" | "connecting" | "disconnected" | "blocked"
+  unsyncedChanges: number
+  user?: { avatar?: string | null; color: string; id: string; name: string }
   users: CollaborationUser[]
 }
 
@@ -78,6 +81,11 @@ export type EditorProps = {
   emoji?: string
   iconPosition?: PageIconPosition
   editable?: boolean
+  contentEditable?: boolean
+  metadataEditable?: boolean
+  structuralEditingEnabled?: boolean
+  commentsEditable?: boolean
+  databaseEditable?: boolean
   enableComments?: boolean
   fullWidth?: boolean
   layoutConfig?: PageLayoutConfig
@@ -105,6 +113,7 @@ export type UseEditorExtensionsOptions = {
   createEditorDatabase: () => Promise<string | null>
   databaseEditorRuntime: import("@/packages/editor/extensions/database").DatabaseBlockEditorRuntime
   editable: boolean
+  structuralEditingEnabled: boolean
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void

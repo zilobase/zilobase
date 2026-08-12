@@ -55,6 +55,7 @@ import {
   useUserSettings,
   type LibraryView,
 } from "@zilobase/features/user-settings";
+import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider";
 
 type HomepageView = LibraryView;
 
@@ -118,6 +119,13 @@ export default function DashboardPage({
   const navigate = useNavigate();
   const location = useLocation();
   const workspaceId = useActiveWorkspaceId();
+  const connectivity = useConnectivity();
+  const offlineManifest = useOfflineManifest();
+  const offlineMode =
+    connectivity === "offline" || connectivity === "service-unavailable";
+  const downloadedItems = offlineManifest.items.filter(
+    (item) => item.workspaceId === workspaceId,
+  );
   const { data: userSettings = defaultUserSettings, isLoading: settingsLoading } =
     useUserSettings();
   const updateUserSettings = useUpdateUserSettings();
@@ -180,12 +188,29 @@ export default function DashboardPage({
     ),
   );
   const rows = useMemo(
-    () =>
-      buildHomepageRows(
+    () => {
+      const builtRows = buildHomepageRows(
         navigation ?? { databases: [], pages: [], placements: [] },
         mode,
-      ),
-    [navigation, mode],
+      );
+      if (!offlineMode) return builtRows;
+      const pageIds = new Set(
+        downloadedItems
+          .filter((item) => item.kind === "page")
+          .map((item) => item.id),
+      );
+      const databaseIds = new Set(
+        downloadedItems
+          .filter((item) => item.kind === "database")
+          .map((item) => item.id),
+      );
+      return builtRows.filter(
+        (row) =>
+          (row.openPageId && pageIds.has(row.openPageId)) ||
+          (row.openDatabaseId && databaseIds.has(row.openDatabaseId)),
+      );
+    },
+    [downloadedItems, navigation, mode, offlineMode],
   );
   const pageTitle = mode === "trash" ? "Trash" : "Library";
 
@@ -366,6 +391,19 @@ export default function DashboardPage({
     openPage(pageId, { databaseId: sidePaneDatabaseId });
   };
 
+  if (offlineMode && downloadedItems.length === 0) {
+    return (
+      <main className="flex min-h-[calc(100svh-3rem)] flex-1 items-center justify-center px-6">
+        <div className="max-w-md space-y-2 text-center">
+          <h1 className="font-heading text-xl font-medium">No offline items yet</h1>
+          <p className="text-sm text-muted-foreground">
+            Reconnect, then use a page or database menu to make it available offline.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <PageSidePaneLayout
       main={
@@ -499,7 +537,8 @@ export default function DashboardPage({
                           <DropdownMenuTrigger asChild>
                             <Button
                               className="database-new-button mt-2 shrink-0"
-                              disabled={!workspaceId || isCreating}
+                              disabled={offlineMode || !workspaceId || isCreating}
+                              title={offlineMode ? "Creating items requires a connection." : undefined}
                               trailingDivider
                               type="button"
                             >

@@ -27,7 +27,13 @@ import SignupPage from "@/pages/signup"
 import Page from "@/pages/page"
 import { sessionQueryOptions } from "@zilobase/features/auth"
 import { workspacesQueryOptions } from "@zilobase/features/workspaces"
-import { ApiError, apiFetch } from "@/lib/api"
+import { ApiError, NetworkUnavailableError, apiFetch } from "@/lib/api"
+import {
+  getOfflineManifest,
+  getValidOfflineSession,
+  isDesktopOfflineSupported,
+  isOfflineMode,
+} from "@/lib/offline-store"
 import { queryClient } from "@/lib/query-client"
 import { webAuthClient } from "@/providers/features-provider"
 
@@ -299,18 +305,40 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({ routeTree })
 
-function getFreshSession() {
-  return queryClient.fetchQuery({
-    ...sessionQueryOptions(webAuthClient),
-    staleTime: NAVIGATION_AUTH_STALE_TIME,
-  })
+async function getFreshSession() {
+  const cached = getValidOfflineSession()
+  if (isDesktopOfflineSupported() && isOfflineMode()) {
+    return cached
+      ? { session: cached.session, user: cached.user, workspacePinned: cached.workspacePinned }
+      : { session: null, user: null }
+  }
+  try {
+    return await queryClient.fetchQuery({
+      ...sessionQueryOptions(webAuthClient),
+      staleTime: NAVIGATION_AUTH_STALE_TIME,
+    })
+  } catch (error) {
+    if (error instanceof NetworkUnavailableError && cached) {
+      return { session: cached.session, user: cached.user, workspacePinned: cached.workspacePinned }
+    }
+    throw error
+  }
 }
 
-function getWorkspaces() {
-  return queryClient.fetchQuery({
-    ...workspacesQueryOptions(webAuthClient),
-    staleTime: NAVIGATION_AUTH_STALE_TIME,
-  })
+async function getWorkspaces() {
+  const cached = getOfflineManifest().workspaces
+  if (isDesktopOfflineSupported() && isOfflineMode()) {
+    return cached
+  }
+  try {
+    return await queryClient.fetchQuery({
+      ...workspacesQueryOptions(webAuthClient),
+      staleTime: NAVIGATION_AUTH_STALE_TIME,
+    })
+  } catch (error) {
+    if (error instanceof NetworkUnavailableError && getValidOfflineSession()) return cached
+    throw error
+  }
 }
 
 async function isPagePublished(pageId: string) {

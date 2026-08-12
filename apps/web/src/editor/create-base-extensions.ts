@@ -47,12 +47,14 @@ import { SelectionAiPreview } from "@/packages/editor/extensions/selection-ai-pr
 import { SlashCommand } from "@/packages/editor/extensions/slash-command"
 import { VideoBlock } from "@/packages/editor/extensions/video-block"
 import type { OpenPageOptions } from "./types"
+import { OfflineStructureGuard } from "./offline-structure-guard"
 
 export type BaseExtensionsOptions = {
   collaboration?: import("./types").EditorCollaboration
   createEditorDatabase: () => Promise<string | null>
   databaseEditorRuntime: DatabaseBlockEditorRuntime
   editable: boolean
+  structuralEditingEnabled: boolean
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
@@ -84,6 +86,7 @@ export const createBaseExtensions = ({
   createEditorDatabase,
   databaseEditorRuntime,
   editable,
+  structuralEditingEnabled,
   onCreatePage,
   onEmbedPage,
   onOpenPage,
@@ -100,16 +103,20 @@ export const createBaseExtensions = ({
   ...(collaboration
     ? [
         Collaboration.configure({
-          document: collaboration.provider.document,
+          document: collaboration.document,
           field: "default",
-          provider: collaboration.provider,
         }),
-        CollaborationCaret.configure({
-          provider: collaboration.provider,
-          user: collaboration.user,
-        }),
+        ...(collaboration.provider && collaboration.user
+          ? [
+              CollaborationCaret.configure({
+                provider: collaboration.provider,
+                user: collaboration.user,
+              }),
+            ]
+          : []),
       ]
     : []),
+  ...(!structuralEditingEnabled ? [OfflineStructureGuard] : []),
   CommentExtension.configure({
     HTMLAttributes: { class: "editor-comment-anchor" },
   }),
@@ -179,10 +186,14 @@ export const createBaseExtensions = ({
   BlockSelection,
   SelectionAiPreview,
   AskAiBlock.configure({ workspaceId }),
-  SlashCommand.configure({
-    onCreateDatabase: createEditorDatabase,
-    onCreatePage,
-    onOpenPage,
-    workspaceId,
-  }),
+  ...(structuralEditingEnabled
+    ? [
+        SlashCommand.configure({
+          onCreateDatabase: createEditorDatabase,
+          onCreatePage,
+          onOpenPage,
+          workspaceId,
+        }),
+      ]
+    : []),
 ]

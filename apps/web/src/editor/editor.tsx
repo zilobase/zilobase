@@ -68,6 +68,11 @@ export function Editor({
   editorContentRef,
   editable = true,
   enableComments = true,
+  contentEditable = editable,
+  metadataEditable = editable,
+  structuralEditingEnabled = editable,
+  commentsEditable = enableComments && editable,
+  databaseEditable = editable,
   emoji,
   iconPosition,
   fullWidth = true,
@@ -116,7 +121,7 @@ export function Editor({
     }
   }, [activeLayoutTab, activeLinkedTab, layoutConfig?.structure])
 
-  const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(editable)
+  const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(databaseEditable)
   const { createEditorDatabase, handleDatabasePageDrop } =
     useEditorDatabaseActions(workspaceId, pageId)
 
@@ -126,7 +131,8 @@ export function Editor({
       content,
       createEditorDatabase,
       databaseEditorRuntime,
-      editable,
+      editable: contentEditable,
+      structuralEditingEnabled,
       onCreatePage,
       onEmbedPage,
       onOpenPage,
@@ -137,7 +143,7 @@ export function Editor({
   const { blockDropLine, editor, surfaceDragHandlers } = useEditorInstance({
     databaseEditorRuntime,
     dropPageOnDatabase: handleDatabasePageDrop,
-    editable,
+    editable: contentEditable,
     editorContentRef,
     editorSurfaceRef,
     editorExtensions,
@@ -505,8 +511,8 @@ export function Editor({
         contentClassName={module.region === "panel" ? undefined : pageContentLayout.className}
         cover={cover}
         databaseId={databaseId}
-        editable={editable}
-        enableComments={enableComments}
+        editable={metadataEditable}
+        enableComments={commentsEditable}
         forceDiscussionsExpanded={module.type === "discussions"}
         icon={emoji}
         iconPosition={iconPosition}
@@ -552,13 +558,13 @@ export function Editor({
           blockDropLine={blockDropLine}
           blockCommentOpen={blockCommentOpen}
           commentController={
-            enableComments && commentController?.canEdit
+            commentsEditable && commentController?.canEdit
               ? commentController
               : undefined
           }
           createEditorDatabase={createEditorDatabase}
           dragHandle={dragHandle}
-          editable={editable}
+          editable={contentEditable && structuralEditingEnabled}
           editor={editor}
           editorId={editorId}
           onClosePasteChoice={handleClosePasteChoice}
@@ -600,7 +606,7 @@ export function Editor({
                   <DatabaseView
                     activeViewId={activeLinkedTab.viewId}
                     databaseId={activeLinkedTab.databaseId}
-                    editable={editable}
+                    editable={databaseEditable}
                     fullPage
                     onOpenPage={onOpenPage}
                     pageId={pageId}
@@ -627,8 +633,8 @@ export function Editor({
               contentClassName={pageContentLayout.className}
               cover={cover}
               databaseId={databaseId}
-              editable={editable}
-              enableComments={enableComments}
+              editable={metadataEditable}
+              enableComments={commentsEditable}
               icon={emoji}
               iconPosition={iconPosition}
               onCoverChange={onCoverChange}
@@ -650,7 +656,7 @@ export function Editor({
             </div>
           </>
         )}
-        {editable && mobileNodeTarget ? (
+        {contentEditable && structuralEditingEnabled && mobileNodeTarget ? (
           <MobileActionBar
             canMoveDown={canMoveMobileTarget("down")}
             canMoveUp={canMoveMobileTarget("up")}
@@ -658,7 +664,7 @@ export function Editor({
             onMoveUp={() => moveMobileTarget("up")}
           />
         ) : null}
-        {editable &&
+        {contentEditable &&
         selectionAiPreview &&
         selectionAiPreview.source !== "page-edit" ? (
           <SelectionAiDiffDock

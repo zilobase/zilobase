@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from "react"
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { useDeleteDatabase } from "@zilobase/features/databases"
+import { useActiveWorkspaceId } from "@zilobase/features/integrations"
 import { useDeletePage } from "@zilobase/features/pages"
 import {
   ArrowUpRightIcon,
@@ -60,6 +61,7 @@ import { useOpenInNewTab } from "@/components/desktop-tabs"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
 import { cn } from "@/lib/utils"
+import { OfflineAvailabilityAction } from "@/components/offline-availability-action"
 import {
   SidebarSectionLibraryButton,
   SidebarSectionMenu,
@@ -395,6 +397,7 @@ export function NavPageSection({
 }
 
 function PageItemMenu({ item }: { item: SidebarNavItem }) {
+  const workspaceId = useActiveWorkspaceId()
   const { isMobile } = useSidebar()
   const openInNewTab = useOpenInNewTab()
   const location = useLocation()
@@ -495,6 +498,12 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
             <ArrowUpRightIcon className="text-muted-foreground" />
             <span>Open in New Tab</span>
           </DropDrawerItem>
+          <OfflineAvailabilityAction
+            databaseId={item.isDatabase ? item.databaseId : null}
+            name={displayName}
+            pageId={item.pageId}
+            workspaceId={workspaceId}
+          />
           <DropDrawerSeparator />
           <DropDrawerItem
             className="text-destructive focus:text-destructive"

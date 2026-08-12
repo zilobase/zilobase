@@ -92,6 +92,7 @@ import { cn } from "@/lib/utils";
 import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry";
 import { Switch } from "@/components/ui/switch";
 import { useLayoutEditor } from "@/components/layout-editor";
+import { OfflineAvailabilityAction } from "@/components/offline-availability-action";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getPrimaryPageParentId,
@@ -459,6 +460,12 @@ export function NavActions({
               align="end"
               className="w-64 overflow-hidden rounded-lg p-1"
             >
+              <OfflineAvailabilityAction
+                databaseId={databaseId}
+                name={displayName}
+                pageId={actionPageId}
+                workspaceId={workspaceId}
+              />
               {!isDatabasePage && !isMobile ? (
                 <>
                   <DropDrawerItem

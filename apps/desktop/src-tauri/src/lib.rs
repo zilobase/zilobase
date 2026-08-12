@@ -6,6 +6,7 @@ fn greet(name: &str) -> String {
 
 const AUTH_SERVICE: &str = "com.zilobase";
 const AUTH_ACCOUNT: &str = "session";
+const AUTH_OWNER_ACCOUNT: &str = "session-owner";
 
 #[cfg(all(desktop, debug_assertions))]
 fn start_development_auth_callback(app: tauri::AppHandle) -> std::io::Result<()> {
@@ -81,6 +82,31 @@ fn set_auth_token(token: Option<String>) -> Result<(), String> {
     .map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn get_auth_owner() -> Result<Option<String>, String> {
+    let entry =
+        keyring::Entry::new(AUTH_SERVICE, AUTH_OWNER_ACCOUNT).map_err(|error| error.to_string())?;
+    match entry.get_password() {
+        Ok(owner) => Ok(Some(owner)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
+#[tauri::command]
+fn set_auth_owner(owner: Option<String>) -> Result<(), String> {
+    let entry =
+        keyring::Entry::new(AUTH_SERVICE, AUTH_OWNER_ACCOUNT).map_err(|error| error.to_string())?;
+    match owner {
+        Some(owner) => entry.set_password(&owner),
+        None => match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(error) => Err(error),
+        },
+    }
+    .map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -111,7 +137,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             get_auth_token,
-            set_auth_token
+            set_auth_token,
+            get_auth_owner,
+            set_auth_owner
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

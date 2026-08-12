@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { Link } from "@tanstack/react-router"
-import { ArrowUpRightIcon, ChevronRightIcon } from "lucide-react"
+import { ArrowUpRightIcon, ChevronRightIcon, HardDriveDownloadIcon } from "lucide-react"
 
 import { getSidebarDatabaseViewSearchId } from "@/components/database-view-navigation"
 import {
@@ -30,6 +30,7 @@ import {
 } from "@/components/sidebar-nav-item-action"
 import { cn } from "@/lib/utils"
 import { type ZilobaseAiMode } from "@zilobase/features/pages"
+import { useOfflineManifest } from "@/providers/offline-provider"
 
 export type SidebarNavItem = {
   databaseId?: string | null
@@ -267,14 +268,26 @@ function SidebarNavRow({
 }
 
 function ItemIndicators({ item }: { item: SidebarNavItem }) {
+  const manifest = useOfflineManifest()
   const showAiMode = item.zilobaseai && !item.isDatabase
+  const availableOffline = manifest.items.some((entry) =>
+    item.isDatabase
+      ? entry.kind === "database" && entry.id === item.databaseId
+      : entry.kind === "page" && entry.id === item.pageId,
+  )
 
-  if (!showAiMode && !item.isLinked) {
+  if (!showAiMode && !item.isLinked && !availableOffline) {
     return null
   }
 
   return (
     <span className="ml-auto flex shrink-0 items-center gap-1.5">
+      {availableOffline ? (
+        <HardDriveDownloadIcon
+          aria-label="Available offline"
+          className="size-3.5 text-sidebar-foreground/60"
+        />
+      ) : null}
       {showAiMode ? (
         <span className="text-xs text-sidebar-foreground/60">
           {item.zilobaseai}
