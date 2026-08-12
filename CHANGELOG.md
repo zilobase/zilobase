@@ -4,6 +4,14 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.19
+
+### Fixed
+
+- Kept page rendering independent from realtime startup by mounting cached or server content first, then preparing Yjs and connecting collaboration after the editor has painted.
+- Cancelled deferred collaboration work and ticket requests when navigating between pages, preventing stale connections from racing the active page.
+- Hardened hosted Durable Object lifecycle handling for hibernating chat sessions, collaboration refresh grace periods, and database realtime expiry cleanup.
+
 ## 0.0.18
 
 ### Added
