@@ -4,6 +4,19 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.16
+
+### Added
+
+- Added opt-in offline access for macOS workspaces, pages, and read-only databases.
+- Added durable offline page editing with IndexedDB-backed Yjs documents and automatic Hocuspocus synchronization after reconnecting.
+- Added recovery archive export/import and safeguards that prevent logout or offline-data removal from silently deleting unsynced drafts.
+
+### Changed
+
+- Disabled metadata, comments, database editing, uploads, AI actions, and structural page operations while offline.
+- Limited cached desktop access to the matching Keychain account and the existing server-issued session expiry.
+
 ## 0.0.15
 
 ### Fixed
