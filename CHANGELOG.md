@@ -4,6 +4,14 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.27
+
+### Fixed
+
+- Bounded desktop session startup requests so a stalled network response cannot leave the application blank indefinitely.
+- Added visible connecting and retry screens for route authentication failures while preserving the saved native-keyring session.
+- Added privacy-safe router pending and error diagnostics for blank-window investigations.
+
 ## 0.0.26
 
 ### Fixed
