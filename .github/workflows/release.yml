@@ -152,6 +152,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Configure desktop Google OAuth
+        env:
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ vars.GOOGLE_DESKTOP_CLIENT_ID }}
+        shell: bash
+        run: |
+          if [ -z "$GOOGLE_DESKTOP_CLIENT_ID" ]; then
+            echo "Missing required GitHub Actions variable: GOOGLE_DESKTOP_CLIENT_ID" >&2
+            exit 1
+          fi
+          echo "GOOGLE_DESKTOP_CLIENT_ID=$GOOGLE_DESKTOP_CLIENT_ID" >> "$GITHUB_ENV"
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -243,6 +254,17 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Configure desktop Google OAuth
+        env:
+          GOOGLE_DESKTOP_CLIENT_ID: ${{ vars.GOOGLE_DESKTOP_CLIENT_ID }}
+        shell: bash
+        run: |
+          if [ -z "$GOOGLE_DESKTOP_CLIENT_ID" ]; then
+            echo "Missing required GitHub Actions variable: GOOGLE_DESKTOP_CLIENT_ID" >&2
+            exit 1
+          fi
+          echo "GOOGLE_DESKTOP_CLIENT_ID=$GOOGLE_DESKTOP_CLIENT_ID" >> "$GITHUB_ENV"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable

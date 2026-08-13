@@ -3,8 +3,8 @@
   "version": "0.0.27",
   "license": "MIT",
   "scripts": {
-    "dev": "tauri dev",
-    "build": "tauri build",
+    "dev": "node --env-file-if-exists=../../.env.development ../../node_modules/@tauri-apps/cli/tauri.js dev",
+    "build": "node --env-file-if-exists=../../.env.development ../../node_modules/@tauri-apps/cli/tauri.js build",
     "tauri": "tauri"
   },
   "devDependencies": {

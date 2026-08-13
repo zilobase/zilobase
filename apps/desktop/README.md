@@ -2,6 +2,31 @@
 
 The desktop app checks the latest GitHub release on launch. When a newer signed build is available, it offers to download, install, and restart the app.
 
+## Google sign-in
+
+Desktop Google sign-in uses the native OAuth authorization-code flow with PKCE.
+The app opens the system browser and receives the callback on an ephemeral
+loopback address such as `http://127.0.0.1:43123/oauth/callback`. It does not use
+an embedded WebView or an authentication deep link.
+
+Create a Google OAuth client with application type **Desktop app**, then provide
+its public client ID as `GOOGLE_DESKTOP_CLIENT_ID` when compiling the desktop
+application and in the server runtime. No desktop client secret is used.
+
+For local development:
+
+```sh
+export GOOGLE_DESKTOP_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+npm run dev:desktop
+```
+
+For releases, configure the GitHub Actions repository variable
+`GOOGLE_DESKTOP_CLIENT_ID`. The release workflow fails before building when it
+is absent. Production builds send the verified Google ID token to
+`https://api.zilobase.com`; local debug builds use `http://127.0.0.1:3000`.
+`ZILOBASE_DESKTOP_API_URL` can override that API origin at compile time, but
+release overrides must use HTTPS.
+
 ## One-time GitHub setup
 
 Add this required Actions secret to `zilobase/zilobase`:
