@@ -4,6 +4,23 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.28
+
+### Changed
+
+- Replaced the browser-hosted desktop authentication handoff with native Google OAuth using the system browser, PKCE, and an ephemeral loopback callback owned by the running app.
+- Kept `zilobase://open` deep links for content navigation while removing authentication deep links, the hosted `/desktop-auth` route, and Better Auth one-time tokens.
+
+### Fixed
+
+- Added explicit waiting, finalizing, cancellation, retry, timeout, provider-denial, server, and keyring failure states so Google sign-in cannot be cleared by window focus or remain on a permanent spinner.
+- Made raw Linux AppImage authentication independent from URI-handler registration and aligned macOS and Linux desktop sign-in behavior.
+
+### Security
+
+- Added S256 PKCE, per-attempt state and OpenID nonce validation, bounded loopback HTTP parsing, classified secret-free diagnostics, and immediate removal of authorization codes from the visible browser URL.
+- Restricted the native flow to the public Google Desktop client ID; no desktop client secret, Google access token, or Google refresh token is embedded, stored, or forwarded.
+
 ## 0.0.27
 
 ### Fixed
