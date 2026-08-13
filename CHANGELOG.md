@@ -4,6 +4,13 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.24
+
+### Fixed
+
+- Registered the `zilobase://` URL handler at runtime on Linux so browser-based authentication returns reliably to Debian, RPM, and AppImage installations.
+- Added privacy-safe diagnostics for desktop deep-link receipt and one-time-token verification without exposing callback tokens.
+
 ## 0.0.23
 
 ### Fixed

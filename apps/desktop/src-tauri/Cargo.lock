@@ -5656,7 +5656,7 @@ dependencies = [
 
 [[package]]
 name = "zilobase-client"
-version = "0.0.23"
+version = "0.0.24"
 dependencies = [
  "keyring",
  "serde",
