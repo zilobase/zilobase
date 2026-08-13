@@ -232,7 +232,8 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libxdo-dev \
             patchelf \
-            wget
+            wget \
+            xdg-utils
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
