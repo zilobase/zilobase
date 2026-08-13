@@ -1,6 +1,6 @@
 {
   "name": "@zilobase/desktop",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "license": "MIT",
   "scripts": {
     "dev": "tauri dev",

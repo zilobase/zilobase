@@ -4,6 +4,13 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.22
+
+### Fixed
+
+- Made Linux AppImage releases resilient to transient GitHub download failures by prefetching Tauri's architecture-specific packaging tools with bounded retries.
+- Reused the project-local Tauri tools directory across packaging steps so verified helpers are not downloaded again during the release build.
+
 ## 0.0.21
 
 ### Added
