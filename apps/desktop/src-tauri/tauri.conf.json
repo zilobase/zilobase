@@ -29,6 +29,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "useLocalToolsDir": true,
     "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",

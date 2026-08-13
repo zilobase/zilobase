@@ -251,6 +251,47 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri -> target
 
+      - name: Prefetch Linux AppImage tools
+        shell: bash
+        run: |
+          case "$(uname -m)" in
+            x86_64) tools_arch="x86_64" ;;
+            aarch64 | arm64) tools_arch="aarch64" ;;
+            *)
+              echo "Unsupported Linux architecture: $(uname -m)" >&2
+              exit 1
+              ;;
+          esac
+
+          tools_dir="apps/desktop/src-tauri/target/.tauri"
+          mkdir -p "$tools_dir"
+
+          download_tool() {
+            local url="$1"
+            local output="$2"
+            curl \
+              --fail \
+              --location \
+              --retry 8 \
+              --retry-all-errors \
+              --retry-delay 2 \
+              --connect-timeout 20 \
+              --max-time 300 \
+              --output "$output" \
+              "$url"
+            chmod 0755 "$output"
+          }
+
+          download_tool \
+            "https://github.com/tauri-apps/binary-releases/releases/download/apprun-old/AppRun-${tools_arch}" \
+            "$tools_dir/AppRun-${tools_arch}"
+          download_tool \
+            "https://github.com/tauri-apps/binary-releases/releases/download/linuxdeploy/linuxdeploy-${tools_arch}.AppImage" \
+            "$tools_dir/linuxdeploy-${tools_arch}.AppImage"
+          download_tool \
+            "https://raw.githubusercontent.com/tauri-apps/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh" \
+            "$tools_dir/linuxdeploy-plugin-gtk.sh"
+
       - name: Build and upload desktop app
         uses: tauri-apps/tauri-action@v1
         env:
