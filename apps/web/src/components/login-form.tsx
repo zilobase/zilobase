@@ -24,15 +24,31 @@ import {
 } from "@/components/ui/input-group"
 import { Input } from "@/components/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
+import { reloadDesktopAuthCredentials } from "@/lib/desktop-auth-token"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
 } from "@/lib/desktop-diagnostics"
-import { getAuthReturnPath, signInWithGoogle } from "@/lib/google-auth"
+import {
+  cancelDesktopGoogleSignIn,
+  DesktopOAuthError,
+  getAuthReturnPath,
+  signInWithGoogle,
+} from "@/lib/google-auth"
+import { queryClient } from "@/lib/query-client"
 import { cn } from "@/lib/utils"
-import { useSignInWithPassword } from "@zilobase/features/auth"
+import { webAuthClient } from "@/providers/features-provider"
+import {
+  sessionQueryOptions,
+  useSignInWithPassword,
+} from "@zilobase/features/auth"
+import { workspacesQueryOptions } from "@zilobase/features/workspaces"
 
-const DESKTOP_AUTH_WAIT_TIMEOUT_MS = 120_000
+type GoogleSignInState =
+  | { phase: "idle"; error: null; retry: "oauth" }
+  | { phase: "waiting_for_browser"; error: null; retry: "oauth" }
+  | { phase: "finalizing"; error: null; retry: "finalize" }
+  | { phase: "error"; error: unknown; retry: "oauth" | "finalize" }
 
 export function LoginForm({
   className,
@@ -40,72 +56,98 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const signInWithPassword = useSignInWithPassword()
   const [showPassword, setShowPassword] = useState(false)
-  const [googleError, setGoogleError] = useState<unknown>(null)
-  const [isGooglePending, setIsGooglePending] = useState(false)
-  const googlePendingTimer = useRef<number | undefined>(undefined)
+  const [googleState, setGoogleState] = useState<GoogleSignInState>({
+    phase: "idle",
+    error: null,
+    retry: "oauth",
+  })
+  const googleOperation = useRef(0)
+  const isGooglePending =
+    googleState.phase === "waiting_for_browser" ||
+    googleState.phase === "finalizing"
   const isPending = signInWithPassword.isPending || isGooglePending
-  const desktopAuthFailed = new URLSearchParams(window.location.search).has(
-    "desktopAuthError",
+
+  useEffect(
+    () => () => {
+      ++googleOperation.current
+      void cancelDesktopGoogleSignIn().catch(() => undefined)
+    },
+    [],
   )
 
-  useEffect(() => {
-    if (!isTauri()) return
-
-    const resetGooglePending = () => {
-      if (googlePendingTimer.current === undefined) return
-      window.clearTimeout(googlePendingTimer.current)
-      googlePendingTimer.current = undefined
-      setIsGooglePending(false)
-      recordDesktopDiagnostic("desktop_auth.browser_return", {
-        status: "success",
-      })
-    }
-
-    window.addEventListener("focus", resetGooglePending)
-    return () => {
-      window.removeEventListener("focus", resetGooglePending)
-      window.clearTimeout(googlePendingTimer.current)
-    }
-  }, [])
-
   async function handleGoogleSignIn() {
-    setGoogleError(null)
-    setIsGooglePending(true)
     const desktop = isTauri()
+    const returnTo = getAuthReturnPath("/dashboard")
+    const operation = ++googleOperation.current
 
-    if (desktop) {
-      recordDesktopDiagnostic("desktop_auth.browser_open", {
-        status: "started",
-      })
-      window.clearTimeout(googlePendingTimer.current)
-      googlePendingTimer.current = window.setTimeout(() => {
-        googlePendingTimer.current = undefined
-        setIsGooglePending(false)
-        recordDesktopDiagnostic(
-          "desktop_auth.browser_return",
-          { status: "timeout" },
-          "warn",
-        )
-      }, DESKTOP_AUTH_WAIT_TIMEOUT_MS)
+    if (desktop && googleState.retry === "finalize") {
+      await finalizeDesktopSignIn(operation, returnTo)
+      return
     }
+
+    setGoogleState({ phase: "waiting_for_browser", error: null, retry: "oauth" })
+    recordDesktopDiagnostic("desktop_auth.oauth", { status: "started" })
 
     try {
-      await signInWithGoogle(getAuthReturnPath("/dashboard"))
-      if (desktop) {
-        recordDesktopDiagnostic("desktop_auth.browser_open", {
-          status: "success",
-        })
+      const mode = await signInWithGoogle(returnTo)
+      if (mode === "desktop" && operation === googleOperation.current) {
+        await finalizeDesktopSignIn(operation, returnTo)
       }
     } catch (error) {
-      window.clearTimeout(googlePendingTimer.current)
-      googlePendingTimer.current = undefined
-      setGoogleError(error)
-      setIsGooglePending(false)
+      if (operation !== googleOperation.current) return
+      if (error instanceof DesktopOAuthError && error.code === "cancelled") {
+        setGoogleState({ phase: "idle", error: null, retry: "oauth" })
+        return
+      }
+      setGoogleState({ phase: "error", error, retry: "oauth" })
       recordDesktopDiagnostic(
-        "desktop_auth.browser_open",
+        "desktop_auth.oauth",
         describeDesktopError(error),
         "error",
       )
+    }
+  }
+
+  async function finalizeDesktopSignIn(operation: number, returnTo: string) {
+    setGoogleState({ phase: "finalizing", error: null, retry: "finalize" })
+    recordDesktopDiagnostic("desktop_auth.finalize", { status: "started" })
+
+    try {
+      await reloadDesktopAuthCredentials()
+      const session = await queryClient.fetchQuery({
+        ...sessionQueryOptions(webAuthClient),
+        staleTime: 0,
+      })
+      if (!session.user || !session.session) {
+        throw new Error("The desktop session could not be validated.")
+      }
+      const workspaces = await queryClient.fetchQuery({
+        ...workspacesQueryOptions(webAuthClient),
+        staleTime: 0,
+      })
+      if (operation !== googleOperation.current) return
+
+      recordDesktopDiagnostic("desktop_auth.finalize", { status: "success" })
+      setGoogleState({ phase: "idle", error: null, retry: "oauth" })
+      window.location.assign(workspaces.length === 0 ? "/onboarding" : returnTo)
+    } catch (error) {
+      if (operation !== googleOperation.current) return
+      setGoogleState({ phase: "error", error, retry: "finalize" })
+      recordDesktopDiagnostic(
+        "desktop_auth.finalize",
+        describeDesktopError(error),
+        "error",
+      )
+    }
+  }
+
+  async function handleCancelGoogleSignIn() {
+    ++googleOperation.current
+    setGoogleState({ phase: "idle", error: null, retry: "oauth" })
+    try {
+      await cancelDesktopGoogleSignIn()
+    } catch (error) {
+      setGoogleState({ phase: "error", error, retry: "oauth" })
     }
   }
 
@@ -178,11 +220,12 @@ export function LoginForm({
             </InputGroup>
           </Field>
 
-          {(signInWithPassword.isError || googleError !== null || desktopAuthFailed) && (
+          {(signInWithPassword.isError || googleState.phase === "error") && (
             <FieldError>
-              {desktopAuthFailed
-                ? "Desktop sign-in could not be completed. Try again."
-                : getApiErrorMessage(signInWithPassword.error ?? googleError)}
+              {getApiErrorMessage(
+                signInWithPassword.error ??
+                  (googleState.phase === "error" ? googleState.error : null),
+              )}
             </FieldError>
           )}
 
@@ -202,10 +245,23 @@ export function LoginForm({
               onClick={handleGoogleSignIn}
             >
               <GoogleIcon />
-              {isGooglePending
+              {googleState.phase === "waiting_for_browser"
                 ? "Waiting for browser sign-in..."
-                : "Continue with Google"}
+                : googleState.phase === "finalizing"
+                  ? "Finishing sign-in..."
+                  : googleState.retry === "finalize"
+                    ? "Retry connection"
+                    : "Continue with Google"}
             </Button>
+            {googleState.phase === "waiting_for_browser" && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCancelGoogleSignIn}
+              >
+                Cancel
+              </Button>
+            )}
           </Field>
         </FieldGroup>
       </form>

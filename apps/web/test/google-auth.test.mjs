@@ -4,7 +4,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.equal(
       getAuthReturnPath("/dashboard", "?returnTo=%2Fdesktop-auth%3Fpath%3D%252Fonboarding"),
-      "/desktop-auth?path=%2Fonboarding",
+      "/dashboard",
     )
     assert.equal(
       getAuthReturnPath("/dashboard", "?returnTo=https%3A%2F%2Fevil.test"),

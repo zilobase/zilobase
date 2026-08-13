@@ -1,32 +1,28 @@
 import { readFile } from "node:fs/promises"
 
 export function register({ assert, test }) {
-  test("desktop auth returns through an explicit user gesture", async () => {
+  test("desktop Google auth is owned by the native coordinator", async () => {
     const source = await readFile(
-      new URL("../src/pages/desktop-auth.tsx", import.meta.url),
+      new URL("../src/lib/google-auth.ts", import.meta.url),
       "utf8",
     )
-    const completionFunction = source.slice(
-      source.indexOf("async function completeDesktopSignIn"),
-    )
 
-    assert.match(
-      source,
-      /<Button onClick=\{\(\) => window\.location\.assign\(deepLink\)\}>/,
-    )
-    assert.match(source, /Click below to securely return/)
-    assert.doesNotMatch(completionFunction, /window\.location\.assign/)
+    assert.match(source, /invoke\("start_google_oauth"\)/)
+    assert.match(source, /invoke\("cancel_google_oauth"\)/)
+    assert.doesNotMatch(source, /zilobase:\/\/auth/)
   })
 
-  test("desktop Google pending state recovers on focus and timeout", async () => {
+  test("desktop Google auth has explicit waiting and finalizing states", async () => {
     const source = await readFile(
       new URL("../src/components/login-form.tsx", import.meta.url),
       "utf8",
     )
 
-    assert.match(source, /window\.addEventListener\("focus", resetGooglePending\)/)
-    assert.match(source, /window\.setTimeout\(\(\) => \{/)
-    assert.match(source, /desktop_auth\.browser_return/)
+    assert.match(source, /phase: "waiting_for_browser"/)
+    assert.match(source, /phase: "finalizing"/)
+    assert.match(source, /await reloadDesktopAuthCredentials\(\)/)
+    assert.match(source, /sessionQueryOptions\(webAuthClient\)/)
     assert.match(source, /Waiting for browser sign-in\.\.\./)
+    assert.doesNotMatch(source, /addEventListener\("focus"/)
   })
 }

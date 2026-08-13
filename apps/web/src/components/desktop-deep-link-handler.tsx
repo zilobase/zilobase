@@ -2,16 +2,7 @@ import { useEffect } from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link"
 
-import { authFetch } from "@/lib/api"
-import {
-  describeDesktopError,
-  recordDesktopDiagnostic,
-} from "@/lib/desktop-diagnostics"
-import {
-  getDesktopAuthDeepLink,
-  getDesktopDeepLinkPath,
-} from "@/lib/desktop-deep-link"
-import { queryClient } from "@/lib/query-client"
+import { getDesktopDeepLinkPath } from "@/lib/desktop-deep-link"
 
 export function DesktopDeepLinkHandler({
   openPath,
@@ -22,40 +13,9 @@ export function DesktopDeepLinkHandler({
     if (!isTauri()) return
 
     let disposed = false
-    let focusTimer: number | undefined
     let unlisten: (() => void) | undefined
     const handledUrls = new Set<string>()
-    const openFirstValidPath = async (urls: string[]) => {
-      const authUrl = urls.find((url) => getDesktopAuthDeepLink(url))
-      if (authUrl) {
-        if (handledUrls.has(authUrl)) return
-        handledUrls.add(authUrl)
-
-        const authLink = getDesktopAuthDeepLink(authUrl)
-        if (!authLink) return
-
-        recordDesktopDiagnostic("desktop_auth.callback_received", {
-          status: "success",
-        })
-
-        try {
-          await authFetch("/one-time-token/verify", { token: authLink.token })
-          recordDesktopDiagnostic("desktop_auth.callback_verification", {
-            status: "success",
-          })
-          await queryClient.invalidateQueries({ queryKey: ["session"] })
-          openPath(authLink.path)
-        } catch (error) {
-          recordDesktopDiagnostic(
-            "desktop_auth.callback_verification",
-            describeDesktopError(error),
-            "error",
-          )
-          openPath("/login?desktopAuthError=1")
-        }
-        return
-      }
-
+    const openFirstValidPath = (urls: string[]) => {
       const pathUrl = urls.find((url) => getDesktopDeepLinkPath(url))
       if (!pathUrl || handledUrls.has(pathUrl)) return
       handledUrls.add(pathUrl)
@@ -63,27 +23,16 @@ export function DesktopDeepLinkHandler({
       const path = getDesktopDeepLinkPath(pathUrl)
       if (path) openPath(path)
     }
-    const openCurrent = () => {
-      void getCurrent().then((urls) => {
-        if (!disposed && urls) void openFirstValidPath(urls)
-      })
-    }
-    const handleFocus = () => {
-      window.clearTimeout(focusTimer)
-      focusTimer = window.setTimeout(openCurrent, 100)
-    }
-
-    openCurrent()
-    void onOpenUrl((urls) => void openFirstValidPath(urls)).then((stopListening) => {
+    void getCurrent().then((urls) => {
+      if (!disposed && urls) openFirstValidPath(urls)
+    })
+    void onOpenUrl(openFirstValidPath).then((stopListening) => {
       if (disposed) stopListening()
       else unlisten = stopListening
     })
-    window.addEventListener("focus", handleFocus)
 
     return () => {
       disposed = true
-      window.clearTimeout(focusTimer)
-      window.removeEventListener("focus", handleFocus)
       unlisten?.()
     }
   }, [openPath])

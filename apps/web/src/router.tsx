@@ -18,7 +18,6 @@ import ApiKeysSettingsPage from "@/pages/settings/api-keys"
 import DashboardPage from "@/pages/dashboard"
 import { libraryViewIds } from "@zilobase/features/user-settings"
 import DatabasePage from "@/pages/database"
-import DesktopAuthPage from "@/pages/desktop-auth"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import PreferencesSettingsPage from "@/pages/settings/preferences"
 import LoginPage from "@/pages/login"
@@ -121,12 +120,6 @@ const otpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/otp",
   component: OtpPage,
-})
-
-const desktopAuthRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/desktop-auth",
-  component: DesktopAuthPage,
 })
 
 const acceptInvitationRoute = createRoute({
@@ -299,7 +292,6 @@ const routeTree = rootRoute.addChildren([
   signupRoute,
   onboardingRoute,
   otpRoute,
-  desktopAuthRoute,
   acceptInvitationRoute,
   appRoute.addChildren([
     aiRoute,

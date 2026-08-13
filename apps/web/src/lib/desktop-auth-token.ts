@@ -13,10 +13,7 @@ export async function initializeDesktopAuthToken() {
   const startedAt = performance.now()
   recordDesktopDiagnostic("keyring.initialization", { status: "started" })
   try {
-    ;[authToken, authOwner] = await Promise.all([
-      invoke<string | null>("get_auth_token"),
-      invoke<string | null>("get_auth_owner"),
-    ])
+    await reloadDesktopAuthCredentials()
     recordDesktopDiagnostic("keyring.initialization", {
       duration_ms: performance.now() - startedAt,
       owner_present: Boolean(authOwner),
@@ -35,6 +32,15 @@ export async function initializeDesktopAuthToken() {
       "error",
     )
   }
+}
+
+export async function reloadDesktopAuthCredentials() {
+  if (!isTauri()) return
+
+  ;[authToken, authOwner] = await Promise.all([
+    invoke<string | null>("get_auth_token"),
+    invoke<string | null>("get_auth_owner"),
+  ])
 }
 
 export function getDesktopAuthToken() {
