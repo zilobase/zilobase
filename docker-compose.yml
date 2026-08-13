@@ -38,6 +38,9 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-local-only-change-me-zilobase-auth-secret-32}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost}
       CLIENT_URL: ${CLIENT_URL:-http://localhost}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_DESKTOP_CLIENT_ID: ${GOOGLE_DESKTOP_CLIENT_ID:-}
       IMAGE_STORAGE_MODE: s3
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET_NAME: ${MINIO_BUCKET:-zilobase}

@@ -6,7 +6,6 @@ import {
   bearer,
   emailOTP,
   magicLink,
-  oneTimeToken,
   organization as organizationPlugin,
 } from "better-auth/plugins";
 import { API_KEY_PREFIX } from "./api-keys";
@@ -47,7 +46,7 @@ function createAuthInstance(env: AuthEnv, request: Request, database: Database) 
 }
 
 function sharedAuthOptions(env: AuthEnv) {
-  const googleClientId = getStringEnv(env, "GOOGLE_CLIENT_ID");
+  const googleClientId = getGoogleClientIds(env);
   const googleClientSecret = getStringEnv(env, "GOOGLE_CLIENT_SECRET");
   const isHosted = getPrimaryClientOrigin(env) === "https://app.zilobase.com";
 
@@ -78,7 +77,6 @@ function sharedAuthOptions(env: AuthEnv) {
         : {},
     plugins: [
       bearer(),
-      oneTimeToken({ storeToken: "hashed" }),
       apiKey({
         defaultPrefix: API_KEY_PREFIX,
         enableMetadata: true,
@@ -144,6 +142,20 @@ function sharedAuthOptions(env: AuthEnv) {
       }),
     ],
   };
+}
+
+export function getGoogleClientIds(env: AuthEnv) {
+  const webClientId = getStringEnv(env, "GOOGLE_CLIENT_ID");
+
+  if (!webClientId) {
+    return undefined;
+  }
+
+  const desktopClientId = getStringEnv(env, "GOOGLE_DESKTOP_CLIENT_ID");
+
+  return desktopClientId && desktopClientId !== webClientId
+    ? [webClientId, desktopClientId]
+    : webClientId;
 }
 
 function getBaseURL(env: AuthEnv, requestUrl: URL) {
