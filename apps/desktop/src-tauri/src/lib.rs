@@ -128,9 +128,18 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|_app| {
+        .setup(|app| {
+            #[cfg(target_os = "linux")]
+            {
+                use tauri::Manager;
+
+                if let Some(window) = app.get_webview_window("main") {
+                    window.set_decorations(false)?;
+                }
+            }
+
             #[cfg(all(desktop, debug_assertions))]
-            start_development_auth_callback(_app.handle().clone())?;
+            start_development_auth_callback(app.handle().clone())?;
 
             Ok(())
         })

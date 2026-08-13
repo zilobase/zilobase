@@ -95,7 +95,7 @@ export function AppLayout({
 
   return (
     <SidebarProvider
-      className="h-svh overflow-hidden"
+      className="h-[var(--app-viewport-height,100svh)] min-h-0 overflow-hidden"
       style={
         {
           "--app-sidebar-panel-width": APP_SIDEBAR_PANEL_WIDTH,
@@ -447,7 +447,7 @@ function AppLayoutContent({
       <ResizablePanelGroup
         className="relative min-h-0 min-w-0 flex-1 overflow-hidden has-data-[desktop-tabs]:pt-9"
         orientation="horizontal"
-        style={{ height: "100svh" }}
+        style={{ height: "100%" }}
       >
         <DesktopTabs icon={desktopTabIcon} title={desktopTabTitle} />
         {/* The dock owns the width limit; keeping this minimum relaxed avoids
