@@ -8,6 +8,12 @@ const AUTH_SERVICE: &str = "com.zilobase";
 const AUTH_ACCOUNT: &str = "session";
 const AUTH_OWNER_ACCOUNT: &str = "session-owner";
 
+#[cfg(all(desktop, any(not(debug_assertions), test)))]
+fn describe_deep_link(value: &str) -> Option<String> {
+    let target = value.strip_prefix("zilobase://")?.split('?').next()?;
+    (!target.is_empty()).then(|| format!("zilobase://{target}"))
+}
+
 #[cfg(all(desktop, debug_assertions))]
 fn start_development_auth_callback(app: tauri::AppHandle) -> std::io::Result<()> {
     use std::{
@@ -115,7 +121,14 @@ pub fn run() {
     let builder = {
         use tauri::Manager;
 
-        builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            for deep_link in args
+                .iter()
+                .filter_map(|argument| describe_deep_link(argument))
+            {
+                eprintln!("[zilobase][deep-link] received {deep_link}");
+            }
+
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
@@ -132,6 +145,10 @@ pub fn run() {
             #[cfg(target_os = "linux")]
             {
                 use tauri::Manager;
+                use tauri_plugin_deep_link::DeepLinkExt;
+
+                app.deep_link().register_all()?;
+                eprintln!("[zilobase][deep-link] registered zilobase:// URL handler");
 
                 if let Some(window) = app.get_webview_window("main") {
                     window.set_decorations(false)?;
@@ -152,4 +169,18 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::describe_deep_link;
+
+    #[test]
+    fn deep_link_diagnostics_never_include_query_values() {
+        assert_eq!(
+            describe_deep_link("zilobase://auth?token=secret&path=%2Fdashboard"),
+            Some("zilobase://auth".to_string())
+        );
+        assert_eq!(describe_deep_link("https://app.zilobase.com"), None);
+    }
 }
