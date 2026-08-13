@@ -4,6 +4,23 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.21
+
+### Added
+
+- Added signed Linux desktop release builds for x64 and ARM64 in both Debian and AppImage formats.
+- Added persistent Linux desktop session storage through the system Secret Service and kernel keyring.
+
+### Changed
+
+- Replaced the Linux system title bar with a compact, app-themed window frame that follows Light, Dark, and System appearance settings.
+- Added native drag, minimize, maximize, restore, and close behavior without displaying the internal `zilobase-client` title.
+
+### Fixed
+
+- Kept the fixed application sidebar below the Linux window frame so its workspace header no longer renders behind the title bar.
+- Synchronized the maximize/restore icon with the actual Linux window state and removed conflicting double-click handling.
+
 ## 0.0.20
 
 ### Changed
