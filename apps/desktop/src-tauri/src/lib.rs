@@ -1,4 +1,5 @@
 mod diagnostics;
+mod oauth;
 
 use std::{
     sync::{
@@ -29,57 +30,9 @@ struct StartupState {
 fn describe_deep_link(value: &str) -> Option<&'static str> {
     let target = value.strip_prefix("zilobase://")?.split('?').next()?;
     (!target.is_empty()).then_some(match target {
-        "auth" => "auth",
         "open" => "open",
         _ => "other",
     })
-}
-
-#[cfg(all(desktop, debug_assertions))]
-fn start_development_auth_callback(app: tauri::AppHandle) -> std::io::Result<()> {
-    use std::{
-        io::{Read, Write},
-        net::TcpListener,
-    };
-    use tauri::{Emitter, Manager};
-
-    let listener = TcpListener::bind("127.0.0.1:1422")?;
-
-    std::thread::spawn(move || {
-        for stream in listener.incoming() {
-            let Ok(mut stream) = stream else { continue };
-            let mut request = [0; 8192];
-            let Ok(size) = stream.read(&mut request) else {
-                continue;
-            };
-            let request = String::from_utf8_lossy(&request[..size]);
-            let target = request
-                .lines()
-                .next()
-                .and_then(|line| line.split_whitespace().nth(1));
-
-            if let Some(query) = target.and_then(|target| target.strip_prefix("/auth?")) {
-                let _ = app.emit(
-                    "deep-link://new-url",
-                    vec![format!("zilobase://auth?{query}")],
-                );
-
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
-            }
-
-            let body = "<!doctype html><title>Zilobase</title><p>You can close this tab and return to Zilobase.</p>";
-            let response = format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-                body.len()
-            );
-            let _ = stream.write_all(response.as_bytes());
-        }
-    });
-
-    Ok(())
 }
 
 #[tauri::command]
@@ -150,11 +103,7 @@ fn get_keyring_value(account: &str, value_kind: &str) -> Result<Option<String>, 
     }
 }
 
-fn set_keyring_value(
-    account: &str,
-    value_kind: &str,
-    value: Option<String>,
-) -> Result<(), String> {
+fn set_keyring_value(account: &str, value_kind: &str, value: Option<String>) -> Result<(), String> {
     let started_at = Instant::now();
     let operation = if value.is_some() { "write" } else { "delete" };
     log::info!(
@@ -187,7 +136,13 @@ fn set_keyring_value(
             Ok(())
         }
         Err(error) => {
-            log_keyring_failure(operation, value_kind, "credential_access", &error, started_at);
+            log_keyring_failure(
+                operation,
+                value_kind,
+                "credential_access",
+                &error,
+                started_at,
+            );
             Err(error.to_string())
         }
     }
@@ -251,7 +206,9 @@ pub fn run() {
     install_panic_diagnostics();
     let started_at = Instant::now();
     let startup_state = StartupState::default();
-    let builder = tauri::Builder::default().manage(startup_state);
+    let builder = tauri::Builder::default()
+        .manage(startup_state)
+        .manage(oauth::DesktopOAuthState::default());
 
     #[cfg(all(desktop, not(debug_assertions)))]
     let builder = {
@@ -331,17 +288,17 @@ pub fn run() {
                     target: "zilobase::deep_link",
                     "[diagnostics] event=deep_link.registration status=started"
                 );
-                if let Err(error) = app.deep_link().register_all() {
+                if app.deep_link().register_all().is_err() {
                     log::error!(
                         target: "zilobase::deep_link",
                         "[diagnostics] event=deep_link.registration status=error error_type=registration_error"
                     );
-                    return Err(error.into());
+                } else {
+                    log::info!(
+                        target: "zilobase::deep_link",
+                        "[diagnostics] event=deep_link.registration status=success"
+                    );
                 }
-                log::info!(
-                    target: "zilobase::deep_link",
-                    "[diagnostics] event=deep_link.registration status=success"
-                );
 
                 if let Some(window) = app.get_webview_window("main") {
                     window.set_decorations(false)?;
@@ -352,9 +309,6 @@ pub fn run() {
                 }
             }
 
-            #[cfg(all(desktop, debug_assertions))]
-            start_development_auth_callback(app.handle().clone())?;
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -364,6 +318,8 @@ pub fn run() {
             get_auth_owner,
             set_auth_owner,
             mark_renderer_ready,
+            oauth::start_google_oauth,
+            oauth::cancel_google_oauth,
             diagnostics::record_renderer_diagnostic,
             diagnostics::get_diagnostics_info,
             diagnostics::open_diagnostics_folder,
@@ -380,12 +336,11 @@ mod tests {
     #[test]
     fn deep_link_diagnostics_never_include_query_values() {
         assert_eq!(
-            describe_deep_link("zilobase://auth?token=secret&path=%2Fdashboard"),
-            Some("auth")
+            describe_deep_link("zilobase://open?path=%2Fdashboard"),
+            Some("open")
         );
-        assert_eq!(describe_deep_link("zilobase://open?path=%2Fdashboard"), Some("open"));
         assert_eq!(
-            describe_deep_link("zilobase://person@example.com?token=secret"),
+            describe_deep_link("zilobase://unknown?value=secret"),
             Some("other")
         );
         assert_eq!(describe_deep_link("https://app.zilobase.com"), None);
