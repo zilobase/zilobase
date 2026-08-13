@@ -75,7 +75,6 @@ import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
 import {
   BlocksIcon,
-  BookOpenIcon,
   CalendarIcon,
   CalendarRange,
   ChartPie,
@@ -84,6 +83,7 @@ import {
   GalleryThumbnails,
   HomeIcon,
   Kanban,
+  LibraryBigIcon,
   List,
   MessageCircleQuestionIcon,
   MonitorUpIcon,
@@ -376,7 +376,7 @@ export function AppSidebar({
           onSidebarModeChange={setSidebarMode}
           pathname={pathname}
           sidebarMode={sidebarMode}
-          showLibrary={!hiddenSidebarItems.has("library")}
+          showLibrary={!isAiPage && !hiddenSidebarItems.has("library")}
         />
         {isAiPage ? (
           <AiSidebarHistory />
@@ -576,7 +576,7 @@ function NavMain({
                   }
                   type="button"
                 >
-                  <BookOpenIcon />
+                  <LibraryBigIcon />
                   <span>Library</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>

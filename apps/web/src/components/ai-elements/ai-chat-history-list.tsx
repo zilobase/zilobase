@@ -7,12 +7,17 @@ import {
   DropDrawerSeparator,
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer";
-import { Button } from "@/components/ui/button";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action";
 import { cn } from "@/lib/utils";
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
 import type { AiChatThread } from "@zilobase/features/ai-chat";
 import { ArchiveIcon, MoreHorizontalIcon, Trash2Icon } from "lucide-react";
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 
 function formatRelativeTime(value: string) {
   const date = new Date(value);
@@ -93,16 +98,14 @@ function AiChatThreadMoreMenu({
   return (
     <DropDrawer>
       <DropDrawerTrigger asChild>
-        <Button
+        <SidebarNavItemAction
           aria-label={`More actions for ${thread.title}`}
-          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
           onClick={(event) => event.stopPropagation()}
-          size="icon-sm"
           type="button"
-          variant="ghost"
+          variant="menu"
         >
           <MoreHorizontalIcon className="size-4" />
-        </Button>
+        </SidebarNavItemAction>
       </DropDrawerTrigger>
       <DropDrawerContent align="end" className="w-52 rounded-lg" side="bottom">
         <DropDrawerItem
@@ -151,58 +154,54 @@ export function AiChatHistoryList({
 
   return (
     <div
-      className={cn("min-h-0 flex-1 overflow-y-auto px-3 py-3 text-sm", className)}
+      className={cn("min-h-0 flex-1 overflow-y-auto px-2 py-1 text-xs", className)}
       data-ai-history-scroll-shell
     >
       {threadsQuery.isLoading ? (
-        <p className="px-1 py-3 text-muted-foreground">Loading chats...</p>
+        <p className="px-2 py-3 text-muted-foreground">Loading chats...</p>
       ) : threads.length === 0 ? (
-        <p className="px-1 py-3 text-muted-foreground">
+        <p className="px-2 py-3 text-muted-foreground">
           Start a new chat to ask about your page.
         </p>
       ) : (
-        <div className="-mx-3">
-          <div className="divide-y divide-border">
-            {groupedThreads.map(({ thread, label, showLabel }) => {
-              const isActive = thread.id === activeThreadId;
+        <SidebarMenu>
+          {groupedThreads.map(({ thread, label, showLabel }) => {
+            const isActive = thread.id === activeThreadId;
 
-              return (
-                <div
-                  key={thread.id}
-                  className={cn(
-                    "group px-3 py-3 hover:bg-sidebar hover:text-sidebar-foreground",
-                    isActive && "bg-active text-active-foreground",
-                  )}
-                >
-                  {showLabel ? (
-                    <div className="pb-2 font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">
-                      {label}
-                    </div>
-                  ) : null}
-                  <div className="flex items-start gap-2">
-                    <button
-                      className="min-w-0 flex-1 text-left"
+            return (
+              <Fragment key={thread.id}>
+                {showLabel ? (
+                  <li className="flex h-8 shrink-0 items-center px-2 text-sidebar-foreground/70">
+                    {label}
+                  </li>
+                ) : null}
+                <SidebarMenuItem>
+                  <div className="group/nav-row relative">
+                    <SidebarMenuButton
+                      className="data-[active=false]:text-sidebar-foreground/70"
+                      isActive={isActive}
                       onClick={() => onSelectThread(thread.id)}
+                      title={`${thread.title} · ${formatRelativeTime(thread.lastActivityAt)}`}
                       type="button"
                     >
-                      <span className="block truncate font-medium">
+                      <span className="min-w-0 flex-1 truncate">
                         {thread.title}
                       </span>
-                      <span className="mt-0.5 block text-muted-foreground text-xs">
+                      <span className="ml-auto shrink-0 text-[10px] opacity-60 transition-opacity group-focus-within/nav-row:opacity-0 group-hover/nav-row:opacity-0">
                         {formatRelativeTime(thread.lastActivityAt)}
                       </span>
-                    </button>
+                    </SidebarMenuButton>
                     <AiChatThreadMoreMenu
                       onArchive={handleArchiveThread}
                       onDelete={handleDeleteThread}
                       thread={thread}
                     />
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                </SidebarMenuItem>
+              </Fragment>
+            );
+          })}
+        </SidebarMenu>
       )}
     </div>
   );
