@@ -21,6 +21,7 @@ declare global {
 
 type ApiFetchOptions = RequestInit & {
   auth?: boolean
+  timeoutMs?: number
 }
 
 type ApiErrorBody = {
@@ -58,7 +59,7 @@ export function getApiErrorMessage(error: unknown) {
 
 export async function apiFetch<T>(
   path: string,
-  { auth = true, headers, body, ...init }: ApiFetchOptions = {},
+  { auth = true, headers, body, timeoutMs, ...init }: ApiFetchOptions = {},
 ) {
   const method = (init.method ?? "GET").toUpperCase()
   if (
@@ -76,6 +77,7 @@ export async function apiFetch<T>(
     requestHeaders.set("content-type", "application/json")
   }
 
+  const requestTimeout = createRequestTimeout(init.signal, timeoutMs)
   let response: Response
   try {
     response = await fetch(toApiUrl(path), {
@@ -83,8 +85,12 @@ export async function apiFetch<T>(
       body,
       credentials: auth ? "include" : "same-origin",
       headers: requestHeaders,
+      signal: requestTimeout.signal,
     })
   } catch (error) {
+    if (requestTimeout.didTimeout()) {
+      throw new NetworkUnavailableError("Zilobase did not respond in time.")
+    }
     if (isRequestAbort(error)) {
       throw error
     }
@@ -98,6 +104,8 @@ export async function apiFetch<T>(
       )
     }
     throw error
+  } finally {
+    requestTimeout.cleanup()
   }
 
   if (isDesktopOfflineSupported()) {
@@ -120,6 +128,37 @@ export async function apiFetch<T>(
   }
 
   return data as T
+}
+
+function createRequestTimeout(signal: AbortSignal | null | undefined, timeoutMs?: number) {
+  if (!timeoutMs || timeoutMs <= 0) {
+    return {
+      cleanup: () => undefined,
+      didTimeout: () => false,
+      signal: signal ?? undefined,
+    }
+  }
+
+  const controller = new AbortController()
+  let timedOut = false
+  const abortFromCaller = () => controller.abort(signal?.reason)
+
+  if (signal?.aborted) abortFromCaller()
+  else signal?.addEventListener("abort", abortFromCaller, { once: true })
+
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, timeoutMs)
+
+  return {
+    cleanup: () => {
+      clearTimeout(timer)
+      signal?.removeEventListener("abort", abortFromCaller)
+    },
+    didTimeout: () => timedOut,
+    signal: controller.signal,
+  }
 }
 
 export function isRequestAbort(error: unknown) {

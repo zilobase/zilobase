@@ -4,9 +4,13 @@ import {
   createRouter,
   Outlet,
   redirect,
+  type ErrorComponentProps,
 } from "@tanstack/react-router"
+import { useEffect } from "react"
 
 import { AppLayout } from "@/components/app-layout"
+import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import AcceptInvitationPage from "@/pages/accept-invitation"
 import AiPage from "@/pages/ai"
 import CanvasPage from "@/pages/canvas"
@@ -36,6 +40,10 @@ import {
   isOfflineMode,
 } from "@/lib/offline-store"
 import { queryClient } from "@/lib/query-client"
+import {
+  describeDesktopError,
+  recordDesktopDiagnostic,
+} from "@/lib/desktop-diagnostics"
 import { webAuthClient } from "@/providers/features-provider"
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000
@@ -311,7 +319,52 @@ const routeTree = rootRoute.addChildren([
   databaseRoute,
 ])
 
-export const router = createRouter({ routeTree })
+export const router = createRouter({
+  routeTree,
+  defaultErrorComponent: RouteErrorPage,
+  defaultPendingComponent: RoutePendingPage,
+  defaultPendingMinMs: 300,
+  defaultPendingMs: 250,
+})
+
+function RoutePendingPage() {
+  useEffect(() => {
+    recordDesktopDiagnostic("router.pending", { status: "started" })
+  }, [])
+
+  return (
+    <main className="flex min-h-svh items-center justify-center bg-background p-6">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <Spinner className="size-5" />
+        <p className="text-sm text-muted-foreground">Connecting to Zilobase...</p>
+      </div>
+    </main>
+  )
+}
+
+function RouteErrorPage({ error }: ErrorComponentProps) {
+  useEffect(() => {
+    recordDesktopDiagnostic(
+      "router.error",
+      describeDesktopError(error),
+      "error",
+    )
+  }, [error])
+
+  return (
+    <main className="flex min-h-svh items-center justify-center bg-background p-6">
+      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+        <div>
+          <h1 className="text-lg font-semibold">Couldn&apos;t connect to Zilobase</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your desktop session is still saved. Check your connection and try again.
+          </p>
+        </div>
+        <Button onClick={() => window.location.reload()}>Try again</Button>
+      </div>
+    </main>
+  )
+}
 
 async function getFreshSession() {
   const cached = getValidOfflineSession()

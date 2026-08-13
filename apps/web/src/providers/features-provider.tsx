@@ -30,7 +30,9 @@ export const webAuthClient: ZilobaseAuthClient = {
     const startedAt = performance.now()
     recordDesktopDiagnostic("session.request", { status: "started" })
     try {
-      const session = await apiFetch<SessionResponse>("/session")
+      const session = await apiFetch<SessionResponse>("/session", {
+        timeoutMs: 15_000,
+      })
       recordDesktopDiagnostic("session.request", {
         duration_ms: performance.now() - startedAt,
         session_present: Boolean(session.session),

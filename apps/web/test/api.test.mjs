@@ -19,4 +19,31 @@ export function register({ assert, loadModule, test }) {
     assert.equal(isRequestAbort({ name: "AbortError" }), true)
     assert.equal(isRequestAbort(new TypeError("Failed to fetch")), false)
   })
+
+  test("API requests can fail with a bounded network timeout", async () => {
+    const { apiFetch, NetworkUnavailableError } = await loadModule(
+      "/src/lib/api.ts",
+    )
+    const originalFetch = globalThis.fetch
+
+    globalThis.fetch = (_url, init) =>
+      new Promise((_resolve, reject) => {
+        init.signal.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          { once: true },
+        )
+      })
+
+    try {
+      await assert.rejects(
+        () => apiFetch("/session", { timeoutMs: 5 }),
+        (error) =>
+          error instanceof NetworkUnavailableError &&
+          error.message === "Zilobase did not respond in time.",
+      )
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
 }
