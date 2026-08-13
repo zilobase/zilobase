@@ -2,7 +2,11 @@ import { useEffect } from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link"
 
-import { ApiError, authFetch } from "@/lib/api"
+import { authFetch } from "@/lib/api"
+import {
+  describeDesktopError,
+  recordDesktopDiagnostic,
+} from "@/lib/desktop-diagnostics"
 import {
   getDesktopAuthDeepLink,
   getDesktopDeepLinkPath,
@@ -30,19 +34,22 @@ export function DesktopDeepLinkHandler({
         const authLink = getDesktopAuthDeepLink(authUrl)
         if (!authLink) return
 
-        console.info("[zilobase][desktop-auth] received authentication callback", {
-          path: describePath(authLink.path),
+        recordDesktopDiagnostic("desktop_auth.callback_received", {
+          status: "success",
         })
 
         try {
           await authFetch("/one-time-token/verify", { token: authLink.token })
-          console.info("[zilobase][desktop-auth] callback verification succeeded")
+          recordDesktopDiagnostic("desktop_auth.callback_verification", {
+            status: "success",
+          })
           await queryClient.invalidateQueries({ queryKey: ["session"] })
           openPath(authLink.path)
         } catch (error) {
-          console.error(
-            "[zilobase][desktop-auth] callback verification failed",
-            describeError(error),
+          recordDesktopDiagnostic(
+            "desktop_auth.callback_verification",
+            describeDesktopError(error),
+            "error",
           )
           openPath("/login?desktopAuthError=1")
         }
@@ -82,17 +89,4 @@ export function DesktopDeepLinkHandler({
   }, [openPath])
 
   return null
-}
-
-function describeError(error: unknown) {
-  if (!(error instanceof Error)) return "Unknown error"
-
-  return {
-    name: error.name,
-    ...(error instanceof ApiError ? { status: error.status } : {}),
-  }
-}
-
-function describePath(path: string) {
-  return new URL(path, "https://app.zilobase.com").pathname
 }

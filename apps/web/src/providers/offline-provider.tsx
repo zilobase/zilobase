@@ -10,6 +10,10 @@ import { toast } from "sonner"
 
 import { toApiUrl } from "@/lib/api"
 import { connectivityStateDuringProbe } from "@/lib/connectivity-probe"
+import {
+  describeDesktopError,
+  recordDesktopDiagnostic,
+} from "@/lib/desktop-diagnostics"
 import { setDesktopAuthOwner } from "@/lib/desktop-auth-token"
 import { syncDirtyOfflinePages } from "@/lib/offline-recovery"
 import {
@@ -39,18 +43,38 @@ export function OfflineQueryProvider({
   React.useEffect(() => {
     if (!desktop) return
 
-    void initializeOfflineStore().then(() => {
-      const snapshot = getValidOfflineSession()
-      if (snapshot) {
-        client.setQueryData(["session"], {
-          session: snapshot.session,
-          user: snapshot.user,
-          workspacePinned: snapshot.workspacePinned,
+    const startedAt = performance.now()
+    recordDesktopDiagnostic("offline_store.initialization", { status: "started" })
+    void initializeOfflineStore().then(
+      () => {
+        const snapshot = getValidOfflineSession()
+        if (snapshot) {
+          client.setQueryData(["session"], {
+            session: snapshot.session,
+            user: snapshot.user,
+            workspacePinned: snapshot.workspacePinned,
+          })
+          client.setQueryData(["workspaces"], getOfflineManifest().workspaces)
+        }
+        recordDesktopDiagnostic("offline_store.initialization", {
+          duration_ms: performance.now() - startedAt,
+          session_present: Boolean(snapshot),
+          status: "success",
         })
-        client.setQueryData(["workspaces"], getOfflineManifest().workspaces)
-      }
-      setReady(true)
-    })
+        setReady(true)
+      },
+      (error) => {
+        recordDesktopDiagnostic(
+          "offline_store.initialization",
+          {
+            ...describeDesktopError(error),
+            duration_ms: performance.now() - startedAt,
+          },
+          "error",
+        )
+        throw error
+      },
+    )
   }, [client, desktop])
 
   React.useEffect(() => {
@@ -158,7 +182,20 @@ function OfflineSyncCoordinator() {
 }
 
 function RestoreGate({ children }: React.PropsWithChildren) {
-  return useIsRestoring() ? null : children
+  const restoring = useIsRestoring()
+  const restoreStartedAt = React.useRef(performance.now())
+  const completed = React.useRef(false)
+
+  React.useEffect(() => {
+    if (restoring || completed.current) return
+    completed.current = true
+    recordDesktopDiagnostic("offline_cache.restore", {
+      duration_ms: performance.now() - restoreStartedAt.current,
+      status: "success",
+    })
+  }, [restoring])
+
+  return restoring ? null : children
 }
 
 function OfflineRuntime() {

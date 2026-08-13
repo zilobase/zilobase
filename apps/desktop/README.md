@@ -57,3 +57,32 @@ export TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/zilobase.key"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=
 npm run build --workspace @zilobase/desktop -- --bundles app,dmg
 ```
+
+## Installed-app diagnostics
+
+Release builds persist privacy-safe native and renderer startup logs. They include
+startup milestones, durations, platform metadata, keyring outcomes, session request
+status, deep-link registration, and sanitized error types. They do not include auth
+tokens, keyring values, cookies, account details, callback query values, or document
+content.
+
+Logs are stored in the platform application log directory:
+
+- Linux: `${XDG_DATA_HOME:-$HOME/.local/share}/com.zilobase/logs`
+- macOS: `~/Library/Logs/com.zilobase`
+- Windows: `%LOCALAPPDATA%/com.zilobase/logs`
+
+When the UI is available, use **Settings → Preferences → Desktop diagnostics** to
+open the logs or export an archive. If the app window is blank, run the installed
+binary from a terminal:
+
+```sh
+zilobase-client --diagnostics
+# Or, for a directly downloaded AppImage:
+./zilobase-client.AppImage --diagnostics
+```
+
+The command does not open the application window. It creates a diagnostics ZIP in
+the current directory containing safe system metadata and up to four recent log
+files. Set `ZILOBASE_LOG=debug` when launching from a terminal to opt into verbose
+diagnostic events; secrets remain excluded by the diagnostic event schema.

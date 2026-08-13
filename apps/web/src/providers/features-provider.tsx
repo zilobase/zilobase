@@ -17,12 +17,39 @@ import type {
 } from "@zilobase/features/auth"
 
 import { apiFetch, authFetch, clearApiAuthToken } from "@/lib/api"
+import {
+  describeDesktopError,
+  recordDesktopDiagnostic,
+} from "@/lib/desktop-diagnostics"
 import { queryClient } from "@/lib/query-client"
 import { useAppStore } from "@/stores/app-store"
 import { isFeatureEnabled } from "@/config/feature-flags"
 
 export const webAuthClient: ZilobaseAuthClient = {
-  getSession: () => apiFetch<SessionResponse>("/session"),
+  getSession: async () => {
+    const startedAt = performance.now()
+    recordDesktopDiagnostic("session.request", { status: "started" })
+    try {
+      const session = await apiFetch<SessionResponse>("/session")
+      recordDesktopDiagnostic("session.request", {
+        duration_ms: performance.now() - startedAt,
+        session_present: Boolean(session.session),
+        status: "success",
+        user_present: Boolean(session.user),
+      })
+      return session
+    } catch (error) {
+      recordDesktopDiagnostic(
+        "session.request",
+        {
+          ...describeDesktopError(error),
+          duration_ms: performance.now() - startedAt,
+        },
+        "error",
+      )
+      throw error
+    }
+  },
   requestSignInOtp: (email) =>
     authFetch<{ success: boolean }>("/email-otp/send-verification-otp", {
       email,

@@ -1,7 +1,11 @@
 import * as React from "react"
+import { invoke, isTauri } from "@tauri-apps/api/core"
 import { useTheme } from "next-themes"
 import {
+  BugIcon,
   CheckIcon,
+  DownloadIcon,
+  FolderOpenIcon,
   HardDriveIcon,
   Trash2Icon,
   UploadIcon,
@@ -13,6 +17,10 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { getApiErrorMessage } from "@/lib/api"
+import {
+  describeDesktopError,
+  recordDesktopDiagnostic,
+} from "@/lib/desktop-diagnostics"
 import {
   clearAllOfflineData,
   disableOfflineWorkspace,
@@ -48,8 +56,95 @@ export default function PreferencesSettingsPage() {
             <OfflineAccessSection />
           </>
         ) : null}
+        {isTauri() ? (
+          <>
+            <Separator />
+            <DiagnosticsSection />
+          </>
+        ) : null}
       </div>
     </main>
+  )
+}
+
+function DiagnosticsSection() {
+  const [busyAction, setBusyAction] = React.useState<"export" | "open" | null>(null)
+
+  const openLogs = async () => {
+    setBusyAction("open")
+    try {
+      await invoke("open_diagnostics_folder")
+    } catch (error) {
+      recordDesktopDiagnostic(
+        "diagnostics.log_folder_opened",
+        describeDesktopError(error),
+        "error",
+      )
+      toast.error("Could not open the diagnostics folder.")
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  const exportDiagnostics = async () => {
+    setBusyAction("export")
+    try {
+      const archivePath = await invoke<string>("export_diagnostics")
+      toast.success("Diagnostics archive created.", {
+        description: archivePath,
+      })
+    } catch (error) {
+      recordDesktopDiagnostic(
+        "diagnostics.export",
+        describeDesktopError(error),
+        "error",
+      )
+      toast.error("Could not export diagnostics.")
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
+  return (
+    <section className="grid gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
+        <div className="space-y-1">
+          <h3 className="flex items-center gap-2 font-heading text-base font-medium">
+            <BugIcon className="size-4" />
+            Desktop diagnostics
+          </h3>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            View local startup logs or create an archive to share when the desktop
+            app does not start correctly. Authentication tokens, keyring values,
+            account details, and document content are excluded.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button
+            disabled={busyAction !== null}
+            onClick={() => void openLogs()}
+            type="button"
+            variant="outline"
+          >
+            {busyAction === "open" ? <Spinner /> : <FolderOpenIcon />}
+            Open logs
+          </Button>
+          <Button
+            disabled={busyAction !== null}
+            onClick={() => void exportDiagnostics()}
+            type="button"
+            variant="outline"
+          >
+            {busyAction === "export" ? <Spinner /> : <DownloadIcon />}
+            Export diagnostics
+          </Button>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        If the window is blank, run <code>zilobase-client --diagnostics</code> in
+        a terminal. The archive is written to the current directory.
+      </p>
+    </section>
   )
 }
 
