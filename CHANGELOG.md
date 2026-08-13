@@ -4,6 +4,14 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.26
+
+### Fixed
+
+- Made browser-to-desktop authentication use an explicit user-initiated callback so Linux browsers reliably deliver the one-time token to the running client.
+- Reset the desktop Google sign-in state when the app regains focus or the browser handoff times out instead of leaving the login button stuck.
+- Added privacy-safe browser-open, focus-return, timeout, and callback diagnostics for desktop authentication support.
+
 ## 0.0.25
 
 ### Added
