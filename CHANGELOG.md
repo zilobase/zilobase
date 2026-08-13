@@ -4,6 +4,17 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.25
+
+### Added
+
+- Added persistent, privacy-safe desktop startup diagnostics covering native setup, WebView loading, keyring access, offline restoration, session requests, updater operations, and deep-link authentication.
+- Added desktop preferences actions to open logs and export a bounded diagnostics archive, plus `zilobase-client --diagnostics` for blank-window failures.
+
+### Security
+
+- Restricted renderer diagnostics through a native allowlist so authentication tokens, callback URLs, account details, keyring values, and document content cannot be persisted.
+
 ## 0.0.24
 
 ### Fixed

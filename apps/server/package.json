@@ -1,6 +1,6 @@
 {
   "name": "@zilobase/server",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "license": "MIT",
   "type": "module",
   "exports": {
