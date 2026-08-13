@@ -4,6 +4,13 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.20
+
+### Changed
+
+- Matched AI chat history rows to the app sidebar's compact item height, padding, typography, active states, and overflow actions.
+- Kept Library navigation exclusive to the app sidebar and replaced its open-book glyph with the stacked-books icon.
+
 ## 0.0.19
 
 ### Fixed
