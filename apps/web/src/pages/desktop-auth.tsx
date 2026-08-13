@@ -15,9 +15,13 @@ export default function DesktopAuthPage() {
   return (
     <main className="flex min-h-svh items-center justify-center bg-background p-6">
       <div className="flex max-w-sm flex-col gap-4 text-center">
-        <h1 className="text-lg font-semibold">Opening Zilobase</h1>
+        <h1 className="text-lg font-semibold">
+          {deepLink ? "Sign-in complete" : "Finishing sign-in"}
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Your browser sign-in is complete. Return to the desktop app.
+          {deepLink
+            ? "Click below to securely return to the Zilobase desktop app."
+            : "Preparing a secure desktop callback..."}
         </p>
         {deepLink && (
           <Button onClick={() => window.location.assign(deepLink)}>
@@ -36,9 +40,7 @@ async function completeDesktopSignIn() {
       { method: "GET" },
     )
     const path = getAuthReturnPath("/dashboard")
-    const deepLink = buildDesktopAuthDeepLink(token, path)
-    window.location.assign(deepLink)
-    return deepLink
+    return buildDesktopAuthDeepLink(token, path)
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       const returnTo = `${window.location.pathname}${window.location.search}`

@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link } from "@tanstack/react-router"
+import { isTauri } from "@tauri-apps/api/core"
 import { EyeIcon, EyeOffIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -23,9 +24,15 @@ import {
 } from "@/components/ui/input-group"
 import { Input } from "@/components/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
+import {
+  describeDesktopError,
+  recordDesktopDiagnostic,
+} from "@/lib/desktop-diagnostics"
 import { getAuthReturnPath, signInWithGoogle } from "@/lib/google-auth"
 import { cn } from "@/lib/utils"
 import { useSignInWithPassword } from "@zilobase/features/auth"
+
+const DESKTOP_AUTH_WAIT_TIMEOUT_MS = 120_000
 
 export function LoginForm({
   className,
@@ -35,20 +42,70 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false)
   const [googleError, setGoogleError] = useState<unknown>(null)
   const [isGooglePending, setIsGooglePending] = useState(false)
+  const googlePendingTimer = useRef<number | undefined>(undefined)
   const isPending = signInWithPassword.isPending || isGooglePending
   const desktopAuthFailed = new URLSearchParams(window.location.search).has(
     "desktopAuthError",
   )
 
+  useEffect(() => {
+    if (!isTauri()) return
+
+    const resetGooglePending = () => {
+      if (googlePendingTimer.current === undefined) return
+      window.clearTimeout(googlePendingTimer.current)
+      googlePendingTimer.current = undefined
+      setIsGooglePending(false)
+      recordDesktopDiagnostic("desktop_auth.browser_return", {
+        status: "success",
+      })
+    }
+
+    window.addEventListener("focus", resetGooglePending)
+    return () => {
+      window.removeEventListener("focus", resetGooglePending)
+      window.clearTimeout(googlePendingTimer.current)
+    }
+  }, [])
+
   async function handleGoogleSignIn() {
     setGoogleError(null)
     setIsGooglePending(true)
+    const desktop = isTauri()
+
+    if (desktop) {
+      recordDesktopDiagnostic("desktop_auth.browser_open", {
+        status: "started",
+      })
+      window.clearTimeout(googlePendingTimer.current)
+      googlePendingTimer.current = window.setTimeout(() => {
+        googlePendingTimer.current = undefined
+        setIsGooglePending(false)
+        recordDesktopDiagnostic(
+          "desktop_auth.browser_return",
+          { status: "timeout" },
+          "warn",
+        )
+      }, DESKTOP_AUTH_WAIT_TIMEOUT_MS)
+    }
 
     try {
       await signInWithGoogle(getAuthReturnPath("/dashboard"))
+      if (desktop) {
+        recordDesktopDiagnostic("desktop_auth.browser_open", {
+          status: "success",
+        })
+      }
     } catch (error) {
+      window.clearTimeout(googlePendingTimer.current)
+      googlePendingTimer.current = undefined
       setGoogleError(error)
       setIsGooglePending(false)
+      recordDesktopDiagnostic(
+        "desktop_auth.browser_open",
+        describeDesktopError(error),
+        "error",
+      )
     }
   }
 
@@ -145,7 +202,9 @@ export function LoginForm({
               onClick={handleGoogleSignIn}
             >
               <GoogleIcon />
-              {isGooglePending ? "Opening Google..." : "Continue with Google"}
+              {isGooglePending
+                ? "Waiting for browser sign-in..."
+                : "Continue with Google"}
             </Button>
           </Field>
         </FieldGroup>
