@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node --env-file-if-exists=../../.env.development ../../node_modules/@tauri-apps/cli/tauri.js dev",
     "build": "node --env-file-if-exists=../../.env.development ../../node_modules/@tauri-apps/cli/tauri.js build",
+    "test:selfhost": "node e2e/selfhost.mjs",
     "tauri": "tauri"
   },
   "devDependencies": {

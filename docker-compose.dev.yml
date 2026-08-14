@@ -11,8 +11,8 @@ services:
       - caddy_config:/config
 
   zilobase:
-    image: zilobase-dev:local
-    pull_policy: never
+    image: ${ZILOBASE_IMAGE:-zilobase-dev:local}
+    pull_policy: ${ZILOBASE_PULL_POLICY:-never}
     build:
       context: .
       target: runtime

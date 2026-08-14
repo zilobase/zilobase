@@ -5,7 +5,10 @@ import type {
 import type { Duplex } from "node:stream";
 import crossws from "crossws/adapters/node";
 import type { WebSocketLike } from "@hocuspocus/server";
-import { getAuthHeaders } from "../auth-headers";
+import {
+  COLLABORATION_WEBSOCKET_PROTOCOL,
+  getAuthHeaders,
+} from "../auth-headers";
 import { createAuth } from "../auth";
 import { runWithDbEnv } from "../db";
 import { getDefaultCollaborationHocuspocus } from "./service";
@@ -35,6 +38,17 @@ export function attachNodeCollaborationRuntime(
       maxPayload: NODE_COLLABORATION_MAX_PAYLOAD_BYTES,
     },
     hooks: {
+      upgrade(request) {
+        const offeredProtocols = new Set(
+          (request.headers.get("sec-websocket-protocol") ?? "")
+            .split(",")
+            .map((value) => value.trim()),
+        );
+
+        return offeredProtocols.has(COLLABORATION_WEBSOCKET_PROTOCOL)
+          ? { protocol: COLLABORATION_WEBSOCKET_PROTOCOL }
+          : undefined;
+      },
       open(peer) {
         const connection = hocuspocus.handleConnection(
           peer.websocket as unknown as WebSocketLike,

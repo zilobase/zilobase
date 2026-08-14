@@ -1,26 +1,48 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict"
-import { randomBytes } from "node:crypto"
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
+import { createHash, randomBytes } from "node:crypto"
+import { createWriteStream } from "node:fs"
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import net from "node:net"
 import os from "node:os"
 import path from "node:path"
 import process from "node:process"
 import { spawn } from "node:child_process"
 import { fileURLToPath } from "node:url"
+import WebSocket from "ws"
 
-const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const projectName = `zilobase-selfhost-test-${process.pid}-${Date.now()}`
-const tempDirectory = await mkdtemp(path.join(os.tmpdir(), "zilobase-selfhost-"))
-const envFile = path.join(tempDirectory, "selfhost.env")
+const repositoryRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+)
+const projectName =
+  process.env.ZILOBASE_SELFHOST_PROJECT_NAME ||
+  `zilobase-selfhost-test-${process.pid}-${Date.now()}`
+const tempDirectory = await mkdtemp(
+  path.join(os.tmpdir(), "zilobase-selfhost-"),
+)
+const envFile = path.resolve(
+  process.env.ZILOBASE_SELFHOST_ENV_FILE ||
+    path.join(tempDirectory, "selfhost.env"),
+)
+const diagnosticsDirectory = process.env.ZILOBASE_SELFHOST_DIAGNOSTICS_DIR
+  ? path.resolve(process.env.ZILOBASE_SELFHOST_DIAGNOSTICS_DIR)
+  : null
+const noBuild = process.argv.includes("--no-build")
 let bootstrapToken = ""
 const password = `Test-${secret(18)}`
 const ownerEmail = `owner-${Date.now()}@zilobase.local`
 const inviteEmail = `invite-${Date.now()}@zilobase.local`
-const httpPort = await getFreePort()
-const minioPort = await getFreePort()
-const mailpitPort = await getFreePort()
+const httpPort = Number(
+  process.env.ZILOBASE_DEV_HTTP_PORT || (await getFreePort()),
+)
+const minioPort = Number(
+  process.env.MINIO_DEV_API_PORT || (await getFreePort()),
+)
+const mailpitPort = Number(
+  process.env.MAILPIT_DEV_UI_PORT || (await getFreePort()),
+)
 const serverOrigin = `http://127.0.0.1:${httpPort}`
 const mailpitOrigin = `http://127.0.0.1:${mailpitPort}`
 let resetCompleted = false
@@ -29,33 +51,49 @@ class CookieJar {
   cookies = new Map()
 
   header() {
-    return [...this.cookies].map(([name, value]) => `${name}=${value}`).join("; ")
+    return [...this.cookies]
+      .map(([name, value]) => `${name}=${value}`)
+      .join("; ")
   }
 
   store(headers) {
-    const values = headers.getSetCookie?.() ?? splitSetCookie(headers.get("set-cookie"))
+    const values =
+      headers.getSetCookie?.() ?? splitSetCookie(headers.get("set-cookie"))
     for (const value of values) {
       const cookie = value.split(";", 1)[0]
       const separator = cookie.indexOf("=")
-      if (separator > 0) this.cookies.set(cookie.slice(0, separator), cookie.slice(separator + 1))
+      if (separator > 0)
+        this.cookies.set(
+          cookie.slice(0, separator),
+          cookie.slice(separator + 1),
+        )
     }
   }
 }
 
 try {
   console.info("Checking that production Compose rejects missing secrets...")
-  const missingSecrets = await capture("docker", [
-    "compose",
-    "--env-file",
-    "/dev/null",
-    "-f",
-    "docker-compose.yml",
-    "config",
-  ], { env: scrubSelfhostEnvironment(process.env) })
-  assert.notEqual(missingSecrets.code, 0, "production Compose accepted missing secrets")
+  const missingSecrets = await capture(
+    "docker",
+    [
+      "compose",
+      "--env-file",
+      "/dev/null",
+      "-f",
+      "docker-compose.yml",
+      "config",
+    ],
+    { env: scrubSelfhostEnvironment(process.env) },
+  )
+  assert.notEqual(
+    missingSecrets.code,
+    0,
+    "production Compose accepted missing secrets",
+  )
 
   console.info("Starting a fresh isolated self-hosted stack...")
-  await selfhost("up")
+  await mkdir(path.dirname(envFile), { recursive: true })
+  await selfhost("up", ...(noBuild ? ["--no-build"] : []))
   const generatedEnvironment = parseEnv(await readFile(envFile, "utf8"))
   bootstrapToken = generatedEnvironment.ZILOBASE_BOOTSTRAP_TOKEN
   assert.ok(bootstrapToken?.length >= 32)
@@ -67,16 +105,19 @@ try {
   const initialDiscovery = await json(`${serverOrigin}/.well-known/zilobase`)
   assert.equal(initialDiscovery.apiOrigin, serverOrigin)
 
-  const bootstrap = await requestJson(`${serverOrigin}/api/instance/bootstrap`, {
-    body: {
-      email: ownerEmail,
-      name: "Self-host Test Owner",
-      password,
-      workspaceName: "Self-host Test Workspace",
+  const bootstrap = await requestJson(
+    `${serverOrigin}/api/instance/bootstrap`,
+    {
+      body: {
+        email: ownerEmail,
+        name: "Self-host Test Owner",
+        password,
+        workspaceName: "Self-host Test Workspace",
+      },
+      headers: { "x-zilobase-bootstrap-token": bootstrapToken },
+      method: "POST",
     },
-    headers: { "x-zilobase-bootstrap-token": bootstrapToken },
-    method: "POST",
-  })
+  )
   assert.equal(bootstrap.response.status, 201)
   assert.equal(bootstrap.data.registrationMode, "invite-only")
 
@@ -87,6 +128,94 @@ try {
     method: "POST",
   })
   assert.equal(signIn.response.status, 200)
+
+  console.info("Exchanging a browser consent code through PKCE...")
+  const verifier = secret(48)
+  const state = secret(32)
+  const redirectUri = "http://127.0.0.1:43123/oauth/callback"
+  const authorization = new URLSearchParams({
+    client_id: "zilobase-desktop",
+    code_challenge: createHash("sha256")
+      .update(verifier, "ascii")
+      .digest("base64url"),
+    code_challenge_method: "S256",
+    decision: "allow",
+    redirect_uri: redirectUri,
+    response_type: "code",
+    state,
+  })
+  const consent = await requestForm(
+    `${serverOrigin}/desktop/authorize/consent`,
+    authorization,
+    { jar, redirect: "manual" },
+  )
+  assert.equal(consent.status, 303)
+  const callback = new URL(consent.headers.get("location"))
+  assert.equal(callback.origin, "http://127.0.0.1:43123")
+  assert.equal(callback.searchParams.get("state"), state)
+  assert.equal(callback.searchParams.get("iss"), serverOrigin)
+  const code = callback.searchParams.get("code")
+  assert.ok(code)
+
+  const tokenResponse = await requestForm(
+    `${serverOrigin}/api/auth/desktop/token`,
+    new URLSearchParams({
+      client_id: "zilobase-desktop",
+      code,
+      code_verifier: verifier,
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri,
+    }),
+  )
+  assert.equal(tokenResponse.status, 200)
+  const desktopSession = await tokenResponse.json()
+  assert.equal(desktopSession.instance_id, initialDiscovery.instanceId)
+  assert.equal(desktopSession.issuer, serverOrigin)
+  assert.equal(desktopSession.token_type, "Bearer")
+
+  const replay = await requestForm(
+    `${serverOrigin}/api/auth/desktop/token`,
+    new URLSearchParams({
+      client_id: "zilobase-desktop",
+      code,
+      code_verifier: verifier,
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri,
+    }),
+  )
+  assert.equal(replay.status, 400)
+  assert.deepEqual(await replay.json(), { error: "invalid_grant" })
+
+  console.info(
+    "Checking page CRUD and authenticated collaboration WebSockets...",
+  )
+  const createdPage = await requestJson(`${serverOrigin}/pages`, {
+    body: {
+      content: null,
+      name: "Self-host deployment probe",
+      type: "pageblock",
+      url: "#",
+      workspaceId: bootstrap.data.workspaceId,
+    },
+    jar,
+    method: "POST",
+  })
+  assert.equal(createdPage.response.status, 201)
+  const pageId = createdPage.data.page.id
+  const updatedPage = await requestJson(`${serverOrigin}/pages/${pageId}`, {
+    body: { name: "Self-host deployment probe updated" },
+    jar,
+    method: "PATCH",
+  })
+  assert.equal(updatedPage.data.page.name, "Self-host deployment probe updated")
+  const collaborationTicket = await requestJson(
+    `${serverOrigin}/pages/${pageId}/collaboration-ticket`,
+    { body: {}, jar, method: "POST" },
+  )
+  await verifyCollaborationWebSocket(
+    collaborationTicket.data,
+    desktopSession.access_token,
+  )
 
   console.info("Checking Mailpit OTP and invitation delivery...")
   const otpRequest = await requestJson(
@@ -134,7 +263,10 @@ try {
     },
   )
   assert.equal(uploadRequest.response.status, 200)
-  assert.equal(new URL(uploadRequest.data.upload.url).origin, `http://127.0.0.1:${minioPort}`)
+  assert.equal(
+    new URL(uploadRequest.data.upload.url).origin,
+    `http://127.0.0.1:${minioPort}`,
+  )
 
   const objectUpload = await fetch(uploadRequest.data.upload.url, {
     body: imageBytes,
@@ -171,16 +303,32 @@ try {
     "process.stdout.write(String(process.getuid?.()))",
   ])
   assert.equal(uid.code, 0)
-  assert.notEqual(uid.stdout.trim(), "0", "application container is running as root")
+  assert.notEqual(
+    uid.stdout.trim(),
+    "0",
+    "application container is running as root",
+  )
 
-  console.info("Restarting through selfhost:down/up to verify volume persistence...")
+  console.info(
+    "Restarting through selfhost:down/up to verify volume persistence...",
+  )
   await selfhost("down")
   const databaseVolume = `${projectName}_postgres_data`
-  const preservedVolume = await capture("docker", ["volume", "inspect", databaseVolume])
-  assert.equal(preservedVolume.code, 0, "selfhost:down removed the database volume")
-  await selfhost("up")
+  const preservedVolume = await capture("docker", [
+    "volume",
+    "inspect",
+    databaseVolume,
+  ])
+  assert.equal(
+    preservedVolume.code,
+    0,
+    "selfhost:down removed the database volume",
+  )
+  await selfhost("up", ...(noBuild ? ["--no-build"] : []))
 
-  const discoveryAfterRestart = await json(`${serverOrigin}/.well-known/zilobase`)
+  const discoveryAfterRestart = await json(
+    `${serverOrigin}/.well-known/zilobase`,
+  )
   assert.equal(discoveryAfterRestart.instanceId, initialDiscovery.instanceId)
   const restartJar = new CookieJar()
   const signInAfterRestart = await requestJson(
@@ -188,17 +336,117 @@ try {
     { body: { email: ownerEmail, password }, jar: restartJar, method: "POST" },
   )
   assert.equal(signInAfterRestart.response.status, 200)
-  const persistedImage = await fetch(`${serverOrigin}${completedImage.data.image}`, {
-    headers: { cookie: restartJar.header() },
-  })
+  const persistedImage = await fetch(
+    `${serverOrigin}${completedImage.data.image}`,
+    {
+      headers: { cookie: restartJar.header() },
+    },
+  )
   assert.equal(persistedImage.status, 200)
   assert.deepEqual(Buffer.from(await persistedImage.arrayBuffer()), imageBytes)
+
+  const persistedPage = await requestJson(`${serverOrigin}/pages/${pageId}`, {
+    jar: restartJar,
+    method: "GET",
+  })
+  assert.equal(
+    persistedPage.data.page.name,
+    "Self-host deployment probe updated",
+  )
+
+  console.info(
+    "Backing up and restoring Postgres and MinIO into clean volumes...",
+  )
+  const backupDirectory = path.join(tempDirectory, "backup")
+  const objectBackupDirectory = path.join(backupDirectory, "objects")
+  const databaseBackup = path.join(backupDirectory, "postgres.dump")
+  await mkdir(objectBackupDirectory, { recursive: true })
+  await captureComposeToFile(
+    [
+      "exec",
+      "-T",
+      "postgres",
+      "pg_dump",
+      "-U",
+      "zilobase",
+      "-d",
+      "zilobase",
+      "--format=custom",
+    ],
+    databaseBackup,
+  )
+  await mirrorObjectStorage("backup", objectBackupDirectory)
+
+  await selfhost("reset", "--yes")
+  await selfhost("up", ...(noBuild ? ["--no-build"] : []))
+  await captureCompose(["stop", "zilobase"])
+  const postgresContainer = await captureCompose(["ps", "-q", "postgres"])
+  assert.equal(postgresContainer.code, 0)
+  assert.ok(postgresContainer.stdout.trim())
+  const copyDump = await capture("docker", [
+    "cp",
+    databaseBackup,
+    `${postgresContainer.stdout.trim()}:/tmp/zilobase-selfhost-restore.dump`,
+  ])
+  assert.equal(copyDump.code, 0, copyDump.stderr)
+  const restoreDatabase = await captureCompose([
+    "exec",
+    "-T",
+    "postgres",
+    "pg_restore",
+    "-U",
+    "zilobase",
+    "-d",
+    "zilobase",
+    "--clean",
+    "--if-exists",
+    "--no-owner",
+    "--no-privileges",
+    "/tmp/zilobase-selfhost-restore.dump",
+  ])
+  assert.equal(restoreDatabase.code, 0, restoreDatabase.stderr)
+  await mirrorObjectStorage("restore", objectBackupDirectory)
+  const resumed = await captureCompose(["up", "-d", "--no-build", "--wait"])
+  assert.equal(resumed.code, 0, resumed.stderr)
+
+  const restoredDiscovery = await json(`${serverOrigin}/.well-known/zilobase`)
+  assert.equal(restoredDiscovery.instanceId, initialDiscovery.instanceId)
+  const restoredJar = new CookieJar()
+  await requestJson(`${serverOrigin}/api/auth/sign-in/email`, {
+    body: { email: ownerEmail, password },
+    jar: restoredJar,
+    method: "POST",
+  })
+  const restoredPage = await requestJson(`${serverOrigin}/pages/${pageId}`, {
+    jar: restoredJar,
+    method: "GET",
+  })
+  assert.equal(
+    restoredPage.data.page.name,
+    "Self-host deployment probe updated",
+  )
+  const restoredImage = await fetch(
+    `${serverOrigin}${completedImage.data.image}`,
+    {
+      headers: { cookie: restoredJar.header() },
+    },
+  )
+  assert.equal(restoredImage.status, 200)
+  assert.deepEqual(Buffer.from(await restoredImage.arrayBuffer()), imageBytes)
 
   console.info("Running the explicitly destructive selfhost:reset path...")
   await selfhost("reset", "--yes")
   resetCompleted = true
-  const removedVolume = await capture("docker", ["volume", "inspect", databaseVolume])
-  assert.notEqual(removedVolume.code, 0, "selfhost:reset preserved the database volume")
+  const removedVolume = await capture("docker", [
+    "volume",
+    "inspect",
+    databaseVolume,
+  ])
+  assert.notEqual(
+    removedVolume.code,
+    0,
+    "selfhost:reset preserved the database volume",
+  )
 
   console.info("Self-host integration test passed.")
 } catch (error) {
@@ -206,6 +454,23 @@ try {
   const logs = await captureCompose(["logs", "--no-color", "--tail", "200"])
   if (logs.stdout) console.error(sanitize(logs.stdout))
   if (logs.stderr) console.error(sanitize(logs.stderr))
+  if (diagnosticsDirectory) {
+    await mkdir(diagnosticsDirectory, { recursive: true })
+    const status = await captureCompose(["ps", "--all"])
+    await writeFile(
+      path.join(diagnosticsDirectory, "selfhost.log"),
+      sanitize(
+        [
+          `failure: ${error instanceof Error ? error.message : String(error)}`,
+          status.stdout,
+          status.stderr,
+          logs.stdout,
+          logs.stderr,
+        ].join("\n"),
+      ),
+      { mode: 0o600 },
+    )
+  }
   process.exitCode = 1
 } finally {
   if (!resetCompleted) {
@@ -223,6 +488,9 @@ async function selfhost(...args) {
       ZILOBASE_DEV_HTTP_PORT: String(httpPort),
       MINIO_DEV_API_PORT: String(minioPort),
       MAILPIT_DEV_UI_PORT: String(mailpitPort),
+      ZILOBASE_SELFHOST_IMAGE: process.env.ZILOBASE_SELFHOST_IMAGE || "",
+      ZILOBASE_SELFHOST_PULL_POLICY:
+        process.env.ZILOBASE_SELFHOST_PULL_POLICY || "never",
     },
   })
 }
@@ -262,7 +530,9 @@ async function waitForMessage(recipient) {
       const id = match?.ID ?? match?.Id ?? match?.id
 
       if (id) {
-        const detail = await fetch(`${mailpitOrigin}/api/v1/message/${encodeURIComponent(id)}`)
+        const detail = await fetch(
+          `${mailpitOrigin}/api/v1/message/${encodeURIComponent(id)}`,
+        )
         if (detail.ok) return JSON.stringify(await detail.json())
       }
     }
@@ -270,17 +540,19 @@ async function waitForMessage(recipient) {
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
 
-  throw new Error(`Mailpit did not receive the expected message for ${recipient}`)
+  throw new Error(
+    `Mailpit did not receive the expected message for ${recipient}`,
+  )
 }
 
 async function requestJson(url, { body, headers = {}, jar, method }) {
   const requestHeaders = new Headers(headers)
-  requestHeaders.set("content-type", "application/json")
+  if (body !== undefined) requestHeaders.set("content-type", "application/json")
   requestHeaders.set("origin", serverOrigin)
   if (jar?.header()) requestHeaders.set("cookie", jar.header())
 
   const response = await fetch(url, {
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
     headers: requestHeaders,
     method,
   })
@@ -289,10 +561,115 @@ async function requestJson(url, { body, headers = {}, jar, method }) {
   const data = text ? JSON.parse(text) : null
 
   if (!response.ok) {
-    throw new Error(`${method} ${new URL(url).pathname} failed with ${response.status}: ${text}`)
+    throw new Error(
+      `${method} ${new URL(url).pathname} failed with ${response.status}: ${text}`,
+    )
   }
 
   return { data, response }
+}
+
+async function requestForm(url, body, { jar, redirect } = {}) {
+  const headers = new Headers({
+    "content-type": "application/x-www-form-urlencoded",
+    origin: serverOrigin,
+  })
+  if (jar?.header()) headers.set("cookie", jar.header())
+  const response = await fetch(url, {
+    body: body.toString(),
+    headers,
+    method: "POST",
+    redirect,
+  })
+  jar?.store(response.headers)
+  return response
+}
+
+async function verifyCollaborationWebSocket(ticket, sessionToken) {
+  assert.equal(typeof ticket.documentName, "string")
+  assert.equal(typeof ticket.token, "string")
+  assert.ok(new Date(ticket.expiresAt).getTime() > Date.now())
+  const encodedSession = Buffer.from(sessionToken, "utf8").toString("base64url")
+  const socket = new WebSocket(ticket.websocketUrl, [
+    "zilobase.collaboration.v1",
+    `zilobase.session.v1.${encodedSession}`,
+  ])
+  try {
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error("Collaboration WebSocket upgrade timed out")),
+        15_000,
+      )
+      socket.once("open", () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+      socket.once("error", (error) => {
+        clearTimeout(timeout)
+        reject(
+          new Error(`Collaboration WebSocket upgrade failed: ${error.message}`),
+        )
+      })
+    })
+  } finally {
+    socket.close()
+  }
+}
+
+async function mirrorObjectStorage(direction, localDirectory) {
+  const image = "minio/mc:RELEASE.2025-04-16T18-13-26Z"
+  const script =
+    direction === "backup"
+      ? 'mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite "local/$MINIO_BUCKET" /backup'
+      : 'mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite /backup "local/$MINIO_BUCKET"'
+  const result = await capture("docker", [
+    "run",
+    "--rm",
+    "--network",
+    `${projectName}_default`,
+    "--env-file",
+    envFile,
+    "--volume",
+    `${localDirectory}:/backup${direction === "restore" ? ":ro" : ""}`,
+    "--entrypoint",
+    "/bin/sh",
+    image,
+    "-c",
+    script,
+  ])
+  assert.equal(result.code, 0, result.stderr)
+}
+
+function captureComposeToFile(args, filename) {
+  return new Promise((resolve, reject) => {
+    const output = createWriteStream(filename, { mode: 0o600 })
+    const child = spawn("docker", composeArguments(args), {
+      cwd: repositoryRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+    let stderr = ""
+    let exitCode = null
+    let outputClosed = false
+    const finish = () => {
+      if (exitCode === null || !outputClosed) return
+      if (exitCode === 0) resolve()
+      else reject(new Error(`database backup failed: ${stderr}`))
+    }
+    child.stdout.pipe(output)
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk
+    })
+    child.once("error", reject)
+    child.once("exit", (code) => {
+      exitCode = code ?? -1
+      finish()
+    })
+    output.once("close", () => {
+      outputClosed = true
+      finish()
+    })
+    output.once("error", reject)
+  })
 }
 
 async function json(url) {
@@ -313,7 +690,9 @@ async function getFreePort() {
     server.listen(0, "127.0.0.1", () => {
       const address = server.address()
       const port = typeof address === "object" && address ? address.port : null
-      server.close((error) => (error || port === null ? reject(error) : resolve(port)))
+      server.close((error) =>
+        error || port === null ? reject(error) : resolve(port),
+      )
     })
   })
 }
@@ -342,8 +721,12 @@ function capture(executable, args, options = {}) {
     })
     let stdout = ""
     let stderr = ""
-    child.stdout.on("data", (chunk) => { stdout += chunk })
-    child.stderr.on("data", (chunk) => { stderr += chunk })
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk
+    })
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk
+    })
     child.once("error", reject)
     child.once("exit", (code) => resolve({ code, stderr, stdout }))
   })
@@ -370,7 +753,8 @@ function scrubSelfhostEnvironment(environment) {
     "ZILOBASE_IMAGE",
     "ZILOBASE_SITE_ADDRESS",
     "ZILOBASE_STORAGE_SITE_ADDRESS",
-  ]) delete next[key]
+  ])
+    delete next[key]
   return next
 }
 

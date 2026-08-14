@@ -1,0 +1,80 @@
+name: Nightly desktop matrix
+
+on:
+  schedule:
+    - cron: "47 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    name: Desktop package (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-24.04
+            bundles: deb,appimage
+          - name: macOS
+            os: macos-latest
+            bundles: app,dmg
+          - name: Windows
+            os: windows-latest
+            bundles: msi,nsis
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Build installable desktop package
+        shell: bash
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: >-
+          npm run build --workspace @zilobase/desktop --
+          --bundles ${{ matrix.bundles }}
+          --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: Upload unsigned nightly package
+        uses: actions/upload-artifact@v4
+        with:
+          name: zilobase-nightly-${{ runner.os }}
+          path: apps/desktop/src-tauri/target/release/bundle
+          if-no-files-found: error
+          retention-days: 7

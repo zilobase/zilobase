@@ -91,8 +91,52 @@ jobs:
             gh release create "$tag" --title "Zilobase $tag" --notes-file release-notes.md
           fi
 
-  desktop-macos:
+  desktop-platform-matrix:
     needs: release
+    name: Desktop validation (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-24.04
+          - name: macOS
+            os: macos-latest
+          - name: Windows
+            os: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate desktop web and native code
+        run: |
+          npm run build:web
+          cargo check --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+  desktop-macos:
+    needs: [release, desktop-platform-matrix]
     runs-on: macos-latest
     strategy:
       fail-fast: false
@@ -200,7 +244,7 @@ jobs:
           tagName: ${{ needs.release.outputs.tag }}
 
   desktop-linux:
-    needs: release
+    needs: [release, desktop-platform-matrix]
     strategy:
       fail-fast: false
       matrix:
@@ -302,6 +346,47 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
           args: --bundles deb,appimage
+          projectPath: apps/desktop
+          releaseDraft: false
+          tagName: ${{ needs.release.outputs.tag }}
+
+  desktop-windows:
+    needs: [release, desktop-platform-matrix]
+    name: Desktop (Windows x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Build and upload desktop app
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: --max-old-space-size=4096
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          args: --bundles msi,nsis
           projectPath: apps/desktop
           releaseDraft: false
           tagName: ${{ needs.release.outputs.tag }}

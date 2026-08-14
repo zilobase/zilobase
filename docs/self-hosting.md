@@ -4,6 +4,10 @@ Docker Compose is the supported self-hosted artifact. A separate virtual
 machine is unnecessary for local development; use a clean public Ubuntu host
 for release staging and production-like validation.
 
+Release candidates must complete the provider-neutral
+[self-hosted release gate](./selfhost-release-checklist.md) on a clean Ubuntu
+24.04 staging VM before promotion.
+
 ## Local developer stack
 
 From the repository root:

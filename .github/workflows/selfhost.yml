@@ -1,0 +1,271 @@
+name: Self-host and desktop gate
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: selfhost-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CURRENT_IMAGE: zilobase-selfhost-ci:${{ github.sha }}
+
+jobs:
+  deployment:
+    name: Compose deployment contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      ZILOBASE_SELFHOST_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/selfhost
+      ZILOBASE_SELFHOST_ENV_FILE: ${{ runner.temp }}/selfhost-api.env
+      ZILOBASE_SELFHOST_IMAGE: zilobase-selfhost-ci:${{ github.sha }}
+      ZILOBASE_SELFHOST_PROJECT_NAME: zilobase-api-${{ github.run_id }}-${{ github.run_attempt }}
+      ZILOBASE_SELFHOST_PULL_POLICY: never
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production image
+        run: docker build --tag "$CURRENT_IMAGE" .
+
+      - name: Validate production Compose
+        run: docker compose --env-file .env.selfhost.example -f docker-compose.yml config --quiet
+
+      - name: Test discovery, PKCE, CRUD, uploads, WebSockets, persistence, and restore
+        run: npm run test:selfhost -- --no-build
+
+      - name: Upload sanitized diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selfhost-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/selfhost
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Remove isolated infrastructure
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$ZILOBASE_SELFHOST_ENV_FILE" ]; then
+            docker compose \
+              --project-name "$ZILOBASE_SELFHOST_PROJECT_NAME" \
+              --env-file "$ZILOBASE_SELFHOST_ENV_FILE" \
+              -f docker-compose.yml \
+              -f docker-compose.dev.yml \
+              --profile dev \
+              down --volumes --remove-orphans || true
+          fi
+
+  packaged-desktop:
+    name: Packaged Linux desktop against Compose
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    needs: deployment
+    env:
+      ZILOBASE_DESKTOP_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop
+      ZILOBASE_SELFHOST_ENV_FILE: ${{ runner.temp }}/selfhost-desktop.env
+      ZILOBASE_SELFHOST_IMAGE: zilobase-desktop-ci:${{ github.sha }}
+      ZILOBASE_SELFHOST_PROJECT_NAME: zilobase-desktop-${{ github.run_id }}-${{ github.run_attempt }}
+      ZILOBASE_SELFHOST_PULL_POLICY: never
+      ZILOBASE_DEV_HTTP_PORT: 18787
+      MINIO_DEV_API_PORT: 19000
+      MAILPIT_DEV_UI_PORT: 18025
+      XDG_CONFIG_HOME: ${{ runner.temp }}/desktop-config
+      XDG_DATA_HOME: ${{ runner.temp }}/desktop-data
+      XDG_CACHE_HOME: ${{ runner.temp }}/desktop-cache
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            dbus-x11 \
+            gnome-keyring \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            webkit2gtk-driver \
+            xvfb
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      - name: Install dependencies and Tauri WebDriver bridge
+        run: |
+          npm ci
+          cargo install tauri-driver --locked
+
+      - name: Build production image and start Compose
+        run: |
+          docker build --tag "$ZILOBASE_SELFHOST_IMAGE" .
+          node scripts/selfhost.mjs up --no-build
+
+      - name: Build packaged Debian desktop
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: >-
+          npm run build --workspace @zilobase/desktop --
+          --bundles deb
+          --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+      - name: Extract packaged executable
+        id: package
+        shell: bash
+        run: |
+          package_path=$(find apps/desktop/src-tauri/target/release/bundle/deb -name '*.deb' -print -quit)
+          if [ -z "$package_path" ]; then
+            echo "The Tauri Debian package was not created." >&2
+            exit 1
+          fi
+          package_root="$RUNNER_TEMP/zilobase-package"
+          mkdir -p "$package_root"
+          dpkg-deb --extract "$package_path" "$package_root"
+          application=$(find "$package_root" -path '*/usr/bin/zilobase-client' -type f -print -quit)
+          if [ -z "$application" ]; then
+            echo "The packaged desktop executable was not found." >&2
+            exit 1
+          fi
+          echo "application=$application" >> "$GITHUB_OUTPUT"
+          echo "package=$package_path" >> "$GITHUB_OUTPUT"
+
+      - name: Drive packaged desktop through server selection
+        env:
+          ZILOBASE_DESKTOP_BINARY: ${{ steps.package.outputs.application }}
+          ZILOBASE_DESKTOP_PACKAGE: ${{ steps.package.outputs.package }}
+          ZILOBASE_E2E_SERVER: http://127.0.0.1:18787
+          ZILOBASE_E2E_ADDITIONAL_SERVER: ${{ github.event_name == 'schedule' && vars.ZILOBASE_STAGING_SERVER || '' }}
+        shell: bash
+        run: |
+          dbus-run-session -- bash -c '
+            eval "$(gnome-keyring-daemon --start --components=secrets)"
+            xvfb-run --auto-servernum npm run test:desktop:selfhost
+          '
+
+      - name: Upload packaged desktop diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-selfhost-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/desktop
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Remove isolated infrastructure
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$ZILOBASE_SELFHOST_ENV_FILE" ]; then
+            docker compose \
+              --project-name "$ZILOBASE_SELFHOST_PROJECT_NAME" \
+              --env-file "$ZILOBASE_SELFHOST_ENV_FILE" \
+              -f docker-compose.yml \
+              -f docker-compose.dev.yml \
+              --profile dev \
+              down --volumes --remove-orphans || true
+          fi
+
+  previous-release-migration:
+    name: Previous release migration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      ZILOBASE_SELFHOST_ENV_FILE: ${{ runner.temp }}/selfhost-upgrade.env
+      ZILOBASE_SELFHOST_PROJECT_NAME: zilobase-upgrade-${{ github.run_id }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Check out repository and release tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Select previous release
+        id: previous
+        shell: bash
+        run: |
+          exact_tag=$(git describe --tags --exact-match 2>/dev/null || true)
+          previous_tag=$(git tag --list 'v[0-9]*' --sort=-v:refname | while read -r tag; do
+            if [ "$tag" != "$exact_tag" ]; then
+              echo "$tag"
+              break
+            fi
+          done)
+          if [ -z "$previous_tag" ]; then
+            echo "No previous release tag is available." >&2
+            exit 1
+          fi
+          echo "tag=$previous_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Build previous and current production images
+        shell: bash
+        run: |
+          previous_source="$RUNNER_TEMP/previous-release"
+          mkdir -p "$previous_source"
+          git archive "${{ steps.previous.outputs.tag }}" | tar -x -C "$previous_source"
+          docker build --tag zilobase-previous-ci:local "$previous_source"
+          docker build --tag "$CURRENT_IMAGE" .
+
+      - name: Verify data and session migration
+        env:
+          ZILOBASE_CURRENT_IMAGE: zilobase-selfhost-ci:${{ github.sha }}
+          ZILOBASE_PREVIOUS_IMAGE: zilobase-previous-ci:local
+        run: npm run test:selfhost:upgrade
+
+      - name: Remove migration infrastructure
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$ZILOBASE_SELFHOST_ENV_FILE" ]; then
+            docker compose \
+              --project-name "$ZILOBASE_SELFHOST_PROJECT_NAME" \
+              --env-file "$ZILOBASE_SELFHOST_ENV_FILE" \
+              -f docker-compose.yml \
+              -f docker-compose.dev.yml \
+              -f docker-compose.upgrade.yml \
+              --profile dev \
+              down --volumes --remove-orphans || true
+          fi

@@ -6,6 +6,7 @@ import {
   attachNodeCollaborationRuntime,
   NODE_COLLABORATION_MAX_PAYLOAD_BYTES,
 } from "./node-runtime";
+import { COLLABORATION_WEBSOCKET_PROTOCOL } from "../auth-headers";
 
 test("serverful collaboration rejects unauthenticated upgrades", async () => {
   const fixture = await startFixture(async () => null);
@@ -25,6 +26,21 @@ test("serverful collaboration rate limits before accepting another socket", asyn
     assert.equal(await requestUpgradeStatus(fixture.url), 429);
   } finally {
     first.close();
+    await fixture.close();
+  }
+});
+
+test("serverful collaboration negotiates the desktop subprotocol", async () => {
+  const fixture = await startFixture(async () => "user-1");
+  const websocket = await openWebSocket(fixture.url, [
+    COLLABORATION_WEBSOCKET_PROTOCOL,
+    "zilobase.session.v1.dGVzdA",
+  ]);
+
+  try {
+    assert.equal(websocket.protocol, COLLABORATION_WEBSOCKET_PROTOCOL);
+  } finally {
+    websocket.close();
     await fixture.close();
   }
 });
@@ -84,9 +100,9 @@ function closeServer(server: Server) {
   });
 }
 
-function openWebSocket(url: string) {
+function openWebSocket(url: string, protocols?: string[]) {
   return new Promise<WebSocket>((resolve, reject) => {
-    const websocket = new WebSocket(url);
+    const websocket = new WebSocket(url, protocols);
     websocket.binaryType = "arraybuffer";
     websocket.addEventListener("open", () => resolve(websocket), { once: true });
     websocket.addEventListener("error", () => {
