@@ -2,7 +2,11 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 
 import { createAuth } from "../../auth";
-import { getCanonicalApiOrigin, getCanonicalWebOrigin } from "../../config";
+import {
+  getCanonicalApiOrigin,
+  getCanonicalWebOrigin,
+  getRequiredStringEnv,
+} from "../../config";
 import { db, runWithDb, runWithDbEnv, type Database } from "../../db";
 import { desktopAuthorizationCode } from "../../db/schema";
 import { getZilobaseDiscoveryDocument } from "../instance/service";
@@ -11,12 +15,14 @@ import {
   buildDesktopCallbackUrl,
   consumeDesktopAuthorizationCode,
   createDesktopAuthorizationCode,
+  createDesktopConsentToken,
   DESKTOP_AUTH_CODE_TTL_MS,
   DESKTOP_AUTH_REQUEST_MAX_BYTES,
   DesktopAuthorizationError,
   hashDesktopAuthorizationCode,
   parseDesktopAuthorizationRequest,
   parseDesktopTokenRequest,
+  verifyDesktopConsentToken,
   type DesktopAuthorizationRequest,
 } from "./service";
 
@@ -66,17 +72,25 @@ desktopAuthRoutes.get("/desktop/authorize", async (c) => {
   }
 
   return c.html(
-    renderConsentPage(authorizationRequest, {
-      email: user.email,
-      name: user.name,
-    }),
+    renderConsentPage(
+      authorizationRequest,
+      {
+        email: user.email,
+        name: user.name,
+      },
+      createDesktopConsentToken(
+        authorizationRequest,
+        user.id,
+        getRequiredStringEnv(c.env, "BETTER_AUTH_SECRET"),
+      ),
+    ),
   );
 });
 
 desktopAuthRoutes.post("/desktop/authorize/consent", async (c) => {
   c.header("Cache-Control", "no-store");
 
-  if (!isTrustedConsentOrigin(c.req.raw, c.env)) {
+  if (!isAllowedConsentOrigin(c.req.raw, c.env)) {
     return c.json({ error: "invalid_request" }, 403);
   }
 
@@ -100,6 +114,17 @@ desktopAuthRoutes.post("/desktop/authorize/consent", async (c) => {
     );
   } catch (error) {
     return renderAuthorizationError(c, error);
+  }
+
+  if (
+    !verifyDesktopConsentToken(
+      body.get("consent_token") ?? undefined,
+      authorizationRequest,
+      user.id,
+      getRequiredStringEnv(c.env, "BETTER_AUTH_SECRET"),
+    )
+  ) {
+    return c.json({ error: "invalid_request" }, 400);
   }
 
   const issuer = getCanonicalApiOrigin(c.env);
@@ -286,13 +311,17 @@ async function readBoundedBody(request: Request) {
   }
 }
 
-function isTrustedConsentOrigin(
+function isAllowedConsentOrigin(
   request: Request,
   env: Record<string, unknown>,
 ) {
   const origin = request.headers.get("origin");
 
-  return origin === getCanonicalApiOrigin(env);
+  return (
+    origin === null ||
+    origin === "null" ||
+    origin === getCanonicalApiOrigin(env)
+  );
 }
 
 function tokenError(c: Context<AppBindings>, error: string, status: 400) {
@@ -309,11 +338,13 @@ function renderSignInPage(loginUrl: string) {
 function renderConsentPage(
   request: DesktopAuthorizationRequest,
   user: { email: string; name: string },
+  consentToken: string,
 ) {
   const fields = new URLSearchParams({
     client_id: request.clientId,
     code_challenge: request.codeChallenge,
     code_challenge_method: "S256",
+    consent_token: consentToken,
     redirect_uri: request.redirectUri,
     response_type: "code",
     state: request.state,

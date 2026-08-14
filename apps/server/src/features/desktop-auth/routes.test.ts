@@ -68,12 +68,15 @@ vi.mock("../instance/service", () => ({
 
 import { desktopAuthRoutes } from "./routes";
 import {
+  createDesktopConsentToken,
   derivePkceChallenge,
   DESKTOP_AUTH_CLIENT_ID,
   hashDesktopAuthorizationCode,
+  parseDesktopAuthorizationRequest,
 } from "./service";
 
 const env = {
+  BETTER_AUTH_SECRET: "desktop-consent-test-secret-with-at-least-32-characters",
   BETTER_AUTH_URL: "https://api.example.com",
   CLIENT_URL: "https://app.example.com",
 };
@@ -119,15 +122,14 @@ test("authorization page sends anonymous users through the selected server login
 });
 
 test("authenticated consent stores only a hashed short-lived code", async () => {
-  const parameters = authorizationParameters();
-  parameters.set("decision", "allow");
+  const parameters = consentParameters();
   const response = await appFor(true).request(
     "https://api.example.com/desktop/authorize/consent",
     {
       body: parameters.toString(),
       headers: {
         "content-type": "application/x-www-form-urlencoded",
-        origin: "https://api.example.com",
+        origin: "null",
       },
       method: "POST",
     },
@@ -151,7 +153,7 @@ test("consent rejects cross-origin form submissions", async () => {
   const response = await appFor(true).request(
     "https://api.example.com/desktop/authorize/consent",
     {
-      body: authorizationParameters().toString(),
+      body: consentParameters().toString(),
       headers: {
         "content-type": "application/x-www-form-urlencoded",
         origin: "https://attacker.example.com",
@@ -162,6 +164,30 @@ test("consent rejects cross-origin form submissions", async () => {
   );
 
   assert.equal(response.status, 403);
+  assert.equal(mocks.insertedCodes.length, 0);
+});
+
+test("consent rejects a missing or tampered signed consent token", async () => {
+  for (const parameters of [
+    authorizationParameters(),
+    consentParameters({ consent_token: "tampered" }),
+  ]) {
+    parameters.set("decision", "allow");
+    const response = await appFor(true).request(
+      "https://api.example.com/desktop/authorize/consent",
+      {
+        body: parameters.toString(),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          origin: "https://api.example.com",
+        },
+        method: "POST",
+      },
+      env,
+    );
+
+    assert.equal(response.status, 400);
+  }
   assert.equal(mocks.insertedCodes.length, 0);
 });
 
@@ -275,4 +301,20 @@ function authorizationParameters() {
     response_type: "code",
     state: "s".repeat(43),
   });
+}
+
+function consentParameters(overrides: Record<string, string> = {}) {
+  const parameters = authorizationParameters();
+  const request = parseDesktopAuthorizationRequest(parameters);
+  parameters.set(
+    "consent_token",
+    createDesktopConsentToken(request, "user-1", env.BETTER_AUTH_SECRET),
+  );
+  parameters.set("decision", "allow");
+
+  for (const [name, value] of Object.entries(overrides)) {
+    parameters.set(name, value);
+  }
+
+  return parameters;
 }

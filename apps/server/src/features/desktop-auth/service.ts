@@ -1,9 +1,15 @@
-import { createHash, randomBytes } from "node:crypto";
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from "node:crypto";
 
 import { isLoopbackHost } from "../../config";
 
 export const DESKTOP_AUTH_CLIENT_ID = "zilobase-desktop";
 export const DESKTOP_AUTH_CODE_TTL_MS = 5 * 60 * 1000;
+export const DESKTOP_CONSENT_TOKEN_TTL_MS = 10 * 60 * 1000;
 export const DESKTOP_AUTH_REQUEST_MAX_BYTES = 16 * 1024;
 
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -149,6 +155,47 @@ export function createDesktopAuthorizationCode() {
   return randomBytes(32).toString("base64url");
 }
 
+export function createDesktopConsentToken(
+  request: DesktopAuthorizationRequest,
+  userId: string,
+  secret: string,
+  now = new Date(),
+) {
+  const expiresAt = now.getTime() + DESKTOP_CONSENT_TOKEN_TTL_MS;
+  const encodedExpiry = expiresAt.toString(36);
+  const signature = signDesktopConsent(request, userId, secret, encodedExpiry);
+
+  return `${encodedExpiry}.${signature}`;
+}
+
+export function verifyDesktopConsentToken(
+  token: string | undefined,
+  request: DesktopAuthorizationRequest,
+  userId: string,
+  secret: string,
+  now = new Date(),
+) {
+  const match = token?.match(/^([0-9a-z]+)\.([A-Za-z0-9_-]{43})$/);
+  if (!match || !secret) return false;
+
+  const [, encodedExpiry, signature] = match;
+  const expiresAt = Number.parseInt(encodedExpiry, 36);
+
+  if (!Number.isSafeInteger(expiresAt) || expiresAt <= now.getTime()) {
+    return false;
+  }
+
+  const expected = Buffer.from(
+    signDesktopConsent(request, userId, secret, encodedExpiry),
+    "ascii",
+  );
+  const received = Buffer.from(signature, "ascii");
+
+  return (
+    expected.length === received.length && timingSafeEqual(expected, received)
+  );
+}
+
 export function hashDesktopAuthorizationCode(code: string) {
   return createHash("sha256").update(code, "utf8").digest("base64url");
 }
@@ -209,4 +256,25 @@ function isBoundedBase64Url(
 
 function invalidRequest(message: string) {
   return new DesktopAuthorizationError("invalid_request", message);
+}
+
+function signDesktopConsent(
+  request: DesktopAuthorizationRequest,
+  userId: string,
+  secret: string,
+  encodedExpiry: string,
+) {
+  return createHmac("sha256", secret)
+    .update(
+      JSON.stringify([
+        encodedExpiry,
+        request.clientId,
+        request.codeChallenge,
+        request.redirectUri,
+        request.state,
+        userId,
+      ]),
+      "utf8",
+    )
+    .digest("base64url");
 }

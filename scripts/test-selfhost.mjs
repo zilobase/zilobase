@@ -139,15 +139,26 @@ try {
       .update(verifier, "ascii")
       .digest("base64url"),
     code_challenge_method: "S256",
-    decision: "allow",
     redirect_uri: redirectUri,
     response_type: "code",
     state,
   })
+  const consentPage = await fetch(
+    `${serverOrigin}/desktop/authorize?${authorization}`,
+    { headers: { cookie: jar.header() } },
+  )
+  assert.equal(consentPage.status, 200)
+  const consentHtml = await consentPage.text()
+  const consentToken = consentHtml.match(
+    /name="consent_token" value="([A-Za-z0-9._-]+)"/,
+  )?.[1]
+  assert.ok(consentToken)
+  authorization.set("consent_token", consentToken)
+  authorization.set("decision", "allow")
   const consent = await requestForm(
     `${serverOrigin}/desktop/authorize/consent`,
     authorization,
-    { jar, redirect: "manual" },
+    { jar, origin: "null", redirect: "manual" },
   )
   assert.equal(consent.status, 303)
   const callback = new URL(consent.headers.get("location"))
@@ -569,11 +580,15 @@ async function requestJson(url, { body, headers = {}, jar, method }) {
   return { data, response }
 }
 
-async function requestForm(url, body, { jar, redirect } = {}) {
+async function requestForm(
+  url,
+  body,
+  { jar, origin = serverOrigin, redirect } = {},
+) {
   const headers = new Headers({
     "content-type": "application/x-www-form-urlencoded",
-    origin: serverOrigin,
   })
+  if (origin !== undefined) headers.set("origin", origin)
   if (jar?.header()) headers.set("cookie", jar.header())
   const response = await fetch(url, {
     body: body.toString(),

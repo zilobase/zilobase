@@ -4,6 +4,7 @@ import { test } from "vitest";
 import {
   buildDesktopCallbackUrl,
   consumeDesktopAuthorizationCode,
+  createDesktopConsentToken,
   derivePkceChallenge,
   DESKTOP_AUTH_CLIENT_ID,
   DesktopAuthorizationError,
@@ -11,6 +12,7 @@ import {
   isValidDesktopRedirectUri,
   parseDesktopAuthorizationRequest,
   parseDesktopTokenRequest,
+  verifyDesktopConsentToken,
   type DesktopAuthorizationCodeRepository,
 } from "./service";
 
@@ -124,6 +126,52 @@ test("authorization callbacks preserve state and identify the exact issuer", () 
   assert.equal(callback.searchParams.get("code"), code);
   assert.equal(callback.searchParams.get("state"), "s".repeat(43));
   assert.equal(callback.searchParams.get("iss"), "https://api.example.com");
+});
+
+test("desktop consent tokens are short-lived and bound to the user and request", () => {
+  const request = parseDesktopAuthorizationRequest(authorizationParameters());
+  const secret = "desktop-consent-test-secret-with-at-least-32-characters";
+  const issuedAt = new Date("2026-08-14T12:00:00.000Z");
+  const token = createDesktopConsentToken(request, "user-1", secret, issuedAt);
+
+  assert.equal(
+    verifyDesktopConsentToken(
+      token,
+      request,
+      "user-1",
+      secret,
+      new Date("2026-08-14T12:09:59.999Z"),
+    ),
+    true,
+  );
+  assert.equal(
+    verifyDesktopConsentToken(token, request, "user-2", secret, issuedAt),
+    false,
+  );
+  assert.equal(
+    verifyDesktopConsentToken(
+      token,
+      { ...request, state: "x".repeat(43) },
+      "user-1",
+      secret,
+      issuedAt,
+    ),
+    false,
+  );
+  assert.equal(
+    verifyDesktopConsentToken(
+      token,
+      request,
+      "user-1",
+      secret,
+      new Date("2026-08-14T12:10:00.000Z"),
+    ),
+    false,
+  );
+  assert.equal(
+    verifyDesktopConsentToken("malformed", request, "user-1", secret),
+    false,
+  );
 });
 
 test("authorization codes are hashed and consumed atomically once", async () => {
