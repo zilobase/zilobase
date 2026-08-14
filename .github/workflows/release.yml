@@ -131,6 +131,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Validate desktop web and native code
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: |
           npm run build:web
           cargo check --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
