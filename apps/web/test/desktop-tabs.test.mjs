@@ -30,7 +30,7 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(lastClosed, {
       activeDesktopTabId: "one",
       desktopTabs: [
-        { href: "/dashboard", icon: null, id: "one", title: "Home" },
+        { href: "/recents", icon: null, id: "one", title: "Recents" },
       ],
     })
 

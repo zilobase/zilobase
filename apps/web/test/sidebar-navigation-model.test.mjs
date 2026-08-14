@@ -1,4 +1,41 @@
 export function register({ assert, loadModule, test }) {
+  test("sidebar recents combine pages and databases by last visit", async () => {
+    const { buildSidebarNavigation } = await loadModule(
+      "/src/components/sidebar-navigation-model.tsx"
+    )
+    const page = {
+      ...createPage("page", "Page", "2026-08-01T00:00:00.000Z"),
+      lastVisitedAt: "2026-08-13T00:00:00.000Z",
+    }
+    const database = {
+      createdAt: "2026-08-01T00:00:00.000Z",
+      id: "database",
+      lastVisitedAt: "2026-08-14T00:00:00.000Z",
+      name: "Database",
+      pageId: null,
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      views: [],
+      workspaceId: "workspace",
+    }
+    const neverVisited = createPage(
+      "never-visited",
+      "Never visited",
+      "2026-08-02T00:00:00.000Z"
+    )
+
+    const result = buildSidebarNavigation(
+      [page, neverVisited],
+      [database],
+      [],
+      icons
+    )
+
+    assert.deepEqual(
+      result.recents.map((item) => item.id),
+      ["database:database", "page"]
+    )
+  })
+
   test("sidebar navigation orders placements and stops page cycles", async () => {
     const { buildSidebarNavigation } = await loadModule(
       "/src/components/sidebar-navigation-model.tsx"

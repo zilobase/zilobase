@@ -212,9 +212,10 @@ test("user settings route returns existing normalized preferences", async () => 
       sidebarConfig: {
         hiddenItems: ["calendar"],
         libraryView: "shared",
-        sectionLimits: { favorites: 10, private: 10, shared: 10 },
-        sectionOrder: ["shared", "private", "favorites"],
+        sectionLimits: { recents: 10, favorites: 10, private: 10, shared: 10 },
+        sectionOrder: ["recents", "shared", "private", "favorites"],
         sectionSorts: {
+          recents: "lastEdited",
           favorites: "lastEdited",
           private: "lastEdited",
           shared: "lastEdited",

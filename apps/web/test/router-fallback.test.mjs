@@ -12,5 +12,7 @@ export function register({ assert, test }) {
     assert.match(source, /Connecting to Zilobase\.\.\./)
     assert.match(source, /Your desktop session is still saved/)
     assert.match(source, /window\.location\.reload\(\)/)
+    assert.match(source, /path: "\/recents"/)
+    assert.doesNotMatch(source, /\/dashboard/)
   })
 }

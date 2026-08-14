@@ -3,16 +3,16 @@ export function register({ assert, loadModule, test }) {
     const { getAuthReturnPath } = await loadModule("/src/lib/google-auth.ts")
 
     assert.equal(
-      getAuthReturnPath("/dashboard", "?returnTo=%2Fdesktop-auth%3Fpath%3D%252Fonboarding"),
-      "/dashboard",
+      getAuthReturnPath("/recents", "?returnTo=%2Fdesktop-auth%3Fpath%3D%252Fonboarding"),
+      "/recents",
     )
     assert.equal(
-      getAuthReturnPath("/dashboard", "?returnTo=https%3A%2F%2Fevil.test"),
-      "/dashboard",
+      getAuthReturnPath("/recents", "?returnTo=https%3A%2F%2Fevil.test"),
+      "/recents",
     )
     assert.equal(
-      getAuthReturnPath("/dashboard", "?returnTo=%2F%2Fevil.test"),
-      "/dashboard",
+      getAuthReturnPath("/recents", "?returnTo=%2F%2Fevil.test"),
+      "/recents",
     )
   })
 }
