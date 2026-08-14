@@ -36,6 +36,7 @@ export type AppBindings = {
     IMAGE_UPLOAD_MAX_BYTES?: string;
     IMAGE_UPLOAD_URL_TTL_SECONDS?: string;
     ZILOBASE_INSTANCE_NAME?: string;
+    ZILOBASE_BOOTSTRAP_TOKEN?: string;
     ZILOBASE_MINIMUM_DESKTOP_VERSION?: string;
     S3_ACCESS_KEY_ID?: string;
     S3_BUCKET_NAME?: string;

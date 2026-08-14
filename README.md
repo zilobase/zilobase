@@ -71,6 +71,24 @@ desktop compatibility and authorization metadata is available at
 Open `http://localhost/desktop` for a copyable server URL and a secret-free
 **Open in Zilobase Desktop** connection link.
 
+Before anyone can sign in, bootstrap the installation once with the token from
+`ZILOBASE_BOOTSTRAP_TOKEN`. The endpoint creates the initial verified owner and
+the single pinned workspace atomically. A repeated or concurrent request is
+rejected and the token is never returned by discovery.
+
+```sh
+curl --fail-with-body http://localhost/api/instance/bootstrap \
+  -H "Authorization: Bearer ${ZILOBASE_BOOTSTRAP_TOKEN:-local-only-change-me-bootstrap-token}" \
+  -H 'Content-Type: application/json' \
+  --data '{"name":"Owner","email":"owner@example.com","password":"replace-this-password","workspaceName":"My Workspace"}'
+```
+
+Registration defaults to **Invite only** after bootstrap. The instance owner
+can switch between **Invite only** and **Open registration** under **Settings →
+Team → Server registration**. Open registration adds a user to the pinned
+workspace only after email verification. Invite-only registration accepts only
+a pending, unexpired invitation for that workspace and email address.
+
 For production self-hosting, copy the example env file and replace every secret:
 
 ```sh

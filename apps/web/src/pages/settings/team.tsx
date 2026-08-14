@@ -1,5 +1,6 @@
 import * as React from "react"
 import { MailPlusIcon, SendIcon, UsersIcon } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
@@ -50,14 +51,35 @@ import type {
   WorkspaceMember,
   WorkspaceRole,
 } from "@zilobase/features/workspaces"
+import { apiFetch } from "@/lib/api"
 import { useAppStore } from "@/stores/app-store"
+
+type RegistrationMode = "invite-only" | "open"
+
+type InstanceSettingsResponse = {
+  settings: {
+    bootstrapCompleted: boolean
+    displayName: string
+    instanceId: string
+    pinnedWorkspaceId: string | null
+    registrationMode: RegistrationMode
+  }
+}
 
 export default function TeamSettingsPage() {
   const activeWorkspaceId = useActiveWorkspaceId()
+  const { data: sessionData } = useSession()
   const { data: accessTargets, isLoading: isLoadingAccessTargets } =
     useWorkspaceAccessTargets(activeWorkspaceId)
   const { data: invitations, isLoading: isLoadingInvitations } =
     useWorkspaceInvitations(activeWorkspaceId)
+  const isInstanceOwner = Boolean(
+    sessionData?.workspacePinned &&
+      accessTargets?.members.some(
+        (member) =>
+          member.id === sessionData.user?.id && member.role === "owner",
+      ),
+  )
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">
@@ -67,6 +89,13 @@ export default function TeamSettingsPage() {
       />
 
       <div className="mx-auto grid w-full max-w-3xl gap-6">
+        {isInstanceOwner ? (
+          <>
+            <RegistrationSettingsSection />
+            <Separator />
+          </>
+        ) : null}
+
         <InviteMemberSection workspaceId={activeWorkspaceId} />
 
         <Separator />
@@ -106,6 +135,75 @@ export default function TeamSettingsPage() {
         </section>
       </div>
     </main>
+  )
+}
+
+function RegistrationSettingsSection() {
+  const queryClient = useQueryClient()
+  const settingsQuery = useQuery({
+    queryKey: ["instance", "settings"],
+    queryFn: () => apiFetch<InstanceSettingsResponse>("/api/instance/settings"),
+  })
+  const updateSettings = useMutation({
+    mutationFn: (registrationMode: RegistrationMode) =>
+      apiFetch<InstanceSettingsResponse>("/api/instance/settings", {
+        body: JSON.stringify({ registrationMode }),
+        headers: { "content-type": "application/json" },
+        method: "PATCH",
+      }),
+    onSuccess: (response) => {
+      queryClient.setQueryData(["instance", "settings"], response)
+      toast.success("Registration settings updated.")
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not update registration settings.",
+      )
+    },
+  })
+
+  return (
+    <section className="grid gap-3">
+      <div className="space-y-1">
+        <h3 className="font-heading text-base leading-snug font-medium">
+          Server registration
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Choose who can create an account on this self-hosted server.
+        </p>
+      </div>
+      <Field>
+        <FieldLabel>Registration mode</FieldLabel>
+        <Select
+          disabled={settingsQuery.isLoading || updateSettings.isPending}
+          onValueChange={(value) =>
+            updateSettings.mutate(value as RegistrationMode)
+          }
+          value={settingsQuery.data?.settings.registrationMode ?? ""}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Loading registration mode..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="invite-only">Invite only</SelectItem>
+            <SelectItem value="open">Open registration</SelectItem>
+          </SelectContent>
+        </Select>
+        <FieldDescription>
+          Invite only requires a pending invitation. Open registration adds
+          every verified account to this workspace as a member.
+        </FieldDescription>
+        {settingsQuery.isError ? (
+          <FieldError>
+            {settingsQuery.error instanceof Error
+              ? settingsQuery.error.message
+              : "Could not load registration settings."}
+          </FieldError>
+        ) : null}
+      </Field>
+    </section>
   )
 }
 

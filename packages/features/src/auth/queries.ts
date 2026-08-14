@@ -39,6 +39,7 @@ export type SignUpInput = {
   name: string
   email: string
   password: string
+  invitationId?: string
 }
 
 export type VerifyEmailOtpInput = {

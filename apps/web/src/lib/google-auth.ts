@@ -24,7 +24,10 @@ export class DesktopOAuthError extends Error {
   }
 }
 
-export async function signInWithGoogle(callbackURL: string) {
+export async function signInWithGoogle(
+  callbackURL: string,
+  invitationId?: string | null,
+) {
   const response = await authFetch<SocialSignInResponse>("/sign-in/social", {
     provider: "google",
     callbackURL: new URL(callbackURL, window.location.origin).toString(),
@@ -33,6 +36,7 @@ export async function signInWithGoogle(callbackURL: string) {
       window.location.origin,
     ).toString(),
     disableRedirect: true,
+    ...(invitationId ? { invitationId } : {}),
   })
 
   if (!response.url) {
@@ -106,6 +110,44 @@ export function getAuthReturnPath(
   }
 
   return fallback
+}
+
+export function getInvitationAuthSearch(search = window.location.search) {
+  const parameters = new URLSearchParams(search)
+  const directInvitation = readSingleNonEmpty(parameters, "invitation")
+
+  if (directInvitation) {
+    const returnTo = `/accept-invitation?id=${encodeURIComponent(directInvitation)}`
+    return {
+      invitation: directInvitation,
+      returnTo,
+    }
+  }
+
+  const safeReturnTo = getAuthReturnPath("/recents", search)
+
+  try {
+    const url = new URL(safeReturnTo, window.location.origin)
+    const invitation = readSingleNonEmpty(url.searchParams, "id")
+
+    if (
+      url.origin === window.location.origin &&
+      url.pathname === "/accept-invitation" &&
+      invitation
+    ) {
+      return { invitation, returnTo: `${url.pathname}${url.search}` }
+    }
+  } catch {
+    // Fall through to a normal signup link.
+  }
+
+  return {}
+}
+
+function readSingleNonEmpty(parameters: URLSearchParams, key: string) {
+  const values = parameters.getAll(key)
+  const value = values[0]?.trim()
+  return values.length === 1 && value ? value : null
 }
 
 function allowedBrowserAuthorizationOrigins() {

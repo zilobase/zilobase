@@ -1,9 +1,12 @@
-import { asc } from "drizzle-orm";
 import { Hono } from "hono";
 import { getAuthHeaders } from "../auth-headers";
 import { createAuth } from "../auth";
-import { db, runWithDbEnv } from "../db";
-import { workspace } from "../db/schema";
+import { runWithDbEnv } from "../db";
+import {
+  getInstanceAdministrationSettings,
+  SELF_HOSTED_INVITATION_COOKIE,
+  validateSelfHostedInvitationCandidate,
+} from "../features/instance/registration";
 import { isSelfHostedRuntime } from "../runtime-adapter";
 import type { AppBindings } from "../types";
 
@@ -147,7 +150,7 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
   const { request, rewritten } = await getWorkspaceAuthRequest(c.req.raw);
 
   return runWithDbEnv(c.env, async () => {
-    if (await isBlockedSelfHostedWorkspaceCreate(request)) {
+    if (await isBlockedSelfHostedWorkspaceCreate(c.env, request)) {
       return c.json(
         {
           error: "Self-hosted deployments can only have one workspace.",
@@ -156,31 +159,105 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
       );
     }
 
-    const auth = createAuth(c.env, request);
+    const invitation = await prepareSocialRegistration(c.env, request);
 
-    return auth
+    if (!invitation.allowed) {
+      return c.json(
+        { code: invitation.code, error: invitation.message },
+        invitation.code === "bootstrap_required" ? 503 : 403,
+      );
+    }
+
+    const auth = createAuth(c.env, request);
+    const response = await auth
       .handler(request)
       .then((response) => toWorkspaceAuthResponse(response, rewritten));
+
+    return applySocialInvitationCookie(
+      response,
+      request,
+      invitation.invitationId,
+    );
   });
 });
 
-async function isBlockedSelfHostedWorkspaceCreate(request: Request) {
+async function prepareSocialRegistration(
+  env: Record<string, unknown>,
+  request: Request,
+) {
+  const url = new URL(request.url);
+
+  if (
+    !isSelfHostedRuntime() ||
+    request.method !== "POST" ||
+    url.pathname !== "/api/auth/sign-in/social"
+  ) {
+    return { allowed: true as const, invitationId: null };
+  }
+
+  const body = await request.clone().json().catch(() => null);
+  const invitationId =
+    body &&
+    typeof body === "object" &&
+    !Array.isArray(body) &&
+    typeof (body as Record<string, unknown>).invitationId === "string"
+      ? (body as Record<string, string>).invitationId
+      : null;
+
+  if (!invitationId) {
+    return { allowed: true as const, invitationId: null };
+  }
+
+  return validateSelfHostedInvitationCandidate(env, invitationId);
+}
+
+function applySocialInvitationCookie(
+  response: Response,
+  request: Request,
+  invitationId: string | null,
+) {
+  const pathname = new URL(request.url).pathname;
+  const isSocialStart = pathname === "/api/auth/sign-in/social";
+  const isSocialCallback = pathname.startsWith("/api/auth/callback/");
+
+  if ((!isSocialStart || !invitationId) && !isSocialCallback) {
+    return response;
+  }
+
+  const attributes = [
+    `${SELF_HOSTED_INVITATION_COOKIE}=${
+      isSocialCallback ? "" : encodeURIComponent(invitationId ?? "")
+    }`,
+    "Path=/api/auth",
+    "HttpOnly",
+    "SameSite=Lax",
+    isSocialCallback ? "Max-Age=0" : "Max-Age=1800",
+  ];
+
+  if (new URL(request.url).protocol === "https:") {
+    attributes.push("Secure");
+  }
+
+  const headers = new Headers(response.headers);
+  headers.append("set-cookie", attributes.join("; "));
+
+  return new Response(response.body, {
+    headers,
+    status: response.status,
+    statusText: response.statusText,
+  });
+}
+
+async function isBlockedSelfHostedWorkspaceCreate(
+  env: Record<string, unknown>,
+  request: Request,
+) {
   const url = new URL(request.url);
 
   return (
     isSelfHostedRuntime() &&
     request.method === "POST" &&
     url.pathname === "/api/auth/organization/create" &&
-    Boolean(await getPinnedWorkspaceId())
+    Boolean((await getInstanceAdministrationSettings(env)).pinnedWorkspaceId)
   );
-}
-
-async function getPinnedWorkspaceId() {
-  const [pinnedWorkspace] = await db
-    .select({ id: workspace.id })
-    .from(workspace)
-    .orderBy(asc(workspace.createdAt))
-    .limit(1);
-
-  return pinnedWorkspace?.id ?? null;
 }

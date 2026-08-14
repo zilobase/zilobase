@@ -34,6 +34,7 @@ import {
   cancelDesktopBrowserSignIn,
   DesktopOAuthError,
   getAuthReturnPath,
+  getInvitationAuthSearch,
   signInWithDesktopBrowser,
   signInWithGoogle,
 } from "@/lib/google-auth"
@@ -77,6 +78,7 @@ export function LoginForm({
     requestSignInOtp.isPending ||
     isBrowserPending
   const desktop = isTauri()
+  const signupSearch = getInvitationAuthSearch()
 
   useEffect(
     () => () => {
@@ -215,7 +217,10 @@ export function LoginForm({
       <div>
         <h1 className="text-lg font-semibold">Sign in to your account</h1>
         <FieldDescription>
-          Don&apos;t have an account? <Link to="/signup">Sign up</Link>
+          Don&apos;t have an account?{" "}
+          <Link to="/signup" search={signupSearch}>
+            Sign up
+          </Link>
         </FieldDescription>
       </div>
 

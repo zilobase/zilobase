@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/input-group"
 import { Input } from "@/components/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
-import { signInWithGoogle } from "@/lib/google-auth"
+import { getInvitationAuthSearch, signInWithGoogle } from "@/lib/google-auth"
 import { cn } from "@/lib/utils"
 import { useAuthFlowStore } from "@/stores/auth-flow-store"
 import {
@@ -45,13 +45,16 @@ export function SignupForm({
   const isCreatingAccount = signUp.isPending || requestVerificationOtp.isPending
   const isPending = isCreatingAccount || isGooglePending
   const error = signUp.error ?? requestVerificationOtp.error ?? googleError
+  const invitationSearch = getInvitationAuthSearch()
+  const invitationId = invitationSearch.invitation ?? null
+  const returnTo = invitationSearch.returnTo ?? "/onboarding"
 
   async function handleGoogleSignUp() {
     setGoogleError(null)
     setIsGooglePending(true)
 
     try {
-      await signInWithGoogle("/onboarding")
+      await signInWithGoogle(returnTo, invitationId)
     } catch (error) {
       setGoogleError(error)
       setIsGooglePending(false)
@@ -74,9 +77,14 @@ export function SignupForm({
 
     setFormError(null)
     try {
-      await signUp.mutateAsync({ name, email, password })
+      await signUp.mutateAsync({
+        name,
+        email,
+        password,
+        ...(invitationId ? { invitationId } : {}),
+      })
       await requestVerificationOtp.mutateAsync(email)
-      setAuthFlow({ email, purpose: "email-verification" })
+      setAuthFlow({ email, purpose: "email-verification", returnTo })
       void navigate({ to: "/otp" })
     } catch {
       // React Query owns the visible error state.

@@ -11,6 +11,7 @@ export const authenticatedSessionMiddleware: MiddlewareHandler<AppBindings> =
       c.req.path === "/ready" ||
       c.req.path === "/.well-known/zilobase" ||
       c.req.path === "/desktop" ||
+      c.req.path === "/api/instance/bootstrap" ||
       c.req.path.startsWith("/api/auth/")
     ) {
       await next();

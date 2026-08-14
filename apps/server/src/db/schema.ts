@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   customType,
   index,
   integer,
@@ -15,18 +16,6 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {
     return "bytea";
   },
-});
-
-export const instanceSettings = pgTable("instance_settings", {
-  id: text("id").primaryKey(),
-  instanceId: text("instance_id").notNull().unique(),
-  displayName: text("display_name").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
 });
 
 export const user = pgTable("user", {
@@ -183,6 +172,37 @@ export const workspace = pgTable("workspace", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const instanceSettings = pgTable(
+  "instance_settings",
+  {
+    id: text("id").primaryKey(),
+    instanceId: text("instance_id").notNull().unique(),
+    displayName: text("display_name").notNull(),
+    registrationMode: text("registration_mode")
+      .notNull()
+      .default("invite-only"),
+    pinnedWorkspaceId: text("pinned_workspace_id").references(
+      () => workspace.id,
+      { onDelete: "restrict" },
+    ),
+    bootstrapCompletedAt: timestamp("bootstrap_completed_at", {
+      withTimezone: true,
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "instance_settings_registration_mode_check",
+      sql`${table.registrationMode} in ('invite-only', 'open')`,
+    ),
+  ],
+);
+
 export const member = pgTable(
   "member",
   {
@@ -197,7 +217,7 @@ export const member = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    index("member_workspace_user_idx").on(
+    uniqueIndex("member_workspace_user_unique").on(
       table.organizationId,
       table.userId,
     ),

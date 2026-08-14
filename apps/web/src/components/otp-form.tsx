@@ -66,7 +66,11 @@ export function OtpForm({
 
       await verifyEmailOtp.mutateAsync({ email, otp: code })
       clearAuthFlow()
-      void navigate({ to: "/onboarding" })
+      if (returnTo) {
+        window.location.assign(returnTo)
+      } else {
+        void navigate({ to: "/onboarding" })
+      }
     } catch {
       // React Query owns the visible error state.
     }

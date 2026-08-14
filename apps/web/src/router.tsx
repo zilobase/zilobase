@@ -104,10 +104,29 @@ const loginRoute = createRoute({
 const signupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/signup",
-  beforeLoad: async () => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { invitation?: string; returnTo?: string } => ({
+    ...(typeof search.invitation === "string"
+      ? { invitation: search.invitation }
+      : {}),
+    ...(typeof search.returnTo === "string"
+      ? { returnTo: search.returnTo }
+      : {}),
+  }),
+  beforeLoad: async ({ search }) => {
     const session = await getFreshSession()
 
     if (session.user) {
+      if (search.returnTo) {
+        throw redirect({
+          href: getAuthReturnPath(
+            "/recents",
+            `?returnTo=${encodeURIComponent(search.returnTo)}`,
+          ),
+        })
+      }
+
       const workspaces = await getWorkspaces()
 
       throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" })

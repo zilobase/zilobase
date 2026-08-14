@@ -1,8 +1,12 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { and, asc, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { db } from "../db";
-import { account, member, session as authSession, workspace } from "../db/schema";
+import { account, member, session as authSession } from "../db/schema";
+import {
+  getInstanceAdministrationSettings,
+  shouldCreateOpenRegistrationMembership,
+} from "../features/instance/registration";
 import { isSelfHostedRuntime } from "../runtime-adapter";
 import type { AppBindings } from "../types";
 
@@ -19,7 +23,9 @@ sessionRoutes.get("/", (c) => timed(c, "route_session_total", async () => {
   const [selfHostedWorkspaceId, hasPassword] = await Promise.all([
     timed(c, "route_session_pin", () =>
       ensurePinnedWorkspaceMembership(
+        c.env,
         user.id,
+        user.emailVerified,
         session?.id,
       ),
     ),
@@ -47,14 +53,17 @@ sessionRoutes.get("/", (c) => timed(c, "route_session_total", async () => {
 }));
 
 async function ensurePinnedWorkspaceMembership(
+  env: Record<string, unknown>,
   userId: string,
+  emailVerified: boolean,
   sessionId?: string | null,
 ) {
   if (!isSelfHostedRuntime()) {
     return null;
   }
 
-  const workspaceId = await getPinnedWorkspaceId();
+  const settings = await getInstanceAdministrationSettings(env);
+  const workspaceId = settings.pinnedWorkspaceId;
 
   if (!workspaceId) {
     return null;
@@ -67,6 +76,15 @@ async function ensurePinnedWorkspaceMembership(
     .limit(1);
 
   if (!existingMembership) {
+    if (
+      !shouldCreateOpenRegistrationMembership({
+        emailVerified,
+        registrationMode: settings.registrationMode,
+      })
+    ) {
+      return null;
+    }
+
     await db
       .insert(member)
       .values({
@@ -86,16 +104,6 @@ async function ensurePinnedWorkspaceMembership(
   }
 
   return workspaceId;
-}
-
-async function getPinnedWorkspaceId() {
-  const [pinnedWorkspace] = await db
-    .select({ id: workspace.id })
-    .from(workspace)
-    .orderBy(asc(workspace.createdAt))
-    .limit(1);
-
-  return pinnedWorkspace?.id ?? null;
 }
 
 async function getUserHasPassword(userId: string) {

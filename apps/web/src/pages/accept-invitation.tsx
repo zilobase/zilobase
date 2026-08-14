@@ -27,7 +27,12 @@ import { getApiErrorMessage } from "@/lib/api"
 
 export default function AcceptInvitationPage() {
   const navigate = useNavigate()
-  const invitationId = new URLSearchParams(window.location.search).get("id")
+  const invitationParameters = new URLSearchParams(window.location.search)
+  const invitationIds = invitationParameters.getAll("id")
+  const invitationId =
+    invitationIds.length === 1 && invitationIds[0]?.trim()
+      ? invitationIds[0]
+      : null
   const { data: session, isLoading: isLoadingSession } = useSession()
   const acceptInvitation = useAcceptWorkspaceInvitation()
   const isSignedIn = Boolean(session?.user)
@@ -48,6 +53,13 @@ export default function AcceptInvitationPage() {
       search: { returnTo },
     })
   }
+
+  const createAccountSearch = invitationId
+    ? {
+        invitation: invitationId,
+        returnTo: `${window.location.pathname}${window.location.search}`,
+      }
+    : {}
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-background p-6">
@@ -114,6 +126,11 @@ export default function AcceptInvitationPage() {
               <Field>
                 <Button disabled={!invitationId} onClick={signIn} type="button">
                   Sign in to accept
+                </Button>
+                <Button asChild disabled={!invitationId} variant="outline">
+                  <Link to="/signup" search={createAccountSearch}>
+                    Create an account
+                  </Link>
                 </Button>
                 <FieldDescription className="text-center">
                   We will bring you back to this invitation after sign in.

@@ -64,7 +64,9 @@ export const webAuthClient: ZilobaseAuthClient = {
   signUp: (input: SignUpInput) =>
     authFetch<{ user: unknown }>("/sign-up/email", {
       ...input,
-      callbackURL: "/onboarding",
+      callbackURL: input.invitationId
+        ? `/accept-invitation?id=${encodeURIComponent(input.invitationId)}`
+        : "/onboarding",
     }),
   requestEmailVerificationOtp: (email) =>
     authFetch<{ success: boolean }>("/email-otp/send-verification-otp", {

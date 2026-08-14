@@ -13,6 +13,7 @@ require_env() {
 
 require_env DATABASE_URL
 require_env BETTER_AUTH_SECRET
+require_env ZILOBASE_BOOTSTRAP_TOKEN
 require_env BETTER_AUTH_URL
 require_env CLIENT_URL
 require_env IMAGE_STORAGE_MODE

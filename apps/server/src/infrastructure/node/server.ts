@@ -11,6 +11,7 @@ import { runWithDbEnv } from "../../db";
 import { setRuntimeAdapter } from "../../runtime-adapter";
 import { drainDatabaseRealtimeOutbox } from "../../services/database-realtime";
 import { isNodeApiPath } from "./api-routing";
+import { assertSelfHostedProductionConfiguration } from "../../features/instance/registration";
 
 loadEnv({
   path: process.env.ZILOBASE_ENV_FILE ?? path.resolve("apps/server/.env"),
@@ -65,6 +66,7 @@ setRuntimeAdapter({
   publishDatabaseMutation: ({ event }) =>
     databaseRealtime.publishMutation(event),
 });
+assertSelfHostedProductionConfiguration(process.env as Record<string, unknown>);
 const stopDatabaseRealtimeOutboxDrainer = startDatabaseRealtimeOutboxDrainer();
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

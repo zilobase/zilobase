@@ -1,6 +1,7 @@
 import { apiKey } from "@better-auth/api-key";
 import { expo } from "@better-auth/expo";
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import {
   bearer,
@@ -19,6 +20,11 @@ import {
   getTrustedOrigins,
   isLocalDevelopmentHost,
 } from "./config";
+import {
+  evaluateSelfHostedRegistration,
+  readInvitationIdFromCookieHeader,
+} from "./features/instance/registration";
+import { isSelfHostedRuntime } from "./runtime-adapter";
 
 type AuthEnv = Record<string, unknown>;
 
@@ -41,11 +47,11 @@ function createAuthInstance(env: AuthEnv, request: Request, database: Database) 
       provider: "pg",
       schema,
     }),
-    ...sharedAuthOptions(env),
+    ...sharedAuthOptions(env, request),
   });
 }
 
-function sharedAuthOptions(env: AuthEnv) {
+function sharedAuthOptions(env: AuthEnv, request: Request) {
   const googleClientId = getStringEnv(env, "GOOGLE_CLIENT_ID");
   const googleClientSecret = getStringEnv(env, "GOOGLE_CLIENT_SECRET");
   const isHosted = getPrimaryClientOrigin(env) === "https://app.zilobase.com";
@@ -65,6 +71,43 @@ function sharedAuthOptions(env: AuthEnv) {
     },
     emailVerification: {
       autoSignInAfterVerification: true,
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          async before(
+            candidate: { email: string },
+            context: { body?: unknown; request?: Request } | null,
+          ) {
+            if (!isSelfHostedRuntime()) {
+              return;
+            }
+
+            const body =
+              context?.body && typeof context.body === "object"
+                ? (context.body as Record<string, unknown>)
+                : null;
+            const invitationId =
+              typeof body?.invitationId === "string"
+                ? body.invitationId
+                : readInvitationIdFromCookieHeader(
+                    context?.request?.headers.get("cookie") ??
+                      request.headers.get("cookie"),
+                  );
+            const decision = await evaluateSelfHostedRegistration(env, {
+              email: candidate.email,
+              invitationId,
+            });
+
+            if (!decision.allowed) {
+              throw new APIError("FORBIDDEN", {
+                code: decision.code.toUpperCase(),
+                message: decision.message,
+              });
+            }
+          },
+        },
+      },
     },
     socialProviders:
       googleClientId && googleClientSecret

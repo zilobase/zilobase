@@ -71,14 +71,18 @@ const databaseInstanceSettingsRepository: InstanceSettingsRepository = {
 
 const defaultDiscoveryDependencies: DiscoveryDependencies = {
   getInstanceSettings(env) {
-    return runWithDbEnv(env, () =>
-      getOrCreateInstanceSettings(
-        resolveInitialDisplayName(env),
-        databaseInstanceSettingsRepository,
-      ),
-    );
+    return ensureInstanceSettings(env);
   },
 };
+
+export function ensureInstanceSettings(env: RuntimeEnv) {
+  return runWithDbEnv(env, () =>
+    getOrCreateInstanceSettings(
+      resolveInitialDisplayName(env),
+      databaseInstanceSettingsRepository,
+    ),
+  );
+}
 
 export async function getZilobaseDiscoveryDocument(
   env: RuntimeEnv,

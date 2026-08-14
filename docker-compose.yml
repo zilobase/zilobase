@@ -36,6 +36,7 @@ services:
       PORT: 3000
       DATABASE_URL: postgres://${POSTGRES_USER:-zilobase}:${POSTGRES_PASSWORD:-zilobase}@postgres:5432/${POSTGRES_DB:-zilobase}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-local-only-change-me-zilobase-auth-secret-32}
+      ZILOBASE_BOOTSTRAP_TOKEN: ${ZILOBASE_BOOTSTRAP_TOKEN:-local-only-change-me-bootstrap-token}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost}
       CLIENT_URL: ${CLIENT_URL:-http://localhost}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}

@@ -267,6 +267,13 @@
       "when": 1786690000000,
       "tag": "0037_desktop_authorization_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1786700000000,
+      "tag": "0038_self_hosted_registration",
+      "breakpoints": true
     }
   ]
 }

@@ -11,6 +11,7 @@ import {
 const productionEnv = {
   BETTER_AUTH_URL: "https://api.example.com/",
   CLIENT_URL: "https://app.example.com/,tauri://localhost",
+  ZILOBASE_BOOTSTRAP_TOKEN: "never-published-bootstrap-secret",
   ZILOBASE_MINIMUM_DESKTOP_VERSION: "0.0.29",
 };
 

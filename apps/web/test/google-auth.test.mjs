@@ -1,6 +1,6 @@
 export function register({ assert, loadModule, test }) {
   test("auth return paths reject external redirects", async () => {
-    const { getAuthReturnPath } = await loadModule("/src/lib/google-auth.ts")
+    const { getAuthReturnPath, getInvitationAuthSearch } = await loadModule("/src/lib/google-auth.ts")
 
     assert.equal(
       getAuthReturnPath(
@@ -38,5 +38,31 @@ export function register({ assert, loadModule, test }) {
       ),
       "/recents",
     )
+
+    const originalWindow = globalThis.window
+    globalThis.window = { location: { origin: "https://app.zilobase.test", search: "" } }
+    try {
+      assert.deepEqual(
+        getInvitationAuthSearch(
+          "?returnTo=%2Faccept-invitation%3Fid%3Dinvite-1",
+        ),
+        {
+          invitation: "invite-1",
+          returnTo: "/accept-invitation?id=invite-1",
+        },
+      )
+      assert.deepEqual(
+        getInvitationAuthSearch(
+          "?returnTo=https%3A%2F%2Fevil.test%2Faccept-invitation%3Fid%3Dstolen",
+        ),
+        {},
+      )
+      assert.deepEqual(
+        getInvitationAuthSearch("?invitation=one&invitation=two"),
+        {},
+      )
+    } finally {
+      globalThis.window = originalWindow
+    }
   })
 }
