@@ -25,4 +25,18 @@ export function register({ assert, test }) {
     assert.match(source, /Waiting for browser sign-in\.\.\./)
     assert.doesNotMatch(source, /addEventListener\("focus"/)
   })
+
+  test("desktop server metadata initializes before credentials and providers", async () => {
+    const source = await readFile(
+      new URL("../src/main.tsx", import.meta.url),
+      "utf8",
+    )
+    const server = source.indexOf("await initializeDesktopServer()")
+    const credentials = source.indexOf("await initializeDesktopAuthToken()")
+    const providers = source.indexOf("<AppProviders>")
+
+    assert.ok(server >= 0)
+    assert.ok(credentials > server)
+    assert.ok(providers > credentials)
+  })
 }

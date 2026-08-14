@@ -1,6 +1,8 @@
+mod desktop_server;
 mod diagnostics;
 mod oauth;
 
+use sha2::{Digest, Sha256};
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -8,7 +10,7 @@ use std::{
     },
     time::{Duration, Instant},
 };
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -17,8 +19,8 @@ fn greet(name: &str) -> String {
 }
 
 const AUTH_SERVICE: &str = "com.zilobase";
-const AUTH_ACCOUNT: &str = "session";
-const AUTH_OWNER_ACCOUNT: &str = "session-owner";
+const LEGACY_AUTH_ACCOUNT: &str = "session";
+const LEGACY_AUTH_OWNER_ACCOUNT: &str = "session-owner";
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Clone, Default)]
@@ -36,23 +38,27 @@ fn describe_deep_link(value: &str) -> Option<&'static str> {
 }
 
 #[tauri::command]
-fn get_auth_token() -> Result<Option<String>, String> {
-    get_keyring_value(AUTH_ACCOUNT, "session_token")
+fn get_auth_token(app: AppHandle) -> Result<Option<String>, String> {
+    let server = load_credential_server(&app)?;
+    get_server_keyring_value(&server, LEGACY_AUTH_ACCOUNT, "session_token")
 }
 
 #[tauri::command]
-fn set_auth_token(token: Option<String>) -> Result<(), String> {
-    set_keyring_value(AUTH_ACCOUNT, "session_token", token)
+fn set_auth_token(app: AppHandle, token: Option<String>) -> Result<(), String> {
+    let server = load_credential_server(&app)?;
+    set_server_keyring_value(&server, LEGACY_AUTH_ACCOUNT, "session_token", token)
 }
 
 #[tauri::command]
-fn get_auth_owner() -> Result<Option<String>, String> {
-    get_keyring_value(AUTH_OWNER_ACCOUNT, "session_owner")
+fn get_auth_owner(app: AppHandle) -> Result<Option<String>, String> {
+    let server = load_credential_server(&app)?;
+    get_server_keyring_value(&server, LEGACY_AUTH_OWNER_ACCOUNT, "session_owner")
 }
 
 #[tauri::command]
-fn set_auth_owner(owner: Option<String>) -> Result<(), String> {
-    set_keyring_value(AUTH_OWNER_ACCOUNT, "session_owner", owner)
+fn set_auth_owner(app: AppHandle, owner: Option<String>) -> Result<(), String> {
+    let server = load_credential_server(&app)?;
+    set_server_keyring_value(&server, LEGACY_AUTH_OWNER_ACCOUNT, "session_owner", owner)
 }
 
 #[tauri::command]
@@ -146,6 +152,55 @@ fn set_keyring_value(account: &str, value_kind: &str, value: Option<String>) -> 
             Err(error.to_string())
         }
     }
+}
+
+fn load_credential_server(app: &AppHandle) -> Result<desktop_server::DesktopServer, String> {
+    desktop_server::load_or_initialize_desktop_server(app)
+        .map_err(|_| "The selected desktop server could not be loaded.".to_string())
+}
+
+pub(crate) fn get_server_keyring_value(
+    server: &desktop_server::DesktopServer,
+    legacy_account: &str,
+    value_kind: &str,
+) -> Result<Option<String>, String> {
+    let account = scoped_keyring_account(server, legacy_account);
+    let scoped = get_keyring_value(&account, value_kind)?;
+
+    if scoped.is_some() || !desktop_server::is_cloud_server(server) {
+        return Ok(scoped);
+    }
+
+    let legacy = get_keyring_value(legacy_account, value_kind)?;
+    if let Some(value) = legacy {
+        set_keyring_value(&account, value_kind, Some(value.clone()))?;
+        set_keyring_value(legacy_account, value_kind, None)?;
+        log::info!(
+            target: "zilobase::keyring",
+            "[diagnostics] event=keyring.migration status=success value_kind={value_kind}"
+        );
+        return Ok(Some(value));
+    }
+
+    Ok(None)
+}
+
+pub(crate) fn set_server_keyring_value(
+    server: &desktop_server::DesktopServer,
+    legacy_account: &str,
+    value_kind: &str,
+    value: Option<String>,
+) -> Result<(), String> {
+    set_keyring_value(
+        &scoped_keyring_account(server, legacy_account),
+        value_kind,
+        value,
+    )
+}
+
+fn scoped_keyring_account(server: &desktop_server::DesktopServer, legacy_account: &str) -> String {
+    let digest = Sha256::digest(format!("{}\0{}", server.issuer, server.instance_id).as_bytes());
+    format!("{legacy_account}:{digest:x}")
 }
 
 fn log_keyring_failure(
@@ -318,6 +373,8 @@ pub fn run() {
             get_auth_owner,
             set_auth_owner,
             mark_renderer_ready,
+            desktop_server::initialize_desktop_server,
+            desktop_server::verify_and_select_desktop_server,
             oauth::start_google_oauth,
             oauth::cancel_google_oauth,
             diagnostics::record_renderer_diagnostic,

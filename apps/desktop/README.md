@@ -27,11 +27,12 @@ npm run dev:desktop
 
 For releases, configure the GitHub Actions repository variable
 `GOOGLE_DESKTOP_CLIENT_ID` and Actions secret `GOOGLE_DESKTOP_CLIENT_SECRET`.
-The release workflow fails before building when either is absent. Production
-builds send the verified Google ID token to
-`https://api.zilobase.com`; local debug builds use `http://127.0.0.1:3000`.
-`ZILOBASE_DESKTOP_API_URL` can override that API origin at compile time, but
-release overrides must use HTTPS.
+The release workflow fails before building when either is absent. Zilobase
+Cloud is the initial server. The sign-in screen can verify and persist a
+different server at runtime, and the Google ID token is sent only to that
+selected server. API origins are no longer compiled into individual desktop
+artifacts. Custom servers require trusted HTTPS except for loopback HTTP during
+development.
 
 ## One-time GitHub setup
 

@@ -1,5 +1,10 @@
 export type RuntimeEnv = Record<string, unknown>;
 
+export const DESKTOP_CLIENT_ORIGINS = [
+  "tauri://localhost",
+  "http://tauri.localhost",
+] as const;
+
 export function getClientOrigins(env: RuntimeEnv) {
   return getRequiredStringEnv(env, "CLIENT_URL")
     .split(",")
@@ -66,7 +71,12 @@ export function isAllowedClientOrigin(env: RuntimeEnv, origin: string | null) {
     return false;
   }
 
-  if (getClientOrigins(env).includes(origin)) {
+  if (
+    getClientOrigins(env).includes(origin) ||
+    DESKTOP_CLIENT_ORIGINS.includes(
+      origin as (typeof DESKTOP_CLIENT_ORIGINS)[number],
+    )
+  ) {
     return true;
   }
 
@@ -96,7 +106,14 @@ export function getTrustedOrigins(env: RuntimeEnv, requestOrigin: string) {
     : [];
 
   return Array.from(
-    new Set([requestOrigin, ...getClientOrigins(env), "mobile://", "mobile://*", ...developmentOrigins]),
+    new Set([
+      requestOrigin,
+      ...getClientOrigins(env),
+      ...DESKTOP_CLIENT_ORIGINS,
+      "mobile://",
+      "mobile://*",
+      ...developmentOrigins,
+    ]),
   );
 }
 

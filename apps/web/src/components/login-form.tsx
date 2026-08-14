@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useReducer, useRef, useState } from "react"
 import { Link } from "@tanstack/react-router"
 import { isTauri } from "@tauri-apps/api/core"
 import { EyeIcon, EyeOffIcon } from "lucide-react"
@@ -24,6 +24,14 @@ import {
 } from "@/components/ui/input-group"
 import { Input } from "@/components/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
+import {
+  getSelectedDesktopServer,
+  verifyAndSelectDesktopServer,
+} from "@/lib/desktop-server"
+import {
+  initialDesktopServerSelectionState,
+  reduceDesktopServerSelection,
+} from "@/lib/desktop-server-selection"
 import { reloadDesktopAuthCredentials } from "@/lib/desktop-auth-token"
 import {
   describeDesktopError,
@@ -61,11 +69,21 @@ export function LoginForm({
     error: null,
     retry: "oauth",
   })
+  const [serverSelection, dispatchServerSelection] = useReducer(
+    reduceDesktopServerSelection,
+    initialDesktopServerSelectionState,
+  )
+  const [serverUrl, setServerUrl] = useState("")
   const googleOperation = useRef(0)
   const isGooglePending =
     googleState.phase === "waiting_for_browser" ||
     googleState.phase === "finalizing"
-  const isPending = signInWithPassword.isPending || isGooglePending
+  const isServerVerificationPending = serverSelection.phase === "verifying"
+  const isPending =
+    signInWithPassword.isPending ||
+    isGooglePending ||
+    isServerVerificationPending
+  const selectedServer = getSelectedDesktopServer()
 
   useEffect(
     () => () => {
@@ -167,6 +185,22 @@ export function LoginForm({
     }
   }
 
+  async function handleServerSelection(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    dispatchServerSelection({ type: "verify" })
+
+    try {
+      await verifyAndSelectDesktopServer(serverUrl)
+      dispatchServerSelection({ type: "verified" })
+      window.location.reload()
+    } catch (error) {
+      dispatchServerSelection({
+        type: "failed",
+        message: getApiErrorMessage(error),
+      })
+    }
+  }
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <div className="flex items-center gap-2">
@@ -180,6 +214,73 @@ export function LoginForm({
           Don&apos;t have an account? <Link to="/signup">Sign up</Link>
         </FieldDescription>
       </div>
+
+      {isTauri() && selectedServer && (
+        <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+          {serverSelection.phase === "selected" ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium">{selectedServer.displayName}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {selectedServer.apiOrigin}
+                </p>
+              </div>
+              <Button
+                onClick={() => dispatchServerSelection({ type: "edit" })}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                Use another server
+              </Button>
+            </div>
+          ) : (
+            <form className="space-y-3" onSubmit={handleServerSelection}>
+              <div className="space-y-1.5">
+                <FieldLabel htmlFor="desktop-server-url">Server URL</FieldLabel>
+                <Input
+                  autoCapitalize="none"
+                  autoComplete="url"
+                  autoCorrect="off"
+                  disabled={isServerVerificationPending}
+                  id="desktop-server-url"
+                  onChange={(event) => setServerUrl(event.target.value)}
+                  placeholder="https://notes.example.com"
+                  required
+                  type="url"
+                  value={serverUrl}
+                />
+              </div>
+              {serverSelection.phase === "error" && (
+                <FieldError>{serverSelection.message}</FieldError>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  disabled={isServerVerificationPending}
+                  size="sm"
+                  type="submit"
+                >
+                  {isServerVerificationPending
+                    ? "Verifying server..."
+                    : "Verify and use server"}
+                </Button>
+                <Button
+                  disabled={isServerVerificationPending}
+                  onClick={() => dispatchServerSelection({ type: "cancel" })}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  Cancel
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                HTTPS is required except for localhost development servers.
+              </p>
+            </form>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <FieldGroup>

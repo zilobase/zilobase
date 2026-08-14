@@ -18,12 +18,14 @@ use tokio::{
 };
 use url::Url;
 
-use crate::{get_keyring_value, set_keyring_value, AUTH_ACCOUNT, AUTH_OWNER_ACCOUNT};
+use crate::{
+    desktop_server::{load_or_initialize_desktop_server, DesktopServer},
+    get_server_keyring_value, set_server_keyring_value, LEGACY_AUTH_ACCOUNT,
+    LEGACY_AUTH_OWNER_ACCOUNT,
+};
 
 const GOOGLE_AUTHORIZATION_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
-const HOSTED_API_URL: &str = "https://api.zilobase.com";
-const DEVELOPMENT_API_URL: &str = "http://127.0.0.1:3000";
 const CALLBACK_PATH: &str = "/oauth/callback";
 const COMPLETION_PATH: &str = "/oauth/complete";
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(5 * 60);
@@ -310,6 +312,8 @@ async fn run_google_oauth(
     let (listener, redirect_uri) = bind_loopback().await?;
     let listener = Arc::new(listener);
     let request = build_oauth_request(client_id, redirect_uri)?;
+    let server = load_or_initialize_desktop_server(app)
+        .map_err(|_| DesktopOAuthError::server_sign_in_failed())?;
 
     app.opener()
         .open_url(request.authorization_url.as_str(), None::<&str>)
@@ -322,6 +326,7 @@ async fn run_google_oauth(
         client_secret,
         &request,
         &callback.code,
+        &server,
         &mut cancel,
     )
     .await;
@@ -596,19 +601,21 @@ async fn complete_sign_in(
     client_secret: &str,
     request: &OAuthRequest,
     code: &str,
+    server: &DesktopServer,
     cancel: &mut watch::Receiver<bool>,
 ) -> Result<(), DesktopOAuthError> {
-    let endpoints = oauth_endpoints()?;
+    let endpoints = oauth_endpoints(&server.api_origin)?;
     let credentials =
         exchange_session_credentials(client_id, client_secret, request, code, cancel, &endpoints)
             .await?;
-    persist_session_credentials(&credentials.token, &credentials.owner)
+    persist_session_credentials(server, &credentials.token, &credentials.owner)
 }
 
-fn oauth_endpoints() -> Result<OAuthEndpoints, DesktopOAuthError> {
+fn oauth_endpoints(api_origin: &str) -> Result<OAuthEndpoints, DesktopOAuthError> {
     let google_token =
         Url::parse(GOOGLE_TOKEN_URL).map_err(|_| DesktopOAuthError::configuration_missing())?;
-    let zilobase_sign_in = desktop_api_url()?
+    let zilobase_sign_in = Url::parse(api_origin)
+        .map_err(|_| DesktopOAuthError::server_sign_in_failed())?
         .join("/api/auth/sign-in/social")
         .map_err(|_| DesktopOAuthError::server_sign_in_failed())?;
     Ok(OAuthEndpoints {
@@ -743,15 +750,37 @@ where
     }
 }
 
-fn persist_session_credentials(token: &str, owner: &str) -> Result<(), DesktopOAuthError> {
-    let previous_owner = get_keyring_value(AUTH_OWNER_ACCOUNT, "session_owner")
-        .map_err(|_| DesktopOAuthError::credential_store_failed())?;
+fn persist_session_credentials(
+    server: &DesktopServer,
+    token: &str,
+    owner: &str,
+) -> Result<(), DesktopOAuthError> {
+    let previous_owner =
+        get_server_keyring_value(server, LEGACY_AUTH_OWNER_ACCOUNT, "session_owner")
+            .map_err(|_| DesktopOAuthError::credential_store_failed())?;
 
-    set_keyring_value(AUTH_OWNER_ACCOUNT, "session_owner", Some(owner.to_string()))
-        .map_err(|_| DesktopOAuthError::credential_store_failed())?;
+    set_server_keyring_value(
+        server,
+        LEGACY_AUTH_OWNER_ACCOUNT,
+        "session_owner",
+        Some(owner.to_string()),
+    )
+    .map_err(|_| DesktopOAuthError::credential_store_failed())?;
 
-    if set_keyring_value(AUTH_ACCOUNT, "session_token", Some(token.to_string())).is_err() {
-        let _ = set_keyring_value(AUTH_OWNER_ACCOUNT, "session_owner", previous_owner);
+    if set_server_keyring_value(
+        server,
+        LEGACY_AUTH_ACCOUNT,
+        "session_token",
+        Some(token.to_string()),
+    )
+    .is_err()
+    {
+        let _ = set_server_keyring_value(
+            server,
+            LEGACY_AUTH_OWNER_ACCOUNT,
+            "session_owner",
+            previous_owner,
+        );
         return Err(DesktopOAuthError::credential_store_failed());
     }
 
@@ -834,23 +863,6 @@ fn google_desktop_client_secret() -> Result<String, DesktopOAuthError> {
     configured
         .filter(|value| !value.trim().is_empty())
         .ok_or_else(DesktopOAuthError::configuration_missing)
-}
-
-fn desktop_api_url() -> Result<Url, DesktopOAuthError> {
-    let configured = option_env!("ZILOBASE_DESKTOP_API_URL").unwrap_or(if cfg!(debug_assertions) {
-        DEVELOPMENT_API_URL
-    } else {
-        HOSTED_API_URL
-    });
-    let url = Url::parse(configured).map_err(|_| DesktopOAuthError::server_sign_in_failed())?;
-    let valid_release = url.scheme() == "https" && url.host_str().is_some();
-    let valid_development = cfg!(debug_assertions)
-        && url.scheme() == "http"
-        && matches!(url.host_str(), Some("127.0.0.1" | "localhost" | "::1"));
-
-    (valid_release || valid_development)
-        .then_some(url)
-        .ok_or_else(DesktopOAuthError::server_sign_in_failed)
 }
 
 fn random_urlsafe(byte_count: usize) -> Result<String, DesktopOAuthError> {

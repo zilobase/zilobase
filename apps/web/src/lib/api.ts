@@ -8,10 +8,12 @@ import {
   isOfflineMode,
   setConnectivityState,
 } from "@/lib/offline-store"
-
-const HOSTED_API_BASE_URL = "https://api.zilobase.com"
-
-export const API_BASE_URL = resolveApiBaseUrl()
+import {
+  getSelectedDesktopServer,
+  resolveRuntimeApiOrigin,
+  resolveRuntimeWebSocketUrl,
+  type DesktopServer,
+} from "@/lib/desktop-server"
 
 declare global {
   interface Window {
@@ -127,7 +129,39 @@ export async function apiFetch<T>(
     throw new ApiError(readErrorMessage(data, response.status), response.status, data)
   }
 
-  return data as T
+  return resolveRuntimeResponse(path, data) as T
+}
+
+function resolveRuntimeResponse(path: string, data: unknown) {
+  const server = getSelectedDesktopServer()
+  if (!server || !data || typeof data !== "object") return data
+
+  const response = data as { websocketUrl?: unknown }
+  if (typeof response.websocketUrl !== "string") return data
+
+  if (/\/pages\/[^/]+\/collaboration-ticket(?:\?|$)/.test(path)) {
+    return {
+      ...response,
+      websocketUrl: resolveRuntimeWebSocketUrl(
+        response.websocketUrl,
+        "collaboration",
+        server,
+      ),
+    }
+  }
+
+  if (/\/databases\/[^/]+\/realtime-ticket(?:\?|$)/.test(path)) {
+    return {
+      ...response,
+      websocketUrl: resolveRuntimeWebSocketUrl(
+        response.websocketUrl,
+        "realtime",
+        server,
+      ),
+    }
+  }
+
+  return data
 }
 
 function createRequestTimeout(signal: AbortSignal | null | undefined, timeoutMs?: number) {
@@ -205,34 +239,18 @@ export function toApiUrl(path: string) {
 
   const normalizedPath = path.startsWith("/") ? path : `/${path}`
 
-  return API_BASE_URL
-    ? `${API_BASE_URL}${normalizedPath}`
+  const apiOrigin = resolveApiBaseUrl()
+
+  return apiOrigin
+    ? `${apiOrigin}${normalizedPath}`
     : normalizedPath
 }
 
 export function resolveApiBaseUrl(
   location = typeof window !== "undefined" ? window.location : undefined,
+  desktopServer?: DesktopServer | null,
 ) {
-  if (
-    location?.protocol === "tauri:" ||
-    location?.hostname === "tauri.localhost"
-  ) {
-    return import.meta.env.DEV ? "" : HOSTED_API_BASE_URL
-  }
-
-  if (
-    location?.hostname === "app.zilobase.com"
-  ) {
-    return ""
-  }
-
-  const configuredBaseUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, "")
-
-  if (configuredBaseUrl && configuredBaseUrl !== "/api") {
-    return configuredBaseUrl
-  }
-
-  return ""
+  return resolveRuntimeApiOrigin(location, desktopServer)
 }
 
 function readEmbeddedMobileAuthCookie() {

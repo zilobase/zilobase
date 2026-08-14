@@ -38,6 +38,27 @@ test("production CORS allows configured origins and rejects others", async () =>
   assert.equal(rejected.headers.has("access-control-allow-origin"), false);
 });
 
+test("production CORS allows only the exact desktop webview origins", async () => {
+  const app = corsApp();
+  const env = { CLIENT_URL: "https://app.example.com" };
+
+  for (const origin of ["tauri://localhost", "http://tauri.localhost"]) {
+    const response = await app.request(
+      "https://api.example.com/",
+      { headers: { origin } },
+      env,
+    );
+    assert.equal(response.headers.get("access-control-allow-origin"), origin);
+  }
+
+  const rejected = await app.request(
+    "https://api.example.com/",
+    { headers: { origin: "tauri://attacker" } },
+    env,
+  );
+  assert.equal(rejected.headers.has("access-control-allow-origin"), false);
+});
+
 test("local servers reflect development origins", async () => {
   const response = await corsApp().request(
     "http://localhost:3000/",

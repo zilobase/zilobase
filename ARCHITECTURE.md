@@ -6,7 +6,11 @@ Zilobase is an npm-workspaces monorepo for a notes, pages, databases, comments, 
 
 - `apps/web`: Vite React client. It contains the main workspace UI, page editor, database views, settings, auth screens, and client-side routing.
 - `apps/server`: Hono server. It owns auth, workspace APIs, database persistence, image upload signing, AI chat tools, integration OAuth flows, and the serverful runtime.
-- `apps/desktop`: Tauri shell for the desktop app.
+- `apps/desktop`: Tauri shell for the desktop app. Native code owns the single
+  persisted server selection, validates discovery metadata and TLS before a
+  server is saved, and scopes keyring credentials to that instance. The
+  renderer initializes this metadata before auth, offline, query, or realtime
+  providers are mounted.
 - `packages/features`: shared TanStack Query hooks, query keys, mutations, cache update logic, and small database contracts used by clients and server.
 - `packages/page-context`: editor/page context extraction, database markdown construction, and ProseMirror-to-markdown helpers.
 - `packages/markdown-text-splitter`: standalone markdown text splitting utilities.

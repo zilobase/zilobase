@@ -12,6 +12,25 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
+  test("desktop requests resolve against the selected runtime server", async () => {
+    const { resolveApiBaseUrl } = await loadModule("/src/lib/api.ts")
+    const server = {
+      apiOrigin: "http://127.0.0.1:8787",
+      displayName: "Local Zilobase",
+      instanceId: "local-instance",
+      issuer: "http://127.0.0.1:8787",
+      minimumDesktopVersion: "0.0.30",
+      protocolVersion: 1,
+      serverVersion: "0.0.30",
+      webOrigin: "http://127.0.0.1:8787",
+    }
+
+    assert.equal(
+      resolveApiBaseUrl(new URL("tauri://localhost/login"), server),
+      "http://127.0.0.1:8787",
+    )
+  })
+
   test("request cancellation is not treated as a connectivity failure", async () => {
     const { isRequestAbort } = await loadModule("/src/lib/api.ts")
 

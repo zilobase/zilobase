@@ -121,6 +121,13 @@ Common commands:
 | `npm run build:server` | Type-check the server. |
 | `npm run dev:desktop` | Start the Tauri desktop shell. |
 
+The desktop app starts with Zilobase Cloud selected. On the sign-in screen,
+choose **Use another server** to verify and save a self-hosted origin. Server
+metadata is stored in the operating system application-config directory;
+session credentials remain in the system keyring and are scoped to the saved
+instance. Custom servers require trusted HTTPS, except for loopback HTTP during
+local development.
+
 ## Project Structure
 
 ```text

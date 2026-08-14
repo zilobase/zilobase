@@ -1,4 +1,8 @@
 import { isTauri } from "@tauri-apps/api/core"
+import {
+  CLOUD_DESKTOP_SERVER,
+  getSelectedDesktopServer,
+} from "@/lib/desktop-server"
 import type {
   PersistedClient,
   Persister,
@@ -467,7 +471,9 @@ function getOfflineApiOrigin() {
     window.location.protocol === "tauri:" ||
     window.location.hostname === "tauri.localhost"
   ) {
-    return import.meta.env.DEV ? window.location.origin : "https://api.zilobase.com"
+    return (
+      getSelectedDesktopServer()?.apiOrigin ?? CLOUD_DESKTOP_SERVER.apiOrigin
+    )
   }
 
   return import.meta.env.VITE_API_URL?.replace(/\/$/, "") || window.location.origin
