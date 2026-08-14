@@ -1,6 +1,7 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
+import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { useRouter, useRouterState } from "@tanstack/react-router"
 import { Reorder } from "framer-motion"
@@ -19,7 +20,13 @@ import { PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/lib/utils"
 import { isOpenInNewTabShortcut } from "@/shortcuts"
 import { useAppStore, type DesktopTab } from "@/stores/app-store"
+import { DesktopWindowTitlebar } from "@/components/desktop-window-titlebar"
 import { useSidebar } from "@/components/ui/sidebar"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { hasEditorBlockDragData } from "@/packages/editor/components/editor/block-drag-session"
 
 export function DesktopTabs({
@@ -78,7 +85,7 @@ export function DesktopTabs({
     if (!desktopApp) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!event.metaKey || event.altKey || event.ctrlKey) return
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return
 
       if (event.key.toLowerCase() === "t") {
         event.preventDefault()
@@ -138,100 +145,164 @@ export function DesktopTabs({
   if (!desktopApp) return null
 
   return (
-    <header
+    <DesktopWindowTitlebar
       className={cn(
-        "absolute inset-x-0 top-0 z-30 flex h-9 shrink-0 items-center gap-1 bg-sidebar px-1",
         macDesktopApp && (isMobile || !sidebarOpen) && "pl-20",
       )}
-      data-desktop-tabs
-      data-tauri-drag-region="deep"
+      variant="tabs"
     >
-      <Reorder.Group
-        aria-label="Open tabs"
-        as="div"
-        axis="x"
-        className="flex min-w-0 flex-1 self-stretch items-end gap-1 overflow-x-auto pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        data-tauri-drag-region="deep"
-        layoutScroll
-        onReorder={setTabOrder}
-        role="tablist"
-        values={tabs.map((tab) => tab.id)}
+      <div
+        className="flex min-w-0 max-w-full shrink items-end gap-1 self-stretch pt-1"
+        data-desktop-tab-strip
+        style={
+          {
+            "--desktop-tab-count": Math.max(tabs.length, 1),
+          } as CSSProperties
+        }
       >
-        {tabs.map((tab) => {
-          const active = tab.id === activeTabId
+        <Reorder.Group
+          aria-label="Open tabs"
+          as="div"
+          axis="x"
+          className="flex min-w-0 flex-1 self-stretch items-end gap-1 overflow-hidden"
+          data-tauri-drag-region="deep"
+          onReorder={setTabOrder}
+          role="tablist"
+          values={tabs.map((tab) => tab.id)}
+        >
+          {tabs.map((tab) => {
+            const active = tab.id === activeTabId
 
-          return (
-            <Reorder.Item
-              as="div"
-              className={cn(
-                "group/tab relative flex min-w-32 max-w-60 flex-1 cursor-grab items-center px-1 text-sm active:cursor-grabbing",
-                active
-                  ? "desktop-tab-active z-10 h-8 rounded-t-lg rounded-b-none border-x border-t border-border/60 bg-background text-foreground"
-                  : "h-8 rounded-md text-muted-foreground hover:bg-background/60 hover:text-foreground",
-              )}
-              dragMomentum={false}
-              key={tab.id}
-              onDragEnter={(event) => {
-                if (hasEditorBlockDragData(event.dataTransfer)) selectTab(tab)
-              }}
-              value={tab.id}
-              whileDrag={{ zIndex: 30 }}
-            >
-              <button
-                aria-selected={active}
-                className="flex min-w-0 flex-1 items-center gap-2 px-2"
-                onAuxClick={(event) => {
-                  if (event.button === 1) removeTab(tab.id)
+            return (
+              <Reorder.Item
+                as="div"
+                className={cn(
+                  "group/tab relative flex min-w-12 max-w-60 flex-[1_1_15rem] cursor-grab items-center px-1 text-sm active:cursor-grabbing",
+                  active
+                    ? "desktop-tab-active z-10 h-8 rounded-t-lg rounded-b-none border-x border-t border-border/60 bg-background text-foreground"
+                    : "h-8 rounded-md text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                )}
+                dragMomentum={false}
+                key={tab.id}
+                onDragEnter={(event) => {
+                  if (hasEditorBlockDragData(event.dataTransfer)) selectTab(tab)
                 }}
-                onClick={(event) => {
-                  if (isOpenInNewTabShortcut(event)) {
-                    event.preventDefault()
-                    event.stopPropagation()
+                value={tab.id}
+                whileDrag={{ zIndex: 30 }}
+              >
+                <DesktopTabButton
+                  active={active}
+                  onClone={() =>
                     openRouteInTab({
                       href: tab.href,
                       icon: tab.icon,
                       title: tab.title,
                     })
-                    return
                   }
+                  onRemove={() => removeTab(tab.id)}
+                  onSelect={() => selectTab(tab)}
+                  tab={tab}
+                />
+                <button
+                  aria-label={`Close ${tab.title}`}
+                  className={cn(
+                    "shrink-0 rounded-sm p-1 hover:bg-muted focus-visible:opacity-100",
+                    active
+                      ? "opacity-100"
+                      : "opacity-0 group-hover/tab:opacity-100",
+                  )}
+                  onClick={() => removeTab(tab.id)}
+                  title="Close tab"
+                  type="button"
+                >
+                  <XIcon className="size-3.5" />
+                </button>
+              </Reorder.Item>
+            )
+          })}
+        </Reorder.Group>
+        <button
+          aria-label="New tab"
+          className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60 hover:text-foreground"
+          onClick={createTab}
+          title={`New tab (${macDesktopApp ? "⌘T" : "Ctrl+T"})`}
+          type="button"
+        >
+          <PlusIcon className="size-4" />
+        </button>
+      </div>
+      <div
+        className="min-w-0 flex-1 self-stretch"
+        data-tauri-drag-region="deep"
+      />
+    </DesktopWindowTitlebar>
+  )
+}
 
-                  selectTab(tab)
-                }}
-                role="tab"
-                title={tab.title}
-                type="button"
-              >
-                <DesktopTabIcon tab={tab} />
-                <span className="truncate">{tab.title}</span>
-              </button>
-              <button
-                aria-label={`Close ${tab.title}`}
-                className={cn(
-                  "rounded-sm p-1 hover:bg-muted focus-visible:opacity-100",
-                  active
-                    ? "opacity-100"
-                    : "opacity-0 group-hover/tab:opacity-100",
-                )}
-                onClick={() => removeTab(tab.id)}
-                title="Close tab"
-                type="button"
-              >
-                <XIcon className="size-3.5" />
-              </button>
-            </Reorder.Item>
-          )
-        })}
-      </Reorder.Group>
-      <button
-        aria-label="New tab"
-        className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60 hover:text-foreground"
-        onClick={createTab}
-        title="New tab (⌘T)"
-        type="button"
-      >
-        <PlusIcon className="size-4" />
-      </button>
-    </header>
+function DesktopTabButton({
+  active,
+  onClone,
+  onRemove,
+  onSelect,
+  tab,
+}: {
+  active: boolean
+  onClone: () => void
+  onRemove: () => void
+  onSelect: () => void
+  tab: DesktopTab
+}) {
+  const titleRef = useRef<HTMLSpanElement>(null)
+  const [titleTruncated, setTitleTruncated] = useState(false)
+
+  useEffect(() => {
+    const titleElement = titleRef.current
+    if (!titleElement) return
+
+    const updateTruncatedState = () => {
+      setTitleTruncated(titleElement.scrollWidth > titleElement.clientWidth)
+    }
+    const observer = new ResizeObserver(updateTruncatedState)
+
+    updateTruncatedState()
+    observer.observe(titleElement)
+    return () => observer.disconnect()
+  }, [tab.title])
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          aria-selected={active}
+          className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden px-2"
+          onAuxClick={(event) => {
+            if (event.button === 1) onRemove()
+          }}
+          onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
+            if (isOpenInNewTabShortcut(event)) {
+              event.preventDefault()
+              event.stopPropagation()
+              onClone()
+              return
+            }
+
+            onSelect()
+          }}
+          role="tab"
+          type="button"
+        >
+          <DesktopTabIcon tab={tab} />
+          <span className="min-w-0 flex-1 truncate" ref={titleRef}>
+            {tab.title}
+          </span>
+        </button>
+      </TooltipTrigger>
+      {titleTruncated ? (
+        <TooltipContent side="bottom" sideOffset={6}>
+          {tab.title}
+        </TooltipContent>
+      ) : null}
+    </Tooltip>
   )
 }
 

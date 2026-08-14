@@ -59,6 +59,21 @@
   );
 }
 
+[data-desktop-tab-strip] {
+  flex: 0 1 auto;
+  width: calc(var(--desktop-tab-count) * 15.25rem + 2rem);
+}
+
+[data-desktop-linux-shell]:has([data-desktop-tabs])
+  > [data-desktop-fallback-titlebar] {
+  display: none;
+}
+
+[data-desktop-linux-shell]:has([data-desktop-tabs])
+  > [data-desktop-app-content] {
+  padding-top: 0;
+}
+
 .desktop-tab-active::before,
 .desktop-tab-active::after {
   position: absolute;

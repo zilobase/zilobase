@@ -15,8 +15,6 @@ export function AppSidebarShell({
   className,
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
-  const linuxDesktopApp = isTauri() && navigator.userAgent.includes("Linux")
-
   return (
     <Sidebar
       aria-label="Application sidebar"
@@ -26,16 +24,6 @@ export function AppSidebarShell({
         className,
       )}
       {...props}
-      style={
-        linuxDesktopApp
-          ? {
-              ...props.style,
-              bottom: "auto",
-              height: "var(--app-viewport-height)",
-              top: "1.75rem",
-            }
-          : props.style
-      }
     >
       {children}
     </Sidebar>
@@ -43,7 +31,10 @@ export function AppSidebarShell({
 }
 
 export function AppSidebarHeader({ children }: { children: React.ReactNode }) {
-  const hasOverlayTitleBar = isTauri() && navigator.userAgent.includes("Mac")
+  const hasOverlayTitleBar =
+    isTauri() &&
+    (navigator.userAgent.includes("Mac") ||
+      navigator.userAgent.includes("Linux"))
 
   return (
     <SidebarHeader

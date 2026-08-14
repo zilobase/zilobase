@@ -8,7 +8,6 @@ import {
 import { router } from "@/router"
 
 export default function App() {
-  const linuxDesktopApp = isLinuxDesktopApp()
   const app = (
     <>
       <DesktopDeepLinkHandler openPath={(path) => router.history.push(path)} />
@@ -16,12 +15,23 @@ export default function App() {
     </>
   )
 
-  if (!linuxDesktopApp) return app
+  if (!isLinuxDesktopApp()) return app
 
   return (
-    <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground [--app-viewport-height:calc(100svh-1.75rem)]">
-      <DesktopWindowTitlebar />
-      <div className="min-h-0 flex-1 overflow-auto [&>.h-svh]:h-full [&>.min-h-svh]:min-h-full">
+    <div
+      className="relative h-svh overflow-hidden bg-background text-foreground"
+      data-desktop-linux-shell
+    >
+      <DesktopWindowTitlebar variant="fallback">
+        <div
+          className="min-w-0 flex-1 self-stretch"
+          data-tauri-drag-region="deep"
+        />
+      </DesktopWindowTitlebar>
+      <div
+        className="h-full min-h-0 overflow-auto pt-9 [&>.h-svh]:h-full [&>.min-h-svh]:min-h-full"
+        data-desktop-app-content
+      >
         {app}
       </div>
     </div>
