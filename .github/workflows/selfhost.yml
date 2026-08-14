@@ -104,6 +104,7 @@ jobs:
             dbus-x11 \
             gnome-keyring \
             libayatana-appindicator3-dev \
+            libsecret-tools \
             librsvg2-dev \
             libssl-dev \
             libwebkit2gtk-4.1-dev \
@@ -172,8 +173,17 @@ jobs:
           ZILOBASE_E2E_ADDITIONAL_SERVER: ${{ github.event_name == 'schedule' && vars.ZILOBASE_STAGING_SERVER || '' }}
         shell: bash
         run: |
+          # Values inside the single quotes expand in the nested shell.
+          # shellcheck disable=SC2016
           dbus-run-session -- bash -c '
-            eval "$(gnome-keyring-daemon --start --components=secrets)"
+            set -euo pipefail
+            unset GNOME_KEYRING_CONTROL
+            keyring_control=$(mktemp -d)
+            keyring_env=$(printf "%s" "zilobase-ci-keyring" | gnome-keyring-daemon --unlock --components=secrets --control-directory="$keyring_control")
+            eval "$keyring_env"
+            printf "%s" "ready" | secret-tool store --label="Zilobase CI" application zilobase-ci purpose readiness
+            test "$(secret-tool lookup application zilobase-ci purpose readiness)" = "ready"
+            secret-tool clear application zilobase-ci purpose readiness
             xvfb-run --auto-servernum npm run test:desktop:selfhost
           '
 
