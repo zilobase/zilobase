@@ -13,6 +13,7 @@ import { createAuth } from "../auth";
 import { runWithDbEnv } from "../db";
 import { getDefaultCollaborationHocuspocus } from "./service";
 import type { RuntimeEnv } from "../config";
+import type { ZilobaseEditionExtension } from "../edition-extension";
 
 export const NODE_COLLABORATION_MAX_PAYLOAD_BYTES = 1024 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;
@@ -22,6 +23,7 @@ type NodeCollaborationRuntimeOptions = {
   authenticate?: (request: Request, env: RuntimeEnv) => Promise<string | null>;
   connectionLimit?: number;
   passthroughPaths?: readonly string[];
+  editionExtension?: ZilobaseEditionExtension;
 };
 
 export function attachNodeCollaborationRuntime(
@@ -95,7 +97,8 @@ export function attachNodeCollaborationRuntime(
     }
 
     const webRequest = toUpgradeRequest(request);
-    const authenticate = options.authenticate ?? authenticateUpgrade;
+    const authenticate = options.authenticate ?? ((request, runtimeEnv) =>
+      authenticateUpgrade(request, runtimeEnv, options.editionExtension));
     const userId = await authenticate(webRequest, env);
 
     if (!userId) {
@@ -131,9 +134,13 @@ export function attachNodeCollaborationRuntime(
   };
 }
 
-async function authenticateUpgrade(request: Request, env: RuntimeEnv) {
+async function authenticateUpgrade(
+  request: Request,
+  env: RuntimeEnv,
+  editionExtension?: ZilobaseEditionExtension,
+) {
   return runWithDbEnv(env, async () => {
-    const auth = createAuth(env, request);
+    const auth = createAuth(env, request, undefined, { editionExtension });
     const headers = await getAuthHeaders(auth, request.headers);
 
     if (!headers.has("cookie")) {

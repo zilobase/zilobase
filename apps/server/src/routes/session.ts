@@ -9,6 +9,7 @@ import {
 } from "../features/instance/registration";
 import { isSelfHostedRuntime } from "../runtime-adapter";
 import type { AppBindings } from "../types";
+import { MembershipService } from "../services/membership-service";
 
 export const sessionRoutes = new Hono<AppBindings>();
 
@@ -27,6 +28,7 @@ sessionRoutes.get("/", (c) => timed(c, "route_session_total", async () => {
         user.id,
         user.emailVerified,
         session?.id,
+        c.get("editionExtension") ?? undefined,
       ),
     ),
     timed(
@@ -57,6 +59,7 @@ async function ensurePinnedWorkspaceMembership(
   userId: string,
   emailVerified: boolean,
   sessionId?: string | null,
+  editionExtension?: AppBindings["Variables"]["editionExtension"],
 ) {
   if (!isSelfHostedRuntime()) {
     return null;
@@ -85,15 +88,15 @@ async function ensurePinnedWorkspaceMembership(
       return null;
     }
 
-    await db
-      .insert(member)
-      .values({
-        id: crypto.randomUUID(),
-        organizationId: workspaceId,
-        role: "member",
-        userId,
-      })
-      .onConflictDoNothing();
+    await new MembershipService(
+      db,
+      editionExtension ?? undefined,
+    ).grantMembership({
+      role: "member",
+      source: "open-registration",
+      userId,
+      workspaceId,
+    });
   }
 
   if (sessionId) {

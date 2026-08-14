@@ -7,6 +7,7 @@ import {
   UserIcon,
   UsersIcon,
 } from "lucide-react"
+import type { ComponentType } from "react"
 import { useSession } from "@zilobase/features/auth"
 
 import {
@@ -24,8 +25,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { getUserImageUrl } from "@/lib/image-upload"
+import { editionWebModule } from "@zilobase/edition-web"
 
-export type SettingsSection =
+export type CoreSettingsSection =
   | "profile"
   | "preferences"
   | "workspace"
@@ -33,11 +35,12 @@ export type SettingsSection =
   | "zilobase-ai"
   | "api-keys"
   | "team"
+export type SettingsSection = CoreSettingsSection | string
 
 const settingsItems: Array<{
   title: string
   section: SettingsSection
-  icon: typeof UserIcon
+  icon: ComponentType<{ className?: string }>
 }> = [
   { title: "Profile", section: "profile", icon: UserIcon },
   {
@@ -50,6 +53,11 @@ const settingsItems: Array<{
   { title: "Zilobase AI", section: "zilobase-ai", icon: SparklesIcon },
   { title: "API Keys", section: "api-keys", icon: KeyRoundIcon },
   { title: "Team", section: "team", icon: UsersIcon },
+  ...editionWebModule.settingsSections.map((section) => ({
+    title: section.title,
+    section: section.id,
+    icon: section.icon ?? SlidersHorizontalIcon,
+  })),
 ]
 
 export function SettingsSidebar({

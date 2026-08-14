@@ -37,7 +37,11 @@ const instanceSettingsUpdateSchema = z
 
 instanceRoutes.get("/.well-known/zilobase", async (c) => {
   c.header("Cache-Control", "no-store");
-  return c.json(await getZilobaseDiscoveryDocument(c.env));
+  return c.json(
+    await getZilobaseDiscoveryDocument(c.env, undefined, {
+      editionExtension: c.get("editionExtension") ?? undefined,
+    }),
+  );
 });
 
 instanceRoutes.post("/api/instance/bootstrap", async (c) => {
@@ -60,6 +64,8 @@ instanceRoutes.post("/api/instance/bootstrap", async (c) => {
       c.env,
       readBootstrapToken(c.req.raw.headers),
       parsed.data,
+      undefined,
+      { editionExtension: c.get("editionExtension") ?? undefined },
     );
     return c.json(result, 201);
   } catch (error) {

@@ -79,6 +79,7 @@ import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
 import WorkspaceSettingsPage from "@/pages/settings/workspace"
 import ZilobaseAiSettingsPage from "@/pages/settings/zilobase-ai"
+import { editionWebModule } from "@zilobase/edition-web"
 
 export function AppLayout({
   children,
@@ -547,6 +548,15 @@ function AppLayoutContent({
 }
 
 function SettingsSectionContent({ section }: { section: SettingsSection }) {
+  const editionSection = editionWebModule.settingsSections.find(
+    (candidate) => candidate.id === section,
+  )
+
+  if (editionSection) {
+    const EditionSettings = editionSection.component
+    return <EditionSettings />
+  }
+
   switch (section) {
     case "preferences":
       return <PreferencesSettingsPage />

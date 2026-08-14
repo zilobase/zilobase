@@ -80,6 +80,9 @@ function aliasPlugin() {
   return {
     name: "zilobase-test-alias",
     setup(build) {
+      build.onResolve({ filter: /^@zilobase\/edition-web$/ }, () => ({
+        path: join(srcDir, "edition", "community.tsx"),
+      }))
       build.onResolve({ filter: /^@\/packages\/editor\/?/ }, async (args) => ({
         path: await resolveAliasPath(
           join(srcDir, "editor", args.path.replace(/^@\/packages\/editor\/?/, ""))

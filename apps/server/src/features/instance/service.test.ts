@@ -42,6 +42,31 @@ test("discovery publishes canonical identity, versions, and desktop endpoints", 
   });
 });
 
+test("enterprise discovery adds only the edition and declared capabilities", async () => {
+  const document = await getZilobaseDiscoveryDocument(
+    productionEnv,
+    {
+      async getInstanceSettings() {
+        return { displayName: "Example", instanceId: "instance-1" };
+      },
+    },
+    {
+      editionExtension: {
+        id: "enterprise",
+        authPlugins: [],
+        capabilities: ["sso", "audit"],
+        async beforeMembershipGrant() {},
+        async recordSecurityEvent() {},
+        registerRoutes() {},
+      },
+    },
+  );
+
+  assert.equal(document.edition, "enterprise");
+  assert.deepEqual(document.capabilities, ["sso", "audit"]);
+  assert.equal("license" in document, false);
+});
+
 test("instance initialization keeps the winning database identity under concurrency", async () => {
   let persisted: InstanceSettingsRecord | null = null;
   const repository = {

@@ -1,4 +1,5 @@
 import type { Auth } from "./auth";
+import type { ZilobaseEditionExtension } from "./edition-extension";
 
 type AuthSession = Auth["$Infer"]["Session"]["session"] & {
   activeWorkspaceId?: string | null;
@@ -48,6 +49,7 @@ export type AppBindings = {
     apiKey: ApiKeyContext | null;
     authMethod: "apiKey" | "session" | null;
     requestId: string;
+    editionExtension: ZilobaseEditionExtension | null;
     serverTimings: string[];
     user: Auth["$Infer"]["Session"]["user"] | null;
     session: AuthSession | null;

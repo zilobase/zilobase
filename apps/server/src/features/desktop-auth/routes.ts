@@ -222,7 +222,9 @@ desktopAuthRoutes.post("/api/auth/desktop/token", async (c) => {
 
         if (!authorizationCode) return null;
 
-        const auth = createAuth(c.env, c.req.raw);
+        const auth = createAuth(c.env, c.req.raw, undefined, {
+          editionExtension: c.get("editionExtension") ?? undefined,
+        });
         const authContext = await auth.$context;
         const session = await authContext.internalAdapter.createSession(
           authorizationCode.userId,

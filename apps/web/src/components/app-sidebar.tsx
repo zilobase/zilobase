@@ -106,6 +106,7 @@ import {
   Trash2Icon,
   type LucideIcon,
 } from "lucide-react";
+import { editionWebModule } from "@zilobase/edition-web";
 
 const sidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
@@ -493,9 +494,19 @@ export function AppSidebar({
             )}
             <NavSecondary
               className="mt-auto"
-              items={data.navSecondary.filter(
-                (item) => !hiddenSidebarItems.has(item.id),
-              )}
+              items={[
+                ...editionWebModule.navigation.map((item) => {
+                  const Icon = item.icon;
+                  return {
+                    title: item.title,
+                    url: item.url,
+                    icon: Icon ? <Icon /> : <BlocksIcon />,
+                  };
+                }),
+                ...data.navSecondary.filter(
+                  (item) => !hiddenSidebarItems.has(item.id),
+                ),
+              ]}
             />
           </>
         )}

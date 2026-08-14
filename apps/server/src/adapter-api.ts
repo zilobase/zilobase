@@ -1,5 +1,12 @@
 export { getMembership, getWorkspaceMemberships } from "./access";
 export { createApp } from "./app";
+export type {
+  EditionExtensionOptions,
+  MembershipGrantInput,
+  MembershipGrantSource,
+  SecurityEvent,
+  ZilobaseEditionExtension,
+} from "./edition-extension";
 export {
   coerceAiChatRequestBody,
   runAiChatTurn,
@@ -29,6 +36,7 @@ export {
   type RuntimeEnv,
 } from "./config";
 export { createDbClient, runWithDbClient, runWithDbEnv } from "./db";
+export type { Database, DatabaseClient } from "./db";
 export {
   DATABASE_UNAVAILABLE_CODE,
   DATABASE_UNAVAILABLE_MESSAGE,
@@ -74,6 +82,21 @@ export {
   drainDatabaseRealtimeOutbox,
   type DatabaseRealtimeMutationEvent,
 } from "./services/database-realtime";
+export {
+  MembershipService,
+  type GrantMembershipInput,
+  type GrantMembershipResult,
+} from "./services/membership-service";
+export {
+  CORE_MIGRATION_SET,
+  assertMigrationSets,
+  runMigrationSets,
+  type MigrationSet,
+} from "./infrastructure/node/migrations";
+export {
+  createNodeRuntime,
+  type NodeRuntimeOptions,
+} from "./infrastructure/node/node-runtime";
 export {
   createCollaborationHocuspocus,
   createCollaborationTicket,

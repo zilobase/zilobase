@@ -48,6 +48,7 @@ import {
 } from "@zilobase/features/auth"
 import { workspacesQueryOptions } from "@zilobase/features/workspaces"
 import { useAuthFlowStore } from "@/stores/auth-flow-store"
+import { editionWebModule } from "@zilobase/edition-web"
 
 type BrowserSignInState =
   | { phase: "idle"; error: null; retry: "oauth" }
@@ -265,7 +266,11 @@ export function LoginForm({
       )}
 
       {!desktop && (
-        <form onSubmit={handleSubmit}>
+        <>
+          {editionWebModule.additionalLoginMethods.map((LoginMethod, index) => (
+            <LoginMethod disabled={isPending} key={index} />
+          ))}
+          <form onSubmit={handleSubmit}>
           <FieldGroup>
             <Field>
               <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -367,7 +372,8 @@ export function LoginForm({
               )}
             </Field>
           </FieldGroup>
-        </form>
+          </form>
+        </>
       )}
     </div>
   )

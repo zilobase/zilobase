@@ -4,15 +4,19 @@ import { and, eq, sql } from "drizzle-orm";
 import { hashPassword } from "better-auth/crypto";
 
 import { getStringEnv, type RuntimeEnv } from "../../config";
-import { db, runWithDbEnv } from "../../db";
+import { db, runWithDbEnv, type Database } from "../../db";
 import {
   account,
   instanceSettings,
   invitation,
-  member,
   user,
   workspace,
 } from "../../db/schema";
+import type {
+  EditionExtensionOptions,
+  ZilobaseEditionExtension,
+} from "../../edition-extension";
+import { MembershipService } from "../../services/membership-service";
 import { isSelfHostedRuntime } from "../../runtime-adapter";
 import {
   ensureInstanceSettings,
@@ -80,6 +84,7 @@ type BootstrapDependencies = {
   ensure(env: RuntimeEnv): Promise<unknown>;
   execute(
     input: BootstrapInput & { passwordHash: string },
+    editionExtension?: ZilobaseEditionExtension,
   ): Promise<BootstrapResult>;
   hash(password: string): Promise<string>;
   withDatabase<T>(env: RuntimeEnv, run: () => Promise<T>): Promise<T>;
@@ -97,13 +102,17 @@ export async function bootstrapSelfHostedInstance(
   suppliedToken: string | null,
   input: BootstrapInput,
   dependencies: BootstrapDependencies = databaseBootstrapDependencies,
+  options: EditionExtensionOptions = {},
 ) {
   assertBootstrapToken(env, suppliedToken);
   return dependencies.withDatabase(env, async () => {
     await dependencies.ensure(env);
 
     const passwordHash = await dependencies.hash(input.password);
-    return dependencies.execute({ ...input, passwordHash });
+    return dependencies.execute(
+      { ...input, passwordHash },
+      options.editionExtension,
+    );
   });
 }
 
@@ -335,6 +344,7 @@ export async function validateSelfHostedInvitationCandidate(
 
 async function executeDatabaseBootstrap(
   input: BootstrapInput & { passwordHash: string },
+  editionExtension?: ZilobaseEditionExtension,
 ) {
   return db.transaction(async (transaction) => {
     await transaction.execute(
@@ -396,12 +406,14 @@ async function executeDatabaseBootstrap(
       slug: "zilobase",
       updatedAt: now,
     });
-    await transaction.insert(member).values({
-      createdAt: now,
-      id: crypto.randomUUID(),
-      organizationId: workspaceId,
+    await new MembershipService(
+      transaction as Database,
+      editionExtension,
+    ).grantMembership({
       role: "owner",
+      source: "bootstrap",
       userId,
+      workspaceId,
     });
     await transaction
       .update(instanceSettings)

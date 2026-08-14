@@ -25,6 +25,7 @@ import {
   readInvitationIdFromCookieHeader,
 } from "./features/instance/registration";
 import { isSelfHostedRuntime } from "./runtime-adapter";
+import type { EditionExtensionOptions } from "./edition-extension";
 
 type AuthEnv = Record<string, unknown>;
 
@@ -32,11 +33,17 @@ export function createAuth(
   env: AuthEnv,
   request: Request,
   database: Database = db,
+  options: EditionExtensionOptions = {},
 ): Auth {
-  return createAuthInstance(env, request, database);
+  return createAuthInstance(env, request, database, options);
 }
 
-function createAuthInstance(env: AuthEnv, request: Request, database: Database) {
+function createAuthInstance(
+  env: AuthEnv,
+  request: Request,
+  database: Database,
+  options: EditionExtensionOptions,
+) {
   const requestUrl = new URL(request.url);
 
   return betterAuth({
@@ -47,11 +54,16 @@ function createAuthInstance(env: AuthEnv, request: Request, database: Database) 
       provider: "pg",
       schema,
     }),
-    ...sharedAuthOptions(env, request),
+    ...sharedAuthOptions(env, request, database, options),
   });
 }
 
-function sharedAuthOptions(env: AuthEnv, request: Request) {
+function sharedAuthOptions(
+  env: AuthEnv,
+  request: Request,
+  database: Database,
+  options: EditionExtensionOptions,
+) {
   const googleClientId = getStringEnv(env, "GOOGLE_CLIENT_ID");
   const googleClientSecret = getStringEnv(env, "GOOGLE_CLIENT_SECRET");
   const isHosted = getPrimaryClientOrigin(env) === "https://app.zilobase.com";
@@ -169,6 +181,46 @@ function sharedAuthOptions(env: AuthEnv, request: Request) {
         teams: {
           enabled: true,
         },
+        organizationHooks: {
+          async beforeAcceptInvitation({ invitation, user }) {
+            await options.editionExtension?.beforeMembershipGrant({
+              database,
+              role: invitation.role,
+              source: "invitation",
+              userId: user.id,
+              workspaceId: invitation.organizationId,
+            });
+          },
+          async beforeAddMember({ member: candidate }) {
+            await options.editionExtension?.beforeMembershipGrant({
+              database,
+              role: candidate.role,
+              source: "admin",
+              userId: candidate.userId,
+              workspaceId: candidate.organizationId,
+            });
+          },
+          async afterAcceptInvitation({ invitation, member: created }) {
+            await options.editionExtension?.recordSecurityEvent({
+              database,
+              details: { role: created.role, source: "invitation" },
+              occurredAt: new Date(),
+              type: "membership.granted",
+              userId: created.userId,
+              workspaceId: invitation.organizationId,
+            });
+          },
+          async afterAddMember({ member: created }) {
+            await options.editionExtension?.recordSecurityEvent({
+              database,
+              details: { role: created.role, source: "admin" },
+              occurredAt: new Date(),
+              type: "membership.granted",
+              userId: created.userId,
+              workspaceId: created.organizationId,
+            });
+          },
+        },
         async sendInvitationEmail(data) {
           const inviteLink = `${getPrimaryClientOrigin(env)}/accept-invitation?id=${data.id}`;
 
@@ -183,6 +235,7 @@ function sharedAuthOptions(env: AuthEnv, request: Request) {
           });
         },
       }),
+      ...(options.editionExtension?.authPlugins ?? []),
     ],
   };
 }

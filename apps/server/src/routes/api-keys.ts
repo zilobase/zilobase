@@ -83,7 +83,9 @@ apiKeyRoutes.post("/", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const auth = createAuth(c.env, c.req.raw);
+  const auth = createAuth(c.env, c.req.raw, undefined, {
+    editionExtension: c.get("editionExtension") ?? undefined,
+  });
   const key = await auth.api.createApiKey({
     body: {
       expiresIn:

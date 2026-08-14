@@ -66,6 +66,10 @@ export default defineConfig(async () => ({
   resolve: {
     dedupe: ["react", "react-dom"],
     alias: [
+      {
+        find: "@zilobase/edition-web",
+        replacement: `${srcDir}/edition/community.tsx`,
+      },
       { find: "@/packages/editor", replacement: editorDir },
       { find: "@", replacement: srcDir },
       {

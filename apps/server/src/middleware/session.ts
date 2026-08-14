@@ -41,7 +41,9 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (
     c.set("authMethod", null);
 
     const rawApiKey = readApiKeyFromHeaders(c.req.raw.headers);
-    const auth = createAuth(c.env, c.req.raw);
+    const auth = createAuth(c.env, c.req.raw, db, {
+      editionExtension: c.get("editionExtension") ?? undefined,
+    });
 
     if (rawApiKey) {
       const verification = await timed(c, "session_api_key_verify", () =>

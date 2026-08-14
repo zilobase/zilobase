@@ -10,17 +10,33 @@ import {
   isDatabaseUnavailableError,
 } from "./db/errors";
 import type { AppBindings } from "./types";
+import type { EditionExtensionOptions } from "./edition-extension";
 
-export function createApp() {
+const appEditionExtensions = new WeakMap<
+  object,
+  EditionExtensionOptions["editionExtension"]
+>();
+
+export function createApp(options: EditionExtensionOptions = {}) {
   const app = new Hono<AppBindings>();
+  appEditionExtensions.set(app, options.editionExtension);
 
+  app.use("*", async (c, next) => {
+    c.set("editionExtension", options.editionExtension ?? null);
+    await next();
+  });
   app.use("*", createCorsMiddleware());
   app.use("*", serverTimingMiddleware);
   app.use("*", authenticatedSessionMiddleware);
   registerRoutes(app);
+  options.editionExtension?.registerRoutes(app);
   app.onError(appErrorHandler);
 
   return app;
+}
+
+export function getAppEditionExtension(app: object) {
+  return appEditionExtensions.get(app);
 }
 
 export const appErrorHandler: ErrorHandler<AppBindings> = (error, c) => {

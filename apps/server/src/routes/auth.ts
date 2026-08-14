@@ -132,7 +132,9 @@ function renameOrganizationFields(value: unknown): unknown {
 authRoutes.post("/api/auth/set-password", async (c) => {
   const body = await c.req.json().catch(() => null);
   return runWithDbEnv(c.env, async () => {
-    const auth = createAuth(c.env, c.req.raw);
+    const auth = createAuth(c.env, c.req.raw, undefined, {
+      editionExtension: c.get("editionExtension") ?? undefined,
+    });
 
     return auth.api.setPassword({
       asResponse: true,
@@ -168,7 +170,9 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
       );
     }
 
-    const auth = createAuth(c.env, request);
+    const auth = createAuth(c.env, request, undefined, {
+      editionExtension: c.get("editionExtension") ?? undefined,
+    });
     const response = await auth
       .handler(request)
       .then((response) => toWorkspaceAuthResponse(response, rewritten));

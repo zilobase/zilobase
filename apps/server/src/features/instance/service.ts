@@ -9,6 +9,7 @@ import {
 import { db, runWithDbEnv } from "../../db";
 import { instanceSettings as instanceSettingsTable } from "../../db/schema";
 import { SERVER_VERSION } from "../../version";
+import type { EditionExtensionOptions } from "../../edition-extension";
 
 export const DESKTOP_PROTOCOL_VERSION = 1 as const;
 export const INSTANCE_SETTINGS_ROW_ID = "primary";
@@ -25,10 +26,12 @@ export type DesktopServer = {
 };
 
 export type ZilobaseDiscoveryDocument = DesktopServer & {
+  capabilities?: readonly string[];
   desktopAuthorization: {
     authorizationEndpoint: string;
     tokenEndpoint: string;
   };
+  edition?: "enterprise";
 };
 
 export type InstanceSettingsRecord = {
@@ -87,6 +90,7 @@ export function ensureInstanceSettings(env: RuntimeEnv) {
 export async function getZilobaseDiscoveryDocument(
   env: RuntimeEnv,
   dependencies: DiscoveryDependencies = defaultDiscoveryDependencies,
+  options: EditionExtensionOptions = {},
 ): Promise<ZilobaseDiscoveryDocument> {
   const apiOrigin = getCanonicalApiOrigin(env);
   const webOrigin = getCanonicalWebOrigin(env);
@@ -111,6 +115,12 @@ export async function getZilobaseDiscoveryDocument(
       authorizationEndpoint: new URL("/desktop/authorize", apiOrigin).toString(),
       tokenEndpoint: new URL("/api/auth/desktop/token", apiOrigin).toString(),
     },
+    ...(options.editionExtension
+      ? {
+          capabilities: [...options.editionExtension.capabilities],
+          edition: options.editionExtension.id,
+        }
+      : {}),
   };
 }
 

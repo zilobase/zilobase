@@ -5,6 +5,7 @@ import {
   Outlet,
   redirect,
   type ErrorComponentProps,
+  useRouterState,
 } from "@tanstack/react-router"
 import { useEffect } from "react"
 
@@ -49,6 +50,7 @@ import { webAuthClient } from "@/providers/features-provider"
 import { getMostRecentItemPath } from "@/lib/recent-navigation"
 import { useAppStore } from "@/stores/app-store"
 import { getAuthReturnPath } from "@/lib/google-auth"
+import { editionWebModule } from "@zilobase/edition-web"
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000
 
@@ -331,6 +333,12 @@ const teamSettingsRoute = createRoute({
   component: TeamSettingsPage,
 })
 
+const editionRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/enterprise/$",
+  component: EditionRouteHost,
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -352,6 +360,7 @@ const routeTree = rootRoute.addChildren([
     apiKeysSettingsRoute,
     zilobaseAiSettingsRoute,
     teamSettingsRoute,
+    editionRoute,
   ]),
   pageRoute,
   databaseRoute,
@@ -364,6 +373,27 @@ export const router = createRouter({
   defaultPendingMinMs: 300,
   defaultPendingMs: 250,
 })
+
+function EditionRouteHost() {
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const route = editionWebModule.routes.find(
+    (candidate) =>
+      `/enterprise/${candidate.path.replace(/^\/+/, "")}` === pathname,
+  )
+
+  if (!route) {
+    return (
+      <main className="flex min-h-full items-center justify-center p-6">
+        <p className="text-sm text-muted-foreground">Enterprise page not found.</p>
+      </main>
+    )
+  }
+
+  const EditionComponent = route.component
+  return <EditionComponent />
+}
 
 function RoutePendingPage() {
   useEffect(() => {

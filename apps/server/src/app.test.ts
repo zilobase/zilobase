@@ -4,6 +4,7 @@ import { Hono } from "hono";
 
 import { appErrorHandler, createApp } from "./app";
 import type { AppBindings } from "./types";
+import type { ZilobaseEditionExtension } from "./edition-extension";
 
 test("createApp registers every public feature route group", () => {
   const routes = createApp().routes.map(({ method, path }) => `${method} ${path}`);
@@ -35,12 +36,38 @@ test("createApp keeps global middleware ahead of feature routes", () => {
   const routes = createApp().routes;
   const firstFeatureRoute = routes.findIndex(({ path }) => path !== "/*");
 
-  assert.equal(firstFeatureRoute, 3);
+  assert.equal(firstFeatureRoute, 4);
   assert.deepEqual(
     routes.slice(0, firstFeatureRoute).map(({ path }) => path),
-    ["/*", "/*", "/*"],
+    ["/*", "/*", "/*", "/*"],
   );
 });
+
+test("createApp registers a compile-time edition after public routes", () => {
+  const extension = createTestEditionExtension();
+  const routes = createApp({ editionExtension: extension }).routes.map(
+    ({ method, path }) => `${method} ${path}`,
+  );
+
+  assert.ok(routes.includes("GET /api/enterprise/license"));
+  assert.ok(
+    routes.indexOf("GET /api/enterprise/license") >
+      routes.indexOf("GET /.well-known/zilobase"),
+  );
+});
+
+function createTestEditionExtension(): ZilobaseEditionExtension {
+  return {
+    id: "enterprise",
+    authPlugins: [],
+    capabilities: ["sso"],
+    async beforeMembershipGrant() {},
+    async recordSecurityEvent() {},
+    registerRoutes(app) {
+      app.get("/api/enterprise/license", (c) => c.json({ status: "valid" }));
+    },
+  };
+}
 
 test("database availability failures use the stable 503 contract", async () => {
   const app = new Hono<AppBindings>();
