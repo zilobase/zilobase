@@ -52,6 +52,9 @@ be derived from the API request URL, such as behind a development proxy.
 
 ## Runtime Integrations
 
-The server exports an integration surface from `@zilobase/server/adapter-api`.
-It includes the Hocuspocus factory, ticket helpers, Yjs conversion helpers, and
-collaboration runtime callbacks for alternate runtimes.
+The server exports a runtime-neutral integration surface from
+`@zilobase/server/adapter-api`. It includes the Hocuspocus factory, ticket
+helpers, Yjs conversion helpers, and collaboration runtime callbacks for
+alternate runtimes. Node-only migration and server runtime helpers are exported
+separately from `@zilobase/server/node-adapter-api` so Worker bundles do not
+load filesystem-dependent modules.

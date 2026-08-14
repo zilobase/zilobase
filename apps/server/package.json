@@ -12,6 +12,10 @@
       "types": "./src/adapter-api.ts",
       "default": "./src/adapter-api.ts"
     },
+    "./node-adapter-api": {
+      "types": "./src/node-adapter-api.ts",
+      "default": "./src/node-adapter-api.ts"
+    },
     "./realtime-api": {
       "types": "./src/realtime-api.ts",
       "default": "./src/realtime-api.ts"
