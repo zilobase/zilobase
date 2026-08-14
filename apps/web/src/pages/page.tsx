@@ -57,6 +57,7 @@ import {
 } from "@/providers/offline-provider";
 import { createPageCommentController } from "@/comments/yjs-comments";
 import { usePageCommentsRegistry } from "@/contexts/page-comments-registry";
+import { useTitleDraft } from "@/hooks/use-title-draft";
 
 type PageEditorPaneProps = {
   className?: string;
@@ -331,12 +332,24 @@ export function PageEditorPane({
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
   const { registerEditor, unregisterEditor } = usePageEditorRegistry();
   const commentsRegistry = usePageCommentsRegistry();
-  const [name, setName] = useState("");
   const [cover, setCover] = useState("");
   const [emoji, setEmoji] = useState("");
   const [iconPosition, setIconPosition] =
     useState<PageIconPosition>("inline");
   const fullWidth = resolvePageFullWidth(page, userSettings?.pageFullWidth);
+  const pageEditable =
+    !readOnly &&
+    !page?.deletedAt &&
+    (accessLevel === "edit" || accessLevel === "full");
+  const { setTitle: setName, title: name } = useTitleDraft({
+    enabled: pageEditable,
+    onSave: async (nextName) => {
+      if (!page) return;
+      await updatePage.mutateAsync({ id: page.id, name: nextName });
+    },
+    sourceId: page?.id ?? null,
+    sourceTitle: page?.name ?? "",
+  });
 
   const flushContentSaveTimeout = useCallback(() => {
     if (contentSaveTimeoutRef.current === null) {
@@ -374,20 +387,14 @@ export function PageEditorPane({
       return;
     }
 
-    setName(page.name);
     setCover(pageCover);
     setEmoji(pageEmoji);
     setIconPosition(pageIconPosition);
-  }, [page, page?.name, page?.updatedAt, pageCover, pageEmoji, pageIconPosition]);
+  }, [page?.id, pageCover, pageEmoji, pageIconPosition]);
 
   useEffect(() => {
     return flushContentSaveTimeout;
   }, [flushContentSaveTimeout, pageId]);
-
-  const pageEditable =
-    !readOnly &&
-    !page?.deletedAt &&
-    (accessLevel === "edit" || accessLevel === "full");
 
   useEffect(() => {
     if (!pageEditable || !page || !navigation) {
@@ -497,24 +504,6 @@ export function PageEditorPane({
       },
     });
   };
-
-  useEffect(() => {
-    if (
-      readOnly ||
-      !page ||
-      page.deletedAt ||
-      (accessLevel !== "edit" && accessLevel !== "full") ||
-      name.trim() === page.name
-    ) {
-      return;
-    }
-
-    const timeout = window.setTimeout(() => {
-      updatePage.mutate({ id: page.id, name: name.trim() });
-    }, 600);
-
-    return () => window.clearTimeout(timeout);
-  }, [accessLevel, name, readOnly, updatePage, page]);
 
   const updateCover = (nextCover: string) => {
     setCover(nextCover);

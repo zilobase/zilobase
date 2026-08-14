@@ -44,6 +44,7 @@ import {
 import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
 import type { OpenPageOptions } from "@/packages/editor/types"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useTitleDraft } from "@/hooks/use-title-draft"
 import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider"
 
 export default function DatabasePage() {
@@ -430,7 +431,6 @@ export function DatabaseMainPane({
   const updateDatabase = useUpdateDatabase()
   const restoreDatabase = useRestoreDatabase()
   const updatePage = useUpdatePage()
-  const [title, setTitle] = useState("")
   const [cover, setCover] = useState("")
   const [emoji, setEmoji] = useState("")
   const [iconPosition, setIconPosition] =
@@ -444,10 +444,27 @@ export function DatabaseMainPane({
       payload?.database.accessLevel === "full" ||
       accessLevel === "edit" ||
       accessLevel === "full")
+  const { setTitle, title } = useTitleDraft({
+    enabled: editable,
+    onSave: async (nextTitle) => {
+      if (!payload) return
 
-  useEffect(() => {
-    setTitle(payload?.database.name ?? "")
-  }, [payload?.database.id, payload?.database.name])
+      const saves: Promise<unknown>[] = [
+        updateDatabase.mutateAsync({
+          databaseId: payload.database.id,
+          name: nextTitle,
+        }),
+      ]
+
+      if (page && page.name !== nextTitle) {
+        saves.push(updatePage.mutateAsync({ id: page.id, name: nextTitle }))
+      }
+
+      await Promise.all(saves)
+    },
+    sourceId: payload?.database.id ?? null,
+    sourceTitle: payload?.database.name ?? "",
+  })
 
   useEffect(() => {
     if (!payload) {
@@ -461,27 +478,6 @@ export function DatabaseMainPane({
     setEmoji(getDatabaseEmoji(payload.database) ?? "")
     setIconPosition(getDatabaseIconPosition(payload.database))
   }, [payload])
-
-  useEffect(() => {
-    if (!payload || !editable || title.trim() === payload.database.name) {
-      return
-    }
-
-    const timeout = window.setTimeout(() => {
-      const nextTitle = title.trim()
-
-      updateDatabase.mutate({
-        databaseId: payload.database.id,
-        name: nextTitle,
-      })
-
-      if (page && page.name !== nextTitle) {
-        updatePage.mutate({ id: page.id, name: nextTitle })
-      }
-    }, 600)
-
-    return () => window.clearTimeout(timeout)
-  }, [editable, payload, title, updateDatabase, updatePage, page])
 
   const updateCover = (nextCover: string) => {
     setCover(nextCover)
