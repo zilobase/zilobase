@@ -155,13 +155,19 @@ jobs:
       - name: Configure desktop Google OAuth
         env:
           GOOGLE_DESKTOP_CLIENT_ID: ${{ vars.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
         shell: bash
         run: |
           if [ -z "$GOOGLE_DESKTOP_CLIENT_ID" ]; then
             echo "Missing required GitHub Actions variable: GOOGLE_DESKTOP_CLIENT_ID" >&2
             exit 1
           fi
+          if [ -z "$GOOGLE_DESKTOP_CLIENT_SECRET" ]; then
+            echo "Missing required GitHub Actions secret: GOOGLE_DESKTOP_CLIENT_SECRET" >&2
+            exit 1
+          fi
           echo "GOOGLE_DESKTOP_CLIENT_ID=$GOOGLE_DESKTOP_CLIENT_ID" >> "$GITHUB_ENV"
+          echo "GOOGLE_DESKTOP_CLIENT_SECRET=$GOOGLE_DESKTOP_CLIENT_SECRET" >> "$GITHUB_ENV"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
@@ -258,13 +264,19 @@ jobs:
       - name: Configure desktop Google OAuth
         env:
           GOOGLE_DESKTOP_CLIENT_ID: ${{ vars.GOOGLE_DESKTOP_CLIENT_ID }}
+          GOOGLE_DESKTOP_CLIENT_SECRET: ${{ secrets.GOOGLE_DESKTOP_CLIENT_SECRET }}
         shell: bash
         run: |
           if [ -z "$GOOGLE_DESKTOP_CLIENT_ID" ]; then
             echo "Missing required GitHub Actions variable: GOOGLE_DESKTOP_CLIENT_ID" >&2
             exit 1
           fi
+          if [ -z "$GOOGLE_DESKTOP_CLIENT_SECRET" ]; then
+            echo "Missing required GitHub Actions secret: GOOGLE_DESKTOP_CLIENT_SECRET" >&2
+            exit 1
+          fi
           echo "GOOGLE_DESKTOP_CLIENT_ID=$GOOGLE_DESKTOP_CLIENT_ID" >> "$GITHUB_ENV"
+          echo "GOOGLE_DESKTOP_CLIENT_SECRET=$GOOGLE_DESKTOP_CLIENT_SECRET" >> "$GITHUB_ENV"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable

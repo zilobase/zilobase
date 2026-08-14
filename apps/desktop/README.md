@@ -10,19 +10,25 @@ loopback address such as `http://127.0.0.1:43123/oauth/callback`. It does not us
 an embedded WebView or an authentication deep link.
 
 Create a Google OAuth client with application type **Desktop app**, then provide
-its public client ID as `GOOGLE_DESKTOP_CLIENT_ID` when compiling the desktop
-application and in the server runtime. No desktop client secret is used.
+its client ID as `GOOGLE_DESKTOP_CLIENT_ID` and generated client secret as
+`GOOGLE_DESKTOP_CLIENT_SECRET` when compiling the desktop application. The
+client ID is also configured in the server runtime so the resulting ID token is
+accepted. Google treats an installed app as a public client, so its generated
+secret is not confidential and PKCE remains the protection against intercepted
+authorization codes. We still store the value as a build secret and never log it.
 
 For local development:
 
 ```sh
 export GOOGLE_DESKTOP_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+export GOOGLE_DESKTOP_CLIENT_SECRET="your-generated-desktop-client-secret"
 npm run dev:desktop
 ```
 
 For releases, configure the GitHub Actions repository variable
-`GOOGLE_DESKTOP_CLIENT_ID`. The release workflow fails before building when it
-is absent. Production builds send the verified Google ID token to
+`GOOGLE_DESKTOP_CLIENT_ID` and Actions secret `GOOGLE_DESKTOP_CLIENT_SECRET`.
+The release workflow fails before building when either is absent. Production
+builds send the verified Google ID token to
 `https://api.zilobase.com`; local debug builds use `http://127.0.0.1:3000`.
 `ZILOBASE_DESKTOP_API_URL` can override that API origin at compile time, but
 release overrides must use HTTPS.

@@ -255,6 +255,7 @@ pub(crate) async fn start_google_oauth(
     state: tauri::State<'_, DesktopOAuthState>,
 ) -> Result<DesktopOAuthSuccess, DesktopOAuthError> {
     let client_id = google_desktop_client_id()?;
+    let client_secret = google_desktop_client_secret()?;
     let attempt_id = random_urlsafe(18)?;
     let (cancel, cancel_rx) = watch::channel(false);
 
@@ -265,7 +266,7 @@ pub(crate) async fn start_google_oauth(
         "[diagnostics] event=desktop_oauth.started status=started"
     );
 
-    let result = run_google_oauth(&app, &client_id, cancel_rx).await;
+    let result = run_google_oauth(&app, &client_id, &client_secret, cancel_rx).await;
     state.finish_attempt(&attempt_id);
 
     match &result {
@@ -303,6 +304,7 @@ pub(crate) fn cancel_google_oauth(
 async fn run_google_oauth(
     app: &AppHandle,
     client_id: &str,
+    client_secret: &str,
     mut cancel: watch::Receiver<bool>,
 ) -> Result<DesktopOAuthSuccess, DesktopOAuthError> {
     let (listener, redirect_uri) = bind_loopback().await?;
@@ -315,7 +317,14 @@ async fn run_google_oauth(
 
     let callback = wait_for_callback(listener.as_ref(), &request.state, &mut cancel).await?;
     tokio::spawn(serve_completion_page(listener));
-    let result = complete_sign_in(client_id, &request, &callback.code, &mut cancel).await;
+    let result = complete_sign_in(
+        client_id,
+        client_secret,
+        &request,
+        &callback.code,
+        &mut cancel,
+    )
+    .await;
 
     result?;
     Ok(DesktopOAuthSuccess { status: "success" })
@@ -584,13 +593,15 @@ fn parse_callback(request: &[u8], expected_state: &str) -> ParsedCallback {
 
 async fn complete_sign_in(
     client_id: &str,
+    client_secret: &str,
     request: &OAuthRequest,
     code: &str,
     cancel: &mut watch::Receiver<bool>,
 ) -> Result<(), DesktopOAuthError> {
     let endpoints = oauth_endpoints()?;
     let credentials =
-        exchange_session_credentials(client_id, request, code, cancel, &endpoints).await?;
+        exchange_session_credentials(client_id, client_secret, request, code, cancel, &endpoints)
+            .await?;
     persist_session_credentials(&credentials.token, &credentials.owner)
 }
 
@@ -608,6 +619,7 @@ fn oauth_endpoints() -> Result<OAuthEndpoints, DesktopOAuthError> {
 
 async fn exchange_session_credentials(
     client_id: &str,
+    client_secret: &str,
     request: &OAuthRequest,
     code: &str,
     cancel: &mut watch::Receiver<bool>,
@@ -620,6 +632,7 @@ async fn exchange_session_credentials(
         .map_err(|_| DesktopOAuthError::token_exchange_failed())?;
     let token_request = client.post(endpoints.google_token.clone()).form(&[
         ("client_id", client_id),
+        ("client_secret", client_secret),
         ("code", code),
         ("code_verifier", request.pkce_verifier.as_str()),
         ("grant_type", "authorization_code"),
@@ -809,6 +822,20 @@ fn google_desktop_client_id() -> Result<String, DesktopOAuthError> {
         .ok_or_else(DesktopOAuthError::configuration_missing)
 }
 
+fn google_desktop_client_secret() -> Result<String, DesktopOAuthError> {
+    let configured = option_env!("GOOGLE_DESKTOP_CLIENT_SECRET")
+        .map(str::to_owned)
+        .or_else(|| {
+            cfg!(debug_assertions)
+                .then(|| std::env::var("GOOGLE_DESKTOP_CLIENT_SECRET").ok())
+                .flatten()
+        });
+
+    configured
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(DesktopOAuthError::configuration_missing)
+}
+
 fn desktop_api_url() -> Result<Url, DesktopOAuthError> {
     let configured = option_env!("ZILOBASE_DESKTOP_API_URL").unwrap_or(if cfg!(debug_assertions) {
         DEVELOPMENT_API_URL
@@ -986,6 +1013,7 @@ mod tests {
         let (_cancel_sender, mut cancel) = tokio::sync::watch::channel(false);
         let credentials = exchange_session_credentials(
             "desktop-client.apps.googleusercontent.com",
+            "desktop-client-secret",
             &request,
             "authorization-code",
             &mut cancel,
@@ -1006,6 +1034,10 @@ mod tests {
         assert_eq!(
             token_form.get("code").map(String::as_str),
             Some("authorization-code")
+        );
+        assert_eq!(
+            token_form.get("client_secret").map(String::as_str),
+            Some("desktop-client-secret")
         );
         assert_eq!(
             token_form.get("code_verifier"),
