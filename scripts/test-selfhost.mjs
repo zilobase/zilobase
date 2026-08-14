@@ -633,9 +633,16 @@ async function verifyCollaborationWebSocket(ticket, sessionToken) {
 
 async function mirrorObjectStorage(direction, localDirectory) {
   const image = "minio/mc:RELEASE.2025-04-16T18-13-26Z"
+  const backupOwner =
+    typeof process.getuid === "function" && typeof process.getgid === "function"
+      ? `${process.getuid()}:${process.getgid()}`
+      : null
+  const normalizeBackupOwnership = backupOwner
+    ? ' && chown -R "$BACKUP_OWNER" /backup'
+    : ""
   const script =
     direction === "backup"
-      ? 'mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite "local/$MINIO_BUCKET" /backup'
+      ? `mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite "local/$MINIO_BUCKET" /backup${normalizeBackupOwnership}`
       : 'mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite /backup "local/$MINIO_BUCKET"'
   const result = await capture("docker", [
     "run",
@@ -644,6 +651,7 @@ async function mirrorObjectStorage(direction, localDirectory) {
     `${projectName}_default`,
     "--env-file",
     envFile,
+    ...(backupOwner ? ["--env", `BACKUP_OWNER=${backupOwner}`] : []),
     "--volume",
     `${localDirectory}:/backup${direction === "restore" ? ":ro" : ""}`,
     "--entrypoint",
