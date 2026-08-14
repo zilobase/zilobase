@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
+import { SERVER_VERSION } from "../../version";
 import {
   getOrCreateInstanceSettings,
   getZilobaseDiscoveryDocument,
@@ -32,7 +33,7 @@ test("discovery publishes canonical identity, versions, and desktop endpoints", 
     webOrigin: "https://app.example.com",
     apiOrigin: "https://api.example.com",
     protocolVersion: 1,
-    serverVersion: "0.0.30",
+    serverVersion: SERVER_VERSION,
     minimumDesktopVersion: "0.0.29",
     desktopAuthorization: {
       authorizationEndpoint: "https://api.example.com/desktop/authorize",
