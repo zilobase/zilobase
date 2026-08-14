@@ -9,7 +9,9 @@ test("createApp registers every public feature route group", () => {
   const routes = createApp().routes.map(({ method, path }) => `${method} ${path}`);
 
   for (const expected of [
+    "GET /.well-known/zilobase",
     "GET /health",
+    "GET /ready",
     "POST /api/ai/chat",
     "POST /api/keys",
     "GET /databases/:id",

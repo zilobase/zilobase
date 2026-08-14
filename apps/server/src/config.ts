@@ -17,6 +17,50 @@ export function getPrimaryClientOrigin(env: RuntimeEnv) {
   return origin;
 }
 
+export function getCanonicalApiOrigin(env: RuntimeEnv) {
+  return getCanonicalHttpOrigin(
+    getRequiredStringEnv(env, "BETTER_AUTH_URL"),
+    "BETTER_AUTH_URL",
+  );
+}
+
+export function getCanonicalWebOrigin(env: RuntimeEnv) {
+  return getCanonicalHttpOrigin(
+    getPrimaryClientOrigin(env),
+    "the first CLIENT_URL origin",
+  );
+}
+
+export function getCanonicalHttpOrigin(value: string, label = "origin") {
+  const url = parseUrl(value);
+
+  if (!url) {
+    throw new Error(`${label} must be a valid URL`);
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error(`${label} must use HTTPS or loopback HTTP`);
+  }
+
+  if (url.protocol === "http:" && !isLoopbackHost(url.hostname)) {
+    throw new Error(`${label} must use HTTPS unless it is a loopback origin`);
+  }
+
+  if (
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error(
+      `${label} must be an origin without credentials, a path, a query, or a fragment`,
+    );
+  }
+
+  return url.origin;
+}
+
 export function isAllowedClientOrigin(env: RuntimeEnv, origin: string | null) {
   if (!origin) {
     return false;
@@ -95,6 +139,14 @@ export function isLocalDevelopmentHost(hostname: string) {
   const secondOctet = Number(match[1]);
 
   return secondOctet >= 16 && secondOctet <= 31;
+}
+
+export function isLoopbackHost(hostname: string) {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1"
+  );
 }
 
 export function getStringEnv(env: RuntimeEnv, key: string) {

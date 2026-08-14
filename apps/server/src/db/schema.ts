@@ -17,6 +17,18 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   },
 });
 
+export const instanceSettings = pgTable("instance_settings", {
+  id: text("id").primaryKey(),
+  instanceId: text("instance_id").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

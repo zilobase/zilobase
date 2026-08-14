@@ -30,6 +30,13 @@ for (const file of ["apps/desktop/src-tauri/Cargo.toml", "apps/desktop/src-tauri
   writeFileSync(file, text)
 }
 
+const serverVersionFile = "apps/server/src/version.ts"
+const serverVersion = readFileSync(serverVersionFile, "utf8").replace(
+  /export const SERVER_VERSION = ".*?";/,
+  `export const SERVER_VERSION = "${version}";`,
+)
+writeFileSync(serverVersionFile, serverVersion)
+
 const cargoLockFile = "apps/desktop/src-tauri/Cargo.lock"
 const cargoLock = readFileSync(cargoLockFile, "utf8").replace(
   /(\[\[package\]\]\nname = "zilobase-client"\nversion = ")[^"]+("\n)/,

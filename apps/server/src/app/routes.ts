@@ -10,6 +10,7 @@ import {
 import { databaseRoutes } from "../features/databases/routes";
 import { healthRoutes } from "../features/health/routes";
 import { imageRoutes } from "../features/images/routes";
+import { instanceRoutes } from "../features/instance/routes";
 import { metadataRoutes } from "../features/metadata/routes";
 import { pageRoutes } from "../features/pages/routes";
 import { pageLayoutRoutes } from "../features/page-layouts/routes";
@@ -28,6 +29,7 @@ export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/", authRoutes);
   app.route("/databases", databaseRoutes);
   app.route("/", healthRoutes);
+  app.route("/", instanceRoutes);
   app.route("/images", imageRoutes);
   app.route("/metadata", metadataRoutes);
   app.route("/workspaces", workspaceRoutes);

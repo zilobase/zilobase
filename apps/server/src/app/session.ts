@@ -5,7 +5,13 @@ import type { AppBindings } from "../types";
 
 export const authenticatedSessionMiddleware: MiddlewareHandler<AppBindings> =
   async (c, next) => {
-    if (c.req.path === "/" || c.req.path.startsWith("/api/auth/")) {
+    if (
+      c.req.path === "/" ||
+      c.req.path === "/health" ||
+      c.req.path === "/ready" ||
+      c.req.path === "/.well-known/zilobase" ||
+      c.req.path.startsWith("/api/auth/")
+    ) {
       await next();
       return;
     }

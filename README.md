@@ -64,6 +64,11 @@ Open:
 http://localhost
 ```
 
+Each installation creates one stable database-backed instance identity. Its
+desktop compatibility and authorization metadata is available at
+`http://localhost/.well-known/zilobase`. Use `/health` for process liveness and
+`/ready` when an orchestrator must wait for both Postgres and object storage.
+
 For production self-hosting, copy the example env file and replace every secret:
 
 ```sh

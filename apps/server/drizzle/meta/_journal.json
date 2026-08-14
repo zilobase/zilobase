@@ -253,6 +253,13 @@
       "when": 1786683310000,
       "tag": "0035_drop_redundant_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1786684000000,
+      "tag": "0036_instance_settings",
+      "breakpoints": true
     }
   ]
 }

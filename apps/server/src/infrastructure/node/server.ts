@@ -10,6 +10,7 @@ import { attachNodeDatabaseRealtimeRuntime } from "../../database-realtime/node-
 import { runWithDbEnv } from "../../db";
 import { setRuntimeAdapter } from "../../runtime-adapter";
 import { drainDatabaseRealtimeOutbox } from "../../services/database-realtime";
+import { isNodeApiPath } from "./api-routing";
 
 loadEnv({
   path: process.env.ZILOBASE_ENV_FILE ?? path.resolve("apps/server/.env"),
@@ -21,31 +22,11 @@ const hostname = process.env.HOST ?? "0.0.0.0";
 const webDistDir =
   process.env.ZILOBASE_WEB_DIST_DIR ??
   path.resolve("apps/web/dist");
-const apiPathPrefixes = [
-  "/api",
-  "/agents",
-  "/session",
-  "/sign-in",
-  "/sign-up",
-  "/sign-out",
-  "/email-otp",
-  "/workspace",
-  "/workspaces",
-  "/search",
-  "/pages",
-  "/databases",
-  "/images",
-  "/metadata",
-  "/user-settings",
-  "/comments",
-  "/health",
-];
-
 const server = createServer(async (incoming, outgoing) => {
   try {
     const request = toRequest(incoming);
     const url = new URL(request.url);
-    const response = isApiPath(url.pathname)
+    const response = isNodeApiPath(url.pathname)
       ? await app.fetch(request, process.env as Record<string, unknown>)
       : await serveWebAsset(request);
 
@@ -179,12 +160,6 @@ function readPort(value: string | undefined) {
   return Number.isSafeInteger(numberValue) && numberValue > 0
     ? numberValue
     : null;
-}
-
-function isApiPath(pathname: string) {
-  return apiPathPrefixes.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
 }
 
 async function serveWebAsset(request: Request) {

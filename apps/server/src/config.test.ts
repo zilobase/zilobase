@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import {
+  getCanonicalApiOrigin,
+  getCanonicalHttpOrigin,
+  getCanonicalWebOrigin,
   getClientOrigins,
   getPrimaryClientOrigin,
   getRequiredStringEnv,
@@ -10,6 +13,7 @@ import {
   isAllowedClientOrigin,
   isLocalDevelopmentHost,
   isLocalRequestOrigin,
+  isLoopbackHost,
 } from "./config";
 
 test("client origins are normalized, selected, and required", () => {
@@ -27,6 +31,32 @@ test("client origins are normalized, selected, and required", () => {
     () => getPrimaryClientOrigin({ CLIENT_URL: " , " }),
     /must include at least one origin/,
   );
+});
+
+test("canonical public origins are normalized and reject unsafe URL components", () => {
+  const env = {
+    BETTER_AUTH_URL: "https://API.Example.com:443/",
+    CLIENT_URL: "https://app.example.com/,tauri://localhost",
+  };
+
+  assert.equal(getCanonicalApiOrigin(env), "https://api.example.com");
+  assert.equal(getCanonicalWebOrigin(env), "https://app.example.com");
+  assert.equal(
+    getCanonicalHttpOrigin("http://127.0.0.1:8787/"),
+    "http://127.0.0.1:8787",
+  );
+
+  for (const origin of [
+    "http://example.com",
+    "https://user:password@example.com",
+    "https://example.com/subpath",
+    "https://example.com?server=other",
+    "https://example.com#fragment",
+    "tauri://localhost",
+    "not a URL",
+  ]) {
+    assert.throws(() => getCanonicalHttpOrigin(origin), Error, origin);
+  }
 });
 
 test("allowed origins include configured clients and local Expo development", () => {
@@ -83,6 +113,11 @@ test("local host classification covers loopback and private IPv4 ranges", () => 
   ]) {
     assert.equal(isLocalDevelopmentHost(hostname), false, hostname);
   }
+
+  assert.equal(isLoopbackHost("localhost"), true);
+  assert.equal(isLoopbackHost("127.0.0.1"), true);
+  assert.equal(isLoopbackHost("::1"), true);
+  assert.equal(isLoopbackHost("192.168.1.2"), false);
 });
 
 test("string environment helpers reject empty and non-string values", () => {

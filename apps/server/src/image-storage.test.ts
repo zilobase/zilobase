@@ -14,6 +14,7 @@ vi.mock("@aws-sdk/client-s3", () => {
   return {
     DeleteObjectCommand: Command,
     GetObjectCommand: Command,
+    HeadBucketCommand: Command,
     HeadObjectCommand: Command,
     PutObjectCommand: Command,
     S3Client: class {
@@ -144,6 +145,17 @@ test("S3 delete and head operations map SDK responses", async () => {
     contentType: "image/webp",
     etag: "etag",
     uploadedAt,
+  });
+});
+
+test("S3 readiness verifies that the configured bucket is accessible", async () => {
+  const storage = createS3ImageStorage(s3Env);
+  aws.send.mockResolvedValueOnce(undefined);
+
+  await storage.checkReady?.();
+
+  assert.deepEqual(aws.send.mock.calls[0]?.[0].input, {
+    Bucket: "images",
   });
 });
 

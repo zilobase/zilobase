@@ -20,8 +20,12 @@ export {
   SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX,
 } from "./auth-headers";
 export {
+  getCanonicalApiOrigin,
+  getCanonicalHttpOrigin,
+  getCanonicalWebOrigin,
   isAllowedClientOrigin,
   isLocalDevelopmentHost,
+  isLoopbackHost,
   type RuntimeEnv,
 } from "./config";
 export { createDbClient, runWithDbClient, runWithDbEnv } from "./db";
@@ -31,6 +35,13 @@ export {
   getDatabaseErrorCode,
   isDatabaseUnavailableError,
 } from "./db/errors";
+export {
+  DESKTOP_PROTOCOL_VERSION,
+  getZilobaseDiscoveryDocument,
+  isDesktopVersionCompatible,
+  type DesktopServer,
+  type ZilobaseDiscoveryDocument,
+} from "./features/instance/service";
 export {
   createImageStorage,
   createS3ImageStorage,

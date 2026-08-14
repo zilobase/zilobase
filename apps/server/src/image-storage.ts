@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -53,6 +54,7 @@ export type ImageUploadTarget = {
 };
 
 export type ImageStorage = {
+  checkReady?(): Promise<void>;
   createReadUrl(options: CreateReadUrlOptions): Promise<string>;
   createUploadUrl(options: CreateUploadUrlOptions): Promise<ImageUploadTarget>;
   delete(objectKey: string): Promise<void>;
@@ -115,6 +117,10 @@ class S3ImageStorage implements ImageStorage {
       forcePathStyle: true,
       region: "auto",
     });
+  }
+
+  async checkReady() {
+    await this.client.send(new HeadBucketCommand({ Bucket: this.bucketName }));
   }
 
   async createUploadUrl(options: CreateUploadUrlOptions) {
