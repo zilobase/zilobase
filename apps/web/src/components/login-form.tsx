@@ -38,9 +38,10 @@ import {
   recordDesktopDiagnostic,
 } from "@/lib/desktop-diagnostics"
 import {
-  cancelDesktopGoogleSignIn,
+  cancelDesktopBrowserSignIn,
   DesktopOAuthError,
   getAuthReturnPath,
+  signInWithDesktopBrowser,
   signInWithGoogle,
 } from "@/lib/google-auth"
 import { queryClient } from "@/lib/query-client"
@@ -48,11 +49,13 @@ import { cn } from "@/lib/utils"
 import { webAuthClient } from "@/providers/features-provider"
 import {
   sessionQueryOptions,
+  useRequestSignInOtp,
   useSignInWithPassword,
 } from "@zilobase/features/auth"
 import { workspacesQueryOptions } from "@zilobase/features/workspaces"
+import { useAuthFlowStore } from "@/stores/auth-flow-store"
 
-type GoogleSignInState =
+type BrowserSignInState =
   | { phase: "idle"; error: null; retry: "oauth" }
   | { phase: "waiting_for_browser"; error: null; retry: "oauth" }
   | { phase: "finalizing"; error: null; retry: "finalize" }
@@ -63,8 +66,11 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const signInWithPassword = useSignInWithPassword()
+  const requestSignInOtp = useRequestSignInOtp()
+  const setAuthFlow = useAuthFlowStore((state) => state.setAuthFlow)
+  const [email, setEmail] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [googleState, setGoogleState] = useState<GoogleSignInState>({
+  const [browserState, setBrowserState] = useState<BrowserSignInState>({
     phase: "idle",
     error: null,
     retry: "oauth",
@@ -74,50 +80,57 @@ export function LoginForm({
     initialDesktopServerSelectionState,
   )
   const [serverUrl, setServerUrl] = useState("")
-  const googleOperation = useRef(0)
-  const isGooglePending =
-    googleState.phase === "waiting_for_browser" ||
-    googleState.phase === "finalizing"
+  const browserOperation = useRef(0)
+  const isBrowserPending =
+    browserState.phase === "waiting_for_browser" ||
+    browserState.phase === "finalizing"
   const isServerVerificationPending = serverSelection.phase === "verifying"
   const isPending =
     signInWithPassword.isPending ||
-    isGooglePending ||
+    requestSignInOtp.isPending ||
+    isBrowserPending ||
     isServerVerificationPending
   const selectedServer = getSelectedDesktopServer()
+  const desktop = isTauri()
 
   useEffect(
     () => () => {
-      ++googleOperation.current
-      void cancelDesktopGoogleSignIn().catch(() => undefined)
+      ++browserOperation.current
+      void cancelDesktopBrowserSignIn().catch(() => undefined)
     },
     [],
   )
 
-  async function handleGoogleSignIn() {
-    const desktop = isTauri()
+  async function handleBrowserSignIn() {
     const returnTo = getAuthReturnPath("/recents")
-    const operation = ++googleOperation.current
+    const operation = ++browserOperation.current
 
-    if (desktop && googleState.retry === "finalize") {
+    if (desktop && browserState.retry === "finalize") {
       await finalizeDesktopSignIn(operation, returnTo)
       return
     }
 
-    setGoogleState({ phase: "waiting_for_browser", error: null, retry: "oauth" })
+    setBrowserState({
+      phase: "waiting_for_browser",
+      error: null,
+      retry: "oauth",
+    })
     recordDesktopDiagnostic("desktop_auth.oauth", { status: "started" })
 
     try {
-      const mode = await signInWithGoogle(returnTo)
-      if (mode === "desktop" && operation === googleOperation.current) {
+      const mode = desktop
+        ? await signInWithDesktopBrowser()
+        : await signInWithGoogle(returnTo)
+      if (mode === "desktop" && operation === browserOperation.current) {
         await finalizeDesktopSignIn(operation, returnTo)
       }
     } catch (error) {
-      if (operation !== googleOperation.current) return
+      if (operation !== browserOperation.current) return
       if (error instanceof DesktopOAuthError && error.code === "cancelled") {
-        setGoogleState({ phase: "idle", error: null, retry: "oauth" })
+        setBrowserState({ phase: "idle", error: null, retry: "oauth" })
         return
       }
-      setGoogleState({ phase: "error", error, retry: "oauth" })
+      setBrowserState({ phase: "error", error, retry: "oauth" })
       recordDesktopDiagnostic(
         "desktop_auth.oauth",
         describeDesktopError(error),
@@ -127,7 +140,7 @@ export function LoginForm({
   }
 
   async function finalizeDesktopSignIn(operation: number, returnTo: string) {
-    setGoogleState({ phase: "finalizing", error: null, retry: "finalize" })
+    setBrowserState({ phase: "finalizing", error: null, retry: "finalize" })
     recordDesktopDiagnostic("desktop_auth.finalize", { status: "started" })
 
     try {
@@ -143,14 +156,14 @@ export function LoginForm({
         ...workspacesQueryOptions(webAuthClient),
         staleTime: 0,
       })
-      if (operation !== googleOperation.current) return
+      if (operation !== browserOperation.current) return
 
       recordDesktopDiagnostic("desktop_auth.finalize", { status: "success" })
-      setGoogleState({ phase: "idle", error: null, retry: "oauth" })
+      setBrowserState({ phase: "idle", error: null, retry: "oauth" })
       window.location.assign(workspaces.length === 0 ? "/onboarding" : returnTo)
     } catch (error) {
-      if (operation !== googleOperation.current) return
-      setGoogleState({ phase: "error", error, retry: "finalize" })
+      if (operation !== browserOperation.current) return
+      setBrowserState({ phase: "error", error, retry: "finalize" })
       recordDesktopDiagnostic(
         "desktop_auth.finalize",
         describeDesktopError(error),
@@ -159,13 +172,13 @@ export function LoginForm({
     }
   }
 
-  async function handleCancelGoogleSignIn() {
-    ++googleOperation.current
-    setGoogleState({ phase: "idle", error: null, retry: "oauth" })
+  async function handleCancelBrowserSignIn() {
+    ++browserOperation.current
+    setBrowserState({ phase: "idle", error: null, retry: "oauth" })
     try {
-      await cancelDesktopGoogleSignIn()
+      await cancelDesktopBrowserSignIn()
     } catch (error) {
-      setGoogleState({ phase: "error", error, retry: "oauth" })
+      setBrowserState({ phase: "error", error, retry: "oauth" })
     }
   }
 
@@ -173,19 +186,43 @@ export function LoginForm({
     event.preventDefault()
 
     const formData = new FormData(event.currentTarget)
-    const email = String(formData.get("email") ?? "").trim().toLowerCase()
+    const submittedEmail = String(formData.get("email") ?? "")
+      .trim()
+      .toLowerCase()
     const password = String(formData.get("password") ?? "")
     const returnTo = getAuthReturnPath("/recents")
 
     try {
-      await signInWithPassword.mutateAsync({ email, password })
+      await signInWithPassword.mutateAsync({
+        email: submittedEmail,
+        password,
+      })
       window.location.assign(returnTo)
     } catch {
       // React Query owns the visible error state.
     }
   }
 
-  async function handleServerSelection(event: React.FormEvent<HTMLFormElement>) {
+  async function handleEmailOtpSignIn() {
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail) return
+
+    try {
+      await requestSignInOtp.mutateAsync(normalizedEmail)
+      setAuthFlow({
+        email: normalizedEmail,
+        purpose: "sign-in",
+        returnTo: getAuthReturnPath("/recents"),
+      })
+      window.location.assign("/otp")
+    } catch {
+      // React Query owns the visible error state.
+    }
+  }
+
+  async function handleServerSelection(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault()
     dispatchServerSelection({ type: "verify" })
 
@@ -215,7 +252,7 @@ export function LoginForm({
         </FieldDescription>
       </div>
 
-      {isTauri() && selectedServer && (
+      {desktop && selectedServer && (
         <div className="rounded-lg border bg-muted/30 p-3 text-sm">
           {serverSelection.phase === "selected" ? (
             <div className="flex items-center justify-between gap-3">
@@ -282,90 +319,145 @@ export function LoginForm({
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="email">Email</FieldLabel>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="you@example.com"
-              autoComplete="email"
-              disabled={isPending}
-              required
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            <InputGroup>
-              <InputGroupInput
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                disabled={isPending}
-                required
-              />
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  aria-pressed={showPassword}
-                  onClick={() => setShowPassword((visible) => !visible)}
-                  size="icon-xs"
-                >
-                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </InputGroupButton>
-              </InputGroupAddon>
-            </InputGroup>
-          </Field>
-
-          {(signInWithPassword.isError || googleState.phase === "error") && (
-            <FieldError>
-              {getApiErrorMessage(
-                signInWithPassword.error ??
-                  (googleState.phase === "error" ? googleState.error : null),
-              )}
-            </FieldError>
-          )}
-
-          <Field>
-            <Button type="submit" disabled={isPending}>
-              {signInWithPassword.isPending ? "Signing in..." : "Sign in"}
-            </Button>
-          </Field>
-
-          <FieldSeparator>Or</FieldSeparator>
-
-          <Field>
+      {desktop && (
+        <div className="space-y-3">
+          <Button
+            disabled={isPending}
+            onClick={handleBrowserSignIn}
+            type="button"
+          >
+            {browserState.phase === "waiting_for_browser"
+              ? "Waiting for browser sign-in..."
+              : browserState.phase === "finalizing"
+                ? "Finishing sign-in..."
+                : browserState.retry === "finalize"
+                  ? "Retry connection"
+                  : "Continue in system browser"}
+          </Button>
+          {browserState.phase === "waiting_for_browser" && (
             <Button
+              onClick={handleCancelBrowserSignIn}
               type="button"
-              variant="outline"
-              disabled={isPending}
-              onClick={handleGoogleSignIn}
+              variant="ghost"
             >
-              <GoogleIcon />
-              {googleState.phase === "waiting_for_browser"
-                ? "Waiting for browser sign-in..."
-                : googleState.phase === "finalizing"
-                  ? "Finishing sign-in..."
-                  : googleState.retry === "finalize"
-                    ? "Retry connection"
-                    : "Continue with Google"}
+              Cancel
             </Button>
-            {googleState.phase === "waiting_for_browser" && (
+          )}
+          {browserState.phase === "error" && (
+            <FieldError>{getApiErrorMessage(browserState.error)}</FieldError>
+          )}
+          <FieldDescription>
+            Sign in with this server&apos;s password, email code, Google, or
+            configured SSO provider in your browser.
+          </FieldDescription>
+        </div>
+      )}
+
+      {!desktop && (
+        <form onSubmit={handleSubmit}>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                autoComplete="email"
+                disabled={isPending}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                value={email}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <InputGroup>
+                <InputGroupInput
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  disabled={isPending}
+                  required
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    size="icon-xs"
+                  >
+                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+            </Field>
+
+            {(signInWithPassword.isError ||
+              requestSignInOtp.isError ||
+              browserState.phase === "error") && (
+              <FieldError>
+                {getApiErrorMessage(
+                  signInWithPassword.error ??
+                    requestSignInOtp.error ??
+                    (browserState.phase === "error"
+                      ? browserState.error
+                      : null),
+                )}
+              </FieldError>
+            )}
+
+            <Field>
+              <Button type="submit" disabled={isPending}>
+                {signInWithPassword.isPending ? "Signing in..." : "Sign in"}
+              </Button>
+              <Button
+                disabled={isPending || !email.trim()}
+                onClick={handleEmailOtpSignIn}
+                type="button"
+                variant="outline"
+              >
+                {requestSignInOtp.isPending
+                  ? "Sending code..."
+                  : "Email me a sign-in code"}
+              </Button>
+            </Field>
+
+            <FieldSeparator>Or</FieldSeparator>
+
+            <Field>
               <Button
                 type="button"
-                variant="ghost"
-                onClick={handleCancelGoogleSignIn}
+                variant="outline"
+                disabled={isPending}
+                onClick={handleBrowserSignIn}
               >
-                Cancel
+                <GoogleIcon />
+                {browserState.phase === "waiting_for_browser"
+                  ? "Waiting for browser sign-in..."
+                  : browserState.phase === "finalizing"
+                    ? "Finishing sign-in..."
+                    : browserState.retry === "finalize"
+                      ? "Retry connection"
+                      : "Continue with Google"}
               </Button>
-            )}
-          </Field>
-        </FieldGroup>
-      </form>
+              {browserState.phase === "waiting_for_browser" && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleCancelBrowserSignIn}
+                >
+                  Cancel
+                </Button>
+              )}
+            </Field>
+          </FieldGroup>
+        </form>
+      )}
     </div>
   )
 }

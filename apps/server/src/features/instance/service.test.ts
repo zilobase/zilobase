@@ -34,7 +34,7 @@ test("discovery publishes canonical identity, versions, and desktop endpoints", 
     serverVersion: "0.0.30",
     minimumDesktopVersion: "0.0.29",
     desktopAuthorization: {
-      authorizationEndpoint: "https://app.example.com/desktop/authorize",
+      authorizationEndpoint: "https://api.example.com/desktop/authorize",
       tokenEndpoint: "https://api.example.com/api/auth/desktop/token",
     },
   });

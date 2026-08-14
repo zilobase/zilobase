@@ -19,13 +19,12 @@ use tokio::{
 use url::Url;
 
 use crate::{
-    desktop_server::{load_or_initialize_desktop_server, DesktopServer},
+    desktop_server::{is_cloud_server, load_or_initialize_desktop_server, DesktopServer},
     get_server_keyring_value, set_server_keyring_value, LEGACY_AUTH_ACCOUNT,
     LEGACY_AUTH_OWNER_ACCOUNT,
 };
 
-const GOOGLE_AUTHORIZATION_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
-const GOOGLE_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
+const DESKTOP_CLIENT_ID: &str = "zilobase-desktop";
 const CALLBACK_PATH: &str = "/oauth/callback";
 const COMPLETION_PATH: &str = "/oauth/complete";
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(5 * 60);
@@ -114,7 +113,7 @@ impl DesktopOAuthError {
     fn browser_open_failed() -> Self {
         Self::new(
             "browser_open_failed",
-            "Zilobase could not open the browser.",
+            "Zilobase could not open the system browser.",
         )
     }
 
@@ -136,10 +135,10 @@ impl DesktopOAuthError {
         Self::new("cancelled", "Browser sign-in was cancelled.")
     }
 
-    fn configuration_missing() -> Self {
+    fn configuration_failed() -> Self {
         Self::new(
-            "configuration_missing",
-            "Google sign-in is not configured for this desktop build.",
+            "configuration_failed",
+            "The selected server has invalid desktop authorization settings.",
         )
     }
 
@@ -150,28 +149,21 @@ impl DesktopOAuthError {
         )
     }
 
-    fn provider_denied() -> Self {
-        Self::new("provider_denied", "Google sign-in was cancelled or denied.")
+    fn issuer_mismatch() -> Self {
+        Self::new(
+            "issuer_mismatch",
+            "The browser response came from a different Zilobase server.",
+        )
     }
 
-    fn provider_error() -> Self {
-        Self::new(
-            "provider_error",
-            "Google could not complete the sign-in request.",
-        )
+    fn provider_denied() -> Self {
+        Self::new("access_denied", "Browser sign-in was cancelled or denied.")
     }
 
     fn server_sign_in_failed() -> Self {
         Self::new(
             "server_sign_in_failed",
-            "Zilobase could not finish creating the desktop session.",
-        )
-    }
-
-    fn server_configuration_missing() -> Self {
-        Self::new(
-            "server_configuration_missing",
-            "The Zilobase server does not accept this desktop OAuth client.",
+            "The selected Zilobase server could not complete sign-in.",
         )
     }
 
@@ -185,56 +177,36 @@ impl DesktopOAuthError {
     fn token_exchange_failed() -> Self {
         Self::new(
             "token_exchange_failed",
-            "Google could not finish the sign-in request.",
+            "The selected Zilobase server rejected the authorization code.",
         )
     }
 }
 
-#[derive(Deserialize)]
-struct GoogleTokenResponse {
-    id_token: Option<String>,
-}
-
-#[derive(Serialize)]
-struct ZilobaseSignInRequest<'a> {
-    provider: &'static str,
-    #[serde(rename = "idToken")]
-    id_token: ZilobaseIdToken<'a>,
-    #[serde(rename = "disableRedirect")]
-    disable_redirect: bool,
-}
-
-#[derive(Serialize)]
-struct ZilobaseIdToken<'a> {
-    token: &'a str,
-    nonce: &'a str,
-}
-
-#[derive(Deserialize)]
-struct ZilobaseSignInResponse {
-    user: ZilobaseUser,
-}
-
-#[derive(Deserialize)]
-struct ZilobaseUser {
-    id: String,
-}
-
 struct OAuthRequest {
     authorization_url: Url,
-    nonce: String,
     pkce_verifier: String,
     redirect_uri: String,
     state: String,
 }
 
+#[derive(Debug)]
 struct ValidCallback {
     code: String,
 }
 
-struct OAuthEndpoints {
-    google_token: Url,
-    zilobase_sign_in: Url,
+#[derive(Debug, Deserialize)]
+struct DesktopTokenResponse {
+    access_token: String,
+    expires_at: String,
+    instance_id: String,
+    issuer: String,
+    token_type: String,
+    user: DesktopTokenUser,
+}
+
+#[derive(Debug, Deserialize)]
+struct DesktopTokenUser {
+    id: String,
 }
 
 struct SessionCredentials {
@@ -245,6 +217,7 @@ struct SessionCredentials {
 enum ParsedCallback {
     Ignore,
     Invalid,
+    IssuerMismatch,
     ProviderDenied,
     ProviderError,
     StateMismatch,
@@ -252,12 +225,10 @@ enum ParsedCallback {
 }
 
 #[tauri::command]
-pub(crate) async fn start_google_oauth(
+pub(crate) async fn start_browser_authorization(
     app: AppHandle,
     state: tauri::State<'_, DesktopOAuthState>,
 ) -> Result<DesktopOAuthSuccess, DesktopOAuthError> {
-    let client_id = google_desktop_client_id()?;
-    let client_secret = google_desktop_client_secret()?;
     let attempt_id = random_urlsafe(18)?;
     let (cancel, cancel_rx) = watch::channel(false);
 
@@ -268,7 +239,7 @@ pub(crate) async fn start_google_oauth(
         "[diagnostics] event=desktop_oauth.started status=started"
     );
 
-    let result = run_google_oauth(&app, &client_id, &client_secret, cancel_rx).await;
+    let result = run_browser_authorization(&app, cancel_rx).await;
     state.finish_attempt(&attempt_id);
 
     match &result {
@@ -296,42 +267,40 @@ pub(crate) async fn start_google_oauth(
 }
 
 #[tauri::command]
-pub(crate) fn cancel_google_oauth(
+pub(crate) fn cancel_browser_authorization(
     state: tauri::State<'_, DesktopOAuthState>,
 ) -> Result<(), DesktopOAuthError> {
     state.cancel_attempt();
     Ok(())
 }
 
-async fn run_google_oauth(
+async fn run_browser_authorization(
     app: &AppHandle,
-    client_id: &str,
-    client_secret: &str,
     mut cancel: watch::Receiver<bool>,
 ) -> Result<DesktopOAuthSuccess, DesktopOAuthError> {
+    let server = load_or_initialize_desktop_server(app)
+        .map_err(|_| DesktopOAuthError::configuration_failed())?;
     let (listener, redirect_uri) = bind_loopback().await?;
     let listener = Arc::new(listener);
-    let request = build_oauth_request(client_id, redirect_uri)?;
-    let server = load_or_initialize_desktop_server(app)
-        .map_err(|_| DesktopOAuthError::server_sign_in_failed())?;
+    let request = build_oauth_request(&server, redirect_uri)?;
 
     app.opener()
         .open_url(request.authorization_url.as_str(), None::<&str>)
         .map_err(|_| DesktopOAuthError::browser_open_failed())?;
 
-    let callback = wait_for_callback(listener.as_ref(), &request.state, &mut cancel).await?;
-    tokio::spawn(serve_completion_page(listener));
-    let result = complete_sign_in(
-        client_id,
-        client_secret,
-        &request,
-        &callback.code,
-        &server,
+    let callback = wait_for_callback(
+        listener.as_ref(),
+        &request.state,
+        &server.issuer,
         &mut cancel,
+        CALLBACK_TIMEOUT,
     )
-    .await;
+    .await?;
+    tokio::spawn(serve_completion_page(listener));
+    let credentials =
+        exchange_session_credentials(&request, &callback.code, &server, &mut cancel).await?;
 
-    result?;
+    persist_session_credentials(&server, &credentials.token, &credentials.owner)?;
     Ok(DesktopOAuthSuccess { status: "success" })
 }
 
@@ -356,32 +325,27 @@ async fn bind_loopback() -> Result<(TcpListener, String), DesktopOAuthError> {
 }
 
 fn build_oauth_request(
-    client_id: &str,
+    server: &DesktopServer,
     redirect_uri: String,
 ) -> Result<OAuthRequest, DesktopOAuthError> {
     let state = random_urlsafe(32)?;
-    let nonce = random_urlsafe(32)?;
     let pkce_verifier = random_urlsafe(64)?;
     let pkce_challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(pkce_verifier.as_bytes()));
-    let mut authorization_url = Url::parse(GOOGLE_AUTHORIZATION_URL)
-        .map_err(|_| DesktopOAuthError::configuration_missing())?;
+    let mut authorization_url = Url::parse(&server.api_origin)
+        .and_then(|origin| origin.join("/desktop/authorize"))
+        .map_err(|_| DesktopOAuthError::configuration_failed())?;
 
     authorization_url
         .query_pairs_mut()
-        .append_pair("client_id", client_id)
+        .append_pair("client_id", DESKTOP_CLIENT_ID)
         .append_pair("redirect_uri", &redirect_uri)
         .append_pair("response_type", "code")
-        .append_pair("scope", "openid email profile")
         .append_pair("state", &state)
-        .append_pair("nonce", &nonce)
         .append_pair("code_challenge", &pkce_challenge)
-        .append_pair("code_challenge_method", "S256")
-        .append_pair("access_type", "online")
-        .append_pair("include_granted_scopes", "true");
+        .append_pair("code_challenge_method", "S256");
 
     Ok(OAuthRequest {
         authorization_url,
-        nonce,
         pkce_verifier,
         redirect_uri,
         state,
@@ -391,9 +355,11 @@ fn build_oauth_request(
 async fn wait_for_callback(
     listener: &TcpListener,
     expected_state: &str,
+    expected_issuer: &str,
     cancel: &mut watch::Receiver<bool>,
+    callback_timeout: Duration,
 ) -> Result<ValidCallback, DesktopOAuthError> {
-    let deadline = Instant::now() + CALLBACK_TIMEOUT;
+    let deadline = Instant::now() + callback_timeout;
     let mut saw_state_mismatch = false;
 
     loop {
@@ -436,7 +402,7 @@ async fn wait_for_callback(
             }
         };
 
-        match parse_callback(&request, expected_state) {
+        match parse_callback(&request, expected_state, expected_issuer) {
             ParsedCallback::Ignore => {
                 let _ = write_plain_response(&mut stream, "404 Not Found", "Not found.").await;
             }
@@ -444,13 +410,17 @@ async fn wait_for_callback(
                 let _ = write_html_response(&mut stream, "400 Bad Request", failure_html()).await;
                 return Err(DesktopOAuthError::callback_rejected());
             }
+            ParsedCallback::IssuerMismatch => {
+                let _ = write_html_response(&mut stream, "400 Bad Request", failure_html()).await;
+                return Err(DesktopOAuthError::issuer_mismatch());
+            }
             ParsedCallback::ProviderDenied => {
                 let _ = write_html_response(&mut stream, "400 Bad Request", denied_html()).await;
                 return Err(DesktopOAuthError::provider_denied());
             }
             ParsedCallback::ProviderError => {
                 let _ = write_html_response(&mut stream, "400 Bad Request", failure_html()).await;
-                return Err(DesktopOAuthError::provider_error());
+                return Err(DesktopOAuthError::server_sign_in_failed());
             }
             ParsedCallback::StateMismatch => {
                 saw_state_mismatch = true;
@@ -540,7 +510,7 @@ async fn read_http_request(stream: &mut TcpStream) -> std::io::Result<Vec<u8>> {
     Ok(request)
 }
 
-fn parse_callback(request: &[u8], expected_state: &str) -> ParsedCallback {
+fn parse_callback(request: &[u8], expected_state: &str, expected_issuer: &str) -> ParsedCallback {
     let Ok(request) = std::str::from_utf8(request) else {
         return ParsedCallback::Invalid;
     };
@@ -566,9 +536,7 @@ fn parse_callback(request: &[u8], expected_state: &str) -> ParsedCallback {
         return ParsedCallback::Invalid;
     }
 
-    let state = url
-        .query_pairs()
-        .find_map(|(key, value)| (key == "state").then(|| value.into_owned()));
+    let state = single_query_parameter(&url, "state");
     let Some(state) = state else {
         return ParsedCallback::StateMismatch;
     };
@@ -576,10 +544,12 @@ fn parse_callback(request: &[u8], expected_state: &str) -> ParsedCallback {
         return ParsedCallback::StateMismatch;
     }
 
-    let error = url
-        .query_pairs()
-        .find_map(|(key, value)| (key == "error").then(|| value.into_owned()));
-    if let Some(error) = error {
+    let issuer = single_query_parameter(&url, "iss");
+    if issuer.as_deref() != Some(expected_issuer) {
+        return ParsedCallback::IssuerMismatch;
+    }
+
+    if let Some(error) = single_query_parameter(&url, "error") {
         return if error == "access_denied" {
             ParsedCallback::ProviderDenied
         } else {
@@ -587,147 +557,98 @@ fn parse_callback(request: &[u8], expected_state: &str) -> ParsedCallback {
         };
     }
 
-    let code = url
-        .query_pairs()
-        .find_map(|(key, value)| (key == "code").then(|| value.into_owned()));
-    match code {
-        Some(code) if !code.is_empty() && code.len() <= 4096 => ParsedCallback::Valid(code),
+    match single_query_parameter(&url, "code") {
+        Some(code) if !code.is_empty() && code.len() <= 512 => ParsedCallback::Valid(code),
         _ => ParsedCallback::Invalid,
     }
 }
 
-async fn complete_sign_in(
-    client_id: &str,
-    client_secret: &str,
+fn single_query_parameter(url: &Url, name: &str) -> Option<String> {
+    let mut values = url
+        .query_pairs()
+        .filter_map(|(key, value)| (key == name).then(|| value.into_owned()));
+    let value = values.next()?;
+
+    values.next().is_none().then_some(value)
+}
+
+async fn exchange_session_credentials(
     request: &OAuthRequest,
     code: &str,
     server: &DesktopServer,
     cancel: &mut watch::Receiver<bool>,
-) -> Result<(), DesktopOAuthError> {
-    let endpoints = oauth_endpoints(&server.api_origin)?;
-    let credentials =
-        exchange_session_credentials(client_id, client_secret, request, code, cancel, &endpoints)
-            .await?;
-    persist_session_credentials(server, &credentials.token, &credentials.owner)
-}
-
-fn oauth_endpoints(api_origin: &str) -> Result<OAuthEndpoints, DesktopOAuthError> {
-    let google_token =
-        Url::parse(GOOGLE_TOKEN_URL).map_err(|_| DesktopOAuthError::configuration_missing())?;
-    let zilobase_sign_in = Url::parse(api_origin)
-        .map_err(|_| DesktopOAuthError::server_sign_in_failed())?
-        .join("/api/auth/sign-in/social")
-        .map_err(|_| DesktopOAuthError::server_sign_in_failed())?;
-    Ok(OAuthEndpoints {
-        google_token,
-        zilobase_sign_in,
-    })
-}
-
-async fn exchange_session_credentials(
-    client_id: &str,
-    client_secret: &str,
-    request: &OAuthRequest,
-    code: &str,
-    cancel: &mut watch::Receiver<bool>,
-    endpoints: &OAuthEndpoints,
 ) -> Result<SessionCredentials, DesktopOAuthError> {
+    let token_endpoint = Url::parse(&server.api_origin)
+        .and_then(|origin| origin.join("/api/auth/desktop/token"))
+        .map_err(|_| DesktopOAuthError::configuration_failed())?;
     let client = reqwest::Client::builder()
         .timeout(REQUEST_TIMEOUT)
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|_| DesktopOAuthError::token_exchange_failed())?;
-    let token_request = client.post(endpoints.google_token.clone()).form(&[
-        ("client_id", client_id),
-        ("client_secret", client_secret),
-        ("code", code),
-        ("code_verifier", request.pkce_verifier.as_str()),
-        ("grant_type", "authorization_code"),
-        ("redirect_uri", request.redirect_uri.as_str()),
-    ]);
-    let token_response = cancellable(
+    let response = cancellable(
         cancel,
-        token_request.send(),
-        DesktopOAuthError::token_exchange_failed(),
-    )
-    .await?;
-    if !token_response.status().is_success() {
-        return Err(DesktopOAuthError::token_exchange_failed());
-    }
-    if token_response.content_length().unwrap_or(0) > MAX_AUTH_RESPONSE_BYTES as u64 {
-        return Err(DesktopOAuthError::token_exchange_failed());
-    }
-    let token_bytes = cancellable(
-        cancel,
-        token_response.bytes(),
-        DesktopOAuthError::token_exchange_failed(),
-    )
-    .await?;
-    if token_bytes.len() > MAX_AUTH_RESPONSE_BYTES {
-        return Err(DesktopOAuthError::token_exchange_failed());
-    }
-    let token_response: GoogleTokenResponse = serde_json::from_slice(&token_bytes)
-        .map_err(|_| DesktopOAuthError::token_exchange_failed())?;
-    let id_token = token_response
-        .id_token
-        .filter(|token| !token.is_empty() && token.len() <= 16 * 1024)
-        .ok_or_else(DesktopOAuthError::token_exchange_failed)?;
-
-    let sign_in_request =
         client
-            .post(endpoints.zilobase_sign_in.clone())
-            .json(&ZilobaseSignInRequest {
-                provider: "google",
-                id_token: ZilobaseIdToken {
-                    token: &id_token,
-                    nonce: &request.nonce,
-                },
-                disable_redirect: true,
-            });
-    let sign_in_response = cancellable(
-        cancel,
-        sign_in_request.send(),
-        DesktopOAuthError::server_sign_in_failed(),
+            .post(token_endpoint)
+            .form(&[
+                ("client_id", DESKTOP_CLIENT_ID),
+                ("code", code),
+                ("code_verifier", request.pkce_verifier.as_str()),
+                ("grant_type", "authorization_code"),
+                ("redirect_uri", request.redirect_uri.as_str()),
+            ])
+            .send(),
+        DesktopOAuthError::token_exchange_failed(),
     )
     .await?;
-    let sign_in_status = sign_in_response.status();
-    if !sign_in_status.is_success() {
-        return Err(if sign_in_status == reqwest::StatusCode::UNAUTHORIZED {
-            DesktopOAuthError::server_configuration_missing()
-        } else {
-            DesktopOAuthError::server_sign_in_failed()
-        });
+
+    if !response.status().is_success()
+        || response.content_length().unwrap_or(0) > MAX_AUTH_RESPONSE_BYTES as u64
+    {
+        return Err(DesktopOAuthError::token_exchange_failed());
     }
-    let session_token = sign_in_response
-        .headers()
-        .get("set-auth-token")
-        .and_then(|value| value.to_str().ok())
-        .filter(|value| !value.is_empty() && value.len() <= MAX_SESSION_TOKEN_BYTES)
-        .map(str::to_owned)
-        .ok_or_else(DesktopOAuthError::server_sign_in_failed)?;
-    if sign_in_response.content_length().unwrap_or(0) > MAX_AUTH_RESPONSE_BYTES as u64 {
-        return Err(DesktopOAuthError::server_sign_in_failed());
-    }
-    let sign_in_bytes = cancellable(
+
+    let response_bytes = cancellable(
         cancel,
-        sign_in_response.bytes(),
-        DesktopOAuthError::server_sign_in_failed(),
+        response.bytes(),
+        DesktopOAuthError::token_exchange_failed(),
     )
     .await?;
-    if sign_in_bytes.len() > MAX_AUTH_RESPONSE_BYTES {
-        return Err(DesktopOAuthError::server_sign_in_failed());
+    if response_bytes.len() > MAX_AUTH_RESPONSE_BYTES {
+        return Err(DesktopOAuthError::token_exchange_failed());
     }
-    let sign_in_response: ZilobaseSignInResponse = serde_json::from_slice(&sign_in_bytes)
-        .map_err(|_| DesktopOAuthError::server_sign_in_failed())?;
-    let user_id = sign_in_response.user.id;
-    if user_id.is_empty() || user_id.len() > 256 {
-        return Err(DesktopOAuthError::server_sign_in_failed());
-    }
+
+    let response: DesktopTokenResponse = serde_json::from_slice(&response_bytes)
+        .map_err(|_| DesktopOAuthError::token_exchange_failed())?;
+    validate_token_response(&response, server)?;
 
     Ok(SessionCredentials {
-        owner: user_id,
-        token: session_token,
+        owner: response.user.id,
+        token: response.access_token,
     })
+}
+
+fn validate_token_response(
+    response: &DesktopTokenResponse,
+    server: &DesktopServer,
+) -> Result<(), DesktopOAuthError> {
+    if !constant_time_eq(&response.issuer, &server.issuer)
+        || (!is_cloud_server(server) && response.instance_id != server.instance_id)
+    {
+        return Err(DesktopOAuthError::issuer_mismatch());
+    }
+    if response.token_type != "Bearer"
+        || response.access_token.is_empty()
+        || response.access_token.len() > MAX_SESSION_TOKEN_BYTES
+        || response.user.id.is_empty()
+        || response.user.id.len() > 256
+        || response.expires_at.is_empty()
+        || response.expires_at.len() > 64
+    {
+        return Err(DesktopOAuthError::token_exchange_failed());
+    }
+
+    Ok(())
 }
 
 async fn cancellable<T, E, F>(
@@ -837,37 +758,9 @@ fn denied_html() -> &'static str {
     "<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\"><title>Zilobase sign-in cancelled</title><style>body{font:16px system-ui;margin:0;display:grid;min-height:100vh;place-items:center;background:#0d0d0f;color:#fff}main{max-width:28rem;padding:2rem;text-align:center}p{color:#aaa}</style><main><h1>Sign-in cancelled</h1><p>You can close this tab and return to Zilobase.</p></main>"
 }
 
-fn google_desktop_client_id() -> Result<String, DesktopOAuthError> {
-    let configured = option_env!("GOOGLE_DESKTOP_CLIENT_ID")
-        .map(str::to_owned)
-        .or_else(|| {
-            cfg!(debug_assertions)
-                .then(|| std::env::var("GOOGLE_DESKTOP_CLIENT_ID").ok())
-                .flatten()
-        });
-
-    configured
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(DesktopOAuthError::configuration_missing)
-}
-
-fn google_desktop_client_secret() -> Result<String, DesktopOAuthError> {
-    let configured = option_env!("GOOGLE_DESKTOP_CLIENT_SECRET")
-        .map(str::to_owned)
-        .or_else(|| {
-            cfg!(debug_assertions)
-                .then(|| std::env::var("GOOGLE_DESKTOP_CLIENT_SECRET").ok())
-                .flatten()
-        });
-
-    configured
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(DesktopOAuthError::configuration_missing)
-}
-
 fn random_urlsafe(byte_count: usize) -> Result<String, DesktopOAuthError> {
     let mut bytes = vec![0_u8; byte_count];
-    getrandom::fill(&mut bytes).map_err(|_| DesktopOAuthError::configuration_missing())?;
+    getrandom::fill(&mut bytes).map_err(|_| DesktopOAuthError::configuration_failed())?;
     Ok(URL_SAFE_NO_PAD.encode(bytes))
 }
 
@@ -885,15 +778,30 @@ fn focus_main_window(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_oauth_request, constant_time_eq, exchange_session_credentials, parse_callback,
-        OAuthEndpoints, ParsedCallback, CALLBACK_PATH,
+        bind_loopback, build_oauth_request, constant_time_eq, exchange_session_credentials,
+        parse_callback, validate_token_response, DesktopTokenResponse, DesktopTokenUser,
+        ParsedCallback, CALLBACK_PATH,
     };
+    use crate::desktop_server::DesktopServer;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+    fn server(api_origin: &str) -> DesktopServer {
+        DesktopServer {
+            api_origin: api_origin.to_string(),
+            display_name: "Example".to_string(),
+            instance_id: "instance-1".to_string(),
+            issuer: api_origin.to_string(),
+            minimum_desktop_version: "0.0.1".to_string(),
+            protocol_version: 1,
+            server_version: "0.0.1".to_string(),
+            web_origin: api_origin.to_string(),
+        }
+    }
+
     #[test]
-    fn authorization_request_uses_pkce_state_nonce_and_loopback() {
+    fn authorization_request_uses_server_pkce_state_and_loopback() {
         let request = build_oauth_request(
-            "desktop-client.apps.googleusercontent.com",
+            &server("https://notes.example.com"),
             format!("http://127.0.0.1:43123{CALLBACK_PATH}"),
         )
         .expect("request");
@@ -904,41 +812,42 @@ mod tests {
             .collect();
 
         assert_eq!(
+            request.authorization_url.origin().ascii_serialization(),
+            "https://notes.example.com"
+        );
+        assert_eq!(request.authorization_url.path(), "/desktop/authorize");
+        assert_eq!(
+            params.get("client_id").map(String::as_str),
+            Some("zilobase-desktop")
+        );
+        assert_eq!(
             params.get("code_challenge_method").map(String::as_str),
             Some("S256")
         );
-        assert_eq!(
-            params.get("redirect_uri").map(String::as_str),
-            Some("http://127.0.0.1:43123/oauth/callback")
-        );
         assert_eq!(params.get("state"), Some(&request.state));
-        assert_eq!(params.get("nonce"), Some(&request.nonce));
         assert!(request.pkce_verifier.len() >= 43);
         assert_ne!(params.get("code_challenge"), Some(&request.pkce_verifier));
+        assert!(!params.contains_key("client_secret"));
     }
 
     #[test]
     fn every_authorization_request_has_unique_secrets() {
-        let first = build_oauth_request(
-            "desktop-client.apps.googleusercontent.com",
-            format!("http://127.0.0.1:43123{CALLBACK_PATH}"),
-        )
-        .expect("first request");
-        let second = build_oauth_request(
-            "desktop-client.apps.googleusercontent.com",
-            format!("http://127.0.0.1:43124{CALLBACK_PATH}"),
-        )
-        .expect("second request");
+        let selected = server("https://notes.example.com");
+        let first =
+            build_oauth_request(&selected, format!("http://127.0.0.1:43123{CALLBACK_PATH}"))
+                .expect("first request");
+        let second =
+            build_oauth_request(&selected, format!("http://127.0.0.1:43124{CALLBACK_PATH}"))
+                .expect("second request");
 
         assert_ne!(first.state, second.state);
-        assert_ne!(first.nonce, second.nonce);
         assert_ne!(first.pkce_verifier, second.pkce_verifier);
     }
 
     #[tokio::test]
     async fn loopback_listeners_use_ephemeral_ports() {
-        let (first, first_redirect) = super::bind_loopback().await.expect("first listener");
-        let (second, second_redirect) = super::bind_loopback().await.expect("second listener");
+        let (first, first_redirect) = bind_loopback().await.expect("first listener");
+        let (second, second_redirect) = bind_loopback().await.expect("second listener");
 
         assert_ne!(first.local_addr().expect("first address").port(), 0);
         assert_ne!(second.local_addr().expect("second address").port(), 0);
@@ -956,7 +865,7 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_start_is_rejected_and_cancel_allows_immediate_retry() {
+    fn duplicate_start_is_rejected_and_cancel_allows_retry() {
         let state = super::DesktopOAuthState::default();
         let (first_cancel, mut first_cancelled) = tokio::sync::watch::channel(false);
         state
@@ -971,7 +880,6 @@ mod tests {
 
         state.cancel_attempt();
         assert!(*first_cancelled.borrow_and_update());
-
         let (retry_cancel, _) = tokio::sync::watch::channel(false);
         state
             .begin_attempt("retry".to_string(), retry_cancel)
@@ -979,89 +887,185 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn exchanges_only_the_id_token_and_nonce_for_a_session() {
+    async fn exchanges_code_and_verifier_only_with_selected_server() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
             .await
             .expect("mock listener");
         let address = listener.local_addr().expect("mock address");
-        let server = tokio::spawn(async move {
-            let mut requests = Vec::new();
-            for response in [
-                r#"{"id_token":"google-id-token","access_token":"discard-me","refresh_token":"discard-me"}"#,
-                r#"{"user":{"id":"user-123"},"token":"body-token"}"#,
-            ] {
-                let (mut stream, _) = listener.accept().await.expect("mock connection");
-                requests.push(read_mock_request(&mut stream).await);
-                let auth_header = if requests.len() == 2 {
-                    "set-auth-token: zilobase-session\r\n"
-                } else {
-                    ""
-                };
-                let reply = format!(
-                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n{auth_header}Content-Length: {}\r\nConnection: close\r\n\r\n{response}",
-                    response.len()
-                );
-                stream
-                    .write_all(reply.as_bytes())
-                    .await
-                    .expect("mock reply");
-            }
-            requests
+        let selected = server(&format!("http://{address}"));
+        let response_issuer = selected.issuer.clone();
+        let mock = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.expect("mock connection");
+            let request = read_mock_request(&mut stream).await;
+            let body = format!(
+                r#"{{"access_token":"zilobase-session","expires_at":"2026-08-21T00:00:00.000Z","instance_id":"instance-1","issuer":"{response_issuer}","token_type":"Bearer","user":{{"id":"user-123"}}}}"#,
+            );
+            let reply = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            );
+            stream
+                .write_all(reply.as_bytes())
+                .await
+                .expect("mock reply");
+            request
         });
-
         let request = build_oauth_request(
-            "desktop-client.apps.googleusercontent.com",
+            &selected,
             "http://127.0.0.1:43123/oauth/callback".to_string(),
         )
-        .expect("OAuth request");
-        let endpoints = OAuthEndpoints {
-            google_token: format!("http://{address}/token")
-                .parse()
-                .expect("token URL"),
-            zilobase_sign_in: format!("http://{address}/api/auth/sign-in/social")
-                .parse()
-                .expect("sign-in URL"),
-        };
+        .expect("authorization request");
         let (_cancel_sender, mut cancel) = tokio::sync::watch::channel(false);
         let credentials = exchange_session_credentials(
-            "desktop-client.apps.googleusercontent.com",
-            "desktop-client-secret",
             &request,
-            "authorization-code",
+            "authorization-code-value-that-is-long-enough",
+            &selected,
             &mut cancel,
-            &endpoints,
         )
         .await
         .expect("session exchange");
-        let requests = server.await.expect("mock server");
+        let received = mock.await.expect("mock server");
+        let form: std::collections::HashMap<_, _> =
+            url::form_urlencoded::parse(request_body(&received).as_bytes())
+                .map(|(key, value)| (key.into_owned(), value.into_owned()))
+                .collect();
 
         assert_eq!(credentials.owner, "user-123");
         assert_eq!(credentials.token, "zilobase-session");
+        assert_eq!(form.get("code_verifier"), Some(&request.pkce_verifier));
+        assert_eq!(
+            form.get("client_id").map(String::as_str),
+            Some("zilobase-desktop")
+        );
+        assert!(!form.contains_key("client_secret"));
+    }
 
-        let token_body = request_body(&requests[0]);
-        let token_form: std::collections::HashMap<_, _> =
-            url::form_urlencoded::parse(token_body.as_bytes())
-                .map(|(key, value)| (key.into_owned(), value.into_owned()))
-                .collect();
+    #[test]
+    fn token_response_requires_matching_issuer_and_instance() {
+        let selected = server("https://notes.example.com");
+        let mut response = DesktopTokenResponse {
+            access_token: "token".to_string(),
+            expires_at: "2026-08-21T00:00:00.000Z".to_string(),
+            instance_id: "instance-1".to_string(),
+            issuer: "https://attacker.example.com".to_string(),
+            token_type: "Bearer".to_string(),
+            user: DesktopTokenUser {
+                id: "user-1".to_string(),
+            },
+        };
+
         assert_eq!(
-            token_form.get("code").map(String::as_str),
-            Some("authorization-code")
-        );
-        assert_eq!(
-            token_form.get("client_secret").map(String::as_str),
-            Some("desktop-client-secret")
-        );
-        assert_eq!(
-            token_form.get("code_verifier"),
-            Some(&request.pkce_verifier)
+            validate_token_response(&response, &selected)
+                .expect_err("issuer mismatch")
+                .code,
+            "issuer_mismatch"
         );
 
-        let sign_in: serde_json::Value =
-            serde_json::from_str(request_body(&requests[1])).expect("sign-in JSON");
-        assert_eq!(sign_in["idToken"]["token"], "google-id-token");
-        assert_eq!(sign_in["idToken"]["nonce"], request.nonce);
-        assert!(sign_in["idToken"].get("accessToken").is_none());
-        assert!(sign_in["idToken"].get("refreshToken").is_none());
+        response.issuer = selected.issuer.clone();
+        response.instance_id = "other-instance".to_string();
+        assert_eq!(
+            validate_token_response(&response, &selected)
+                .expect_err("instance mismatch")
+                .code,
+            "issuer_mismatch"
+        );
+
+        let cloud = server("https://api.zilobase.com");
+        response.issuer = cloud.issuer.clone();
+        validate_token_response(&response, &cloud)
+            .expect("the built-in Cloud alias accepts the discovered Cloud identity");
+    }
+
+    #[test]
+    fn callback_requires_matching_state_issuer_and_code() {
+        let valid = b"GET /oauth/callback?code=authorization-code&state=expected&iss=https%3A%2F%2Fnotes.example.com HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n";
+        assert!(matches!(
+            parse_callback(valid, "expected", "https://notes.example.com"),
+            ParsedCallback::Valid(code) if code == "authorization-code"
+        ));
+
+        let wrong_state = b"GET /oauth/callback?code=authorization-code&state=wrong&iss=https%3A%2F%2Fnotes.example.com HTTP/1.1\r\n\r\n";
+        assert!(matches!(
+            parse_callback(wrong_state, "expected", "https://notes.example.com"),
+            ParsedCallback::StateMismatch
+        ));
+
+        let wrong_issuer = b"GET /oauth/callback?code=authorization-code&state=expected&iss=https%3A%2F%2Fattacker.example.com HTTP/1.1\r\n\r\n";
+        assert!(matches!(
+            parse_callback(wrong_issuer, "expected", "https://notes.example.com"),
+            ParsedCallback::IssuerMismatch
+        ));
+    }
+
+    #[tokio::test]
+    async fn callback_wait_honors_timeout_and_cancellation() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("listener");
+        let (_sender, mut receiver) = tokio::sync::watch::channel(false);
+        let timeout_error = super::wait_for_callback(
+            &listener,
+            "state",
+            "https://notes.example.com",
+            &mut receiver,
+            std::time::Duration::from_millis(10),
+        )
+        .await
+        .expect_err("timeout");
+        assert_eq!(timeout_error.code, "callback_timeout");
+
+        let (sender, mut receiver) = tokio::sync::watch::channel(false);
+        sender.send(true).expect("cancel");
+        let cancelled = super::wait_for_callback(
+            &listener,
+            "state",
+            "https://notes.example.com",
+            &mut receiver,
+            std::time::Duration::from_secs(1),
+        )
+        .await
+        .expect_err("cancelled");
+        assert_eq!(cancelled.code, "cancelled");
+    }
+
+    #[tokio::test]
+    async fn callback_reader_rejects_oversized_requests() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("listener");
+        let address = listener.local_addr().expect("address");
+        let reader = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.expect("connection");
+            super::read_http_request(&mut stream).await
+        });
+        let mut client = tokio::net::TcpStream::connect(address)
+            .await
+            .expect("client");
+        client
+            .write_all(&vec![b'a'; super::MAX_CALLBACK_REQUEST_BYTES + 1])
+            .await
+            .expect("oversized request");
+        client.shutdown().await.expect("shutdown");
+
+        assert_eq!(
+            reader
+                .await
+                .expect("reader task")
+                .expect_err("oversized callback must fail")
+                .kind(),
+            std::io::ErrorKind::InvalidData,
+        );
+    }
+
+    #[test]
+    fn callback_rejects_duplicate_security_parameters() {
+        let duplicate = b"GET /oauth/callback?code=one&code=two&state=expected&iss=https%3A%2F%2Fnotes.example.com HTTP/1.1\r\n\r\n";
+        assert!(matches!(
+            parse_callback(duplicate, "expected", "https://notes.example.com"),
+            ParsedCallback::Invalid
+        ));
+        assert!(constant_time_eq("same", "same"));
+        assert!(!constant_time_eq("same", "different"));
     }
 
     async fn read_mock_request(stream: &mut tokio::net::TcpStream) -> String {
@@ -1073,7 +1077,7 @@ mod tests {
             request.extend_from_slice(&buffer[..size]);
             if let Some(header_end) = request.windows(4).position(|part| part == b"\r\n\r\n") {
                 let header_end = header_end + 4;
-                let headers = std::str::from_utf8(&request[..header_end]).expect("request headers");
+                let headers = std::str::from_utf8(&request[..header_end]).expect("headers");
                 let content_length = headers
                     .lines()
                     .find_map(|line| {
@@ -1096,60 +1100,5 @@ mod tests {
 
     fn request_body(request: &str) -> &str {
         request.split_once("\r\n\r\n").expect("request body").1
-    }
-
-    #[test]
-    fn callback_requires_matching_state_and_code() {
-        let valid = b"GET /oauth/callback?code=google-code&state=expected HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n";
-        assert!(matches!(
-            parse_callback(valid, "expected"),
-            ParsedCallback::Valid(code) if code == "google-code"
-        ));
-
-        let mismatch = b"GET /oauth/callback?code=google-code&state=wrong HTTP/1.1\r\n\r\n";
-        assert!(matches!(
-            parse_callback(mismatch, "expected"),
-            ParsedCallback::StateMismatch
-        ));
-
-        let missing_code = b"GET /oauth/callback?state=expected HTTP/1.1\r\n\r\n";
-        assert!(matches!(
-            parse_callback(missing_code, "expected"),
-            ParsedCallback::Invalid
-        ));
-
-        let wrong_method = b"POST /oauth/callback?code=google-code&state=expected HTTP/1.1\r\n\r\n";
-        assert!(matches!(
-            parse_callback(wrong_method, "expected"),
-            ParsedCallback::Invalid
-        ));
-    }
-
-    #[test]
-    fn callback_ignores_other_paths_and_handles_provider_denial() {
-        let favicon = b"GET /favicon.ico HTTP/1.1\r\n\r\n";
-        assert!(matches!(
-            parse_callback(favicon, "expected"),
-            ParsedCallback::Ignore
-        ));
-
-        let denied = b"GET /oauth/callback?error=access_denied&state=expected HTTP/1.1\r\n\r\n";
-        assert!(matches!(
-            parse_callback(denied, "expected"),
-            ParsedCallback::ProviderDenied
-        ));
-
-        let provider_error =
-            b"GET /oauth/callback?error=server_error&state=expected HTTP/1.1\r\n\r\n";
-        assert!(matches!(
-            parse_callback(provider_error, "expected"),
-            ParsedCallback::ProviderError
-        ));
-    }
-
-    #[test]
-    fn state_comparison_requires_exact_match() {
-        assert!(constant_time_eq("same", "same"));
-        assert!(!constant_time_eq("same", "different"));
     }
 }

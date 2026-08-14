@@ -2,37 +2,25 @@
 
 The desktop app checks the latest GitHub release on launch. When a newer signed build is available, it offers to download, install, and restart the app.
 
-## Google sign-in
+## Browser sign-in
 
-Desktop Google sign-in uses the native OAuth authorization-code flow with PKCE.
-The app opens the system browser and receives the callback on an ephemeral
-loopback address such as `http://127.0.0.1:43123/oauth/callback`. It does not use
-an embedded WebView or an authentication deep link.
+Desktop authentication uses the selected Zilobase server's authorization-code
+flow with PKCE. The native app opens `/desktop/authorize` in the system browser
+and receives the result on an ephemeral loopback address such as
+`http://127.0.0.1:43123/oauth/callback`. The browser can use the server's normal
+password, email-code, Google, or configured SSO path. Authentication never runs
+in an embedded WebView or returns through a custom deep link.
 
-Create a Google OAuth client with application type **Desktop app**, then provide
-its client ID as `GOOGLE_DESKTOP_CLIENT_ID` and generated client secret as
-`GOOGLE_DESKTOP_CLIENT_SECRET` when compiling the desktop application. The
-client ID is also configured in the server runtime so the resulting ID token is
-accepted. Google treats an installed app as a public client, so its generated
-secret is not confidential and PKCE remains the protection against intercepted
-authorization codes. We still store the value as a build secret and never log it.
+The server stores only a SHA-256 hash of each five-minute authorization code and
+binds it to the exact callback and S256 challenge. A successful exchange
+atomically consumes the code and creates a separate Better Auth desktop session.
+The native app validates callback state, issuer, instance identity, and the token
+response before saving the session in the instance-scoped system keyring.
 
-For local development:
-
-```sh
-export GOOGLE_DESKTOP_CLIENT_ID="your-client-id.apps.googleusercontent.com"
-export GOOGLE_DESKTOP_CLIENT_SECRET="your-generated-desktop-client-secret"
-npm run dev:desktop
-```
-
-For releases, configure the GitHub Actions repository variable
-`GOOGLE_DESKTOP_CLIENT_ID` and Actions secret `GOOGLE_DESKTOP_CLIENT_SECRET`.
-The release workflow fails before building when either is absent. Zilobase
-Cloud is the initial server. The sign-in screen can verify and persist a
-different server at runtime, and the Google ID token is sent only to that
-selected server. API origins are no longer compiled into individual desktop
-artifacts. Custom servers require trusted HTTPS except for loopback HTTP during
-development.
+Desktop builds no longer contain Google client IDs or secrets. Social-provider
+configuration belongs only to the server that renders the browser login. The
+same desktop artifact can therefore sign in to Cloud or a compatible self-hosted
+server without being rebuilt.
 
 ## One-time GitHub setup
 

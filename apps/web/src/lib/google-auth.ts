@@ -2,7 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core"
 
 import { authFetch } from "@/lib/api"
 
-const WEB_APP_URL = "https://app.zilobase.com"
+const CLOUD_API_URL = "https://api.zilobase.com"
 
 type SocialSignInResponse = {
   redirect: boolean
@@ -25,20 +25,11 @@ export class DesktopOAuthError extends Error {
 }
 
 export async function signInWithGoogle(callbackURL: string) {
-  if (isTauri()) {
-    try {
-      await invoke("start_google_oauth")
-      return "desktop" as const
-    } catch (error) {
-      throw normalizeDesktopOAuthError(error)
-    }
-  }
-
   const response = await authFetch<SocialSignInResponse>("/sign-in/social", {
     provider: "google",
     callbackURL: new URL(callbackURL, window.location.origin).toString(),
     errorCallbackURL: new URL(
-      window.location.pathname,
+      `${window.location.pathname}${window.location.search}`,
       window.location.origin,
     ).toString(),
     disableRedirect: true,
@@ -52,11 +43,27 @@ export async function signInWithGoogle(callbackURL: string) {
   return "web" as const
 }
 
-export async function cancelDesktopGoogleSignIn() {
+export async function signInWithDesktopBrowser() {
+  if (!isTauri()) {
+    throw new DesktopOAuthError(
+      "desktop_required",
+      "Browser authorization is only available in Zilobase Desktop.",
+    )
+  }
+
+  try {
+    await invoke("start_browser_authorization")
+    return "desktop" as const
+  } catch (error) {
+    throw normalizeDesktopOAuthError(error)
+  }
+}
+
+export async function cancelDesktopBrowserSignIn() {
   if (!isTauri()) return
 
   try {
-    await invoke("cancel_google_oauth")
+    await invoke("cancel_browser_authorization")
   } catch (error) {
     throw normalizeDesktopOAuthError(error)
   }
@@ -67,14 +74,57 @@ export function getAuthReturnPath(
   search = window.location.search,
 ) {
   const returnTo = new URLSearchParams(search).get("returnTo")
-  if (!returnTo?.startsWith("/") || returnTo.startsWith("//")) return fallback
+  if (!returnTo) return fallback
 
-  const url = new URL(returnTo, WEB_APP_URL)
+  const isRelative = returnTo.startsWith("/") && !returnTo.startsWith("//")
+  const currentOrigin =
+    typeof window === "undefined"
+      ? "https://app.zilobase.com"
+      : window.location.origin
+
+  let url: URL
+  try {
+    url = new URL(returnTo, currentOrigin)
+  } catch {
+    return fallback
+  }
+
   if (url.pathname === "/desktop-auth") return fallback
 
-  return url.origin === WEB_APP_URL
-    ? `${url.pathname}${url.search}${url.hash}`
-    : fallback
+  if (isRelative && url.origin === currentOrigin) {
+    return `${url.pathname}${url.search}${url.hash}`
+  }
+
+  if (
+    url.pathname === "/desktop/authorize" &&
+    !url.username &&
+    !url.password &&
+    !url.hash &&
+    allowedBrowserAuthorizationOrigins().has(url.origin)
+  ) {
+    return url.toString()
+  }
+
+  return fallback
+}
+
+function allowedBrowserAuthorizationOrigins() {
+  const currentOrigin =
+    typeof window === "undefined"
+      ? "https://app.zilobase.com"
+      : window.location.origin
+  const origins = new Set([currentOrigin, CLOUD_API_URL])
+  const configured = import.meta.env.VITE_API_URL
+
+  if (configured) {
+    try {
+      origins.add(new URL(configured, currentOrigin).origin)
+    } catch {
+      // Invalid build-time values are ignored instead of creating an open redirect.
+    }
+  }
+
+  return origins
 }
 
 function normalizeDesktopOAuthError(error: unknown) {
@@ -87,7 +137,7 @@ function normalizeDesktopOAuthError(error: unknown) {
   const message =
     typeof failure?.message === "string"
       ? failure.message
-      : "Desktop Google sign-in could not be completed."
+      : "Desktop browser sign-in could not be completed."
 
   return new DesktopOAuthError(code, message)
 }

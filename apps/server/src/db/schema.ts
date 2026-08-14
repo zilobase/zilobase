@@ -78,6 +78,29 @@ export const session = pgTable(
   (table) => [index("session_user_id_idx").on(table.userId)],
 );
 
+export const desktopAuthorizationCode = pgTable(
+  "desktop_authorization_code",
+  {
+    id: text("id").primaryKey(),
+    codeHash: text("code_hash").notNull().unique(),
+    codeChallenge: text("code_challenge").notNull(),
+    redirectUri: text("redirect_uri").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    activeWorkspaceId: text("active_workspace_id"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("desktop_authorization_code_user_id_idx").on(table.userId),
+    index("desktop_authorization_code_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
 export const account = pgTable(
   "account",
   {

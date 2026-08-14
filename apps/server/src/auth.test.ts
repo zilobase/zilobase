@@ -1,26 +1,21 @@
 import { describe, expect, test } from "vitest";
 
-import { getGoogleClientIds } from "./auth";
+import { getTrustedOrigins } from "./config";
 
-describe("Google OAuth client configuration", () => {
-  test("keeps the web client first and accepts the desktop audience", () => {
+describe("browser authentication configuration", () => {
+  test("trusts the canonical browser and exact desktop origins", () => {
     expect(
-      getGoogleClientIds({
-        GOOGLE_CLIENT_ID: "web-client",
-        GOOGLE_DESKTOP_CLIENT_ID: "desktop-client",
-      }),
-    ).toEqual(["web-client", "desktop-client"]);
-  });
-
-  test("keeps hosted web authentication working without desktop configuration", () => {
-    expect(getGoogleClientIds({ GOOGLE_CLIENT_ID: "web-client" })).toBe(
-      "web-client",
-    );
-  });
-
-  test("does not configure Google from a desktop client alone", () => {
-    expect(
-      getGoogleClientIds({ GOOGLE_DESKTOP_CLIENT_ID: "desktop-client" }),
-    ).toBeUndefined();
+      getTrustedOrigins(
+        { CLIENT_URL: "https://app.example.com" },
+        "https://api.example.com",
+      ),
+    ).toEqual([
+      "https://api.example.com",
+      "https://app.example.com",
+      "tauri://localhost",
+      "http://tauri.localhost",
+      "mobile://",
+      "mobile://*",
+    ]);
   });
 });

@@ -126,7 +126,10 @@ choose **Use another server** to verify and save a self-hosted origin. Server
 metadata is stored in the operating system application-config directory;
 session credentials remain in the system keyring and are scoped to the saved
 instance. Custom servers require trusted HTTPS, except for loopback HTTP during
-local development.
+local development. Sign-in then opens that server in the system browser and uses
+PKCE with an ephemeral loopback callback. Password, email-code, Google, and
+configured SSO login stay in the browser; the desktop receives an independent
+server session only after issuer, state, instance, and PKCE validation.
 
 ## Project Structure
 

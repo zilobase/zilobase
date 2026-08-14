@@ -1,18 +1,19 @@
 import { readFile } from "node:fs/promises"
 
 export function register({ assert, test }) {
-  test("desktop Google auth is owned by the native coordinator", async () => {
+  test("desktop browser auth is owned by the native PKCE coordinator", async () => {
     const source = await readFile(
       new URL("../src/lib/google-auth.ts", import.meta.url),
       "utf8",
     )
 
-    assert.match(source, /invoke\("start_google_oauth"\)/)
-    assert.match(source, /invoke\("cancel_google_oauth"\)/)
+    assert.match(source, /invoke\("start_browser_authorization"\)/)
+    assert.match(source, /invoke\("cancel_browser_authorization"\)/)
     assert.doesNotMatch(source, /zilobase:\/\/auth/)
+    assert.doesNotMatch(source, /GOOGLE_DESKTOP_CLIENT/)
   })
 
-  test("desktop Google auth has explicit waiting and finalizing states", async () => {
+  test("desktop browser auth has explicit waiting and finalizing states", async () => {
     const source = await readFile(
       new URL("../src/components/login-form.tsx", import.meta.url),
       "utf8",
@@ -23,6 +24,11 @@ export function register({ assert, test }) {
     assert.match(source, /await reloadDesktopAuthCredentials\(\)/)
     assert.match(source, /sessionQueryOptions\(webAuthClient\)/)
     assert.match(source, /Waiting for browser sign-in\.\.\./)
+    assert.match(source, /Continue in system browser/)
+    assert.match(source, /useRequestSignInOtp/)
+    assert.match(source, /signInWithGoogle/)
+    assert.match(source, /configured SSO provider/)
+    assert.match(source, /!desktop &&/)
     assert.doesNotMatch(source, /addEventListener\("focus"/)
   })
 

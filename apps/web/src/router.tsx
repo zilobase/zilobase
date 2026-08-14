@@ -47,6 +47,7 @@ import {
 import { webAuthClient } from "@/providers/features-provider"
 import { getMostRecentItemPath } from "@/lib/recent-navigation"
 import { useAppStore } from "@/stores/app-store"
+import { getAuthReturnPath } from "@/lib/google-auth"
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000
 
@@ -77,10 +78,21 @@ const indexRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  beforeLoad: async () => {
+  validateSearch: (search: Record<string, unknown>): { returnTo?: string } =>
+    typeof search.returnTo === "string" ? { returnTo: search.returnTo } : {},
+  beforeLoad: async ({ search }) => {
     const session = await getFreshSession()
 
     if (session.user) {
+      if (search.returnTo) {
+        throw redirect({
+          href: getAuthReturnPath(
+            "/recents",
+            new URLSearchParams({ returnTo: search.returnTo }).toString(),
+          ),
+        })
+      }
+
       const workspaces = await getWorkspaces()
 
       throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" })

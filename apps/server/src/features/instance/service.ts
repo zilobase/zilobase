@@ -104,7 +104,7 @@ export async function getZilobaseDiscoveryDocument(
     serverVersion: SERVER_VERSION,
     minimumDesktopVersion,
     desktopAuthorization: {
-      authorizationEndpoint: new URL("/desktop/authorize", webOrigin).toString(),
+      authorizationEndpoint: new URL("/desktop/authorize", apiOrigin).toString(),
       tokenEndpoint: new URL("/api/auth/desktop/token", apiOrigin).toString(),
     },
   };

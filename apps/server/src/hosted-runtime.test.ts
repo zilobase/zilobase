@@ -22,7 +22,7 @@ test("the hosted fetch adapter exposes discovery and readiness without a session
   getZilobaseDiscoveryDocument.mockResolvedValue({
     apiOrigin: "https://api.example.com",
     desktopAuthorization: {
-      authorizationEndpoint: "https://app.example.com/desktop/authorize",
+      authorizationEndpoint: "https://api.example.com/desktop/authorize",
       tokenEndpoint: "https://api.example.com/api/auth/desktop/token",
     },
     displayName: "Example",

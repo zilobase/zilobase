@@ -8,6 +8,7 @@ import {
   sessionRoutes,
 } from "../features/auth/routes";
 import { databaseRoutes } from "../features/databases/routes";
+import { desktopAuthRoutes } from "../features/desktop-auth/routes";
 import { healthRoutes } from "../features/health/routes";
 import { imageRoutes } from "../features/images/routes";
 import { instanceRoutes } from "../features/instance/routes";
@@ -26,6 +27,7 @@ export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/api/ai", aiRoutes);
   app.route("/api/ai", aiThreadRoutes);
   app.route("/api/keys", apiKeyRoutes);
+  app.route("/", desktopAuthRoutes);
   app.route("/", authRoutes);
   app.route("/databases", databaseRoutes);
   app.route("/", healthRoutes);
