@@ -4,6 +4,17 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.29
+
+### Fixed
+
+- Added the generated Google Desktop client credential required by Google's token endpoint so the native PKCE flow completes after the loopback callback.
+- Added release preflight checks for both parts of the desktop OAuth credential and documented their local and CI configuration.
+
+### Security
+
+- Keeps the generated desktop credential out of source control and logs while continuing to use PKCE, per-attempt state, and nonce validation as the protections appropriate to a distributed public client.
+
 ## 0.0.28
 
 ### Changed
