@@ -1,9 +1,9 @@
 import {
-  BookOpenIcon,
   CalendarIcon,
   EyeIcon,
   EyeOffIcon,
   HelpCircleIcon,
+  HistoryIcon,
   LockIcon,
   SparklesIcon,
   StarIcon,
@@ -27,11 +27,10 @@ import type {
 } from "@zilobase/features/user-settings"
 
 const fixedItems: Array<{
-  icon: typeof BookOpenIcon
+  icon: typeof CalendarIcon
   id: SidebarItemId
   label: string
 }> = [
-  { icon: BookOpenIcon, id: "library", label: "Library" },
   { icon: SparklesIcon, id: "askAi", label: "Ask AI" },
   { icon: CalendarIcon, id: "calendar", label: "Calendar" },
   { icon: BlocksIcon, id: "templates", label: "Templates" },
@@ -40,6 +39,7 @@ const fixedItems: Array<{
 ]
 
 const sectionDetails = {
+  recents: { icon: HistoryIcon, label: "Recents" },
   favorites: { icon: StarIcon, label: "Favorites" },
   private: { icon: LockIcon, label: "Private" },
   shared: { icon: UsersIcon, label: "Shared" },
@@ -59,10 +59,11 @@ export function SidebarCustomizeDialog({
   open: boolean
 }) {
   const items = [
-    ...fixedItems.slice(0, 2),
+    ...fixedItems.slice(0, 1),
     ...config.sectionOrder.map((id) => ({ id, ...sectionDetails[id] })),
-    ...fixedItems.slice(2),
+    ...fixedItems.slice(1),
   ]
+  const trailingItemsStart = 1 + config.sectionOrder.length
 
   const toggleItem = (itemId: SidebarItemId) => {
     const hidden = config.hiddenItems.includes(itemId)
@@ -91,7 +92,7 @@ export function SidebarCustomizeDialog({
 
             return (
               <div key={item.id}>
-                {index === 2 || index === 5 ? (
+                {index === 1 || index === trailingItemsStart ? (
                   <div className="my-2 h-px bg-border" />
                 ) : null}
                 <button

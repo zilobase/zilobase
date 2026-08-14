@@ -381,7 +381,7 @@ export function AppBreadcrumbs({ pathname }: { pathname: string }) {
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbPage className="line-clamp-1">Dashboard</BreadcrumbPage>
+          <BreadcrumbPage className="line-clamp-1">Recents</BreadcrumbPage>
         </BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>
@@ -402,7 +402,7 @@ function PageBreadcrumb({ pageId }: { pageId: string }) {
       <BreadcrumbList className="flex-nowrap">
         <BreadcrumbItem className="hidden sm:inline-flex">
           <BreadcrumbLink asChild>
-            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/recents">Recents</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator className="hidden sm:inline-flex" />
@@ -452,7 +452,7 @@ function DatabaseBreadcrumb({ databaseId }: { databaseId: string }) {
       <BreadcrumbList className="flex-nowrap">
         <BreadcrumbItem className="hidden sm:inline-flex">
           <BreadcrumbLink asChild>
-            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/recents">Recents</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator className="hidden sm:inline-flex" />

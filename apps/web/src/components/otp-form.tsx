@@ -59,7 +59,7 @@ export function OtpForm({
         if (returnTo) {
           window.location.assign(returnTo)
         } else {
-          void navigate({ to: "/dashboard" })
+          void navigate({ to: "/recents" })
         }
         return
       }

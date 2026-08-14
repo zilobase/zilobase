@@ -89,7 +89,7 @@ export default function AcceptInvitationPage() {
             {hasAccepted ? (
               <Field>
                 <Button asChild>
-                  <Link to="/dashboard">Go to dashboard</Link>
+                  <Link to="/recents">Go to recents</Link>
                 </Button>
               </Field>
             ) : isLoadingSession ? (

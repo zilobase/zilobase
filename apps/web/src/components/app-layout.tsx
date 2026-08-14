@@ -201,7 +201,7 @@ function AppLayoutContent({
       setSettingsDialogOpen(open)
 
       if (!open && isSettingsPage) {
-        void navigate({ to: "/dashboard", replace: true })
+        void navigate({ to: "/recents", replace: true })
       }
     },
     [isSettingsPage, navigate],

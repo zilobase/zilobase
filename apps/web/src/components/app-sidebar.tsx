@@ -32,7 +32,13 @@ import {
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state";
 import { SidebarCustomizeDialog } from "@/components/sidebar-customize-dialog";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
-import { ThemeDropdown } from "@/components/theme-dropdown";
+import {
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerSeparator,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer";
 import {
   ExpandableTabs,
   type ExpandableTabItem,
@@ -80,16 +86,16 @@ import {
   ChartPie,
   ChevronRightIcon,
   DatabaseIcon,
+  FileIcon,
   GalleryThumbnails,
   HomeIcon,
   Kanban,
-  LibraryBigIcon,
   List,
   MessageCircleQuestionIcon,
+  MessageSquarePlusIcon,
   MonitorUpIcon,
   PlusIcon,
   SearchIcon,
-  Settings2Icon,
   SparklesIcon,
   Table2,
   Trash2Icon,
@@ -121,7 +127,7 @@ const data = {
     {
       id: "home" as const,
       title: "Home",
-      url: "/dashboard",
+      url: "/recents",
       icon: HomeIcon,
     },
     {
@@ -201,6 +207,14 @@ export function AppSidebar({
   const { isPending: isCreatingPage, mutateAsync: createPage } = useCreatePage();
   const { isPending: isCreatingDatabase, mutateAsync: createDatabase } =
     useCreateDatabase();
+  const { activeThreadId, setActiveThreadId } = useAiChatThreadState();
+  const {
+    createThread: createChatThread,
+    handleCreateThread,
+  } = useAiChatThreadActions({
+    activeThreadId,
+    onSelectThread: setActiveThreadId,
+  });
   const { isPending: isSettingPageFavorite, mutate: setPageFavorite } =
     useSetPageFavorite();
   const { isPending: isAddingDatabaseRow, mutate: addDatabaseRow } =
@@ -209,7 +223,7 @@ export function AppSidebar({
     isPending: isSettingDatabaseFavorite,
     mutate: setDatabaseFavorite,
   } = useSetDatabaseFavorite();
-  const { favorites, sections: pageSections } = React.useMemo(
+  const { favorites, recents, sections: pageSections } = React.useMemo(
     () =>
       buildSidebarNavigation(
         navigation?.pages ?? [],
@@ -280,6 +294,16 @@ export function AppSidebar({
       search: { view: undefined },
     });
   }, [createDatabase, isCreatingDatabase, navigate, workspaceId]);
+
+  const handleCreateChat = React.useCallback(async () => {
+    if (createChatThread.isPending) return;
+
+    const threadId = await handleCreateThread();
+    if (!threadId) return;
+
+    setSidebarMode("askAi");
+    await navigate({ search: { thread: threadId }, to: "/ai" });
+  }, [createChatThread.isPending, handleCreateThread, navigate]);
 
   const handleDropPageOnDatabase = React.useCallback(
     ({
@@ -362,22 +386,25 @@ export function AppSidebar({
 
   return (
     <AppSidebarShell {...props}>
-      <AppSidebarHeader>
-        <WorkspaceSwitcher />
+      <AppSidebarHeader
+        navigation={
+          <NavMain
+            items={data.navMain.filter(
+              (item) =>
+                item.id === "home" || !hiddenSidebarItems.has(item.id),
+            )}
+            onOpenSearch={openSearch}
+            onSidebarModeChange={setSidebarMode}
+            sidebarMode={sidebarMode}
+          />
+        }
+      >
+        <WorkspaceSwitcher
+          onOpenSettings={onOpenSettings}
+          settingsOpen={settingsOpen}
+        />
       </AppSidebarHeader>
       <SidebarContent>
-        <NavMain
-          items={data.navMain.filter(
-            (item) =>
-              item.id === "home" || !hiddenSidebarItems.has(item.id),
-          )}
-          libraryView={sidebarConfig.libraryView}
-          onOpenSearch={openSearch}
-          onSidebarModeChange={setSidebarMode}
-          pathname={pathname}
-          sidebarMode={sidebarMode}
-          showLibrary={!isAiPage && !hiddenSidebarItems.has("library")}
-        />
         {isAiPage ? (
           <AiSidebarHistory />
         ) : (
@@ -407,7 +434,13 @@ export function AppSidebar({
                       activePageId={getActivePageId(location.pathname)}
                       databaseDropTargetId={databaseDropTargetId}
                       key={sectionId}
-                      label={sectionId === "private" ? "Private" : "Shared"}
+                      label={
+                        sectionId === "recents"
+                          ? "Recents"
+                          : sectionId === "private"
+                            ? "Private"
+                            : "Shared"
+                      }
                       onCreateDatabase={
                         sectionId === "private" ? handleCreateDatabase : undefined
                       }
@@ -419,7 +452,9 @@ export function AppSidebar({
                       onDropPageOnDatabase={handleDropPageOnDatabase}
                       onSidebarConfigChange={handleSidebarConfigChange}
                       pages={
-                        sectionId === "private"
+                        sectionId === "recents"
+                          ? recents
+                          : sectionId === "private"
                           ? pageSections.privatePages
                           : pageSections.teamspacePages
                       }
@@ -428,7 +463,11 @@ export function AppSidebar({
                       sidebarConfig={sidebarConfig}
                       storageKey={getSidebarExpansionStorageKey(
                         workspaceId,
-                        sectionId === "shared" ? "team" : "private",
+                        sectionId === "recents"
+                          ? "recents"
+                          : sectionId === "shared"
+                            ? "team"
+                            : "private",
                       )}
                     />
                   ),
@@ -454,27 +493,15 @@ export function AppSidebar({
               </SidebarMenuButton>
             </SidebarMenuItem>
           ) : null}
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={
-                settingsOpen ||
-                pathname === "/settings" ||
-                pathname.startsWith("/settings/")
-              }
-            >
-              <button
-                aria-expanded={settingsOpen}
-                onClick={onOpenSettings}
-                type="button"
-              >
-                <Settings2Icon />
-                <span>Settings</span>
-              </button>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <NewMenu
+            createChatPending={createChatThread.isPending}
+            createDatabasePending={isCreatingDatabase}
+            createPagePending={isCreatingPage}
+            onCreateChat={handleCreateChat}
+            onCreateDatabase={handleCreateDatabase}
+            onCreatePage={handleCreatePage}
+          />
         </SidebarMenu>
-        <ThemeDropdown />
       </SidebarFooter>
       <SidebarCustomizeDialog
         config={sidebarConfig}
@@ -487,14 +514,64 @@ export function AppSidebar({
   );
 }
 
+function NewMenu({
+  createChatPending,
+  createDatabasePending,
+  createPagePending,
+  onCreateChat,
+  onCreateDatabase,
+  onCreatePage,
+}: {
+  createChatPending: boolean;
+  createDatabasePending: boolean;
+  createPagePending: boolean;
+  onCreateChat: () => void;
+  onCreateDatabase: () => void;
+  onCreatePage: () => void;
+}) {
+  return (
+    <SidebarMenuItem>
+      <DropDrawer>
+        <DropDrawerTrigger asChild>
+          <SidebarMenuButton tooltip="New">
+            <PlusIcon />
+            <span>New</span>
+          </SidebarMenuButton>
+        </DropDrawerTrigger>
+        <DropDrawerContent align="start" className="w-52 rounded-lg" side="top">
+          <DropDrawerItem
+            disabled={createPagePending}
+            onSelect={onCreatePage}
+          >
+            <FileIcon />
+            <span>Page</span>
+          </DropDrawerItem>
+          <DropDrawerItem
+            disabled={createDatabasePending}
+            onSelect={onCreateDatabase}
+          >
+            <DatabaseIcon />
+            <span>Database</span>
+          </DropDrawerItem>
+          <DropDrawerSeparator />
+          <DropDrawerItem
+            disabled={createChatPending}
+            onSelect={onCreateChat}
+          >
+            <MessageSquarePlusIcon />
+            <span>New chat</span>
+          </DropDrawerItem>
+        </DropDrawerContent>
+      </DropDrawer>
+    </SidebarMenuItem>
+  );
+}
+
 function NavMain({
   items,
-  libraryView,
   onOpenSearch,
   onSidebarModeChange,
-  pathname,
   sidebarMode,
-  showLibrary,
 }: {
   items: {
     id: "home" | SidebarItemId;
@@ -502,12 +579,9 @@ function NavMain({
     url: string;
     icon: LucideIcon;
   }[];
-  libraryView: SidebarConfig["libraryView"];
   onOpenSearch: () => void;
   onSidebarModeChange: (mode: "home" | "askAi") => void;
-  pathname: string;
   sidebarMode: "home" | "askAi";
-  showLibrary: boolean;
 }) {
   const navigate = useNavigate();
   const routeSelected = items.findIndex((item) =>
@@ -536,6 +610,7 @@ function NavMain({
 
     if (item.id === "home") {
       onSidebarModeChange("home");
+      void navigate({ to: item.url as never });
       return;
     }
 
@@ -544,7 +619,7 @@ function NavMain({
   };
 
   return (
-    <SidebarGroup className="pb-1 pt-0.5">
+    <SidebarGroup className="p-0 pb-1 pt-0.5">
       <SidebarGroupContent>
         <nav aria-label="Main navigation">
           <div className="flex items-center gap-0.5">
@@ -563,25 +638,6 @@ function NavMain({
               <SearchIcon className="size-4" />
             </button>
           </div>
-          {showLibrary ? (
-            <SidebarMenu className="mt-0.5">
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={pathname === "/dashboard"}
-                  onClick={() =>
-                    void navigate({
-                      search: { view: libraryView },
-                      to: "/dashboard",
-                    })
-                  }
-                  type="button"
-                >
-                  <LibraryBigIcon />
-                  <span>Library</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          ) : null}
         </nav>
       </SidebarGroupContent>
     </SidebarGroup>

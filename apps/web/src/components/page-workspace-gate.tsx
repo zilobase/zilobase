@@ -90,7 +90,7 @@ export function PageWorkspaceGate({
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel asChild>
-                <Link to="/dashboard">Go to dashboard</Link>
+                <Link to="/recents">Go to recents</Link>
               </AlertDialogCancel>
               <Button
                 disabled={setActiveWorkspace.isPending}

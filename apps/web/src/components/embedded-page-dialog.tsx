@@ -34,7 +34,7 @@ export function EmbeddedPageDialog({
   }
   const dialogPathname = dialogPageId
     ? `/p/${encodeURIComponent(dialogPageId)}`
-    : "/dashboard"
+    : "/recents"
 
   return (
     <Dialog

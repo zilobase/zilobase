@@ -5,10 +5,14 @@ export const libraryViewIds = [
   "private",
 ] as const
 
-export const sidebarSectionIds = ["favorites", "private", "shared"] as const
+export const sidebarSectionIds = [
+  "recents",
+  "favorites",
+  "private",
+  "shared",
+] as const
 
 export const sidebarItemIds = [
-  "library",
   "askAi",
   ...sidebarSectionIds,
   "calendar",
@@ -38,12 +42,14 @@ export const defaultSidebarConfig: SidebarConfig = {
   hiddenItems: [],
   libraryView: "recents",
   sectionLimits: {
+    recents: 10,
     favorites: 10,
     private: 10,
     shared: 10,
   },
   sectionOrder: [...sidebarSectionIds],
   sectionSorts: {
+    recents: "lastEdited",
     favorites: "lastEdited",
     private: "lastEdited",
     shared: "lastEdited",
@@ -84,6 +90,9 @@ export function normalizeSidebarConfig(value: unknown): SidebarConfig {
 
 function completeSectionOrder(value: unknown): SidebarSectionId[] {
   const configured = uniqueValidValues(value, sidebarSectionIds)
+  if (!configured.includes("recents")) {
+    configured.unshift("recents")
+  }
   return [
     ...configured,
     ...sidebarSectionIds.filter((sectionId) => !configured.includes(sectionId)),

@@ -31,7 +31,7 @@ export function OnboardingForm({
 
     try {
       await createWorkspace.mutateAsync(workspaceName)
-      void navigate({ to: "/dashboard" })
+      void navigate({ to: "/recents" })
     } catch {
       // React Query owns the visible error state.
     }

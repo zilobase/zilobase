@@ -30,7 +30,13 @@ export function AppSidebarShell({
   )
 }
 
-export function AppSidebarHeader({ children }: { children: React.ReactNode }) {
+export function AppSidebarHeader({
+  children,
+  navigation,
+}: {
+  children: React.ReactNode
+  navigation?: React.ReactNode
+}) {
   const hasOverlayTitleBar =
     isTauri() &&
     (navigator.userAgent.includes("Mac") ||
@@ -45,6 +51,7 @@ export function AppSidebarHeader({ children }: { children: React.ReactNode }) {
         <div className="min-w-0 flex-1">{children}</div>
         <SidebarTrigger className="shrink-0" />
       </div>
+      {navigation}
     </SidebarHeader>
   )
 }

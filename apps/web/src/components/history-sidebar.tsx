@@ -13,7 +13,6 @@ import {
   SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
   SidebarNavItemAction,
 } from "@/components/sidebar-nav-item-action"
-import { ThemeDropdown } from "@/components/theme-dropdown"
 import {
   DropDrawer,
   DropDrawerContent,
@@ -24,7 +23,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -168,9 +166,6 @@ export function HistorySidebar({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <ThemeDropdown />
-      </SidebarFooter>
     </AppSidebarShell>
   )
 }

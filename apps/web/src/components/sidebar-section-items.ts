@@ -16,7 +16,11 @@ export function getConfiguredSidebarItems(
       })
     }
 
-    return getUpdatedTime(second) - getUpdatedTime(first)
+    if (sectionId === "recents") {
+      return getTime(second.lastVisitedAt) - getTime(first.lastVisitedAt)
+    }
+
+    return getTime(second.updatedAt) - getTime(first.updatedAt)
   })
 
   return sorted.slice(0, config.sectionLimits[sectionId])
@@ -26,7 +30,7 @@ function getDisplayName(item: SidebarNavItem) {
   return item.name.trim() || "Untitled"
 }
 
-function getUpdatedTime(item: SidebarNavItem) {
-  const time = item.updatedAt ? new Date(item.updatedAt).getTime() : 0
+function getTime(value: string | null | undefined) {
+  const time = value ? new Date(value).getTime() : 0
   return Number.isFinite(time) ? time : 0
 }

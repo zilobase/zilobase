@@ -33,6 +33,7 @@ export function buildSidebarNavigation(
     placements,
     icons,
   )
+  const recents = buildRecentItems(activePages, activeDatabases, icons)
   const favorites = buildFavoriteItems([
     ...sections.privatePages,
     ...sections.teamspacePages,
@@ -72,8 +73,27 @@ export function buildSidebarNavigation(
 
   return {
     favorites: [...favorites, ...detachedFavorites],
+    recents,
     sections,
   }
+}
+
+export function buildRecentItems(
+  pages: Page[],
+  databases: PageDatabase[],
+  icons: SidebarNavigationIcons,
+) {
+  return [
+    ...pages
+      .filter((page) => !page.deletedAt && page.lastVisitedAt)
+      .map((page) => createPageNode(page, icons)),
+    ...databases
+      .filter((database) => !database.deletedAt && database.lastVisitedAt)
+      .map((database) => createDatabaseNode(database, undefined, icons)),
+  ].sort(
+    (first, second) =>
+      getTimestamp(second.lastVisitedAt) - getTimestamp(first.lastVisitedAt),
+  )
 }
 
 export function buildPageSections(
@@ -214,6 +234,7 @@ function createPageNode(
     id: page.id,
     isFavorite: Boolean(page.isFavorite),
     isTeamspace: Boolean(page.isTeamspace),
+    lastVisitedAt: page.lastVisitedAt,
     name: page.name,
     emoji: icons.getPageIcon(page),
     zilobaseai: page.metadata?.zilobaseai ?? null,
@@ -234,6 +255,7 @@ function createDatabaseNode(
     isDatabase: true,
     isFavorite: Boolean(database.isFavorite),
     isTeamspace: Boolean(page?.isTeamspace),
+    lastVisitedAt: database.lastVisitedAt,
     name: database.name,
     emoji: icons.getDatabaseIcon(database),
     pageId: database.pageId,
@@ -313,5 +335,10 @@ function collectItemIds(item: SidebarNavItem, ids: Set<string>) {
 
 function getPageCreatedTime(page: Page) {
   const time = new Date(page.createdAt).getTime()
+  return Number.isFinite(time) ? time : 0
+}
+
+function getTimestamp(value: string | null | undefined) {
+  const time = value ? new Date(value).getTime() : 0
   return Number.isFinite(time) ? time : 0
 }

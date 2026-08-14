@@ -77,7 +77,7 @@ export function LoginForm({
 
   async function handleGoogleSignIn() {
     const desktop = isTauri()
-    const returnTo = getAuthReturnPath("/dashboard")
+    const returnTo = getAuthReturnPath("/recents")
     const operation = ++googleOperation.current
 
     if (desktop && googleState.retry === "finalize") {
@@ -157,7 +157,7 @@ export function LoginForm({
     const formData = new FormData(event.currentTarget)
     const email = String(formData.get("email") ?? "").trim().toLowerCase()
     const password = String(formData.get("password") ?? "")
-    const returnTo = getAuthReturnPath("/dashboard")
+    const returnTo = getAuthReturnPath("/recents")
 
     try {
       await signInWithPassword.mutateAsync({ email, password })

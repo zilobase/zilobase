@@ -15,8 +15,9 @@ import AcceptInvitationPage from "@/pages/accept-invitation"
 import AiPage from "@/pages/ai"
 import CanvasPage from "@/pages/canvas"
 import ApiKeysSettingsPage from "@/pages/settings/api-keys"
-import DashboardPage from "@/pages/dashboard"
+import RecentsPage from "@/pages/recents"
 import { libraryViewIds } from "@zilobase/features/user-settings"
+import { pagesQueryOptions } from "@zilobase/features/pages"
 import DatabasePage from "@/pages/database"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import PreferencesSettingsPage from "@/pages/settings/preferences"
@@ -44,6 +45,8 @@ import {
   recordDesktopDiagnostic,
 } from "@/lib/desktop-diagnostics"
 import { webAuthClient } from "@/providers/features-provider"
+import { getMostRecentItemPath } from "@/lib/recent-navigation"
+import { useAppStore } from "@/stores/app-store"
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000
 
@@ -63,7 +66,11 @@ const indexRoute = createRoute({
 
     const workspaces = await getWorkspaces()
 
-    throw redirect({ to: workspaces.length > 0 ? "/dashboard" : "/onboarding" })
+    if (workspaces.length === 0) {
+      throw redirect({ to: "/onboarding" })
+    }
+
+    throw redirect({ href: await getDefaultAppPath(session, workspaces) })
   },
 })
 
@@ -76,7 +83,7 @@ const loginRoute = createRoute({
     if (session.user) {
       const workspaces = await getWorkspaces()
 
-      throw redirect({ to: workspaces.length > 0 ? "/dashboard" : "/onboarding" })
+      throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" })
     }
   },
   component: LoginPage,
@@ -91,7 +98,7 @@ const signupRoute = createRoute({
     if (session.user) {
       const workspaces = await getWorkspaces()
 
-      throw redirect({ to: workspaces.length > 0 ? "/dashboard" : "/onboarding" })
+      throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" })
     }
   },
   component: SignupPage,
@@ -110,7 +117,7 @@ const onboardingRoute = createRoute({
     const workspaces = await getWorkspaces()
 
     if (workspaces.length > 0) {
-      throw redirect({ to: "/dashboard" })
+      throw redirect({ to: "/recents" })
     }
   },
   component: OnboardingPage,
@@ -147,9 +154,9 @@ const appRoute = createRoute({
   component: AppLayout,
 })
 
-const dashboardRoute = createRoute({
+const recentsRoute = createRoute({
   getParentRoute: () => appRoute,
-  path: "/dashboard",
+  path: "/recents",
   validateSearch: (
     search: Record<string, unknown>,
   ): { view?: (typeof libraryViewIds)[number] } =>
@@ -157,13 +164,13 @@ const dashboardRoute = createRoute({
     libraryViewIds.includes(search.view as (typeof libraryViewIds)[number])
       ? { view: search.view as (typeof libraryViewIds)[number] }
       : {},
-  component: DashboardPage,
+  component: RecentsPage,
 })
 
 const trashRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/trash",
-  component: () => <DashboardPage mode="trash" />,
+  component: () => <RecentsPage mode="trash" />,
 })
 
 const canvasRoute = createRoute({
@@ -296,7 +303,7 @@ const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
     aiRoute,
     canvasRoute,
-    dashboardRoute,
+    recentsRoute,
     trashRoute,
     settingsRoute,
     preferencesSettingsRoute,
@@ -391,6 +398,38 @@ async function getWorkspaces() {
   } catch (error) {
     if (error instanceof NetworkUnavailableError && getValidOfflineSession()) return cached
     throw error
+  }
+}
+
+async function getDefaultAppPath(
+  session: Awaited<ReturnType<typeof getFreshSession>>,
+  workspaces: Awaited<ReturnType<typeof getWorkspaces>>,
+) {
+  const preferredWorkspaceId = useAppStore.getState().activeWorkspaceId
+  const sessionWorkspaceId = session.session?.activeWorkspaceId ?? null
+  const workspaceId =
+    workspaces.find((workspace) => workspace.id === preferredWorkspaceId)?.id ??
+    workspaces.find((workspace) => workspace.id === sessionWorkspaceId)?.id ??
+    workspaces[0]?.id
+
+  if (!workspaceId) return "/recents"
+
+  const options = pagesQueryOptions(apiFetch, workspaceId)
+
+  try {
+    const navigation =
+      isDesktopOfflineSupported() && isOfflineMode()
+        ? queryClient.getQueryData(options.queryKey)
+        : await queryClient.fetchQuery({
+            ...options,
+            staleTime: NAVIGATION_AUTH_STALE_TIME,
+          })
+
+    return navigation
+      ? getMostRecentItemPath(navigation) ?? "/recents"
+      : "/recents"
+  } catch {
+    return "/recents"
   }
 }
 

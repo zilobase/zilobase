@@ -1,9 +1,7 @@
-import { useNavigate } from "@tanstack/react-router"
 import {
   ArrowDownIcon,
   ArrowUpDownIcon,
   ArrowUpIcon,
-  LibraryBigIcon,
   EyeOffIcon,
   HashIcon,
   MoreHorizontalIcon,
@@ -25,53 +23,14 @@ import {
 import { SidebarGroupAction } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import type {
-  LibraryView,
   SidebarConfig,
   SidebarSectionId,
   SidebarSectionLimit,
   SidebarSectionSort,
 } from "@zilobase/features/user-settings"
 
-const libraryViewBySection: Record<SidebarSectionId, LibraryView> = {
-  favorites: "favourites",
-  private: "private",
-  shared: "shared",
-}
-
 const sectionActionClassName =
   "rounded-sm text-sidebar-foreground/55 transition-opacity hover:bg-sidebar-foreground/10 hover:text-sidebar-accent-foreground focus-visible:bg-sidebar-foreground/10 focus-visible:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-foreground/10 data-[state=open]:text-sidebar-accent-foreground md:opacity-0 md:group-hover/section-header:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
-
-export function SidebarSectionLibraryButton({
-  className,
-  config,
-  onChange,
-  sectionId,
-}: {
-  className?: string
-  config: SidebarConfig
-  onChange: (config: SidebarConfig) => void
-  sectionId: SidebarSectionId
-}) {
-  const navigate = useNavigate()
-  const view = libraryViewBySection[sectionId]
-
-  return (
-    <SidebarGroupAction
-      aria-label={`Open ${sectionId} in Library`}
-      className={cn(sectionActionClassName, className)}
-      onClick={() => {
-        if (config.libraryView !== view) {
-          onChange({ ...config, libraryView: view })
-        }
-        void navigate({ search: { view }, to: "/dashboard" })
-      }}
-      title="Open in Library"
-      type="button"
-    >
-      <LibraryBigIcon />
-    </SidebarGroupAction>
-  )
-}
 
 export function SidebarSectionMenu({
   className,
@@ -131,11 +90,15 @@ export function SidebarSectionMenu({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <ArrowUpDownIcon />
-            <span>Sort</span>
-            <span className="ml-auto text-xs text-muted-foreground">
-              {config.sectionSorts[sectionId] === "alphabetical"
-                ? "A–Z"
-                : "Last edited"}
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <span>Sort</span>
+              <span className="ml-auto text-right text-xs text-muted-foreground">
+                {config.sectionSorts[sectionId] === "alphabetical"
+                  ? "A–Z"
+                  : sectionId === "recents"
+                    ? "Last visited"
+                    : "Last edited"}
+              </span>
             </span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-44">
@@ -144,7 +107,7 @@ export function SidebarSectionMenu({
               value={config.sectionSorts[sectionId]}
             >
               <DropdownMenuRadioItem value="lastEdited">
-                Last edited
+                {sectionId === "recents" ? "Last visited" : "Last edited"}
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="alphabetical">
                 Alphabetical
@@ -155,9 +118,11 @@ export function SidebarSectionMenu({
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <HashIcon />
-            <span>Show</span>
-            <span className="ml-auto text-xs text-muted-foreground">
-              {config.sectionLimits[sectionId]}
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <span>Show</span>
+              <span className="ml-auto text-right text-xs text-muted-foreground">
+                {config.sectionLimits[sectionId]}
+              </span>
             </span>
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-32">

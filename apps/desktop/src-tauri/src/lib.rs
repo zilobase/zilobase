@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn deep_link_diagnostics_never_include_query_values() {
         assert_eq!(
-            describe_deep_link("zilobase://open?path=%2Fdashboard"),
+            describe_deep_link("zilobase://open?path=%2Frecents"),
             Some("open")
         );
         assert_eq!(

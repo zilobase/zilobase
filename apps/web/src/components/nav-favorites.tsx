@@ -39,10 +39,7 @@ import {
 import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action"
 import { useOpenInNewTab } from "@/components/desktop-tabs"
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
-import {
-  SidebarSectionLibraryButton,
-  SidebarSectionMenu,
-} from "@/components/sidebar-section-menu"
+import { SidebarSectionMenu } from "@/components/sidebar-section-menu"
 import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
 import type { SidebarConfig } from "@zilobase/features/user-settings"
 
@@ -78,7 +75,7 @@ export function NavFavorites({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel
               asChild
-              className="pr-16 group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground"
+              className="pr-9 group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground"
             >
               <button
                 className="group/section-label w-full cursor-pointer"
@@ -90,21 +87,13 @@ export function NavFavorites({
             </SidebarGroupLabel>
           </CollapsibleTrigger>
           {sidebarConfig && onSidebarConfigChange && onCustomizeSidebar ? (
-            <>
-              <SidebarSectionLibraryButton
-                className="right-9"
-                config={sidebarConfig}
-                onChange={onSidebarConfigChange}
-                sectionId="favorites"
-              />
-              <SidebarSectionMenu
-                className="right-2"
-                config={sidebarConfig}
-                onChange={onSidebarConfigChange}
-                onCustomize={onCustomizeSidebar}
-                sectionId="favorites"
-              />
-            </>
+            <SidebarSectionMenu
+              className="right-2"
+              config={sidebarConfig}
+              onChange={onSidebarConfigChange}
+              onCustomize={onCustomizeSidebar}
+              sectionId="favorites"
+            />
           ) : null}
         </div>
         <CollapsibleContent className="pt-0.5">

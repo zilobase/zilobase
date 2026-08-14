@@ -36,7 +36,7 @@ export function closeDesktopTabState(
     return {
       activeDesktopTabId: tabId,
       desktopTabs: [
-        { href: "/dashboard", icon: null, id: tabId, title: "Home" },
+        { href: "/recents", icon: null, id: tabId, title: "Recents" },
       ],
     }
   }

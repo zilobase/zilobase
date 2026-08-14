@@ -64,7 +64,7 @@ export function DesktopTabs({
     [openTab, router.history],
   )
   const createTab = useCallback(() => {
-    openRouteInTab({ href: "/dashboard", icon: null, title: "Home" })
+    openRouteInTab({ href: "/recents", icon: null, title: "Recents" })
   }, [openRouteInTab])
   const removeTab = useCallback(
     (tabId: string) => {
@@ -216,7 +216,7 @@ export function useOpenInNewTab() {
 }
 
 export function getDesktopTabTitle(pathname: string) {
-  if (pathname === "/dashboard") return "Home"
+  if (pathname === "/recents") return "Recents"
   if (pathname === "/ai") return "Ask AI"
   if (pathname === "/canvas") return "Canvas"
   if (pathname === "/trash") return "Trash"

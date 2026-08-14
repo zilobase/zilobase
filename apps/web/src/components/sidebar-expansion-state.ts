@@ -4,7 +4,7 @@ type StorageLike = Pick<Storage, "getItem" | "setItem">
 
 export function getSidebarExpansionStorageKey(
   workspaceId: string | null,
-  section: "favorites" | "private" | "team",
+  section: "favorites" | "private" | "recents" | "team",
 ) {
   return `${STORAGE_PREFIX}:${encodeURIComponent(workspaceId?.trim() || "default")}:${section}`
 }

@@ -62,10 +62,7 @@ import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
 import { cn } from "@/lib/utils"
 import { OfflineAvailabilityAction } from "@/components/offline-availability-action"
-import {
-  SidebarSectionLibraryButton,
-  SidebarSectionMenu,
-} from "@/components/sidebar-section-menu"
+import { SidebarSectionMenu } from "@/components/sidebar-section-menu"
 import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
 import type {
   SidebarConfig,
@@ -264,7 +261,7 @@ export function NavPageSection({
               asChild
               className={cn(
                 "group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground",
-                showCreateAction ? "pr-24" : "pr-16",
+                showCreateAction ? "pr-16" : "pr-9",
               )}
             >
               <button
@@ -277,21 +274,13 @@ export function NavPageSection({
             </SidebarGroupLabel>
           </CollapsibleTrigger>
           {sidebarConfig && onSidebarConfigChange && onCustomizeSidebar ? (
-            <>
-              <SidebarSectionLibraryButton
-                className={showCreateAction ? "right-16" : "right-9"}
-                config={sidebarConfig}
-                onChange={onSidebarConfigChange}
-                sectionId={sectionId}
-              />
-              <SidebarSectionMenu
-                className={showCreateAction ? "right-9" : "right-2"}
-                config={sidebarConfig}
-                onChange={onSidebarConfigChange}
-                onCustomize={onCustomizeSidebar}
-                sectionId={sectionId}
-              />
-            </>
+            <SidebarSectionMenu
+              className={showCreateAction ? "right-9" : "right-2"}
+              config={sidebarConfig}
+              onChange={onSidebarConfigChange}
+              onCustomize={onCustomizeSidebar}
+              sectionId={sectionId}
+            />
           ) : null}
           {showCreateAction ? (
             <DropDrawer>
@@ -364,8 +353,7 @@ export function NavPageSection({
                   >
                     <Link
                       onClick={() => {
-                        const view =
-                          sectionId === "shared" ? "shared" : "private"
+                        const view = getViewForSection(sectionId)
                         if (
                           sidebarConfig &&
                           onSidebarConfigChange &&
@@ -378,9 +366,9 @@ export function NavPageSection({
                         }
                       }}
                       search={{
-                        view: sectionId === "shared" ? "shared" : "private",
+                        view: getViewForSection(sectionId),
                       }}
-                      to="/dashboard"
+                      to="/recents"
                     >
                       <MoreHorizontalIcon />
                       <span>More</span>
@@ -394,6 +382,11 @@ export function NavPageSection({
       </SidebarGroup>
     </Collapsible>
   )
+}
+
+function getViewForSection(sectionId: SidebarSectionId) {
+  if (sectionId === "favorites") return "favourites" as const
+  return sectionId
 }
 
 function PageItemMenu({ item }: { item: SidebarNavItem }) {

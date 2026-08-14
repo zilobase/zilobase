@@ -36,23 +36,50 @@ import {
 } from "@zilobase/features/workspaces"
 import { getApiErrorMessage } from "@/lib/api"
 import { useAppStore } from "@/stores/app-store"
-import { Building2Icon, ChevronDownIcon, PlusIcon } from "lucide-react"
+import {
+  Building2Icon,
+  ChevronDownIcon,
+  PlusIcon,
+  Settings2Icon,
+} from "lucide-react"
 
-export function WorkspaceSwitcher() {
+export function WorkspaceSwitcher({
+  onOpenSettings,
+  settingsOpen = false,
+}: {
+  onOpenSettings?: () => void
+  settingsOpen?: boolean
+}) {
   const { data: sessionData } = useSession()
   const isWorkspacePinned = sessionData?.workspacePinned !== false
 
   if (isWorkspacePinned) {
-    return <SingleWorkspaceLabel sessionData={sessionData} />
+    return (
+      <SingleWorkspaceLabel
+        onOpenSettings={onOpenSettings}
+        sessionData={sessionData}
+        settingsOpen={settingsOpen}
+      />
+    )
   }
 
-  return <MultiWorkspaceSwitcher sessionData={sessionData} />
+  return (
+    <MultiWorkspaceSwitcher
+      onOpenSettings={onOpenSettings}
+      sessionData={sessionData}
+      settingsOpen={settingsOpen}
+    />
+  )
 }
 
 function SingleWorkspaceLabel({
+  onOpenSettings,
   sessionData,
+  settingsOpen,
 }: {
+  onOpenSettings?: () => void
   sessionData: ReturnType<typeof useSession>["data"]
+  settingsOpen: boolean
 }) {
   const { data: rawWorkspaces = [], isError, isLoading } = useWorkspaces()
   const workspaces = rawWorkspaces.filter(Boolean)
@@ -66,36 +93,56 @@ function SingleWorkspaceLabel({
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton
-          className="w-fit max-w-full cursor-default px-1.5"
-          disabled={isLoading}
-        >
-          <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-            {activeWorkspace ? (
-              <span className="text-[10px] font-semibold">
-                {getWorkspaceInitials(activeWorkspace.name)}
+        <DropDrawer>
+          <DropDrawerTrigger asChild>
+            <SidebarMenuButton
+              className="w-fit max-w-full px-1.5"
+              disabled={isLoading}
+            >
+              <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+                {activeWorkspace ? (
+                  <span className="text-[10px] font-semibold">
+                    {getWorkspaceInitials(activeWorkspace.name)}
+                  </span>
+                ) : (
+                  <Building2Icon className="size-3.5" />
+                )}
+              </div>
+              <span className="truncate font-medium">
+                {readTriggerLabel({
+                  activeWorkspaceName: activeWorkspace?.name,
+                  isError,
+                  isLoading,
+                })}
               </span>
-            ) : (
-              <Building2Icon className="size-3.5" />
-            )}
-          </div>
-          <span className="truncate font-medium">
-            {readTriggerLabel({
-              activeWorkspaceName: activeWorkspace?.name,
-              isError,
-              isLoading,
-            })}
-          </span>
-        </SidebarMenuButton>
+              <ChevronDownIcon className="opacity-50" />
+            </SidebarMenuButton>
+          </DropDrawerTrigger>
+          <DropDrawerContent
+            align="start"
+            className="w-64 rounded-lg"
+            side="bottom"
+            sideOffset={4}
+          >
+            <WorkspaceSettingsItem
+              onOpenSettings={onOpenSettings}
+              settingsOpen={settingsOpen}
+            />
+          </DropDrawerContent>
+        </DropDrawer>
       </SidebarMenuItem>
     </SidebarMenu>
   )
 }
 
 function MultiWorkspaceSwitcher({
+  onOpenSettings,
   sessionData,
+  settingsOpen,
 }: {
+  onOpenSettings?: () => void
   sessionData: ReturnType<typeof useSession>["data"]
+  settingsOpen: boolean
 }) {
   const navigate = useNavigate()
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
@@ -132,7 +179,7 @@ function MultiWorkspaceSwitcher({
       await createWorkspace.mutateAsync(workspaceName)
       form.reset()
       setIsCreateDialogOpen(false)
-      void navigate({ to: "/dashboard" })
+      void navigate({ to: "/recents" })
     } catch {
       // React Query owns the visible error state.
     }
@@ -180,7 +227,7 @@ function MultiWorkspaceSwitcher({
                 <DropDrawerItem
                   key={workspace.id}
                   onClick={() => {
-                    void navigate({ to: "/dashboard" })
+                    void navigate({ to: "/recents" })
                     setActiveWorkspace.mutate(workspace.id)
                   }}
                   disabled={
@@ -210,6 +257,11 @@ function MultiWorkspaceSwitcher({
                   Add workspace
                 </div>
               </DropDrawerItem>
+              <DropDrawerSeparator />
+              <WorkspaceSettingsItem
+                onOpenSettings={onOpenSettings}
+                settingsOpen={settingsOpen}
+              />
             </DropDrawerContent>
           </DropDrawer>
         </SidebarMenuItem>
@@ -266,6 +318,24 @@ function MultiWorkspaceSwitcher({
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+function WorkspaceSettingsItem({
+  onOpenSettings,
+  settingsOpen,
+}: {
+  onOpenSettings?: () => void
+  settingsOpen: boolean
+}) {
+  return (
+    <DropDrawerItem
+      className={settingsOpen ? "bg-accent text-accent-foreground" : undefined}
+      onSelect={onOpenSettings}
+    >
+      <Settings2Icon />
+      <span>Settings</span>
+    </DropDrawerItem>
   )
 }
 

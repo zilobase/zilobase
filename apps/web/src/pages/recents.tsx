@@ -59,7 +59,7 @@ import { useConnectivity, useOfflineManifest } from "@/providers/offline-provide
 
 type HomepageView = LibraryView;
 
-type DashboardMode = "home" | "trash";
+type RecentsMode = "home" | "trash";
 
 type HomepageRow = {
   createdAt: string;
@@ -111,10 +111,10 @@ const trashPropertyDefinitions = [
 
 const emptyAsync = async () => undefined;
 
-export default function DashboardPage({
+export default function RecentsPage({
   mode = "home",
 }: {
-  mode?: DashboardMode;
+  mode?: RecentsMode;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -212,10 +212,10 @@ export default function DashboardPage({
     },
     [downloadedItems, navigation, mode, offlineMode],
   );
-  const pageTitle = mode === "trash" ? "Trash" : "Library";
+  const pageTitle = mode === "trash" ? "Trash" : "Recents";
 
   useEffect(() => {
-    if (mode !== "home" || location.pathname !== "/dashboard") return;
+    if (mode !== "home" || location.pathname !== "/recents") return;
 
     const nextView = requestedView ?? sidebarConfig.libraryView;
     setActiveViewId((current) => (current === nextView ? current : nextView));
@@ -224,7 +224,7 @@ export default function DashboardPage({
       void navigate({
         replace: true,
         search: { view: nextView },
-        to: "/dashboard",
+        to: "/recents",
       });
     }
   }, [
@@ -236,7 +236,7 @@ export default function DashboardPage({
     sidebarConfig.libraryView,
   ]);
 
-  const selectLibraryView = (viewId: string | null) => {
+  const selectRecentsView = (viewId: string | null) => {
     if (!viewId || !isHomepageView(viewId)) return;
 
     setActiveViewId(viewId);
@@ -245,7 +245,7 @@ export default function DashboardPage({
     void navigate({
       replace: true,
       search: { view: viewId },
-      to: "/dashboard",
+      to: "/recents",
     });
     if (sidebarConfig.libraryView !== viewId) {
       updateUserSettings.mutate({
@@ -477,7 +477,7 @@ export default function DashboardPage({
                   saveDatabaseViewTitle: () => {},
                   savePropertyValue: () => {},
                   setActiveViewId: (nextView) =>
-                    selectLibraryView(
+                    selectRecentsView(
                       typeof nextView === "function"
                         ? nextView(activeViewId)
                         : nextView,
@@ -623,7 +623,7 @@ function buildHomepagePayload({
 }: {
   activeViewId: string;
   databaseConfig: unknown;
-  mode: DashboardMode;
+  mode: RecentsMode;
   workspaceId: string | null | undefined;
   propertyConfigs: Record<string, unknown>;
   rows: HomepageRow[];
@@ -687,7 +687,7 @@ function buildHomepagePayload({
       config: databaseConfig,
       createdAt: "",
       id: homepageDatabaseId,
-      name: mode === "trash" ? "Trash" : "Library",
+      name: mode === "trash" ? "Trash" : "Recents",
       workspaceId: workspaceId ?? homepageDatabaseId,
       pageId: homepageDatabaseId,
       updatedAt: "",
@@ -730,7 +730,7 @@ function buildHomepagePayload({
 
 function buildHomepageRows(
   navigation: PageNavigationPayload,
-  mode: DashboardMode,
+  mode: RecentsMode,
 ): HomepageRow[] {
   const { databases: databaseRecords, pages, placements } = navigation;
   const pagesById = new Map(pages.map((page) => [page.id, page]));
