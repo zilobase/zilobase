@@ -4,6 +4,17 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.30
+
+### Changed
+
+- Unified desktop tabs with the native titlebar on macOS and Linux, with tabs shrinking to fit and full titles available on hover when truncated.
+- Added Command-or-Control tab shortcuts so new-tab and close-tab actions work consistently across desktop platforms.
+
+### Fixed
+
+- Kept Linux window controls, drag regions, sidebar spacing, and page content aligned when a route replaces the fallback titlebar with desktop tabs.
+
 ## 0.0.29
 
 ### Fixed
