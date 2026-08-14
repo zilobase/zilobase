@@ -18,6 +18,7 @@ require_env BETTER_AUTH_URL
 require_env CLIENT_URL
 require_env IMAGE_STORAGE_MODE
 require_env S3_ENDPOINT
+require_env S3_PUBLIC_ENDPOINT
 require_env S3_BUCKET_NAME
 require_env S3_ACCESS_KEY_ID
 require_env S3_SECRET_ACCESS_KEY

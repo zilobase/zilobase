@@ -29,6 +29,7 @@ import WorkspaceSettingsPage from "@/pages/settings/workspace"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
 import SignupPage from "@/pages/signup"
+import SetupPage from "@/pages/setup"
 import Page from "@/pages/page"
 import { sessionQueryOptions } from "@zilobase/features/auth"
 import { workspacesQueryOptions } from "@zilobase/features/workspaces"
@@ -164,6 +165,12 @@ const acceptInvitationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/accept-invitation",
   component: AcceptInvitationPage,
+})
+
+const setupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup",
+  component: SetupPage,
 })
 
 const appRoute = createRoute({
@@ -331,6 +338,7 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   otpRoute,
   acceptInvitationRoute,
+  setupRoute,
   appRoute.addChildren([
     aiRoute,
     canvasRoute,

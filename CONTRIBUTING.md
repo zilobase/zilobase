@@ -32,10 +32,21 @@ npm run build:server
 For local self-hosting:
 
 ```sh
-docker compose up -d --build
+npm run selfhost:up
 ```
 
-Then open `http://localhost`.
+Then open the setup URL printed by the command. Development credentials are
+generated once in ignored `.env.selfhost.development`; Mailpit captures OTP and
+invitation email at `http://127.0.0.1:8025`.
+
+Use `npm run selfhost:down` to stop containers without losing data. Use
+`npm run selfhost:reset` only when you intend to delete the local Postgres,
+MinIO, and Caddy volumes. The command requires an explicit confirmation. Run
+the production-image integration suite in an isolated Compose project with:
+
+```sh
+npm run test:selfhost
+```
 
 ## Project Structure
 

@@ -29,4 +29,6 @@ target
 .env.production
 .env.development
 .env
+.env.selfhost
+.env.selfhost.development
 .dev.vars

@@ -68,6 +68,7 @@ type S3Config = {
   accessKeyId: string;
   bucketName: string;
   endpoint: string;
+  publicEndpoint: string;
   secretAccessKey: string;
 };
 
@@ -105,18 +106,22 @@ class S3ImageStorage implements ImageStorage {
   readonly mode = "s3" as const;
   private readonly bucketName: string;
   private readonly client: S3Client;
+  private readonly publicClient: S3Client;
 
   constructor(config: S3Config) {
     this.bucketName = config.bucketName;
-    this.client = new S3Client({
+    const sharedConfig = {
       credentials: {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
       },
-      endpoint: config.endpoint,
       forcePathStyle: true,
       region: "auto",
-    });
+    };
+    this.client = new S3Client({ ...sharedConfig, endpoint: config.endpoint });
+    this.publicClient = config.publicEndpoint === config.endpoint
+      ? this.client
+      : new S3Client({ ...sharedConfig, endpoint: config.publicEndpoint });
   }
 
   async checkReady() {
@@ -130,7 +135,7 @@ class S3ImageStorage implements ImageStorage {
       ContentType: options.contentType,
       Key: options.objectKey,
     });
-    const url = await getSignedUrl(this.client, command, {
+    const url = await getSignedUrl(this.publicClient, command, {
       expiresIn: options.expiresInSeconds,
     });
 
@@ -154,7 +159,7 @@ class S3ImageStorage implements ImageStorage {
         : undefined,
     });
 
-    return getSignedUrl(this.client, command, {
+    return getSignedUrl(this.publicClient, command, {
       expiresIn: options.expiresInSeconds,
     });
   }
@@ -169,10 +174,11 @@ class S3ImageStorage implements ImageStorage {
   }
 
   async get(objectKey: string) {
-    const readUrl = await this.createReadUrl({
-      expiresInSeconds: 60,
-      objectKey,
-    });
+    const readUrl = await getSignedUrl(
+      this.client,
+      new GetObjectCommand({ Bucket: this.bucketName, Key: objectKey }),
+      { expiresIn: 60 },
+    );
     const response = await fetch(readUrl);
 
     if (response.status === 404) {
@@ -217,6 +223,7 @@ class S3ImageStorage implements ImageStorage {
 
 function getS3Config(env: RuntimeEnv): S3Config {
   const endpoint = getStringEnv(env, "S3_ENDPOINT");
+  const publicEndpoint = getStringEnv(env, "S3_PUBLIC_ENDPOINT") ?? endpoint;
   const accessKeyId = getStringEnv(env, "S3_ACCESS_KEY_ID");
   const secretAccessKey = getStringEnv(env, "S3_SECRET_ACCESS_KEY");
   const bucketName = getStringEnv(env, "S3_BUCKET_NAME");
@@ -239,6 +246,7 @@ function getS3Config(env: RuntimeEnv): S3Config {
     accessKeyId: accessKeyId!,
     bucketName: bucketName!,
     endpoint: endpoint!,
+    publicEndpoint: publicEndpoint!,
     secretAccessKey: secretAccessKey!,
   };
 }

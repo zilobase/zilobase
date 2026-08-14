@@ -1,0 +1,51 @@
+services:
+  caddy:
+    environment:
+      ZILOBASE_SITE_ADDRESS: http://127.0.0.1
+      ZILOBASE_STORAGE_SITE_ADDRESS: http://127.0.0.1
+    ports: !override
+      - "127.0.0.1:${ZILOBASE_DEV_HTTP_PORT:-8787}:80"
+    volumes: !override
+      - ./docker/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  zilobase:
+    image: zilobase-dev:local
+    pull_policy: never
+    build:
+      context: .
+      target: runtime
+    depends_on:
+      mailpit:
+        condition: service_healthy
+    environment:
+      BETTER_AUTH_URL: http://127.0.0.1:${ZILOBASE_DEV_HTTP_PORT:-8787}
+      CLIENT_URL: http://127.0.0.1:${ZILOBASE_DEV_HTTP_PORT:-8787}
+      S3_PUBLIC_ENDPOINT: http://127.0.0.1:${MINIO_DEV_API_PORT:-9000}
+      EMAIL_FROM: Zilobase <hello@zilobase.local>
+      SMTP_HOST: mailpit
+      SMTP_PASSWORD: ""
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      SMTP_USER: ""
+
+  minio:
+    ports:
+      - "127.0.0.1:${MINIO_DEV_API_PORT:-9000}:9000"
+
+  mailpit:
+    image: axllent/mailpit:v1.27.8
+    profiles: [dev, test]
+    restart: unless-stopped
+    environment:
+      MP_MAX_MESSAGES: 500
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    ports:
+      - "127.0.0.1:${MAILPIT_DEV_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12

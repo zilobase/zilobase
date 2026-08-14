@@ -1,6 +1,6 @@
 services:
   zilobase:
-    # Use with:
-    # docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-    image: ghcr.io/owner/repo:v0.0.1
-    build: null
+    # The base file already contains the production topology. This small
+    # overlay makes production pulls explicit for deployment automation.
+    image: ${ZILOBASE_IMAGE:?Set ZILOBASE_IMAGE to an immutable release tag or digest}
+    pull_policy: always

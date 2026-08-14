@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 
 const aws = vi.hoisted(() => ({
+  clients: [] as unknown[],
   getSignedUrl: vi.fn(),
   send: vi.fn(),
 }));
@@ -18,6 +19,9 @@ vi.mock("@aws-sdk/client-s3", () => {
     HeadObjectCommand: Command,
     PutObjectCommand: Command,
     S3Client: class {
+      constructor(readonly options: unknown) {
+        aws.clients.push(this);
+      }
       send = aws.send;
     },
   };
@@ -42,9 +46,39 @@ const s3Env = {
 };
 
 beforeEach(() => {
+  aws.clients.length = 0;
   aws.getSignedUrl.mockReset();
   aws.getSignedUrl.mockResolvedValue("https://signed.example.com/object");
   aws.send.mockReset();
+});
+
+test("S3 signs browser URLs with the public endpoint and keeps an internal client", async () => {
+  const storage = createS3ImageStorage({
+    ...s3Env,
+    S3_PUBLIC_ENDPOINT: "https://objects.example.com",
+  });
+
+  await storage.createUploadUrl({
+    byteSize: 12,
+    contentType: "image/png",
+    expiresInSeconds: 60,
+    objectKey: "workspace/image.png",
+  });
+
+  assert.equal(aws.clients.length, 2);
+  assert.equal(
+    (aws.clients[0] as { options: { endpoint: string } }).options.endpoint,
+    s3Env.S3_ENDPOINT,
+  );
+  assert.equal(
+    (aws.clients[1] as { options: { endpoint: string } }).options.endpoint,
+    "https://objects.example.com",
+  );
+  assert.equal(aws.getSignedUrl.mock.calls[0]?.[0], aws.clients[1]);
+
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
+  assert.equal(await storage.get("workspace/image.png"), null);
+  assert.equal(aws.getSignedUrl.mock.calls[1]?.[0], aws.clients[0]);
 });
 
 afterEach(() => {

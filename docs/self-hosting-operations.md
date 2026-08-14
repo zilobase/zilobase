@@ -1,0 +1,59 @@
+# Self-hosted operations
+
+## Routine operation
+
+Pin `ZILOBASE_IMAGE` to a reviewed release tag or digest. Validate resolved
+Compose before every deployment, pull the image, and wait for service health:
+
+```sh
+docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.prod.yml config
+docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.prod.yml pull
+docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.prod.yml up -d --wait
+```
+
+Use `/health` for process liveness and `/ready` for Postgres plus object-storage
+readiness. Follow logs without printing the environment:
+
+```sh
+docker compose --env-file .env.selfhost logs --tail 200 --follow zilobase
+```
+
+Keep `.env.selfhost` readable only by the deployment account. Never attach it to
+bug reports. The bootstrap token remains required at process startup but cannot
+bootstrap an initialized database again.
+
+## Backups
+
+Back up Postgres and MinIO together at a documented consistency point. At
+minimum, retain:
+
+- a `pg_dump` of the configured database;
+- a recursive copy or `mc mirror` of the configured MinIO bucket;
+- the exact Zilobase image digest and non-secret configuration used by the backup.
+
+Test restoration into a separate Compose project. A restore is complete only
+after `/ready` succeeds, users and pages are present, and a stored image can be
+read. Do not treat Docker volumes alone as a portable backup format.
+
+## Updates and rollback
+
+Take a backup before changing the image. Read release notes for database or
+desktop compatibility changes, update `ZILOBASE_IMAGE`, run `config`, then run
+`up -d --wait`. Migrations run in the application entrypoint before the server
+starts. Rollback is safe only when the target release supports the migrated
+schema; otherwise restore the matching backup.
+
+## Email and registration
+
+Production requires a working SMTP service for OTP, verification, and
+invitation delivery. Mailpit exists only in the development/test override.
+After bootstrap, registration defaults to invite-only. The pinned workspace
+owner can switch registration mode under **Settings → Team**.
+
+## Destructive actions
+
+Normal `docker compose down` preserves data. `down --volumes` permanently
+removes Postgres, MinIO, and Caddy state and must be used only for an intentional
+fresh installation. In the local workflow, this distinction is encoded as
+`npm run selfhost:down` versus the explicitly confirmed
+`npm run selfhost:reset`.

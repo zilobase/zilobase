@@ -75,7 +75,13 @@ collaboration core while keeping authoritative state in Postgres.
 
 ## Deployment Model
 
-The public self-host path is Docker Compose with Caddy, Zilobase, Postgres, and MinIO. The root `Dockerfile` builds the web client and bundles the serverful Node entrypoint.
+The public self-host path is Docker Compose with Caddy, Zilobase, Postgres, and
+MinIO. The production-safe base file requires every durable secret and a pinned
+application image; it never builds source. `docker-compose.dev.yml` is the
+loopback-only developer overlay: it builds the same production image, exposes a
+public MinIO signing endpoint for browser uploads, and adds Mailpit. The root
+`Dockerfile` builds the web client and bundles the serverful Node entrypoint,
+then runs it as the unprivileged `zilobase` user.
 
 Hosted Zilobase Cloud may use private deployment infrastructure. The open-source server exposes adapter integration surfaces from `@zilobase/server/adapter-api`; hosted-only adapters are outside the public self-hosting path.
 

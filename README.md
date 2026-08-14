@@ -55,33 +55,31 @@ and demo outline](./BUILD_WEEK.md).
 Run the self-hosted stack locally:
 
 ```sh
-docker compose up -d --build
+npm run selfhost:up
 ```
 
-Open:
+The command generates ignored development secrets, builds the production image
+from source, waits for Postgres and MinIO readiness, and prints these local-only
+addresses:
 
 ```text
-http://localhost
+Zilobase: http://127.0.0.1:8787
+Setup:    http://127.0.0.1:8787/setup
+Mailpit:  http://127.0.0.1:8025
 ```
 
 Each installation creates one stable database-backed instance identity. Its
 desktop compatibility and authorization metadata is available at
-`http://localhost/.well-known/zilobase`. Use `/health` for process liveness and
+`http://127.0.0.1:8787/.well-known/zilobase`. Use `/health` for process liveness and
 `/ready` when an orchestrator must wait for both Postgres and object storage.
-Open `http://localhost/desktop` for a copyable server URL and a secret-free
+Open `http://127.0.0.1:8787/desktop` for a copyable server URL and a secret-free
 **Open in Zilobase Desktop** connection link.
 
-Before anyone can sign in, bootstrap the installation once with the token from
-`ZILOBASE_BOOTSTRAP_TOKEN`. The endpoint creates the initial verified owner and
-the single pinned workspace atomically. A repeated or concurrent request is
-rejected and the token is never returned by discovery.
-
-```sh
-curl --fail-with-body http://localhost/api/instance/bootstrap \
-  -H "Authorization: Bearer ${ZILOBASE_BOOTSTRAP_TOKEN:-local-only-change-me-bootstrap-token}" \
-  -H 'Content-Type: application/json' \
-  --data '{"name":"Owner","email":"owner@example.com","password":"replace-this-password","workspaceName":"My Workspace"}'
-```
+Before anyone can sign in, open the printed setup URL and paste the token from
+the ignored `.env.selfhost.development` file. The page sends it only in a request
+header; it is not saved in browser storage or placed in a URL. Bootstrap creates
+the initial verified owner and pinned workspace atomically. Repeated or
+concurrent requests are rejected and discovery never returns the token.
 
 Registration defaults to **Invite only** after bootstrap. The instance owner
 can switch between **Invite only** and **Open registration** under **Settings →
@@ -89,27 +87,21 @@ Team → Server registration**. Open registration adds a user to the pinned
 workspace only after email verification. Invite-only registration accepts only
 a pending, unexpired invitation for that workspace and email address.
 
-For production self-hosting, copy the example env file and replace every secret:
+For production self-hosting, copy the example, replace every value, and use a
+released image tag or digest. The production topology never builds application
+source and rejects missing settings during Compose interpolation:
 
 ```sh
-cp .env.selfhost.example .env
-docker compose up -d --build
-```
-
-If you already started the stack once before creating `.env`, remove the old
-data volumes before switching credentials, or keep the original default
-passwords in `.env`. Otherwise Postgres and MinIO will keep their old persisted
-credentials while the app starts with new ones.
-
-```sh
-docker compose down -v
-docker compose up -d --build
+cp .env.selfhost.example .env.selfhost
+docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.prod.yml config
+docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.prod.yml up -d --wait
 ```
 
 Read the self-hosting guide:
 
-- [Self-hosting overview](https://docs.zilobase.com/self-hosting)
-- [Operations guide](https://docs.zilobase.com/self-hosting/operations)
+- [Self-hosting overview](./docs/self-hosting.md)
+- [Domains and TLS](./docs/self-hosting-domain.md)
+- [Operations guide](./docs/self-hosting-operations.md)
 
 ## Development
 
@@ -140,6 +132,11 @@ Common commands:
 | `npm run dev:server` | Start the serverful API. |
 | `npm run build:server` | Type-check the server. |
 | `npm run dev:desktop` | Start the Tauri desktop shell. |
+| `npm run selfhost:up` | Build and start the loopback-only Compose stack. |
+| `npm run selfhost:logs` | Follow development stack logs. |
+| `npm run selfhost:down` | Stop containers and preserve data volumes. |
+| `npm run selfhost:reset` | Explicitly delete local self-hosted data volumes. |
+| `npm run test:selfhost` | Run the isolated end-to-end Compose smoke test. |
 
 The desktop app starts with Zilobase Cloud selected. On the sign-in screen,
 choose **Use another server**, or use a server's `zilobase://connect` link, to

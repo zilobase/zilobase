@@ -7,6 +7,8 @@
 **/.DS_Store
 apps/desktop/src-tauri/target
 coverage
+.env.selfhost
+.env.selfhost.development
 Dockerfile
 docker-compose*.yml
 docs

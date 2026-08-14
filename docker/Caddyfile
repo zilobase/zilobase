@@ -1,5 +1,8 @@
-{$ZILOBASE_SITE_ADDRESS:http://localhost} {
+{$ZILOBASE_SITE_ADDRESS} {
 	encode zstd gzip
-
 	reverse_proxy zilobase:3000
+}
+
+{$ZILOBASE_STORAGE_SITE_ADDRESS} {
+	reverse_proxy minio:9000
 }

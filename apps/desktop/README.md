@@ -47,6 +47,13 @@ query cache, IndexedDB/Yjs documents, app/auth stores, tabs, and session storage
 then commits the verified candidate and reloads. Returning to Cloud uses this
 same destructive workflow.
 
+For an end-to-end local server, run `npm run selfhost:up` at the repository root.
+After the one-time setup page is complete, open the printed
+`zilobase://connect?server=http%3A%2F%2F127.0.0.1%3A8787` link or enter
+`http://127.0.0.1:8787` under **Use another server**. No desktop rebuild or
+provider credentials are needed. Stop the stack with `npm run selfhost:down`;
+the saved instance and desktop session remain valid after the next start.
+
 ## One-time GitHub setup
 
 Add this required Actions secret to `zilobase/zilobase`:

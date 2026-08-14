@@ -29,6 +29,15 @@ pending, unexpired invitation whose workspace and normalized email both match;
 the normal invitation acceptance still creates the membership. Hosted runtime
 adapters bypass these self-host-only policies.
 
+## Self-hosted object storage
+
+The Node runtime uses `S3_ENDPOINT` for private server-to-MinIO operations and
+`S3_PUBLIC_ENDPOINT` when signing browser upload/read URLs. In Compose these are
+the internal `http://minio:9000` address and the public object-storage origin,
+respectively. Production uses a dedicated TLS hostname proxied by Caddy; local
+development exposes MinIO only on loopback. The public endpoint must not use a
+subpath and must be reachable by desktop and browser clients.
+
 ## Realtime Collaboration
 
 Editable page bodies use Yjs through Hocuspocus. Run the latest Drizzle

@@ -27,6 +27,11 @@
     "build:server": "npm run build --workspace @zilobase/server",
     "test:server": "npm run test:quality --workspace @zilobase/server",
     "db:migrate": "npm run db:migrate --workspace @zilobase/server",
+    "selfhost:up": "node scripts/selfhost.mjs up",
+    "selfhost:logs": "node scripts/selfhost.mjs logs",
+    "selfhost:down": "node scripts/selfhost.mjs down",
+    "selfhost:reset": "node scripts/selfhost.mjs reset",
+    "test:selfhost": "node scripts/selfhost.mjs test",
     "release": "node scripts/release.mjs",
     "version:set": "node scripts/set-version.mjs"
   }
