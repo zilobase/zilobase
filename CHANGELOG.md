@@ -4,6 +4,33 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.31
+
+### Added
+
+- Added the self-hosted instance discovery, compatibility, liveness, and readiness contract, plus a Docker Compose developer workflow with Postgres, MinIO, Mailpit, backup/restore, upgrade, and packaged-desktop validation.
+- Added runtime desktop server selection for Cloud, localhost, and public HTTPS instances, including secure connection links and full local-data cleanup when changing servers.
+- Added system-browser desktop authorization with PKCE, loopback callbacks, one-time authorization codes, issuer validation, and server-native password, OTP, Google, and SSO login paths.
+- Added single-use self-host bootstrap, initial administrator and pinned-workspace setup, and owner-managed invite-only or open registration.
+- Added compact Recents navigation and consolidated workspace creation controls in the application sidebar.
+
+### Changed
+
+- Made Docker Compose the canonical self-hosted deployment artifact and added documented local, domain, operations, staging, migration, and release workflows.
+- Resolved API, image, collaboration, and realtime endpoints from the selected desktop server instead of compile-time Cloud configuration.
+
+### Fixed
+
+- Fixed desktop authorization consent redirects and callback validation for loopback clients without weakening the page's content security policy.
+- Fixed Tauri development builds so selecting a self-hosted server no longer falls back to the compiled Cloud API origin.
+- Preserved rapid page-title edits and stabilized desktop tab dragging.
+- Repaired self-host CI workflow contexts, backup ownership, and headless keyring initialization so deployment and packaged-desktop gates complete reliably.
+
+### Security
+
+- Scoped desktop credentials to the selected instance, removed compile-time desktop Google credentials, and kept tokens and authorization codes out of deep links and diagnostic logs.
+- Made server replacement verify the candidate before revoking the old session and erase the previous keyring credentials, query cache, IndexedDB/Yjs documents, persisted stores, tabs, and session state.
+
 ## 0.0.30
 
 ### Changed
