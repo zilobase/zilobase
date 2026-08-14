@@ -1,0 +1,21 @@
+DROP INDEX IF EXISTS "workspace_integration_key_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "workspace_integration_workspace_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "workspace_ai_provider_config_workspace_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "user_integration_key_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "user_integration_organization_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "page_property_value_page_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "page_property_workspace_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "page_item_placement_workspace_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "page_access_workspace_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "page_access_page_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "page_workspace_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "item_visit_user_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "image_asset_page_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "favorites_user_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "database_view_database_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "database_row_database_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "database_realtime_outbox_database_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "database_property_database_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "database_access_workspace_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "database_access_database_id_idx";--> statement-breakpoint
+DROP INDEX IF EXISTS "database_workspace_id_idx";

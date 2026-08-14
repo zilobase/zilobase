@@ -246,6 +246,13 @@
       "when": 1786400000000,
       "tag": "0034_single_parent_sub_items",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1786683310000,
+      "tag": "0035_drop_redundant_indexes",
+      "breakpoints": true
     }
   ]
 }

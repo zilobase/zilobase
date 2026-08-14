@@ -252,7 +252,6 @@ export const workspaceAiProviderConfig = pgTable(
       table.workspaceId,
       table.providerId,
     ),
-    index("workspace_ai_provider_config_workspace_idx").on(table.workspaceId),
   ],
 );
 
@@ -283,7 +282,6 @@ export const page = pgTable(
       .notNull(),
   },
   (table) => [
-    index("page_workspace_id_idx").on(table.workspaceId),
     index("page_workspace_deleted_idx").on(
       table.workspaceId,
       table.deletedAt,
@@ -354,8 +352,6 @@ export const pageAccess = pgTable(
       .notNull(),
   },
   (table) => [
-    index("page_access_workspace_id_idx").on(table.workspaceId),
-    index("page_access_page_id_idx").on(table.pageId),
     index("page_access_target_idx").on(
       table.workspaceId,
       table.targetType,
@@ -399,7 +395,6 @@ export const imageAsset = pgTable(
   },
   (table) => [
     index("image_asset_workspace_idx").on(table.workspaceId),
-    index("image_asset_page_idx").on(table.pageId),
     index("image_asset_page_deleted_idx").on(table.pageId, table.deletedAt),
     uniqueIndex("image_asset_object_key_unique").on(table.objectKey),
   ],
@@ -424,7 +419,6 @@ export const favorite = pgTable(
       .notNull(),
   },
   (table) => [
-    index("favorites_user_id_idx").on(table.userId),
     index("favorites_page_id_idx").on(table.pageId),
     index("favorites_database_id_idx").on(table.databaseId),
     uniqueIndex("favorites_user_page_unique").on(
@@ -461,7 +455,6 @@ export const itemVisit = pgTable(
       .notNull(),
   },
   (table) => [
-    index("item_visit_user_id_idx").on(table.userId),
     index("item_visit_workspace_id_idx").on(table.workspaceId),
     index("item_visit_user_workspace_idx").on(
       table.userId,
@@ -498,7 +491,6 @@ export const pageProperty = pgTable(
       .notNull(),
   },
   (table) => [
-    index("page_property_workspace_id_idx").on(table.workspaceId),
     index("page_property_workspace_deleted_idx").on(
       table.workspaceId,
       table.deletedAt,
@@ -526,7 +518,6 @@ export const pagePropertyValue = pgTable(
       .notNull(),
   },
   (table) => [
-    index("page_property_value_page_id_idx").on(table.pageId),
     index("page_property_value_property_id_idx").on(table.propertyId),
     uniqueIndex("page_property_value_unique").on(
       table.pageId,
@@ -562,7 +553,6 @@ export const database = pgTable(
       .notNull(),
   },
   (table) => [
-    index("database_workspace_id_idx").on(table.workspaceId),
     index("database_workspace_deleted_idx").on(
       table.workspaceId,
       table.deletedAt,
@@ -592,7 +582,6 @@ export const databaseRealtimeOutbox = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("database_realtime_outbox_database_id_idx").on(table.databaseId),
     index("database_realtime_outbox_ready_idx").on(
       table.nextAttemptAt,
       table.committedAt,
@@ -625,8 +614,6 @@ export const databaseAccess = pgTable(
       .notNull(),
   },
   (table) => [
-    index("database_access_workspace_id_idx").on(table.workspaceId),
-    index("database_access_database_id_idx").on(table.databaseId),
     index("database_access_target_idx").on(
       table.workspaceId,
       table.targetType,
@@ -661,7 +648,6 @@ export const databaseProperty = pgTable(
       .notNull(),
   },
   (table) => [
-    index("database_property_database_id_idx").on(table.databaseId),
     index("database_property_position_idx").on(
       table.databaseId,
       table.position,
@@ -692,7 +678,6 @@ export const databaseView = pgTable(
       .notNull(),
   },
   (table) => [
-    index("database_view_database_id_idx").on(table.databaseId),
     index("database_view_position_idx").on(table.databaseId, table.position),
   ],
 );
@@ -727,7 +712,6 @@ export const databaseRow = pgTable(
       .notNull(),
   },
   (table) => [
-    index("database_row_database_id_idx").on(table.databaseId),
     index("database_row_database_deleted_position_idx").on(
       table.databaseId,
       table.deletedAt,
@@ -769,7 +753,6 @@ export const pageItemPlacement = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
-    index("page_item_placement_workspace_idx").on(table.workspaceId),
     index("page_item_placement_parent_idx").on(
       table.workspaceId,
       table.parentKind,
