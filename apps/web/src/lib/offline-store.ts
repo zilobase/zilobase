@@ -1,7 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core"
 import {
-  CLOUD_DESKTOP_SERVER,
-  getSelectedDesktopServer,
+  resolveRuntimeApiOrigin,
 } from "@/lib/desktop-server"
 import type {
   PersistedClient,
@@ -493,17 +492,5 @@ function emit(listeners: Set<() => void>) {
 }
 
 function getOfflineApiOrigin() {
-  if (typeof window === "undefined" || !window.location) {
-    return import.meta.env.VITE_API_URL?.replace(/\/$/, "") || ""
-  }
-  if (
-    window.location.protocol === "tauri:" ||
-    window.location.hostname === "tauri.localhost"
-  ) {
-    return (
-      getSelectedDesktopServer()?.apiOrigin ?? CLOUD_DESKTOP_SERVER.apiOrigin
-    )
-  }
-
-  return import.meta.env.VITE_API_URL?.replace(/\/$/, "") || window.location.origin
+  return resolveRuntimeApiOrigin()
 }

@@ -29,6 +29,11 @@ export function register({ assert, loadModule, test }) {
       resolveApiBaseUrl(new URL("tauri://localhost/login"), server),
       "http://127.0.0.1:8787",
     )
+    assert.equal(
+      resolveApiBaseUrl(new URL("http://localhost:1420/login"), server),
+      "http://127.0.0.1:8787",
+      "Tauri dev must not fall back to the compile-time Vite API",
+    )
   })
 
   test("request cancellation is not treated as a connectivity failure", async () => {

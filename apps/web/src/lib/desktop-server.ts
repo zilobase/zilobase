@@ -195,8 +195,15 @@ export function resolveRuntimeApiOrigin(
   location = typeof window !== "undefined" ? window.location : undefined,
   desktopServer = selectedDesktopServer,
 ) {
+  // Tauri development uses Vite's http://localhost origin, so the window URL
+  // alone cannot distinguish it from a normal browser. A selected native
+  // server is authoritative in both development and packaged desktop builds.
+  if (desktopServer) {
+    return desktopServer.apiOrigin
+  }
+
   if (isDesktopLocation(location)) {
-    return desktopServer?.apiOrigin ?? CLOUD_DESKTOP_SERVER.apiOrigin
+    return CLOUD_DESKTOP_SERVER.apiOrigin
   }
 
   if (location?.hostname === "app.zilobase.com") {
