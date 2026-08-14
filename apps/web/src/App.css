@@ -60,8 +60,13 @@
 }
 
 [data-desktop-tab-strip] {
+  --desktop-tab-slot-width: 15.25rem;
+  --desktop-tab-trailing-width: 2.5rem;
   flex: 0 1 auto;
-  width: calc(var(--desktop-tab-count) * 15.25rem + 2rem);
+  width: calc(
+    var(--desktop-tab-count) * var(--desktop-tab-slot-width) +
+      var(--desktop-tab-trailing-width)
+  );
 }
 
 [data-desktop-linux-shell]:has([data-desktop-tabs])

@@ -64,9 +64,13 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
-  test("desktop tabs share the titlebar and shrink before overflowing", async () => {
+  test("desktop tabs keep the trailing action stable through drag settling", async () => {
     const tabsSource = await readFile(
       new URL("../src/components/desktop-tabs.tsx", import.meta.url),
+      "utf8",
+    )
+    const tabStripSource = await readFile(
+      new URL("../src/components/desktop-tab-strip.tsx", import.meta.url),
       "utf8",
     )
     const titlebarSource = await readFile(
@@ -81,12 +85,26 @@ export function register({ assert, loadModule, test }) {
       new URL("../src/App.tsx", import.meta.url),
       "utf8",
     )
+    const stylesSource = await readFile(
+      new URL("../src/App.css", import.meta.url),
+      "utf8",
+    )
 
-    assert.match(tabsSource, /data-desktop-tab-strip/)
-    assert.match(tabsSource, /flex-\[1_1_15rem\]/)
-    assert.match(tabsSource, /min-w-12 max-w-60/)
-    assert.match(tabsSource, /titleTruncated/)
-    assert.doesNotMatch(tabsSource, /overflow-x-auto/)
+    assert.match(tabsSource, /DesktopTabStrip/)
+    assert.match(tabStripSource, /data-desktop-tab-strip/)
+    assert.match(tabStripSource, /flex-\[1_1_15rem\]/)
+    assert.match(tabStripSource, /min-w-12 max-w-60/)
+    assert.match(tabStripSource, /motion\.button/)
+    assert.match(tabStripSource, /layout="position"/)
+    assert.match(tabStripSource, /onDragTransitionEnd/)
+    assert.match(tabStripSource, /useMotionValueEvent/)
+    assert.match(tabStripSource, /draggingTabId \? "overflow-visible" : "overflow-hidden"/)
+    assert.match(tabStripSource, /onPointerDown=\{stopReorderPointerDown\}/)
+    assert.match(tabStripSource, /titleTruncated/)
+    assert.doesNotMatch(tabStripSource, /onDragEnd=\{/)
+    assert.doesNotMatch(tabStripSource, /left-\[calc\(100%/)
+    assert.doesNotMatch(tabStripSource, /overflow-x-auto/)
+    assert.match(stylesSource, /--desktop-tab-trailing-width: 2\.5rem/)
     assert.match(titlebarSource, /\{children\}/)
     assert.match(titlebarSource, /aria-label="Window controls"/)
     assert.doesNotMatch(sidebarSource, /top: "1\.75rem"/)

@@ -1,33 +1,16 @@
 "use client"
 
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect } from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { useRouter, useRouterState } from "@tanstack/react-router"
-import { Reorder } from "framer-motion"
-import {
-  DatabaseIcon,
-  FileTextIcon,
-  HomeIcon,
-  PlusIcon,
-  Settings2Icon,
-  SparklesIcon,
-  Trash2Icon,
-  XIcon,
-} from "lucide-react"
+import { useShallow } from "zustand/react/shallow"
 
-import { PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/lib/utils"
 import { isOpenInNewTabShortcut } from "@/shortcuts"
 import { useAppStore, type DesktopTab } from "@/stores/app-store"
+import { DesktopTabStrip } from "@/components/desktop-tab-strip"
 import { DesktopWindowTitlebar } from "@/components/desktop-window-titlebar"
 import { useSidebar } from "@/components/ui/sidebar"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { hasEditorBlockDragData } from "@/packages/editor/components/editor/block-drag-session"
 
 export function DesktopTabs({
   icon,
@@ -39,13 +22,25 @@ export function DesktopTabs({
   const router = useRouter()
   const href = useRouterState({ select: (state) => state.location.href })
   const { isMobile, open: sidebarOpen } = useSidebar()
-  const activeTabId = useAppStore((state) => state.activeDesktopTabId)
-  const tabs = useAppStore((state) => state.desktopTabs)
-  const activateTab = useAppStore((state) => state.activateDesktopTab)
-  const closeTab = useAppStore((state) => state.closeDesktopTab)
-  const openTab = useAppStore((state) => state.openDesktopTab)
-  const setTabOrder = useAppStore((state) => state.setDesktopTabOrder)
-  const syncTab = useAppStore((state) => state.syncDesktopTab)
+  const {
+    activeTabId,
+    activateTab,
+    closeTab,
+    openTab,
+    setTabOrder,
+    syncTab,
+    tabs,
+  } = useAppStore(
+    useShallow((state) => ({
+      activeTabId: state.activeDesktopTabId,
+      activateTab: state.activateDesktopTab,
+      closeTab: state.closeDesktopTab,
+      openTab: state.openDesktopTab,
+      setTabOrder: state.setDesktopTabOrder,
+      syncTab: state.syncDesktopTab,
+      tabs: state.desktopTabs,
+    })),
+  )
   const desktopApp = isTauri()
   const macDesktopApp = desktopApp && navigator.userAgent.includes("Mac")
 
@@ -80,7 +75,58 @@ export function DesktopTabs({
     },
     [activeTabId, closeTab, router.history],
   )
+  const cloneTab = useCallback(
+    (tab: DesktopTab) =>
+      openRouteInTab({ href: tab.href, icon: tab.icon, title: tab.title }),
+    [openRouteInTab],
+  )
 
+  useDesktopTabShortcuts({
+    activeTabId,
+    createTab,
+    desktopApp,
+    removeTab,
+  })
+  useDesktopOpenInNewTabCapture({ desktopApp, openRouteInTab })
+
+  if (!desktopApp) return null
+
+  return (
+    <DesktopWindowTitlebar
+      className={cn(
+        macDesktopApp && (isMobile || !sidebarOpen) && "pl-20",
+      )}
+      variant="tabs"
+    >
+      <DesktopTabStrip
+        activeTabId={activeTabId}
+        macDesktopApp={macDesktopApp}
+        onCloneTab={cloneTab}
+        onCreateTab={createTab}
+        onRemoveTab={removeTab}
+        onReorderTabs={setTabOrder}
+        onSelectTab={selectTab}
+        tabs={tabs}
+      />
+      <div
+        className="min-w-0 flex-1 self-stretch"
+        data-tauri-drag-region="deep"
+      />
+    </DesktopWindowTitlebar>
+  )
+}
+
+function useDesktopTabShortcuts({
+  activeTabId,
+  createTab,
+  desktopApp,
+  removeTab,
+}: {
+  activeTabId: string | null
+  createTab: () => void
+  desktopApp: boolean
+  removeTab: (tabId: string) => void
+}) {
   useEffect(() => {
     if (!desktopApp) return
 
@@ -99,7 +145,15 @@ export function DesktopTabs({
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [activeTabId, createTab, desktopApp, removeTab])
+}
 
+function useDesktopOpenInNewTabCapture({
+  desktopApp,
+  openRouteInTab,
+}: {
+  desktopApp: boolean
+  openRouteInTab: (input: Omit<DesktopTab, "id">) => void
+}) {
   useEffect(() => {
     if (!desktopApp) return
 
@@ -141,169 +195,6 @@ export function DesktopTabs({
     window.addEventListener("click", handleOpenInNewTab, true)
     return () => window.removeEventListener("click", handleOpenInNewTab, true)
   }, [desktopApp, openRouteInTab])
-
-  if (!desktopApp) return null
-
-  return (
-    <DesktopWindowTitlebar
-      className={cn(
-        macDesktopApp && (isMobile || !sidebarOpen) && "pl-20",
-      )}
-      variant="tabs"
-    >
-      <div
-        className="flex min-w-0 max-w-full shrink items-end gap-1 self-stretch pt-1"
-        data-desktop-tab-strip
-        style={
-          {
-            "--desktop-tab-count": Math.max(tabs.length, 1),
-          } as CSSProperties
-        }
-      >
-        <Reorder.Group
-          aria-label="Open tabs"
-          as="div"
-          axis="x"
-          className="flex min-w-0 flex-1 self-stretch items-end gap-1 overflow-hidden"
-          data-tauri-drag-region="deep"
-          onReorder={setTabOrder}
-          role="tablist"
-          values={tabs.map((tab) => tab.id)}
-        >
-          {tabs.map((tab) => {
-            const active = tab.id === activeTabId
-
-            return (
-              <Reorder.Item
-                as="div"
-                className={cn(
-                  "group/tab relative flex min-w-12 max-w-60 flex-[1_1_15rem] cursor-grab items-center px-1 text-sm active:cursor-grabbing",
-                  active
-                    ? "desktop-tab-active z-10 h-8 rounded-t-lg rounded-b-none border-x border-t border-border/60 bg-background text-foreground"
-                    : "h-8 rounded-md text-muted-foreground hover:bg-background/60 hover:text-foreground",
-                )}
-                dragMomentum={false}
-                key={tab.id}
-                onDragEnter={(event) => {
-                  if (hasEditorBlockDragData(event.dataTransfer)) selectTab(tab)
-                }}
-                value={tab.id}
-                whileDrag={{ zIndex: 30 }}
-              >
-                <DesktopTabButton
-                  active={active}
-                  onClone={() =>
-                    openRouteInTab({
-                      href: tab.href,
-                      icon: tab.icon,
-                      title: tab.title,
-                    })
-                  }
-                  onRemove={() => removeTab(tab.id)}
-                  onSelect={() => selectTab(tab)}
-                  tab={tab}
-                />
-                <button
-                  aria-label={`Close ${tab.title}`}
-                  className={cn(
-                    "shrink-0 rounded-sm p-1 hover:bg-muted focus-visible:opacity-100",
-                    active
-                      ? "opacity-100"
-                      : "opacity-0 group-hover/tab:opacity-100",
-                  )}
-                  onClick={() => removeTab(tab.id)}
-                  title="Close tab"
-                  type="button"
-                >
-                  <XIcon className="size-3.5" />
-                </button>
-              </Reorder.Item>
-            )
-          })}
-        </Reorder.Group>
-        <button
-          aria-label="New tab"
-          className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60 hover:text-foreground"
-          onClick={createTab}
-          title={`New tab (${macDesktopApp ? "⌘T" : "Ctrl+T"})`}
-          type="button"
-        >
-          <PlusIcon className="size-4" />
-        </button>
-      </div>
-      <div
-        className="min-w-0 flex-1 self-stretch"
-        data-tauri-drag-region="deep"
-      />
-    </DesktopWindowTitlebar>
-  )
-}
-
-function DesktopTabButton({
-  active,
-  onClone,
-  onRemove,
-  onSelect,
-  tab,
-}: {
-  active: boolean
-  onClone: () => void
-  onRemove: () => void
-  onSelect: () => void
-  tab: DesktopTab
-}) {
-  const titleRef = useRef<HTMLSpanElement>(null)
-  const [titleTruncated, setTitleTruncated] = useState(false)
-
-  useEffect(() => {
-    const titleElement = titleRef.current
-    if (!titleElement) return
-
-    const updateTruncatedState = () => {
-      setTitleTruncated(titleElement.scrollWidth > titleElement.clientWidth)
-    }
-    const observer = new ResizeObserver(updateTruncatedState)
-
-    updateTruncatedState()
-    observer.observe(titleElement)
-    return () => observer.disconnect()
-  }, [tab.title])
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          aria-selected={active}
-          className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden px-2"
-          onAuxClick={(event) => {
-            if (event.button === 1) onRemove()
-          }}
-          onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
-            if (isOpenInNewTabShortcut(event)) {
-              event.preventDefault()
-              event.stopPropagation()
-              onClone()
-              return
-            }
-
-            onSelect()
-          }}
-          role="tab"
-          type="button"
-        >
-          <DesktopTabIcon tab={tab} />
-          <span className="min-w-0 flex-1 truncate" ref={titleRef}>
-            {tab.title}
-          </span>
-        </button>
-      </TooltipTrigger>
-      {titleTruncated ? (
-        <TooltipContent side="bottom" sideOffset={6}>
-          {tab.title}
-        </TooltipContent>
-      ) : null}
-    </Tooltip>
-  )
 }
 
 export function useOpenInNewTab() {
@@ -333,24 +224,4 @@ export function getDesktopTabTitle(pathname: string) {
   if (pathname.startsWith("/d/")) return "Database"
   if (pathname.startsWith("/p/")) return "Page"
   return "Zilobase"
-}
-
-function DesktopTabIcon({ tab }: { tab: DesktopTab }) {
-  if (tab.icon) {
-    return <PageIconDisplay className="size-4" size="sm" value={tab.icon} />
-  }
-
-  const Icon = tab.href.startsWith("/d/")
-    ? DatabaseIcon
-    : tab.href.startsWith("/p/")
-      ? FileTextIcon
-      : tab.href.startsWith("/settings")
-        ? Settings2Icon
-        : tab.href.startsWith("/ai")
-          ? SparklesIcon
-          : tab.href.startsWith("/trash")
-            ? Trash2Icon
-            : HomeIcon
-
-  return <Icon className="size-4 shrink-0" />
 }
