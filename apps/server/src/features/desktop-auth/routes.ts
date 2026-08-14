@@ -62,6 +62,11 @@ desktopAuthRoutes.get("/desktop/authorize", async (c) => {
     return renderAuthorizationError(c, error);
   }
 
+  c.header(
+    "Content-Security-Policy",
+    desktopPageCsp(new URL(authorizationRequest.redirectUri).origin),
+  );
+
   const user = c.get("user");
 
   if (!user) {
@@ -373,8 +378,10 @@ function pageShell(title: string, content: string) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>body{font:16px system-ui;margin:0;display:grid;min-height:100vh;place-items:center;background:#0d0d0f;color:#fff}main{box-sizing:border-box;max-width:32rem;padding:2rem}p{color:#b6b6bd;line-height:1.55}.button,.secondary{border:0;border-radius:.5rem;cursor:pointer;display:inline-block;font:inherit;padding:.7rem 1rem;text-decoration:none}.button{background:#fff;color:#111}.secondary{background:#29292e;color:#fff}.actions{display:flex;gap:.75rem;margin-top:1.5rem}.server-label{display:block;font-size:.8rem;margin-top:1.5rem;color:#b6b6bd}input{box-sizing:border-box;width:100%;margin-top:.4rem;border:1px solid #45454d;border-radius:.5rem;background:#19191d;color:#fff;font:inherit;padding:.7rem}.hint{font-size:.8rem}</style></head><body><main><h1>${escapeHtml(title)}</h1>${content}</main></body></html>`;
 }
 
-function desktopPageCsp() {
-  return "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'";
+function desktopPageCsp(callbackOrigin?: string) {
+  const formAction = callbackOrigin ? `'self' ${callbackOrigin}` : "'self'";
+
+  return `default-src 'none'; style-src 'unsafe-inline'; form-action ${formAction}; base-uri 'none'; frame-ancestors 'none'`;
 }
 
 function escapeHtml(value: string) {

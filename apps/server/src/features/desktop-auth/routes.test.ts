@@ -121,6 +121,20 @@ test("authorization page sends anonymous users through the selected server login
   );
 });
 
+test("consent page permits only its validated loopback callback origin", async () => {
+  const response = await appFor(true).request(authorizationUrl(), {}, env);
+  const contentSecurityPolicy =
+    response.headers.get("content-security-policy") ?? "";
+
+  assert.equal(response.status, 200);
+  assert.match(
+    contentSecurityPolicy,
+    /form-action 'self' http:\/\/127\.0\.0\.1:43123(?:;|$)/,
+  );
+  assert.doesNotMatch(contentSecurityPolicy, /127\.0\.0\.1:\*/);
+  assert.doesNotMatch(contentSecurityPolicy, /attacker/);
+});
+
 test("authenticated consent stores only a hashed short-lived code", async () => {
   const parameters = consentParameters();
   const response = await appFor(true).request(
