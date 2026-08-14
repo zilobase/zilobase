@@ -32,6 +32,7 @@ struct StartupState {
 fn describe_deep_link(value: &str) -> Option<&'static str> {
     let target = value.strip_prefix("zilobase://")?.split('?').next()?;
     (!target.is_empty()).then_some(match target {
+        "connect" => "connect",
         "open" => "open",
         _ => "other",
     })
@@ -198,6 +199,27 @@ pub(crate) fn set_server_keyring_value(
     )
 }
 
+pub(crate) fn delete_server_keyring_credentials(
+    server: &desktop_server::DesktopServer,
+) -> Result<(), String> {
+    let mut first_error = None;
+    for (account, value_kind) in [
+        (LEGACY_AUTH_ACCOUNT, "session_token"),
+        (LEGACY_AUTH_OWNER_ACCOUNT, "session_owner"),
+    ] {
+        if let Err(error) = set_server_keyring_value(server, account, value_kind, None) {
+            first_error.get_or_insert(error);
+        }
+        if desktop_server::is_cloud_server(server) {
+            if let Err(error) = set_keyring_value(account, value_kind, None) {
+                first_error.get_or_insert(error);
+            }
+        }
+    }
+
+    first_error.map_or(Ok(()), Err)
+}
+
 fn scoped_keyring_account(server: &desktop_server::DesktopServer, legacy_account: &str) -> String {
     let digest = Sha256::digest(format!("{}\0{}", server.issuer, server.instance_id).as_bytes());
     format!("{legacy_account}:{digest:x}")
@@ -263,6 +285,7 @@ pub fn run() {
     let startup_state = StartupState::default();
     let builder = tauri::Builder::default()
         .manage(startup_state)
+        .manage(desktop_server::DesktopServerCandidateState::default())
         .manage(oauth::DesktopOAuthState::default());
 
     #[cfg(all(desktop, not(debug_assertions)))]
@@ -374,7 +397,9 @@ pub fn run() {
             set_auth_owner,
             mark_renderer_ready,
             desktop_server::initialize_desktop_server,
-            desktop_server::verify_and_select_desktop_server,
+            desktop_server::prepare_desktop_server_candidate,
+            desktop_server::discard_desktop_server_candidate,
+            desktop_server::commit_desktop_server_candidate,
             oauth::start_browser_authorization,
             oauth::cancel_browser_authorization,
             diagnostics::record_renderer_diagnostic,
@@ -395,6 +420,10 @@ mod tests {
         assert_eq!(
             describe_deep_link("zilobase://open?path=%2Frecents"),
             Some("open")
+        );
+        assert_eq!(
+            describe_deep_link("zilobase://connect?server=https%3A%2F%2Fsecret.test"),
+            Some("connect")
         );
         assert_eq!(
             describe_deep_link("zilobase://unknown?value=secret"),

@@ -77,6 +77,11 @@ import {
 import { useAppStore } from "@/stores/app-store";
 import { getDatabaseIconNode, getPageIconNode } from "@/lib/page-icon";
 import { buildDesktopDeepLink } from "@/lib/desktop-deep-link";
+import {
+  discoverRuntimeDesktopServer,
+  getSelectedDesktopServer,
+  type DesktopServer,
+} from "@/lib/desktop-server";
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
 import {
@@ -188,6 +193,20 @@ export function AppSidebar({
   const [databaseDropTargetId, setDatabaseDropTargetId] = React.useState<
     string | null
   >(null);
+  const [desktopLinkServer, setDesktopLinkServer] =
+    React.useState<DesktopServer | null>(getSelectedDesktopServer());
+  React.useEffect(() => {
+    if (desktopLinkServer || isTauri()) return;
+    let disposed = false;
+    void discoverRuntimeDesktopServer()
+      .then((server) => {
+        if (!disposed) setDesktopLinkServer(server);
+      })
+      .catch(() => undefined);
+    return () => {
+      disposed = true;
+    };
+  }, [desktopLinkServer]);
   const sidebarConfig = React.useMemo(
     () => normalizeSidebarConfig(userSettings.sidebarConfig),
     [userSettings.sidebarConfig],
@@ -483,10 +502,10 @@ export function AppSidebar({
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          {!isTauri() ? (
+          {!isTauri() && desktopLinkServer ? (
             <SidebarMenuItem>
               <SidebarMenuButton asChild>
-                <a href={buildDesktopDeepLink(location.href)}>
+                <a href={buildDesktopDeepLink(location.href, desktopLinkServer)}>
                   <MonitorUpIcon />
                   <span>Open in desktop app</span>
                 </a>

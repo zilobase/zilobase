@@ -1,6 +1,7 @@
 import { RouterProvider } from "@tanstack/react-router"
 
 import { DesktopDeepLinkHandler } from "@/components/desktop-deep-link-handler"
+import { DesktopServerReplacementController } from "@/components/desktop-server-replacement-controller"
 import {
   DesktopWindowTitlebar,
   isLinuxDesktopApp,
@@ -10,6 +11,9 @@ import { router } from "@/router"
 export default function App() {
   const app = (
     <>
+      <DesktopServerReplacementController
+        openPath={(path) => router.history.push(path)}
+      />
       <DesktopDeepLinkHandler openPath={(path) => router.history.push(path)} />
       <RouterProvider router={router} />
     </>

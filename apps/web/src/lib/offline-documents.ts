@@ -17,6 +17,8 @@ import { getDesktopAuthToken } from "@/lib/desktop-auth-token"
 const COLLABORATION_TICKET_REFRESH_BUFFER_MS = 75_000
 const COLLABORATION_WEBSOCKET_PROTOCOL = "zilobase.collaboration.v1"
 const SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX = "zilobase.session.v1."
+const activeLocalDocuments = new Set<LocalPageDocument>()
+const activeProviders = new Set<HocuspocusProvider>()
 
 export type CollaborationTicket = {
   documentName: string
@@ -58,7 +60,14 @@ export async function openLocalPageDocument(
     throw error
   }
 
-  return { document, persistence }
+  const local = { document, persistence }
+  activeLocalDocuments.add(local)
+  const destroyPersistence = persistence.destroy.bind(persistence)
+  persistence.destroy = () => {
+    activeLocalDocuments.delete(local)
+    return destroyPersistence()
+  }
+  return local
 }
 
 export function flushLocalPageDocument(local: LocalPageDocument) {
@@ -106,7 +115,24 @@ export function connectLocalPageDocument(input: {
     onAwarenessUpdate: ({ states }) => input.onUsers?.(states),
   } as HocuspocusProviderConfiguration)
 
+  activeProviders.add(provider)
+  const destroyProvider = provider.destroy.bind(provider)
+  provider.destroy = () => {
+    activeProviders.delete(provider)
+    return destroyProvider()
+  }
+
   return provider
+}
+
+export function destroyDesktopOfflineConnections() {
+  for (const provider of [...activeProviders]) provider.destroy()
+  for (const local of [...activeLocalDocuments]) {
+    local.persistence.destroy()
+    local.document.destroy()
+  }
+  activeProviders.clear()
+  activeLocalDocuments.clear()
 }
 
 class CollaborationWebSocket extends WebSocket {

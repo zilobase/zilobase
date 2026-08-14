@@ -127,6 +127,21 @@ export function register({ assert, loadModule, test }) {
     second.destroy()
   })
 
+  test("server replacement deletes stale instance-scoped Yjs databases", async () => {
+    globalThis.window ??= globalThis
+    const { clearDesktopServerIndexedData } = await loadModule(
+      "/src/lib/offline-store.ts",
+    )
+    const name = `zilobase:v1:stale:${crypto.randomUUID()}`
+    const database = await openDatabase(name)
+    database.close()
+
+    await clearDesktopServerIndexedData()
+
+    const names = (await indexedDB.databases()).map((entry) => entry.name)
+    assert.equal(names.includes(name), false)
+  })
+
   test("local and remote Yjs updates converge", () => {
     const left = new Y.Doc()
     const right = new Y.Doc()
@@ -145,4 +160,12 @@ function waitForSynced(persistence) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function openDatabase(name) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name)
+    request.addEventListener("success", () => resolve(request.result))
+    request.addEventListener("error", () => reject(request.error))
+  })
 }

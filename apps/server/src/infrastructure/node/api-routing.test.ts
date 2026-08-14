@@ -9,6 +9,7 @@ test("the combined Node runtime sends discovery, probes, and desktop auth to the
     "/health",
     "/ready",
     "/api/auth/session",
+    "/desktop",
     "/desktop/authorize",
   ]) {
     assert.equal(isNodeApiPath(path), true, path);

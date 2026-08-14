@@ -22,6 +22,24 @@ import {
 
 export const desktopAuthRoutes = new Hono<AppBindings>();
 
+desktopAuthRoutes.get("/desktop", async (c) => {
+  c.header("Cache-Control", "no-store");
+  c.header("Content-Security-Policy", desktopPageCsp());
+  c.header("Referrer-Policy", "no-referrer");
+  c.header("X-Content-Type-Options", "nosniff");
+
+  const discovery = await getZilobaseDiscoveryDocument(c.env);
+  const connectLink = new URL("zilobase://connect");
+  connectLink.searchParams.set("server", discovery.apiOrigin);
+
+  return c.html(
+    pageShell(
+      `Connect to ${discovery.displayName}`,
+      `<p>Use this server with the same Zilobase Desktop app used for Zilobase Cloud.</p><a class="button" href="${escapeHtml(connectLink.toString())}">Open in Zilobase Desktop</a><label class="server-label" for="server-url">Server URL</label><input id="server-url" readonly value="${escapeHtml(discovery.apiOrigin)}"><p class="hint">Copy this URL into <strong>Change server</strong> in the desktop app if the button does not open.</p>`,
+    ),
+  );
+});
+
 desktopAuthRoutes.get("/desktop/authorize", async (c) => {
   c.header("Cache-Control", "no-store");
   c.header("Content-Security-Policy", desktopPageCsp());
@@ -321,7 +339,7 @@ function renderErrorPage(message: string) {
 }
 
 function pageShell(title: string, content: string) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>body{font:16px system-ui;margin:0;display:grid;min-height:100vh;place-items:center;background:#0d0d0f;color:#fff}main{box-sizing:border-box;max-width:32rem;padding:2rem}p{color:#b6b6bd;line-height:1.55}.button,.secondary{border:0;border-radius:.5rem;cursor:pointer;display:inline-block;font:inherit;padding:.7rem 1rem;text-decoration:none}.button{background:#fff;color:#111}.secondary{background:#29292e;color:#fff}.actions{display:flex;gap:.75rem;margin-top:1.5rem}</style></head><body><main><h1>${escapeHtml(title)}</h1>${content}</main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>body{font:16px system-ui;margin:0;display:grid;min-height:100vh;place-items:center;background:#0d0d0f;color:#fff}main{box-sizing:border-box;max-width:32rem;padding:2rem}p{color:#b6b6bd;line-height:1.55}.button,.secondary{border:0;border-radius:.5rem;cursor:pointer;display:inline-block;font:inherit;padding:.7rem 1rem;text-decoration:none}.button{background:#fff;color:#111}.secondary{background:#29292e;color:#fff}.actions{display:flex;gap:.75rem;margin-top:1.5rem}.server-label{display:block;font-size:.8rem;margin-top:1.5rem;color:#b6b6bd}input{box-sizing:border-box;width:100%;margin-top:.4rem;border:1px solid #45454d;border-radius:.5rem;background:#19191d;color:#fff;font:inherit;padding:.7rem}.hint{font-size:.8rem}</style></head><body><main><h1>${escapeHtml(title)}</h1>${content}</main></body></html>`;
 }
 
 function desktopPageCsp() {

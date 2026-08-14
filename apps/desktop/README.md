@@ -22,6 +22,31 @@ configuration belongs only to the server that renders the browser login. The
 same desktop artifact can therefore sign in to Cloud or a compatible self-hosted
 server without being rebuilt.
 
+## Server links and replacement
+
+Zilobase Cloud is selected for a new installation. Add a self-hosted server by
+entering its canonical origin under **Use another server** / **Settings →
+Preferences → Desktop server**, or by opening the server's
+`zilobase://connect?server=...` link. The native app requires HTTPS except for
+loopback development, fetches `/.well-known/zilobase` without redirects, checks
+protocol/version/origin/TLS compatibility, and holds the candidate in memory.
+The saved server and current credentials are untouched until the user confirms.
+
+`zilobase://open` links include `instance`, `server`, and `path`. The app opens
+the path directly only when the selected instance and canonical origin match;
+otherwise it verifies the target and uses the normal replacement workflow.
+Neither connection link contains a token or authorization code. Cold-start and
+running-app links use the same parser, and diagnostics record only accepted or
+rejected event types.
+
+Changing servers retains no account from the old instance. Unsynced offline
+drafts block replacement until the user chooses Sync, Export, Discard, or
+Cancel. After that decision, the app best-effort revokes the old session, aborts
+old HTTP work, destroys WebSockets, removes the instance-scoped keyring entries,
+query cache, IndexedDB/Yjs documents, app/auth stores, tabs, and session storage,
+then commits the verified candidate and reloads. Returning to Cloud uses this
+same destructive workflow.
+
 ## One-time GitHub setup
 
 Add this required Actions secret to `zilobase/zilobase`:

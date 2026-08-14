@@ -1,5 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import packageJson from "../../package.json"
+import { desktopNetworkFetch } from "@/lib/desktop-network"
 
 export type DesktopServer = {
   instanceId: string
@@ -10,6 +11,16 @@ export type DesktopServer = {
   protocolVersion: 1
   serverVersion: string
   minimumDesktopVersion: string
+}
+
+export type PreparedDesktopServer = {
+  candidateId: string
+  server: DesktopServer
+}
+
+export type DesktopServerCommit = {
+  changed: boolean
+  server: DesktopServer
 }
 
 type DesktopServerFailure = {
@@ -54,7 +65,7 @@ export async function initializeDesktopServer() {
   }
 }
 
-export async function verifyAndSelectDesktopServer(serverUrl: string) {
+export async function prepareDesktopServerCandidate(serverUrl: string) {
   if (!isTauri()) {
     throw new DesktopServerError(
       "desktop_required",
@@ -63,12 +74,47 @@ export async function verifyAndSelectDesktopServer(serverUrl: string) {
   }
 
   try {
-    selectedDesktopServer = validateDesktopServer(
-      await invoke<DesktopServer>("verify_and_select_desktop_server", {
+    const prepared = await invoke<PreparedDesktopServer>(
+      "prepare_desktop_server_candidate",
+      {
         serverUrl,
-      }),
+      },
     )
-    return selectedDesktopServer
+    if (!prepared || typeof prepared.candidateId !== "string") {
+      throw new DesktopServerError(
+        "invalid_server_metadata",
+        "The verified server candidate is invalid.",
+      )
+    }
+    return {
+      candidateId: prepared.candidateId,
+      server: validateDesktopServer(prepared.server),
+    }
+  } catch (error) {
+    throw normalizeDesktopServerError(error)
+  }
+}
+
+export async function discardDesktopServerCandidate(candidateId: string) {
+  if (!isTauri()) return
+  await invoke("discard_desktop_server_candidate", { candidateId })
+}
+
+export async function commitDesktopServerCandidate(candidateId: string) {
+  if (!isTauri()) {
+    throw new DesktopServerError(
+      "desktop_required",
+      "Custom desktop servers can only be selected in Zilobase Desktop.",
+    )
+  }
+
+  try {
+    const result = await invoke<DesktopServerCommit>(
+      "commit_desktop_server_candidate",
+      { candidateId },
+    )
+    selectedDesktopServer = validateDesktopServer(result.server)
+    return { changed: result.changed === true, server: selectedDesktopServer }
   } catch (error) {
     throw normalizeDesktopServerError(error)
   }
@@ -76,6 +122,38 @@ export async function verifyAndSelectDesktopServer(serverUrl: string) {
 
 export function getSelectedDesktopServer() {
   return selectedDesktopServer
+}
+
+export function desktopServersReferToSameInstance(
+  current: DesktopServer,
+  candidate: DesktopServer,
+) {
+  if (
+    current.instanceId === candidate.instanceId &&
+    current.apiOrigin === candidate.apiOrigin &&
+    current.issuer === candidate.issuer
+  ) {
+    return true
+  }
+
+  return (
+    current.instanceId === CLOUD_DESKTOP_SERVER.instanceId &&
+    current.apiOrigin === CLOUD_DESKTOP_SERVER.apiOrigin &&
+    current.issuer === CLOUD_DESKTOP_SERVER.issuer &&
+    candidate.apiOrigin === CLOUD_DESKTOP_SERVER.apiOrigin &&
+    candidate.issuer === CLOUD_DESKTOP_SERVER.issuer
+  )
+}
+
+export async function discoverRuntimeDesktopServer() {
+  if (selectedDesktopServer) return selectedDesktopServer
+  const apiOrigin = resolveRuntimeApiOrigin()
+  const response = await desktopNetworkFetch(
+    `${apiOrigin}/.well-known/zilobase`,
+    { cache: "no-store", credentials: "omit" },
+  )
+  if (!response.ok) throw new Error("Zilobase discovery is unavailable.")
+  return validateDesktopServer(await response.json())
 }
 
 export function resolveDesktopServerUrls(server: DesktopServer) {
@@ -164,7 +242,13 @@ export function validateDesktopServer(value: unknown): DesktopServer {
     }
   }
 
-  if (server.protocolVersion !== 1 || server.issuer !== server.apiOrigin) {
+  if (
+    server.protocolVersion !== 1 ||
+    server.issuer !== server.apiOrigin ||
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(server.instanceId!) ||
+    !isCanonicalDesktopOrigin(server.apiOrigin!) ||
+    !isCanonicalDesktopOrigin(server.webOrigin!)
+  ) {
     throw new DesktopServerError(
       "invalid_server_metadata",
       "The desktop server metadata is incompatible.",
@@ -172,6 +256,23 @@ export function validateDesktopServer(value: unknown): DesktopServer {
   }
 
   return server as DesktopServer
+}
+
+function isCanonicalDesktopOrigin(value: string) {
+  try {
+    const url = new URL(value)
+    if (url.origin !== value || url.username || url.password) return false
+    if (url.protocol === "https:") return true
+    if (url.protocol !== "http:") return false
+    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "")
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "::1"
+    )
+  } catch {
+    return false
+  }
 }
 
 export function normalizeDesktopServerError(error: unknown) {

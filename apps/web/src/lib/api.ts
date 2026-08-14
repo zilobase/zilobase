@@ -14,6 +14,7 @@ import {
   resolveRuntimeWebSocketUrl,
   type DesktopServer,
 } from "@/lib/desktop-server"
+import { desktopNetworkFetch } from "@/lib/desktop-network"
 
 declare global {
   interface Window {
@@ -82,7 +83,7 @@ export async function apiFetch<T>(
   const requestTimeout = createRequestTimeout(init.signal, timeoutMs)
   let response: Response
   try {
-    response = await fetch(toApiUrl(path), {
+    response = await desktopNetworkFetch(toApiUrl(path), {
       ...init,
       body,
       credentials: auth ? "include" : "same-origin",

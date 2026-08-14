@@ -3,6 +3,7 @@ import {
   getApiRequestHeaders,
   toApiUrl,
 } from "@/lib/api"
+import { desktopNetworkFetch } from "@/lib/desktop-network"
 
 type ImageAsset = {
   byteSize: number
@@ -151,7 +152,7 @@ async function putImageBody(upload: ImageUploadTarget, file: File) {
     upload.storageMode === "binding"
       ? getApiRequestHeaders(upload.headers)
       : new Headers(upload.headers)
-  const response = await fetch(getUploadUrl(upload), {
+  const response = await desktopNetworkFetch(getUploadUrl(upload), {
     body: file,
     credentials: upload.storageMode === "binding" ? "include" : "omit",
     headers,

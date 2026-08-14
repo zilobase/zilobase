@@ -74,3 +74,8 @@ export async function clearDesktopAuthToken() {
     invoke("set_auth_owner", { owner: null }),
   ])
 }
+
+export function forgetDesktopAuthCredentials() {
+  authToken = null
+  authOwner = null
+}

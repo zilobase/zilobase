@@ -63,6 +63,7 @@ import type {
   ReactNode,
   RefObject,
 } from "react";
+import { desktopNetworkFetch } from "@/lib/desktop-network";
 import {
   Children,
   createContext,
@@ -80,7 +81,7 @@ import {
 
 const convertBlobUrlToDataUrl = async (url: string): Promise<string | null> => {
   try {
-    const response = await fetch(url);
+    const response = await desktopNetworkFetch(url);
     const blob = await response.blob();
     // FileReader uses callback-based API, wrapping in Promise is necessary
     // oxlint-disable-next-line eslint-plugin-promise(avoid-new)

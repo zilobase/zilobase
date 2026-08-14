@@ -2,7 +2,10 @@ import { useEffect } from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link"
 
-import { getDesktopDeepLinkPath } from "@/lib/desktop-deep-link"
+import { resolveDesktopDeepLinkAction } from "@/lib/desktop-deep-link"
+import { recordDesktopDiagnostic } from "@/lib/desktop-diagnostics"
+import { getSelectedDesktopServer } from "@/lib/desktop-server"
+import { requestDesktopServerReplacement } from "@/lib/desktop-server-replacement"
 
 export function DesktopDeepLinkHandler({
   openPath,
@@ -16,12 +19,27 @@ export function DesktopDeepLinkHandler({
     let unlisten: (() => void) | undefined
     const handledUrls = new Set<string>()
     const openFirstValidPath = (urls: string[]) => {
-      const pathUrl = urls.find((url) => getDesktopDeepLinkPath(url))
-      if (!pathUrl || handledUrls.has(pathUrl)) return
-      handledUrls.add(pathUrl)
+      for (const url of urls) {
+        if (handledUrls.has(url)) continue
+        handledUrls.add(url)
+        const action = resolveDesktopDeepLinkAction(
+          url,
+          getSelectedDesktopServer(),
+        )
+        if (!action) {
+          recordDesktopDiagnostic(
+            "deep_link.rejected",
+            { error_type: "InvalidLink", status: "error" },
+            "warn",
+          )
+          continue
+        }
 
-      const path = getDesktopDeepLinkPath(pathUrl)
-      if (path) openPath(path)
+        recordDesktopDiagnostic("deep_link.accepted", { status: "success" })
+        if (action.type === "open-path") openPath(action.path)
+        else requestDesktopServerReplacement(action)
+        return
+      }
     }
     void getCurrent().then((urls) => {
       if (!disposed && urls) openFirstValidPath(urls)

@@ -68,6 +68,8 @@ Each installation creates one stable database-backed instance identity. Its
 desktop compatibility and authorization metadata is available at
 `http://localhost/.well-known/zilobase`. Use `/health` for process liveness and
 `/ready` when an orchestrator must wait for both Postgres and object storage.
+Open `http://localhost/desktop` for a copyable server URL and a secret-free
+**Open in Zilobase Desktop** connection link.
 
 For production self-hosting, copy the example env file and replace every secret:
 
@@ -122,7 +124,8 @@ Common commands:
 | `npm run dev:desktop` | Start the Tauri desktop shell. |
 
 The desktop app starts with Zilobase Cloud selected. On the sign-in screen,
-choose **Use another server** to verify and save a self-hosted origin. Server
+choose **Use another server**, or use a server's `zilobase://connect` link, to
+verify a self-hosted origin before changing the current connection. Server
 metadata is stored in the operating system application-config directory;
 session credentials remain in the system keyring and are scoped to the saved
 instance. Custom servers require trusted HTTPS, except for loopback HTTP during
@@ -130,6 +133,15 @@ local development. Sign-in then opens that server in the system browser and uses
 PKCE with an ephemeral loopback callback. Password, email-code, Google, and
 configured SSO login stay in the browser; the desktop receives an independent
 server session only after issuer, state, instance, and PKCE validation.
+
+Only one server and account are retained. **Settings → Preferences → Desktop
+server** starts the same replacement workflow. If offline drafts exist, the app
+requires an explicit Sync, Export, Discard, or Cancel choice. A completed change
+best-effort revokes the old session and removes the old keyring credentials,
+query cache, IndexedDB/Yjs documents, app/auth stores, tabs, and session storage
+before reloading. Instance-scoped `zilobase://open` links are accepted only when
+both the server origin and instance identity match verified metadata; link query
+values are never written to diagnostics.
 
 ## Project Structure
 

@@ -32,6 +32,7 @@ import {
   type GeneratedRange,
 } from "@/packages/editor/editor-ai-utils"
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
+import { desktopNetworkFetch } from "@/lib/desktop-network"
 
 export type AskAiBlockOptions = {
   workspaceId?: string | null
@@ -153,7 +154,7 @@ function AskAiPopover({
         headers.set("x-zilobase-workspace-id", workspaceId)
       }
 
-      const response = await fetch(toApiUrl("/api/ai/editor"), {
+      const response = await desktopNetworkFetch(toApiUrl("/api/ai/editor"), {
         body: JSON.stringify({ prompt: trimmedPrompt }),
         credentials: "include",
         headers,
@@ -452,7 +453,7 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
         headers.set("x-zilobase-workspace-id", workspaceId)
       }
 
-      const response = await fetch(toApiUrl("/api/ai/editor"), {
+      const response = await desktopNetworkFetch(toApiUrl("/api/ai/editor"), {
         body: JSON.stringify({ prompt: trimmedPrompt }),
         credentials: "include",
         headers,

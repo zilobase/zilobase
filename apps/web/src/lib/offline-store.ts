@@ -290,6 +290,17 @@ export async function clearAllOfflineData() {
   emit(manifestListeners)
 }
 
+export async function clearDesktopServerIndexedData() {
+  await clearAllOfflineData()
+  if (typeof indexedDB.databases !== "function") return
+
+  const databases = await indexedDB.databases()
+  const names = databases.flatMap((database) =>
+    database.name?.startsWith("zilobase:v1:") ? [database.name] : [],
+  )
+  await Promise.all(names.map(deleteIndexedDatabaseStrict))
+}
+
 export function offlineDocumentName(workspaceId: string, pageId: string) {
   const accountId = manifest.accountId ?? "unknown"
   const origin = encodeURIComponent(manifest.apiOrigin)
@@ -456,6 +467,24 @@ function deleteIndexedDatabase(name: string) {
     request.addEventListener("success", () => resolve())
     request.addEventListener("error", () => resolve())
     request.addEventListener("blocked", () => resolve())
+  })
+}
+
+function deleteIndexedDatabaseStrict(name: string) {
+  return new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(name)
+    const timeout = window.setTimeout(
+      () => reject(new Error("Local document storage is still in use.")),
+      3_000,
+    )
+    request.addEventListener("success", () => {
+      window.clearTimeout(timeout)
+      resolve()
+    })
+    request.addEventListener("error", () => {
+      window.clearTimeout(timeout)
+      reject(request.error ?? new Error("Local document storage could not be deleted."))
+    })
   })
 }
 

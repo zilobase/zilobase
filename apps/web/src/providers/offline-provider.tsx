@@ -10,6 +10,7 @@ import { toast } from "sonner"
 
 import { toApiUrl } from "@/lib/api"
 import { connectivityStateDuringProbe } from "@/lib/connectivity-probe"
+import { desktopNetworkFetch } from "@/lib/desktop-network"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
@@ -228,7 +229,7 @@ function OfflineRuntime() {
       const timeout = window.setTimeout(() => controller.abort(), 5_000)
 
       try {
-        const response = await fetch(toApiUrl("/health"), {
+        const response = await desktopNetworkFetch(toApiUrl("/health"), {
           cache: "no-store",
           signal: controller.signal,
         })
@@ -268,11 +269,16 @@ function OfflineRuntime() {
     const handleAuthenticationRequired = () => {
       toast.error("Your session expired. Reconnect and sign in to resume syncing.")
     }
+    const handleServerReplacement = () => {
+      disposed = true
+      if (retryTimer !== null) window.clearTimeout(retryTimer)
+    }
 
     window.addEventListener("offline", handleOffline)
     window.addEventListener("online", handleOnline)
     window.addEventListener("focus", handleFocus)
     window.addEventListener("zilobase:authentication-required", handleAuthenticationRequired)
+    window.addEventListener("zilobase:server-replacement-started", handleServerReplacement)
     void probe()
 
     return () => {
@@ -282,6 +288,7 @@ function OfflineRuntime() {
       window.removeEventListener("online", handleOnline)
       window.removeEventListener("focus", handleFocus)
       window.removeEventListener("zilobase:authentication-required", handleAuthenticationRequired)
+      window.removeEventListener("zilobase:server-replacement-started", handleServerReplacement)
     }
   }, [])
 

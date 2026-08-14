@@ -32,6 +32,19 @@ export function register({ assert, loadModule, test }) {
       ),
       "wss://notes.example.com/collaboration?document=page.1",
     )
+    assert.throws(() =>
+      validateDesktopServer({
+        ...server,
+        instanceId: "instance id with spaces",
+      }),
+    )
+    assert.throws(() =>
+      validateDesktopServer({
+        ...server,
+        apiOrigin: "https://notes.example.com/path",
+        issuer: "https://notes.example.com/path",
+      }),
+    )
   })
 
   test("server selection exposes edit, verification, failure, and completion states", async () => {
@@ -59,6 +72,40 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(
       reduceDesktopServerSelection(failed, { type: "verified" }),
       { phase: "selected" },
+    )
+  })
+
+  test("the built-in Cloud alias matches Cloud discovery without weakening custom instance binding", async () => {
+    const {
+      CLOUD_DESKTOP_SERVER,
+      desktopServersReferToSameInstance,
+    } = await loadModule("/src/lib/desktop-server.ts")
+    const discoveredCloud = {
+      ...CLOUD_DESKTOP_SERVER,
+      instanceId: "cloud-database-instance",
+    }
+    assert.equal(
+      desktopServersReferToSameInstance(CLOUD_DESKTOP_SERVER, discoveredCloud),
+      true,
+    )
+    assert.equal(
+      desktopServersReferToSameInstance(
+        {
+          ...CLOUD_DESKTOP_SERVER,
+          apiOrigin: "https://notes.example.com",
+          instanceId: "instance-1",
+          issuer: "https://notes.example.com",
+          webOrigin: "https://notes.example.com",
+        },
+        {
+          ...CLOUD_DESKTOP_SERVER,
+          apiOrigin: "https://notes.example.com",
+          instanceId: "instance-2",
+          issuer: "https://notes.example.com",
+          webOrigin: "https://notes.example.com",
+        },
+      ),
+      false,
     )
   })
 }

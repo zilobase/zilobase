@@ -7,12 +7,14 @@ import {
   DownloadIcon,
   FolderOpenIcon,
   HardDriveIcon,
+  ServerIcon,
   Trash2Icon,
   UploadIcon,
 } from "lucide-react"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
+import { DesktopServerSelector } from "@/components/desktop-server-selector"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
@@ -59,11 +61,34 @@ export default function PreferencesSettingsPage() {
         {isTauri() ? (
           <>
             <Separator />
+            <DesktopServerSection />
+            <Separator />
             <DiagnosticsSection />
           </>
         ) : null}
       </div>
     </main>
+  )
+}
+
+function DesktopServerSection() {
+  return (
+    <section className="grid gap-4">
+      <div className="space-y-1">
+        <h3 className="flex items-center gap-2 font-heading text-base font-medium">
+          <ServerIcon className="size-4" />
+          Desktop server
+        </h3>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Changing servers signs out and completely removes the current
+          server&apos;s credentials, cached data, offline documents, and tabs from
+          this device.
+        </p>
+      </div>
+      <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+        <DesktopServerSelector />
+      </div>
+    </section>
   )
 }
 

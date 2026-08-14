@@ -19,9 +19,11 @@ test("public root and auth paths bypass session resolution", async () => {
   const app = new Hono<AppBindings>();
   app.use("*", authenticatedSessionMiddleware);
   app.get("/", (c) => c.text("root"));
+  app.get("/desktop", (c) => c.text("desktop"));
   app.get("/api/auth/callback", (c) => c.text("callback"));
 
   assert.equal(await (await app.request("/")).text(), "root");
+  assert.equal(await (await app.request("/desktop")).text(), "desktop");
   assert.equal(
     await (await app.request("/api/auth/callback")).text(),
     "callback",

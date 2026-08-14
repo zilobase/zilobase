@@ -59,6 +59,8 @@ vi.mock("../../auth", () => ({
 
 vi.mock("../instance/service", () => ({
   getZilobaseDiscoveryDocument: async () => ({
+    apiOrigin: "https://api.example.com",
+    displayName: "Team Notes",
     instanceId: "instance-1",
     issuer: "https://api.example.com",
   }),
@@ -81,6 +83,25 @@ beforeEach(() => {
   mocks.createdSessionUserIds.length = 0;
   mocks.insertedCodes.length = 0;
   mocks.updateResults.length = 0;
+});
+
+test("desktop landing page exposes a secret-free connection link", async () => {
+  const response = await appFor(false).request(
+    "https://api.example.com/desktop",
+    {},
+    env,
+  );
+  const body = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(body, /Open in Zilobase Desktop/);
+  assert.match(
+    body,
+    /zilobase:\/\/connect\?server=https%3A%2F%2Fapi\.example\.com/,
+  );
+  assert.match(body, /readonly value="https:\/\/api\.example\.com"/);
+  assert.doesNotMatch(body, /token|code=/);
+  assert.equal(response.headers.get("referrer-policy"), "no-referrer");
 });
 
 test("authorization page sends anonymous users through the selected server login", async () => {

@@ -7,8 +7,8 @@ Zilobase is an npm-workspaces monorepo for a notes, pages, databases, comments, 
 - `apps/web`: Vite React client. It contains the main workspace UI, page editor, database views, settings, auth screens, and client-side routing.
 - `apps/server`: Hono server. It owns auth, workspace APIs, database persistence, image upload signing, AI chat tools, integration OAuth flows, and the serverful runtime.
 - `apps/desktop`: Tauri shell for the desktop app. Native code owns the single
-  persisted server selection, validates discovery metadata and TLS before a
-  server is saved, and scopes keyring credentials to that instance. The
+  persisted server selection, validates and holds discovery metadata before a
+  candidate can be committed, and scopes keyring credentials to that instance. The
   renderer initializes this metadata before auth, offline, query, or realtime
   providers are mounted.
 - `packages/features`: shared TanStack Query hooks, query keys, mutations, cache update logic, and small database contracts used by clients and server.
@@ -42,6 +42,15 @@ callback. Code consumption and creation of the independent Better Auth desktop
 session are transactional. Desktop builds contain no social-provider client
 credentials, and native diagnostics never include callback queries, codes, or
 session tokens.
+
+Desktop connection links contain no secrets. `zilobase://connect` carries only
+a canonical server origin, while `zilobase://open` binds an in-app path to both
+the canonical origin and stable instance identity. Server replacement is a
+destructive trust-boundary transition: after draft recovery is resolved, the
+renderer revokes best-effort, aborts HTTP work, destroys realtime providers,
+clears server-scoped IndexedDB/query/Zustand/session state, and asks native code
+to delete the old keyring entries and commit the already-verified candidate.
+The public `/desktop` page exposes the connect link and copyable origin.
 
 API keys are scoped through server-side checks. Routes that accept API-key access should reject mismatched workspace access.
 

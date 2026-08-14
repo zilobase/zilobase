@@ -16,6 +16,7 @@ import {
   readStreamError,
 } from "@/packages/editor/editor-ai-utils"
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
+import { desktopNetworkFetch } from "@/lib/desktop-network"
 import { cn } from "@/lib/utils"
 import type { SelectionAiDiffPreview } from "@/packages/editor/types"
 import { useZilobaseAiPages } from "@zilobase/features/pages"
@@ -104,7 +105,7 @@ export function SelectionAiMenu({
         headers.set("x-zilobase-workspace-id", workspaceId)
       }
 
-      const response = await fetch(toApiUrl("/api/ai/editor"), {
+      const response = await desktopNetworkFetch(toApiUrl("/api/ai/editor"), {
         body: JSON.stringify({
           prompt: trimmedPrompt,
           selectedText: selectedTextRef.current,

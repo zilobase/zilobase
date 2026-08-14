@@ -1,10 +1,12 @@
 use std::{
+    collections::HashMap,
     error::Error as StdError,
     fs,
     io::Write,
     net::{Ipv4Addr, Ipv6Addr},
     path::{Path, PathBuf},
-    time::Duration,
+    sync::Mutex,
+    time::{Duration, Instant},
 };
 
 use reqwest::{header::CONTENT_TYPE, redirect::Policy, StatusCode};
@@ -19,6 +21,7 @@ const CONFIG_VERSION: u8 = 1;
 const DISCOVERY_PATH: &str = "/.well-known/zilobase";
 const MAX_DISCOVERY_BYTES: usize = 64 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
+const SERVER_CANDIDATE_TTL: Duration = Duration::from_secs(5 * 60);
 const CLOUD_INSTANCE_ID: &str = "zilobase-cloud";
 const CLOUD_WEB_ORIGIN: &str = "https://app.zilobase.com";
 const CLOUD_API_ORIGIN: &str = "https://api.zilobase.com";
@@ -58,6 +61,31 @@ struct DesktopServerConfig {
     server: DesktopServer,
 }
 
+#[derive(Clone, Debug)]
+struct DesktopServerCandidate {
+    id: String,
+    server: DesktopServer,
+    verified_at: Instant,
+}
+
+#[derive(Default)]
+pub(crate) struct DesktopServerCandidateState {
+    candidates: Mutex<HashMap<String, DesktopServerCandidate>>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PreparedDesktopServer {
+    candidate_id: String,
+    server: DesktopServer,
+}
+
+#[derive(Debug, Serialize)]
+pub(crate) struct DesktopServerCommit {
+    changed: bool,
+    server: DesktopServer,
+}
+
 #[derive(Debug, Serialize)]
 pub(crate) struct DesktopServerError {
     code: &'static str,
@@ -89,13 +117,54 @@ pub(crate) fn initialize_desktop_server(
 }
 
 #[tauri::command]
-pub(crate) async fn verify_and_select_desktop_server(
-    app: AppHandle,
+pub(crate) async fn prepare_desktop_server_candidate(
+    state: tauri::State<'_, DesktopServerCandidateState>,
     server_url: String,
-) -> Result<DesktopServer, DesktopServerError> {
+) -> Result<PreparedDesktopServer, DesktopServerError> {
     let server = verify_desktop_server(&server_url).await?;
-    persist_desktop_server(&app, &server)?;
-    Ok(server)
+    let candidate = DesktopServerCandidate {
+        id: random_candidate_id()?,
+        server,
+        verified_at: Instant::now(),
+    };
+    let prepared = PreparedDesktopServer {
+        candidate_id: candidate.id.clone(),
+        server: candidate.server.clone(),
+    };
+    let mut candidates = state.candidates.lock().map_err(|_| {
+        DesktopServerError::configuration("The server candidate could not be saved.")
+    })?;
+    candidates.retain(|_, candidate| candidate.verified_at.elapsed() <= SERVER_CANDIDATE_TTL);
+    if candidates.len() >= 8 {
+        candidates.clear();
+    }
+    candidates.insert(candidate.id.clone(), candidate);
+    Ok(prepared)
+}
+
+#[tauri::command]
+pub(crate) fn discard_desktop_server_candidate(
+    state: tauri::State<'_, DesktopServerCandidateState>,
+    candidate_id: String,
+) -> Result<(), DesktopServerError> {
+    state.discard(&candidate_id)
+}
+
+#[tauri::command]
+pub(crate) fn commit_desktop_server_candidate(
+    app: AppHandle,
+    state: tauri::State<'_, DesktopServerCandidateState>,
+    candidate_id: String,
+) -> Result<DesktopServerCommit, DesktopServerError> {
+    let candidate = state.get(&candidate_id)?;
+    let directory = app.path().app_config_dir().map_err(|_| {
+        DesktopServerError::configuration("The app configuration directory is unavailable.")
+    })?;
+    let result = commit_candidate_to_directory(&directory, &candidate.server, |old_server| {
+        crate::delete_server_keyring_credentials(old_server)
+    })?;
+    state.discard(&candidate_id)?;
+    Ok(result)
 }
 
 pub(crate) fn load_or_initialize_desktop_server(
@@ -110,6 +179,42 @@ pub(crate) fn load_or_initialize_desktop_server(
 
 pub(crate) fn is_cloud_server(server: &DesktopServer) -> bool {
     server.api_origin == CLOUD_API_ORIGIN && server.issuer == CLOUD_API_ORIGIN
+}
+
+impl DesktopServerCandidateState {
+    fn get(&self, candidate_id: &str) -> Result<DesktopServerCandidate, DesktopServerError> {
+        let mut candidates = self.candidates.lock().map_err(|_| {
+            DesktopServerError::configuration("The server candidate could not be loaded.")
+        })?;
+        let candidate = candidates.get(candidate_id).cloned();
+        if candidate
+            .as_ref()
+            .is_some_and(|candidate| candidate.verified_at.elapsed() <= SERVER_CANDIDATE_TTL)
+        {
+            return Ok(candidate.expect("the candidate was checked above"));
+        }
+        candidates.remove(candidate_id);
+        Err(DesktopServerError::new(
+            "server_candidate_expired",
+            "Verify the server again before changing connections.",
+        ))
+    }
+
+    fn discard(&self, candidate_id: &str) -> Result<(), DesktopServerError> {
+        let mut candidates = self.candidates.lock().map_err(|_| {
+            DesktopServerError::configuration("The server candidate could not be cleared.")
+        })?;
+        candidates.remove(candidate_id);
+        Ok(())
+    }
+}
+
+fn random_candidate_id() -> Result<String, DesktopServerError> {
+    let mut bytes = [0_u8; 16];
+    getrandom::fill(&mut bytes).map_err(|_| {
+        DesktopServerError::configuration("A secure server candidate could not be created.")
+    })?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 async fn verify_desktop_server(value: &str) -> Result<DesktopServer, DesktopServerError> {
@@ -250,7 +355,7 @@ fn validate_discovery_document(
     }
 
     let api_origin = parse_metadata_origin(&server.api_origin, "API")?;
-    let web_origin = parse_metadata_origin(&server.web_origin, "web")?;
+    parse_metadata_origin(&server.web_origin, "web")?;
     if api_origin != *requested_origin {
         return Err(DesktopServerError::new(
             "canonical_origin_mismatch",
@@ -286,7 +391,7 @@ fn validate_discovery_document(
         ));
     }
 
-    let expected_authorization = web_origin
+    let expected_authorization = api_origin
         .join("/desktop/authorize")
         .expect("a canonical origin accepts an absolute path");
     let expected_token = api_origin
@@ -425,14 +530,46 @@ fn validate_persisted_server(server: &DesktopServer) -> Result<(), DesktopServer
     Ok(())
 }
 
-fn persist_desktop_server(
-    app: &AppHandle,
-    server: &DesktopServer,
-) -> Result<(), DesktopServerError> {
-    let directory = app.path().app_config_dir().map_err(|_| {
-        DesktopServerError::configuration("The app configuration directory is unavailable.")
-    })?;
-    save_to_directory(&directory, server)
+fn commit_candidate_to_directory<F>(
+    directory: &Path,
+    candidate: &DesktopServer,
+    delete_old_credentials: F,
+) -> Result<DesktopServerCommit, DesktopServerError>
+where
+    F: FnOnce(&DesktopServer) -> Result<(), String>,
+{
+    let current = load_or_initialize_from_directory(directory)?;
+    let changed = !servers_refer_to_same_instance(&current, candidate);
+
+    save_to_directory(directory, candidate)?;
+    if changed {
+        if delete_old_credentials(&current).is_err() {
+            let _ = save_to_directory(directory, &current);
+            return Err(DesktopServerError::new(
+                "credential_cleanup_failed",
+                "The previous server credentials could not be removed. The server was not changed.",
+            ));
+        }
+    }
+
+    Ok(DesktopServerCommit {
+        changed,
+        server: candidate.clone(),
+    })
+}
+
+fn servers_refer_to_same_instance(current: &DesktopServer, candidate: &DesktopServer) -> bool {
+    if current.instance_id == candidate.instance_id
+        && current.issuer == candidate.issuer
+        && current.api_origin == candidate.api_origin
+    {
+        return true;
+    }
+
+    current.instance_id == CLOUD_INSTANCE_ID
+        && is_cloud_server(current)
+        && candidate.api_origin == CLOUD_API_ORIGIN
+        && candidate.issuer == CLOUD_API_ORIGIN
 }
 
 fn save_to_directory(directory: &Path, server: &DesktopServer) -> Result<(), DesktopServerError> {
@@ -473,10 +610,13 @@ fn config_path(directory: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{
-        cloud_server, config_path, load_or_initialize_from_directory, parse_server_origin,
-        save_to_directory, validate_discovery_document, verify_desktop_server,
-        DesktopAuthorizationEndpoints, DiscoveryDocument,
+        cloud_server, commit_candidate_to_directory, config_path,
+        load_or_initialize_from_directory, parse_server_origin, save_to_directory,
+        servers_refer_to_same_instance, validate_discovery_document, verify_desktop_server,
+        DesktopAuthorizationEndpoints, DesktopServerCandidate, DesktopServerCandidateState,
+        DiscoveryDocument, SERVER_CANDIDATE_TTL,
     };
+    use std::time::Instant;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     #[test]
@@ -523,6 +663,100 @@ mod tests {
         let restored =
             load_or_initialize_from_directory(directory.path()).expect("restored server");
         assert_eq!(restored, replacement);
+    }
+
+    #[test]
+    fn commits_a_verified_candidate_only_after_old_credentials_are_deleted() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let initial = load_or_initialize_from_directory(directory.path()).expect("initial server");
+        let mut replacement = initial.clone();
+        replacement.instance_id = "self-hosted-instance".to_string();
+        replacement.display_name = "Team Notes".to_string();
+        replacement.issuer = "https://notes.example.com".to_string();
+        replacement.web_origin = "https://notes.example.com".to_string();
+        replacement.api_origin = "https://notes.example.com".to_string();
+
+        let mut deleted_origin = None;
+        let committed =
+            commit_candidate_to_directory(directory.path(), &replacement, |old_server| {
+                deleted_origin = Some(old_server.api_origin.clone());
+                Ok(())
+            })
+            .expect("commit candidate");
+
+        assert!(committed.changed);
+        assert_eq!(deleted_origin.as_deref(), Some(initial.api_origin.as_str()));
+        assert_eq!(
+            load_or_initialize_from_directory(directory.path()).expect("saved server"),
+            replacement
+        );
+    }
+
+    #[test]
+    fn rolls_back_the_server_file_when_credential_deletion_fails() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let initial = load_or_initialize_from_directory(directory.path()).expect("initial server");
+        let mut replacement = initial.clone();
+        replacement.instance_id = "self-hosted-instance".to_string();
+        replacement.issuer = "https://notes.example.com".to_string();
+        replacement.web_origin = "https://notes.example.com".to_string();
+        replacement.api_origin = "https://notes.example.com".to_string();
+
+        let error = commit_candidate_to_directory(directory.path(), &replacement, |_| {
+            Err("keyring unavailable".to_string())
+        })
+        .expect_err("credential failure must stop replacement");
+
+        assert_eq!(error.code, "credential_cleanup_failed");
+        assert_eq!(
+            load_or_initialize_from_directory(directory.path()).expect("rolled back server"),
+            initial
+        );
+    }
+
+    #[test]
+    fn candidate_handles_are_independent_and_expire() {
+        let state = DesktopServerCandidateState::default();
+        let current = cloud_server();
+        let fresh = DesktopServerCandidate {
+            id: "fresh".to_string(),
+            server: current.clone(),
+            verified_at: Instant::now(),
+        };
+        let expired = DesktopServerCandidate {
+            id: "expired".to_string(),
+            server: current,
+            verified_at: Instant::now() - SERVER_CANDIDATE_TTL - std::time::Duration::from_secs(1),
+        };
+        {
+            let mut candidates = state.candidates.lock().expect("candidate lock");
+            candidates.insert(fresh.id.clone(), fresh);
+            candidates.insert(expired.id.clone(), expired);
+        }
+
+        assert!(state.get("fresh").is_ok());
+        assert_eq!(
+            state.get("expired").expect_err("expired candidate").code,
+            "server_candidate_expired"
+        );
+        assert!(state.get("fresh").is_ok());
+    }
+
+    #[test]
+    fn cloud_alias_matches_discovered_cloud_but_custom_instance_ids_remain_strict() {
+        let cloud = cloud_server();
+        let mut discovered_cloud = cloud.clone();
+        discovered_cloud.instance_id = "cloud-database-instance".to_string();
+        assert!(servers_refer_to_same_instance(&cloud, &discovered_cloud));
+
+        let mut first = cloud.clone();
+        first.instance_id = "instance-1".to_string();
+        first.api_origin = "https://notes.example.com".to_string();
+        first.issuer = first.api_origin.clone();
+        first.web_origin = first.api_origin.clone();
+        let mut second = first.clone();
+        second.instance_id = "instance-2".to_string();
+        assert!(!servers_refer_to_same_instance(&first, &second));
     }
 
     #[test]

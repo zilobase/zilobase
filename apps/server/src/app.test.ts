@@ -12,6 +12,7 @@ test("createApp registers every public feature route group", () => {
     "GET /.well-known/zilobase",
     "GET /health",
     "GET /ready",
+    "GET /desktop",
     "GET /desktop/authorize",
     "POST /desktop/authorize/consent",
     "POST /api/auth/desktop/token",
