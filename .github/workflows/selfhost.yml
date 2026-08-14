@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 45
     env:
       ZILOBASE_SELFHOST_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/selfhost
-      ZILOBASE_SELFHOST_ENV_FILE: ${{ runner.temp }}/selfhost-api.env
+      ZILOBASE_SELFHOST_ENV_FILE: /tmp/zilobase-selfhost-api-${{ github.run_id }}-${{ github.run_attempt }}.env
       ZILOBASE_SELFHOST_IMAGE: zilobase-selfhost-ci:${{ github.sha }}
       ZILOBASE_SELFHOST_PROJECT_NAME: zilobase-api-${{ github.run_id }}-${{ github.run_attempt }}
       ZILOBASE_SELFHOST_PULL_POLICY: never
@@ -81,16 +81,16 @@ jobs:
     needs: deployment
     env:
       ZILOBASE_DESKTOP_DIAGNOSTICS_DIR: ${{ github.workspace }}/artifacts/desktop
-      ZILOBASE_SELFHOST_ENV_FILE: ${{ runner.temp }}/selfhost-desktop.env
+      ZILOBASE_SELFHOST_ENV_FILE: /tmp/zilobase-selfhost-desktop-${{ github.run_id }}-${{ github.run_attempt }}.env
       ZILOBASE_SELFHOST_IMAGE: zilobase-desktop-ci:${{ github.sha }}
       ZILOBASE_SELFHOST_PROJECT_NAME: zilobase-desktop-${{ github.run_id }}-${{ github.run_attempt }}
       ZILOBASE_SELFHOST_PULL_POLICY: never
       ZILOBASE_DEV_HTTP_PORT: 18787
       MINIO_DEV_API_PORT: 19000
       MAILPIT_DEV_UI_PORT: 18025
-      XDG_CONFIG_HOME: ${{ runner.temp }}/desktop-config
-      XDG_DATA_HOME: ${{ runner.temp }}/desktop-data
-      XDG_CACHE_HOME: ${{ runner.temp }}/desktop-cache
+      XDG_CONFIG_HOME: /tmp/zilobase-desktop-${{ github.run_id }}-${{ github.run_attempt }}/config
+      XDG_DATA_HOME: /tmp/zilobase-desktop-${{ github.run_id }}-${{ github.run_attempt }}/data
+      XDG_CACHE_HOME: /tmp/zilobase-desktop-${{ github.run_id }}-${{ github.run_attempt }}/cache
 
     steps:
       - name: Check out repository
@@ -205,7 +205,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      ZILOBASE_SELFHOST_ENV_FILE: ${{ runner.temp }}/selfhost-upgrade.env
+      ZILOBASE_SELFHOST_ENV_FILE: /tmp/zilobase-selfhost-upgrade-${{ github.run_id }}-${{ github.run_attempt }}.env
       ZILOBASE_SELFHOST_PROJECT_NAME: zilobase-upgrade-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
