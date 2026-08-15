@@ -111,7 +111,15 @@ services:
       - -c
       - |
         set -eu
-        mc alias set zilobase http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        attempts=0
+        until mc alias set zilobase http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          attempts=$$((attempts + 1))
+          if [ "$$attempts" -ge 20 ]; then
+            echo "MinIO did not accept authenticated requests after 20 attempts" >&2
+            exit 1
+          fi
+          sleep 2
+        done
         mc mb --ignore-existing "zilobase/$$MINIO_BUCKET"
         mc anonymous set none "zilobase/$$MINIO_BUCKET"
 
