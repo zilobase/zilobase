@@ -14,7 +14,46 @@ import {
   isLocalDevelopmentHost,
   isLocalRequestOrigin,
   isLoopbackHost,
+  resolvePublicRequestUrl,
 } from "./config";
+
+test("public request URLs prefer the local Host over a rewritten production origin", () => {
+  const request = new Request(
+    "https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop",
+    { headers: { host: "localhost:3000" } },
+  );
+
+  assert.equal(
+    resolvePublicRequestUrl(request).href,
+    "http://localhost:3000/desktop/authorize?client_id=zilobase-desktop",
+  );
+  assert.equal(
+    resolvePublicRequestUrl(
+      new Request(
+        "https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop",
+        { headers: { host: "api.zilobase.com" } },
+      ),
+      {
+        BETTER_AUTH_URL: "http://localhost:3000",
+        ZILOBASE_CLOUDFLARE_PORT: "3000",
+      },
+    ).href,
+    "http://localhost:3000/desktop/authorize?client_id=zilobase-desktop",
+  );
+  assert.equal(
+    resolvePublicRequestUrl(
+      new Request(
+        "https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop",
+        { headers: { host: "api.zilobase.com" } },
+      ),
+      {
+        BETTER_AUTH_URL: "https://api.zilobase.com",
+        ZILOBASE_CLOUDFLARE_PORT: "3000",
+      },
+    ).href,
+    "https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop",
+  );
+});
 
 test("client origins are normalized, selected, and required", () => {
   const env = {

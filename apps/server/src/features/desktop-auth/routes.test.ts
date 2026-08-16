@@ -7,6 +7,7 @@ import type { AppBindings } from "../../types";
 const mocks = vi.hoisted(() => ({
   createdSessionUserIds: [] as string[],
   insertedCodes: [] as Record<string, unknown>[],
+  signInSocialResponse: null as Response | null,
   updateResults: [] as unknown[][],
 }));
 
@@ -43,6 +44,27 @@ vi.mock("../../db", () => ({
 
 vi.mock("../../auth", () => ({
   createAuth: () => ({
+    api: {
+      async signInSocial() {
+        return (
+          mocks.signInSocialResponse ??
+          new Response(
+            JSON.stringify({
+              redirect: true,
+              url: "https://accounts.google.com/o/oauth2/v2/auth",
+            }),
+            {
+              headers: {
+                "content-type": "application/json",
+                "set-cookie":
+                  "better-auth.state=signed-state; Path=/; HttpOnly; Max-Age=300",
+              },
+              status: 200,
+            },
+          )
+        );
+      },
+    },
     $context: Promise.resolve({
       internalAdapter: {
         async createSession(userId: string) {
@@ -79,12 +101,15 @@ const env = {
   BETTER_AUTH_SECRET: "desktop-consent-test-secret-with-at-least-32-characters",
   BETTER_AUTH_URL: "https://api.example.com",
   CLIENT_URL: "https://app.example.com",
+  GOOGLE_CLIENT_ID: "google-desktop-client",
+  GOOGLE_CLIENT_SECRET: "google-desktop-secret",
 };
 const verifier = "v".repeat(64);
 
 beforeEach(() => {
   mocks.createdSessionUserIds.length = 0;
   mocks.insertedCodes.length = 0;
+  mocks.signInSocialResponse = null;
   mocks.updateResults.length = 0;
 });
 
@@ -121,13 +146,94 @@ test("authorization page sends anonymous users through the selected server login
   assert.match(body, /Sign in to your account/);
   assert.match(body, /Don&apos;t have an account\?/);
   assert.match(body, /https:\/\/app\.example\.com\/signup\?returnTo=/);
-  assert.match(body, />Sign in</);
+  assert.match(body, /class="google"/);
+  assert.match(body, /#4285F4/);
+  assert.match(body, />Continue with Google</);
+  assert.match(body, /intent=google/);
+  assert.match(body, />Sign in another way</);
+  assert.doesNotMatch(body, /class="button"[^>]*>Continue with Google</);
   assert.match(body, /https:\/\/app\.example\.com\/login\?returnTo=/);
   assert.match(body, /font-size:1\.125rem/);
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.match(
     response.headers.get("content-security-policy") ?? "",
     /frame-ancestors 'none'/,
+  );
+});
+
+test("authorization page hides Google when the server has no Google credentials", async () => {
+  const response = await appFor(false).request(
+    authorizationUrl(),
+    {},
+    {
+      BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
+      BETTER_AUTH_URL: env.BETTER_AUTH_URL,
+      CLIENT_URL: env.CLIENT_URL,
+    },
+  );
+  const body = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.doesNotMatch(body, /Continue with Google/);
+  assert.doesNotMatch(body, /intent=google/);
+  assert.match(body, />Sign in another way</);
+});
+
+test("authorization Google intent without credentials returns an error page", async () => {
+  const url = new URL(authorizationUrl());
+  url.searchParams.set("intent", "google");
+  const response = await appFor(false).request(
+    url.toString(),
+    {},
+    {
+      BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
+      BETTER_AUTH_URL: env.BETTER_AUTH_URL,
+      CLIENT_URL: env.CLIENT_URL,
+    },
+  );
+
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /Google sign-in is unavailable/);
+});
+
+test("authorization Google intent redirects instead of returning Better Auth JSON", async () => {
+  const url = new URL(authorizationUrl());
+  url.searchParams.set("intent", "google");
+  const response = await appFor(false).request(url.toString(), {}, env);
+
+  assert.equal(response.status, 302);
+  assert.equal(
+    response.headers.get("location"),
+    "https://accounts.google.com/o/oauth2/v2/auth",
+  );
+  assert.equal(
+    response.headers.get("set-cookie"),
+    "better-auth.state=signed-state; Path=/; HttpOnly; Max-Age=300",
+  );
+  assert.equal(await response.text(), "");
+});
+
+test("authorization Google intent keeps an already-redirecting Better Auth response", async () => {
+  mocks.signInSocialResponse = new Response(null, {
+    headers: {
+      location: "https://accounts.google.com/o/oauth2/v2/auth",
+      "set-cookie":
+        "better-auth.state=signed-state; Path=/; HttpOnly; Max-Age=300",
+    },
+    status: 302,
+  });
+  const url = new URL(authorizationUrl());
+  url.searchParams.set("intent", "google");
+  const response = await appFor(false).request(url.toString(), {}, env);
+
+  assert.equal(response.status, 302);
+  assert.equal(
+    response.headers.get("location"),
+    "https://accounts.google.com/o/oauth2/v2/auth",
+  );
+  assert.equal(
+    response.headers.get("set-cookie"),
+    "better-auth.state=signed-state; Path=/; HttpOnly; Max-Age=300",
   );
 });
 

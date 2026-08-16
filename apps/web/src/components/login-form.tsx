@@ -1,14 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Link } from "@tanstack/react-router"
 import { isTauri } from "@tauri-apps/api/core"
 import { EyeIcon, EyeOffIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { GoogleIcon } from "@/components/google-icon"
-import { ZilobaseLogo } from "@/components/zilobase-logo"
-import { DesktopServerSelector } from "@/components/desktop-server-selector"
 import {
   Field,
   FieldDescription,
@@ -34,7 +31,6 @@ import {
   cancelDesktopBrowserSignIn,
   DesktopOAuthError,
   getAuthReturnPath,
-  getInvitationAuthSearch,
   signInWithDesktopBrowser,
   signInWithGoogle,
 } from "@/lib/google-auth"
@@ -57,10 +53,9 @@ type BrowserSignInState =
   | { phase: "error"; error: unknown; retry: "oauth" | "finalize" }
 
 export function LoginForm({
-  changeServer = false,
   className,
   ...props
-}: React.ComponentProps<"div"> & { changeServer?: boolean }) {
+}: React.ComponentProps<"form">) {
   const signInWithPassword = useSignInWithPassword()
   const requestSignInOtp = useRequestSignInOtp()
   const setAuthFlow = useAuthFlowStore((state) => state.setAuthFlow)
@@ -80,7 +75,6 @@ export function LoginForm({
     requestSignInOtp.isPending ||
     isBrowserPending
   const desktop = isTauri()
-  const signupSearch = getInvitationAuthSearch()
 
   useEffect(
     () => () => {
@@ -210,177 +204,119 @@ export function LoginForm({
   }
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <div className="flex items-center gap-2">
-        <ZilobaseLogo className="h-7 w-auto" />
-        <span className="font-medium">Zilobase</span>
-      </div>
-
-      <div>
-        <h1 className="text-lg font-semibold">Sign in to your account</h1>
-        <FieldDescription>
-          Don&apos;t have an account?{" "}
-          <Link to="/signup" search={signupSearch}>
-            Sign up
-          </Link>
-        </FieldDescription>
-      </div>
-
-      {desktop && (
-        <div className="rounded-lg border bg-muted/30 p-3">
-          <DesktopServerSelector
-            actionLabel="Use another server"
-            startEditing={changeServer}
-          />
-        </div>
-      )}
-
-      {desktop && (
-        <FieldGroup>
-          <Field>
-            <Button
-              disabled={isPending}
-              onClick={handleBrowserSignIn}
-              type="button"
-            >
-              {browserState.phase === "waiting_for_browser"
-                ? "Waiting for browser sign-in..."
-                : browserState.phase === "finalizing"
-                  ? "Finishing sign-in..."
-                  : browserState.retry === "finalize"
-                    ? "Retry connection"
-                    : "Continue in system browser"}
-            </Button>
-            {browserState.phase === "waiting_for_browser" && (
-              <Button
-                onClick={handleCancelBrowserSignIn}
-                type="button"
-                variant="ghost"
-              >
-                Cancel
-              </Button>
-            )}
-          </Field>
-          {browserState.phase === "error" && (
-            <FieldError>{getApiErrorMessage(browserState.error)}</FieldError>
-          )}
-          <FieldDescription>
-            Sign in with this server&apos;s password, email code, Google, or
-            configured SSO provider in your browser.
-          </FieldDescription>
-        </FieldGroup>
-      )}
-
-      {!desktop && (
-        <>
-          {editionWebModule.additionalLoginMethods.map((LoginMethod, index) => (
+    <form
+      className={cn("flex flex-col gap-6", className)}
+      onSubmit={handleSubmit}
+      {...props}
+    >
+      {!desktop
+        ? editionWebModule.additionalLoginMethods.map((LoginMethod, index) => (
             <LoginMethod disabled={isPending} key={index} />
-          ))}
-          <form onSubmit={handleSubmit}>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                disabled={isPending}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                value={email}
-              />
-            </Field>
+          ))
+        : null}
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="email">Email address</FieldLabel>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            disabled={isPending}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            value={email}
+          />
+        </Field>
 
-            <Field>
-              <FieldLabel htmlFor="password">Password</FieldLabel>
-              <InputGroup>
-                <InputGroupInput
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  disabled={isPending}
-                  required
-                />
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                    aria-pressed={showPassword}
-                    onClick={() => setShowPassword((visible) => !visible)}
-                    size="icon-xs"
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </InputGroupButton>
-                </InputGroupAddon>
-              </InputGroup>
-            </Field>
+        <Field>
+          <FieldLabel htmlFor="password">Password</FieldLabel>
+          <InputGroup>
+            <InputGroupInput
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              disabled={isPending}
+              required
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((visible) => !visible)}
+                size="icon-xs"
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </Field>
 
-            {(signInWithPassword.isError ||
-              requestSignInOtp.isError ||
-              browserState.phase === "error") && (
-              <FieldError>
-                {getApiErrorMessage(
-                  signInWithPassword.error ??
-                    requestSignInOtp.error ??
-                    (browserState.phase === "error"
-                      ? browserState.error
-                      : null),
-                )}
-              </FieldError>
+        {(signInWithPassword.isError ||
+          requestSignInOtp.isError ||
+          browserState.phase === "error") && (
+          <FieldError>
+            {getApiErrorMessage(
+              signInWithPassword.error ??
+                requestSignInOtp.error ??
+                (browserState.phase === "error" ? browserState.error : null),
             )}
+          </FieldError>
+        )}
 
-            <Field>
-              <Button type="submit" disabled={isPending}>
-                {signInWithPassword.isPending ? "Signing in..." : "Sign in"}
-              </Button>
-              <Button
-                disabled={isPending || !email.trim()}
-                onClick={handleEmailOtpSignIn}
-                type="button"
-                variant="outline"
-              >
-                {requestSignInOtp.isPending
-                  ? "Sending code..."
-                  : "Email me a sign-in code"}
-              </Button>
-            </Field>
+        <Field>
+          <Button type="submit" disabled={isPending}>
+            {signInWithPassword.isPending ? "Signing in..." : "Sign in"}
+          </Button>
+          <Button
+            disabled={isPending || !email.trim()}
+            onClick={handleEmailOtpSignIn}
+            type="button"
+            variant="outline"
+          >
+            {requestSignInOtp.isPending
+              ? "Sending code..."
+              : "Email me a sign-in code"}
+          </Button>
+        </Field>
 
-            <FieldSeparator>Or</FieldSeparator>
+        <FieldSeparator>Or</FieldSeparator>
 
-            <Field>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isPending}
-                onClick={handleBrowserSignIn}
-              >
-                <GoogleIcon />
-                {browserState.phase === "waiting_for_browser"
-                  ? "Waiting for browser sign-in..."
-                  : browserState.phase === "finalizing"
-                    ? "Finishing sign-in..."
-                    : browserState.retry === "finalize"
-                      ? "Retry connection"
-                      : "Continue with Google"}
-              </Button>
-              {browserState.phase === "waiting_for_browser" && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleCancelBrowserSignIn}
-                >
-                  Cancel
-                </Button>
-              )}
-            </Field>
-          </FieldGroup>
-          </form>
-        </>
-      )}
-    </div>
+        <Field>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isPending}
+            onClick={handleBrowserSignIn}
+          >
+            <GoogleIcon />
+            {browserState.phase === "waiting_for_browser"
+              ? "Waiting for browser sign-in..."
+              : browserState.phase === "finalizing"
+                ? "Finishing sign-in..."
+                : browserState.retry === "finalize"
+                  ? "Retry connection"
+                  : "Continue with Google"}
+          </Button>
+          {browserState.phase === "waiting_for_browser" && (
+            <Button
+              onClick={handleCancelBrowserSignIn}
+              type="button"
+              variant="ghost"
+            >
+              Cancel
+            </Button>
+          )}
+          {desktop ? (
+            <FieldDescription>
+              Google opens in your browser. Password and email code stay in
+              this app.
+            </FieldDescription>
+          ) : null}
+        </Field>
+      </FieldGroup>
+    </form>
   )
 }

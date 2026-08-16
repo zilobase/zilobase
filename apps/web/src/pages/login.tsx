@@ -1,15 +1,19 @@
-import { useSearch } from "@tanstack/react-router"
-
+import { AuthScreen } from "@/components/auth-screen"
 import { LoginForm } from "@/components/login-form"
+import { getInvitationAuthSearch } from "@/lib/google-auth"
 
 export default function LoginPage() {
-  const { changeServer } = useSearch({ from: "/login" })
+  const signupSearch = getInvitationAuthSearch()
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <LoginForm changeServer={changeServer} />
-      </div>
-    </main>
+    <AuthScreen
+      switchLabel="Sign up"
+      switchPrefix="Don't have an account?"
+      switchSearch={signupSearch}
+      switchTo="/signup"
+      title="Sign in to your account"
+    >
+      <LoginForm />
+    </AuthScreen>
   )
 }

@@ -25,7 +25,7 @@ server without being rebuilt.
 ## Server links and replacement
 
 Zilobase Cloud is selected for a new installation. Add a self-hosted server by
-entering its canonical origin under **Use another server** / **Settings →
+entering its canonical origin under **Change server** / **Settings →
 Preferences → Desktop server**, or by opening the server's
 `zilobase://connect?server=...` link. The native app requires HTTPS except for
 loopback development, fetches `/.well-known/zilobase` without redirects, checks
@@ -47,10 +47,14 @@ query cache, IndexedDB/Yjs documents, app/auth stores, tabs, and session storage
 then commits the verified candidate and reloads. Returning to Cloud uses this
 same destructive workflow.
 
-For an end-to-end local server, run `npm run selfhost:up` at the repository root.
+`npm run dev:desktop` starts the local API and points the debug app at
+`http://localhost:3000`. Packaged releases keep Zilobase Cloud
+(`https://api.zilobase.com`) as the default.
+
+For an end-to-end Compose server, run `npm run selfhost:up` at the repository root.
 After the one-time setup page is complete, open the printed
 `zilobase://connect?server=http%3A%2F%2F127.0.0.1%3A8787` link or enter
-`http://127.0.0.1:8787` under **Use another server**. No desktop rebuild or
+`http://127.0.0.1:8787` under **Change server**. No desktop rebuild or
 provider credentials are needed. Stop the stack with `npm run selfhost:down`;
 the saved instance and desktop session remain valid after the next start.
 

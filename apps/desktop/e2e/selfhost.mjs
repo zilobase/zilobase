@@ -61,15 +61,19 @@ try {
 }
 
 async function selectServer(origin) {
-  const chooseServer = await browser.$(
-    "//button[normalize-space()='Use another server']",
-  )
-  await chooseServer.waitForDisplayed({ timeout: 30_000 })
-  await chooseServer.click()
   const serverInput = await browser.$("#desktop-server-url")
-  await serverInput.waitForDisplayed({ timeout: 10_000 })
+  if (!(await serverInput.isDisplayed().catch(() => false))) {
+    const changeServer = await browser.$(
+      "//a[normalize-space()='Change server']",
+    )
+    await changeServer.waitForDisplayed({ timeout: 30_000 })
+    await changeServer.click()
+    await serverInput.waitForDisplayed({ timeout: 10_000 })
+  }
   await serverInput.setValue(origin)
-  await (await browser.$("//button[normalize-space()='Verify server']")).click()
+  await (
+    await browser.$("//button[normalize-space()='Verify and continue']")
+  ).click()
 
   const confirmChange = await browser.$(
     "//button[normalize-space()='Change server']",
@@ -82,7 +86,7 @@ async function selectServer(origin) {
   )
   await selectedOrigin.waitForDisplayed({ timeout: 30_000 })
   await (
-    await browser.$("//button[normalize-space()='Continue in system browser']")
+    await browser.$("//button[normalize-space()='Continue with Google']")
   ).waitForDisplayed({ timeout: 10_000 })
 }
 

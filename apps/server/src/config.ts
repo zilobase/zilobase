@@ -22,6 +22,75 @@ export function getPrimaryClientOrigin(env: RuntimeEnv) {
   return origin;
 }
 
+function readCanonicalApiOrigin(env: RuntimeEnv) {
+  try {
+    return [getCanonicalApiOrigin(env)];
+  } catch {
+    return [];
+  }
+}
+
+export function resolvePublicRequestUrl(
+  request: Request,
+  env: RuntimeEnv = {},
+) {
+  const incoming = new URL(request.url);
+  const hostHeader =
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const host = hostHeader?.split(",")[0]?.trim();
+
+  if (host) {
+    try {
+      const hostname = new URL(`http://${host}`).hostname;
+      if (isLocalDevelopmentHost(hostname)) {
+        const protocol = request.headers.get("x-forwarded-proto") ?? "http";
+        return new URL(
+          `${incoming.pathname}${incoming.search}`,
+          `${protocol}://${host}`,
+        );
+      }
+    } catch {
+      // Fall through to referer or local wrangler origin.
+    }
+  }
+
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      if (isLocalDevelopmentHost(refererUrl.hostname)) {
+        return new URL(
+          `${incoming.pathname}${incoming.search}`,
+          refererUrl.origin,
+        );
+      }
+    } catch {
+      // Fall through to local wrangler origin.
+    }
+  }
+
+  const localPort = getStringEnv(env, "ZILOBASE_CLOUDFLARE_PORT");
+  if (localPort && isLocalAuthConfiguration(env)) {
+    return new URL(
+      `${incoming.pathname}${incoming.search}`,
+      `http://localhost:${localPort}`,
+    );
+  }
+
+  return incoming;
+}
+
+function isLocalAuthConfiguration(env: RuntimeEnv) {
+  const configured = getStringEnv(env, "BETTER_AUTH_URL");
+  if (!configured) return false;
+
+  try {
+    return isLocalDevelopmentHost(new URL(configured).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function getCanonicalApiOrigin(env: RuntimeEnv) {
   return getCanonicalHttpOrigin(
     getRequiredStringEnv(env, "BETTER_AUTH_URL"),
@@ -108,6 +177,7 @@ export function getTrustedOrigins(env: RuntimeEnv, requestOrigin: string) {
   return Array.from(
     new Set([
       requestOrigin,
+      ...readCanonicalApiOrigin(env),
       ...getClientOrigins(env),
       ...DESKTOP_CLIENT_ORIGINS,
       "mobile://",

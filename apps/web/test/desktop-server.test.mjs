@@ -49,41 +49,16 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
-  test("server selection exposes edit, verification, failure, and completion states", async () => {
-    const {
-      initialDesktopServerSelectionState,
-      reduceDesktopServerSelection,
-    } = await loadModule("/src/lib/desktop-server-selection.ts")
-
-    const editing = reduceDesktopServerSelection(
-      initialDesktopServerSelectionState,
-      { type: "edit" },
-    )
-    const verifying = reduceDesktopServerSelection(editing, { type: "verify" })
-    const failed = reduceDesktopServerSelection(verifying, {
-      type: "failed",
-      message: "TLS certificate could not be verified.",
-    })
-
-    assert.deepEqual(editing, { phase: "editing" })
-    assert.deepEqual(verifying, { phase: "verifying" })
-    assert.deepEqual(failed, {
-      phase: "error",
-      message: "TLS certificate could not be verified.",
-    })
-    assert.deepEqual(
-      reduceDesktopServerSelection(failed, { type: "verified" }),
-      { phase: "selected" },
-    )
-  })
-
   test("the built-in Cloud alias matches Cloud discovery without weakening custom instance binding", async () => {
     const {
       CLOUD_DESKTOP_SERVER,
+      desktopCloudConnectUrl,
+      desktopDevelopmentApiOrigin,
       desktopServersReferToSameInstance,
       isCloudDesktopServer,
     } = await loadModule("/src/lib/desktop-server.ts")
-    assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER), true)
+    assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER, false), true)
+    assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER, true), false)
     assert.equal(
       isCloudDesktopServer({
         ...CLOUD_DESKTOP_SERVER,
@@ -92,6 +67,21 @@ export function register({ assert, loadModule, test }) {
         webOrigin: "https://notes.example.com",
       }),
       false,
+    )
+    assert.equal(desktopCloudConnectUrl(false), CLOUD_DESKTOP_SERVER.apiOrigin)
+    assert.equal(desktopCloudConnectUrl(true), desktopDevelopmentApiOrigin())
+    assert.equal(
+      isCloudDesktopServer(
+        {
+          ...CLOUD_DESKTOP_SERVER,
+          apiOrigin: "http://localhost:3000",
+          instanceId: "zilobase-dev",
+          issuer: "http://localhost:3000",
+          webOrigin: "http://localhost:3000",
+        },
+        true,
+      ),
+      true,
     )
     const discoveredCloud = {
       ...CLOUD_DESKTOP_SERVER,
@@ -122,26 +112,34 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
-  test("change server offers Zilobase Cloud without typing the API origin", async () => {
-    const source = await readFile(
-      new URL("../src/components/desktop-server-selector.tsx", import.meta.url),
-      "utf8",
-    )
-    assert.match(source, /Use Zilobase Cloud/)
-    assert.match(source, /CLOUD_DESKTOP_SERVER\.apiOrigin/)
-    assert.match(source, /isCloudDesktopServer/)
-    assert.match(source, /onChangeRequest/)
-    assert.match(source, /startEditing/)
-  })
-
-  test("settings change server signs out and continues on the login screen", async () => {
+  test("settings change server signs out and continues on the server screen", async () => {
     const source = await readFile(
       new URL("../src/pages/settings/preferences.tsx", import.meta.url),
       "utf8",
     )
-    assert.match(source, /onChangeRequest/)
+    assert.match(source, /getSelectedDesktopServer/)
+    assert.match(source, /Change server/)
     assert.match(source, /Sign out to change server\?/)
     assert.match(source, /Sign out and continue/)
-    assert.match(source, /changeServer: true/)
+    assert.match(source, /to: "\/connect"/)
+    assert.doesNotMatch(source, /DesktopServerSelector/)
+  })
+
+  test("desktop auth picks a server before sign-in or sign-up", async () => {
+    const [connect, authScreen, login, signup] = await Promise.all([
+      readFile(new URL("../src/pages/connect.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/components/auth-screen.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/pages/login.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/pages/signup.tsx", import.meta.url), "utf8"),
+    ])
+
+    assert.match(connect, /Choose a server/)
+    assert.match(connect, /Use Zilobase Cloud/)
+    assert.match(connect, /desktopCloudConnectUrl/)
+    assert.match(connect, /Verify and continue/)
+    assert.match(authScreen, /Change server/)
+    assert.match(authScreen, /to="\/connect"/)
+    assert.match(login, /AuthScreen/)
+    assert.match(signup, /AuthScreen/)
   })
 }

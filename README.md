@@ -131,22 +131,22 @@ Common commands:
 | `npm run test:web` | Run web tests. |
 | `npm run dev:server` | Start the serverful API. |
 | `npm run build:server` | Type-check the server. |
-| `npm run dev:desktop` | Start the Tauri desktop shell. |
+| `npm run dev:desktop` | Start the local API and Tauri desktop shell. |
 | `npm run selfhost:up` | Build and start the loopback-only Compose stack. |
 | `npm run selfhost:logs` | Follow development stack logs. |
 | `npm run selfhost:down` | Stop containers and preserve data volumes. |
 | `npm run selfhost:reset` | Explicitly delete local self-hosted data volumes. |
 | `npm run test:selfhost` | Run the isolated end-to-end Compose smoke test. |
 
-The desktop app starts with Zilobase Cloud selected. On the sign-in screen,
-choose **Use another server**, or use a server's `zilobase://connect` link, to
-verify a self-hosted origin before changing the current connection. Server
-metadata is stored in the operating system application-config directory;
-session credentials remain in the system keyring and are scoped to the saved
-instance. Custom servers require trusted HTTPS, except for loopback HTTP during
-local development. Sign-in then opens that server in the system browser and uses
-PKCE with an ephemeral loopback callback. Password, email-code, Google, and
-configured SSO login stay in the browser; the desktop receives an independent
+`npm run dev:desktop` talks to the local API at `http://localhost:3000`. Packaged
+releases default to Zilobase Cloud at `https://api.zilobase.com`. On the server
+screen, choose **Zilobase Cloud** or enter a hosted URL, or use a server's
+`zilobase://connect` link. Server metadata is stored in the operating system
+application-config directory; session credentials remain in the system keyring
+and are scoped to the saved instance. Custom servers require trusted HTTPS,
+except for loopback HTTP during local development. Password and email-code sign-in
+stay in the app. Google opens the selected server in the system browser and uses
+PKCE with an ephemeral loopback callback. The desktop receives an independent
 server session only after issuer, state, instance, and PKCE validation.
 
 Only one server and account are retained. **Settings → Preferences → Desktop

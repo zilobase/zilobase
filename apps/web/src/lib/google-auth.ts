@@ -160,13 +160,30 @@ function allowedBrowserAuthorizationOrigins() {
 
   if (configured) {
     try {
-      origins.add(new URL(configured, currentOrigin).origin)
+      addLoopbackOriginAliases(
+        origins,
+        new URL(configured, currentOrigin).origin,
+      )
     } catch {
       // Invalid build-time values are ignored instead of creating an open redirect.
     }
   }
 
   return origins
+}
+
+function addLoopbackOriginAliases(origins: Set<string>, origin: string) {
+  origins.add(origin)
+  try {
+    const url = new URL(origin)
+    if (!["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return
+    for (const hostname of ["localhost", "127.0.0.1", "[::1]"]) {
+      url.hostname = hostname
+      origins.add(url.origin)
+    }
+  } catch {
+    // Ignore unparseable origins.
+  }
 }
 
 function normalizeDesktopOAuthError(error: unknown) {

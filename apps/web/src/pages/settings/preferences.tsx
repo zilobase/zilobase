@@ -15,7 +15,6 @@ import {
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
-import { DesktopServerSelector } from "@/components/desktop-server-selector"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +42,7 @@ import {
   isDesktopOfflineSupported,
 } from "@/lib/offline-store"
 import { importRecoveryArchive } from "@/lib/offline-recovery"
+import { getSelectedDesktopServer } from "@/lib/desktop-server"
 import { queryClient } from "@/lib/query-client"
 import { useAppStore } from "@/stores/app-store"
 import { useOfflineManifest } from "@/providers/offline-provider"
@@ -87,6 +87,7 @@ export default function PreferencesSettingsPage() {
 function DesktopServerSection() {
   const navigate = useNavigate()
   const signOut = useSignOut()
+  const server = getSelectedDesktopServer()
   const [confirmOpen, setConfirmOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
 
@@ -103,8 +104,7 @@ function DesktopServerSection() {
       useAppStore.getState().resetAccountState()
       await navigate({
         replace: true,
-        search: { changeServer: true },
-        to: "/login",
+        to: "/connect",
       })
     } catch (error) {
       setPending(false)
@@ -125,9 +125,24 @@ function DesktopServerSection() {
           this device.
         </p>
       </div>
-      <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-        <DesktopServerSelector onChangeRequest={() => setConfirmOpen(true)} />
-      </div>
+      {server ? (
+        <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
+          <div className="min-w-0">
+            <p className="text-xs/relaxed font-medium">{server.displayName}</p>
+            <p className="truncate text-xs/relaxed text-muted-foreground">
+              {server.apiOrigin}
+            </p>
+          </div>
+          <Button
+            onClick={() => setConfirmOpen(true)}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            Change server
+          </Button>
+        </div>
+      ) : null}
       <AlertDialog
         onOpenChange={(open) => !pending && setConfirmOpen(open)}
         open={confirmOpen}
@@ -136,8 +151,8 @@ function DesktopServerSection() {
           <AlertDialogHeader>
             <AlertDialogTitle>Sign out to change server?</AlertDialogTitle>
             <AlertDialogDescription>
-              You&apos;ll be signed out of this instance and taken to the sign-in
-              screen, where you can enter a server URL or use Zilobase Cloud.
+              You&apos;ll be signed out of this instance and taken to the server
+              screen, where you can pick Zilobase Cloud or a hosted URL.
               {hasUnsyncedOfflineItems()
                 ? " Unsynced local drafts on this device will be deleted."
                 : ""}

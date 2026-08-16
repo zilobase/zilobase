@@ -19,6 +19,7 @@ import {
   getStringEnv,
   getTrustedOrigins,
   isLocalDevelopmentHost,
+  resolvePublicRequestUrl,
 } from "./config";
 import {
   evaluateSelfHostedRegistration,
@@ -44,7 +45,7 @@ function createAuthInstance(
   database: Database,
   options: EditionExtensionOptions,
 ) {
-  const requestUrl = new URL(request.url);
+  const requestUrl = resolvePublicRequestUrl(request, env);
 
   return betterAuth({
     baseURL: getBaseURL(env, requestUrl),
@@ -241,17 +242,11 @@ function sharedAuthOptions(
 }
 
 function getBaseURL(env: AuthEnv, requestUrl: URL) {
-  const configuredUrl = getRequiredStringEnv(env, "BETTER_AUTH_URL");
-  const parsedConfiguredUrl = new URL(configuredUrl);
-
-  if (
-    isLocalDevelopmentHost(parsedConfiguredUrl.hostname) &&
-    isLocalDevelopmentHost(requestUrl.hostname)
-  ) {
+  if (isLocalDevelopmentHost(requestUrl.hostname)) {
     return requestUrl.origin;
   }
 
-  return configuredUrl;
+  return getRequiredStringEnv(env, "BETTER_AUTH_URL");
 }
 
 export type Auth = ReturnType<typeof createAuthInstance>;

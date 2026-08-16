@@ -17,6 +17,7 @@ use tempfile::NamedTempFile;
 use url::{Host, Url};
 
 const CONFIG_FILE_NAME: &str = "desktop-server.json";
+const DEV_CONFIG_FILE_NAME: &str = "desktop-server.dev.json";
 const CONFIG_VERSION: u8 = 1;
 const DISCOVERY_PATH: &str = "/.well-known/zilobase";
 const MAX_DISCOVERY_BYTES: usize = 64 * 1024;
@@ -25,6 +26,8 @@ const SERVER_CANDIDATE_TTL: Duration = Duration::from_secs(5 * 60);
 const CLOUD_INSTANCE_ID: &str = "zilobase-cloud";
 const CLOUD_WEB_ORIGIN: &str = "https://app.zilobase.com";
 const CLOUD_API_ORIGIN: &str = "https://api.zilobase.com";
+const DEV_INSTANCE_ID: &str = "zilobase-dev";
+const DEFAULT_DEV_API_ORIGIN: &str = "http://localhost:3000";
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -181,6 +184,10 @@ pub(crate) fn is_cloud_server(server: &DesktopServer) -> bool {
     server.api_origin == CLOUD_API_ORIGIN && server.issuer == CLOUD_API_ORIGIN
 }
 
+pub(crate) fn is_development_server(server: &DesktopServer) -> bool {
+    server.instance_id == DEV_INSTANCE_ID
+}
+
 fn is_cloud_origin(origin: &Url) -> bool {
     let value = origin.as_str().trim_end_matches('/');
     value == CLOUD_API_ORIGIN || value == CLOUD_WEB_ORIGIN
@@ -225,7 +232,11 @@ fn random_candidate_id() -> Result<String, DesktopServerError> {
 async fn verify_desktop_server(value: &str) -> Result<DesktopServer, DesktopServerError> {
     let origin = parse_server_origin(value)?;
     if is_cloud_origin(&origin) {
-        return Ok(cloud_server());
+        return Ok(if cfg!(debug_assertions) {
+            development_server()
+        } else {
+            cloud_server()
+        });
     }
     let discovery_url = origin
         .join(DISCOVERY_PATH)
@@ -473,6 +484,47 @@ fn classify_request_error(error: reqwest::Error) -> DesktopServerError {
     )
 }
 
+fn default_server() -> DesktopServer {
+    if cfg!(debug_assertions) {
+        development_server()
+    } else {
+        cloud_server()
+    }
+}
+
+fn refresh_development_server(directory: &Path, server: DesktopServer) -> DesktopServer {
+    if cfg!(test) || !is_development_server(&server) {
+        return server;
+    }
+
+    match tauri::async_runtime::block_on(verify_desktop_server(&server.api_origin)) {
+        Ok(verified) => {
+            let _ = save_to_directory(directory, &verified);
+            verified
+        }
+        Err(_) => server,
+    }
+}
+
+fn development_server() -> DesktopServer {
+    let origin = std::env::var("VITE_API_URL")
+        .ok()
+        .map(|value| value.trim().trim_end_matches('/').to_string())
+        .filter(|value| !value.is_empty() && value != "/api")
+        .unwrap_or_else(|| DEFAULT_DEV_API_ORIGIN.to_string());
+
+    DesktopServer {
+        instance_id: DEV_INSTANCE_ID.to_string(),
+        display_name: "Zilobase Cloud".to_string(),
+        issuer: origin.clone(),
+        web_origin: origin.clone(),
+        api_origin: origin,
+        protocol_version: 1,
+        server_version: env!("CARGO_PKG_VERSION").to_string(),
+        minimum_desktop_version: env!("CARGO_PKG_VERSION").to_string(),
+    }
+}
+
 fn cloud_server() -> DesktopServer {
     DesktopServer {
         instance_id: CLOUD_INSTANCE_ID.to_string(),
@@ -491,9 +543,17 @@ fn load_or_initialize_from_directory(
 ) -> Result<DesktopServer, DesktopServerError> {
     let path = config_path(directory);
     match fs::read(&path) {
-        Ok(bytes) => parse_config(&bytes),
+        Ok(bytes) => {
+            let server = parse_config(&bytes)?;
+            if cfg!(debug_assertions) && is_cloud_server(&server) {
+                let local = refresh_development_server(directory, default_server());
+                let _ = save_to_directory(directory, &local);
+                return Ok(local);
+            }
+            Ok(refresh_development_server(directory, server))
+        }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            let server = cloud_server();
+            let server = refresh_development_server(directory, default_server());
             save_to_directory(directory, &server)?;
             Ok(server)
         }
@@ -611,14 +671,23 @@ fn save_to_directory(directory: &Path, server: &DesktopServer) -> Result<(), Des
     Ok(())
 }
 
+fn config_file_name() -> &'static str {
+    if cfg!(debug_assertions) {
+        DEV_CONFIG_FILE_NAME
+    } else {
+        CONFIG_FILE_NAME
+    }
+}
+
 fn config_path(directory: &Path) -> PathBuf {
-    directory.join(CONFIG_FILE_NAME)
+    directory.join(config_file_name())
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        cloud_server, commit_candidate_to_directory, config_path,
+        cloud_server, commit_candidate_to_directory, config_file_name, config_path,
+        default_server, development_server, DEV_CONFIG_FILE_NAME,
         load_or_initialize_from_directory, parse_server_origin, save_to_directory,
         servers_refer_to_same_instance, validate_discovery_document, verify_desktop_server,
         DesktopAuthorizationEndpoints, DesktopServerCandidate, DesktopServerCandidateState,
@@ -626,6 +695,41 @@ mod tests {
     };
     use std::time::Instant;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    #[test]
+    fn debug_replaces_saved_cloud_with_the_local_default() {
+        #[cfg(debug_assertions)]
+        {
+            let directory = tempfile::tempdir().expect("temporary directory");
+            save_to_directory(directory.path(), &cloud_server()).expect("save cloud");
+            let loaded = load_or_initialize_from_directory(directory.path())
+                .expect("remap saved cloud");
+            assert_eq!(loaded, default_server());
+        }
+    }
+
+    #[test]
+    fn debug_defaults_to_local_api_without_touching_release_cloud_config() {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(default_server(), development_server());
+            assert_ne!(default_server(), cloud_server());
+            assert_eq!(config_file_name(), DEV_CONFIG_FILE_NAME);
+            assert_eq!(
+                development_server().api_origin,
+                std::env::var("VITE_API_URL")
+                    .ok()
+                    .map(|value| value.trim().trim_end_matches('/').to_string())
+                    .filter(|value| !value.is_empty() && value != "/api")
+                    .unwrap_or_else(|| super::DEFAULT_DEV_API_ORIGIN.to_string()),
+            );
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            assert_eq!(default_server(), cloud_server());
+            assert_eq!(config_file_name(), super::CONFIG_FILE_NAME);
+        }
+    }
 
     #[test]
     fn accepts_https_and_only_loopback_http_origins() {
@@ -654,10 +758,10 @@ mod tests {
     }
 
     #[test]
-    fn initializes_cloud_and_persists_server_replacements() {
+    fn initializes_default_and_persists_server_replacements() {
         let directory = tempfile::tempdir().expect("temporary directory");
         let initial = load_or_initialize_from_directory(directory.path()).expect("initial server");
-        assert_eq!(initial, cloud_server());
+        assert_eq!(initial, default_server());
         assert!(config_path(directory.path()).is_file());
 
         let mut replacement = cloud_server();
@@ -868,6 +972,9 @@ mod tests {
             let verified = verify_desktop_server(value)
                 .await
                 .unwrap_or_else(|error| panic!("{value}: {error:?}"));
+            #[cfg(debug_assertions)]
+            assert_eq!(verified, development_server(), "{value}");
+            #[cfg(not(debug_assertions))]
             assert_eq!(verified, cloud_server(), "{value}");
         }
     }

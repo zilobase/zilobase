@@ -19,7 +19,9 @@ use tokio::{
 use url::Url;
 
 use crate::{
-    desktop_server::{is_cloud_server, load_or_initialize_desktop_server, DesktopServer},
+    desktop_server::{
+        is_cloud_server, is_development_server, load_or_initialize_desktop_server, DesktopServer,
+    },
     get_server_keyring_value, set_server_keyring_value, LEGACY_AUTH_ACCOUNT,
     LEGACY_AUTH_OWNER_ACCOUNT,
 };
@@ -633,7 +635,9 @@ fn validate_token_response(
     server: &DesktopServer,
 ) -> Result<(), DesktopOAuthError> {
     if !constant_time_eq(&response.issuer, &server.issuer)
-        || (!is_cloud_server(server) && response.instance_id != server.instance_id)
+        || (!is_cloud_server(server)
+            && !is_development_server(server)
+            && response.instance_id != server.instance_id)
     {
         return Err(DesktopOAuthError::issuer_mismatch());
     }
@@ -1022,6 +1026,13 @@ mod tests {
         response.issuer = cloud.issuer.clone();
         validate_token_response(&response, &cloud)
             .expect("the built-in Cloud alias accepts the discovered Cloud identity");
+
+        let mut local = server("http://localhost:3000");
+        local.instance_id = "zilobase-dev".to_string();
+        response.issuer = local.issuer.clone();
+        response.instance_id = "database-instance".to_string();
+        validate_token_response(&response, &local)
+            .expect("the local debug alias accepts the discovered local identity");
     }
 
     #[test]

@@ -10,7 +10,6 @@ import {
 import { useEffect } from "react"
 
 import { AppLayout } from "@/components/app-layout"
-import { DesktopServerSelector } from "@/components/desktop-server-selector"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import AcceptInvitationPage from "@/pages/accept-invitation"
@@ -23,6 +22,7 @@ import { pagesQueryOptions } from "@zilobase/features/pages"
 import DatabasePage from "@/pages/database"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import PreferencesSettingsPage from "@/pages/settings/preferences"
+import ConnectPage from "@/pages/connect"
 import LoginPage from "@/pages/login"
 import OnboardingPage from "@/pages/onboarding"
 import OtpPage from "@/pages/otp"
@@ -54,6 +54,7 @@ import {
 import { webAuthClient } from "@/providers/features-provider"
 import { getMostRecentItemPath } from "@/lib/recent-navigation"
 import { useAppStore } from "@/stores/app-store"
+import { isTauri } from "@tauri-apps/api/core"
 import { getSelectedDesktopServer } from "@/lib/desktop-server"
 import { getAuthReturnPath } from "@/lib/google-auth"
 import { editionWebModule } from "@zilobase/edition-web"
@@ -68,10 +69,10 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   beforeLoad: async () => {
-    const session = await getFreshSession()
+    const session = await getFreshSession({ optional: true })
 
     if (!session.user) {
-      throw redirect({ to: "/login" })
+      throw redirect({ to: isTauri() ? "/connect" : "/login" })
     }
 
     const workspaces = await getWorkspaces()
@@ -87,18 +88,10 @@ const indexRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): { changeServer?: boolean; returnTo?: string } => ({
-    ...(typeof search.returnTo === "string" ? { returnTo: search.returnTo } : {}),
-    ...(search.changeServer === true ||
-    search.changeServer === "true" ||
-    search.changeServer === "1"
-      ? { changeServer: true }
-      : {}),
-  }),
+  validateSearch: (search: Record<string, unknown>): { returnTo?: string } =>
+    typeof search.returnTo === "string" ? { returnTo: search.returnTo } : {},
   beforeLoad: async ({ search }) => {
-    const session = await getFreshSession()
+    const session = await getFreshSession({ optional: true })
 
     if (session.user) {
       if (search.returnTo) {
@@ -118,6 +111,24 @@ const loginRoute = createRoute({
   component: LoginPage,
 })
 
+const connectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/connect",
+  beforeLoad: async () => {
+    if (!isTauri()) {
+      throw redirect({ to: "/login" })
+    }
+
+    const session = await getFreshSession({ optional: true })
+
+    if (!session.user || getConnectivityState() !== "online") return
+
+    const workspaces = await getWorkspaces()
+    throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" })
+  },
+  component: ConnectPage,
+})
+
 const signupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/signup",
@@ -132,7 +143,7 @@ const signupRoute = createRoute({
       : {}),
   }),
   beforeLoad: async ({ search }) => {
-    const session = await getFreshSession()
+    const session = await getFreshSession({ optional: true })
 
     if (session.user) {
       if (search.returnTo) {
@@ -355,6 +366,7 @@ const editionRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  connectRoute,
   loginRoute,
   signupRoute,
   onboardingRoute,
@@ -449,9 +461,12 @@ function RouteErrorPage({ error }: ErrorComponentProps) {
         <div className="flex w-full flex-col items-stretch gap-3">
           <Button onClick={() => window.location.reload()}>Try again</Button>
           {selectedServer ? (
-            <div className="rounded-lg border bg-muted/30 p-3 text-left">
-              <DesktopServerSelector actionLabel="Change server" />
-            </div>
+            <Button
+              onClick={() => window.location.assign("/connect")}
+              variant="outline"
+            >
+              Change server
+            </Button>
           ) : null}
         </div>
       </div>
@@ -466,7 +481,7 @@ function getStartupConnectivity() {
   })
 }
 
-async function getFreshSession() {
+async function getFreshSession(options?: { optional?: boolean }) {
   const connectivity = await getStartupConnectivity()
   const cached = getValidOfflineSession()
   const decision = resolveOfflineFallback(connectivity, cached)
@@ -478,6 +493,7 @@ async function getFreshSession() {
     }
   }
   if (decision.type === "unavailable") {
+    if (options?.optional) return { session: null, user: null }
     throw new NetworkUnavailableError()
   }
 
@@ -489,6 +505,9 @@ async function getFreshSession() {
   } catch (error) {
     if (error instanceof NetworkUnavailableError && cached) {
       return { session: cached.session, user: cached.user, workspacePinned: cached.workspacePinned }
+    }
+    if (options?.optional && error instanceof NetworkUnavailableError) {
+      return { session: null, user: null }
     }
     throw error
   }

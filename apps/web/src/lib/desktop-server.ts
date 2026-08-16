@@ -49,6 +49,8 @@ export const CLOUD_DESKTOP_SERVER: DesktopServer = {
   minimumDesktopVersion: packageJson.version,
 }
 
+const DEFAULT_DEV_API_ORIGIN = "http://localhost:3000"
+
 let selectedDesktopServer: DesktopServer | null = null
 
 export async function initializeDesktopServer() {
@@ -124,10 +126,38 @@ export function getSelectedDesktopServer() {
   return selectedDesktopServer
 }
 
-export function isCloudDesktopServer(server: DesktopServer | null | undefined) {
+export function desktopDevelopmentApiOrigin() {
+  const configured = import.meta.env.VITE_API_URL?.replace(/\/$/, "")
+  return configured && configured !== "/api" ? configured : DEFAULT_DEV_API_ORIGIN
+}
+
+export function desktopCloudConnectUrl(development = import.meta.env.DEV) {
+  return development
+    ? desktopDevelopmentApiOrigin()
+    : CLOUD_DESKTOP_SERVER.apiOrigin
+}
+
+export function isDesktopDevelopmentServer(
+  server: DesktopServer | null | undefined,
+) {
+  if (!server) return false
+  const origin = desktopDevelopmentApiOrigin()
+  const loopback = origin.replace("localhost", "127.0.0.1")
+  return (
+    server.instanceId === "zilobase-dev" ||
+    server.apiOrigin === origin ||
+    server.apiOrigin === loopback
+  )
+}
+
+export function isCloudDesktopServer(
+  server: DesktopServer | null | undefined,
+  development = import.meta.env.DEV,
+) {
+  if (development) return isDesktopDevelopmentServer(server)
   return (
     server?.apiOrigin === CLOUD_DESKTOP_SERVER.apiOrigin &&
-    server?.issuer === CLOUD_DESKTOP_SERVER.issuer
+    server.issuer === CLOUD_DESKTOP_SERVER.issuer
   )
 }
 
