@@ -4,6 +4,23 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.37
+
+### Added
+
+- Desktop now chooses Zilobase Cloud or a hosted server first, then shows the matching sign-in or sign-up screen, with Change server returning to that chooser.
+- Continue with Google on Cloud desktop login and on the browser authorize page, using the Google mark instead of a blue primary button.
+
+### Changed
+
+- `npm run dev:desktop` talks to the local API at `http://localhost:3000` and treats Zilobase Cloud as that local instance. Packaged releases still default to live Cloud at `https://api.zilobase.com`.
+- Settings change-server signs out onto the server chooser. The reconnect error page does the same when the current instance is down.
+
+### Fixed
+
+- Desktop Google sign-in now redirects to Google with the Better Auth state cookie instead of printing `{url, redirect:true}` in the browser.
+- Local wrangler no longer rewrites production Cloud requests to localhost when creating OAuth callback URLs.
+
 ## 0.0.36
 
 ### Changed
