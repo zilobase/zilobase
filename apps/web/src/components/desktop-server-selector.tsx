@@ -7,7 +7,11 @@ import {
   initialDesktopServerSelectionState,
   reduceDesktopServerSelection,
 } from "@/lib/desktop-server-selection";
-import { getSelectedDesktopServer } from "@/lib/desktop-server";
+import {
+  CLOUD_DESKTOP_SERVER,
+  getSelectedDesktopServer,
+  isCloudDesktopServer,
+} from "@/lib/desktop-server";
 import { requestDesktopServerReplacement } from "@/lib/desktop-server-replacement";
 
 export function DesktopServerSelector({
@@ -21,6 +25,14 @@ export function DesktopServerSelector({
   );
   const [serverUrl, setServerUrl] = useState("");
   const selectedServer = getSelectedDesktopServer();
+  const onCloud = isCloudDesktopServer(selectedServer);
+
+  const connectToCloud = () => {
+    requestDesktopServerReplacement({
+      serverUrl: CLOUD_DESKTOP_SERVER.apiOrigin,
+    });
+    dispatch({ type: "verified" });
+  };
 
   if (!selectedServer) return null;
 
@@ -84,6 +96,16 @@ export function DesktopServerSelector({
           Cancel
         </Button>
       </div>
+      {onCloud ? null : (
+        <Button
+          onClick={connectToCloud}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Use Zilobase Cloud
+        </Button>
+      )}
       <p className="text-xs text-muted-foreground">
         HTTPS is required except for localhost development servers.
       </p>

@@ -124,6 +124,13 @@ export function getSelectedDesktopServer() {
   return selectedDesktopServer
 }
 
+export function isCloudDesktopServer(server: DesktopServer | null | undefined) {
+  return (
+    server?.apiOrigin === CLOUD_DESKTOP_SERVER.apiOrigin &&
+    server?.issuer === CLOUD_DESKTOP_SERVER.issuer
+  )
+}
+
 export function desktopServersReferToSameInstance(
   current: DesktopServer,
   candidate: DesktopServer,

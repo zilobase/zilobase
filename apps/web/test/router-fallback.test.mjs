@@ -12,6 +12,8 @@ export function register({ assert, test }) {
     assert.match(source, /Connecting to Zilobase\.\.\./)
     assert.match(source, /Your desktop session is still saved/)
     assert.match(source, /window\.location\.reload\(\)/)
+    assert.match(source, /DesktopServerSelector/)
+    assert.match(source, /Change server/)
     assert.match(source, /waitForSettledConnectivity/)
     assert.match(source, /resolveOfflineFallback/)
     assert.match(source, /decision\.type === "unavailable"/)

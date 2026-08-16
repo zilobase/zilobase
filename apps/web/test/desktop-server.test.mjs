@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises"
+
 export function register({ assert, loadModule, test }) {
   test("runtime server metadata resolves API, image, and realtime origins", async () => {
     const {
@@ -79,7 +81,18 @@ export function register({ assert, loadModule, test }) {
     const {
       CLOUD_DESKTOP_SERVER,
       desktopServersReferToSameInstance,
+      isCloudDesktopServer,
     } = await loadModule("/src/lib/desktop-server.ts")
+    assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER), true)
+    assert.equal(
+      isCloudDesktopServer({
+        ...CLOUD_DESKTOP_SERVER,
+        apiOrigin: "https://notes.example.com",
+        issuer: "https://notes.example.com",
+        webOrigin: "https://notes.example.com",
+      }),
+      false,
+    )
     const discoveredCloud = {
       ...CLOUD_DESKTOP_SERVER,
       instanceId: "cloud-database-instance",
@@ -107,5 +120,15 @@ export function register({ assert, loadModule, test }) {
       ),
       false,
     )
+  })
+
+  test("change server offers Zilobase Cloud without typing the API origin", async () => {
+    const source = await readFile(
+      new URL("../src/components/desktop-server-selector.tsx", import.meta.url),
+      "utf8",
+    )
+    assert.match(source, /Use Zilobase Cloud/)
+    assert.match(source, /CLOUD_DESKTOP_SERVER\.apiOrigin/)
+    assert.match(source, /isCloudDesktopServer/)
   })
 }

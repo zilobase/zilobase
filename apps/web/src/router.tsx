@@ -10,6 +10,7 @@ import {
 import { useEffect } from "react"
 
 import { AppLayout } from "@/components/app-layout"
+import { DesktopServerSelector } from "@/components/desktop-server-selector"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import AcceptInvitationPage from "@/pages/accept-invitation"
@@ -53,6 +54,7 @@ import {
 import { webAuthClient } from "@/providers/features-provider"
 import { getMostRecentItemPath } from "@/lib/recent-navigation"
 import { useAppStore } from "@/stores/app-store"
+import { getSelectedDesktopServer } from "@/lib/desktop-server"
 import { getAuthReturnPath } from "@/lib/google-auth"
 import { editionWebModule } from "@zilobase/edition-web"
 
@@ -415,6 +417,8 @@ function RoutePendingPage() {
 }
 
 function RouteErrorPage({ error }: ErrorComponentProps) {
+  const selectedServer = getSelectedDesktopServer()
+
   useEffect(() => {
     recordDesktopDiagnostic(
       "router.error",
@@ -429,10 +433,19 @@ function RouteErrorPage({ error }: ErrorComponentProps) {
         <div>
           <h1 className="text-lg font-semibold">Couldn&apos;t connect to Zilobase</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your desktop session is still saved. Check your connection and try again.
+            Your desktop session is still saved. Check your connection
+            {selectedServer ? ", or connect to a different server" : " and try again"}
+            .
           </p>
         </div>
-        <Button onClick={() => window.location.reload()}>Try again</Button>
+        <div className="flex w-full flex-col items-stretch gap-3">
+          <Button onClick={() => window.location.reload()}>Try again</Button>
+          {selectedServer ? (
+            <div className="rounded-lg border bg-muted/30 p-3 text-left">
+              <DesktopServerSelector actionLabel="Change server" />
+            </div>
+          ) : null}
+        </div>
       </div>
     </main>
   )
