@@ -139,6 +139,7 @@ export function register({ assert, loadModule, test }) {
     assert.match(connect, /Verify and continue/)
     assert.match(authScreen, /Change server/)
     assert.match(authScreen, /to="\/connect"/)
+    assert.match(authScreen, /server\.apiOrigin/)
     assert.match(login, /AuthScreen/)
     assert.match(signup, /AuthScreen/)
   })

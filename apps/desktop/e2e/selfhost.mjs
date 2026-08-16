@@ -37,8 +37,8 @@ try {
     port: driverPort,
   })
 
-  const cloudServer = await browser.$("//*[normalize-space()='Zilobase Cloud']")
-  await cloudServer.waitForDisplayed({ timeout: 30_000 })
+  const chooser = await browser.$("//h1[normalize-space()='Choose a server']")
+  await chooser.waitForDisplayed({ timeout: 30_000 })
 
   await selectServer(serverOrigin)
 

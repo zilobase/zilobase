@@ -49,11 +49,16 @@ export function AuthScreen({
 
         {desktop && showServerSwitch && server ? (
           <div className="flex items-center justify-between gap-3 text-sm">
-            <p className="min-w-0 truncate text-muted-foreground">
-              {isCloudDesktopServer(server)
-                ? "Zilobase Cloud"
-                : server.displayName}
-            </p>
+            <div className="min-w-0">
+              <p className="truncate font-medium">
+                {isCloudDesktopServer(server)
+                  ? "Zilobase Cloud"
+                  : server.displayName}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {server.apiOrigin}
+              </p>
+            </div>
             <Link className="shrink-0 font-medium underline-offset-4 hover:underline" to="/connect">
               Change server
             </Link>
