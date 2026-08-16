@@ -1,0 +1,215 @@
+name: Community Helm gate
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/community-helm.yml"
+      - "Dockerfile"
+      - "apps/server/**"
+      - "apps/web/**"
+      - "deploy/helm/zilobase/**"
+      - "docker/entrypoint.sh"
+      - "package-lock.json"
+      - "package.json"
+      - "packages/**"
+      - "scripts/test-community-helm.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/community-helm.yml"
+      - "Dockerfile"
+      - "apps/server/**"
+      - "apps/web/**"
+      - "deploy/helm/zilobase/**"
+      - "docker/entrypoint.sh"
+      - "package-lock.json"
+      - "package.json"
+      - "packages/**"
+      - "scripts/test-community-helm.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  kind:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.18.6
+      - uses: helm/kind-action@v1.14.0
+        with:
+          cluster_name: community-helm
+      - name: Validate chart contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm lint deploy/helm/zilobase
+          if helm template community deploy/helm/zilobase --set replicaCount=2 >/tmp/replica-two.out 2>/tmp/replica-two.err; then
+            echo "replicaCount=2 unexpectedly rendered" >&2
+            exit 1
+          fi
+          grep -q "value must be 1" /tmp/replica-two.err
+          rendered=$(helm template community deploy/helm/zilobase)
+          test "$(grep -c 'ZILOBASE_EDITION_MIGRATIONS_DIR' <<<"$rendered")" -eq 0
+          test "$(grep -c 'ZILOBASE_ENTERPRISE' <<<"$rendered")" -eq 0
+      - name: Build and load immutable Community image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag ghcr.io/zilobase/zilobase:community-helm-ci .
+          digest=$(docker image inspect ghcr.io/zilobase/zilobase:community-helm-ci --format '{{.Id}}')
+          echo "COMMUNITY_DIGEST=$digest" >> "$GITHUB_ENV"
+          kind load docker-image ghcr.io/zilobase/zilobase:community-helm-ci --name community-helm
+          for node in $(kind get nodes --name community-helm); do
+            docker exec "$node" ctr -n k8s.io images tag \
+              ghcr.io/zilobase/zilobase:community-helm-ci \
+              "ghcr.io/zilobase/zilobase@$digest"
+          done
+      - name: Start external PostgreSQL and TLS MinIO
+        shell: bash
+        run: |
+          set -euo pipefail
+          postgres_password=$(openssl rand -hex 24)
+          minio_password=$(openssl rand -hex 32)
+          docker run -d --name community-helm-postgres --network kind \
+            -e POSTGRES_DB=zilobase \
+            -e POSTGRES_PASSWORD="$postgres_password" \
+            -e POSTGRES_USER=zilobase \
+            postgres:17.10-alpine
+          until docker exec community-helm-postgres pg_isready -U zilobase -d zilobase >/dev/null 2>&1; do sleep 1; done
+
+          mkdir -p "$RUNNER_TEMP/community-minio-tls"
+          openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
+            -keyout "$RUNNER_TEMP/community-minio-tls/private.key" \
+            -out "$RUNNER_TEMP/community-minio-tls/public.crt" \
+            -days 2 -subj "/CN=minio.external.svc.cluster.local" \
+            -addext "subjectAltName=DNS:minio,DNS:minio.external,DNS:minio.external.svc,DNS:minio.external.svc.cluster.local"
+          docker run -d --name community-helm-minio --network kind \
+            -e MINIO_ROOT_USER=zilobase \
+            -e MINIO_ROOT_PASSWORD="$minio_password" \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server --address :443 /data
+          docker exec community-helm-minio mkdir -p /root/.minio/certs
+          docker cp "$RUNNER_TEMP/community-minio-tls/public.crt" community-helm-minio:/root/.minio/certs/public.crt
+          docker cp "$RUNNER_TEMP/community-minio-tls/private.key" community-helm-minio:/root/.minio/certs/private.key
+          docker restart community-helm-minio >/dev/null
+          until docker exec community-helm-minio sh -c 'mc --insecure alias set ga https://127.0.0.1 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1'; do sleep 1; done
+          docker exec community-helm-minio sh -c 'mc --insecure mb ga/zilobase >/dev/null && mc --insecure version enable ga/zilobase >/dev/null'
+
+          postgres_ip=$(docker inspect community-helm-postgres --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+          minio_ip=$(docker inspect community-helm-minio --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+          node_ip=$(docker inspect community-helm-control-plane --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+          echo "POSTGRES_IP=$postgres_ip" >> "$GITHUB_ENV"
+          echo "MINIO_IP=$minio_ip" >> "$GITHUB_ENV"
+          echo "NODE_IP=$node_ip" >> "$GITHUB_ENV"
+
+          kubectl create namespace external
+          kubectl create namespace community
+          kubectl -n external create service clusterip postgres --tcp=5432:5432
+          kubectl -n external create service clusterip minio --tcp=443:443
+          printf '%s\n' \
+            'apiVersion: discovery.k8s.io/v1' \
+            'kind: EndpointSlice' \
+            'metadata:' \
+            '  name: postgres-external' \
+            '  namespace: external' \
+            '  labels: { kubernetes.io/service-name: postgres }' \
+            'addressType: IPv4' \
+            "endpoints: [{ addresses: [\"$postgres_ip\"] }]" \
+            'ports: [{ name: tcp, protocol: TCP, port: 5432 }]' | kubectl apply -f -
+          printf '%s\n' \
+            'apiVersion: discovery.k8s.io/v1' \
+            'kind: EndpointSlice' \
+            'metadata:' \
+            '  name: minio-external' \
+            '  namespace: external' \
+            '  labels: { kubernetes.io/service-name: minio }' \
+            'addressType: IPv4' \
+            "endpoints: [{ addresses: [\"$minio_ip\"] }]" \
+            'ports: [{ name: https, protocol: TCP, port: 443 }]' | kubectl apply -f -
+
+          kubectl -n community create secret generic zilobase \
+            --from-literal="DATABASE_URL=postgresql://zilobase:$postgres_password@postgres.external.svc.cluster.local:5432/zilobase" \
+            --from-literal="BETTER_AUTH_SECRET=$(openssl rand -hex 32)" \
+            --from-literal="ZILOBASE_BOOTSTRAP_TOKEN=$(openssl rand -hex 32)" \
+            --from-literal="S3_ACCESS_KEY_ID=zilobase" \
+            --from-literal="S3_SECRET_ACCESS_KEY=$minio_password"
+          kubectl -n community create configmap zilobase-test-ca \
+            --from-file=ca.crt="$RUNNER_TEMP/community-minio-tls/public.crt"
+      - name: Install and smoke Community chart
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm upgrade --install community deploy/helm/zilobase -n community \
+            --set "image.digest=$COMMUNITY_DIGEST" \
+            --set image.pullPolicy=Never \
+            --set config.externalUrl=https://community.ga.invalid \
+            --set config.s3Endpoint=https://minio.external.svc.cluster.local \
+            --set config.s3PublicEndpoint=https://minio.external.svc.cluster.local \
+            --set config.s3Bucket=zilobase \
+            --set config.smtpHost=smtp.ga.invalid \
+            --set "networkPolicy.healthProbeCIDRs[0]=$NODE_IP/32" \
+            --set "networkPolicy.postgresCIDR=$POSTGRES_IP/32" \
+            --set "networkPolicy.s3CIDR=$MINIO_IP/32" \
+            --set networkPolicy.smtpCIDR=192.0.2.10/32 \
+            --set trustedCa.configMapName=zilobase-test-ca \
+            --timeout 5m --wait
+          pod=$(kubectl -n community get pod -l app.kubernetes.io/instance=community -o jsonpath='{.items[0].metadata.name}')
+          kubectl -n community cp scripts/test-community-helm.mjs "$pod:/tmp/test-community-helm.mjs"
+          kubectl -n community get secret zilobase -o json | kubectl -n community exec -i "$pod" -- \
+            node --input-type=module -e 'let s="";for await(const c of process.stdin)s+=c;const j=JSON.parse(s);process.env.ZILOBASE_BOOTSTRAP_TOKEN=Buffer.from(j.data.ZILOBASE_BOOTSTRAP_TOKEN,"base64").toString();process.argv[2]="seed";await import("file:///tmp/test-community-helm.mjs")'
+          kubectl -n community cp "$pod:/tmp/zilobase-community-helm-state.json" "$RUNNER_TEMP/zilobase-community-helm-state.json"
+          test "$(docker exec community-helm-postgres psql -U zilobase -d zilobase -Atc 'select count(*) from drizzle.__zilobase_core_migrations;')" -gt 0
+          test "$(docker exec community-helm-postgres psql -U zilobase -d zilobase -Atc "select coalesce(to_regclass('drizzle.__zilobase_enterprise_migrations')::text,'absent');")" = absent
+      - name: Paired empty-volume restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl -n community scale deployment community-zilobase --replicas=0
+          kubectl -n community wait --for=delete pod -l app.kubernetes.io/instance=community --timeout=120s
+          docker exec community-helm-postgres pg_dump -U zilobase -d zilobase --format=custom > "$RUNNER_TEMP/community.dump"
+          docker stop community-helm-minio >/dev/null
+          docker volume create community-helm-object-backup >/dev/null
+          docker run --rm --volumes-from community-helm-minio:ro \
+            -v community-helm-object-backup:/backup alpine:3.22 sh -c 'cp -a /data/. /backup/'
+
+          postgres_password=$(docker inspect community-helm-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' | awk -F= '$1=="POSTGRES_PASSWORD"{sub(/^[^=]*=/,"");print}')
+          minio_password=$(docker inspect community-helm-minio --format '{{range .Config.Env}}{{println .}}{{end}}' | awk -F= '$1=="MINIO_ROOT_PASSWORD"{sub(/^[^=]*=/,"");print}')
+          old_postgres_volume=$(docker inspect community-helm-postgres --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}')
+          old_minio_volume=$(docker inspect community-helm-minio --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}')
+          docker rm -f community-helm-postgres community-helm-minio
+          docker volume rm "$old_postgres_volume" "$old_minio_volume"
+
+          docker volume create community-helm-postgres-restored >/dev/null
+          docker run -d --name community-helm-postgres --network kind --ip "$POSTGRES_IP" \
+            -e POSTGRES_DB=zilobase -e POSTGRES_PASSWORD="$postgres_password" -e POSTGRES_USER=zilobase \
+            -v community-helm-postgres-restored:/var/lib/postgresql/data postgres:17.10-alpine
+          until docker exec community-helm-postgres pg_isready -U zilobase -d zilobase >/dev/null 2>&1; do sleep 1; done
+          docker exec -i community-helm-postgres pg_restore -U zilobase -d zilobase --no-owner --no-privileges < "$RUNNER_TEMP/community.dump"
+
+          docker volume create community-helm-minio-restored >/dev/null
+          docker run --rm -v community-helm-object-backup:/backup:ro \
+            -v community-helm-minio-restored:/data alpine:3.22 sh -c 'cp -a /backup/. /data/'
+          docker run -d --name community-helm-minio --network kind --ip "$MINIO_IP" \
+            -e MINIO_ROOT_USER=zilobase -e MINIO_ROOT_PASSWORD="$minio_password" \
+            -v community-helm-minio-restored:/data \
+            minio/minio:RELEASE.2025-04-22T22-12-26Z server --address :443 /data
+          docker exec community-helm-minio mkdir -p /root/.minio/certs
+          docker cp "$RUNNER_TEMP/community-minio-tls/public.crt" community-helm-minio:/root/.minio/certs/public.crt
+          docker cp "$RUNNER_TEMP/community-minio-tls/private.key" community-helm-minio:/root/.minio/certs/private.key
+          docker restart community-helm-minio >/dev/null
+
+          kubectl -n community scale deployment community-zilobase --replicas=1
+          kubectl -n community rollout status deployment/community-zilobase --timeout=180s
+          pod=$(kubectl -n community get pod -l app.kubernetes.io/instance=community -o jsonpath='{.items[0].metadata.name}')
+          kubectl -n community cp scripts/test-community-helm.mjs "$pod:/tmp/test-community-helm.mjs"
+          kubectl -n community cp "$RUNNER_TEMP/zilobase-community-helm-state.json" "$pod:/tmp/zilobase-community-helm-state.json"
+          kubectl -n community exec "$pod" -- node /tmp/test-community-helm.mjs verify
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl get pods,jobs -A -o wide || true
+          kubectl -n community describe pods || true
+          kubectl -n community logs -l app.kubernetes.io/instance=community --all-containers --prefix --tail=200 || true

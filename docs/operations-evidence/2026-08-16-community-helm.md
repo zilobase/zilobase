@@ -33,6 +33,15 @@ The live smoke at `2026-08-16T05:20:02Z` verified:
 - no Enterprise, activation, Console, or Enterprise-metrics variable was in the
   Community pod environment.
 
+The reusable `scripts/test-community-helm.mjs` gate then repeated the smoke and
+wrote private restore state. With the app scaled to zero, a custom-format dump
+and logical object mirror were captured, the dedicated Community database and
+bucket were recreated empty, and both members were restored. The same image
+digest returned ready; the exact pre-backup session, page, and object bytes all
+survived. The new `community-helm.yml` workflow automates the clean kind build,
+install, smoke, public-journal assertion, and paired empty-volume restore. This
+record does not call that CI box complete until the GitHub-hosted run is green.
+
 The operator docs state that PostgreSQL/S3 are external, Community is always
 one replica and not HA, Console Downloads does not carry this chart, Ingress
 must preserve WebSocket upgrades with a timeout of at least 65 seconds, and
