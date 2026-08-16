@@ -4,6 +4,25 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.32
+
+### Added
+
+- Added a single-replica Community Helm chart for Kubernetes installs that use operator-managed PostgreSQL and S3-compatible object storage, plus a cluster CI gate for install, restore, and recovery.
+- Added Community edition seams so an Enterprise overlay can compile against the MIT core without changing the Community runtime contract.
+
+### Changed
+
+- Documented Helm alongside Docker Compose as a supported self-hosted artifact and recorded the Community Helm cluster and public-release upgrade evidence.
+- Hardened Community runtime dependencies and raised the desktop validation heap so release packaging completes reliably.
+
+### Fixed
+
+- Adopted the legacy Drizzle migration journal when upgrading from public `0.0.31` images so existing databases keep their applied migrations and data.
+- Waited for restored Community databases to become ready before continuing Helm recovery, and retried MinIO initialization on first boot.
+- Stabilized desktop sign-in HTML responses and the login page structure so browser PKCE and the server selector complete against Community instances.
+- Kept the worker adapter API runtime-neutral so Community server and Cloud adapter builds stay independent.
+
 ## 0.0.31
 
 ### Added
