@@ -181,6 +181,11 @@ pub(crate) fn is_cloud_server(server: &DesktopServer) -> bool {
     server.api_origin == CLOUD_API_ORIGIN && server.issuer == CLOUD_API_ORIGIN
 }
 
+fn is_cloud_origin(origin: &Url) -> bool {
+    let value = origin.as_str().trim_end_matches('/');
+    value == CLOUD_API_ORIGIN || value == CLOUD_WEB_ORIGIN
+}
+
 impl DesktopServerCandidateState {
     fn get(&self, candidate_id: &str) -> Result<DesktopServerCandidate, DesktopServerError> {
         let mut candidates = self.candidates.lock().map_err(|_| {
@@ -219,6 +224,9 @@ fn random_candidate_id() -> Result<String, DesktopServerError> {
 
 async fn verify_desktop_server(value: &str) -> Result<DesktopServer, DesktopServerError> {
     let origin = parse_server_origin(value)?;
+    if is_cloud_origin(&origin) {
+        return Ok(cloud_server());
+    }
     let discovery_url = origin
         .join(DISCOVERY_PATH)
         .map_err(|_| DesktopServerError::invalid_metadata("The discovery URL is invalid."))?;
@@ -847,5 +855,20 @@ mod tests {
 
         assert_eq!(verified.instance_id, "instance-1");
         assert_eq!(verified.api_origin, origin);
+    }
+
+    #[tokio::test]
+    async fn accepts_built_in_cloud_origins_without_discovery() {
+        for value in [
+            super::CLOUD_API_ORIGIN,
+            super::CLOUD_WEB_ORIGIN,
+            "https://api.zilobase.com/",
+            "https://app.zilobase.com/",
+        ] {
+            let verified = verify_desktop_server(value)
+                .await
+                .unwrap_or_else(|error| panic!("{value}: {error:?}"));
+            assert_eq!(verified, cloud_server(), "{value}");
+        }
     }
 }
