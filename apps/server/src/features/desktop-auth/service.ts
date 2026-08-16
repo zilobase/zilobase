@@ -44,7 +44,10 @@ export type DesktopAuthorizationCodeRepository = {
 
 export class DesktopAuthorizationError extends Error {
   constructor(
-    readonly code: "invalid_request" | "unsupported_response_type",
+    readonly code:
+      | "invalid_request"
+      | "unsupported_response_type"
+      | "server_error",
     message: string,
   ) {
     super(message);
