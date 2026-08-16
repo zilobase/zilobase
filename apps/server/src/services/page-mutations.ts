@@ -7,7 +7,14 @@ import {
 } from "../access";
 import { db } from "../db";
 import { database, page, pageCollaborationDocument } from "../db/schema";
-import { encodePageContentAsYjs } from "../collaboration/service";
+import {
+  encodePageContentAsYjs,
+  getOrCreateCollaborationDocumentState,
+  isEmptyPageContent,
+  materializePageContentFromYjs,
+  replacePageContent,
+} from "../collaboration/service";
+import type { RuntimeEnv } from "../config";
 import { upsertPageItemPlacement } from "../page-item-placements";
 import { insertDatabaseBlockInContent } from "./insert-database-block";
 import { ServiceMutationError } from "./mutation-error";
@@ -146,6 +153,7 @@ export async function linkDatabaseInPageService(input: {
 export async function embedDatabaseInPageService(input: {
   afterHeading?: string;
   databaseId: string;
+  env: RuntimeEnv;
   userId: string;
   pageId: string;
 }) {
@@ -177,8 +185,23 @@ export async function embedDatabaseInPageService(input: {
     throw new ServiceMutationError("Database not found", 404);
   }
 
+  let baseContent = existing.content;
+
+  try {
+    const collaborationState = await getOrCreateCollaborationDocumentState(
+      existing.id,
+    );
+    const liveContent = materializePageContentFromYjs(collaborationState);
+
+    if (!isEmptyPageContent(liveContent)) {
+      baseContent = liveContent;
+    }
+  } catch {
+    // Fall back to the stored page snapshot when collaboration state is missing.
+  }
+
   const { content, alreadyEmbedded } = insertDatabaseBlockInContent(
-    existing.content,
+    baseContent,
     {
       afterHeading: input.afterHeading,
       databaseId: input.databaseId,
@@ -194,17 +217,24 @@ export async function embedDatabaseInPageService(input: {
     };
   }
 
-  const [updated] = await db
-    .update(page)
-    .set({ content, updatedAt: new Date() })
-    .where(eq(page.id, existing.id))
-    .returning();
+  await replacePageContent({
+    content,
+    env: input.env,
+    pageId: existing.id,
+    userId: input.userId,
+  });
+
+  const updated = {
+    ...existing,
+    content,
+    updatedAt: new Date(),
+  };
 
   return {
     alreadyEmbedded: false,
     databaseId: input.databaseId,
     embedMarkdown: `[Database (${input.databaseId})]`,
     page: updated,
-    pageId: updated?.id ?? existing.id,
+    pageId: existing.id,
   };
 }

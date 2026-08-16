@@ -4,6 +4,7 @@ import {
   useContext,
   useMemo,
   useRef,
+  useSyncExternalStore,
   type ReactNode,
 } from "react"
 
@@ -35,6 +36,31 @@ type PageEditorRegistryValue = {
 const PageEditorRegistryContext =
   createContext<PageEditorRegistryValue | null>(null)
 
+let editorRegistryVersion = 0
+const editorRegistryListeners = new Set<() => void>()
+
+function emitEditorRegistryChange() {
+  editorRegistryVersion += 1
+  for (const listener of editorRegistryListeners) {
+    listener()
+  }
+}
+
+function subscribeEditorRegistry(listener: () => void) {
+  editorRegistryListeners.add(listener)
+  return () => {
+    editorRegistryListeners.delete(listener)
+  }
+}
+
+export function usePageEditorRegistryVersion() {
+  return useSyncExternalStore(
+    subscribeEditorRegistry,
+    () => editorRegistryVersion,
+    () => editorRegistryVersion,
+  )
+}
+
 export function PageEditorRegistryProvider({
   children,
 }: {
@@ -45,12 +71,14 @@ export function PageEditorRegistryProvider({
   const registerEditor = useCallback(
     (pageId: string, handle: PageEditorHandle) => {
       editorsRef.current.set(pageId, handle)
+      emitEditorRegistryChange()
     },
     [],
   )
 
   const unregisterEditor = useCallback((pageId: string) => {
     editorsRef.current.delete(pageId)
+    emitEditorRegistryChange()
   }, [])
 
   const getEditorHandle = useCallback((pageId: string) => {

@@ -57,15 +57,43 @@ export async function getOrCreateCollaborationDocumentState(pageId: string) {
     .from(pageCollaborationDocument)
     .where(eq(pageCollaborationDocument.pageId, pageId))
     .limit(1);
+  const [record] = await db
+    .select({ content: page.content })
+    .from(page)
+    .where(and(eq(page.id, pageId), isNull(page.deletedAt)))
+    .limit(1);
 
-  if (stored) {
-    return new Uint8Array(stored.state);
+  if (!record) {
+    throw new Error("Page not found");
   }
 
-  const state = encodePageContentAsYjs(null);
+  const seededState = encodePageContentAsYjs(record.content);
+
+  if (stored) {
+    const storedState = new Uint8Array(stored.state);
+
+    if (
+      isPlaceholderCollaborationState(storedState) &&
+      !isEmptyPageContent(record.content)
+    ) {
+      const now = new Date();
+      await db
+        .update(pageCollaborationDocument)
+        .set({ state: Buffer.from(seededState), updatedAt: now })
+        .where(eq(pageCollaborationDocument.pageId, pageId));
+      return seededState;
+    }
+
+    return storedState;
+  }
+
   const [inserted] = await db
     .insert(pageCollaborationDocument)
-    .values({ pageId, state: Buffer.from(state), updatedAt: new Date() })
+    .values({
+      pageId,
+      state: Buffer.from(seededState),
+      updatedAt: new Date(),
+    })
     .onConflictDoNothing()
     .returning({ state: pageCollaborationDocument.state });
 
@@ -279,39 +307,16 @@ async function loadDocument(documentName: string, env: RuntimeEnv) {
   }
 
   const loadStartedAt = performance.now();
-  let source: "collaboration_state" | "missing" = "missing";
 
   try {
-    return await withDatabase(env, async () => {
-      const [stored] = await db
-        .select({ state: pageCollaborationDocument.state })
-        .from(pageCollaborationDocument)
-        .where(eq(pageCollaborationDocument.pageId, pageId))
-        .limit(1);
-
-      if (stored) {
-        source = "collaboration_state";
-        return new Uint8Array(stored.state);
-      }
-
-      const [record] = await db
-        .select({ id: page.id })
-        .from(page)
-        .where(and(eq(page.id, pageId), isNull(page.deletedAt)))
-        .limit(1);
-
-      if (!record) {
-        throw new Error("Page not found");
-      }
-
-      throw new Error("Page collaboration state is missing");
-    });
+    return await withDatabase(env, () =>
+      getOrCreateCollaborationDocumentState(pageId),
+    );
   } finally {
     console.info(
       JSON.stringify({
         event: "collaboration_document_loaded",
         loadMs: Math.round(performance.now() - loadStartedAt),
-        source,
       }),
     );
   }
@@ -358,6 +363,51 @@ function toYDoc(content: unknown) {
     FIELD_NAME,
     createSchemaForDocument(normalized),
   );
+}
+
+export function isEmptyPageContent(content: unknown): boolean {
+  if (content == null) {
+    return true;
+  }
+
+  if (typeof content === "string") {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      return true;
+    }
+
+    try {
+      return isEmptyPageContent(JSON.parse(trimmed) as unknown);
+    } catch {
+      return false;
+    }
+  }
+
+  if (typeof content !== "object" || Array.isArray(content)) {
+    return false;
+  }
+
+  const document = content as ProseMirrorJson;
+  return (
+    document.type === "doc" &&
+    (!document.content || document.content.length === 0)
+  );
+}
+
+export function isPlaceholderCollaborationState(state: Uint8Array): boolean {
+  if (state.length === 0) {
+    return true;
+  }
+
+  if (state.length === 2 && state[0] === 0 && state[1] === 0) {
+    return true;
+  }
+
+  try {
+    return isEmptyPageContent(materializePageContentFromYjs(state));
+  } catch {
+    return true;
+  }
 }
 
 function normalizeDocument(content: unknown): ProseMirrorJson {

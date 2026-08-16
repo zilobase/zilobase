@@ -156,6 +156,9 @@ export function createCellPresenceByKey(
   return result
 }
 
+export const DATABASE_REALTIME_HEARTBEAT_MS = 20_000
+export const DATABASE_REALTIME_PING = { type: "realtime.ping" } as const
+
 class DatabaseRealtimeManager {
   private readonly listeners = new Set<Listener>()
   private readonly presenceByOwner = new Map<string, DatabasePresence>()
@@ -163,6 +166,7 @@ class DatabaseRealtimeManager {
   private idleTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private refreshTimer: ReturnType<typeof setTimeout> | null = null
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private visibilityTimer: ReturnType<typeof setTimeout> | null = null
   private connectionGeneration = 0
   private connecting = false
@@ -247,6 +251,7 @@ class DatabaseRealtimeManager {
       socket.addEventListener("close", () => {
         if (this.socket !== socket) return
         this.socket = null
+        this.stopHeartbeat()
         if (this.refreshTimer) clearTimeout(this.refreshTimer)
         this.refreshTimer = null
         if (!this.stopped && generation === this.connectionGeneration) {
@@ -297,6 +302,7 @@ class DatabaseRealtimeManager {
       }
       this.setCollaborators(message.peers)
       this.setState({ ...this.state, status: "connected" })
+      this.startHeartbeat()
       this.sendPresence()
       return
     }
@@ -407,6 +413,22 @@ class DatabaseRealtimeManager {
     }))
   }
 
+  private startHeartbeat() {
+    this.stopHeartbeat()
+    this.heartbeatTimer = setInterval(() => {
+      if (
+        this.socket?.readyState !== WebSocket.OPEN ||
+        this.state.status !== "connected"
+      ) return
+      this.socket.send(JSON.stringify(DATABASE_REALTIME_PING))
+    }, DATABASE_REALTIME_HEARTBEAT_MS)
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer)
+    this.heartbeatTimer = null
+  }
+
   private setCollaborators(
     collaborators: Array<
       Omit<DatabasePresenceCollaborator, "color"> |
@@ -436,7 +458,7 @@ class DatabaseRealtimeManager {
     this.idleTimer = setTimeout(() => {
       this.idleTimer = null
       if (this.listeners.size === 0) this.stop()
-    }, 250)
+    }, 1_500)
   }
 
   private stop() {
@@ -447,6 +469,7 @@ class DatabaseRealtimeManager {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     if (this.refreshTimer) clearTimeout(this.refreshTimer)
     if (this.visibilityTimer) clearTimeout(this.visibilityTimer)
+    this.stopHeartbeat()
     this.reconnectTimer = null
     this.refreshTimer = null
     this.visibilityTimer = null
@@ -468,6 +491,7 @@ class DatabaseRealtimeManager {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     if (this.refreshTimer) clearTimeout(this.refreshTimer)
     if (this.visibilityTimer) clearTimeout(this.visibilityTimer)
+    this.stopHeartbeat()
     this.reconnectTimer = null
     this.refreshTimer = null
     this.visibilityTimer = null
@@ -527,6 +551,7 @@ class DatabaseRealtimeManager {
     this.connecting = false
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     if (this.refreshTimer) clearTimeout(this.refreshTimer)
+    this.stopHeartbeat()
     this.reconnectTimer = null
     this.refreshTimer = null
     this.socket?.close(1000, "Database realtime paused")

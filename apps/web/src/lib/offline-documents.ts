@@ -156,7 +156,7 @@ class CollaborationWebSocket extends WebSocket {
       return
     }
 
-    super(url)
+    super(url, COLLABORATION_WEBSOCKET_PROTOCOL)
   }
 }
 

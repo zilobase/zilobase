@@ -198,6 +198,10 @@ export function attachNodeDatabaseRealtimeRuntime(
           return;
         }
 
+        if (message.type === "realtime.ping") {
+          return;
+        }
+
         if (message.type === "presence.update") {
           updatePresence(peer, attachment, message, rooms, attachments);
           return;

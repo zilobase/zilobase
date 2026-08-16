@@ -205,7 +205,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         const result = await embedDatabaseInPageService({
           afterHeading: input.afterHeading,
           databaseId: input.databaseId,
-
+          env: context.env,
           userId: context.userId,
           pageId,
         });

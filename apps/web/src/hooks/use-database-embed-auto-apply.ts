@@ -4,7 +4,10 @@ import { getToolName, isToolUIPart, type UIMessage } from "ai"
 import { readDatabaseConfigToolIds } from "@zilobase/features/ai-chat"
 import { insertDatabaseBlockInContent } from "@zilobase/page-context"
 
-import { usePageEditorRegistry } from "@/contexts/page-editor-registry"
+import {
+  usePageEditorRegistry,
+  usePageEditorRegistryVersion,
+} from "@/contexts/page-editor-registry"
 
 const EMBED_DATABASE_IN_PAGE_TOOL = "embedDatabaseInPage"
 
@@ -30,6 +33,7 @@ export function useDatabaseEmbedAutoApply({
   messages,
 }: UseDatabaseEmbedAutoApplyOptions) {
   const { getEditorHandle } = usePageEditorRegistry()
+  const editorRegistryVersion = usePageEditorRegistryVersion()
   const handledToolCallIds = useRef(new Set<string>())
 
   useEffect(() => {
@@ -63,8 +67,6 @@ export function useDatabaseEmbedAutoApply({
           continue
         }
 
-        handledToolCallIds.current.add(part.toolCallId)
-
         const handle = getEditorHandle(pageId)
 
         if (!handle?.isEditable()) {
@@ -81,13 +83,15 @@ export function useDatabaseEmbedAutoApply({
             },
           )
 
-          if (!alreadyEmbedded) {
-            handle.setContentJson(content)
+          if (!alreadyEmbedded && !handle.setContentJson(content)) {
+            continue
           }
+
+          handledToolCallIds.current.add(part.toolCallId)
         } catch (error) {
           console.warn("Failed to apply database embed in editor", error)
         }
       }
     }
-  }, [enabled, getEditorHandle, messages])
+  }, [editorRegistryVersion, enabled, getEditorHandle, messages])
 }

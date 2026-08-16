@@ -5,6 +5,8 @@ import { QueryClient } from "@tanstack/react-query"
 import {
   applyDatabaseRealtimeMutation,
   createCellPresenceByKey,
+  DATABASE_REALTIME_HEARTBEAT_MS,
+  DATABASE_REALTIME_PING,
   reconnectDelay,
   samePresence,
   ticketFailureAction,
@@ -114,6 +116,12 @@ test("reconnects use capped full jitter", () => {
   assert.equal(reconnectDelay(0, () => 0.5), 250)
   assert.equal(reconnectDelay(20, () => 0.5), 15_000)
   assert.equal(reconnectDelay(20, () => 1), 30_000)
+})
+
+test("heartbeat pings stay under the idle timeout and use a JSON keepalive", () => {
+  assert.equal(DATABASE_REALTIME_PING.type, "realtime.ping")
+  assert.ok(DATABASE_REALTIME_HEARTBEAT_MS < 30_000)
+  assert.ok(DATABASE_REALTIME_HEARTBEAT_MS >= 10_000)
 })
 
 test("ticket failures stop only for permanent authorization and lookup errors", () => {

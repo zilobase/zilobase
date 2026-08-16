@@ -82,6 +82,23 @@ test("serverful database rooms broadcast presence and versioned mutations", asyn
   }
 });
 
+test("serverful database rooms keep the socket open for heartbeat pings", async () => {
+  const fixture = await startFixture();
+  const ticket = await createTicket("user-1", 1);
+  const client = new RealtimeClient(fixture.url, ticket.token);
+
+  try {
+    await client.opened;
+    await client.next("realtime.ready");
+    client.send({ type: "realtime.ping" });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    assert.equal(client.websocket.readyState, WebSocket.OPEN);
+  } finally {
+    client.websocket.close();
+    await fixture.close();
+  }
+});
+
 test("serverful database rooms ignore stale mutation deliveries", async () => {
   const fixture = await startFixture();
   const ticket = await createTicket("user-1", 8);
