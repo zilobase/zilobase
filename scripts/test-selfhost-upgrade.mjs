@@ -54,6 +54,7 @@ const mailpitPort = await freePort()
 const origin = `http://127.0.0.1:${httpPort}`
 const email = `upgrade-${Date.now()}@zilobase.local`
 const password = `Upgrade-${secret(18)}`
+const bootstrapToken = secret(48)
 const jar = new CookieJar()
 
 await writeEnvironment()
@@ -62,30 +63,27 @@ try {
   console.info(`Starting previous release image ${previousImage}...`)
   await compose(previousImage, ["up", "-d", "--no-build", "--wait"])
 
-  await requestJson("/api/auth/sign-up/email", {
-    body: { callbackURL: "/onboarding", email, name: "Upgrade Test", password },
-    jar,
+  const bootstrap = await requestJson("/api/instance/bootstrap", {
+    body: {
+      email,
+      name: "Upgrade Test",
+      password,
+      workspaceName: "Upgrade Workspace",
+    },
+    headers: { "x-zilobase-bootstrap-token": bootstrapToken },
     method: "POST",
   })
-  await requestJson("/api/auth/email-otp/send-verification-otp", {
-    body: { email, type: "email-verification" },
-    method: "POST",
-  })
-  const message = await waitForMessage(email)
-  const otp = message.match(/\b\d{6}\b/)?.[0]
-  assert.ok(otp, "previous release did not deliver an email verification OTP")
-  await requestJson("/api/auth/email-otp/verify-email", {
-    body: { email, otp },
-    jar,
-    method: "POST",
-  })
-  const workspace = await requestJson("/api/auth/workspace/create", {
-    body: { name: "Upgrade Workspace", slug: `upgrade-${Date.now()}` },
+  assert.equal(bootstrap.response.status, 201)
+  await requestJson("/api/auth/sign-in/email", {
+    body: { email, password },
     jar,
     method: "POST",
   })
   const page = await requestJson("/pages", {
-    body: { name: "Created before upgrade", workspaceId: workspace.data.id },
+    body: {
+      name: "Created before upgrade",
+      workspaceId: bootstrap.data.workspaceId,
+    },
     jar,
     method: "POST",
   })
@@ -150,7 +148,7 @@ async function writeEnvironment() {
       `BETTER_AUTH_URL=${origin}`,
       `S3_PUBLIC_ENDPOINT=http://127.0.0.1:${minioPort}`,
       `BETTER_AUTH_SECRET=${secret(48)}`,
-      `ZILOBASE_BOOTSTRAP_TOKEN=${secret(48)}`,
+      `ZILOBASE_BOOTSTRAP_TOKEN=${bootstrapToken}`,
       "POSTGRES_DB=zilobase",
       "POSTGRES_USER=zilobase",
       `POSTGRES_PASSWORD=${secret(32)}`,
@@ -171,8 +169,12 @@ async function writeEnvironment() {
   )
 }
 
-async function requestJson(route, { body, jar: requestJar, method }) {
-  const headers = new Headers({ origin })
+async function requestJson(
+  route,
+  { body, headers: providedHeaders = {}, jar: requestJar, method },
+) {
+  const headers = new Headers(providedHeaders)
+  headers.set("origin", origin)
   if (body !== undefined) headers.set("content-type", "application/json")
   if (requestJar?.header()) headers.set("cookie", requestJar.header())
   const response = await fetch(`${origin}${route}`, {
@@ -188,30 +190,6 @@ async function requestJson(route, { body, jar: requestJar, method }) {
       `${method} ${route} failed with ${response.status}: ${text}`,
     )
   return { data, response }
-}
-
-async function waitForMessage(recipient) {
-  const deadline = Date.now() + 20_000
-  while (Date.now() < deadline) {
-    const response = await fetch(
-      `http://127.0.0.1:${mailpitPort}/api/v1/messages`,
-    )
-    if (response.ok) {
-      const mailbox = await response.json()
-      const match = mailbox.messages?.find((message) =>
-        JSON.stringify(message).toLowerCase().includes(recipient.toLowerCase()),
-      )
-      const id = match?.ID ?? match?.Id ?? match?.id
-      if (id) {
-        const detail = await fetch(
-          `http://127.0.0.1:${mailpitPort}/api/v1/message/${encodeURIComponent(id)}`,
-        )
-        if (detail.ok) return JSON.stringify(await detail.json())
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 250))
-  }
-  throw new Error(`Mailpit did not receive a message for ${recipient}`)
 }
 
 function composeArguments(args) {
