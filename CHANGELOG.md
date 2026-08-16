@@ -4,6 +4,16 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.33
+
+### Changed
+
+- Published Community container images for both amd64 and arm64.
+
+### Fixed
+
+- Stopped the desktop app from staying on "Connecting to Zilobase..." when the server is unreachable. Startup now waits for the first health probe, then opens a saved offline session or shows the reconnect error.
+
 ## 0.0.32
 
 ### Added
