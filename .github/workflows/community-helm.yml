@@ -196,7 +196,7 @@ jobs:
           docker run -d --name community-helm-postgres --network kind \
             -e POSTGRES_DB=zilobase -e POSTGRES_PASSWORD="$postgres_password" -e POSTGRES_USER=zilobase \
             -v community-helm-postgres-restored:/var/lib/postgresql/data postgres:17.10-alpine
-          until docker exec community-helm-postgres pg_isready -U zilobase -d zilobase >/dev/null 2>&1; do sleep 1; done
+          until [ "$(docker exec community-helm-postgres psql -U zilobase -d postgres -Atc "select 1 from pg_database where datname = 'zilobase'" 2>/dev/null)" = 1 ]; do sleep 1; done
           docker exec -i community-helm-postgres pg_restore -U zilobase -d zilobase --no-owner --no-privileges < "$RUNNER_TEMP/community.dump"
           restored_postgres_ip=$(docker inspect community-helm-postgres --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 
