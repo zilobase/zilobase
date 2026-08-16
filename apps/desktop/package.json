@@ -1,6 +1,6 @@
 {
   "name": "@zilobase/desktop",
-  "version": "0.0.35",
+  "version": "0.0.36",
   "license": "MIT",
   "scripts": {
     "dev": "node --env-file-if-exists=../../.env.development ../../node_modules/@tauri-apps/cli/tauri.js dev",
