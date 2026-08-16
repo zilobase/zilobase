@@ -107,8 +107,18 @@ jobs:
 
           kubectl create namespace external
           kubectl create namespace community
-          kubectl -n external create service clusterip postgres --tcp=5432:5432
-          kubectl -n external create service clusterip minio --tcp=443:443
+          printf '%s\n' \
+            'apiVersion: v1' \
+            'kind: Service' \
+            'metadata: { name: postgres, namespace: external }' \
+            'spec:' \
+            '  ports: [{ name: tcp, protocol: TCP, port: 5432, targetPort: 5432 }]' | kubectl apply -f -
+          printf '%s\n' \
+            'apiVersion: v1' \
+            'kind: Service' \
+            'metadata: { name: minio, namespace: external }' \
+            'spec:' \
+            '  ports: [{ name: https, protocol: TCP, port: 443, targetPort: 443 }]' | kubectl apply -f -
           printf '%s\n' \
             'apiVersion: discovery.k8s.io/v1' \
             'kind: EndpointSlice' \
