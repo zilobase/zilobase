@@ -2,8 +2,9 @@
 
 ## Routine operation
 
-Pin `ZILOBASE_IMAGE` to a reviewed release tag or digest. Validate resolved
-Compose before every deployment, pull the image, and wait for service health:
+Pin the application image to a reviewed release digest. For Compose, validate
+the resolved configuration before every deployment, pull the image, and wait
+for service health:
 
 ```sh
 docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.prod.yml config
@@ -22,6 +23,11 @@ Keep `.env.selfhost` readable only by the deployment account. Never attach it to
 bug reports. The bootstrap token remains required at process startup but cannot
 bootstrap an initialized database again.
 
+For Helm, run `helm lint`, render the proposed values, and use
+`helm upgrade --install --wait`. Preserve `replicaCount: 1`; Community has no
+shared realtime bus and the chart deliberately rejects two replicas. Inspect
+the migration hook and `/ready` before ending the maintenance window.
+
 ## Backups
 
 Back up Postgres and MinIO together at a documented consistency point. At
@@ -31,9 +37,10 @@ minimum, retain:
 - a recursive copy or `mc mirror` of the configured MinIO bucket;
 - the exact Zilobase image digest and non-secret configuration used by the backup.
 
-Test restoration into a separate Compose project. A restore is complete only
-after `/ready` succeeds, users and pages are present, and a stored image can be
-read. Do not treat Docker volumes alone as a portable backup format.
+Test restoration into a separate Compose project or Kubernetes namespace. A
+restore is complete only after `/ready` succeeds, users and pages are present,
+and a stored image can be read. Do not treat Docker volumes alone as a portable
+backup format.
 
 ## Updates and rollback
 

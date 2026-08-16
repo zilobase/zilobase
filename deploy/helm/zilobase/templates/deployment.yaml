@@ -1,0 +1,79 @@
+{{- if ne (int .Values.replicaCount) 1 }}{{ fail "Zilobase Community supports exactly replicaCount=1; this chart is not HA" }}{{ end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "zilobase.fullname" . }}
+  labels:
+    {{- include "zilobase.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels:
+      {{- include "zilobase.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "zilobase.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "zilobase.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      containers:
+        - name: zilobase
+          image: {{ include "zilobase.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          env:
+            {{- include "zilobase.env" . | nindent 12 }}
+          ports:
+            - { name: http, containerPort: 3000, protocol: TCP }
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet: { path: /ready, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            {{- if .Values.trustedCa.configMapName }}
+            - { name: trusted-ca, mountPath: /etc/zilobase/trusted-ca, readOnly: true }
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 128Mi }
+        {{- if .Values.trustedCa.configMapName }}
+        - name: trusted-ca
+          configMap:
+            name: {{ .Values.trustedCa.configMapName | quote }}
+            items:
+              - { key: {{ .Values.trustedCa.key | quote }}, path: ca.crt }
+        {{- end }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}

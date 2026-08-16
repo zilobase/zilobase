@@ -1,0 +1,71 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/zilobase/zilobase
+  digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+existingSecret: zilobase
+secretKeys:
+  databaseUrl: DATABASE_URL
+  betterAuthSecret: BETTER_AUTH_SECRET
+  bootstrapToken: ZILOBASE_BOOTSTRAP_TOKEN
+  s3AccessKeyId: S3_ACCESS_KEY_ID
+  s3SecretAccessKey: S3_SECRET_ACCESS_KEY
+  smtpPassword: SMTP_PASSWORD
+
+config:
+  externalUrl: https://zilobase.example.invalid
+  s3Endpoint: https://s3.example.invalid
+  s3PublicEndpoint: https://objects.example.invalid
+  s3Bucket: zilobase
+  emailFrom: Zilobase <zilobase@example.invalid>
+  smtpHost: smtp.example.invalid
+  smtpPort: "465"
+  smtpSecure: "true"
+  smtpUser: zilobase
+
+service:
+  type: ClusterIP
+  port: 80
+ingress:
+  enabled: false
+  className: ""
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "65"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "65"
+  host: zilobase.example.invalid
+  tlsSecretName: zilobase-tls
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+networkPolicy:
+  enabled: true
+  ingressNamespaceSelector:
+    kubernetes.io/metadata.name: ingress-nginx
+  healthProbeCIDRs:
+    - 10.0.0.0/8
+  postgresCIDR: 10.0.0.0/8
+  s3CIDR: 10.0.0.0/8
+  smtpCIDR: 10.0.0.0/8
+
+trustedCa:
+  configMapName: ""
+  key: ca.crt
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

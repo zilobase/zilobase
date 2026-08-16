@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["replicaCount", "image", "existingSecret", "config", "networkPolicy", "trustedCa"],
+  "properties": {
+    "replicaCount": { "type": "integer", "const": 1, "description": "Community supports exactly one application replica" },
+    "existingSecret": { "type": "string", "minLength": 1 },
+    "image": {
+      "type": "object",
+      "required": ["repository", "digest"],
+      "properties": {
+        "repository": { "const": "ghcr.io/zilobase/zilobase" },
+        "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "pullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] }
+      }
+    },
+    "config": {
+      "type": "object",
+      "required": ["externalUrl", "s3Endpoint", "s3PublicEndpoint", "s3Bucket", "smtpHost"],
+      "properties": {
+        "externalUrl": { "type": "string", "pattern": "^https://" },
+        "s3Endpoint": { "type": "string", "pattern": "^https://" },
+        "s3PublicEndpoint": { "type": "string", "pattern": "^https://" },
+        "s3Bucket": { "type": "string", "minLength": 1 },
+        "smtpHost": { "type": "string", "minLength": 1 }
+      }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "required": ["enabled", "healthProbeCIDRs", "postgresCIDR", "s3CIDR", "smtpCIDR"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "healthProbeCIDRs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 3 }
+        },
+        "postgresCIDR": { "type": "string", "minLength": 3 },
+        "s3CIDR": { "type": "string", "minLength": 3 },
+        "smtpCIDR": { "type": "string", "minLength": 3 }
+      }
+    },
+    "trustedCa": {
+      "type": "object",
+      "required": ["configMapName", "key"],
+      "properties": {
+        "configMapName": { "type": "string" },
+        "key": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

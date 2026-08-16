@@ -1,0 +1,39 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "zilobase.fullname" . }}
+  labels:
+    {{- include "zilobase.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "zilobase.selectorLabels" . | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingressNamespaceSelector | nindent 14 }}
+      ports:
+        - { protocol: TCP, port: 3000 }
+    {{- range .Values.networkPolicy.healthProbeCIDRs }}
+    - from: [{ ipBlock: { cidr: {{ . | quote }} } }]
+      ports: [{ protocol: TCP, port: 3000 }]
+    {{- end }}
+  egress:
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to: [{ ipBlock: { cidr: {{ .Values.networkPolicy.postgresCIDR | quote }} } }]
+      ports: [{ protocol: TCP, port: 5432 }]
+    - to: [{ ipBlock: { cidr: {{ .Values.networkPolicy.s3CIDR | quote }} } }]
+      ports: [{ protocol: TCP, port: 443 }]
+    - to: [{ ipBlock: { cidr: {{ .Values.networkPolicy.smtpCIDR | quote }} } }]
+      ports:
+        - { protocol: TCP, port: {{ .Values.config.smtpPort }} }
+{{- end }}

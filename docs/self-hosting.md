@@ -1,8 +1,9 @@
 # Self-hosting Zilobase
 
-Docker Compose is the supported self-hosted artifact. A separate virtual
-machine is unnecessary for local development; use a clean public Ubuntu host
-for release staging and production-like validation.
+Docker Compose and the single-replica Community Helm chart are the supported
+self-hosted artifacts. A separate virtual machine is unnecessary for local
+development; use a clean public Ubuntu host or isolated Kubernetes cluster for
+release staging and production-like validation.
 
 Release candidates must complete the provider-neutral
 [self-hosted release gate](./selfhost-release-checklist.md) on a clean Ubuntu
@@ -60,6 +61,46 @@ validation; the database permanently prevents a second bootstrap.
 
 See [Domains and TLS](./self-hosting-domain.md) before exposing the stack and
 [Operations](./self-hosting-operations.md) before storing production data.
+
+## Kubernetes with Helm
+
+The MIT chart at `deploy/helm/zilobase` installs only the Community application.
+It requires operator-managed PostgreSQL and S3-compatible object storage; the
+chart does not install either dependency and is not offered through Console
+Downloads. Pin the public image by digest and create the referenced Secret
+before installation:
+
+```sh
+helm lint deploy/helm/zilobase
+helm upgrade --install zilobase deploy/helm/zilobase \
+  --namespace zilobase --create-namespace \
+  --set image.digest=sha256:REPLACE_WITH_RELEASE_DIGEST \
+  --set config.externalUrl=https://notes.example.com \
+  --set config.s3Endpoint=https://s3.internal.example.com \
+  --set config.s3PublicEndpoint=https://objects.example.com \
+  --set networkPolicy.postgresCIDR=10.20.0.15/32 \
+  --set networkPolicy.s3CIDR=10.20.0.16/32 \
+  --wait
+```
+
+The existing Secret defaults to `zilobase` and must contain `DATABASE_URL`,
+`BETTER_AUTH_SECRET`, `ZILOBASE_BOOTSTRAP_TOKEN`, `S3_ACCESS_KEY_ID`, and
+`S3_SECRET_ACCESS_KEY`; `SMTP_PASSWORD` is optional. Keep secret values out of
+Helm values and shell history. If PostgreSQL or S3 uses a private CA, place only
+the public CA in a ConfigMap and set `trustedCa.configMapName`.
+
+Community is always one application replica and is not HA. The schema and
+template both reject `replicaCount: 2`, and upgrades use `Recreate`. The
+pre-upgrade hook takes the PostgreSQL advisory lock and runs only the public
+migration journal. Your Ingress must preserve WebSocket `Upgrade`/`Connection`
+headers and use an idle timeout of at least 65 seconds. Set the NetworkPolicy
+PostgreSQL, S3, SMTP, and kubelet-probe CIDRs to the narrow addresses used by
+your cluster.
+
+Back up PostgreSQL and the object bucket as a pair before every upgrade. A Helm
+rollback does not reverse database migrations; use an older binary only when
+the release notes declare the schema compatible, otherwise restore the paired
+backup and its matching image digest.
 
 ## Automated smoke test
 
