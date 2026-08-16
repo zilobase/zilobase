@@ -36,10 +36,14 @@ import { sessionQueryOptions } from "@zilobase/features/auth"
 import { workspacesQueryOptions } from "@zilobase/features/workspaces"
 import { ApiError, NetworkUnavailableError, apiFetch } from "@/lib/api"
 import {
+  resolveOfflineFallback,
+  waitForSettledConnectivity,
+} from "@/lib/connectivity-probe"
+import {
+  getConnectivityState,
   getOfflineManifest,
   getValidOfflineSession,
-  isDesktopOfflineSupported,
-  isOfflineMode,
+  subscribeConnectivity,
 } from "@/lib/offline-store"
 import { queryClient } from "@/lib/query-client"
 import {
@@ -434,13 +438,28 @@ function RouteErrorPage({ error }: ErrorComponentProps) {
   )
 }
 
+function getStartupConnectivity() {
+  return waitForSettledConnectivity({
+    getState: getConnectivityState,
+    subscribe: subscribeConnectivity,
+  })
+}
+
 async function getFreshSession() {
+  const connectivity = await getStartupConnectivity()
   const cached = getValidOfflineSession()
-  if (isDesktopOfflineSupported() && isOfflineMode()) {
-    return cached
-      ? { session: cached.session, user: cached.user, workspacePinned: cached.workspacePinned }
-      : { session: null, user: null }
+  const decision = resolveOfflineFallback(connectivity, cached)
+  if (decision.type === "fallback") {
+    return {
+      session: decision.value.session,
+      user: decision.value.user,
+      workspacePinned: decision.value.workspacePinned,
+    }
   }
+  if (decision.type === "unavailable") {
+    throw new NetworkUnavailableError()
+  }
+
   try {
     return await queryClient.fetchQuery({
       ...sessionQueryOptions(webAuthClient),
@@ -455,10 +474,17 @@ async function getFreshSession() {
 }
 
 async function getWorkspaces() {
+  const connectivity = await getStartupConnectivity()
   const cached = getOfflineManifest().workspaces
-  if (isDesktopOfflineSupported() && isOfflineMode()) {
-    return cached
+  const decision = resolveOfflineFallback(
+    connectivity,
+    getValidOfflineSession() ? cached : null,
+  )
+  if (decision.type === "fallback") return decision.value
+  if (decision.type === "unavailable") {
+    throw new NetworkUnavailableError()
   }
+
   try {
     return await queryClient.fetchQuery({
       ...workspacesQueryOptions(webAuthClient),
@@ -487,7 +513,7 @@ async function getDefaultAppPath(
 
   try {
     const navigation =
-      isDesktopOfflineSupported() && isOfflineMode()
+      getConnectivityState() !== "online"
         ? queryClient.getQueryData(options.queryKey)
         : await queryClient.fetchQuery({
             ...options,
