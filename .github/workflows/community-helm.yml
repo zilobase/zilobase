@@ -193,16 +193,17 @@ jobs:
           docker volume rm "$old_postgres_volume" "$old_minio_volume"
 
           docker volume create community-helm-postgres-restored >/dev/null
-          docker run -d --name community-helm-postgres --network kind --ip "$POSTGRES_IP" \
+          docker run -d --name community-helm-postgres --network kind \
             -e POSTGRES_DB=zilobase -e POSTGRES_PASSWORD="$postgres_password" -e POSTGRES_USER=zilobase \
             -v community-helm-postgres-restored:/var/lib/postgresql/data postgres:17.10-alpine
           until docker exec community-helm-postgres pg_isready -U zilobase -d zilobase >/dev/null 2>&1; do sleep 1; done
           docker exec -i community-helm-postgres pg_restore -U zilobase -d zilobase --no-owner --no-privileges < "$RUNNER_TEMP/community.dump"
+          restored_postgres_ip=$(docker inspect community-helm-postgres --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 
           docker volume create community-helm-minio-restored >/dev/null
           docker run --rm -v community-helm-object-backup:/backup:ro \
             -v community-helm-minio-restored:/data alpine:3.22 sh -c 'cp -a /backup/. /data/'
-          docker run -d --name community-helm-minio --network kind --ip "$MINIO_IP" \
+          docker run -d --name community-helm-minio --network kind \
             -e MINIO_ROOT_USER=zilobase -e MINIO_ROOT_PASSWORD="$minio_password" \
             -v community-helm-minio-restored:/data \
             minio/minio:RELEASE.2025-04-22T22-12-26Z server --address :443 /data
@@ -210,9 +211,17 @@ jobs:
           docker cp "$RUNNER_TEMP/community-minio-tls/public.crt" community-helm-minio:/root/.minio/certs/public.crt
           docker cp "$RUNNER_TEMP/community-minio-tls/private.key" community-helm-minio:/root/.minio/certs/private.key
           docker restart community-helm-minio >/dev/null
+          until docker exec community-helm-minio sh -c 'mc --insecure alias set ga https://127.0.0.1 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1'; do sleep 1; done
+          restored_minio_ip=$(docker inspect community-helm-minio --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 
-          kubectl -n community scale deployment community-zilobase --replicas=1
-          kubectl -n community rollout status deployment/community-zilobase --timeout=180s
+          kubectl -n external patch endpointslice postgres-external --type merge \
+            -p "{\"endpoints\":[{\"addresses\":[\"$restored_postgres_ip\"]}]}"
+          kubectl -n external patch endpointslice minio-external --type merge \
+            -p "{\"endpoints\":[{\"addresses\":[\"$restored_minio_ip\"]}]}"
+          helm upgrade community deploy/helm/zilobase -n community --reuse-values \
+            --set "networkPolicy.postgresCIDR=$restored_postgres_ip/32" \
+            --set "networkPolicy.s3CIDR=$restored_minio_ip/32" \
+            --timeout 5m --wait
           pod=$(kubectl -n community get pod -l app.kubernetes.io/instance=community -o jsonpath='{.items[0].metadata.name}')
           kubectl -n community cp scripts/test-community-helm.mjs "$pod:/tmp/test-community-helm.mjs"
           kubectl -n community cp "$RUNNER_TEMP/zilobase-community-helm-state.json" "$pod:/tmp/zilobase-community-helm-state.json"
