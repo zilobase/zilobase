@@ -70,10 +70,15 @@ desktopAuthRoutes.get("/desktop/authorize", async (c) => {
   const user = c.get("user");
 
   if (!user) {
-    const loginUrl = new URL("/login", getCanonicalWebOrigin(c.env));
+    const webOrigin = getCanonicalWebOrigin(c.env);
+    const loginUrl = new URL("/login", webOrigin);
     loginUrl.searchParams.set("returnTo", c.req.url);
+    const signupUrl = new URL("/signup", webOrigin);
+    signupUrl.searchParams.set("returnTo", c.req.url);
 
-    return c.html(renderSignInPage(loginUrl.toString()));
+    return c.html(
+      renderSignInPage(loginUrl.toString(), signupUrl.toString()),
+    );
   }
 
   return c.html(
@@ -335,10 +340,10 @@ function tokenError(c: Context<AppBindings>, error: string, status: 400) {
   return c.json({ error }, status);
 }
 
-function renderSignInPage(loginUrl: string) {
+function renderSignInPage(loginUrl: string, signupUrl: string) {
   return pageShell(
-    "Sign in to connect Zilobase Desktop",
-    `<p>Continue with this server's password, email code, Google, or configured SSO sign-in.</p><a class="button" href="${escapeHtml(loginUrl)}">Continue to sign in</a>`,
+    "Sign in to your account",
+    `<p>Don&apos;t have an account? <a href="${escapeHtml(signupUrl)}">Sign up</a></p><p>Continue with this server&apos;s password, email code, Google, or configured SSO sign-in.</p><a class="button" href="${escapeHtml(loginUrl)}">Sign in</a>`,
   );
 }
 
@@ -377,8 +382,31 @@ function renderErrorPage(message: string) {
 }
 
 function pageShell(title: string, content: string) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title><style>body{font:16px system-ui;margin:0;display:grid;min-height:100vh;place-items:center;background:#0d0d0f;color:#fff}main{box-sizing:border-box;max-width:32rem;padding:2rem}p{color:#b6b6bd;line-height:1.55}.button,.secondary{border:0;border-radius:.5rem;cursor:pointer;display:inline-block;font:inherit;padding:.7rem 1rem;text-decoration:none}.button{background:#fff;color:#111}.secondary{background:#29292e;color:#fff}.actions{display:flex;gap:.75rem;margin-top:1.5rem}.server-label{display:block;font-size:.8rem;margin-top:1.5rem;color:#b6b6bd}input{box-sizing:border-box;width:100%;margin-top:.4rem;border:1px solid #45454d;border-radius:.5rem;background:#19191d;color:#fff;font:inherit;padding:.7rem}.hint{font-size:.8rem}</style></head><body><main><h1>${escapeHtml(title)}</h1>${content}</main></body></html>`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(title)}</title>
+<style>${AUTH_PAGE_STYLES}</style>
+</head>
+<body>
+<main>
+<div class="brand">${ZILOBASE_MARK}<span>Zilobase</span></div>
+<div>
+<h1>${escapeHtml(title)}</h1>
+${content}
+</div>
+</main>
+</body>
+</html>`;
 }
+
+const ZILOBASE_MARK =
+  '<svg class="logo" viewBox="0 0 248 225" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M57.6094 140H10C4.47716 140 0 135.523 0 130V95C0 89.4772 4.47715 85 10 85H112.609L57.6094 140ZM238 85C243.523 85 248 89.4772 248 95V130C248 135.523 243.523 140 238 140H135.391L190.391 85H238Z" fill="currentColor"/><rect y="170" width="248" height="55" rx="10" fill="currentColor"/><rect width="248" height="55" rx="10" fill="currentColor"/></svg>';
+
+// Keep in sync with apps/desktop/src-tauri/src/oauth.rs AUTH_PAGE_STYLES.
+const AUTH_PAGE_STYLES = `:root{color-scheme:light;--background:#fff;--foreground:oklch(0.145 0 0);--muted:oklch(0.556 0 0);--border:oklch(0.922 0 0);--input:oklch(0.922 0 0)}@media (prefers-color-scheme:dark){:root{color-scheme:dark;--background:#0d0d0f;--foreground:#fff;--muted:#71717a;--border:#1e1e1e;--input:#27272a}}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--background);color:var(--foreground);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;-webkit-font-smoothing:antialiased}@media (min-width:768px){body{padding:2.5rem}}main{width:100%;max-width:24rem;display:flex;flex-direction:column;gap:1.5rem}.brand{display:flex;align-items:center;gap:.5rem;font-weight:500}.logo{display:block;height:1.75rem;width:auto;color:var(--foreground)}h1{margin:0;font-size:1.125rem;line-height:1.75rem;font-weight:600}p{margin:.25rem 0 0;font-size:.75rem;line-height:1.625;font-weight:400;color:var(--muted)}p a{color:inherit;text-decoration:underline;text-underline-offset:4px}.button,.secondary{display:flex;align-items:center;justify-content:center;width:100%;height:1.75rem;margin-top:1.5rem;padding:0 .5rem;border:0;border-radius:.375rem;font:inherit;font-size:.75rem;line-height:1.625;font-weight:500;text-decoration:none;cursor:pointer}.actions{display:flex;flex-direction:column;gap:.5rem;margin-top:1.5rem}.actions .button,.actions .secondary{margin-top:0}.button{background:#2383e2;color:#fff}.button:hover{background:#1f75c9}.secondary{background:transparent;color:var(--foreground);border:1px solid var(--border)}.server-label{display:block;margin-top:1.5rem;font-size:.75rem;line-height:1.625;font-weight:500}input{width:100%;height:1.75rem;margin-top:.375rem;padding:0 .5rem;border:1px solid var(--input);border-radius:.375rem;background:color-mix(in oklab,var(--input) 20%,transparent);color:var(--foreground);font:inherit;font-size:.75rem}.hint{margin-top:.5rem}`;
 
 function desktopPageCsp(callbackOrigin?: string) {
   const formAction = callbackOrigin ? `'self' ${callbackOrigin}` : "'self'";

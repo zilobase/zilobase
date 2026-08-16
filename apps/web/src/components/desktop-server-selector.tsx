@@ -28,8 +28,10 @@ export function DesktopServerSelector({
     return (
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-medium">{selectedServer.displayName}</p>
-          <p className="truncate text-xs text-muted-foreground">
+          <p className="text-xs/relaxed font-medium">
+            {selectedServer.displayName}
+          </p>
+          <p className="truncate text-xs/relaxed text-muted-foreground">
             {selectedServer.apiOrigin}
           </p>
         </div>

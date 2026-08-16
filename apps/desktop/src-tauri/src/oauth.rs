@@ -407,19 +407,19 @@ async fn wait_for_callback(
                 let _ = write_plain_response(&mut stream, "404 Not Found", "Not found.").await;
             }
             ParsedCallback::Invalid => {
-                let _ = write_html_response(&mut stream, "400 Bad Request", failure_html()).await;
+                let _ = write_html_response(&mut stream, "400 Bad Request", &failure_html()).await;
                 return Err(DesktopOAuthError::callback_rejected());
             }
             ParsedCallback::IssuerMismatch => {
-                let _ = write_html_response(&mut stream, "400 Bad Request", failure_html()).await;
+                let _ = write_html_response(&mut stream, "400 Bad Request", &failure_html()).await;
                 return Err(DesktopOAuthError::issuer_mismatch());
             }
             ParsedCallback::ProviderDenied => {
-                let _ = write_html_response(&mut stream, "400 Bad Request", denied_html()).await;
+                let _ = write_html_response(&mut stream, "400 Bad Request", &denied_html()).await;
                 return Err(DesktopOAuthError::provider_denied());
             }
             ParsedCallback::ProviderError => {
-                let _ = write_html_response(&mut stream, "400 Bad Request", failure_html()).await;
+                let _ = write_html_response(&mut stream, "400 Bad Request", &failure_html()).await;
                 return Err(DesktopOAuthError::server_sign_in_failed());
             }
             ParsedCallback::StateMismatch => {
@@ -453,7 +453,7 @@ async fn serve_completion_page(listener: Arc<TcpListener>) {
             continue;
         };
         if is_completion_request(&request) {
-            let _ = write_html_response(&mut stream, "200 OK", completion_html()).await;
+            let _ = write_html_response(&mut stream, "200 OK", &completion_html()).await;
             return;
         }
         let _ = write_plain_response(&mut stream, "404 Not Found", "Not found.").await;
@@ -711,7 +711,7 @@ fn persist_session_credentials(
 async fn write_html_response(
     stream: &mut TcpStream,
     status: &str,
-    body: &'static str,
+    body: &str,
 ) -> std::io::Result<()> {
     write_response(stream, status, "text/html; charset=utf-8", body).await
 }
@@ -719,7 +719,7 @@ async fn write_html_response(
 async fn write_plain_response(
     stream: &mut TcpStream,
     status: &str,
-    body: &'static str,
+    body: &str,
 ) -> std::io::Result<()> {
     write_response(stream, status, "text/plain; charset=utf-8", body).await
 }
@@ -736,7 +736,7 @@ async fn write_response(
     stream: &mut TcpStream,
     status: &str,
     content_type: &str,
-    body: &'static str,
+    body: &str,
 ) -> std::io::Result<()> {
     let response = format!(
         "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nContent-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'\r\nReferrer-Policy: no-referrer\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n{body}",
@@ -746,17 +746,54 @@ async fn write_response(
     stream.shutdown().await
 }
 
-fn completion_html() -> &'static str {
-    "<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\"><title>Return to Zilobase</title><style>body{font:16px system-ui;margin:0;display:grid;min-height:100vh;place-items:center;background:#0d0d0f;color:#fff}main{max-width:28rem;padding:2rem;text-align:center}p{color:#aaa}</style><main><h1>Return to Zilobase</h1><p>The app is finishing sign-in. You can close this tab.</p></main>"
+fn completion_html() -> String {
+    auth_page_html(
+        "Return to Zilobase",
+        "The app is finishing sign-in. You can close this tab.",
+    )
 }
 
-fn failure_html() -> &'static str {
-    "<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\"><title>Zilobase sign-in failed</title><style>body{font:16px system-ui;margin:0;display:grid;min-height:100vh;place-items:center;background:#0d0d0f;color:#fff}main{max-width:28rem;padding:2rem;text-align:center}p{color:#aaa}</style><main><h1>Sign-in could not be completed</h1><p>Return to Zilobase and try again.</p></main>"
+fn failure_html() -> String {
+    auth_page_html(
+        "Sign-in could not be completed",
+        "Return to Zilobase and try again.",
+    )
 }
 
-fn denied_html() -> &'static str {
-    "<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\"><title>Zilobase sign-in cancelled</title><style>body{font:16px system-ui;margin:0;display:grid;min-height:100vh;place-items:center;background:#0d0d0f;color:#fff}main{max-width:28rem;padding:2rem;text-align:center}p{color:#aaa}</style><main><h1>Sign-in cancelled</h1><p>You can close this tab and return to Zilobase.</p></main>"
+fn denied_html() -> String {
+    auth_page_html(
+        "Sign-in cancelled",
+        "You can close this tab and return to Zilobase.",
+    )
 }
+
+fn auth_page_html(title: &str, description: &str) -> String {
+    format!(
+        r#"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title>
+<style>{AUTH_PAGE_STYLES}</style>
+</head>
+<body>
+<main>
+<div class="brand">{ZILOBASE_MARK}<span>Zilobase</span></div>
+<div>
+<h1>{title}</h1>
+<p>{description}</p>
+</div>
+</main>
+</body>
+</html>"#
+    )
+}
+
+const ZILOBASE_MARK: &str = r#"<svg class="logo" viewBox="0 0 248 225" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M57.6094 140H10C4.47716 140 0 135.523 0 130V95C0 89.4772 4.47715 85 10 85H112.609L57.6094 140ZM238 85C243.523 85 248 89.4772 248 95V130C248 135.523 243.523 140 238 140H135.391L190.391 85H238Z" fill="currentColor"/><rect y="170" width="248" height="55" rx="10" fill="currentColor"/><rect width="248" height="55" rx="10" fill="currentColor"/></svg>"#;
+
+// Keep in sync with apps/server/src/features/desktop-auth/routes.ts AUTH_PAGE_STYLES.
+const AUTH_PAGE_STYLES: &str = r#":root{color-scheme:light;--background:#fff;--foreground:oklch(0.145 0 0);--muted:oklch(0.556 0 0);--border:oklch(0.922 0 0);--input:oklch(0.922 0 0)}@media (prefers-color-scheme:dark){:root{color-scheme:dark;--background:#0d0d0f;--foreground:#fff;--muted:#71717a;--border:#1e1e1e;--input:#27272a}}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:var(--background);color:var(--foreground);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;-webkit-font-smoothing:antialiased}@media (min-width:768px){body{padding:2.5rem}}main{width:100%;max-width:24rem;display:flex;flex-direction:column;gap:1.5rem}.brand{display:flex;align-items:center;gap:.5rem;font-weight:500}.logo{display:block;height:1.75rem;width:auto;color:var(--foreground)}h1{margin:0;font-size:1.125rem;line-height:1.75rem;font-weight:600}p{margin:.25rem 0 0;font-size:.75rem;line-height:1.625;font-weight:400;color:var(--muted)}"#;
 
 fn random_urlsafe(byte_count: usize) -> Result<String, DesktopOAuthError> {
     let mut bytes = vec![0_u8; byte_count];
@@ -796,6 +833,17 @@ mod tests {
             server_version: "0.0.1".to_string(),
             web_origin: api_origin.to_string(),
         }
+    }
+
+    #[test]
+    fn system_browser_pages_match_auth_screen_type() {
+        let page = super::completion_html();
+        assert!(page.contains("<span>Zilobase</span>"));
+        assert!(page.contains("font-size:1.125rem"));
+        assert!(page.contains("font-weight:600"));
+        assert!(page.contains("font-size:.75rem"));
+        assert!(page.contains("Return to Zilobase"));
+        assert!(page.contains("The app is finishing sign-in."));
     }
 
     #[test]

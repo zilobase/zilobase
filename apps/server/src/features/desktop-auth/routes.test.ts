@@ -97,6 +97,11 @@ test("desktop landing page exposes a secret-free connection link", async () => {
   const body = await response.text();
 
   assert.equal(response.status, 200);
+  assert.match(body, /<span>Zilobase<\/span>/);
+  assert.match(body, /Connect to Team Notes/);
+  assert.match(body, /font-size:1\.125rem/);
+  assert.match(body, /font-weight:600/);
+  assert.match(body, /#2383e2/);
   assert.match(body, /Open in Zilobase Desktop/);
   assert.match(
     body,
@@ -112,8 +117,13 @@ test("authorization page sends anonymous users through the selected server login
   const body = await response.text();
 
   assert.equal(response.status, 200);
-  assert.match(body, /Continue to sign in/);
+  assert.match(body, /<span>Zilobase<\/span>/);
+  assert.match(body, /Sign in to your account/);
+  assert.match(body, /Don&apos;t have an account\?/);
+  assert.match(body, /https:\/\/app\.example\.com\/signup\?returnTo=/);
+  assert.match(body, />Sign in</);
   assert.match(body, /https:\/\/app\.example\.com\/login\?returnTo=/);
+  assert.match(body, /font-size:1\.125rem/);
   assert.equal(response.headers.get("cache-control"), "no-store");
   assert.match(
     response.headers.get("content-security-policy") ?? "",
@@ -123,10 +133,14 @@ test("authorization page sends anonymous users through the selected server login
 
 test("consent page permits only its validated loopback callback origin", async () => {
   const response = await appFor(true).request(authorizationUrl(), {}, env);
+  const body = await response.text();
   const contentSecurityPolicy =
     response.headers.get("content-security-policy") ?? "";
 
   assert.equal(response.status, 200);
+  assert.match(body, /<span>Zilobase<\/span>/);
+  assert.match(body, /Connect Zilobase Desktop\?/);
+  assert.match(body, /font-size:1\.125rem/);
   assert.match(
     contentSecurityPolicy,
     /form-action 'self' http:\/\/127\.0\.0\.1:43123(?:;|$)/,

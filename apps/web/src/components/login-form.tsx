@@ -226,35 +226,37 @@ export function LoginForm({
       </div>
 
       {desktop && (
-        <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+        <div className="rounded-lg border bg-muted/30 p-3">
           <DesktopServerSelector actionLabel="Use another server" />
         </div>
       )}
 
       {desktop && (
-        <div className="space-y-3">
-          <Button
-            disabled={isPending}
-            onClick={handleBrowserSignIn}
-            type="button"
-          >
-            {browserState.phase === "waiting_for_browser"
-              ? "Waiting for browser sign-in..."
-              : browserState.phase === "finalizing"
-                ? "Finishing sign-in..."
-                : browserState.retry === "finalize"
-                  ? "Retry connection"
-                  : "Continue in system browser"}
-          </Button>
-          {browserState.phase === "waiting_for_browser" && (
+        <FieldGroup>
+          <Field>
             <Button
-              onClick={handleCancelBrowserSignIn}
+              disabled={isPending}
+              onClick={handleBrowserSignIn}
               type="button"
-              variant="ghost"
             >
-              Cancel
+              {browserState.phase === "waiting_for_browser"
+                ? "Waiting for browser sign-in..."
+                : browserState.phase === "finalizing"
+                  ? "Finishing sign-in..."
+                  : browserState.retry === "finalize"
+                    ? "Retry connection"
+                    : "Continue in system browser"}
             </Button>
-          )}
+            {browserState.phase === "waiting_for_browser" && (
+              <Button
+                onClick={handleCancelBrowserSignIn}
+                type="button"
+                variant="ghost"
+              >
+                Cancel
+              </Button>
+            )}
+          </Field>
           {browserState.phase === "error" && (
             <FieldError>{getApiErrorMessage(browserState.error)}</FieldError>
           )}
@@ -262,7 +264,7 @@ export function LoginForm({
             Sign in with this server&apos;s password, email code, Google, or
             configured SSO provider in your browser.
           </FieldDescription>
-        </div>
+        </FieldGroup>
       )}
 
       {!desktop && (
