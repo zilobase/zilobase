@@ -130,5 +130,18 @@ export function register({ assert, loadModule, test }) {
     assert.match(source, /Use Zilobase Cloud/)
     assert.match(source, /CLOUD_DESKTOP_SERVER\.apiOrigin/)
     assert.match(source, /isCloudDesktopServer/)
+    assert.match(source, /onChangeRequest/)
+    assert.match(source, /startEditing/)
+  })
+
+  test("settings change server signs out and continues on the login screen", async () => {
+    const source = await readFile(
+      new URL("../src/pages/settings/preferences.tsx", import.meta.url),
+      "utf8",
+    )
+    assert.match(source, /onChangeRequest/)
+    assert.match(source, /Sign out to change server\?/)
+    assert.match(source, /Sign out and continue/)
+    assert.match(source, /changeServer: true/)
   })
 }

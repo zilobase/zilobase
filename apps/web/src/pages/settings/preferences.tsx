@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useNavigate } from "@tanstack/react-router"
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import { useTheme } from "next-themes"
 import {
@@ -15,10 +16,20 @@ import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
 import { DesktopServerSelector } from "@/components/desktop-server-selector"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
-import { getApiErrorMessage } from "@/lib/api"
+import { clearApiAuthToken, getApiErrorMessage } from "@/lib/api"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
@@ -28,12 +39,14 @@ import {
   disableOfflineWorkspace,
   enableOfflineWorkspace,
   getConnectivityState,
+  hasUnsyncedOfflineItems,
   isDesktopOfflineSupported,
 } from "@/lib/offline-store"
 import { importRecoveryArchive } from "@/lib/offline-recovery"
 import { queryClient } from "@/lib/query-client"
+import { useAppStore } from "@/stores/app-store"
 import { useOfflineManifest } from "@/providers/offline-provider"
-import { useSession } from "@zilobase/features/auth"
+import { useSession, useSignOut } from "@zilobase/features/auth"
 import { useWorkspaces } from "@zilobase/features/workspaces"
 
 const appearanceOptions = [
@@ -72,6 +85,33 @@ export default function PreferencesSettingsPage() {
 }
 
 function DesktopServerSection() {
+  const navigate = useNavigate()
+  const signOut = useSignOut()
+  const [confirmOpen, setConfirmOpen] = React.useState(false)
+  const [pending, setPending] = React.useState(false)
+
+  const signOutAndChooseServer = async () => {
+    setPending(true)
+    try {
+      if (getConnectivityState() === "online") {
+        await signOut.mutateAsync().catch(() => clearApiAuthToken())
+      } else {
+        await clearApiAuthToken()
+      }
+      await clearAllOfflineData()
+      queryClient.clear()
+      useAppStore.getState().resetAccountState()
+      await navigate({
+        replace: true,
+        search: { changeServer: true },
+        to: "/login",
+      })
+    } catch (error) {
+      setPending(false)
+      toast.error(getApiErrorMessage(error))
+    }
+  }
+
   return (
     <section className="grid gap-4">
       <div className="space-y-1">
@@ -86,8 +126,38 @@ function DesktopServerSection() {
         </p>
       </div>
       <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-        <DesktopServerSelector />
+        <DesktopServerSelector onChangeRequest={() => setConfirmOpen(true)} />
       </div>
+      <AlertDialog
+        onOpenChange={(open) => !pending && setConfirmOpen(open)}
+        open={confirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out to change server?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You&apos;ll be signed out of this instance and taken to the sign-in
+              screen, where you can enter a server URL or use Zilobase Cloud.
+              {hasUnsyncedOfflineItems()
+                ? " Unsynced local drafts on this device will be deleted."
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={(event) => {
+                event.preventDefault()
+                void signOutAndChooseServer()
+              }}
+            >
+              {pending ? <Spinner /> : null}
+              {pending ? "Signing out..." : "Sign out and continue"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
 }

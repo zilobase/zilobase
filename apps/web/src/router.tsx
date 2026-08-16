@@ -87,8 +87,16 @@ const indexRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  validateSearch: (search: Record<string, unknown>): { returnTo?: string } =>
-    typeof search.returnTo === "string" ? { returnTo: search.returnTo } : {},
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { changeServer?: boolean; returnTo?: string } => ({
+    ...(typeof search.returnTo === "string" ? { returnTo: search.returnTo } : {}),
+    ...(search.changeServer === true ||
+    search.changeServer === "true" ||
+    search.changeServer === "1"
+      ? { changeServer: true }
+      : {}),
+  }),
   beforeLoad: async ({ search }) => {
     const session = await getFreshSession()
 

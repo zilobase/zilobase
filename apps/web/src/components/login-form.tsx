@@ -57,9 +57,10 @@ type BrowserSignInState =
   | { phase: "error"; error: unknown; retry: "oauth" | "finalize" }
 
 export function LoginForm({
+  changeServer = false,
   className,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { changeServer?: boolean }) {
   const signInWithPassword = useSignInWithPassword()
   const requestSignInOtp = useRequestSignInOtp()
   const setAuthFlow = useAuthFlowStore((state) => state.setAuthFlow)
@@ -227,7 +228,10 @@ export function LoginForm({
 
       {desktop && (
         <div className="rounded-lg border bg-muted/30 p-3">
-          <DesktopServerSelector actionLabel="Use another server" />
+          <DesktopServerSelector
+            actionLabel="Use another server"
+            startEditing={changeServer}
+          />
         </div>
       )}
 

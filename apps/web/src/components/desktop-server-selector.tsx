@@ -16,12 +16,16 @@ import { requestDesktopServerReplacement } from "@/lib/desktop-server-replacemen
 
 export function DesktopServerSelector({
   actionLabel = "Change server",
+  onChangeRequest,
+  startEditing = false,
 }: {
   actionLabel?: string;
+  onChangeRequest?: () => void;
+  startEditing?: boolean;
 }) {
   const [selection, dispatch] = useReducer(
     reduceDesktopServerSelection,
-    initialDesktopServerSelectionState,
+    startEditing ? { phase: "editing" } : initialDesktopServerSelectionState,
   );
   const [serverUrl, setServerUrl] = useState("");
   const selectedServer = getSelectedDesktopServer();
@@ -48,7 +52,10 @@ export function DesktopServerSelector({
           </p>
         </div>
         <Button
-          onClick={() => dispatch({ type: "edit" })}
+          onClick={() => {
+            if (onChangeRequest) onChangeRequest();
+            else dispatch({ type: "edit" });
+          }}
           size="sm"
           type="button"
           variant="ghost"

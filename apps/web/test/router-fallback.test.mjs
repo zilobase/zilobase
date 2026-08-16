@@ -14,6 +14,7 @@ export function register({ assert, test }) {
     assert.match(source, /window\.location\.reload\(\)/)
     assert.match(source, /DesktopServerSelector/)
     assert.match(source, /Change server/)
+    assert.match(source, /changeServer/)
     assert.match(source, /waitForSettledConnectivity/)
     assert.match(source, /resolveOfflineFallback/)
     assert.match(source, /decision\.type === "unavailable"/)
