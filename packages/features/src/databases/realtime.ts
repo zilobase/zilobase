@@ -258,7 +258,6 @@ class DatabaseRealtimeManager {
           this.scheduleReconnect()
         }
       })
-      socket.addEventListener("error", () => socket.close())
       this.scheduleTicketRefresh(ticket, socket, generation)
       this.recoverIfBehind(ticket.version)
     } catch (error) {
@@ -458,7 +457,7 @@ class DatabaseRealtimeManager {
     this.idleTimer = setTimeout(() => {
       this.idleTimer = null
       if (this.listeners.size === 0) this.stop()
-    }, 1_500)
+    }, 4_000)
   }
 
   private stop() {
@@ -473,7 +472,7 @@ class DatabaseRealtimeManager {
     this.reconnectTimer = null
     this.refreshTimer = null
     this.visibilityTimer = null
-    this.socket?.close(1000, "Database view closed")
+    closeRealtimeSocket(this.socket, 1000, "Database view closed")
     this.socket = null
     this.sessionId = null
     this.presenceByOwner.clear()
@@ -495,7 +494,7 @@ class DatabaseRealtimeManager {
     this.reconnectTimer = null
     this.refreshTimer = null
     this.visibilityTimer = null
-    this.socket?.close(1000, "Database realtime unavailable")
+    closeRealtimeSocket(this.socket, 1000, "Database realtime unavailable")
     this.socket = null
     this.sessionId = null
     this.stopLifecycleListeners()
@@ -554,7 +553,7 @@ class DatabaseRealtimeManager {
     this.stopHeartbeat()
     this.reconnectTimer = null
     this.refreshTimer = null
-    this.socket?.close(1000, "Database realtime paused")
+    closeRealtimeSocket(this.socket, 1000, "Database realtime paused")
     this.socket = null
     this.sessionId = null
     this.setState(getOfflineSnapshot())
@@ -576,6 +575,30 @@ function ticketTokenFor(socket: WebSocket) {
 
   if (!token) throw new Error("Missing database realtime refresh token")
   return token
+}
+
+const WEB_SOCKET_CONNECTING = 0
+const WEB_SOCKET_OPEN = 1
+
+export function closeRealtimeSocket(
+  socket: WebSocket | null,
+  code: number,
+  reason: string,
+) {
+  if (!socket) return
+
+  if (socket.readyState === WEB_SOCKET_CONNECTING) {
+    const closeWhenOpen = () => socket.close(code, reason)
+    socket.addEventListener("open", closeWhenOpen, { once: true })
+    socket.addEventListener("error", () => {
+      socket.removeEventListener("open", closeWhenOpen)
+    }, { once: true })
+    return
+  }
+
+  if (socket.readyState === WEB_SOCKET_OPEN) {
+    socket.close(code, reason)
+  }
 }
 
 export function reconnectDelay(

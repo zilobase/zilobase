@@ -4,6 +4,7 @@ import { QueryClient } from "@tanstack/react-query"
 
 import {
   applyDatabaseRealtimeMutation,
+  closeRealtimeSocket,
   createCellPresenceByKey,
   DATABASE_REALTIME_HEARTBEAT_MS,
   DATABASE_REALTIME_PING,
@@ -110,6 +111,37 @@ test("presence equality is based on stable cell fields", () => {
     false,
   )
   assert.equal(samePresence(null, null), true)
+})
+
+test("connecting realtime sockets are not closed until they open", () => {
+  const listeners = new Map<string, Array<() => void>>()
+  const socket = {
+    readyState: 0,
+    closeCalls: [] as Array<{ code: number; reason: string }>,
+    addEventListener(type: string, listener: () => void) {
+      const current = listeners.get(type) ?? []
+      current.push(listener)
+      listeners.set(type, current)
+    },
+    removeEventListener(type: string, listener: () => void) {
+      listeners.set(
+        type,
+        (listeners.get(type) ?? []).filter((item) => item !== listener),
+      )
+    },
+    close(code: number, reason: string) {
+      this.closeCalls.push({ code, reason })
+    },
+  }
+
+  closeRealtimeSocket(socket as unknown as WebSocket, 1000, "Database view closed")
+  assert.deepEqual(socket.closeCalls, [])
+
+  socket.readyState = 1
+  for (const listener of listeners.get("open") ?? []) listener()
+  assert.deepEqual(socket.closeCalls, [
+    { code: 1000, reason: "Database view closed" },
+  ])
 })
 
 test("reconnects use capped full jitter", () => {
