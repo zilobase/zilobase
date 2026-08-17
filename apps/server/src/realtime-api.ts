@@ -10,6 +10,13 @@ export type {
   MeetingLifecycleAction,
 } from "./features/meetings/meeting-types";
 export type { MeetingStatus };
+export {
+  createMeetingAudioTicket,
+  MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
+  MEETING_AUDIO_PROTOCOL,
+  verifyMeetingAudioTicket,
+  type MeetingAudioTicketClaims,
+} from "./features/meetings/meeting-audio-ticket";
 
 export type MeetingRealtimeEvent =
   | { type: "meeting.ready"; meetingId: string; sessionId: string }

@@ -1,8 +1,8 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, lt, or } from "drizzle-orm";
 
 import { canAccessPageInWorkspace } from "../../access";
 import { db } from "../../db";
-import { meeting, page } from "../../db/schema";
+import { meeting, meetingTranscriptSegment, page } from "../../db/schema";
 import { ServiceMutationError } from "../../services/mutation-error";
 import { clampMeetingDuration, getNextMeetingStatus } from "./meeting-state";
 import type {
@@ -10,6 +10,8 @@ import type {
   MeetingPatch,
   MeetingStatus,
 } from "./meeting-types";
+
+const RECORDER_LEASE_MS = 30_000;
 
 export async function getMeetingForUser(
   meetingId: string,
@@ -188,4 +190,175 @@ export async function deleteMeeting(input: {
     .returning();
 
   return deleted;
+}
+
+export async function claimMeetingRecorder(input: {
+  meetingId: string;
+  userId: string;
+}) {
+  const existing = await getMeetingForUser(input.meetingId, input.userId, "edit");
+  const now = new Date();
+  const leaseId = crypto.randomUUID();
+  const leaseExpiresAt = new Date(now.getTime() + RECORDER_LEASE_MS);
+  const [claimed] = await db
+    .update(meeting)
+    .set({
+      recorderId: input.userId,
+      recorderLeaseExpiresAt: leaseExpiresAt,
+      recorderLeaseId: leaseId,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(meeting.id, existing.id),
+        or(
+          isNull(meeting.recorderLeaseExpiresAt),
+          lt(meeting.recorderLeaseExpiresAt, now),
+        ),
+      ),
+    )
+    .returning();
+
+  if (!claimed) {
+    throw new ServiceMutationError(
+      "Another collaborator is already recording this meeting",
+      409,
+    );
+  }
+
+  return { leaseExpiresAt, leaseId, meeting: claimed };
+}
+
+export async function heartbeatMeetingRecorder(input: {
+  leaseId: string;
+  meetingId: string;
+  userId: string;
+}) {
+  const now = new Date();
+  const leaseExpiresAt = new Date(now.getTime() + RECORDER_LEASE_MS);
+  const [renewed] = await db
+    .update(meeting)
+    .set({ recorderLeaseExpiresAt: leaseExpiresAt, updatedAt: now })
+    .where(
+      and(
+        eq(meeting.id, input.meetingId),
+        eq(meeting.recorderId, input.userId),
+        eq(meeting.recorderLeaseId, input.leaseId),
+        gt(meeting.recorderLeaseExpiresAt, now),
+        isNull(meeting.deletedAt),
+      ),
+    )
+    .returning();
+
+  if (!renewed) throw new ServiceMutationError("Recorder lease expired", 409);
+  return { leaseExpiresAt, meeting: renewed };
+}
+
+export async function releaseMeetingRecorder(input: {
+  leaseId: string;
+  meetingId: string;
+  userId: string;
+}) {
+  const [released] = await db
+    .update(meeting)
+    .set({
+      recorderId: null,
+      recorderLeaseExpiresAt: null,
+      recorderLeaseId: null,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(meeting.id, input.meetingId),
+        eq(meeting.recorderId, input.userId),
+        eq(meeting.recorderLeaseId, input.leaseId),
+      ),
+    )
+    .returning();
+
+  if (!released) throw new ServiceMutationError("Recorder lease not found", 409);
+  return released;
+}
+
+export async function validateMeetingRecorderLease(input: {
+  leaseId: string;
+  meetingId: string;
+  userId: string;
+}) {
+  const [record] = await db
+    .select()
+    .from(meeting)
+    .where(
+      and(
+        eq(meeting.id, input.meetingId),
+        eq(meeting.recorderId, input.userId),
+        eq(meeting.recorderLeaseId, input.leaseId),
+        gt(meeting.recorderLeaseExpiresAt, new Date()),
+        isNull(meeting.deletedAt),
+      ),
+    )
+    .limit(1);
+  if (!record) throw new ServiceMutationError("Recorder lease expired", 409);
+  return record;
+}
+
+export async function appendMeetingTranscriptSegment(input: {
+  endMs: number;
+  meetingId: string;
+  providerItemId: string;
+  sequence: number;
+  startMs: number;
+  text: string;
+}) {
+  const [record] = await db
+    .select({ revision: meeting.transcriptRevision })
+    .from(meeting)
+    .where(and(eq(meeting.id, input.meetingId), isNull(meeting.deletedAt)))
+    .limit(1);
+  if (!record) throw new ServiceMutationError("Meeting not found", 404);
+
+  const [inserted] = await db
+    .insert(meetingTranscriptSegment)
+    .values({
+      endMs: input.endMs,
+      id: crypto.randomUUID(),
+      meetingId: input.meetingId,
+      providerItemId: input.providerItemId,
+      revision: record.revision,
+      sequence: input.sequence,
+      startMs: input.startMs,
+      text: input.text.trim(),
+    })
+    .onConflictDoNothing()
+    .returning();
+
+  if (inserted) return inserted;
+  const [existing] = await db
+    .select()
+    .from(meetingTranscriptSegment)
+    .where(
+      and(
+        eq(meetingTranscriptSegment.meetingId, input.meetingId),
+        eq(meetingTranscriptSegment.providerItemId, input.providerItemId),
+      ),
+    )
+    .limit(1);
+  return existing ?? null;
+}
+
+export async function listMeetingTranscript(input: {
+  meetingId: string;
+  userId: string;
+}) {
+  const existing = await getMeetingForUser(input.meetingId, input.userId);
+  return db
+    .select()
+    .from(meetingTranscriptSegment)
+    .where(
+      and(
+        eq(meetingTranscriptSegment.meetingId, existing.id),
+        eq(meetingTranscriptSegment.revision, existing.transcriptRevision),
+      ),
+    )
+    .orderBy(asc(meetingTranscriptSegment.sequence));
 }

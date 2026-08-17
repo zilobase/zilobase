@@ -415,6 +415,7 @@ export const meeting = pgTable(
     recorderId: text("recorder_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    recorderLeaseId: text("recorder_lease_id"),
     recorderLeaseExpiresAt: timestamp("recorder_lease_expires_at", {
       withTimezone: true,
     }),

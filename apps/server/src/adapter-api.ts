@@ -21,6 +21,15 @@ export {
 } from "./ai/chat-persistence";
 export { createAuth } from "./auth";
 export {
+  appendMeetingTranscriptSegment,
+  heartbeatMeetingRecorder,
+  validateMeetingRecorderLease,
+} from "./features/meetings/meeting-service";
+export {
+  pcmToWav,
+  transcribeMeetingPcm,
+} from "./features/meetings/meeting-transcription";
+export {
   COLLABORATION_WEBSOCKET_PROTOCOL,
   getAuthHeaders,
   readWebSocketSessionToken,
@@ -64,6 +73,7 @@ export {
   getCollaborationWebSocketUrl,
   getConfiguredImageStorageMode,
   getDatabaseRealtimeWebSocketUrl,
+  getMeetingAudioWebSocketUrl,
   getMeetingCollaborationWebSocketUrl,
   getDatabaseUrl,
   getRuntimeAdapter,
@@ -79,6 +89,13 @@ export {
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
 } from "./database-realtime-ticket";
+export {
+  createMeetingAudioTicket,
+  MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
+  MEETING_AUDIO_PROTOCOL,
+  verifyMeetingAudioTicket,
+  type MeetingAudioTicketClaims,
+} from "./features/meetings/meeting-audio-ticket";
 export {
   drainDatabaseRealtimeOutbox,
   type DatabaseRealtimeMutationEvent,

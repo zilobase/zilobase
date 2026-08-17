@@ -373,7 +373,7 @@ export function resolveDesktopServerUrls(server: DesktopServer) {
 
 export function resolveRuntimeWebSocketUrl(
   configuredUrl: string,
-  channel: "collaboration" | "meeting" | "realtime",
+  channel: "audio" | "collaboration" | "meeting" | "realtime",
   desktopServer = selectedDesktopServer,
 ) {
   if (!desktopServer) return configuredUrl
@@ -391,6 +391,7 @@ export function resolveRuntimeWebSocketUrl(
     channel === "realtime" ? urls.realtimeUrl : urls.collaborationUrl,
   )
   if (channel === "meeting") resolved.pathname = "/meeting-collaboration"
+  if (channel === "audio") resolved.pathname = "/meeting-audio"
   resolved.search = configured.search
   return resolved.toString()
 }

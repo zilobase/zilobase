@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { invoke, isTauri } from "@tauri-apps/api/core"
 import {
   CalendarDays,
   ChevronDown,
@@ -15,6 +16,7 @@ import {
 import {
   useMeeting,
   useMeetingLifecycle,
+  useMeetingRecorder,
   useUpdateMeeting,
   type MeetingLifecycleAction,
 } from "@zilobase/features/meetings"
@@ -45,17 +47,62 @@ export function MeetingView({
   const meetingQuery = useMeeting(meetingId)
   const updateMeeting = useUpdateMeeting(meetingId)
   const lifecycle = useMeetingLifecycle(meetingId)
+  const recorder = useMeetingRecorder(meetingId)
   const collaboration = useMeetingCollaboration(meetingId)
   const [activeTab, setActiveTab] = useState<MeetingTab>("notes")
   const [title, setTitle] = useState("Meeting")
+  const [leaseId, setLeaseId] = useState<string | null>(null)
   const meeting = meetingQuery.data?.meeting
+  const activeRecording = meeting?.status === "recording" || meeting?.status === "paused"
 
   useEffect(() => {
     if (meeting?.title) setTitle(meeting.title)
   }, [meeting?.title])
 
+  useEffect(() => {
+    if (!leaseId || !activeRecording) return
+    const interval = window.setInterval(() => {
+      recorder.heartbeat.mutate(leaseId)
+    }, 10_000)
+    return () => window.clearInterval(interval)
+  }, [activeRecording, leaseId, recorder.heartbeat])
+
   const runLifecycle = async (action: MeetingLifecycleAction) => {
     try {
+      if (action === "start") {
+        if (!isTauri()) throw new Error("Meeting recording is available in the desktop app.")
+        const claim = await recorder.claim.mutateAsync()
+        setLeaseId(claim.leaseId)
+        try {
+          await invoke("meeting_capture_start", {
+            config: {
+              audioTicket: claim.token,
+              audioWebsocketUrl: claim.websocketUrl,
+              captureMicrophone: true,
+              captureSystemAudio: false,
+              meetingId,
+            },
+          })
+          await lifecycle.mutateAsync({ action })
+        } catch (error) {
+          await invoke("meeting_capture_stop").catch(() => undefined)
+          await recorder.release.mutateAsync(claim.leaseId).catch(() => undefined)
+          setLeaseId(null)
+          throw error
+        }
+        return
+      }
+
+      if (!isTauri()) throw new Error("Recorder controls are available in the desktop app.")
+      if (action === "pause") await invoke("meeting_capture_pause")
+      if (action === "resume") await invoke("meeting_capture_resume")
+      if (action === "stop") {
+        const capture = await invoke<{ elapsedMs: number }>("meeting_capture_stop")
+        await lifecycle.mutateAsync({ action, durationMs: capture.elapsedMs })
+        if (leaseId) await recorder.release.mutateAsync(leaseId)
+        setLeaseId(null)
+        return
+      }
       await lifecycle.mutateAsync({ action })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Meeting update failed.")
@@ -81,7 +128,6 @@ export function MeetingView({
   }
 
   const hasResult = meeting.status === "completed" || meeting.status === "failed"
-  const activeRecording = meeting.status === "recording" || meeting.status === "paused"
   const tabs: MeetingTab[] = hasResult
     ? ["summary", "notes", "transcript"]
     : ["notes"]
@@ -186,7 +232,7 @@ export function MeetingView({
           {editable ? (
             <div className="flex items-center gap-2">
               {meeting.status === "idle" || meeting.status === "failed" ? (
-                <Button onClick={() => void runLifecycle("start")} disabled={lifecycle.isPending}>
+                <Button onClick={() => void runLifecycle("start")} disabled={lifecycle.isPending || recorder.claim.isPending}>
                   <Mic /> Start transcribing
                 </Button>
               ) : meeting.status === "recording" ? (

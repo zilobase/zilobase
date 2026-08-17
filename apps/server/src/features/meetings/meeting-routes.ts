@@ -10,15 +10,21 @@ import {
   getOrCreateMeetingCollaborationDocumentState,
 } from "../../collaboration/service";
 import { getMeetingCollaborationWebSocketUrl } from "../../runtime-adapter";
+import { getMeetingAudioWebSocketUrl } from "../../runtime-adapter";
 import { ServiceMutationError } from "../../services/mutation-error";
 import type { AppBindings } from "../../types";
 import {
+  claimMeetingRecorder,
   createMeeting,
   deleteMeeting,
   getMeetingForUser,
+  heartbeatMeetingRecorder,
+  listMeetingTranscript,
+  releaseMeetingRecorder,
   transitionMeeting,
   updateMeeting,
 } from "./meeting-service";
+import { createMeetingAudioTicket } from "./meeting-audio-ticket";
 import { meetingLifecycleActions } from "./meeting-types";
 
 const createMeetingSchema = z.object({
@@ -41,6 +47,10 @@ const updateMeetingSchema = z
 
 const lifecycleSchema = z.object({
   durationMs: z.number().nonnegative().optional(),
+});
+
+const recorderLeaseSchema = z.object({
+  leaseId: z.string().uuid(),
 });
 
 export const meetingRoutes = new Hono<AppBindings>();
@@ -139,6 +149,95 @@ meetingRoutes.post("/:id/collaboration-ticket", async (c) => {
       initialState: Buffer.from(initialState).toString("base64"),
       websocketUrl: websocketUrl.toString(),
       ...ticket,
+    });
+  } catch (error) {
+    return serviceError(c, error);
+  }
+});
+
+meetingRoutes.post("/:id/recorder/claim", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  try {
+    const lease = await claimMeetingRecorder({
+      meetingId: c.req.param("id"),
+      userId: user.id,
+    });
+    const ticket = await createMeetingAudioTicket(
+      {
+        leaseId: lease.leaseId,
+        meetingId: lease.meeting.id,
+        userId: user.id,
+        workspaceId: lease.meeting.workspaceId,
+      },
+      c.env,
+    );
+    const websocketUrl = new URL(getMeetingAudioWebSocketUrl(c.req.raw, c.env));
+    websocketUrl.searchParams.set("meeting", lease.meeting.id);
+
+    return c.json({
+      expiresAt: ticket.expiresAt,
+      leaseExpiresAt: lease.leaseExpiresAt.toISOString(),
+      leaseId: lease.leaseId,
+      meeting: lease.meeting,
+      token: ticket.token,
+      websocketUrl: websocketUrl.toString(),
+    });
+  } catch (error) {
+    return serviceError(c, error);
+  }
+});
+
+meetingRoutes.post("/:id/recorder/heartbeat", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const parsed = recorderLeaseSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: "Invalid recorder lease" }, 400);
+
+  try {
+    const renewed = await heartbeatMeetingRecorder({
+      leaseId: parsed.data.leaseId,
+      meetingId: c.req.param("id"),
+      userId: user.id,
+    });
+    return c.json({
+      leaseExpiresAt: renewed.leaseExpiresAt.toISOString(),
+      meeting: renewed.meeting,
+    });
+  } catch (error) {
+    return serviceError(c, error);
+  }
+});
+
+meetingRoutes.post("/:id/recorder/release", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const parsed = recorderLeaseSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: "Invalid recorder lease" }, 400);
+
+  try {
+    return c.json({
+      meeting: await releaseMeetingRecorder({
+        leaseId: parsed.data.leaseId,
+        meetingId: c.req.param("id"),
+        userId: user.id,
+      }),
+    });
+  } catch (error) {
+    return serviceError(c, error);
+  }
+});
+
+meetingRoutes.get("/:id/transcript", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  try {
+    return c.json({
+      segments: await listMeetingTranscript({
+        meetingId: c.req.param("id"),
+        userId: user.id,
+      }),
     });
   } catch (error) {
     return serviceError(c, error);

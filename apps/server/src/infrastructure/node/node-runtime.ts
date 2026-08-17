@@ -8,6 +8,7 @@ import type { Hono } from "hono";
 import { getAppEditionExtension } from "../../app";
 import { attachNodeCollaborationRuntime } from "../../collaboration/node-runtime";
 import { attachNodeDatabaseRealtimeRuntime } from "../../database-realtime/node-runtime";
+import { attachNodeMeetingAudioRuntime } from "../../features/meetings/meeting-audio-node-runtime";
 import { createDbClientForUrl, runWithDbEnv } from "../../db";
 import { assertSelfHostedProductionConfiguration } from "../../features/instance/registration";
 import {
@@ -69,9 +70,10 @@ export function createNodeRuntime({
   const editionExtension = getAppEditionExtension(app);
   const collaboration = attachNodeCollaborationRuntime(server, env, {
     editionExtension,
-    passthroughPaths: ["/database-collaboration"],
+    passthroughPaths: ["/database-collaboration", "/meeting-audio"],
   });
   const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env);
+  const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
   const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
     ...runtimeAdapter,
     publishDatabaseMutation: ({ event }) =>
@@ -122,6 +124,7 @@ export function createNodeRuntime({
       stopOutboxDrainer?.();
       stopOutboxDrainer = null;
       await databaseRealtime.destroy();
+      await meetingAudio.destroy();
       await collaboration.destroy();
       await new Promise<void>((resolve, reject) => {
         if (!server.listening) {

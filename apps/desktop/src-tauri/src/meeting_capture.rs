@@ -20,6 +20,12 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::{AppHandle, Emitter, Manager, State};
+use tungstenite::{
+    client::IntoClientRequest,
+    http::{header::SEC_WEBSOCKET_PROTOCOL, HeaderValue},
+    stream::MaybeTlsStream,
+    WebSocket,
+};
 
 const TARGET_SAMPLE_RATE: u32 = 24_000;
 const FRAME_SAMPLES: usize = 480;
@@ -58,6 +64,8 @@ pub struct MeetingCapturePermissions {
 #[serde(rename_all = "camelCase")]
 pub struct MeetingCaptureConfig {
     meeting_id: String,
+    audio_websocket_url: Option<String>,
+    audio_ticket: Option<String>,
     microphone_device_id: Option<String>,
     system_device_id: Option<String>,
     #[serde(default = "default_true")]
@@ -432,6 +440,14 @@ fn run_capture(
     control_rx: mpsc::Receiver<CaptureControl>,
     ready_tx: mpsc::SyncSender<Result<(), String>>,
 ) {
+    let mut transport = match MeetingAudioTransport::from_config(&config) {
+        Ok(transport) => transport,
+        Err(error) => {
+            set_error(&app, &status, error.clone());
+            let _ = ready_tx.send(Err(error));
+            return;
+        }
+    };
     let (audio_tx, audio_rx) = mpsc::sync_channel(AUDIO_CHANNEL_CAPACITY);
     let paused = Arc::new(AtomicBool::new(false));
     let stream_result = build_capture_streams(&config, audio_tx, paused.clone());
@@ -459,7 +475,6 @@ fn run_capture(
     let mut system = VecDeque::new();
     let mut elapsed_samples = 0_u64;
     let mut stopping = false;
-
     while !stopping && elapsed_samples * 1_000 / (TARGET_SAMPLE_RATE as u64) < MAX_CAPTURE_MS {
         while let Ok(control) = control_rx.try_recv() {
             match control {
@@ -509,6 +524,17 @@ fn run_capture(
                 stopping = true;
                 break;
             }
+            if let Some(transport) = transport.as_mut() {
+                if let Err(error) = transport.send_frame(&frame) {
+                    let _ = app.emit(
+                        "meeting-capture-warning",
+                        serde_json::json!({
+                            "code": "transcription_transport_unavailable",
+                            "message": error,
+                        }),
+                    );
+                }
+            }
             elapsed_samples += FRAME_SAMPLES as u64;
             let elapsed_ms = elapsed_samples * 1_000 / TARGET_SAMPLE_RATE as u64;
             update_elapsed(&status, elapsed_ms);
@@ -528,6 +554,9 @@ fn run_capture(
     }
 
     drop(streams);
+    if let Some(transport) = transport.as_mut() {
+        transport.close();
+    }
     let _ = wav.finalize();
     let elapsed_ms = elapsed_samples * 1_000 / TARGET_SAMPLE_RATE as u64;
     let checkpoint = RecoverableMeetingCapture {
@@ -737,7 +766,94 @@ fn validate_config(config: &MeetingCaptureConfig) -> Result<(), String> {
     if !config.capture_microphone && !config.capture_system_audio {
         return Err("Enable microphone or system-audio capture".into());
     }
+    if config.audio_websocket_url.is_some() != config.audio_ticket.is_some() {
+        return Err("Meeting audio URL and ticket must be provided together".into());
+    }
     Ok(())
+}
+
+struct MeetingAudioTransport {
+    next_sequence: u64,
+    protocol: String,
+    socket: Option<WebSocket<MaybeTlsStream<std::net::TcpStream>>>,
+    url: String,
+}
+
+impl MeetingAudioTransport {
+    fn from_config(config: &MeetingCaptureConfig) -> Result<Option<Self>, String> {
+        match (&config.audio_websocket_url, &config.audio_ticket) {
+            (Some(url), Some(ticket)) => {
+                let parsed = url::Url::parse(url)
+                    .map_err(|_| "The meeting audio WebSocket URL is invalid".to_string())?;
+                if !matches!(parsed.scheme(), "ws" | "wss") {
+                    return Err("Meeting audio transport must use WebSocket".into());
+                }
+                Ok(Some(Self {
+                    next_sequence: 0,
+                    protocol: format!(
+                        "zilobase.meeting-audio.v1, zilobase.meeting-audio.auth.{ticket}"
+                    ),
+                    socket: None,
+                    url: url.clone(),
+                }))
+            }
+            (None, None) => Ok(None),
+            _ => Err("Meeting audio URL and ticket must be provided together".into()),
+        }
+    }
+
+    fn connect(&mut self) -> Result<(), String> {
+        let mut request = self
+            .url
+            .as_str()
+            .into_client_request()
+            .map_err(|error| format!("Could not create meeting audio request: {error}"))?;
+        request.headers_mut().insert(
+            SEC_WEBSOCKET_PROTOCOL,
+            HeaderValue::from_str(&self.protocol)
+                .map_err(|_| "Meeting audio ticket is invalid".to_string())?,
+        );
+        let (socket, _) = tungstenite::connect(request)
+            .map_err(|error| format!("Could not connect meeting transcription: {error}"))?;
+        self.socket = Some(socket);
+        Ok(())
+    }
+
+    fn send_frame(&mut self, samples: &[f32]) -> Result<(), String> {
+        let sequence = self.next_sequence;
+        self.next_sequence = self.next_sequence.saturating_add(1);
+        let mut bytes = Vec::with_capacity(8 + samples.len() * 2);
+        bytes.extend_from_slice(&sequence.to_le_bytes());
+        for sample in samples {
+            let pcm = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
+            bytes.extend_from_slice(&pcm.to_le_bytes());
+        }
+
+        for attempt in 0..2 {
+            if self.socket.is_none() {
+                self.connect()?;
+            }
+            let result = self
+                .socket
+                .as_mut()
+                .expect("meeting audio socket was connected")
+                .send(tungstenite::Message::Binary(bytes.clone().into()));
+            if result.is_ok() {
+                return Ok(());
+            }
+            self.socket = None;
+            if attempt == 0 {
+                thread::sleep(Duration::from_millis(100));
+            }
+        }
+        Err("Meeting transcription disconnected; local recording continues".into())
+    }
+
+    fn close(&mut self) {
+        if let Some(mut socket) = self.socket.take() {
+            let _ = socket.close(None);
+        }
+    }
 }
 
 fn validate_meeting_id(meeting_id: &str) -> Result<(), String> {

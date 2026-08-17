@@ -15,6 +15,7 @@ const apiPathPrefixes = [
   "/desktop",
   "/images",
   "/metadata",
+  "/meetings",
   "/user-settings",
   "/comments",
   "/health",

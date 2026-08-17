@@ -162,6 +162,17 @@ function resolveRuntimeResponse(path: string, data: unknown) {
     }
   }
 
+  if (/\/meetings\/[^/]+\/recorder\/claim(?:\?|$)/.test(path)) {
+    return {
+      ...response,
+      websocketUrl: resolveRuntimeWebSocketUrl(
+        response.websocketUrl,
+        "audio",
+        server,
+      ),
+    }
+  }
+
   if (/\/databases\/[^/]+\/realtime-ticket(?:\?|$)/.test(path)) {
     return {
       ...response,

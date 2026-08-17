@@ -26,6 +26,7 @@ export type MeetingRecord = {
   language: string
   pageId: string
   recorderId: string | null
+  recorderLeaseId: string | null
   recorderLeaseExpiresAt: string | null
   recordingStartedAt: string | null
   recordingStoppedAt: string | null
@@ -37,6 +38,14 @@ export type MeetingRecord = {
 }
 
 export type MeetingResponse = { meeting: MeetingRecord }
+
+export type MeetingRecorderClaim = MeetingResponse & {
+  expiresAt: string
+  leaseExpiresAt: string
+  leaseId: string
+  token: string
+  websocketUrl: string
+}
 
 export const meetingKeys = {
   all: ["meetings"] as const,

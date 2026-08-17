@@ -5,9 +5,13 @@ import { beforeEach, test, vi } from "vitest";
 import type { AppBindings } from "../../types";
 
 const mocks = vi.hoisted(() => ({
+  claimRecorder: vi.fn(),
   create: vi.fn(),
   delete: vi.fn(),
   get: vi.fn(),
+  heartbeatRecorder: vi.fn(),
+  listTranscript: vi.fn(),
+  releaseRecorder: vi.fn(),
   transition: vi.fn(),
   update: vi.fn(),
 }));
@@ -16,9 +20,13 @@ vi.mock("../../api-keys", () => ({
   rejectMismatchedApiKeyWorkspace: () => null,
 }));
 vi.mock("./meeting-service", () => ({
+  claimMeetingRecorder: mocks.claimRecorder,
   createMeeting: mocks.create,
   deleteMeeting: mocks.delete,
   getMeetingForUser: mocks.get,
+  heartbeatMeetingRecorder: mocks.heartbeatRecorder,
+  listMeetingTranscript: mocks.listTranscript,
+  releaseMeetingRecorder: mocks.releaseRecorder,
   transitionMeeting: mocks.transition,
   updateMeeting: mocks.update,
 }));
@@ -43,11 +51,23 @@ function appFor(authenticated = true) {
   return app;
 }
 
-const env = { MEETING_BLOCK_ENABLED: "true" };
+const env = {
+  BETTER_AUTH_SECRET: "meeting-routes-test-secret",
+  MEETING_BLOCK_ENABLED: "true",
+};
 
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.create.mockResolvedValue({ id: "meeting-1", status: "idle" });
+  mocks.claimRecorder.mockResolvedValue({
+    leaseExpiresAt: new Date("2026-08-18T00:00:30.000Z"),
+    leaseId: "10000000-0000-4000-8000-000000000001",
+    meeting: {
+      id: "meeting-1",
+      status: "idle",
+      workspaceId: "workspace-1",
+    },
+  });
   mocks.get.mockResolvedValue({ id: "meeting-1", status: "idle" });
   mocks.transition.mockResolvedValue({ id: "meeting-1", status: "recording" });
 });
@@ -114,4 +134,20 @@ test("meeting lifecycle endpoints use the validated action", async () => {
     meetingId: "meeting-1",
     userId: "user-1",
   });
+});
+
+test("recorder claim returns a scoped native audio ticket", async () => {
+  const response = await appFor().request(
+    "/meetings/meeting-1/recorder/claim",
+    { method: "POST" },
+    env,
+  );
+  assert.equal(response.status, 200);
+  const payload = await response.json() as Record<string, unknown>;
+  assert.equal(payload.leaseId, "10000000-0000-4000-8000-000000000001");
+  assert.equal(typeof payload.token, "string");
+  assert.equal(
+    payload.websocketUrl,
+    "ws://localhost/meeting-audio?meeting=meeting-1",
+  );
 });

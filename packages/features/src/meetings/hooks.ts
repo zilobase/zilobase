@@ -8,6 +8,7 @@ import {
   type MeetingLifecycleAction,
   type MeetingPatch,
   type MeetingResponse,
+  type MeetingRecorderClaim,
 } from "./queries"
 
 export function useMeeting(meetingId: string | null | undefined) {
@@ -83,4 +84,38 @@ export function useMeetingLifecycle(meetingId: string) {
       await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })
     },
   })
+}
+
+export function useMeetingRecorder(meetingId: string) {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+  const claim = useMutation({
+    mutationFn: () =>
+      apiFetch<MeetingRecorderClaim>(`/meetings/${meetingId}/recorder/claim`, {
+        body: "{}",
+        method: "POST",
+      }),
+    onSuccess: (payload) => {
+      queryClient.setQueryData(meetingKeys.detail(meetingId), {
+        meeting: payload.meeting,
+      })
+    },
+  })
+  const heartbeat = useMutation({
+    mutationFn: (leaseId: string) =>
+      apiFetch<MeetingResponse & { leaseExpiresAt: string }>(
+        `/meetings/${meetingId}/recorder/heartbeat`,
+        { body: JSON.stringify({ leaseId }), method: "POST" },
+      ),
+  })
+  const release = useMutation({
+    mutationFn: (leaseId: string) =>
+      apiFetch<MeetingResponse>(`/meetings/${meetingId}/recorder/release`, {
+        body: JSON.stringify({ leaseId }),
+        method: "POST",
+      }),
+    onSuccess: (payload) => {
+      queryClient.setQueryData(meetingKeys.detail(meetingId), payload)
+    },
+  })
+  return { claim, heartbeat, release }
 }

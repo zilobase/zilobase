@@ -35,6 +35,7 @@ export type ServerRuntimeAdapter = {
     request: Request,
     env: RuntimeEnv,
   ): string;
+  getMeetingAudioWebSocketUrl?(request: Request, env: RuntimeEnv): string;
   getDatabaseUrl?(env: RuntimeEnv): string | null | undefined;
   getImageStorageMode?(env: RuntimeEnv): "s3" | "binding" | null | undefined;
   publishDatabaseMutation?(input: {
@@ -116,6 +117,29 @@ export function getMeetingCollaborationWebSocketUrl(
   const url = new URL(request.url);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/meeting-collaboration";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+export function getMeetingAudioWebSocketUrl(
+  request: Request,
+  env: RuntimeEnv,
+) {
+  const explicitUrl = getStringEnv(env, "MEETING_AUDIO_WEBSOCKET_URL");
+
+  if (explicitUrl) return explicitUrl;
+
+  const configured = getRuntimeAdapter().getMeetingAudioWebSocketUrl?.(
+    request,
+    env,
+  );
+
+  if (configured) return configured;
+
+  const url = new URL(request.url);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/meeting-audio";
   url.search = "";
   url.hash = "";
   return url.toString();
