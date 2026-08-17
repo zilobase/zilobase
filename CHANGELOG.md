@@ -4,6 +4,19 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.39
+
+### Added
+
+- Desktop workspace switcher lists live workspaces on the current server, then last-known workspaces on other remembered servers, plus Connect another server.
+- Desktop can stay signed in to more than one instance. Switching reloads onto that server and leaves the other server's credentials and local data on the device.
+
+### Changed
+
+- Settings lists saved desktop servers. Remove from this device is the only path that signs out and deletes that instance's credentials, cache, offline documents, and tabs.
+- Connecting a new desktop server or opening a `zilobase://connect` link adds or switches a saved profile instead of wiping the previous server.
+- Signed-out desktop and reconnect screens can return to another remembered server without forgetting the current one.
+
 ## 0.0.38
 
 ### Added
