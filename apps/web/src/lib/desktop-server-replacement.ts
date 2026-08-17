@@ -12,6 +12,7 @@ import { clearDesktopServerIndexedData } from "@/lib/offline-store";
 import { queryClient } from "@/lib/query-client";
 import {
   commitDesktopServerCandidate,
+  getSelectedDesktopServer,
   type DesktopServer,
 } from "@/lib/desktop-server";
 import type {
@@ -73,6 +74,11 @@ export async function clearDesktopServerBrowserState() {
   ]);
   window.localStorage.removeItem("zilobase-app");
   window.localStorage.removeItem("zilobase-auth-flow");
+  const server = getSelectedDesktopServer();
+  if (server) {
+    window.localStorage.removeItem(`zilobase-app:${server.instanceId}`);
+    window.localStorage.removeItem(`zilobase-auth-flow:${server.instanceId}`);
+  }
   window.sessionStorage.clear();
 }
 

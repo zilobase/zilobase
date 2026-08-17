@@ -1,6 +1,8 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
+import { desktopPersistOptions } from "@/lib/desktop-persist-storage"
+
 export type AuthFlowPurpose = "email-verification" | "sign-in"
 
 type AuthFlowState = {
@@ -25,7 +27,7 @@ export const useAuthFlowStore = create<AuthFlowState>()(
       clearAuthFlow: () => set({ email: null, purpose: null, returnTo: null }),
     }),
     {
-      name: "zilobase-auth-flow",
+      ...desktopPersistOptions("zilobase-auth-flow"),
       partialize: ({ email, purpose, returnTo }) => ({
         email,
         purpose,

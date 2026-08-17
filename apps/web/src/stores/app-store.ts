@@ -1,6 +1,8 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
+import { desktopPersistOptions } from "@/lib/desktop-persist-storage"
+
 export type DesktopTab = {
   href: string
   icon?: string | null
@@ -126,8 +128,6 @@ export const useAppStore = create<AppState>()(
           }
         }),
     }),
-    {
-      name: "zilobase-app",
-    },
+    desktopPersistOptions("zilobase-app"),
   ),
 )

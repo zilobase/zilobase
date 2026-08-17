@@ -1,6 +1,8 @@
 import { isTauri } from "@tauri-apps/api/core"
 import {
+  desktopPersistKey,
   resolveRuntimeApiOrigin,
+  type DesktopServer,
 } from "@/lib/desktop-server"
 import type {
   PersistedClient,
@@ -14,8 +16,30 @@ export const OFFLINE_SCHEMA_VERSION = 1
 export const OFFLINE_CACHE_BUSTER = `zilobase-offline-v${OFFLINE_SCHEMA_VERSION}`
 export const OFFLINE_CACHE_MAX_AGE = 1000 * 60 * 60 * 24 * 24
 
-const MANIFEST_KEY = "zilobase-offline-manifest-v1"
-const QUERY_CACHE_KEY = "zilobase-offline-query-cache-v1"
+const MANIFEST_KEY_BASE = "zilobase-offline-manifest-v1"
+const QUERY_CACHE_KEY_BASE = "zilobase-offline-query-cache-v1"
+
+export function offlineManifestKey(server?: DesktopServer | null) {
+  return desktopPersistKey(MANIFEST_KEY_BASE, server ?? undefined)
+}
+
+export function offlineQueryCacheKey(server?: DesktopServer | null) {
+  return desktopPersistKey(QUERY_CACHE_KEY_BASE, server ?? undefined)
+}
+
+async function readNamespacedValue<T>(key: string) {
+  const stored = await get<T>(key).catch(() => null)
+  if (stored != null) return stored
+  if (!key.includes(":")) return null
+
+  const base = key.slice(0, key.lastIndexOf(":"))
+  if (base !== MANIFEST_KEY_BASE && base !== QUERY_CACHE_KEY_BASE) return null
+
+  const legacy = await get<T>(base).catch(() => null)
+  if (legacy == null) return null
+  await set(key, legacy).catch(() => undefined)
+  return legacy
+}
 
 export type ConnectivityState =
   | "checking"
@@ -104,7 +128,7 @@ export async function initializeOfflineStore() {
   if (!manifestLoad) {
     manifestLoad = (async () => {
       if (isDesktopOfflineSupported()) {
-        const stored = await get<unknown>(MANIFEST_KEY).catch(() => null)
+        const stored = await readNamespacedValue(offlineManifestKey())
         manifest = normalizeManifest(stored)
       }
       manifestLoaded = true
@@ -137,7 +161,7 @@ export async function updateOfflineManifest(
 ) {
   const current = await initializeOfflineStore()
   manifest = normalizeManifest(update(current))
-  await set(MANIFEST_KEY, manifest)
+  await set(offlineManifestKey(), manifest)
   emit(manifestListeners)
   return manifest
 }
@@ -284,18 +308,28 @@ export async function clearAllOfflineData() {
     .map((item) => offlineDocumentName(item.workspaceId, item.id))
 
   await Promise.all(pageDatabaseNames.map(deleteIndexedDatabase))
-  await Promise.all([del(MANIFEST_KEY), del(QUERY_CACHE_KEY)])
+  await Promise.all([del(offlineManifestKey()), del(offlineQueryCacheKey())])
   manifest = emptyManifest()
   emit(manifestListeners)
 }
 
-export async function clearDesktopServerIndexedData() {
-  await clearAllOfflineData()
+export async function clearDesktopServerIndexedData(server?: DesktopServer | null) {
+  if (!server) {
+    await clearAllOfflineData()
+  } else {
+    await Promise.all([
+      del(offlineManifestKey(server)),
+      del(offlineQueryCacheKey(server)),
+    ])
+  }
   if (typeof indexedDB.databases !== "function") return
 
   const databases = await indexedDB.databases()
+  const originPrefix = server
+    ? `zilobase:v1:${encodeURIComponent(server.apiOrigin)}:`
+    : "zilobase:v1:"
   const names = databases.flatMap((database) =>
-    database.name?.startsWith("zilobase:v1:") ? [database.name] : [],
+    database.name?.startsWith(originPrefix) ? [database.name] : [],
   )
   await Promise.all(names.map(deleteIndexedDatabaseStrict))
 }
@@ -313,13 +347,13 @@ export function clearOfflineDocumentDatabase(workspaceId: string, pageId: string
 export const offlineQueryPersister: Persister = {
   persistClient: async (client: PersistedClient) => {
     if (!isDesktopOfflineSupported() || !manifest.workspaces.length) return
-    await set(QUERY_CACHE_KEY, client)
+    await set(offlineQueryCacheKey(), client)
   },
   restoreClient: async () => {
     if (!isDesktopOfflineSupported() || !manifest.workspaces.length) return
-    return get<PersistedClient>(QUERY_CACHE_KEY)
+    return (await readNamespacedValue<PersistedClient>(offlineQueryCacheKey())) ?? undefined
   },
-  removeClient: () => del(QUERY_CACHE_KEY),
+  removeClient: () => del(offlineQueryCacheKey()),
 }
 
 export function shouldPersistOfflineQuery(query: Query) {

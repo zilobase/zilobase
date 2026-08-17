@@ -35,12 +35,13 @@ import {
   assertPreparedServerMatchesRequest,
   executeDesktopServerReplacement,
 } from "@/lib/desktop-server-replacement-core";
+import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch";
 import { cancelDesktopBrowserSignIn } from "@/lib/google-auth";
 import {
   downloadRecoveryArchive,
   syncDirtyOfflinePages,
 } from "@/lib/offline-recovery";
-import { hasUnsyncedOfflineItems } from "@/lib/offline-store";
+
 
 type ReplacementContext = {
   prepared: PreparedDesktopServer;
@@ -129,9 +130,14 @@ export function DesktopServerReplacementController({
                 status: "success",
               });
               setState({
-                phase: hasUnsyncedOfflineItems() ? "drafts" : "confirm",
+                phase: "replacing",
                 prepared,
                 request,
+              });
+              await executeDesktopServerSwitch({
+                candidateId: prepared.candidateId,
+                path: request.path ?? "/login",
+                server: prepared.server,
               });
             },
             (error) => {
@@ -326,7 +332,7 @@ export function DesktopServerReplacementController({
                   ? "Creating a local recovery archive..."
                   : state.phase === "rechecking"
                     ? "Rechecking the server before removing local data..."
-                    : "Removing the previous server from this device..."}
+                    : "Switching servers..."}
           </div>
         ) : null}
 

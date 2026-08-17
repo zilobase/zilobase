@@ -112,17 +112,17 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
-  test("settings change server signs out and continues on the server screen", async () => {
+  test("settings lists saved desktop servers and can remove one instance", async () => {
     const source = await readFile(
       new URL("../src/pages/settings/preferences.tsx", import.meta.url),
       "utf8",
     )
-    assert.match(source, /getSelectedDesktopServer/)
-    assert.match(source, /Change server/)
-    assert.match(source, /Sign out to change server\?/)
-    assert.match(source, /Sign out and continue/)
-    assert.match(source, /to: "\/connect"/)
+    assert.match(source, /listDesktopServerProfiles/)
+    assert.match(source, /Remove from this device/)
+    assert.match(source, /Connect another server/)
+    assert.match(source, /executeDesktopServerSwitch/)
     assert.doesNotMatch(source, /DesktopServerSelector/)
+    assert.doesNotMatch(source, /Sign out to change server\?/)
   })
 
   test("desktop auth picks a server before continuing in the browser", async () => {
@@ -144,6 +144,7 @@ export function register({ assert, loadModule, test }) {
     assert.match(connect, /continue in your browser/)
     assert.match(screen, /Change server/)
     assert.match(screen, /to="\/connect"/)
+    assert.match(screen, /Back to/)
     assert.match(screen, /server\.apiOrigin/)
     assert.match(login, /DesktopBrowserAuthScreen/)
     assert.match(signup, /DesktopBrowserAuthScreen/)

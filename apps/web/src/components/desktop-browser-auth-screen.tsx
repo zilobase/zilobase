@@ -20,7 +20,10 @@ import {
 import {
   getSelectedDesktopServer,
   isCloudDesktopServer,
+  listDesktopServerProfiles,
+  type DesktopServerProfile,
 } from "@/lib/desktop-server"
+import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
 import {
   cancelDesktopBrowserSignIn,
   DesktopOAuthError,
@@ -45,6 +48,7 @@ export function DesktopBrowserAuthScreen() {
     error: null,
     retry: "oauth",
   })
+  const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>([])
   const browserOperation = useRef(0)
   const isPending =
     browserState.phase === "waiting_for_browser" ||
@@ -57,6 +61,22 @@ export function DesktopBrowserAuthScreen() {
     },
     [],
   )
+
+  useEffect(() => {
+    let disposed = false
+    void listDesktopServerProfiles()
+      .then((result) => {
+        if (!disposed) {
+          setOtherProfiles(result.profiles.filter((profile) => !profile.active))
+        }
+      })
+      .catch(() => {
+        if (!disposed) setOtherProfiles([])
+      })
+    return () => {
+      disposed = true
+    }
+  }, [])
 
   async function handleBrowserSignIn() {
     const returnTo = getAuthReturnPath("/recents")
@@ -180,6 +200,32 @@ export function DesktopBrowserAuthScreen() {
             Change server
           </Link>
         )}
+
+        {otherProfiles.length > 0 ? (
+          <FieldGroup>
+            {otherProfiles.map((profile) => (
+              <Field key={`${profile.server.instanceId}:${profile.server.apiOrigin}`}>
+                <Button
+                  disabled={isPending}
+                  onClick={() => {
+                    void executeDesktopServerSwitch({
+                      hasCredentials: profile.hasCredentials,
+                      path: profile.hasCredentials
+                        ? (profile.lastPath ?? "/recents")
+                        : "/login",
+                      server: profile.server,
+                      workspaceId: profile.lastActiveWorkspaceId,
+                    })
+                  }}
+                  type="button"
+                  variant="outline"
+                >
+                  Back to {profile.server.displayName}
+                </Button>
+              </Field>
+            ))}
+          </FieldGroup>
+        ) : null}
 
         <FieldGroup>
           {browserState.phase === "error" ? (

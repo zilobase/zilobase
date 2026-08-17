@@ -85,6 +85,39 @@ export function register({ assert, loadModule, test }) {
     assert.equal(isOfflineSessionAllowed({ ...base, now: Date.parse("2031-01-01") }), false)
   })
 
+  test("offline cache keys are scoped to a desktop instance", async () => {
+    const { offlineManifestKey, offlineQueryCacheKey } = await loadModule(
+      "/src/lib/offline-store.ts",
+    )
+    assert.equal(offlineManifestKey(), "zilobase-offline-manifest-v1")
+    assert.equal(
+      offlineManifestKey({
+        apiOrigin: "https://notes.example.com",
+        displayName: "Team Notes",
+        instanceId: "instance-1",
+        issuer: "https://notes.example.com",
+        minimumDesktopVersion: "0.0.30",
+        protocolVersion: 1,
+        serverVersion: "0.0.30",
+        webOrigin: "https://notes.example.com",
+      }),
+      "zilobase-offline-manifest-v1:instance-1",
+    )
+    assert.equal(
+      offlineQueryCacheKey({
+        apiOrigin: "https://notes.example.com",
+        displayName: "Team Notes",
+        instanceId: "instance-1",
+        issuer: "https://notes.example.com",
+        minimumDesktopVersion: "0.0.30",
+        protocolVersion: 1,
+        serverVersion: "0.0.30",
+        webOrigin: "https://notes.example.com",
+      }),
+      "zilobase-offline-query-cache-v1:instance-1",
+    )
+  })
+
   test("query persistence only includes enabled and explicitly downloaded content", async () => {
     const { shouldPersistOfflineQueryForManifest } = await loadModule("/src/lib/offline-store.ts")
     const manifest = {

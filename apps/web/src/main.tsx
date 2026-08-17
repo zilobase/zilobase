@@ -2,7 +2,13 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { initializeDesktopAuthToken } from "@/lib/desktop-auth-token";
-import { initializeDesktopServer } from "@/lib/desktop-server";
+import {
+  applyActiveDesktopProfileWorkspace,
+  initializeDesktopServer,
+  listDesktopServerProfiles,
+} from "@/lib/desktop-server";
+import { useAppStore } from "@/stores/app-store";
+import { useAuthFlowStore } from "@/stores/auth-flow-store";
 import {
   installDesktopDiagnostics,
   markDesktopAppReady,
@@ -42,6 +48,18 @@ async function bootstrap() {
     status: "started",
   });
   await initializeDesktopAuthToken();
+  await Promise.all([
+    useAppStore.persist.rehydrate(),
+    useAuthFlowStore.persist.rehydrate(),
+  ]);
+  try {
+    applyActiveDesktopProfileWorkspace(
+      await listDesktopServerProfiles(),
+      (workspaceId) => useAppStore.getState().setActiveWorkspaceId(workspaceId),
+    )
+  } catch {
+    // Profiles are optional until the native list command is available.
+  }
   recordDesktopDiagnostic("renderer.render_requested", { status: "started" });
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <React.StrictMode>

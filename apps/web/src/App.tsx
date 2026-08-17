@@ -2,6 +2,7 @@ import { RouterProvider } from "@tanstack/react-router"
 
 import { DesktopDeepLinkHandler } from "@/components/desktop-deep-link-handler"
 import { DesktopServerReplacementController } from "@/components/desktop-server-replacement-controller"
+import { DesktopServerSwitchOverlay } from "@/components/desktop-server-switch-overlay"
 import {
   DesktopWindowTitlebar,
   isLinuxDesktopApp,
@@ -15,6 +16,7 @@ export default function App() {
         openPath={(path) => router.history.push(path)}
       />
       <DesktopDeepLinkHandler openPath={(path) => router.history.push(path)} />
+      <DesktopServerSwitchOverlay />
       <RouterProvider router={router} />
     </>
   )

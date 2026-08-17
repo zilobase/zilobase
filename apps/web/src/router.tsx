@@ -7,7 +7,7 @@ import {
   type ErrorComponentProps,
   useRouterState,
 } from "@tanstack/react-router"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
@@ -55,7 +55,12 @@ import { webAuthClient } from "@/providers/features-provider"
 import { getMostRecentItemPath } from "@/lib/recent-navigation"
 import { useAppStore } from "@/stores/app-store"
 import { isTauri } from "@tauri-apps/api/core"
-import { getSelectedDesktopServer } from "@/lib/desktop-server"
+import {
+  getSelectedDesktopServer,
+  listDesktopServerProfiles,
+  type DesktopServerProfile,
+} from "@/lib/desktop-server"
+import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
 import { getAuthReturnPath } from "@/lib/google-auth"
 import { decidePublishedShareAccess } from "@/lib/published-share-access"
 import { describeRouteError } from "@/lib/route-error"
@@ -425,6 +430,7 @@ function RouteErrorPage({ error }: ErrorComponentProps) {
     isDesktop: isTauri() || Boolean(selectedServer),
     selectedServer,
   })
+  const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>([])
 
   useEffect(() => {
     recordDesktopDiagnostic(
@@ -433,6 +439,23 @@ function RouteErrorPage({ error }: ErrorComponentProps) {
       "error",
     )
   }, [error])
+
+  useEffect(() => {
+    if (!copy.showChangeServer) return
+    let disposed = false
+    void listDesktopServerProfiles()
+      .then((result) => {
+        if (!disposed) {
+          setOtherProfiles(result.profiles.filter((profile) => !profile.active))
+        }
+      })
+      .catch(() => {
+        if (!disposed) setOtherProfiles([])
+      })
+    return () => {
+      disposed = true
+    }
+  }, [copy.showChangeServer])
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-background p-6">
@@ -445,6 +468,24 @@ function RouteErrorPage({ error }: ErrorComponentProps) {
         </div>
         <div className="flex w-full flex-col items-stretch gap-3">
           <Button onClick={() => window.location.reload()}>Try again</Button>
+          {otherProfiles.map((profile) => (
+            <Button
+              key={`${profile.server.instanceId}:${profile.server.apiOrigin}`}
+              onClick={() => {
+                void executeDesktopServerSwitch({
+                  hasCredentials: profile.hasCredentials,
+                  path: profile.hasCredentials
+                    ? (profile.lastPath ?? "/recents")
+                    : "/login",
+                  server: profile.server,
+                  workspaceId: profile.lastActiveWorkspaceId,
+                })
+              }}
+              variant="outline"
+            >
+              Switch to {profile.server.displayName}
+            </Button>
+          ))}
           {copy.showChangeServer ? (
             <Button
               onClick={() => window.location.assign("/connect")}

@@ -18,7 +18,9 @@ use url::{Host, Url};
 
 const CONFIG_FILE_NAME: &str = "desktop-server.json";
 const DEV_CONFIG_FILE_NAME: &str = "desktop-server.dev.json";
-const CONFIG_VERSION: u8 = 1;
+const CONFIG_VERSION: u8 = 2;
+const LEGACY_CONFIG_VERSION: u8 = 1;
+const MAX_PROFILE_WORKSPACES: usize = 50;
 const DISCOVERY_PATH: &str = "/.well-known/zilobase";
 const MAX_DISCOVERY_BYTES: usize = 64 * 1024;
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
@@ -57,11 +59,60 @@ struct DesktopAuthorizationEndpoints {
     token_endpoint: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DesktopServerWorkspaceSnapshot {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DesktopServerProfile {
+    server: DesktopServer,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    last_active_workspace_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    last_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    workspaces: Vec<DesktopServerWorkspaceSnapshot>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    last_used_at: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct DesktopServerConfig {
     version: u8,
+    active_instance_id: String,
+    profiles: Vec<DesktopServerProfile>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LegacyDesktopServerConfig {
+    #[allow(dead_code)]
+    version: u8,
     server: DesktopServer,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DesktopServerProfileView {
+    pub server: DesktopServer,
+    pub last_active_workspace_id: Option<String>,
+    pub last_path: Option<String>,
+    pub workspaces: Vec<DesktopServerWorkspaceSnapshot>,
+    pub last_used_at: Option<String>,
+    pub has_credentials: bool,
+    pub active: bool,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DesktopServerProfileList {
+    pub active_instance_id: String,
+    pub profiles: Vec<DesktopServerProfileView>,
 }
 
 #[derive(Clone, Debug)]
@@ -163,11 +214,78 @@ pub(crate) fn commit_desktop_server_candidate(
     let directory = app.path().app_config_dir().map_err(|_| {
         DesktopServerError::configuration("The app configuration directory is unavailable.")
     })?;
-    let result = commit_candidate_to_directory(&directory, &candidate.server, |old_server| {
-        crate::delete_server_keyring_credentials(old_server)
-    })?;
+    let result = commit_candidate_to_directory(&directory, &candidate.server)?;
     state.discard(&candidate_id)?;
     Ok(result)
+}
+
+#[tauri::command]
+pub(crate) fn list_desktop_server_profiles(
+    app: AppHandle,
+) -> Result<DesktopServerProfileList, DesktopServerError> {
+    let directory = app_config_directory(&app)?;
+    let config = load_or_initialize_config(&directory)?;
+    Ok(profile_list_from_config(&config))
+}
+
+#[tauri::command]
+pub(crate) fn switch_desktop_server_profile(
+    app: AppHandle,
+    instance_id: String,
+    api_origin: String,
+    workspace_id: Option<String>,
+    path: Option<String>,
+) -> Result<DesktopServer, DesktopServerError> {
+    let directory = app_config_directory(&app)?;
+    let mut config = load_or_initialize_config(&directory)?;
+    let index = find_profile_index(&config, &instance_id, &api_origin).ok_or_else(|| {
+        DesktopServerError::new(
+            "server_profile_not_found",
+            "That saved server is no longer available on this device.",
+        )
+    })?;
+    if let Some(workspace_id) = sanitize_optional_text(workspace_id, 128) {
+        config.profiles[index].last_active_workspace_id = Some(workspace_id);
+    }
+    if let Some(path) = sanitize_optional_path(path) {
+        config.profiles[index].last_path = Some(path);
+    }
+    let server = config.profiles[index].server.clone();
+    config.active_instance_id = server.instance_id.clone();
+    write_config(&directory, &config)?;
+    Ok(server)
+}
+
+#[tauri::command]
+pub(crate) fn update_desktop_server_profile_snapshot(
+    app: AppHandle,
+    workspaces: Vec<DesktopServerWorkspaceSnapshot>,
+    last_active_workspace_id: Option<String>,
+    last_path: Option<String>,
+) -> Result<(), DesktopServerError> {
+    let directory = app_config_directory(&app)?;
+    let mut config = load_or_initialize_config(&directory)?;
+    let index = active_profile_index(&config).ok_or_else(|| {
+        DesktopServerError::configuration("The active desktop server profile is missing.")
+    })?;
+    let profile = &mut config.profiles[index];
+    profile.workspaces = sanitize_workspace_snapshots(workspaces);
+    profile.last_active_workspace_id = sanitize_optional_text(last_active_workspace_id, 128);
+    profile.last_path = sanitize_optional_path(last_path);
+    profile.last_used_at = Some(unix_timestamp_secs());
+    write_config(&directory, &config)
+}
+
+#[tauri::command]
+pub(crate) fn remove_desktop_server_profile(
+    app: AppHandle,
+    instance_id: String,
+    api_origin: String,
+) -> Result<DesktopServer, DesktopServerError> {
+    let directory = app_config_directory(&app)?;
+    remove_profile_from_directory(&directory, &instance_id, &api_origin, |server| {
+        crate::delete_server_keyring_credentials(server)
+    })
 }
 
 pub(crate) fn load_or_initialize_desktop_server(
@@ -492,16 +610,26 @@ fn default_server() -> DesktopServer {
     }
 }
 
-fn refresh_development_server(directory: &Path, server: DesktopServer) -> DesktopServer {
+fn refresh_development_config(
+    directory: &Path,
+    mut config: DesktopServerConfig,
+) -> DesktopServerConfig {
+    let current = active_server(&config).clone();
+    let refreshed = refresh_development_server(directory, current.clone());
+    if refreshed != current {
+        replace_active_server(&mut config, refreshed);
+        let _ = write_config(directory, &config);
+    }
+    config
+}
+
+fn refresh_development_server(_directory: &Path, server: DesktopServer) -> DesktopServer {
     if cfg!(test) || !is_development_server(&server) {
         return server;
     }
 
     match tauri::async_runtime::block_on(verify_desktop_server(&server.api_origin)) {
-        Ok(verified) => {
-            let _ = save_to_directory(directory, &verified);
-            verified
-        }
+        Ok(verified) => verified,
         Err(_) => server,
     }
 }
@@ -538,24 +666,39 @@ fn cloud_server() -> DesktopServer {
     }
 }
 
+fn app_config_directory(app: &AppHandle) -> Result<PathBuf, DesktopServerError> {
+    app.path().app_config_dir().map_err(|_| {
+        DesktopServerError::configuration("The app configuration directory is unavailable.")
+    })
+}
+
 fn load_or_initialize_from_directory(
     directory: &Path,
 ) -> Result<DesktopServer, DesktopServerError> {
+    let config = load_or_initialize_config(directory)?;
+    Ok(active_server(&config).clone())
+}
+
+fn load_or_initialize_config(directory: &Path) -> Result<DesktopServerConfig, DesktopServerError> {
     let path = config_path(directory);
     match fs::read(&path) {
         Ok(bytes) => {
-            let server = parse_config(&bytes)?;
-            if cfg!(debug_assertions) && is_cloud_server(&server) {
-                let local = refresh_development_server(directory, default_server());
-                let _ = save_to_directory(directory, &local);
-                return Ok(local);
+            let (mut config, migrated) = parse_config(&bytes)?;
+            if cfg!(debug_assertions) && is_cloud_server(active_server(&config)) {
+                replace_active_server(&mut config, default_server());
+                write_config(directory, &config)?;
+                return Ok(refresh_development_config(directory, config));
             }
-            Ok(refresh_development_server(directory, server))
+            if migrated {
+                write_config(directory, &config)?;
+            }
+            Ok(refresh_development_config(directory, config))
         }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
             let server = refresh_development_server(directory, default_server());
-            save_to_directory(directory, &server)?;
-            Ok(server)
+            let config = single_profile_config(&server);
+            write_config(directory, &config)?;
+            Ok(config)
         }
         Err(_) => Err(DesktopServerError::configuration(
             "The saved desktop server configuration could not be read.",
@@ -563,22 +706,50 @@ fn load_or_initialize_from_directory(
     }
 }
 
-fn parse_config(bytes: &[u8]) -> Result<DesktopServer, DesktopServerError> {
+fn parse_config(bytes: &[u8]) -> Result<(DesktopServerConfig, bool), DesktopServerError> {
     if bytes.len() > MAX_DISCOVERY_BYTES {
         return Err(DesktopServerError::configuration(
             "The saved desktop server configuration is too large.",
         ));
     }
-    let config: DesktopServerConfig = serde_json::from_slice(bytes).map_err(|_| {
+    let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|_| {
         DesktopServerError::configuration("The saved desktop server configuration is malformed.")
     })?;
-    if config.version != CONFIG_VERSION {
+    let version = value
+        .get("version")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+
+    if version == u64::from(LEGACY_CONFIG_VERSION) {
+        let legacy: LegacyDesktopServerConfig = serde_json::from_value(value).map_err(|_| {
+            DesktopServerError::configuration("The saved desktop server configuration is malformed.")
+        })?;
+        validate_persisted_server(&legacy.server)?;
+        return Ok((single_profile_config(&legacy.server), true));
+    }
+
+    if version != u64::from(CONFIG_VERSION) {
         return Err(DesktopServerError::configuration(
             "The saved desktop server configuration uses an unsupported version.",
         ));
     }
-    validate_persisted_server(&config.server)?;
-    Ok(config.server)
+
+    let mut config: DesktopServerConfig = serde_json::from_value(value).map_err(|_| {
+        DesktopServerError::configuration("The saved desktop server configuration is malformed.")
+    })?;
+    if config.profiles.is_empty() {
+        return Err(DesktopServerError::configuration(
+            "The saved desktop server configuration has no servers.",
+        ));
+    }
+    for profile in &config.profiles {
+        validate_persisted_server(&profile.server)?;
+        validate_profile_snapshot(profile)?;
+    }
+    if active_profile_index(&config).is_none() {
+        config.active_instance_id = config.profiles[0].server.instance_id.clone();
+    }
+    Ok((config, false))
 }
 
 fn validate_persisted_server(server: &DesktopServer) -> Result<(), DesktopServerError> {
@@ -598,32 +769,52 @@ fn validate_persisted_server(server: &DesktopServer) -> Result<(), DesktopServer
     Ok(())
 }
 
-fn commit_candidate_to_directory<F>(
+fn commit_candidate_to_directory(
     directory: &Path,
     candidate: &DesktopServer,
-    delete_old_credentials: F,
-) -> Result<DesktopServerCommit, DesktopServerError>
-where
-    F: FnOnce(&DesktopServer) -> Result<(), String>,
-{
-    let current = load_or_initialize_from_directory(directory)?;
-    let changed = !servers_refer_to_same_instance(&current, candidate);
-
-    save_to_directory(directory, candidate)?;
-    if changed {
-        if delete_old_credentials(&current).is_err() {
-            let _ = save_to_directory(directory, &current);
-            return Err(DesktopServerError::new(
-                "credential_cleanup_failed",
-                "The previous server credentials could not be removed. The server was not changed.",
-            ));
-        }
-    }
-
+) -> Result<DesktopServerCommit, DesktopServerError> {
+    let mut config = load_or_initialize_config(directory)?;
+    let current = active_server(&config);
+    let changed = !servers_refer_to_same_instance(current, candidate);
+    upsert_and_activate(&mut config, candidate);
+    write_config(directory, &config)?;
     Ok(DesktopServerCommit {
         changed,
         server: candidate.clone(),
     })
+}
+
+fn remove_profile_from_directory<F>(
+    directory: &Path,
+    instance_id: &str,
+    api_origin: &str,
+    delete_credentials: F,
+) -> Result<DesktopServer, DesktopServerError>
+where
+    F: FnOnce(&DesktopServer) -> Result<(), String>,
+{
+    let mut config = load_or_initialize_config(directory)?;
+    let index = find_profile_index(&config, instance_id, api_origin).ok_or_else(|| {
+        DesktopServerError::new(
+            "server_profile_not_found",
+            "That saved server is no longer available on this device.",
+        )
+    })?;
+    let removed = config.profiles[index].server.clone();
+    if delete_credentials(&removed).is_err() {
+        return Err(DesktopServerError::new(
+            "credential_cleanup_failed",
+            "The server credentials could not be removed. The server was not forgotten.",
+        ));
+    }
+    config.profiles.remove(index);
+    if config.profiles.is_empty() {
+        config = single_profile_config(&default_server());
+    } else if active_profile_index(&config).is_none() {
+        config.active_instance_id = config.profiles[0].server.instance_id.clone();
+    }
+    write_config(directory, &config)?;
+    Ok(active_server(&config).clone())
 }
 
 fn servers_refer_to_same_instance(current: &DesktopServer, candidate: &DesktopServer) -> bool {
@@ -640,15 +831,21 @@ fn servers_refer_to_same_instance(current: &DesktopServer, candidate: &DesktopSe
         && candidate.issuer == CLOUD_API_ORIGIN
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
 fn save_to_directory(directory: &Path, server: &DesktopServer) -> Result<(), DesktopServerError> {
+    write_config(directory, &single_profile_config(server))
+}
+
+fn write_config(directory: &Path, config: &DesktopServerConfig) -> Result<(), DesktopServerError> {
     fs::create_dir_all(directory).map_err(|_| {
         DesktopServerError::configuration("The app configuration directory could not be created.")
     })?;
-    let config = DesktopServerConfig {
+    let persisted = DesktopServerConfig {
         version: CONFIG_VERSION,
-        server: server.clone(),
+        active_instance_id: config.active_instance_id.clone(),
+        profiles: config.profiles.clone(),
     };
-    let bytes = serde_json::to_vec_pretty(&config).map_err(|_| {
+    let bytes = serde_json::to_vec_pretty(&persisted).map_err(|_| {
         DesktopServerError::configuration("The desktop server configuration could not be encoded.")
     })?;
     let mut temporary = NamedTempFile::new_in(directory).map_err(|_| {
@@ -671,6 +868,196 @@ fn save_to_directory(directory: &Path, server: &DesktopServer) -> Result<(), Des
     Ok(())
 }
 
+fn single_profile_config(server: &DesktopServer) -> DesktopServerConfig {
+    DesktopServerConfig {
+        version: CONFIG_VERSION,
+        active_instance_id: server.instance_id.clone(),
+        profiles: vec![DesktopServerProfile {
+            last_active_workspace_id: None,
+            last_path: None,
+            last_used_at: None,
+            server: server.clone(),
+            workspaces: Vec::new(),
+        }],
+    }
+}
+
+fn active_server(config: &DesktopServerConfig) -> &DesktopServer {
+    active_profile_index(config)
+        .map(|index| &config.profiles[index].server)
+        .unwrap_or(&config.profiles[0].server)
+}
+
+fn active_profile_index(config: &DesktopServerConfig) -> Option<usize> {
+    config
+        .profiles
+        .iter()
+        .position(|profile| profile.server.instance_id == config.active_instance_id)
+        .or_else(|| {
+            config.profiles.iter().position(|profile| {
+                profile.server.instance_id == CLOUD_INSTANCE_ID
+                    && is_cloud_server(&profile.server)
+                    && config.active_instance_id == CLOUD_INSTANCE_ID
+            })
+        })
+}
+
+fn find_profile_index(
+    config: &DesktopServerConfig,
+    instance_id: &str,
+    api_origin: &str,
+) -> Option<usize> {
+    config.profiles.iter().position(|profile| {
+        profile.server.instance_id == instance_id && profile.server.api_origin == api_origin
+    }).or_else(|| {
+        config.profiles.iter().position(|profile| {
+            servers_refer_to_same_instance(
+                &profile.server,
+                &DesktopServer {
+                    instance_id: instance_id.to_string(),
+                    display_name: profile.server.display_name.clone(),
+                    issuer: api_origin.to_string(),
+                    web_origin: profile.server.web_origin.clone(),
+                    api_origin: api_origin.to_string(),
+                    protocol_version: profile.server.protocol_version,
+                    server_version: profile.server.server_version.clone(),
+                    minimum_desktop_version: profile.server.minimum_desktop_version.clone(),
+                },
+            )
+        })
+    })
+}
+
+fn upsert_and_activate(config: &mut DesktopServerConfig, server: &DesktopServer) {
+    if let Some(index) = config
+        .profiles
+        .iter()
+        .position(|profile| servers_refer_to_same_instance(&profile.server, server))
+    {
+        config.profiles[index].server = server.clone();
+        config.active_instance_id = server.instance_id.clone();
+        return;
+    }
+
+    config.profiles.push(DesktopServerProfile {
+        last_active_workspace_id: None,
+        last_path: None,
+        last_used_at: None,
+        server: server.clone(),
+        workspaces: Vec::new(),
+    });
+    config.active_instance_id = server.instance_id.clone();
+}
+
+fn replace_active_server(config: &mut DesktopServerConfig, server: DesktopServer) {
+    if let Some(index) = active_profile_index(config) {
+        config.profiles[index].server = server.clone();
+        config.active_instance_id = server.instance_id;
+        return;
+    }
+    *config = single_profile_config(&server);
+}
+
+fn profile_list_from_config(config: &DesktopServerConfig) -> DesktopServerProfileList {
+    let active = active_server(config);
+    DesktopServerProfileList {
+        active_instance_id: active.instance_id.clone(),
+        profiles: config
+            .profiles
+            .iter()
+            .map(|profile| DesktopServerProfileView {
+                active: servers_refer_to_same_instance(&profile.server, active),
+                has_credentials: server_has_credentials(&profile.server),
+                last_active_workspace_id: profile.last_active_workspace_id.clone(),
+                last_path: profile.last_path.clone(),
+                last_used_at: profile.last_used_at.clone(),
+                server: profile.server.clone(),
+                workspaces: profile.workspaces.clone(),
+            })
+            .collect(),
+    }
+}
+
+fn server_has_credentials(server: &DesktopServer) -> bool {
+    crate::get_server_keyring_value(server, "session", "session_token")
+        .ok()
+        .flatten()
+        .is_some_and(|value| !value.is_empty())
+}
+
+fn sanitize_workspace_snapshots(
+    workspaces: Vec<DesktopServerWorkspaceSnapshot>,
+) -> Vec<DesktopServerWorkspaceSnapshot> {
+    let mut seen = std::collections::HashSet::new();
+    workspaces
+        .into_iter()
+        .filter_map(|workspace| {
+            let id = workspace.id.trim();
+            let name = workspace.name.trim();
+            if id.is_empty()
+                || name.is_empty()
+                || id.len() > 128
+                || name.len() > 200
+                || !seen.insert(id.to_string())
+            {
+                return None;
+            }
+            Some(DesktopServerWorkspaceSnapshot {
+                id: id.to_string(),
+                name: name.to_string(),
+            })
+        })
+        .take(MAX_PROFILE_WORKSPACES)
+        .collect()
+}
+
+fn sanitize_optional_text(value: Option<String>, max_len: usize) -> Option<String> {
+    value.and_then(|value| {
+        let trimmed = value.trim();
+        if trimmed.is_empty() || trimmed.len() > max_len {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+fn sanitize_optional_path(value: Option<String>) -> Option<String> {
+    value.and_then(|value| {
+        if !value.starts_with('/') || value.starts_with("//") || value.len() > 4096 {
+            return None;
+        }
+        Some(value)
+    })
+}
+
+fn unix_timestamp_secs() -> String {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs().to_string())
+        .unwrap_or_else(|_| "0".to_string())
+}
+
+fn validate_profile_snapshot(profile: &DesktopServerProfile) -> Result<(), DesktopServerError> {
+    if profile.workspaces.len() > MAX_PROFILE_WORKSPACES {
+        return Err(DesktopServerError::configuration(
+            "The saved desktop server configuration is invalid.",
+        ));
+    }
+    for workspace in &profile.workspaces {
+        if workspace.id.trim().is_empty()
+            || workspace.name.trim().is_empty()
+            || workspace.id.len() > 128
+            || workspace.name.len() > 200
+        {
+            return Err(DesktopServerError::configuration(
+                "The saved desktop server configuration is invalid.",
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn config_file_name() -> &'static str {
     if cfg!(debug_assertions) {
         DEV_CONFIG_FILE_NAME
@@ -687,10 +1074,12 @@ fn config_path(directory: &Path) -> PathBuf {
 mod tests {
     use super::{
         cloud_server, commit_candidate_to_directory, config_file_name, config_path,
-        default_server, development_server, DEV_CONFIG_FILE_NAME,
-        load_or_initialize_from_directory, parse_server_origin, save_to_directory,
-        servers_refer_to_same_instance, validate_discovery_document, verify_desktop_server,
-        DesktopAuthorizationEndpoints, DesktopServerCandidate, DesktopServerCandidateState,
+        default_server, development_server, find_profile_index, load_or_initialize_config,
+        load_or_initialize_from_directory, parse_config, parse_server_origin,
+        remove_profile_from_directory, save_to_directory, servers_refer_to_same_instance,
+        validate_discovery_document, verify_desktop_server, write_config,
+        DesktopAuthorizationEndpoints, DesktopServerCandidate,
+        DesktopServerCandidateState, DesktopServerWorkspaceSnapshot, DEV_CONFIG_FILE_NAME,
         DiscoveryDocument, SERVER_CANDIDATE_TTL,
     };
     use std::time::Instant;
@@ -778,7 +1167,7 @@ mod tests {
     }
 
     #[test]
-    fn commits_a_verified_candidate_only_after_old_credentials_are_deleted() {
+    fn commits_a_verified_candidate_without_dropping_the_previous_profile() {
         let directory = tempfile::tempdir().expect("temporary directory");
         let initial = load_or_initialize_from_directory(directory.path()).expect("initial server");
         let mut replacement = initial.clone();
@@ -788,42 +1177,162 @@ mod tests {
         replacement.web_origin = "https://notes.example.com".to_string();
         replacement.api_origin = "https://notes.example.com".to_string();
 
-        let mut deleted_origin = None;
-        let committed =
-            commit_candidate_to_directory(directory.path(), &replacement, |old_server| {
-                deleted_origin = Some(old_server.api_origin.clone());
-                Ok(())
-            })
+        let committed = commit_candidate_to_directory(directory.path(), &replacement)
             .expect("commit candidate");
 
         assert!(committed.changed);
-        assert_eq!(deleted_origin.as_deref(), Some(initial.api_origin.as_str()));
         assert_eq!(
             load_or_initialize_from_directory(directory.path()).expect("saved server"),
             replacement
         );
+        let config = load_or_initialize_config(directory.path()).expect("profiles");
+        assert_eq!(config.profiles.len(), 2);
+        assert!(
+            config
+                .profiles
+                .iter()
+                .any(|profile| profile.server == initial)
+        );
+        assert!(
+            config
+                .profiles
+                .iter()
+                .any(|profile| profile.server == replacement)
+        );
     }
 
     #[test]
-    fn rolls_back_the_server_file_when_credential_deletion_fails() {
+    fn migrates_legacy_single_server_config() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let server = default_server();
+        let legacy = serde_json::json!({
+            "version": 1,
+            "server": server,
+        });
+        std::fs::write(
+            config_path(directory.path()),
+            serde_json::to_vec_pretty(&legacy).expect("legacy json"),
+        )
+        .expect("write legacy config");
+
+        let (config, migrated) =
+            parse_config(&std::fs::read(config_path(directory.path())).expect("read legacy"))
+                .expect("parse legacy");
+        assert!(migrated);
+        assert_eq!(config.version, 2);
+        assert_eq!(config.profiles.len(), 1);
+        assert_eq!(config.profiles[0].server, server);
+        assert_eq!(
+            load_or_initialize_from_directory(directory.path()).expect("migrated active"),
+            server
+        );
+    }
+
+    #[test]
+    fn switches_between_saved_profiles() {
         let directory = tempfile::tempdir().expect("temporary directory");
         let initial = load_or_initialize_from_directory(directory.path()).expect("initial server");
-        let mut replacement = initial.clone();
-        replacement.instance_id = "self-hosted-instance".to_string();
-        replacement.issuer = "https://notes.example.com".to_string();
-        replacement.web_origin = "https://notes.example.com".to_string();
-        replacement.api_origin = "https://notes.example.com".to_string();
+        let mut other = initial.clone();
+        other.instance_id = "self-hosted-instance".to_string();
+        other.display_name = "Team Notes".to_string();
+        other.issuer = "https://notes.example.com".to_string();
+        other.web_origin = "https://notes.example.com".to_string();
+        other.api_origin = "https://notes.example.com".to_string();
+        commit_candidate_to_directory(directory.path(), &other).expect("add profile");
 
-        let error = commit_candidate_to_directory(directory.path(), &replacement, |_| {
-            Err("keyring unavailable".to_string())
-        })
-        .expect_err("credential failure must stop replacement");
+        let mut config = load_or_initialize_config(directory.path()).expect("config");
+        let index = find_profile_index(&config, &initial.instance_id, &initial.api_origin)
+            .expect("initial profile");
+        config.active_instance_id = config.profiles[index].server.instance_id.clone();
+        write_config(directory.path(), &config).expect("switch");
 
-        assert_eq!(error.code, "credential_cleanup_failed");
         assert_eq!(
-            load_or_initialize_from_directory(directory.path()).expect("rolled back server"),
+            load_or_initialize_from_directory(directory.path()).expect("switched"),
             initial
         );
+    }
+
+    #[test]
+    fn remove_deletes_only_the_requested_profile() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let initial = load_or_initialize_from_directory(directory.path()).expect("initial server");
+        let mut other = initial.clone();
+        other.instance_id = "self-hosted-instance".to_string();
+        other.display_name = "Team Notes".to_string();
+        other.issuer = "https://notes.example.com".to_string();
+        other.web_origin = "https://notes.example.com".to_string();
+        other.api_origin = "https://notes.example.com".to_string();
+        commit_candidate_to_directory(directory.path(), &other).expect("add profile");
+
+        let mut deleted_origin = None;
+        let active = remove_profile_from_directory(
+            directory.path(),
+            &other.instance_id,
+            &other.api_origin,
+            |server| {
+                deleted_origin = Some(server.api_origin.clone());
+                Ok(())
+            },
+        )
+        .expect("remove profile");
+
+        assert_eq!(deleted_origin.as_deref(), Some(other.api_origin.as_str()));
+        assert_eq!(active, initial);
+        let config = load_or_initialize_config(directory.path()).expect("remaining");
+        assert_eq!(config.profiles.len(), 1);
+        assert_eq!(config.profiles[0].server, initial);
+    }
+
+    #[test]
+    fn remove_keeps_the_profile_when_credential_deletion_fails() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let initial = load_or_initialize_from_directory(directory.path()).expect("initial server");
+        let mut other = initial.clone();
+        other.instance_id = "self-hosted-instance".to_string();
+        other.issuer = "https://notes.example.com".to_string();
+        other.web_origin = "https://notes.example.com".to_string();
+        other.api_origin = "https://notes.example.com".to_string();
+        commit_candidate_to_directory(directory.path(), &other).expect("add profile");
+
+        let error = remove_profile_from_directory(
+            directory.path(),
+            &other.instance_id,
+            &other.api_origin,
+            |_| Err("keyring unavailable".to_string()),
+        )
+        .expect_err("credential failure must stop remove");
+
+        assert_eq!(error.code, "credential_cleanup_failed");
+        let config = load_or_initialize_config(directory.path()).expect("unchanged");
+        assert_eq!(config.profiles.len(), 2);
+        assert_eq!(
+            load_or_initialize_from_directory(directory.path()).expect("still active"),
+            other
+        );
+    }
+
+    #[test]
+    fn snapshot_fields_round_trip_on_the_active_profile() {
+        let directory = tempfile::tempdir().expect("temporary directory");
+        let server = load_or_initialize_from_directory(directory.path()).expect("initial server");
+        let mut config = load_or_initialize_config(directory.path()).expect("config");
+        let index = find_profile_index(&config, &server.instance_id, &server.api_origin)
+            .expect("active profile");
+        config.profiles[index].workspaces = vec![DesktopServerWorkspaceSnapshot {
+            id: "workspace-1".to_string(),
+            name: "Acme".to_string(),
+        }];
+        config.profiles[index].last_active_workspace_id = Some("workspace-1".to_string());
+        config.profiles[index].last_path = Some("/recents".to_string());
+        write_config(directory.path(), &config).expect("write snapshot");
+
+        let restored = load_or_initialize_config(directory.path()).expect("restored");
+        assert_eq!(restored.profiles[0].workspaces[0].name, "Acme");
+        assert_eq!(
+            restored.profiles[0].last_active_workspace_id.as_deref(),
+            Some("workspace-1")
+        );
+        assert_eq!(restored.profiles[0].last_path.as_deref(), Some("/recents"));
     }
 
     #[test]

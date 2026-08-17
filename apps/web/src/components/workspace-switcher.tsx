@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { isTauri } from "@tauri-apps/api/core"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -35,11 +36,21 @@ import {
   useSetActiveWorkspace,
 } from "@zilobase/features/workspaces"
 import { getApiErrorMessage } from "@/lib/api"
+import { DesktopConnectServerDialog } from "@/components/desktop-connect-server-dialog"
+import {
+  getSelectedDesktopServer,
+  listDesktopServerProfiles,
+  updateDesktopServerProfileSnapshot,
+  type DesktopServerProfile,
+} from "@/lib/desktop-server"
+import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
 import { useAppStore } from "@/stores/app-store"
 import {
   Building2Icon,
+  CheckIcon,
   ChevronDownIcon,
   PlusIcon,
+  ServerIcon,
   Settings2Icon,
 } from "lucide-react"
 
@@ -52,8 +63,9 @@ export function WorkspaceSwitcher({
 }) {
   const { data: sessionData } = useSession()
   const isWorkspacePinned = sessionData?.workspacePinned !== false
+  const isDesktop = isTauri()
 
-  if (isWorkspacePinned) {
+  if (isWorkspacePinned && !isDesktop) {
     return (
       <SingleWorkspaceLabel
         onOpenSettings={onOpenSettings}
@@ -145,7 +157,11 @@ function MultiWorkspaceSwitcher({
   settingsOpen: boolean
 }) {
   const navigate = useNavigate()
+  const isDesktop = isTauri()
+  const isWorkspacePinned = sessionData?.workspacePinned !== false
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
+  const [isConnectDialogOpen, setIsConnectDialogOpen] = React.useState(false)
+  const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([])
   const { data: rawWorkspaces = [], isError, isLoading } = useWorkspaces()
   const workspaces = rawWorkspaces.filter(Boolean)
   const createWorkspace = useCreateWorkspace()
@@ -157,6 +173,9 @@ function MultiWorkspaceSwitcher({
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
     workspaces[0]
+  const currentServer = getSelectedDesktopServer()
+  const otherProfiles = profiles.filter((profile) => !profile.active)
+  const showServerCaption = isDesktop && profiles.length > 1
 
   React.useEffect(() => {
     if (
@@ -167,6 +186,36 @@ function MultiWorkspaceSwitcher({
       useAppStore.getState().setActiveWorkspaceId(null)
     }
   }, [workspaces, storedActiveWorkspaceId])
+
+  React.useEffect(() => {
+    if (!isDesktop) return
+    let disposed = false
+    void listDesktopServerProfiles()
+      .then((result) => {
+        if (!disposed) setProfiles(result.profiles)
+      })
+      .catch(() => {
+        if (!disposed) setProfiles([])
+      })
+    return () => {
+      disposed = true
+    }
+  }, [isDesktop])
+
+  React.useEffect(() => {
+    if (!isDesktop || isError || isLoading) return
+    const handle = window.setTimeout(() => {
+      void updateDesktopServerProfileSnapshot({
+        lastActiveWorkspaceId: activeWorkspace?.id ?? null,
+        lastPath: `${window.location.pathname}${window.location.search}`,
+        workspaces: workspaces.map((workspace) => ({
+          id: workspace.id,
+          name: workspace.name,
+        })),
+      }).catch(() => undefined)
+    }, 400)
+    return () => window.clearTimeout(handle)
+  }, [activeWorkspace?.id, isDesktop, isError, isLoading, workspaces])
 
   async function handleCreateWorkspace(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -192,7 +241,7 @@ function MultiWorkspaceSwitcher({
           <DropDrawer>
             <DropDrawerTrigger asChild>
               <SidebarMenuButton
-                className="w-fit max-w-full px-1.5"
+                className="h-auto w-fit max-w-full px-1.5 py-1"
                 disabled={isLoading}
               >
                 <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
@@ -204,25 +253,38 @@ function MultiWorkspaceSwitcher({
                     <Building2Icon className="size-3.5" />
                   )}
                 </div>
-                <span className="truncate font-medium">
-                  {readTriggerLabel({
-                    activeWorkspaceName: activeWorkspace?.name,
-                    isError,
-                    isLoading,
-                  })}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">
+                    {readTriggerLabel({
+                      activeWorkspaceName: activeWorkspace?.name,
+                      isError,
+                      isLoading,
+                    })}
+                  </span>
+                  {showServerCaption ? (
+                    <span className="block truncate text-[11px] font-normal text-muted-foreground">
+                      {serverSectionLabel(currentServer?.displayName, currentServer?.apiOrigin)}
+                    </span>
+                  ) : null}
                 </span>
                 <ChevronDownIcon className="opacity-50" />
               </SidebarMenuButton>
             </DropDrawerTrigger>
             <DropDrawerContent
-              className="w-64 rounded-lg"
+              className={isDesktop ? "w-80 rounded-lg" : "w-64 rounded-lg"}
               align="start"
               side="bottom"
               sideOffset={4}
             >
-              <DropDrawerLabel className="text-xs text-muted-foreground">
-                Workspaces
-              </DropDrawerLabel>
+              {isDesktop ? (
+                <DropDrawerLabel className="text-xs text-muted-foreground">
+                  {serverSectionLabel(currentServer?.displayName, currentServer?.apiOrigin)}
+                </DropDrawerLabel>
+              ) : (
+                <DropDrawerLabel className="text-xs text-muted-foreground">
+                  Workspaces
+                </DropDrawerLabel>
+              )}
               {workspaces.map((workspace, index) => (
                 <DropDrawerItem
                   key={workspace.id}
@@ -241,22 +303,64 @@ function MultiWorkspaceSwitcher({
                       {getWorkspaceInitials(workspace.name)}
                     </span>
                   </div>
-                  <span className="truncate">{workspace.name}</span>
-                  <DropDrawerShortcut>⌘{index + 1}</DropDrawerShortcut>
+                  <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
+                  {workspace.id === activeWorkspace?.id ? (
+                    <CheckIcon className="size-4 opacity-70" />
+                  ) : (
+                    <DropDrawerShortcut>⌘{index + 1}</DropDrawerShortcut>
+                  )}
                 </DropDrawerItem>
               ))}
-              <DropDrawerSeparator />
-              <DropDrawerItem
-                className="gap-2 p-2"
-                onSelect={() => setIsCreateDialogOpen(true)}
-              >
-                <div className="flex size-6 items-center justify-center rounded-md border bg-background">
-                  <PlusIcon className="size-4" />
-                </div>
-                <div className="font-medium text-muted-foreground">
-                  Add workspace
-                </div>
-              </DropDrawerItem>
+              {isWorkspacePinned ? null : (
+                <>
+                  <DropDrawerSeparator />
+                  <DropDrawerItem
+                    className="gap-2 p-2"
+                    onSelect={() => setIsCreateDialogOpen(true)}
+                  >
+                    <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+                      <PlusIcon className="size-4" />
+                    </div>
+                    <div className="font-medium text-muted-foreground">
+                      Add workspace
+                    </div>
+                  </DropDrawerItem>
+                </>
+              )}
+              {isDesktop
+                ? otherProfiles.map((profile) => (
+                    <OtherServerSection
+                      key={`${profile.server.instanceId}:${profile.server.apiOrigin}`}
+                      onSwitch={(workspaceId) => {
+                        void executeDesktopServerSwitch({
+                          hasCredentials: profile.hasCredentials,
+                          path: profile.hasCredentials
+                            ? (profile.lastPath ?? "/recents")
+                            : "/login",
+                          server: profile.server,
+                          workspaceId,
+                        })
+                      }}
+                      profile={profile}
+                    />
+                  ))
+                : null}
+              {isDesktop ? (
+                <>
+                  <DropDrawerSeparator />
+                  <DropDrawerItem
+                    className="gap-2 p-2"
+                    onSelect={() => setIsConnectDialogOpen(true)}
+                  >
+                    <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+                      <ServerIcon className="size-4" />
+                    </div>
+                    <div className="font-medium text-muted-foreground">
+                      Connect another server
+                    </div>
+                  </DropDrawerItem>
+                </>
+              ) : null}
               <DropDrawerSeparator />
               <WorkspaceSettingsItem
                 onOpenSettings={onOpenSettings}
@@ -317,6 +421,64 @@ function MultiWorkspaceSwitcher({
           </form>
         </DialogContent>
       </Dialog>
+      {isDesktop ? (
+        <DesktopConnectServerDialog
+          onOpenChange={setIsConnectDialogOpen}
+          open={isConnectDialogOpen}
+        />
+      ) : null}
+    </>
+  )
+}
+
+function OtherServerSection({
+  onSwitch,
+  profile,
+}: {
+  onSwitch: (workspaceId?: string | null) => void
+  profile: DesktopServerProfile
+}) {
+  const label = serverSectionLabel(
+    profile.server.displayName,
+    profile.server.apiOrigin,
+  )
+  const workspaces = profile.workspaces
+  const signInHint = !profile.hasCredentials
+
+  return (
+    <>
+      <DropDrawerSeparator />
+      <DropDrawerLabel className="text-xs text-muted-foreground">
+        {label}
+      </DropDrawerLabel>
+      {workspaces.length > 0 ? (
+        workspaces.map((workspace) => (
+          <DropDrawerItem
+            key={workspace.id}
+            className="gap-2 p-2"
+            onClick={() => onSwitch(workspace.id)}
+          >
+            <div className="flex size-6 items-center justify-center rounded-xs border">
+              <span className="text-xs font-medium">
+                {getWorkspaceInitials(workspace.name)}
+              </span>
+            </div>
+            <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
+            {signInHint ? (
+              <span className="text-[11px] text-muted-foreground">Sign in</span>
+            ) : null}
+          </DropDrawerItem>
+        ))
+      ) : (
+        <DropDrawerItem className="gap-2 p-2" onClick={() => onSwitch(null)}>
+          <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+            <ServerIcon className="size-4" />
+          </div>
+          <span className="min-w-0 flex-1 truncate">
+            {signInHint ? "Sign in to see workspaces" : profile.server.displayName}
+          </span>
+        </DropDrawerItem>
+      )}
     </>
   )
 }
@@ -357,6 +519,11 @@ function readTriggerLabel({
   }
 
   return activeWorkspaceName ?? "No workspaces"
+}
+
+function serverSectionLabel(displayName?: string, apiOrigin?: string) {
+  if (displayName?.trim()) return displayName
+  return apiOrigin ?? "Server"
 }
 
 function getWorkspaceInitials(name: string) {

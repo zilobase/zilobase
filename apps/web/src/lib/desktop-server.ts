@@ -23,6 +23,26 @@ export type DesktopServerCommit = {
   server: DesktopServer
 }
 
+export type DesktopServerWorkspaceSnapshot = {
+  id: string
+  name: string
+}
+
+export type DesktopServerProfile = {
+  active: boolean
+  hasCredentials: boolean
+  lastActiveWorkspaceId: string | null
+  lastPath: string | null
+  lastUsedAt: string | null
+  server: DesktopServer
+  workspaces: DesktopServerWorkspaceSnapshot[]
+}
+
+export type DesktopServerProfileList = {
+  activeInstanceId: string
+  profiles: DesktopServerProfile[]
+}
+
 type DesktopServerFailure = {
   code?: unknown
   message?: unknown
@@ -124,6 +144,152 @@ export async function commitDesktopServerCandidate(candidateId: string) {
 
 export function getSelectedDesktopServer() {
   return selectedDesktopServer
+}
+
+export async function listDesktopServerProfiles(): Promise<DesktopServerProfileList> {
+  if (!isTauri()) {
+    return { activeInstanceId: "", profiles: [] }
+  }
+
+  try {
+    const result = await invoke<DesktopServerProfileList>(
+      "list_desktop_server_profiles",
+    )
+    return normalizeDesktopServerProfileList(result)
+  } catch (error) {
+    throw normalizeDesktopServerError(error)
+  }
+}
+
+export async function switchDesktopServerProfile(input: {
+  apiOrigin: string
+  instanceId: string
+  path?: string | null
+  workspaceId?: string | null
+}) {
+  if (!isTauri()) {
+    throw new DesktopServerError(
+      "desktop_required",
+      "Saved desktop servers can only be switched in Zilobase Desktop.",
+    )
+  }
+
+  try {
+    selectedDesktopServer = validateDesktopServer(
+      await invoke<DesktopServer>("switch_desktop_server_profile", {
+        apiOrigin: input.apiOrigin,
+        instanceId: input.instanceId,
+        path: input.path ?? null,
+        workspaceId: input.workspaceId ?? null,
+      }),
+    )
+    return selectedDesktopServer
+  } catch (error) {
+    throw normalizeDesktopServerError(error)
+  }
+}
+
+export async function updateDesktopServerProfileSnapshot(input: {
+  lastActiveWorkspaceId?: string | null
+  lastPath?: string | null
+  workspaces: DesktopServerWorkspaceSnapshot[]
+}) {
+  if (!isTauri()) return
+
+  try {
+    await invoke("update_desktop_server_profile_snapshot", {
+      lastActiveWorkspaceId: input.lastActiveWorkspaceId ?? null,
+      lastPath: input.lastPath ?? null,
+      workspaces: input.workspaces,
+    })
+  } catch (error) {
+    throw normalizeDesktopServerError(error)
+  }
+}
+
+export async function removeDesktopServerProfile(input: {
+  apiOrigin: string
+  instanceId: string
+}) {
+  if (!isTauri()) {
+    throw new DesktopServerError(
+      "desktop_required",
+      "Saved desktop servers can only be removed in Zilobase Desktop.",
+    )
+  }
+
+  try {
+    selectedDesktopServer = validateDesktopServer(
+      await invoke<DesktopServer>("remove_desktop_server_profile", {
+        apiOrigin: input.apiOrigin,
+        instanceId: input.instanceId,
+      }),
+    )
+    return selectedDesktopServer
+  } catch (error) {
+    throw normalizeDesktopServerError(error)
+  }
+}
+
+export function desktopPersistKey(baseName: string, server = selectedDesktopServer) {
+  return server ? `${baseName}:${server.instanceId}` : baseName
+}
+
+export function resolveDesktopServerSwitchPath(input: {
+  hasCredentials?: boolean
+  path?: string
+}) {
+  if (input.hasCredentials === false) return "/login"
+  if (input.path) return input.path
+  return "/recents"
+}
+
+export function applyActiveDesktopProfileWorkspace(
+  profiles: DesktopServerProfileList | null | undefined,
+  setActiveWorkspaceId: (workspaceId: string | null) => void,
+) {
+  const active = profiles?.profiles.find((profile) => profile.active)
+  if (active?.lastActiveWorkspaceId) {
+    setActiveWorkspaceId(active.lastActiveWorkspaceId)
+  }
+}
+
+function normalizeDesktopServerProfileList(
+  value: DesktopServerProfileList,
+): DesktopServerProfileList {
+  if (!value || !Array.isArray(value.profiles)) {
+    throw new DesktopServerError(
+      "invalid_server_metadata",
+      "The saved desktop servers could not be loaded.",
+    )
+  }
+
+  return {
+    activeInstanceId:
+      typeof value.activeInstanceId === "string" ? value.activeInstanceId : "",
+    profiles: value.profiles.map((profile) => ({
+      active: profile.active === true,
+      hasCredentials: profile.hasCredentials === true,
+      lastActiveWorkspaceId: profile.lastActiveWorkspaceId ?? null,
+      lastPath: profile.lastPath ?? null,
+      lastUsedAt: profile.lastUsedAt ?? null,
+      server: validateDesktopServer(profile.server),
+      workspaces: Array.isArray(profile.workspaces)
+        ? profile.workspaces.flatMap((workspace) => {
+            if (
+              !workspace ||
+              typeof workspace.id !== "string" ||
+              typeof workspace.name !== "string" ||
+              !workspace.id.trim() ||
+              !workspace.name.trim()
+            ) {
+              return []
+            }
+            return [{ id: workspace.id, name: workspace.name }]
+          })
+        : [],
+    })),
+  }
 }
 
 export function desktopDevelopmentApiOrigin() {

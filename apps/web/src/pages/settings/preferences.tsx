@@ -1,5 +1,4 @@
 import * as React from "react"
-import { useNavigate } from "@tanstack/react-router"
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import { useTheme } from "next-themes"
 import {
@@ -28,13 +27,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
-import { clearApiAuthToken, getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage } from "@/lib/api"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
 } from "@/lib/desktop-diagnostics"
 import {
   clearAllOfflineData,
+  clearDesktopServerIndexedData,
   disableOfflineWorkspace,
   enableOfflineWorkspace,
   getConnectivityState,
@@ -42,11 +42,19 @@ import {
   isDesktopOfflineSupported,
 } from "@/lib/offline-store"
 import { importRecoveryArchive } from "@/lib/offline-recovery"
-import { getSelectedDesktopServer } from "@/lib/desktop-server"
+import { DesktopConnectServerDialog } from "@/components/desktop-connect-server-dialog"
+import { clearDesktopPersistKeys } from "@/lib/desktop-persist-storage"
+import {
+  getSelectedDesktopServer,
+  listDesktopServerProfiles,
+  removeDesktopServerProfile,
+  type DesktopServerProfile,
+} from "@/lib/desktop-server"
+import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
 import { queryClient } from "@/lib/query-client"
 import { useAppStore } from "@/stores/app-store"
 import { useOfflineManifest } from "@/providers/offline-provider"
-import { useSession, useSignOut } from "@zilobase/features/auth"
+import { useSession } from "@zilobase/features/auth"
 import { useWorkspaces } from "@zilobase/features/workspaces"
 
 const appearanceOptions = [
@@ -85,30 +93,43 @@ export default function PreferencesSettingsPage() {
 }
 
 function DesktopServerSection() {
-  const navigate = useNavigate()
-  const signOut = useSignOut()
-  const server = getSelectedDesktopServer()
-  const [confirmOpen, setConfirmOpen] = React.useState(false)
+  const [connectOpen, setConnectOpen] = React.useState(false)
+  const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([])
+  const [removing, setRemoving] = React.useState<DesktopServerProfile | null>(
+    null,
+  )
   const [pending, setPending] = React.useState(false)
+  const current = getSelectedDesktopServer()
 
-  const signOutAndChooseServer = async () => {
+  const refreshProfiles = React.useCallback(async () => {
+    setProfiles((await listDesktopServerProfiles()).profiles)
+  }, [])
+
+  React.useEffect(() => {
+    void refreshProfiles().catch(() => setProfiles([]))
+  }, [refreshProfiles])
+
+  const removeProfile = async (profile: DesktopServerProfile) => {
     setPending(true)
     try {
-      if (getConnectivityState() === "online") {
-        await signOut.mutateAsync().catch(() => clearApiAuthToken())
-      } else {
-        await clearApiAuthToken()
-      }
-      await clearAllOfflineData()
-      queryClient.clear()
-      useAppStore.getState().resetAccountState()
-      await navigate({
-        replace: true,
-        to: "/connect",
+      await clearDesktopServerIndexedData(profile.server)
+      clearDesktopPersistKeys(profile.server.instanceId)
+      await removeDesktopServerProfile({
+        apiOrigin: profile.server.apiOrigin,
+        instanceId: profile.server.instanceId,
       })
+      if (profile.active) {
+        queryClient.clear()
+        useAppStore.getState().resetAccountState()
+        window.location.replace("/login")
+        return
+      }
+      setRemoving(null)
+      await refreshProfiles()
     } catch (error) {
-      setPending(false)
       toast.error(getApiErrorMessage(error))
+    } finally {
+      setPending(false)
     }
   }
 
@@ -117,58 +138,119 @@ function DesktopServerSection() {
       <div className="space-y-1">
         <h3 className="flex items-center gap-2 font-heading text-base font-medium">
           <ServerIcon className="size-4" />
-          Desktop server
+          Desktop servers
         </h3>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Changing servers signs out and completely removes the current
-          server&apos;s credentials, cached data, offline documents, and tabs from
-          this device.
+          Switch between saved servers without signing out of the others.
+          Removing a server from this device deletes only that instance&apos;s
+          credentials, cached data, offline documents, and tabs.
         </p>
       </div>
-      {server ? (
-        <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
-          <div className="min-w-0">
-            <p className="text-xs/relaxed font-medium">{server.displayName}</p>
-            <p className="truncate text-xs/relaxed text-muted-foreground">
-              {server.apiOrigin}
-            </p>
-          </div>
-          <Button
-            onClick={() => setConfirmOpen(true)}
-            size="sm"
-            type="button"
-            variant="ghost"
+      <div className="grid gap-2">
+        {(profiles.length
+          ? profiles
+          : current
+            ? [
+                {
+                  active: true,
+                  hasCredentials: true,
+                  lastActiveWorkspaceId: null,
+                  lastPath: null,
+                  lastUsedAt: null,
+                  server: current,
+                  workspaces: [],
+                } satisfies DesktopServerProfile,
+              ]
+            : []
+        ).map((profile) => (
+          <div
+            className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3 text-sm"
+            key={`${profile.server.instanceId}:${profile.server.apiOrigin}`}
           >
-            Change server
-          </Button>
-        </div>
-      ) : null}
+            <div className="min-w-0">
+              <p className="text-xs/relaxed font-medium">
+                {profile.server.displayName}
+                {profile.active ? " · Active" : ""}
+              </p>
+              <p className="truncate text-xs/relaxed text-muted-foreground">
+                {profile.server.apiOrigin}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {profile.active ? null : (
+                <Button
+                  onClick={() => {
+                    void executeDesktopServerSwitch({
+                      hasCredentials: profile.hasCredentials,
+                      path: profile.hasCredentials
+                        ? (profile.lastPath ?? "/recents")
+                        : "/login",
+                      server: profile.server,
+                      workspaceId: profile.lastActiveWorkspaceId,
+                    })
+                  }}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  Switch
+                </Button>
+              )}
+              <Button
+                onClick={() => setRemoving(profile)}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                Remove from this device
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div>
+        <Button
+          onClick={() => setConnectOpen(true)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          Connect another server
+        </Button>
+      </div>
+      <DesktopConnectServerDialog
+        onOpenChange={setConnectOpen}
+        open={connectOpen}
+      />
       <AlertDialog
-        onOpenChange={(open) => !pending && setConfirmOpen(open)}
-        open={confirmOpen}
+        onOpenChange={(open) => !pending && !open && setRemoving(null)}
+        open={Boolean(removing)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sign out to change server?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Remove {removing?.server.displayName} from this device?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              You&apos;ll be signed out of this instance and taken to the server
-              screen, where you can pick Zilobase Cloud or a hosted URL.
-              {hasUnsyncedOfflineItems()
-                ? " Unsynced local drafts on this device will be deleted."
+              This signs out of that instance and deletes only its local
+              credentials, cache, offline documents, and tabs. Other saved
+              servers stay on this device.
+              {removing && hasUnsyncedOfflineItems() && removing.active
+                ? " Unsynced local drafts on this server will be deleted."
                 : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={pending}
+              disabled={pending || !removing}
               onClick={(event) => {
                 event.preventDefault()
-                void signOutAndChooseServer()
+                if (removing) void removeProfile(removing)
               }}
             >
               {pending ? <Spinner /> : null}
-              {pending ? "Signing out..." : "Sign out and continue"}
+              {pending ? "Removing..." : "Remove from this device"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

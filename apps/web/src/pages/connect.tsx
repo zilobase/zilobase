@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 
 import { Button } from "@/components/ui/button"
@@ -15,14 +15,34 @@ import {
   desktopCloudConnectUrl,
   getSelectedDesktopServer,
   isCloudDesktopServer,
+  listDesktopServerProfiles,
+  type DesktopServerProfile,
 } from "@/lib/desktop-server"
 import { requestDesktopServerReplacement } from "@/lib/desktop-server-replacement"
+import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
 
 export default function ConnectPage() {
   const navigate = useNavigate()
   const server = getSelectedDesktopServer()
   const onCloud = isCloudDesktopServer(server)
   const [serverUrl, setServerUrl] = useState("")
+  const [profiles, setProfiles] = useState<DesktopServerProfile[]>([])
+
+  useEffect(() => {
+    let disposed = false
+    void listDesktopServerProfiles()
+      .then((result) => {
+        if (!disposed) setProfiles(result.profiles)
+      })
+      .catch(() => {
+        if (!disposed) setProfiles([])
+      })
+    return () => {
+      disposed = true
+    }
+  }, [])
+
+  const otherProfiles = profiles.filter((profile) => !profile.active)
 
   const continueWithCurrent = () => {
     void navigate({ to: "/login" })
@@ -73,6 +93,27 @@ export default function ConnectPage() {
               </Button>
             </Field>
           ) : null}
+
+          {otherProfiles.map((profile) => (
+            <Field key={`${profile.server.instanceId}:${profile.server.apiOrigin}`}>
+              <Button
+                onClick={() => {
+                  void executeDesktopServerSwitch({
+                    hasCredentials: profile.hasCredentials,
+                    path: profile.hasCredentials
+                      ? (profile.lastPath ?? "/recents")
+                      : "/login",
+                    server: profile.server,
+                    workspaceId: profile.lastActiveWorkspaceId,
+                  })
+                }}
+                type="button"
+                variant="outline"
+              >
+                Continue with {profile.server.displayName}
+              </Button>
+            </Field>
+          ))}
 
           <FieldSeparator>Or use a hosted server</FieldSeparator>
 
