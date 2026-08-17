@@ -36,6 +36,7 @@ export type AppBindings = {
     IMAGE_STORAGE_MODE?: "s3" | "binding";
     IMAGE_UPLOAD_MAX_BYTES?: string;
     IMAGE_UPLOAD_URL_TTL_SECONDS?: string;
+    MEETING_BLOCK_ENABLED?: string;
     ZILOBASE_INSTANCE_NAME?: string;
     ZILOBASE_BOOTSTRAP_TOKEN?: string;
     ZILOBASE_MINIMUM_DESKTOP_VERSION?: string;
