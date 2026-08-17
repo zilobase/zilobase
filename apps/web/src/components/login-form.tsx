@@ -146,7 +146,7 @@ export function LoginForm({
 
         {(signInWithPassword.isError ||
           requestSignInOtp.isError ||
-          googleError) && (
+          googleError != null) && (
           <FieldError>
             {getApiErrorMessage(
               signInWithPassword.error ?? requestSignInOtp.error ?? googleError,
