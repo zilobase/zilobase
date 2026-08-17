@@ -417,10 +417,12 @@ pub fn run() {
             meeting_capture::meeting_capture_start,
             meeting_capture::meeting_capture_pause,
             meeting_capture::meeting_capture_resume,
+            meeting_capture::meeting_capture_refresh_transport,
             meeting_capture::meeting_capture_stop,
             meeting_capture::meeting_capture_state,
             meeting_capture::meeting_capture_recoverable_sessions,
-            meeting_capture::meeting_capture_delete_local_file
+            meeting_capture::meeting_capture_delete_local_file,
+            meeting_capture::meeting_capture_open_local_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

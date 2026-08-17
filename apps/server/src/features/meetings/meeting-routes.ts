@@ -201,9 +201,23 @@ meetingRoutes.post("/:id/recorder/heartbeat", async (c) => {
       meetingId: c.req.param("id"),
       userId: user.id,
     });
+    const ticket = await createMeetingAudioTicket(
+      {
+        leaseId: parsed.data.leaseId,
+        meetingId: renewed.meeting.id,
+        userId: user.id,
+        workspaceId: renewed.meeting.workspaceId,
+      },
+      c.env,
+    );
+    const websocketUrl = new URL(getMeetingAudioWebSocketUrl(c.req.raw, c.env));
+    websocketUrl.searchParams.set("meeting", renewed.meeting.id);
     return c.json({
+      expiresAt: ticket.expiresAt,
       leaseExpiresAt: renewed.leaseExpiresAt.toISOString(),
       meeting: renewed.meeting,
+      token: ticket.token,
+      websocketUrl: websocketUrl.toString(),
     });
   } catch (error) {
     return serviceError(c, error);

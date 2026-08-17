@@ -69,6 +69,17 @@ beforeEach(() => {
     },
   });
   mocks.get.mockResolvedValue({ id: "meeting-1", status: "idle" });
+  mocks.heartbeatRecorder.mockResolvedValue({
+    leaseExpiresAt: new Date("2026-08-18T00:00:30.000Z"),
+    meeting: {
+      id: "meeting-1",
+      status: "recording",
+      workspaceId: "workspace-1",
+    },
+  });
+  mocks.listTranscript.mockResolvedValue([
+    { id: "segment-1", sequence: 0, text: "Hello" },
+  ]);
   mocks.transition.mockResolvedValue({ id: "meeting-1", status: "recording" });
 });
 
@@ -150,4 +161,30 @@ test("recorder claim returns a scoped native audio ticket", async () => {
     payload.websocketUrl,
     "ws://localhost/meeting-audio?meeting=meeting-1",
   );
+});
+
+test("transcript reads and lease heartbeats remain meeting scoped", async () => {
+  const transcript = await appFor().request(
+    "/meetings/meeting-1/transcript",
+    {},
+    env,
+  );
+  assert.equal(transcript.status, 200);
+  assert.deepEqual(await transcript.json(), {
+    segments: [{ id: "segment-1", sequence: 0, text: "Hello" }],
+  });
+
+  const heartbeat = await appFor().request(
+    "/meetings/meeting-1/recorder/heartbeat",
+    {
+      body: JSON.stringify({
+        leaseId: "10000000-0000-4000-8000-000000000001",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+    env,
+  );
+  assert.equal(heartbeat.status, 200);
+  assert.equal(typeof (await heartbeat.json() as { token?: unknown }).token, "string");
 });

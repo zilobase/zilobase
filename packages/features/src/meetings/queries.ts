@@ -52,6 +52,8 @@ export const meetingKeys = {
   details: () => [...meetingKeys.all, "detail"] as const,
   detail: (meetingId: string | null | undefined) =>
     [...meetingKeys.details(), meetingId ?? "none"] as const,
+  transcript: (meetingId: string | null | undefined) =>
+    [...meetingKeys.detail(meetingId), "transcript"] as const,
 }
 
 export function meetingQueryOptions(
@@ -66,6 +68,45 @@ export function meetingQueryOptions(
       return apiFetch<MeetingResponse>(`/meetings/${meetingId}`, { signal })
     },
     staleTime: 30_000,
+    refetchInterval: 5_000,
+  })
+}
+
+export type MeetingTranscriptSegment = {
+  createdAt: string
+  endMs: number
+  id: string
+  meetingId: string
+  providerItemId: string | null
+  revision: number
+  sequence: number
+  source: string
+  speaker: string | null
+  startMs: number
+  text: string
+}
+
+export type MeetingTranscriptResponse = {
+  segments: MeetingTranscriptSegment[]
+}
+
+export function meetingTranscriptQueryOptions(
+  apiFetch: ApiFetcher,
+  meetingId: string | null | undefined,
+  live = false,
+) {
+  return queryOptions({
+    enabled: Boolean(meetingId),
+    queryKey: meetingKeys.transcript(meetingId),
+    queryFn: ({ signal }) => {
+      if (!meetingId) throw new Error("Meeting ID is required")
+      return apiFetch<MeetingTranscriptResponse>(
+        `/meetings/${meetingId}/transcript`,
+        { signal },
+      )
+    },
+    refetchInterval: live ? 2_000 : false,
+    staleTime: live ? 1_000 : 30_000,
   })
 }
 

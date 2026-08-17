@@ -162,7 +162,7 @@ function resolveRuntimeResponse(path: string, data: unknown) {
     }
   }
 
-  if (/\/meetings\/[^/]+\/recorder\/claim(?:\?|$)/.test(path)) {
+  if (/\/meetings\/[^/]+\/recorder\/(?:claim|heartbeat)(?:\?|$)/.test(path)) {
     return {
       ...response,
       websocketUrl: resolveRuntimeWebSocketUrl(

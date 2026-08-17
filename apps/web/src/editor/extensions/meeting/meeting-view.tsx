@@ -4,7 +4,9 @@ import {
   CalendarDays,
   ChevronDown,
   CircleStop,
+  Download,
   FileAudio,
+  FolderOpen,
   LoaderCircle,
   Mic,
   MoreHorizontal,
@@ -17,6 +19,7 @@ import {
   useMeeting,
   useMeetingLifecycle,
   useMeetingRecorder,
+  useMeetingTranscript,
   useUpdateMeeting,
   type MeetingLifecycleAction,
 } from "@zilobase/features/meetings"
@@ -34,6 +37,7 @@ import {
 import { cn } from "@/lib/utils"
 import { MeetingCollaborativeEditor } from "./meeting-collaborative-editor"
 import { useMeetingCollaboration } from "./use-meeting-collaboration"
+import { useNativeMeetingCapture } from "./use-native-meeting-capture"
 
 type MeetingTab = "summary" | "notes" | "transcript"
 
@@ -49,11 +53,20 @@ export function MeetingView({
   const lifecycle = useMeetingLifecycle(meetingId)
   const recorder = useMeetingRecorder(meetingId)
   const collaboration = useMeetingCollaboration(meetingId)
+  const nativeCapture = useNativeMeetingCapture(meetingId)
   const [activeTab, setActiveTab] = useState<MeetingTab>("notes")
   const [title, setTitle] = useState("Meeting")
-  const [leaseId, setLeaseId] = useState<string | null>(null)
+  const [leaseId, setLeaseId] = useState<string | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : window.sessionStorage.getItem(`zilobase:meeting-recorder:${meetingId}`),
+  )
   const meeting = meetingQuery.data?.meeting
   const activeRecording = meeting?.status === "recording" || meeting?.status === "paused"
+  const transcript = useMeetingTranscript(
+    meetingId,
+    activeRecording || meeting?.status === "processing",
+  )
 
   useEffect(() => {
     if (meeting?.title) setTitle(meeting.title)
@@ -62,10 +75,15 @@ export function MeetingView({
   useEffect(() => {
     if (!leaseId || !activeRecording) return
     const interval = window.setInterval(() => {
-      recorder.heartbeat.mutate(leaseId)
+      void recorder.heartbeat.mutateAsync(leaseId).then((ticket) =>
+        invoke("meeting_capture_refresh_transport", {
+          audioTicket: ticket.token,
+          audioWebsocketUrl: ticket.websocketUrl,
+        }),
+      ).catch(() => undefined)
     }, 10_000)
     return () => window.clearInterval(interval)
-  }, [activeRecording, leaseId, recorder.heartbeat])
+  }, [activeRecording, leaseId])
 
   const runLifecycle = async (action: MeetingLifecycleAction) => {
     try {
@@ -73,6 +91,10 @@ export function MeetingView({
         if (!isTauri()) throw new Error("Meeting recording is available in the desktop app.")
         const claim = await recorder.claim.mutateAsync()
         setLeaseId(claim.leaseId)
+        window.sessionStorage.setItem(
+          `zilobase:meeting-recorder:${meetingId}`,
+          claim.leaseId,
+        )
         try {
           await invoke("meeting_capture_start", {
             config: {
@@ -88,6 +110,7 @@ export function MeetingView({
           await invoke("meeting_capture_stop").catch(() => undefined)
           await recorder.release.mutateAsync(claim.leaseId).catch(() => undefined)
           setLeaseId(null)
+          window.sessionStorage.removeItem(`zilobase:meeting-recorder:${meetingId}`)
           throw error
         }
         return
@@ -101,6 +124,7 @@ export function MeetingView({
         await lifecycle.mutateAsync({ action, durationMs: capture.elapsedMs })
         if (leaseId) await recorder.release.mutateAsync(leaseId)
         setLeaseId(null)
+        window.sessionStorage.removeItem(`zilobase:meeting-recorder:${meetingId}`)
         return
       }
       await lifecycle.mutateAsync({ action })
@@ -129,8 +153,12 @@ export function MeetingView({
 
   const hasResult = meeting.status === "completed" || meeting.status === "failed"
   const tabs: MeetingTab[] = hasResult
+    || activeRecording
+    || meeting.status === "processing"
+    || Boolean(transcript.data?.segments.length)
     ? ["summary", "notes", "transcript"]
     : ["notes"]
+  const ownsRecorder = Boolean(leaseId)
 
   return (
     <section className="meeting-block-shell overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
@@ -171,6 +199,15 @@ export function MeetingView({
             <DropdownMenuItem disabled>
               <Mic /> Recorder controls require desktop
             </DropdownMenuItem>
+            {nativeCapture.recovery ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  void invoke("meeting_capture_open_local_file", { meetingId })
+                }}
+              >
+                <FolderOpen /> Open local audio
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
@@ -202,10 +239,35 @@ export function MeetingView({
         </div>
 
         {activeTab === "transcript" ? (
-          <div className="min-h-28 rounded-lg bg-muted/35 p-4 text-sm text-muted-foreground">
-            {meeting.transcriptRevision > 0
-              ? "Transcript segments will appear here."
-              : "Start transcribing to create a searchable transcript."}
+          <div className="min-h-28 rounded-lg bg-muted/35 p-4 text-sm">
+            {transcript.data?.segments.length ? (
+              <div className="space-y-3">
+                {transcript.data.segments.map((segment) => (
+                  <div className="grid grid-cols-[3.5rem_1fr] gap-3" key={segment.id}>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {formatTimestamp(segment.startMs)}
+                    </span>
+                    <p className="whitespace-pre-wrap text-foreground">{segment.text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                {transcript.isLoading
+                  ? "Loading transcript…"
+                  : "Start transcribing to create a searchable transcript."}
+              </p>
+            )}
+            {transcript.data?.segments.length ? (
+              <Button
+                className="mt-4"
+                onClick={() => exportTranscript(meeting.title, transcript.data.segments)}
+                size="sm"
+                variant="outline"
+              >
+                <Download /> Export transcript
+              </Button>
+            ) : null}
           </div>
         ) : collaboration.document ? (
           <MeetingCollaborativeEditor
@@ -226,9 +288,20 @@ export function MeetingView({
         )}
 
         <footer className="mt-4 flex items-center justify-between border-t pt-4">
-          <span className="text-xs capitalize text-muted-foreground">
-            {meeting.status === "idle" ? "Ready to record" : meeting.status}
-          </span>
+          <div className="flex items-center gap-2 text-xs capitalize text-muted-foreground">
+            <span>{meeting.status === "idle" ? "Ready to record" : meeting.status}</span>
+            {ownsRecorder && activeRecording ? (
+              <span className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
+                <span
+                  className="block h-full origin-left rounded-full bg-emerald-500 transition-transform"
+                  style={{ transform: `scaleX(${nativeCapture.level})` }}
+                />
+              </span>
+            ) : null}
+            {activeRecording && !ownsRecorder ? (
+              <span>Another collaborator is recording</span>
+            ) : null}
+          </div>
           {editable ? (
             <div className="flex items-center gap-2">
               {meeting.status === "idle" || meeting.status === "failed" ? (
@@ -237,19 +310,19 @@ export function MeetingView({
                 </Button>
               ) : meeting.status === "recording" ? (
                 <>
-                  <Button onClick={() => void runLifecycle("pause")} variant="outline">
+                  <Button disabled={!ownsRecorder} onClick={() => void runLifecycle("pause")} variant="outline">
                     <Pause /> Pause
                   </Button>
-                  <Button onClick={() => void runLifecycle("stop")} variant="destructive">
+                  <Button disabled={!ownsRecorder} onClick={() => void runLifecycle("stop")} variant="destructive">
                     <CircleStop /> Stop
                   </Button>
                 </>
               ) : meeting.status === "paused" ? (
                 <>
-                  <Button onClick={() => void runLifecycle("resume")} variant="outline">
+                  <Button disabled={!ownsRecorder} onClick={() => void runLifecycle("resume")} variant="outline">
                     <Play /> Resume
                   </Button>
-                  <Button onClick={() => void runLifecycle("stop")} variant="destructive">
+                  <Button disabled={!ownsRecorder} onClick={() => void runLifecycle("stop")} variant="destructive">
                     <CircleStop /> Stop
                   </Button>
                 </>
@@ -262,4 +335,26 @@ export function MeetingView({
       </div>
     </section>
   )
+}
+
+function formatTimestamp(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1_000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`
+}
+
+function exportTranscript(
+  title: string,
+  segments: Array<{ startMs: number; text: string }>,
+) {
+  const contents = segments
+    .map((segment) => `[${formatTimestamp(segment.startMs)}] ${segment.text}`)
+    .join("\n\n")
+  const url = URL.createObjectURL(new Blob([contents], { type: "text/plain;charset=utf-8" }))
+  const anchor = document.createElement("a")
+  anchor.href = url
+  anchor.download = `${title.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-|-$/g, "") || "meeting"}-transcript.txt`
+  anchor.click()
+  URL.revokeObjectURL(url)
 }

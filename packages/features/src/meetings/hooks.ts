@@ -4,6 +4,7 @@ import { useZilobaseFeatures } from "../context"
 import {
   meetingKeys,
   meetingQueryOptions,
+  meetingTranscriptQueryOptions,
   type CreateMeetingInput,
   type MeetingLifecycleAction,
   type MeetingPatch,
@@ -14,6 +15,14 @@ import {
 export function useMeeting(meetingId: string | null | undefined) {
   const { apiFetch } = useZilobaseFeatures()
   return useQuery(meetingQueryOptions(apiFetch, meetingId))
+}
+
+export function useMeetingTranscript(
+  meetingId: string | null | undefined,
+  live = false,
+) {
+  const { apiFetch } = useZilobaseFeatures()
+  return useQuery(meetingTranscriptQueryOptions(apiFetch, meetingId, live))
 }
 
 export function useCreateMeeting() {
@@ -102,7 +111,7 @@ export function useMeetingRecorder(meetingId: string) {
   })
   const heartbeat = useMutation({
     mutationFn: (leaseId: string) =>
-      apiFetch<MeetingResponse & { leaseExpiresAt: string }>(
+      apiFetch<MeetingRecorderClaim>(
         `/meetings/${meetingId}/recorder/heartbeat`,
         { body: JSON.stringify({ leaseId }), method: "POST" },
       ),

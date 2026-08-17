@@ -20,6 +20,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_opener::OpenerExt;
 use tungstenite::{
     client::IntoClientRequest,
     http::{header::SEC_WEBSOCKET_PROTOCOL, HeaderValue},
@@ -145,6 +146,7 @@ struct CaptureSession {
 enum CaptureControl {
     Pause,
     Resume,
+    RefreshTransport { ticket: String, url: String },
     Stop,
 }
 
@@ -318,6 +320,28 @@ pub fn meeting_capture_resume(
 }
 
 #[tauri::command]
+pub fn meeting_capture_refresh_transport(
+    manager: State<'_, MeetingCaptureManager>,
+    audio_websocket_url: String,
+    audio_ticket: String,
+) -> Result<(), String> {
+    MeetingAudioTransport::from_parts(audio_websocket_url.clone(), audio_ticket.clone())?;
+    let guard = manager
+        .session
+        .lock()
+        .map_err(|_| "Meeting capture state is unavailable".to_string())?;
+    guard
+        .as_ref()
+        .ok_or_else(|| "No meeting capture is active".to_string())?
+        .control
+        .send(CaptureControl::RefreshTransport {
+            ticket: audio_ticket,
+            url: audio_websocket_url,
+        })
+        .map_err(|_| "The meeting capture worker has stopped".to_string())
+}
+
+#[tauri::command]
 pub fn meeting_capture_stop(
     manager: State<'_, MeetingCaptureManager>,
 ) -> Result<MeetingCaptureStatus, String> {
@@ -407,6 +431,20 @@ pub fn meeting_capture_delete_local_file(app: AppHandle, meeting_id: String) -> 
     Ok(())
 }
 
+#[tauri::command]
+pub fn meeting_capture_open_local_file(app: AppHandle, meeting_id: String) -> Result<(), String> {
+    validate_meeting_id(&meeting_id)?;
+    let audio_path = capture_base_directory(&app)?
+        .join(meeting_id)
+        .join("meeting-audio.wav");
+    if !audio_path.exists() {
+        return Err("No local audio checkpoint exists for this meeting".into());
+    }
+    app.opener()
+        .open_path(audio_path.to_string_lossy().into_owned(), None::<String>)
+        .map_err(|error| format!("Could not open the local meeting audio: {error}"))
+}
+
 fn control_capture(
     manager: &State<'_, MeetingCaptureManager>,
     control: CaptureControl,
@@ -485,6 +523,11 @@ fn run_capture(
                 CaptureControl::Resume => {
                     paused.store(false, Ordering::Release);
                     update_phase(&app, &status, CapturePhase::Recording);
+                }
+                CaptureControl::RefreshTransport { ticket, url } => {
+                    if let Some(current) = transport.as_mut() {
+                        current.update_credentials(url, ticket);
+                    }
                 }
                 CaptureControl::Stop => stopping = true,
             }
@@ -782,24 +825,29 @@ struct MeetingAudioTransport {
 impl MeetingAudioTransport {
     fn from_config(config: &MeetingCaptureConfig) -> Result<Option<Self>, String> {
         match (&config.audio_websocket_url, &config.audio_ticket) {
-            (Some(url), Some(ticket)) => {
-                let parsed = url::Url::parse(url)
-                    .map_err(|_| "The meeting audio WebSocket URL is invalid".to_string())?;
-                if !matches!(parsed.scheme(), "ws" | "wss") {
-                    return Err("Meeting audio transport must use WebSocket".into());
-                }
-                Ok(Some(Self {
-                    next_sequence: 0,
-                    protocol: format!(
-                        "zilobase.meeting-audio.v1, zilobase.meeting-audio.auth.{ticket}"
-                    ),
-                    socket: None,
-                    url: url.clone(),
-                }))
-            }
+            (Some(url), Some(ticket)) => Self::from_parts(url.clone(), ticket.clone()).map(Some),
             (None, None) => Ok(None),
             _ => Err("Meeting audio URL and ticket must be provided together".into()),
         }
+    }
+
+    fn from_parts(url: String, ticket: String) -> Result<Self, String> {
+        let parsed = url::Url::parse(&url)
+            .map_err(|_| "The meeting audio WebSocket URL is invalid".to_string())?;
+        if !matches!(parsed.scheme(), "ws" | "wss") {
+            return Err("Meeting audio transport must use WebSocket".into());
+        }
+        Ok(Self {
+            next_sequence: 0,
+            protocol: format!("zilobase.meeting-audio.v1, zilobase.meeting-audio.auth.{ticket}"),
+            socket: None,
+            url,
+        })
+    }
+
+    fn update_credentials(&mut self, url: String, ticket: String) {
+        self.url = url;
+        self.protocol = format!("zilobase.meeting-audio.v1, zilobase.meeting-audio.auth.{ticket}");
     }
 
     fn connect(&mut self) -> Result<(), String> {

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { meetingKeys, meetingQueryOptions } from "./queries"
+import {
+  meetingKeys,
+  meetingQueryOptions,
+  meetingTranscriptQueryOptions,
+} from "./queries"
 
 test("meeting query keys are hierarchical and scoped by meeting", () => {
   assert.deepEqual(meetingKeys.detail("meeting-1"), [
@@ -13,6 +17,19 @@ test("meeting query keys are hierarchical and scoped by meeting", () => {
     meetingKeys.detail("meeting-1"),
     meetingKeys.detail("meeting-2"),
   )
+})
+
+test("live transcript queries poll with their own scoped cache key", () => {
+  const options = meetingTranscriptQueryOptions(async () => ({
+    segments: [],
+  }), "meeting-1", true)
+  assert.deepEqual(options.queryKey, [
+    "meetings",
+    "detail",
+    "meeting-1",
+    "transcript",
+  ])
+  assert.equal(options.refetchInterval, 2_000)
 })
 
 test("meeting detail queries forward cancellation and use a bounded stale time", async () => {
