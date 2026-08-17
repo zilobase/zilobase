@@ -7,7 +7,7 @@ import type { AppBindings } from "../../types";
 const mocks = vi.hoisted(() => ({
   createdSessionUserIds: [] as string[],
   insertedCodes: [] as Record<string, unknown>[],
-  signInSocialResponse: null as Response | null,
+  signOutCalls: 0,
   updateResults: [] as unknown[][],
 }));
 
@@ -45,24 +45,15 @@ vi.mock("../../db", () => ({
 vi.mock("../../auth", () => ({
   createAuth: () => ({
     api: {
-      async signInSocial() {
-        return (
-          mocks.signInSocialResponse ??
-          new Response(
-            JSON.stringify({
-              redirect: true,
-              url: "https://accounts.google.com/o/oauth2/v2/auth",
-            }),
-            {
-              headers: {
-                "content-type": "application/json",
-                "set-cookie":
-                  "better-auth.state=signed-state; Path=/; HttpOnly; Max-Age=300",
-              },
-              status: 200,
-            },
-          )
-        );
+      async signOut() {
+        mocks.signOutCalls += 1;
+        return new Response(null, {
+          headers: {
+            "set-cookie":
+              "better-auth.session_token=; Path=/; HttpOnly; Max-Age=0",
+          },
+          status: 200,
+        });
       },
     },
     $context: Promise.resolve({
@@ -109,7 +100,7 @@ const verifier = "v".repeat(64);
 beforeEach(() => {
   mocks.createdSessionUserIds.length = 0;
   mocks.insertedCodes.length = 0;
-  mocks.signInSocialResponse = null;
+  mocks.signOutCalls = 0;
   mocks.updateResults.length = 0;
 });
 
@@ -137,107 +128,22 @@ test("desktop landing page exposes a secret-free connection link", async () => {
   assert.equal(response.headers.get("referrer-policy"), "no-referrer");
 });
 
-test("authorization page sends anonymous users through the selected server login", async () => {
+test("authorization page sends anonymous users to the real web login", async () => {
   const response = await appFor(false).request(authorizationUrl(), {}, env);
-  const body = await response.text();
+  const location = new URL(response.headers.get("location") ?? "");
 
-  assert.equal(response.status, 200);
-  assert.match(body, /<span>Zilobase<\/span>/);
-  assert.match(body, /Sign in to your account/);
-  assert.match(body, /Don&apos;t have an account\?/);
-  assert.match(body, /https:\/\/app\.example\.com\/signup\?returnTo=/);
-  assert.match(body, /class="google"/);
-  assert.match(body, /#4285F4/);
-  assert.match(body, />Continue with Google</);
-  assert.match(body, /intent=google/);
-  assert.match(body, />Sign in another way</);
-  assert.doesNotMatch(body, /class="button"[^>]*>Continue with Google</);
-  assert.match(body, /https:\/\/app\.example\.com\/login\?returnTo=/);
-  assert.match(body, /font-size:1\.125rem/);
-  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.equal(response.status, 303);
+  assert.equal(location.origin, "https://app.example.com");
+  assert.equal(location.pathname, "/login");
   assert.match(
-    response.headers.get("content-security-policy") ?? "",
-    /frame-ancestors 'none'/,
+    location.searchParams.get("returnTo") ?? "",
+    /^https:\/\/api\.example\.com\/desktop\/authorize\?/,
   );
+  assert.doesNotMatch(location.searchParams.get("returnTo") ?? "", /intent=/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
 });
 
-test("authorization page hides Google when the server has no Google credentials", async () => {
-  const response = await appFor(false).request(
-    authorizationUrl(),
-    {},
-    {
-      BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
-      BETTER_AUTH_URL: env.BETTER_AUTH_URL,
-      CLIENT_URL: env.CLIENT_URL,
-    },
-  );
-  const body = await response.text();
-
-  assert.equal(response.status, 200);
-  assert.doesNotMatch(body, /Continue with Google/);
-  assert.doesNotMatch(body, /intent=google/);
-  assert.match(body, />Sign in another way</);
-});
-
-test("authorization Google intent without credentials returns an error page", async () => {
-  const url = new URL(authorizationUrl());
-  url.searchParams.set("intent", "google");
-  const response = await appFor(false).request(
-    url.toString(),
-    {},
-    {
-      BETTER_AUTH_SECRET: env.BETTER_AUTH_SECRET,
-      BETTER_AUTH_URL: env.BETTER_AUTH_URL,
-      CLIENT_URL: env.CLIENT_URL,
-    },
-  );
-
-  assert.equal(response.status, 400);
-  assert.match(await response.text(), /Google sign-in is unavailable/);
-});
-
-test("authorization Google intent redirects instead of returning Better Auth JSON", async () => {
-  const url = new URL(authorizationUrl());
-  url.searchParams.set("intent", "google");
-  const response = await appFor(false).request(url.toString(), {}, env);
-
-  assert.equal(response.status, 302);
-  assert.equal(
-    response.headers.get("location"),
-    "https://accounts.google.com/o/oauth2/v2/auth",
-  );
-  assert.equal(
-    response.headers.get("set-cookie"),
-    "better-auth.state=signed-state; Path=/; HttpOnly; Max-Age=300",
-  );
-  assert.equal(await response.text(), "");
-});
-
-test("authorization Google intent keeps an already-redirecting Better Auth response", async () => {
-  mocks.signInSocialResponse = new Response(null, {
-    headers: {
-      location: "https://accounts.google.com/o/oauth2/v2/auth",
-      "set-cookie":
-        "better-auth.state=signed-state; Path=/; HttpOnly; Max-Age=300",
-    },
-    status: 302,
-  });
-  const url = new URL(authorizationUrl());
-  url.searchParams.set("intent", "google");
-  const response = await appFor(false).request(url.toString(), {}, env);
-
-  assert.equal(response.status, 302);
-  assert.equal(
-    response.headers.get("location"),
-    "https://accounts.google.com/o/oauth2/v2/auth",
-  );
-  assert.equal(
-    response.headers.get("set-cookie"),
-    "better-auth.state=signed-state; Path=/; HttpOnly; Max-Age=300",
-  );
-});
-
-test("consent page permits only its validated loopback callback origin", async () => {
+test("continue page offers desktop handoff and account switch", async () => {
   const response = await appFor(true).request(authorizationUrl(), {}, env);
   const body = await response.text();
   const contentSecurityPolicy =
@@ -245,7 +151,13 @@ test("consent page permits only its validated loopback callback origin", async (
 
   assert.equal(response.status, 200);
   assert.match(body, /<span>Zilobase<\/span>/);
-  assert.match(body, /Connect Zilobase Desktop\?/);
+  assert.match(body, /Continue in Desktop App/);
+  assert.match(body, /Use a different account/);
+  assert.match(body, /Signed in as <strong>User<\/strong>/);
+  assert.match(body, /Your browser stays signed in/);
+  assert.match(body, /action="\/desktop\/authorize\/consent"/);
+  assert.match(body, /action="\/desktop\/authorize\/switch"/);
+  assert.match(body, /name="consent_token"/);
   assert.match(body, /font-size:1\.125rem/);
   assert.match(
     contentSecurityPolicy,
@@ -253,6 +165,8 @@ test("consent page permits only its validated loopback callback origin", async (
   );
   assert.doesNotMatch(contentSecurityPolicy, /127\.0\.0\.1:\*/);
   assert.doesNotMatch(contentSecurityPolicy, /attacker/);
+  assert.doesNotMatch(body, /Continue with Google/);
+  assert.doesNotMatch(body, /Connect Zilobase Desktop\?/);
 });
 
 test("authenticated consent stores only a hashed short-lived code", async () => {
@@ -323,6 +237,82 @@ test("consent rejects a missing or tampered signed consent token", async () => {
     assert.equal(response.status, 400);
   }
   assert.equal(mocks.insertedCodes.length, 0);
+});
+
+test("switch account signs out only the browser session and returns to login", async () => {
+  const response = await appFor(true).request(
+    "https://api.example.com/desktop/authorize/switch",
+    {
+      body: consentParameters().toString(),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        origin: "null",
+      },
+      method: "POST",
+    },
+    env,
+  );
+  const location = new URL(response.headers.get("location") ?? "");
+
+  assert.equal(response.status, 303);
+  assert.equal(location.origin, "https://app.example.com");
+  assert.equal(location.pathname, "/login");
+  assert.match(
+    location.searchParams.get("returnTo") ?? "",
+    /^https:\/\/api\.example\.com\/desktop\/authorize\?/,
+  );
+  assert.doesNotMatch(
+    location.searchParams.get("returnTo") ?? "",
+    /\/desktop\/authorize\/switch/,
+  );
+  assert.equal(mocks.signOutCalls, 1);
+  assert.equal(mocks.insertedCodes.length, 0);
+  assert.equal(mocks.createdSessionUserIds.length, 0);
+  assert.match(
+    response.headers.get("set-cookie") ?? "",
+    /better-auth\.session_token=/,
+  );
+});
+
+test("switch account rejects cross-origin form submissions", async () => {
+  const response = await appFor(true).request(
+    "https://api.example.com/desktop/authorize/switch",
+    {
+      body: consentParameters().toString(),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        origin: "https://attacker.example.com",
+      },
+      method: "POST",
+    },
+    env,
+  );
+
+  assert.equal(response.status, 403);
+  assert.equal(mocks.signOutCalls, 0);
+});
+
+test("switch account rejects a missing or tampered signed consent token", async () => {
+  for (const parameters of [
+    authorizationParameters(),
+    consentParameters({ consent_token: "tampered" }),
+  ]) {
+    const response = await appFor(true).request(
+      "https://api.example.com/desktop/authorize/switch",
+      {
+        body: parameters.toString(),
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          origin: "https://api.example.com",
+        },
+        method: "POST",
+      },
+      env,
+    );
+
+    assert.equal(response.status, 400);
+  }
+  assert.equal(mocks.signOutCalls, 0);
 });
 
 test("token exchange creates a separate Better Auth desktop session", async () => {
