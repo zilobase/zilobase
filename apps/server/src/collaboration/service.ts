@@ -6,15 +6,21 @@ import { Schema, type MarkSpec, type NodeSpec } from "@tiptap/pm/model";
 import * as Y from "yjs";
 import { canAccessPageInWorkspace } from "../access";
 import { db, runWithDbEnv } from "../db";
-import { page, pageCollaborationDocument } from "../db/schema";
+import {
+  meeting,
+  meetingCollaborationDocument,
+  page,
+  pageCollaborationDocument,
+} from "../db/schema";
 import { getRuntimeAdapter } from "../runtime-adapter";
 import type { RuntimeEnv } from "../config";
 
 const DOCUMENT_PREFIX = "page:";
+const MEETING_DOCUMENT_PREFIX = "meeting:";
 const FIELD_NAME = "default";
 const TICKET_TTL_MS = 5 * 60 * 1000;
 
-export type CollaborationTicketClaims = {
+export type PageCollaborationTicketClaims = {
   exp: number;
   pageId: string;
   scope: "read-write" | "readonly";
@@ -22,6 +28,17 @@ export type CollaborationTicketClaims = {
   workspaceId: string;
 };
 
+export type MeetingCollaborationTicketClaims = {
+  exp: number;
+  meetingId: string;
+  scope: "read-write" | "readonly";
+  userId: string;
+  workspaceId: string;
+};
+
+export type CollaborationTicketClaims =
+  | PageCollaborationTicketClaims
+  | MeetingCollaborationTicketClaims;
 export type CollaborationContext = CollaborationTicketClaims;
 
 export function documentNameForPage(pageId: string) {
@@ -34,8 +51,20 @@ export function pageIdFromDocumentName(documentName: string) {
     : null;
 }
 
+export function documentNameForMeeting(meetingId: string) {
+  return `${MEETING_DOCUMENT_PREFIX}${meetingId}`;
+}
+
+export function meetingIdFromDocumentName(documentName: string) {
+  return documentName.startsWith(MEETING_DOCUMENT_PREFIX)
+    ? documentName.slice(MEETING_DOCUMENT_PREFIX.length)
+    : null;
+}
+
 export async function createCollaborationTicket(
-  claims: Omit<CollaborationTicketClaims, "exp">,
+  claims:
+    | Omit<PageCollaborationTicketClaims, "exp">
+    | Omit<MeetingCollaborationTicketClaims, "exp">,
   env: RuntimeEnv,
 ) {
   const payload: CollaborationTicketClaims = {
@@ -116,6 +145,54 @@ export async function getOrCreateCollaborationDocumentState(pageId: string) {
   return new Uint8Array(concurrent.state);
 }
 
+export async function getOrCreateMeetingCollaborationDocumentState(
+  meetingId: string,
+) {
+  const [record] = await db
+    .select({ id: meeting.id })
+    .from(meeting)
+    .where(and(eq(meeting.id, meetingId), isNull(meeting.deletedAt)))
+    .limit(1);
+
+  if (!record) {
+    throw new Error("Meeting not found");
+  }
+
+  const [stored] = await db
+    .select({ state: meetingCollaborationDocument.state })
+    .from(meetingCollaborationDocument)
+    .where(eq(meetingCollaborationDocument.meetingId, meetingId))
+    .limit(1);
+
+  if (stored) {
+    return new Uint8Array(stored.state);
+  }
+
+  const document = new Y.Doc();
+  document.getXmlFragment("notes");
+  document.getXmlFragment("summary");
+  const initialState = Y.encodeStateAsUpdate(document);
+  const [inserted] = await db
+    .insert(meetingCollaborationDocument)
+    .values({ meetingId, state: Buffer.from(initialState), updatedAt: new Date() })
+    .onConflictDoNothing()
+    .returning({ state: meetingCollaborationDocument.state });
+
+  if (inserted) return new Uint8Array(inserted.state);
+
+  const [concurrent] = await db
+    .select({ state: meetingCollaborationDocument.state })
+    .from(meetingCollaborationDocument)
+    .where(eq(meetingCollaborationDocument.meetingId, meetingId))
+    .limit(1);
+
+  if (!concurrent) {
+    throw new Error("Could not initialize meeting collaboration document");
+  }
+
+  return new Uint8Array(concurrent.state);
+}
+
 export async function verifyCollaborationTicket(
   token: string,
   env: RuntimeEnv,
@@ -181,9 +258,16 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
         performance.now() - authenticateStartedAt,
       );
       const pageId = pageIdFromDocumentName(documentName);
+      const meetingId = meetingIdFromDocumentName(documentName);
       const routedDocumentName = requestParameters.get("document");
 
-      if (!pageId || pageId !== claims.pageId) {
+      const ticketMatches = pageId
+        ? "pageId" in claims && pageId === claims.pageId
+        : meetingId
+          ? "meetingId" in claims && meetingId === claims.meetingId
+          : false;
+
+      if (!ticketMatches) {
         throw new Error("Collaboration ticket does not match the document");
       }
 
@@ -198,14 +282,17 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
       // check instead of adding another database round trip to first sync.
       const documentLoad = preloadDocument(documentName);
       const pageAccessStartedAt = performance.now();
-      const allowed = await withDatabase(env, () =>
-        canAccessPageInWorkspace(
-          claims.pageId,
-          claims.workspaceId,
-          claims.userId,
-          claims.scope === "readonly" ? "view" : "edit",
-        ),
-      );
+      const allowed = await withDatabase(env, async () => {
+        const accessPageId = pageId ?? await getMeetingPageId(meetingId!);
+        return accessPageId
+          ? canAccessPageInWorkspace(
+              accessPageId,
+              claims.workspaceId,
+              claims.userId,
+              claims.scope === "readonly" ? "view" : "edit",
+            )
+          : false;
+      });
       const pageAccessMs = Math.round(performance.now() - pageAccessStartedAt);
 
       console.info(
@@ -301,8 +388,9 @@ export async function replacePageContentInHocuspocus(
 
 async function loadDocument(documentName: string, env: RuntimeEnv) {
   const pageId = pageIdFromDocumentName(documentName);
+  const meetingId = meetingIdFromDocumentName(documentName);
 
-  if (!pageId) {
+  if (!pageId && !meetingId) {
     throw new Error("Invalid collaboration document name");
   }
 
@@ -310,7 +398,9 @@ async function loadDocument(documentName: string, env: RuntimeEnv) {
 
   try {
     return await withDatabase(env, () =>
-      getOrCreateCollaborationDocumentState(pageId),
+      pageId
+        ? getOrCreateCollaborationDocumentState(pageId)
+        : getOrCreateMeetingCollaborationDocumentState(meetingId!),
     );
   } finally {
     console.info(
@@ -329,15 +419,34 @@ async function storeDocument(
   env: RuntimeEnv,
 ) {
   const pageId = pageIdFromDocumentName(documentName);
+  const meetingId = meetingIdFromDocumentName(documentName);
+
+  if (!pageId && !meetingId) {
+    throw new Error("Invalid collaboration document name");
+  }
+
+  const now = new Date();
+
+  if (meetingId) {
+    await withDatabase(env, () =>
+      db
+        .insert(meetingCollaborationDocument)
+        .values({ meetingId, state: Buffer.from(state), updatedAt: now })
+        .onConflictDoUpdate({
+          target: meetingCollaborationDocument.meetingId,
+          set: { state: Buffer.from(state), updatedAt: now },
+        }),
+    );
+    return;
+  }
 
   if (!pageId) {
-    throw new Error("Invalid collaboration document name");
+    throw new Error("Invalid page collaboration document name");
   }
 
   const content = compactMaterializedJson(
     ProsemirrorTransformer.fromYdoc(document, FIELD_NAME),
   );
-  const now = new Date();
 
   await withDatabase(env, () =>
     db.transaction(async (tx) => {
@@ -364,6 +473,15 @@ async function storeDocument(
         .where(eq(page.id, pageId));
     }),
   );
+}
+
+async function getMeetingPageId(meetingId: string) {
+  const [record] = await db
+    .select({ pageId: meeting.pageId })
+    .from(meeting)
+    .where(and(eq(meeting.id, meetingId), isNull(meeting.deletedAt)))
+    .limit(1);
+  return record?.pageId ?? null;
 }
 
 function toYDoc(content: unknown) {
@@ -616,7 +734,8 @@ function isTicketClaims(value: unknown): value is CollaborationTicketClaims {
   const claims = value as Record<string, unknown>;
   return (
     typeof claims.exp === "number" &&
-    typeof claims.pageId === "string" &&
+    ((typeof claims.pageId === "string" && claims.meetingId === undefined) ||
+      (typeof claims.meetingId === "string" && claims.pageId === undefined)) &&
     (claims.scope === "read-write" || claims.scope === "readonly") &&
     typeof claims.userId === "string" &&
     typeof claims.workspaceId === "string"

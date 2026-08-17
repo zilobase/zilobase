@@ -64,6 +64,7 @@ export {
   getCollaborationWebSocketUrl,
   getConfiguredImageStorageMode,
   getDatabaseRealtimeWebSocketUrl,
+  getMeetingCollaborationWebSocketUrl,
   getDatabaseUrl,
   getRuntimeAdapter,
   runWithRuntimeAdapter,
@@ -90,9 +91,12 @@ export {
 export {
   createCollaborationHocuspocus,
   createCollaborationTicket,
+  documentNameForMeeting,
   documentNameForPage,
   encodePageContentAsYjs,
   getOrCreateCollaborationDocumentState,
+  getOrCreateMeetingCollaborationDocumentState,
+  meetingIdFromDocumentName,
   materializePageContentFromYjs,
   pageIdFromDocumentName,
   replacePageContent,
@@ -100,5 +104,7 @@ export {
   verifyCollaborationTicket,
   type CollaborationContext,
   type CollaborationTicketClaims,
+  type MeetingCollaborationTicketClaims,
+  type PageCollaborationTicketClaims,
 } from "./collaboration/service";
 export type { AppBindings } from "./types";

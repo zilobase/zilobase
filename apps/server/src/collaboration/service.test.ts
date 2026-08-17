@@ -4,11 +4,13 @@ import * as Y from "yjs";
 import {
   createCollaborationTicket,
   documentNameForPage,
+  documentNameForMeeting,
   encodePageContentAsYjs,
   isEmptyPageContent,
   isPlaceholderCollaborationState,
   materializePageContentFromYjs,
   pageIdFromDocumentName,
+  meetingIdFromDocumentName,
   verifyCollaborationTicket,
 } from "./service";
 import { getCollaborationWebSocketUrl } from "../runtime-adapter";
@@ -137,6 +139,25 @@ test("page document names are deterministic", () => {
   assert.equal(documentNameForPage("abc"), "page:abc");
   assert.equal(pageIdFromDocumentName("page:abc"), "abc");
   assert.equal(pageIdFromDocumentName("database:abc"), null);
+  assert.equal(documentNameForMeeting("meeting-1"), "meeting:meeting-1");
+  assert.equal(meetingIdFromDocumentName("meeting:meeting-1"), "meeting-1");
+  assert.equal(meetingIdFromDocumentName("page:meeting-1"), null);
+});
+
+test("meeting collaboration tickets are independently scoped", async () => {
+  const ticket = await createCollaborationTicket(
+    {
+      meetingId: "meeting-1",
+      scope: "read-write",
+      userId: "user-1",
+      workspaceId: "workspace-1",
+    },
+    env,
+  );
+  const claims = await verifyCollaborationTicket(ticket.token, env);
+
+  assert.equal("meetingId" in claims ? claims.meetingId : null, "meeting-1");
+  assert.equal(claims.scope, "read-write");
 });
 
 test("explicit WebSocket URL overrides a rewritten request host", () => {

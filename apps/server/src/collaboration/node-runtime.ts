@@ -89,7 +89,10 @@ export function attachNodeCollaborationRuntime(
   ) {
     const url = new URL(request.url ?? "/", "http://zilobase.local");
 
-    if (url.pathname !== "/collaboration") {
+    if (
+      url.pathname !== "/collaboration" &&
+      url.pathname !== "/meeting-collaboration"
+    ) {
       if (!options.passthroughPaths?.includes(url.pathname)) {
         socket.destroy();
       }

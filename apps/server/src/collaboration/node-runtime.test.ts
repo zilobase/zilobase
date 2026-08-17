@@ -45,6 +45,18 @@ test("serverful collaboration negotiates the desktop subprotocol", async () => {
   }
 });
 
+test("serverful collaboration accepts the meeting collaboration path", async () => {
+  const fixture = await startFixture(async () => "user-1", 60, "/meeting-collaboration");
+  const websocket = await openWebSocket(fixture.url);
+
+  try {
+    assert.equal(websocket.readyState, WebSocket.OPEN);
+  } finally {
+    websocket.close();
+    await fixture.close();
+  }
+});
+
 test("serverful collaboration closes oversized messages with code 1009", async () => {
   const fixture = await startFixture(async () => "user-1");
   const websocket = await openWebSocket(fixture.url);
@@ -63,6 +75,7 @@ test("serverful collaboration closes oversized messages with code 1009", async (
 async function startFixture(
   authenticate: () => Promise<string | null>,
   connectionLimit = 60,
+  pathname = "/collaboration",
 ) {
   const server = createServer((_request, response) => response.end());
   const collaboration = attachNodeCollaborationRuntime(
@@ -80,7 +93,7 @@ async function startFixture(
       await collaboration.destroy();
       await closeServer(server);
     },
-    url: `ws://127.0.0.1:${address.port}/collaboration?document=page%3Atest`,
+    url: `ws://127.0.0.1:${address.port}${pathname}?document=page%3Atest`,
   };
 }
 

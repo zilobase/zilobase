@@ -2,7 +2,14 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
 
+import { getEffectivePageAccessInWorkspace, hasAccess } from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+import {
+  createCollaborationTicket,
+  documentNameForMeeting,
+  getOrCreateMeetingCollaborationDocumentState,
+} from "../../collaboration/service";
+import { getMeetingCollaborationWebSocketUrl } from "../../runtime-adapter";
 import { ServiceMutationError } from "../../services/mutation-error";
 import type { AppBindings } from "../../types";
 import {
@@ -93,6 +100,46 @@ meetingRoutes.get("/:id", async (c) => {
 
   try {
     return c.json({ meeting: await getMeetingForUser(c.req.param("id"), user.id) });
+  } catch (error) {
+    return serviceError(c, error);
+  }
+});
+
+meetingRoutes.post("/:id/collaboration-ticket", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  try {
+    const existing = await getMeetingForUser(c.req.param("id"), user.id);
+    const accessLevel = await getEffectivePageAccessInWorkspace(
+      existing.pageId,
+      existing.workspaceId,
+      user.id,
+    );
+    const documentName = documentNameForMeeting(existing.id);
+    const [ticket, initialState] = await Promise.all([
+      createCollaborationTicket(
+        {
+          meetingId: existing.id,
+          scope: hasAccess(accessLevel, "edit") ? "read-write" : "readonly",
+          userId: user.id,
+          workspaceId: existing.workspaceId,
+        },
+        c.env,
+      ),
+      getOrCreateMeetingCollaborationDocumentState(existing.id),
+    ]);
+    const websocketUrl = new URL(
+      getMeetingCollaborationWebSocketUrl(c.req.raw, c.env),
+    );
+    websocketUrl.searchParams.set("document", documentName);
+
+    return c.json({
+      documentName,
+      initialState: Buffer.from(initialState).toString("base64"),
+      websocketUrl: websocketUrl.toString(),
+      ...ticket,
+    });
   } catch (error) {
     return serviceError(c, error);
   }
