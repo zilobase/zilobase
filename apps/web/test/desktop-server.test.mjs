@@ -125,6 +125,19 @@ export function register({ assert, loadModule, test }) {
     assert.doesNotMatch(source, /Sign out to change server\?/)
   })
 
+  test("connect another server omits Cloud when it is already saved", async () => {
+    const source = await readFile(
+      new URL(
+        "../src/components/desktop-connect-server-dialog.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+
+    assert.match(source, /cloudAlreadySaved \? null/)
+    assert.doesNotMatch(source, /Switch to Zilobase Cloud/)
+  })
+
   test("desktop auth picks a server before continuing in the browser", async () => {
     const [connect, screen, login, signup, router] = await Promise.all([
       readFile(new URL("../src/pages/connect.tsx", import.meta.url), "utf8"),

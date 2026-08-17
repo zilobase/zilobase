@@ -17,6 +17,10 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - Connecting a new desktop server or opening a `zilobase://connect` link adds or switches a saved profile instead of wiping the previous server.
 - Signed-out desktop and reconnect screens can return to another remembered server without forgetting the current one.
 
+### Fixed
+
+- Connect another server no longer offers to switch to Zilobase Cloud when Cloud is already saved on the device.
+
 ## 0.0.38
 
 ### Added

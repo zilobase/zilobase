@@ -109,20 +109,22 @@ export function DesktopConnectServerDialog({
           </DialogDescription>
         </DialogHeader>
         <FieldGroup className="py-2">
-          <Field>
-            <Button
-              disabled={pending !== null}
-              onClick={() => void connect(desktopCloudConnectUrl())}
-              type="button"
-            >
-              {pending === "cloud"
-                ? "Connecting..."
-                : cloudAlreadySaved
-                  ? "Switch to Zilobase Cloud"
-                  : "Use Zilobase Cloud"}
-            </Button>
-          </Field>
-          <FieldSeparator>Or use a hosted server</FieldSeparator>
+          {cloudAlreadySaved ? null : (
+            <>
+              <Field>
+                <Button
+                  disabled={pending !== null}
+                  onClick={() => void connect(desktopCloudConnectUrl())}
+                  type="button"
+                >
+                  {pending === "cloud"
+                    ? "Connecting..."
+                    : "Use Zilobase Cloud"}
+                </Button>
+              </Field>
+              <FieldSeparator>Or use a hosted server</FieldSeparator>
+            </>
+          )}
           <form
             className="grid gap-4"
             onSubmit={(event) => {
