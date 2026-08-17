@@ -4,18 +4,37 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.38
+
+### Added
+
+- Signed-out desktop now only shows Continue in Browser and Change server. Password, email code, and Google sign-in happen on the hosted web login page.
+- After continue, the browser stays on `/desktop/connected` instead of `/oauth/complete`. Desktop and browser sessions stay independent.
+- Collaboration now applies embedded database blocks after the editor mounts and keeps database realtime sockets alive with heartbeat pings.
+
+### Changed
+
+- Unauthenticated desktop authorize now redirects to the real `/login` page. Signed-in users get Continue in Desktop App plus Use a different account, which signs out only the browser cookie session.
+
+### Fixed
+
+- Published share routes stay public when session or workspace lookup fails. Authenticated page and database views fall back to the public shell if they throw.
+- Collaboration no longer replaces real page JSON with an empty paragraph document.
+- Database realtime sockets are not closed while they are still connecting, so view switches do not race the handshake.
+- Packaged Linux desktop e2e waits for the Choose a server heading.
+- Login form type-checks Google sign-in errors so production image builds succeed.
+
 ## 0.0.37
 
 ### Added
 
-- Desktop now chooses Zilobase Cloud or a hosted server from Change server, then continues sign-in in the system browser.
-- Web login still offers Continue with Google with the Google mark.
+- Desktop now chooses Zilobase Cloud or a hosted server first, then shows the matching sign-in or sign-up screen, with Change server returning to that chooser.
+- Continue with Google on Cloud desktop login and on the browser authorize page, using the Google mark instead of a blue primary button.
 
 ### Changed
 
 - `npm run dev:desktop` talks to the local API at `http://localhost:3000` and treats Zilobase Cloud as that local instance. Packaged releases still default to live Cloud at `https://api.zilobase.com`.
 - Settings change-server signs out onto the server chooser. The reconnect error page does the same when the current instance is down.
-- Signed-out desktop now only shows Continue in Browser and Change server. Login and signup happen in the system browser. After continue, the browser stays on `/desktop/connected` instead of `/oauth/complete`. Desktop and browser sessions stay independent.
 
 ### Fixed
 
