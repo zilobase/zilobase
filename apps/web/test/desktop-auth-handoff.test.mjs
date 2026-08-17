@@ -50,6 +50,33 @@ export function register({ assert, test }) {
     assert.match(loginForm, /Sign in/)
   })
 
+  test("desktop and browser sign-out stay on their own session", async () => {
+    const [provider, token, routes] = await Promise.all([
+      readFile(
+        new URL("../src/providers/features-provider.tsx", import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL("../src/lib/desktop-auth-token.ts", import.meta.url),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          "../../server/src/features/desktop-auth/routes.ts",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ])
+
+    assert.match(provider, /authFetch\("\/sign-out"/)
+    assert.match(provider, /clearApiAuthToken/)
+    assert.doesNotMatch(provider, /revokeSessions|signOutAll/)
+    assert.match(token, /invoke\("set_auth_token"/)
+    assert.match(routes, /internalAdapter.createSession/)
+    assert.doesNotMatch(routes, /deleteSession|revokeSessions/)
+  })
+
   test("desktop server metadata initializes before credentials and providers", async () => {
     const source = await readFile(
       new URL("../src/main.tsx", import.meta.url),

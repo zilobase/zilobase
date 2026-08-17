@@ -8,13 +8,14 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 ### Added
 
-- Desktop now chooses Zilobase Cloud or a hosted server first, then shows the matching sign-in or sign-up screen, with Change server returning to that chooser.
-- Continue with Google on Cloud desktop login and on the browser authorize page, using the Google mark instead of a blue primary button.
+- Desktop now chooses Zilobase Cloud or a hosted server from Change server, then continues sign-in in the system browser.
+- Web login still offers Continue with Google with the Google mark.
 
 ### Changed
 
 - `npm run dev:desktop` talks to the local API at `http://localhost:3000` and treats Zilobase Cloud as that local instance. Packaged releases still default to live Cloud at `https://api.zilobase.com`.
 - Settings change-server signs out onto the server chooser. The reconnect error page does the same when the current instance is down.
+- Signed-out desktop now only shows Continue in Browser and Change server. Login and signup happen in the system browser. After continue, the browser stays on `/desktop/connected` instead of `/oauth/complete`. Desktop and browser sessions stay independent.
 
 ### Fixed
 

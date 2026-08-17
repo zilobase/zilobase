@@ -6,7 +6,9 @@ import type { AppBindings } from "../../types";
 
 const mocks = vi.hoisted(() => ({
   createdSessionUserIds: [] as string[],
+  deletedSessionIds: [] as string[],
   insertedCodes: [] as Record<string, unknown>[],
+  sessions: [] as { id: string; token: string; userId: string }[],
   signOutCalls: 0,
   updateResults: [] as unknown[][],
 }));
@@ -60,10 +62,21 @@ vi.mock("../../auth", () => ({
       internalAdapter: {
         async createSession(userId: string) {
           mocks.createdSessionUserIds.push(userId);
+          mocks.sessions.push({
+            id: `desktop-${userId}`,
+            token: "desktop-session-token",
+            userId,
+          });
           return {
             expiresAt: new Date("2026-08-21T00:00:00.000Z"),
             token: "desktop-session-token",
           };
+        },
+        async deleteSession(sessionId: string) {
+          mocks.deletedSessionIds.push(sessionId);
+          mocks.sessions = mocks.sessions.filter(
+            (session) => session.id !== sessionId,
+          );
         },
       },
     }),
@@ -99,7 +112,15 @@ const verifier = "v".repeat(64);
 
 beforeEach(() => {
   mocks.createdSessionUserIds.length = 0;
+  mocks.deletedSessionIds.length = 0;
   mocks.insertedCodes.length = 0;
+  mocks.sessions = [
+    {
+      id: "browser-session",
+      token: "browser-session-token",
+      userId: "user-1",
+    },
+  ];
   mocks.signOutCalls = 0;
   mocks.updateResults.length = 0;
 });
@@ -366,6 +387,83 @@ test("token exchange creates a separate Better Auth desktop session", async () =
     user: { id: "user-1" },
   });
   assert.deepEqual(mocks.createdSessionUserIds, ["user-1"]);
+  assert.deepEqual(
+    mocks.sessions.map((session) => session.id),
+    ["browser-session", "desktop-user-1"],
+  );
+  assert.deepEqual(mocks.deletedSessionIds, []);
+});
+
+test("token exchange can mint a desktop session for a different user than the browser", async () => {
+  mocks.sessions = [
+    {
+      id: "browser-session",
+      token: "browser-session-token",
+      userId: "user-browser",
+    },
+  ];
+  mocks.updateResults.push([
+    { activeWorkspaceId: "workspace-2", userId: "user-desktop" },
+  ]);
+  const body = new URLSearchParams({
+    client_id: DESKTOP_AUTH_CLIENT_ID,
+    code: "c".repeat(64),
+    code_verifier: verifier,
+    grant_type: "authorization_code",
+    redirect_uri: "http://127.0.0.1:43123/oauth/callback",
+  });
+  const response = await appFor(false).request(
+    "https://api.example.com/api/auth/desktop/token",
+    {
+      body: body.toString(),
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      method: "POST",
+    },
+    env,
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    access_token: "desktop-session-token",
+    expires_at: "2026-08-21T00:00:00.000Z",
+    instance_id: "instance-1",
+    issuer: "https://api.example.com",
+    token_type: "Bearer",
+    user: { id: "user-desktop" },
+  });
+  assert.deepEqual(
+    mocks.sessions.map((session) => `${session.id}:${session.userId}`),
+    ["browser-session:user-browser", "desktop-user-desktop:user-desktop"],
+  );
+  assert.deepEqual(mocks.deletedSessionIds, []);
+});
+
+test("switch account does not revoke a desktop session row", async () => {
+  mocks.sessions.push({
+    id: "desktop-user-1",
+    token: "desktop-session-token",
+    userId: "user-1",
+  });
+  const response = await appFor(true).request(
+    "https://api.example.com/desktop/authorize/switch",
+    {
+      body: consentParameters().toString(),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        origin: "null",
+      },
+      method: "POST",
+    },
+    env,
+  );
+
+  assert.equal(response.status, 303);
+  assert.equal(mocks.signOutCalls, 1);
+  assert.deepEqual(
+    mocks.sessions.map((session) => session.id),
+    ["browser-session", "desktop-user-1"],
+  );
+  assert.deepEqual(mocks.deletedSessionIds, []);
 });
 
 test("invalid, expired, or replayed codes return the same invalid-grant response", async () => {

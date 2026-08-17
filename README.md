@@ -144,10 +144,13 @@ screen, choose **Zilobase Cloud** or enter a hosted URL, or use a server's
 `zilobase://connect` link. Server metadata is stored in the operating system
 application-config directory; session credentials remain in the system keyring
 and are scoped to the saved instance. Custom servers require trusted HTTPS,
-except for loopback HTTP during local development. Password and email-code sign-in
-stay in the app. Google opens the selected server in the system browser and uses
-PKCE with an ephemeral loopback callback. The desktop receives an independent
-server session only after issuer, state, instance, and PKCE validation.
+except for loopback HTTP during local development. Signed-out desktop only
+offers Continue in Browser and Change server. Login and signup happen in the
+system browser against the selected server, using PKCE with an ephemeral
+loopback callback. After continue, the browser stays on the hosted connected
+page and remains signed in. The desktop receives an independent server session
+only after issuer, state, instance, and PKCE validation. Signing out the
+browser does not sign out desktop, and the reverse is also true.
 
 Only one server and account are retained. **Settings → Preferences → Desktop
 server** starts the same replacement workflow. If offline drafts exist, the app

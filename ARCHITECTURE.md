@@ -35,13 +35,18 @@ AI features run through the server. The server builds page and workspace context
 Authentication is implemented in the server with Better Auth. Clients use API helpers and shared auth hooks. Authorization checks should stay on the server; clients may hide UI affordances, but server routes must enforce workspace and item access.
 
 Desktop sign-in is a public-client authorization-code flow owned by the selected
-server. The system browser authenticates with the server's existing Better Auth
-providers, an authenticated consent POST issues a short-lived hashed code, and
-the native app exchanges it with S256 PKCE through an ephemeral loopback
-callback. Code consumption and creation of the independent Better Auth desktop
-session are transactional. Desktop builds contain no social-provider client
-credentials, and native diagnostics never include callback queries, codes, or
-session tokens.
+server. The desktop window only offers Continue in Browser and Change server;
+login and signup happen on the real web app. The system browser authenticates
+with the server's existing Better Auth providers, an authenticated continue
+POST issues a short-lived hashed code, and the native app exchanges it with
+S256 PKCE through an ephemeral loopback callback. After the code is delivered,
+the browser returns to the hosted `/desktop/connected` page instead of a
+loopback completion page. Code consumption and creation of the independent
+Better Auth desktop session are transactional. Browser cookie sessions and
+desktop keyring sessions are separate rows: signing out one client does not
+revoke the other, so the two clients can later use different accounts. Desktop
+builds contain no social-provider client credentials, and native diagnostics
+never include callback queries, codes, or session tokens.
 
 Desktop connection links contain no secrets. `zilobase://connect` carries only
 a canonical server origin, while `zilobase://open` binds an in-app path to both
