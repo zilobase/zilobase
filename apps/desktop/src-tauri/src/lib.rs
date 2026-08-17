@@ -1,5 +1,6 @@
 mod desktop_server;
 mod diagnostics;
+mod meeting_capture;
 mod oauth;
 
 use sha2::{Digest, Sha256};
@@ -286,6 +287,7 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .manage(startup_state)
         .manage(desktop_server::DesktopServerCandidateState::default())
+        .manage(meeting_capture::MeetingCaptureManager::default())
         .manage(oauth::DesktopOAuthState::default());
 
     #[cfg(all(desktop, not(debug_assertions)))]
@@ -409,7 +411,16 @@ pub fn run() {
             diagnostics::record_renderer_diagnostic,
             diagnostics::get_diagnostics_info,
             diagnostics::open_diagnostics_folder,
-            diagnostics::export_diagnostics
+            diagnostics::export_diagnostics,
+            meeting_capture::meeting_capture_list_devices,
+            meeting_capture::meeting_capture_permissions,
+            meeting_capture::meeting_capture_start,
+            meeting_capture::meeting_capture_pause,
+            meeting_capture::meeting_capture_resume,
+            meeting_capture::meeting_capture_stop,
+            meeting_capture::meeting_capture_state,
+            meeting_capture::meeting_capture_recoverable_sessions,
+            meeting_capture::meeting_capture_delete_local_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
