@@ -48,6 +48,7 @@ function isProtectedStructuralNode(node: Node) {
     "embedBlock",
     "fileBlock",
     "imageBlock",
+    "meetingBlock",
     "pageBlock",
     "videoBlock",
   ].includes(node.type.name)

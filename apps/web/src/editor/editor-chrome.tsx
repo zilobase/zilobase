@@ -22,6 +22,7 @@ type EditorChromeProps = {
   blockCommentOpen: boolean
   commentController?: PageCommentController
   createEditorDatabase: () => Promise<string | null>
+  createEditorMeeting: () => Promise<string | null>
   dragHandle: DragHandleState | null
   editable: boolean
   editor: TiptapEditor | null
@@ -43,6 +44,7 @@ export function EditorChrome({
   blockCommentOpen,
   commentController,
   createEditorDatabase,
+  createEditorMeeting,
   dragHandle,
   editable,
   editor,
@@ -78,6 +80,7 @@ export function EditorChrome({
             isOpen={plusMenuOpen}
             onMenuStateChange={setDragHandleMenuOpen}
             onCreateDatabase={createEditorDatabase}
+            onCreateMeeting={createEditorMeeting}
             onOpenChange={setPlusMenuOpen}
             target={dragHandle.target}
           />

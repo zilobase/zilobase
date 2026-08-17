@@ -14,7 +14,7 @@ function getColumnCount(title: string) {
 
 export function blockContentForItem(
   item: SlashCommandItem,
-  attrs?: { databaseId?: string }
+  attrs?: { databaseId?: string; meetingId?: string }
 ): Content | null {
   const columnCount = getColumnCount(item.title)
 
@@ -121,6 +121,10 @@ export function blockContentForItem(
       return attrs?.databaseId
         ? createDatabaseSetupBlockContent(attrs.databaseId)
         : null
+    case "Meeting notes":
+      return attrs?.meetingId
+        ? { type: "meetingBlock", attrs: { meetingId: attrs.meetingId } }
+        : null
     default:
       return { type: "paragraph" }
   }
@@ -144,19 +148,30 @@ export async function insertBlockFromPlus(
   editor: Editor,
   target: DragHandleTarget,
   item: SlashCommandItem,
-  options: { onCreateDatabase?: () => Promise<string | null> } = {},
+  options: {
+    onCreateDatabase?: () => Promise<string | null>
+    onCreateMeeting?: () => Promise<string | null>
+  } = {},
 ) {
   const isEmptyTextBlock = target.node.isTextblock && target.node.content.size === 0
   const databaseId =
     item.title === "Database" && options.onCreateDatabase
       ? await options.onCreateDatabase()
       : undefined
+  const meetingId =
+    item.title === "Meeting notes" && options.onCreateMeeting
+      ? await options.onCreateMeeting()
+      : undefined
   const content =
     item.title === "Database"
       ? databaseId
         ? blockContentForItem(item, { databaseId })
         : null
-      : blockContentForItem(item)
+      : item.title === "Meeting notes"
+        ? meetingId
+          ? blockContentForItem(item, { meetingId })
+          : null
+        : blockContentForItem(item)
 
   if (!content) {
     return

@@ -5,6 +5,7 @@ import Suggestion, {
 } from "@tiptap/suggestion"
 import {
   Bookmark,
+  CalendarDays,
   CheckSquare,
   Code2,
   CodeXml,
@@ -51,6 +52,7 @@ import { SlashCommandMenu } from "./slash-command-menu"
 
 export type SlashCommandOptions = {
   onCreateDatabase?: () => Promise<string | null>
+  onCreateMeeting?: () => Promise<string | null>
   onCreatePage?: () => Promise<CreatedPage>
   onOpenPage?: (pageId: string) => void
   workspaceId?: string | null
@@ -458,6 +460,26 @@ export function createSlashCommandItems(
     },
   },
   {
+    title: "Meeting notes",
+    description: "Record, transcribe, and summarize a meeting",
+    icon: CalendarDays,
+    command: async ({ editor, range }) => {
+      const meetingId = await options.onCreateMeeting?.()
+
+      if (!meetingId) return
+
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContentAt(range.from, {
+          type: "meetingBlock",
+          attrs: { meetingId },
+        })
+        .run()
+    },
+  },
+  {
     title: "Database",
     description: "Table where every row is a page",
     icon: Database,
@@ -582,6 +604,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
   addOptions() {
     return {
       onCreateDatabase: undefined,
+      onCreateMeeting: undefined,
       onCreatePage: undefined,
       onOpenPage: undefined,
       workspaceId: undefined,

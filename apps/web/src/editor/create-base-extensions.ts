@@ -37,6 +37,7 @@ import { EmojiExtension } from "@/packages/editor/extensions/emoji"
 import { FileBlock } from "@/packages/editor/extensions/file-block"
 import { ImageBlock } from "@/packages/editor/extensions/image-block"
 import { LinkMention } from "@/packages/editor/extensions/link-mention"
+import { MeetingBlock } from "@/packages/editor/extensions/meeting"
 import {
   PageBlock,
   type CreatedPage,
@@ -52,6 +53,7 @@ import { OfflineStructureGuard } from "./offline-structure-guard"
 export type BaseExtensionsOptions = {
   collaboration?: import("./types").EditorCollaboration
   createEditorDatabase: () => Promise<string | null>
+  createEditorMeeting: () => Promise<string | null>
   databaseEditorRuntime: DatabaseBlockEditorRuntime
   editable: boolean
   structuralEditingEnabled: boolean
@@ -84,6 +86,7 @@ export function normalizeEditorContent(content: unknown) {
 export const createBaseExtensions = ({
   collaboration,
   createEditorDatabase,
+  createEditorMeeting,
   databaseEditorRuntime,
   editable,
   structuralEditingEnabled,
@@ -156,6 +159,7 @@ export const createBaseExtensions = ({
     onOpenPage,
     workspaceId,
   }),
+  MeetingBlock.configure({ editable }),
   PageBlock.configure({
     currentPageId: pageId,
     onCreatePage,
@@ -190,6 +194,7 @@ export const createBaseExtensions = ({
     ? [
         SlashCommand.configure({
           onCreateDatabase: createEditorDatabase,
+          onCreateMeeting: createEditorMeeting,
           onCreatePage,
           onOpenPage,
           workspaceId,

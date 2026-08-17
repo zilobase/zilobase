@@ -5,8 +5,13 @@ const restoreModulePath = join(
   dirname(fileURLToPath(import.meta.url)),
   "../../../packages/page-context/src/restore-structural-blocks-from-markdown.ts",
 )
+const markdownModulePath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../packages/page-context/src/prosemirror-to-markdown.ts",
+)
 
 const DATABASE_ID = "bf51b30e-1234-5678-9abc-def012345678"
+const MEETING_ID = "a8ddbb95-1288-4f6f-a0f1-8cd02702d321"
 
 export function register({ assert, loadModule, test }) {
   test("isStructuralBlockMarkerLine recognizes database markers", async () => {
@@ -61,6 +66,29 @@ export function register({ assert, loadModule, test }) {
     assert.equal(restored[0].type, "databaseBlock")
     assert.equal(restored[0].attrs.databaseId, DATABASE_ID)
     assert.equal(restored[0].attrs.showTitle, true)
+  })
+
+  test("meeting markers round trip as atomic editor blocks", async () => {
+    const {
+      preprocessStructuralBlockMarkdown,
+      restoreStructuralBlocksInMarkdownContent,
+    } = await loadModule(restoreModulePath)
+    const marker = `[Meeting (${MEETING_ID})]`
+    const { prosemirrorToMarkdown } = await loadModule(markdownModulePath)
+    const serialized = prosemirrorToMarkdown({
+      type: "meetingBlock",
+      attrs: { meetingId: MEETING_ID },
+    })
+    const processed = preprocessStructuralBlockMarkdown(marker)
+    const [restored] = restoreStructuralBlocksInMarkdownContent([
+      { type: "paragraph", content: [{ type: "text", text: marker }] },
+    ])
+
+    assert.match(processed, /data-type="meetingBlock"/)
+    assert.equal(serialized, marker)
+    assert.match(processed, new RegExp(`data-meeting-id="${MEETING_ID}"`))
+    assert.equal(restored.type, "meetingBlock")
+    assert.equal(restored.attrs.meetingId, MEETING_ID)
   })
 
   test("restoreStructuralBlocksInMarkdownContent restores link-style video blocks", async () => {

@@ -151,6 +151,17 @@ function resolveRuntimeResponse(path: string, data: unknown) {
     }
   }
 
+  if (/\/meetings\/[^/]+\/collaboration-ticket(?:\?|$)/.test(path)) {
+    return {
+      ...response,
+      websocketUrl: resolveRuntimeWebSocketUrl(
+        response.websocketUrl,
+        "meeting",
+        server,
+      ),
+    }
+  }
+
   if (/\/databases\/[^/]+\/realtime-ticket(?:\?|$)/.test(path)) {
     return {
       ...response,

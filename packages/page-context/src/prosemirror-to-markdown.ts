@@ -87,6 +87,11 @@ function serializeDatabaseBlock(node: ProseMirrorNode) {
   return `[${label}]`;
 }
 
+function serializeMeetingBlock(node: ProseMirrorNode) {
+  const meetingId = stringAttr(node.attrs, "meetingId");
+  return meetingId ? `[Meeting (${meetingId})]` : "[Meeting]";
+}
+
 function serializePageBlock(node: ProseMirrorNode) {
   const pageId = stringAttr(node.attrs, "pageId");
   const title = trimmedStringAttr(node.attrs, "title", "Untitled page");
@@ -167,6 +172,7 @@ const BLOCK_SERIALIZERS: Record<string, BlockSerializer> = {
   horizontalRule: () => "---",
   imageBlock: serializeImageBlock,
   linkMention: serializeLinkMention,
+  meetingBlock: serializeMeetingBlock,
   orderedList: (node) => serializeOrderedList(node.content ?? []),
   pageBlock: serializePageBlock,
   paragraph: serializeParagraph,

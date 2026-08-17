@@ -40,6 +40,10 @@
       "types": "./src/integrations/index.ts",
       "default": "./src/integrations/index.ts"
     },
+    "./meetings": {
+      "types": "./src/meetings/index.ts",
+      "default": "./src/meetings/index.ts"
+    },
     "./workspaces": {
       "types": "./src/workspaces/index.ts",
       "default": "./src/workspaces/index.ts"

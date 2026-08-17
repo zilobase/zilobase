@@ -11,6 +11,7 @@ const UUID_PATTERN =
 
 const DATABASE_MARKER =
   /^\[Database(?:\s*\(([^)]+)\))?\]$/i
+const MEETING_MARKER = /^\[Meeting(?:\s*\(([^)]+)\))?\]$/i
 const PAGE_WITH_ID_MARKER =
   /^\[Page:\s*(.+?)\s*\(([0-9a-f-]{36})\)\]$/i
 const PAGE_MARKER = /^\[Page:\s*(.+?)\]$/i
@@ -116,6 +117,18 @@ function matchStructuralBlockText(text: string) {
   }
 
   const pageWithIdMatch = PAGE_WITH_ID_MARKER.exec(trimmed)
+
+  const meetingMatch = MEETING_MARKER.exec(trimmed)
+
+  if (meetingMatch) {
+    const meetingId = meetingMatch[1]?.trim() ?? null
+    return {
+      attrs: {
+        meetingId: meetingId && UUID_PATTERN.test(meetingId) ? meetingId : null,
+      },
+      type: "meetingBlock",
+    }
+  }
 
   if (pageWithIdMatch) {
     return {
@@ -245,6 +258,12 @@ function structuralBlockToHtml(block: {
       return typeof pageId === "string" && pageId
         ? `<div data-type="pageBlock" data-page-id="${escapeHtmlAttr(pageId)}"></div>`
         : `<div data-type="pageBlock"></div>`
+    }
+    case "meetingBlock": {
+      const meetingId = block.attrs?.meetingId
+      return typeof meetingId === "string" && meetingId
+        ? `<div data-type="meetingBlock" data-meeting-id="${escapeHtmlAttr(meetingId)}"></div>`
+        : `<div data-type="meetingBlock"></div>`
     }
     case "videoBlock": {
       const src = block.attrs?.src

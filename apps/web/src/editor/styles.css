@@ -1,7 +1,7 @@
 @reference "../App.css";
 
 @layer components {
-  .tiptap-editor {
+.tiptap-editor {
     @apply min-h-[520px] px-5 pt-4 pb-5 text-base leading-7 text-foreground outline-none sm:px-8 md:px-20 md:pt-4 md:pb-6 lg:px-24;
     --editor-selection-background: Highlight;
     --editor-selection-solid-background: Highlight;
@@ -2603,6 +2603,34 @@
     @apply rounded bg-muted px-1;
   }
 
+}
+
+.tiptap-editor .node-meetingBlock {
+  margin-block: 1.25rem;
+  width: 100%;
+}
+
+.tiptap-editor .meeting-block-shell {
+  cursor: default;
+}
+
+.tiptap-editor .meeting-block-shell input,
+.tiptap-editor .meeting-block-shell button,
+.tiptap-editor .meeting-collaborative-editor {
+  cursor: auto;
+}
+
+.meeting-collaborative-editor .tiptap {
+  min-height: 7rem;
+  outline: none;
+}
+
+.meeting-collaborative-editor .tiptap p.is-editor-empty:first-child::before {
+  color: var(--muted-foreground);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }
 .tiptap-editor .editor-comment-anchor {
   border-bottom: 2px solid transparent;

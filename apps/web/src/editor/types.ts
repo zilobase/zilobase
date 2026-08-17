@@ -111,6 +111,7 @@ export type UseEditorExtensionsOptions = {
   content: unknown
   collaboration?: EditorCollaboration
   createEditorDatabase: () => Promise<string | null>
+  createEditorMeeting: () => Promise<string | null>
   databaseEditorRuntime: import("@/packages/editor/extensions/database").DatabaseBlockEditorRuntime
   editable: boolean
   structuralEditingEnabled: boolean

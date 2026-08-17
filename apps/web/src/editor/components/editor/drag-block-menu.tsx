@@ -75,6 +75,7 @@ export function DragBlockMenu({
   onOpenChange,
   onMenuStateChange,
   onCreateDatabase,
+  onCreateMeeting,
   editorId,
 }: {
   editor: Editor
@@ -84,6 +85,7 @@ export function DragBlockMenu({
   onOpenChange: (open: boolean) => void
   onMenuStateChange?: (open: boolean) => void
   onCreateDatabase?: () => Promise<string | null>
+  onCreateMeeting?: () => Promise<string | null>
 }) {
   const menuRootRef = useRef<HTMLDivElement | null>(null)
   const [actionsOpen, setActionsOpen] = useState(false)
@@ -661,7 +663,10 @@ export function DragBlockMenu({
                 return
               }
 
-              void insertBlockFromPlus(editor, target, item, { onCreateDatabase })
+              void insertBlockFromPlus(editor, target, item, {
+                onCreateDatabase,
+                onCreateMeeting,
+              })
               onOpenChange(false)
             }}
           />

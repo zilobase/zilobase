@@ -23,6 +23,9 @@ export const updateExtensionOptions = (
       extension.options.editorRuntime = options.databaseEditorRuntime;
       extension.options.onOpenPage = options.onOpenPage;
     }
+    if (extension.name === "meetingBlock") {
+      extension.options.editable = options.editable;
+    }
     if (extension.name === "taskItem") {
       extension.options.editable = options.editable;
     }

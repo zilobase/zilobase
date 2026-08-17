@@ -24,6 +24,7 @@ import type {
   PageEditPreviewRequest,
 } from "./types"
 import { useEditorDatabaseActions } from "./use-editor-database-actions"
+import { useEditorMeetingActions } from "./use-editor-meeting-actions"
 import { useEditorDragHandle } from "./use-editor-drag-handle"
 import { useEditorExtensions } from "./use-editor-extensions"
 import { useEditorInstance } from "./use-editor-instance"
@@ -124,12 +125,14 @@ export function Editor({
   const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(databaseEditable)
   const { createEditorDatabase, handleDatabasePageDrop } =
     useEditorDatabaseActions(workspaceId, pageId)
+  const { createEditorMeeting } = useEditorMeetingActions(workspaceId, pageId)
 
   const { editorExtensions, editorLifecycleKey, initialContent, tocItems } =
     useEditorExtensions({
       collaboration,
       content,
       createEditorDatabase,
+      createEditorMeeting,
       databaseEditorRuntime,
       editable: contentEditable,
       structuralEditingEnabled,
@@ -563,6 +566,7 @@ export function Editor({
               : undefined
           }
           createEditorDatabase={createEditorDatabase}
+          createEditorMeeting={createEditorMeeting}
           dragHandle={dragHandle}
           editable={contentEditable && structuralEditingEnabled}
           editor={editor}
