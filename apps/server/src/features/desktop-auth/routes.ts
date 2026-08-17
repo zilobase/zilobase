@@ -47,6 +47,27 @@ desktopAuthRoutes.get("/desktop", async (c) => {
   );
 });
 
+desktopAuthRoutes.get("/desktop/connected", async (c) => {
+  c.header("Cache-Control", "no-store");
+  c.header("Content-Security-Policy", desktopPageCsp());
+  c.header("Referrer-Policy", "no-referrer");
+  c.header("X-Content-Type-Options", "nosniff");
+
+  const discovery = await getZilobaseDiscoveryDocument(c.env);
+  const openLink = new URL("zilobase://open");
+  openLink.searchParams.set("instance", discovery.instanceId);
+  openLink.searchParams.set("path", "/recents");
+  openLink.searchParams.set("server", discovery.apiOrigin);
+  const user = c.get("user");
+
+  return c.html(
+    renderConnectedPage(
+      openLink.toString(),
+      user ? { email: user.email, name: user.name } : null,
+    ),
+  );
+});
+
 desktopAuthRoutes.get("/desktop/authorize", async (c) => {
   c.header("Cache-Control", "no-store");
   c.header("Content-Security-Policy", desktopPageCsp());
@@ -454,6 +475,20 @@ function authorizeFormFields(
         `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`,
     )
     .join("");
+}
+
+function renderConnectedPage(
+  openLink: string,
+  user: { email: string; name: string } | null,
+) {
+  const signedIn = user
+    ? `<p>This browser is signed in as <strong>${escapeHtml(user.name)}</strong> (${escapeHtml(user.email)}). You can close this tab or keep using Zilobase here.</p>`
+    : `<p>This browser is signed in. You can close this tab or keep using Zilobase here.</p>`;
+
+  return pageShell(
+    "Desktop app is opening",
+    `${signedIn}<p class="hint">Didn&apos;t open? <a href="${escapeHtml(openLink)}">Open Zilobase Desktop</a></p>`,
+  );
 }
 
 function renderContinuePage(

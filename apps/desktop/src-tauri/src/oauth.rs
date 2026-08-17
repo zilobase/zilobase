@@ -1,6 +1,6 @@
 use std::{
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
-    sync::{Arc, Mutex},
+    sync::Mutex,
     time::Duration,
 };
 
@@ -28,7 +28,7 @@ use crate::{
 
 const DESKTOP_CLIENT_ID: &str = "zilobase-desktop";
 const CALLBACK_PATH: &str = "/oauth/callback";
-const COMPLETION_PATH: &str = "/oauth/complete";
+const CONNECTED_PATH: &str = "/desktop/connected";
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const CALLBACK_READ_TIMEOUT: Duration = Duration::from_secs(5);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
@@ -283,22 +283,22 @@ async fn run_browser_authorization(
     let server = load_or_initialize_desktop_server(app)
         .map_err(|_| DesktopOAuthError::configuration_failed())?;
     let (listener, redirect_uri) = bind_loopback().await?;
-    let listener = Arc::new(listener);
     let request = build_oauth_request(&server, redirect_uri)?;
+    let completion_url = hosted_completion_url(&server)?;
 
     app.opener()
         .open_url(request.authorization_url.as_str(), None::<&str>)
         .map_err(|_| DesktopOAuthError::browser_open_failed())?;
 
     let callback = wait_for_callback(
-        listener.as_ref(),
+        &listener,
         &request.state,
         &server.issuer,
+        &completion_url,
         &mut cancel,
         CALLBACK_TIMEOUT,
     )
     .await?;
-    tokio::spawn(serve_completion_page(listener));
     let credentials =
         exchange_session_credentials(&request, &callback.code, &server, &mut cancel).await?;
 
@@ -354,10 +354,18 @@ fn build_oauth_request(
     })
 }
 
+fn hosted_completion_url(server: &DesktopServer) -> Result<String, DesktopOAuthError> {
+    Url::parse(&server.web_origin)
+        .and_then(|origin| origin.join(CONNECTED_PATH))
+        .map(|url| url.to_string())
+        .map_err(|_| DesktopOAuthError::configuration_failed())
+}
+
 async fn wait_for_callback(
     listener: &TcpListener,
     expected_state: &str,
     expected_issuer: &str,
+    completion_url: &str,
     cancel: &mut watch::Receiver<bool>,
     callback_timeout: Duration,
 ) -> Result<ValidCallback, DesktopOAuthError> {
@@ -431,55 +439,13 @@ async fn wait_for_callback(
                         .await;
             }
             ParsedCallback::Valid(code) => {
-                write_redirect_response(&mut stream, COMPLETION_PATH)
+                write_redirect_response(&mut stream, completion_url)
                     .await
                     .map_err(|_| DesktopOAuthError::callback_rejected())?;
                 return Ok(ValidCallback { code });
             }
         }
     }
-}
-
-async fn serve_completion_page(listener: Arc<TcpListener>) {
-    let deadline = Instant::now() + CALLBACK_READ_TIMEOUT;
-    loop {
-        let remaining = deadline.saturating_duration_since(Instant::now());
-        if remaining.is_zero() {
-            return;
-        }
-        let Ok(Ok((mut stream, _))) = timeout(remaining, listener.accept()).await else {
-            return;
-        };
-        let Ok(Ok(request)) = timeout(CALLBACK_READ_TIMEOUT, read_http_request(&mut stream)).await
-        else {
-            continue;
-        };
-        if is_completion_request(&request) {
-            let _ = write_html_response(&mut stream, "200 OK", &completion_html()).await;
-            return;
-        }
-        let _ = write_plain_response(&mut stream, "404 Not Found", "Not found.").await;
-    }
-}
-
-fn is_completion_request(request: &[u8]) -> bool {
-    let Some((method, target)) = request_target(request) else {
-        return false;
-    };
-    method == "GET" && target == COMPLETION_PATH
-}
-
-fn request_target(request: &[u8]) -> Option<(&str, String)> {
-    let request = std::str::from_utf8(request).ok()?;
-    let mut parts = request.lines().next()?.split_whitespace();
-    let method = parts.next()?;
-    let target = parts.next()?;
-    let version = parts.next()?;
-    if parts.next().is_some() || !version.starts_with("HTTP/1.") {
-        return None;
-    }
-    let url = Url::parse(&format!("http://127.0.0.1{target}")).ok()?;
-    Some((method, url.path().to_owned()))
 }
 
 async fn read_http_request(stream: &mut TcpStream) -> std::io::Result<Vec<u8>> {
@@ -750,13 +716,6 @@ async fn write_response(
     stream.shutdown().await
 }
 
-fn completion_html() -> String {
-    auth_page_html(
-        "Return to Zilobase",
-        "The app is finishing sign-in. You can close this tab.",
-    )
-}
-
 fn failure_html() -> String {
     auth_page_html(
         "Sign-in could not be completed",
@@ -820,8 +779,8 @@ fn focus_main_window(app: &AppHandle) {
 mod tests {
     use super::{
         bind_loopback, build_oauth_request, constant_time_eq, exchange_session_credentials,
-        parse_callback, validate_token_response, DesktopTokenResponse, DesktopTokenUser,
-        ParsedCallback, CALLBACK_PATH,
+        hosted_completion_url, parse_callback, validate_token_response, DesktopTokenResponse,
+        DesktopTokenUser, ParsedCallback, CALLBACK_PATH, CONNECTED_PATH,
     };
     use crate::desktop_server::DesktopServer;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -840,14 +799,16 @@ mod tests {
     }
 
     #[test]
-    fn system_browser_pages_match_auth_screen_type() {
-        let page = super::completion_html();
-        assert!(page.contains("<span>Zilobase</span>"));
-        assert!(page.contains("font-size:1.125rem"));
-        assert!(page.contains("font-weight:600"));
-        assert!(page.contains("font-size:.75rem"));
-        assert!(page.contains("Return to Zilobase"));
-        assert!(page.contains("The app is finishing sign-in."));
+    fn successful_callback_returns_to_the_hosted_connected_page() {
+        let selected = server("https://notes.example.com");
+        let completion = hosted_completion_url(&selected).expect("completion url");
+
+        assert_eq!(
+            completion,
+            format!("https://notes.example.com{CONNECTED_PATH}")
+        );
+        assert!(!completion.contains("code="));
+        assert!(!completion.contains("oauth/complete"));
     }
 
     #[test]
@@ -1066,6 +1027,7 @@ mod tests {
             &listener,
             "state",
             "https://notes.example.com",
+            "https://notes.example.com/desktop/connected",
             &mut receiver,
             std::time::Duration::from_millis(10),
         )
@@ -1079,6 +1041,7 @@ mod tests {
             &listener,
             "state",
             "https://notes.example.com",
+            "https://notes.example.com/desktop/connected",
             &mut receiver,
             std::time::Duration::from_secs(1),
         )

@@ -128,6 +128,26 @@ test("desktop landing page exposes a secret-free connection link", async () => {
   assert.equal(response.headers.get("referrer-policy"), "no-referrer");
 });
 
+test("connected page stays on the hosted origin and exposes a secret-free open link", async () => {
+  const response = await appFor(true).request(
+    "https://api.example.com/desktop/connected",
+    {},
+    env,
+  );
+  const body = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(body, /Desktop app is opening/);
+  assert.match(body, /This browser is signed in as <strong>User<\/strong>/);
+  assert.match(body, /You can close this tab or keep using Zilobase here/);
+  assert.match(
+    body,
+    /zilobase:\/\/open\?instance=instance-1&amp;path=%2Frecents&amp;server=https%3A%2F%2Fapi\.example\.com/,
+  );
+  assert.doesNotMatch(body, /token|code=|oauth\/complete/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});
+
 test("authorization page sends anonymous users to the real web login", async () => {
   const response = await appFor(false).request(authorizationUrl(), {}, env);
   const location = new URL(response.headers.get("location") ?? "");
