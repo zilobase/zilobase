@@ -169,7 +169,7 @@ function SidebarNavRow({
   const content = (
     <>
       <span
-        className={`flex size-5 shrink-0 items-center justify-center ${
+        className={`flex size-4 shrink-0 items-center justify-center overflow-hidden ${
           hasChildren
             ? "group-hover/nav-row:opacity-0 group-has-[>[data-nav-menu-action=disclosure]:focus-visible]/nav-row:opacity-0"
             : ""

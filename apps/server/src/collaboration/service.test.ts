@@ -84,6 +84,13 @@ test("empty page content and placeholder collaboration state are detected", () =
   assert.equal(
     isEmptyPageContent({
       type: "doc",
+      content: [{ type: "paragraph" }],
+    }),
+    true,
+  );
+  assert.equal(
+    isEmptyPageContent({
+      type: "doc",
       content: [
         {
           type: "databaseBlock",
@@ -99,6 +106,15 @@ test("empty page content and placeholder collaboration state are detected", () =
   );
   assert.equal(
     isPlaceholderCollaborationState(encodePageContentAsYjs(null)),
+    true,
+  );
+  assert.equal(
+    isPlaceholderCollaborationState(
+      encodePageContentAsYjs({
+        type: "doc",
+        content: [{ type: "paragraph" }],
+      }),
+    ),
     true,
   );
   assert.equal(

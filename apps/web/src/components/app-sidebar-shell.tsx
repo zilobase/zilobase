@@ -20,7 +20,7 @@ export function AppSidebarShell({
       aria-label="Application sidebar"
       collapsible="offcanvas"
       className={cn(
-        "overflow-hidden [&_[data-sidebar=content]]:gap-0.5 [&_[data-sidebar=content]]:py-1 [&_[data-sidebar=content]_[data-sidebar=menu-button]]:h-8 [&_[data-sidebar=content]_[data-sidebar=menu-button]]:p-2 [&_[data-sidebar=footer]]:gap-0.5 [&_[data-sidebar=footer]_[data-sidebar=menu-button]]:h-8 [&_[data-sidebar=footer]_[data-sidebar=menu-button]]:p-2 [&_[data-sidebar=group]]:py-0 [&_[data-sidebar=group-action]]:top-1.5 [&_[data-sidebar=group-label]]:h-8 [&_[data-sidebar=group-label]]:rounded-md [&_[data-sidebar=group-label]]:px-2 [&_[data-sidebar=group-label]]:text-xs [&_[data-sidebar=group-label]]:text-sidebar-foreground/55 [&_[data-sidebar=group-label]]:hover:bg-sidebar-accent [&_[data-sidebar=group-label]]:hover:text-sidebar-accent-foreground [&_[data-sidebar=menu]]:gap-0.5",
+        "overflow-hidden [&_[data-sidebar=content]]:gap-0.5 [&_[data-sidebar=content]]:pt-0.5 [&_[data-sidebar=content]]:pb-1 [&_[data-sidebar=content]_[data-sidebar=menu-button]]:h-8 [&_[data-sidebar=content]_[data-sidebar=menu-button]]:p-2 [&_[data-sidebar=footer]]:gap-0.5 [&_[data-sidebar=footer]_[data-sidebar=menu-button]]:h-8 [&_[data-sidebar=footer]_[data-sidebar=menu-button]]:p-2 [&_[data-sidebar=group]]:py-0 [&_[data-sidebar=group-action]]:top-1.5 [&_[data-sidebar=group-label]]:h-8 [&_[data-sidebar=group-label]]:rounded-md [&_[data-sidebar=group-label]]:px-2 [&_[data-sidebar=group-label]]:text-xs [&_[data-sidebar=group-label]]:text-sidebar-foreground/55 [&_[data-sidebar=group-label]]:hover:bg-sidebar-accent [&_[data-sidebar=group-label]]:hover:text-sidebar-accent-foreground [&_[data-sidebar=menu]]:gap-0.5",
         className,
       )}
       {...props}
@@ -44,7 +44,7 @@ export function AppSidebarHeader({
 
   return (
     <SidebarHeader
-      className={cn("gap-0", hasOverlayTitleBar && "pt-9")}
+      className={cn("gap-0.5 pb-0", hasOverlayTitleBar && "pt-9")}
       data-tauri-drag-region={hasOverlayTitleBar ? "deep" : undefined}
     >
       <div className="flex items-center gap-1">

@@ -341,6 +341,16 @@ async function storeDocument(
 
   await withDatabase(env, () =>
     db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({ content: page.content })
+        .from(page)
+        .where(eq(page.id, pageId))
+        .limit(1);
+      const nextContent =
+        isEmptyPageContent(content) && !isEmptyPageContent(existing?.content)
+          ? existing?.content
+          : content;
+
       await tx
         .insert(pageCollaborationDocument)
         .values({ pageId, state: Buffer.from(state), updatedAt: now })
@@ -350,7 +360,7 @@ async function storeDocument(
         });
       await tx
         .update(page)
-        .set({ content, updatedAt: now })
+        .set({ content: nextContent, updatedAt: now })
         .where(eq(page.id, pageId));
     }),
   );
@@ -387,11 +397,25 @@ export function isEmptyPageContent(content: unknown): boolean {
     return false;
   }
 
-  const document = content as ProseMirrorJson;
-  return (
-    document.type === "doc" &&
-    (!document.content || document.content.length === 0)
-  );
+  return isEffectivelyEmptyNode(content as ProseMirrorJson);
+}
+
+function isEffectivelyEmptyNode(node: ProseMirrorJson): boolean {
+  if (node.type === "text") {
+    return !node.text?.trim();
+  }
+
+  if (
+    node.type === "hardBreak" ||
+    node.type === "paragraph" ||
+    node.type === "heading" ||
+    node.type === "doc" ||
+    !node.type
+  ) {
+    return (node.content ?? []).every(isEffectivelyEmptyNode);
+  }
+
+  return false;
 }
 
 export function isPlaceholderCollaborationState(state: Uint8Array): boolean {

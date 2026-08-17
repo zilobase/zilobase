@@ -57,6 +57,8 @@ import { useAppStore } from "@/stores/app-store"
 import { isTauri } from "@tauri-apps/api/core"
 import { getSelectedDesktopServer } from "@/lib/desktop-server"
 import { getAuthReturnPath } from "@/lib/google-auth"
+import { decidePublishedShareAccess } from "@/lib/published-share-access"
+import { describeRouteError } from "@/lib/route-error"
 import { editionWebModule } from "@zilobase/edition-web"
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000
@@ -264,23 +266,11 @@ const aiRoute = createRoute({
 const pageRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/p/$pageId",
-  beforeLoad: async ({ params }) => {
-    const session = await getFreshSession()
-
-    if (session.user) {
-      const workspaces = await getWorkspaces()
-
-      if (workspaces.length === 0) {
-        throw redirect({ to: "/onboarding" })
-      }
-
-      return
-    }
-
-    if (!(await isPagePublished(params.pageId))) {
-      throw redirect({ to: "/login" })
-    }
-  },
+  beforeLoad: async ({ params }) => ({
+    publishedShare: await applyPublishedShareAccess(() =>
+      isPagePublished(params.pageId),
+    ),
+  }),
   component: Page,
 })
 
@@ -293,23 +283,11 @@ const databaseRoute = createRoute({
         ? search.view.trim()
         : undefined,
   }),
-  beforeLoad: async ({ params }) => {
-    const session = await getFreshSession()
-
-    if (session.user) {
-      const workspaces = await getWorkspaces()
-
-      if (workspaces.length === 0) {
-        throw redirect({ to: "/onboarding" })
-      }
-
-      return
-    }
-
-    if (!(await isDatabasePublished(params.databaseId))) {
-      throw redirect({ to: "/login" })
-    }
-  },
+  beforeLoad: async ({ params }) => ({
+    publishedShare: await applyPublishedShareAccess(() =>
+      isDatabasePublished(params.databaseId),
+    ),
+  }),
   component: DatabasePage,
 })
 
@@ -443,6 +421,10 @@ function RoutePendingPage() {
 
 function RouteErrorPage({ error }: ErrorComponentProps) {
   const selectedServer = getSelectedDesktopServer()
+  const copy = describeRouteError(error, {
+    isDesktop: isTauri() || Boolean(selectedServer),
+    selectedServer,
+  })
 
   useEffect(() => {
     recordDesktopDiagnostic(
@@ -456,16 +438,14 @@ function RouteErrorPage({ error }: ErrorComponentProps) {
     <main className="flex min-h-svh items-center justify-center bg-background p-6">
       <div className="flex max-w-sm flex-col items-center gap-4 text-center">
         <div>
-          <h1 className="text-lg font-semibold">Couldn&apos;t connect to Zilobase</h1>
+          <h1 className="text-lg font-semibold">{copy.title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your desktop session is still saved. Check your connection
-            {selectedServer ? ", or connect to a different server" : " and try again"}
-            .
+            {copy.description}
           </p>
         </div>
         <div className="flex w-full flex-col items-stretch gap-3">
           <Button onClick={() => window.location.reload()}>Try again</Button>
-          {selectedServer ? (
+          {copy.showChangeServer ? (
             <Button
               onClick={() => window.location.assign("/connect")}
               variant="outline"
@@ -477,6 +457,24 @@ function RouteErrorPage({ error }: ErrorComponentProps) {
       </div>
     </main>
   )
+}
+
+async function applyPublishedShareAccess(isPublished: () => Promise<boolean>) {
+  const decision = await decidePublishedShareAccess({
+    getSession: () => getFreshSession({ optional: true }),
+    getWorkspaces,
+    isPublished,
+  })
+
+  if (decision.type === "login") {
+    throw redirect({ to: "/login" })
+  }
+
+  if (decision.type === "onboarding") {
+    throw redirect({ to: "/onboarding" })
+  }
+
+  return decision.type
 }
 
 function getStartupConnectivity() {

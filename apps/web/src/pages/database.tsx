@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react"
-import { Link, useParams, useSearch } from "@tanstack/react-router"
+import { Link, useParams, useRouteContext, useSearch } from "@tanstack/react-router"
 import { ArrowRight, Maximize2 } from "lucide-react"
 
 import { AppLayout } from "@/components/app-layout"
+import { FallbackErrorBoundary } from "@/components/fallback-error-boundary"
 import { ResizableRightSidebarPanel } from "@/components/right-sidebars"
 import {
   PageSidePaneLayout,
@@ -50,6 +51,7 @@ import { useConnectivity, useOfflineManifest } from "@/providers/offline-provide
 export default function DatabasePage() {
   const { data: session } = useSession()
   const { databaseId } = useParams({ from: "/d/$databaseId" })
+  const { publishedShare } = useRouteContext({ from: "/d/$databaseId" })
   const isMobile = useIsMobile()
   const [viewSettingsOpen, setViewSettingsOpen] = useState(false)
   const [viewSettingsPanelTarget, setViewSettingsPanelTarget] =
@@ -63,28 +65,36 @@ export default function DatabasePage() {
     <div className="h-full min-h-0 w-full" ref={setViewSettingsPanelTarget} />
   )
 
-  if (!session?.user) {
-    return (
-      <PublicDatabasePage
-        settingsSidebar={settingsSidebar}
-        viewSettingsOpen={viewSettingsOpen}
-        viewSettingsPanelTarget={viewSettingsPanelTarget}
-        onViewSettingsOpenChange={setViewSettingsOpen}
-      />
-    )
+  const publicPage = (
+    <PublicDatabasePage
+      settingsSidebar={settingsSidebar}
+      viewSettingsOpen={viewSettingsOpen}
+      viewSettingsPanelTarget={viewSettingsPanelTarget}
+      onViewSettingsOpenChange={setViewSettingsOpen}
+    />
+  )
+
+  if (!session?.user || publishedShare === "public") {
+    return publicPage
   }
 
   return (
-    <AppLayout
-      utilitySidebar={settingsSidebar}
-      utilitySidebarOpen={!isMobile && viewSettingsOpen}
+    <FallbackErrorBoundary
+      fallback={publicPage}
+      key={databaseId}
+      name="database.authenticated"
     >
-      <AuthenticatedDatabasePage
-        viewSettingsOpen={viewSettingsOpen}
-        viewSettingsPanelTarget={viewSettingsPanelTarget}
-        onViewSettingsOpenChange={setViewSettingsOpen}
-      />
-    </AppLayout>
+      <AppLayout
+        utilitySidebar={settingsSidebar}
+        utilitySidebarOpen={!isMobile && viewSettingsOpen}
+      >
+        <AuthenticatedDatabasePage
+          viewSettingsOpen={viewSettingsOpen}
+          viewSettingsPanelTarget={viewSettingsPanelTarget}
+          onViewSettingsOpenChange={setViewSettingsOpen}
+        />
+      </AppLayout>
+    </FallbackErrorBoundary>
   )
 }
 

@@ -649,7 +649,7 @@ function NavMain({
   };
 
   return (
-    <SidebarGroup className="p-0 pb-1 pt-0.5">
+    <SidebarGroup className="p-0">
       <SidebarGroupContent>
         <nav aria-label="Main navigation">
           <div className="flex items-center gap-0.5">

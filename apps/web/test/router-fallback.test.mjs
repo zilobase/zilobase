@@ -6,11 +6,19 @@ export function register({ assert, test }) {
       new URL("../src/router.tsx", import.meta.url),
       "utf8",
     )
+    const errorSource = await readFile(
+      new URL("../src/lib/route-error.ts", import.meta.url),
+      "utf8",
+    )
 
     assert.match(source, /defaultPendingComponent: RoutePendingPage/)
     assert.match(source, /defaultErrorComponent: RouteErrorPage/)
     assert.match(source, /Connecting to Zilobase\.\.\./)
-    assert.match(source, /Your desktop session is still saved/)
+    assert.match(errorSource, /Your desktop session is still saved/)
+    assert.match(errorSource, /Something went wrong/)
+    assert.match(source, /decidePublishedShareAccess/)
+    assert.match(source, /describeRouteError/)
+    assert.match(source, /publishedShare/)
     assert.match(source, /window\.location\.reload\(\)/)
     assert.match(source, /path: "\/connect"/)
     assert.match(source, /Change server/)

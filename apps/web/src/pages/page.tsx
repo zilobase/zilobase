@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useParams, useRouteContext } from "@tanstack/react-router";
 import { ArrowRight, Maximize2 } from "lucide-react";
 
 import { AppLayout } from "@/components/app-layout";
+import { FallbackErrorBoundary } from "@/components/fallback-error-boundary";
 import { PageWorkspaceGate } from "@/components/page-workspace-gate";
 import {
   PageSidePaneLayout,
@@ -36,7 +37,11 @@ import {
   usePageNavigation,
   useResolvedPageLayout,
 } from "@zilobase/features/pages";
-import { extractDatabaseIds } from "@zilobase/page-context";
+import {
+  extractDatabaseIds,
+  insertDatabaseBlockInContent,
+  isEffectivelyEmptyPageContent,
+} from "@zilobase/page-context";
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog";
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";
 import { useSession } from "@zilobase/features/auth";
@@ -70,16 +75,24 @@ type PageEditorPaneProps = {
 };
 
 export default function Page() {
+  const { pageId } = useParams({ from: "/p/$pageId" });
+  const { publishedShare } = useRouteContext({ from: "/p/$pageId" });
   const { data: session } = useSession();
 
-  if (!session?.user) {
+  if (!session?.user || publishedShare === "public") {
     return <PublicPage />;
   }
 
   return (
-    <AppLayout>
-      <AuthenticatedPage />
-    </AppLayout>
+    <FallbackErrorBoundary
+      fallback={<PublicPage />}
+      key={pageId}
+      name="page.authenticated"
+    >
+      <AppLayout>
+        <AuthenticatedPage />
+      </AppLayout>
+    </FallbackErrorBoundary>
   );
 }
 
@@ -330,7 +343,8 @@ export function PageEditorPane({
   const editorContentRef = useRef<(() => unknown) | null>(null);
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
-  const { registerEditor, unregisterEditor } = usePageEditorRegistry();
+  const { getEditorHandle, registerEditor, unregisterEditor } =
+    usePageEditorRegistry();
   const commentsRegistry = usePageCommentsRegistry();
   const [cover, setCover] = useState("");
   const [emoji, setEmoji] = useState("");
@@ -434,6 +448,7 @@ export function PageEditorPane({
         });
     }
   }, [embedPageItem, navigation, page, pageEditable]);
+
   const collaborationEnabled = Boolean(
     pageEditable ||
       (enableComments && session?.user && page && !page.deletedAt),
@@ -479,6 +494,12 @@ export function PageEditorPane({
   }, [commentController, commentsRegistry, pageId]);
   const liveEditingReady =
     !pageEditable || Boolean(collaboration.document && !collaboration.error);
+  const waitingForCollaboration =
+    collaborationEnabled &&
+    !collaboration.error &&
+    connectivity === "online" &&
+    !collaboration.downloaded &&
+    (!collaboration.document || !collaboration.provider);
   const offlineEditing =
     collaboration.downloaded &&
     (connectivity !== "online" || collaboration.status === "blocked");
@@ -655,6 +676,55 @@ export function PageEditorPane({
     pageId,
   ]);
 
+  useEffect(() => {
+    if (!pageEditable || !page || !navigation) {
+      return;
+    }
+
+    const handle = getEditorHandle(page.id);
+
+    if (!handle?.isEditable()) {
+      return;
+    }
+
+    let content = handle.getContentJson();
+
+    if (
+      isEffectivelyEmptyPageContent(content) &&
+      !isEffectivelyEmptyPageContent(page.content)
+    ) {
+      if (!handle.setContentJson(page.content)) {
+        return;
+      }
+
+      content = handle.getContentJson() ?? page.content;
+    }
+
+    const missingDatabaseIds = navigation.placements
+      .filter(
+        (placement) =>
+          placement.parentKind === "page" &&
+          placement.parentId === page.id &&
+          placement.itemKind === "database",
+      )
+      .sort((first, second) => first.position - second.position)
+      .map((placement) => placement.itemId)
+      .filter((databaseId) => !extractDatabaseIds(content).includes(databaseId));
+
+    if (missingDatabaseIds.length === 0) {
+      return;
+    }
+
+    let nextContent = content;
+
+    for (const databaseId of missingDatabaseIds) {
+      const inserted = insertDatabaseBlockInContent(nextContent, { databaseId });
+      nextContent = inserted.content;
+    }
+
+    handle.setContentJson(nextContent);
+  }, [getEditorHandle, liveEditingReady, navigation, page, pageEditable]);
+
   const embedLinkedPage = useCallback(
     async (pageId: string) => {
       if (!page) {
@@ -704,8 +774,9 @@ export function PageEditorPane({
     });
   }, [accessLevel, createPage, readOnly, page]);
 
-  if (isLoading) {
+  if (isLoading || waitingForCollaboration) {
     if (
+      !waitingForCollaboration &&
       (connectivity === "offline" || connectivity === "service-unavailable") &&
       !offlineManifest.items.some(
         (item) => item.kind === "page" && item.id === pageId,
@@ -745,11 +816,7 @@ export function PageEditorPane({
         />
       ) : null}
       <Editor
-        key={[
-          page.id,
-          collaboration.document?.clientID ?? "standalone",
-          collaboration.provider?.sessionId ?? "without-provider",
-        ].join(":")}
+        key={page.id}
         collaboration={
           collaboration.document
             ? {
