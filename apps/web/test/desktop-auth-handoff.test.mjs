@@ -13,23 +13,41 @@ export function register({ assert, test }) {
     assert.doesNotMatch(source, /GOOGLE_DESKTOP_CLIENT/)
   })
 
-  test("desktop browser auth has explicit waiting and finalizing states", async () => {
-    const source = await readFile(
-      new URL("../src/components/login-form.tsx", import.meta.url),
-      "utf8",
-    )
+  test("desktop signed-out shell is browser-only", async () => {
+    const [screen, login, signup, loginForm] = await Promise.all([
+      readFile(
+        new URL("../src/components/desktop-browser-auth-screen.tsx", import.meta.url),
+        "utf8",
+      ),
+      readFile(new URL("../src/pages/login.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/pages/signup.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/components/login-form.tsx", import.meta.url), "utf8"),
+    ])
 
-    assert.match(source, /phase: "waiting_for_browser"/)
-    assert.match(source, /phase: "finalizing"/)
-    assert.match(source, /await reloadDesktopAuthCredentials\(\)/)
-    assert.match(source, /sessionQueryOptions\(webAuthClient\)/)
-    assert.match(source, /Waiting for browser sign-in\.\.\./)
-    assert.match(source, /Continue with Google/)
-    assert.match(source, /useRequestSignInOtp/)
-    assert.match(source, /signInWithGoogle/)
-    assert.match(source, /Google opens in your browser/)
-    assert.match(source, /Sign in/)
-    assert.doesNotMatch(source, /addEventListener\("focus"/)
+    assert.match(screen, /phase: "waiting_for_browser"/)
+    assert.match(screen, /phase: "finalizing"/)
+    assert.match(screen, /await reloadDesktopAuthCredentials\(\)/)
+    assert.match(screen, /sessionQueryOptions\(webAuthClient\)/)
+    assert.match(screen, /Waiting for browser sign-in\.\.\./)
+    assert.match(screen, /Continue in Browser/)
+    assert.match(screen, /Change server/)
+    assert.match(screen, /signInWithDesktopBrowser/)
+    assert.doesNotMatch(screen, /addEventListener\("focus"/)
+    assert.doesNotMatch(screen, /useSignInWithPassword/)
+    assert.doesNotMatch(screen, /useRequestSignInOtp/)
+    assert.doesNotMatch(screen, /Continue with Google/)
+
+    assert.match(login, /DesktopBrowserAuthScreen/)
+    assert.match(signup, /DesktopBrowserAuthScreen/)
+    assert.match(login, /isTauri\(\)/)
+    assert.match(signup, /isTauri\(\)/)
+
+    assert.doesNotMatch(loginForm, /isTauri/)
+    assert.doesNotMatch(loginForm, /signInWithDesktopBrowser/)
+    assert.match(loginForm, /signInWithGoogle/)
+    assert.match(loginForm, /Continue with Google/)
+    assert.match(loginForm, /useRequestSignInOtp/)
+    assert.match(loginForm, /Sign in/)
   })
 
   test("desktop server metadata initializes before credentials and providers", async () => {

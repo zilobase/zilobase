@@ -50,8 +50,8 @@ export default function ConnectPage() {
         <div>
           <h1 className="text-lg font-semibold">Choose a server</h1>
           <FieldDescription>
-            Start with Zilobase Cloud or connect a hosted instance, then sign in
-            or create an account.
+            Start with Zilobase Cloud or connect a hosted instance, then
+            continue in your browser.
           </FieldDescription>
         </div>
 

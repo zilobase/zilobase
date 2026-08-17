@@ -125,22 +125,29 @@ export function register({ assert, loadModule, test }) {
     assert.doesNotMatch(source, /DesktopServerSelector/)
   })
 
-  test("desktop auth picks a server before sign-in or sign-up", async () => {
-    const [connect, authScreen, login, signup] = await Promise.all([
+  test("desktop auth picks a server before continuing in the browser", async () => {
+    const [connect, screen, login, signup, router] = await Promise.all([
       readFile(new URL("../src/pages/connect.tsx", import.meta.url), "utf8"),
-      readFile(new URL("../src/components/auth-screen.tsx", import.meta.url), "utf8"),
+      readFile(
+        new URL("../src/components/desktop-browser-auth-screen.tsx", import.meta.url),
+        "utf8",
+      ),
       readFile(new URL("../src/pages/login.tsx", import.meta.url), "utf8"),
       readFile(new URL("../src/pages/signup.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/router.tsx", import.meta.url), "utf8"),
     ])
 
     assert.match(connect, /Choose a server/)
     assert.match(connect, /Use Zilobase Cloud/)
     assert.match(connect, /desktopCloudConnectUrl/)
     assert.match(connect, /Verify and continue/)
-    assert.match(authScreen, /Change server/)
-    assert.match(authScreen, /to="\/connect"/)
-    assert.match(authScreen, /server\.apiOrigin/)
-    assert.match(login, /AuthScreen/)
-    assert.match(signup, /AuthScreen/)
+    assert.match(connect, /continue in your browser/)
+    assert.match(screen, /Change server/)
+    assert.match(screen, /to="\/connect"/)
+    assert.match(screen, /server\.apiOrigin/)
+    assert.match(login, /DesktopBrowserAuthScreen/)
+    assert.match(signup, /DesktopBrowserAuthScreen/)
+    assert.match(router, /throw redirect\(\{ to: "\/login" \}\)/)
+    assert.doesNotMatch(router, /isTauri\(\) \? "\/connect"/)
   })
 }

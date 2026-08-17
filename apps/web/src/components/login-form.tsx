@@ -1,14 +1,12 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { isTauri } from "@tauri-apps/api/core"
+import { useState } from "react"
 import { EyeIcon, EyeOffIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { GoogleIcon } from "@/components/google-icon"
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -22,35 +20,14 @@ import {
 } from "@/components/ui/input-group"
 import { Input } from "@/components/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
-import { reloadDesktopAuthCredentials } from "@/lib/desktop-auth-token"
-import {
-  describeDesktopError,
-  recordDesktopDiagnostic,
-} from "@/lib/desktop-diagnostics"
-import {
-  cancelDesktopBrowserSignIn,
-  DesktopOAuthError,
-  getAuthReturnPath,
-  signInWithDesktopBrowser,
-  signInWithGoogle,
-} from "@/lib/google-auth"
-import { queryClient } from "@/lib/query-client"
+import { getAuthReturnPath, signInWithGoogle } from "@/lib/google-auth"
 import { cn } from "@/lib/utils"
-import { webAuthClient } from "@/providers/features-provider"
 import {
-  sessionQueryOptions,
   useRequestSignInOtp,
   useSignInWithPassword,
 } from "@zilobase/features/auth"
-import { workspacesQueryOptions } from "@zilobase/features/workspaces"
 import { useAuthFlowStore } from "@/stores/auth-flow-store"
 import { editionWebModule } from "@zilobase/edition-web"
-
-type BrowserSignInState =
-  | { phase: "idle"; error: null; retry: "oauth" }
-  | { phase: "waiting_for_browser"; error: null; retry: "oauth" }
-  | { phase: "finalizing"; error: null; retry: "finalize" }
-  | { phase: "error"; error: unknown; retry: "oauth" | "finalize" }
 
 export function LoginForm({
   className,
@@ -61,107 +38,22 @@ export function LoginForm({
   const setAuthFlow = useAuthFlowStore((state) => state.setAuthFlow)
   const [email, setEmail] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [browserState, setBrowserState] = useState<BrowserSignInState>({
-    phase: "idle",
-    error: null,
-    retry: "oauth",
-  })
-  const browserOperation = useRef(0)
-  const isBrowserPending =
-    browserState.phase === "waiting_for_browser" ||
-    browserState.phase === "finalizing"
+  const [googleError, setGoogleError] = useState<unknown>(null)
+  const [isGooglePending, setIsGooglePending] = useState(false)
   const isPending =
     signInWithPassword.isPending ||
     requestSignInOtp.isPending ||
-    isBrowserPending
-  const desktop = isTauri()
+    isGooglePending
 
-  useEffect(
-    () => () => {
-      ++browserOperation.current
-      void cancelDesktopBrowserSignIn().catch(() => undefined)
-    },
-    [],
-  )
-
-  async function handleBrowserSignIn() {
-    const returnTo = getAuthReturnPath("/recents")
-    const operation = ++browserOperation.current
-
-    if (desktop && browserState.retry === "finalize") {
-      await finalizeDesktopSignIn(operation, returnTo)
-      return
-    }
-
-    setBrowserState({
-      phase: "waiting_for_browser",
-      error: null,
-      retry: "oauth",
-    })
-    recordDesktopDiagnostic("desktop_auth.oauth", { status: "started" })
+  async function handleGoogleSignIn() {
+    setGoogleError(null)
+    setIsGooglePending(true)
 
     try {
-      const mode = desktop
-        ? await signInWithDesktopBrowser()
-        : await signInWithGoogle(returnTo)
-      if (mode === "desktop" && operation === browserOperation.current) {
-        await finalizeDesktopSignIn(operation, returnTo)
-      }
+      await signInWithGoogle(getAuthReturnPath("/recents"))
     } catch (error) {
-      if (operation !== browserOperation.current) return
-      if (error instanceof DesktopOAuthError && error.code === "cancelled") {
-        setBrowserState({ phase: "idle", error: null, retry: "oauth" })
-        return
-      }
-      setBrowserState({ phase: "error", error, retry: "oauth" })
-      recordDesktopDiagnostic(
-        "desktop_auth.oauth",
-        describeDesktopError(error),
-        "error",
-      )
-    }
-  }
-
-  async function finalizeDesktopSignIn(operation: number, returnTo: string) {
-    setBrowserState({ phase: "finalizing", error: null, retry: "finalize" })
-    recordDesktopDiagnostic("desktop_auth.finalize", { status: "started" })
-
-    try {
-      await reloadDesktopAuthCredentials()
-      const session = await queryClient.fetchQuery({
-        ...sessionQueryOptions(webAuthClient),
-        staleTime: 0,
-      })
-      if (!session.user || !session.session) {
-        throw new Error("The desktop session could not be validated.")
-      }
-      const workspaces = await queryClient.fetchQuery({
-        ...workspacesQueryOptions(webAuthClient),
-        staleTime: 0,
-      })
-      if (operation !== browserOperation.current) return
-
-      recordDesktopDiagnostic("desktop_auth.finalize", { status: "success" })
-      setBrowserState({ phase: "idle", error: null, retry: "oauth" })
-      window.location.assign(workspaces.length === 0 ? "/onboarding" : returnTo)
-    } catch (error) {
-      if (operation !== browserOperation.current) return
-      setBrowserState({ phase: "error", error, retry: "finalize" })
-      recordDesktopDiagnostic(
-        "desktop_auth.finalize",
-        describeDesktopError(error),
-        "error",
-      )
-    }
-  }
-
-  async function handleCancelBrowserSignIn() {
-    ++browserOperation.current
-    setBrowserState({ phase: "idle", error: null, retry: "oauth" })
-    try {
-      await cancelDesktopBrowserSignIn()
-    } catch (error) {
-      setBrowserState({ phase: "error", error, retry: "oauth" })
+      setGoogleError(error)
+      setIsGooglePending(false)
     }
   }
 
@@ -209,11 +101,9 @@ export function LoginForm({
       onSubmit={handleSubmit}
       {...props}
     >
-      {!desktop
-        ? editionWebModule.additionalLoginMethods.map((LoginMethod, index) => (
-            <LoginMethod disabled={isPending} key={index} />
-          ))
-        : null}
+      {editionWebModule.additionalLoginMethods.map((LoginMethod, index) => (
+        <LoginMethod disabled={isPending} key={index} />
+      ))}
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="email">Email address</FieldLabel>
@@ -256,12 +146,10 @@ export function LoginForm({
 
         {(signInWithPassword.isError ||
           requestSignInOtp.isError ||
-          browserState.phase === "error") && (
+          googleError) && (
           <FieldError>
             {getApiErrorMessage(
-              signInWithPassword.error ??
-                requestSignInOtp.error ??
-                (browserState.phase === "error" ? browserState.error : null),
+              signInWithPassword.error ?? requestSignInOtp.error ?? googleError,
             )}
           </FieldError>
         )}
@@ -289,32 +177,11 @@ export function LoginForm({
             type="button"
             variant="outline"
             disabled={isPending}
-            onClick={handleBrowserSignIn}
+            onClick={() => void handleGoogleSignIn()}
           >
             <GoogleIcon />
-            {browserState.phase === "waiting_for_browser"
-              ? "Waiting for browser sign-in..."
-              : browserState.phase === "finalizing"
-                ? "Finishing sign-in..."
-                : browserState.retry === "finalize"
-                  ? "Retry connection"
-                  : "Continue with Google"}
+            {isGooglePending ? "Redirecting..." : "Continue with Google"}
           </Button>
-          {browserState.phase === "waiting_for_browser" && (
-            <Button
-              onClick={handleCancelBrowserSignIn}
-              type="button"
-              variant="ghost"
-            >
-              Cancel
-            </Button>
-          )}
-          {desktop ? (
-            <FieldDescription>
-              Google opens in your browser. Password and email code stay in
-              this app.
-            </FieldDescription>
-          ) : null}
         </Field>
       </FieldGroup>
     </form>

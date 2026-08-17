@@ -37,8 +37,10 @@ try {
     port: driverPort,
   })
 
-  const chooser = await browser.$("//h1[normalize-space()='Choose a server']")
-  await chooser.waitForDisplayed({ timeout: 30_000 })
+  const continueScreen = await browser.$(
+    "//h1[normalize-space()='Continue in your browser']",
+  )
+  await continueScreen.waitForDisplayed({ timeout: 30_000 })
 
   await selectServer(serverOrigin)
 
@@ -86,7 +88,7 @@ async function selectServer(origin) {
   )
   await selectedOrigin.waitForDisplayed({ timeout: 30_000 })
   await (
-    await browser.$("//button[normalize-space()='Continue with Google']")
+    await browser.$("//button[normalize-space()='Continue in Browser']")
   ).waitForDisplayed({ timeout: 10_000 })
 }
 

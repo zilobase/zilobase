@@ -72,7 +72,7 @@ const indexRoute = createRoute({
     const session = await getFreshSession({ optional: true })
 
     if (!session.user) {
-      throw redirect({ to: isTauri() ? "/connect" : "/login" })
+      throw redirect({ to: "/login" })
     }
 
     const workspaces = await getWorkspaces()
@@ -185,6 +185,11 @@ const onboardingRoute = createRoute({
 const otpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/otp",
+  beforeLoad: async () => {
+    if (isTauri()) {
+      throw redirect({ to: "/login" })
+    }
+  },
   component: OtpPage,
 })
 
