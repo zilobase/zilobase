@@ -288,6 +288,13 @@
       "when": 1787091000000,
       "tag": "0040_meeting_recorder_lease",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1787094600000,
+      "tag": "0041_meeting_summary_state",
+      "breakpoints": true
     }
   ]
 }

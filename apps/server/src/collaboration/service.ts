@@ -355,6 +355,49 @@ export async function replacePageContent(input: {
   await replacePageContentInHocuspocus(hocuspocus, input);
 }
 
+export async function replaceMeetingSummary(input: {
+  content: unknown;
+  env: RuntimeEnv;
+  meetingId: string;
+  userId: string;
+}) {
+  const adapter = getRuntimeAdapter();
+  if (adapter.applyMeetingSummaryUpdate) {
+    await adapter.applyMeetingSummaryUpdate(input);
+    return;
+  }
+  await replaceMeetingSummaryInHocuspocus(
+    getDefaultCollaborationHocuspocus(input.env),
+    input,
+  );
+}
+
+export async function replaceMeetingSummaryInHocuspocus(
+  hocuspocus: Hocuspocus<CollaborationContext>,
+  input: { content: unknown; meetingId: string; userId: string },
+) {
+  const direct = await hocuspocus.openDirectConnection(
+    documentNameForMeeting(input.meetingId),
+    {
+      exp: Date.now() + TICKET_TTL_MS,
+      meetingId: input.meetingId,
+      scope: "read-write",
+      userId: input.userId,
+      workspaceId: "server",
+    },
+  );
+  const update = encodeContentAsYjs(input.content, "summary");
+  try {
+    await direct.transact((document) => {
+      const fragment = document.getXmlFragment("summary");
+      fragment.delete(0, fragment.length);
+      Y.applyUpdate(document, update);
+    });
+  } finally {
+    await direct.disconnect();
+  }
+}
+
 export async function replacePageContentInHocuspocus(
   hocuspocus: Hocuspocus<CollaborationContext>,
   input: {
@@ -486,10 +529,17 @@ async function getMeetingPageId(meetingId: string) {
 
 function toYDoc(content: unknown) {
   const normalized = normalizeDocument(content);
-  return ProsemirrorTransformer.toYdoc(
-    normalized,
-    FIELD_NAME,
-    createSchemaForDocument(normalized),
+  return ProsemirrorTransformer.toYdoc(normalized, FIELD_NAME, createSchemaForDocument(normalized));
+}
+
+function encodeContentAsYjs(content: unknown, field: string) {
+  const normalized = normalizeDocument(content);
+  return Y.encodeStateAsUpdate(
+    ProsemirrorTransformer.toYdoc(
+      normalized,
+      field,
+      createSchemaForDocument(normalized),
+    ),
   );
 }
 

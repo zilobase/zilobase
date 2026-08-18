@@ -31,6 +31,8 @@ export type MeetingRecord = {
   recordingStartedAt: string | null
   recordingStoppedAt: string | null
   status: MeetingStatus
+  summaryGeneratedAt: string | null
+  summarySourceSegmentCount: number
   title: string
   transcriptRevision: number
   updatedAt: string
@@ -46,6 +48,16 @@ export type MeetingRecorderClaim = MeetingResponse & {
   token: string
   websocketUrl: string
 }
+
+export type MeetingSummary = {
+  actionItems: Array<{ dueDate: string | null; owner: string | null; task: string }>
+  decisions: string[]
+  highlights: string[]
+  overview: string
+  title: string
+}
+
+export type MeetingSummaryResponse = MeetingResponse & { summary: MeetingSummary }
 
 export const meetingKeys = {
   all: ["meetings"] as const,

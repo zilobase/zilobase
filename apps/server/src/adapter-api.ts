@@ -118,6 +118,8 @@ export {
   pageIdFromDocumentName,
   replacePageContent,
   replacePageContentInHocuspocus,
+  replaceMeetingSummary,
+  replaceMeetingSummaryInHocuspocus,
   verifyCollaborationTicket,
   type CollaborationContext,
   type CollaborationTicketClaims,

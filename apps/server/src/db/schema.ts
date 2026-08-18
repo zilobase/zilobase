@@ -412,6 +412,10 @@ export const meeting = pgTable(
     calendarEventId: text("calendar_event_id"),
     calendarSnapshot: jsonb("calendar_snapshot"),
     transcriptRevision: integer("transcript_revision").notNull().default(0),
+    summarySourceSegmentCount: integer("summary_source_segment_count")
+      .notNull()
+      .default(0),
+    summaryGeneratedAt: timestamp("summary_generated_at", { withTimezone: true }),
     recorderId: text("recorder_id").references(() => user.id, {
       onDelete: "set null",
     }),

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   heartbeatRecorder: vi.fn(),
   listTranscript: vi.fn(),
   releaseRecorder: vi.fn(),
+  summarize: vi.fn(),
   transition: vi.fn(),
   update: vi.fn(),
 }));
@@ -29,6 +30,9 @@ vi.mock("./meeting-service", () => ({
   releaseMeetingRecorder: mocks.releaseRecorder,
   transitionMeeting: mocks.transition,
   updateMeeting: mocks.update,
+}));
+vi.mock("./meeting-summary-service", () => ({
+  generateMeetingSummary: mocks.summarize,
 }));
 
 import { meetingRoutes } from "./meeting-routes";
@@ -80,6 +84,10 @@ beforeEach(() => {
   mocks.listTranscript.mockResolvedValue([
     { id: "segment-1", sequence: 0, text: "Hello" },
   ]);
+  mocks.summarize.mockResolvedValue({
+    meeting: { id: "meeting-1", status: "completed" },
+    summary: { overview: "Summary" },
+  });
   mocks.transition.mockResolvedValue({ id: "meeting-1", status: "recording" });
 });
 
@@ -187,4 +195,18 @@ test("transcript reads and lease heartbeats remain meeting scoped", async () => 
   );
   assert.equal(heartbeat.status, 200);
   assert.equal(typeof (await heartbeat.json() as { token?: unknown }).token, "string");
+});
+
+test("summary generation is scoped to the authenticated editor", async () => {
+  const response = await appFor().request(
+    "/meetings/meeting-1/summary",
+    { method: "POST" },
+    env,
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(mocks.summarize.mock.calls[0]?.[0], {
+    env,
+    meetingId: "meeting-1",
+    userId: "user-1",
+  });
 });

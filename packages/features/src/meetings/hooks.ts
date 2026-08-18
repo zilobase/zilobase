@@ -10,6 +10,7 @@ import {
   type MeetingPatch,
   type MeetingResponse,
   type MeetingRecorderClaim,
+  type MeetingSummaryResponse,
 } from "./queries"
 
 export function useMeeting(meetingId: string | null | undefined) {
@@ -127,4 +128,23 @@ export function useMeetingRecorder(meetingId: string) {
     },
   })
   return { claim, heartbeat, release }
+}
+
+export function useGenerateMeetingSummary(meetingId: string) {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<MeetingSummaryResponse>(`/meetings/${meetingId}/summary`, {
+        body: "{}",
+        method: "POST",
+      }),
+    onSuccess: (payload) => {
+      queryClient.setQueryData<MeetingResponse>(meetingKeys.detail(meetingId), {
+        meeting: payload.meeting,
+      })
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })
+    },
+  })
 }

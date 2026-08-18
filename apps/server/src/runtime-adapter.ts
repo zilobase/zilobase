@@ -25,6 +25,12 @@ export type ServerRuntimeAdapter = {
     pageId: string;
     userId: string;
   }): Promise<void>;
+  applyMeetingSummaryUpdate?(input: {
+    content: unknown;
+    env: RuntimeEnv;
+    meetingId: string;
+    userId: string;
+  }): Promise<void>;
   createImageStorage?(env: RuntimeEnv): ImageStorage | null;
   getCollaborationWebSocketUrl?(request: Request, env: RuntimeEnv): string;
   getDatabaseRealtimeWebSocketUrl?(

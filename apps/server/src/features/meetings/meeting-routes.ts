@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
+import { AiProviderConfigError } from "../../ai/ai-provider";
 
 import { getEffectivePageAccessInWorkspace, hasAccess } from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
@@ -26,6 +27,7 @@ import {
 } from "./meeting-service";
 import { createMeetingAudioTicket } from "./meeting-audio-ticket";
 import { meetingLifecycleActions } from "./meeting-types";
+import { generateMeetingSummary } from "./meeting-summary-service";
 
 const createMeetingSchema = z.object({
   pageId: z.string().min(1),
@@ -66,6 +68,9 @@ meetingRoutes.use("*", async (c, next) => {
 const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
 
 function serviceError(c: Context<AppBindings>, error: unknown) {
+  if (error instanceof AiProviderConfigError) {
+    return c.json({ error: error.message }, error.status === 503 ? 503 : 400);
+  }
   if (!(error instanceof ServiceMutationError)) {
     throw error;
   }
@@ -253,6 +258,20 @@ meetingRoutes.get("/:id/transcript", async (c) => {
         userId: user.id,
       }),
     });
+  } catch (error) {
+    return serviceError(c, error);
+  }
+});
+
+meetingRoutes.post("/:id/summary", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  try {
+    return c.json(await generateMeetingSummary({
+      env: c.env,
+      meetingId: c.req.param("id"),
+      userId: user.id,
+    }));
   } catch (error) {
     return serviceError(c, error);
   }

@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import {
   useMeeting,
+  useGenerateMeetingSummary,
   useMeetingLifecycle,
   useMeetingRecorder,
   useMeetingTranscript,
@@ -49,6 +50,7 @@ export function MeetingView({
   meetingId: string
 }) {
   const meetingQuery = useMeeting(meetingId)
+  const generateSummary = useGenerateMeetingSummary(meetingId)
   const updateMeeting = useUpdateMeeting(meetingId)
   const lifecycle = useMeetingLifecycle(meetingId)
   const recorder = useMeetingRecorder(meetingId)
@@ -159,6 +161,10 @@ export function MeetingView({
     ? ["summary", "notes", "transcript"]
     : ["notes"]
   const ownsRecorder = Boolean(leaseId)
+  const summaryIsStale = Boolean(
+    meeting.summaryGeneratedAt
+      && (transcript.data?.segments.length ?? 0) > meeting.summarySourceSegmentCount,
+  )
 
   return (
     <section className="meeting-block-shell overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
@@ -236,6 +242,9 @@ export function MeetingView({
           >
             {collaboration.status === "connected" ? "Live" : collaboration.status}
           </span>
+          {summaryIsStale ? (
+            <span className="text-xs text-amber-600">Summary out of date</span>
+          ) : null}
         </div>
 
         {activeTab === "transcript" ? (
@@ -327,7 +336,29 @@ export function MeetingView({
                   </Button>
                 </>
               ) : meeting.status === "processing" ? (
-                <Button disabled><LoaderCircle className="animate-spin" /> Processing</Button>
+                <Button
+                  disabled={generateSummary.isPending || !transcript.data?.segments.length}
+                  onClick={() => {
+                    void generateSummary.mutateAsync().catch((error) => {
+                      toast.error(error instanceof Error ? error.message : "Summary failed.")
+                    })
+                  }}
+                >
+                  {generateSummary.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
+                  Generate summary
+                </Button>
+              ) : meeting.status === "completed" && summaryIsStale ? (
+                <Button
+                  disabled={generateSummary.isPending}
+                  onClick={() => {
+                    void generateSummary.mutateAsync().catch((error) => {
+                      toast.error(error instanceof Error ? error.message : "Summary failed.")
+                    })
+                  }}
+                  variant="outline"
+                >
+                  <Sparkles /> Regenerate summary
+                </Button>
               ) : null}
             </div>
           ) : null}
