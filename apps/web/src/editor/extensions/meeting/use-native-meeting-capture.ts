@@ -19,8 +19,17 @@ export type RecoverableMeetingCapture = {
   startedAtEpochMs: number
 }
 
+export type MeetingAudioDevice = {
+  id: string
+  isDefault: boolean
+  isSystemCaptureCandidate: boolean
+  kind: "microphone" | "system" | "output"
+  name: string
+}
+
 export function useNativeMeetingCapture(meetingId: string) {
   const [level, setLevel] = useState(0)
+  const [devices, setDevices] = useState<MeetingAudioDevice[]>([])
   const [status, setStatus] = useState<CaptureStatus | null>(null)
   const [recovery, setRecovery] = useState<RecoverableMeetingCapture | null>(null)
 
@@ -32,6 +41,11 @@ export function useNativeMeetingCapture(meetingId: string) {
     void invoke<CaptureStatus>("meeting_capture_state").then((value) => {
       if (!cancelled && value.meetingId === meetingId) setStatus(value)
     })
+    void invoke<MeetingAudioDevice[]>("meeting_capture_list_devices")
+      .then((value) => {
+        if (!cancelled) setDevices(value)
+      })
+      .catch(() => undefined)
     const loadRecovery = () => invoke<RecoverableMeetingCapture[]>(
       "meeting_capture_recoverable_sessions",
     ).then((sessions) => {
@@ -62,5 +76,5 @@ export function useNativeMeetingCapture(meetingId: string) {
     }
   }, [meetingId])
 
-  return { level, recovery, status }
+  return { devices, level, recovery, status }
 }

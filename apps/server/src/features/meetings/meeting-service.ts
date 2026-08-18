@@ -1,8 +1,13 @@
-import { and, asc, eq, gt, isNull, lt, or } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, lt, or } from "drizzle-orm";
 
 import { canAccessPageInWorkspace } from "../../access";
 import { db } from "../../db";
-import { meeting, meetingTranscriptSegment, page } from "../../db/schema";
+import {
+  meeting,
+  meetingConsentEvent,
+  meetingTranscriptSegment,
+  page,
+} from "../../db/schema";
 import { ServiceMutationError } from "../../services/mutation-error";
 import { clampMeetingDuration, getNextMeetingStatus } from "./meeting-state";
 import type {
@@ -198,6 +203,24 @@ export async function claimMeetingRecorder(input: {
 }) {
   const existing = await getMeetingForUser(input.meetingId, input.userId, "edit");
   const now = new Date();
+  const [consent] = await db
+    .select({ acknowledgedAt: meetingConsentEvent.acknowledgedAt })
+    .from(meetingConsentEvent)
+    .where(
+      and(
+        eq(meetingConsentEvent.meetingId, existing.id),
+        eq(meetingConsentEvent.userId, input.userId),
+        gt(meetingConsentEvent.acknowledgedAt, new Date(now.getTime() - 10 * 60 * 1_000)),
+      ),
+    )
+    .orderBy(desc(meetingConsentEvent.acknowledgedAt))
+    .limit(1);
+  if (!consent) {
+    throw new ServiceMutationError(
+      "Confirm that participants were notified before recording",
+      409,
+    );
+  }
   const leaseId = crypto.randomUUID();
   const leaseExpiresAt = new Date(now.getTime() + RECORDER_LEASE_MS);
   const [claimed] = await db
@@ -227,6 +250,27 @@ export async function claimMeetingRecorder(input: {
   }
 
   return { leaseExpiresAt, leaseId, meeting: claimed };
+}
+
+export async function recordMeetingConsent(input: {
+  meetingId: string;
+  metadata?: Record<string, unknown>;
+  mode: "confirmed" | "played";
+  userId: string;
+}) {
+  const existing = await getMeetingForUser(input.meetingId, input.userId, "edit");
+  const [event] = await db
+    .insert(meetingConsentEvent)
+    .values({
+      id: crypto.randomUUID(),
+      meetingId: existing.id,
+      message: existing.consentMessage,
+      metadata: input.metadata,
+      mode: input.mode,
+      userId: input.userId,
+    })
+    .returning();
+  return event;
 }
 
 export async function heartbeatMeetingRecorder(input: {

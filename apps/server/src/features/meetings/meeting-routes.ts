@@ -21,6 +21,7 @@ import {
   getMeetingForUser,
   heartbeatMeetingRecorder,
   listMeetingTranscript,
+  recordMeetingConsent,
   releaseMeetingRecorder,
   transitionMeeting,
   updateMeeting,
@@ -53,6 +54,11 @@ const lifecycleSchema = z.object({
 
 const recorderLeaseSchema = z.object({
   leaseId: z.string().uuid(),
+});
+
+const consentSchema = z.object({
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  mode: z.enum(["confirmed", "played"]),
 });
 
 export const meetingRoutes = new Hono<AppBindings>();
@@ -189,6 +195,24 @@ meetingRoutes.post("/:id/recorder/claim", async (c) => {
       token: ticket.token,
       websocketUrl: websocketUrl.toString(),
     });
+  } catch (error) {
+    return serviceError(c, error);
+  }
+});
+
+meetingRoutes.post("/:id/consent", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const parsed = consentSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: "Invalid consent event" }, 400);
+  try {
+    return c.json({
+      consent: await recordMeetingConsent({
+        ...parsed.data,
+        meetingId: c.req.param("id"),
+        userId: user.id,
+      }),
+    }, 201);
   } catch (error) {
     return serviceError(c, error);
   }

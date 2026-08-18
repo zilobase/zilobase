@@ -487,8 +487,9 @@ fn run_capture(
         }
     };
     let (audio_tx, audio_rx) = mpsc::sync_channel(AUDIO_CHANNEL_CAPACITY);
+    let (stream_error_tx, stream_error_rx) = mpsc::channel();
     let paused = Arc::new(AtomicBool::new(false));
-    let stream_result = build_capture_streams(&config, audio_tx, paused.clone());
+    let stream_result = build_capture_streams(&config, audio_tx, stream_error_tx, paused.clone());
     let streams = match stream_result {
         Ok(streams) => streams,
         Err(error) => {
@@ -514,6 +515,10 @@ fn run_capture(
     let mut elapsed_samples = 0_u64;
     let mut stopping = false;
     while !stopping && elapsed_samples * 1_000 / (TARGET_SAMPLE_RATE as u64) < MAX_CAPTURE_MS {
+        if let Ok(error) = stream_error_rx.try_recv() {
+            set_error(&app, &status, error);
+            break;
+        }
         while let Ok(control) = control_rx.try_recv() {
             match control {
                 CaptureControl::Pause => {
@@ -621,6 +626,7 @@ fn run_capture(
 fn build_capture_streams(
     config: &MeetingCaptureConfig,
     sender: mpsc::SyncSender<AudioChunk>,
+    error_sender: mpsc::Sender<String>,
     paused: Arc<AtomicBool>,
 ) -> Result<Vec<cpal::Stream>, String> {
     let host = cpal::default_host();
@@ -631,6 +637,7 @@ fn build_capture_streams(
             &device,
             AudioSource::Microphone,
             sender.clone(),
+            error_sender.clone(),
             paused.clone(),
         )?);
     }
@@ -649,6 +656,7 @@ fn build_capture_streams(
             &device,
             AudioSource::System,
             sender,
+            error_sender,
             paused,
         )?);
     }
@@ -677,6 +685,7 @@ fn build_input_stream(
     device: &cpal::Device,
     source: AudioSource,
     sender: mpsc::SyncSender<AudioChunk>,
+    error_sender: mpsc::Sender<String>,
     paused: Arc<AtomicBool>,
 ) -> Result<cpal::Stream, String> {
     let config = device.default_input_config().map_err(|error| {
@@ -691,6 +700,9 @@ fn build_input_stream(
     let error_name = device.name().unwrap_or_else(|_| "audio input".into());
     let error_callback = move |error| {
         log::error!(target: "zilobase::meeting_capture", "Audio stream error for {error_name}: {error}");
+        let _ = error_sender.send(format!(
+            "The audio device {error_name} disconnected or stopped: {error}"
+        ));
     };
     let callback = move |samples: Vec<f32>| {
         if paused.load(Ordering::Acquire) {

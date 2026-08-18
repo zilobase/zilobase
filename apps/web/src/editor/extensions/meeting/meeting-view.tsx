@@ -7,6 +7,7 @@ import {
   Download,
   FileAudio,
   FolderOpen,
+  HardDrive,
   LoaderCircle,
   Mic,
   MoreHorizontal,
@@ -14,6 +15,7 @@ import {
   Play,
   Settings2,
   Sparkles,
+  Volume2,
 } from "lucide-react"
 import {
   useMeeting,
@@ -21,6 +23,7 @@ import {
   useMeetingLifecycle,
   useMeetingRecorder,
   useMeetingTranscript,
+  useRecordMeetingConsent,
   useUpdateMeeting,
   type MeetingLifecycleAction,
 } from "@zilobase/features/meetings"
@@ -28,11 +31,27 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
@@ -54,9 +73,14 @@ export function MeetingView({
   const updateMeeting = useUpdateMeeting(meetingId)
   const lifecycle = useMeetingLifecycle(meetingId)
   const recorder = useMeetingRecorder(meetingId)
+  const recordConsent = useRecordMeetingConsent(meetingId)
   const collaboration = useMeetingCollaboration(meetingId)
   const nativeCapture = useNativeMeetingCapture(meetingId)
   const [activeTab, setActiveTab] = useState<MeetingTab>("notes")
+  const [consentOpen, setConsentOpen] = useState(false)
+  const [captureSystemAudio, setCaptureSystemAudio] = useState(false)
+  const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>()
+  const [systemDeviceId, setSystemDeviceId] = useState<string | undefined>()
   const [title, setTitle] = useState("Meeting")
   const [leaseId, setLeaseId] = useState<string | null>(() =>
     typeof window === "undefined"
@@ -73,6 +97,17 @@ export function MeetingView({
   useEffect(() => {
     if (meeting?.title) setTitle(meeting.title)
   }, [meeting?.title])
+
+  useEffect(() => {
+    const microphone = nativeCapture.devices.find(
+      (device) => device.kind === "microphone" && device.isDefault,
+    ) ?? nativeCapture.devices.find((device) => device.kind === "microphone")
+    const system = nativeCapture.devices.find(
+      (device) => device.isSystemCaptureCandidate,
+    )
+    setMicrophoneDeviceId((current) => current ?? microphone?.id)
+    setSystemDeviceId((current) => current ?? system?.id)
+  }, [nativeCapture.devices])
 
   useEffect(() => {
     if (!leaseId || !activeRecording) return
@@ -103,8 +138,10 @@ export function MeetingView({
               audioTicket: claim.token,
               audioWebsocketUrl: claim.websocketUrl,
               captureMicrophone: true,
-              captureSystemAudio: false,
+              captureSystemAudio,
               meetingId,
+              microphoneDeviceId,
+              systemDeviceId: captureSystemAudio ? systemDeviceId : undefined,
             },
           })
           await lifecycle.mutateAsync({ action })
@@ -119,8 +156,26 @@ export function MeetingView({
       }
 
       if (!isTauri()) throw new Error("Recorder controls are available in the desktop app.")
-      if (action === "pause") await invoke("meeting_capture_pause")
-      if (action === "resume") await invoke("meeting_capture_resume")
+      if (action === "pause") {
+        await invoke("meeting_capture_pause")
+        try {
+          await lifecycle.mutateAsync({ action })
+        } catch (error) {
+          await invoke("meeting_capture_resume").catch(() => undefined)
+          throw error
+        }
+        return
+      }
+      if (action === "resume") {
+        await invoke("meeting_capture_resume")
+        try {
+          await lifecycle.mutateAsync({ action })
+        } catch (error) {
+          await invoke("meeting_capture_pause").catch(() => undefined)
+          throw error
+        }
+        return
+      }
       if (action === "stop") {
         const capture = await invoke<{ elapsedMs: number }>("meeting_capture_stop")
         await lifecycle.mutateAsync({ action, durationMs: capture.elapsedMs })
@@ -132,6 +187,33 @@ export function MeetingView({
       await lifecycle.mutateAsync({ action })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Meeting update failed.")
+    }
+  }
+
+  const confirmConsentAndStart = async () => {
+    try {
+      if (!meeting) throw new Error("Meeting is unavailable.")
+      let mode: "confirmed" | "played" = "confirmed"
+      if (meeting.autoPlayConsent) {
+        await playConsentMessage(meeting.consentMessage, meeting.language)
+        mode = "played"
+      }
+      await recordConsent.mutateAsync(mode)
+      await runLifecycle("start")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not start recording.")
+    }
+  }
+
+  const generateAndCleanUp = async () => {
+    try {
+      if (!meeting) throw new Error("Meeting is unavailable.")
+      await generateSummary.mutateAsync()
+      if (isTauri() && !meeting.archiveLocalAudio) {
+        await invoke("meeting_capture_delete_local_file", { meetingId })
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Summary failed.")
     }
   }
 
@@ -195,16 +277,78 @@ export function MeetingView({
             <DropdownMenuItem disabled>
               <FileAudio /> Upload audio or video
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings2 /> Language <span className="ml-auto text-muted-foreground">{meeting.language}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Sparkles /> Instructions <span className="ml-auto text-muted-foreground">Auto</span>
-            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Settings2 /> Language <span className="ml-auto text-muted-foreground">{meeting.language}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup
+                  onValueChange={(language) => updateMeeting.mutate({ language })}
+                  value={meeting.language}
+                >
+                  {[['en', 'English'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'], ['hi', 'Hindi']].map(([value, label]) => (
+                    <DropdownMenuRadioItem key={value} value={value}>{label}</DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Sparkles /> Instructions <span className="ml-auto text-muted-foreground">{meeting.instructionsPreset}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup
+                  onValueChange={(instructionsPreset) => updateMeeting.mutate({ instructionsPreset })}
+                  value={meeting.instructionsPreset}
+                >
+                  {[['auto', 'Auto'], ['sales', 'Sales'], ['standup', 'Standup'], ['interview', 'Interview']].map(([value, label]) => (
+                    <DropdownMenuRadioItem key={value} value={value}>{label}</DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>
-              <Mic /> Recorder controls require desktop
-            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Volume2 /> Consent
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuCheckboxItem
+                  checked={meeting.autoPlayConsent}
+                  onCheckedChange={(autoPlayConsent) => updateMeeting.mutate({ autoPlayConsent })}
+                >
+                  Auto-play message
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuItem onClick={() => void playConsentMessage(meeting.consentMessage, meeting.language)}>
+                  <Volume2 /> Play consent message
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuCheckboxItem
+              checked={meeting.archiveLocalAudio}
+              onCheckedChange={(archiveLocalAudio) => updateMeeting.mutate({ archiveLocalAudio })}
+            >
+              <HardDrive /> Archive local audio
+            </DropdownMenuCheckboxItem>
+            {nativeCapture.devices.some((device) => device.kind === "microphone") ? (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger><Mic /> Microphone</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup onValueChange={setMicrophoneDeviceId} value={microphoneDeviceId}>
+                    {nativeCapture.devices.filter((device) => device.kind === "microphone").map((device) => (
+                      <DropdownMenuRadioItem key={device.id} value={device.id}>{device.name}</DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            ) : null}
+            <DropdownMenuCheckboxItem
+              checked={captureSystemAudio}
+              disabled={!systemDeviceId}
+              onCheckedChange={setCaptureSystemAudio}
+            >
+              <FileAudio /> Capture system audio
+            </DropdownMenuCheckboxItem>
             {nativeCapture.recovery ? (
               <DropdownMenuItem
                 onClick={() => {
@@ -314,7 +458,7 @@ export function MeetingView({
           {editable ? (
             <div className="flex items-center gap-2">
               {meeting.status === "idle" || meeting.status === "failed" ? (
-                <Button onClick={() => void runLifecycle("start")} disabled={lifecycle.isPending || recorder.claim.isPending}>
+                <Button onClick={() => setConsentOpen(true)} disabled={lifecycle.isPending || recorder.claim.isPending}>
                   <Mic /> Start transcribing
                 </Button>
               ) : meeting.status === "recording" ? (
@@ -338,11 +482,7 @@ export function MeetingView({
               ) : meeting.status === "processing" ? (
                 <Button
                   disabled={generateSummary.isPending || !transcript.data?.segments.length}
-                  onClick={() => {
-                    void generateSummary.mutateAsync().catch((error) => {
-                      toast.error(error instanceof Error ? error.message : "Summary failed.")
-                    })
-                  }}
+                  onClick={() => void generateAndCleanUp()}
                 >
                   {generateSummary.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
                   Generate summary
@@ -350,11 +490,7 @@ export function MeetingView({
               ) : meeting.status === "completed" && summaryIsStale ? (
                 <Button
                   disabled={generateSummary.isPending}
-                  onClick={() => {
-                    void generateSummary.mutateAsync().catch((error) => {
-                      toast.error(error instanceof Error ? error.message : "Summary failed.")
-                    })
-                  }}
+                  onClick={() => void generateAndCleanUp()}
                   variant="outline"
                 >
                   <Sparkles /> Regenerate summary
@@ -364,8 +500,44 @@ export function MeetingView({
           ) : null}
         </footer>
       </div>
+      <AlertDialog onOpenChange={setConsentOpen} open={consentOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Notify everyone before recording</AlertDialogTitle>
+            <AlertDialogDescription>
+              {meeting.consentMessage} Confirm that everyone in the meeting has been notified and that recording is permitted where they are located.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConsentOpen(false)
+                void confirmConsentAndStart()
+              }}
+            >
+              {meeting.autoPlayConsent ? "Play message and start" : "Everyone is notified — start"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
+}
+
+function playConsentMessage(message: string, language: string) {
+  return new Promise<void>((resolve, reject) => {
+    if (!("speechSynthesis" in window)) {
+      reject(new Error("Spoken consent is unavailable on this device."))
+      return
+    }
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(message)
+    utterance.lang = language
+    utterance.onend = () => resolve()
+    utterance.onerror = () => reject(new Error("Could not play the consent message."))
+    window.speechSynthesis.speak(utterance)
+  })
 }
 
 function formatTimestamp(milliseconds: number) {

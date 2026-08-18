@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   heartbeatRecorder: vi.fn(),
   listTranscript: vi.fn(),
   releaseRecorder: vi.fn(),
+  recordConsent: vi.fn(),
   summarize: vi.fn(),
   transition: vi.fn(),
   update: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("./meeting-service", () => ({
   heartbeatMeetingRecorder: mocks.heartbeatRecorder,
   listMeetingTranscript: mocks.listTranscript,
   releaseMeetingRecorder: mocks.releaseRecorder,
+  recordMeetingConsent: mocks.recordConsent,
   transitionMeeting: mocks.transition,
   updateMeeting: mocks.update,
 }));
@@ -84,6 +86,7 @@ beforeEach(() => {
   mocks.listTranscript.mockResolvedValue([
     { id: "segment-1", sequence: 0, text: "Hello" },
   ]);
+  mocks.recordConsent.mockResolvedValue({ id: "consent-1", mode: "confirmed" });
   mocks.summarize.mockResolvedValue({
     meeting: { id: "meeting-1", status: "completed" },
     summary: { overview: "Summary" },
@@ -207,6 +210,24 @@ test("summary generation is scoped to the authenticated editor", async () => {
   assert.deepEqual(mocks.summarize.mock.calls[0]?.[0], {
     env,
     meetingId: "meeting-1",
+    userId: "user-1",
+  });
+});
+
+test("consent acknowledgement is audited before recorder claim", async () => {
+  const response = await appFor().request(
+    "/meetings/meeting-1/consent",
+    {
+      body: JSON.stringify({ mode: "confirmed" }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+    env,
+  );
+  assert.equal(response.status, 201);
+  assert.deepEqual(mocks.recordConsent.mock.calls[0]?.[0], {
+    meetingId: "meeting-1",
+    mode: "confirmed",
     userId: "user-1",
   });
 });

@@ -148,3 +148,17 @@ export function useGenerateMeetingSummary(meetingId: string) {
     },
   })
 }
+
+export function useRecordMeetingConsent(meetingId: string) {
+  const { apiFetch } = useZilobaseFeatures()
+  return useMutation({
+    mutationFn: (mode: "confirmed" | "played") =>
+      apiFetch<{ consent: { id: string } }>(`/meetings/${meetingId}/consent`, {
+        body: JSON.stringify({
+          metadata: { source: "meeting-block" },
+          mode,
+        }),
+        method: "POST",
+      }),
+  })
+}
