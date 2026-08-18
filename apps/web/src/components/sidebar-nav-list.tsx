@@ -351,6 +351,11 @@ export function getActiveDatabaseId(pathname: string) {
   return match ? decodeURIComponent(match[1]) : null
 }
 
+export function getActiveMeetingId(pathname: string) {
+  const match = pathname.match(/^\/m\/([^/?#]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 export function getActiveDatabaseViewId(search: unknown) {
   if (
     search &&

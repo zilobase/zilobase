@@ -1,21 +1,26 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { Link, useNavigate } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import {
-  CalendarDays,
-  ChevronDown,
+  ArrowUpRightIcon,
   CircleStop,
   Download,
   FileAudio,
   FolderOpen,
   HardDrive,
   LoaderCircle,
+  Maximize2,
   Mic,
   MoreHorizontal,
   Pause,
+  Pencil,
   Play,
   Settings2,
+  Smile,
   Sparkles,
   Volume2,
+  X,
 } from "lucide-react"
 import {
   useMeeting,
@@ -25,8 +30,15 @@ import {
   useMeetingTranscript,
   useRecordMeetingConsent,
   useUpdateMeeting,
+  meetingKeys,
   type MeetingLifecycleAction,
 } from "@zilobase/features/meetings"
+import {
+  getPageEmoji,
+  usePage,
+  useUpdatePage,
+  type PageMetadata,
+} from "@zilobase/features/pages"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -41,33 +53,53 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
-  DropdownMenu,
+  DropDrawer,
+  DropDrawerContent,
+  DropDrawerItem,
+  DropDrawerSub,
+  DropDrawerSubContent,
+  DropDrawerSubTrigger,
+  DropDrawerTrigger,
+} from "@/components/ui/dropdrawer"
+import {
   DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
+import { PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/lib/utils"
+import type { OpenPageOptions } from "@/packages/editor/types"
 import { MeetingCollaborativeEditor } from "./meeting-collaborative-editor"
+import { MeetingNotesEditor } from "./meeting-notes-editor"
 import { useMeetingCollaboration } from "./use-meeting-collaboration"
 import { useNativeMeetingCapture } from "./use-native-meeting-capture"
 
-type MeetingTab = "summary" | "notes" | "transcript"
+export type MeetingTab = "summary" | "notes" | "transcript"
 
 export function MeetingView({
   editable,
+  fullPage = false,
   meetingId,
+  notesMode = "embedded",
+  onActiveTabChange,
+  onOpenPage,
+  showTitle,
 }: {
   editable: boolean
+  fullPage?: boolean
   meetingId: string
+  notesMode?: "embedded" | "external"
+  onActiveTabChange?: (tab: MeetingTab) => void
+  onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
+  showTitle?: boolean
 }) {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const showMeetingTitle = showTitle ?? !fullPage
   const meetingQuery = useMeeting(meetingId)
   const generateSummary = useGenerateMeetingSummary(meetingId)
   const updateMeeting = useUpdateMeeting(meetingId)
@@ -76,18 +108,36 @@ export function MeetingView({
   const recordConsent = useRecordMeetingConsent(meetingId)
   const collaboration = useMeetingCollaboration(meetingId)
   const nativeCapture = useNativeMeetingCapture(meetingId)
-  const [activeTab, setActiveTab] = useState<MeetingTab>("notes")
+  const [activeTab, setActiveTabState] = useState<MeetingTab>("notes")
+  const setActiveTab = (tab: MeetingTab) => {
+    setActiveTabState(tab)
+    onActiveTabChange?.(tab)
+  }
   const [consentOpen, setConsentOpen] = useState(false)
   const [captureSystemAudio, setCaptureSystemAudio] = useState(false)
   const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>()
   const [systemDeviceId, setSystemDeviceId] = useState<string | undefined>()
   const [title, setTitle] = useState("Meeting")
+  const [titleActionsOpen, setTitleActionsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+  const titleInputRef = useRef<HTMLInputElement | null>(null)
   const [leaseId, setLeaseId] = useState<string | null>(() =>
     typeof window === "undefined"
       ? null
       : window.sessionStorage.getItem(`zilobase:meeting-recorder:${meetingId}`),
   )
   const meeting = meetingQuery.data?.meeting
+  const notesPageId = meeting?.notesPageId ?? null
+  const { data: notesPage } = usePage(notesPageId)
+  const updatePage = useUpdatePage()
+  const embeddedOpen = useOpenEmbeddedPage({
+    contextPageId: notesPageId,
+    page: notesPage,
+  })
+  const openPage = onOpenPage ?? embeddedOpen.openPage
+  const notesEmoji = notesPage ? getPageEmoji(notesPage) : null
+  const canEditEmoji = editable && Boolean(notesPageId)
   const activeRecording = meeting?.status === "recording" || meeting?.status === "paused"
   const transcript = useMeetingTranscript(
     meetingId,
@@ -217,9 +267,46 @@ export function MeetingView({
     }
   }
 
+  const saveMeetingEmoji = (nextEmoji: string) => {
+    if (!notesPage) return
+    updatePage.mutate(
+      {
+        id: notesPage.id,
+        metadata: {
+          ...((notesPage.metadata ?? {}) as PageMetadata),
+          emoji: nextEmoji,
+        },
+      },
+      {
+        onSuccess: () => {
+          void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
+        },
+      },
+    )
+    setEmojiPickerOpen(false)
+  }
+  const focusTitleInput = () => {
+    window.setTimeout(() => {
+      titleInputRef.current?.focus()
+      titleInputRef.current?.select()
+    }, 0)
+  }
+  const renderEmojiPicker = (onSelect?: () => void) => (
+    <IconEmojiPicker
+      onEmojiSelect={(emoji) => {
+        saveMeetingEmoji(emoji)
+        onSelect?.()
+      }}
+      onIconSelect={(svg) => {
+        saveMeetingEmoji(svg)
+        onSelect?.()
+      }}
+    />
+  )
+
   if (meetingQuery.isLoading) {
     return (
-      <div className="flex min-h-40 items-center justify-center rounded-xl border bg-card/50">
+      <div className="flex min-h-40 items-center justify-center">
         <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
       </div>
     )
@@ -247,150 +334,329 @@ export function MeetingView({
     meeting.summaryGeneratedAt
       && (transcript.data?.segments.length ?? 0) > meeting.summarySourceSegmentCount,
   )
+  const emojiPicker = notesEmoji ? (
+    canEditEmoji ? (
+      <div className="group/icon relative shrink-0">
+        <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
+          <PopoverTrigger asChild>
+            <button
+              aria-label="Change meeting icon"
+              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+              type="button"
+            >
+              <PageIconDisplay size="lg" value={notesEmoji} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="start"
+            className="w-auto gap-0 overflow-hidden p-0"
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            sideOffset={6}
+          >
+            {renderEmojiPicker()}
+          </PopoverContent>
+        </Popover>
+        <button
+          aria-label="Remove meeting icon"
+          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
+          onClick={() => saveMeetingEmoji("")}
+          type="button"
+        >
+          <X />
+        </button>
+      </div>
+    ) : (
+      <span
+        aria-label="Meeting icon"
+        className="flex size-9 shrink-0 items-center justify-center rounded-md text-2xl leading-none"
+      >
+        <PageIconDisplay size="lg" value={notesEmoji} />
+      </span>
+    )
+  ) : null
 
   return (
-    <section className="meeting-block-shell overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
-      <header className="flex min-h-14 items-center gap-3 border-b px-4">
-        <CalendarDays className="size-5 shrink-0" />
-        <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        <input
-          aria-label="Meeting title"
-          className="min-w-0 flex-1 bg-transparent text-lg font-semibold outline-none"
-          disabled={!editable || activeRecording}
-          onBlur={() => {
-            if (title.trim() !== meeting.title) {
-              updateMeeting.mutate({ title })
-            }
-          }}
-          onChange={(event) => setTitle(event.target.value)}
-          value={title}
-        />
-        <span className="text-sm text-muted-foreground">@Today</span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button aria-label="Meeting settings" size="icon-sm" variant="ghost">
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-60">
-            <DropdownMenuLabel>Meeting setup</DropdownMenuLabel>
-            <DropdownMenuItem disabled>
-              <FileAudio /> Upload audio or video
-            </DropdownMenuItem>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Settings2 /> Language <span className="ml-auto text-muted-foreground">{meeting.language}</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup
-                  onValueChange={(language) => updateMeeting.mutate({ language })}
-                  value={meeting.language}
-                >
-                  {[['en', 'English'], ['es', 'Spanish'], ['fr', 'French'], ['de', 'German'], ['hi', 'Hindi']].map(([value, label]) => (
-                    <DropdownMenuRadioItem key={value} value={value}>{label}</DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Sparkles /> Instructions <span className="ml-auto text-muted-foreground">{meeting.instructionsPreset}</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup
-                  onValueChange={(instructionsPreset) => updateMeeting.mutate({ instructionsPreset })}
-                  value={meeting.instructionsPreset}
-                >
-                  {[['auto', 'Auto'], ['sales', 'Sales'], ['standup', 'Standup'], ['interview', 'Interview']].map(([value, label]) => (
-                    <DropdownMenuRadioItem key={value} value={value}>{label}</DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuSeparator />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Volume2 /> Consent
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuCheckboxItem
-                  checked={meeting.autoPlayConsent}
-                  onCheckedChange={(autoPlayConsent) => updateMeeting.mutate({ autoPlayConsent })}
-                >
-                  Auto-play message
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuItem onClick={() => void playConsentMessage(meeting.consentMessage, meeting.language)}>
-                  <Volume2 /> Play consent message
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuCheckboxItem
-              checked={meeting.archiveLocalAudio}
-              onCheckedChange={(archiveLocalAudio) => updateMeeting.mutate({ archiveLocalAudio })}
-            >
-              <HardDrive /> Archive local audio
-            </DropdownMenuCheckboxItem>
-            {nativeCapture.devices.some((device) => device.kind === "microphone") ? (
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger><Mic /> Microphone</DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuRadioGroup onValueChange={setMicrophoneDeviceId} value={microphoneDeviceId}>
-                    {nativeCapture.devices.filter((device) => device.kind === "microphone").map((device) => (
-                      <DropdownMenuRadioItem key={device.id} value={device.id}>{device.name}</DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-            ) : null}
-            <DropdownMenuCheckboxItem
-              checked={captureSystemAudio}
-              disabled={!systemDeviceId}
-              onCheckedChange={setCaptureSystemAudio}
-            >
-              <FileAudio /> Capture system audio
-            </DropdownMenuCheckboxItem>
-            {nativeCapture.recovery ? (
-              <DropdownMenuItem
-                onClick={() => {
-                  void invoke("meeting_capture_open_local_file", { meetingId })
+    <div
+      className={cn(
+        "meeting-block-shell",
+        fullPage && "meeting-block-shell-full",
+      )}
+      contentEditable={false}
+    >
+      <div className="database-toolbar-section">
+      <div className="database-toolbar">
+        {showMeetingTitle ? (
+        <div className="group/title flex min-w-0 items-center gap-3">
+          {emojiPicker}
+          <input
+            aria-label="Meeting title"
+            className="h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none outline-none [field-sizing:content] placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-2xl"
+            disabled={!editable || activeRecording}
+            onBlur={() => {
+              if (title.trim() !== meeting.title) {
+                updateMeeting.mutate({ title })
+              }
+            }}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Meeting"
+            ref={titleInputRef}
+            value={title}
+          />
+          <DropDrawer open={titleActionsOpen} onOpenChange={setTitleActionsOpen}>
+            <DropDrawerTrigger asChild>
+              <Button
+                aria-label="Open meeting title actions"
+                className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/title:opacity-100 group-hover/title:opacity-100 data-[state=open]:opacity-100"
+                size="icon-xs"
+                type="button"
+                variant="ghost"
+              >
+                <MoreHorizontal />
+              </Button>
+            </DropDrawerTrigger>
+            <DropDrawerContent align="start" className="w-64">
+              <DropDrawerItem
+                disabled={fullPage}
+                onSelect={() => {
+                  void navigate({ params: { meetingId }, to: "/m/$meetingId" })
                 }}
               >
-                <FolderOpen /> Open local audio
-              </DropdownMenuItem>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </header>
-
-      <div className="p-4">
-        <div className="mb-4 flex items-center gap-2">
-          {tabs.map((tab) => (
-            <Button
-              className="capitalize"
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              size="sm"
-              variant={activeTab === tab ? "secondary" : "ghost"}
-            >
-              {tab === "summary" ? <Sparkles /> : tab === "notes" ? <Settings2 /> : <Mic />}
-              {tab}
-            </Button>
-          ))}
-          <span
-            className={cn(
-              "ml-auto text-xs",
-              collaboration.status === "connected"
-                ? "text-emerald-600"
-                : "text-muted-foreground",
-            )}
+                <ArrowUpRightIcon />
+                <span>View meeting</span>
+              </DropDrawerItem>
+              <DropDrawerItem
+                disabled={!editable}
+                onSelect={focusTitleInput}
+              >
+                <Pencil />
+                <span>Edit title</span>
+              </DropDrawerItem>
+              <DropDrawerSub>
+                <DropDrawerSubTrigger
+                  className={cn(!canEditEmoji && "pointer-events-none opacity-50")}
+                >
+                  <Smile />
+                  <span>Edit icon</span>
+                </DropDrawerSubTrigger>
+                <DropDrawerSubContent className="w-auto overflow-hidden p-0">
+                  {renderEmojiPicker(() => setTitleActionsOpen(false))}
+                </DropDrawerSubContent>
+              </DropDrawerSub>
+            </DropDrawerContent>
+          </DropDrawer>
+        </div>
+        ) : null}
+        <div className="flex min-w-0 items-center gap-2">
+          <Tabs
+            onValueChange={(value) => {
+              if (value) setActiveTab(value as MeetingTab)
+            }}
+            value={activeTab}
           >
-            {collaboration.status === "connected" ? "Live" : collaboration.status}
-          </span>
+            <TabsList className="justify-start overflow-x-auto" variant="tab">
+              {tabs.map((tab) => (
+                <TabsTrigger className="grow-0 capitalize" key={tab} value={tab}>
+                  {tab === "summary" ? <Sparkles /> : tab === "notes" ? <Settings2 /> : <Mic />}
+                  {tab}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <div className="min-w-0 flex-1" />
+          {ownsRecorder && activeRecording ? (
+            <span className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
+              <span
+                className="block h-full origin-left rounded-full bg-emerald-500 transition-transform"
+                style={{ transform: `scaleX(${nativeCapture.level})` }}
+              />
+            </span>
+          ) : null}
+          {activeRecording && !ownsRecorder ? (
+            <span className="text-xs text-muted-foreground">Another collaborator is recording</span>
+          ) : null}
           {summaryIsStale ? (
             <span className="text-xs text-amber-600">Summary out of date</span>
           ) : null}
+          <DropDrawer open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <DropDrawerTrigger asChild>
+              <Button
+                aria-label="Meeting settings"
+                className="shrink-0 text-muted-foreground"
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <Settings2 />
+              </Button>
+            </DropDrawerTrigger>
+            <DropDrawerContent align="end" className="w-64">
+              <DropDrawerSub>
+                <DropDrawerSubTrigger>
+                  <Settings2 />
+                  <span>Language</span>
+                </DropDrawerSubTrigger>
+                <DropDrawerSubContent>
+                  <DropdownMenuRadioGroup
+                    onValueChange={(language) => updateMeeting.mutate({ language })}
+                    value={meeting.language}
+                  >
+                    {[["en", "English"], ["es", "Spanish"], ["fr", "French"], ["de", "German"], ["hi", "Hindi"]].map(([value, label]) => (
+                      <DropdownMenuRadioItem key={value} value={value}>{label}</DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropDrawerSubContent>
+              </DropDrawerSub>
+              <DropDrawerSub>
+                <DropDrawerSubTrigger>
+                  <Sparkles />
+                  <span>Instructions</span>
+                </DropDrawerSubTrigger>
+                <DropDrawerSubContent>
+                  <DropdownMenuRadioGroup
+                    onValueChange={(instructionsPreset) => updateMeeting.mutate({ instructionsPreset })}
+                    value={meeting.instructionsPreset}
+                  >
+                    {[["auto", "Auto"], ["sales", "Sales"], ["standup", "Standup"], ["interview", "Interview"]].map(([value, label]) => (
+                      <DropdownMenuRadioItem key={value} value={value}>{label}</DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropDrawerSubContent>
+              </DropDrawerSub>
+              <DropDrawerSub>
+                <DropDrawerSubTrigger>
+                  <Volume2 />
+                  <span>Consent</span>
+                </DropDrawerSubTrigger>
+                <DropDrawerSubContent>
+                  <DropdownMenuCheckboxItem
+                    checked={meeting.autoPlayConsent}
+                    onCheckedChange={(autoPlayConsent) => updateMeeting.mutate({ autoPlayConsent })}
+                  >
+                    Auto-play message
+                  </DropdownMenuCheckboxItem>
+                  <DropDrawerItem onSelect={() => void playConsentMessage(meeting.consentMessage, meeting.language)}>
+                    <Volume2 />
+                    <span>Play consent message</span>
+                  </DropDrawerItem>
+                </DropDrawerSubContent>
+              </DropDrawerSub>
+              <DropDrawerItem
+                onSelect={() => updateMeeting.mutate({ archiveLocalAudio: !meeting.archiveLocalAudio })}
+              >
+                <HardDrive />
+                <span>{meeting.archiveLocalAudio ? "Don't archive local audio" : "Archive local audio"}</span>
+              </DropDrawerItem>
+              {nativeCapture.devices.some((device) => device.kind === "microphone") ? (
+                <DropDrawerSub>
+                  <DropDrawerSubTrigger>
+                    <Mic />
+                    <span>Microphone</span>
+                  </DropDrawerSubTrigger>
+                  <DropDrawerSubContent>
+                    <DropdownMenuRadioGroup onValueChange={setMicrophoneDeviceId} value={microphoneDeviceId}>
+                      {nativeCapture.devices.filter((device) => device.kind === "microphone").map((device) => (
+                        <DropdownMenuRadioItem key={device.id} value={device.id}>{device.name}</DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropDrawerSubContent>
+                </DropDrawerSub>
+              ) : null}
+              <DropDrawerItem
+                disabled={!systemDeviceId}
+                onSelect={() => setCaptureSystemAudio((current) => !current)}
+              >
+                <FileAudio />
+                <span>{captureSystemAudio ? "Stop capturing system audio" : "Capture system audio"}</span>
+              </DropDrawerItem>
+              {nativeCapture.recovery ? (
+                <DropDrawerItem
+                  onSelect={() => {
+                    void invoke("meeting_capture_open_local_file", { meetingId })
+                  }}
+                >
+                  <FolderOpen />
+                  <span>Open local audio</span>
+                </DropDrawerItem>
+              ) : null}
+            </DropDrawerContent>
+          </DropDrawer>
+          {editable ? (
+            meeting.status === "idle" || meeting.status === "failed" ? (
+              <Button
+                className="database-new-button"
+                disabled={lifecycle.isPending || recorder.claim.isPending}
+                onClick={() => setConsentOpen(true)}
+                type="button"
+              >
+                <Mic />
+                <span>Start transcribing</span>
+              </Button>
+            ) : meeting.status === "recording" ? (
+              <>
+                <Button className="database-new-button" disabled={!ownsRecorder} onClick={() => void runLifecycle("pause")} type="button" variant="outline">
+                  <Pause />
+                  <span>Pause</span>
+                </Button>
+                <Button className="database-new-button" disabled={!ownsRecorder} onClick={() => void runLifecycle("stop")} type="button" variant="destructive">
+                  <CircleStop />
+                  <span>Stop</span>
+                </Button>
+              </>
+            ) : meeting.status === "paused" ? (
+              <>
+                <Button className="database-new-button" disabled={!ownsRecorder} onClick={() => void runLifecycle("resume")} type="button" variant="outline">
+                  <Play />
+                  <span>Resume</span>
+                </Button>
+                <Button className="database-new-button" disabled={!ownsRecorder} onClick={() => void runLifecycle("stop")} type="button" variant="destructive">
+                  <CircleStop />
+                  <span>Stop</span>
+                </Button>
+              </>
+            ) : meeting.status === "processing" ? (
+              <Button
+                className="database-new-button"
+                disabled={generateSummary.isPending || !transcript.data?.segments.length}
+                onClick={() => void generateAndCleanUp()}
+                type="button"
+              >
+                {generateSummary.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
+                <span>Generate summary</span>
+              </Button>
+            ) : meeting.status === "completed" && summaryIsStale ? (
+              <Button
+                className="database-new-button"
+                disabled={generateSummary.isPending}
+                onClick={() => void generateAndCleanUp()}
+                type="button"
+                variant="outline"
+              >
+                <Sparkles />
+                <span>Regenerate summary</span>
+              </Button>
+            ) : null
+          ) : null}
+          {!fullPage ? (
+            <Button
+              aria-label="Expand meeting"
+              asChild
+              className="database-expand-button"
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <Link params={{ meetingId }} title="Expand meeting" to="/m/$meetingId">
+                <Maximize2 />
+              </Link>
+            </Button>
+          ) : null}
         </div>
+      </div>
+      </div>
 
+      {notesMode === "external" && activeTab === "notes" ? null : (
+      <div className="database-scroll-section meeting-block-body">
         {activeTab === "transcript" ? (
           <div className="min-h-28 rounded-lg bg-muted/35 p-4 text-sm">
             {transcript.data?.segments.length ? (
@@ -422,84 +688,33 @@ export function MeetingView({
               </Button>
             ) : null}
           </div>
+        ) : activeTab === "notes" ? (
+          notesPageId ? (
+            <MeetingNotesEditor
+              editable={editable}
+              onOpenPage={openPage}
+              pageId={notesPageId}
+            />
+          ) : (
+            <div className="min-h-28 text-sm text-muted-foreground">
+              Meeting notes are still being created…
+            </div>
+          )
         ) : collaboration.document ? (
           <MeetingCollaborativeEditor
             document={collaboration.document}
-            editable={editable && activeTab === "notes"}
-            field={activeTab}
-            placeholder={
-              activeTab === "summary"
-                ? "The meeting summary will appear here."
-                : "Write agenda items and collaborative notes…"
-            }
+            editable={false}
+            field="summary"
+            placeholder="The meeting summary will appear here."
             provider={collaboration.provider}
           />
         ) : (
           <div className="min-h-28 text-sm text-muted-foreground">
-            {collaboration.error ?? "Connecting collaborative notes…"}
+            {collaboration.error ?? "Connecting meeting summary…"}
           </div>
         )}
-
-        <footer className="mt-4 flex items-center justify-between border-t pt-4">
-          <div className="flex items-center gap-2 text-xs capitalize text-muted-foreground">
-            <span>{meeting.status === "idle" ? "Ready to record" : meeting.status}</span>
-            {ownsRecorder && activeRecording ? (
-              <span className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
-                <span
-                  className="block h-full origin-left rounded-full bg-emerald-500 transition-transform"
-                  style={{ transform: `scaleX(${nativeCapture.level})` }}
-                />
-              </span>
-            ) : null}
-            {activeRecording && !ownsRecorder ? (
-              <span>Another collaborator is recording</span>
-            ) : null}
-          </div>
-          {editable ? (
-            <div className="flex items-center gap-2">
-              {meeting.status === "idle" || meeting.status === "failed" ? (
-                <Button onClick={() => setConsentOpen(true)} disabled={lifecycle.isPending || recorder.claim.isPending}>
-                  <Mic /> Start transcribing
-                </Button>
-              ) : meeting.status === "recording" ? (
-                <>
-                  <Button disabled={!ownsRecorder} onClick={() => void runLifecycle("pause")} variant="outline">
-                    <Pause /> Pause
-                  </Button>
-                  <Button disabled={!ownsRecorder} onClick={() => void runLifecycle("stop")} variant="destructive">
-                    <CircleStop /> Stop
-                  </Button>
-                </>
-              ) : meeting.status === "paused" ? (
-                <>
-                  <Button disabled={!ownsRecorder} onClick={() => void runLifecycle("resume")} variant="outline">
-                    <Play /> Resume
-                  </Button>
-                  <Button disabled={!ownsRecorder} onClick={() => void runLifecycle("stop")} variant="destructive">
-                    <CircleStop /> Stop
-                  </Button>
-                </>
-              ) : meeting.status === "processing" ? (
-                <Button
-                  disabled={generateSummary.isPending || !transcript.data?.segments.length}
-                  onClick={() => void generateAndCleanUp()}
-                >
-                  {generateSummary.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
-                  Generate summary
-                </Button>
-              ) : meeting.status === "completed" && summaryIsStale ? (
-                <Button
-                  disabled={generateSummary.isPending}
-                  onClick={() => void generateAndCleanUp()}
-                  variant="outline"
-                >
-                  <Sparkles /> Regenerate summary
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-        </footer>
       </div>
+      )}
       <AlertDialog onOpenChange={setConsentOpen} open={consentOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -521,7 +736,7 @@ export function MeetingView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </section>
+    </div>
   )
 }
 

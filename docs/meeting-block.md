@@ -1,6 +1,6 @@
 # Meeting block
 
-The meeting block is an editor-native, collaborative recorder for the Zilobase desktop app. It captures local audio, streams short PCM windows for transcription, keeps notes and generated summaries in a meeting-scoped Yjs document, and stores the durable meeting state and transcript in Postgres.
+The meeting block is an editor-native, collaborative recorder for the Zilobase desktop app. It captures local audio, streams short PCM windows for transcription, keeps generated summaries in a meeting-scoped Yjs document, stores notes in a real page (`notesPageId`) that uses the same editor as every other page, and stores the durable meeting state and transcript in Postgres. The block header matches the inline database title, icon, more-menu, expand, and primary-action layout. Meetings also appear in the sidebar Meetings tab and open at `/m/:meetingId`.
 
 The feature is off by default. It should remain behind `MEETING_BLOCK_ENABLED=false` until the database migrations, WebSocket endpoints, OpenAI credentials, and desktop release are deployed together.
 
@@ -17,6 +17,7 @@ Desktop meeting block
 
 Postgres
   ├─ meeting
+  ├─ page (type=meeting, notes)
   ├─ meeting_collaboration_document
   ├─ meeting_transcript_segment
   └─ meeting_consent_event
@@ -44,7 +45,7 @@ Raw audio is buffered in memory in roughly five-second transcription windows and
 
 ## Configuration
 
-Apply migrations `0039_meetings.sql`, `0040_meeting_recorder_lease.sql`, and `0041_meeting_summary_state.sql`, then configure:
+Apply migrations `0039_meetings.sql`, `0040_meeting_recorder_lease.sql`, `0041_meeting_summary_state.sql`, and `0042_meeting_notes_page.sql`, then configure:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |

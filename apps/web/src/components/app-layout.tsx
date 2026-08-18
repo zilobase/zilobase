@@ -29,8 +29,8 @@ import {
 
 import {
   getDatabaseId,
-  getPageId,
   PagePaneHeader,
+  useRoutePageId,
 } from "@/components/page-pane-header"
 import { SettingsDialog } from "@/components/settings-dialog"
 import {
@@ -106,21 +106,45 @@ export function AppLayout({
       }
     >
       <AppSearchProvider>
-        <PageLayoutSidebarProvider
-          key={getPageId(pathname) ?? pathname}
-          pageId={getPageId(pathname)}
+        <AppLayoutWithRoutePage
+          pathname={pathname}
+          utilitySidebar={utilitySidebar}
+          utilitySidebarOpen={utilitySidebarOpen}
         >
-          <LayoutEditorProvider>
-            <AppLayoutContent
-              utilitySidebar={utilitySidebar}
-              utilitySidebarOpen={utilitySidebarOpen}
-            >
-              {children}
-            </AppLayoutContent>
-          </LayoutEditorProvider>
-        </PageLayoutSidebarProvider>
+          {children}
+        </AppLayoutWithRoutePage>
       </AppSearchProvider>
     </SidebarProvider>
+  )
+}
+
+function AppLayoutWithRoutePage({
+  children,
+  pathname,
+  utilitySidebar,
+  utilitySidebarOpen,
+}: {
+  children?: ReactNode
+  pathname: string
+  utilitySidebar?: ReactNode
+  utilitySidebarOpen: boolean
+}) {
+  const routePageId = useRoutePageId(pathname)
+
+  return (
+    <PageLayoutSidebarProvider
+      key={routePageId ?? pathname}
+      pageId={routePageId}
+    >
+      <LayoutEditorProvider>
+        <AppLayoutContent
+          utilitySidebar={utilitySidebar}
+          utilitySidebarOpen={utilitySidebarOpen}
+        >
+          {children}
+        </AppLayoutContent>
+      </LayoutEditorProvider>
+    </PageLayoutSidebarProvider>
   )
 }
 
@@ -148,7 +172,7 @@ function AppLayoutContent({
   const [activeSettingsSection, setActiveSettingsSection] =
     useState<SettingsSection>(() => getSettingsSection(pathname))
   const isAiPage = pathname === "/ai"
-  const pageId = getPageId(pathname)
+  const pageId = useRoutePageId(pathname)
   const databaseId = getDatabaseId(pathname)
   const { data: databasePayload } = useDatabase(databaseId, {
     includeDeleted: true,

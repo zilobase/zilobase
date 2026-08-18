@@ -5,6 +5,7 @@ import {
   HelpCircleIcon,
   HistoryIcon,
   LockIcon,
+  CalendarDays,
   SparklesIcon,
   StarIcon,
   Trash2Icon,
@@ -32,6 +33,7 @@ const fixedItems: Array<{
   label: string
 }> = [
   { icon: SparklesIcon, id: "askAi", label: "Ask AI" },
+  { icon: CalendarDays, id: "meetings", label: "Meetings" },
   { icon: CalendarIcon, id: "calendar", label: "Calendar" },
   { icon: BlocksIcon, id: "templates", label: "Templates" },
   { icon: Trash2Icon, id: "trash", label: "Trash" },
@@ -59,11 +61,11 @@ export function SidebarCustomizeDialog({
   open: boolean
 }) {
   const items = [
-    ...fixedItems.slice(0, 1),
+    ...fixedItems.slice(0, 2),
     ...config.sectionOrder.map((id) => ({ id, ...sectionDetails[id] })),
-    ...fixedItems.slice(1),
+    ...fixedItems.slice(2),
   ]
-  const trailingItemsStart = 1 + config.sectionOrder.length
+  const trailingItemsStart = 2 + config.sectionOrder.length
 
   const toggleItem = (itemId: SidebarItemId) => {
     const hidden = config.hiddenItems.includes(itemId)

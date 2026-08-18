@@ -137,7 +137,8 @@
     @apply pt-4;
   }
 
-  .tiptap-editor > * + .node-databaseBlock .database-toolbar-section {
+  .tiptap-editor > * + .node-databaseBlock .database-toolbar-section,
+  .tiptap-editor > * + .node-meetingBlock .database-toolbar-section {
     @apply pt-2;
   }
 
@@ -2606,8 +2607,40 @@
 }
 
 .tiptap-editor .node-meetingBlock {
-  margin-block: 1.25rem;
+  @apply min-w-0;
+}
+
+.tiptap-editor .node-meetingBlock.editor-block-selection {
+  background: transparent !important;
+  color: inherit;
+}
+
+.tiptap-editor .node-meetingBlock .database-toolbar-section {
+  @apply box-border px-3 pb-0.5;
+}
+
+.tiptap-editor
+  .node-meetingBlock.editor-block-selection
+  .database-toolbar-section {
+  background-clip: border-box;
+  background-color: var(--editor-selection-background);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: var(--editor-selection-foreground);
+  display: block;
   width: 100%;
+}
+
+.tiptap-editor .node-meetingBlock .meeting-block-shell {
+  @apply min-w-0 overflow-visible bg-transparent;
+}
+
+.tiptap-editor .node-meetingBlock .database-toolbar-section .database-toolbar {
+  @apply px-0;
+}
+
+.meeting-block-shell-full .database-toolbar {
+  @apply min-h-0 py-0 pr-0;
 }
 
 .tiptap-editor .meeting-block-shell {
@@ -2616,8 +2649,25 @@
 
 .tiptap-editor .meeting-block-shell input,
 .tiptap-editor .meeting-block-shell button,
-.tiptap-editor .meeting-collaborative-editor {
+.tiptap-editor .meeting-collaborative-editor,
+.tiptap-editor .meeting-notes-editor {
   cursor: auto;
+}
+
+.meeting-block-body {
+  @apply relative mt-1 min-w-0 overflow-visible pb-0;
+}
+
+.meeting-notes-editor .tiptap-editor {
+  min-height: 12rem;
+  padding-inline: 0;
+  padding-top: 0.25rem;
+  padding-bottom: 0.5rem;
+}
+
+.meeting-notes-editor .tiptap {
+  min-height: 12rem;
+  outline: none;
 }
 
 .meeting-collaborative-editor .tiptap {

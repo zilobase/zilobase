@@ -20,6 +20,7 @@ import {
   deleteMeeting,
   getMeetingForUser,
   heartbeatMeetingRecorder,
+  listMeetingsForUser,
   listMeetingTranscript,
   recordMeetingConsent,
   releaseMeetingRecorder,
@@ -92,6 +93,30 @@ function serviceError(c: Context<AppBindings>, error: unknown) {
           : 400,
   );
 }
+
+meetingRoutes.get("/", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const workspaceId = c.req.query("workspaceId");
+  if (!workspaceId) {
+    return c.json({ error: "workspaceId is required" }, 400);
+  }
+
+  const mismatch = rejectMismatchedApiKeyWorkspace(c, workspaceId);
+  if (mismatch) return mismatch;
+
+  try {
+    return c.json({
+      meetings: await listMeetingsForUser({
+        userId: user.id,
+        workspaceId,
+      }),
+    });
+  } catch (error) {
+    return serviceError(c, error);
+  }
+});
 
 meetingRoutes.post("/", async (c) => {
   const user = requireUser(c);

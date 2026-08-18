@@ -14,6 +14,7 @@ export const sidebarSectionIds = [
 
 export const sidebarItemIds = [
   "askAi",
+  "meetings",
   ...sidebarSectionIds,
   "calendar",
   "templates",

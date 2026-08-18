@@ -24,6 +24,7 @@ export type MeetingRecord = {
   id: string
   instructionsPreset: string
   language: string
+  notesPageId: string | null
   pageId: string
   recorderId: string | null
   recorderLeaseId: string | null
@@ -38,6 +39,12 @@ export type MeetingRecord = {
   updatedAt: string
   workspaceId: string
 }
+
+export type MeetingListItem = MeetingRecord & {
+  emoji: string | null
+}
+
+export type MeetingListResponse = { meetings: MeetingListItem[] }
 
 export type MeetingResponse = { meeting: MeetingRecord }
 
@@ -64,8 +71,29 @@ export const meetingKeys = {
   details: () => [...meetingKeys.all, "detail"] as const,
   detail: (meetingId: string | null | undefined) =>
     [...meetingKeys.details(), meetingId ?? "none"] as const,
+  lists: () => [...meetingKeys.all, "list"] as const,
+  list: (workspaceId: string | null | undefined) =>
+    [...meetingKeys.lists(), workspaceId ?? "none"] as const,
   transcript: (meetingId: string | null | undefined) =>
     [...meetingKeys.detail(meetingId), "transcript"] as const,
+}
+
+export function workspaceMeetingsQueryOptions(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId),
+    queryKey: meetingKeys.list(workspaceId),
+    queryFn: ({ signal }) => {
+      if (!workspaceId) throw new Error("Workspace ID is required")
+      return apiFetch<MeetingListResponse>(
+        `/meetings?workspaceId=${encodeURIComponent(workspaceId)}`,
+        { signal },
+      )
+    },
+    staleTime: 15_000,
+  })
 }
 
 export function meetingQueryOptions(

@@ -43,7 +43,7 @@ export function getMostRecentItemPath(
 }
 
 function isActivePage(page: Page) {
-  return !page.deletedAt
+  return !page.deletedAt && page.type !== "meeting"
 }
 
 function isActiveDatabase(database: PageDatabase) {

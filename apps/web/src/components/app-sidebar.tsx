@@ -21,12 +21,14 @@ import {
 } from "@/components/ui/collapsible";
 import { useAppSearch } from "@/components/app-search";
 import { NavFavorites } from "@/components/nav-favorites";
+import { NavMeetings } from "@/components/nav-meetings";
 import { NavSecondary } from "@/components/nav-secondary";
 import { NavPageSection } from "@/components/nav-pages";
 import { buildSidebarNavigation } from "@/components/sidebar-navigation-model";
 import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,
+  getActiveMeetingId,
   getActivePageId,
 } from "@/components/sidebar-nav-list";
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state";
@@ -69,6 +71,7 @@ import {
   useCreateDatabase,
   useSetDatabaseFavorite,
 } from "@zilobase/features/databases";
+import { useWorkspaceMeetings } from "@zilobase/features/meetings";
 import {
   useCreatePage,
   usePageNavigation,
@@ -86,6 +89,7 @@ import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
 import {
   BlocksIcon,
+  CalendarDays,
   CalendarIcon,
   CalendarRange,
   ChartPie,
@@ -141,6 +145,12 @@ const data = {
       title: "Ask AI",
       url: "/ai",
       icon: SparklesIcon,
+    },
+    {
+      id: "meetings" as const,
+      title: "Meetings",
+      url: "/meetings",
+      icon: CalendarDays,
     },
   ],
   navSecondary: [
@@ -224,6 +234,7 @@ export function AppSidebar({
   const workspaceId =
     storedWorkspace?.id ?? sessionWorkspace?.id ?? workspaces[0]?.id ?? null;
   const { data: navigation } = usePageNavigation(workspaceId);
+  const { data: meetingsPayload } = useWorkspaceMeetings(workspaceId);
   const { isPending: isCreatingPage, mutateAsync: createPage } = useCreatePage();
   const { isPending: isCreatingDatabase, mutateAsync: createDatabase } =
     useCreateDatabase();
@@ -253,15 +264,28 @@ export function AppSidebar({
       ),
     [navigation],
   );
-  const [sidebarMode, setSidebarMode] = React.useState<"home" | "askAi">(
-    pathname === "/ai" ? "askAi" : "home",
+  const [sidebarMode, setSidebarMode] = React.useState<
+    "home" | "askAi" | "meetings"
+  >(
+    pathname === "/ai"
+      ? "askAi"
+      : pathname === "/meetings" || pathname.startsWith("/m/")
+        ? "meetings"
+        : "home",
   );
 
   React.useEffect(() => {
-    setSidebarMode(pathname === "/ai" ? "askAi" : "home");
+    setSidebarMode(
+      pathname === "/ai"
+        ? "askAi"
+        : pathname === "/meetings" || pathname.startsWith("/m/")
+          ? "meetings"
+          : "home",
+    );
   }, [pathname]);
 
   const isAiPage = sidebarMode === "askAi";
+  const isMeetingsPage = sidebarMode === "meetings";
   const hiddenSidebarItems = React.useMemo(
     () => new Set(sidebarConfig.hiddenItems),
     [sidebarConfig.hiddenItems],
@@ -427,6 +451,11 @@ export function AppSidebar({
       <SidebarContent>
         {isAiPage ? (
           <AiSidebarHistory />
+        ) : isMeetingsPage ? (
+          <NavMeetings
+            activeMeetingId={getActiveMeetingId(pathname)}
+            meetings={meetingsPayload?.meetings ?? []}
+          />
         ) : (
           <>
             {sidebarConfig.sectionOrder.map((sectionId) =>
@@ -604,18 +633,22 @@ function NavMain({
   sidebarMode,
 }: {
   items: {
-    id: "home" | SidebarItemId;
+    id: "home" | "meetings" | SidebarItemId;
     title: string;
     url: string;
     icon: LucideIcon;
   }[];
   onOpenSearch: () => void;
-  onSidebarModeChange: (mode: "home" | "askAi") => void;
-  sidebarMode: "home" | "askAi";
+  onSidebarModeChange: (mode: "home" | "askAi" | "meetings") => void;
+  sidebarMode: "home" | "askAi" | "meetings";
 }) {
   const navigate = useNavigate();
   const routeSelected = items.findIndex((item) =>
-    sidebarMode === "home" ? item.id === "home" : item.id === "askAi",
+    sidebarMode === "home"
+      ? item.id === "home"
+      : sidebarMode === "meetings"
+        ? item.id === "meetings"
+        : item.id === "askAi",
   );
   const [selected, setSelected] = React.useState<number | null>(routeSelected);
   const tabs = React.useMemo<ExpandableTabItem[]>(
@@ -640,6 +673,12 @@ function NavMain({
 
     if (item.id === "home") {
       onSidebarModeChange("home");
+      void navigate({ to: item.url as never });
+      return;
+    }
+
+    if (item.id === "meetings") {
+      onSidebarModeChange("meetings");
       void navigate({ to: item.url as never });
       return;
     }

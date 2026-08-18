@@ -60,6 +60,7 @@ type PendingDatabaseBlockDrop = {
 }
 
 export function Editor({
+  afterMetadata,
   commentController,
   collaboration,
   content = starterContent,
@@ -77,6 +78,8 @@ export function Editor({
   emoji,
   iconPosition,
   fullWidth = true,
+  hideEditorContent = false,
+  hideMetadata = false,
   layoutConfig,
   layoutPanelMode = "auto",
   layoutPreview = false,
@@ -506,6 +509,13 @@ export function Editor({
 
     return (
       <PageMetadata
+        afterHeading={
+          module.type === "heading" && afterMetadata ? (
+            <div className={cn("pt-4", hideEditorContent && "pb-10")}>
+              {afterMetadata}
+            </div>
+          ) : null
+        }
         compact={module.region === "panel" || Boolean(onLayoutChange)}
         compactSpacing={onLayoutChange ? "comfortable" : "default"}
         collaborationUsers={
@@ -538,7 +548,14 @@ export function Editor({
   }
 
   const editorBody = (
-    <div className={cn("flex w-full flex-col text-foreground", layoutPreview ? "h-full min-h-0" : "min-h-[calc(100svh-3rem)]")}>
+    <div className={cn(
+      "flex w-full flex-col text-foreground",
+      layoutPreview
+        ? "h-full min-h-0"
+        : hideMetadata
+          ? "min-h-[16rem]"
+          : "min-h-[calc(100svh-3rem)]",
+    )}>
       <section
         className={cn(
           "relative min-h-0 flex-1",
@@ -582,7 +599,14 @@ export function Editor({
           setPlusMenuOpen={setPlusMenuOpen}
           tocItems={layoutPreview ? [] : tocItems}
         />
-        {layoutConfig ? (
+        {hideMetadata ? (
+          <div
+            className="min-w-0"
+            data-editor-page-content={pageContentLayout.mode}
+          >
+            <EditorContent editor={editor} />
+          </div>
+        ) : layoutConfig ? (
           <PageLayoutModuleCanvas
             config={layoutConfig}
             fixedAfterHeading={
@@ -633,6 +657,13 @@ export function Editor({
         ) : (
           <>
             <PageMetadata
+              afterHeading={
+                afterMetadata ? (
+                  <div className={cn("pt-4", hideEditorContent && "pb-10")}>
+                    {afterMetadata}
+                  </div>
+                ) : null
+              }
               collaborationUsers={collaboration?.users}
               contentClassName={pageContentLayout.className}
               cover={cover}
@@ -656,7 +687,7 @@ export function Editor({
               className={pageContentLayout.className}
               data-editor-page-content={pageContentLayout.mode}
             >
-              <EditorContent editor={editor} />
+              {hideEditorContent ? null : <EditorContent editor={editor} />}
             </div>
           </>
         )}

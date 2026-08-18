@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core"
-import type { MutableRefObject } from "react"
+import type { MutableRefObject, ReactNode } from "react"
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
 import type { EmbedProvider } from "@/packages/editor/extensions/embed-block"
 import type {
@@ -87,7 +87,10 @@ export type EditorProps = {
   commentsEditable?: boolean
   databaseEditable?: boolean
   enableComments?: boolean
+  afterMetadata?: ReactNode
   fullWidth?: boolean
+  hideEditorContent?: boolean
+  hideMetadata?: boolean
   layoutConfig?: PageLayoutConfig
   layoutPanelMode?: PageLayoutPanelMode
   layoutPreview?: boolean

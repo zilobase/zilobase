@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useParams, useRouteContext } from "@tanstack/react-router";
 import { ArrowRight, Maximize2 } from "lucide-react";
 
@@ -65,11 +65,15 @@ import { usePageCommentsRegistry } from "@/contexts/page-comments-registry";
 import { useTitleDraft } from "@/hooks/use-title-draft";
 
 type PageEditorPaneProps = {
+  afterMetadata?: ReactNode;
   className?: string;
   databaseId?: string | null;
   enableComments?: boolean;
+  hideChrome?: boolean;
+  hideEditorContent?: boolean;
   layoutPanelMode?: PageLayoutPanelMode;
   onOpenPage: (pageId: string, options?: OpenPageOptions) => void;
+  onTitleChange?: (title: string) => void;
   readOnly?: boolean;
   pageId: string;
 };
@@ -298,11 +302,15 @@ function getPageBreadcrumbLabel(
 }
 
 export function PageEditorPane({
+  afterMetadata,
   className,
   databaseId,
   enableComments = true,
+  hideChrome = false,
+  hideEditorContent = false,
   layoutPanelMode = "auto",
   onOpenPage,
+  onTitleChange,
   readOnly = false,
   pageId,
 }: PageEditorPaneProps) {
@@ -360,6 +368,7 @@ export function PageEditorPane({
     onSave: async (nextName) => {
       if (!page) return;
       await updatePage.mutateAsync({ id: page.id, name: nextName });
+      onTitleChange?.(nextName);
     },
     sourceId: page?.id ?? null,
     sourceTitle: page?.name ?? "",
@@ -817,6 +826,7 @@ export function PageEditorPane({
       ) : null}
       <Editor
         key={page.id}
+        afterMetadata={afterMetadata}
         collaboration={
           collaboration.document
             ? {
@@ -842,6 +852,7 @@ export function PageEditorPane({
         commentsEditable={pageEditable && liveEditingReady && !offlineEditing && enableComments}
         databaseEditable={databaseEditingReady}
         enableComments={enableComments && !offlineEditing}
+        hideEditorContent={hideEditorContent}
         onEditorReady={(editor) => {
           editorInstanceRef.current = editor;
           lastSavedContentRef.current = editor
@@ -853,8 +864,9 @@ export function PageEditorPane({
         }}
         emoji={emoji}
         iconPosition={iconPosition}
-        fullWidth={fullWidth}
-        layoutConfig={appliedLayout}
+        fullWidth={hideChrome ? true : fullWidth}
+        hideMetadata={hideChrome}
+        layoutConfig={hideChrome ? undefined : appliedLayout}
         layoutPanelMode={layoutPanelMode}
         onContentChange={updateContent}
         onCoverChange={updateCover}

@@ -1,13 +1,20 @@
 import { and, asc, desc, eq, gt, isNull, lt, or } from "drizzle-orm";
 
-import { canAccessPageInWorkspace } from "../../access";
+import {
+  canAccessPageInWorkspace,
+  getAccessiblePageIds,
+  getMembership,
+} from "../../access";
+import { encodePageContentAsYjs } from "../../collaboration/service";
 import { db } from "../../db";
 import {
   meeting,
   meetingConsentEvent,
   meetingTranscriptSegment,
   page,
+  pageCollaborationDocument,
 } from "../../db/schema";
+import { upsertPageItemPlacement } from "../../page-item-placements";
 import { ServiceMutationError } from "../../services/mutation-error";
 import { clampMeetingDuration, getNextMeetingStatus } from "./meeting-state";
 import type {
@@ -15,6 +22,11 @@ import type {
   MeetingPatch,
   MeetingStatus,
 } from "./meeting-types";
+
+const EMPTY_NOTES_CONTENT = {
+  content: [{ type: "paragraph" }],
+  type: "doc",
+};
 
 const RECORDER_LEASE_MS = 30_000;
 
@@ -44,7 +56,7 @@ export async function getMeetingForUser(
     throw new ServiceMutationError("Forbidden", 403);
   }
 
-  return record;
+  return ensureMeetingNotesPage(record, userId);
 }
 
 export async function createMeeting(input: {
@@ -80,16 +92,46 @@ export async function createMeeting(input: {
     throw new ServiceMutationError("Forbidden", 403);
   }
 
-  const [created] = await db
-    .insert(meeting)
-    .values({
+  const title = input.title?.trim() || "Meeting";
+  const notesPageId = crypto.randomUUID();
+  const now = new Date();
+
+  const [created] = await db.transaction(async (tx) => {
+    await tx.insert(page).values({
+      content: EMPTY_NOTES_CONTENT,
       createdById: input.userId,
-      id: crypto.randomUUID(),
-      pageId: input.pageId,
-      title: input.title?.trim() || "Meeting",
+      id: notesPageId,
+      metadata: { emoji: "📅" },
+      name: title,
+      type: "meeting",
+      url: "#",
       workspaceId: input.workspaceId,
-    })
-    .returning();
+    });
+    await tx.insert(pageCollaborationDocument).values({
+      pageId: notesPageId,
+      state: Buffer.from(encodePageContentAsYjs(EMPTY_NOTES_CONTENT)),
+      updatedAt: now,
+    });
+    await upsertPageItemPlacement(tx, {
+      itemId: notesPageId,
+      itemKind: "page",
+      parentId: input.pageId,
+      parentKind: "page",
+      placementKind: "primary",
+      workspaceId: input.workspaceId,
+    });
+    return tx
+      .insert(meeting)
+      .values({
+        createdById: input.userId,
+        id: crypto.randomUUID(),
+        notesPageId,
+        pageId: input.pageId,
+        title,
+        workspaceId: input.workspaceId,
+      })
+      .returning();
+  });
 
   return created;
 }
@@ -124,11 +166,22 @@ export async function updateMeeting(input: {
     values.archiveLocalAudio = input.patch.archiveLocalAudio;
   }
 
-  const [updated] = await db
-    .update(meeting)
-    .set(values)
-    .where(eq(meeting.id, existing.id))
-    .returning();
+  const [updated] = await db.transaction(async (tx) => {
+    const [meetingRecord] = await tx
+      .update(meeting)
+      .set(values)
+      .where(eq(meeting.id, existing.id))
+      .returning();
+
+    if (values.title !== undefined && existing.notesPageId) {
+      await tx
+        .update(page)
+        .set({ name: values.title, updatedAt: values.updatedAt })
+        .where(eq(page.id, existing.notesPageId));
+    }
+
+    return [meetingRecord];
+  });
 
   return updated;
 }
@@ -188,13 +241,127 @@ export async function deleteMeeting(input: {
   }
 
   const now = new Date();
-  const [deleted] = await db
-    .update(meeting)
-    .set({ deletedAt: now, updatedAt: now })
-    .where(eq(meeting.id, existing.id))
-    .returning();
+  const [deleted] = await db.transaction(async (tx) => {
+    const [meetingRecord] = await tx
+      .update(meeting)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(eq(meeting.id, existing.id))
+      .returning();
+
+    if (existing.notesPageId) {
+      await tx
+        .update(page)
+        .set({ deletedAt: now, updatedAt: now })
+        .where(eq(page.id, existing.notesPageId));
+    }
+
+    return [meetingRecord];
+  });
 
   return deleted;
+}
+
+export async function listMeetingsForUser(input: {
+  userId: string;
+  workspaceId: string;
+}) {
+  if (!(await getMembership(input.workspaceId, input.userId))) {
+    throw new ServiceMutationError("Forbidden", 403);
+  }
+
+  const accessibleIds = await getAccessiblePageIds(
+    input.workspaceId,
+    input.userId,
+    { membershipVerified: true },
+  );
+  const rows = await db
+    .select({
+      meeting,
+      notesMetadata: page.metadata,
+    })
+    .from(meeting)
+    .leftJoin(page, eq(page.id, meeting.notesPageId))
+    .where(
+      and(
+        eq(meeting.workspaceId, input.workspaceId),
+        isNull(meeting.deletedAt),
+      ),
+    )
+    .orderBy(desc(meeting.updatedAt));
+
+  return rows
+    .filter((row) => accessibleIds.has(row.meeting.pageId))
+    .map((row) => ({
+      ...row.meeting,
+      emoji: readPageEmoji(row.notesMetadata),
+    }));
+}
+
+async function ensureMeetingNotesPage(
+  record: typeof meeting.$inferSelect,
+  userId: string,
+) {
+  if (record.notesPageId) {
+    return record;
+  }
+
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(meeting)
+      .where(and(eq(meeting.id, record.id), isNull(meeting.deletedAt)))
+      .for("update")
+      .limit(1);
+
+    if (!current) {
+      throw new ServiceMutationError("Meeting not found", 404);
+    }
+    if (current.notesPageId) {
+      return current;
+    }
+
+    const notesPageId = crypto.randomUUID();
+    const now = new Date();
+    await tx.insert(page).values({
+      content: EMPTY_NOTES_CONTENT,
+      createdById: current.createdById ?? userId,
+      id: notesPageId,
+      metadata: { emoji: "📅" },
+      name: current.title,
+      type: "meeting",
+      url: "#",
+      workspaceId: current.workspaceId,
+    });
+    await tx.insert(pageCollaborationDocument).values({
+      pageId: notesPageId,
+      state: Buffer.from(encodePageContentAsYjs(EMPTY_NOTES_CONTENT)),
+      updatedAt: now,
+    });
+    await upsertPageItemPlacement(tx, {
+      itemId: notesPageId,
+      itemKind: "page",
+      parentId: current.pageId,
+      parentKind: "page",
+      placementKind: "primary",
+      workspaceId: current.workspaceId,
+    });
+    const [updated] = await tx
+      .update(meeting)
+      .set({ notesPageId, updatedAt: now })
+      .where(eq(meeting.id, current.id))
+      .returning();
+
+    return updated;
+  });
+}
+
+function readPageEmoji(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const emoji = (metadata as { emoji?: unknown }).emoji;
+  return typeof emoji === "string" && emoji.length > 0 ? emoji : null;
 }
 
 export async function claimMeetingRecorder(input: {

@@ -5,6 +5,7 @@ import {
   meetingKeys,
   meetingQueryOptions,
   meetingTranscriptQueryOptions,
+  workspaceMeetingsQueryOptions,
   type CreateMeetingInput,
   type MeetingLifecycleAction,
   type MeetingPatch,
@@ -16,6 +17,11 @@ import {
 export function useMeeting(meetingId: string | null | undefined) {
   const { apiFetch } = useZilobaseFeatures()
   return useQuery(meetingQueryOptions(apiFetch, meetingId))
+}
+
+export function useWorkspaceMeetings(workspaceId: string | null | undefined) {
+  const { apiFetch } = useZilobaseFeatures()
+  return useQuery(workspaceMeetingsQueryOptions(apiFetch, workspaceId))
 }
 
 export function useMeetingTranscript(
@@ -39,6 +45,7 @@ export function useCreateMeeting() {
         meetingKeys.detail(payload.meeting.id),
         payload,
       )
+      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
   })
 }
@@ -69,6 +76,7 @@ export function useUpdateMeeting(meetingId: string) {
     },
     onSuccess: (payload) => {
       queryClient.setQueryData(meetingKeys.detail(meetingId), payload)
+      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })
@@ -89,6 +97,7 @@ export function useMeetingLifecycle(meetingId: string) {
       }),
     onSuccess: (payload) => {
       queryClient.setQueryData(meetingKeys.detail(meetingId), payload)
+      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })
@@ -108,6 +117,7 @@ export function useMeetingRecorder(meetingId: string) {
       queryClient.setQueryData(meetingKeys.detail(meetingId), {
         meeting: payload.meeting,
       })
+      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
   })
   const heartbeat = useMutation({
@@ -125,6 +135,7 @@ export function useMeetingRecorder(meetingId: string) {
       }),
     onSuccess: (payload) => {
       queryClient.setQueryData(meetingKeys.detail(meetingId), payload)
+      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
   })
   return { claim, heartbeat, release }
@@ -142,6 +153,7 @@ export function useGenerateMeetingSummary(meetingId: string) {
       queryClient.setQueryData<MeetingResponse>(meetingKeys.detail(meetingId), {
         meeting: payload.meeting,
       })
+      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })

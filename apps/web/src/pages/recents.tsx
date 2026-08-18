@@ -740,7 +740,8 @@ function buildHomepageRows(
   }));
   const showTrash = mode === "trash";
   const includePage = (page: Page) =>
-    showTrash ? Boolean(page.deletedAt) : !page.deletedAt;
+    page.type !== "meeting" &&
+    (showTrash ? Boolean(page.deletedAt) : !page.deletedAt);
   const includeDatabase = (database: PageDatabase, page: Page | null) =>
     showTrash
       ? Boolean(database.deletedAt ?? page?.deletedAt)

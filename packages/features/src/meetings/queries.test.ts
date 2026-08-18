@@ -5,9 +5,15 @@ import {
   meetingKeys,
   meetingQueryOptions,
   meetingTranscriptQueryOptions,
+  workspaceMeetingsQueryOptions,
 } from "./queries"
 
 test("meeting query keys are hierarchical and scoped by meeting", () => {
+  assert.deepEqual(meetingKeys.list("workspace-1"), [
+    "meetings",
+    "list",
+    "workspace-1",
+  ])
   assert.deepEqual(meetingKeys.detail("meeting-1"), [
     "meetings",
     "detail",

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   delete: vi.fn(),
   get: vi.fn(),
   heartbeatRecorder: vi.fn(),
+  list: vi.fn(),
   listTranscript: vi.fn(),
   releaseRecorder: vi.fn(),
   recordConsent: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock("./meeting-service", () => ({
   deleteMeeting: mocks.delete,
   getMeetingForUser: mocks.get,
   heartbeatMeetingRecorder: mocks.heartbeatRecorder,
+  listMeetingsForUser: mocks.list,
   listMeetingTranscript: mocks.listTranscript,
   releaseMeetingRecorder: mocks.releaseRecorder,
   recordMeetingConsent: mocks.recordConsent,
@@ -65,6 +67,9 @@ const env = {
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.create.mockResolvedValue({ id: "meeting-1", status: "idle" });
+  mocks.list.mockResolvedValue([
+    { emoji: "📅", id: "meeting-1", status: "idle", title: "Weekly review" },
+  ]);
   mocks.claimRecorder.mockResolvedValue({
     leaseExpiresAt: new Date("2026-08-18T00:00:30.000Z"),
     leaseId: "10000000-0000-4000-8000-000000000001",
@@ -103,6 +108,27 @@ test("meeting routes are unavailable until the feature is enabled", async () => 
 test("meeting routes require authentication", async () => {
   const response = await appFor(false).request("/meetings/meeting-1", {}, env);
   assert.equal(response.status, 401);
+});
+
+test("meeting list requires a workspace and returns accessible meetings", async () => {
+  const missingWorkspace = await appFor().request("/meetings", {}, env);
+  assert.equal(missingWorkspace.status, 400);
+
+  const response = await appFor().request(
+    "/meetings?workspaceId=workspace-1",
+    {},
+    env,
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(mocks.list.mock.calls[0]?.[0], {
+    userId: "user-1",
+    workspaceId: "workspace-1",
+  });
+  assert.deepEqual(await response.json(), {
+    meetings: [
+      { emoji: "📅", id: "meeting-1", status: "idle", title: "Weekly review" },
+    ],
+  });
 });
 
 test("meeting creation validates and forwards a scoped payload", async () => {

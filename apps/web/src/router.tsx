@@ -20,6 +20,8 @@ import RecentsPage from "@/pages/recents"
 import { libraryViewIds } from "@zilobase/features/user-settings"
 import { pagesQueryOptions } from "@zilobase/features/pages"
 import DatabasePage from "@/pages/database"
+import MeetingPage from "@/pages/meeting"
+import MeetingsPage from "@/pages/meetings"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import PreferencesSettingsPage from "@/pages/settings/preferences"
 import ConnectPage from "@/pages/connect"
@@ -256,6 +258,12 @@ const canvasRoute = createRoute({
   component: CanvasPage,
 })
 
+const meetingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/meetings",
+  component: MeetingsPage,
+})
+
 const aiRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/ai",
@@ -277,6 +285,12 @@ const pageRoute = createRoute({
     ),
   }),
   component: Page,
+})
+
+const meetingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/m/$meetingId",
+  component: MeetingPage,
 })
 
 const databaseRoute = createRoute({
@@ -364,6 +378,7 @@ const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
     aiRoute,
     canvasRoute,
+    meetingsRoute,
     recentsRoute,
     trashRoute,
     settingsRoute,
@@ -378,6 +393,7 @@ const routeTree = rootRoute.addChildren([
   ]),
   pageRoute,
   databaseRoute,
+  meetingRoute,
 ])
 
 export const router = createRouter({

@@ -36,6 +36,26 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
+  test("sidebar navigation hides meeting notes pages", async () => {
+    const { buildSidebarNavigation } = await loadModule(
+      "/src/components/sidebar-navigation-model.tsx"
+    )
+    const host = createPage("host", "Host", "2026-08-01T00:00:00.000Z")
+    const notes = {
+      ...createPage("notes", "Standup notes", "2026-08-02T00:00:00.000Z"),
+      type: "meeting",
+    }
+    const { sections } = buildSidebarNavigation(
+      [host, notes],
+      [],
+      [createPlacement("notes-placement", "host", "notes", 0)],
+      icons
+    )
+
+    assert.equal(sections.privatePages[0].id, "host")
+    assert.deepEqual(sections.privatePages[0].pages, [])
+  })
+
   test("sidebar navigation orders placements and stops page cycles", async () => {
     const { buildSidebarNavigation } = await loadModule(
       "/src/components/sidebar-navigation-model.tsx"

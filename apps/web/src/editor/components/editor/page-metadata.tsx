@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
   type Ref,
 } from "react"
 import { ImagePlus, MessageSquare, SmilePlus, X } from "lucide-react"
@@ -68,6 +69,7 @@ export type PageMetadataHandle = {
 }
 
 type PageMetadataProps = {
+  afterHeading?: ReactNode
   compact?: boolean
   compactSpacing?: "default" | "comfortable"
   contentClassName?: string
@@ -192,6 +194,7 @@ function resizeTitleTextarea(
 }
 
 export function PageMetadata({
+  afterHeading,
   compact = false,
   compactSpacing = "default",
   collaborationUsers = [],
@@ -1165,6 +1168,8 @@ export function PageMetadata({
             })}
           </div>
         ) : null}
+
+        {showHeading && afterHeading ? afterHeading : null}
       </div>
     </section>
   )

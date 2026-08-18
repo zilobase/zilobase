@@ -396,6 +396,9 @@ export const meeting = pgTable(
     pageId: text("page_id")
       .notNull()
       .references(() => page.id, { onDelete: "cascade" }),
+    notesPageId: text("notes_page_id").references(() => page.id, {
+      onDelete: "set null",
+    }),
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -440,6 +443,7 @@ export const meeting = pgTable(
   },
   (table) => [
     index("meeting_page_deleted_idx").on(table.pageId, table.deletedAt),
+    uniqueIndex("meeting_notes_page_id_unique").on(table.notesPageId),
     index("meeting_workspace_status_idx").on(table.workspaceId, table.status),
     check(
       "meeting_status_check",

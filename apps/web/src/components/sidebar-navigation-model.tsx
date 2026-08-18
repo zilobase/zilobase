@@ -25,7 +25,9 @@ export function buildSidebarNavigation(
   placements: PageItemPlacement[],
   icons: SidebarNavigationIcons,
 ) {
-  const activePages = pages.filter((page) => !page.deletedAt)
+  const activePages = pages.filter(
+    (page) => !page.deletedAt && page.type !== "meeting",
+  )
   const activeDatabases = databases.filter((database) => !database.deletedAt)
   const sections = buildPageSections(
     activePages,
@@ -166,6 +168,9 @@ export function buildPageSections(
       (placement) => {
         if (placement.itemKind === "page") {
           if (placement.itemId === pageId) {
+            return []
+          }
+          if (pagesById.get(placement.itemId)?.type === "meeting") {
             return []
           }
 

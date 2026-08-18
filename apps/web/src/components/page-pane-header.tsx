@@ -30,6 +30,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useActiveWorkspaceId } from "@zilobase/features/integrations";
 import { useDatabase } from "@zilobase/features/databases";
+import { useMeeting } from "@zilobase/features/meetings";
 import {
   defaultUserSettings,
   useUpdateUserSettings,
@@ -53,6 +54,13 @@ import {
   readPublishedEmbeddedItemsOpenAs,
   writePublishedEmbeddedItemsOpenAs,
 } from "@/lib/published-page-preferences";
+
+export function useRoutePageId(pathname: string) {
+  const routePageId = getPageId(pathname)
+  const meetingId = getMeetingId(pathname)
+  const { data } = useMeeting(meetingId)
+  return routePageId ?? data?.meeting.notesPageId ?? null
+}
 
 export function PagePaneHeader({
   bordered = true,
@@ -81,7 +89,7 @@ export function PagePaneHeader({
   showPaneControls?: boolean;
   showActions?: boolean;
 }) {
-  const pageId = getPageId(pathname);
+  const pageId = useRoutePageId(pathname);
   const databaseId = getDatabaseId(pathname);
   const leadingControls = showPaneControls ? (
     <PagePaneControls
@@ -330,6 +338,7 @@ function OpenPageAsDropdown({
 export function AppBreadcrumbs({ pathname }: { pathname: string }) {
   const pageId = getPageId(pathname);
   const databaseId = getDatabaseId(pathname);
+  const meetingId = getMeetingId(pathname);
 
   if (pageId) {
     return <PageBreadcrumb pageId={pageId} />;
@@ -337,6 +346,22 @@ export function AppBreadcrumbs({ pathname }: { pathname: string }) {
 
   if (databaseId) {
     return <DatabaseBreadcrumb databaseId={databaseId} />;
+  }
+
+  if (meetingId) {
+    return <MeetingBreadcrumb meetingId={meetingId} />;
+  }
+
+  if (pathname === "/meetings") {
+    return (
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage className="line-clamp-1">Meetings</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    );
   }
 
   if (pathname.startsWith("/settings")) {
@@ -427,6 +452,28 @@ function PageBreadcrumb({ pageId }: { pageId: string }) {
             </BreadcrumbPage>
           </BreadcrumbItem>
         )}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
+
+function MeetingBreadcrumb({ meetingId }: { meetingId: string }) {
+  const { data } = useMeeting(meetingId);
+
+  return (
+    <Breadcrumb className="min-w-0">
+      <BreadcrumbList className="flex-nowrap">
+        <BreadcrumbItem className="hidden sm:inline-flex">
+          <BreadcrumbLink asChild>
+            <Link to="/meetings">Meetings</Link>
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator className="hidden sm:inline-flex" />
+        <BreadcrumbItem className="min-w-0">
+          <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
+            {data?.meeting.title.trim() || "Meeting"}
+          </BreadcrumbPage>
+        </BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>
   );
@@ -560,6 +607,12 @@ export function getPageId(pathname: string) {
 
 export function getDatabaseId(pathname: string) {
   const match = pathname.match(/^\/d\/([^/]+)/);
+
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
+export function getMeetingId(pathname: string) {
+  const match = pathname.match(/^\/m\/([^/]+)/);
 
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
