@@ -6,8 +6,10 @@ export async function transcribeMeetingPcm(
   pcm: Uint8Array,
   env: RuntimeEnv,
 ) {
-  const apiKey = env.OPENAI_API_KEY;
-  if (typeof apiKey !== "string" || !apiKey) {
+  const apiKey = typeof env.OPENAI_API_KEY === "string"
+    ? env.OPENAI_API_KEY.trim()
+    : "";
+  if (!apiKey) {
     throw new Error("OPENAI_API_KEY is required for meeting transcription");
   }
   const wav = pcmToWav(pcm);
@@ -27,13 +29,33 @@ export async function transcribeMeetingPcm(
     method: "POST",
   });
   if (!response.ok) {
-    throw new Error(`Meeting transcription provider returned ${response.status}`);
+    const code = await readProviderErrorCode(response);
+    throw new Error(
+      `Meeting transcription provider returned ${response.status}${code ? ` (${code})` : ""}`,
+    );
   }
   const payload = await response.json() as { text?: unknown };
   if (typeof payload.text !== "string") {
     throw new Error("Meeting transcription provider returned an invalid response");
   }
   return payload.text;
+}
+
+async function readProviderErrorCode(response: Response) {
+  try {
+    const payload = await response.json() as {
+      error?: { code?: unknown; type?: unknown };
+    };
+    const value = typeof payload.error?.code === "string"
+      ? payload.error.code
+      : typeof payload.error?.type === "string"
+        ? payload.error.type
+        : "";
+    const safe = value.replace(/[^a-z0-9_.-]/gi, "").slice(0, 80);
+    return safe || null;
+  } catch {
+    return null;
+  }
 }
 
 export function pcmToWav(pcm: Uint8Array) {
