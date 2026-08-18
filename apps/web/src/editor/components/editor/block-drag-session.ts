@@ -159,17 +159,19 @@ export function startBlockDrag({
 
   const slice = view.state.selection.content()
   const { dom, text } = view.serializeForClipboard(slice)
-  const isDatabaseBlock = target.node.type.name === "databaseBlock"
+  const isNodeViewBlock =
+    target.node.type.name === "databaseBlock" ||
+    target.node.type.name === "meetingBlock"
   const dragImageSource = view.nodeDOM(target.pos)
 
   dataTransfer.effectAllowed = "copyMove"
   writeDragPayload(dataTransfer, EDITOR_BLOCK_DRAG_MIME, payload)
-  if (!isDatabaseBlock) dataTransfer.setData("text/html", dom.innerHTML)
+  if (!isNodeViewBlock) dataTransfer.setData("text/html", dom.innerHTML)
   dataTransfer.setData("text/plain", text)
 
   if (
     dragImageSource instanceof Element &&
-    (!isDatabaseBlock || !setDatabaseBlockDragImage(event, dragImageSource))
+    (!isNodeViewBlock || !setDatabaseBlockDragImage(event, dragImageSource))
   ) {
     dataTransfer.setDragImage(dragImageSource, 0, 0)
   }

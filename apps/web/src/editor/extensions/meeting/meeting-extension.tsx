@@ -36,6 +36,7 @@ export const MeetingBlock = Node.create<MeetingBlockOptions>({
   name: "meetingBlock",
   group: "block",
   atom: true,
+  draggable: false,
   selectable: true,
 
   addOptions() {
@@ -69,9 +70,13 @@ export const MeetingBlock = Node.create<MeetingBlockOptions>({
   addNodeView() {
     return ReactNodeViewRenderer(MeetingBlockView, {
       className: "meeting-block",
-      stopEvent: ({ event }) =>
-        event.target instanceof HTMLElement &&
-        Boolean(event.target.closest(".meeting-block-shell")),
+      stopEvent: ({ event }) => {
+        const target = event.target
+        return (
+          target instanceof HTMLElement &&
+          Boolean(target.closest(".meeting-block-shell"))
+        )
+      },
     })
   },
 })

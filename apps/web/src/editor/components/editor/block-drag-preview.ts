@@ -1,4 +1,5 @@
-const DATABASE_BLOCK_SELECTOR = ".database-block, .node-databaseBlock"
+const NODE_VIEW_BLOCK_SELECTOR =
+  ".database-block, .node-databaseBlock, .meeting-block, .node-meetingBlock"
 const DATABASE_INLINE_SCROLL_SELECTOR = ".database-inline-scroll"
 
 export function getDatabaseBlockDragImagePlacement(
@@ -46,7 +47,7 @@ function lockDatabaseScrollClone(clone: HTMLElement, width: number) {
 export function setDatabaseBlockDragImage(event: DragEvent, image: Element) {
   if (!(image instanceof HTMLElement) || !event.dataTransfer) return false
 
-  const block = image.closest<HTMLElement>(DATABASE_BLOCK_SELECTOR) ?? image
+  const block = image.closest<HTMLElement>(NODE_VIEW_BLOCK_SELECTOR) ?? image
   const rect = block.getBoundingClientRect()
   if (!rect.width || !rect.height) return false
 

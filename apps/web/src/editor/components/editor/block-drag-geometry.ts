@@ -38,6 +38,8 @@ const BLOCK_SELECTOR = [
   ".file-block",
   ".bookmark-block",
   ".database-block",
+  ".meeting-block",
+  ".node-meetingBlock",
   ".page-block",
   ".editor-details",
 ].join(",")
@@ -57,6 +59,7 @@ const STRUCTURAL_NODE_TYPES = new Set([
 ])
 
 const DATABASE_BLOCK_SELECTOR = ".database-block, .node-databaseBlock"
+const MEETING_BLOCK_SELECTOR = ".meeting-block, .node-meetingBlock"
 const DIALOG_CONTENT_SELECTOR = '[data-slot="dialog-content"]'
 const SIDE_PANE_PANEL_SELECTOR = "[data-page-side-pane-panel]"
 const BLOCK_CONTROL_SELECTOR = ".drag-handle, .block-comment-handle"
@@ -74,6 +77,21 @@ const numberStyle = (
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
+
+function dragHandleBoundRect(view: EditorView) {
+  const parentEditor = view.dom.parentElement?.closest(".tiptap-editor")
+  if (parentEditor instanceof HTMLElement) {
+    return parentEditor.getBoundingClientRect()
+  }
+
+  const meetingShell = view.dom.closest(".meeting-block-shell")
+  const meetingHost = meetingShell?.parentElement
+  if (meetingHost instanceof HTMLElement) {
+    return meetingHost.getBoundingClientRect()
+  }
+
+  return view.dom.getBoundingClientRect()
+}
 
 function fixedContainerOffset(element: HTMLElement) {
   const container = element.closest(
@@ -177,10 +195,36 @@ function blockFromPos(view: EditorView, pos: number): DragHandleTarget | null {
   return firstSelectableChild(topNode, pos)
 }
 
+function nodeViewBlockFromDOM(
+  view: EditorView,
+  element: HTMLElement,
+): DragHandleTarget | null {
+  const meeting = element.closest<HTMLElement>(MEETING_BLOCK_SELECTOR)
+  const database = element.closest<HTMLElement>(DATABASE_BLOCK_SELECTOR)
+  const host = meeting ?? database
+  if (!host || !view.dom.contains(host)) return null
+
+  const typeName = meeting ? "meetingBlock" : "databaseBlock"
+  let match: DragHandleTarget | null = null
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name !== typeName) return
+    const dom = view.nodeDOM(pos)
+    if (!(dom instanceof HTMLElement)) return
+    if (dom === host || dom.contains(host) || host.contains(dom)) {
+      match = { node, pos }
+      return false
+    }
+  })
+  return match
+}
+
 function blockFromDOM(
   view: EditorView,
   element: HTMLElement,
 ): DragHandleTarget | null {
+  const nodeViewBlock = nodeViewBlockFromDOM(view, element)
+  if (nodeViewBlock) return nodeViewBlock
+
   const rect = element.getBoundingClientRect()
   const coords = view.posAtCoords({
     left: rect.left + Math.min(50, Math.max(1, rect.width / 2)),
@@ -209,6 +253,16 @@ function blockElementAtPoint(view: EditorView, elements: Element[]) {
   for (const element of elements) {
     if (!(element instanceof HTMLElement) || !view.dom.contains(element)) {
       continue
+    }
+    const hostBlock = element.closest<HTMLElement>(
+      `${DATABASE_BLOCK_SELECTOR}, ${MEETING_BLOCK_SELECTOR}`,
+    )
+    if (
+      hostBlock &&
+      view.dom.contains(hostBlock) &&
+      hostBlock !== view.dom
+    ) {
+      return hostBlock
     }
     if (element.matches("table")) return element
     if (element.closest("table")) continue
@@ -372,7 +426,7 @@ export function getBlockDragHandleRect(
   const nodeDom = view.nodeDOM(target.pos)
   if (!(nodeDom instanceof HTMLElement)) return null
 
-  const editorRect = view.dom.getBoundingClientRect()
+  const editorRect = dragHandleBoundRect(view)
   let anchor = nodeDom
   let handleOffset = DRAG_HANDLE_WIDTH
   let topInsetElement = nodeDom
@@ -389,8 +443,16 @@ export function getBlockDragHandleRect(
     handleOffset += LIST_DRAG_HANDLE_MARKER_GAP
   }
 
-  if (target.node.type.name === "databaseBlock") {
-    const block = nodeDom.closest<HTMLElement>(DATABASE_BLOCK_SELECTOR) ?? nodeDom
+  if (
+    target.node.type.name === "databaseBlock" ||
+    target.node.type.name === "meetingBlock"
+  ) {
+    const block =
+      nodeDom.closest<HTMLElement>(
+        target.node.type.name === "meetingBlock"
+          ? MEETING_BLOCK_SELECTOR
+          : DATABASE_BLOCK_SELECTOR,
+      ) ?? nodeDom
     const toolbar = block.querySelector<HTMLElement>(".database-toolbar")
     const verticalToolbar = toolbar?.firstElementChild
     if (verticalToolbar instanceof HTMLElement) {
