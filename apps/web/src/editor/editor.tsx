@@ -93,6 +93,8 @@ export function Editor({
   onEditorReady,
   onEmojiChange,
   onIconPositionChange,
+  getStructuralBlockDeleteAction,
+  onDeleteStructuralBlock,
   onOpenPage,
   onTitleChange,
   workspaceId,
@@ -590,7 +592,9 @@ export function Editor({
           editable={contentEditable && structuralEditingEnabled}
           editor={editor}
           editorId={editorId}
+          getStructuralBlockDeleteAction={getStructuralBlockDeleteAction}
           onClosePasteChoice={handleClosePasteChoice}
+          onDeleteStructuralBlock={onDeleteStructuralBlock}
           onSelectionAiPreviewChange={handleSelectionAiPreviewChange}
           pageId={pageId}
           workspaceId={workspaceId}

@@ -24,6 +24,16 @@ import {
 } from "@/components/ui/dropdrawer"
 import { Input } from "@/components/ui/input"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   slashCommandItems,
   type SlashCommandItem,
 } from "@/packages/editor/extensions/slash-command"
@@ -42,6 +52,41 @@ import {
 } from "@/lib/color-tokens"
 import { setDatabasePageDragPayload } from "@/packages/editor/extensions/database/interactions/database-page-drop"
 import type { DragHandleTarget } from "./types"
+import type {
+  StructuralBlockDeleteAction,
+  StructuralBlockDeleteRequest,
+} from "../../types"
+import { toast } from "sonner"
+
+type PendingStructuralBlockDelete = StructuralBlockDeleteRequest & {
+  action: StructuralBlockDeleteAction
+  pos: number
+}
+
+function findStructuralBlock(
+  editor: Editor,
+  target: PendingStructuralBlockDelete,
+) {
+  const idAttribute = target.type === "database" ? "databaseId" : "meetingId"
+  const nodeAtOriginalPosition = editor.state.doc.nodeAt(target.pos)
+
+  if (nodeAtOriginalPosition?.attrs[idAttribute] === target.id) {
+    return { node: nodeAtOriginalPosition, pos: target.pos }
+  }
+
+  let match: { node: typeof nodeAtOriginalPosition; pos: number } | null = null
+
+  editor.state.doc.descendants((node, pos) => {
+    if (node.attrs[idAttribute] !== target.id) {
+      return match === null
+    }
+
+    match = { node, pos }
+    return false
+  })
+
+  return match
+}
 
 const blockCommandItems = slashCommandItems.filter(
   (item) => item.title !== "Emoji"
@@ -77,6 +122,8 @@ export function DragBlockMenu({
   onCreateDatabase,
   onCreateMeeting,
   editorId,
+  getStructuralBlockDeleteAction,
+  onDeleteStructuralBlock,
 }: {
   editor: Editor
   editorId: string
@@ -86,10 +133,19 @@ export function DragBlockMenu({
   onMenuStateChange?: (open: boolean) => void
   onCreateDatabase?: () => Promise<string | null>
   onCreateMeeting?: () => Promise<string | null>
+  getStructuralBlockDeleteAction?: (
+    request: StructuralBlockDeleteRequest,
+  ) => StructuralBlockDeleteAction
+  onDeleteStructuralBlock?: (
+    request: StructuralBlockDeleteRequest,
+  ) => Promise<void>
 }) {
   const menuRootRef = useRef<HTMLDivElement | null>(null)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [search, setSearch] = useState("")
+  const [pendingDelete, setPendingDelete] =
+    useState<PendingStructuralBlockDelete | null>(null)
+  const [deletePending, setDeletePending] = useState(false)
   const gripPointerRef = useRef<{
     moved: boolean
     x: number
@@ -111,8 +167,8 @@ export function DragBlockMenu({
   const isPageBlock = target?.node.type.name === "pageBlock"
 
   useEffect(() => {
-    onMenuStateChange?.(isOpen || actionsOpen)
-  }, [actionsOpen, isOpen, onMenuStateChange])
+    onMenuStateChange?.(isOpen || actionsOpen || pendingDelete !== null)
+  }, [actionsOpen, isOpen, onMenuStateChange, pendingDelete])
 
   useEffect(() => {
     return () => {
@@ -413,6 +469,38 @@ export function DragBlockMenu({
   }
 
   const deleteTarget = () => {
+    if (target?.node.type.name === "databaseBlock") {
+      const id = target.node.attrs.databaseId
+
+      if (typeof id === "string" && id) {
+        const request = { id, type: "database" as const }
+        setPendingDelete({
+          ...request,
+          action:
+            getStructuralBlockDeleteAction?.(request) ?? "move-to-trash",
+          pos: target.pos,
+        })
+        handleActionsOpenChange(false)
+        return
+      }
+    }
+
+    if (target?.node.type.name === "meetingBlock") {
+      const id = target.node.attrs.meetingId
+
+      if (typeof id === "string" && id) {
+        const request = { id, type: "meeting" as const }
+        setPendingDelete({
+          ...request,
+          action:
+            getStructuralBlockDeleteAction?.(request) ?? "move-to-trash",
+          pos: target.pos,
+        })
+        handleActionsOpenChange(false)
+        return
+      }
+    }
+
     runTargetCommand(() => {
       if (!target) {
         return
@@ -429,8 +517,56 @@ export function DragBlockMenu({
     })
   }
 
+  const confirmStructuralBlockDelete = async () => {
+    if (!pendingDelete || deletePending) {
+      return
+    }
+
+    setDeletePending(true)
+
+    try {
+      if (!onDeleteStructuralBlock) {
+        throw new Error("This block cannot be deleted from this editor.")
+      }
+
+      await onDeleteStructuralBlock({
+        id: pendingDelete.id,
+        type: pendingDelete.type,
+      })
+
+      const match = findStructuralBlock(editor, pendingDelete)
+
+      if (match?.node) {
+        editor
+          .chain()
+          .focus()
+          .deleteRange({
+            from: match.pos,
+            to: match.pos + match.node.nodeSize,
+          })
+          .run()
+      }
+
+      setPendingDelete(null)
+      toast.success(
+        pendingDelete.action === "remove-link"
+          ? "Removed from page."
+          : "Moved to trash.",
+      )
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `Could not delete ${pendingDelete.type}.`,
+      )
+    } finally {
+      setDeletePending(false)
+    }
+  }
+
   return (
-    <div className="contents" ref={menuRootRef}>
+    <>
+      <div className="contents" ref={menuRootRef}>
       <button
         aria-label="Add block below"
         className="drag-handle-plus"
@@ -672,6 +808,43 @@ export function DragBlockMenu({
           />
         </div>
       ) : null}
-    </div>
+      </div>
+      <AlertDialog
+        onOpenChange={(open) => {
+          if (!open && !deletePending) setPendingDelete(null)
+        }}
+        open={pendingDelete !== null}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingDelete?.action === "remove-link"
+                ? "Remove from this page?"
+                : "Move to trash?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete?.action === "remove-link"
+                ? "This linked database view will be removed from this page. The source database will remain available."
+                : pendingDelete?.type === "meeting"
+                  ? "This meeting and its notes will be moved to trash."
+                  : "This database and its row pages will be moved to trash."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletePending}
+              onClick={(event) => {
+                event.preventDefault()
+                void confirmStructuralBlockDelete()
+              }}
+              variant="destructive"
+            >
+              {pendingDelete?.action === "remove-link" ? "Remove" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

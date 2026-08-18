@@ -15,6 +15,8 @@ import type {
   DragHandleState,
   PasteChoiceState,
   SelectionAiDiffPreview,
+  StructuralBlockDeleteAction,
+  StructuralBlockDeleteRequest,
 } from "./types"
 
 type EditorChromeProps = {
@@ -27,7 +29,13 @@ type EditorChromeProps = {
   editable: boolean
   editor: TiptapEditor | null
   editorId: string
+  getStructuralBlockDeleteAction?: (
+    request: StructuralBlockDeleteRequest,
+  ) => StructuralBlockDeleteAction
   onClosePasteChoice: () => void
+  onDeleteStructuralBlock?: (
+    request: StructuralBlockDeleteRequest,
+  ) => Promise<void>
   onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
   pageId?: string | null
   workspaceId?: string | null
@@ -49,7 +57,9 @@ export function EditorChrome({
   editable,
   editor,
   editorId,
+  getStructuralBlockDeleteAction,
   onClosePasteChoice,
+  onDeleteStructuralBlock,
   onSelectionAiPreviewChange,
   pageId,
   workspaceId,
@@ -78,9 +88,11 @@ export function EditorChrome({
             editor={editor}
             editorId={editorId}
             isOpen={plusMenuOpen}
+            getStructuralBlockDeleteAction={getStructuralBlockDeleteAction}
             onMenuStateChange={setDragHandleMenuOpen}
             onCreateDatabase={createEditorDatabase}
             onCreateMeeting={createEditorMeeting}
+            onDeleteStructuralBlock={onDeleteStructuralBlock}
             onOpenChange={setPlusMenuOpen}
             target={dragHandle.target}
           />

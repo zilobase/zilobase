@@ -13,6 +13,10 @@ import {
   type MeetingRecorderClaim,
   type MeetingSummaryResponse,
 } from "./queries"
+import {
+  pageQueryKey,
+  pagesNavRootQueryKey,
+} from "../pages/queries"
 
 export function useMeeting(meetingId: string | null | undefined) {
   const { apiFetch } = useZilobaseFeatures()
@@ -46,6 +50,31 @@ export function useCreateMeeting() {
         payload,
       )
       void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
+    },
+  })
+}
+
+export function useDeleteMeeting() {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+
+  return useMutation({
+    mutationFn: (meetingId: string) =>
+      apiFetch<MeetingResponse>(`/meetings/${meetingId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: async ({ meeting }) => {
+      queryClient.removeQueries({ queryKey: meetingKeys.detail(meeting.id) })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: meetingKeys.lists() }),
+        queryClient.invalidateQueries({
+          queryKey: pagesNavRootQueryKey(meeting.workspaceId),
+        }),
+        meeting.notesPageId
+          ? queryClient.invalidateQueries({
+              queryKey: pageQueryKey(meeting.notesPageId),
+            })
+          : Promise.resolve(),
+      ])
     },
   })
 }

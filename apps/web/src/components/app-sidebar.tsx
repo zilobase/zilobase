@@ -78,7 +78,11 @@ import {
   useSetPageFavorite,
 } from "@zilobase/features/pages";
 import { useAppStore } from "@/stores/app-store";
-import { getDatabaseIconNode, getPageIconNode } from "@/lib/page-icon";
+import {
+  getDatabaseIconNode,
+  getPageIconNode,
+  PageIconDisplay,
+} from "@/lib/page-icon";
 import { buildDesktopDeepLink } from "@/lib/desktop-deep-link";
 import {
   discoverRuntimeDesktopServer,
@@ -128,6 +132,12 @@ const sidebarNavigationIcons = {
       <List className="size-4" />
     ) : (
       <Table2 className="size-4" />
+    ),
+  getMeetingIcon: (meeting: { emoji?: string | null }) =>
+    meeting.emoji ? (
+      <PageIconDisplay size="sm" value={meeting.emoji} />
+    ) : (
+      <CalendarDays className="size-4" />
     ),
   getPageIcon: getPageIconNode,
 };
@@ -261,28 +271,27 @@ export function AppSidebar({
         navigation?.databases ?? [],
         navigation?.placements ?? [],
         sidebarNavigationIcons,
+        meetingsPayload?.meetings ?? [],
       ),
-    [navigation],
+    [meetingsPayload?.meetings, navigation],
   );
   const [sidebarMode, setSidebarMode] = React.useState<
     "home" | "askAi" | "meetings"
   >(
     pathname === "/ai"
       ? "askAi"
-      : activeMeetingId
+      : pathname.startsWith("/m/")
         ? "meetings"
         : "home",
   );
 
   React.useEffect(() => {
-    setSidebarMode(
-      pathname === "/ai"
-        ? "askAi"
-        : activeMeetingId
-          ? "meetings"
-          : "home",
-    );
-  }, [activeMeetingId, pathname]);
+    setSidebarMode((current) => {
+      if (pathname === "/ai") return "askAi";
+      if (pathname.startsWith("/m/")) return "meetings";
+      return current === "askAi" ? "home" : current;
+    });
+  }, [pathname]);
 
   const isAiPage = sidebarMode === "askAi";
   const isMeetingsPage = sidebarMode === "meetings";
@@ -481,6 +490,7 @@ export function AppSidebar({
                         location.search,
                       )}
                       activePageId={getActivePageId(location.pathname)}
+                      activeMeetingId={activeMeetingId}
                       databaseDropTargetId={databaseDropTargetId}
                       key={sectionId}
                       label={

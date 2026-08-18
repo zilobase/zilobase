@@ -32,6 +32,7 @@ import {
 import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,
+  getActiveMeetingId,
   getActivePageId,
   SidebarNavList,
   type SidebarNavItem,
@@ -64,6 +65,10 @@ export function NavFavorites({
   const activePageId = getActivePageId(location.pathname)
   const activeDatabaseId = getActiveDatabaseId(location.pathname)
   const activeDatabaseViewId = getActiveDatabaseViewId(location.search)
+  const activeMeetingId = getActiveMeetingId(
+    location.pathname,
+    location.search,
+  )
   const displayedFavorites = sidebarConfig
     ? getConfiguredSidebarItems(favorites, "favorites", sidebarConfig)
     : favorites
@@ -102,14 +107,17 @@ export function NavFavorites({
               activeDatabaseId={activeDatabaseId}
               activeDatabaseViewId={activeDatabaseViewId}
               activePageId={activePageId}
+              activeMeetingId={activeMeetingId}
               items={displayedFavorites}
-              renderItemMenu={({ item }) => (
-                <FavoriteItemMenu
-                  item={item}
-                  onRemoveDatabaseFavorite={onRemoveDatabaseFavorite}
-                  onRemoveFavorite={onRemoveFavorite}
-                />
-              )}
+              renderItemMenu={({ item }) =>
+                item.isMeeting ? null : (
+                  <FavoriteItemMenu
+                    item={item}
+                    onRemoveDatabaseFavorite={onRemoveDatabaseFavorite}
+                    onRemoveFavorite={onRemoveFavorite}
+                  />
+                )
+              }
               storageKey={getSidebarExpansionStorageKey(
                 workspaceId,
                 "favorites",

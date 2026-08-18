@@ -357,6 +357,7 @@ export function DatabaseViewToolbar() {
             aria-label="Database title"
             className="h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none outline-none [field-sizing:content] placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-2xl"
             disabled={!databaseId}
+            data-structural-block-title
             onBlur={(event) => saveDatabaseTitle(event.target.value)}
             onChange={(event) => {
               setDraftDatabaseTitle(event.target.value)

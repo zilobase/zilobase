@@ -394,6 +394,7 @@ export function MeetingView({
             aria-label="Meeting title"
             className="h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none outline-none [field-sizing:content] placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-2xl"
             disabled={!editable || activeRecording}
+            data-structural-block-title
             onBlur={() => {
               if (title.trim() !== meeting.title) {
                 updateMeeting.mutate({ title })

@@ -69,6 +69,13 @@ export type OpenPageOptions = {
 
 export type PageLayoutPanelMode = "auto" | "overlay"
 
+export type StructuralBlockDeleteRequest = {
+  id: string
+  type: "database" | "meeting"
+}
+
+export type StructuralBlockDeleteAction = "move-to-trash" | "remove-link"
+
 export type EditorProps = {
   commentController?: PageCommentController
   content?: unknown
@@ -103,6 +110,12 @@ export type EditorProps = {
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onEmojiChange?: (emoji: string) => void
   onIconPositionChange?: (position: PageIconPosition) => void
+  getStructuralBlockDeleteAction?: (
+    request: StructuralBlockDeleteRequest,
+  ) => StructuralBlockDeleteAction
+  onDeleteStructuralBlock?: (
+    request: StructuralBlockDeleteRequest,
+  ) => Promise<void>
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
   onTitleChange?: (title: string) => void
   workspaceId?: string | null

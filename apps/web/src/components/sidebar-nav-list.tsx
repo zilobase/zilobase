@@ -31,6 +31,7 @@ import {
 import { cn } from "@/lib/utils"
 import { type ZilobaseAiMode } from "@zilobase/features/pages"
 import { useOfflineManifest } from "@/providers/offline-provider"
+import { scrollToMeetingBlock } from "@/lib/meeting-navigation"
 
 export type SidebarNavItem = {
   databaseId?: string | null
@@ -41,8 +42,10 @@ export type SidebarNavItem = {
   isDatabaseView?: boolean
   isFavorite?: boolean
   isLinked?: boolean
+  isMeeting?: boolean
   isTeamspace: boolean
   lastVisitedAt?: string | null
+  meetingId?: string | null
   name: string
   navNodeId?: string
   pageId: string | null
@@ -59,6 +62,7 @@ type SidebarNavListProps = {
   activeDatabaseId: string | null
   activeDatabaseViewId?: string | null
   activePageId: string | null
+  activeMeetingId?: string | null
   getLinkProps?: (input: {
     displayName: string
     item: SidebarNavItem
@@ -84,6 +88,7 @@ function SidebarNavListContent({
   activeDatabaseId,
   activeDatabaseViewId = null,
   activePageId,
+  activeMeetingId = null,
   getLinkProps,
   items,
   renderItemMenu,
@@ -107,6 +112,7 @@ function SidebarNavListContent({
       activeDatabaseId={activeDatabaseId}
       activeDatabaseViewId={activeDatabaseViewId}
       activePageId={activePageId}
+      activeMeetingId={activeMeetingId}
       defaultViewIds={defaultViewIds}
       depth={0}
       expandedIds={expandedIds}
@@ -123,6 +129,7 @@ function SidebarNavRow({
   activeDatabaseId,
   activeDatabaseViewId,
   activePageId,
+  activeMeetingId,
   defaultViewIds,
   depth,
   expandedIds,
@@ -161,6 +168,7 @@ function SidebarNavRow({
   const active = isActiveItem(
     item,
     activePageId,
+    activeMeetingId ?? null,
     activeDatabaseId,
     activeDatabaseViewId ?? null,
     defaultViewIds,
@@ -191,7 +199,21 @@ function SidebarNavRow({
       <SidebarMenuItem>
         <div className="group/nav-row relative">
           <SidebarMenuButton asChild className={rowClassName} isActive={active}>
-            {(item.isDatabase || item.isDatabaseView) && item.databaseId ? (
+            {item.isMeeting && item.meetingId && item.pageId ? (
+              <Link
+                onClick={() => {
+                  scrollToMeetingBlock(document, item.meetingId!)
+                }}
+                params={{ pageId: item.pageId } as never}
+                search={{ meeting: item.meetingId } as never}
+                title={displayName}
+                to="/p/$pageId"
+                {...linkProps}
+                style={linkStyle}
+              >
+                {content}
+              </Link>
+            ) : (item.isDatabase || item.isDatabaseView) && item.databaseId ? (
               <Link
                 params={{ databaseId: item.databaseId } as never}
                 search={{ view: viewId } as never}
@@ -250,6 +272,7 @@ function SidebarNavRow({
                   activeDatabaseId={activeDatabaseId}
                   activeDatabaseViewId={activeDatabaseViewId}
                   activePageId={activePageId}
+                  activeMeetingId={activeMeetingId}
                   defaultViewIds={defaultViewIds}
                   depth={depth + 1}
                   expandedIds={expandedIds}
@@ -271,7 +294,7 @@ function SidebarNavRow({
 function ItemIndicators({ item }: { item: SidebarNavItem }) {
   const manifest = useOfflineManifest()
   const showAiMode = item.zilobaseai && !item.isDatabase
-  const availableOffline = manifest.items.some((entry) =>
+  const availableOffline = !item.isMeeting && manifest.items.some((entry) =>
     item.isDatabase
       ? entry.kind === "database" && entry.id === item.databaseId
       : entry.kind === "page" && entry.id === item.pageId,
@@ -307,10 +330,15 @@ function ItemIndicators({ item }: { item: SidebarNavItem }) {
 function isActiveItem(
   item: SidebarNavItem,
   activePageId: string | null,
+  activeMeetingId: string | null,
   activeDatabaseId: string | null,
   activeDatabaseViewId: string | null,
   defaultViewIds: Map<string, string>,
 ) {
+  if (item.isMeeting) {
+    return activeMeetingId === item.meetingId
+  }
+
   if (item.isDatabaseView) {
     return (
       activeDatabaseId === item.databaseId &&
@@ -321,7 +349,7 @@ function isActiveItem(
 
   return item.isDatabase
     ? activeDatabaseId === item.databaseId
-    : activePageId === item.pageId
+    : activeMeetingId === null && activePageId === item.pageId
 }
 
 function getDefaultViewIds(items: SidebarNavItem[]) {

@@ -4,6 +4,7 @@ import type {
   PageDatabaseView,
   PageItemPlacement,
 } from "@zilobase/features/pages"
+import type { MeetingListItem } from "@zilobase/features/meetings"
 import type { ReactNode } from "react"
 
 import type { SidebarNavItem } from "@/components/sidebar-nav-list"
@@ -16,6 +17,7 @@ export type SidebarPageSections = {
 export type SidebarNavigationIcons = {
   getDatabaseIcon: (database: PageDatabase) => ReactNode
   getDatabaseViewIcon: (view: PageDatabaseView) => ReactNode
+  getMeetingIcon?: (meeting: MeetingListItem) => ReactNode
   getPageIcon: (page: Page) => ReactNode
 }
 
@@ -24,6 +26,7 @@ export function buildSidebarNavigation(
   databases: PageDatabase[],
   placements: PageItemPlacement[],
   icons: SidebarNavigationIcons,
+  meetings: MeetingListItem[] = [],
 ) {
   const activePages = pages.filter(
     (page) => !page.deletedAt && page.type !== "meeting",
@@ -34,6 +37,7 @@ export function buildSidebarNavigation(
     activeDatabases,
     placements,
     icons,
+    meetings,
   )
   const recents = buildRecentItems(activePages, activeDatabases, icons)
   const favorites = buildFavoriteItems([
@@ -63,6 +67,7 @@ export function buildSidebarNavigation(
         !detachedFavoriteIds.has(placement.itemId),
     ),
     icons,
+    meetings,
   )
   const detachedNodesById = new Map(
     [...detachedSections.privatePages, ...detachedSections.teamspacePages].map(
@@ -103,6 +108,7 @@ export function buildPageSections(
   databases: PageDatabase[],
   placements: PageItemPlacement[],
   icons: SidebarNavigationIcons,
+  meetings: MeetingListItem[] = [],
 ): SidebarPageSections {
   const orderedPages = [...pages].sort(
     (first, second) => getPageCreatedTime(first) - getPageCreatedTime(second),
@@ -112,6 +118,21 @@ export function buildPageSections(
     orderedPages.map((page) => [page.id, createPageNode(page, icons)]),
   )
   const placementsByPageParent = groupPagePlacements(placements)
+  const meetingsByNotesPageId = new Map(
+    meetings.flatMap((meeting) =>
+      meeting.notesPageId ? [[meeting.notesPageId, meeting] as const] : [],
+    ),
+  )
+  const meetingsByHostPageId = new Map<string, MeetingListItem[]>()
+
+  for (const meeting of meetings) {
+    const siblings = meetingsByHostPageId.get(meeting.pageId)
+    if (siblings) {
+      siblings.push(meeting)
+    } else {
+      meetingsByHostPageId.set(meeting.pageId, [meeting])
+    }
+  }
   const databaseNodesById = new Map(
     databases.map((database) => [
       database.id,
@@ -164,9 +185,17 @@ export function buildPageSections(
     }
 
     visitingPageIds.add(pageId)
+    const representedMeetingIds = new Set<string>()
     const pages = (placementsByPageParent.get(pageId) ?? []).flatMap(
       (placement) => {
         if (placement.itemKind === "page") {
+          const meeting = meetingsByNotesPageId.get(placement.itemId)
+
+          if (meeting?.pageId === pageId) {
+            representedMeetingIds.add(meeting.id)
+            return [createMeetingNode(meeting, placement.id, icons)]
+          }
+
           if (placement.itemId === pageId) {
             return []
           }
@@ -192,6 +221,17 @@ export function buildPageSections(
 
         return child ? [child] : []
       },
+    )
+    pages.push(
+      ...(meetingsByHostPageId.get(pageId) ?? [])
+        .filter((meeting) => !representedMeetingIds.has(meeting.id))
+        .map((meeting) =>
+          createMeetingNode(
+            meeting,
+            `meeting:${pageId}:${meeting.id}`,
+            icons,
+          ),
+        ),
     )
     visitingPageIds.delete(pageId)
 
@@ -224,6 +264,25 @@ export function buildPageSections(
   return {
     privatePages: roots.filter((page) => !page.isTeamspace),
     teamspacePages: roots.filter((page) => page.isTeamspace),
+  }
+}
+
+function createMeetingNode(
+  meeting: MeetingListItem,
+  navNodeId: string,
+  icons: SidebarNavigationIcons,
+): SidebarNavItem {
+  return {
+    emoji: icons.getMeetingIcon?.(meeting) ?? null,
+    id: `meeting:${meeting.id}`,
+    isMeeting: true,
+    isTeamspace: false,
+    meetingId: meeting.id,
+    name: meeting.title,
+    navNodeId,
+    pageId: meeting.pageId,
+    pages: [],
+    updatedAt: meeting.updatedAt,
   }
 }
 

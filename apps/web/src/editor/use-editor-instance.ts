@@ -44,6 +44,10 @@ import {
   registerEditorHistoryBoundary,
   type EditorHistoryDepths,
 } from "@/shortcuts";
+import {
+  handleProtectedStructuralBlockClipboardMutation,
+  handleProtectedStructuralBlockDeleteKey,
+} from "./protected-structural-blocks";
 
 type UseEditorInstanceOptions = {
   databaseEditorRuntime: DatabaseBlockEditorRuntime;
@@ -227,6 +231,13 @@ export const useEditorInstance = ({
         handleDOMEvents: {
           ...dragDrop.domEvents,
           keydown: (view, event) => {
+            if (
+              editableRef.current &&
+              handleProtectedStructuralBlockDeleteKey(view, event)
+            ) {
+              return true;
+            }
+
             if (event.key === "Enter") {
               return handleTypedLinkChoiceRef.current(view, event);
             }
@@ -243,13 +254,24 @@ export const useEditorInstance = ({
 
             return false;
           },
+          cut: (view, event) =>
+            editableRef.current &&
+            handleProtectedStructuralBlockClipboardMutation(view, event),
           keyup: (view, event) =>
             event.key === " "
               ? handleTypedLinkChoiceRef.current(view, event)
               : false,
         },
-        handlePaste: (view, event) =>
-          handleProviderLinkPasteRef.current(view, event),
+        handlePaste: (view, event) => {
+          if (
+            editableRef.current &&
+            handleProtectedStructuralBlockClipboardMutation(view, event)
+          ) {
+            return true;
+          }
+
+          return handleProviderLinkPasteRef.current(view, event);
+        },
         transformPastedHTML: normalizePastedEditorHTML,
       },
     },

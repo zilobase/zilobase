@@ -30,6 +30,11 @@ import {
   type PageIconPosition,
   type PageMetadata,
 } from "@zilobase/features/pages";
+import { useDeleteDatabase } from "@zilobase/features/databases";
+import {
+  useDeleteMeeting,
+  useWorkspaceMeetings,
+} from "@zilobase/features/meetings";
 import {
   useUpdatePage,
   useRestorePage,
@@ -57,6 +62,7 @@ import { Editor, type PageEditPreviewControls } from "@/packages/editor";
 import type {
   OpenPageOptions,
   PageLayoutPanelMode,
+  StructuralBlockDeleteRequest,
 } from "@/packages/editor/types";
 import { usePageCollaboration } from "@/packages/editor/use-page-collaboration";
 import { canEditOnlineDatabase } from "@/packages/editor/database-editability";
@@ -69,6 +75,12 @@ import { createPageCommentController } from "@/comments/yjs-comments";
 import { usePageCommentsRegistry } from "@/contexts/page-comments-registry";
 import { useTitleDraft } from "@/hooks/use-title-draft";
 import { scrollToMeetingBlock } from "@/lib/meeting-navigation";
+import {
+  getMissingHostedMeetingIds,
+  getMissingPlacedDatabaseIds,
+  getPlacedDatabaseIds,
+  insertMeetingBlockInContent,
+} from "./page-hierarchy-blocks";
 
 type PageEditorPaneProps = {
   afterMetadata?: ReactNode;
@@ -340,6 +352,7 @@ export function PageEditorPane({
     refetchOnMount: false,
   });
   const { data: navigation } = usePageNavigation(page?.workspaceId);
+  const { data: meetingsPayload } = useWorkspaceMeetings(page?.workspaceId);
   const effectiveDatabaseId = databaseId ?? pageDatabaseIds[0] ?? null;
   const { data: userSettings } = useUserSettings();
   const { data: resolvedLayout } = useResolvedPageLayout({
@@ -355,6 +368,8 @@ export function PageEditorPane({
   const createPage = useCreatePage();
   const embedPageItem = useEmbedPageItem();
   const removePageEmbed = useRemovePageEmbed();
+  const deleteDatabase = useDeleteDatabase();
+  const deleteMeeting = useDeleteMeeting();
   const updatePage = useUpdatePage();
   const restorePage = useRestorePage();
   const contentSaveTimeoutRef = useRef<number | null>(null);
@@ -368,6 +383,58 @@ export function PageEditorPane({
   const paneRef = useRef<HTMLElement | null>(null);
   const { getEditorHandle, registerEditor, unregisterEditor } =
     usePageEditorRegistry();
+
+  const getStructuralBlockDeleteAction = useCallback(
+    (request: StructuralBlockDeleteRequest) => {
+      if (request.type !== "database") {
+        return "move-to-trash" as const;
+      }
+
+      const placement = navigation?.placements.find(
+        (candidate) =>
+          candidate.parentKind === "page" &&
+          candidate.parentId === page?.id &&
+          candidate.itemKind === "database" &&
+          candidate.itemId === request.id,
+      );
+
+      return placement?.placementKind === "linked"
+        ? ("remove-link" as const)
+        : ("move-to-trash" as const);
+    },
+    [navigation, page?.id],
+  );
+
+  const deleteStructuralBlock = useCallback(
+    async (request: StructuralBlockDeleteRequest) => {
+      if (!page) {
+        throw new Error("Page is unavailable.");
+      }
+
+      if (request.type === "meeting") {
+        await deleteMeeting.mutateAsync(request.id);
+        return;
+      }
+
+      if (getStructuralBlockDeleteAction(request) === "remove-link") {
+        await removePageEmbed.mutateAsync({
+          hostPageId: page.id,
+          itemId: request.id,
+          kind: "database",
+        });
+        return;
+      }
+
+      await deleteDatabase.mutateAsync(request.id);
+    },
+    [
+      deleteDatabase,
+      deleteMeeting,
+      getStructuralBlockDeleteAction,
+      page,
+      removePageEmbed,
+    ],
+  );
   const commentsRegistry = usePageCommentsRegistry();
   const [cover, setCover] = useState("");
   const [emoji, setEmoji] = useState("");
@@ -440,14 +507,7 @@ export function PageEditorPane({
     }
 
     const placedDatabaseIds = new Set(
-      navigation.placements
-        .filter(
-          (placement) =>
-            placement.parentKind === "page" &&
-            placement.parentId === page.id &&
-            placement.itemKind === "database",
-        )
-        .map((placement) => placement.itemId),
+      getPlacedDatabaseIds(navigation.placements, page.id),
     );
 
     for (const databaseId of extractDatabaseIds(page.content)) {
@@ -746,16 +806,11 @@ export function PageEditorPane({
       content = handle.getContentJson() ?? page.content;
     }
 
-    const missingDatabaseIds = navigation.placements
-      .filter(
-        (placement) =>
-          placement.parentKind === "page" &&
-          placement.parentId === page.id &&
-          placement.itemKind === "database",
-      )
-      .sort((first, second) => first.position - second.position)
-      .map((placement) => placement.itemId)
-      .filter((databaseId) => !extractDatabaseIds(content).includes(databaseId));
+    const missingDatabaseIds = getMissingPlacedDatabaseIds(
+      content,
+      navigation.placements,
+      page.id,
+    );
 
     if (missingDatabaseIds.length === 0) {
       return;
@@ -770,6 +825,55 @@ export function PageEditorPane({
 
     handle.setContentJson(nextContent);
   }, [getEditorHandle, liveEditingReady, navigation, page, pageEditable]);
+
+  useEffect(() => {
+    if (!pageEditable || !page || !meetingsPayload) {
+      return;
+    }
+
+    const handle = getEditorHandle(page.id);
+
+    if (!handle?.isEditable()) {
+      return;
+    }
+
+    let content = handle.getContentJson();
+
+    if (
+      isEffectivelyEmptyPageContent(content) &&
+      !isEffectivelyEmptyPageContent(page.content)
+    ) {
+      if (!handle.setContentJson(page.content)) {
+        return;
+      }
+
+      content = handle.getContentJson() ?? page.content;
+    }
+
+    const missingMeetingIds = getMissingHostedMeetingIds(
+      content,
+      meetingsPayload.meetings,
+      page.id,
+    );
+
+    if (missingMeetingIds.length === 0) {
+      return;
+    }
+
+    let nextContent = content;
+
+    for (const meetingId of missingMeetingIds) {
+      nextContent = insertMeetingBlockInContent(nextContent, meetingId).content;
+    }
+
+    handle.setContentJson(nextContent);
+  }, [
+    getEditorHandle,
+    liveEditingReady,
+    meetingsPayload,
+    page,
+    pageEditable,
+  ]);
 
   const embedLinkedPage = useCallback(
     async (pageId: string) => {
@@ -893,6 +997,7 @@ export function PageEditorPane({
         databaseEditable={databaseEditingReady}
         enableComments={enableComments && !offlineEditing}
         hideEditorContent={hideEditorContent}
+        getStructuralBlockDeleteAction={getStructuralBlockDeleteAction}
         onEditorReady={(editor) => {
           editorInstanceRef.current = editor;
           lastSavedContentRef.current = editor
@@ -915,6 +1020,7 @@ export function PageEditorPane({
         onEmbedPage={embedLinkedPage}
         onEmojiChange={updateEmoji}
         onIconPositionChange={updateIconPosition}
+        onDeleteStructuralBlock={deleteStructuralBlock}
         onOpenPage={onOpenPage}
         onTitleChange={setName}
         workspaceId={page.workspaceId}

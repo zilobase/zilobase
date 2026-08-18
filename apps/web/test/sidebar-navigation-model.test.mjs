@@ -56,6 +56,53 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(sections.privatePages[0].pages, [])
   })
 
+  test("sidebar navigation represents meeting blocks beneath their host page", async () => {
+    const { buildSidebarNavigation } = await loadModule(
+      "/src/components/sidebar-navigation-model.tsx"
+    )
+    const host = createPage("host", "Host", "2026-08-01T00:00:00.000Z")
+    const notes = {
+      ...createPage("notes", "Planning notes", "2026-08-02T00:00:00.000Z"),
+      type: "meeting",
+    }
+    const meeting = createMeeting("meeting-1", host.id, notes.id, "Planning")
+    const { sections } = buildSidebarNavigation(
+      [host, notes],
+      [],
+      [createPlacement("notes-placement", host.id, notes.id, 0)],
+      { ...icons, getMeetingIcon: () => "meeting" },
+      [meeting],
+    )
+
+    const meetingNode = sections.privatePages[0].pages[0]
+    assert.equal(meetingNode.id, "meeting:meeting-1")
+    assert.equal(meetingNode.meetingId, "meeting-1")
+    assert.equal(meetingNode.pageId, "host")
+    assert.equal(meetingNode.name, "Planning")
+    assert.equal(meetingNode.emoji, "meeting")
+    assert.equal(meetingNode.isMeeting, true)
+  })
+
+  test("sidebar navigation keeps meetings visible when their notes placement is missing", async () => {
+    const { buildSidebarNavigation } = await loadModule(
+      "/src/components/sidebar-navigation-model.tsx"
+    )
+    const host = createPage("host", "Host", "2026-08-01T00:00:00.000Z")
+    const meeting = createMeeting("meeting-1", host.id, null, "Planning")
+    const { sections } = buildSidebarNavigation(
+      [host],
+      [],
+      [],
+      icons,
+      [meeting],
+    )
+
+    assert.deepEqual(
+      sections.privatePages[0].pages.map((item) => item.id),
+      ["meeting:meeting-1"],
+    )
+  })
+
   test("sidebar navigation orders placements and stops page cycles", async () => {
     const { buildSidebarNavigation } = await loadModule(
       "/src/components/sidebar-navigation-model.tsx"
@@ -296,6 +343,20 @@ function createPlacement(id, parentId, itemId, position) {
     parentKind: "page",
     placementKind: "primary",
     position,
+    workspaceId: "workspace",
+  }
+}
+
+function createMeeting(id, pageId, notesPageId, title) {
+  return {
+    createdAt: "2026-08-02T00:00:00.000Z",
+    deletedAt: null,
+    emoji: "📅",
+    id,
+    notesPageId,
+    pageId,
+    title,
+    updatedAt: "2026-08-02T00:00:00.000Z",
     workspaceId: "workspace",
   }
 }

@@ -52,6 +52,7 @@ import {
 import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,
+  getActiveMeetingId,
   getActivePageId,
   SidebarNavList,
   type SidebarNavItem,
@@ -99,6 +100,10 @@ export function NavPages({
   const activePageId = getActivePageId(location.pathname)
   const activeDatabaseId = getActiveDatabaseId(location.pathname)
   const activeDatabaseViewId = getActiveDatabaseViewId(location.search)
+  const activeMeetingId = getActiveMeetingId(
+    location.pathname,
+    location.search,
+  )
   const [databaseDropTargetId, setDatabaseDropTargetId] = useState<
     string | null
   >(null)
@@ -109,6 +114,7 @@ export function NavPages({
         activeDatabaseId={activeDatabaseId}
         activeDatabaseViewId={activeDatabaseViewId}
         activePageId={activePageId}
+        activeMeetingId={activeMeetingId}
         databaseDropTargetId={databaseDropTargetId}
         label="Private"
         sectionId="private"
@@ -125,6 +131,7 @@ export function NavPages({
         activeDatabaseId={activeDatabaseId}
         activeDatabaseViewId={activeDatabaseViewId}
         activePageId={activePageId}
+        activeMeetingId={activeMeetingId}
         databaseDropTargetId={databaseDropTargetId}
         label="Shared"
         sectionId="shared"
@@ -141,6 +148,7 @@ export function NavPageSection({
   activeDatabaseId,
   activeDatabaseViewId,
   activePageId,
+  activeMeetingId,
   databaseDropTargetId,
   label,
   onCreateDatabase,
@@ -159,6 +167,7 @@ export function NavPageSection({
   activeDatabaseId: string | null
   activeDatabaseViewId: string | null
   activePageId: string | null
+  activeMeetingId?: string | null
   databaseDropTargetId: string | null
   label: string
   onCreateDatabase?: () => void
@@ -223,7 +232,7 @@ export function NavPageSection({
       })
     }
     const handlePageDragStart = (event: DragEvent<HTMLAnchorElement>) => {
-      if (item.isDatabase || item.isDatabaseView) {
+      if (item.isDatabase || item.isDatabaseView || item.isMeeting) {
         return
       }
 
@@ -243,7 +252,7 @@ export function NavPageSection({
         databaseDropTargetId === item.id
           ? "bg-sidebar-accent text-sidebar-accent-foreground ring-1 ring-sidebar-ring"
           : undefined,
-      draggable: !item.isDatabase && !item.isDatabaseView,
+      draggable: !item.isDatabase && !item.isDatabaseView && !item.isMeeting,
       onDragEnter: handleDatabaseDragOver,
       onDragLeave: handleDatabaseDragLeave,
       onDragOver: handleDatabaseDragOver,
@@ -331,10 +340,13 @@ export function NavPageSection({
                 activeDatabaseId={activeDatabaseId}
                 activeDatabaseViewId={activeDatabaseViewId}
                 activePageId={activePageId}
+                activeMeetingId={activeMeetingId}
                 getLinkProps={getLinkProps}
                 items={displayedPages}
                 renderItemMenu={({ item }) =>
-                  item.isDatabaseView ? null : <PageItemMenu item={item} />
+                  item.isDatabaseView || item.isMeeting
+                    ? null
+                    : <PageItemMenu item={item} />
                 }
                 storageKey={storageKey}
               />
