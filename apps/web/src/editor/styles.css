@@ -2649,7 +2649,7 @@
 
 .tiptap-editor .meeting-block-shell input,
 .tiptap-editor .meeting-block-shell button,
-.tiptap-editor .meeting-collaborative-editor,
+.tiptap-editor .meeting-summary-editor,
 .tiptap-editor .meeting-notes-editor {
   cursor: auto;
 }
@@ -2670,17 +2670,11 @@
   outline: none;
 }
 
-.meeting-collaborative-editor .tiptap {
-  min-height: 7rem;
-  outline: none;
-}
-
-.meeting-collaborative-editor .tiptap p.is-editor-empty:first-child::before {
-  color: var(--muted-foreground);
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
+.meeting-summary-editor .tiptap-editor {
+  min-height: 12rem;
+  padding-inline: 0;
+  padding-top: 0.25rem;
+  padding-bottom: 0.5rem;
 }
 .tiptap-editor .editor-comment-anchor {
   border-bottom: 2px solid transparent;

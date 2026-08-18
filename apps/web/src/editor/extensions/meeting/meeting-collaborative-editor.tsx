@@ -1,41 +1,48 @@
-import { useEffect } from "react"
-import Collaboration from "@tiptap/extension-collaboration"
-import Placeholder from "@tiptap/extension-placeholder"
-import StarterKit from "@tiptap/starter-kit"
-import { EditorContent, useEditor } from "@tiptap/react"
 import type { HocuspocusProvider } from "@hocuspocus/provider"
 import type * as Y from "yjs"
+
+import { Editor } from "@/packages/editor/editor"
+import type { OpenPageOptions } from "@/packages/editor/types"
 
 export function MeetingCollaborativeEditor({
   document,
   editable,
   field,
-  placeholder,
-  provider: _provider,
+  onOpenPage,
+  provider,
+  status,
+  workspaceId,
 }: {
   document: Y.Doc
   editable: boolean
   field: "notes" | "summary"
-  placeholder: string
+  onOpenPage: (pageId: string, options?: OpenPageOptions) => void
   provider: HocuspocusProvider | null
+  status: "connecting" | "connected" | "disconnected" | "blocked"
+  workspaceId: string
 }) {
-  const editor = useEditor({
-    editable,
-    extensions: [
-      StarterKit.configure({ undoRedo: false }),
-      Collaboration.configure({ document, field }),
-      Placeholder.configure({ placeholder }),
-    ],
-  }, [document, field])
-
-  useEffect(() => {
-    editor?.setEditable(editable)
-  }, [editable, editor])
-
   return (
-    <EditorContent
-      className="meeting-collaborative-editor min-h-28 text-sm leading-6"
-      editor={editor}
-    />
+    <div className="meeting-summary-editor">
+      <Editor
+        collaboration={{
+          document,
+          provider: provider ?? undefined,
+          status,
+          unsyncedChanges: 0,
+          users: [],
+        }}
+        collaborationField={field}
+        commentsEditable={false}
+        databaseEditable={false}
+        editable={editable}
+        enableComments={false}
+        fullWidth
+        hideMetadata
+        metadataEditable={false}
+        onOpenPage={onOpenPage}
+        structuralEditingEnabled={editable}
+        workspaceId={workspaceId}
+      />
+    </div>
   )
 }

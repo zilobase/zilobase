@@ -9,6 +9,7 @@ export type { UseEditorExtensionsOptions }
 
 export const useEditorExtensions = ({
   collaboration,
+  collaborationField,
   content,
   createEditorDatabase,
   createEditorMeeting,
@@ -27,6 +28,7 @@ export const useEditorExtensions = ({
     () =>
       createBaseExtensions({
         collaboration,
+        collaborationField,
         createEditorDatabase,
         createEditorMeeting,
         databaseEditorRuntime,
@@ -43,6 +45,7 @@ export const useEditorExtensions = ({
       createEditorDatabase,
       createEditorMeeting,
       collaboration,
+      collaborationField,
       databaseEditorRuntime,
       editable,
       structuralEditingEnabled,

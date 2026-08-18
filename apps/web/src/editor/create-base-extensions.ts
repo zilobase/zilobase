@@ -52,6 +52,7 @@ import { OfflineStructureGuard } from "./offline-structure-guard"
 
 export type BaseExtensionsOptions = {
   collaboration?: import("./types").EditorCollaboration
+  collaborationField?: string
   createEditorDatabase: () => Promise<string | null>
   createEditorMeeting: () => Promise<string | null>
   databaseEditorRuntime: DatabaseBlockEditorRuntime
@@ -85,6 +86,7 @@ export function normalizeEditorContent(content: unknown) {
 
 export const createBaseExtensions = ({
   collaboration,
+  collaborationField = "default",
   createEditorDatabase,
   createEditorMeeting,
   databaseEditorRuntime,
@@ -107,7 +109,7 @@ export const createBaseExtensions = ({
     ? [
         Collaboration.configure({
           document: collaboration.document,
-          field: "default",
+          field: collaborationField,
         }),
         ...(collaboration.provider && collaboration.user
           ? [

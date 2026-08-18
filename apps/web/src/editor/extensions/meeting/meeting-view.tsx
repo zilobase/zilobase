@@ -259,6 +259,7 @@ export function MeetingView({
     try {
       if (!meeting) throw new Error("Meeting is unavailable.")
       await generateSummary.mutateAsync()
+      setActiveTab("summary")
       if (isTauri() && !meeting.archiveLocalAudio) {
         await invoke("meeting_capture_delete_local_file", { meetingId })
       }
@@ -703,10 +704,12 @@ export function MeetingView({
         ) : collaboration.document ? (
           <MeetingCollaborativeEditor
             document={collaboration.document}
-            editable={false}
+            editable={editable}
             field="summary"
-            placeholder="The meeting summary will appear here."
+            onOpenPage={openPage}
             provider={collaboration.provider}
+            status={collaboration.status}
+            workspaceId={meeting.workspaceId}
           />
         ) : (
           <div className="min-h-28 text-sm text-muted-foreground">

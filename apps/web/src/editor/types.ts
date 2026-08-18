@@ -73,6 +73,7 @@ export type EditorProps = {
   commentController?: PageCommentController
   content?: unknown
   collaboration?: EditorCollaboration
+  collaborationField?: string
   cover?: string
   databaseId?: string | null
   databaseIds?: string[]
@@ -113,6 +114,7 @@ export type EditorProps = {
 export type UseEditorExtensionsOptions = {
   content: unknown
   collaboration?: EditorCollaboration
+  collaborationField?: string
   createEditorDatabase: () => Promise<string | null>
   createEditorMeeting: () => Promise<string | null>
   databaseEditorRuntime: import("@/packages/editor/extensions/database").DatabaseBlockEditorRuntime

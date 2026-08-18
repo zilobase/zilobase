@@ -62,7 +62,7 @@ export function useMeetingCollaboration(meetingId: string | null) {
         setError(
           reason instanceof Error
             ? reason.message
-            : "Could not connect meeting notes.",
+            : "Could not connect meeting content.",
         )
       })
 

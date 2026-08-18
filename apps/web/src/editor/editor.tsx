@@ -63,6 +63,7 @@ export function Editor({
   afterMetadata,
   commentController,
   collaboration,
+  collaborationField,
   content = starterContent,
   cover,
   databaseId,
@@ -133,6 +134,7 @@ export function Editor({
   const { editorExtensions, editorLifecycleKey, initialContent, tocItems } =
     useEditorExtensions({
       collaboration,
+      collaborationField,
       content,
       createEditorDatabase,
       createEditorMeeting,
