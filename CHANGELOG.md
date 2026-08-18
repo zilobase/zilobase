@@ -4,6 +4,18 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.40
+
+### Changed
+
+- Database and meeting blocks can only be removed through their block action menu, with confirmation before moving the underlying item to trash.
+- Backspace from an empty line after a database or meeting block now focuses the block title instead of deleting the structural block.
+- Meeting blocks appear alongside database blocks in the page hierarchy sidebar and open at their inline location.
+
+### Fixed
+
+- Pages restore legacy database and meeting blocks that are still active in their hierarchy but missing from saved editor content, without creating duplicates or restoring trashed items.
+
 ## 0.0.39
 
 ### Added
