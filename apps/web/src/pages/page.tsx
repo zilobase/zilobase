@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link, useParams, useRouteContext } from "@tanstack/react-router";
+import {
+  Link,
+  useParams,
+  useRouteContext,
+  useSearch,
+} from "@tanstack/react-router";
 import { ArrowRight, Maximize2 } from "lucide-react";
 
 import { AppLayout } from "@/components/app-layout";
@@ -63,12 +68,14 @@ import {
 import { createPageCommentController } from "@/comments/yjs-comments";
 import { usePageCommentsRegistry } from "@/contexts/page-comments-registry";
 import { useTitleDraft } from "@/hooks/use-title-draft";
+import { scrollToMeetingBlock } from "@/lib/meeting-navigation";
 
 type PageEditorPaneProps = {
   afterMetadata?: ReactNode;
   className?: string;
   databaseId?: string | null;
   enableComments?: boolean;
+  focusMeetingId?: string;
   hideChrome?: boolean;
   hideEditorContent?: boolean;
   layoutPanelMode?: PageLayoutPanelMode;
@@ -102,6 +109,7 @@ export default function Page() {
 
 function AuthenticatedPage() {
   const { pageId } = useParams({ from: "/p/$pageId" });
+  const { meeting: focusMeetingId } = useSearch({ from: "/p/$pageId" });
   const { data: page } = usePage(pageId, { refetchOnMount: false });
   const {
     renderedSidePanePageId,
@@ -118,7 +126,12 @@ function AuthenticatedPage() {
     <PageSidePaneLayout
       main={
         <PageWorkspaceGate pageId={pageId}>
-          <PageEditorPane key={pageId} onOpenPage={openPage} pageId={pageId} />
+          <PageEditorPane
+            focusMeetingId={focusMeetingId}
+            key={pageId}
+            onOpenPage={openPage}
+            pageId={pageId}
+          />
         </PageWorkspaceGate>
       }
       sidePane={
@@ -306,6 +319,7 @@ export function PageEditorPane({
   className,
   databaseId,
   enableComments = true,
+  focusMeetingId,
   hideChrome = false,
   hideEditorContent = false,
   layoutPanelMode = "auto",
@@ -351,6 +365,7 @@ export function PageEditorPane({
   const editorContentRef = useRef<(() => unknown) | null>(null);
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
+  const paneRef = useRef<HTMLElement | null>(null);
   const { getEditorHandle, registerEditor, unregisterEditor } =
     usePageEditorRegistry();
   const commentsRegistry = usePageCommentsRegistry();
@@ -509,6 +524,28 @@ export function PageEditorPane({
     connectivity === "online" &&
     !collaboration.downloaded &&
     (!collaboration.document || !collaboration.provider);
+
+  useEffect(() => {
+    if (!focusMeetingId || isLoading || waitingForCollaboration) return;
+
+    const root = paneRef.current;
+    if (!root) return;
+
+    const revealMeeting = () => scrollToMeetingBlock(root, focusMeetingId);
+
+    if (revealMeeting()) return;
+
+    const observer = new MutationObserver(() => {
+      if (revealMeeting()) observer.disconnect();
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    const timeout = window.setTimeout(() => observer.disconnect(), 5_000);
+
+    return () => {
+      window.clearTimeout(timeout);
+      observer.disconnect();
+    };
+  }, [focusMeetingId, isLoading, page?.id, waitingForCollaboration]);
   const offlineEditing =
     collaboration.downloaded &&
     (connectivity !== "online" || collaboration.status === "blocked");
@@ -815,7 +852,10 @@ export function PageEditorPane({
   }
 
   return (
-    <section className={cn(className, "animate-in fade-in-0 duration-300")}>
+    <section
+      className={cn(className, "animate-in fade-in-0 duration-300")}
+      ref={paneRef}
+    >
       {page.deletedAt ? (
         <TrashedItemBanner
           itemLabel="page"

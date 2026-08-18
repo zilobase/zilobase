@@ -149,7 +149,6 @@ const data = {
     {
       id: "meetings" as const,
       title: "Meetings",
-      url: "/meetings",
       icon: CalendarDays,
     },
   ],
@@ -239,6 +238,7 @@ export function AppSidebar({
   const { isPending: isCreatingDatabase, mutateAsync: createDatabase } =
     useCreateDatabase();
   const { activeThreadId, setActiveThreadId } = useAiChatThreadState();
+  const activeMeetingId = getActiveMeetingId(pathname, location.search);
   const {
     createThread: createChatThread,
     handleCreateThread,
@@ -269,7 +269,7 @@ export function AppSidebar({
   >(
     pathname === "/ai"
       ? "askAi"
-      : pathname === "/meetings" || pathname.startsWith("/m/")
+      : activeMeetingId
         ? "meetings"
         : "home",
   );
@@ -278,11 +278,11 @@ export function AppSidebar({
     setSidebarMode(
       pathname === "/ai"
         ? "askAi"
-        : pathname === "/meetings" || pathname.startsWith("/m/")
+        : activeMeetingId
           ? "meetings"
           : "home",
     );
-  }, [pathname]);
+  }, [activeMeetingId, pathname]);
 
   const isAiPage = sidebarMode === "askAi";
   const isMeetingsPage = sidebarMode === "meetings";
@@ -453,7 +453,7 @@ export function AppSidebar({
           <AiSidebarHistory />
         ) : isMeetingsPage ? (
           <NavMeetings
-            activeMeetingId={getActiveMeetingId(pathname)}
+            activeMeetingId={activeMeetingId}
             meetings={meetingsPayload?.meetings ?? []}
           />
         ) : (
@@ -635,7 +635,7 @@ function NavMain({
   items: {
     id: "home" | "meetings" | SidebarItemId;
     title: string;
-    url: string;
+    url?: string;
     icon: LucideIcon;
   }[];
   onOpenSearch: () => void;
@@ -673,18 +673,17 @@ function NavMain({
 
     if (item.id === "home") {
       onSidebarModeChange("home");
-      void navigate({ to: item.url as never });
+      if (item.url) void navigate({ to: item.url as never });
       return;
     }
 
     if (item.id === "meetings") {
       onSidebarModeChange("meetings");
-      void navigate({ to: item.url as never });
       return;
     }
 
     onSidebarModeChange("askAi");
-    void navigate({ to: item.url as never });
+    if (item.url) void navigate({ to: item.url as never });
   };
 
   return (

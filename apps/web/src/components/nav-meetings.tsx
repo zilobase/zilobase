@@ -10,6 +10,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { PageIconDisplay } from "@/lib/page-icon"
+import { scrollToMeetingBlock } from "@/lib/meeting-navigation"
 import type { MeetingListItem } from "@zilobase/features/meetings"
 
 export function NavMeetings({
@@ -35,7 +36,14 @@ export function NavMeetings({
                   asChild
                   isActive={meeting.id === activeMeetingId}
                 >
-                  <Link params={{ meetingId: meeting.id }} to="/m/$meetingId">
+                  <Link
+                    params={{ pageId: meeting.pageId }}
+                    onClick={() => {
+                      scrollToMeetingBlock(document, meeting.id)
+                    }}
+                    search={{ meeting: meeting.id }}
+                    to="/p/$pageId"
+                  >
                     {meeting.emoji ? (
                       <PageIconDisplay size="sm" value={meeting.emoji} />
                     ) : (

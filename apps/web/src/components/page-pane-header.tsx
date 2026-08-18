@@ -352,18 +352,6 @@ export function AppBreadcrumbs({ pathname }: { pathname: string }) {
     return <MeetingBreadcrumb meetingId={meetingId} />;
   }
 
-  if (pathname === "/meetings") {
-    return (
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbPage className="line-clamp-1">Meetings</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-    );
-  }
-
   if (pathname.startsWith("/settings")) {
     const settingsPageTitle = getSettingsPageTitle(pathname);
 
@@ -464,9 +452,7 @@ function MeetingBreadcrumb({ meetingId }: { meetingId: string }) {
     <Breadcrumb className="min-w-0">
       <BreadcrumbList className="flex-nowrap">
         <BreadcrumbItem className="hidden sm:inline-flex">
-          <BreadcrumbLink asChild>
-            <Link to="/meetings">Meetings</Link>
-          </BreadcrumbLink>
+          <BreadcrumbPage>Meetings</BreadcrumbPage>
         </BreadcrumbItem>
         <BreadcrumbSeparator className="hidden sm:inline-flex" />
         <BreadcrumbItem className="min-w-0">

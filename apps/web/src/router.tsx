@@ -21,7 +21,6 @@ import { libraryViewIds } from "@zilobase/features/user-settings"
 import { pagesQueryOptions } from "@zilobase/features/pages"
 import DatabasePage from "@/pages/database"
 import MeetingPage from "@/pages/meeting"
-import MeetingsPage from "@/pages/meetings"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import PreferencesSettingsPage from "@/pages/settings/preferences"
 import ConnectPage from "@/pages/connect"
@@ -258,12 +257,6 @@ const canvasRoute = createRoute({
   component: CanvasPage,
 })
 
-const meetingsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/meetings",
-  component: MeetingsPage,
-})
-
 const aiRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/ai",
@@ -279,6 +272,12 @@ const aiRoute = createRoute({
 const pageRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/p/$pageId",
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { meeting?: string } =>
+    typeof search.meeting === "string" && search.meeting.trim()
+      ? { meeting: search.meeting.trim() }
+      : {},
   beforeLoad: async ({ params }) => ({
     publishedShare: await applyPublishedShareAccess(() =>
       isPagePublished(params.pageId),
@@ -378,7 +377,6 @@ const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
     aiRoute,
     canvasRoute,
-    meetingsRoute,
     recentsRoute,
     trashRoute,
     settingsRoute,
