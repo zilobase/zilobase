@@ -4,6 +4,26 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.41
+
+### Added
+
+- Added browser meeting capture with microphone and shared-tab or shared-screen audio, plus recovery for interrupted capture sessions.
+- Added native desktop meeting capture support across macOS, Windows, and Linux, with platform-aware system-audio setup and fallbacks.
+- Added optional Redis or Valkey-backed realtime coordination for multi-replica self-hosted deployments, including distributed presence, connection limits, readiness checks, and Kubernetes safeguards.
+
+### Changed
+
+- Meeting blocks now use one outlined container with aligned Summary, Notes, and Transcript content, while nested database blocks retain their own layout and controls.
+- Pausing a meeting now suspends the audio transport and credential refresh work until capture resumes.
+- Local Cloudflare development uses local meeting audio and collaboration WebSocket endpoints instead of production Cloud endpoints.
+
+### Fixed
+
+- Fixed browser meeting WebSocket authentication by using short-lived meeting tickets rather than relying on unavailable browser WebSocket headers.
+- Fixed Cloudflare meeting audio handling for binary Worker payloads and contained failed transcription sessions without retry loops.
+- Empty meeting blocks no longer poll the meeting endpoint every few seconds while the page remains open.
+
 ## 0.0.40
 
 ### Changed
