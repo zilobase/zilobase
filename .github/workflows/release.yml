@@ -131,7 +131,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libasound2-dev libpipewire-0.3-dev libpulse-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -288,6 +288,9 @@ jobs:
             curl \
             file \
             libayatana-appindicator3-dev \
+            libasound2-dev \
+            libpipewire-0.3-dev \
+            libpulse-dev \
             librsvg2-dev \
             libssl-dev \
             libwebkit2gtk-4.1-dev \

@@ -17,7 +17,7 @@ use std::{
         mpsc, Arc, Mutex,
     },
     thread,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_opener::OpenerExt;
@@ -32,16 +32,27 @@ const TARGET_SAMPLE_RATE: u32 = 24_000;
 const FRAME_SAMPLES: usize = 480;
 const MAX_CAPTURE_MS: u64 = 3 * 60 * 60 * 1_000;
 const AUDIO_CHANNEL_CAPACITY: usize = 128;
+const TRANSPORT_CHANNEL_CAPACITY: usize = 1_500;
 const CAPTURE_DIRECTORY: &str = "meeting-recordings";
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeetingAudioDevice {
+    backend: &'static str,
+    capture_mode: CaptureMode,
     id: String,
     name: String,
     kind: AudioDeviceKind,
     is_default: bool,
     is_system_capture_candidate: bool,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+enum CaptureMode {
+    Microphone,
+    NativeLoopback,
+    VirtualInput,
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -82,12 +93,14 @@ fn default_true() -> bool {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MeetingCaptureStatus {
+    active_sources: Vec<AudioSource>,
     meeting_id: Option<String>,
     phase: CapturePhase,
     elapsed_ms: u64,
     sample_rate: u32,
     checkpoint_path: Option<String>,
     error: Option<String>,
+    warnings: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -104,12 +117,14 @@ enum CapturePhase {
 impl Default for MeetingCaptureStatus {
     fn default() -> Self {
         Self {
+            active_sources: Vec::new(),
             meeting_id: None,
             phase: CapturePhase::Idle,
             elapsed_ms: 0,
             sample_rate: TARGET_SAMPLE_RATE,
             checkpoint_path: None,
             error: None,
+            warnings: Vec::new(),
         }
     }
 }
@@ -150,6 +165,18 @@ enum CaptureControl {
     Stop,
 }
 
+enum TransportCommand {
+    Frame { samples: Vec<f32>, sequence: u64 },
+}
+
+struct TransportWorker {
+    commands: mpsc::SyncSender<TransportCommand>,
+    refresh: mpsc::Sender<(String, String)>,
+    stop: mpsc::Sender<()>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 enum AudioSource {
     Microphone,
     System,
@@ -161,32 +188,56 @@ struct AudioChunk {
     sample_rate: u32,
 }
 
+struct CaptureStreams {
+    active_sources: Vec<AudioSource>,
+    streams: Vec<cpal::Stream>,
+    warnings: Vec<String>,
+}
+
 #[tauri::command]
 pub fn meeting_capture_list_devices() -> Result<Vec<MeetingAudioDevice>, String> {
     let host = cpal::default_host();
     let default_input = host
         .default_input_device()
-        .and_then(|device| device.name().ok());
+        .and_then(|device| device.id().ok())
+        .map(|id| id.to_string());
     let default_output = host
         .default_output_device()
-        .and_then(|device| device.name().ok());
+        .and_then(|device| device.id().ok())
+        .map(|id| id.to_string());
     let mut devices = Vec::new();
 
     let inputs = host
         .input_devices()
         .map_err(|error| format!("Could not enumerate input devices: {error}"))?;
     for device in inputs {
-        if let Ok(name) = device.name() {
-            let system_candidate = is_loopback_device(&name);
+        if let (Ok(description), Ok(id)) = (device.description(), device.id()) {
+            let name = description.name().to_string();
+            let id = id.to_string();
+            let virtual_input = is_loopback_device(&name);
+            let native_loopback = supports_native_loopback(&device) && !virtual_input;
+            let system_candidate = virtual_input || native_loopback;
             devices.push(MeetingAudioDevice {
-                id: format!("input:{name}"),
-                name: name.clone(),
+                backend: "cpal",
+                capture_mode: if virtual_input {
+                    CaptureMode::VirtualInput
+                } else if native_loopback {
+                    CaptureMode::NativeLoopback
+                } else {
+                    CaptureMode::Microphone
+                },
+                id: id.clone(),
+                name,
                 kind: if system_candidate {
                     AudioDeviceKind::System
                 } else {
                     AudioDeviceKind::Microphone
                 },
-                is_default: default_input.as_deref() == Some(name.as_str()),
+                is_default: if system_candidate {
+                    default_output.as_deref() == Some(id.as_str())
+                } else {
+                    default_input.as_deref() == Some(id.as_str())
+                },
                 is_system_capture_candidate: system_candidate,
             });
         }
@@ -196,14 +247,24 @@ pub fn meeting_capture_list_devices() -> Result<Vec<MeetingAudioDevice>, String>
         .output_devices()
         .map_err(|error| format!("Could not enumerate output devices: {error}"))?;
     for device in outputs {
-        if let Ok(name) = device.name() {
+        if let (Ok(description), Ok(id)) = (device.description(), device.id()) {
+            let id = id.to_string();
+            if devices.iter().any(|device| device.id == id) {
+                continue;
+            }
+            let native_loopback = supports_native_loopback(&device);
             devices.push(MeetingAudioDevice {
-                id: format!("output:{name}"),
-                name: name.clone(),
-                kind: AudioDeviceKind::Output,
-                is_default: default_output.as_deref() == Some(name.as_str()),
-                // An output is shown for context but is not advertised as a CPAL input.
-                is_system_capture_candidate: false,
+                backend: "cpal",
+                capture_mode: CaptureMode::NativeLoopback,
+                id: id.clone(),
+                name: description.name().to_string(),
+                kind: if native_loopback {
+                    AudioDeviceKind::System
+                } else {
+                    AudioDeviceKind::Output
+                },
+                is_default: default_output.as_deref() == Some(id.as_str()),
+                is_system_capture_candidate: native_loopback,
             });
         }
     }
@@ -229,7 +290,7 @@ pub fn meeting_capture_permissions() -> MeetingCapturePermissions {
             "unavailable"
         },
         system_audio_supported: has_loopback,
-        detail: "Microphone access may prompt on start. System audio requires a loopback or monitor input.",
+        detail: "Microphone access may prompt on start. System audio uses native output loopback where supported and a monitor or virtual input elsewhere.",
     }
 }
 
@@ -255,12 +316,14 @@ pub fn meeting_capture_start(
     let audio_path = meeting_directory.join("meeting-audio.wav");
     let checkpoint_path = meeting_directory.join("checkpoint.json");
     let status = Arc::new(Mutex::new(MeetingCaptureStatus {
+        active_sources: Vec::new(),
         meeting_id: Some(config.meeting_id.clone()),
         phase: CapturePhase::Starting,
         elapsed_ms: 0,
         sample_rate: TARGET_SAMPLE_RATE,
         checkpoint_path: Some(audio_path.to_string_lossy().into_owned()),
         error: None,
+        warnings: Vec::new(),
     }));
     let (control_tx, control_rx) = mpsc::channel();
     let (ready_tx, ready_rx) = mpsc::sync_channel(1);
@@ -478,7 +541,7 @@ fn run_capture(
     control_rx: mpsc::Receiver<CaptureControl>,
     ready_tx: mpsc::SyncSender<Result<(), String>>,
 ) {
-    let mut transport = match MeetingAudioTransport::from_config(&config) {
+    let transport = match MeetingAudioTransport::from_config(&config) {
         Ok(transport) => transport,
         Err(error) => {
             set_error(&app, &status, error.clone());
@@ -486,11 +549,12 @@ fn run_capture(
             return;
         }
     };
+    let transport_tx = transport.map(spawn_transport_worker);
     let (audio_tx, audio_rx) = mpsc::sync_channel(AUDIO_CHANNEL_CAPACITY);
     let (stream_error_tx, stream_error_rx) = mpsc::channel();
     let paused = Arc::new(AtomicBool::new(false));
     let stream_result = build_capture_streams(&config, audio_tx, stream_error_tx, paused.clone());
-    let streams = match stream_result {
+    let capture_streams = match stream_result {
         Ok(streams) => streams,
         Err(error) => {
             set_error(&app, &status, error.clone());
@@ -498,7 +562,18 @@ fn run_capture(
             return;
         }
     };
-    let mut wav = match CheckpointWav::create(&audio_path) {
+    if let Ok(mut current) = status.lock() {
+        current.active_sources = capture_streams.active_sources.clone();
+        current.warnings = capture_streams.warnings.clone();
+    }
+    for warning in &capture_streams.warnings {
+        let _ = app.emit(
+            "meeting-capture-warning",
+            serde_json::json!({ "code": "source_unavailable", "message": warning }),
+        );
+    }
+    let stereo = capture_streams.active_sources.len() > 1;
+    let mut wav = match CheckpointWav::create(&audio_path, stereo) {
         Ok(wav) => wav,
         Err(error) => {
             set_error(&app, &status, error.clone());
@@ -512,7 +587,18 @@ fn run_capture(
     let started_at = epoch_ms();
     let mut mic = VecDeque::new();
     let mut system = VecDeque::new();
+    let mut microphone_resampler = StreamingLinearResampler::default();
+    let mut system_resampler = StreamingLinearResampler::default();
+    let microphone_active = capture_streams
+        .active_sources
+        .contains(&AudioSource::Microphone);
+    let system_active = capture_streams
+        .active_sources
+        .contains(&AudioSource::System);
+    let active_source_count = capture_streams.active_sources.len() as f32;
+    let mut next_mix_at = Instant::now() + Duration::from_millis(100);
     let mut elapsed_samples = 0_u64;
+    let mut transport_lagging = false;
     let mut stopping = false;
     while !stopping && elapsed_samples * 1_000 / (TARGET_SAMPLE_RATE as u64) < MAX_CAPTURE_MS {
         if let Ok(error) = stream_error_rx.try_recv() {
@@ -527,11 +613,12 @@ fn run_capture(
                 }
                 CaptureControl::Resume => {
                     paused.store(false, Ordering::Release);
+                    next_mix_at = Instant::now() + Duration::from_millis(100);
                     update_phase(&app, &status, CapturePhase::Recording);
                 }
                 CaptureControl::RefreshTransport { ticket, url } => {
-                    if let Some(current) = transport.as_mut() {
-                        current.update_credentials(url, ticket);
+                    if let Some(worker) = transport_tx.as_ref() {
+                        let _ = worker.refresh.send((url, ticket));
                     }
                 }
                 CaptureControl::Stop => stopping = true,
@@ -542,11 +629,12 @@ fn run_capture(
         }
 
         if let Ok(chunk) = audio_rx.recv_timeout(Duration::from_millis(20)) {
-            let resampled = resample_linear(&chunk.samples, chunk.sample_rate, TARGET_SAMPLE_RATE);
-            let destination = match chunk.source {
-                AudioSource::Microphone => &mut mic,
-                AudioSource::System => &mut system,
+            let (resampler, destination) = match chunk.source {
+                AudioSource::Microphone => (&mut microphone_resampler, &mut mic),
+                AudioSource::System => (&mut system_resampler, &mut system),
             };
+            let resampled =
+                resampler.process(&chunk.samples, chunk.sample_rate, TARGET_SAMPLE_RATE);
             destination.extend(resampled);
         }
         if paused.load(Ordering::Acquire) {
@@ -555,32 +643,54 @@ fn run_capture(
             continue;
         }
 
-        while mic.len() >= FRAME_SAMPLES || system.len() >= FRAME_SAMPLES {
+        while Instant::now() >= next_mix_at {
+            next_mix_at += Duration::from_millis(20);
+            let mut microphone_frame = Vec::with_capacity(FRAME_SAMPLES);
+            let mut system_frame = Vec::with_capacity(FRAME_SAMPLES);
             let mut frame = Vec::with_capacity(FRAME_SAMPLES);
             for _ in 0..FRAME_SAMPLES {
-                let mic_sample = mic.pop_front().unwrap_or(0.0);
-                let system_sample = system.pop_front().unwrap_or(0.0);
-                let mixed = if config.capture_microphone && config.capture_system_audio {
-                    mic_sample * 0.65 + system_sample * 0.35
+                let mic_sample = if microphone_active {
+                    mic.pop_front().unwrap_or(0.0)
                 } else {
-                    mic_sample + system_sample
+                    0.0
                 };
-                frame.push(mixed.clamp(-1.0, 1.0));
+                let system_sample = if system_active {
+                    system.pop_front().unwrap_or(0.0)
+                } else {
+                    0.0
+                };
+                microphone_frame.push(mic_sample);
+                system_frame.push(system_sample);
+                frame.push(((mic_sample + system_sample) / active_source_count).tanh());
             }
-            if let Err(error) = wav.write_frame(&frame) {
+            if let Err(error) = wav.write_sources(
+                &microphone_frame,
+                &system_frame,
+                microphone_active,
+                system_active,
+            ) {
                 set_error(&app, &status, error);
                 stopping = true;
                 break;
             }
-            if let Some(transport) = transport.as_mut() {
-                if let Err(error) = transport.send_frame(&frame) {
-                    let _ = app.emit(
-                        "meeting-capture-warning",
-                        serde_json::json!({
-                            "code": "transcription_transport_unavailable",
-                            "message": error,
-                        }),
-                    );
+            if let Some(worker) = transport_tx.as_ref() {
+                let sequence = elapsed_samples / FRAME_SAMPLES as u64;
+                if let Err(error) = worker.commands.try_send(TransportCommand::Frame {
+                    samples: frame.clone(),
+                    sequence,
+                }) {
+                    if !transport_lagging {
+                        let _ = app.emit(
+                            "meeting-capture-warning",
+                            serde_json::json!({
+                                "code": "transcription_transport_unavailable",
+                                "message": format!("Transcription is falling behind ({error}); local recording is still complete."),
+                            }),
+                        );
+                    }
+                    transport_lagging = true;
+                } else {
+                    transport_lagging = false;
                 }
             }
             elapsed_samples += FRAME_SAMPLES as u64;
@@ -601,9 +711,9 @@ fn run_capture(
         }
     }
 
-    drop(streams);
-    if let Some(transport) = transport.as_mut() {
-        transport.close();
+    drop(capture_streams.streams);
+    if let Some(worker) = transport_tx {
+        let _ = worker.stop.send(());
     }
     let _ = wav.finalize();
     let elapsed_ms = elapsed_samples * 1_000 / TARGET_SAMPLE_RATE as u64;
@@ -628,57 +738,123 @@ fn build_capture_streams(
     sender: mpsc::SyncSender<AudioChunk>,
     error_sender: mpsc::Sender<String>,
     paused: Arc<AtomicBool>,
-) -> Result<Vec<cpal::Stream>, String> {
+) -> Result<CaptureStreams, String> {
     let host = cpal::default_host();
     let mut streams = Vec::new();
+    let mut active_sources = Vec::new();
+    let mut warnings = Vec::new();
     if config.capture_microphone {
-        let device = find_input_device(&host, config.microphone_device_id.as_deref())?;
-        streams.push(build_input_stream(
-            &device,
+        let microphone = find_capture_device(
+            &host,
+            config.microphone_device_id.as_deref(),
             AudioSource::Microphone,
-            sender.clone(),
-            error_sender.clone(),
-            paused.clone(),
-        )?);
+        )
+        .and_then(|device| {
+            build_input_stream(
+                &device,
+                AudioSource::Microphone,
+                sender.clone(),
+                error_sender.clone(),
+                paused.clone(),
+            )
+        });
+        match microphone {
+            Ok(stream) => {
+                streams.push(stream);
+                active_sources.push(AudioSource::Microphone);
+            }
+            Err(error) => warnings.push(format!(
+                "Microphone capture is unavailable ({error}); continuing with system audio."
+            )),
+        }
     }
     if config.capture_system_audio {
-        let id = config.system_device_id.as_deref().ok_or_else(|| {
-            "Select a loopback or monitor input to capture system audio".to_string()
-        })?;
-        let device = find_input_device(&host, Some(id))?;
-        let name = device.name().unwrap_or_default();
-        if !is_loopback_device(&name) {
-            return Err(format!(
-                "{name} is an output device, not a capturable loopback or monitor input"
-            ));
+        let system = (|| {
+            let device = find_capture_device(
+                &host,
+                config.system_device_id.as_deref(),
+                AudioSource::System,
+            )?;
+            let capture = |device: &cpal::Device| {
+                let description = device.description().map_err(|error| {
+                    format!("Could not describe the system-audio device: {error}")
+                })?;
+                if device.supports_input()
+                    && !supports_native_loopback(device)
+                    && !is_loopback_device(description.name())
+                {
+                    return Err(format!(
+                        "{} is an input device, not a capturable loopback or monitor input",
+                        description.name()
+                    ));
+                }
+                build_input_stream(
+                    device,
+                    AudioSource::System,
+                    sender.clone(),
+                    error_sender.clone(),
+                    paused.clone(),
+                )
+            };
+            match capture(&device) {
+                Ok(stream) => Ok(stream),
+                Err(primary_error) if !device.supports_input() => {
+                    let fallback = host
+                        .input_devices()
+                        .map_err(|error| format!("Could not enumerate fallback inputs: {error}"))?
+                        .find(|candidate| {
+                            candidate
+                                .description()
+                                .is_ok_and(|description| is_loopback_device(description.name()))
+                        })
+                        .ok_or(primary_error.clone())?;
+                    capture(&fallback).map_err(|fallback_error| {
+                        format!("{primary_error}; fallback failed: {fallback_error}")
+                    })
+                }
+                Err(error) => Err(error),
+            }
+        })();
+        match system {
+            Ok(stream) => {
+                streams.push(stream);
+                active_sources.push(AudioSource::System);
+            }
+            Err(error) => warnings.push(format!(
+                "System audio is unavailable ({error}); continuing with microphone audio."
+            )),
         }
-        streams.push(build_input_stream(
-            &device,
-            AudioSource::System,
-            sender,
-            error_sender,
-            paused,
-        )?);
     }
     if streams.is_empty() {
-        return Err("Enable microphone or system-audio capture".into());
+        return Err(warnings.join(" "));
     }
-    Ok(streams)
+    Ok(CaptureStreams {
+        active_sources,
+        streams,
+        warnings,
+    })
 }
 
-fn find_input_device(host: &cpal::Host, id: Option<&str>) -> Result<cpal::Device, String> {
+fn find_capture_device(
+    host: &cpal::Host,
+    id: Option<&str>,
+    source: AudioSource,
+) -> Result<cpal::Device, String> {
     let Some(id) = id else {
-        return host
-            .default_input_device()
-            .ok_or_else(|| "No default microphone is available".to_string());
+        return match source {
+            AudioSource::Microphone => host.default_input_device(),
+            AudioSource::System => host.default_output_device(),
+        }
+        .ok_or_else(|| "No default audio device is available".to_string());
     };
-    let name = id
-        .strip_prefix("input:")
-        .ok_or_else(|| "The selected device cannot be used as an audio input".to_string())?;
-    host.input_devices()
-        .map_err(|error| format!("Could not enumerate input devices: {error}"))?
-        .find(|device| device.name().is_ok_and(|device_name| device_name == name))
-        .ok_or_else(|| format!("Audio input {name} is no longer available"))
+    host.devices()
+        .map_err(|error| format!("Could not enumerate audio devices: {error}"))?
+        .find(|device| {
+            device
+                .id()
+                .is_ok_and(|device_id| device_id.to_string() == id)
+        })
+        .ok_or_else(|| "The selected audio device is no longer available".to_string())
 }
 
 fn build_input_stream(
@@ -688,16 +864,19 @@ fn build_input_stream(
     error_sender: mpsc::Sender<String>,
     paused: Arc<AtomicBool>,
 ) -> Result<cpal::Stream, String> {
-    let config = device.default_input_config().map_err(|error| {
-        format!(
-            "Could not configure {}: {error}",
-            device.name().unwrap_or_default()
-        )
-    })?;
-    let sample_rate = config.sample_rate().0;
+    let description = device
+        .description()
+        .map_err(|error| format!("Could not describe the audio device: {error}"))?;
+    let config = if device.supports_input() {
+        device.default_input_config()
+    } else {
+        device.default_output_config()
+    }
+    .map_err(|error| format!("Could not configure {}: {error}", description.name()))?;
+    let sample_rate = config.sample_rate();
     let channels = config.channels() as usize;
     let stream_config = config.clone().into();
-    let error_name = device.name().unwrap_or_else(|_| "audio input".into());
+    let error_name = description.name().to_string();
     let error_callback = move |error| {
         log::error!(target: "zilobase::meeting_capture", "Audio stream error for {error_name}: {error}");
         let _ = error_sender.send(format!(
@@ -721,13 +900,13 @@ fn build_input_stream(
 
     let stream = match config.sample_format() {
         cpal::SampleFormat::F32 => device.build_input_stream(
-            &stream_config,
+            stream_config,
             move |data: &[f32], _| callback(data.to_vec()),
             error_callback,
             None,
         ),
         cpal::SampleFormat::I16 => device.build_input_stream(
-            &stream_config,
+            stream_config,
             move |data: &[i16], _| {
                 callback(
                     data.iter()
@@ -739,7 +918,7 @@ fn build_input_stream(
             None,
         ),
         cpal::SampleFormat::U16 => device.build_input_stream(
-            &stream_config,
+            stream_config,
             move |data: &[u16], _| {
                 callback(
                     data.iter()
@@ -769,6 +948,7 @@ fn downmix_to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
         .collect()
 }
 
+#[cfg(test)]
 fn resample_linear(samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
     if from_rate == to_rate || samples.is_empty() {
         return samples.to_vec();
@@ -786,6 +966,42 @@ fn resample_linear(samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
         .collect()
 }
 
+#[derive(Default)]
+struct StreamingLinearResampler {
+    from_rate: u32,
+    input: VecDeque<f32>,
+    position: f64,
+}
+
+impl StreamingLinearResampler {
+    fn process(&mut self, samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
+        if from_rate == to_rate {
+            return samples.to_vec();
+        }
+        if self.from_rate != from_rate {
+            self.from_rate = from_rate;
+            self.input.clear();
+            self.position = 0.0;
+        }
+        self.input.extend(samples.iter().copied());
+        let ratio = from_rate as f64 / to_rate as f64;
+        let mut output = Vec::new();
+        while self.position + 1.0 < self.input.len() as f64 {
+            let lower = self.position.floor() as usize;
+            let upper = lower + 1;
+            let fraction = (self.position - lower as f64) as f32;
+            let left = self.input.get(lower).copied().unwrap_or_default();
+            let right = self.input.get(upper).copied().unwrap_or(left);
+            output.push(left + (right - left) * fraction);
+            self.position += ratio;
+        }
+        let consumed = self.position.floor() as usize;
+        self.input.drain(..consumed.min(self.input.len()));
+        self.position -= consumed as f64;
+        output
+    }
+}
+
 fn emit_level(app: &AppHandle, frame: &[f32]) {
     let rms = (frame.iter().map(|sample| sample * sample).sum::<f32>() / frame.len() as f32).sqrt();
     let peak = frame
@@ -798,6 +1014,9 @@ fn emit_level(app: &AppHandle, frame: &[f32]) {
 fn update_phase(app: &AppHandle, status: &Arc<Mutex<MeetingCaptureStatus>>, phase: CapturePhase) {
     if let Ok(mut current) = status.lock() {
         current.phase = phase;
+        if phase == CapturePhase::Stopped {
+            current.active_sources.clear();
+        }
         let _ = app.emit("meeting-capture-state", current.clone());
     }
 }
@@ -828,7 +1047,6 @@ fn validate_config(config: &MeetingCaptureConfig) -> Result<(), String> {
 }
 
 struct MeetingAudioTransport {
-    next_sequence: u64,
     protocol: String,
     socket: Option<WebSocket<MaybeTlsStream<std::net::TcpStream>>>,
     url: String,
@@ -850,7 +1068,6 @@ impl MeetingAudioTransport {
             return Err("Meeting audio transport must use WebSocket".into());
         }
         Ok(Self {
-            next_sequence: 0,
             protocol: format!("zilobase.meeting-audio.v1, zilobase.meeting-audio.auth.{ticket}"),
             socket: None,
             url,
@@ -879,9 +1096,7 @@ impl MeetingAudioTransport {
         Ok(())
     }
 
-    fn send_frame(&mut self, samples: &[f32]) -> Result<(), String> {
-        let sequence = self.next_sequence;
-        self.next_sequence = self.next_sequence.saturating_add(1);
+    fn send_frame(&mut self, sequence: u64, samples: &[f32]) -> Result<(), String> {
         let mut bytes = Vec::with_capacity(8 + samples.len() * 2);
         bytes.extend_from_slice(&sequence.to_le_bytes());
         for sample in samples {
@@ -913,6 +1128,64 @@ impl MeetingAudioTransport {
         if let Some(mut socket) = self.socket.take() {
             let _ = socket.close(None);
         }
+    }
+}
+
+fn spawn_transport_worker(mut transport: MeetingAudioTransport) -> TransportWorker {
+    let (commands, receiver) = mpsc::sync_channel(TRANSPORT_CHANNEL_CAPACITY);
+    let (refresh, refresh_receiver) = mpsc::channel();
+    let (stop, stop_receiver) = mpsc::channel();
+    let _ = thread::Builder::new()
+        .name("meeting-audio-transport".into())
+        .spawn(move || {
+            loop {
+                match stop_receiver.try_recv() {
+                    Ok(()) | Err(mpsc::TryRecvError::Disconnected) => break,
+                    Err(mpsc::TryRecvError::Empty) => {}
+                }
+                while let Ok((url, ticket)) = refresh_receiver.try_recv() {
+                    transport.update_credentials(url, ticket);
+                }
+                let command = match receiver.recv_timeout(Duration::from_millis(100)) {
+                    Ok(command) => command,
+                    Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                };
+                match command {
+                    TransportCommand::Frame { samples, sequence } => {
+                        let _ = transport.send_frame(sequence, &samples);
+                    }
+                }
+            }
+            transport.close();
+        });
+    TransportWorker {
+        commands,
+        refresh,
+        stop,
+    }
+}
+
+fn supports_native_loopback(device: &cpal::Device) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        device.supports_output() && !device.supports_input()
+    }
+    #[cfg(windows)]
+    {
+        device.supports_output()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        device
+            .id()
+            .is_ok_and(|id| id.host() == cpal::HostId::PipeWire)
+            && device.supports_output()
+    }
+    #[cfg(not(any(target_os = "macos", windows, target_os = "linux")))]
+    {
+        let _ = device;
+        false
     }
 }
 
@@ -967,15 +1240,17 @@ fn write_checkpoint(path: &Path, checkpoint: &RecoverableMeetingCapture) -> Resu
 }
 
 struct CheckpointWav {
+    channels: u16,
     writer: BufWriter<File>,
     samples_written: u32,
 }
 
 impl CheckpointWav {
-    fn create(path: &Path) -> Result<Self, String> {
+    fn create(path: &Path, stereo: bool) -> Result<Self, String> {
         let file = File::create(path)
             .map_err(|error| format!("Could not create the meeting audio file: {error}"))?;
         let mut result = Self {
+            channels: if stereo { 2 } else { 1 },
             writer: BufWriter::new(file),
             samples_written: 0,
         };
@@ -983,15 +1258,35 @@ impl CheckpointWav {
         Ok(result)
     }
 
-    fn write_frame(&mut self, frame: &[f32]) -> Result<(), String> {
-        for sample in frame {
-            let pcm = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
-            self.writer
-                .write_all(&pcm.to_le_bytes())
-                .map_err(|error| format!("Could not checkpoint meeting audio: {error}"))?;
+    fn write_sources(
+        &mut self,
+        microphone: &[f32],
+        system: &[f32],
+        microphone_active: bool,
+        system_active: bool,
+    ) -> Result<(), String> {
+        for index in 0..microphone.len().max(system.len()) {
+            if self.channels == 2 {
+                self.write_sample(*microphone.get(index).unwrap_or(&0.0))?;
+                self.write_sample(*system.get(index).unwrap_or(&0.0))?;
+            } else if microphone_active {
+                self.write_sample(*microphone.get(index).unwrap_or(&0.0))?;
+            } else if system_active {
+                self.write_sample(*system.get(index).unwrap_or(&0.0))?;
+            }
         }
-        self.samples_written = self.samples_written.saturating_add(frame.len() as u32);
+        let frames = microphone.len().max(system.len()) as u32;
+        self.samples_written = self
+            .samples_written
+            .saturating_add(frames.saturating_mul(self.channels as u32));
         Ok(())
+    }
+
+    fn write_sample(&mut self, sample: f32) -> Result<(), String> {
+        let pcm = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
+        self.writer
+            .write_all(&pcm.to_le_bytes())
+            .map_err(|error| format!("Could not checkpoint meeting audio: {error}"))
     }
 
     fn flush_checkpoint(&mut self) -> Result<(), String> {
@@ -1007,13 +1302,14 @@ impl CheckpointWav {
 
     fn write_header(&mut self) -> Result<(), String> {
         self.writer
-            .write_all(b"RIFF\0\0\0\0WAVEfmt \x10\0\0\0\x01\0\x01\0")
+            .write_all(b"RIFF\0\0\0\0WAVEfmt \x10\0\0\0\x01\0")
+            .and_then(|_| self.writer.write_all(&self.channels.to_le_bytes()))
             .and_then(|_| self.writer.write_all(&TARGET_SAMPLE_RATE.to_le_bytes()))
             .and_then(|_| {
                 self.writer
-                    .write_all(&(TARGET_SAMPLE_RATE * 2).to_le_bytes())
+                    .write_all(&(TARGET_SAMPLE_RATE * self.channels as u32 * 2).to_le_bytes())
             })
-            .and_then(|_| self.writer.write_all(&2_u16.to_le_bytes()))
+            .and_then(|_| self.writer.write_all(&(self.channels * 2).to_le_bytes()))
             .and_then(|_| self.writer.write_all(&16_u16.to_le_bytes()))
             .and_then(|_| self.writer.write_all(b"data\0\0\0\0"))
             .map_err(|error| format!("Could not initialize the meeting WAV file: {error}"))
@@ -1037,7 +1333,10 @@ impl CheckpointWav {
 
 #[cfg(test)]
 mod tests {
-    use super::{downmix_to_mono, is_loopback_device, resample_linear, validate_meeting_id};
+    use super::{
+        downmix_to_mono, is_loopback_device, resample_linear, validate_meeting_id,
+        StreamingLinearResampler,
+    };
 
     #[test]
     fn downmixes_interleaved_stereo_frames() {
@@ -1050,6 +1349,15 @@ mod tests {
         let result = resample_linear(&source, 48_000, 24_000);
         assert_eq!(result.len(), 240);
         assert!(result.iter().all(|sample| *sample == 0.25));
+    }
+
+    #[test]
+    fn streaming_resampling_preserves_fractional_state_between_chunks() {
+        let mut resampler = StreamingLinearResampler::default();
+        let first = resampler.process(&vec![0.25; 241], 48_000, 24_000);
+        let second = resampler.process(&vec![0.25; 239], 48_000, 24_000);
+        assert_eq!(first.len() + second.len(), 240);
+        assert!(first.iter().chain(&second).all(|sample| *sample == 0.25));
     }
 
     #[test]

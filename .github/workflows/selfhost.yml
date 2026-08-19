@@ -104,6 +104,9 @@ jobs:
             dbus-x11 \
             gnome-keyring \
             libayatana-appindicator3-dev \
+            libasound2-dev \
+            libpipewire-0.3-dev \
+            libpulse-dev \
             libsecret-tools \
             librsvg2-dev \
             libssl-dev \

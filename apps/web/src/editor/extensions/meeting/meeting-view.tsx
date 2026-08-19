@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
-import { invoke, isTauri } from "@tauri-apps/api/core"
 import {
   ArrowUpRightIcon,
   CircleStop,
@@ -76,7 +75,7 @@ import type { OpenPageOptions } from "@/packages/editor/types"
 import { MeetingCollaborativeEditor } from "./meeting-collaborative-editor"
 import { MeetingNotesEditor } from "./meeting-notes-editor"
 import { useMeetingCollaboration } from "./use-meeting-collaboration"
-import { useNativeMeetingCapture } from "./use-native-meeting-capture"
+import { useMeetingCapture } from "./use-meeting-capture"
 
 export type MeetingTab = "summary" | "notes" | "transcript"
 
@@ -107,16 +106,17 @@ export function MeetingView({
   const recorder = useMeetingRecorder(meetingId)
   const recordConsent = useRecordMeetingConsent(meetingId)
   const collaboration = useMeetingCollaboration(meetingId)
-  const nativeCapture = useNativeMeetingCapture(meetingId)
+  const meetingCapture = useMeetingCapture(meetingId)
   const [activeTab, setActiveTabState] = useState<MeetingTab>("notes")
   const setActiveTab = (tab: MeetingTab) => {
     setActiveTabState(tab)
     onActiveTabChange?.(tab)
   }
   const [consentOpen, setConsentOpen] = useState(false)
-  const [captureSystemAudio, setCaptureSystemAudio] = useState(false)
+  const [captureSystemAudio, setCaptureSystemAudio] = useState(true)
   const [microphoneDeviceId, setMicrophoneDeviceId] = useState<string | undefined>()
   const [systemDeviceId, setSystemDeviceId] = useState<string | undefined>()
+  const shouldCaptureSystemAudio = captureSystemAudio && Boolean(systemDeviceId)
   const [title, setTitle] = useState("Meeting")
   const [titleActionsOpen, setTitleActionsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -149,33 +149,30 @@ export function MeetingView({
   }, [meeting?.title])
 
   useEffect(() => {
-    const microphone = nativeCapture.devices.find(
+    const microphone = meetingCapture.devices.find(
       (device) => device.kind === "microphone" && device.isDefault,
-    ) ?? nativeCapture.devices.find((device) => device.kind === "microphone")
-    const system = nativeCapture.devices.find(
-      (device) => device.isSystemCaptureCandidate,
-    )
+    ) ?? meetingCapture.devices.find((device) => device.kind === "microphone")
+    const system = meetingCapture.devices.find(
+      (device) => device.isSystemCaptureCandidate &&
+        device.captureMode === "native-loopback" && device.isDefault,
+    ) ?? meetingCapture.devices.find((device) => device.isSystemCaptureCandidate)
     setMicrophoneDeviceId((current) => current ?? microphone?.id)
     setSystemDeviceId((current) => current ?? system?.id)
-  }, [nativeCapture.devices])
+  }, [meetingCapture.devices])
 
   useEffect(() => {
-    if (!leaseId || !activeRecording) return
+    if (!leaseId) return
     const interval = window.setInterval(() => {
       void recorder.heartbeat.mutateAsync(leaseId).then((ticket) =>
-        invoke("meeting_capture_refresh_transport", {
-          audioTicket: ticket.token,
-          audioWebsocketUrl: ticket.websocketUrl,
-        }),
+        meetingCapture.refreshTransport(ticket.websocketUrl, ticket.token),
       ).catch(() => undefined)
     }, 10_000)
     return () => window.clearInterval(interval)
-  }, [activeRecording, leaseId])
+  }, [leaseId])
 
   const runLifecycle = async (action: MeetingLifecycleAction) => {
     try {
       if (action === "start") {
-        if (!isTauri()) throw new Error("Meeting recording is available in the desktop app.")
         const claim = await recorder.claim.mutateAsync()
         setLeaseId(claim.leaseId)
         window.sessionStorage.setItem(
@@ -183,20 +180,18 @@ export function MeetingView({
           claim.leaseId,
         )
         try {
-          await invoke("meeting_capture_start", {
-            config: {
-              audioTicket: claim.token,
-              audioWebsocketUrl: claim.websocketUrl,
-              captureMicrophone: true,
-              captureSystemAudio,
-              meetingId,
-              microphoneDeviceId,
-              systemDeviceId: captureSystemAudio ? systemDeviceId : undefined,
-            },
+          await meetingCapture.start({
+            audioTicket: claim.token,
+            audioWebsocketUrl: claim.websocketUrl,
+            captureMicrophone: true,
+            captureSystemAudio: shouldCaptureSystemAudio,
+            meetingId,
+            microphoneDeviceId,
+            systemDeviceId: shouldCaptureSystemAudio ? systemDeviceId : undefined,
           })
           await lifecycle.mutateAsync({ action })
         } catch (error) {
-          await invoke("meeting_capture_stop").catch(() => undefined)
+          await meetingCapture.stop().catch(() => undefined)
           await recorder.release.mutateAsync(claim.leaseId).catch(() => undefined)
           setLeaseId(null)
           window.sessionStorage.removeItem(`zilobase:meeting-recorder:${meetingId}`)
@@ -205,29 +200,28 @@ export function MeetingView({
         return
       }
 
-      if (!isTauri()) throw new Error("Recorder controls are available in the desktop app.")
       if (action === "pause") {
-        await invoke("meeting_capture_pause")
+        await meetingCapture.pause()
         try {
           await lifecycle.mutateAsync({ action })
         } catch (error) {
-          await invoke("meeting_capture_resume").catch(() => undefined)
+          await meetingCapture.resume().catch(() => undefined)
           throw error
         }
         return
       }
       if (action === "resume") {
-        await invoke("meeting_capture_resume")
+        await meetingCapture.resume()
         try {
           await lifecycle.mutateAsync({ action })
         } catch (error) {
-          await invoke("meeting_capture_pause").catch(() => undefined)
+          await meetingCapture.pause().catch(() => undefined)
           throw error
         }
         return
       }
       if (action === "stop") {
-        const capture = await invoke<{ elapsedMs: number }>("meeting_capture_stop")
+        const capture = await meetingCapture.stop()
         await lifecycle.mutateAsync({ action, durationMs: capture.elapsedMs })
         if (leaseId) await recorder.release.mutateAsync(leaseId)
         setLeaseId(null)
@@ -241,8 +235,19 @@ export function MeetingView({
   }
 
   const confirmConsentAndStart = async () => {
+    if (!meeting) {
+      toast.error("Meeting is unavailable.")
+      return
+    }
+    const preparation = meetingCapture.prepare({
+      captureMicrophone: true,
+      captureSystemAudio: shouldCaptureSystemAudio,
+      meetingId,
+      microphoneDeviceId,
+      systemDeviceId: shouldCaptureSystemAudio ? systemDeviceId : undefined,
+    })
     try {
-      if (!meeting) throw new Error("Meeting is unavailable.")
+      await preparation
       let mode: "confirmed" | "played" = "confirmed"
       if (meeting.autoPlayConsent) {
         await playConsentMessage(meeting.consentMessage, meeting.language)
@@ -251,6 +256,7 @@ export function MeetingView({
       await recordConsent.mutateAsync(mode)
       await runLifecycle("start")
     } catch (error) {
+      await meetingCapture.cancelPreparation().catch(() => undefined)
       toast.error(error instanceof Error ? error.message : "Could not start recording.")
     }
   }
@@ -260,8 +266,8 @@ export function MeetingView({
       if (!meeting) throw new Error("Meeting is unavailable.")
       await generateSummary.mutateAsync()
       setActiveTab("summary")
-      if (isTauri() && !meeting.archiveLocalAudio) {
-        await invoke("meeting_capture_delete_local_file", { meetingId })
+      if (!meeting.archiveLocalAudio) {
+        await meetingCapture.deleteLocalFile()
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Summary failed.")
@@ -385,7 +391,7 @@ export function MeetingView({
       )}
       contentEditable={false}
     >
-      <div className="database-toolbar-section">
+      <div className="database-toolbar-section meeting-block-header">
       <div className="database-toolbar">
         {showMeetingTitle ? (
         <div className="group/title flex min-w-0 items-center gap-3">
@@ -470,12 +476,17 @@ export function MeetingView({
             <span className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
               <span
                 className="block h-full origin-left rounded-full bg-emerald-500 transition-transform"
-                style={{ transform: `scaleX(${nativeCapture.level})` }}
+                style={{ transform: `scaleX(${meetingCapture.level})` }}
               />
             </span>
           ) : null}
           {activeRecording && !ownsRecorder ? (
             <span className="text-xs text-muted-foreground">Another collaborator is recording</span>
+          ) : null}
+          {ownsRecorder && meetingCapture.status?.warnings?.length ? (
+            <span className="max-w-56 truncate text-xs text-amber-600" title={meetingCapture.status.warnings.at(-1)}>
+              {meetingCapture.status.warnings.at(-1)}
+            </span>
           ) : null}
           {summaryIsStale ? (
             <span className="text-xs text-amber-600">Summary out of date</span>
@@ -549,7 +560,7 @@ export function MeetingView({
                 <HardDrive />
                 <span>{meeting.archiveLocalAudio ? "Don't archive local audio" : "Archive local audio"}</span>
               </DropDrawerItem>
-              {nativeCapture.devices.some((device) => device.kind === "microphone") ? (
+              {meetingCapture.devices.some((device) => device.kind === "microphone") ? (
                 <DropDrawerSub>
                   <DropDrawerSubTrigger>
                     <Mic />
@@ -557,7 +568,7 @@ export function MeetingView({
                   </DropDrawerSubTrigger>
                   <DropDrawerSubContent>
                     <DropdownMenuRadioGroup onValueChange={setMicrophoneDeviceId} value={microphoneDeviceId}>
-                      {nativeCapture.devices.filter((device) => device.kind === "microphone").map((device) => (
+                      {meetingCapture.devices.filter((device) => device.kind === "microphone").map((device) => (
                         <DropdownMenuRadioItem key={device.id} value={device.id}>{device.name}</DropdownMenuRadioItem>
                       ))}
                     </DropdownMenuRadioGroup>
@@ -569,12 +580,16 @@ export function MeetingView({
                 onSelect={() => setCaptureSystemAudio((current) => !current)}
               >
                 <FileAudio />
-                <span>{captureSystemAudio ? "Stop capturing system audio" : "Capture system audio"}</span>
+                <span>{!systemDeviceId
+                  ? "System audio unavailable"
+                  : captureSystemAudio
+                    ? "Stop capturing system audio"
+                    : "Capture system audio"}</span>
               </DropDrawerItem>
-              {nativeCapture.recovery ? (
+              {meetingCapture.recovery ? (
                 <DropDrawerItem
                   onSelect={() => {
-                    void invoke("meeting_capture_open_local_file", { meetingId })
+                    void meetingCapture.openLocalFile()
                   }}
                 >
                   <FolderOpen />

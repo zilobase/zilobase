@@ -137,8 +137,7 @@
     @apply pt-4;
   }
 
-  .tiptap-editor > * + .node-databaseBlock .database-toolbar-section,
-  .tiptap-editor > * + .node-meetingBlock .database-toolbar-section {
+  .tiptap-editor > * + .node-databaseBlock .database-toolbar-section {
     @apply pt-2;
   }
 
@@ -2607,7 +2606,7 @@
 }
 
 .tiptap-editor .node-meetingBlock {
-  @apply min-w-0;
+  @apply my-4 min-w-0;
 }
 
 .tiptap-editor .node-meetingBlock.editor-block-selection {
@@ -2615,31 +2614,38 @@
   color: inherit;
 }
 
-.tiptap-editor .node-meetingBlock .database-toolbar-section {
-  @apply box-border px-3 pb-0.5;
+.tiptap-editor
+  .node-meetingBlock
+  > [data-node-view-wrapper]
+  > .meeting-block-shell
+  > .meeting-block-header {
+  @apply box-border px-4 pt-4;
+}
+
+.tiptap-editor
+  .node-meetingBlock
+  > [data-node-view-wrapper]
+  > .meeting-block-shell {
+  @apply min-w-0 overflow-visible rounded-xl border border-border/80 bg-transparent transition-[border-color,box-shadow];
 }
 
 .tiptap-editor
   .node-meetingBlock.editor-block-selection
-  .database-toolbar-section {
-  background-clip: border-box;
-  background-color: var(--editor-selection-background);
-  border-radius: 4px;
-  box-sizing: border-box;
-  color: var(--editor-selection-foreground);
-  display: block;
-  width: 100%;
+  > [data-node-view-wrapper]
+  > .meeting-block-shell {
+  @apply border-primary/45 ring-2 ring-primary/10;
 }
 
-.tiptap-editor .node-meetingBlock .meeting-block-shell {
-  @apply min-w-0 overflow-visible bg-transparent;
-}
-
-.tiptap-editor .node-meetingBlock .database-toolbar-section .database-toolbar {
+.tiptap-editor
+  .node-meetingBlock
+  > [data-node-view-wrapper]
+  > .meeting-block-shell
+  > .meeting-block-header
+  > .database-toolbar {
   @apply px-0;
 }
 
-.meeting-block-shell-full .database-toolbar {
+.meeting-block-shell-full > .meeting-block-header > .database-toolbar {
   @apply min-h-0 py-0 pr-0;
 }
 
@@ -2658,23 +2664,34 @@
   @apply relative mt-1 min-w-0 overflow-visible pb-0;
 }
 
-.meeting-notes-editor .tiptap-editor {
-  min-height: 12rem;
-  padding-inline: 0;
-  padding-top: 0.25rem;
-  padding-bottom: 0.5rem;
+.tiptap-editor
+  .node-meetingBlock
+  > [data-node-view-wrapper]
+  > .meeting-block-shell
+  > .meeting-block-body {
+  @apply mt-0 px-4 py-4;
 }
 
-.meeting-notes-editor .tiptap {
-  min-height: 12rem;
-  outline: none;
-}
-
+.meeting-notes-editor .tiptap-editor,
 .meeting-summary-editor .tiptap-editor {
   min-height: 12rem;
   padding-inline: 0;
   padding-top: 0.25rem;
   padding-bottom: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .meeting-notes-editor .tiptap-editor,
+  .meeting-summary-editor .tiptap-editor {
+    /* Keep the desktop add/drag controls inside the card, before note text. */
+    padding-left: 3.5rem;
+  }
+}
+
+.meeting-notes-editor .tiptap,
+.meeting-summary-editor .tiptap {
+  min-height: 12rem;
+  outline: none;
 }
 .tiptap-editor .editor-comment-anchor {
   border-bottom: 2px solid transparent;

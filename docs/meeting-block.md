@@ -1,13 +1,13 @@
 # Meeting block
 
-The meeting block is an editor-native, collaborative recorder for the Zilobase desktop app. It captures local audio, streams short PCM windows for transcription, keeps generated summaries in an editable meeting-scoped Yjs document rendered with the full page editor, stores notes in a real page (`notesPageId`) that uses the same editor, and stores the durable meeting state and transcript in Postgres. Summary generation replaces the collaborative summary document, after which collaborators can edit it like meeting notes. The block header matches the inline database title, icon, more-menu, expand, and primary-action layout. Meetings also appear in the sidebar Meetings tab; selecting one opens its host page and scrolls to the inline block, while the block's expand action opens `/m/:meetingId`.
+The meeting block is an editor-native, collaborative recorder for the Zilobase desktop and web apps. It captures local audio, streams short PCM windows for transcription, keeps generated summaries in an editable meeting-scoped Yjs document rendered with the full page editor, stores notes in a real page (`notesPageId`) that uses the same editor, and stores the durable meeting state and transcript in Postgres. Summary generation replaces the collaborative summary document, after which collaborators can edit it like meeting notes. The block header matches the inline database title, icon, more-menu, expand, and primary-action layout. Meetings also appear in the sidebar Meetings tab; selecting one opens its host page and scrolls to the inline block, while the block's expand action opens `/m/:meetingId`.
 
 The feature is off by default. It should remain behind `MEETING_BLOCK_ENABLED=false` until the database migrations, WebSocket endpoints, OpenAI credentials, and desktop release are deployed together.
 
 ## Architecture
 
 ```text
-Desktop meeting block
+Desktop or web meeting block
   ├─ HTTPS /meetings/* ───────────────> lifecycle, consent, leases, transcript
   ├─ WS /meeting-collaboration ───────> Yjs notes and summary
   └─ WS /meeting-audio ───────────────> sequenced PCM16, 24 kHz, mono
@@ -25,7 +25,17 @@ Postgres
 
 Node deployments host both WebSocket paths in the server process. Cloud deployments route each meeting to dedicated `MeetingCollaborationRoom` and `MeetingAudioRoom` Durable Objects. Audio tickets and collaboration tickets are short-lived, signed, and scoped to one user, workspace, meeting, and recorder lease.
 
-The native recorder uses CPAL, based on the capture patterns in Meetily. See `THIRD_PARTY_NOTICES.md` for attribution. Microphone capture works with ordinary input devices. System capture requires an OS-visible loopback or monitor input; the settings menu only enables it when such a device is detected. A native macOS process-audio tap is not included.
+The native recorder uses CPAL, based on the capture patterns in Meetily. See `THIRD_PARTY_NOTICES.md` for attribution. Current macOS releases use Core Audio process taps, Windows uses WASAPI output loopback, and Linux prefers PipeWire with PulseAudio/ALSA monitor inputs as fallbacks. Virtual inputs such as BlackHole remain supported. The web recorder uses `getUserMedia` for microphone audio and the browser's `getDisplayMedia` sharing chooser for tab/system audio; browsers that do not return a display-audio track continue microphone-only.
+
+| Client | Primary system-audio path | Fallback |
+| --- | --- | --- |
+| macOS desktop | Core Audio process tap on the selected output | BlackHole or another virtual input on unsupported macOS releases |
+| Windows desktop | WASAPI loopback on the selected output | Stereo Mix or a virtual input |
+| Linux desktop | PipeWire capture-sink stream | PulseAudio/ALSA monitor or virtual input |
+| Desktop web | Browser tab/system audio from the screen-share chooser | Microphone-only when the browser or selected share supplies no audio track |
+| Mobile web | Microphone capture | Microphone-only; mobile browsers do not provide dependable system-audio sharing |
+
+Microphone and system streams are synchronized into 20 ms frames and mixed to the existing 24 kHz mono transcription protocol. Local recovery preserves the sources as separate WAV channels. Desktop recovery is stored in the application data directory; web recovery is best-effort IndexedDB storage and can be downloaded as WAV. Neither client stores shared video.
 
 ## Collaboration behavior
 
@@ -60,13 +70,13 @@ Cloudflare deployments must also deploy Durable Object migrations `v10` and `v11
 
 ## Rollout
 
-1. Back up Postgres and apply the three migrations.
+1. Back up Postgres and apply the four migrations.
 2. Deploy the server or Cloudflare adapter with the feature flag still disabled.
 3. Verify both meeting WebSocket endpoints accept upgrades and reject missing or mismatched tickets.
-4. Deploy a desktop build containing the native recorder.
-5. Enable an internal workspace cohort and run a microphone-only meeting through consent, pause/resume, stop, transcript, summary, export, and local-file cleanup.
+4. Deploy a desktop build containing the native recorder and the web capture provider.
+5. Enable an internal workspace cohort and run microphone-only and microphone-plus-system meetings through consent, pause/resume, stop, transcript, summary, export, and local-file cleanup.
 6. Repeat with two collaborators and verify only the lease owner has recorder controls while both users can edit notes and see transcript updates.
-7. Test a supported loopback device separately on every desktop platform offered to users.
+7. Test native output loopback and a fallback monitor/virtual input separately on every desktop platform offered to users; test browser system-audio fallback separately.
 8. Watch `meeting_audio_runtime_error`, WebSocket upgrade failures, OpenAI latency/errors, recorder lease conflicts, and summary failures before widening access.
 
 Rollback is configuration-only: set `MEETING_BLOCK_ENABLED=false`. Existing blocks remain in page documents but API operations return 404. Do not roll back the additive database or Durable Object migrations during an incident.
@@ -77,10 +87,10 @@ Run these checks before release:
 
 ```sh
 npm run build --workspace @zilobase/server
-npm test --workspace @zilobase/server -- --run src/features/meetings
+npm test --workspace @zilobase/server -- src/features/meetings
 npm run build --workspace @zilobase/web
 (cd apps/desktop/src-tauri && cargo check && cargo test meeting_capture --lib)
 (cd ../zilobase-cloud-adapter && npm run build && npm test)
 ```
 
-Manual desktop acceptance still matters because CI cannot grant microphone permission or validate physical and virtual audio devices. Cover permission denial, device disconnect, network interruption, application restart recovery, a three-hour forced stop, and local audio deletion with archiving both off and on.
+Manual acceptance still matters because CI cannot grant capture permission or validate physical and virtual audio devices. Cover each desktop OS, desktop Chrome/Edge/Safari/Firefox as offered, and mobile Safari/Chrome microphone fallback. Verify permission denial, a share without audio, device disconnect, network interruption, application restart recovery, a three-hour forced stop, and local audio deletion with archiving both off and on.

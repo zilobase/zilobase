@@ -55,3 +55,27 @@ test("meeting detail queries forward cancellation and use a bounded stale time",
   ])
   assert.equal(options.staleTime, 30_000)
 })
+
+test("meeting detail queries poll only while the meeting is live", () => {
+  const options = meetingQueryOptions(async () => ({
+    meeting: { id: "meeting-1" },
+  }) as never, "meeting-1")
+  const interval = options.refetchInterval
+
+  assert.equal(typeof interval, "function")
+  if (typeof interval !== "function") return
+
+  for (const status of ["idle", "completed", "failed"] as const) {
+    assert.equal(
+      interval({ state: { data: { meeting: { status } } } } as never),
+      false,
+    )
+  }
+
+  for (const status of ["recording", "paused", "processing"] as const) {
+    assert.equal(
+      interval({ state: { data: { meeting: { status } } } } as never),
+      5_000,
+    )
+  }
+})

@@ -79,15 +79,15 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max)
 
 function dragHandleBoundRect(view: EditorView) {
-  const parentEditor = view.dom.parentElement?.closest(".tiptap-editor")
-  if (parentEditor instanceof HTMLElement) {
-    return parentEditor.getBoundingClientRect()
-  }
-
   const meetingShell = view.dom.closest(".meeting-block-shell")
   const meetingHost = meetingShell?.parentElement
   if (meetingHost instanceof HTMLElement) {
     return meetingHost.getBoundingClientRect()
+  }
+
+  const parentEditor = view.dom.parentElement?.closest(".tiptap-editor")
+  if (parentEditor instanceof HTMLElement) {
+    return parentEditor.getBoundingClientRect()
   }
 
   return view.dom.getBoundingClientRect()

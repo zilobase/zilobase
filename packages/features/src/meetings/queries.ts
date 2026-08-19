@@ -66,6 +66,12 @@ export type MeetingSummary = {
 
 export type MeetingSummaryResponse = MeetingResponse & { summary: MeetingSummary }
 
+const LIVE_MEETING_STATUSES = new Set<MeetingStatus>([
+  "recording",
+  "paused",
+  "processing",
+])
+
 export const meetingKeys = {
   all: ["meetings"] as const,
   details: () => [...meetingKeys.all, "detail"] as const,
@@ -108,7 +114,10 @@ export function meetingQueryOptions(
       return apiFetch<MeetingResponse>(`/meetings/${meetingId}`, { signal })
     },
     staleTime: 30_000,
-    refetchInterval: 5_000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.meeting.status
+      return status && LIVE_MEETING_STATUSES.has(status) ? 5_000 : false
+    },
   })
 }
 
