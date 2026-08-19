@@ -34,7 +34,7 @@ test("the hosted fetch adapter exposes discovery and readiness without a session
     webOrigin: "https://app.example.com",
   });
   checkReadiness.mockResolvedValue({
-    checks: { database: "ok", objectStorage: "ok" },
+    checks: { database: "ok", objectStorage: "ok", realtime: "ok" },
     ok: true,
     service: "zilobase-server",
   });
@@ -59,6 +59,7 @@ test("the hosted fetch adapter exposes discovery and readiness without a session
   assert.deepEqual((await ready.json()).checks, {
     database: "ok",
     objectStorage: "ok",
+    realtime: "ok",
   });
   assert.equal(desktop.status, 200);
   assert.match(await desktop.text(), /zilobase:\/\/connect/);

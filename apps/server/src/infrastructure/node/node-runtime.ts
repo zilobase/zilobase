@@ -7,6 +7,7 @@ import type { Hono } from "hono";
 
 import { getAppEditionExtension } from "../../app";
 import { attachNodeCollaborationRuntime } from "../../collaboration/node-runtime";
+import { setCollaborationExtensionsFactory } from "../../collaboration/service";
 import { attachNodeDatabaseRealtimeRuntime } from "../../database-realtime/node-runtime";
 import { attachNodeMeetingAudioRuntime } from "../../features/meetings/meeting-audio-node-runtime";
 import { createDbClientForUrl, runWithDbEnv } from "../../db";
@@ -20,6 +21,9 @@ import { drainDatabaseRealtimeOutbox } from "../../services/database-realtime";
 import type { AppBindings } from "../../types";
 import { isNodeApiPath } from "./api-routing";
 import { runMigrationSets, type MigrationSet } from "./migrations";
+import { createNodeRealtimeBus } from "./realtime-bus";
+import { createNodeCollaborationExtensions } from "./collaboration-redis";
+import { setRealtimeReadinessProbe } from "../../realtime-readiness";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -68,11 +72,15 @@ export function createNodeRuntime({
     }
   });
   const editionExtension = getAppEditionExtension(app);
+  const realtimeBus = createNodeRealtimeBus(env);
+  setCollaborationExtensionsFactory(createNodeCollaborationExtensions);
+  setRealtimeReadinessProbe(() => realtimeBus?.isReady() ?? true);
   const collaboration = attachNodeCollaborationRuntime(server, env, {
     editionExtension,
     passthroughPaths: ["/database-collaboration", "/meeting-audio"],
+    realtimeBus,
   });
-  const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env);
+  const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { realtimeBus });
   const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
   const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
     ...runtimeAdapter,
@@ -104,6 +112,7 @@ export function createNodeRuntime({
       }
     },
     async start() {
+      await realtimeBus?.connect();
       if (!stopOutboxDrainer) {
         stopOutboxDrainer = startDatabaseRealtimeOutboxDrainer(env);
       }
@@ -126,6 +135,8 @@ export function createNodeRuntime({
       await databaseRealtime.destroy();
       await meetingAudio.destroy();
       await collaboration.destroy();
+      await realtimeBus?.close();
+      setRealtimeReadinessProbe(null);
       await new Promise<void>((resolve, reject) => {
         if (!server.listening) {
           resolve();

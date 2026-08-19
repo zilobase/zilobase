@@ -22,7 +22,7 @@ test("root and health probes return the stable service contract", async () => {
 
 test("ready returns dependency status and a retryable failure", async () => {
   checkReadiness.mockResolvedValueOnce({
-    checks: { database: "ok", objectStorage: "ok" },
+    checks: { database: "ok", objectStorage: "ok", realtime: "ok" },
     ok: true,
     service: "zilobase-server",
   });
@@ -31,7 +31,7 @@ test("ready returns dependency status and a retryable failure", async () => {
 
   const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
   checkReadiness.mockResolvedValueOnce({
-    checks: { database: "unavailable", objectStorage: "ok" },
+    checks: { database: "unavailable", objectStorage: "ok", realtime: "ok" },
     ok: false,
     service: "zilobase-server",
   });
@@ -40,7 +40,7 @@ test("ready returns dependency status and a retryable failure", async () => {
   assert.equal(unavailable.status, 503);
   assert.equal(unavailable.headers.get("retry-after"), "5");
   assert.deepEqual(await unavailable.json(), {
-    checks: { database: "unavailable", objectStorage: "ok" },
+    checks: { database: "unavailable", objectStorage: "ok", realtime: "ok" },
     ok: false,
     service: "zilobase-server",
   });

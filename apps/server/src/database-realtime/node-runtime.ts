@@ -14,6 +14,11 @@ import {
   type DatabaseRealtimeTicketClaims,
 } from "../database-realtime-ticket";
 import type { DatabaseRealtimeMutationEvent } from "../services/database-realtime";
+import {
+  databaseRealtimeChannel,
+  type NodeRealtimeBus,
+  type RealtimeSubscription,
+} from "../infrastructure/node/realtime-bus";
 
 export const NODE_DATABASE_REALTIME_MAX_MESSAGE_BYTES = 16 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;
@@ -40,6 +45,17 @@ type SocketAttachment = {
 type DatabaseRoom = {
   latestVersion: number;
   peers: Set<Peer>;
+  remotePresence: Map<string, DatabaseCollaborator>;
+  subscription?: Promise<void>;
+  unsubscribe?: RealtimeSubscription;
+};
+
+type DatabaseCollaborator = {
+  connectedAt: string;
+  presence: DatabasePresence;
+  sessionId: string;
+  updatedAt: string;
+  user: DatabaseRealtimeTicketClaims["user"];
 };
 
 type NodeDatabaseRealtimeRuntimeOptions = {
@@ -48,6 +64,7 @@ type NodeDatabaseRealtimeRuntimeOptions = {
     token: string,
     env: RuntimeEnv,
   ) => Promise<DatabaseRealtimeTicketClaims>;
+  realtimeBus?: NodeRealtimeBus | null;
 };
 
 export function attachNodeDatabaseRealtimeRuntime(
@@ -65,6 +82,7 @@ export function attachNodeDatabaseRealtimeRuntime(
     options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
   );
   const verifyTicket = options.verifyTicket ?? verifyDatabaseRealtimeTicket;
+  const realtimeBus = options.realtimeBus ?? null;
 
   const websocket = crossws({
     idleTimeout: 30,
@@ -96,14 +114,30 @@ export function attachNodeDatabaseRealtimeRuntime(
 
           const clientAddress = getClientAddress(request);
 
-          if (!connectionLimiter.allow(`ip:${clientAddress}`)) {
+          const ipAllowed = realtimeBus
+            ? await realtimeBus.consumeLimit(
+                `database:connection:ip:${clientAddress}`,
+                options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
+                CONNECTION_LIMIT_WINDOW_MS,
+              )
+            : connectionLimiter.allow(`ip:${clientAddress}`);
+
+          if (!ipAllowed) {
             throw new Response("Too Many Requests", {
               headers: { "Retry-After": "60" },
               status: 429,
             });
           }
 
-          if (!connectionLimiter.allow(`user:${claims.user.id}:${databaseId}`)) {
+          const userAllowed = realtimeBus
+            ? await realtimeBus.consumeLimit(
+                `database:connection:user:${claims.user.id}:${databaseId}`,
+                options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
+                CONNECTION_LIMIT_WINDOW_MS,
+              )
+            : connectionLimiter.allow(`user:${claims.user.id}:${databaseId}`);
+
+          if (!userAllowed) {
             throw new Response("Too Many Requests", {
               headers: { "Retry-After": "60" },
               status: 429,
@@ -127,7 +161,7 @@ export function attachNodeDatabaseRealtimeRuntime(
           });
         }
       },
-      open(peer) {
+      async open(peer) {
         const context = readUpgradeContext(peer);
 
         if (!context) {
@@ -143,7 +177,13 @@ export function attachNodeDatabaseRealtimeRuntime(
         attachments.set(peer, attachment);
 
         const room = getOrCreateRoom(rooms, context.databaseId);
-        pruneExpiredPeers(room, attachments);
+        await ensureRoomSubscription(
+          room,
+          context.databaseId,
+          realtimeBus,
+          attachments,
+        );
+        pruneExpiredPeers(room, attachments, realtimeBus);
         room.latestVersion = Math.max(
           room.latestVersion,
           context.claims.version ?? 0,
@@ -174,7 +214,7 @@ export function attachNodeDatabaseRealtimeRuntime(
         }
 
         if (!consumeMessageAllowance(peer, messageRates)) {
-          clearPresence(peer, attachment, rooms, attachments);
+          clearPresence(peer, attachment, rooms, attachments, realtimeBus);
           peer.close(1008, "Database realtime message rate exceeded");
           return;
         }
@@ -193,31 +233,39 @@ export function attachNodeDatabaseRealtimeRuntime(
         }
 
         if (attachment.claims.exp <= Date.now()) {
-          clearPresence(peer, attachment, rooms, attachments);
+          clearPresence(peer, attachment, rooms, attachments, realtimeBus);
           peer.close(1008, "Database realtime authentication expired");
           return;
         }
 
         if (message.type === "realtime.ping") {
+          publishPresenceHeartbeat(attachment, realtimeBus);
           return;
         }
 
         if (message.type === "presence.update") {
-          updatePresence(peer, attachment, message, rooms, attachments);
+          updatePresence(
+            peer,
+            attachment,
+            message,
+            rooms,
+            attachments,
+            realtimeBus,
+          );
           return;
         }
 
         peer.close(1003, "Unsupported database realtime message");
       },
       close(peer) {
-        removePeer(peer, rooms, attachments);
+        removePeer(peer, rooms, attachments, realtimeBus);
       },
       error(peer, error) {
         console.error(JSON.stringify({
           error: error instanceof Error ? error.message : String(error),
           event: "database_realtime_websocket_error",
         }));
-        removePeer(peer, rooms, attachments);
+        removePeer(peer, rooms, attachments, realtimeBus);
         peer.close(1011, "Database realtime WebSocket error");
       },
     },
@@ -243,6 +291,9 @@ export function attachNodeDatabaseRealtimeRuntime(
   return {
     async destroy() {
       server.off("upgrade", upgradeListener);
+      await Promise.allSettled(
+        [...rooms.values()].map((room) => room.unsubscribe?.()),
+      );
       await websocket.close(1001, "Server shutting down");
     },
     async publishMutation(event: DatabaseRealtimeMutationEvent) {
@@ -253,8 +304,9 @@ export function attachNodeDatabaseRealtimeRuntime(
       if (event.version <= room.latestVersion) return;
 
       room.latestVersion = event.version;
-      pruneExpiredPeers(room, attachments);
+      pruneExpiredPeers(room, attachments, realtimeBus);
       broadcast(room, event, attachments);
+      await realtimeBus?.publish(databaseRealtimeChannel(event.databaseId), event);
     },
   };
 }
@@ -372,11 +424,12 @@ function updatePresence(
   message: Record<string, unknown>,
   rooms: Map<string, DatabaseRoom>,
   attachments: WeakMap<Peer, SocketAttachment>,
+  realtimeBus: NodeRealtimeBus | null,
 ) {
   if (!attachment.claims.canEdit) return;
 
   if (message.presence === null) {
-    clearPresence(peer, attachment, rooms, attachments);
+    clearPresence(peer, attachment, rooms, attachments, realtimeBus);
     return;
   }
 
@@ -392,12 +445,14 @@ function updatePresence(
 
   if (!room) return;
 
-  broadcast(room, {
+  const event = {
     collaborator: toCollaborator(attachment),
     databaseId: attachment.databaseId,
     protocolVersion: 1,
     type: "presence.update",
-  }, attachments, peer);
+  };
+  broadcast(room, event, attachments, peer);
+  publishRealtimeBus(realtimeBus, attachment.databaseId, event);
 }
 
 function clearPresence(
@@ -405,6 +460,7 @@ function clearPresence(
   attachment: SocketAttachment,
   rooms: Map<string, DatabaseRoom>,
   attachments: WeakMap<Peer, SocketAttachment>,
+  realtimeBus: NodeRealtimeBus | null,
 ) {
   if (!attachment.presence) return;
 
@@ -415,25 +471,33 @@ function clearPresence(
 
   if (!room) return;
 
-  broadcast(room, {
+  const event = {
     databaseId: attachment.databaseId,
     protocolVersion: 1,
     sessionId: attachment.claims.sessionId,
     type: "presence.clear",
-  }, attachments, peer);
+  };
+  broadcast(room, event, attachments, peer);
+  publishRealtimeBus(realtimeBus, attachment.databaseId, event);
 }
 
 function removePeer(
   peer: Peer,
   rooms: Map<string, DatabaseRoom>,
   attachments: WeakMap<Peer, SocketAttachment>,
+  realtimeBus: NodeRealtimeBus | null,
 ) {
   const attachment = attachments.get(peer);
 
   if (!attachment) return;
 
-  clearPresence(peer, attachment, rooms, attachments);
-  rooms.get(attachment.databaseId)?.peers.delete(peer);
+  clearPresence(peer, attachment, rooms, attachments, realtimeBus);
+  const room = rooms.get(attachment.databaseId);
+  room?.peers.delete(peer);
+  if (room && room.peers.size === 0) {
+    void room.unsubscribe?.().catch(logRealtimeBusError);
+    rooms.delete(attachment.databaseId);
+  }
   attachments.delete(peer);
 }
 
@@ -443,8 +507,9 @@ function readPeers(
   attachments: WeakMap<Peer, SocketAttachment>,
 ) {
   const now = Date.now();
+  pruneRemotePresence(room, now);
 
-  return [...room.peers].flatMap((candidate) => {
+  const local = [...room.peers].flatMap((candidate) => {
     if (candidate === skip) return [];
 
     const attachment = attachments.get(candidate);
@@ -453,6 +518,7 @@ function readPeers(
       ? [toCollaborator(attachment)]
       : [];
   });
+  return [...local, ...room.remotePresence.values()];
 }
 
 function broadcast(
@@ -478,6 +544,7 @@ function broadcast(
 function pruneExpiredPeers(
   room: DatabaseRoom,
   attachments: WeakMap<Peer, SocketAttachment>,
+  realtimeBus: NodeRealtimeBus | null,
 ) {
   const now = Date.now();
 
@@ -491,12 +558,14 @@ function pruneExpiredPeers(
       if (attachment.presence) {
         delete attachment.presence;
         delete attachment.updatedAt;
-        broadcast(room, {
+        const event = {
           databaseId: attachment.databaseId,
           protocolVersion: 1,
           sessionId: attachment.claims.sessionId,
           type: "presence.clear",
-        }, attachments, peer);
+        };
+        broadcast(room, event, attachments, peer);
+        publishRealtimeBus(realtimeBus, attachment.databaseId, event);
       }
       room.peers.delete(peer);
       attachments.delete(peer);
@@ -528,20 +597,133 @@ function getOrCreateRoom(
   let room = rooms.get(databaseId);
 
   if (!room) {
-    room = { latestVersion: 0, peers: new Set() };
+    room = { latestVersion: 0, peers: new Set(), remotePresence: new Map() };
     rooms.set(databaseId, room);
   }
 
   return room;
 }
 
-function validateMutationEvent(event: DatabaseRealtimeMutationEvent) {
+async function ensureRoomSubscription(
+  room: DatabaseRoom,
+  databaseId: string,
+  realtimeBus: NodeRealtimeBus | null,
+  attachments: WeakMap<Peer, SocketAttachment>,
+) {
+  if (!realtimeBus || room.unsubscribe) return;
+  room.subscription ??= realtimeBus
+    .subscribe(databaseRealtimeChannel(databaseId), (payload) => {
+      receiveRealtimeBusMessage(room, databaseId, payload, attachments);
+    })
+    .then((unsubscribe) => {
+      room.unsubscribe = unsubscribe;
+    })
+    .catch((error) => {
+      delete room.subscription;
+      throw error;
+    });
+  await room.subscription;
+}
+
+function receiveRealtimeBusMessage(
+  room: DatabaseRoom,
+  databaseId: string,
+  payload: unknown,
+  attachments: WeakMap<Peer, SocketAttachment>,
+) {
+  if (!payload || typeof payload !== "object") return;
+  const message = payload as Record<string, unknown>;
+  if (message.databaseId !== databaseId || message.protocolVersion !== 1) return;
+
+  if (message.type === "database.mutation") {
+    try {
+      validateMutationEvent(payload);
+    } catch {
+      return;
+    }
+    const event = payload;
+    if (event.version <= room.latestVersion) return;
+    room.latestVersion = event.version;
+    broadcast(room, event, attachments);
+    return;
+  }
+
+  if (message.type === "presence.update" && isCollaborator(message.collaborator)) {
+    room.remotePresence.set(message.collaborator.sessionId, message.collaborator);
+    pruneRemotePresence(room, Date.now());
+    broadcast(room, message, attachments);
+    return;
+  }
+
+  if (message.type === "presence.clear" && typeof message.sessionId === "string") {
+    room.remotePresence.delete(message.sessionId);
+    broadcast(room, message, attachments);
+  }
+}
+
+function publishPresenceHeartbeat(
+  attachment: SocketAttachment,
+  realtimeBus: NodeRealtimeBus | null,
+) {
+  if (!attachment.presence) return;
+  attachment.updatedAt = Date.now();
+  publishRealtimeBus(realtimeBus, attachment.databaseId, {
+    collaborator: toCollaborator(attachment),
+    databaseId: attachment.databaseId,
+    protocolVersion: 1,
+    type: "presence.update",
+  });
+}
+
+function publishRealtimeBus(
+  realtimeBus: NodeRealtimeBus | null,
+  databaseId: string,
+  payload: unknown,
+) {
+  if (!realtimeBus) return;
+  void realtimeBus
+    .publish(databaseRealtimeChannel(databaseId), payload)
+    .catch(logRealtimeBusError);
+}
+
+function pruneRemotePresence(room: DatabaseRoom, now: number) {
+  for (const [sessionId, collaborator] of room.remotePresence) {
+    if (now - Date.parse(collaborator.updatedAt) > 60_000) {
+      room.remotePresence.delete(sessionId);
+    }
+  }
+}
+
+function isCollaborator(value: unknown): value is DatabaseCollaborator {
+  if (!value || typeof value !== "object") return false;
+  const collaborator = value as Partial<DatabaseCollaborator>;
+  return typeof collaborator.connectedAt === "string" &&
+    typeof collaborator.sessionId === "string" &&
+    typeof collaborator.updatedAt === "string" &&
+    isPresence(collaborator.presence) &&
+    Boolean(collaborator.user && typeof collaborator.user === "object");
+}
+
+function logRealtimeBusError(error: unknown) {
+  console.error(JSON.stringify({
+    error: error instanceof Error ? error.message : String(error),
+    event: "database_realtime_bus_error",
+  }));
+}
+
+function validateMutationEvent(
+  event: unknown,
+): asserts event is DatabaseRealtimeMutationEvent {
+  if (!event || typeof event !== "object") {
+    throw new Error("Invalid database mutation event");
+  }
+  const candidate = event as Partial<DatabaseRealtimeMutationEvent>;
   if (
-    event.protocolVersion !== 1 ||
-    event.type !== "database.mutation" ||
-    typeof event.databaseId !== "string" ||
-    typeof event.version !== "number" ||
-    event.version < 1
+    candidate.protocolVersion !== 1 ||
+    candidate.type !== "database.mutation" ||
+    typeof candidate.databaseId !== "string" ||
+    typeof candidate.version !== "number" ||
+    candidate.version < 1
   ) {
     throw new Error("Invalid database mutation event");
   }

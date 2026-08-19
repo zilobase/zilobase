@@ -1,5 +1,12 @@
 replicaCount: 1
 
+realtime:
+  enabled: false
+  existingSecret: ""
+  secretKey: REALTIME_REDIS_URL
+  networkCIDR: 10.0.0.0/8
+  port: 6379
+
 image:
   repository: ghcr.io/zilobase/zilobase
   digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
@@ -38,8 +45,8 @@ ingress:
   enabled: false
   className: ""
   annotations:
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "65"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "65"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
   host: zilobase.example.invalid
   tlsSecretName: zilobase-tls
 

@@ -14,6 +14,7 @@ import { runWithDbEnv } from "../db";
 import { getDefaultCollaborationHocuspocus } from "./service";
 import type { RuntimeEnv } from "../config";
 import type { ZilobaseEditionExtension } from "../edition-extension";
+import type { NodeRealtimeBus } from "../infrastructure/node/realtime-bus";
 
 export const NODE_COLLABORATION_MAX_PAYLOAD_BYTES = 1024 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;
@@ -24,6 +25,7 @@ type NodeCollaborationRuntimeOptions = {
   connectionLimit?: number;
   passthroughPaths?: readonly string[];
   editionExtension?: ZilobaseEditionExtension;
+  realtimeBus?: NodeRealtimeBus | null;
 };
 
 export function attachNodeCollaborationRuntime(
@@ -109,7 +111,15 @@ export function attachNodeCollaborationRuntime(
       return;
     }
 
-    if (!connectionLimiter.allow(userId)) {
+    const connectionAllowed = options.realtimeBus
+      ? await options.realtimeBus.consumeLimit(
+          `collaboration:connection:${userId}`,
+          options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
+          CONNECTION_LIMIT_WINDOW_MS,
+        )
+      : connectionLimiter.allow(userId);
+
+    if (!connectionAllowed) {
       rejectUpgrade(socket, 429, "Too Many Requests", {
         "Retry-After": "60",
       });

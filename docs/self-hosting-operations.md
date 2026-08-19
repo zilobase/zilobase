@@ -12,8 +12,8 @@ docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.
 docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.prod.yml up -d --wait
 ```
 
-Use `/health` for process liveness and `/ready` for Postgres plus object-storage
-readiness. Follow logs without printing the environment:
+Use `/health` for process liveness and `/ready` for Postgres, object-storage,
+and configured realtime-broker readiness. Follow logs without printing the environment:
 
 ```sh
 docker compose --env-file .env.selfhost logs --tail 200 --follow zilobase
@@ -24,9 +24,10 @@ bug reports. The bootstrap token remains required at process startup but cannot
 bootstrap an initialized database again.
 
 For Helm, run `helm lint`, render the proposed values, and use
-`helm upgrade --install --wait`. Preserve `replicaCount: 1`; Community has no
-shared realtime bus and the chart deliberately rejects two replicas. Inspect
-the migration hook and `/ready` before ending the maintenance window.
+`helm upgrade --install --wait`. Keep `replicaCount: 1` unless
+`realtime.enabled` points at a healthy operator-managed Valkey or Redis Secret;
+the chart rejects an unsafe multi-replica configuration. Inspect the migration
+hook and `/ready` before ending the maintenance window.
 
 ## Backups
 

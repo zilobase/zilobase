@@ -1,4 +1,5 @@
-{{- if ne (int .Values.replicaCount) 1 }}{{ fail "Zilobase Community supports exactly replicaCount=1; this chart is not HA" }}{{ end }}
+{{- if and (gt (int .Values.replicaCount) 1) (not .Values.realtime.enabled) }}{{ fail "realtime.enabled must be true when replicaCount is greater than one" }}{{ end }}
+{{- if and .Values.realtime.enabled (eq .Values.realtime.existingSecret "") }}{{ fail "realtime.existingSecret is required when realtime.enabled is true" }}{{ end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,8 +7,14 @@ metadata:
   labels:
     {{- include "zilobase.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
+  {{- if gt (int .Values.replicaCount) 1 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 1 }
+  {{- else }}
   strategy: { type: Recreate }
+  {{- end }}
   selector:
     matchLabels:
       {{- include "zilobase.selectorLabels" . | nindent 6 }}
@@ -18,6 +25,7 @@ spec:
       annotations:
         {{- toYaml .Values.podAnnotations | nindent 8 }}
     spec:
+      terminationGracePeriodSeconds: 60
       serviceAccountName: {{ include "zilobase.serviceAccountName" . }}
       automountServiceAccountToken: false
       securityContext:
@@ -38,6 +46,9 @@ spec:
             readOnlyRootFilesystem: true
           env:
             {{- include "zilobase.env" . | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec: { command: ["/bin/sh", "-c", "sleep 10"] }
           ports:
             - { name: http, containerPort: 3000, protocol: TCP }
           startupProbe:

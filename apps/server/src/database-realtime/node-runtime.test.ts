@@ -9,6 +9,7 @@ import {
   DATABASE_REALTIME_PROTOCOL,
 } from "../database-realtime-ticket";
 import { attachNodeDatabaseRealtimeRuntime } from "./node-runtime";
+import type { NodeRealtimeBus } from "../infrastructure/node/realtime-bus";
 
 const env = { BETTER_AUTH_SECRET: "database-realtime-test-secret" };
 
@@ -129,9 +130,49 @@ test("serverful database rooms ignore stale mutation deliveries", async () => {
   }
 });
 
-async function startFixture() {
+test("serverful database rooms fan out across realtime bus instances", async () => {
+  const broker = new TestRealtimeBroker();
+  const firstFixture = await startFixture(broker.createBus());
+  const secondFixture = await startFixture(broker.createBus());
+  const firstTicket = await createTicket("user-1", 1);
+  const secondTicket = await createTicket("user-2", 1);
+  const first = new RealtimeClient(firstFixture.url, firstTicket.token);
+  const second = new RealtimeClient(secondFixture.url, secondTicket.token);
+
+  try {
+    await Promise.all([first.opened, second.opened]);
+    await Promise.all([first.next("realtime.ready"), second.next("realtime.ready")]);
+    first.send({
+      presence: { columnKey: "status", rowId: "row-1", viewId: null },
+      type: "presence.update",
+    });
+    assert.equal(
+      (await second.next("presence.update")).collaborator.sessionId,
+      firstTicket.sessionId,
+    );
+
+    await firstFixture.runtime.publishMutation({
+      actorId: "user-1",
+      changed: ["values"],
+      committedAt: new Date().toISOString(),
+      databaseId: "database-1",
+      delta: {},
+      mutationId: "distributed-mutation",
+      protocolVersion: 1,
+      type: "database.mutation",
+      version: 2,
+    });
+    assert.equal((await second.next("database.mutation")).version, 2);
+  } finally {
+    first.websocket.close();
+    second.websocket.close();
+    await Promise.all([firstFixture.close(), secondFixture.close()]);
+  }
+});
+
+async function startFixture(realtimeBus?: NodeRealtimeBus) {
   const server = createServer((_request, response) => response.end());
-  const runtime = attachNodeDatabaseRealtimeRuntime(server, env);
+  const runtime = attachNodeDatabaseRealtimeRuntime(server, env, { realtimeBus });
 
   await listen(server);
   const address = server.address();
@@ -145,6 +186,44 @@ async function startFixture() {
     runtime,
     url: `ws://127.0.0.1:${address.port}/database-collaboration?database=database-1`,
   };
+}
+
+class TestRealtimeBroker {
+  private readonly channels = new Map<
+    string,
+    Set<{ handler: (payload: unknown) => void; instance: symbol }>
+  >();
+
+  createBus(): NodeRealtimeBus {
+    const instance = Symbol("realtime-instance");
+    return {
+      async close() {
+        // Subscriptions are removed by each runtime before bus shutdown.
+      },
+      async connect() {},
+      async consumeLimit() {
+        return true;
+      },
+      isReady() {
+        return true;
+      },
+      publish: async (channel, payload) => {
+        this.channels.get(channel)?.forEach((subscription) => {
+          if (subscription.instance !== instance) subscription.handler(payload);
+        });
+      },
+      subscribe: async (channel, handler) => {
+        const subscription = { handler, instance };
+        const subscriptions = this.channels.get(channel) ?? new Set();
+        subscriptions.add(subscription);
+        this.channels.set(channel, subscriptions);
+        return async () => {
+          subscriptions.delete(subscription);
+          if (subscriptions.size === 0) this.channels.delete(channel);
+        };
+      },
+    };
+  }
 }
 
 async function createTicket(userId: string, version: number) {

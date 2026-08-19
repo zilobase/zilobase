@@ -1,9 +1,20 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["replicaCount", "image", "existingSecret", "config", "networkPolicy", "trustedCa"],
+  "required": ["replicaCount", "realtime", "image", "existingSecret", "config", "networkPolicy", "trustedCa"],
   "properties": {
-    "replicaCount": { "type": "integer", "const": 1, "description": "Community supports exactly one application replica" },
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "realtime": {
+      "type": "object",
+      "required": ["enabled", "existingSecret", "secretKey", "networkCIDR", "port"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "existingSecret": { "type": "string" },
+        "secretKey": { "type": "string", "minLength": 1 },
+        "networkCIDR": { "type": "string", "minLength": 3 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
     "existingSecret": { "type": "string", "minLength": 1 },
     "image": {
       "type": "object",
@@ -48,5 +59,18 @@
         "key": { "type": "string", "minLength": 1 }
       }
     }
-  }
+  },
+  "allOf": [{
+    "if": { "properties": { "replicaCount": { "minimum": 2 } } },
+    "then": {
+      "properties": {
+        "realtime": {
+          "properties": {
+            "enabled": { "const": true },
+            "existingSecret": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }]
 }

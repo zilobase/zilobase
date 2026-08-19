@@ -3,11 +3,13 @@ import { sql } from "drizzle-orm";
 import type { RuntimeEnv } from "../../config";
 import { db, runWithDbEnv } from "../../db";
 import { createImageStorage } from "../../image-storage";
+import { isRealtimeReady } from "../../realtime-readiness";
 
 export type ReadinessResult = {
   checks: {
     database: "ok" | "unavailable";
     objectStorage: "ok" | "unavailable";
+    realtime: "ok" | "unavailable";
   };
   ok: boolean;
   service: "zilobase-server";
@@ -48,11 +50,12 @@ export async function checkReadiness(
     database: database.status === "fulfilled" ? "ok" : "unavailable",
     objectStorage:
       objectStorage.status === "fulfilled" ? "ok" : "unavailable",
+    realtime: isRealtimeReady(env) ? "ok" : "unavailable",
   };
 
   return {
     checks,
-    ok: checks.database === "ok" && checks.objectStorage === "ok",
+    ok: Object.values(checks).every((check) => check === "ok"),
     service: "zilobase-server",
   };
 }

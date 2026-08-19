@@ -1,6 +1,6 @@
 # Self-hosting Zilobase
 
-Docker Compose and the single-replica Community Helm chart are the supported
+Docker Compose and the Community Helm chart are the supported
 self-hosted artifacts. A separate virtual machine is unnecessary for local
 development; use a clean public Ubuntu host or isolated Kubernetes cluster for
 release staging and production-like validation.
@@ -89,13 +89,20 @@ The existing Secret defaults to `zilobase` and must contain `DATABASE_URL`,
 Helm values and shell history. If PostgreSQL or S3 uses a private CA, place only
 the public CA in a ConfigMap and set `trustedCa.configMapName`.
 
-Community is always one application replica and is not HA. The schema and
-template both reject `replicaCount: 2`, and upgrades use `Recreate`. The
-pre-upgrade hook takes the PostgreSQL advisory lock and runs only the public
-migration journal. Your Ingress must preserve WebSocket `Upgrade`/`Connection`
-headers and use an idle timeout of at least 65 seconds. Set the NetworkPolicy
-PostgreSQL, S3, SMTP, and kubelet-probe CIDRs to the narrow addresses used by
-your cluster.
+The default remains one application replica with `Recreate` upgrades. To run
+multiple replicas, provide an externally managed Valkey or Redis endpoint in a
+Secret and set `realtime.enabled=true`, `realtime.existingSecret`, and
+`replicaCount`. The chart rejects multiple replicas without this shared
+realtime bus. HA deployments use rolling updates, a disruption budget, shared
+Hocuspocus and database-realtime fan-out, and distributed connection limits.
+Your Ingress must preserve WebSocket `Upgrade`/`Connection` headers and use the
+provided one-hour idle timeouts. Set the NetworkPolicy PostgreSQL, S3, SMTP,
+Valkey, and kubelet-probe CIDRs to the narrow addresses used by your cluster.
+
+For a local broker-backed test, start the optional Compose profile with
+`REALTIME_REDIS_URL=redis://valkey:6379 docker compose --profile ha ...`. The
+profile is for development only and does not make a single Compose application
+container highly available.
 
 Back up PostgreSQL and the object bucket as a pair before every upgrade. A Helm
 rollback does not reverse database migrations; use an older binary only when

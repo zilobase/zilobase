@@ -1,5 +1,5 @@
 import { Database } from "@hocuspocus/extension-database";
-import { Hocuspocus } from "@hocuspocus/server";
+import { Hocuspocus, type Extension } from "@hocuspocus/server";
 import { ProsemirrorTransformer } from "@hocuspocus/transformer";
 import { and, eq, isNull } from "drizzle-orm";
 import { Schema, type MarkSpec, type NodeSpec } from "@tiptap/pm/model";
@@ -245,6 +245,7 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
     debounce: 800,
     maxDebounce: 5_000,
     extensions: [
+      ...(collaborationExtensionsFactory?.(env) ?? []),
       new Database({
         fetch: async ({ documentName }) => consumeDocument(documentName),
         store: async ({ documentName, document, state }) =>
@@ -317,6 +318,16 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
       return claims;
     },
   });
+}
+
+let collaborationExtensionsFactory:
+  | ((env: RuntimeEnv) => Extension[])
+  | null = null;
+
+export function setCollaborationExtensionsFactory(
+  factory: ((env: RuntimeEnv) => Extension[]) | null,
+) {
+  collaborationExtensionsFactory = factory;
 }
 
 let defaultHocuspocus: Hocuspocus<CollaborationContext> | null = null;

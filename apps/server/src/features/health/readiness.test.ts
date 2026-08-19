@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { checkReadiness } from "./readiness";
+import { setRealtimeReadinessProbe } from "../../realtime-readiness";
 
 test("readiness requires both Postgres and object storage", async () => {
   const ready = await checkReadiness({}, {
@@ -10,7 +11,7 @@ test("readiness requires both Postgres and object storage", async () => {
   });
 
   assert.deepEqual(ready, {
-    checks: { database: "ok", objectStorage: "ok" },
+    checks: { database: "ok", objectStorage: "ok", realtime: "ok" },
     ok: true,
     service: "zilobase-server",
   });
@@ -25,7 +26,7 @@ test("readiness requires both Postgres and object storage", async () => {
   });
 
   assert.deepEqual(unavailable, {
-    checks: { database: "unavailable", objectStorage: "unavailable" },
+    checks: { database: "unavailable", objectStorage: "unavailable", realtime: "ok" },
     ok: false,
     service: "zilobase-server",
   });
@@ -47,5 +48,18 @@ test("readiness executes independent checks even when one dependency fails", asy
   assert.deepEqual(result.checks, {
     database: "unavailable",
     objectStorage: "ok",
+    realtime: "ok",
   });
+});
+
+test("readiness requires the configured realtime broker", async () => {
+  setRealtimeReadinessProbe(() => false);
+  const result = await checkReadiness({ REALTIME_REDIS_URL: "redis://valkey:6379" }, {
+    async checkDatabase() {},
+    async checkObjectStorage() {},
+  });
+  setRealtimeReadinessProbe(null);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.checks.realtime, "unavailable");
 });

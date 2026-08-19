@@ -1,9 +1,17 @@
-Zilobase Community {{ .Chart.AppVersion }} was configured as a single-replica
-deployment. This chart is not HA. The pre-install/pre-upgrade migration Job
-acquires a PostgreSQL advisory lock and applies only the public migration journal.
+Zilobase Community {{ .Chart.AppVersion }} was configured with
+{{ .Values.replicaCount }} application replica(s). The pre-install/pre-upgrade
+migration Job acquires a PostgreSQL advisory lock and applies only the public
+migration journal.
+{{- if gt (int .Values.replicaCount) 1 }}
+Realtime coordination uses the externally managed Valkey/Redis Secret
+{{ .Values.realtime.existingSecret }}.
+{{- else }}
+This is the default single-replica, process-local realtime configuration.
+{{- end }}
 
 Check readiness:
   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
 
 Your Ingress must preserve WebSocket Upgrade/Connection headers and use an idle
-timeout of at least 65 seconds. PostgreSQL and S3 are external operator services.
+timeout of at least 3600 seconds. PostgreSQL, S3, and any configured realtime
+broker are external operator services.

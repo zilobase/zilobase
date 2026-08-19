@@ -48,10 +48,16 @@ jobs:
           set -euo pipefail
           helm lint deploy/helm/zilobase
           if helm template community deploy/helm/zilobase --set replicaCount=2 >/tmp/replica-two.out 2>/tmp/replica-two.err; then
-            echo "replicaCount=2 unexpectedly rendered" >&2
+            echo "replicaCount=2 rendered without a realtime broker" >&2
             exit 1
           fi
-          grep -q "value must be 1" /tmp/replica-two.err
+          grep -q "realtime" /tmp/replica-two.err
+          ha_rendered=$(helm template community deploy/helm/zilobase \
+            --set replicaCount=2 \
+            --set realtime.enabled=true \
+            --set realtime.existingSecret=zilobase-realtime)
+          grep -q "replicas: 2" <<<"$ha_rendered"
+          grep -q "kind: PodDisruptionBudget" <<<"$ha_rendered"
           rendered=$(helm template community deploy/helm/zilobase)
           test "$(grep -c 'ZILOBASE_EDITION_MIGRATIONS_DIR' <<<"$rendered")" -eq 0
           test "$(grep -c 'ZILOBASE_ENTERPRISE' <<<"$rendered")" -eq 0
