@@ -5,6 +5,7 @@ import {
   meetingKeys,
   meetingQueryOptions,
   meetingTranscriptQueryOptions,
+  normalizeMeetingListResponse,
   workspaceMeetingsQueryOptions,
 } from "./queries"
 
@@ -23,6 +24,19 @@ test("meeting query keys are hierarchical and scoped by meeting", () => {
     meetingKeys.detail("meeting-1"),
     meetingKeys.detail("meeting-2"),
   )
+})
+
+test("workspace meeting queries normalize restored and legacy list payloads", () => {
+  const meeting = { id: "meeting-1" }
+
+  assert.deepEqual(normalizeMeetingListResponse(undefined), { meetings: [] })
+  assert.deepEqual(normalizeMeetingListResponse({}), { meetings: [] })
+  assert.deepEqual(normalizeMeetingListResponse([meeting]), {
+    meetings: [meeting],
+  })
+  assert.deepEqual(normalizeMeetingListResponse({ meetings: [meeting] }), {
+    meetings: [meeting],
+  })
 })
 
 test("live transcript queries poll with their own scoped cache key", () => {

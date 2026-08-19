@@ -52,6 +52,10 @@ export function register({ assert, loadModule, test }) {
       getMissingHostedMeetingIds(content, meetings, "page-1"),
       ["meeting-1"],
     )
+    assert.deepEqual(
+      getMissingHostedMeetingIds(content, undefined, "page-1"),
+      [],
+    )
 
     const restored = insertMeetingBlockInContent(content, "meeting-1")
     const duplicate = insertMeetingBlockInContent(

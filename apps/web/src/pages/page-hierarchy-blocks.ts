@@ -88,12 +88,12 @@ export function extractMeetingBlockIds(content: unknown) {
 
 export function getMissingHostedMeetingIds(
   content: unknown,
-  meetings: readonly MeetingReference[],
+  meetings: readonly MeetingReference[] | null | undefined,
   pageId: string,
 ) {
   const embeddedIds = new Set(extractMeetingBlockIds(content))
 
-  return meetings
+  return (meetings ?? [])
     .filter((meeting) => meeting.pageId === pageId && !meeting.deletedAt)
     .sort((first, second) => {
       const createdAtDifference =

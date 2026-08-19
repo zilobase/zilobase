@@ -84,6 +84,22 @@ export const meetingKeys = {
     [...meetingKeys.detail(meetingId), "transcript"] as const,
 }
 
+export function normalizeMeetingListResponse(
+  payload: unknown,
+): MeetingListResponse {
+  const meetings = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object"
+      ? (payload as { meetings?: unknown }).meetings
+      : undefined
+
+  return {
+    meetings: Array.isArray(meetings)
+      ? (meetings as MeetingListItem[])
+      : [],
+  }
+}
+
 export function workspaceMeetingsQueryOptions(
   apiFetch: ApiFetcher,
   workspaceId: string | null | undefined,
@@ -93,11 +109,12 @@ export function workspaceMeetingsQueryOptions(
     queryKey: meetingKeys.list(workspaceId),
     queryFn: ({ signal }) => {
       if (!workspaceId) throw new Error("Workspace ID is required")
-      return apiFetch<MeetingListResponse>(
+      return apiFetch<unknown>(
         `/meetings?workspaceId=${encodeURIComponent(workspaceId)}`,
         { signal },
       )
     },
+    select: normalizeMeetingListResponse,
     staleTime: 15_000,
   })
 }
