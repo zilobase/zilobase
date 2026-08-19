@@ -4,6 +4,19 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.42
+
+### Changed
+
+- macOS desktop releases are signed with a Developer ID Application certificate and notarized by Apple.
+
+### Fixed
+
+- Home and recents no longer open realtime connections for synthetic databases.
+- Authenticated page and database routes keep the signed-in shell when a page-level error is shown.
+- Restored meeting list data is normalized so hierarchy and meeting queries stay consistent.
+- Linux desktop release builds run on Ubuntu 24.04.
+
 ## 0.0.41
 
 ### Added
