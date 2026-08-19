@@ -438,6 +438,7 @@ export default function RecentsPage({
                   databaseId: payload.database.id,
                   databaseName: payload.database.name,
                   databaseWorkspaceId: workspaceId ?? undefined,
+                  realtimeEnabled: false,
                   deleteDatabaseView: () => {},
                   draftDatabaseTitle: pageTitle,
                   draftViewTitle:

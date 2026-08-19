@@ -132,6 +132,7 @@ export type DatabaseViewContextValue = {
   databaseName?: string
   databasePageId?: string | null
   databaseWorkspaceId?: string
+  realtimeEnabled?: boolean
   deleteDatabaseView: (view: DatabaseViewTab) => void
   duplicateDatabaseView: (view: DatabaseViewTab) => void
   draftDatabaseTitle: string
@@ -465,7 +466,8 @@ function DatabaseRealtimeStateProvider({
     enabled: Boolean(
       session?.user &&
       value.databaseId &&
-      value.databaseWorkspaceId,
+      value.databaseWorkspaceId &&
+      value.realtimeEnabled !== false,
     ),
     presence,
     publishPresence: value.editable,

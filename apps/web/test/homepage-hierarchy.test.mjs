@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises"
+
 export function register({ assert, loadModule, test }) {
   test("homepage hierarchy follows canonical page and database placements", async () => {
     const { buildHomepageHierarchy } = await loadModule(
@@ -46,6 +48,22 @@ export function register({ assert, loadModule, test }) {
       "database:projects": 2,
       "page:task": 3,
     })
+  })
+
+  test("synthetic homepage databases do not request realtime tickets", async () => {
+    const [homepage, context] = await Promise.all([
+      readFile(new URL("../src/pages/recents.tsx", import.meta.url), "utf8"),
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/database-view-context.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ])
+
+    assert.match(homepage, /realtimeEnabled: false/)
+    assert.match(context, /value\.realtimeEnabled !== false/)
   })
 }
 
