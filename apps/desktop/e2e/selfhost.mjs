@@ -77,12 +77,6 @@ async function selectServer(origin) {
     await browser.$("//button[normalize-space()='Verify and continue']")
   ).click()
 
-  const confirmChange = await browser.$(
-    "//button[normalize-space()='Change server']",
-  )
-  await confirmChange.waitForDisplayed({ timeout: 30_000 })
-  await confirmChange.click()
-
   const selectedOrigin = await browser.$(
     `//*[normalize-space()=${xpathString(origin)}]`,
   )
