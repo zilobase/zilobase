@@ -24,6 +24,7 @@ use tauri_plugin_opener::OpenerExt;
 use tungstenite::{
     client::IntoClientRequest,
     http::{header::SEC_WEBSOCKET_PROTOCOL, HeaderValue},
+    protocol::{frame::coding::CloseCode, CloseFrame},
     stream::MaybeTlsStream,
     WebSocket,
 };
@@ -169,10 +170,16 @@ enum TransportCommand {
     Frame { samples: Vec<f32>, sequence: u64 },
 }
 
+enum TransportControl {
+    Pause,
+    Resume,
+    RefreshCredentials { ticket: String, url: String },
+    Stop,
+}
+
 struct TransportWorker {
     commands: mpsc::SyncSender<TransportCommand>,
-    refresh: mpsc::Sender<(String, String)>,
-    stop: mpsc::Sender<()>,
+    control: mpsc::Sender<TransportControl>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -609,16 +616,24 @@ fn run_capture(
             match control {
                 CaptureControl::Pause => {
                     paused.store(true, Ordering::Release);
+                    if let Some(worker) = transport_tx.as_ref() {
+                        let _ = worker.control.send(TransportControl::Pause);
+                    }
                     update_phase(&app, &status, CapturePhase::Paused);
                 }
                 CaptureControl::Resume => {
+                    if let Some(worker) = transport_tx.as_ref() {
+                        let _ = worker.control.send(TransportControl::Resume);
+                    }
                     paused.store(false, Ordering::Release);
                     next_mix_at = Instant::now() + Duration::from_millis(100);
                     update_phase(&app, &status, CapturePhase::Recording);
                 }
                 CaptureControl::RefreshTransport { ticket, url } => {
                     if let Some(worker) = transport_tx.as_ref() {
-                        let _ = worker.refresh.send((url, ticket));
+                        let _ = worker
+                            .control
+                            .send(TransportControl::RefreshCredentials { ticket, url });
                     }
                 }
                 CaptureControl::Stop => stopping = true,
@@ -713,7 +728,7 @@ fn run_capture(
 
     drop(capture_streams.streams);
     if let Some(worker) = transport_tx {
-        let _ = worker.stop.send(());
+        let _ = worker.control.send(TransportControl::Stop);
     }
     let _ = wav.finalize();
     let elapsed_ms = elapsed_samples * 1_000 / TARGET_SAMPLE_RATE as u64;
@@ -1124,27 +1139,43 @@ impl MeetingAudioTransport {
         Err("Meeting transcription disconnected; local recording continues".into())
     }
 
-    fn close(&mut self) {
+    fn close(&mut self, reason: &'static str) {
         if let Some(mut socket) = self.socket.take() {
-            let _ = socket.close(None);
+            let _ = socket.close(Some(CloseFrame {
+                code: CloseCode::Normal,
+                reason: reason.into(),
+            }));
         }
     }
 }
 
 fn spawn_transport_worker(mut transport: MeetingAudioTransport) -> TransportWorker {
     let (commands, receiver) = mpsc::sync_channel(TRANSPORT_CHANNEL_CAPACITY);
-    let (refresh, refresh_receiver) = mpsc::channel();
-    let (stop, stop_receiver) = mpsc::channel();
+    let (control, control_receiver) = mpsc::channel();
     let _ = thread::Builder::new()
         .name("meeting-audio-transport".into())
         .spawn(move || {
+            let mut paused = false;
+            let mut stopping = false;
             loop {
-                match stop_receiver.try_recv() {
-                    Ok(()) | Err(mpsc::TryRecvError::Disconnected) => break,
-                    Err(mpsc::TryRecvError::Empty) => {}
+                while let Ok(message) = control_receiver.try_recv() {
+                    apply_transport_control(&mut transport, &mut paused, &mut stopping, message);
                 }
-                while let Ok((url, ticket)) = refresh_receiver.try_recv() {
-                    transport.update_credentials(url, ticket);
+                if stopping {
+                    break;
+                }
+                if paused {
+                    match control_receiver.recv_timeout(Duration::from_millis(100)) {
+                        Ok(message) => apply_transport_control(
+                            &mut transport,
+                            &mut paused,
+                            &mut stopping,
+                            message,
+                        ),
+                        Err(mpsc::RecvTimeoutError::Timeout) => {}
+                        Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    }
+                    continue;
                 }
                 let command = match receiver.recv_timeout(Duration::from_millis(100)) {
                     Ok(command) => command,
@@ -1157,12 +1188,27 @@ fn spawn_transport_worker(mut transport: MeetingAudioTransport) -> TransportWork
                     }
                 }
             }
-            transport.close();
+            transport.close("Meeting stopped");
         });
-    TransportWorker {
-        commands,
-        refresh,
-        stop,
+    TransportWorker { commands, control }
+}
+
+fn apply_transport_control(
+    transport: &mut MeetingAudioTransport,
+    paused: &mut bool,
+    stopping: &mut bool,
+    control: TransportControl,
+) {
+    match control {
+        TransportControl::Pause => {
+            *paused = true;
+            transport.close("Meeting paused");
+        }
+        TransportControl::Resume => *paused = false,
+        TransportControl::RefreshCredentials { ticket, url } => {
+            transport.update_credentials(url, ticket);
+        }
+        TransportControl::Stop => *stopping = true,
     }
 }
 
@@ -1334,8 +1380,8 @@ impl CheckpointWav {
 #[cfg(test)]
 mod tests {
     use super::{
-        downmix_to_mono, is_loopback_device, resample_linear, validate_meeting_id,
-        StreamingLinearResampler,
+        apply_transport_control, downmix_to_mono, is_loopback_device, resample_linear,
+        validate_meeting_id, MeetingAudioTransport, StreamingLinearResampler, TransportControl,
     };
 
     #[test]
@@ -1371,5 +1417,50 @@ mod tests {
     fn rejects_path_traversal_meeting_ids() {
         assert!(validate_meeting_id("meeting-123").is_ok());
         assert!(validate_meeting_id("../meeting").is_err());
+    }
+
+    #[test]
+    fn transport_controls_pause_without_losing_refreshed_credentials() {
+        let mut transport = MeetingAudioTransport::from_parts(
+            "ws://localhost/meeting-audio".into(),
+            "first".into(),
+        )
+        .unwrap();
+        let mut paused = false;
+        let mut stopping = false;
+
+        apply_transport_control(
+            &mut transport,
+            &mut paused,
+            &mut stopping,
+            TransportControl::Pause,
+        );
+        assert!(paused);
+        apply_transport_control(
+            &mut transport,
+            &mut paused,
+            &mut stopping,
+            TransportControl::RefreshCredentials {
+                ticket: "second".into(),
+                url: "ws://localhost/meeting-audio?meeting=two".into(),
+            },
+        );
+        assert_eq!(transport.url, "ws://localhost/meeting-audio?meeting=two");
+        assert!(transport.protocol.ends_with("auth.second"));
+
+        apply_transport_control(
+            &mut transport,
+            &mut paused,
+            &mut stopping,
+            TransportControl::Resume,
+        );
+        assert!(!paused);
+        apply_transport_control(
+            &mut transport,
+            &mut paused,
+            &mut stopping,
+            TransportControl::Stop,
+        );
+        assert!(stopping);
     }
 }

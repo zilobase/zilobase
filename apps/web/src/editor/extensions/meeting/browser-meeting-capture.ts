@@ -287,6 +287,7 @@ export class BrowserMeetingCapture {
   async pause() {
     if (!this.active || !this.status) throw new Error("No meeting capture is active.")
     await this.active.audioContext.suspend()
+    this.active.transport.pause()
     this.setStatus({ ...this.status, phase: "paused" })
     return this.status!
   }
@@ -294,7 +295,13 @@ export class BrowserMeetingCapture {
   async resume() {
     if (!this.active || !this.status) throw new Error("No meeting capture is active.")
     this.active.captureStartedAt = performance.now()
-    await this.active.audioContext.resume()
+    this.active.transport.resume()
+    try {
+      await this.active.audioContext.resume()
+    } catch (error) {
+      this.active.transport.pause()
+      throw error
+    }
     this.setStatus({ ...this.status, phase: "recording" })
     return this.status!
   }
@@ -563,39 +570,76 @@ function attachStream(
   return [source, capture, sink]
 }
 
-class BrowserMeetingTransport {
-  private active = false
+type BrowserMeetingTransportState = "paused" | "recording" | "stopped"
+
+type BrowserMeetingTransportDependencies = {
+  clearTimeout: (timer: number) => void
+  createSocket: (url: string, protocols: string[]) => WebSocket
+  resolveUrl: (url: string) => URL
+  setTimeout: (callback: () => void, delay: number) => number
+}
+
+const defaultBrowserMeetingTransportDependencies: BrowserMeetingTransportDependencies = {
+  clearTimeout: (timer) => window.clearTimeout(timer),
+  createSocket: (url, protocols) => new WebSocket(url, protocols),
+  resolveUrl: (url) => new URL(url, window.location.href),
+  setTimeout: (callback, delay) => window.setTimeout(callback, delay),
+}
+
+export class BrowserMeetingTransport {
   private audioTicket: string
   private audioWebsocketUrl: string
+  private readonly dependencies: BrowserMeetingTransportDependencies
   private readonly onWarning: (message: string) => void
   private queue: Uint8Array[] = []
   private reconnectAttempt = 0
   private reconnectTimer: number | null = null
   private sequence = 0
   private socket: WebSocket | null = null
+  private state: BrowserMeetingTransportState = "stopped"
 
-  constructor(url: string, ticket: string, onWarning: (message: string) => void) {
+  constructor(
+    url: string,
+    ticket: string,
+    onWarning: (message: string) => void,
+    dependencies: BrowserMeetingTransportDependencies = defaultBrowserMeetingTransportDependencies,
+  ) {
     this.audioWebsocketUrl = url
     this.audioTicket = ticket
+    this.dependencies = dependencies
     this.onWarning = onWarning
   }
 
   start() {
-    this.active = true
+    if (this.state !== "stopped") return
+    this.state = "recording"
+    this.connect()
+  }
+
+  pause() {
+    if (this.state !== "recording") return
+    this.state = "paused"
+    this.cancelReconnect()
+    this.closeSocket("Meeting paused")
+  }
+
+  resume() {
+    if (this.state !== "paused") return
+    this.state = "recording"
     this.connect()
   }
 
   refresh(url: string, ticket: string) {
     this.audioWebsocketUrl = url
     this.audioTicket = ticket
-    if (this.active && (!this.socket || this.socket.readyState >= WebSocket.CLOSING)) {
-      if (this.reconnectTimer !== null) window.clearTimeout(this.reconnectTimer)
-      this.reconnectTimer = null
+    if (this.state === "recording" && (!this.socket || this.socket.readyState >= 2)) {
+      this.cancelReconnect()
       this.connect()
     }
   }
 
   send(samples: Float32Array) {
+    if (this.state !== "recording") return
     const frame = new Uint8Array(8 + samples.length * 2)
     const view = new DataView(frame.buffer)
     view.setBigUint64(0, BigInt(this.sequence++), true)
@@ -604,7 +648,7 @@ class BrowserMeetingTransport {
         Math.max(-1, Math.min(1, samples[index])) * 0x7fff,
       ), true)
     }
-    if (this.socket?.readyState === WebSocket.OPEN && this.socket.bufferedAmount < 1_048_576) {
+    if (this.socket?.readyState === 1 && this.socket.bufferedAmount < 1_048_576) {
       this.socket.send(frame)
       return
     }
@@ -616,40 +660,58 @@ class BrowserMeetingTransport {
   }
 
   stop() {
-    this.active = false
-    if (this.reconnectTimer !== null) window.clearTimeout(this.reconnectTimer)
-    this.socket?.close(1000, "Meeting stopped")
-    this.socket = null
+    if (this.state === "stopped") return
+    this.state = "stopped"
+    this.cancelReconnect()
+    this.closeSocket("Meeting stopped")
   }
 
   private connect() {
-    if (!this.active) return
-    if (this.socket && this.socket.readyState < WebSocket.CLOSING) return
-    const url = new URL(this.audioWebsocketUrl, window.location.href)
-    const socket = new WebSocket(url, [
+    if (this.state !== "recording") return
+    if (this.socket && this.socket.readyState < 2) return
+    const url = this.dependencies.resolveUrl(this.audioWebsocketUrl)
+    const socket = this.dependencies.createSocket(url.toString(), [
       "zilobase.meeting-audio.v1",
       `zilobase.meeting-audio.auth.${this.audioTicket}`,
     ])
     socket.binaryType = "arraybuffer"
     socket.onopen = () => {
+      if (this.socket !== socket || this.state !== "recording") {
+        socket.close(1000, "Meeting capture inactive")
+        return
+      }
       this.reconnectAttempt = 0
       while (this.queue.length && socket.bufferedAmount < 1_048_576) {
         socket.send(this.queue.shift()!)
       }
     }
     socket.onclose = () => {
-      if (this.socket === socket) this.socket = null
-      if (!this.active) return
+      if (this.socket !== socket) return
+      this.socket = null
+      if (this.state !== "recording") return
       const delay = Math.min(30_000, 500 * 2 ** this.reconnectAttempt++)
-      this.reconnectTimer = window.setTimeout(() => {
+      this.reconnectTimer = this.dependencies.setTimeout(() => {
         this.reconnectTimer = null
         this.connect()
       }, delay)
     }
     socket.onerror = () => {
+      if (this.socket !== socket || this.state !== "recording") return
       this.onWarning("Meeting transcription disconnected; local recording continues.")
       socket.close()
     }
     this.socket = socket
+  }
+
+  private cancelReconnect() {
+    if (this.reconnectTimer === null) return
+    this.dependencies.clearTimeout(this.reconnectTimer)
+    this.reconnectTimer = null
+  }
+
+  private closeSocket(reason: string) {
+    const socket = this.socket
+    this.socket = null
+    if (socket && socket.readyState < 2) socket.close(1000, reason)
   }
 }
