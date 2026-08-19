@@ -31,4 +31,24 @@ export function register({ assert, test }) {
     assert.match(source, /path: "\/recents"/)
     assert.doesNotMatch(source, /\/dashboard/)
   })
+
+  test("published routes keep the authenticated shell after route authorization", async () => {
+    const pageSource = await readFile(
+      new URL("../src/pages/page.tsx", import.meta.url),
+      "utf8",
+    )
+    const databaseSource = await readFile(
+      new URL("../src/pages/database.tsx", import.meta.url),
+      "utf8",
+    )
+
+    for (const source of [pageSource, databaseSource]) {
+      assert.match(source, /if \(publishedShare === "public"\)/)
+      assert.doesNotMatch(source, /!session\?\.user \|\| publishedShare/)
+      assert.match(source, /<AuthenticatedRouteError resource=/)
+    }
+
+    assert.doesNotMatch(pageSource, /fallback=\{<PublicPage \/>\}/)
+    assert.doesNotMatch(databaseSource, /fallback=\{publicPage\}/)
+  })
 }

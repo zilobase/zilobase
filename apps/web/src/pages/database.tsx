@@ -3,6 +3,7 @@ import { Link, useParams, useRouteContext, useSearch } from "@tanstack/react-rou
 import { ArrowRight, Maximize2 } from "lucide-react"
 
 import { AppLayout } from "@/components/app-layout"
+import { AuthenticatedRouteError } from "@/components/authenticated-route-error"
 import { FallbackErrorBoundary } from "@/components/fallback-error-boundary"
 import { ResizableRightSidebarPanel } from "@/components/right-sidebars"
 import {
@@ -33,7 +34,6 @@ import {
 } from "@zilobase/features/databases"
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
-import { useSession } from "@zilobase/features/auth"
 import { PageMetadata as PageMetadataView } from "@/packages/editor/components/editor/page-metadata"
 import { DatabaseView } from "@/packages/editor/extensions/database"
 import { toast } from "sonner"
@@ -49,7 +49,6 @@ import { useTitleDraft } from "@/hooks/use-title-draft"
 import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider"
 
 export default function DatabasePage() {
-  const { data: session } = useSession()
   const { databaseId } = useParams({ from: "/d/$databaseId" })
   const { publishedShare } = useRouteContext({ from: "/d/$databaseId" })
   const isMobile = useIsMobile()
@@ -74,27 +73,27 @@ export default function DatabasePage() {
     />
   )
 
-  if (!session?.user || publishedShare === "public") {
+  if (publishedShare === "public") {
     return publicPage
   }
 
   return (
-    <FallbackErrorBoundary
-      fallback={publicPage}
-      key={databaseId}
-      name="database.authenticated"
+    <AppLayout
+      utilitySidebar={settingsSidebar}
+      utilitySidebarOpen={!isMobile && viewSettingsOpen}
     >
-      <AppLayout
-        utilitySidebar={settingsSidebar}
-        utilitySidebarOpen={!isMobile && viewSettingsOpen}
+      <FallbackErrorBoundary
+        fallback={<AuthenticatedRouteError resource="database" />}
+        key={databaseId}
+        name="database.authenticated"
       >
         <AuthenticatedDatabasePage
           viewSettingsOpen={viewSettingsOpen}
           viewSettingsPanelTarget={viewSettingsPanelTarget}
           onViewSettingsOpenChange={setViewSettingsOpen}
         />
-      </AppLayout>
-    </FallbackErrorBoundary>
+      </FallbackErrorBoundary>
+    </AppLayout>
   )
 }
 

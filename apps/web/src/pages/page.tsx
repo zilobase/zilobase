@@ -8,6 +8,7 @@ import {
 import { ArrowRight, Maximize2 } from "lucide-react";
 
 import { AppLayout } from "@/components/app-layout";
+import { AuthenticatedRouteError } from "@/components/authenticated-route-error";
 import { FallbackErrorBoundary } from "@/components/fallback-error-boundary";
 import { PageWorkspaceGate } from "@/components/page-workspace-gate";
 import {
@@ -100,22 +101,21 @@ type PageEditorPaneProps = {
 export default function Page() {
   const { pageId } = useParams({ from: "/p/$pageId" });
   const { publishedShare } = useRouteContext({ from: "/p/$pageId" });
-  const { data: session } = useSession();
 
-  if (!session?.user || publishedShare === "public") {
+  if (publishedShare === "public") {
     return <PublicPage />;
   }
 
   return (
-    <FallbackErrorBoundary
-      fallback={<PublicPage />}
-      key={pageId}
-      name="page.authenticated"
-    >
-      <AppLayout>
+    <AppLayout>
+      <FallbackErrorBoundary
+        fallback={<AuthenticatedRouteError resource="page" />}
+        key={pageId}
+        name="page.authenticated"
+      >
         <AuthenticatedPage />
-      </AppLayout>
-    </FallbackErrorBoundary>
+      </FallbackErrorBoundary>
+    </AppLayout>
   );
 }
 
