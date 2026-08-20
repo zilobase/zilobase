@@ -4,6 +4,21 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.43
+
+### Changed
+
+- Workspace startup only loads navigation, meetings, and AI chat data when the active sidebar mode needs it, and runtime server discovery is shared across callers.
+- Browser connectivity follows native online and offline events without running desktop probes.
+- Request timing remains available through response headers without emitting duplicate per-request database timing logs.
+
+### Fixed
+
+- macOS release signing keeps the temporary Developer ID keychain unlocked through long Apple notarization waits, preventing DMG signing from hanging until the GitHub Actions six-hour limit.
+- First-time user settings creation safely handles concurrent requests.
+- Workspace creation refreshes workspace and session caches in parallel without redundant invalidation.
+- Local database resets restore schema and default table privileges for the Hyperdrive runtime role.
+
 ## 0.0.42
 
 ### Changed
