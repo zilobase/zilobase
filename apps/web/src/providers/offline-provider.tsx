@@ -200,7 +200,25 @@ function RestoreGate({ children }: React.PropsWithChildren) {
 }
 
 function OfflineRuntime() {
+  const desktop = isDesktopOfflineSupported()
+
   React.useEffect(() => {
+    if (desktop) return
+
+    setConnectivityState(navigator.onLine === false ? "offline" : "online")
+    const handleOffline = () => setConnectivityState("offline")
+    const handleOnline = () => setConnectivityState("online")
+    window.addEventListener("offline", handleOffline)
+    window.addEventListener("online", handleOnline)
+    return () => {
+      window.removeEventListener("offline", handleOffline)
+      window.removeEventListener("online", handleOnline)
+    }
+  }, [desktop])
+
+  React.useEffect(() => {
+    if (!desktop) return
+
     let disposed = false
     let retryTimer: number | null = null
     let probePromise: Promise<void> | null = null
@@ -290,7 +308,7 @@ function OfflineRuntime() {
       window.removeEventListener("zilobase:authentication-required", handleAuthenticationRequired)
       window.removeEventListener("zilobase:server-replacement-started", handleServerReplacement)
     }
-  }, [])
+  }, [desktop])
 
   React.useEffect(() => {
     const updateOnlineManager = () => {

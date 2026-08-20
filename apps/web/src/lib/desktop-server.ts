@@ -72,6 +72,8 @@ export const CLOUD_DESKTOP_SERVER: DesktopServer = {
 const DEFAULT_DEV_API_ORIGIN = "http://localhost:3000"
 
 let selectedDesktopServer: DesktopServer | null = null
+let discoveredRuntimeDesktopServer: DesktopServer | null = null
+let runtimeDiscoveryPromise: Promise<DesktopServer> | null = null
 
 export async function initializeDesktopServer() {
   if (!isTauri()) return null
@@ -350,13 +352,24 @@ export function desktopServersReferToSameInstance(
 
 export async function discoverRuntimeDesktopServer() {
   if (selectedDesktopServer) return selectedDesktopServer
-  const apiOrigin = resolveRuntimeApiOrigin()
-  const response = await desktopNetworkFetch(
-    `${apiOrigin}/.well-known/zilobase`,
-    { cache: "no-store", credentials: "omit" },
-  )
-  if (!response.ok) throw new Error("Zilobase discovery is unavailable.")
-  return validateDesktopServer(await response.json())
+  if (discoveredRuntimeDesktopServer) return discoveredRuntimeDesktopServer
+  if (!runtimeDiscoveryPromise) {
+    runtimeDiscoveryPromise = (async () => {
+      const apiOrigin = resolveRuntimeApiOrigin()
+      const response = await desktopNetworkFetch(
+        `${apiOrigin}/.well-known/zilobase`,
+        { cache: "no-store", credentials: "omit" },
+      )
+      if (!response.ok) throw new Error("Zilobase discovery is unavailable.")
+      const server = validateDesktopServer(await response.json())
+      discoveredRuntimeDesktopServer = server
+      return server
+    })().catch((error) => {
+      runtimeDiscoveryPromise = null
+      throw error
+    })
+  }
+  return runtimeDiscoveryPromise
 }
 
 export function resolveDesktopServerUrls(server: DesktopServer) {

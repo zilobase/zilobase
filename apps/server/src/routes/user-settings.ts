@@ -183,9 +183,24 @@ async function getOrCreateUserSettings(userId: string) {
       id: crypto.randomUUID(),
       userId,
     })
+    .onConflictDoNothing({ target: pageSettings.userId })
     .returning();
 
-  return toUserSettingsPayload(created);
+  if (created) {
+    return toUserSettingsPayload(created);
+  }
+
+  const [concurrent] = await db
+    .select()
+    .from(pageSettings)
+    .where(eq(pageSettings.userId, userId))
+    .limit(1);
+
+  if (!concurrent) {
+    throw new Error("Failed to load user settings");
+  }
+
+  return toUserSettingsPayload(concurrent);
 }
 
 function toUserSettingsPayload(

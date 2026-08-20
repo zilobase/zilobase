@@ -155,6 +155,7 @@ jobs:
   desktop-macos:
     needs: [release, desktop-platform-matrix]
     runs-on: macos-latest
+    timeout-minutes: 300
     strategy:
       fail-fast: false
       matrix:
@@ -237,7 +238,10 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
           security default-keychain -s "$keychain_path"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
-          security set-keychain-settings -t 3600 -u "$keychain_path"
+          # 6h lock, matching GitHub's Apple signing recipe. 1h is too short: app
+          # notarization can take longer, after which codesign of the DMG hangs.
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security list-keychains -d user -s "$keychain_path"
           security import "$certificate_path" -k "$keychain_path" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain_path"
           signing_identity=$(security find-identity -v -p codesigning "$keychain_path" | awk -F'"' '/Developer ID Application/ { print $2; exit }')

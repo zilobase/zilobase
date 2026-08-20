@@ -5,6 +5,7 @@ import { beforeEach, test, vi } from "vitest";
 import type { AppBindings } from "../types";
 
 const mocks = vi.hoisted(() => ({
+  insertResults: [] as unknown[][],
   membership: vi.fn(),
   privileged: vi.fn(),
   selectResults: [] as unknown[][],
@@ -41,6 +42,16 @@ vi.mock("../db", () => ({
       };
       return builder;
     },
+    insert() {
+      const rows = mocks.insertResults.shift() ?? [];
+      const builder = {
+        values() { return builder; },
+        onConflictDoNothing() { return builder; },
+        onConflictDoUpdate() { return builder; },
+        async returning() { return rows; },
+      };
+      return builder;
+    },
   },
 }));
 
@@ -62,6 +73,7 @@ beforeEach(() => {
   mocks.membership.mockResolvedValue({ role: "owner" });
   mocks.privileged.mockReset();
   mocks.privileged.mockReturnValue(true);
+  mocks.insertResults.length = 0;
   mocks.selectResults.length = 0;
   mocks.selfHosted.mockReset();
   mocks.selfHosted.mockReturnValue(false);
@@ -223,6 +235,50 @@ test("user settings route returns existing normalized preferences", async () => 
       },
     },
   });
+});
+
+const defaultUserSettingsPayload = {
+  settings: {
+    embeddedItemsOpenAs: "sidepanel",
+    pageFullWidth: false,
+    sidebarConfig: {
+      hiddenItems: [],
+      libraryView: "recents",
+      sectionLimits: { recents: 10, favorites: 10, private: 10, shared: 10 },
+      sectionOrder: ["recents", "favorites", "private", "shared"],
+      sectionSorts: {
+        recents: "lastEdited",
+        favorites: "lastEdited",
+        private: "lastEdited",
+        shared: "lastEdited",
+      },
+    },
+  },
+};
+
+test("user settings route creates default preferences when none exist", async () => {
+  mocks.selectResults.push([]);
+  mocks.insertResults.push([{
+    embeddedItemsOpenAs: "sidepanel",
+    pageFullWidth: false,
+    sidebarConfig: {},
+  }]);
+  const response = await appFor(pageSettingsRoutes).request("/");
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), defaultUserSettingsPayload);
+});
+
+test("user settings route recovers when a concurrent create wins", async () => {
+  mocks.selectResults.push([]);
+  mocks.insertResults.push([]);
+  mocks.selectResults.push([{
+    embeddedItemsOpenAs: "sidepanel",
+    pageFullWidth: false,
+    sidebarConfig: {},
+  }]);
+  const response = await appFor(pageSettingsRoutes).request("/");
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), defaultUserSettingsPayload);
 });
 
 test("API key routes require sessions and validate create input", async () => {

@@ -11,12 +11,14 @@ import { toast } from "sonner";
 
 export function useAiChatThreadActions({
   activeThreadId,
+  enabled = true,
   onSelectThread,
 }: {
   activeThreadId: string | null;
+  enabled?: boolean;
   onSelectThread: (threadId: string) => void;
 }) {
-  const threadsQuery = useAiChatThreads();
+  const threadsQuery = useAiChatThreads({ enabled });
   const createThread = useCreateAiChatThread();
   const deleteThread = useDeleteAiChatThread();
   const archiveThread = useArchiveAiChatThread();

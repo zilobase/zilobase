@@ -139,14 +139,6 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (
   }, {
     onTiming(name, durationMs) {
       c.get("serverTimings").push(`zilobase_${name};dur=${durationMs}`);
-      console.info(JSON.stringify({
-        durationMs,
-        event: name === "db_connect"
-          ? "database_connection_acquired"
-          : "database_connection_closed",
-        requestId: c.get("requestId"),
-        route: c.req.path,
-      }));
     },
   }));
 };

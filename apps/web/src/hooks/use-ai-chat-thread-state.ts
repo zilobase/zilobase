@@ -137,12 +137,13 @@ function replaceAiThreadSearchParam(threadId: string | null) {
   );
 }
 
-export function useAiChatThreadState() {
+export function useAiChatThreadState(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled ?? true;
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
   const workspaceId = useActiveWorkspaceId();
-  const threadsQuery = useAiChatThreads();
+  const threadsQuery = useAiChatThreads({ enabled });
   const createThread = useCreateAiChatThread();
   const threadState = useAiChatThreadStore((state) =>
     workspaceId
@@ -176,7 +177,7 @@ export function useAiChatThreadState() {
   );
 
   useEffect(() => {
-    if (!workspaceId || hasInitializedActiveThread) {
+    if (!enabled || !workspaceId || hasInitializedActiveThread) {
       return;
     }
 
@@ -191,10 +192,11 @@ export function useAiChatThreadState() {
     if (initialThreadId) {
       sessionStorage.setItem(getStorageKey(workspaceId), initialThreadId);
     }
-  }, [hasInitializedActiveThread, workspaceId, pathname]);
+  }, [enabled, hasInitializedActiveThread, workspaceId, pathname]);
 
   useEffect(() => {
     if (
+      !enabled ||
       !workspaceId ||
       !hasInitializedActiveThread ||
       hasBootstrappedActiveThread ||
@@ -236,6 +238,7 @@ export function useAiChatThreadState() {
   }, [
     activeThreadId,
     createThread,
+    enabled,
     hasBootstrappedActiveThread,
     hasInitializedActiveThread,
     workspaceId,
@@ -247,12 +250,13 @@ export function useAiChatThreadState() {
   return {
     activeThreadId,
     isBootstrapping:
-      !workspaceId ||
-      !hasInitializedActiveThread ||
-      !hasBootstrappedActiveThread ||
-      threadsQuery.isLoading ||
-      createThread.isPending ||
-      !activeThreadId,
+      enabled &&
+      (!workspaceId ||
+        !hasInitializedActiveThread ||
+        !hasBootstrappedActiveThread ||
+        threadsQuery.isLoading ||
+        createThread.isPending ||
+        !activeThreadId),
     setActiveThreadId,
     threadsQuery,
   };

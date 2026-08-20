@@ -10,6 +10,19 @@ try {
   await pool.query("drop schema if exists drizzle cascade");
   await pool.query("create schema public");
   await pool.query("grant all on schema public to public");
+  // Worker connects as zilobase_runtime via Hyperdrive; DROP SCHEMA drops table grants.
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'zilobase_runtime') THEN
+        GRANT ALL ON SCHEMA public TO zilobase_runtime;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public
+          GRANT ALL ON TABLES TO zilobase_runtime;
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public
+          GRANT ALL ON SEQUENCES TO zilobase_runtime;
+      END IF;
+    END $$;
+  `);
   console.info("Database schema reset.");
 } finally {
   await pool.end();

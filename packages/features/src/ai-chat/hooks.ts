@@ -11,11 +11,14 @@ import {
   type AiChatThreadsResponse,
 } from "./queries"
 
-export function useAiChatThreads() {
+export function useAiChatThreads(options?: { enabled?: boolean }) {
   const { apiFetch } = useZilobaseFeatures()
   const workspaceId = useActiveWorkspaceId()
 
-  return useQuery(aiChatThreadsQueryOptions(apiFetch, workspaceId))
+  return useQuery({
+    ...aiChatThreadsQueryOptions(apiFetch, workspaceId),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
+  })
 }
 
 export function useCreateAiChatThread() {

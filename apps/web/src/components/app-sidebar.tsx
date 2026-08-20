@@ -71,6 +71,7 @@ import {
   useCreateDatabase,
   useSetDatabaseFavorite,
 } from "@zilobase/features/databases";
+import { useCreateAiChatThread } from "@zilobase/features/ai-chat";
 import { useWorkspaceMeetings } from "@zilobase/features/meetings";
 import {
   useCreatePage,
@@ -242,39 +243,6 @@ export function AppSidebar({
     workspaces.find((workspace) => workspace.id === sessionWorkspaceId) ?? null;
   const workspaceId =
     storedWorkspace?.id ?? sessionWorkspace?.id ?? workspaces[0]?.id ?? null;
-  const { data: navigation } = usePageNavigation(workspaceId);
-  const { data: meetingsPayload } = useWorkspaceMeetings(workspaceId);
-  const { isPending: isCreatingPage, mutateAsync: createPage } = useCreatePage();
-  const { isPending: isCreatingDatabase, mutateAsync: createDatabase } =
-    useCreateDatabase();
-  const { activeThreadId, setActiveThreadId } = useAiChatThreadState();
-  const activeMeetingId = getActiveMeetingId(pathname, location.search);
-  const {
-    createThread: createChatThread,
-    handleCreateThread,
-  } = useAiChatThreadActions({
-    activeThreadId,
-    onSelectThread: setActiveThreadId,
-  });
-  const { isPending: isSettingPageFavorite, mutate: setPageFavorite } =
-    useSetPageFavorite();
-  const { isPending: isAddingDatabaseRow, mutate: addDatabaseRow } =
-    useAddDatabaseRow();
-  const {
-    isPending: isSettingDatabaseFavorite,
-    mutate: setDatabaseFavorite,
-  } = useSetDatabaseFavorite();
-  const { favorites, recents, sections: pageSections } = React.useMemo(
-    () =>
-      buildSidebarNavigation(
-        navigation?.pages ?? [],
-        navigation?.databases ?? [],
-        navigation?.placements ?? [],
-        sidebarNavigationIcons,
-        meetingsPayload?.meetings ?? [],
-      ),
-    [meetingsPayload?.meetings, navigation],
-  );
   const [sidebarMode, setSidebarMode] = React.useState<
     "home" | "askAi" | "meetings"
   >(
@@ -295,6 +263,35 @@ export function AppSidebar({
 
   const isAiPage = sidebarMode === "askAi";
   const isMeetingsPage = sidebarMode === "meetings";
+  const { data: navigation } = usePageNavigation(
+    isAiPage || isMeetingsPage ? null : workspaceId,
+  );
+  const { data: meetingsPayload } = useWorkspaceMeetings(
+    isMeetingsPage ? workspaceId : null,
+  );
+  const { isPending: isCreatingPage, mutateAsync: createPage } = useCreatePage();
+  const { isPending: isCreatingDatabase, mutateAsync: createDatabase } =
+    useCreateDatabase();
+  const createChatThread = useCreateAiChatThread();
+  const activeMeetingId = getActiveMeetingId(pathname, location.search);
+  const { isPending: isSettingPageFavorite, mutate: setPageFavorite } =
+    useSetPageFavorite();
+  const { isPending: isAddingDatabaseRow, mutate: addDatabaseRow } =
+    useAddDatabaseRow();
+  const {
+    isPending: isSettingDatabaseFavorite,
+    mutate: setDatabaseFavorite,
+  } = useSetDatabaseFavorite();
+  const { favorites, recents, sections: pageSections } = React.useMemo(
+    () =>
+      buildSidebarNavigation(
+        navigation?.pages ?? [],
+        navigation?.databases ?? [],
+        navigation?.placements ?? [],
+        sidebarNavigationIcons,
+      ),
+    [navigation],
+  );
   const hiddenSidebarItems = React.useMemo(
     () => new Set(sidebarConfig.hiddenItems),
     [sidebarConfig.hiddenItems],
@@ -351,12 +348,20 @@ export function AppSidebar({
   const handleCreateChat = React.useCallback(async () => {
     if (createChatThread.isPending) return;
 
-    const threadId = await handleCreateThread();
-    if (!threadId) return;
-
-    setSidebarMode("askAi");
-    await navigate({ search: { thread: threadId }, to: "/ai" });
-  }, [createChatThread.isPending, handleCreateThread, navigate]);
+    try {
+      const response = await createChatThread.mutateAsync({});
+      setSidebarMode("askAi");
+      await navigate({
+        search: { thread: response.thread.id },
+        to: "/ai",
+      });
+    } catch (error) {
+      toast.error("Failed to create chat", {
+        description:
+          error instanceof Error ? error.message : "Try again.",
+      });
+    }
+  }, [createChatThread, navigate]);
 
   const handleDropPageOnDatabase = React.useCallback(
     ({

@@ -55,9 +55,10 @@ export function ChatSidebarPanel({
   pageId?: string | null
 }) {
   const { activeThreadId, isBootstrapping, setActiveThreadId } =
-    useAiChatThreadState()
+    useAiChatThreadState({ enabled: open })
   const { createThread, handleCreateThread } = useAiChatThreadActions({
     activeThreadId,
+    enabled: open,
     onSelectThread: setActiveThreadId,
   })
   const [view, setView] = useState<ChatSidebarView>("chat")

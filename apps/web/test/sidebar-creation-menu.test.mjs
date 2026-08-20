@@ -15,6 +15,15 @@ export function register({ assert, test }) {
     assert.match(sidebarSource, /<span>Page<\/span>/)
     assert.match(sidebarSource, /<span>Database<\/span>/)
     assert.match(sidebarSource, /<span>New chat<\/span>/)
+    assert.match(
+      sidebarSource,
+      /useWorkspaceMeetings\(\s*isMeetingsPage \? workspaceId : null/,
+    )
+    assert.match(
+      sidebarSource,
+      /usePageNavigation\(\s*isAiPage \|\| isMeetingsPage \? null : workspaceId/,
+    )
+    assert.match(sidebarSource, /useCreateAiChatThread\(\)/)
     assert.doesNotMatch(sidebarSource, /ThemeDropdown/)
     assert.match(sidebarSource, /<AppSidebarHeader[\s\S]*navigation=\{[\s\S]*<NavMain/)
     assert.match(workspaceSource, /<span>Settings<\/span>/)

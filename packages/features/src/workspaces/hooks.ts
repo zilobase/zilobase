@@ -56,12 +56,13 @@ export function useCreateWorkspace() {
     onSuccess: async (workspace) => {
       setPreferredActiveWorkspaceId?.(workspace.id)
       await auth.setActiveWorkspace(workspace.id)
-      await queryClient.invalidateQueries({ queryKey: workspacesQueryKey })
-      await queryClient.invalidateQueries({ queryKey: sessionQueryKey })
-      await queryClient.fetchQuery({
-        ...sessionQueryOptions(auth),
-        staleTime: 0,
-      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: workspacesQueryKey }),
+        queryClient.fetchQuery({
+          ...sessionQueryOptions(auth),
+          staleTime: 0,
+        }),
+      ])
     },
   })
 }
