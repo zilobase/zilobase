@@ -1,7 +1,7 @@
 import { Database } from "@hocuspocus/extension-database";
 import { Hocuspocus, type Extension } from "@hocuspocus/server";
 import { ProsemirrorTransformer } from "@hocuspocus/transformer";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { Schema, type MarkSpec, type NodeSpec } from "@tiptap/pm/model";
 import * as Y from "yjs";
 import { canAccessPageInWorkspace } from "../access";
@@ -9,10 +9,12 @@ import { db, runWithDbEnv } from "../db";
 import {
   meeting,
   meetingCollaborationDocument,
+  meetingTranscriptSegment,
   page,
   pageCollaborationDocument,
 } from "../db/schema";
 import { getRuntimeAdapter } from "../runtime-adapter";
+import type { MeetingTranscriptYjsSegment } from "../runtime-adapter";
 import type { RuntimeEnv } from "../config";
 
 const DOCUMENT_PREFIX = "page:";
@@ -149,7 +151,9 @@ export async function getOrCreateMeetingCollaborationDocumentState(
   meetingId: string,
 ) {
   const [record] = await db
-    .select({ id: meeting.id })
+    .select({
+      transcriptRevision: meeting.transcriptRevision,
+    })
     .from(meeting)
     .where(and(eq(meeting.id, meetingId), isNull(meeting.deletedAt)))
     .limit(1);
@@ -164,14 +168,46 @@ export async function getOrCreateMeetingCollaborationDocumentState(
     .where(eq(meetingCollaborationDocument.meetingId, meetingId))
     .limit(1);
 
-  if (stored) {
-    return new Uint8Array(stored.state);
-  }
-
   const document = new Y.Doc();
+  if (stored) Y.applyUpdate(document, new Uint8Array(stored.state));
+
   document.getXmlFragment("notes");
   document.getXmlFragment("summary");
+  document.getXmlFragment("transcript");
+  let changed = false;
+  const segments = await db
+    .select({
+      id: meetingTranscriptSegment.id,
+      source: meetingTranscriptSegment.source,
+      startMs: meetingTranscriptSegment.startMs,
+      text: meetingTranscriptSegment.text,
+    })
+    .from(meetingTranscriptSegment)
+    .where(
+      and(
+        eq(meetingTranscriptSegment.meetingId, meetingId),
+        eq(meetingTranscriptSegment.revision, record.transcriptRevision),
+      ),
+    )
+    .orderBy(asc(meetingTranscriptSegment.sequence));
+  document.transact(() => {
+    for (const segment of segments) {
+      changed = appendMeetingTranscriptToDocument(document, {
+        ...segment,
+      }) || changed;
+    }
+  }, "meeting-transcript-reconciliation");
+
   const initialState = Y.encodeStateAsUpdate(document);
+  if (stored) {
+    if (changed) {
+      await db
+        .update(meetingCollaborationDocument)
+        .set({ state: Buffer.from(initialState), updatedAt: new Date() })
+        .where(eq(meetingCollaborationDocument.meetingId, meetingId));
+    }
+    return initialState;
+  }
   const [inserted] = await db
     .insert(meetingCollaborationDocument)
     .values({ meetingId, state: Buffer.from(initialState), updatedAt: new Date() })
@@ -218,7 +254,19 @@ export async function verifyCollaborationTicket(
   return claims;
 }
 
-export function createCollaborationHocuspocus(env: RuntimeEnv) {
+export type CollaborationDocumentPersistence = {
+  load(documentName: string): Promise<Uint8Array>;
+  store(input: {
+    document: Y.Doc;
+    documentName: string;
+    state: Uint8Array;
+  }): Promise<void>;
+};
+
+export function createCollaborationHocuspocus(
+  env: RuntimeEnv,
+  persistence?: CollaborationDocumentPersistence,
+) {
   const documentLoads = new Map<string, Promise<Uint8Array>>();
 
   const preloadDocument = (documentName: string) => {
@@ -228,7 +276,9 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
       return existing;
     }
 
-    const load = loadDocument(documentName, env);
+    const load = persistence
+      ? persistence.load(documentName)
+      : loadDocument(documentName, env);
     documentLoads.set(documentName, load);
     void load.catch(() => documentLoads.delete(documentName));
     return load;
@@ -249,7 +299,9 @@ export function createCollaborationHocuspocus(env: RuntimeEnv) {
       new Database({
         fetch: async ({ documentName }) => consumeDocument(documentName),
         store: async ({ documentName, document, state }) =>
-          storeDocument(documentName, document, state, env),
+          persistence
+            ? persistence.store({ document, documentName, state })
+            : storeDocument(documentName, document, state, env),
       }),
     ],
     async onAuthenticate({ connectionConfig, documentName, requestParameters, token }) {
@@ -381,6 +433,99 @@ export async function replaceMeetingSummary(input: {
     getDefaultCollaborationHocuspocus(input.env),
     input,
   );
+}
+
+export async function appendMeetingTranscript(input: {
+  draftItemId?: string;
+  env: RuntimeEnv;
+  meetingId: string;
+  segment: MeetingTranscriptYjsSegment;
+  userId: string;
+}) {
+  const adapter = getRuntimeAdapter();
+  if (adapter.applyMeetingTranscriptUpdate) {
+    await adapter.applyMeetingTranscriptUpdate(input);
+    return;
+  }
+  await appendMeetingTranscriptInHocuspocus(
+    getDefaultCollaborationHocuspocus(input.env),
+    input,
+  );
+}
+
+export function appendMeetingTranscriptToDocument(
+  document: Y.Doc,
+  segment: MeetingTranscriptYjsSegment,
+  draftItemId?: string,
+) {
+  const segmentIds = document.getMap<boolean>("transcriptSegmentIds");
+  let appended = false;
+
+  document.transact(() => {
+    if (!segmentIds.has(segment.id)) {
+      const paragraph = new Y.XmlElement("paragraph");
+      const text = new Y.XmlText();
+      const speaker = meetingTranscriptSpeakerLabel(segment.source);
+      text.insert(
+        0,
+        `[${formatMeetingTimestamp(segment.startMs)}] ${speaker ? `${speaker}: ` : ""}${segment.text}`,
+      );
+      paragraph.insert(0, [text]);
+      const transcript = document.getXmlFragment("transcript");
+      const timestampSeconds = Math.max(0, Math.floor(segment.startMs / 1_000));
+      const insertionIndex = transcript
+        .toArray()
+        .findIndex((node) => {
+          const existingTimestamp = transcriptTimestampSeconds(node.toString());
+          return existingTimestamp !== null && existingTimestamp > timestampSeconds;
+        });
+      transcript.insert(
+        insertionIndex === -1 ? transcript.length : insertionIndex,
+        [paragraph],
+      );
+      segmentIds.set(segment.id, true);
+      appended = true;
+    }
+    if (draftItemId) {
+      const draft = document.getMap<string | number>(
+        `liveTranscript:${segment.source}`,
+      );
+      if (draft.get("itemId") === draftItemId) draft.clear();
+    }
+  }, "meeting-transcription");
+  return appended;
+}
+
+export async function appendMeetingTranscriptInHocuspocus(
+  hocuspocus: Hocuspocus<CollaborationContext>,
+  input: {
+    draftItemId?: string;
+    meetingId: string;
+    segment: MeetingTranscriptYjsSegment;
+    userId: string;
+  },
+) {
+  const direct = await hocuspocus.openDirectConnection(
+    documentNameForMeeting(input.meetingId),
+    {
+      exp: Date.now() + TICKET_TTL_MS,
+      meetingId: input.meetingId,
+      scope: "read-write",
+      userId: input.userId,
+      workspaceId: "server",
+    },
+  );
+  try {
+    await direct.transact((document) => {
+      appendMeetingTranscriptToDocument(
+        document,
+        input.segment,
+        input.draftItemId,
+      );
+    });
+  } finally {
+    await direct.disconnect();
+  }
 }
 
 export async function replaceMeetingSummaryInHocuspocus(
@@ -552,6 +697,27 @@ function encodeContentAsYjs(content: unknown, field: string) {
       createSchemaForDocument(normalized),
     ),
   );
+}
+
+function formatMeetingTimestamp(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1_000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function meetingTranscriptSpeakerLabel(
+  source: MeetingTranscriptYjsSegment["source"],
+) {
+  if (source === "microphone") return "You";
+  if (source === "system") return "Others";
+  return null;
+}
+
+function transcriptTimestampSeconds(serializedNode: string) {
+  const match = serializedNode.match(/>\[(\d+):([0-5]\d)\]\s/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
 }
 
 export function isEmptyPageContent(content: unknown): boolean {

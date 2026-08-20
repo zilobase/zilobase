@@ -489,7 +489,9 @@ export const meetingTranscriptSegment = pgTable(
     endMs: integer("end_ms").notNull(),
     speaker: text("speaker"),
     providerItemId: text("provider_item_id"),
-    source: text("source").notNull().default("live"),
+    source: text("source")
+      .$type<"microphone" | "system">()
+      .notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -511,6 +513,10 @@ export const meetingTranscriptSegment = pgTable(
     check(
       "meeting_transcript_offsets_check",
       sql`${table.startMs} >= 0 and ${table.endMs} >= ${table.startMs}`,
+    ),
+    check(
+      "meeting_transcript_source_check",
+      sql`${table.source} in ('microphone', 'system')`,
     ),
   ],
 );

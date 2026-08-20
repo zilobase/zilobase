@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import * as Y from "yjs";
 import {
+  appendMeetingTranscriptToDocument,
   createCollaborationTicket,
   documentNameForPage,
   documentNameForMeeting,
@@ -158,6 +159,111 @@ test("meeting collaboration tickets are independently scoped", async () => {
 
   assert.equal("meetingId" in claims ? claims.meetingId : null, "meeting-1");
   assert.equal(claims.scope, "read-write");
+});
+
+test("meeting transcript updates append to their own Yjs field exactly once", () => {
+  const document = new Y.Doc();
+  document.getXmlFragment("notes").push([new Y.XmlElement("paragraph")]);
+  document.getXmlFragment("summary").push([new Y.XmlElement("paragraph")]);
+  const segment = {
+    id: "segment-1",
+    source: "microphone" as const,
+    startMs: 5_000,
+    text: "Hello team",
+  };
+
+  assert.equal(appendMeetingTranscriptToDocument(document, segment), true);
+  assert.equal(appendMeetingTranscriptToDocument(document, segment), false);
+  assert.equal(document.getXmlFragment("notes").length, 1);
+  assert.equal(document.getXmlFragment("summary").length, 1);
+  assert.equal(document.getXmlFragment("transcript").length, 1);
+  assert.equal(
+    document.getXmlFragment("transcript").toString(),
+    "<paragraph>[0:05] You: Hello team</paragraph>",
+  );
+  assert.equal(document.getMap("transcriptSegmentIds").size, 1);
+});
+
+test("meeting transcript paragraphs stay ordered when providers finish out of order", () => {
+  const document = new Y.Doc();
+
+  for (const segment of [
+    { id: "segment-10", source: "microphone" as const, startMs: 10_000, text: "Last" },
+    { id: "segment-2", source: "system" as const, startMs: 2_000, text: "First" },
+    { id: "segment-6", source: "microphone" as const, startMs: 6_000, text: "Middle" },
+  ]) {
+    assert.equal(appendMeetingTranscriptToDocument(document, segment), true);
+  }
+
+  assert.equal(
+    document.getXmlFragment("transcript").toString(),
+    "<paragraph>[0:02] Others: First</paragraph>" +
+      "<paragraph>[0:06] You: Middle</paragraph>" +
+      "<paragraph>[0:10] You: Last</paragraph>",
+  );
+  assert.equal(
+    appendMeetingTranscriptToDocument(document, {
+      id: "segment-6",
+      source: "microphone",
+      startMs: 6_000,
+      text: "Middle",
+    }),
+    false,
+  );
+});
+
+test("a finalized transcript clears only its matching live Yjs draft", () => {
+  const document = new Y.Doc();
+  appendMeetingTranscriptToDocument(document, {
+    id: "segment-1",
+    source: "microphone",
+    startMs: 0,
+    text: "Finished",
+  });
+
+  const microphoneDraft = document.getMap<string | number>(
+    "liveTranscript:microphone",
+  );
+  microphoneDraft.set("itemId", "item-2");
+  microphoneDraft.set("startMs", 5_000);
+  microphoneDraft.set("text", "Still speaking");
+  microphoneDraft.set("updatedAt", 123);
+  const systemDraft = document.getMap<string | number>(
+    "liveTranscript:system",
+  );
+  systemDraft.set("itemId", "item-2");
+  systemDraft.set("text", "Overlapping speech");
+  assert.deepEqual(microphoneDraft.toJSON(), {
+    itemId: "item-2",
+    startMs: 5_000,
+    text: "Still speaking",
+    updatedAt: 123,
+  });
+  assert.equal(
+    document.getXmlFragment("transcript").toString(),
+    "<paragraph>[0:00] You: Finished</paragraph>",
+  );
+
+  assert.equal(appendMeetingTranscriptToDocument(document, {
+    id: "segment-2",
+    source: "microphone",
+    startMs: 5_000,
+    text: "Still speaking",
+  }, "item-2"), true);
+  assert.equal(microphoneDraft.size, 0);
+  assert.equal(systemDraft.size, 2);
+
+  microphoneDraft.set("itemId", "item-3");
+  microphoneDraft.set("startMs", 10_000);
+  microphoneDraft.set("text", "Another turn");
+  microphoneDraft.set("updatedAt", 456);
+  appendMeetingTranscriptToDocument(document, {
+    id: "segment-3",
+    source: "microphone",
+    startMs: 10_000,
+    text: "Different final",
+  }, "different-item");
+  assert.equal(microphoneDraft.size, 4);
 });
 
 test("explicit WebSocket URL overrides a rewritten request host", () => {
