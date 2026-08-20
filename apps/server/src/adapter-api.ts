@@ -23,12 +23,25 @@ export { createAuth } from "./auth";
 export {
   appendMeetingTranscriptSegment,
   heartbeatMeetingRecorder,
+  MEETING_RECORDER_LEASE_HEARTBEAT_MS,
+  persistMeetingTranscriptSession,
   validateMeetingRecorderLease,
+  type MeetingTranscriptSessionSegment,
 } from "./features/meetings/meeting-service";
 export {
-  pcmToWav,
-  transcribeMeetingPcm,
-} from "./features/meetings/meeting-transcription";
+  createMeetingRealtimeTranscriptSink,
+  getMeetingOpenAiSafetyIdentifier,
+  getMeetingRealtimeTranscriptionConfig,
+  getMeetingRealtimeTranscriptionUrl,
+  getMeetingTranscriptionFailureCloseCode,
+  MEETING_TRANSCRIPTION_FATAL_CLOSE_CODE,
+  MeetingRealtimeTranscriptionError,
+  MeetingRealtimeTranscriber,
+  trimAcceptedMeetingAudio,
+  type MeetingRealtimeTranscriberCallbacks,
+  type RealtimeTranscriptionSocket,
+  type RealtimeTranscriptionTurn,
+} from "./features/meetings/meeting-realtime-transcription";
 export {
   COLLABORATION_WEBSOCKET_PROTOCOL,
   getAuthHeaders,
@@ -80,6 +93,8 @@ export {
   runWithRuntimeAdapter,
   setRuntimeAdapter,
   type OutboundEmailMessage,
+  type MeetingRecorderRuntimeInput,
+  type MeetingRecorderRuntimeState,
   type ServerRuntimeAdapter,
 } from "./runtime-adapter";
 export {
@@ -106,6 +121,9 @@ export {
   type GrantMembershipResult,
 } from "./services/membership-service";
 export {
+  appendMeetingTranscript,
+  appendMeetingTranscriptInHocuspocus,
+  appendMeetingTranscriptToDocument,
   createCollaborationHocuspocus,
   createCollaborationTicket,
   documentNameForMeeting,
@@ -122,8 +140,10 @@ export {
   replaceMeetingSummaryInHocuspocus,
   verifyCollaborationTicket,
   type CollaborationContext,
+  type CollaborationDocumentPersistence,
   type CollaborationTicketClaims,
   type MeetingCollaborationTicketClaims,
   type PageCollaborationTicketClaims,
 } from "./collaboration/service";
+export type { MeetingTranscriptYjsSegment } from "./runtime-adapter";
 export type { AppBindings } from "./types";

@@ -4,14 +4,40 @@ import type { RuntimeEnv } from "../../config";
 
 const TICKET_TTL_MS = 15 * 60 * 1000;
 
-export const MEETING_AUDIO_PROTOCOL = "zilobase.meeting-audio.v1";
+export const MEETING_AUDIO_PROTOCOL = "zilobase.meeting-audio.v2";
 export const MEETING_AUDIO_AUTH_PROTOCOL_PREFIX =
   "zilobase.meeting-audio.auth.";
+
+export type MeetingAudioSource = "microphone" | "system";
+
+export const MEETING_AUDIO_SOURCES = [
+  "microphone",
+  "system",
+] as const satisfies readonly MeetingAudioSource[];
+
+export function meetingAudioSourceCode(source: MeetingAudioSource) {
+  return source === "microphone" ? 0 : 1;
+}
+
+export function meetingAudioSourceFromCode(code: number): MeetingAudioSource | null {
+  if (code === 0) return "microphone";
+  if (code === 1) return "system";
+  return null;
+}
+
+export function meetingTranscriptSequence(
+  source: MeetingAudioSource,
+  audioSequence: number,
+) {
+  return audioSequence * MEETING_AUDIO_SOURCES.length + meetingAudioSourceCode(source);
+}
 
 export type MeetingAudioTicketClaims = {
   exp: number;
   leaseId: string;
   meetingId: string;
+  recorderImage?: string | null;
+  recorderName?: string;
   userId: string;
   workspaceId: string;
 };
@@ -90,6 +116,10 @@ function isClaims(value: unknown): value is MeetingAudioTicketClaims {
     typeof claims.exp === "number" &&
     typeof claims.leaseId === "string" &&
     typeof claims.meetingId === "string" &&
+    (claims.recorderImage === undefined ||
+      claims.recorderImage === null ||
+      typeof claims.recorderImage === "string") &&
+    (claims.recorderName === undefined || typeof claims.recorderName === "string") &&
     typeof claims.userId === "string" &&
     typeof claims.workspaceId === "string"
   );
