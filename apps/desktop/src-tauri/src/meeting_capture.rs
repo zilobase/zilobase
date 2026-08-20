@@ -8,9 +8,10 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     fs::{self, File},
-    io::{BufWriter, Seek, SeekFrom, Write},
+    io::{BufWriter, ErrorKind, Seek, SeekFrom, Write},
+    net::TcpStream,
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -31,9 +32,14 @@ use tungstenite::{
 
 const TARGET_SAMPLE_RATE: u32 = 24_000;
 const FRAME_SAMPLES: usize = 480;
+const TRANSPORT_BATCH_SAMPLES: usize = FRAME_SAMPLES * 5;
 const MAX_CAPTURE_MS: u64 = 3 * 60 * 60 * 1_000;
 const AUDIO_CHANNEL_CAPACITY: usize = 128;
 const TRANSPORT_CHANNEL_CAPACITY: usize = 1_500;
+const TRANSPORT_REPLAY_CAPACITY: usize = 1_500;
+const MAX_TRANSCRIPTION_RECONNECT_ATTEMPTS: u8 = 6;
+const MEETING_TRANSCRIPTION_FATAL_CLOSE_CODE: u16 = 4_400;
+const TRANSCRIPTION_STABLE_CONNECTION: Duration = Duration::from_secs(30);
 const CAPTURE_DIRECTORY: &str = "meeting-recordings";
 
 #[derive(Clone, Debug, Serialize)]
@@ -137,6 +143,32 @@ struct MeetingAudioLevel {
     peak: f32,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MeetingTranscriptDraft {
+    item_id: String,
+    meeting_id: String,
+    source: AudioSource,
+    start_ms: u64,
+    text: String,
+    updated_at: u64,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MeetingAudioServerEvent {
+    item_id: Option<String>,
+    message: Option<String>,
+    next_sequences: Option<HashMap<AudioSource, u64>>,
+    source: Option<AudioSource>,
+    start_ms: Option<u64>,
+    text: Option<String>,
+    token: Option<String>,
+    #[serde(rename = "type")]
+    kind: String,
+    updated_at: Option<u64>,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecoverableMeetingCapture {
@@ -160,21 +192,42 @@ struct CaptureSession {
 }
 
 enum CaptureControl {
-    Pause,
-    Resume,
-    RefreshTransport { ticket: String, url: String },
+    Pause {
+        response: mpsc::SyncSender<Result<(), String>>,
+    },
+    Resume {
+        response: mpsc::SyncSender<Result<(), String>>,
+    },
+    RefreshTransport {
+        ticket: String,
+        url: String,
+    },
     Stop,
 }
 
 enum TransportCommand {
-    Frame { samples: Vec<f32>, sequence: u64 },
+    Frame {
+        samples: Vec<f32>,
+        sequence: u64,
+        source: AudioSource,
+    },
 }
 
 enum TransportControl {
-    Pause,
-    Resume,
-    RefreshCredentials { ticket: String, url: String },
-    Stop,
+    Pause {
+        response: mpsc::SyncSender<Result<(), String>>,
+    },
+    Resume {
+        response: mpsc::SyncSender<Result<(), String>>,
+    },
+    RefreshCredentials {
+        ticket: String,
+        url: String,
+    },
+    Stop {
+        duration_ms: u64,
+        response: mpsc::SyncSender<Result<(), String>>,
+    },
 }
 
 struct TransportWorker {
@@ -182,7 +235,7 @@ struct TransportWorker {
     control: mpsc::Sender<TransportControl>,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 enum AudioSource {
     Microphone,
@@ -379,14 +432,14 @@ pub fn meeting_capture_start(
 pub fn meeting_capture_pause(
     manager: State<'_, MeetingCaptureManager>,
 ) -> Result<MeetingCaptureStatus, String> {
-    control_capture(&manager, CaptureControl::Pause)
+    control_capture(&manager, |response| CaptureControl::Pause { response })
 }
 
 #[tauri::command]
 pub fn meeting_capture_resume(
     manager: State<'_, MeetingCaptureManager>,
 ) -> Result<MeetingCaptureStatus, String> {
-    control_capture(&manager, CaptureControl::Resume)
+    control_capture(&manager, |response| CaptureControl::Resume { response })
 }
 
 #[tauri::command]
@@ -515,10 +568,13 @@ pub fn meeting_capture_open_local_file(app: AppHandle, meeting_id: String) -> Re
         .map_err(|error| format!("Could not open the local meeting audio: {error}"))
 }
 
-fn control_capture(
+fn control_capture<F>(
     manager: &State<'_, MeetingCaptureManager>,
-    control: CaptureControl,
-) -> Result<MeetingCaptureStatus, String> {
+    create_control: F,
+) -> Result<MeetingCaptureStatus, String>
+where
+    F: FnOnce(mpsc::SyncSender<Result<(), String>>) -> CaptureControl,
+{
     let session_guard = manager
         .session
         .lock()
@@ -526,17 +582,39 @@ fn control_capture(
     let session = session_guard
         .as_ref()
         .ok_or_else(|| "No meeting capture is active".to_string())?;
+    let (response_tx, response_rx) = mpsc::sync_channel(1);
     session
         .control
-        .send(control)
+        .send(create_control(response_tx))
         .map_err(|_| "The meeting capture worker has stopped".to_string())?;
-    // The worker owns the authoritative transition; allow it one scheduling turn.
-    thread::sleep(Duration::from_millis(5));
+    response_rx
+        .recv_timeout(Duration::from_secs(20))
+        .map_err(|_| "Meeting transcription control timed out".to_string())??;
     session
         .status
         .lock()
         .map_err(|_| "Meeting capture status is unavailable".to_string())
         .map(|status| status.clone())
+}
+
+fn request_transport_control<F>(
+    worker: Option<&TransportWorker>,
+    create_control: F,
+) -> Result<(), String>
+where
+    F: FnOnce(mpsc::SyncSender<Result<(), String>>) -> TransportControl,
+{
+    let Some(worker) = worker else {
+        return Ok(());
+    };
+    let (response, completed) = mpsc::sync_channel(1);
+    worker
+        .control
+        .send(create_control(response))
+        .map_err(|_| "Meeting transcription worker stopped".to_string())?;
+    completed
+        .recv_timeout(Duration::from_secs(20))
+        .map_err(|_| "Meeting transcription control timed out".to_string())?
 }
 
 fn run_capture(
@@ -556,7 +634,6 @@ fn run_capture(
             return;
         }
     };
-    let transport_tx = transport.map(spawn_transport_worker);
     let (audio_tx, audio_rx) = mpsc::sync_channel(AUDIO_CHANNEL_CAPACITY);
     let (stream_error_tx, stream_error_rx) = mpsc::channel();
     let paused = Arc::new(AtomicBool::new(false));
@@ -569,6 +646,10 @@ fn run_capture(
             return;
         }
     };
+    let transport_tx = transport.map(|mut transport| {
+        transport.active_sources = capture_streams.active_sources.clone();
+        spawn_transport_worker(app.clone(), config.meeting_id.clone(), transport)
+    });
     if let Ok(mut current) = status.lock() {
         current.active_sources = capture_streams.active_sources.clone();
         current.warnings = capture_streams.warnings.clone();
@@ -614,20 +695,32 @@ fn run_capture(
         }
         while let Ok(control) = control_rx.try_recv() {
             match control {
-                CaptureControl::Pause => {
-                    paused.store(true, Ordering::Release);
-                    if let Some(worker) = transport_tx.as_ref() {
-                        let _ = worker.control.send(TransportControl::Pause);
+                CaptureControl::Pause { response } => {
+                    let result =
+                        request_transport_control(transport_tx.as_ref(), |transport_response| {
+                            TransportControl::Pause {
+                                response: transport_response,
+                            }
+                        });
+                    if result.is_ok() {
+                        paused.store(true, Ordering::Release);
+                        update_phase(&app, &status, CapturePhase::Paused);
                     }
-                    update_phase(&app, &status, CapturePhase::Paused);
+                    let _ = response.send(result);
                 }
-                CaptureControl::Resume => {
-                    if let Some(worker) = transport_tx.as_ref() {
-                        let _ = worker.control.send(TransportControl::Resume);
+                CaptureControl::Resume { response } => {
+                    let result =
+                        request_transport_control(transport_tx.as_ref(), |transport_response| {
+                            TransportControl::Resume {
+                                response: transport_response,
+                            }
+                        });
+                    if result.is_ok() {
+                        paused.store(false, Ordering::Release);
+                        next_mix_at = Instant::now() + Duration::from_millis(100);
+                        update_phase(&app, &status, CapturePhase::Recording);
                     }
-                    paused.store(false, Ordering::Release);
-                    next_mix_at = Instant::now() + Duration::from_millis(100);
-                    update_phase(&app, &status, CapturePhase::Recording);
+                    let _ = response.send(result);
                 }
                 CaptureControl::RefreshTransport { ticket, url } => {
                     if let Some(worker) = transport_tx.as_ref() {
@@ -690,10 +783,20 @@ fn run_capture(
             }
             if let Some(worker) = transport_tx.as_ref() {
                 let sequence = elapsed_samples / FRAME_SAMPLES as u64;
-                if let Err(error) = worker.commands.try_send(TransportCommand::Frame {
-                    samples: frame.clone(),
-                    sequence,
-                }) {
+                let frames = [
+                    (AudioSource::Microphone, &microphone_frame, microphone_active),
+                    (AudioSource::System, &system_frame, system_active),
+                ];
+                let result = frames.into_iter().filter(|(_, _, active)| *active).try_for_each(
+                    |(source, samples, _)| {
+                        worker.commands.try_send(TransportCommand::Frame {
+                            samples: samples.clone(),
+                            sequence,
+                            source,
+                        })
+                    },
+                );
+                if let Err(error) = result {
                     if !transport_lagging {
                         let _ = app.emit(
                             "meeting-capture-warning",
@@ -727,11 +830,23 @@ fn run_capture(
     }
 
     drop(capture_streams.streams);
+    let elapsed_ms = elapsed_samples * 1_000 / TARGET_SAMPLE_RATE as u64;
     if let Some(worker) = transport_tx {
-        let _ = worker.control.send(TransportControl::Stop);
+        let (response, completed) = mpsc::sync_channel(1);
+        if worker
+            .control
+            .send(TransportControl::Stop {
+                duration_ms: elapsed_ms,
+                response,
+            })
+            .is_ok()
+        {
+            if let Ok(Err(error)) = completed.recv_timeout(Duration::from_secs(25)) {
+                push_warning(&app, &status, error);
+            }
+        }
     }
     let _ = wav.finalize();
-    let elapsed_ms = elapsed_samples * 1_000 / TARGET_SAMPLE_RATE as u64;
     let checkpoint = RecoverableMeetingCapture {
         meeting_id: config.meeting_id,
         started_at_epoch_ms: started_at,
@@ -1050,6 +1165,19 @@ fn set_error(app: &AppHandle, status: &Arc<Mutex<MeetingCaptureStatus>>, error: 
     }
 }
 
+fn push_warning(app: &AppHandle, status: &Arc<Mutex<MeetingCaptureStatus>>, warning: String) {
+    if let Ok(mut current) = status.lock() {
+        current.warnings.push(warning.clone());
+        let _ = app.emit(
+            "meeting-capture-warning",
+            serde_json::json!({
+                "code": "transcription_transport_unavailable",
+                "message": warning,
+            }),
+        );
+    }
+}
+
 fn validate_config(config: &MeetingCaptureConfig) -> Result<(), String> {
     validate_meeting_id(&config.meeting_id)?;
     if !config.capture_microphone && !config.capture_system_audio {
@@ -1062,9 +1190,29 @@ fn validate_config(config: &MeetingCaptureConfig) -> Result<(), String> {
 }
 
 struct MeetingAudioTransport {
+    active_sources: Vec<AudioSource>,
+    connected_at: Option<Instant>,
+    disabled: bool,
+    pending: HashMap<AudioSource, PendingMeetingAudio>,
     protocol: String,
+    reconnect_attempts: u8,
+    replay_frames: VecDeque<MeetingAudioPacket>,
     socket: Option<WebSocket<MaybeTlsStream<std::net::TcpStream>>>,
     url: String,
+}
+
+#[derive(Clone)]
+struct MeetingAudioPacket {
+    bytes: Vec<u8>,
+    end_sequence: u64,
+    sequence: u64,
+    source: AudioSource,
+}
+
+#[derive(Default)]
+struct PendingMeetingAudio {
+    samples: Vec<f32>,
+    sequence: Option<u64>,
 }
 
 impl MeetingAudioTransport {
@@ -1083,7 +1231,13 @@ impl MeetingAudioTransport {
             return Err("Meeting audio transport must use WebSocket".into());
         }
         Ok(Self {
-            protocol: format!("zilobase.meeting-audio.v1, zilobase.meeting-audio.auth.{ticket}"),
+            active_sources: Vec::new(),
+            connected_at: None,
+            disabled: false,
+            pending: HashMap::new(),
+            protocol: format!("zilobase.meeting-audio.v2, zilobase.meeting-audio.auth.{ticket}"),
+            reconnect_attempts: 0,
+            replay_frames: VecDeque::with_capacity(TRANSPORT_REPLAY_CAPACITY),
             socket: None,
             url,
         })
@@ -1091,7 +1245,7 @@ impl MeetingAudioTransport {
 
     fn update_credentials(&mut self, url: String, ticket: String) {
         self.url = url;
-        self.protocol = format!("zilobase.meeting-audio.v1, zilobase.meeting-audio.auth.{ticket}");
+        self.protocol = format!("zilobase.meeting-audio.v2, zilobase.meeting-audio.auth.{ticket}");
     }
 
     fn connect(&mut self) -> Result<(), String> {
@@ -1107,31 +1261,131 @@ impl MeetingAudioTransport {
         );
         let (socket, _) = tungstenite::connect(request)
             .map_err(|error| format!("Could not connect meeting transcription: {error}"))?;
+        let mut socket = socket;
+        set_transport_read_timeout(&mut socket)?;
         self.socket = Some(socket);
+        self.connected_at = Some(Instant::now());
         Ok(())
     }
 
-    fn send_frame(&mut self, sequence: u64, samples: &[f32]) -> Result<(), String> {
-        let mut bytes = Vec::with_capacity(8 + samples.len() * 2);
+    fn connect_ready(&mut self) -> Result<Vec<MeetingAudioServerEvent>, String> {
+        self.connect()?;
+        self.send_control(serde_json::json!({
+            "sources": &self.active_sources,
+            "type": "recording.configure",
+        }))?;
+        let events = match self.wait_for_event("meeting.ready") {
+            Ok(events) => events,
+            Err(error) => {
+                self.socket = None;
+                self.connected_at = None;
+                return Err(error);
+            }
+        };
+        self.apply_ready_watermark(&events)?;
+        Ok(events)
+    }
+
+    fn send_frame(
+        &mut self,
+        source: AudioSource,
+        sequence: u64,
+        samples: &[f32],
+    ) -> Result<Vec<MeetingAudioServerEvent>, String> {
+        if self.disabled {
+            return Ok(Vec::new());
+        }
+        let discontinuous = self.pending.get(&source).is_some_and(|pending| {
+            pending.sequence.is_some_and(|start| {
+                start.saturating_add(
+                    (pending.samples.len() / FRAME_SAMPLES) as u64,
+                ) != sequence
+            })
+        });
+        let mut events = if discontinuous {
+            self.flush_frame(source)?
+        } else {
+            Vec::new()
+        };
+        let pending = self.pending.entry(source).or_default();
+        pending.sequence.get_or_insert(sequence);
+        pending.samples.extend_from_slice(samples);
+        if pending.samples.len() < TRANSPORT_BATCH_SAMPLES {
+            return Ok(events);
+        }
+        events.extend(self.flush_frame(source)?);
+        Ok(events)
+    }
+
+    fn flush_frame(
+        &mut self,
+        source: AudioSource,
+    ) -> Result<Vec<MeetingAudioServerEvent>, String> {
+        if self.disabled {
+            self.pending.remove(&source);
+            return Ok(Vec::new());
+        }
+        let pending = self.pending.remove(&source).unwrap_or_default();
+        if pending.samples.is_empty() {
+            return Ok(Vec::new());
+        }
+        let sequence = pending.sequence.unwrap_or_default();
+        let samples = pending.samples;
+        let mut bytes = Vec::with_capacity(9 + samples.len() * 2);
         bytes.extend_from_slice(&sequence.to_le_bytes());
-        for sample in samples {
+        bytes.push(meeting_audio_source_code(source));
+        for sample in &samples {
             let pcm = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
             bytes.extend_from_slice(&pcm.to_le_bytes());
         }
 
+        let frame_count = samples.len().div_ceil(FRAME_SAMPLES) as u64;
+        let end_sequence = sequence
+            .checked_add(frame_count.saturating_sub(1))
+            .ok_or_else(|| "Meeting audio sequence overflowed".to_string())?;
+        let packet = MeetingAudioPacket {
+            bytes,
+            end_sequence,
+            sequence,
+            source,
+        };
+        let mut events = Vec::new();
+
         for attempt in 0..2 {
+            if self.reconnect_attempts >= MAX_TRANSCRIPTION_RECONNECT_ATTEMPTS {
+                self.disabled = true;
+                return Err("Meeting transcription is unavailable after repeated reconnects; local recording continues".into());
+            }
             if self.socket.is_none() {
-                self.connect()?;
+                match self.connect_ready() {
+                    Ok(ready_events) => events.extend(ready_events),
+                    Err(error) => {
+                        self.reconnect_attempts = self.reconnect_attempts.saturating_add(1);
+                        if self.reconnect_attempts >= MAX_TRANSCRIPTION_RECONNECT_ATTEMPTS {
+                            self.disabled = true;
+                        }
+                        return Err(error);
+                    }
+                }
+            }
+            if self.connected_at.is_some_and(|connected_at| {
+                connected_at.elapsed() >= TRANSCRIPTION_STABLE_CONNECTION
+            }) {
+                self.reconnect_attempts = 0;
             }
             let result = self
                 .socket
                 .as_mut()
                 .expect("meeting audio socket was connected")
-                .send(tungstenite::Message::Binary(bytes.clone().into()));
+                .send(tungstenite::Message::Binary(packet.bytes.clone().into()));
             if result.is_ok() {
-                return Ok(());
+                self.remember_packet(packet);
+                events.extend(self.read_server_events());
+                return Ok(events);
             }
             self.socket = None;
+            self.connected_at = None;
+            self.reconnect_attempts = self.reconnect_attempts.saturating_add(1);
             if attempt == 0 {
                 thread::sleep(Duration::from_millis(100));
             }
@@ -1139,7 +1393,146 @@ impl MeetingAudioTransport {
         Err("Meeting transcription disconnected; local recording continues".into())
     }
 
+    fn flush_frames(&mut self) -> Result<Vec<MeetingAudioServerEvent>, String> {
+        let mut events = Vec::new();
+        for source in self.active_sources.clone() {
+            events.extend(self.flush_frame(source)?);
+        }
+        Ok(events)
+    }
+
+    fn pause(&mut self) -> Result<Vec<MeetingAudioServerEvent>, String> {
+        let mut events = self.flush_frames()?;
+        if self.disabled {
+            return Ok(events);
+        }
+        if self.socket.is_none() {
+            events.extend(self.connect_ready()?);
+        }
+        self.send_control(serde_json::json!({ "type": "recording.pause" }))?;
+        events.extend(self.wait_for_event("recording.paused")?);
+        Ok(events)
+    }
+
+    fn resume(&mut self) -> Result<Vec<MeetingAudioServerEvent>, String> {
+        if self.disabled {
+            return Ok(Vec::new());
+        }
+        if self.socket.is_none() {
+            return self.connect_ready();
+        } else {
+            self.send_control(serde_json::json!({ "type": "recording.resume" }))?;
+        }
+        match self.wait_for_event("meeting.ready") {
+            Ok(events) => {
+                self.apply_ready_watermark(&events)?;
+                Ok(events)
+            }
+            Err(_error) if self.socket.is_none() && !self.disabled => self.connect_ready(),
+            Err(error) => Err(error),
+        }
+    }
+
+    fn stop(&mut self, duration_ms: u64) -> Result<Vec<MeetingAudioServerEvent>, String> {
+        let mut events = match self.flush_frames() {
+            Ok(events) => events,
+            Err(_error) if self.disabled => return Ok(Vec::new()),
+            Err(error) => return Err(error),
+        };
+        if self.disabled {
+            return Ok(events);
+        }
+        if self.socket.is_none() {
+            events.extend(self.connect_ready()?);
+        }
+        self.send_control(serde_json::json!({
+            "durationMs": duration_ms,
+            "type": "recording.stop",
+        }))?;
+        events.extend(self.wait_for_event("recording.flush.completed")?);
+        Ok(events)
+    }
+
+    fn send_control(&mut self, value: serde_json::Value) -> Result<(), String> {
+        let result = self
+            .socket
+            .as_mut()
+            .ok_or_else(|| "Meeting transcription is disconnected".to_string())?
+            .send(tungstenite::Message::Text(value.to_string().into()));
+        if let Err(error) = result {
+            self.socket = None;
+            self.connected_at = None;
+            self.reconnect_attempts = self.reconnect_attempts.saturating_add(1);
+            return Err(format!("Could not control meeting transcription: {error}"));
+        }
+        Ok(())
+    }
+
+    fn wait_for_event(&mut self, expected: &str) -> Result<Vec<MeetingAudioServerEvent>, String> {
+        let deadline = Instant::now() + Duration::from_secs(15);
+        let mut collected = Vec::new();
+        loop {
+            let events = self.read_server_events();
+            for event in events {
+                if event.kind == "recording.error" {
+                    return Err(event
+                        .message
+                        .unwrap_or_else(|| "Meeting transcription failed".into()));
+                }
+                let complete = event.kind == expected;
+                collected.push(event);
+                if complete {
+                    return Ok(collected);
+                }
+            }
+            if self.disabled || self.socket.is_none() {
+                return Err("Meeting transcription connection closed".into());
+            }
+            if Instant::now() >= deadline {
+                return Err(format!("Timed out waiting for {expected}"));
+            }
+            thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    fn apply_ready_watermark(&mut self, events: &[MeetingAudioServerEvent]) -> Result<(), String> {
+        let Some(next_sequences) = events
+            .iter()
+            .rev()
+            .find(|event| event.kind == "meeting.ready")
+            .and_then(|event| event.next_sequences.as_ref())
+        else {
+            return Ok(());
+        };
+        self.replay_frames = self
+            .replay_frames
+            .drain(..)
+            .filter_map(|packet| {
+                let next_sequence = next_sequences.get(&packet.source).copied().unwrap_or(0);
+                trim_meeting_audio_packet(packet, next_sequence)
+            })
+            .collect();
+        let socket = self
+            .socket
+            .as_mut()
+            .ok_or_else(|| "Meeting transcription connection closed".to_string())?;
+        for packet in &self.replay_frames {
+            socket
+                .send(tungstenite::Message::Binary(packet.bytes.clone().into()))
+                .map_err(|error| format!("Could not replay meeting audio: {error}"))?;
+        }
+        Ok(())
+    }
+
+    fn remember_packet(&mut self, packet: MeetingAudioPacket) {
+        self.replay_frames.push_back(packet);
+        if self.replay_frames.len() > TRANSPORT_REPLAY_CAPACITY {
+            self.replay_frames.pop_front();
+        }
+    }
+
     fn close(&mut self, reason: &'static str) {
+        let _ = self.flush_frames();
         if let Some(mut socket) = self.socket.take() {
             let _ = socket.close(Some(CloseFrame {
                 code: CloseCode::Normal,
@@ -1147,9 +1540,106 @@ impl MeetingAudioTransport {
             }));
         }
     }
+
+    fn read_server_events(&mut self) -> Vec<MeetingAudioServerEvent> {
+        let mut events = Vec::new();
+        let mut connection_closed = false;
+        if let Some(socket) = self.socket.as_mut() {
+            loop {
+                match socket.read() {
+                    Ok(tungstenite::Message::Text(text)) => {
+                        if let Ok(event) = serde_json::from_str::<MeetingAudioServerEvent>(&text) {
+                            events.push(event);
+                        }
+                    }
+                    Ok(tungstenite::Message::Close(frame)) => {
+                        if frame.is_some_and(|frame| {
+                            u16::from(frame.code) == MEETING_TRANSCRIPTION_FATAL_CLOSE_CODE
+                        }) {
+                            self.disabled = true;
+                        } else {
+                            self.reconnect_attempts = self.reconnect_attempts.saturating_add(1);
+                        }
+                        self.socket = None;
+                        self.connected_at = None;
+                        break;
+                    }
+                    Ok(_) => {}
+                    Err(tungstenite::Error::Io(error))
+                        if matches!(error.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) =>
+                    {
+                        break;
+                    }
+                    Err(
+                        tungstenite::Error::ConnectionClosed | tungstenite::Error::AlreadyClosed,
+                    ) => {
+                        connection_closed = true;
+                        break;
+                    }
+                    Err(_) => {
+                        connection_closed = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if connection_closed {
+            self.socket = None;
+            self.connected_at = None;
+            self.reconnect_attempts = self.reconnect_attempts.saturating_add(1);
+        }
+        if let Some(ticket) = events
+            .iter()
+            .rev()
+            .find(|event| event.kind == "recording.ticket")
+            .and_then(|event| event.token.clone())
+        {
+            self.update_credentials(self.url.clone(), ticket);
+        }
+        events
+    }
 }
 
-fn spawn_transport_worker(mut transport: MeetingAudioTransport) -> TransportWorker {
+fn trim_meeting_audio_packet(
+    packet: MeetingAudioPacket,
+    next_sequence: u64,
+) -> Option<MeetingAudioPacket> {
+    if packet.end_sequence < next_sequence {
+        return None;
+    }
+    if packet.sequence >= next_sequence {
+        return Some(packet);
+    }
+    let skipped_frames = usize::try_from(next_sequence - packet.sequence).ok()?;
+    let skipped_bytes = skipped_frames.checked_mul(FRAME_SAMPLES * 2)?;
+    let pcm = packet.bytes.get(9 + skipped_bytes..)?;
+    if pcm.is_empty() {
+        return None;
+    }
+    let mut bytes = Vec::with_capacity(9 + pcm.len());
+    bytes.extend_from_slice(&next_sequence.to_le_bytes());
+    bytes.push(meeting_audio_source_code(packet.source));
+    bytes.extend_from_slice(pcm);
+    Some(MeetingAudioPacket {
+        bytes,
+        end_sequence: packet.end_sequence,
+        sequence: next_sequence,
+        source: packet.source,
+    })
+}
+
+fn meeting_audio_source_code(source: AudioSource) -> u8 {
+    match source {
+        AudioSource::Microphone => 0,
+        AudioSource::System => 1,
+    }
+}
+
+fn spawn_transport_worker(
+    app: AppHandle,
+    meeting_id: String,
+    mut transport: MeetingAudioTransport,
+) -> TransportWorker {
     let (commands, receiver) = mpsc::sync_channel(TRANSPORT_CHANNEL_CAPACITY);
     let (control, control_receiver) = mpsc::channel();
     let _ = thread::Builder::new()
@@ -1159,19 +1649,44 @@ fn spawn_transport_worker(mut transport: MeetingAudioTransport) -> TransportWork
             let mut stopping = false;
             loop {
                 while let Ok(message) = control_receiver.try_recv() {
-                    apply_transport_control(&mut transport, &mut paused, &mut stopping, message);
+                    if matches!(
+                        &message,
+                        TransportControl::Pause { .. } | TransportControl::Stop { .. }
+                    ) {
+                        drain_transport_frames(&app, &meeting_id, &mut transport, &receiver);
+                    }
+                    apply_transport_control(
+                        &app,
+                        &meeting_id,
+                        &mut transport,
+                        &mut paused,
+                        &mut stopping,
+                        message,
+                    );
                 }
                 if stopping {
                     break;
                 }
                 if paused {
                     match control_receiver.recv_timeout(Duration::from_millis(100)) {
-                        Ok(message) => apply_transport_control(
-                            &mut transport,
-                            &mut paused,
-                            &mut stopping,
-                            message,
-                        ),
+                        Ok(message) => {
+                            if matches!(&message, TransportControl::Stop { .. }) {
+                                drain_transport_frames(
+                                    &app,
+                                    &meeting_id,
+                                    &mut transport,
+                                    &receiver,
+                                );
+                            }
+                            apply_transport_control(
+                                &app,
+                                &meeting_id,
+                                &mut transport,
+                                &mut paused,
+                                &mut stopping,
+                                message,
+                            );
+                        }
                         Err(mpsc::RecvTimeoutError::Timeout) => {}
                         Err(mpsc::RecvTimeoutError::Disconnected) => break,
                     }
@@ -1183,8 +1698,14 @@ fn spawn_transport_worker(mut transport: MeetingAudioTransport) -> TransportWork
                     Err(mpsc::RecvTimeoutError::Disconnected) => break,
                 };
                 match command {
-                    TransportCommand::Frame { samples, sequence } => {
-                        let _ = transport.send_frame(sequence, &samples);
+                    TransportCommand::Frame {
+                        samples,
+                        sequence,
+                        source,
+                    } => {
+                        if let Ok(events) = transport.send_frame(source, sequence, &samples) {
+                            emit_transport_events(&app, &meeting_id, events);
+                        }
                     }
                 }
             }
@@ -1193,22 +1714,105 @@ fn spawn_transport_worker(mut transport: MeetingAudioTransport) -> TransportWork
     TransportWorker { commands, control }
 }
 
+fn set_transport_read_timeout(
+    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
+) -> Result<(), String> {
+    let timeout = Some(Duration::from_millis(1));
+    match socket.get_mut() {
+        MaybeTlsStream::Plain(stream) => stream.set_read_timeout(timeout),
+        MaybeTlsStream::Rustls(stream) => stream.sock.set_read_timeout(timeout),
+        _ => Ok(()),
+    }
+    .map_err(|error| format!("Could not configure meeting transcription: {error}"))
+}
+
 fn apply_transport_control(
+    app: &AppHandle,
+    meeting_id: &str,
     transport: &mut MeetingAudioTransport,
     paused: &mut bool,
     stopping: &mut bool,
     control: TransportControl,
 ) {
     match control {
-        TransportControl::Pause => {
-            *paused = true;
-            transport.close("Meeting paused");
+        TransportControl::Pause { response } => {
+            let result = transport.pause();
+            if let Ok(events) = &result {
+                *paused = true;
+                emit_transport_events(app, meeting_id, events.clone());
+            }
+            let _ = response.send(result.map(|_| ()));
         }
-        TransportControl::Resume => *paused = false,
+        TransportControl::Resume { response } => {
+            let result = transport.resume();
+            if let Ok(events) = &result {
+                *paused = false;
+                emit_transport_events(app, meeting_id, events.clone());
+            }
+            let _ = response.send(result.map(|_| ()));
+        }
         TransportControl::RefreshCredentials { ticket, url } => {
             transport.update_credentials(url, ticket);
         }
-        TransportControl::Stop => *stopping = true,
+        TransportControl::Stop {
+            duration_ms,
+            response,
+        } => {
+            let result = transport.stop(duration_ms);
+            if let Ok(events) = &result {
+                emit_transport_events(app, meeting_id, events.clone());
+            }
+            *stopping = true;
+            let _ = response.send(result.map(|_| ()));
+        }
+    }
+}
+
+fn emit_transport_events(app: &AppHandle, meeting_id: &str, events: Vec<MeetingAudioServerEvent>) {
+    for event in events {
+        if event.kind != "transcript.delta" {
+            continue;
+        }
+        let Some(item_id) = event.item_id else {
+            continue;
+        };
+        let Some(source) = event.source else { continue };
+        let Some(start_ms) = event.start_ms else {
+            continue;
+        };
+        let Some(text) = event.text else { continue };
+        let Some(updated_at) = event.updated_at else {
+            continue;
+        };
+        let _ = app.emit(
+            "meeting-capture-transcript",
+            MeetingTranscriptDraft {
+                item_id,
+                meeting_id: meeting_id.to_string(),
+                source,
+                start_ms,
+                text,
+                updated_at,
+            },
+        );
+    }
+}
+
+fn drain_transport_frames(
+    app: &AppHandle,
+    meeting_id: &str,
+    transport: &mut MeetingAudioTransport,
+    receiver: &mpsc::Receiver<TransportCommand>,
+) {
+    while let Ok(TransportCommand::Frame {
+        samples,
+        sequence,
+        source,
+    }) = receiver.try_recv()
+    {
+        if let Ok(events) = transport.send_frame(source, sequence, &samples) {
+            emit_transport_events(app, meeting_id, events);
+        }
     }
 }
 
@@ -1380,8 +1984,9 @@ impl CheckpointWav {
 #[cfg(test)]
 mod tests {
     use super::{
-        apply_transport_control, downmix_to_mono, is_loopback_device, resample_linear,
-        validate_meeting_id, MeetingAudioTransport, StreamingLinearResampler, TransportControl,
+        downmix_to_mono, is_loopback_device, meeting_audio_source_code, resample_linear,
+        trim_meeting_audio_packet, validate_meeting_id, AudioSource, MeetingAudioPacket,
+        MeetingAudioServerEvent, MeetingAudioTransport, StreamingLinearResampler, FRAME_SAMPLES,
     };
 
     #[test]
@@ -1420,47 +2025,37 @@ mod tests {
     }
 
     #[test]
-    fn transport_controls_pause_without_losing_refreshed_credentials() {
+    fn transport_accepts_rotated_ticket_credentials() {
         let mut transport = MeetingAudioTransport::from_parts(
             "ws://localhost/meeting-audio".into(),
             "first".into(),
         )
         .unwrap();
-        let mut paused = false;
-        let mut stopping = false;
-
-        apply_transport_control(
-            &mut transport,
-            &mut paused,
-            &mut stopping,
-            TransportControl::Pause,
-        );
-        assert!(paused);
-        apply_transport_control(
-            &mut transport,
-            &mut paused,
-            &mut stopping,
-            TransportControl::RefreshCredentials {
-                ticket: "second".into(),
-                url: "ws://localhost/meeting-audio?meeting=two".into(),
-            },
+        let event: MeetingAudioServerEvent =
+            serde_json::from_str(r#"{"type":"recording.ticket","token":"second"}"#).unwrap();
+        transport.update_credentials(
+            "ws://localhost/meeting-audio?meeting=two".into(),
+            event.token.unwrap(),
         );
         assert_eq!(transport.url, "ws://localhost/meeting-audio?meeting=two");
         assert!(transport.protocol.ends_with("auth.second"));
+    }
 
-        apply_transport_control(
-            &mut transport,
-            &mut paused,
-            &mut stopping,
-            TransportControl::Resume,
-        );
-        assert!(!paused);
-        apply_transport_control(
-            &mut transport,
-            &mut paused,
-            &mut stopping,
-            TransportControl::Stop,
-        );
-        assert!(stopping);
+    #[test]
+    fn transport_replay_keeps_the_unacknowledged_tail_of_a_batch() {
+        let mut bytes = Vec::from(20_u64.to_le_bytes());
+        bytes.push(meeting_audio_source_code(AudioSource::Microphone));
+        bytes.extend(std::iter::repeat(1_u8).take(FRAME_SAMPLES * 2 * 5));
+        let packet = MeetingAudioPacket {
+            bytes,
+            end_sequence: 24,
+            sequence: 20,
+            source: AudioSource::Microphone,
+        };
+
+        let trimmed = trim_meeting_audio_packet(packet, 22).unwrap();
+        assert_eq!(trimmed.sequence, 22);
+        assert_eq!(trimmed.end_sequence, 24);
+        assert_eq!(trimmed.bytes.len(), 9 + FRAME_SAMPLES * 2 * 3);
     }
 }
