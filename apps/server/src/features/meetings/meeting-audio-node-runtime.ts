@@ -3,41 +3,74 @@ import type { IncomingMessage, Server as HttpServer } from "node:http";
 import type { Duplex } from "node:stream";
 import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
+import WebSocket from "ws";
 
 import type { RuntimeEnv } from "../../config";
 import { runWithDbEnv } from "../../db";
 import {
-  appendMeetingTranscriptSegment,
   heartbeatMeetingRecorder,
+  MEETING_RECORDER_LEASE_HEARTBEAT_MS,
+  transitionMeeting,
   validateMeetingRecorderLease,
 } from "./meeting-service";
 import {
   MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
   MEETING_AUDIO_PROTOCOL,
+  MEETING_AUDIO_SOURCES,
+  createMeetingAudioTicket,
+  meetingAudioSourceFromCode,
   verifyMeetingAudioTicket,
+  type MeetingAudioSource,
   type MeetingAudioTicketClaims,
 } from "./meeting-audio-ticket";
-import { pcmToWav, transcribeMeetingPcm } from "./meeting-transcription";
+import {
+  createMeetingRealtimeTranscriptSink,
+  getMeetingOpenAiSafetyIdentifier,
+  getMeetingRealtimeTranscriptionConfig,
+  getMeetingRealtimeTranscriptionUrl,
+  getMeetingTranscriptionFailureCloseCode,
+  MeetingRealtimeTranscriber,
+  trimAcceptedMeetingAudio,
+  type MeetingRealtimeTranscriberCallbacks,
+  type RealtimeTranscriptionSocket,
+} from "./meeting-realtime-transcription";
 
-const MAX_AUDIO_FRAME_BYTES = 8 + 4_096;
-const PCM_BYTES_PER_SECOND = 24_000 * 2;
-const TRANSCRIPTION_WINDOW_BYTES = PCM_BYTES_PER_SECOND * 5;
-const LEASE_HEARTBEAT_MS = 10_000;
+const PCM_FRAME_BYTES = 480 * 2;
+const AUDIO_PACKET_HEADER_BYTES = 9;
+const MAX_AUDIO_FRAME_BYTES = AUDIO_PACKET_HEADER_BYTES + PCM_FRAME_BYTES * 5;
 const MAX_TICKET_BYTES = 8 * 1024;
 
 type Attachment = {
-  audio: Buffer[];
-  audioBytes: number;
+  activeSources: MeetingAudioSource[];
   claims: MeetingAudioTicketClaims;
-  firstSequence: number | null;
+  heartbeatTimer: ReturnType<typeof setInterval> | null;
   lastHeartbeatAt: number;
-  lastSequence: number;
+  lastSequences: Record<MeetingAudioSource, number>;
   pending: Promise<void>;
+  phase: "paused" | "recording" | "stopped";
+  readySources: Set<MeetingAudioSource>;
+  segmentCount: number;
+  transcribers: Map<MeetingAudioSource, Promise<MeetingRealtimeTranscriber>>;
+  transcriberGenerations: Record<MeetingAudioSource, number>;
 };
 
 type RuntimeOptions = {
-  transcribe?: (wav: Uint8Array, env: RuntimeEnv, language?: string) => Promise<string>;
+  connect?: (
+    env: RuntimeEnv,
+    callbacks: MeetingRealtimeTranscriberCallbacks,
+    claims: MeetingAudioTicketClaims,
+  ) => Promise<MeetingRealtimeTranscriber>;
 };
+
+type AudioWatermark = {
+  expiresAt: number;
+  sequence: number;
+};
+
+const AUDIO_WATERMARK_TTL_MS = 15 * 60_000;
+const MAX_AUDIO_WATERMARKS = 10_000;
+const AUDIO_TICKET_REFRESH_LEAD_MS = 2 * 60_000;
+const AUDIO_SOCKET_MAINTENANCE_MS = 30_000;
 
 export function attachNodeMeetingAudioRuntime(
   server: HttpServer,
@@ -46,9 +79,10 @@ export function attachNodeMeetingAudioRuntime(
 ) {
   const attachments = new WeakMap<Peer, Attachment>();
   const active = new Set<Attachment>();
-  const watermarks = new Map<string, number>();
-  const transcribe = options.transcribe ?? ((wav, runtimeEnv) =>
-    transcribeMeetingPcm(wav.subarray(44), runtimeEnv));
+  const leaseTasks = new Map<string, Promise<void>>();
+  const peersByLease = new Map<string, Peer>();
+  const watermarks = new Map<string, AudioWatermark>();
+  const connect = options.connect ?? connectOpenAiRealtimeTranscriber;
   const websocket = crossws({
     idleTimeout: 45,
     serverOptions: { maxPayload: MAX_AUDIO_FRAME_BYTES },
@@ -77,23 +111,46 @@ export function attachNodeMeetingAudioRuntime(
           peer.close(1011, "Missing meeting audio session");
           return;
         }
+        pruneAudioWatermarks(watermarks);
+        const previousPeer = peersByLease.get(claims.leaseId);
+        if (previousPeer && previousPeer !== peer) {
+          const previousAttachment = attachments.get(previousPeer);
+          if (previousAttachment && previousAttachment.phase !== "stopped") {
+            previousAttachment.phase = "stopped";
+            clearAttachmentMaintenance(previousAttachment);
+            const finishing = enqueueAttachmentTask(
+              previousAttachment,
+              () => finishCurrentTranscribers(previousAttachment),
+            );
+            const tracked = finishing
+              .catch(logRuntimeError)
+              .finally(() => active.delete(previousAttachment));
+            leaseTasks.set(claims.leaseId, tracked);
+            void tracked.finally(() => {
+              if (leaseTasks.get(claims.leaseId) === tracked) {
+                leaseTasks.delete(claims.leaseId);
+              }
+            });
+          }
+          previousPeer.close(1008, "Recorder reconnected");
+        }
+        peersByLease.set(claims.leaseId, peer);
         const attachment: Attachment = {
-          audio: [],
-          audioBytes: 0,
+          activeSources: [],
           claims,
-          firstSequence: null,
+          heartbeatTimer: null,
           lastHeartbeatAt: Date.now(),
-          lastSequence: watermarks.get(claims.leaseId) ?? -1,
-          pending: Promise.resolve(),
+          lastSequences: { microphone: -1, system: -1 },
+          pending: leaseTasks.get(claims.leaseId) ?? Promise.resolve(),
+          phase: "recording",
+          readySources: new Set(),
+          segmentCount: 0,
+          transcribers: new Map(),
+          transcriberGenerations: { microphone: 0, system: 0 },
         };
         attachments.set(peer, attachment);
         active.add(attachment);
-        peer.send(JSON.stringify({
-          leaseId: claims.leaseId,
-          meetingId: claims.meetingId,
-          nextSequence: attachment.lastSequence + 1,
-          type: "meeting.ready",
-        }));
+        startAttachmentMaintenance(peer, attachment, env);
       },
       message(peer, message) {
         const attachment = attachments.get(peer);
@@ -102,11 +159,22 @@ export function attachNodeMeetingAudioRuntime(
           return;
         }
         if (typeof message.rawData === "string") {
-          peer.close(1003, "Binary PCM16 audio frames are required");
+          handleAudioControlMessage(
+            peer,
+            attachment,
+            message.rawData,
+            env,
+            connect,
+            watermarks,
+          );
           return;
         }
+        if (attachment.phase !== "recording") return;
         const frame = Buffer.from(message.uint8Array());
-        if (frame.byteLength < 10 || frame.byteLength > MAX_AUDIO_FRAME_BYTES) {
+        if (
+          frame.byteLength < AUDIO_PACKET_HEADER_BYTES + PCM_FRAME_BYTES ||
+          frame.byteLength > MAX_AUDIO_FRAME_BYTES
+        ) {
           peer.close(1009, "Invalid meeting audio frame");
           return;
         }
@@ -116,36 +184,60 @@ export function attachNodeMeetingAudioRuntime(
           return;
         }
         const sequence = Number(sequenceValue);
-        if (sequence <= attachment.lastSequence) return;
-        if (frame.byteLength % 2 !== 0) {
+        const source = meetingAudioSourceFromCode(frame[8]);
+        if (!source || !attachment.activeSources.includes(source)) {
+          peer.close(1008, "Invalid meeting audio source");
+          return;
+        }
+        const transcriber = attachment.transcribers.get(source);
+        if (!transcriber) return;
+        const pcm = frame.subarray(AUDIO_PACKET_HEADER_BYTES);
+        if (pcm.byteLength % PCM_FRAME_BYTES !== 0) {
           peer.close(1003, "PCM16 audio frames are required");
           return;
         }
 
-        attachment.firstSequence ??= sequence;
-        attachment.lastSequence = sequence;
-        watermarks.set(attachment.claims.leaseId, sequence);
-        const pcm = frame.subarray(8);
-        attachment.audio.push(pcm);
-        attachment.audioBytes += pcm.byteLength;
-        if (attachment.audioBytes >= TRANSCRIPTION_WINDOW_BYTES) {
-          queueFlush(peer, attachment, env, transcribe);
-        }
-        if (Date.now() - attachment.lastHeartbeatAt >= LEASE_HEARTBEAT_MS) {
-          attachment.lastHeartbeatAt = Date.now();
-          attachment.pending = attachment.pending.then(async () => {
-            await runWithDbEnv(env, () =>
-              heartbeatMeetingRecorder(attachment.claims),
-            );
+        const accepted = trimAcceptedMeetingAudio(
+          pcm,
+          sequence,
+          attachment.lastSequences[source],
+        );
+        if (!accepted) return;
+        attachment.lastSequences[source] = accepted.endSequence;
+        void transcriber
+          .then((transcriber) =>
+            transcriber.appendAudio(accepted.pcm, accepted.sequence)
+          )
+          .catch((error) => {
+            logRuntimeError(error);
+            peer.close(1011, "Meeting transcription failed");
           });
-        }
       },
       close(peer) {
         const attachment = attachments.get(peer);
         if (!attachment) return;
-        if (attachment.audioBytes > 0) queueFlush(peer, attachment, env, transcribe);
-        active.delete(attachment);
-        void attachment.pending.catch(logRuntimeError);
+        if (peersByLease.get(attachment.claims.leaseId) === peer) {
+          peersByLease.delete(attachment.claims.leaseId);
+        }
+        const finishing = attachment.phase === "stopped"
+          ? attachment.pending
+          : (() => {
+              attachment.phase = "stopped";
+              clearAttachmentMaintenance(attachment);
+              return enqueueAttachmentTask(
+                attachment,
+                () => finishCurrentTranscribers(attachment),
+              );
+            })();
+        const tracked = finishing
+          .catch(logRuntimeError)
+          .finally(() => active.delete(attachment));
+        leaseTasks.set(attachment.claims.leaseId, tracked);
+        void tracked.finally(() => {
+          if (leaseTasks.get(attachment.claims.leaseId) === tracked) {
+            leaseTasks.delete(attachment.claims.leaseId);
+          }
+        });
       },
       error(peer, error) {
         logRuntimeError(error);
@@ -171,41 +263,383 @@ export function attachNodeMeetingAudioRuntime(
   return {
     async destroy() {
       server.off("upgrade", upgradeListener);
-      await Promise.allSettled([...active].map((attachment) => attachment.pending));
+      const sessions = [...active];
       await websocket.close(1001, "Server shutting down");
+      await Promise.allSettled(sessions.map((attachment) => {
+        attachment.phase = "stopped";
+        clearAttachmentMaintenance(attachment);
+        return enqueueAttachmentTask(
+          attachment,
+          () => finishCurrentTranscribers(attachment),
+        );
+      }));
+      active.clear();
+      leaseTasks.clear();
+      peersByLease.clear();
+      watermarks.clear();
     },
   };
 }
 
-function queueFlush(
+function startTranscribers(
   peer: Peer,
   attachment: Attachment,
   env: RuntimeEnv,
-  transcribe: NonNullable<RuntimeOptions["transcribe"]>,
+  connect: NonNullable<RuntimeOptions["connect"]>,
+  watermarks: Map<string, AudioWatermark>,
 ) {
-  const pcm = Buffer.concat(attachment.audio, attachment.audioBytes);
-  const firstSequence = attachment.firstSequence ?? attachment.lastSequence;
-  const lastSequence = attachment.lastSequence;
-  attachment.audio = [];
-  attachment.audioBytes = 0;
-  attachment.firstSequence = null;
-  attachment.pending = attachment.pending
-    .then(async () => {
-      const text = (await transcribe(pcmToWav(pcm), env)).trim();
-      if (!text) return;
-      const segment = await runWithDbEnv(env, () =>
-        appendMeetingTranscriptSegment({
-          endMs: (lastSequence + 1) * 20,
-          meetingId: attachment.claims.meetingId,
-          providerItemId: `${attachment.claims.leaseId}:${firstSequence}-${lastSequence}`,
-          sequence: firstSequence,
-          startMs: firstSequence * 20,
-          text,
-        }),
-      );
-      if (segment) peer.send(JSON.stringify({ segment, type: "transcript.segment" }));
-    })
-    .catch(logRuntimeError);
+  attachment.readySources.clear();
+  for (const source of attachment.activeSources) {
+    startSourceTranscriber(peer, attachment, source, env, connect, watermarks);
+  }
+}
+
+function startSourceTranscriber(
+  peer: Peer,
+  attachment: Attachment,
+  source: MeetingAudioSource,
+  env: RuntimeEnv,
+  connect: NonNullable<RuntimeOptions["connect"]>,
+  watermarks: Map<string, AudioWatermark>,
+) {
+  const generation = ++attachment.transcriberGenerations[source];
+  const publicTurn = (turn: Parameters<MeetingRealtimeTranscriberCallbacks["onDelta"]>[0]) => ({
+    ...turn,
+    itemId: `${source}:${turn.itemId}`,
+  });
+  const sink = createMeetingRealtimeTranscriptSink(
+    env,
+    attachment.claims,
+    (turn) => {
+      peer.send(JSON.stringify({
+        itemId: turn.itemId,
+        source,
+        startMs: turn.startSequence * 20,
+        text: turn.text,
+        type: "transcript.delta",
+        updatedAt: Date.now(),
+      }));
+    },
+    source,
+  );
+  const transcriber = attachment.pending.catch(() => undefined).then(() => {
+    attachment.lastSequences[source] = Math.max(
+      attachment.lastSequences[source],
+      watermarks.get(audioWatermarkKey(attachment.claims.leaseId, source))?.sequence ?? -1,
+    );
+    return connect(env, {
+      async onCompleted(turn) {
+        await sink.onCompleted(publicTurn(turn));
+        if (turn.text.trim()) attachment.segmentCount += 1;
+        setAudioWatermark(
+          watermarks,
+          audioWatermarkKey(attachment.claims.leaseId, source),
+          turn.endSequence,
+        );
+      },
+      onDelta(turn) {
+        sink.onDelta(publicTurn(turn));
+      },
+      onError(error) {
+        if (generation !== attachment.transcriberGenerations[source]) return;
+        logRuntimeError(error);
+        peer.close(
+          getMeetingTranscriptionFailureCloseCode(error),
+          "Meeting transcription failed",
+        );
+      },
+      onReady() {
+        if (
+          generation !== attachment.transcriberGenerations[source] ||
+          attachment.phase !== "recording"
+        ) return;
+        attachment.readySources.add(source);
+        announceReady(peer, attachment);
+      },
+    }, attachment.claims);
+  });
+  attachment.transcribers.set(source, transcriber);
+  void transcriber.catch((error) => {
+    if (generation !== attachment.transcriberGenerations[source]) return;
+    logRuntimeError(error);
+    peer.close(
+      getMeetingTranscriptionFailureCloseCode(error),
+      "Meeting transcription failed",
+    );
+  });
+}
+
+function handleAudioControlMessage(
+  peer: Peer,
+  attachment: Attachment,
+  raw: string,
+  env: RuntimeEnv,
+  connect: NonNullable<RuntimeOptions["connect"]>,
+  watermarks: Map<string, AudioWatermark>,
+) {
+  let message: { durationMs?: unknown; sources?: unknown; type?: unknown };
+  try {
+    message = JSON.parse(raw) as {
+      durationMs?: unknown;
+      sources?: unknown;
+      type?: unknown;
+    };
+  } catch {
+    peer.close(1003, "Invalid meeting audio control message");
+    return;
+  }
+
+  if (message.type === "recording.configure") {
+    const sources = parseMeetingAudioSources(message.sources);
+    if (!sources || attachment.activeSources.length > 0) {
+      peer.close(1008, "Invalid meeting audio sources");
+      return;
+    }
+    attachment.activeSources = sources;
+    for (const source of sources) {
+      attachment.lastSequences[source] = watermarks.get(
+        audioWatermarkKey(attachment.claims.leaseId, source),
+      )?.sequence ?? -1;
+    }
+    startTranscribers(peer, attachment, env, connect, watermarks);
+    return;
+  }
+
+  if (message.type === "recording.pause") {
+    if (attachment.phase !== "recording") return;
+    attachment.phase = "paused";
+    const paused = enqueueAttachmentTask(attachment, async () => {
+      await finishCurrentTranscribers(attachment);
+      peer.send(JSON.stringify({ type: "recording.paused" }));
+    });
+    void paused.catch((error) => {
+      logRuntimeError(error);
+      peer.close(1011, "Meeting transcription failed");
+    });
+    return;
+  }
+
+  if (message.type === "recording.resume") {
+    if (attachment.phase !== "paused") return;
+    attachment.phase = "recording";
+    startTranscribers(peer, attachment, env, connect, watermarks);
+    return;
+  }
+
+  if (message.type === "recording.stop") {
+    if (attachment.phase === "stopped") return;
+    attachment.phase = "stopped";
+    clearAttachmentMaintenance(attachment);
+    const durationMs = typeof message.durationMs === "number" &&
+        Number.isFinite(message.durationMs)
+      ? Math.max(0, Math.min(10_800_000, Math.round(message.durationMs)))
+      : meetingAudioDurationMs(attachment);
+    const stopped = enqueueAttachmentTask(attachment, async () => {
+      await finishCurrentTranscribers(attachment);
+      await runWithDbEnv(env, () => transitionMeeting({
+        action: "stop",
+        durationMs,
+        env,
+        leaseId: attachment.claims.leaseId,
+        meetingId: attachment.claims.meetingId,
+        userId: attachment.claims.userId,
+      }));
+      peer.send(JSON.stringify({
+        durationMs,
+        segmentCount: attachment.segmentCount,
+        type: "recording.flush.completed",
+      }));
+    });
+    void stopped.catch((error) => {
+      logRuntimeError(error);
+      peer.send(JSON.stringify({
+        message: "Could not finalize the completed transcript",
+        type: "recording.error",
+      }));
+      peer.close(1011, "Meeting transcription failed");
+    });
+    return;
+  }
+
+  peer.close(1003, "Unknown meeting audio control message");
+}
+
+async function finishCurrentTranscribers(attachment: Attachment) {
+  const transcribers = [...attachment.transcribers.values()];
+  attachment.transcribers.clear();
+  attachment.readySources.clear();
+  for (const source of MEETING_AUDIO_SOURCES) {
+    attachment.transcriberGenerations[source] += 1;
+  }
+  const results = await Promise.allSettled(transcribers.map(async (transcriber) => {
+    await (await transcriber).finish();
+  }));
+  const failure = results.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  );
+  if (failure) throw failure.reason;
+}
+
+function announceReady(peer: Peer, attachment: Attachment) {
+  if (
+    attachment.activeSources.length === 0 ||
+    attachment.activeSources.some((source) => !attachment.readySources.has(source))
+  ) return;
+  peer.send(JSON.stringify({
+    leaseId: attachment.claims.leaseId,
+    meetingId: attachment.claims.meetingId,
+    nextSequences: Object.fromEntries(attachment.activeSources.map((source) => [
+      source,
+      attachment.lastSequences[source] + 1,
+    ])),
+    type: "meeting.ready",
+  }));
+}
+
+function parseMeetingAudioSources(value: unknown): MeetingAudioSource[] | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const sources = [...new Set(value)];
+  return sources.length === value.length && sources.every((source) =>
+      MEETING_AUDIO_SOURCES.includes(source as MeetingAudioSource)
+    )
+    ? sources as MeetingAudioSource[]
+    : null;
+}
+
+function meetingAudioDurationMs(attachment: Attachment) {
+  return Math.max(
+    0,
+    ...attachment.activeSources.map((source) =>
+      (attachment.lastSequences[source] + 1) * 20
+    ),
+  );
+}
+
+async function connectOpenAiRealtimeTranscriber(
+  env: RuntimeEnv,
+  callbacks: MeetingRealtimeTranscriberCallbacks,
+  claims: MeetingAudioTicketClaims,
+) {
+  const { apiKey, model } = getMeetingRealtimeTranscriptionConfig(env);
+  const safetyIdentifier = await getMeetingOpenAiSafetyIdentifier(claims.userId);
+  const socket = new WebSocket(
+    getMeetingRealtimeTranscriptionUrl("wss"),
+    {
+      handshakeTimeout: 15_000,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "OpenAI-Safety-Identifier": safetyIdentifier,
+      },
+    },
+  );
+  await new Promise<void>((resolve, reject) => {
+    socket.addEventListener("open", () => resolve(), { once: true });
+    socket.addEventListener("error", () => {
+      reject(new Error("Could not connect to realtime transcription provider"));
+    }, { once: true });
+  });
+  return new MeetingRealtimeTranscriber(
+    socket as unknown as RealtimeTranscriptionSocket,
+    model,
+    callbacks,
+  );
+}
+
+function startAttachmentMaintenance(
+  peer: Peer,
+  attachment: Attachment,
+  env: RuntimeEnv,
+) {
+  const timer = setInterval(() => {
+    if (attachment.phase === "stopped") return;
+    const maintenance = enqueueAttachmentTask(attachment, async () => {
+      const now = Date.now();
+      if (
+        now - attachment.lastHeartbeatAt >=
+        MEETING_RECORDER_LEASE_HEARTBEAT_MS
+      ) {
+        await runWithDbEnv(env, () =>
+          heartbeatMeetingRecorder(attachment.claims),
+        );
+        attachment.lastHeartbeatAt = now;
+      }
+      if (attachment.claims.exp - now <= AUDIO_TICKET_REFRESH_LEAD_MS) {
+        const ticket = await createMeetingAudioTicket(
+          {
+            leaseId: attachment.claims.leaseId,
+            meetingId: attachment.claims.meetingId,
+            recorderImage: attachment.claims.recorderImage,
+            recorderName: attachment.claims.recorderName,
+            userId: attachment.claims.userId,
+            workspaceId: attachment.claims.workspaceId,
+          },
+          env,
+        );
+        attachment.claims = {
+          ...attachment.claims,
+          exp: new Date(ticket.expiresAt).getTime(),
+        };
+        peer.send(JSON.stringify({
+          expiresAt: ticket.expiresAt,
+          token: ticket.token,
+          type: "recording.ticket",
+        }));
+      } else {
+        peer.send(JSON.stringify({ type: "recording.heartbeat" }));
+      }
+    });
+    void maintenance.catch((error) => {
+      logRuntimeError(error);
+      peer.close(1011, "Meeting recorder lease refresh failed");
+    });
+  }, AUDIO_SOCKET_MAINTENANCE_MS);
+  timer.unref?.();
+  attachment.heartbeatTimer = timer;
+}
+
+function clearAttachmentMaintenance(attachment: Attachment) {
+  if (attachment.heartbeatTimer) clearInterval(attachment.heartbeatTimer);
+  attachment.heartbeatTimer = null;
+}
+
+function enqueueAttachmentTask(
+  attachment: Attachment,
+  task: () => Promise<void>,
+) {
+  const pending = attachment.pending.catch(() => undefined).then(task);
+  attachment.pending = pending;
+  return pending;
+}
+
+function setAudioWatermark(
+  watermarks: Map<string, AudioWatermark>,
+  key: string,
+  sequence: number,
+) {
+  watermarks.delete(key);
+  watermarks.set(key, {
+    expiresAt: Date.now() + AUDIO_WATERMARK_TTL_MS,
+    sequence,
+  });
+  pruneAudioWatermarks(watermarks);
+  while (watermarks.size > MAX_AUDIO_WATERMARKS) {
+    const oldest = watermarks.keys().next().value;
+    if (typeof oldest !== "string") break;
+    watermarks.delete(oldest);
+  }
+}
+
+function audioWatermarkKey(leaseId: string, source: MeetingAudioSource) {
+  return `${leaseId}:${source}`;
+}
+
+function pruneAudioWatermarks(
+  watermarks: Map<string, AudioWatermark>,
+  now = Date.now(),
+) {
+  for (const [leaseId, watermark] of watermarks) {
+    if (watermark.expiresAt <= now) watermarks.delete(leaseId);
+  }
 }
 
 function readAudioAuthentication(headers: Headers) {
