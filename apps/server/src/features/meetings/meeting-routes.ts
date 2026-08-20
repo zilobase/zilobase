@@ -8,7 +8,6 @@ import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
 import {
   createCollaborationTicket,
   documentNameForMeeting,
-  getOrCreateMeetingCollaborationDocumentState,
 } from "../../collaboration/service";
 import { getMeetingCollaborationWebSocketUrl } from "../../runtime-adapter";
 import { getMeetingAudioWebSocketUrl } from "../../runtime-adapter";
@@ -19,9 +18,7 @@ import {
   createMeeting,
   deleteMeeting,
   getMeetingForUser,
-  heartbeatMeetingRecorder,
   listMeetingsForUser,
-  listMeetingTranscript,
   recordMeetingConsent,
   releaseMeetingRecorder,
   transitionMeeting,
@@ -51,6 +48,7 @@ const updateMeetingSchema = z
 
 const lifecycleSchema = z.object({
   durationMs: z.number().nonnegative().optional(),
+  leaseId: z.string().uuid().optional(),
 });
 
 const recorderLeaseSchema = z.object({
@@ -163,18 +161,15 @@ meetingRoutes.post("/:id/collaboration-ticket", async (c) => {
       user.id,
     );
     const documentName = documentNameForMeeting(existing.id);
-    const [ticket, initialState] = await Promise.all([
-      createCollaborationTicket(
-        {
-          meetingId: existing.id,
-          scope: hasAccess(accessLevel, "edit") ? "read-write" : "readonly",
-          userId: user.id,
-          workspaceId: existing.workspaceId,
-        },
-        c.env,
-      ),
-      getOrCreateMeetingCollaborationDocumentState(existing.id),
-    ]);
+    const ticket = await createCollaborationTicket(
+      {
+        meetingId: existing.id,
+        scope: hasAccess(accessLevel, "edit") ? "read-write" : "readonly",
+        userId: user.id,
+        workspaceId: existing.workspaceId,
+      },
+      c.env,
+    );
     const websocketUrl = new URL(
       getMeetingCollaborationWebSocketUrl(c.req.raw, c.env),
     );
@@ -182,7 +177,6 @@ meetingRoutes.post("/:id/collaboration-ticket", async (c) => {
 
     return c.json({
       documentName,
-      initialState: Buffer.from(initialState).toString("base64"),
       websocketUrl: websocketUrl.toString(),
       ...ticket,
     });
@@ -197,13 +191,18 @@ meetingRoutes.post("/:id/recorder/claim", async (c) => {
 
   try {
     const lease = await claimMeetingRecorder({
+      env: c.env,
       meetingId: c.req.param("id"),
+      recorderImage: user.image,
+      recorderName: user.name,
       userId: user.id,
     });
     const ticket = await createMeetingAudioTicket(
       {
         leaseId: lease.leaseId,
         meetingId: lease.meeting.id,
+        recorderImage: user.image,
+        recorderName: user.name,
         userId: user.id,
         workspaceId: lease.meeting.workspaceId,
       },
@@ -243,41 +242,6 @@ meetingRoutes.post("/:id/consent", async (c) => {
   }
 });
 
-meetingRoutes.post("/:id/recorder/heartbeat", async (c) => {
-  const user = requireUser(c);
-  if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const parsed = recorderLeaseSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) return c.json({ error: "Invalid recorder lease" }, 400);
-
-  try {
-    const renewed = await heartbeatMeetingRecorder({
-      leaseId: parsed.data.leaseId,
-      meetingId: c.req.param("id"),
-      userId: user.id,
-    });
-    const ticket = await createMeetingAudioTicket(
-      {
-        leaseId: parsed.data.leaseId,
-        meetingId: renewed.meeting.id,
-        userId: user.id,
-        workspaceId: renewed.meeting.workspaceId,
-      },
-      c.env,
-    );
-    const websocketUrl = new URL(getMeetingAudioWebSocketUrl(c.req.raw, c.env));
-    websocketUrl.searchParams.set("meeting", renewed.meeting.id);
-    return c.json({
-      expiresAt: ticket.expiresAt,
-      leaseExpiresAt: renewed.leaseExpiresAt.toISOString(),
-      meeting: renewed.meeting,
-      token: ticket.token,
-      websocketUrl: websocketUrl.toString(),
-    });
-  } catch (error) {
-    return serviceError(c, error);
-  }
-});
-
 meetingRoutes.post("/:id/recorder/release", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
@@ -287,22 +251,8 @@ meetingRoutes.post("/:id/recorder/release", async (c) => {
   try {
     return c.json({
       meeting: await releaseMeetingRecorder({
+        env: c.env,
         leaseId: parsed.data.leaseId,
-        meetingId: c.req.param("id"),
-        userId: user.id,
-      }),
-    });
-  } catch (error) {
-    return serviceError(c, error);
-  }
-});
-
-meetingRoutes.get("/:id/transcript", async (c) => {
-  const user = requireUser(c);
-  if (!user) return c.json({ error: "Unauthorized" }, 401);
-  try {
-    return c.json({
-      segments: await listMeetingTranscript({
         meetingId: c.req.param("id"),
         userId: user.id,
       }),
@@ -363,6 +313,8 @@ for (const action of meetingLifecycleActions) {
         meeting: await transitionMeeting({
           action,
           durationMs: parsed.data.durationMs,
+          env: c.env,
+          leaseId: parsed.data.leaseId,
           meetingId: c.req.param("id"),
           userId: user.id,
         }),
@@ -380,6 +332,7 @@ meetingRoutes.delete("/:id", async (c) => {
   try {
     return c.json({
       meeting: await deleteMeeting({
+        env: c.env,
         meetingId: c.req.param("id"),
         userId: user.id,
       }),

@@ -9,9 +9,7 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   delete: vi.fn(),
   get: vi.fn(),
-  heartbeatRecorder: vi.fn(),
   list: vi.fn(),
-  listTranscript: vi.fn(),
   releaseRecorder: vi.fn(),
   recordConsent: vi.fn(),
   summarize: vi.fn(),
@@ -27,9 +25,7 @@ vi.mock("./meeting-service", () => ({
   createMeeting: mocks.create,
   deleteMeeting: mocks.delete,
   getMeetingForUser: mocks.get,
-  heartbeatMeetingRecorder: mocks.heartbeatRecorder,
   listMeetingsForUser: mocks.list,
-  listMeetingTranscript: mocks.listTranscript,
   releaseMeetingRecorder: mocks.releaseRecorder,
   recordMeetingConsent: mocks.recordConsent,
   transitionMeeting: mocks.transition,
@@ -80,17 +76,6 @@ beforeEach(() => {
     },
   });
   mocks.get.mockResolvedValue({ id: "meeting-1", status: "idle" });
-  mocks.heartbeatRecorder.mockResolvedValue({
-    leaseExpiresAt: new Date("2026-08-18T00:00:30.000Z"),
-    meeting: {
-      id: "meeting-1",
-      status: "recording",
-      workspaceId: "workspace-1",
-    },
-  });
-  mocks.listTranscript.mockResolvedValue([
-    { id: "segment-1", sequence: 0, text: "Hello" },
-  ]);
   mocks.recordConsent.mockResolvedValue({ id: "consent-1", mode: "confirmed" });
   mocks.summarize.mockResolvedValue({
     meeting: { id: "meeting-1", status: "completed" },
@@ -169,7 +154,10 @@ test("meeting lifecycle endpoints use the validated action", async () => {
   const response = await appFor().request(
     "/meetings/meeting-1/stop",
     {
-      body: JSON.stringify({ durationMs: 42_000 }),
+      body: JSON.stringify({
+        durationMs: 42_000,
+        leaseId: "10000000-0000-4000-8000-000000000001",
+      }),
       headers: { "content-type": "application/json" },
       method: "POST",
     },
@@ -179,6 +167,8 @@ test("meeting lifecycle endpoints use the validated action", async () => {
   assert.deepEqual(mocks.transition.mock.calls[0]?.[0], {
     action: "stop",
     durationMs: 42_000,
+    env,
+    leaseId: "10000000-0000-4000-8000-000000000001",
     meetingId: "meeting-1",
     userId: "user-1",
   });
@@ -198,32 +188,6 @@ test("recorder claim returns a scoped native audio ticket", async () => {
     payload.websocketUrl,
     "ws://localhost/meeting-audio?meeting=meeting-1",
   );
-});
-
-test("transcript reads and lease heartbeats remain meeting scoped", async () => {
-  const transcript = await appFor().request(
-    "/meetings/meeting-1/transcript",
-    {},
-    env,
-  );
-  assert.equal(transcript.status, 200);
-  assert.deepEqual(await transcript.json(), {
-    segments: [{ id: "segment-1", sequence: 0, text: "Hello" }],
-  });
-
-  const heartbeat = await appFor().request(
-    "/meetings/meeting-1/recorder/heartbeat",
-    {
-      body: JSON.stringify({
-        leaseId: "10000000-0000-4000-8000-000000000001",
-      }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    },
-    env,
-  );
-  assert.equal(heartbeat.status, 200);
-  assert.equal(typeof (await heartbeat.json() as { token?: unknown }).token, "string");
 });
 
 test("summary generation is scoped to the authenticated editor", async () => {

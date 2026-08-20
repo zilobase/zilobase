@@ -3,6 +3,8 @@ import type { ImageStorage } from "./image-storage";
 import type { DatabaseRealtimeMutationEvent } from "./services/database-delta";
 import type { ToolSet } from "ai";
 import { AsyncLocalStorage } from "node:async_hooks";
+import type { MeetingLifecycleAction, MeetingStatus } from "./features/meetings/meeting-types";
+import type { MeetingAudioSource } from "./features/meetings/meeting-audio-ticket";
 
 export type OutboundEmailMessage = {
   from: string;
@@ -31,6 +33,18 @@ export type ServerRuntimeAdapter = {
     meetingId: string;
     userId: string;
   }): Promise<void>;
+  applyMeetingTranscriptUpdate?(input: {
+    draftItemId?: string;
+    env: RuntimeEnv;
+    meetingId: string;
+    segment: MeetingTranscriptYjsSegment;
+    userId: string;
+  }): Promise<void>;
+  claimMeetingRecorderSession?(input: MeetingRecorderRuntimeInput & {
+    recorderImage?: string | null;
+    recorderName?: string;
+    workspaceId: string;
+  }): Promise<MeetingRecorderRuntimeState>;
   createImageStorage?(env: RuntimeEnv): ImageStorage | null;
   getCollaborationWebSocketUrl?(request: Request, env: RuntimeEnv): string;
   getDatabaseRealtimeWebSocketUrl?(
@@ -42,17 +56,56 @@ export type ServerRuntimeAdapter = {
     env: RuntimeEnv,
   ): string;
   getMeetingAudioWebSocketUrl?(request: Request, env: RuntimeEnv): string;
+  getMeetingRecorderSession?(input: {
+    env: RuntimeEnv;
+    meetingId: string;
+  }): Promise<MeetingRecorderRuntimeState | null>;
   getDatabaseUrl?(env: RuntimeEnv): string | null | undefined;
   getImageStorageMode?(env: RuntimeEnv): "s3" | "binding" | null | undefined;
   publishDatabaseMutation?(input: {
     env: RuntimeEnv;
     event: DatabaseRealtimeMutationEvent;
   }): Promise<void>;
+  releaseMeetingRecorderSession?(
+    input: MeetingRecorderRuntimeInput,
+  ): Promise<void>;
   sendEmail?(input: {
     env: RuntimeEnv;
     message: OutboundEmailMessage;
   }): Promise<void>;
+  transitionMeetingRecorderSession?(input: MeetingRecorderRuntimeInput & {
+    action: Extract<
+      MeetingLifecycleAction,
+      "pause" | "resume" | "start" | "stop"
+    >;
+    durationMs?: number;
+  }): Promise<MeetingRecorderRuntimeState>;
   selfHosted?: false;
+};
+
+export type MeetingRecorderRuntimeInput = {
+  env: RuntimeEnv;
+  leaseId?: string;
+  meetingId: string;
+  userId: string;
+};
+
+export type MeetingRecorderRuntimeState = {
+  durationMs: number;
+  expiresAt: number;
+  leaseId: string;
+  recorderId: string;
+  recorderImage: string | null;
+  recorderName: string;
+  startedAt: number;
+  status: Extract<MeetingStatus, "paused" | "recording"> | "claimed" | "finishing";
+};
+
+export type MeetingTranscriptYjsSegment = {
+  id: string;
+  source: MeetingAudioSource;
+  startMs: number;
+  text: string;
 };
 
 export function getDatabaseRealtimeWebSocketUrl(

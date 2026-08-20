@@ -36,3 +36,7 @@ export function clampMeetingDuration(durationMs: number) {
 
   return Math.max(0, Math.min(Math.round(durationMs), MEETING_MAX_DURATION_MS));
 }
+
+export function isMeetingRecordingActive(status: MeetingStatus) {
+  return status === "recording" || status === "paused";
+}

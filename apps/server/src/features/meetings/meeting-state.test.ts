@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { clampMeetingDuration, getNextMeetingStatus } from "./meeting-state";
+import {
+  clampMeetingDuration,
+  getNextMeetingStatus,
+  isMeetingRecordingActive,
+} from "./meeting-state";
 import { MEETING_MAX_DURATION_MS } from "./meeting-types";
 
 test("meeting lifecycle only allows explicit transitions", () => {
@@ -24,4 +28,13 @@ test("meeting duration is bounded to the three hour product limit", () => {
     MEETING_MAX_DURATION_MS,
   );
   assert.equal(clampMeetingDuration(Number.NaN), 0);
+});
+
+test("a stopped meeting awaiting summary generation is deletable", () => {
+  assert.equal(isMeetingRecordingActive("recording"), true);
+  assert.equal(isMeetingRecordingActive("paused"), true);
+  assert.equal(isMeetingRecordingActive("processing"), false);
+  assert.equal(isMeetingRecordingActive("completed"), false);
+  assert.equal(isMeetingRecordingActive("failed"), false);
+  assert.equal(isMeetingRecordingActive("idle"), false);
 });

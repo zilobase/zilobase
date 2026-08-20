@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { resolveOpenAiChatModel } from "../../ai/ai-provider";
 import { replaceMeetingSummary } from "../../collaboration/service";
+import { getRuntimeAdapter } from "../../runtime-adapter";
 import { db } from "../../db";
 import { meeting, meetingTranscriptSegment } from "../../db/schema";
 import { ServiceMutationError } from "../../services/mutation-error";
@@ -32,6 +33,29 @@ export async function generateMeetingSummary(input: {
   userId: string;
 }) {
   const record = await getMeetingForUser(input.meetingId, input.userId, "edit");
+  if (
+    record.status === "recording" ||
+    record.status === "paused" ||
+    (record.recorderLeaseExpiresAt?.getTime() ?? 0) > Date.now()
+  ) {
+    throw new ServiceMutationError(
+      "Stop the recording before generating a summary",
+      409,
+    );
+  }
+  const runtimeState = await getRuntimeAdapter().getMeetingRecorderSession?.({
+    env: input.env,
+    meetingId: record.id,
+  });
+  if (
+    runtimeState &&
+    ["claimed", "recording", "paused", "finishing"].includes(runtimeState.status)
+  ) {
+    throw new ServiceMutationError(
+      "Wait for the recording transcript to finish before generating a summary",
+      409,
+    );
+  }
   const segments = await db
     .select()
     .from(meetingTranscriptSegment)
