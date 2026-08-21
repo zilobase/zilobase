@@ -27,6 +27,15 @@ export type RecoverableMeetingCapture = {
   startedAtEpochMs: number
 }
 
+export type MeetingTranscriptDraft = {
+  itemId: string
+  meetingId: string
+  source: MeetingCaptureSource
+  startMs: number
+  text: string
+  updatedAt: number
+}
+
 export type MeetingAudioDevice = {
   backend?: string
   captureMode?: "native-loopback" | "virtual-input" | "microphone"
@@ -61,6 +70,7 @@ export type MeetingCaptureController = {
   deleteLocalFile: () => Promise<void>
   devices: MeetingAudioDevice[]
   level: number
+  liveTranscripts: MeetingTranscriptDraft[] | undefined
   openLocalFile: () => Promise<void>
   pause: () => Promise<MeetingCaptureStatus>
   prepare: (config: MeetingCapturePrepareConfig) => Promise<void>

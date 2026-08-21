@@ -23,12 +23,15 @@ export function useMeetingCollaboration(meetingId: string | null) {
     "connecting" | "connected" | "disconnected" | "blocked"
   >("disconnected")
   const [error, setError] = useState<string | null>(null)
+  const [, setRevision] = useState(0)
 
   useEffect(() => {
     if (!meetingId) return
 
     const controller = new AbortController()
     const nextDocument = new Y.Doc()
+    const handleDocumentUpdate = () => setRevision((current) => current + 1)
+    nextDocument.on("update", handleDocumentUpdate)
     let activeProvider: HocuspocusProvider | null = null
     let disposed = false
     setStatus("connecting")
@@ -70,6 +73,7 @@ export function useMeetingCollaboration(meetingId: string | null) {
       disposed = true
       controller.abort()
       activeProvider?.destroy()
+      nextDocument.off("update", handleDocumentUpdate)
       nextDocument.destroy()
       setDocument(null)
       setProvider(null)

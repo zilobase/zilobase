@@ -12,12 +12,16 @@ import type {
   MeetingCaptureSource,
   MeetingCaptureStartConfig,
   MeetingCaptureStatus,
+  MeetingTranscriptDraft,
 } from "./meeting-capture-types"
 
 const SAMPLE_RATE = 24_000
 const FRAME_SAMPLES = 480
+const TRANSPORT_BATCH_FRAMES = 5
+const MAX_CAPTURE_MS = 3 * 60 * 60 * 1_000
 const RECOVERY_CHUNK_SAMPLES = SAMPLE_RATE * 5
 const MAX_TRANSPORT_FRAMES = 1_500
+const MAX_CAPTURE_CATCH_UP_FRAMES = 25
 
 type Listener = () => void
 
@@ -51,6 +55,7 @@ export class BrowserMeetingCapture {
   private preparationVersion = 0
   private prepared: PreparedBrowserCapture | null = null
   level = 0
+  liveTranscripts: MeetingTranscriptDraft[] | undefined = undefined
   recovery = null as Awaited<ReturnType<typeof listBrowserMeetingRecovery>>[number] | null
   status: MeetingCaptureStatus | null = null
 
@@ -242,6 +247,20 @@ export class BrowserMeetingCapture {
         config.audioWebsocketUrl,
         config.audioTicket,
         (message) => this.warn(message),
+        undefined,
+        (draft) => {
+          if (!draft) {
+            this.liveTranscripts = []
+          } else {
+            const next = (this.liveTranscripts ?? []).filter(
+              (current) => current.source !== draft.source,
+            )
+            if (draft.text) next.push({ ...draft, meetingId: config.meetingId })
+            this.liveTranscripts = next
+          }
+          this.emit()
+        },
+        activeSources,
       )
       transport.start()
       const active: ActiveBrowserCapture = {
@@ -287,7 +306,13 @@ export class BrowserMeetingCapture {
   async pause() {
     if (!this.active || !this.status) throw new Error("No meeting capture is active.")
     await this.active.audioContext.suspend()
-    this.active.transport.pause()
+    try {
+      await this.active.transport.pause()
+    } catch (error) {
+      await this.active.audioContext.resume().catch(() => undefined)
+      await this.active.transport.resume().catch(() => undefined)
+      throw error
+    }
     this.setStatus({ ...this.status, phase: "paused" })
     return this.status!
   }
@@ -295,11 +320,11 @@ export class BrowserMeetingCapture {
   async resume() {
     if (!this.active || !this.status) throw new Error("No meeting capture is active.")
     this.active.captureStartedAt = performance.now()
-    this.active.transport.resume()
+    await this.active.transport.resume()
     try {
       await this.active.audioContext.resume()
     } catch (error) {
-      this.active.transport.pause()
+      await this.active.transport.pause().catch(() => undefined)
       throw error
     }
     this.setStatus({ ...this.status, phase: "recording" })
@@ -314,15 +339,20 @@ export class BrowserMeetingCapture {
     this.flushRecovery(active, "microphone", true)
     this.flushRecovery(active, "system", true)
     await active.recoveryWrites.catch(() => undefined)
-    active.transport.stop()
-    active.microphoneStream?.getTracks().forEach((track) => track.stop())
-    active.displayStream?.getTracks().forEach((track) => track.stop())
-    active.audioNodes.forEach((node) => node.disconnect())
-    await active.audioContext.close()
     const elapsedMs = this.status.elapsedMs
-    await finishBrowserMeetingRecovery(this.status.meetingId!, elapsedMs).catch(() => undefined)
-    this.setStatus({ ...this.status, activeSources: [], phase: "stopped" })
-    await this.loadRecovery(this.status.meetingId!)
+    const meetingId = this.status.meetingId!
+    try {
+      await active.transport.stop(elapsedMs)
+    } finally {
+      this.liveTranscripts = []
+      active.microphoneStream?.getTracks().forEach((track) => track.stop())
+      active.displayStream?.getTracks().forEach((track) => track.stop())
+      active.audioNodes.forEach((node) => node.disconnect())
+      await active.audioContext.close().catch(() => undefined)
+      await finishBrowserMeetingRecovery(meetingId, elapsedMs).catch(() => undefined)
+      this.setStatus({ ...this.status!, activeSources: [], phase: "stopped" })
+      await this.loadRecovery(meetingId)
+    }
     return this.status!
   }
 
@@ -345,27 +375,82 @@ export class BrowserMeetingCapture {
     const status = this.status
     if (!active || !status || status.phase !== "recording") return
     if (performance.now() - active.captureStartedAt < 100) return
-    const microphone = active.activeSources.includes("microphone")
-      ? active.queues.microphone.take(FRAME_SAMPLES)
-      : new Float32Array(FRAME_SAMPLES)
-    const system = active.activeSources.includes("system")
-      ? active.queues.system.take(FRAME_SAMPLES)
-      : new Float32Array(FRAME_SAMPLES)
-    const mixed = mixSources(microphone, system, active.activeSources)
-    active.transport.send(mixed)
-    if (active.activeSources.includes("microphone")) {
-      active.recovery.microphone.push(...floatToPcm(microphone))
-      this.flushRecovery(active, "microphone")
+    const sourceFrameCounts: Record<MeetingCaptureSource, number> = {
+      microphone: active.activeSources.includes("microphone")
+        ? Math.min(
+            MAX_CAPTURE_CATCH_UP_FRAMES,
+            Math.floor(active.queues.microphone.available / FRAME_SAMPLES),
+          )
+        : 0,
+      system: active.activeSources.includes("system")
+        ? Math.min(
+            MAX_CAPTURE_CATCH_UP_FRAMES,
+            Math.floor(active.queues.system.available / FRAME_SAMPLES),
+          )
+        : 0,
     }
-    if (active.activeSources.includes("system")) {
-      active.recovery.system.push(...floatToPcm(system))
-      this.flushRecovery(active, "system")
+    const frameCount = Math.max(
+      sourceFrameCounts.microphone,
+      sourceFrameCounts.system,
+    )
+    if (frameCount === 0) return
+
+    let level = 0
+    for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+      const microphone = frameIndex < sourceFrameCounts.microphone
+        ? active.queues.microphone.take(FRAME_SAMPLES)
+        : new Float32Array(FRAME_SAMPLES)
+      const system = frameIndex < sourceFrameCounts.system
+        ? active.queues.system.take(FRAME_SAMPLES)
+        : new Float32Array(FRAME_SAMPLES)
+      const mixed = mixSources(microphone, system, active.activeSources)
+      if (frameIndex < sourceFrameCounts.microphone) {
+        active.transport.send(microphone, "microphone")
+        active.recovery.microphone.push(...floatToPcm(microphone))
+        this.flushRecovery(active, "microphone")
+      }
+      if (frameIndex < sourceFrameCounts.system) {
+        active.transport.send(system, "system")
+        active.recovery.system.push(...floatToPcm(system))
+        this.flushRecovery(active, "system")
+      }
+      const peak = mixed.reduce(
+        (value, sample) => Math.max(value, Math.abs(sample)),
+        0,
+      )
+      const rms = Math.sqrt(
+        mixed.reduce((value, sample) => value + sample * sample, 0) /
+          mixed.length,
+      )
+      level = Math.max(level, Math.min(1, Math.max(peak, rms * 4)))
     }
-    const peak = mixed.reduce((value, sample) => Math.max(value, Math.abs(sample)), 0)
-    const rms = Math.sqrt(mixed.reduce((value, sample) => value + sample * sample, 0) / mixed.length)
-    this.level = Math.min(1, Math.max(peak, rms * 4))
-    this.status = { ...status, elapsedMs: status.elapsedMs + 20 }
+    this.level = level
+    const elapsedMs = Math.min(
+      MAX_CAPTURE_MS,
+      status.elapsedMs + frameCount * 20,
+    )
+    this.status = { ...status, elapsedMs }
     this.emit()
+    if (elapsedMs >= MAX_CAPTURE_MS) {
+      this.warn("The three-hour recording limit was reached; the meeting was stopped.")
+      void this.stop().catch((error) => {
+        this.warn(error instanceof Error
+          ? error.message
+          : "The meeting could not be finalized automatically.")
+      })
+    } else if (Math.max(
+      active.activeSources.includes("microphone")
+        ? active.queues.microphone.available
+        : 0,
+      active.activeSources.includes("system")
+        ? active.queues.system.available
+        : 0,
+    ) >= FRAME_SAMPLES) {
+      // Once a throttled interval gets one execution turn, microtasks can
+      // drain the remaining bounded chunks without waiting for another
+      // background-tab timer tick.
+      queueMicrotask(() => this.processFrame())
+    }
   }
 
   private sourceEnded(source: MeetingCaptureSource) {
@@ -446,6 +531,10 @@ function supportsDisplayAudio() {
 class SampleQueue {
   private offset = 0
   private samples: number[] = []
+
+  get available() {
+    return this.samples.length - this.offset
+  }
 
   push(values: Float32Array) {
     this.samples.push(...values)
@@ -570,7 +659,7 @@ function attachStream(
   return [source, capture, sink]
 }
 
-type BrowserMeetingTransportState = "paused" | "recording" | "stopped"
+type BrowserMeetingTransportState = "failed" | "paused" | "recording" | "stopped"
 
 type BrowserMeetingTransportDependencies = {
   clearTimeout: (timer: number) => void
@@ -586,47 +675,99 @@ const defaultBrowserMeetingTransportDependencies: BrowserMeetingTransportDepende
   setTimeout: (callback, delay) => window.setTimeout(callback, delay),
 }
 
+const MAX_TRANSCRIPTION_RECONNECT_ATTEMPTS = 6
+const MEETING_TRANSCRIPTION_FATAL_CLOSE_CODE = 4400
+const TRANSCRIPTION_STABLE_CONNECTION_MS = 30_000
+
 export class BrowserMeetingTransport {
   private audioTicket: string
   private audioWebsocketUrl: string
   private readonly dependencies: BrowserMeetingTransportDependencies
   private readonly onWarning: (message: string) => void
+  private readonly onTranscript: (
+    draft: Omit<MeetingTranscriptDraft, "meetingId"> | null,
+  ) => void
+  private readonly activeSources: MeetingCaptureSource[]
+  private inFlight: Uint8Array[] = []
+  private pendingSamples: Record<MeetingCaptureSource, Float32Array[]> = {
+    microphone: [],
+    system: [],
+  }
+  private pendingSampleCounts: Record<MeetingCaptureSource, number> = {
+    microphone: 0,
+    system: 0,
+  }
+  private pendingSequences: Record<MeetingCaptureSource, number | null> = {
+    microphone: null,
+    system: null,
+  }
   private queue: Uint8Array[] = []
   private reconnectAttempt = 0
+  private reconnectResetTimer: number | null = null
   private reconnectTimer: number | null = null
-  private sequence = 0
+  private sequences: Record<MeetingCaptureSource, number> = {
+    microphone: 0,
+    system: 0,
+  }
   private socket: WebSocket | null = null
   private state: BrowserMeetingTransportState = "stopped"
+  private providerReady = false
+  private readonly eventWaiters = new Map<string, {
+    reject: (reason: Error) => void
+    resolve: () => void
+    timer: number
+  }>()
 
   constructor(
     url: string,
     ticket: string,
     onWarning: (message: string) => void,
     dependencies: BrowserMeetingTransportDependencies = defaultBrowserMeetingTransportDependencies,
+    onTranscript: (
+      draft: Omit<MeetingTranscriptDraft, "meetingId"> | null,
+    ) => void = () => undefined,
+    activeSources: MeetingCaptureSource[] = ["microphone"],
   ) {
     this.audioWebsocketUrl = url
     this.audioTicket = ticket
     this.dependencies = dependencies
     this.onWarning = onWarning
+    this.onTranscript = onTranscript
+    this.activeSources = [...activeSources]
   }
 
   start() {
     if (this.state !== "stopped") return
+    this.reconnectAttempt = 0
     this.state = "recording"
     this.connect()
   }
 
-  pause() {
+  async pause() {
     if (this.state !== "recording") return
+    this.flushSamples()
+    this.drainQueue(true)
     this.state = "paused"
     this.cancelReconnect()
-    this.closeSocket("Meeting paused")
+    this.cancelReconnectReset()
+    if (this.socket?.readyState === 1) {
+      const paused = this.waitForEvent("recording.paused")
+      this.socket.send(JSON.stringify({ type: "recording.pause" }))
+      await paused
+    }
   }
 
-  resume() {
+  async resume() {
     if (this.state !== "paused") return
     this.state = "recording"
-    this.connect()
+    this.providerReady = false
+    const ready = this.waitForEvent("meeting.ready")
+    if (this.socket?.readyState === 1) {
+      this.socket.send(JSON.stringify({ type: "recording.resume" }))
+    } else {
+      this.connect()
+    }
+    await ready
   }
 
   refresh(url: string, ticket: string) {
@@ -638,32 +779,78 @@ export class BrowserMeetingTransport {
     }
   }
 
-  send(samples: Float32Array) {
-    if (this.state !== "recording") return
-    const frame = new Uint8Array(8 + samples.length * 2)
+  send(samples: Float32Array, source: MeetingCaptureSource = "microphone") {
+    if (this.state !== "recording" || !this.activeSources.includes(source)) return
+    const sequence = this.sequences[source]++
+    this.pendingSequences[source] ??= sequence
+    this.pendingSamples[source].push(samples.slice())
+    this.pendingSampleCounts[source] += samples.length
+    if (this.pendingSampleCounts[source] < FRAME_SAMPLES * TRANSPORT_BATCH_FRAMES) return
+    this.flushSourceSamples(source)
+  }
+
+  private flushSamples() {
+    for (const source of this.activeSources) this.flushSourceSamples(source)
+  }
+
+  private flushSourceSamples(source: MeetingCaptureSource) {
+    const pendingSampleCount = this.pendingSampleCounts[source]
+    const pendingSequence = this.pendingSequences[source]
+    if (pendingSampleCount === 0 || pendingSequence === null) return
+    const samples = new Float32Array(pendingSampleCount)
+    let sampleOffset = 0
+    for (const chunk of this.pendingSamples[source]) {
+      samples.set(chunk, sampleOffset)
+      sampleOffset += chunk.length
+    }
+    const frame = new Uint8Array(9 + samples.length * 2)
     const view = new DataView(frame.buffer)
-    view.setBigUint64(0, BigInt(this.sequence++), true)
+    view.setBigUint64(0, BigInt(pendingSequence), true)
+    view.setUint8(8, meetingAudioSourceCode(source))
     for (let index = 0; index < samples.length; index += 1) {
-      view.setInt16(8 + index * 2, Math.round(
+      view.setInt16(9 + index * 2, Math.round(
         Math.max(-1, Math.min(1, samples[index])) * 0x7fff,
       ), true)
     }
-    if (this.socket?.readyState === 1 && this.socket.bufferedAmount < 1_048_576) {
-      this.socket.send(frame)
-      return
-    }
-    this.queue.push(frame)
-    if (this.queue.length > MAX_TRANSPORT_FRAMES) {
-      this.queue.shift()
-      this.onWarning("Transcription is falling behind; local recording is still complete.")
-    }
+    this.pendingSamples[source] = []
+    this.pendingSampleCounts[source] = 0
+    this.pendingSequences[source] = null
+    this.enqueueFrame(frame)
+    this.drainQueue()
   }
 
-  stop() {
+  async stop(durationMs: number) {
     if (this.state === "stopped") return
-    this.state = "stopped"
+    if (this.state === "failed") {
+      this.state = "stopped"
+      this.rejectEventWaiters(new Error("Meeting transcription is unavailable."))
+      return
+    }
+    this.flushSamples()
     this.cancelReconnect()
-    this.closeSocket("Meeting stopped")
+    this.cancelReconnectReset()
+    if (this.socket?.readyState !== 1 || !this.providerReady) {
+      this.state = "recording"
+      this.providerReady = false
+      const ready = this.waitForEvent("meeting.ready")
+      this.connect()
+      try {
+        await ready
+      } catch (error) {
+        this.state = "stopped"
+        this.closeSocket("Meeting stopped")
+        throw error
+      }
+    }
+    this.drainQueue(true)
+    this.state = "stopped"
+    const completed = this.waitForEvent("recording.flush.completed", 20_000)
+    this.socket!.send(JSON.stringify({ durationMs, type: "recording.stop" }))
+    try {
+      await completed
+    } finally {
+      this.closeSocket("Meeting stopped")
+    }
   }
 
   private connect() {
@@ -671,33 +858,92 @@ export class BrowserMeetingTransport {
     if (this.socket && this.socket.readyState < 2) return
     const url = this.dependencies.resolveUrl(this.audioWebsocketUrl)
     const socket = this.dependencies.createSocket(url.toString(), [
-      "zilobase.meeting-audio.v1",
+      "zilobase.meeting-audio.v2",
       `zilobase.meeting-audio.auth.${this.audioTicket}`,
     ])
+    this.providerReady = false
     socket.binaryType = "arraybuffer"
     socket.onopen = () => {
       if (this.socket !== socket || this.state !== "recording") {
         socket.close(1000, "Meeting capture inactive")
         return
       }
-      this.reconnectAttempt = 0
-      while (this.queue.length && socket.bufferedAmount < 1_048_576) {
-        socket.send(this.queue.shift()!)
-      }
+      socket.send(JSON.stringify({
+        sources: this.activeSources,
+        type: "recording.configure",
+      }))
     }
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       if (this.socket !== socket) return
       this.socket = null
-      if (this.state !== "recording") return
+      this.providerReady = false
+      this.cancelReconnectReset()
+      if (this.state !== "recording") {
+        this.rejectEventWaiters(new Error("Meeting transcription connection closed."))
+        return
+      }
+      if (event.code === MEETING_TRANSCRIPTION_FATAL_CLOSE_CODE) {
+        this.failPermanently(
+          "Meeting transcription could not start. Check the configured transcription model and API access; local recording continues.",
+        )
+        return
+      }
+      if (this.reconnectAttempt >= MAX_TRANSCRIPTION_RECONNECT_ATTEMPTS) {
+        this.failPermanently(
+          "Meeting transcription is unavailable after repeated reconnects; local recording continues.",
+        )
+        return
+      }
+      this.onWarning("Meeting transcription disconnected; local recording continues.")
       const delay = Math.min(30_000, 500 * 2 ** this.reconnectAttempt++)
       this.reconnectTimer = this.dependencies.setTimeout(() => {
         this.reconnectTimer = null
         this.connect()
       }, delay)
     }
+    socket.onmessage = (event) => {
+      if (this.socket !== socket || typeof event.data !== "string") return
+      const control = parseMeetingAudioEvent(event.data)
+      if (control?.type === "meeting.ready") {
+        const nextSequences = readNextMeetingAudioSequences(control.nextSequences)
+        if (nextSequences) this.reconcileFrames(nextSequences)
+        this.providerReady = true
+        this.resolveEventWaiter("meeting.ready")
+        this.cancelReconnectReset()
+        this.reconnectResetTimer = this.dependencies.setTimeout(() => {
+          this.reconnectResetTimer = null
+          if (this.socket === socket && this.providerReady) {
+            this.reconnectAttempt = 0
+          }
+        }, TRANSCRIPTION_STABLE_CONNECTION_MS)
+        this.drainQueue()
+        return
+      }
+      if (control?.type === "recording.paused") {
+        this.resolveEventWaiter("recording.paused")
+        return
+      }
+      if (control?.type === "recording.flush.completed") {
+        this.resolveEventWaiter("recording.flush.completed")
+        return
+      }
+      if (control?.type === "recording.ticket" && typeof control.token === "string") {
+        this.audioTicket = control.token
+        return
+      }
+      if (control?.type === "recording.error") {
+        this.rejectEventWaiters(new Error(
+          typeof control.message === "string"
+            ? control.message
+            : "Meeting recording failed.",
+        ))
+        return
+      }
+      const draft = parseTranscriptDelta(event.data)
+      if (draft !== undefined) this.onTranscript(draft)
+    }
     socket.onerror = () => {
       if (this.socket !== socket || this.state !== "recording") return
-      this.onWarning("Meeting transcription disconnected; local recording continues.")
       socket.close()
     }
     this.socket = socket
@@ -709,9 +955,188 @@ export class BrowserMeetingTransport {
     this.reconnectTimer = null
   }
 
+  private cancelReconnectReset() {
+    if (this.reconnectResetTimer === null) return
+    this.dependencies.clearTimeout(this.reconnectResetTimer)
+    this.reconnectResetTimer = null
+  }
+
   private closeSocket(reason: string) {
+    this.cancelReconnectReset()
     const socket = this.socket
     this.socket = null
     if (socket && socket.readyState < 2) socket.close(1000, reason)
+  }
+
+  private failPermanently(message: string) {
+    this.state = "failed"
+    this.cancelReconnect()
+    this.cancelReconnectReset()
+    this.pendingSamples = { microphone: [], system: [] }
+    this.pendingSampleCounts = { microphone: 0, system: 0 }
+    this.pendingSequences = { microphone: null, system: null }
+    this.queue = []
+    this.inFlight = []
+    this.rejectEventWaiters(new Error(message))
+    this.onTranscript(null)
+    this.onWarning(message)
+  }
+
+  private enqueueFrame(frame: Uint8Array) {
+    this.queue.push(frame)
+    if (this.queue.length <= MAX_TRANSPORT_FRAMES) return
+    this.queue.shift()
+    this.onWarning("Transcription is falling behind; local recording is still complete.")
+  }
+
+  private drainQueue(force = false) {
+    const socket = this.socket
+    if (!this.providerReady || socket?.readyState !== 1) return
+    while (
+      this.queue.length > 0
+      && (force || socket.bufferedAmount < 1_048_576)
+    ) {
+      const frame = this.queue.shift()!
+      socket.send(frame)
+      this.inFlight.push(frame)
+      if (this.inFlight.length > MAX_TRANSPORT_FRAMES) this.inFlight.shift()
+    }
+  }
+
+  private reconcileFrames(nextSequences: Partial<Record<MeetingCaptureSource, number>>) {
+    const replay = [...this.inFlight, ...this.queue]
+      .map((frame) => {
+        const source = meetingAudioFrameSource(frame)
+        return source
+          ? trimQueuedMeetingAudioFrame(frame, nextSequences[source] ?? 0)
+          : null
+      })
+      .filter((frame): frame is Uint8Array => frame !== null)
+    this.inFlight = []
+    this.queue = replay
+    if (this.queue.length <= MAX_TRANSPORT_FRAMES) return
+    this.queue.splice(0, this.queue.length - MAX_TRANSPORT_FRAMES)
+    this.onWarning("Transcription replay exceeded its buffer; local recording is still complete.")
+  }
+
+  private waitForEvent(type: string, timeoutMs = 15_000) {
+    const existing = this.eventWaiters.get(type)
+    if (existing) {
+      this.dependencies.clearTimeout(existing.timer)
+      existing.reject(new Error(`Superseded waiting for ${type}`))
+    }
+    return new Promise<void>((resolve, reject) => {
+      const timer = this.dependencies.setTimeout(() => {
+        this.eventWaiters.delete(type)
+        reject(new Error(`Timed out waiting for ${type}`))
+      }, timeoutMs)
+      this.eventWaiters.set(type, { reject, resolve, timer })
+    })
+  }
+
+  private resolveEventWaiter(type: string) {
+    const waiter = this.eventWaiters.get(type)
+    if (!waiter) return
+    this.eventWaiters.delete(type)
+    this.dependencies.clearTimeout(waiter.timer)
+    waiter.resolve()
+  }
+
+  private rejectEventWaiters(reason: Error) {
+    for (const waiter of this.eventWaiters.values()) {
+      this.dependencies.clearTimeout(waiter.timer)
+      waiter.reject(reason)
+    }
+    this.eventWaiters.clear()
+  }
+}
+
+function readNextMeetingAudioSequences(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const entries = Object.entries(value as Record<string, unknown>)
+  const result: Partial<Record<MeetingCaptureSource, number>> = {}
+  for (const [source, sequence] of entries) {
+    if (
+      (source !== "microphone" && source !== "system")
+      || typeof sequence !== "number"
+      || !Number.isSafeInteger(sequence)
+      || sequence < 0
+    ) return null
+    result[source] = sequence
+  }
+  return entries.length > 0 ? result : null
+}
+
+export function trimQueuedMeetingAudioFrame(
+  frame: Uint8Array,
+  nextSequence: number,
+) {
+  if (
+    frame.byteLength < 9 + FRAME_SAMPLES * 2
+    || (frame.byteLength - 9) % (FRAME_SAMPLES * 2) !== 0
+  ) return null
+  const view = new DataView(frame.buffer, frame.byteOffset, frame.byteLength)
+  const sequenceValue = view.getBigUint64(0, true)
+  if (sequenceValue > BigInt(Number.MAX_SAFE_INTEGER)) return null
+  const sequence = Number(sequenceValue)
+  const frameCount = (frame.byteLength - 9) / (FRAME_SAMPLES * 2)
+  const endSequence = sequence + frameCount - 1
+  if (endSequence < nextSequence) return null
+  if (sequence >= nextSequence) return frame
+
+  const skippedFrames = nextSequence - sequence
+  const trimmed = new Uint8Array(
+    9 + (frameCount - skippedFrames) * FRAME_SAMPLES * 2,
+  )
+  new DataView(trimmed.buffer).setBigUint64(0, BigInt(nextSequence), true)
+  trimmed[8] = frame[8]
+  trimmed.set(frame.subarray(9 + skippedFrames * FRAME_SAMPLES * 2), 9)
+  return trimmed
+}
+
+function meetingAudioSourceCode(source: MeetingCaptureSource) {
+  return source === "microphone" ? 0 : 1
+}
+
+function meetingAudioFrameSource(frame: Uint8Array): MeetingCaptureSource | null {
+  if (frame.byteLength < 9) return null
+  if (frame[8] === 0) return "microphone"
+  if (frame[8] === 1) return "system"
+  return null
+}
+
+function parseMeetingAudioEvent(raw: string): Record<string, unknown> | null {
+  try {
+    const value = JSON.parse(raw) as unknown
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : null
+  } catch {
+    return null
+  }
+}
+
+function parseTranscriptDelta(
+  raw: string,
+): Omit<MeetingTranscriptDraft, "meetingId"> | null | undefined {
+  try {
+    const value = JSON.parse(raw) as Record<string, unknown>
+    if (value.type !== "transcript.delta") return undefined
+    if (
+      typeof value.itemId !== "string"
+      || (value.source !== "microphone" && value.source !== "system")
+      || typeof value.startMs !== "number"
+      || typeof value.text !== "string"
+      || typeof value.updatedAt !== "number"
+    ) return undefined
+    return {
+      itemId: value.itemId,
+      source: value.source,
+      startMs: value.startMs,
+      text: value.text,
+      updatedAt: value.updatedAt,
+    }
+  } catch {
+    return undefined
   }
 }

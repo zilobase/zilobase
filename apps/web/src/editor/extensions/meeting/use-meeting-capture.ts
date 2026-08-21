@@ -8,6 +8,7 @@ import type {
   MeetingCaptureController,
   MeetingCaptureStartConfig,
   MeetingCaptureStatus,
+  MeetingTranscriptDraft,
   RecoverableMeetingCapture,
 } from "./meeting-capture-types"
 
@@ -17,6 +18,9 @@ export function useMeetingCapture(meetingId: string): MeetingCaptureController {
   const [level, setLevel] = useState(0)
   const [devices, setDevices] = useState<MeetingAudioDevice[]>([])
   const [status, setStatus] = useState<MeetingCaptureStatus | null>(null)
+  const [liveTranscripts, setLiveTranscripts] = useState<
+    MeetingTranscriptDraft[] | undefined
+  >(undefined)
   const [recovery, setRecovery] = useState<RecoverableMeetingCapture | null>(null)
   const native = isTauri()
 
@@ -28,6 +32,9 @@ export function useMeetingCapture(meetingId: string): MeetingCaptureController {
       const sync = () => {
         if (cancelled) return
         setLevel(browserCapture.level)
+        setLiveTranscripts(browserCapture.liveTranscripts?.filter(
+          (draft) => draft.meetingId === meetingId,
+        ))
         setStatus(browserCapture.status?.meetingId === meetingId ? browserCapture.status : null)
         setRecovery(browserCapture.recovery?.meetingId === meetingId
           ? browserCapture.recovery
@@ -64,6 +71,7 @@ export function useMeetingCapture(meetingId: string): MeetingCaptureController {
     void listen<MeetingCaptureStatus>("meeting-capture-state", ({ payload }) => {
       if (payload.meetingId === meetingId) {
         setStatus(payload)
+        if (payload.phase === "stopped") setLiveTranscripts([])
         if (payload.phase === "stopped") void loadRecovery()
       }
     }).then((unlisten) => {
@@ -87,6 +95,26 @@ export function useMeetingCapture(meetingId: string): MeetingCaptureController {
           }
         : current)
     }).then((unlisten) => {
+      if (cancelled) unlisten()
+      else unlisteners.push(unlisten)
+    })
+    void listen<MeetingTranscriptDraft | null>(
+      "meeting-capture-transcript",
+      ({ payload }) => {
+        if (payload === null) {
+          setLiveTranscripts([])
+          return
+        }
+        if (payload.meetingId !== meetingId) return
+        setLiveTranscripts((current) => {
+          const next = (current ?? []).filter(
+            (draft) => draft.source !== payload.source,
+          )
+          if (payload.text) next.push(payload)
+          return next
+        })
+      },
+    ).then((unlisten) => {
       if (cancelled) unlisten()
       else unlisteners.push(unlisten)
     })
@@ -131,6 +159,7 @@ export function useMeetingCapture(meetingId: string): MeetingCaptureController {
     deleteLocalFile,
     devices,
     level,
+    liveTranscripts,
     openLocalFile,
     pause,
     prepare,
