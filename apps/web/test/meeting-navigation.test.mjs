@@ -35,18 +35,42 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(calls, [{ behavior: "smooth", block: "center" }])
   })
 
-  test("meeting sidebar links target host pages without an index route", async () => {
-    const [navigationSource, routerSource] = await Promise.all([
-      readFile(
-        new URL("../src/components/nav-meetings.tsx", import.meta.url),
-        "utf8",
-      ),
-      readFile(new URL("../src/router.tsx", import.meta.url), "utf8"),
-    ])
+  test("meeting sidebar links target full meeting pages", async () => {
+    const [
+      navigationSource,
+      sidebarSource,
+      meetingPageSource,
+      meetingViewSource,
+      routerSource,
+    ] = await Promise.all([
+        readFile(
+          new URL("../src/components/nav-meetings.tsx", import.meta.url),
+          "utf8",
+        ),
+        readFile(
+          new URL("../src/components/sidebar-nav-list.tsx", import.meta.url),
+          "utf8",
+        ),
+        readFile(new URL("../src/pages/meeting.tsx", import.meta.url), "utf8"),
+        readFile(
+          new URL(
+            "../src/editor/extensions/meeting/meeting-view.tsx",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+        readFile(new URL("../src/router.tsx", import.meta.url), "utf8"),
+      ])
 
-    assert.match(navigationSource, /to="\/p\/\$pageId"/)
-    assert.match(navigationSource, /search=\{\{ meeting: meeting\.id \}\}/)
-    assert.doesNotMatch(navigationSource, /to="\/m\/\$meetingId"/)
+    assert.match(navigationSource, /to="\/m\/\$meetingId"/)
+    assert.match(sidebarSource, /to="\/m\/\$meetingId"/)
+    assert.doesNotMatch(navigationSource, /to="\/p\/\$pageId"/)
+    assert.match(meetingPageSource, /embeddedPage=\{\{/)
+    assert.match(meetingViewSource, /PageIconDisplay size="sm"/)
+    assert.match(meetingViewSource, /ArrowUpRightIcon className=/)
+    assert.match(meetingViewSource, /search=\{\{ meeting: meetingId \}\}/)
+    assert.match(meetingViewSource, /to="\/p\/\$pageId"/)
+    assert.doesNotMatch(meetingViewSource, /Embedded in/)
     assert.doesNotMatch(routerSource, /path: "\/meetings"/)
   })
 }

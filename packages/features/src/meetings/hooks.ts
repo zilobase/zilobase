@@ -4,7 +4,6 @@ import { useZilobaseFeatures } from "../context"
 import {
   meetingKeys,
   meetingQueryOptions,
-  meetingTranscriptQueryOptions,
   workspaceMeetingsQueryOptions,
   type CreateMeetingInput,
   type MeetingLifecycleAction,
@@ -26,14 +25,6 @@ export function useMeeting(meetingId: string | null | undefined) {
 export function useWorkspaceMeetings(workspaceId: string | null | undefined) {
   const { apiFetch } = useZilobaseFeatures()
   return useQuery(workspaceMeetingsQueryOptions(apiFetch, workspaceId))
-}
-
-export function useMeetingTranscript(
-  meetingId: string | null | undefined,
-  live = false,
-) {
-  const { apiFetch } = useZilobaseFeatures()
-  return useQuery(meetingTranscriptQueryOptions(apiFetch, meetingId, live))
 }
 
 export function useCreateMeeting() {
@@ -103,9 +94,14 @@ export function useUpdateMeeting(meetingId: string) {
         queryClient.setQueryData(meetingKeys.detail(meetingId), context.previous)
       }
     },
-    onSuccess: (payload) => {
+    onSuccess: (payload, patch) => {
       queryClient.setQueryData(meetingKeys.detail(meetingId), payload)
       void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
+      if (patch.title !== undefined && payload.meeting.notesPageId) {
+        void queryClient.invalidateQueries({
+          queryKey: pageQueryKey(payload.meeting.notesPageId),
+        })
+      }
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })
@@ -116,12 +112,16 @@ export function useUpdateMeeting(meetingId: string) {
 export function useMeetingLifecycle(meetingId: string) {
   const { apiFetch, queryClient } = useZilobaseFeatures()
   return useMutation({
-    mutationFn: ({ action, durationMs }: {
+    mutationFn: ({ action, durationMs, leaseId }: {
       action: MeetingLifecycleAction
       durationMs?: number
+      leaseId?: string
     }) =>
       apiFetch<MeetingResponse>(`/meetings/${meetingId}/${action}`, {
-        body: JSON.stringify(durationMs === undefined ? {} : { durationMs }),
+        body: JSON.stringify({
+          ...(durationMs === undefined ? {} : { durationMs }),
+          ...(leaseId ? { leaseId } : {}),
+        }),
         method: "POST",
       }),
     onSuccess: (payload) => {
@@ -149,13 +149,6 @@ export function useMeetingRecorder(meetingId: string) {
       void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
   })
-  const heartbeat = useMutation({
-    mutationFn: (leaseId: string) =>
-      apiFetch<MeetingRecorderClaim>(
-        `/meetings/${meetingId}/recorder/heartbeat`,
-        { body: JSON.stringify({ leaseId }), method: "POST" },
-      ),
-  })
   const release = useMutation({
     mutationFn: (leaseId: string) =>
       apiFetch<MeetingResponse>(`/meetings/${meetingId}/recorder/release`, {
@@ -167,7 +160,7 @@ export function useMeetingRecorder(meetingId: string) {
       void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
   })
-  return { claim, heartbeat, release }
+  return { claim, release }
 }
 
 export function useGenerateMeetingSummary(meetingId: string) {

@@ -4,8 +4,6 @@ import test from "node:test"
 import {
   meetingKeys,
   meetingQueryOptions,
-  meetingTranscriptQueryOptions,
-  normalizeMeetingListResponse,
   workspaceMeetingsQueryOptions,
 } from "./queries"
 
@@ -26,32 +24,6 @@ test("meeting query keys are hierarchical and scoped by meeting", () => {
   )
 })
 
-test("workspace meeting queries normalize restored and legacy list payloads", () => {
-  const meeting = { id: "meeting-1" }
-
-  assert.deepEqual(normalizeMeetingListResponse(undefined), { meetings: [] })
-  assert.deepEqual(normalizeMeetingListResponse({}), { meetings: [] })
-  assert.deepEqual(normalizeMeetingListResponse([meeting]), {
-    meetings: [meeting],
-  })
-  assert.deepEqual(normalizeMeetingListResponse({ meetings: [meeting] }), {
-    meetings: [meeting],
-  })
-})
-
-test("live transcript queries poll with their own scoped cache key", () => {
-  const options = meetingTranscriptQueryOptions(async () => ({
-    segments: [],
-  }), "meeting-1", true)
-  assert.deepEqual(options.queryKey, [
-    "meetings",
-    "detail",
-    "meeting-1",
-    "transcript",
-  ])
-  assert.equal(options.refetchInterval, 2_000)
-})
-
 test("meeting detail queries forward cancellation and use a bounded stale time", async () => {
   const calls: unknown[] = []
   const options = meetingQueryOptions(async (path, init) => {
@@ -70,26 +42,27 @@ test("meeting detail queries forward cancellation and use a bounded stale time",
   assert.equal(options.staleTime, 30_000)
 })
 
-test("meeting detail queries poll only while the meeting is live", () => {
+test("meeting detail queries never poll for live state", () => {
   const options = meetingQueryOptions(async () => ({
     meeting: { id: "meeting-1" },
   }) as never, "meeting-1")
-  const interval = options.refetchInterval
+  assert.equal(options.refetchInterval, false)
+})
 
-  assert.equal(typeof interval, "function")
-  if (typeof interval !== "function") return
+test("workspace meeting queries request the canonical response shape", async () => {
+  const calls: unknown[] = []
+  const options = workspaceMeetingsQueryOptions(async (path, init) => {
+    calls.push({ init, path })
+    return { meetings: [] }
+  }, "workspace-1")
+  const controller = new AbortController()
 
-  for (const status of ["idle", "completed", "failed"] as const) {
-    assert.equal(
-      interval({ state: { data: { meeting: { status } } } } as never),
-      false,
-    )
-  }
-
-  for (const status of ["recording", "paused", "processing"] as const) {
-    assert.equal(
-      interval({ state: { data: { meeting: { status } } } } as never),
-      5_000,
-    )
-  }
+  assert.deepEqual(
+    await options.queryFn?.({ signal: controller.signal } as never),
+    { meetings: [] },
+  )
+  assert.deepEqual(calls, [{
+    init: { signal: controller.signal },
+    path: "/meetings?workspaceId=workspace-1",
+  }])
 })

@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { useParams } from "@tanstack/react-router"
 
 import { AppLayout } from "@/components/app-layout"
@@ -9,13 +8,23 @@ import {
   usePageSidePane,
 } from "@/contexts/page-side-pane"
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
-import {
-  MeetingView,
-  type MeetingTab,
-} from "@/packages/editor/extensions/meeting"
+import { useTitleDraft } from "@/hooks/use-title-draft"
+import { PageMetadata as PageMetadataHeader } from "@/packages/editor/components/editor/page-metadata"
+import { MeetingView } from "@/packages/editor/extensions/meeting"
 import { PageEditorPane } from "@/pages/page"
 import { useMeeting, useUpdateMeeting } from "@zilobase/features/meetings"
-import { usePage, usePageAccessLevel } from "@zilobase/features/pages"
+import {
+  getPageCover,
+  getPageEmoji,
+  getPageIconPosition,
+  resolvePageFullWidth,
+  usePage,
+  usePageAccessLevel,
+  useUpdatePage,
+  type PageIconPosition,
+  type PageMetadata,
+} from "@zilobase/features/pages"
+import { useUserSettings } from "@zilobase/features/user-settings"
 import { useSession } from "@zilobase/features/auth"
 import { LoaderCircle } from "lucide-react"
 import type { OpenPageOptions } from "@/packages/editor/types"
@@ -118,48 +127,89 @@ function MeetingMainPane({
   onOpenPage: (pageId: string, options?: OpenPageOptions) => void
 }) {
   const { data } = useMeeting(meetingId)
+  const meeting = data?.meeting
+  const metadataPageId = notesPageId ?? meeting?.pageId ?? null
+  const { data: metadataPage } = usePage(metadataPageId)
+  const { data: hostPage } = usePage(meeting?.pageId)
   const { data: notesAccessLevel } = usePageAccessLevel(notesPageId)
-  const { data: hostAccessLevel } = usePageAccessLevel(data?.meeting.pageId)
+  const { data: hostAccessLevel } = usePageAccessLevel(meeting?.pageId)
+  const { data: userSettings } = useUserSettings()
   const updateMeeting = useUpdateMeeting(meetingId)
-  const [activeTab, setActiveTab] = useState<MeetingTab>("notes")
+  const updatePage = useUpdatePage()
   const accessLevel = notesAccessLevel ?? hostAccessLevel
   const editable = accessLevel === "edit" || accessLevel === "full"
+  const fullWidth = resolvePageFullWidth(
+    metadataPage,
+    userSettings?.pageFullWidth,
+  )
+  const metadata = (metadataPage?.metadata ?? {}) as PageMetadata
+  const cover = metadataPage ? (getPageCover(metadataPage) ?? "") : ""
+  const emoji = metadataPage ? (getPageEmoji(metadataPage) ?? "") : ""
+  const iconPosition = metadataPage
+    ? getPageIconPosition(metadataPage)
+    : "inline"
+  const { setTitle, title } = useTitleDraft({
+    enabled: editable,
+    onSave: async (nextTitle) => {
+      if (!meeting) return
+      await updateMeeting.mutateAsync({ title: nextTitle })
+    },
+    sourceId: meeting?.id ?? null,
+    sourceTitle: meeting?.title ?? "Meeting",
+  })
 
-  if (!notesPageId) {
-    return (
-      <section className="animate-in fade-in-0 duration-300 px-5 py-10 sm:px-8 md:px-20 lg:px-24">
-        <MeetingView
-          editable={editable}
-          fullPage
-          meetingId={meetingId}
-          onOpenPage={onOpenPage}
-        />
-      </section>
-    )
+  const updateMetadata = (patch: Partial<PageMetadata>) => {
+    if (!editable || !metadataPageId) return
+    updatePage.mutate({
+      id: metadataPageId,
+      metadata: { ...metadata, ...patch },
+    })
   }
 
-  return (
-    <PageWorkspaceGate pageId={notesPageId}>
-      <PageEditorPane
-        afterMetadata={
+  const content = meeting ? (
+    <section className="animate-in fade-in-0 duration-300">
+      <PageMetadataHeader
+        afterHeading={
           <MeetingView
             editable={editable}
+            embeddedPage={{
+              emoji: hostPage ? getPageEmoji(hostPage) : null,
+              id: meeting.pageId,
+              name: hostPage?.name?.trim() || "Page",
+            }}
             fullPage
             meetingId={meetingId}
-            notesMode="external"
-            onActiveTabChange={setActiveTab}
             onOpenPage={onOpenPage}
             showTitle={false}
           />
         }
-        hideEditorContent={activeTab !== "notes"}
-        key={notesPageId}
-        onOpenPage={onOpenPage}
-        onTitleChange={(title) => {
-          updateMeeting.mutate({ title })
-        }}
-        pageId={notesPageId}
+        collaborationUsers={[]}
+        contentClassName={fullWidth ? "" : "mx-auto max-w-5xl"}
+        cover={cover}
+        editable={editable}
+        enableComments={false}
+        headingLabel="Meeting"
+        icon={emoji}
+        iconPosition={iconPosition}
+        onCoverChange={(nextCover) => updateMetadata({ cover: nextCover })}
+        onIconChange={(nextEmoji) => updateMetadata({ emoji: nextEmoji })}
+        onIconPositionChange={(nextPosition: PageIconPosition) =>
+          updateMetadata({ iconPosition: nextPosition })
+        }
+        onOpenPage={(pageId) => onOpenPage(pageId)}
+        onTitleChange={setTitle}
+        pageId={metadataPageId}
+        title={title}
+        workspaceId={meeting.workspaceId}
       />
-    </PageWorkspaceGate>
+    </section>
+  ) : (
+    <section className="flex min-h-[calc(100svh-3rem)] items-center justify-center">
+      <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+    </section>
   )
+
+  return notesPageId
+    ? <PageWorkspaceGate pageId={notesPageId}>{content}</PageWorkspaceGate>
+    : content
 }

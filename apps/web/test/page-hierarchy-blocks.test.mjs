@@ -25,7 +25,7 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
-  test("active legacy meetings missing from their host page are restored once", async () => {
+  test("meeting records missing from their host page are recovered once", async () => {
     const {
       extractMeetingBlockIds,
       getMissingHostedMeetingIds,

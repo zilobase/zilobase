@@ -31,7 +31,6 @@ import {
 import { cn } from "@/lib/utils"
 import { type ZilobaseAiMode } from "@zilobase/features/pages"
 import { useOfflineManifest } from "@/providers/offline-provider"
-import { scrollToMeetingBlock } from "@/lib/meeting-navigation"
 
 export type SidebarNavItem = {
   databaseId?: string | null
@@ -199,15 +198,11 @@ function SidebarNavRow({
       <SidebarMenuItem>
         <div className="group/nav-row relative">
           <SidebarMenuButton asChild className={rowClassName} isActive={active}>
-            {item.isMeeting && item.meetingId && item.pageId ? (
+            {item.isMeeting && item.meetingId ? (
               <Link
-                onClick={() => {
-                  scrollToMeetingBlock(document, item.meetingId!)
-                }}
-                params={{ pageId: item.pageId } as never}
-                search={{ meeting: item.meetingId } as never}
+                params={{ meetingId: item.meetingId } as never}
                 title={displayName}
-                to="/p/$pageId"
+                to="/m/$meetingId"
                 {...linkProps}
                 style={linkStyle}
               >
