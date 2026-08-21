@@ -4,6 +4,28 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.44
+
+### Added
+
+- Meeting capture now transcribes microphone and system audio concurrently while presenting both sources in one timestamped `You` and `Others` timeline.
+- Live transcript previews use the final read-only transcript typography and are replaced atomically as provider turns complete.
+- Cloudflare meetings persist recorder leases, transcript checkpoints, and final document outbox state in the meeting Durable Object for crash recovery.
+
+### Changed
+
+- Meeting notes, summaries, transcripts, live drafts, and recorder presence now share one meeting-scoped collaborative document and editor implementation.
+- Node deployments use persistent realtime transcription sessions with explicit audio commits, while Cloudflare routes collaboration and recording through the same per-meeting Durable Object.
+- Browser and native capture keep independent microphone and system lanes, acknowledge audio sequences, replay only unacknowledged frames, and rotate tickets on the active WebSocket.
+- Meeting queries now use the canonical response shape without transcript polling or browser recorder-heartbeat requests.
+
+### Fixed
+
+- Realtime transcription no longer configures unsupported model turn detection and finalizes outstanding speech before acknowledging stop.
+- Completed meetings no longer retain the Finishing the transcript footer.
+- Source-aware transcript ordering and storage prevent overlapping microphone and system turns from replacing one another.
+- Local Cloudflare development isolates merged runtime secrets in a temporary env file so Wrangler cannot reload stale credentials.
+
 ## 0.0.43
 
 ### Changed
