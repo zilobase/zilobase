@@ -57,7 +57,13 @@ export const useEditorExtensions = ({
     ],
   )
 
-  const editorLifecycleKey = pageId ?? "draft"
+  // Tiptap's Collaboration extension binds to one Y.XmlFragment when the
+  // editor is created. Recreate the editor when a meeting switches between
+  // notes, summary, and transcript instead of leaving it bound to the first
+  // field that was opened.
+  const editorLifecycleKey = collaboration
+    ? `${pageId ?? "collaboration"}:${collaborationField ?? "default"}`
+    : pageId ?? "draft"
   const initialContent = collaboration
     ? undefined
     : (normalizeEditorContent(content) as Content)

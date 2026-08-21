@@ -23,7 +23,7 @@ const activeProviders = new Set<HocuspocusProvider>()
 export type CollaborationTicket = {
   documentName: string
   expiresAt: string
-  initialState: string
+  initialState?: string
   token: string
   websocketUrl: string
 }
@@ -75,7 +75,9 @@ export function flushLocalPageDocument(local: LocalPageDocument) {
 }
 
 export function applyTicketState(document: Y.Doc, ticket: CollaborationTicket) {
-  Y.applyUpdate(document, base64ToBytes(ticket.initialState))
+  if (ticket.initialState) {
+    Y.applyUpdate(document, base64ToBytes(ticket.initialState))
+  }
 }
 
 export function connectLocalPageDocument(input: {

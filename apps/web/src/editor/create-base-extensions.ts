@@ -38,6 +38,7 @@ import { FileBlock } from "@/packages/editor/extensions/file-block"
 import { ImageBlock } from "@/packages/editor/extensions/image-block"
 import { LinkMention } from "@/packages/editor/extensions/link-mention"
 import { MeetingBlock } from "@/packages/editor/extensions/meeting"
+import { MeetingTranscriptPreview } from "@/packages/editor/extensions/meeting-transcript-preview"
 import {
   PageBlock,
   type CreatedPage,
@@ -191,6 +192,7 @@ export const createBaseExtensions = ({
   CharacterCount,
   BlockSelection,
   SelectionAiPreview,
+  MeetingTranscriptPreview,
   AskAiBlock.configure({ workspaceId }),
   ...(structuralEditingEnabled
     ? [
