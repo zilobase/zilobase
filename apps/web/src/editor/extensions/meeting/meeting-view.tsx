@@ -6,6 +6,7 @@ import {
   CircleStop,
   Download,
   FileAudio,
+  FileText,
   FolderOpen,
   HardDrive,
   LoaderCircle,
@@ -26,7 +27,6 @@ import {
   useGenerateMeetingSummary,
   useMeetingLifecycle,
   useMeetingRecorder,
-  useMeetingTranscript,
   useRecordMeetingConsent,
   useUpdateMeeting,
   meetingKeys,
@@ -73,7 +73,12 @@ import { PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/lib/utils"
 import type { OpenPageOptions } from "@/packages/editor/types"
 import { MeetingCollaborativeEditor } from "./meeting-collaborative-editor"
-import { MeetingNotesEditor } from "./meeting-notes-editor"
+import {
+  combineMeetingTranscriptDrafts,
+  resolveMeetingTranscriptPreview,
+  type MeetingTranscriptPresentationDraft,
+} from "@/packages/editor/extensions/meeting-transcript-preview"
+import { meetingTranscriptPlainText } from "./meeting-transcript-text"
 import { useMeetingCollaboration } from "./use-meeting-collaboration"
 import { useMeetingCapture } from "./use-meeting-capture"
 
@@ -81,18 +86,16 @@ export type MeetingTab = "summary" | "notes" | "transcript"
 
 export function MeetingView({
   editable,
+  embeddedPage,
   fullPage = false,
   meetingId,
-  notesMode = "embedded",
-  onActiveTabChange,
   onOpenPage,
   showTitle,
 }: {
   editable: boolean
+  embeddedPage?: { emoji: string | null; id: string; name: string }
   fullPage?: boolean
   meetingId: string
-  notesMode?: "embedded" | "external"
-  onActiveTabChange?: (tab: MeetingTab) => void
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
   showTitle?: boolean
 }) {
@@ -110,7 +113,6 @@ export function MeetingView({
   const [activeTab, setActiveTabState] = useState<MeetingTab>("notes")
   const setActiveTab = (tab: MeetingTab) => {
     setActiveTabState(tab)
-    onActiveTabChange?.(tab)
   }
   const [consentOpen, setConsentOpen] = useState(false)
   const [captureSystemAudio, setCaptureSystemAudio] = useState(true)
@@ -138,11 +140,22 @@ export function MeetingView({
   const openPage = onOpenPage ?? embeddedOpen.openPage
   const notesEmoji = notesPage ? getPageEmoji(notesPage) : null
   const canEditEmoji = editable && Boolean(notesPageId)
-  const activeRecording = meeting?.status === "recording" || meeting?.status === "paused"
-  const transcript = useMeetingTranscript(
-    meetingId,
-    activeRecording || meeting?.status === "processing",
+  const recordingPresence = collaboration.document?.getMap<string | number>(
+    "recordingPresence",
   )
+  const presenceStatus = recordingPresence?.get("status")
+  const realtimeStatus = presenceStatus === "recording"
+      || presenceStatus === "paused"
+      || presenceStatus === "finishing"
+    ? presenceStatus
+    : null
+  const effectiveMeetingStatus = realtimeStatus === "finishing"
+    ? "processing"
+    : realtimeStatus ?? meeting?.status
+  const activeRecording = effectiveMeetingStatus === "recording"
+    || effectiveMeetingStatus === "paused"
+  const transcriptGenerationActive = activeRecording
+    || realtimeStatus === "finishing"
 
   useEffect(() => {
     if (meeting?.title) setTitle(meeting.title)
@@ -159,16 +172,6 @@ export function MeetingView({
     setMicrophoneDeviceId((current) => current ?? microphone?.id)
     setSystemDeviceId((current) => current ?? system?.id)
   }, [meetingCapture.devices])
-
-  useEffect(() => {
-    if (!leaseId) return
-    const interval = window.setInterval(() => {
-      void recorder.heartbeat.mutateAsync(leaseId).then((ticket) =>
-        meetingCapture.refreshTransport(ticket.websocketUrl, ticket.token),
-      ).catch(() => undefined)
-    }, 10_000)
-    return () => window.clearInterval(interval)
-  }, [leaseId])
 
   const runLifecycle = async (action: MeetingLifecycleAction) => {
     try {
@@ -189,7 +192,7 @@ export function MeetingView({
             microphoneDeviceId,
             systemDeviceId: shouldCaptureSystemAudio ? systemDeviceId : undefined,
           })
-          await lifecycle.mutateAsync({ action })
+          await lifecycle.mutateAsync({ action, leaseId: claim.leaseId })
         } catch (error) {
           await meetingCapture.stop().catch(() => undefined)
           await recorder.release.mutateAsync(claim.leaseId).catch(() => undefined)
@@ -203,7 +206,7 @@ export function MeetingView({
       if (action === "pause") {
         await meetingCapture.pause()
         try {
-          await lifecycle.mutateAsync({ action })
+          await lifecycle.mutateAsync({ action, leaseId: leaseId ?? undefined })
         } catch (error) {
           await meetingCapture.resume().catch(() => undefined)
           throw error
@@ -213,7 +216,7 @@ export function MeetingView({
       if (action === "resume") {
         await meetingCapture.resume()
         try {
-          await lifecycle.mutateAsync({ action })
+          await lifecycle.mutateAsync({ action, leaseId: leaseId ?? undefined })
         } catch (error) {
           await meetingCapture.pause().catch(() => undefined)
           throw error
@@ -222,7 +225,11 @@ export function MeetingView({
       }
       if (action === "stop") {
         const capture = await meetingCapture.stop()
-        await lifecycle.mutateAsync({ action, durationMs: capture.elapsedMs })
+        await lifecycle.mutateAsync({
+          action,
+          durationMs: capture.elapsedMs,
+          leaseId: leaseId ?? undefined,
+        })
         if (leaseId) await recorder.release.mutateAsync(leaseId)
         setLeaseId(null)
         window.sessionStorage.removeItem(`zilobase:meeting-recorder:${meetingId}`)
@@ -329,17 +336,46 @@ export function MeetingView({
     )
   }
 
-  const hasResult = meeting.status === "completed" || meeting.status === "failed"
-  const tabs: MeetingTab[] = hasResult
-    || activeRecording
-    || meeting.status === "processing"
-    || Boolean(transcript.data?.segments.length)
-    ? ["summary", "notes", "transcript"]
-    : ["notes"]
+  const tabs: MeetingTab[] = ["summary", "notes", "transcript"]
+  const transcriptSegmentCount = collaboration.document
+    ?.getMap("transcriptSegmentIds").size ?? 0
+  const collaborativeLiveTranscripts = [
+    readCollaborativeTranscriptDraft(
+      collaboration.document?.getMap<string | number>("liveTranscript:microphone"),
+      "microphone",
+    ),
+    readCollaborativeTranscriptDraft(
+      collaboration.document?.getMap<string | number>("liveTranscript:system"),
+      "system",
+    ),
+  ].filter((draft): draft is TranscriptDraft => draft !== null)
+  const localLiveTranscripts = (meetingCapture.liveTranscripts ?? []).filter(
+    (draft) => draft.meetingId === meetingId,
+  )
+  const combinedLivePreview = combineMeetingTranscriptDrafts(
+    collaborativeLiveTranscripts,
+    localLiveTranscripts,
+  )
+  const transcriptPreview = resolveMeetingTranscriptPreview({
+    activity: realtimeStatus === "finishing"
+      ? "finishing"
+      : activeRecording
+        ? "listening"
+        : null,
+    effectiveMeetingStatus,
+    livePreview: combinedLivePreview,
+    transcriptSegmentCount,
+    visible: activeTab === "transcript",
+  })
+  const recorderName = typeof recordingPresence?.get("recorderName") === "string"
+    ? recordingPresence.get("recorderName") as string
+    : "Another collaborator"
+  const transcriptEditable = editable
+    && (activeTab !== "transcript" || !transcriptGenerationActive)
   const ownsRecorder = Boolean(leaseId)
   const summaryIsStale = Boolean(
     meeting.summaryGeneratedAt
-      && (transcript.data?.segments.length ?? 0) > meeting.summarySourceSegmentCount,
+      && transcriptSegmentCount > meeting.summarySourceSegmentCount,
   )
   const emojiPicker = notesEmoji ? (
     canEditEmoji ? (
@@ -469,6 +505,24 @@ export function MeetingView({
                   {tab}
                 </TabsTrigger>
               ))}
+              {embeddedPage ? (
+                <Link
+                  aria-label={`Open ${embeddedPage.name}`}
+                  className="relative inline-flex h-7 max-w-52 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium text-foreground/60 outline-none transition-colors hover:bg-active hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                  params={{ pageId: embeddedPage.id }}
+                  search={{ meeting: meetingId }}
+                  title={`Open ${embeddedPage.name}`}
+                  to="/p/$pageId"
+                >
+                  {embeddedPage.emoji ? (
+                    <PageIconDisplay size="sm" value={embeddedPage.emoji} />
+                  ) : (
+                    <FileText className="size-3.5 shrink-0" />
+                  )}
+                  <span className="truncate">{embeddedPage.name}</span>
+                  <ArrowUpRightIcon className="size-3.5 shrink-0" />
+                </Link>
+              ) : null}
             </TabsList>
           </Tabs>
           <div className="min-w-0 flex-1" />
@@ -481,7 +535,9 @@ export function MeetingView({
             </span>
           ) : null}
           {activeRecording && !ownsRecorder ? (
-            <span className="text-xs text-muted-foreground">Another collaborator is recording</span>
+            <span className="text-xs text-muted-foreground">
+              {recorderName} is {effectiveMeetingStatus === "paused" ? "paused" : "recording"}
+            </span>
           ) : null}
           {ownsRecorder && meetingCapture.status?.warnings?.length ? (
             <span className="max-w-56 truncate text-xs text-amber-600" title={meetingCapture.status.warnings.at(-1)}>
@@ -599,7 +655,7 @@ export function MeetingView({
             </DropDrawerContent>
           </DropDrawer>
           {editable ? (
-            meeting.status === "idle" || meeting.status === "failed" ? (
+            effectiveMeetingStatus === "idle" || effectiveMeetingStatus === "failed" ? (
               <Button
                 className="database-new-button"
                 disabled={lifecycle.isPending || recorder.claim.isPending}
@@ -609,39 +665,39 @@ export function MeetingView({
                 <Mic />
                 <span>Start transcribing</span>
               </Button>
-            ) : meeting.status === "recording" ? (
+            ) : effectiveMeetingStatus === "recording" && ownsRecorder ? (
               <>
-                <Button className="database-new-button" disabled={!ownsRecorder} onClick={() => void runLifecycle("pause")} type="button" variant="outline">
+                <Button className="database-new-button" onClick={() => void runLifecycle("pause")} type="button" variant="outline">
                   <Pause />
                   <span>Pause</span>
                 </Button>
-                <Button className="database-new-button" disabled={!ownsRecorder} onClick={() => void runLifecycle("stop")} type="button" variant="destructive">
+                <Button className="database-new-button" onClick={() => void runLifecycle("stop")} type="button" variant="destructive">
                   <CircleStop />
                   <span>Stop</span>
                 </Button>
               </>
-            ) : meeting.status === "paused" ? (
+            ) : effectiveMeetingStatus === "paused" && ownsRecorder ? (
               <>
-                <Button className="database-new-button" disabled={!ownsRecorder} onClick={() => void runLifecycle("resume")} type="button" variant="outline">
+                <Button className="database-new-button" onClick={() => void runLifecycle("resume")} type="button" variant="outline">
                   <Play />
                   <span>Resume</span>
                 </Button>
-                <Button className="database-new-button" disabled={!ownsRecorder} onClick={() => void runLifecycle("stop")} type="button" variant="destructive">
+                <Button className="database-new-button" onClick={() => void runLifecycle("stop")} type="button" variant="destructive">
                   <CircleStop />
                   <span>Stop</span>
                 </Button>
               </>
-            ) : meeting.status === "processing" ? (
+            ) : effectiveMeetingStatus === "processing" ? (
               <Button
                 className="database-new-button"
-                disabled={generateSummary.isPending || !transcript.data?.segments.length}
+                disabled={generateSummary.isPending || transcriptSegmentCount === 0}
                 onClick={() => void generateAndCleanUp()}
                 type="button"
               >
                 {generateSummary.isPending ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
                 <span>Generate summary</span>
               </Button>
-            ) : meeting.status === "completed" && summaryIsStale ? (
+            ) : effectiveMeetingStatus === "completed" && summaryIsStale ? (
               <Button
                 className="database-new-button"
                 disabled={generateSummary.isPending}
@@ -672,68 +728,36 @@ export function MeetingView({
       </div>
       </div>
 
-      {notesMode === "external" && activeTab === "notes" ? null : (
       <div className="database-scroll-section meeting-block-body">
-        {activeTab === "transcript" ? (
-          <div className="min-h-28 rounded-lg bg-muted/35 p-4 text-sm">
-            {transcript.data?.segments.length ? (
-              <div className="space-y-3">
-                {transcript.data.segments.map((segment) => (
-                  <div className="grid grid-cols-[3.5rem_1fr] gap-3" key={segment.id}>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {formatTimestamp(segment.startMs)}
-                    </span>
-                    <p className="whitespace-pre-wrap text-foreground">{segment.text}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">
-                {transcript.isLoading
-                  ? "Loading transcript…"
-                  : "Start transcribing to create a searchable transcript."}
-              </p>
-            )}
-            {transcript.data?.segments.length ? (
+        {collaboration.document ? (
+          <>
+            <MeetingCollaborativeEditor
+              document={collaboration.document}
+              editable={transcriptEditable}
+              field={activeTab}
+              livePreview={transcriptPreview}
+              onOpenPage={openPage}
+              provider={collaboration.provider}
+              status={collaboration.status}
+              workspaceId={meeting.workspaceId}
+            />
+            {activeTab === "transcript" && transcriptSegmentCount > 0 ? (
               <Button
                 className="mt-4"
-                onClick={() => exportTranscript(meeting.title, transcript.data.segments)}
+                onClick={() => exportTranscript(meeting.title, collaboration.document!)}
                 size="sm"
                 variant="outline"
               >
                 <Download /> Export transcript
               </Button>
             ) : null}
-          </div>
-        ) : activeTab === "notes" ? (
-          notesPageId ? (
-            <MeetingNotesEditor
-              editable={editable}
-              onOpenPage={openPage}
-              pageId={notesPageId}
-            />
-          ) : (
-            <div className="min-h-28 text-sm text-muted-foreground">
-              Meeting notes are still being created…
-            </div>
-          )
-        ) : collaboration.document ? (
-          <MeetingCollaborativeEditor
-            document={collaboration.document}
-            editable={editable}
-            field="summary"
-            onOpenPage={openPage}
-            provider={collaboration.provider}
-            status={collaboration.status}
-            workspaceId={meeting.workspaceId}
-          />
+          </>
         ) : (
           <div className="min-h-28 text-sm text-muted-foreground">
-            {collaboration.error ?? "Connecting meeting summary…"}
+            {collaboration.error ?? "Connecting meeting content…"}
           </div>
         )}
       </div>
-      )}
       <AlertDialog onOpenChange={setConsentOpen} open={consentOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -759,6 +783,24 @@ export function MeetingView({
   )
 }
 
+type TranscriptDraft = MeetingTranscriptPresentationDraft
+
+function readCollaborativeTranscriptDraft(
+  value: import("yjs").Map<string | number> | undefined,
+  source: TranscriptDraft["source"],
+): TranscriptDraft | null {
+  const itemId = value?.get("itemId")
+  const startMs = value?.get("startMs")
+  const text = value?.get("text")
+  const updatedAt = value?.get("updatedAt")
+  return typeof itemId === "string"
+      && typeof startMs === "number"
+      && typeof text === "string"
+      && typeof updatedAt === "number"
+    ? { itemId, source, startMs, text, updatedAt }
+    : null
+}
+
 function playConsentMessage(message: string, language: string) {
   return new Promise<void>((resolve, reject) => {
     if (!("speechSynthesis" in window)) {
@@ -774,20 +816,8 @@ function playConsentMessage(message: string, language: string) {
   })
 }
 
-function formatTimestamp(milliseconds: number) {
-  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1_000))
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`
-}
-
-function exportTranscript(
-  title: string,
-  segments: Array<{ startMs: number; text: string }>,
-) {
-  const contents = segments
-    .map((segment) => `[${formatTimestamp(segment.startMs)}] ${segment.text}`)
-    .join("\n\n")
+function exportTranscript(title: string, meetingDocument: import("yjs").Doc) {
+  const contents = meetingTranscriptPlainText(meetingDocument)
   const url = URL.createObjectURL(new Blob([contents], { type: "text/plain;charset=utf-8" }))
   const anchor = document.createElement("a")
   anchor.href = url
