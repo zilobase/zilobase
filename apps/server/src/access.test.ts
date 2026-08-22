@@ -98,7 +98,7 @@ test("public access wrappers preserve membership and rank decisions", async () =
 });
 
 test("page access stops when workspace membership is missing", async () => {
-  mocks.selectResults.push([], [{ teamId: "team-1" }]);
+  mocks.selectResults.push([], []);
 
   assert.equal(
     await getEffectivePageAccessInWorkspace(
@@ -111,9 +111,39 @@ test("page access stops when workspace membership is missing", async () => {
   assert.equal(mocks.selectCalls, 2);
 });
 
+test("page guests receive only explicit inherited user access", async () => {
+  mocks.selectResults.push(
+    [],
+    [{ id: "guest-1" }],
+    [{ accessLevel: "view" }, { accessLevel: "edit" }],
+  );
+
+  assert.equal(
+    await getEffectivePageAccessInWorkspace(
+      "page-1",
+      "workspace-1",
+      "user-1",
+    ),
+    "edit",
+  );
+  assert.equal(mocks.selectCalls, 3);
+
+  mocks.selectCalls = 0;
+  mocks.selectResults.push([], [{ id: "guest-1" }], []);
+  assert.equal(
+    await getEffectivePageAccessInWorkspace(
+      "page-1",
+      "workspace-1",
+      "user-1",
+    ),
+    "none",
+  );
+  assert.equal(mocks.selectCalls, 3);
+});
+
 test("page access resolves ownership and the strongest shared rule", async () => {
   mocks.hasOwnedRootAccess.mockReturnValue(true);
-  mocks.selectResults.push([{ id: "membership-1" }], []);
+  mocks.selectResults.push([{ id: "membership-1" }], [], []);
   assert.equal(
     await getEffectivePageAccessInWorkspace(
       "page-1",
@@ -122,12 +152,13 @@ test("page access resolves ownership and the strongest shared rule", async () =>
     ),
     "full",
   );
-  assert.equal(mocks.selectCalls, 2);
+  assert.equal(mocks.selectCalls, 3);
 
   mocks.hasOwnedRootAccess.mockReturnValue(false);
   mocks.selectCalls = 0;
   mocks.selectResults.push(
     [{ id: "membership-1" }],
+    [],
     [],
     [{ accessLevel: "view" }, { accessLevel: "edit" }],
   );
@@ -139,12 +170,13 @@ test("page access resolves ownership and the strongest shared rule", async () =>
     ),
     "edit",
   );
-  assert.equal(mocks.selectCalls, 3);
+  assert.equal(mocks.selectCalls, 4);
 });
 
 test("standalone page fallback reuses verified membership and team IDs", async () => {
   mocks.selectResults.push(
     [{ id: "membership-1" }],
+    [],
     [{ teamId: "team-1" }],
     [],
     [{ databaseId: "database-1" }],
@@ -160,7 +192,7 @@ test("standalone page fallback reuses verified membership and team IDs", async (
     ),
     "edit",
   );
-  assert.equal(mocks.selectCalls, 6);
+  assert.equal(mocks.selectCalls, 7);
   assert.equal(mocks.selectResults.length, 0);
 });
 
@@ -229,7 +261,7 @@ test("direct standalone database access resolves team rules", async () => {
 
 test("record-based database access skips the database reload", async () => {
   mocks.hasOwnedRootAccess.mockReturnValue(true);
-  mocks.selectResults.push([{ id: "membership-1" }], []);
+  mocks.selectResults.push([{ id: "membership-1" }], [], []);
 
   assert.equal(
     await getEffectiveDatabaseAccessForRecord(
@@ -243,7 +275,7 @@ test("record-based database access skips the database reload", async () => {
     ),
     "full",
   );
-  assert.equal(mocks.selectCalls, 2);
+  assert.equal(mocks.selectCalls, 3);
 
   mocks.hasOwnedRootAccess.mockReturnValue(false);
   mocks.selectCalls = 0;

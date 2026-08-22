@@ -26,9 +26,12 @@ test("createApp registers every public feature route group", () => {
     "POST /user-settings/profile/image/uploads",
     "GET /metadata/bookmark",
     "GET /pages",
+    "POST /pages/:pageId/guest-invitations",
+    "POST /page-guest-invitations/:invitationId/accept",
     "GET /search",
     "GET /session",
     "GET /workspaces/:workspaceId/access-targets",
+    "GET /workspaces/:workspaceId/guests",
   ]) {
     assert.ok(routes.includes(expected), `missing route: ${expected}`);
   }

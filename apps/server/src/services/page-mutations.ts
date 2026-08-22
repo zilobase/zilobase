@@ -30,14 +30,21 @@ export async function createPageService(input: {
   url?: string;
   userId: string;
 }) {
-  if (!(await getMembership(input.workspaceId, input.userId))) {
-    throw new ServiceMutationError("Forbidden", 403);
-  }
+  if (input.parentPageId) {
+    const [parent] = await db
+      .select({ workspaceId: page.workspaceId })
+      .from(page)
+      .where(and(eq(page.id, input.parentPageId), isNull(page.deletedAt)))
+      .limit(1);
 
-  if (
-    input.parentPageId &&
-    !(await canAccessPage(input.parentPageId, input.userId, "edit"))
-  ) {
+    if (
+      !parent ||
+      parent.workspaceId !== input.workspaceId ||
+      !(await canAccessPage(input.parentPageId, input.userId, "edit"))
+    ) {
+      throw new ServiceMutationError("Forbidden", 403);
+    }
+  } else if (!(await getMembership(input.workspaceId, input.userId))) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 

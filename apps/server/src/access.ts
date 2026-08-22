@@ -11,6 +11,7 @@ import {
   page,
   pageAccess,
   workspace,
+  workspaceGuest,
 } from "./db/schema";
 import { loadWorkspacePageGraph } from "./page-graph-loader";
 import { activeMembershipCondition } from "./services/temporary-membership";
@@ -51,6 +52,29 @@ export async function getMembership(workspaceId: string, userId: string) {
     .limit(1);
 
   return record ?? null;
+}
+
+export async function getWorkspaceGuest(workspaceId: string, userId: string) {
+  const [record] = await db
+    .select()
+    .from(workspaceGuest)
+    .where(
+      and(
+        eq(workspaceGuest.workspaceId, workspaceId),
+        eq(workspaceGuest.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  return record ?? null;
+}
+
+export async function getWorkspacePrincipalKind(
+  workspaceId: string,
+  userId: string,
+): Promise<"member" | "guest" | null> {
+  if (await getMembership(workspaceId, userId)) return "member";
+  return (await getWorkspaceGuest(workspaceId, userId)) ? "guest" : null;
 }
 
 export function getWorkspaceMemberships(userId: string) {
@@ -111,7 +135,7 @@ export async function getEffectivePageAccessInWorkspace(
   workspaceId: string,
   userId: string,
 ): Promise<AccessLevel> {
-  const [membershipRows, graph, teamRows] = await Promise.all([
+  const [membershipRows, guestRows, graph] = await Promise.all([
     db
       .select({ id: member.id })
       .from(member)
@@ -123,20 +147,35 @@ export async function getEffectivePageAccessInWorkspace(
         ),
       )
       .limit(1),
-    loadWorkspacePageGraph(workspaceId),
     db
-      .select({ teamId: teamMember.teamId })
-      .from(teamMember)
-      .where(eq(teamMember.userId, userId)),
+      .select({ id: workspaceGuest.id })
+      .from(workspaceGuest)
+      .where(
+        and(
+          eq(workspaceGuest.workspaceId, workspaceId),
+          eq(workspaceGuest.userId, userId),
+        ),
+      )
+      .limit(1),
+    loadWorkspacePageGraph(workspaceId),
   ]);
+  const isMember = membershipRows.length > 0;
 
-  if (membershipRows.length === 0) {
+  if (!isMember && guestRows.length === 0) {
     return "none";
   }
+
+  const teamRows = isMember
+    ? await db
+        .select({ teamId: teamMember.teamId })
+        .from(teamMember)
+        .where(eq(teamMember.userId, userId))
+    : [];
 
   const ancestorIds = graph.getAncestorIds(pageId);
 
   if (
+    isMember &&
     ancestorIds.length > 0 &&
     graph.hasOwnedRootAccess(ancestorIds, userId)
   ) {
@@ -173,6 +212,10 @@ export async function getEffectivePageAccessInWorkspace(
 
   if (pageLevel !== "none") {
     return pageLevel;
+  }
+
+  if (!isMember) {
+    return "none";
   }
 
   const [standaloneDatabaseRow] = await db
@@ -472,10 +515,14 @@ export async function getAccessiblePageIds(
   userId: string,
   options: { membershipVerified?: boolean } = {},
 ) {
+  let isMember = options.membershipVerified === true;
+
   if (!options.membershipVerified) {
     const membership = await getMembership(workspaceId, userId);
 
-    if (!membership) {
+    if (membership) {
+      isMember = true;
+    } else if (!(await getWorkspaceGuest(workspaceId, userId))) {
       return new Set<string>();
     }
   }
@@ -491,10 +538,12 @@ export async function getAccessiblePageIds(
       .where(
         and(eq(page.workspaceId, workspaceId), isNull(page.deletedAt)),
       ),
-    db
-      .select({ teamId: teamMember.teamId })
-      .from(teamMember)
-      .where(eq(teamMember.userId, userId)),
+    isMember
+      ? db
+          .select({ teamId: teamMember.teamId })
+          .from(teamMember)
+          .where(eq(teamMember.userId, userId))
+      : Promise.resolve([]),
   ]);
   const targetTypes = ["user"];
   const targetIds = [userId, ...teamRows.map((row) => row.teamId)];
@@ -523,7 +572,7 @@ export async function getAccessiblePageIds(
     const ancestors = graph.getAncestorIds(item.id);
 
     if (
-      graph.hasOwnedRootAccess(ancestors, userId) ||
+      (isMember && graph.hasOwnedRootAccess(ancestors, userId)) ||
       ancestors.some((id) => sharedRoots.has(id))
     ) {
       accessible.add(item.id);

@@ -10,6 +10,7 @@ import {
   getEffectivePageAccessForUsers,
   getMembership,
   getPageRecord,
+  getWorkspacePrincipalKind,
   hasAccess,
   isPagePublishedInWorkspace,
   normalizeAccessLevel,
@@ -35,6 +36,7 @@ import {
   pageProperty,
   pagePropertyValue,
   pageSettings,
+  workspaceGuest,
 } from "../../db/schema";
 import type { AppBindings } from "../../types";
 import { activeMembershipCondition } from "../../services/temporary-membership";
@@ -795,7 +797,7 @@ pageRoutes.post("/", async (c) => {
     return c.json({ error: "type and url must be strings" }, 400);
   }
 
-  if (!(await getMembership(workspaceId, user.id))) {
+  if (parentItemId === null && !(await getMembership(workspaceId, user.id))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -1311,10 +1313,16 @@ pageRoutes.get("/:id", async (c) => {
         )
       ).filter((databaseId): databaseId is string => Boolean(databaseId))
     : [];
+  const viewerType = usesPublishedFallback
+    ? "public"
+    : user && hasAccess(accessLevel, "view")
+      ? await getWorkspacePrincipalKind(record.workspaceId, user.id)
+      : "public";
 
   return c.json({
     accessLevel: hasAccess(accessLevel, "view") ? accessLevel : "view",
     databaseIds,
+    viewerType,
     page: {
       ...record,
       publishedOwnerPreferences: usesPublishedFallback
@@ -1502,35 +1510,52 @@ pageRoutes.get("/:id/access-targets", async (c) => {
     return accessTargetsOrgMismatch;
   }
 
-  const members = await db
-    .select({
-      email: userTable.email,
-      id: userTable.id,
-      memberId: member.id,
-      name: userTable.name,
-      role: member.role,
-      accessExpiresAt: member.accessExpiresAt,
-    })
-    .from(member)
-    .innerJoin(userTable, eq(member.userId, userTable.id))
-    .where(
-      and(
-        eq(member.organizationId, record.workspaceId),
-        activeMembershipCondition(),
-      ),
-    )
-    .orderBy(asc(userTable.name), asc(userTable.email));
+  const [members, guests] = await Promise.all([
+    db
+      .select({
+        email: userTable.email,
+        id: userTable.id,
+        memberId: member.id,
+        name: userTable.name,
+        role: member.role,
+        accessExpiresAt: member.accessExpiresAt,
+      })
+      .from(member)
+      .innerJoin(userTable, eq(member.userId, userTable.id))
+      .where(
+        and(
+          eq(member.organizationId, record.workspaceId),
+          activeMembershipCondition(),
+        ),
+      )
+      .orderBy(asc(userTable.name), asc(userTable.email)),
+    db
+      .select({
+        email: userTable.email,
+        id: userTable.id,
+        guestId: workspaceGuest.id,
+        name: userTable.name,
+      })
+      .from(workspaceGuest)
+      .innerJoin(userTable, eq(workspaceGuest.userId, userTable.id))
+      .where(eq(workspaceGuest.workspaceId, record.workspaceId))
+      .orderBy(asc(userTable.name), asc(userTable.email)),
+  ]);
 
   const accessByUserId = await getEffectivePageAccessForUsers(
     record.id,
     record.workspaceId,
-    members.map((targetMember) => targetMember.id),
+    [...members, ...guests].map((targetUser) => targetUser.id),
   );
   const accessibleMembers = members.filter((targetMember) =>
     hasAccess(accessByUserId.get(targetMember.id) ?? "none", "view"),
   );
 
-  return c.json({ members: accessibleMembers });
+  const accessibleGuests = guests.filter((guest) =>
+    hasAccess(accessByUserId.get(guest.id) ?? "none", "view"),
+  );
+
+  return c.json({ guests: accessibleGuests, members: accessibleMembers });
 });
 
 pageRoutes.put("/:id/access", async (c) => {
@@ -1605,31 +1630,47 @@ pageRoutes.put("/:id/access", async (c) => {
     }
   }
 
-  const [target] =
-    targetType === "public"
-      ? [{ id: "*" }]
-      : targetType === "user"
-        ? await db
-            .select({ id: member.id })
-            .from(member)
-            .where(
-              and(
-                eq(member.organizationId, record.workspaceId),
-                eq(member.userId, targetId),
-                activeMembershipCondition(),
-              ),
-            )
-            .limit(1)
-        : await db
-            .select({ id: team.id })
-            .from(team)
-            .where(
-              and(
-                eq(team.organizationId, record.workspaceId),
-                eq(team.id, targetId),
-              ),
-            )
-            .limit(1);
+  let target: { id: string } | undefined;
+
+  if (targetType === "public") {
+    target = { id: "*" };
+  } else if (targetType === "team") {
+    [target] = await db
+      .select({ id: team.id })
+      .from(team)
+      .where(
+        and(
+          eq(team.organizationId, record.workspaceId),
+          eq(team.id, targetId),
+        ),
+      )
+      .limit(1);
+  } else {
+    const [memberTargets, guestTargets] = await Promise.all([
+      db
+        .select({ id: member.id })
+        .from(member)
+        .where(
+          and(
+            eq(member.organizationId, record.workspaceId),
+            eq(member.userId, targetId),
+            activeMembershipCondition(),
+          ),
+        )
+        .limit(1),
+      db
+        .select({ id: workspaceGuest.id })
+        .from(workspaceGuest)
+        .where(
+          and(
+            eq(workspaceGuest.workspaceId, record.workspaceId),
+            eq(workspaceGuest.userId, targetId),
+          ),
+        )
+        .limit(1),
+    ]);
+    target = memberTargets[0] ?? guestTargets[0];
+  }
 
   if (!target) {
     return c.json({ error: "Target not found" }, 404);

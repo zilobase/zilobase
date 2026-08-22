@@ -15,6 +15,7 @@ import { instanceRoutes } from "../features/instance/routes";
 import { metadataRoutes } from "../features/metadata/routes";
 import { meetingRoutes } from "../features/meetings/routes";
 import { pageRoutes } from "../features/pages/routes";
+import { pageGuestRoutes } from "../features/page-guests";
 import { pageLayoutRoutes } from "../features/page-layouts/routes";
 import { profileImageRoutes } from "../routes/profile-images";
 import { searchRoutes } from "../features/search/routes";
@@ -42,6 +43,7 @@ export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/session", sessionRoutes);
   app.route("/user-settings", pageSettingsRoutes);
   app.route("/user-settings/profile", profileImageRoutes);
+  app.route("/", pageGuestRoutes);
   app.route("/pages", pageRoutes);
   app.route("/page-layouts", pageLayoutRoutes);
 }

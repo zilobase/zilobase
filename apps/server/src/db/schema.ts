@@ -592,6 +592,87 @@ export const pageAccess = pgTable(
   ],
 );
 
+export const workspaceGuest = pgTable(
+  "workspace_guest",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    invitedById: text("invited_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("workspace_guest_workspace_user_unique").on(
+      table.workspaceId,
+      table.userId,
+    ),
+    index("workspace_guest_user_idx").on(table.userId),
+  ],
+);
+
+export const pageGuestInvitation = pgTable(
+  "page_guest_invitation",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    pageId: text("page_id")
+      .notNull()
+      .references(() => page.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    accessLevel: text("access_level").notNull().default("view"),
+    status: text("status").notNull().default("pending"),
+    inviterId: text("inviter_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    acceptedByUserId: text("accepted_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("page_guest_invitation_workspace_status_idx").on(
+      table.workspaceId,
+      table.status,
+    ),
+    index("page_guest_invitation_page_status_idx").on(
+      table.pageId,
+      table.status,
+    ),
+    index("page_guest_invitation_email_idx").on(table.email),
+    uniqueIndex("page_guest_invitation_pending_unique")
+      .on(table.pageId, sql`lower(${table.email})`)
+      .where(sql`${table.status} = 'pending'`),
+    check(
+      "page_guest_invitation_access_level_check",
+      sql`${table.accessLevel} in ('view', 'edit', 'full')`,
+    ),
+    check(
+      "page_guest_invitation_status_check",
+      sql`${table.status} in ('pending', 'accepted', 'cancelled', 'expired')`,
+    ),
+  ],
+);
+
 export const imageAsset = pgTable(
   "image_asset",
   {

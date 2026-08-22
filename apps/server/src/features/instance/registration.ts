@@ -9,6 +9,7 @@ import {
   account,
   instanceSettings,
   invitation,
+  pageGuestInvitation,
   user,
   workspace,
 } from "../../db/schema";
@@ -455,11 +456,30 @@ async function getPendingPinnedInvitation(
     )
     .limit(1);
 
-  if (!candidate || !isInvitationUnexpired(candidate.expiresAt)) {
-    return null;
+  if (candidate && isInvitationUnexpired(candidate.expiresAt)) {
+    return candidate;
   }
 
-  return candidate;
+  const [pageGuestCandidate] = await db
+    .select({
+      email: pageGuestInvitation.email,
+      expiresAt: pageGuestInvitation.expiresAt,
+      id: pageGuestInvitation.id,
+    })
+    .from(pageGuestInvitation)
+    .where(
+      and(
+        eq(pageGuestInvitation.id, invitationId),
+        eq(pageGuestInvitation.workspaceId, pinnedWorkspaceId),
+        eq(pageGuestInvitation.status, "pending"),
+      ),
+    )
+    .limit(1);
+
+  return pageGuestCandidate &&
+    isInvitationUnexpired(pageGuestCandidate.expiresAt)
+    ? pageGuestCandidate
+    : null;
 }
 
 function invalidInvitationDecision(): RegistrationDecision {
