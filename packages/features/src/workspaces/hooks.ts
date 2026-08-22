@@ -8,6 +8,7 @@ import {
 } from "../pages/queries"
 import {
   type AcceptWorkspaceInvitationResponse,
+  type InvitableWorkspaceRole,
   workspaceAccessTargetsQueryKey,
   workspaceAccessTargetsQueryOptions,
   workspaceInvitationsQueryKey,
@@ -15,6 +16,7 @@ import {
   workspacesQueryKey,
   workspacesQueryOptions,
   type Workspace,
+  type WorkspaceMemberMutationResponse,
   type WorkspaceRole,
 } from "./queries"
 
@@ -68,15 +70,26 @@ export function useCreateWorkspace() {
 }
 
 export function useInviteWorkspaceMember() {
-  const { auth, queryClient } = useZilobaseFeatures()
+  const { apiFetch, queryClient } = useZilobaseFeatures()
 
   return useMutation({
     mutationFn: (input: {
+      accessExpiresAt?: string | null
       email: string
       workspaceId: string
-      role: WorkspaceRole
+      role: InvitableWorkspaceRole
     }) =>
-      auth.inviteWorkspaceMember(input),
+      apiFetch<{ invitation: unknown }>(
+        `/workspaces/${encodeURIComponent(input.workspaceId)}/member-invitations`,
+        {
+          body: JSON.stringify({
+            accessExpiresAt: input.accessExpiresAt ?? null,
+            email: input.email,
+            role: input.role,
+          }),
+          method: "POST",
+        },
+      ),
     onSuccess: async (_result, input) => {
       await Promise.all([
         queryClient.invalidateQueries({
@@ -85,6 +98,54 @@ export function useInviteWorkspaceMember() {
         queryClient.invalidateQueries({
           queryKey: workspaceAccessTargetsQueryKey(input.workspaceId),
         }),
+      ])
+    },
+  })
+}
+
+export function useUpdateWorkspaceMember() {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+
+  return useMutation({
+    mutationFn: (input: {
+      accessExpiresAt?: string | null
+      memberId: string
+      role: WorkspaceRole
+      workspaceId: string
+    }) =>
+      apiFetch<WorkspaceMemberMutationResponse>(
+        `/workspaces/${encodeURIComponent(input.workspaceId)}/members/${encodeURIComponent(input.memberId)}`,
+        {
+          body: JSON.stringify({
+            accessExpiresAt: input.accessExpiresAt ?? null,
+            role: input.role,
+          }),
+          method: "PATCH",
+        },
+      ),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceAccessTargetsQueryKey(input.workspaceId),
+      })
+    },
+  })
+}
+
+export function useRemoveWorkspaceMember() {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+
+  return useMutation({
+    mutationFn: (input: { memberId: string; workspaceId: string }) =>
+      apiFetch<{ removed: boolean }>(
+        `/workspaces/${encodeURIComponent(input.workspaceId)}/members/${encodeURIComponent(input.memberId)}`,
+        { method: "DELETE" },
+      ),
+    onSuccess: async (_result, input) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workspaceAccessTargetsQueryKey(input.workspaceId),
+        }),
+        queryClient.invalidateQueries({ queryKey: workspacesQueryKey }),
       ])
     },
   })

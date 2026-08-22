@@ -1,5 +1,11 @@
 import * as React from "react"
-import { MailPlusIcon, SendIcon, UsersIcon } from "lucide-react"
+import {
+  CalendarClockIcon,
+  MailPlusIcon,
+  SendIcon,
+  Trash2Icon,
+  UsersIcon,
+} from "lucide-react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -43,15 +49,26 @@ import { Spinner } from "@/components/ui/spinner"
 import { useSession } from "@zilobase/features/auth"
 import {
   useInviteWorkspaceMember,
+  useRemoveWorkspaceMember,
+  useUpdateWorkspaceMember,
   useWorkspaceAccessTargets,
   useWorkspaceInvitations,
 } from "@zilobase/features/workspaces"
 import type {
+  InvitableWorkspaceRole,
   WorkspaceInvitation,
   WorkspaceMember,
   WorkspaceRole,
 } from "@zilobase/features/workspaces"
 import { apiFetch } from "@/lib/api"
+import {
+  getDefaultTemporaryExpiration,
+  getMaximumTemporaryExpiration,
+  getMinimumTemporaryExpiration,
+  isoToLocalDateTime,
+  localDateTimeToIso,
+  normalizeWorkspaceRole,
+} from "@/pages/settings/team-access"
 import { useAppStore } from "@/stores/app-store"
 
 type RegistrationMode = "invite-only" | "open"
@@ -73,6 +90,11 @@ export default function TeamSettingsPage() {
     useWorkspaceAccessTargets(activeWorkspaceId)
   const { data: invitations, isLoading: isLoadingInvitations } =
     useWorkspaceInvitations(activeWorkspaceId)
+  const currentMembership = accessTargets?.members.find(
+    (member) => member.id === sessionData?.user?.id,
+  )
+  const currentRole = normalizeWorkspaceRole(currentMembership?.role)
+  const canManageMembers = currentRole === "owner" || currentRole === "admin"
   const isInstanceOwner = Boolean(
     sessionData?.workspacePinned &&
       accessTargets?.members.some(
@@ -96,7 +118,9 @@ export default function TeamSettingsPage() {
           </>
         ) : null}
 
-        <InviteMemberSection workspaceId={activeWorkspaceId} />
+        {canManageMembers ? (
+          <InviteMemberSection workspaceId={activeWorkspaceId} />
+        ) : null}
 
         <Separator />
 
@@ -110,8 +134,12 @@ export default function TeamSettingsPage() {
             </p>
           </div>
           <MemberList
+            actorRole={currentRole}
+            canManage={canManageMembers}
+            currentUserId={sessionData?.user?.id ?? null}
             isLoading={isLoadingAccessTargets}
             members={accessTargets?.members ?? []}
+            workspaceId={activeWorkspaceId}
           />
         </section>
 
@@ -214,10 +242,15 @@ function InviteMemberSection({
 }) {
   const inviteMember = useInviteWorkspaceMember()
   const [email, setEmail] = React.useState("")
-  const [role, setRole] = React.useState<WorkspaceRole>("member")
+  const [role, setRole] = React.useState<InvitableWorkspaceRole>("member")
+  const [accessExpiresAt, setAccessExpiresAt] = React.useState("")
   const [emailError, setEmailError] = React.useState("")
   const trimmedEmail = email.trim()
-  const canSubmit = Boolean(workspaceId && trimmedEmail)
+  const canSubmit = Boolean(
+    workspaceId &&
+      trimmedEmail &&
+      (role !== "temporary" || accessExpiresAt),
+  )
 
   const invite = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -235,6 +268,10 @@ function InviteMemberSection({
     setEmailError("")
     inviteMember.mutate(
       {
+        accessExpiresAt:
+          role === "temporary"
+            ? localDateTimeToIso(accessExpiresAt)
+            : null,
         email: trimmedEmail,
         workspaceId,
         role,
@@ -243,6 +280,7 @@ function InviteMemberSection({
         onSuccess: () => {
           setEmail("")
           setRole("member")
+          setAccessExpiresAt("")
           toast.success("Invitation sent.")
         },
         onError: (error) => {
@@ -261,7 +299,7 @@ function InviteMemberSection({
           Invite member
         </h3>
         <p className="text-sm text-muted-foreground">
-          Send an invitation with admin or member access.
+          Invite a permanent teammate or grant time-limited workspace access.
         </p>
       </div>
       <form className="grid gap-4" onSubmit={invite}>
@@ -289,7 +327,15 @@ function InviteMemberSection({
             <FieldLabel>Role</FieldLabel>
             <Select
               disabled={!workspaceId || inviteMember.isPending}
-              onValueChange={(value) => setRole(value as WorkspaceRole)}
+              onValueChange={(value) => {
+                const nextRole = value as InvitableWorkspaceRole
+                setRole(nextRole)
+                setAccessExpiresAt((current) =>
+                  nextRole === "temporary"
+                    ? current || getDefaultTemporaryExpiration()
+                    : "",
+                )
+              }}
               value={role}
             >
               <SelectTrigger className="w-full">
@@ -298,12 +344,34 @@ function InviteMemberSection({
               <SelectContent>
                 <SelectItem value="member">Member</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="temporary">Temporary</SelectItem>
               </SelectContent>
             </Select>
             <FieldDescription>
-              Admins can manage workspace settings and invitations.
+              Temporary members have normal member access until their deadline.
             </FieldDescription>
           </Field>
+
+          {role === "temporary" ? (
+            <Field>
+              <FieldLabel htmlFor="team-invite-expiration">
+                Access expiration
+              </FieldLabel>
+              <Input
+                disabled={!workspaceId || inviteMember.isPending}
+                id="team-invite-expiration"
+                max={getMaximumTemporaryExpiration()}
+                min={getMinimumTemporaryExpiration()}
+                onChange={(event) => setAccessExpiresAt(event.target.value)}
+                required
+                type="datetime-local"
+                value={accessExpiresAt}
+              />
+              <FieldDescription>
+                Required for temporary members and limited to one year.
+              </FieldDescription>
+            </Field>
+          ) : null}
         </FieldGroup>
 
         <Button
@@ -320,11 +388,19 @@ function InviteMemberSection({
 }
 
 function MemberList({
+  actorRole,
+  canManage,
+  currentUserId,
   isLoading,
   members,
+  workspaceId,
 }: {
+  actorRole: WorkspaceRole | null
+  canManage: boolean
+  currentUserId: string | null
   isLoading: boolean
   members: WorkspaceMember[]
+  workspaceId: string | null | undefined
 }) {
   if (isLoading) {
     return <RowsSkeleton />
@@ -349,7 +425,14 @@ function MemberList({
   return (
     <ItemGroup className="gap-2">
       {members.map((member) => (
-        <MemberRow key={member.memberId} member={member} />
+        <MemberRow
+          actorRole={actorRole}
+          canManage={canManage}
+          currentUserId={currentUserId}
+          key={member.memberId}
+          member={member}
+          workspaceId={workspaceId}
+        />
       ))}
     </ItemGroup>
   )
@@ -391,7 +474,90 @@ function InvitationList({
   )
 }
 
-function MemberRow({ member }: { member: WorkspaceMember }) {
+function MemberRow({
+  actorRole,
+  canManage,
+  currentUserId,
+  member,
+  workspaceId,
+}: {
+  actorRole: WorkspaceRole | null
+  canManage: boolean
+  currentUserId: string | null
+  member: WorkspaceMember
+  workspaceId: string | null | undefined
+}) {
+  const updateMember = useUpdateWorkspaceMember()
+  const removeMember = useRemoveWorkspaceMember()
+  const memberRole = normalizeWorkspaceRole(member.role) ?? "member"
+  const [editing, setEditing] = React.useState(false)
+  const [draftRole, setDraftRole] = React.useState<WorkspaceRole>(memberRole)
+  const [draftExpiration, setDraftExpiration] = React.useState(
+    member.accessExpiresAt
+      ? isoToLocalDateTime(member.accessExpiresAt)
+      : "",
+  )
+  const actorCanEdit = Boolean(
+    canManage &&
+      workspaceId &&
+      (memberRole !== "owner" || actorRole === "owner"),
+  )
+
+  React.useEffect(() => {
+    setDraftRole(memberRole)
+    setDraftExpiration(
+      member.accessExpiresAt
+        ? isoToLocalDateTime(member.accessExpiresAt)
+        : "",
+    )
+  }, [member.accessExpiresAt, memberRole])
+
+  const save = () => {
+    if (!workspaceId) return
+
+    updateMember.mutate(
+      {
+        accessExpiresAt:
+          draftRole === "temporary"
+            ? localDateTimeToIso(draftExpiration)
+            : null,
+        memberId: member.memberId,
+        role: draftRole,
+        workspaceId,
+      },
+      {
+        onError: (error) =>
+          toast.error(
+            error instanceof Error ? error.message : "Could not update member.",
+          ),
+        onSuccess: () => {
+          setEditing(false)
+          toast.success("Member access updated.")
+        },
+      },
+    )
+  }
+
+  const remove = () => {
+    if (
+      !workspaceId ||
+      !window.confirm(`Remove ${member.name || member.email} from this workspace?`)
+    ) {
+      return
+    }
+
+    removeMember.mutate(
+      { memberId: member.memberId, workspaceId },
+      {
+        onError: (error) =>
+          toast.error(
+            error instanceof Error ? error.message : "Could not remove member.",
+          ),
+        onSuccess: () => toast.success("Member removed."),
+      },
+    )
+  }
+
   return (
     <Item className="min-h-12" variant="outline">
       <ItemMedia className="size-8 rounded-lg bg-muted text-xs font-medium uppercase">
@@ -399,10 +565,101 @@ function MemberRow({ member }: { member: WorkspaceMember }) {
       </ItemMedia>
       <ItemContent className="min-w-0">
         <ItemTitle className="truncate">{member.name || member.email}</ItemTitle>
-        <ItemDescription className="truncate">{member.email}</ItemDescription>
+        <ItemDescription className="truncate">
+          {member.email}
+          {member.accessExpiresAt
+            ? ` · Expires ${formatDate(member.accessExpiresAt)}`
+            : ""}
+        </ItemDescription>
       </ItemContent>
       <ItemActions>
-        <RoleBadge role={member.role} />
+        {editing && actorCanEdit ? (
+          <div className="flex max-w-sm flex-wrap items-center justify-end gap-2">
+            <Select
+              disabled={updateMember.isPending}
+              onValueChange={(value) => {
+                const nextRole = value as WorkspaceRole
+                setDraftRole(nextRole)
+                setDraftExpiration((current) =>
+                  nextRole === "temporary"
+                    ? current || getDefaultTemporaryExpiration()
+                    : "",
+                )
+              }}
+              value={draftRole}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {actorRole === "owner" ? (
+                  <SelectItem value="owner">Owner</SelectItem>
+                ) : null}
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="temporary">Temporary</SelectItem>
+              </SelectContent>
+            </Select>
+            {draftRole === "temporary" ? (
+              <Input
+                aria-label="Temporary access expiration"
+                className="w-52"
+                max={getMaximumTemporaryExpiration()}
+                min={getMinimumTemporaryExpiration()}
+                onChange={(event) => setDraftExpiration(event.target.value)}
+                type="datetime-local"
+                value={draftExpiration}
+              />
+            ) : null}
+            <Button
+              disabled={
+                updateMember.isPending ||
+                (draftRole === "temporary" && !draftExpiration)
+              }
+              onClick={save}
+              size="sm"
+              type="button"
+            >
+              {updateMember.isPending ? <Spinner /> : <CalendarClockIcon />}
+              Save
+            </Button>
+            <Button
+              disabled={updateMember.isPending}
+              onClick={() => setEditing(false)}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              Cancel
+            </Button>
+            {member.id !== currentUserId ? (
+              <Button
+                aria-label={`Remove ${member.name || member.email}`}
+                disabled={removeMember.isPending}
+                onClick={remove}
+                size="icon-sm"
+                type="button"
+                variant="ghost"
+              >
+                <Trash2Icon />
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <RoleBadge role={member.role} />
+            {actorCanEdit ? (
+              <Button
+                onClick={() => setEditing(true)}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                Manage
+              </Button>
+            ) : null}
+          </div>
+        )}
       </ItemActions>
     </Item>
   )
@@ -422,6 +679,9 @@ function InvitationRow({
         <ItemTitle className="truncate">{invitation.email}</ItemTitle>
         <ItemDescription className="truncate">
           Expires {formatDate(invitation.expiresAt)}
+          {invitation.membershipExpiresAt
+            ? ` · Access ends ${formatDate(invitation.membershipExpiresAt)}`
+            : ""}
         </ItemDescription>
       </ItemContent>
       <ItemActions>

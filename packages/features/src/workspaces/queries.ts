@@ -10,14 +10,16 @@ export type Workspace = {
   metadata?: string | null
 }
 
-export type WorkspaceRole = "admin" | "member"
+export type WorkspaceRole = "owner" | "admin" | "member" | "temporary"
+export type InvitableWorkspaceRole = Exclude<WorkspaceRole, "owner">
 
 export type WorkspaceMember = {
   email: string
   id: string
   memberId: string
   name: string
-  role: string
+  role: WorkspaceRole | string
+  accessExpiresAt?: string | null
 }
 
 export type WorkspaceTeam = {
@@ -38,8 +40,20 @@ export type WorkspaceInvitation = {
   status: string
   inviterId: string
   expiresAt: string
+  membershipExpiresAt?: string | null
   createdAt: string
   teamId?: string
+}
+
+export type WorkspaceMemberMutationResponse = {
+  member: {
+    accessExpiresAt?: string | null
+    createdAt: string
+    id: string
+    role: WorkspaceRole | string
+    userId: string
+    workspaceId?: string
+  }
 }
 
 export type AcceptWorkspaceInvitationResponse = {
