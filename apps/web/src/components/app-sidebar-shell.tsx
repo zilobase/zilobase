@@ -47,9 +47,9 @@ export function AppSidebarHeader({
       className={cn("gap-0.5 pb-0", hasOverlayTitleBar && "pt-9")}
       data-tauri-drag-region={hasOverlayTitleBar ? "deep" : undefined}
     >
-      <div className="flex items-center gap-1">
-        <div className="min-w-0 flex-1">{children}</div>
-        <SidebarTrigger className="shrink-0" />
+      <div className="group/workspace-row flex h-8 items-center rounded-md transition-colors hover:bg-sidebar-accent focus-within:bg-sidebar-accent [&_[data-sidebar=menu]]:h-full [&_[data-sidebar=menu-item]]:h-full [&_[data-sidebar=menu-button]]:h-full [&_[data-sidebar=menu-button]]:hover:bg-transparent [&_[data-sidebar=menu-button][data-open]]:bg-transparent">
+        <div className="h-full min-w-0 flex-1">{children}</div>
+        <SidebarTrigger className="mr-0.5 size-7 shrink-0 rounded-md hover:bg-sidebar-foreground/10 focus-visible:bg-sidebar-foreground/10 group-hover/workspace-row:text-sidebar-accent-foreground" />
       </div>
       {navigation}
     </SidebarHeader>

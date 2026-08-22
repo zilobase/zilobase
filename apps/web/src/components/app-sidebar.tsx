@@ -107,6 +107,7 @@ import {
   MessageCircleQuestionIcon,
   MessageSquarePlusIcon,
   MonitorUpIcon,
+  PencilIcon,
   PlusIcon,
   SearchIcon,
   SparklesIcon,
@@ -462,6 +463,7 @@ export function AppSidebar({
         />
       </AppSidebarHeader>
       <SidebarContent>
+        <div aria-hidden="true" className="h-3 shrink-0" />
         {isAiPage ? (
           <AiSidebarHistory />
         ) : isMeetingsPage ? (
@@ -554,16 +556,28 @@ export function AppSidebar({
           </>
         )}
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="relative z-10 bg-sidebar p-0">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-full h-5 bg-gradient-to-t from-sidebar to-transparent"
+        />
         <SidebarMenu>
           {!isTauri() && desktopLinkServer ? (
             <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <a href={buildDesktopDeepLink(location.href, desktopLinkServer)}>
-                  <MonitorUpIcon />
-                  <span>Open in desktop app</span>
-                </a>
-              </SidebarMenuButton>
+              <a
+                className="mx-2 my-2 flex w-[calc(100%-1rem)] items-start gap-2.5 rounded-lg bg-sidebar-accent/45 p-3 text-sidebar-foreground ring-1 ring-border/60 transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none group-data-[collapsible=icon]:mx-0 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2!"
+                href={buildDesktopDeepLink(location.href, desktopLinkServer)}
+              >
+                <MonitorUpIcon className="mt-0.5 size-4 shrink-0 group-data-[collapsible=icon]:mt-0" />
+                <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+                  <span className="block text-sm font-medium">
+                    Open in desktop app
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                    Continue this page in the desktop experience.
+                  </span>
+                </span>
+              </a>
             </SidebarMenuItem>
           ) : null}
           <NewMenu
@@ -606,8 +620,11 @@ function NewMenu({
     <SidebarMenuItem>
       <DropDrawer>
         <DropDrawerTrigger asChild>
-          <SidebarMenuButton tooltip="New">
-            <PlusIcon />
+          <SidebarMenuButton
+            className="mx-2 my-2 h-10 w-[calc(100%-1rem)] justify-center gap-2 bg-background text-base font-semibold text-primary ring-1 ring-border/60 hover:bg-muted/60 hover:text-primary data-open:bg-muted/60 data-open:text-primary dark:bg-muted dark:hover:bg-muted/80 dark:data-open:bg-muted/80 group-data-[collapsible=icon]:mx-0 group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-2! [&_svg]:size-5"
+            tooltip="New"
+          >
+            <PencilIcon />
             <span>New</span>
           </SidebarMenuButton>
         </DropDrawerTrigger>
@@ -702,28 +719,34 @@ function NavMain({
   };
 
   return (
-    <SidebarGroup className="p-0">
-      <SidebarGroupContent>
-        <nav aria-label="Main navigation">
-          <div className="flex items-center gap-0.5">
-            <ExpandableTabs
-              onChange={handleChange}
-              selected={selected}
-              tabs={tabs}
-            />
-            <button
-              aria-label="Search"
-              className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-md text-foreground/60 outline-none transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
-              onClick={onOpenSearch}
-              title="Search"
-              type="button"
-            >
-              <SearchIcon className="size-4" />
-            </button>
-          </div>
-        </nav>
-      </SidebarGroupContent>
-    </SidebarGroup>
+    <div className="relative z-10 bg-sidebar">
+      <SidebarGroup className="bg-sidebar px-0">
+        <SidebarGroupContent>
+          <nav aria-label="Main navigation" className="bg-sidebar py-2">
+            <div className="flex items-center gap-0.5">
+              <ExpandableTabs
+                onChange={handleChange}
+                selected={selected}
+                tabs={tabs}
+              />
+              <button
+                aria-label="Search"
+                className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-md text-foreground/60 outline-none transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
+                onClick={onOpenSearch}
+                title="Search"
+                type="button"
+              >
+                <SearchIcon className="size-4" />
+              </button>
+            </div>
+          </nav>
+        </SidebarGroupContent>
+      </SidebarGroup>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-full h-3 bg-gradient-to-b from-sidebar to-transparent"
+      />
+    </div>
   );
 }
 
