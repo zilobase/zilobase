@@ -71,7 +71,6 @@ import {
   useCreateDatabase,
   useSetDatabaseFavorite,
 } from "@zilobase/features/databases";
-import { useCreateAiChatThread } from "@zilobase/features/ai-chat";
 import { useWorkspaceMeetings } from "@zilobase/features/meetings";
 import {
   useCreatePage,
@@ -272,7 +271,7 @@ export function AppSidebar({
   const { isPending: isCreatingPage, mutateAsync: createPage } = useCreatePage();
   const { isPending: isCreatingDatabase, mutateAsync: createDatabase } =
     useCreateDatabase();
-  const createChatThread = useCreateAiChatThread();
+  const { setActiveThreadId } = useAiChatThreadState({ enabled: isAiPage });
   const activeMeetingId = getActiveMeetingId(pathname, location.search);
   const { isPending: isSettingPageFavorite, mutate: setPageFavorite } =
     useSetPageFavorite();
@@ -346,22 +345,13 @@ export function AppSidebar({
   }, [createDatabase, isCreatingDatabase, navigate, workspaceId]);
 
   const handleCreateChat = React.useCallback(async () => {
-    if (createChatThread.isPending) return;
-
-    try {
-      const response = await createChatThread.mutateAsync({});
-      setSidebarMode("askAi");
-      await navigate({
-        search: { thread: response.thread.id },
-        to: "/ai",
-      });
-    } catch (error) {
-      toast.error("Failed to create chat", {
-        description:
-          error instanceof Error ? error.message : "Try again.",
-      });
-    }
-  }, [createChatThread, navigate]);
+    setActiveThreadId(null);
+    setSidebarMode("askAi");
+    await navigate({
+      search: { thread: undefined },
+      to: "/ai",
+    });
+  }, [navigate, setActiveThreadId]);
 
   const handleDropPageOnDatabase = React.useCallback(
     ({
@@ -452,6 +442,7 @@ export function AppSidebar({
                 item.id === "home" || !hiddenSidebarItems.has(item.id),
             )}
             onOpenSearch={openSearch}
+            onStartAiDraft={() => void handleCreateChat()}
             onSidebarModeChange={setSidebarMode}
             sidebarMode={sidebarMode}
           />
@@ -568,7 +559,7 @@ export function AppSidebar({
             </SidebarMenuItem>
           ) : null}
           <NewMenu
-            createChatPending={createChatThread.isPending}
+            createChatPending={false}
             createDatabasePending={isCreatingDatabase}
             createPagePending={isCreatingPage}
             onCreateChat={handleCreateChat}
@@ -644,6 +635,7 @@ function NewMenu({
 function NavMain({
   items,
   onOpenSearch,
+  onStartAiDraft,
   onSidebarModeChange,
   sidebarMode,
 }: {
@@ -654,6 +646,7 @@ function NavMain({
     icon: LucideIcon;
   }[];
   onOpenSearch: () => void;
+  onStartAiDraft: () => void;
   onSidebarModeChange: (mode: "home" | "askAi" | "meetings") => void;
   sidebarMode: "home" | "askAi" | "meetings";
 }) {
@@ -697,8 +690,7 @@ function NavMain({
       return;
     }
 
-    onSidebarModeChange("askAi");
-    if (item.url) void navigate({ to: item.url as never });
+    onStartAiDraft();
   };
 
   return (
@@ -729,7 +721,7 @@ function NavMain({
 
 function AiSidebarHistory() {
   const { activeThreadId, setActiveThreadId } = useAiChatThreadState();
-  const { createThread, handleCreateThread } = useAiChatThreadActions({
+  const { handleStartNewChat } = useAiChatThreadActions({
     activeThreadId,
     onSelectThread: setActiveThreadId,
   });
@@ -741,8 +733,7 @@ function AiSidebarHistory() {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                disabled={createThread.isPending}
-                onClick={() => void handleCreateThread()}
+                onClick={handleStartNewChat}
               >
                 <PlusIcon />
                 <span>New chat</span>

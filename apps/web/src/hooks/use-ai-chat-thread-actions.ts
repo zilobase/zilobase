@@ -3,7 +3,6 @@
 import {
   useAiChatThreads,
   useArchiveAiChatThread,
-  useCreateAiChatThread,
   useDeleteAiChatThread,
 } from "@zilobase/features/ai-chat";
 import { useCallback } from "react";
@@ -16,10 +15,9 @@ export function useAiChatThreadActions({
 }: {
   activeThreadId: string | null;
   enabled?: boolean;
-  onSelectThread: (threadId: string) => void;
+  onSelectThread: (threadId: string | null) => void;
 }) {
   const threadsQuery = useAiChatThreads({ enabled });
-  const createThread = useCreateAiChatThread();
   const deleteThread = useDeleteAiChatThread();
   const archiveThread = useArchiveAiChatThread();
   const threads = threadsQuery.data?.threads ?? [];
@@ -37,24 +35,14 @@ export function useAiChatThreadActions({
         return;
       }
 
-      const response = await createThread.mutateAsync({});
-      onSelectThread(response.thread.id);
+      onSelectThread(null);
     },
-    [activeThreadId, createThread, onSelectThread, threads],
+    [activeThreadId, onSelectThread, threads],
   );
 
-  const handleCreateThread = useCallback(async () => {
-    try {
-      const response = await createThread.mutateAsync({});
-      onSelectThread(response.thread.id);
-      return response.thread.id;
-    } catch (error) {
-      toast.error("Failed to create chat", {
-        description: error instanceof Error ? error.message : "Try again.",
-      });
-      return null;
-    }
-  }, [createThread, onSelectThread]);
+  const handleStartNewChat = useCallback(() => {
+    onSelectThread(null);
+  }, [onSelectThread]);
 
   const handleDeleteThread = useCallback(
     async (threadId: string) => {
@@ -87,10 +75,9 @@ export function useAiChatThreadActions({
   return {
     threads,
     threadsQuery,
-    createThread,
     deleteThread,
     archiveThread,
-    handleCreateThread,
+    handleStartNewChat,
     handleDeleteThread,
     handleArchiveThread,
   };

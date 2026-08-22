@@ -92,10 +92,9 @@ export function HistorySidebar({
   const {
     threads,
     threadsQuery,
-    createThread,
     handleArchiveThread,
-    handleCreateThread,
     handleDeleteThread,
+    handleStartNewChat,
   } = useAiChatThreadActions({
     activeThreadId,
     onSelectThread: setActiveThreadId,
@@ -114,8 +113,7 @@ export function HistorySidebar({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  disabled={createThread.isPending}
-                  onClick={() => void handleCreateThread()}
+                  onClick={handleStartNewChat}
                 >
                   <MessageSquarePlusIcon />
                   <span>New chat</span>

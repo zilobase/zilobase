@@ -1,8 +1,5 @@
 import { useActiveWorkspaceId } from "@zilobase/features/integrations";
-import {
-  useAiChatThreads,
-  useCreateAiChatThread,
-} from "@zilobase/features/ai-chat";
+import { useAiChatThreads } from "@zilobase/features/ai-chat";
 import { useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect } from "react";
 import { create } from "zustand";
@@ -79,12 +76,6 @@ function setStoredActiveThreadId(
   );
 }
 
-function clearBootstrapped(workspaceId: string) {
-  updateStoredThreadState(workspaceId, (current) =>
-    current.bootstrapped ? { ...current, bootstrapped: false } : current,
-  );
-}
-
 function markBootstrapped(workspaceId: string) {
   const current =
     useAiChatThreadStore.getState().threadStateByWorkspaceId[
@@ -101,10 +92,6 @@ function markBootstrapped(workspaceId: string) {
   }));
 
   return true;
-}
-
-function getStorageKey(workspaceId: string) {
-  return `ai-chat-thread:${workspaceId}`;
 }
 
 function getCurrentUrlThreadId() {
@@ -144,7 +131,6 @@ export function useAiChatThreadState(options?: { enabled?: boolean }) {
   });
   const workspaceId = useActiveWorkspaceId();
   const threadsQuery = useAiChatThreads({ enabled });
-  const createThread = useCreateAiChatThread();
   const threadState = useAiChatThreadStore((state) =>
     workspaceId
       ? state.threadStateByWorkspaceId[workspaceId]
@@ -163,12 +149,6 @@ export function useAiChatThreadState(options?: { enabled?: boolean }) {
 
       setStoredActiveThreadId(workspaceId, threadId);
 
-      if (threadId) {
-        sessionStorage.setItem(getStorageKey(workspaceId), threadId);
-      } else {
-        sessionStorage.removeItem(getStorageKey(workspaceId));
-      }
-
       if (pathname === "/ai") {
         replaceAiThreadSearchParam(threadId);
       }
@@ -181,17 +161,10 @@ export function useAiChatThreadState(options?: { enabled?: boolean }) {
       return;
     }
 
-    const storedThreadId = sessionStorage.getItem(getStorageKey(workspaceId));
     const initialThreadId =
-      pathname === "/ai"
-        ? getCurrentUrlThreadId() ?? storedThreadId
-        : storedThreadId;
+      pathname === "/ai" ? getCurrentUrlThreadId() : null;
 
     initializeActiveThreadId(workspaceId, initialThreadId);
-
-    if (initialThreadId) {
-      sessionStorage.setItem(getStorageKey(workspaceId), initialThreadId);
-    }
   }, [enabled, hasInitializedActiveThread, workspaceId, pathname]);
 
   useEffect(() => {
@@ -215,29 +188,11 @@ export function useAiChatThreadState(options?: { enabled?: boolean }) {
       return;
     }
 
-    if (threads.length > 0) {
-      if (markBootstrapped(workspaceId)) {
-        setActiveThreadId(threads[0].id);
-      }
-
-      return;
-    }
-
-    if (createThread.isPending || !markBootstrapped(workspaceId)) {
-      return;
-    }
-
-    void createThread
-      .mutateAsync({})
-      .then((response) => {
-        setActiveThreadId(response.thread.id);
-      })
-      .catch(() => {
-        clearBootstrapped(workspaceId);
-      });
+    setStoredActiveThreadId(workspaceId, null);
+    markBootstrapped(workspaceId);
+    replaceAiThreadSearchParam(null);
   }, [
     activeThreadId,
-    createThread,
     enabled,
     hasBootstrappedActiveThread,
     hasInitializedActiveThread,
@@ -254,9 +209,7 @@ export function useAiChatThreadState(options?: { enabled?: boolean }) {
       (!workspaceId ||
         !hasInitializedActiveThread ||
         !hasBootstrappedActiveThread ||
-        threadsQuery.isLoading ||
-        createThread.isPending ||
-        !activeThreadId),
+        threadsQuery.isLoading),
     setActiveThreadId,
     threadsQuery,
   };

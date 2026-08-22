@@ -56,20 +56,20 @@ export function ChatSidebarPanel({
 }) {
   const { activeThreadId, isBootstrapping, setActiveThreadId } =
     useAiChatThreadState({ enabled: open })
-  const { createThread, handleCreateThread } = useAiChatThreadActions({
+  const { handleStartNewChat } = useAiChatThreadActions({
     activeThreadId,
     enabled: open,
     onSelectThread: setActiveThreadId,
   })
   const [view, setView] = useState<ChatSidebarView>("chat")
 
-  const handleNewChat = useCallback(async () => {
+  const handleNewChat = useCallback(() => {
     setView("chat")
-    await handleCreateThread()
-  }, [handleCreateThread])
+    handleStartNewChat()
+  }, [handleStartNewChat])
 
   const handleSelectThread = useCallback(
-    (threadId: string) => {
+    (threadId: string | null) => {
       setActiveThreadId(threadId)
       setView("chat")
     },
@@ -100,8 +100,7 @@ export function ChatSidebarPanel({
         <div className="flex items-center gap-0.5">
           <Button
             aria-label="New chat"
-            disabled={createThread.isPending}
-            onClick={() => void handleNewChat()}
+            onClick={handleNewChat}
             size="icon-sm"
             type="button"
             variant="ghost"
@@ -130,7 +129,7 @@ export function ChatSidebarPanel({
           className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
           data-ai-scroll-shell
         >
-          {!open || isBootstrapping || !activeThreadId ? (
+          {!open || isBootstrapping ? (
             <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
               Loading chat...
             </div>
@@ -145,6 +144,8 @@ export function ChatSidebarPanel({
               <Chatbot
                 databaseId={databaseId}
                 isSidebar
+                key={activeThreadId ?? "new"}
+                onThreadCreated={setActiveThreadId}
                 threadId={activeThreadId}
                 pageId={pageId}
               />

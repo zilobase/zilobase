@@ -70,6 +70,7 @@ import {
 import {
   aiChatThreadMessagesQueryKey,
   aiChatThreadMessagesQueryOptions,
+  aiChatThreadsQueryKey,
   buildPageEditSnapshotMap,
   dedupeChatMessagesById,
   isProposePageContentUpdateToolName,
@@ -79,6 +80,7 @@ import {
   type AiChatThreadMessagesResponse,
   type ProposePageContentUpdateOutput,
   type PageEditSnapshotPart,
+  useCreateAiChatThread,
 } from "@zilobase/features/ai-chat";
 import { useSession } from "@zilobase/features/auth";
 import { useZilobaseFeatures } from "@zilobase/features";
@@ -860,7 +862,8 @@ const EmptyState = () => (
 type ChatbotProps = {
   databaseId?: string | null;
   isSidebar?: boolean;
-  threadId: string;
+  onThreadCreated?: (threadId: string) => void;
+  threadId: string | null;
   pageId?: string | null;
 };
 
@@ -908,6 +911,16 @@ const Chatbot = (props: ChatbotProps) => {
     threadMessagesQuery.isLoading,
   ]);
 
+  if (!props.threadId) {
+    return (
+      <ChatbotInner
+        {...props}
+        initialMessages={emptyAgentChatMessages}
+        key={initialMessagesKey}
+      />
+    );
+  }
+
   if (
     threadMessagesQuery.isLoading ||
     !seededInitialMessages.ready ||
@@ -933,6 +946,7 @@ const ChatbotInner = ({
   databaseId = null,
   initialMessages,
   isSidebar = false,
+  onThreadCreated,
   threadId,
   pageId = null,
 }: ChatbotProps & {
@@ -940,6 +954,7 @@ const ChatbotInner = ({
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
+  const threadCreationPromiseRef = useRef<Promise<string> | null>(null);
   const [model, setModel] = useState<string>(fallbackModels[0].id);
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [selectedSources, setSelectedSources] = useState<SourceId[]>([]);
@@ -1112,9 +1127,11 @@ const ChatbotInner = ({
   }, [enabledSources]);
 
   const { queryClient } = useZilobaseFeatures();
+  const createThread = useCreateAiChatThread();
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
   const isAgentReady = Boolean(workspaceId && userId && threadId);
+  const isComposerReady = Boolean(workspaceId && userId);
   const agentName = isAgentReady
     ? `org-${workspaceId}-user-${userId}-thread-${threadId}`
     : "chat-not-ready";
@@ -1145,6 +1162,37 @@ const ChatbotInner = ({
     isSidebar &&
     pageId &&
     (pageAccessLevel === "edit" || pageAccessLevel === "full"),
+  );
+
+  const buildChatRequestBody = useCallback(
+    (requestThreadId: string | null) => ({
+      model,
+      sources: selectedSources,
+      threadId: requestThreadId,
+      ...(workspaceId ? { workspaceId } : {}),
+      ...(userId ? { userId } : {}),
+      ...(pageContext ? { pageContext } : {}),
+      allowedPageIds,
+      canEditPages,
+      pageContextMeta: pageContext
+        ? {
+            attachmentIds: attachments.map((item) => item.id),
+            charCount: pageContext.length,
+            primaryId: effectivePrimarySource?.id ?? null,
+          }
+        : undefined,
+    }),
+    [
+      allowedPageIds,
+      attachments,
+      canEditPages,
+      effectivePrimarySource?.id,
+      model,
+      pageContext,
+      selectedSources,
+      userId,
+      workspaceId,
+    ],
   );
 
   const threadMessagesQueryKey = useMemo(
@@ -1185,23 +1233,7 @@ const ChatbotInner = ({
     },
     transport: new DefaultChatTransport<UIMessage>({
       api: toApiUrl("/api/ai/chat"),
-      body: () => ({
-        model,
-        sources: selectedSources,
-        threadId,
-        ...(workspaceId ? { workspaceId } : {}),
-        ...(userId ? { userId } : {}),
-        ...(pageContext ? { pageContext } : {}),
-        allowedPageIds,
-        canEditPages,
-        pageContextMeta: pageContext
-          ? {
-              attachmentIds: attachments.map((item) => item.id),
-              charCount: pageContext.length,
-              primaryId: effectivePrimarySource?.id ?? null,
-            }
-          : undefined,
-      }),
+      body: () => buildChatRequestBody(threadId),
       credentials: "include",
       headers: () => {
         const headers = getApiRequestHeaders();
@@ -1612,12 +1644,12 @@ const ChatbotInner = ({
   }, [clearError, error]);
 
   const submitText = useCallback(
-    (content: string) => {
+    async (content: string) => {
       if (!content.trim()) {
         return;
       }
 
-      if (!isAgentReady) {
+      if (!isComposerReady) {
         toast.error("Ask AI failed", {
           description:
             "Sign in and select an active workspace before using AI.",
@@ -1625,24 +1657,72 @@ const ChatbotInner = ({
         return;
       }
 
+      let targetThreadId = threadId;
+
+      if (!targetThreadId) {
+        if (threadCreationPromiseRef.current) {
+          return;
+        }
+
+        threadCreationPromiseRef.current = createThread
+          .mutateAsync({})
+          .then((response) => response.thread.id);
+
+        try {
+          targetThreadId = await threadCreationPromiseRef.current;
+        } catch (creationError) {
+          toast.error("Failed to create chat", {
+            description:
+              creationError instanceof Error
+                ? creationError.message
+                : "Try again.",
+          });
+          return;
+        } finally {
+          threadCreationPromiseRef.current = null;
+        }
+      }
+
       logPageContextSent({
         attachmentCount: attachments.length,
         charCount: pageContext.length,
       });
 
-      void sendMessage({
-        text: content.trim(),
-      });
       setText("");
       setTextCursor(0);
       setDismissedMentionKey(null);
+
+      try {
+        await sendMessage(
+          { text: content.trim() },
+          { body: buildChatRequestBody(targetThreadId) },
+        );
+      } finally {
+        if (!threadId) {
+          void queryClient.invalidateQueries({
+            queryKey: aiChatThreadsQueryKey(workspaceId),
+          });
+          onThreadCreated?.(targetThreadId);
+        }
+      }
     },
-    [attachments.length, isAgentReady, sendMessage, pageContext],
+    [
+      attachments.length,
+      buildChatRequestBody,
+      createThread,
+      isComposerReady,
+      onThreadCreated,
+      pageContext,
+      queryClient,
+      sendMessage,
+      threadId,
+      workspaceId,
+    ],
   );
 
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
-      submitText(message.text || "");
+      void submitText(message.text || "");
     },
     [submitText],
   );
@@ -1968,7 +2048,14 @@ const ChatbotInner = ({
                   </ModelSelectorContent>
                 </ModelSelector>
               </PromptInputTools>
-              <PromptInputSubmit status={status as ChatStatus} onStop={stop} />
+              <PromptInputSubmit
+                status={
+                  createThread.isPending
+                    ? "submitted"
+                    : (status as ChatStatus)
+                }
+                onStop={stop}
+              />
             </PromptInputFooter>
           </PromptInput>
         </div>

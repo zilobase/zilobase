@@ -23,7 +23,8 @@ export function register({ assert, test }) {
       sidebarSource,
       /usePageNavigation\(\s*isAiPage \|\| isMeetingsPage \? null : workspaceId/,
     )
-    assert.match(sidebarSource, /useCreateAiChatThread\(\)/)
+    assert.doesNotMatch(sidebarSource, /useCreateAiChatThread/)
+    assert.match(sidebarSource, /setActiveThreadId\(null\)/)
     assert.doesNotMatch(sidebarSource, /ThemeDropdown/)
     assert.match(sidebarSource, /<AppSidebarHeader[\s\S]*navigation=\{[\s\S]*<NavMain/)
     assert.match(workspaceSource, /<span>Settings<\/span>/)

@@ -138,7 +138,7 @@ export function AiChatHistoryList({
 }: {
   activeThreadId: string | null;
   className?: string;
-  onSelectThread: (threadId: string) => void;
+  onSelectThread: (threadId: string | null) => void;
 }) {
   const {
     threads,

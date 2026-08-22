@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   useAiChatThreads,
-  useCreateAiChatThread,
   useDeleteAiChatThread,
 } from "@zilobase/features/ai-chat";
 import { MessageSquarePlusIcon, Trash2Icon } from "lucide-react";
@@ -45,23 +44,15 @@ export function AiChatThreadsPanel({
   activeThreadId: string | null;
   className?: string;
   compact?: boolean;
-  onSelectThread: (threadId: string) => void;
+  onSelectThread: (threadId: string | null) => void;
 }) {
   const threadsQuery = useAiChatThreads();
-  const createThread = useCreateAiChatThread();
   const deleteThread = useDeleteAiChatThread();
   const threads = threadsQuery.data?.threads ?? [];
 
-  const handleCreateThread = useCallback(async () => {
-    try {
-      const response = await createThread.mutateAsync({});
-      onSelectThread(response.thread.id);
-    } catch (error) {
-      toast.error("Failed to create chat", {
-        description: error instanceof Error ? error.message : "Try again.",
-      });
-    }
-  }, [createThread, onSelectThread]);
+  const handleStartNewChat = useCallback(() => {
+    onSelectThread(null);
+  }, [onSelectThread]);
 
   const handleDeleteThread = useCallback(
     async (threadId: string) => {
@@ -79,15 +70,14 @@ export function AiChatThreadsPanel({
           return;
         }
 
-        const response = await createThread.mutateAsync({});
-        onSelectThread(response.thread.id);
+        onSelectThread(null);
       } catch (error) {
         toast.error("Failed to delete chat", {
           description: error instanceof Error ? error.message : "Try again.",
         });
       }
     },
-    [activeThreadId, createThread, deleteThread, onSelectThread, threads],
+    [activeThreadId, deleteThread, onSelectThread, threads],
   );
 
   return (
@@ -103,8 +93,7 @@ export function AiChatThreadsPanel({
         </div>
         <Button
           aria-label="New chat"
-          disabled={createThread.isPending}
-          onClick={() => void handleCreateThread()}
+          onClick={handleStartNewChat}
           size={compact ? "icon-sm" : "sm"}
           type="button"
           variant="outline"
