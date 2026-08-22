@@ -18,6 +18,7 @@ import {
   Sparkles,
   TextWrap,
   Trash2,
+  X,
 } from "lucide-react";
 import { useState, type ButtonHTMLAttributes } from "react";
 
@@ -43,6 +44,13 @@ import {
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer";
 import { Input } from "@/components/ui/input";
+import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker";
+import { PageIconDisplay } from "@/lib/page-icon";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
@@ -69,6 +77,7 @@ import {
 } from "../core/database-property-types";
 import {
   getDatabaseSorts,
+  getDatabasePropertyIcon,
   getMergedDatabaseConfig,
   getMergedPropertyConfig,
   getPropertyWrapContent,
@@ -141,6 +150,7 @@ export function DatabasePropertyMenu({
     "this" | "related"
   >("this");
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const updateDatabase = useUpdateDatabase();
   const updateProperty = useUpdateDatabaseProperty();
   const deleteProperty = useDeleteDatabaseProperty();
@@ -148,6 +158,7 @@ export function DatabasePropertyMenu({
   const clearPropertyDrafts = useClearDatabasePropertyDrafts();
   const propertyType = getDatabasePropertyType(type);
   const PropertyIcon = propertyType.icon;
+  const customIcon = getDatabasePropertyIcon(config);
   const currentSorts = getDatabaseSorts(databaseConfig);
   const currentSortDirection =
     sortDirection ??
@@ -238,6 +249,13 @@ export function DatabasePropertyMenu({
     });
   };
 
+  const renderPropertyIcon = () =>
+    customIcon ? (
+      <PageIconDisplay size="sm" value={customIcon} />
+    ) : (
+      <PropertyIcon className="size-4 shrink-0 text-muted-foreground" />
+    );
+
   return (
     <>
       <DropDrawer open={open} onOpenChange={onOpenChange}>
@@ -248,7 +266,7 @@ export function DatabasePropertyMenu({
             type="button"
             {...triggerDragProps}
           >
-            <PropertyIcon className="self-center text-muted-foreground" />
+            <span className="self-center">{renderPropertyIcon()}</span>
             <span className="flex min-w-0 items-center truncate">{name}</span>
             <ChevronDown className="ml-auto self-center opacity-0 transition-opacity group-hover:opacity-100" />
           </button>
@@ -258,11 +276,51 @@ export function DatabasePropertyMenu({
           onCloseAutoFocus={(event) => event.preventDefault()}
           sideOffset={0}
         >
-          <div className="flex items-center gap-1.5 px-1.5 py-1">
-            <PropertyIcon className="size-4 shrink-0 text-muted-foreground" />
+          <div className="flex items-center gap-1.5 p-1.5">
+            <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
+              <div className="group/property-icon relative shrink-0">
+                <PopoverTrigger asChild>
+                  <button
+                    aria-label="Change property icon"
+                    className="flex size-8 items-center justify-center rounded-md border bg-background transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+                    type="button"
+                  >
+                    {renderPropertyIcon()}
+                  </button>
+                </PopoverTrigger>
+                {customIcon ? (
+                  <button
+                    aria-label="Reset property icon"
+                    className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground group-focus-within/property-icon:flex group-hover/property-icon:flex [&_svg]:size-2.5"
+                    onClick={() => updatePropertyConfig({ icon: "" })}
+                    type="button"
+                  >
+                    <X />
+                  </button>
+                ) : null}
+              </div>
+              <PopoverContent
+                align="start"
+                className="w-auto gap-0 overflow-hidden p-0"
+                onMouseDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                sideOffset={6}
+              >
+                <IconEmojiPicker
+                  onEmojiSelect={(icon) => {
+                    updatePropertyConfig({ icon });
+                    setIconPickerOpen(false);
+                  }}
+                  onIconSelect={(icon) => {
+                    updatePropertyConfig({ icon });
+                    setIconPickerOpen(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
             <Input
               aria-label="Property name"
-              className="h-auto rounded-none border-0 bg-transparent px-0 py-0 text-sm font-medium shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
+              className="h-8 min-w-0 flex-1 text-sm font-medium"
               defaultValue={name}
               onBlur={(event) => {
                 const nextName = event.target.value.trim();

@@ -1,4 +1,34 @@
 export function register({ assert, loadModule, test }) {
+  test("database property icons persist in property and name-column config", async () => {
+    const {
+      getDatabasePropertyIcon,
+      getMergedNameColumnConfig,
+      getMergedPropertyConfig,
+      getNameColumnIcon,
+      getDatabaseViewIcon,
+    } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-config.ts",
+    );
+
+    assert.equal(getDatabasePropertyIcon({ icon: "🌐" }), "🌐");
+    assert.equal(getDatabasePropertyIcon({ icon: 42 }), "");
+    assert.equal(getNameColumnIcon({ nameColumn: { icon: "📝" } }), "📝");
+    assert.equal(getNameColumnIcon({}), "");
+    assert.equal(getDatabaseViewIcon({ icon: "<svg>view</svg>" }), "<svg>view</svg>");
+    assert.equal(getDatabaseViewIcon({ icon: 42 }), "");
+    assert.deepEqual(
+      getMergedPropertyConfig({ wrapContent: true }, { icon: "🌐" }),
+      { icon: "🌐", wrapContent: true },
+    );
+    assert.deepEqual(
+      getMergedNameColumnConfig(
+        { nameColumn: { label: "Task" } },
+        { icon: "📝" },
+      ),
+      { nameColumn: { icon: "📝", label: "Task" } },
+    );
+  });
+
   test("database view settings expose one canonical layout catalog", async () => {
     const { databaseViewTypeOptions, getDatabaseViewTypePresentation } =
       await loadModule(

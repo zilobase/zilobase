@@ -1907,9 +1907,9 @@
     @apply min-w-0 overflow-hidden;
   }
 
-  .database-name-header:has(button:hover),
-  .database-name-header:has(button:focus-visible),
-  .database-name-header:has(button[data-state="open"]) {
+  .tiptap-editor .database-table th.database-name-header:has(button:hover),
+  .tiptap-editor .database-table th.database-name-header:has(button:focus-visible),
+  .tiptap-editor .database-table th.database-name-header:has(button[data-state="open"]) {
     @apply bg-muted/70 text-foreground;
   }
 

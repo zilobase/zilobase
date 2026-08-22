@@ -96,6 +96,7 @@ export type DatabasePropertyConfig = {
   filesLimit?: FilesLimitValue;
   formula?: string;
   hidden?: boolean;
+  icon?: string;
   numberDecimalPlaces?: NumberDecimalPlacesValue;
   numberDisplayColor?: string;
   numberDisplayDivideBy?: number;
@@ -155,6 +156,7 @@ type DatabaseConfig = {
 };
 
 export type DatabaseNameColumnConfig = {
+  icon?: string;
   label?: string;
   showPageIcon?: boolean;
   wrapContent?: boolean;
@@ -766,6 +768,32 @@ export function getNameColumnLabel(config: unknown) {
   return typeof label === "string" && label.trim().length > 0
     ? label.trim()
     : "Name";
+}
+
+export function getNameColumnIcon(config: unknown) {
+  const icon = getNameColumnConfig(config).icon;
+
+  return typeof icon === "string" ? icon : "";
+}
+
+export function getDatabasePropertyIcon(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return "";
+  }
+
+  const icon = (config as DatabasePropertyConfig).icon;
+
+  return typeof icon === "string" ? icon : "";
+}
+
+export function getDatabaseViewIcon(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return "";
+  }
+
+  const icon = (config as { icon?: unknown }).icon;
+
+  return typeof icon === "string" ? icon : "";
 }
 
 export function getNameColumnShowPageIcon(config: unknown) {

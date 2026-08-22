@@ -9,8 +9,9 @@ import {
   GripVertical,
   Sparkles,
   TextWrap,
+  X,
 } from "lucide-react";
-import type { ButtonHTMLAttributes } from "react";
+import { useState, type ButtonHTMLAttributes } from "react";
 
 import {
   DropDrawer,
@@ -24,6 +25,13 @@ import {
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer";
 import { Input } from "@/components/ui/input";
+import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker";
+import { PageIconDisplay } from "@/lib/page-icon";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { useUpdateDatabase } from "@zilobase/features/databases";
 
@@ -31,6 +39,7 @@ import {
   getDatabaseSorts,
   getMergedDatabaseConfig,
   getMergedNameColumnConfig,
+  getNameColumnIcon,
   getNameColumnLabel,
   getNameColumnShowPageIcon,
   getNameColumnWrapContent,
@@ -72,8 +81,10 @@ export function DatabaseNamePropertyMenu({
   >;
   wrapContent?: boolean;
 }) {
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const updateDatabase = useUpdateDatabase();
   const label = getNameColumnLabel(config);
+  const customIcon = getNameColumnIcon(config);
   const currentSorts = getDatabaseSorts(config);
   const currentSortDirection =
     sortDirection ??
@@ -108,6 +119,12 @@ export function DatabaseNamePropertyMenu({
       databaseId,
     });
   };
+  const renderNameColumnIcon = () =>
+    customIcon ? (
+      <PageIconDisplay size="sm" value={customIcon} />
+    ) : (
+      <NameColumnGlyph />
+    );
 
   return (
     <DropDrawer open={open} onOpenChange={onOpenChange}>
@@ -119,7 +136,7 @@ export function DatabaseNamePropertyMenu({
           {...triggerDragProps}
         >
           <span className="self-center text-muted-foreground">
-            <NameColumnGlyph />
+            {renderNameColumnIcon()}
           </span>
           <span className="flex min-w-0 items-center truncate">{label}</span>
           <ChevronDown className="ml-auto self-center opacity-0 transition-opacity group-hover:opacity-100" />
@@ -130,13 +147,51 @@ export function DatabaseNamePropertyMenu({
         onCloseAutoFocus={(event) => event.preventDefault()}
         sideOffset={0}
       >
-        <div className="flex items-center gap-1.5 px-1.5 py-1">
-          <span className="shrink-0 text-muted-foreground">
-            <NameColumnGlyph />
-          </span>
+        <div className="flex items-center gap-1.5 p-1.5">
+          <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
+            <div className="group/name-column-icon relative shrink-0">
+              <PopoverTrigger asChild>
+                <button
+                  aria-label="Change name column icon"
+                  className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+                  type="button"
+                >
+                  {renderNameColumnIcon()}
+                </button>
+              </PopoverTrigger>
+              {customIcon ? (
+                <button
+                  aria-label="Reset name column icon"
+                  className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground group-focus-within/name-column-icon:flex group-hover/name-column-icon:flex [&_svg]:size-2.5"
+                  onClick={() => updateNameColumnConfig({ icon: "" })}
+                  type="button"
+                >
+                  <X />
+                </button>
+              ) : null}
+            </div>
+            <PopoverContent
+              align="start"
+              className="w-auto gap-0 overflow-hidden p-0"
+              onMouseDown={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+              sideOffset={6}
+            >
+              <IconEmojiPicker
+                onEmojiSelect={(icon) => {
+                  updateNameColumnConfig({ icon });
+                  setIconPickerOpen(false);
+                }}
+                onIconSelect={(icon) => {
+                  updateNameColumnConfig({ icon });
+                  setIconPickerOpen(false);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
           <Input
             aria-label="Name column label"
-            className="h-auto rounded-none border-0 bg-transparent px-0 py-0 text-sm font-medium shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
+            className="h-8 min-w-0 flex-1 text-sm font-medium"
             defaultValue={label}
             onBlur={(event) => {
               const nextLabel = event.target.value.trim() || "Name";
