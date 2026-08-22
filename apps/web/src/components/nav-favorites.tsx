@@ -42,6 +42,7 @@ import { useOpenInNewTab } from "@/components/desktop-tabs"
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
 import { SidebarSectionMenu } from "@/components/sidebar-section-menu"
 import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
+import { SidebarLibraryLink } from "@/components/sidebar-library-link"
 import type { SidebarConfig } from "@zilobase/features/user-settings"
 
 export function NavFavorites({
@@ -80,7 +81,7 @@ export function NavFavorites({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel
               asChild
-              className="pr-9 group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground"
+              className="pr-16 group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground"
             >
               <button
                 className="group/section-label w-full cursor-pointer"
@@ -100,6 +101,17 @@ export function NavFavorites({
               sectionId="favorites"
             />
           ) : null}
+          <SidebarLibraryLink
+            className={
+              sidebarConfig && onSidebarConfigChange && onCustomizeSidebar
+                ? "right-9"
+                : "right-2"
+            }
+            label="Favorites"
+            onSidebarConfigChange={onSidebarConfigChange}
+            sectionId="favorites"
+            sidebarConfig={sidebarConfig}
+          />
         </div>
         <CollapsibleContent className="pt-0.5">
           <SidebarMenu aria-label="Favorite pages">

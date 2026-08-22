@@ -7,19 +7,30 @@ import {
   useConvertPageToTeamspace,
   useMovePageToTeamspace,
 } from "@zilobase/features/pages"
-import { useTeamspaces } from "@zilobase/features/teamspaces"
 import {
+  useSetTeamspaceMembership,
+  useTeamspaceLifecycle,
+  useTeamspaces,
+  type Teamspace,
+} from "@zilobase/features/teamspaces"
+import {
+  ArchiveIcon,
   ArrowUpRightIcon,
   Building2Icon,
+  CopyIcon,
   DatabaseIcon,
   FileIcon,
   FolderInputIcon,
+  HandIcon,
+  Layers3Icon,
   LinkIcon,
   ChevronRightIcon,
   MoreHorizontalIcon,
   PlusIcon,
+  SettingsIcon,
   Trash2Icon,
   UploadIcon,
+  UserPlusIcon,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -67,14 +78,24 @@ import {
   SidebarNavList,
   type SidebarNavItem,
 } from "@/components/sidebar-nav-list"
-import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action"
+import {
+  SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
+  SidebarNavItemAction,
+} from "@/components/sidebar-nav-item-action"
 import { useOpenInNewTab } from "@/components/desktop-tabs"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
 import { cn } from "@/lib/utils"
+import { getApiErrorMessage } from "@/lib/api"
+import { PageIconDisplay } from "@/lib/page-icon"
+import { getTeamspaceSidebarPermissions } from "@/components/teamspace-sidebar-permissions"
 import { OfflineAvailabilityAction } from "@/components/offline-availability-action"
 import { SidebarSectionMenu } from "@/components/sidebar-section-menu"
 import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
+import {
+  getLibraryViewForSection,
+  SidebarLibraryLink,
+} from "@/components/sidebar-library-link"
 import type {
   SidebarConfig,
   SidebarSectionId,
@@ -161,6 +182,9 @@ export function NavPageSection({
   activeMeetingId,
   databaseDropTargetId,
   label,
+  teamspace,
+  workspaceCanManage = false,
+  workspaceId,
   onCreateDatabase,
   onCreatePage,
   onImportNotion,
@@ -180,6 +204,9 @@ export function NavPageSection({
   activeMeetingId?: string | null
   databaseDropTargetId: string | null
   label: string
+  teamspace?: Teamspace
+  workspaceCanManage?: boolean
+  workspaceId?: string | null
   onCreateDatabase?: () => void
   onCreatePage?: () => void
   onImportNotion?: () => void
@@ -193,9 +220,13 @@ export function NavPageSection({
   onCustomizeSidebar?: () => void
   storageKey: string
 }) {
+  const [teamspaceExpanded, setTeamspaceExpanded] = useState(true)
   const displayedPages = sidebarConfig
     ? getConfiguredSidebarItems(pages, sectionId, sidebarConfig)
     : pages
+  const showSectionMenu = Boolean(
+    sidebarConfig && onSidebarConfigChange && onCustomizeSidebar,
+  )
   const getLinkProps = ({
     displayName,
     item,
@@ -271,6 +302,114 @@ export function NavPageSection({
     }
   }
 
+  if (teamspace) {
+    const icon =
+      typeof teamspace.icon === "string" && teamspace.icon ? (
+        <PageIconDisplay size="sm" value={teamspace.icon} />
+      ) : (
+        <Layers3Icon className="size-4 text-muted-foreground" />
+      )
+
+    return (
+      <Collapsible
+        asChild
+        onOpenChange={setTeamspaceExpanded}
+        open={teamspaceExpanded}
+      >
+        <SidebarGroup className="py-0">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <div className="group/nav-row relative">
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton
+                    className={cn(
+                      "peer/menu-button pr-20 text-sidebar-foreground/85",
+                      SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
+                    )}
+                    title={teamspace.name}
+                    type="button"
+                  >
+                    <span className="flex size-4 shrink-0 items-center justify-center overflow-hidden transition-opacity group-hover/nav-row:opacity-0 group-has-[>[data-nav-menu-action=disclosure]:focus-visible]/nav-row:opacity-0">
+                      {icon}
+                    </span>
+                    <span className="min-w-0 truncate">{teamspace.name}</span>
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleTrigger asChild>
+                  <SidebarNavItemAction
+                    position="start"
+                    title={`${teamspaceExpanded ? "Collapse" : "Expand"} ${teamspace.name}`}
+                    type="button"
+                    variant="disclosure"
+                  >
+                    <ChevronRightIcon />
+                    <span className="sr-only">
+                      {teamspaceExpanded ? "Collapse" : "Expand"}{" "}
+                      {teamspace.name}
+                    </span>
+                  </SidebarNavItemAction>
+                </CollapsibleTrigger>
+                <DropDrawer>
+                  <DropDrawerTrigger asChild>
+                    <SidebarNavItemAction
+                      aria-label={`Create in ${teamspace.name}`}
+                      style={{ right: "34px" }}
+                      title={`Create in ${teamspace.name}`}
+                      variant="menu"
+                    >
+                      <PlusIcon />
+                    </SidebarNavItemAction>
+                  </DropDrawerTrigger>
+                  <DropDrawerContent align="end" className="w-44 rounded-lg">
+                    <DropDrawerItem onSelect={() => onCreatePage?.()}>
+                      <FileIcon className="text-muted-foreground" />
+                      <span>Page</span>
+                    </DropDrawerItem>
+                    <DropDrawerItem onSelect={() => onCreateDatabase?.()}>
+                      <DatabaseIcon className="text-muted-foreground" />
+                      <span>Database</span>
+                    </DropDrawerItem>
+                  </DropDrawerContent>
+                </DropDrawer>
+                <TeamspaceActionsMenu
+                  teamspace={teamspace}
+                  workspaceCanManage={workspaceCanManage}
+                  workspaceId={workspaceId}
+                />
+              </div>
+              <CollapsibleContent className="pt-0.5">
+                <SidebarMenu aria-label={`${label} pages`}>
+                  <SidebarNavList
+                    activeDatabaseId={activeDatabaseId}
+                    activeDatabaseViewId={activeDatabaseViewId}
+                    activeMeetingId={activeMeetingId}
+                    activePageId={activePageId}
+                    depthOffset={1}
+                    getLinkProps={getLinkProps}
+                    items={displayedPages}
+                    renderItemMenu={({ item }) =>
+                      item.isDatabaseView || item.isMeeting ? null : (
+                        <PageItemMenu item={item} />
+                      )
+                    }
+                    storageKey={storageKey}
+                  />
+                  {displayedPages.length === 0 ? (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton className="text-sidebar-foreground/50">
+                        <span>No pages</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ) : null}
+                </SidebarMenu>
+              </CollapsibleContent>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+      </Collapsible>
+    )
+  }
+
   return (
     <Collapsible asChild defaultOpen>
       <SidebarGroup>
@@ -280,7 +419,13 @@ export function NavPageSection({
               asChild
               className={cn(
                 "group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground",
-                showCreateAction ? "pr-16" : "pr-9",
+                showCreateAction
+                  ? showSectionMenu
+                    ? "pr-24"
+                    : "pr-16"
+                  : showSectionMenu
+                    ? "pr-16"
+                    : "pr-9",
               )}
             >
               <button
@@ -301,6 +446,21 @@ export function NavPageSection({
               sectionId={sectionId}
             />
           ) : null}
+          <SidebarLibraryLink
+            className={
+              showCreateAction
+                ? showSectionMenu
+                  ? "right-16"
+                  : "right-9"
+                : showSectionMenu
+                  ? "right-9"
+                  : "right-2"
+            }
+            label={label}
+            onSidebarConfigChange={onSidebarConfigChange}
+            sectionId={sectionId}
+            sidebarConfig={sidebarConfig}
+          />
           {showCreateAction ? (
             <DropDrawer>
               <DropDrawerTrigger asChild>
@@ -375,7 +535,7 @@ export function NavPageSection({
                   >
                     <Link
                       onClick={() => {
-                        const view = getViewForSection(sectionId)
+                        const view = getLibraryViewForSection(sectionId)
                         if (
                           sidebarConfig &&
                           onSidebarConfigChange &&
@@ -388,7 +548,7 @@ export function NavPageSection({
                         }
                       }}
                       search={{
-                        view: getViewForSection(sectionId),
+                        view: getLibraryViewForSection(sectionId),
                       }}
                       to="/recents"
                     >
@@ -406,9 +566,107 @@ export function NavPageSection({
   )
 }
 
-function getViewForSection(sectionId: SidebarSectionId) {
-  if (sectionId === "favorites") return "favourites" as const
-  return sectionId
+function TeamspaceActionsMenu({
+  teamspace,
+  workspaceCanManage,
+  workspaceId,
+}: {
+  teamspace: Teamspace
+  workspaceCanManage: boolean
+  workspaceId?: string | null
+}) {
+  const navigate = useNavigate()
+  const membership = useSetTeamspaceMembership()
+  const lifecycle = useTeamspaceLifecycle()
+  const { canArchive, canInvite, canLeave, canManage } =
+    getTeamspaceSidebarPermissions(teamspace, workspaceCanManage)
+  const openSettings = (tab: "general" | "members") => {
+    void navigate({
+      search: { tab, teamspace: teamspace.id },
+      to: "/settings/teamspaces",
+    })
+  }
+
+  return (
+    <DropDrawer>
+      <DropDrawerTrigger asChild>
+        <SidebarNavItemAction
+          aria-label={`${teamspace.name} options`}
+          title={`${teamspace.name} options`}
+          variant="menu"
+        >
+          <MoreHorizontalIcon />
+        </SidebarNavItemAction>
+      </DropDrawerTrigger>
+      <DropDrawerContent align="start" className="w-72 rounded-lg" side="right">
+        <DropDrawerItem
+          disabled={!canInvite}
+          onSelect={() => openSettings("members")}
+        >
+          <UserPlusIcon />
+          <span>Add members</span>
+        </DropDrawerItem>
+        <DropDrawerSeparator />
+        <DropDrawerItem
+          disabled={!canManage}
+          onSelect={() => openSettings("general")}
+        >
+          <SettingsIcon />
+          <span>Teamspace settings</span>
+        </DropDrawerItem>
+        <DropDrawerItem disabled>
+          <CopyIcon />
+          <span className="min-w-0">
+            <span className="block">Duplicate teamspace</span>
+            <span className="block text-xs leading-snug">
+              Duplicates permissions and settings, but not pages or members
+            </span>
+          </span>
+        </DropDrawerItem>
+        <DropDrawerItem
+          disabled={!canLeave || membership.isPending}
+          onSelect={() => {
+            if (!workspaceId) return
+            membership.mutate(
+              {
+                action: "leave",
+                teamspaceId: teamspace.id,
+                workspaceId,
+              },
+              {
+                onError: (error) => toast.error(getApiErrorMessage(error)),
+                onSuccess: () => toast.success(`Left ${teamspace.name}.`),
+              },
+            )
+          }}
+        >
+          <HandIcon />
+          <span>Leave teamspace</span>
+        </DropDrawerItem>
+        <DropDrawerItem
+          disabled={!canArchive || lifecycle.isPending}
+          onSelect={() => {
+            if (!workspaceId) return
+            lifecycle.mutate(
+              {
+                action: "archive",
+                teamspaceId: teamspace.id,
+                workspaceId,
+              },
+              {
+                onError: (error) => toast.error(getApiErrorMessage(error)),
+                onSuccess: () => toast.success(`${teamspace.name} archived.`),
+              },
+            )
+          }}
+          variant="destructive"
+        >
+          <ArchiveIcon />
+          <span>Archive teamspace</span>
+        </DropDrawerItem>
+      </DropDrawerContent>
+    </DropDrawer>
+  )
 }
 
 function PageItemMenu({ item }: { item: SidebarNavItem }) {

@@ -33,6 +33,8 @@ import {
 } from "@/components/sidebar-nav-list";
 import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state";
 import { SidebarCustomizeDialog } from "@/components/sidebar-customize-dialog";
+import { SidebarLibraryLink } from "@/components/sidebar-library-link";
+import { SidebarSectionMenu } from "@/components/sidebar-section-menu";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import {
   DropDrawer,
@@ -66,7 +68,10 @@ import {
   type SidebarItemId,
 } from "@zilobase/features/user-settings";
 import { useWorkspaces } from "@zilobase/features/workspaces";
-import { useTeamspaces } from "@zilobase/features/teamspaces";
+import {
+  useTeamspaces,
+  useTeamspaceSettings,
+} from "@zilobase/features/teamspaces";
 import {
   useAddDatabaseRow,
   useCreateDatabase,
@@ -278,6 +283,9 @@ export function AppSidebar({
   const { data: teamspaces = [] } = useTeamspaces(
     isAiPage || isMeetingsPage ? null : workspaceId,
   );
+  const { data: teamspaceSettings } = useTeamspaceSettings(
+    isAiPage || isMeetingsPage ? null : workspaceId,
+  );
   const { data: meetingsPayload } = useWorkspaceMeetings(
     isMeetingsPage ? workspaceId : null,
   );
@@ -308,6 +316,18 @@ export function AppSidebar({
     () => new Set(sidebarConfig.hiddenItems),
     [sidebarConfig.hiddenItems],
   );
+  const visibleTeamspaces = React.useMemo(() => {
+    const joinedTeamspaces = teamspaces.filter(
+      (teamspace) => teamspace.currentUserRole,
+    );
+    const sortedTeamspaces = [...joinedTeamspaces].sort((left, right) =>
+      sidebarConfig.sectionSorts.shared === "alphabetical"
+        ? left.name.localeCompare(right.name, undefined, { sensitivity: "base" })
+        : Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
+    );
+
+    return sortedTeamspaces.slice(0, sidebarConfig.sectionLimits.shared);
+  }, [sidebarConfig.sectionLimits.shared, sidebarConfig.sectionSorts.shared, teamspaces]);
 
   const handleSidebarConfigChange = React.useCallback(
     (nextConfig: SidebarConfig) => {
@@ -494,6 +514,126 @@ export function AppSidebar({
                       workspaceId={workspaceId}
                     />
                   )
+                  : sectionId === "shared"
+                    ? (
+                      <Collapsible asChild defaultOpen key={sectionId}>
+                        <SidebarGroup>
+                          <div className="group/section-header relative">
+                            <CollapsibleTrigger asChild>
+                              <SidebarGroupLabel
+                                asChild
+                                className="pr-16 group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground"
+                              >
+                                <button
+                                  className="group/section-label w-full cursor-pointer"
+                                  type="button"
+                                >
+                                  <span>Teamspaces</span>
+                                  <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
+                                </button>
+                              </SidebarGroupLabel>
+                            </CollapsibleTrigger>
+                            <SidebarLibraryLink
+                              className="right-9"
+                              label="Teamspaces"
+                              onSidebarConfigChange={
+                                handleSidebarConfigChange
+                              }
+                              sectionId="shared"
+                              sidebarConfig={sidebarConfig}
+                              view="teamspaces"
+                            />
+                            <SidebarSectionMenu
+                              className="right-2"
+                              config={sidebarConfig}
+                              label="Teamspaces"
+                              onChange={handleSidebarConfigChange}
+                              onCustomize={() =>
+                                setCustomizeSidebarOpen(true)
+                              }
+                              sectionId="shared"
+                            />
+                          </div>
+                          <CollapsibleContent className="pt-0.5">
+                            <SidebarGroupContent className="-mx-2 w-auto">
+                              {pageSections.teamspacePages.length > 0 ? (
+                                <NavPageSection
+                                  activeDatabaseId={getActiveDatabaseId(
+                                    location.pathname,
+                                  )}
+                                  activeDatabaseViewId={getActiveDatabaseViewId(
+                                    location.search,
+                                  )}
+                                  activeMeetingId={activeMeetingId}
+                                  activePageId={getActivePageId(
+                                    location.pathname,
+                                  )}
+                                  databaseDropTargetId={databaseDropTargetId}
+                                  label="Shared pages"
+                                  onDatabaseDropTargetChange={
+                                    setDatabaseDropTargetId
+                                  }
+                                  onDropPageOnDatabase={handleDropPageOnDatabase}
+                                  pages={pageSections.teamspacePages}
+                                  sectionId="shared"
+                                  sidebarConfig={sidebarConfig}
+                                  storageKey={getSidebarExpansionStorageKey(
+                                    workspaceId,
+                                    "team",
+                                  )}
+                                />
+                              ) : null}
+                              {visibleTeamspaces.map((teamspace) => (
+                                  <NavPageSection
+                                    activeDatabaseId={getActiveDatabaseId(
+                                      location.pathname,
+                                    )}
+                                    activeDatabaseViewId={getActiveDatabaseViewId(
+                                      location.search,
+                                    )}
+                                    activeMeetingId={activeMeetingId}
+                                    activePageId={getActivePageId(
+                                      location.pathname,
+                                    )}
+                                    databaseDropTargetId={databaseDropTargetId}
+                                    key={`teamspace:${teamspace.id}`}
+                                    label={teamspace.name}
+                                    onCreateDatabase={() =>
+                                      void handleCreateDatabase(teamspace.id)
+                                    }
+                                    onCreatePage={() =>
+                                      void handleCreatePage(teamspace.id)
+                                    }
+                                    onDatabaseDropTargetChange={
+                                      setDatabaseDropTargetId
+                                    }
+                                    onDropPageOnDatabase={
+                                      handleDropPageOnDatabase
+                                    }
+                                    pages={
+                                      pageSections.teamspacePagesById[
+                                        teamspace.id
+                                      ] ?? []
+                                    }
+                                    sectionId="shared"
+                                    showCreateAction
+                                    sidebarConfig={sidebarConfig}
+                                    storageKey={`${getSidebarExpansionStorageKey(
+                                      workspaceId,
+                                      "team",
+                                    )}:${encodeURIComponent(teamspace.id)}`}
+                                    teamspace={teamspace}
+                                    workspaceCanManage={Boolean(
+                                      teamspaceSettings?.canManage,
+                                    )}
+                                    workspaceId={workspaceId}
+                                  />
+                                ))}
+                            </SidebarGroupContent>
+                          </CollapsibleContent>
+                        </SidebarGroup>
+                      </Collapsible>
+                    )
                   : (
                     <NavPageSection
                       activeDatabaseId={getActiveDatabaseId(location.pathname)}
@@ -504,13 +644,7 @@ export function AppSidebar({
                       activeMeetingId={activeMeetingId}
                       databaseDropTargetId={databaseDropTargetId}
                       key={sectionId}
-                      label={
-                        sectionId === "recents"
-                          ? "Recents"
-                          : sectionId === "private"
-                            ? "Private"
-                            : "Shared"
-                      }
+                      label={sectionId === "recents" ? "Recents" : "Private"}
                       onCreateDatabase={
                         sectionId === "private" ? handleCreateDatabase : undefined
                       }
@@ -524,9 +658,7 @@ export function AppSidebar({
                       pages={
                         sectionId === "recents"
                           ? recents
-                          : sectionId === "private"
-                          ? pageSections.privatePages
-                          : pageSections.teamspacePages
+                          : pageSections.privatePages
                       }
                       sectionId={sectionId}
                       showCreateAction={sectionId === "private"}
@@ -535,37 +667,11 @@ export function AppSidebar({
                         workspaceId,
                         sectionId === "recents"
                           ? "recents"
-                          : sectionId === "shared"
-                            ? "team"
-                            : "private",
+                          : "private",
                       )}
                     />
                   ),
             )}
-            {teamspaces
-              .filter((teamspace) => teamspace.currentUserRole)
-              .map((teamspace) => (
-                <NavPageSection
-                  activeDatabaseId={getActiveDatabaseId(location.pathname)}
-                  activeDatabaseViewId={getActiveDatabaseViewId(location.search)}
-                  activeMeetingId={activeMeetingId}
-                  activePageId={getActivePageId(location.pathname)}
-                  databaseDropTargetId={databaseDropTargetId}
-                  key={`teamspace:${teamspace.id}`}
-                  label={teamspace.name}
-                  onCreateDatabase={() => void handleCreateDatabase(teamspace.id)}
-                  onCreatePage={() => void handleCreatePage(teamspace.id)}
-                  onCustomizeSidebar={() => setCustomizeSidebarOpen(true)}
-                  onDatabaseDropTargetChange={setDatabaseDropTargetId}
-                  onDropPageOnDatabase={handleDropPageOnDatabase}
-                  onSidebarConfigChange={handleSidebarConfigChange}
-                  pages={pageSections.teamspacePagesById[teamspace.id] ?? []}
-                  sectionId="shared"
-                  showCreateAction
-                  sidebarConfig={sidebarConfig}
-                  storageKey={`${getSidebarExpansionStorageKey(workspaceId, "team")}:${encodeURIComponent(teamspace.id)}`}
-                />
-              ))}
             <NavSecondary
               className="mt-auto"
               items={[

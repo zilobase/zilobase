@@ -35,12 +35,14 @@ const sectionActionClassName =
 export function SidebarSectionMenu({
   className,
   config,
+  label,
   onChange,
   onCustomize,
   sectionId,
 }: {
   className?: string
   config: SidebarConfig
+  label?: string
   onChange: (config: SidebarConfig) => void
   onCustomize: () => void
   sectionId: SidebarSectionId
@@ -76,7 +78,7 @@ export function SidebarSectionMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <SidebarGroupAction
-          aria-label={`Configure ${sectionId} section`}
+          aria-label={`Configure ${label ?? sectionId} section`}
           className={cn(
             sectionActionClassName,
             className,

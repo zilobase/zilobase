@@ -372,6 +372,19 @@ const teamSettingsRoute = createRoute({
 const teamspacesSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/teamspaces",
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab:
+      search.tab === "general" ||
+      search.tab === "members" ||
+      search.tab === "permissions" ||
+      search.tab === "security"
+        ? search.tab
+        : undefined,
+    teamspace:
+      typeof search.teamspace === "string" && search.teamspace.trim()
+        ? search.teamspace
+        : undefined,
+  }),
   component: TeamspacesSettingsPage,
 })
 

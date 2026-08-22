@@ -70,6 +70,7 @@ type HomepageRow = {
   id: string;
   isFavorite: boolean;
   isShared: boolean;
+  teamspaceId: string | null;
   lastVisitedAt: string | null;
   metadata: Page["metadata"] | null;
   name: string;
@@ -93,6 +94,7 @@ const homepageViews: Array<{ id: HomepageView; label: string }> = [
   { id: "recents", label: "Recents" },
   { id: "favourites", label: "Favourites" },
   { id: "shared", label: "Shared" },
+  { id: "teamspaces", label: "Teamspaces" },
   { id: "private", label: "Private" },
 ];
 
@@ -781,6 +783,7 @@ function buildHomepageRows(
           id: `page:${page.id}`,
           isFavorite: Boolean(page.isFavorite),
           isShared: Boolean(page.isShared),
+          teamspaceId: page.teamspaceId ?? null,
           lastVisitedAt: page.lastVisitedAt ?? null,
           metadata: page.metadata ?? null,
           name: page.name || "Untitled",
@@ -820,6 +823,7 @@ function buildHomepageRows(
           id: `database:${database.id}`,
           isFavorite: Boolean(database.isFavorite),
           isShared: Boolean(page?.isShared),
+          teamspaceId: database.teamspaceId ?? page?.teamspaceId ?? null,
           lastVisitedAt: database.lastVisitedAt ?? null,
           metadata: databaseEmoji ? { emoji: databaseEmoji } : null,
           name: database.name || "Untitled",
@@ -905,9 +909,11 @@ function applyHomepageView(rows: HomepageRow[], view: HomepageView) {
     case "favourites":
       return rows.filter((row) => row.isFavorite);
     case "shared":
-      return rows.filter((row) => row.isShared);
+      return rows.filter((row) => row.isShared && !row.teamspaceId);
+    case "teamspaces":
+      return rows.filter((row) => Boolean(row.teamspaceId));
     case "private":
-      return rows.filter((row) => !row.isShared);
+      return rows.filter((row) => !row.isShared && !row.teamspaceId);
     case "recents":
     default:
       return rows;

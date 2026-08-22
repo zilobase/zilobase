@@ -63,6 +63,7 @@ type SidebarNavListProps = {
   activeDatabaseViewId?: string | null
   activePageId: string | null
   activeMeetingId?: string | null
+  depthOffset?: number
   getLinkProps?: (input: {
     displayName: string
     item: SidebarNavItem
@@ -89,6 +90,7 @@ function SidebarNavListContent({
   activeDatabaseViewId = null,
   activePageId,
   activeMeetingId = null,
+  depthOffset = 0,
   getLinkProps,
   items,
   renderItemMenu,
@@ -114,7 +116,7 @@ function SidebarNavListContent({
       activePageId={activePageId}
       activeMeetingId={activeMeetingId}
       defaultViewIds={defaultViewIds}
-      depth={0}
+      depth={depthOffset}
       expandedIds={expandedIds}
       getLinkProps={getLinkProps}
       item={item}

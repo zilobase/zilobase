@@ -77,6 +77,7 @@ export function useUpdateTeamspace() {
       description?: string | null
       exportEnabled?: boolean
       guestsEnabled?: boolean
+      icon?: unknown
       invitePolicy?: "owners" | "owners_and_members"
       memberAccessLevel?: "view" | "comment" | "edit" | "full"
       name?: string

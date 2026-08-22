@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Layers3Icon, MoreHorizontalIcon, PlusIcon, UsersIcon } from "lucide-react"
+import { useLocation, useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
@@ -15,7 +16,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Select,
   SelectContent,
@@ -29,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { getApiErrorMessage } from "@/lib/api"
+import { PageIconDisplay } from "@/lib/page-icon"
 import { filterTeamspaces } from "./teamspace-filters"
 import { useActiveWorkspaceId } from "@zilobase/features/integrations"
 import {
@@ -52,7 +56,20 @@ import {
 } from "@zilobase/features/teamspaces"
 import { useWorkspaceAccessTargets } from "@zilobase/features/workspaces"
 
+type TeamspaceSettingsTab = "general" | "members" | "permissions" | "security"
+
+function isTeamspaceSettingsTab(value: unknown): value is TeamspaceSettingsTab {
+  return (
+    value === "general" ||
+    value === "members" ||
+    value === "permissions" ||
+    value === "security"
+  )
+}
+
 export default function TeamspacesSettingsPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const workspaceId = useActiveWorkspaceId()
   const { data: teamspaces = [], isPending } = useTeamspaces(workspaceId)
   const { data: archivedTeamspaces = [] } = useArchivedTeamspaces(workspaceId)
@@ -64,6 +81,7 @@ export default function TeamspacesSettingsPage() {
   const acceptInvite = useAcceptTeamspaceInvite()
   const [createOpen, setCreateOpen] = useState(false)
   const [selected, setSelected] = useState<Teamspace | null>(null)
+  const [selectedTab, setSelectedTab] = useState<TeamspaceSettingsTab>("general")
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState("")
   const [accessFilter, setAccessFilter] = useState<"all" | TeamspaceAccessMode>("all")
@@ -72,6 +90,39 @@ export default function TeamspacesSettingsPage() {
     () => filterTeamspaces(teamspaces, { accessMode: accessFilter, membership: membershipFilter, query }),
     [accessFilter, membershipFilter, query, teamspaces],
   )
+  const routeSearch = location.search as Record<string, unknown>
+  const requestedTeamspaceId =
+    location.pathname === "/settings/teamspaces" &&
+    typeof routeSearch.teamspace === "string"
+      ? routeSearch.teamspace
+      : null
+  const requestedTab = isTeamspaceSettingsTab(routeSearch.tab)
+    ? routeSearch.tab
+    : "general"
+
+  useEffect(() => {
+    if (!requestedTeamspaceId) return
+    const requestedTeamspace = teamspaces.find(
+      (teamspace) => teamspace.id === requestedTeamspaceId,
+    )
+    if (!requestedTeamspace) return
+    setSelected(requestedTeamspace)
+    setSelectedTab(requestedTab)
+  }, [requestedTab, requestedTeamspaceId, teamspaces])
+
+  const closeManageDialog = () => {
+    setSelected(null)
+    if (location.pathname !== "/settings/teamspaces") return
+    void navigate({
+      replace: true,
+      search: (current) => ({
+        ...current,
+        tab: undefined,
+        teamspace: undefined,
+      }),
+      to: "/settings/teamspaces",
+    })
+  }
 
   const archiveSelected = async () => {
     if (!workspaceId || selectedIds.size === 0) return
@@ -200,7 +251,13 @@ export default function TeamspacesSettingsPage() {
                         })}
                       />
                     ) : null}
-                    <div className="flex size-9 items-center justify-center rounded-md bg-muted"><Layers3Icon className="size-4" /></div>
+                    <div className="flex size-9 items-center justify-center rounded-md bg-muted">
+                      {typeof teamspace.icon === "string" && teamspace.icon ? (
+                        <PageIconDisplay size="md" value={teamspace.icon} />
+                      ) : (
+                        <Layers3Icon className="size-4" />
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="truncate font-medium">{teamspace.name}</span>
@@ -235,7 +292,7 @@ export default function TeamspacesSettingsPage() {
                       >Join</Button>
                     ) : null}
                     {canManage ? (
-                      <Button aria-label={`Manage ${teamspace.name}`} onClick={() => setSelected(teamspace)} size="icon-sm" variant="ghost">
+                      <Button aria-label={`Manage ${teamspace.name}`} onClick={() => { setSelectedTab("general"); setSelected(teamspace) }} size="icon-sm" variant="ghost">
                         <MoreHorizontalIcon />
                       </Button>
                     ) : null}
@@ -277,7 +334,21 @@ export default function TeamspacesSettingsPage() {
         ) : null}
       </div>
       <CreateTeamspaceDialog onOpenChange={setCreateOpen} open={createOpen} workspaceId={workspaceId} />
-      <ManageTeamspaceDialog onOpenChange={(open) => !open && setSelected(null)} teamspace={selected} workspaceId={workspaceId} />
+      <ManageTeamspaceDialog
+        canInvite={Boolean(
+          selected?.currentUserRole === "owner" ||
+            (selected?.currentUserRole === "member" &&
+              selected.invitePolicy === "owners_and_members"),
+        )}
+        canManage={Boolean(
+          settings?.canManage || selected?.currentUserRole === "owner",
+        )}
+        initialTab={selectedTab}
+        key={selected ? `${selected.id}:${selectedTab}` : "closed"}
+        onOpenChange={(open) => !open && closeManageDialog()}
+        teamspace={selected}
+        workspaceId={workspaceId}
+      />
     </main>
   )
 }
@@ -323,7 +394,17 @@ function CreateTeamspaceDialog({ open, onOpenChange, workspaceId }: {
   )
 }
 
-function ManageTeamspaceDialog({ teamspace, workspaceId, onOpenChange }: {
+function ManageTeamspaceDialog({
+  canInvite,
+  canManage,
+  initialTab,
+  teamspace,
+  workspaceId,
+  onOpenChange,
+}: {
+  canInvite: boolean
+  canManage: boolean
+  initialTab: TeamspaceSettingsTab
   teamspace: Teamspace | null
   workspaceId: string | null | undefined
   onOpenChange: (open: boolean) => void
@@ -339,10 +420,13 @@ function ManageTeamspaceDialog({ teamspace, workspaceId, onOpenChange }: {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [candidateId, setCandidateId] = useState("")
+  const [icon, setIcon] = useState("")
+  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   useEffect(() => {
     setName(teamspace?.name ?? "")
     setDescription(teamspace?.description ?? "")
+    setIcon(typeof teamspace?.icon === "string" ? teamspace.icon : "")
   }, [teamspace])
 
   const candidates = useMemo(() => {
@@ -364,9 +448,64 @@ function ManageTeamspaceDialog({ teamspace, workspaceId, onOpenChange }: {
     <Dialog onOpenChange={onOpenChange} open>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader><DialogTitle>{teamspace.name}</DialogTitle><DialogDescription>Manage details, members, and collaboration defaults.</DialogDescription></DialogHeader>
-        <Tabs defaultValue="general">
-          <TabsList className="w-full justify-start overflow-x-auto"><TabsTrigger value="general">General</TabsTrigger><TabsTrigger value="members">Members</TabsTrigger><TabsTrigger value="permissions">Permissions</TabsTrigger><TabsTrigger value="security">Security</TabsTrigger></TabsList>
+        <Tabs defaultValue={initialTab}>
+          <TabsList className="w-full justify-start overflow-x-auto"><TabsTrigger disabled={!canManage} value="general">General</TabsTrigger><TabsTrigger disabled={!canInvite && !canManage} value="members">Members</TabsTrigger><TabsTrigger disabled={!canManage} value="permissions">Permissions</TabsTrigger><TabsTrigger disabled={!canManage} value="security">Security</TabsTrigger></TabsList>
           <TabsContent className="grid gap-4 pt-4" value="general">
+            <div className="grid gap-2">
+              <Label>Icon</Label>
+              <div className="flex items-center gap-2">
+                <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button className="justify-start" type="button" variant="outline">
+                      {icon ? (
+                        <PageIconDisplay size="sm" value={icon} />
+                      ) : (
+                        <Layers3Icon />
+                      )}
+                      <span>{icon ? "Change icon" : "Add icon"}</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-0">
+                    <IconEmojiPicker
+                      onEmojiSelect={(nextIcon) => {
+                        setIcon(nextIcon)
+                        setIconPickerOpen(false)
+                        save({
+                          icon: nextIcon,
+                          teamspaceId: teamspace.id,
+                          workspaceId,
+                        })
+                      }}
+                      onIconSelect={(nextIcon) => {
+                        setIcon(nextIcon)
+                        setIconPickerOpen(false)
+                        save({
+                          icon: nextIcon,
+                          teamspaceId: teamspace.id,
+                          workspaceId,
+                        })
+                      }}
+                    />
+                  </PopoverContent>
+                </Popover>
+                {icon ? (
+                  <Button
+                    onClick={() => {
+                      setIcon("")
+                      save({
+                        icon: null,
+                        teamspaceId: teamspace.id,
+                        workspaceId,
+                      })
+                    }}
+                    type="button"
+                    variant="ghost"
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </div>
+            </div>
             <div className="grid gap-2"><Label htmlFor="manage-teamspace-name">Name</Label><Input id="manage-teamspace-name" onChange={(event) => setName(event.target.value)} value={name} /></div>
             <div className="grid gap-2"><Label htmlFor="manage-teamspace-description">Description</Label><Textarea id="manage-teamspace-description" onChange={(event) => setDescription(event.target.value)} value={description} /></div>
             <div className="grid gap-2"><Label>Access</Label><Select onValueChange={(value) => save({ accessMode: value as TeamspaceAccessMode, teamspaceId: teamspace.id, workspaceId })} value={teamspace.accessMode}><SelectTrigger aria-label="Teamspace access"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="open">Open</SelectItem><SelectItem value="closed">Closed</SelectItem><SelectItem value="private">Private</SelectItem></SelectContent></Select></div>
@@ -377,13 +516,13 @@ function ManageTeamspaceDialog({ teamspace, workspaceId, onOpenChange }: {
           </TabsContent>
           <TabsContent className="grid gap-4 pt-4" value="members">
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Select onValueChange={setCandidateId} value={candidateId}><SelectTrigger aria-label="Workspace member or sharing group" className="flex-1"><SelectValue placeholder="Select a workspace member or group" /></SelectTrigger><SelectContent>{candidates.map((candidate) => <SelectItem key={`${candidate.type}:${candidate.id}`} value={`${candidate.type}:${candidate.id}`}>{candidate.label}</SelectItem>)}</SelectContent></Select>
-              <Button disabled={!candidateId || add.isPending} onClick={() => { const [principalType, principalId] = candidateId.split(":") as ["user" | "team", string]; add.mutate({ principalType, role: "member", teamspaceId: teamspace.id, userId: principalId, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)), onSuccess: () => setCandidateId("") }) }}><UsersIcon />Add</Button>
+              <Select disabled={!canInvite} onValueChange={setCandidateId} value={candidateId}><SelectTrigger aria-label="Workspace member or sharing group" className="flex-1"><SelectValue placeholder="Select a workspace member or group" /></SelectTrigger><SelectContent>{candidates.map((candidate) => <SelectItem key={`${candidate.type}:${candidate.id}`} value={`${candidate.type}:${candidate.id}`}>{candidate.label}</SelectItem>)}</SelectContent></Select>
+              <Button disabled={!canInvite || !candidateId || add.isPending} onClick={() => { const [principalType, principalId] = candidateId.split(":") as ["user" | "team", string]; add.mutate({ principalType, role: "member", teamspaceId: teamspace.id, userId: principalId, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)), onSuccess: () => setCandidateId("") }) }}><UsersIcon />Add</Button>
             </div>
-            <div className="divide-y rounded-md border">{principals.map((principal) => <div className="flex flex-wrap items-center gap-3 p-3" key={principal.id}><div className="min-w-48 flex-1"><div className="truncate text-sm font-medium">{principal.name || principal.email || principal.principalId}</div><div className="truncate text-xs text-muted-foreground">{principal.principalType === "team" ? "Sharing group" : principal.email}</div></div><Select onValueChange={(accessLevelOverride) => updatePrincipal.mutate({ accessLevelOverride: accessLevelOverride === "default" ? null : accessLevelOverride as "view" | "comment" | "edit" | "full", principalId: principal.id, role: principal.role, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} value={principal.accessLevelOverride ?? "default"}><SelectTrigger aria-label={`Content access for ${principal.name || principal.principalId}`} className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">Default</SelectItem><SelectItem value="view">View</SelectItem><SelectItem value="comment">Comment</SelectItem><SelectItem value="edit">Edit</SelectItem><SelectItem value="full">Full</SelectItem></SelectContent></Select><Select onValueChange={(role) => updatePrincipal.mutate({ principalId: principal.id, role: role as "owner" | "member", teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} value={principal.role}><SelectTrigger aria-label={`Teamspace role for ${principal.name || principal.principalId}`} className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="member">Member</SelectItem><SelectItem value="owner">Owner</SelectItem></SelectContent></Select><Button aria-label={`Remove ${principal.name || "member or group"}`} onClick={() => remove.mutate({ principalId: principal.id, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} size="sm" variant="ghost">Remove</Button></div>)}</div>
+            <div className="divide-y rounded-md border">{principals.map((principal) => <div className="flex flex-wrap items-center gap-3 p-3" key={principal.id}><div className="min-w-48 flex-1"><div className="truncate text-sm font-medium">{principal.name || principal.email || principal.principalId}</div><div className="truncate text-xs text-muted-foreground">{principal.principalType === "team" ? "Sharing group" : principal.email}</div></div><Select disabled={!canManage} onValueChange={(accessLevelOverride) => updatePrincipal.mutate({ accessLevelOverride: accessLevelOverride === "default" ? null : accessLevelOverride as "view" | "comment" | "edit" | "full", principalId: principal.id, role: principal.role, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} value={principal.accessLevelOverride ?? "default"}><SelectTrigger aria-label={`Content access for ${principal.name || principal.principalId}`} className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">Default</SelectItem><SelectItem value="view">View</SelectItem><SelectItem value="comment">Comment</SelectItem><SelectItem value="edit">Edit</SelectItem><SelectItem value="full">Full</SelectItem></SelectContent></Select><Select disabled={!canManage} onValueChange={(role) => updatePrincipal.mutate({ principalId: principal.id, role: role as "owner" | "member", teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} value={principal.role}><SelectTrigger aria-label={`Teamspace role for ${principal.name || principal.principalId}`} className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="member">Member</SelectItem><SelectItem value="owner">Owner</SelectItem></SelectContent></Select><Button aria-label={`Remove ${principal.name || "member or group"}`} disabled={!canManage} onClick={() => remove.mutate({ principalId: principal.id, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} size="sm" variant="ghost">Remove</Button></div>)}</div>
             <div className="flex items-center justify-between gap-4 rounded-md border p-3">
               <div><div className="text-sm font-medium">Invite link</div><div className="text-xs text-muted-foreground">Anyone in this workspace with the link can join.</div></div>
-              <Button disabled={inviteLink.isPending} onClick={() => inviteLink.mutate({ enabled: !teamspace.inviteLinkEnabled, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)), onSuccess: (result) => { if (result.token) { const url = `${window.location.origin}/settings/teamspaces?workspace=${encodeURIComponent(workspaceId)}&invite=${encodeURIComponent(result.token)}`; void navigator.clipboard?.writeText(url); toast.success("Invite link copied.") } else { toast.success("Invite link disabled.") } } })} variant="outline">{teamspace.inviteLinkEnabled ? "Disable" : "Enable and copy"}</Button>
+              <Button disabled={!canManage || inviteLink.isPending} onClick={() => inviteLink.mutate({ enabled: !teamspace.inviteLinkEnabled, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)), onSuccess: (result) => { if (result.token) { const url = `${window.location.origin}/settings/teamspaces?workspace=${encodeURIComponent(workspaceId)}&invite=${encodeURIComponent(result.token)}`; void navigator.clipboard?.writeText(url); toast.success("Invite link copied.") } else { toast.success("Invite link disabled.") } } })} variant="outline">{teamspace.inviteLinkEnabled ? "Disable" : "Enable and copy"}</Button>
             </div>
           </TabsContent>
           <TabsContent className="grid gap-4 pt-4" value="permissions">
