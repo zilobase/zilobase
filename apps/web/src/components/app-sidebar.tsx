@@ -109,6 +109,7 @@ import {
   GalleryThumbnails,
   HomeIcon,
   Kanban,
+  LibraryIcon,
   List,
   MessageCircleQuestionIcon,
   MessageSquarePlusIcon,
@@ -162,7 +163,6 @@ const data = {
     {
       id: "home" as const,
       title: "Home",
-      url: "/recents",
       icon: HomeIcon,
     },
     {
@@ -189,6 +189,12 @@ const data = {
       title: "Templates",
       url: "#",
       icon: <BlocksIcon />,
+    },
+    {
+      id: "library" as const,
+      title: "Library",
+      url: "/recents",
+      icon: <LibraryIcon />,
     },
     {
       id: "trash" as const,
@@ -684,7 +690,8 @@ export function AppSidebar({
                   };
                 }),
                 ...data.navSecondary.filter(
-                  (item) => !hiddenSidebarItems.has(item.id),
+                  (item) =>
+                    item.id === "library" || !hiddenSidebarItems.has(item.id),
                 ),
               ]}
             />
@@ -810,7 +817,6 @@ function NavMain({
   onSidebarModeChange: (mode: "home" | "askAi" | "meetings") => void;
   sidebarMode: "home" | "askAi" | "meetings";
 }) {
-  const navigate = useNavigate();
   const routeSelected = items.findIndex((item) =>
     sidebarMode === "home"
       ? item.id === "home"
@@ -841,7 +847,6 @@ function NavMain({
 
     if (item.id === "home") {
       onSidebarModeChange("home");
-      if (item.url) void navigate({ to: item.url as never });
       return;
     }
 

@@ -144,6 +144,11 @@
   /* A small set of translucent states, named by intent. */
   --backdrop: color-mix(in oklab, var(--background) 90%, transparent);
   --subtle-surface: color-mix(in oklab, var(--muted) 50%, transparent);
+  --sidebar-control-hover: color-mix(
+    in oklab,
+    var(--sidebar-foreground) 10%,
+    transparent
+  );
   --muted-indicator: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
   --primary-subtle: color-mix(in oklab, var(--primary) 15%, transparent);
 
@@ -935,6 +940,7 @@
   /* Translucent states remain semantic instead of exposing opacity scales. */
   --color-backdrop: var(--backdrop);
   --color-subtle-surface: var(--subtle-surface);
+  --color-sidebar-control-hover: var(--sidebar-control-hover);
   --color-muted-indicator: var(--muted-indicator);
   --color-primary-subtle: var(--primary-subtle);
   --color-database-selection-row: var(--database-selection-row);
