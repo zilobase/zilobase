@@ -47,6 +47,7 @@ export type PageDatabase = {
   id: string;
   workspaceId: string;
   pageId: string | null;
+  teamspaceId?: string | null;
   createdById?: string | null;
   name: string;
   config?: unknown;
@@ -82,6 +83,7 @@ export type Page = {
   } | null;
   isFavorite?: boolean;
   isTeamspace?: boolean;
+  teamspaceId?: string | null;
   lastVisitedAt?: string | null;
   workspaceId: string;
   createdById?: string | null;

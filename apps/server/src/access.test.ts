@@ -43,6 +43,7 @@ import {
   getEffectiveDatabaseAccessForRecord,
   getEffectiveDatabaseAccessInWorkspace,
   getEffectivePageAccessInWorkspace,
+  getEffectiveTeamspaceAccessInWorkspace,
   hasAccess,
   isPrivilegedOrgRole,
   isWorkspaceMember,
@@ -67,6 +68,62 @@ test("access primitives normalize and rank supported levels", () => {
   assert.equal(hasAccess("view", "full"), false);
   assert.equal(isPrivilegedOrgRole("owner"), true);
   assert.equal(isPrivilegedOrgRole("member"), false);
+});
+
+test("teamspace access resolves member overrides, owners, and archives", async () => {
+  mocks.selectResults.push(
+    [{ id: "membership-1" }],
+    [{ teamId: "team-1" }],
+    [{ archivedAt: null, memberAccessLevel: "edit" }],
+    [{ accessLevelOverride: "comment", role: "member" }],
+  );
+  assert.equal(
+    await getEffectiveTeamspaceAccessInWorkspace(
+      "teamspace-1",
+      "workspace-1",
+      "user-1",
+    ),
+    "comment",
+  );
+
+  mocks.selectResults.push(
+    [{ id: "membership-1" }],
+    [],
+    [{ archivedAt: null, memberAccessLevel: "view" }],
+    [{ accessLevelOverride: null, role: "owner" }],
+  );
+  assert.equal(
+    await getEffectiveTeamspaceAccessInWorkspace(
+      "teamspace-1",
+      "workspace-1",
+      "user-1",
+    ),
+    "full",
+  );
+
+  mocks.selectResults.push([]);
+  assert.equal(
+    await getEffectiveTeamspaceAccessInWorkspace(
+      "teamspace-1",
+      "workspace-1",
+      "user-1",
+    ),
+    "none",
+  );
+
+  mocks.selectResults.push(
+    [{ id: "membership-1" }],
+    [],
+    [{ archivedAt: new Date(), memberAccessLevel: "edit" }],
+  );
+  assert.equal(
+    await getEffectiveTeamspaceAccessInWorkspace(
+      "teamspace-1",
+      "workspace-1",
+      "user-1",
+    ),
+    "none",
+  );
 });
 
 test("public access wrappers preserve membership and rank decisions", async () => {

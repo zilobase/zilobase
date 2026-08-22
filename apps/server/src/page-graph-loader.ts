@@ -13,6 +13,7 @@ export async function loadWorkspacePageGraph(workspaceId: string) {
       .select({
         createdById: page.createdById,
         id: page.id,
+        teamspaceId: page.teamspaceId,
       })
       .from(page)
       .where(and(eq(page.workspaceId, workspaceId), isNull(page.deletedAt))),

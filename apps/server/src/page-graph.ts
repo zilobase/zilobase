@@ -2,6 +2,7 @@ export type PageGraphPage = {
   createdById?: string | null;
   id: string;
   name?: string;
+  teamspaceId?: string | null;
 };
 
 export type PageGraphPlacement = {
@@ -77,6 +78,10 @@ export class PageGraph {
     }
 
     return ids;
+  }
+
+  getTeamspaceId(pageId: string) {
+    return this.pageById.get(pageId)?.teamspaceId ?? null;
   }
 
   hasOwnedRootAccess(ancestorIds: string[], userId: string) {

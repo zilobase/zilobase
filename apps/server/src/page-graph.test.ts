@@ -2,6 +2,19 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { PageGraph } from "./page-graph";
 
+test("getTeamspaceId returns the page placement boundary", () => {
+  const graph = new PageGraph({
+    pages: [
+      { id: "private-page" },
+      { id: "team-page", teamspaceId: "teamspace-1" },
+    ],
+  });
+
+  assert.equal(graph.getTeamspaceId("private-page"), null);
+  assert.equal(graph.getTeamspaceId("team-page"), "teamspace-1");
+  assert.equal(graph.getTeamspaceId("missing"), null);
+});
+
 test("getPrimaryNestedPageIds skips linked children", () => {
   const graph = new PageGraph({
     pages: [{ id: "parent" }, { id: "primary" }, { id: "linked" }],

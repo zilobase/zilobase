@@ -53,7 +53,13 @@ const serviceMutationErrorResponse = (
 ) =>
   c.json(
     { error: error.message },
-    error.status === 403 ? 403 : error.status === 404 ? 404 : 400,
+    error.status === 403
+      ? 403
+      : error.status === 404
+        ? 404
+        : error.status === 409
+          ? 409
+          : 400,
   );
 
 databaseRoutes.post("/", async (c) => {
@@ -74,11 +80,13 @@ databaseRoutes.post("/", async (c) => {
     pageId,
     name = "New database",
     standalone = false,
+    teamspaceId,
   } = body as {
     workspaceId?: unknown;
     pageId?: unknown;
     name?: unknown;
     standalone?: unknown;
+    teamspaceId?: unknown;
   };
 
   if (typeof workspaceId !== "string" || workspaceId.length === 0) {
@@ -102,11 +110,20 @@ databaseRoutes.post("/", async (c) => {
     return c.json({ error: "name must be a string" }, 400);
   }
 
+  if (
+    teamspaceId !== undefined &&
+    teamspaceId !== null &&
+    typeof teamspaceId !== "string"
+  ) {
+    return c.json({ error: "teamspaceId must be a string or null" }, 400);
+  }
+
   try {
     const created = await createDatabaseService({
       name,
       pageId: typeof pageId === "string" ? pageId : undefined,
       standalone: standalone === true,
+      teamspaceId: typeof teamspaceId === "string" ? teamspaceId : null,
       userId: user.id,
       workspaceId,
     });

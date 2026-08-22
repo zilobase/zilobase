@@ -49,6 +49,7 @@ export type SidebarNavItem = {
   navNodeId?: string
   pageId: string | null
   pages: SidebarNavItem[]
+  teamspaceId?: string | null
   updatedAt?: string
   zilobaseai?: ZilobaseAiMode | null
 }

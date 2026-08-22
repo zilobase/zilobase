@@ -66,6 +66,7 @@ type CreatePageInput = {
   name?: string;
   emoji?: string;
   parentItemId?: string;
+  teamspaceId?: string | null;
 };
 
 type CreatePageResponse = {
@@ -389,6 +390,7 @@ export function useCreatePage() {
       emoji,
       metadata: inputMetadata,
       parentItemId,
+      teamspaceId,
     }: CreatePageInput) => {
       const userSettings =
         queryClient.getQueryData<UserSettings>(userSettingsQueryKey) ??
@@ -415,6 +417,7 @@ export function useCreatePage() {
           content,
           metadata,
           parentItemId,
+          teamspaceId,
         }),
       });
 
@@ -463,6 +466,30 @@ export function useCreatePage() {
           queryKey: zilobaseAiPagesQueryKey(pageRecord.workspaceId),
         });
       }
+    },
+  });
+}
+
+export function useMovePageToTeamspace() {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+
+  return useMutation({
+    mutationFn: (input: {
+      pageId: string;
+      teamspaceId: string | null;
+      workspaceId: string;
+    }) =>
+      apiFetch<{ movedPageIds: string[]; teamspaceId: string | null }>(
+        `/pages/${encodeURIComponent(input.pageId)}/move-teamspace`,
+        {
+          body: JSON.stringify({ teamspaceId: input.teamspaceId }),
+          method: "POST",
+        },
+      ),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: pagesQueryKey(input.workspaceId),
+      });
     },
   });
 }

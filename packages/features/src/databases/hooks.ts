@@ -50,6 +50,7 @@ type CreateDatabaseInput = {
   workspaceId: string;
   pageId?: string;
   standalone?: boolean;
+  teamspaceId?: string | null;
 };
 
 type CreateDatabaseResponse = DatabasePayload & {

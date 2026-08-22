@@ -12,6 +12,7 @@ import type { SidebarNavItem } from "@/components/sidebar-nav-list"
 export type SidebarPageSections = {
   privatePages: SidebarNavItem[]
   teamspacePages: SidebarNavItem[]
+  teamspacePagesById: Record<string, SidebarNavItem[]>
 }
 
 export type SidebarNavigationIcons = {
@@ -40,10 +41,7 @@ export function buildSidebarNavigation(
     meetings,
   )
   const recents = buildRecentItems(activePages, activeDatabases, icons)
-  const favorites = buildFavoriteItems([
-    ...sections.privatePages,
-    ...sections.teamspacePages,
-  ])
+  const favorites = buildFavoriteItems(getAllSectionItems(sections))
   const representedFavoriteIds = new Set<string>()
 
   favorites.forEach((item) => collectItemIds(item, representedFavoriteIds))
@@ -70,7 +68,7 @@ export function buildSidebarNavigation(
     meetings,
   )
   const detachedNodesById = new Map(
-    [...detachedSections.privatePages, ...detachedSections.teamspacePages].map(
+    getAllSectionItems(detachedSections).map(
       (item) => [item.id, item],
     ),
   )
@@ -262,9 +260,24 @@ export function buildPageSections(
   }
 
   return {
-    privatePages: roots.filter((page) => !page.isTeamspace),
-    teamspacePages: roots.filter((page) => page.isTeamspace),
+    privatePages: roots.filter((item) => !item.isTeamspace && !item.teamspaceId),
+    teamspacePages: roots.filter((item) => item.isTeamspace && !item.teamspaceId),
+    teamspacePagesById: Object.fromEntries(
+      [...new Set(roots.flatMap((item) => item.teamspaceId ? [item.teamspaceId] : []))]
+        .map((teamspaceId) => [
+          teamspaceId,
+          roots.filter((item) => item.teamspaceId === teamspaceId),
+        ]),
+    ),
   }
+}
+
+function getAllSectionItems(sections: SidebarPageSections) {
+  return [
+    ...sections.privatePages,
+    ...sections.teamspacePages,
+    ...Object.values(sections.teamspacePagesById).flat(),
+  ]
 }
 
 function createMeetingNode(
@@ -304,6 +317,7 @@ function createPageNode(
     zilobaseai: page.metadata?.zilobaseai ?? null,
     pageId: page.id,
     pages: [],
+    teamspaceId: page.teamspaceId,
     updatedAt: page.updatedAt,
   }
 }
@@ -336,9 +350,11 @@ function createDatabaseNode(
         pageId: database.pageId,
         navNodeId: `database-view:${database.id}:${view.id}`,
         pages: [],
+        teamspaceId: database.teamspaceId ?? page?.teamspaceId,
         updatedAt: view.updatedAt,
       })),
     updatedAt: database.updatedAt,
+    teamspaceId: database.teamspaceId ?? page?.teamspaceId,
   }
 }
 

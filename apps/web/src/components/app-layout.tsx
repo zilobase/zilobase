@@ -77,6 +77,7 @@ import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import PreferencesSettingsPage from "@/pages/settings/preferences"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
+import TeamspacesSettingsPage from "@/pages/settings/teamspaces"
 import WorkspaceSettingsPage from "@/pages/settings/workspace"
 import ZilobaseAiSettingsPage from "@/pages/settings/zilobase-ai"
 import { editionWebModule } from "@zilobase/edition-web"
@@ -594,6 +595,8 @@ function SettingsSectionContent({ section }: { section: SettingsSection }) {
       return <ApiKeysSettingsPage />
     case "team":
       return <TeamSettingsPage />
+    case "teamspaces":
+      return <TeamspacesSettingsPage />
     case "profile":
     default:
       return <ProfileSettingsPage />

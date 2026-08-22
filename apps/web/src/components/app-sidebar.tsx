@@ -66,6 +66,7 @@ import {
   type SidebarItemId,
 } from "@zilobase/features/user-settings";
 import { useWorkspaces } from "@zilobase/features/workspaces";
+import { useTeamspaces } from "@zilobase/features/teamspaces";
 import {
   useAddDatabaseRow,
   useCreateDatabase,
@@ -274,6 +275,9 @@ export function AppSidebar({
   const { data: navigation } = usePageNavigation(
     isAiPage || isMeetingsPage ? null : workspaceId,
   );
+  const { data: teamspaces = [] } = useTeamspaces(
+    isAiPage || isMeetingsPage ? null : workspaceId,
+  );
   const { data: meetingsPayload } = useWorkspaceMeetings(
     isMeetingsPage ? workspaceId : null,
   );
@@ -323,12 +327,12 @@ export function AppSidebar({
     [updateUserSettings],
   );
 
-  const handleCreatePage = React.useCallback(async () => {
+  const handleCreatePage = React.useCallback(async (teamspaceId?: string) => {
     if (!workspaceId || isCreatingPage) {
       return;
     }
 
-    const page = await createPage({ workspaceId });
+    const page = await createPage({ teamspaceId, workspaceId });
 
     await navigate({
       to: "/p/$pageId",
@@ -336,7 +340,7 @@ export function AppSidebar({
     });
   }, [createPage, isCreatingPage, navigate, workspaceId]);
 
-  const handleCreateDatabase = React.useCallback(async () => {
+  const handleCreateDatabase = React.useCallback(async (teamspaceId?: string) => {
     if (!workspaceId || isCreatingDatabase) {
       return;
     }
@@ -344,6 +348,7 @@ export function AppSidebar({
     const payload = await createDatabase({
       workspaceId,
       standalone: true,
+      teamspaceId,
     });
 
     await navigate({
@@ -537,6 +542,30 @@ export function AppSidebar({
                     />
                   ),
             )}
+            {teamspaces
+              .filter((teamspace) => teamspace.currentUserRole)
+              .map((teamspace) => (
+                <NavPageSection
+                  activeDatabaseId={getActiveDatabaseId(location.pathname)}
+                  activeDatabaseViewId={getActiveDatabaseViewId(location.search)}
+                  activeMeetingId={activeMeetingId}
+                  activePageId={getActivePageId(location.pathname)}
+                  databaseDropTargetId={databaseDropTargetId}
+                  key={`teamspace:${teamspace.id}`}
+                  label={teamspace.name}
+                  onCreateDatabase={() => void handleCreateDatabase(teamspace.id)}
+                  onCreatePage={() => void handleCreatePage(teamspace.id)}
+                  onCustomizeSidebar={() => setCustomizeSidebarOpen(true)}
+                  onDatabaseDropTargetChange={setDatabaseDropTargetId}
+                  onDropPageOnDatabase={handleDropPageOnDatabase}
+                  onSidebarConfigChange={handleSidebarConfigChange}
+                  pages={pageSections.teamspacePagesById[teamspace.id] ?? []}
+                  sectionId="shared"
+                  showCreateAction
+                  sidebarConfig={sidebarConfig}
+                  storageKey={`${getSidebarExpansionStorageKey(workspaceId, "team")}:${encodeURIComponent(teamspace.id)}`}
+                />
+              ))}
             <NavSecondary
               className="mt-auto"
               items={[

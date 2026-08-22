@@ -2,11 +2,16 @@ import { useState, type DragEvent } from "react"
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { useDeleteDatabase } from "@zilobase/features/databases"
 import { useActiveWorkspaceId } from "@zilobase/features/integrations"
-import { useDeletePage } from "@zilobase/features/pages"
+import {
+  useDeletePage,
+  useMovePageToTeamspace,
+} from "@zilobase/features/pages"
+import { useTeamspaces } from "@zilobase/features/teamspaces"
 import {
   ArrowUpRightIcon,
   DatabaseIcon,
   FileIcon,
+  FolderInputIcon,
   LinkIcon,
   ChevronRightIcon,
   MoreHorizontalIcon,
@@ -37,6 +42,9 @@ import {
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerSeparator,
+  DropDrawerSub,
+  DropDrawerSubContent,
+  DropDrawerSubTrigger,
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer"
 import {
@@ -410,6 +418,8 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const deletePage = useDeletePage()
   const deleteDatabase = useDeleteDatabase()
+  const movePage = useMovePageToTeamspace()
+  const { data: teamspaces = [] } = useTeamspaces(workspaceId)
   const activePageId = getActivePageId(location.pathname)
   const activeDatabaseId = getActiveDatabaseId(location.pathname)
   const linkPath =
@@ -509,6 +519,51 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
             pageId={item.pageId}
             workspaceId={workspaceId}
           />
+          {!item.isDatabase && !item.isDatabaseView && item.pageId ? (
+            <DropDrawerSub>
+              <DropDrawerSubTrigger>
+                <FolderInputIcon className="text-muted-foreground" />
+                <span>Move to</span>
+              </DropDrawerSubTrigger>
+              <DropDrawerSubContent>
+                <DropDrawerItem
+                  disabled={!item.teamspaceId || movePage.isPending}
+                  onSelect={() => {
+                    if (!workspaceId || !item.pageId) return
+                    movePage.mutate(
+                      { pageId: item.pageId, teamspaceId: null, workspaceId },
+                      {
+                        onError: (error) => toast.error(error instanceof Error ? error.message : "Could not move page."),
+                        onSuccess: () => toast.success("Moved to Private."),
+                      },
+                    )
+                  }}
+                >
+                  <span>Private</span>
+                </DropDrawerItem>
+                {teamspaces
+                  .filter((teamspace) => teamspace.currentUserRole)
+                  .map((teamspace) => (
+                    <DropDrawerItem
+                      disabled={item.teamspaceId === teamspace.id || movePage.isPending}
+                      key={teamspace.id}
+                      onSelect={() => {
+                        if (!workspaceId || !item.pageId) return
+                        movePage.mutate(
+                          { pageId: item.pageId, teamspaceId: teamspace.id, workspaceId },
+                          {
+                            onError: (error) => toast.error(error instanceof Error ? error.message : "Could not move page."),
+                            onSuccess: () => toast.success(`Moved to ${teamspace.name}.`),
+                          },
+                        )
+                      }}
+                    >
+                      <span>{teamspace.name}</span>
+                    </DropDrawerItem>
+                  ))}
+              </DropDrawerSubContent>
+            </DropDrawerSub>
+          ) : null}
           <DropDrawerSeparator />
           <DropDrawerItem
             className="text-destructive focus:text-destructive"

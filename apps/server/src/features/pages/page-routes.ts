@@ -8,6 +8,7 @@ import {
   getAccessiblePageIds,
   getEffectivePageAccessInWorkspace,
   getEffectivePageAccessForUsers,
+  getEffectiveTeamspaceAccessInWorkspace,
   getMembership,
   getPageRecord,
   getWorkspacePrincipalKind,
@@ -315,6 +316,7 @@ pageRoutes.get("/", async (c) => {
         url: page.url,
         hasContent: page.hasContent,
         metadata: page.metadata,
+        teamspaceId: page.teamspaceId,
         deletedById: page.deletedById,
         deletedAt: page.deletedAt,
         createdAt: page.createdAt,
@@ -455,6 +457,7 @@ pageRoutes.get("/", async (c) => {
           url: page.url,
           hasContent: page.hasContent,
           metadata: page.metadata,
+          teamspaceId: page.teamspaceId,
           deletedById: page.deletedById,
           deletedAt: page.deletedAt,
           createdAt: page.createdAt,
@@ -535,6 +538,7 @@ pageRoutes.get("/", async (c) => {
         url: page.url,
         hasContent: page.hasContent,
         metadata: page.metadata,
+        teamspaceId: page.teamspaceId,
         deletedById: page.deletedById,
         deletedAt: page.deletedAt,
         createdAt: page.createdAt,
@@ -770,6 +774,7 @@ pageRoutes.post("/", async (c) => {
     content = null,
     metadata = null,
     parentItemId = null,
+    teamspaceId = null,
   } = body as {
     workspaceId?: unknown;
     type?: unknown;
@@ -778,6 +783,7 @@ pageRoutes.post("/", async (c) => {
     content?: unknown;
     metadata?: unknown;
     parentItemId?: unknown;
+    teamspaceId?: unknown;
   };
 
   if (typeof workspaceId !== "string" || workspaceId.length === 0) {
@@ -816,6 +822,10 @@ pageRoutes.post("/", async (c) => {
     return c.json({ error: "parentItemId must be a string or null" }, 400);
   }
 
+  if (teamspaceId !== null && typeof teamspaceId !== "string") {
+    return c.json({ error: "teamspaceId must be a string or null" }, 400);
+  }
+
   if (
     typeof parentItemId === "string" &&
     !(await canAccessPageInWorkspace(
@@ -824,6 +834,47 @@ pageRoutes.post("/", async (c) => {
       user.id,
       "edit",
     ))
+  ) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const [parentRecord] =
+    typeof parentItemId === "string"
+      ? await db
+          .select({ teamspaceId: page.teamspaceId })
+          .from(page)
+          .where(
+            and(
+              eq(page.id, parentItemId),
+              eq(page.workspaceId, workspaceId),
+              isNull(page.deletedAt),
+            ),
+          )
+          .limit(1)
+      : [];
+  const resolvedTeamspaceId = parentRecord?.teamspaceId ?? teamspaceId;
+
+  if (
+    parentRecord &&
+    teamspaceId !== null &&
+    teamspaceId !== parentRecord.teamspaceId
+  ) {
+    return c.json(
+      { error: "A nested page must use its parent teamspace." },
+      409,
+    );
+  }
+
+  if (
+    resolvedTeamspaceId &&
+    !hasAccess(
+      await getEffectiveTeamspaceAccessInWorkspace(
+        resolvedTeamspaceId,
+        workspaceId,
+        user.id,
+      ),
+      "edit",
+    )
   ) {
     return c.json({ error: "Forbidden" }, 403);
   }
@@ -866,6 +917,7 @@ pageRoutes.post("/", async (c) => {
         content,
         hasContent: hasPageBodyContent(content),
         metadata,
+        teamspaceId: resolvedTeamspaceId,
       })
       .returning();
 
@@ -915,6 +967,77 @@ pageRoutes.post("/", async (c) => {
     },
     201,
   );
+});
+
+pageRoutes.post("/:id/move-teamspace", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const body = await c.req.json().catch(() => null);
+  const destinationId =
+    body && typeof body === "object"
+      ? (body as { teamspaceId?: unknown }).teamspaceId
+      : undefined;
+  if (destinationId !== null && typeof destinationId !== "string") {
+    return c.json({ error: "teamspaceId must be a string or null" }, 400);
+  }
+
+  const record = await getPage(c.req.param("id"));
+  if (!record) return c.json({ error: "Page not found" }, 404);
+  if (
+    !(await canAccessPageInWorkspace(
+      record.id,
+      record.workspaceId,
+      user.id,
+      "full",
+    ))
+  ) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  if (
+    destinationId &&
+    !hasAccess(
+      await getEffectiveTeamspaceAccessInWorkspace(
+        destinationId,
+        record.workspaceId,
+        user.id,
+      ),
+      "edit",
+    )
+  ) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  if (!destinationId && !(await getMembership(record.workspaceId, user.id))) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  const graph = await loadWorkspacePageGraph(record.workspaceId);
+  const pageIds = graph.getPrimaryNestedPageIds(record.id);
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(page)
+      .set({ teamspaceId: destinationId, updatedAt: now })
+      .where(inArray(page.id, pageIds));
+    await tx
+      .update(database)
+      .set({ teamspaceId: destinationId, updatedAt: now })
+      .where(inArray(database.pageId, pageIds));
+    await tx
+      .update(pageItemPlacement)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(pageItemPlacement.workspaceId, record.workspaceId),
+          eq(pageItemPlacement.itemKind, "page"),
+          eq(pageItemPlacement.itemId, record.id),
+          eq(pageItemPlacement.placementKind, "primary"),
+          isNull(pageItemPlacement.deletedAt),
+        ),
+      );
+  });
+
+  return c.json({ movedPageIds: pageIds, teamspaceId: destinationId });
 });
 
 pageRoutes.post("/:id/embed-item", async (c) => {

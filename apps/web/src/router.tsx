@@ -32,6 +32,7 @@ import ZilobaseAiSettingsPage from "@/pages/settings/zilobase-ai"
 import WorkspaceSettingsPage from "@/pages/settings/workspace"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
+import TeamspacesSettingsPage from "@/pages/settings/teamspaces"
 import { normalizeTeamSettingsTab } from "@/pages/settings/team-settings-tabs"
 import SignupPage from "@/pages/signup"
 import SetupPage from "@/pages/setup"
@@ -368,6 +369,12 @@ const teamSettingsRoute = createRoute({
   component: TeamSettingsPage,
 })
 
+const teamspacesSettingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings/teamspaces",
+  component: TeamspacesSettingsPage,
+})
+
 const editionRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/enterprise/$",
@@ -397,6 +404,7 @@ const routeTree = rootRoute.addChildren([
     apiKeysSettingsRoute,
     zilobaseAiSettingsRoute,
     teamSettingsRoute,
+    teamspacesSettingsRoute,
     editionRoute,
   ]),
   pageRoute,

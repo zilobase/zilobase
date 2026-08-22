@@ -17,6 +17,7 @@ import { meetingRoutes } from "../features/meetings/routes";
 import { pageRoutes } from "../features/pages/routes";
 import { pageGuestRoutes } from "../features/page-guests";
 import { pageLayoutRoutes } from "../features/page-layouts/routes";
+import { teamspaceRoutes } from "../features/teamspaces/routes";
 import { profileImageRoutes } from "../routes/profile-images";
 import { searchRoutes } from "../features/search/routes";
 import {
@@ -38,6 +39,7 @@ export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/metadata", metadataRoutes);
   app.route("/meetings", meetingRoutes);
   app.route("/workspaces", workspaceRoutes);
+  app.route("/workspaces", teamspaceRoutes);
   app.route("/api/workspace/settings", workspaceSettingsRoutes);
   app.route("/search", searchRoutes);
   app.route("/session", sessionRoutes);

@@ -3,7 +3,9 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
   canAccessDatabaseRecord,
   canAccessPage,
+  getEffectiveTeamspaceAccessInWorkspace,
   getMembership,
+  hasAccess,
 } from "../access";
 import type { RuntimeEnv } from "../config";
 import { db } from "../db";
@@ -30,6 +32,7 @@ export async function createDatabaseService(input: {
   workspaceId: string;
   pageId?: string;
   standalone?: boolean;
+  teamspaceId?: string | null;
   userId: string;
 }) {
   const name = input.name?.trim() || "New database";
@@ -38,7 +41,7 @@ export async function createDatabaseService(input: {
   const [pageRecord] =
     !standalone && input.pageId
       ? await db
-          .select({ id: page.id })
+          .select({ id: page.id, teamspaceId: page.teamspaceId })
           .from(page)
           .where(
             and(
@@ -54,7 +57,32 @@ export async function createDatabaseService(input: {
     throw new ServiceMutationError("Page not found", 404);
   }
 
-  if (standalone) {
+  if (
+    pageRecord &&
+    input.teamspaceId !== undefined &&
+    input.teamspaceId !== pageRecord.teamspaceId
+  ) {
+    throw new ServiceMutationError(
+      "A database must use its parent page teamspace.",
+      409,
+    );
+  }
+  const teamspaceId = pageRecord?.teamspaceId ?? input.teamspaceId ?? null;
+
+  if (standalone && teamspaceId) {
+    if (
+      !hasAccess(
+        await getEffectiveTeamspaceAccessInWorkspace(
+          teamspaceId,
+          input.workspaceId,
+          input.userId,
+        ),
+        "edit",
+      )
+    ) {
+      throw new ServiceMutationError("Forbidden", 403);
+    }
+  } else if (standalone) {
     if (!(await getMembership(input.workspaceId, input.userId))) {
       throw new ServiceMutationError("Forbidden", 403);
     }
@@ -88,6 +116,7 @@ export async function createDatabaseService(input: {
       workspaceId: input.workspaceId,
       createdById: input.userId,
       pageId: standalone ? null : input.pageId,
+      ...(teamspaceId ? { teamspaceId } : {}),
       name,
       config: {},
     });

@@ -6,6 +6,7 @@ import {
   SparklesIcon,
   UserIcon,
   UsersIcon,
+  Layers3Icon,
 } from "lucide-react"
 import type { ComponentType } from "react"
 import { useSession } from "@zilobase/features/auth"
@@ -35,6 +36,7 @@ export type CoreSettingsSection =
   | "zilobase-ai"
   | "api-keys"
   | "team"
+  | "teamspaces"
 export type SettingsSection = CoreSettingsSection | string
 
 const settingsItems: Array<{
@@ -53,6 +55,7 @@ const settingsItems: Array<{
   { title: "Zilobase AI", section: "zilobase-ai", icon: SparklesIcon },
   { title: "API Keys", section: "api-keys", icon: KeyRoundIcon },
   { title: "Team", section: "team", icon: UsersIcon },
+  { title: "Teamspaces", section: "teamspaces", icon: Layers3Icon },
   ...editionWebModule.settingsSections.map((section) => ({
     title: section.title,
     section: section.id,

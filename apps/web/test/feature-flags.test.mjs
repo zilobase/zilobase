@@ -3,7 +3,7 @@ export function register({ assert, loadModule, test }) {
     const { isFeatureEnabled } = await loadModule("/src/config/feature-flags.ts")
 
     assert.equal(isFeatureEnabled("notionImport"), false)
-    assert.equal(isFeatureEnabled("teamspaces"), false)
+    assert.equal(isFeatureEnabled("teamspaces"), true)
   })
 
   test("readBooleanFeatureFlag accepts common boolean config values", async () => {

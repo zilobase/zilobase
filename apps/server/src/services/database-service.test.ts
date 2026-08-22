@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   commit: vi.fn(),
   getRecord: vi.fn(),
   getMembership: vi.fn(),
+  getTeamspaceAccess: vi.fn(),
   payload: vi.fn(),
   placement: vi.fn(),
   requireAccess: vi.fn(),
@@ -20,6 +21,10 @@ vi.mock("../access", () => ({
   canAccessDatabaseRecord: mocks.canAccessDatabase,
   canAccessPage: mocks.canAccessPage,
   getMembership: mocks.getMembership,
+  getEffectiveTeamspaceAccessInWorkspace: mocks.getTeamspaceAccess,
+  hasAccess: (actual: string, required: string) =>
+    ["none", "view", "comment", "edit", "full"].indexOf(actual) >=
+    ["none", "view", "comment", "edit", "full"].indexOf(required),
 }));
 vi.mock("./database-access", () => ({
   getDatabaseRecord: mocks.getRecord,
@@ -69,6 +74,8 @@ beforeEach(() => {
   mocks.getRecord.mockReset();
   mocks.getMembership.mockReset();
   mocks.getMembership.mockResolvedValue(true);
+  mocks.getTeamspaceAccess.mockReset();
+  mocks.getTeamspaceAccess.mockResolvedValue("edit");
   mocks.payload.mockReset();
   mocks.placement.mockReset();
   mocks.requireAccess.mockReset();
@@ -208,6 +215,25 @@ test("createDatabaseService applies the default name", async () => {
   assert.equal(result.name, "New database");
 });
 
+test("createDatabaseService inherits its parent teamspace", async () => {
+  const { inserts } = transactionRecorder();
+  mocks.selectResults = [
+    [{ id: "page-1", teamspaceId: "teamspace-1" }],
+    [],
+  ];
+
+  await createDatabaseService({
+    pageId: "page-1",
+    userId: "user-1",
+    workspaceId: "workspace-1",
+  });
+
+  assert.equal(
+    (inserts[0] as { teamspaceId?: string }).teamspaceId,
+    "teamspace-1",
+  );
+});
+
 test("createDatabaseService distinguishes missing and forbidden pages", async () => {
   mocks.selectResults = [[]];
   await assert.rejects(
@@ -275,6 +301,29 @@ test("createDatabaseService rejects standalone creation outside the workspace", 
       error instanceof ServiceMutationError && error.status === 403,
   );
 
+  assert.equal(mocks.transaction.mock.calls.length, 0);
+});
+
+test("createDatabaseService requires teamspace edit access for standalone databases", async () => {
+  transactionRecorder();
+  mocks.getTeamspaceAccess.mockResolvedValue("view");
+
+  await assert.rejects(
+    createDatabaseService({
+      standalone: true,
+      teamspaceId: "teamspace-1",
+      userId: "user-1",
+      workspaceId: "workspace-1",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 403,
+  );
+
+  assert.deepEqual(mocks.getTeamspaceAccess.mock.calls[0], [
+    "teamspace-1",
+    "workspace-1",
+    "user-1",
+  ]);
   assert.equal(mocks.transaction.mock.calls.length, 0);
 });
 

@@ -1,4 +1,33 @@
 export function register({ assert, loadModule, test }) {
+  test("sidebar groups real teamspace pages separately from shared pages", async () => {
+    const { buildSidebarNavigation } = await loadModule(
+      "/src/components/sidebar-navigation-model.tsx"
+    )
+    const privatePage = createPage("private", "Private", "2026-08-01T00:00:00.000Z")
+    const sharedPage = {
+      ...createPage("shared", "Shared", "2026-08-02T00:00:00.000Z"),
+      isTeamspace: true,
+    }
+    const teamspacePage = {
+      ...createPage("team-page", "Team page", "2026-08-03T00:00:00.000Z"),
+      teamspaceId: "teamspace-1",
+    }
+
+    const { sections } = buildSidebarNavigation(
+      [privatePage, sharedPage, teamspacePage],
+      [],
+      [],
+      icons,
+    )
+
+    assert.deepEqual(sections.privatePages.map((item) => item.id), ["private"])
+    assert.deepEqual(sections.teamspacePages.map((item) => item.id), ["shared"])
+    assert.deepEqual(
+      sections.teamspacePagesById["teamspace-1"].map((item) => item.id),
+      ["team-page"],
+    )
+  })
+
   test("sidebar recents combine pages and databases by last visit", async () => {
     const { buildSidebarNavigation } = await loadModule(
       "/src/components/sidebar-navigation-model.tsx"

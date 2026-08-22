@@ -48,6 +48,10 @@
       "types": "./src/workspaces/index.ts",
       "default": "./src/workspaces/index.ts"
     },
+    "./teamspaces": {
+      "types": "./src/teamspaces/index.ts",
+      "default": "./src/teamspaces/index.ts"
+    },
 
     "./search": {
       "types": "./src/search/index.ts",
