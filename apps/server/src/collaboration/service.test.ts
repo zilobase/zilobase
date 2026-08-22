@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import * as Y from "yjs";
 import {
+  assertCommentOnlyCollaborationUpdate,
   appendMeetingTranscriptToDocument,
   createCollaborationTicket,
   documentNameForPage,
@@ -108,6 +109,41 @@ test("materialized page JSON ignores Yjs-native comment metadata", () => {
   assert.deepEqual(
     materializePageContentFromYjs(Y.encodeStateAsUpdate(document)),
     content,
+  );
+});
+
+test("comment collaboration updates cannot modify protected page fields", () => {
+  const document = new Y.Doc();
+  Y.applyUpdate(
+    document,
+    encodePageContentAsYjs({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }],
+    }),
+  );
+
+  const commentClient = new Y.Doc();
+  Y.applyUpdate(commentClient, Y.encodeStateAsUpdate(document));
+  commentClient.getMap("commentThreads").set("thread-1", { kind: "page" });
+  assert.doesNotThrow(() =>
+    assertCommentOnlyCollaborationUpdate(
+      document,
+      Y.encodeStateAsUpdate(commentClient, Y.encodeStateVector(document)),
+    ),
+  );
+
+  const editingClient = new Y.Doc();
+  Y.applyUpdate(editingClient, Y.encodeStateAsUpdate(document));
+  const maliciousText = new Y.XmlText();
+  maliciousText.insert(0, "Changed");
+  editingClient.getXmlFragment("default").insert(0, [maliciousText]);
+  assert.throws(
+    () =>
+      assertCommentOnlyCollaborationUpdate(
+        document,
+        Y.encodeStateAsUpdate(editingClient, Y.encodeStateVector(document)),
+      ),
+    /cannot modify page content/,
   );
 });
 

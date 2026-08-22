@@ -50,17 +50,24 @@ import { Spinner } from "@/components/ui/spinner"
 import { useSession } from "@zilobase/features/auth"
 import {
   useInviteWorkspaceMember,
+  usePromoteWorkspaceGuest,
   useRemoveWorkspaceMember,
+  useReviewWorkspaceGuestRequest,
   useRevokeWorkspaceGuest,
+  useUpdateWorkspaceGuestPolicy,
   useUpdateWorkspaceMember,
   useWorkspaceAccessTargets,
   useWorkspaceGuests,
+  useWorkspaceGuestPolicy,
+  useWorkspaceGuestRequests,
   useWorkspaceInvitations,
 } from "@zilobase/features/workspaces"
 import type {
+  GuestInviteMode,
   InvitableWorkspaceRole,
   WorkspaceInvitation,
   WorkspaceGuest,
+  WorkspaceGuestRequest,
   WorkspaceMember,
   WorkspaceRole,
 } from "@zilobase/features/workspaces"
@@ -99,10 +106,18 @@ export default function TeamSettingsPage() {
   )
   const currentRole = normalizeWorkspaceRole(currentMembership?.role)
   const canManageMembers = currentRole === "owner" || currentRole === "admin"
+  const isWorkspaceOwner = currentRole === "owner"
   const { data: guests, isLoading: isLoadingGuests } = useWorkspaceGuests(
     activeWorkspaceId,
     { enabled: canManageMembers },
   )
+  const { data: guestPolicy } = useWorkspaceGuestPolicy(activeWorkspaceId, {
+    enabled: isWorkspaceOwner,
+  })
+  const { data: guestRequests, isLoading: isLoadingGuestRequests } =
+    useWorkspaceGuestRequests(activeWorkspaceId, {
+      enabled: isWorkspaceOwner,
+    })
   const isInstanceOwner = Boolean(
     sessionData?.workspacePinned &&
       accessTargets?.members.some(
@@ -134,6 +149,19 @@ export default function TeamSettingsPage() {
 
         {canManageMembers ? (
           <>
+            {isWorkspaceOwner ? (
+              <>
+                <GuestPolicySection
+                  policy={guestPolicy?.mode ?? "direct"}
+                  requests={(guestRequests ?? []).filter(
+                    (request) => request.status === "pending",
+                  )}
+                  isLoadingRequests={isLoadingGuestRequests}
+                  workspaceId={activeWorkspaceId}
+                />
+                <Separator />
+              </>
+            ) : null}
             <section className="grid gap-3">
               <div className="space-y-1">
                 <h3 className="font-heading text-base leading-snug font-medium">
@@ -147,6 +175,7 @@ export default function TeamSettingsPage() {
               <GuestList
                 guests={guests ?? []}
                 isLoading={isLoadingGuests}
+                canPromote={isWorkspaceOwner}
                 workspaceId={activeWorkspaceId}
               />
             </section>
@@ -197,15 +226,18 @@ export default function TeamSettingsPage() {
 }
 
 function GuestList({
+  canPromote,
   guests,
   isLoading,
   workspaceId,
 }: {
+  canPromote: boolean
   guests: WorkspaceGuest[]
   isLoading: boolean
   workspaceId: string | null | undefined
 }) {
   const revokeGuest = useRevokeWorkspaceGuest()
+  const promoteGuest = usePromoteWorkspaceGuest()
 
   if (isLoading) return <RowsSkeleton />
 
@@ -249,6 +281,32 @@ function GuestList({
             </ItemDescription>
           </ItemContent>
           <ItemActions>
+            {canPromote ? (
+              <Button
+                disabled={!workspaceId || promoteGuest.isPending}
+                onClick={() => {
+                  if (!workspaceId) return
+                  promoteGuest.mutate(
+                    { userId: guest.userId, workspaceId },
+                    {
+                      onError: (error) =>
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : "Could not convert guest.",
+                        ),
+                      onSuccess: () =>
+                        toast.success("Guest converted to member."),
+                    },
+                  )
+                }}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                Convert to member
+              </Button>
+            ) : null}
             <Button
               aria-label={`Remove guest ${guest.name || guest.email}`}
               disabled={!workspaceId || revokeGuest.isPending}
@@ -285,6 +343,148 @@ function GuestList({
         </Item>
       ))}
     </ItemGroup>
+  )
+}
+
+function GuestPolicySection({
+  isLoadingRequests,
+  policy,
+  requests,
+  workspaceId,
+}: {
+  isLoadingRequests: boolean
+  policy: GuestInviteMode
+  requests: WorkspaceGuestRequest[]
+  workspaceId: string | null | undefined
+}) {
+  const updatePolicy = useUpdateWorkspaceGuestPolicy()
+  const reviewRequest = useReviewWorkspaceGuestRequest()
+
+  return (
+    <section className="grid gap-4">
+      <div className="space-y-1">
+        <h3 className="font-heading text-base leading-snug font-medium">
+          Guest invitations
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Choose whether members can invite page guests directly or need owner
+          approval.
+        </p>
+      </div>
+      <Field>
+        <FieldLabel>Invitation policy</FieldLabel>
+        <Select
+          disabled={!workspaceId || updatePolicy.isPending}
+          onValueChange={(mode) => {
+            if (!workspaceId) return
+            updatePolicy.mutate(
+              { mode: mode as GuestInviteMode, workspaceId },
+              {
+                onError: (error) =>
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Could not update guest policy.",
+                  ),
+                onSuccess: () => toast.success("Guest policy updated."),
+              },
+            )
+          }}
+          value={policy}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="direct">Members can invite directly</SelectItem>
+            <SelectItem value="request">Require owner approval</SelectItem>
+            <SelectItem value="owners_only">Owners only</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <div className="grid gap-2">
+        <div className="text-sm font-medium">Pending approval requests</div>
+        {isLoadingRequests ? (
+          <RowsSkeleton />
+        ) : requests.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No pending requests.</p>
+        ) : (
+          <ItemGroup className="gap-2">
+            {requests.map((request) => (
+              <Item key={request.id} variant="outline">
+                <ItemContent>
+                  <ItemTitle>{request.email}</ItemTitle>
+                  <ItemDescription>
+                    {request.requesterName || request.requesterEmail} requested{" "}
+                    {request.accessLevel} access to{" "}
+                    {request.pageName || "Untitled"}.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <Button
+                    disabled={reviewRequest.isPending || !workspaceId}
+                    onClick={() =>
+                      workspaceId &&
+                      reviewRequest.mutate(
+                        {
+                          action: "reject",
+                          requestId: request.id,
+                          workspaceId,
+                        },
+                        {
+                          onError: (error) =>
+                            toast.error(
+                              error instanceof Error
+                                ? error.message
+                                : "Could not reject request.",
+                            ),
+                          onSuccess: () =>
+                            toast.success("Guest request rejected."),
+                        },
+                      )
+                    }
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    Reject
+                  </Button>
+                  <Button
+                    disabled={reviewRequest.isPending || !workspaceId}
+                    onClick={() =>
+                      workspaceId &&
+                      reviewRequest.mutate(
+                        {
+                          action: "approve",
+                          requestId: request.id,
+                          workspaceId,
+                        },
+                        {
+                          onError: (error) =>
+                            toast.error(
+                              error instanceof Error
+                                ? error.message
+                                : "Could not approve request.",
+                            ),
+                          onSuccess: () =>
+                            toast.success(
+                              "Guest invitation approved and sent.",
+                            ),
+                        },
+                      )
+                    }
+                    size="sm"
+                    type="button"
+                  >
+                    Approve
+                  </Button>
+                </ItemActions>
+              </Item>
+            ))}
+          </ItemGroup>
+        )}
+      </div>
+    </section>
   )
 }
 

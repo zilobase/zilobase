@@ -26,9 +26,13 @@ export function register({ assert, loadModule, test }) {
     assert.match(acceptance, /useAcceptPageGuestInvitation/);
     assert.match(acceptance, /to="\/p\/\$pageId"/);
     assert.match(shareMenu, /Invite a page guest/);
+    assert.match(shareMenu, /value="comment">Comment/);
+    assert.match(shareMenu, /Pending owner approval/);
     assert.match(shareMenu, /useRevokePageGuest/);
     assert.match(teamSettings, /Page guests/);
     assert.match(teamSettings, /useRevokeWorkspaceGuest/);
+    assert.match(teamSettings, /Require owner approval/);
+    assert.match(teamSettings, /Convert to member/);
     assert.match(pageShell, /publishedShare === "guest"/);
     assert.match(pageShell, /<Badge variant="outline">Guest<\/Badge>/);
   });

@@ -59,8 +59,11 @@ beforeEach(() => {
 
 test("access primitives normalize and rank supported levels", () => {
   assert.equal(normalizeAccessLevel("edit"), "edit");
+  assert.equal(normalizeAccessLevel("comment"), "comment");
   assert.equal(normalizeAccessLevel("invalid"), null);
   assert.equal(hasAccess("edit", "view"), true);
+  assert.equal(hasAccess("comment", "view"), true);
+  assert.equal(hasAccess("comment", "edit"), false);
   assert.equal(hasAccess("view", "full"), false);
   assert.equal(isPrivilegedOrgRole("owner"), true);
   assert.equal(isPrivilegedOrgRole("member"), false);

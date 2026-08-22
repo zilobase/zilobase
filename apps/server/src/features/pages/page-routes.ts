@@ -11,6 +11,7 @@ import {
   getMembership,
   getPageRecord,
   getWorkspacePrincipalKind,
+  getWorkspaceRealtimeAccessExpiration,
   hasAccess,
   isPagePublishedInWorkspace,
   normalizeAccessLevel,
@@ -1617,7 +1618,10 @@ pageRoutes.put("/:id/access", async (c) => {
   }
 
   if (!normalizedAccessLevel) {
-    return c.json({ error: "accessLevel must be view, edit, or full" }, 400);
+    return c.json(
+      { error: "accessLevel must be view, comment, edit, or full" },
+      400,
+    );
   }
 
   if (targetType === "public") {
@@ -2020,18 +2024,25 @@ pageRoutes.post("/:id/collaboration-ticket", async (c) => {
     return workspaceMismatch;
   }
 
-  const membership = await getMembership(existing.workspaceId, user.id);
-
   const [ticket, initialState] = await Promise.all([
     createCollaborationTicket(
       {
         pageId: existing.id,
-        scope: hasAccess(accessLevel, "edit") ? "read-write" : "readonly",
+        scope: hasAccess(accessLevel, "edit")
+          ? "read-write"
+          : hasAccess(accessLevel, "comment")
+            ? "comment"
+            : "readonly",
         userId: user.id,
         workspaceId: existing.workspaceId,
       },
       c.env,
-      { maxExpiresAt: membership?.accessExpiresAt },
+      {
+        maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(
+          existing.workspaceId,
+          user.id,
+        ),
+      },
     ),
     getOrCreateCollaborationDocumentState(existing.id),
   ]);

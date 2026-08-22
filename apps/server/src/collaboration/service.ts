@@ -21,12 +21,13 @@ import type { RuntimeEnv } from "../config";
 const DOCUMENT_PREFIX = "page:";
 const MEETING_DOCUMENT_PREFIX = "meeting:";
 const FIELD_NAME = "default";
+const COMMENT_THREADS_FIELD = "commentThreads";
 const TICKET_TTL_MS = 5 * 60 * 1000;
 
 export type PageCollaborationTicketClaims = {
   exp: number;
   pageId: string;
-  scope: "read-write" | "readonly";
+  scope: "comment" | "read-write" | "readonly";
   userId: string;
   workspaceId: string;
 };
@@ -351,7 +352,11 @@ export function createCollaborationHocuspocus(
               accessPageId,
               claims.workspaceId,
               claims.userId,
-              claims.scope === "readonly" ? "view" : "edit",
+              claims.scope === "readonly"
+                ? "view"
+                : claims.scope === "comment"
+                  ? "comment"
+                  : "edit",
             )
           : false;
       });
@@ -377,6 +382,11 @@ export function createCollaborationHocuspocus(
       void documentLoad.catch(() => undefined);
 
       return claims;
+    },
+    async beforeSync({ context, document, payload, type }) {
+      if (context.scope === "comment" && (type === 1 || type === 2)) {
+        assertCommentOnlyCollaborationUpdate(document, payload);
+      }
     },
     async connected({ connection, context }) {
       const timeout = setTimeout(
@@ -944,9 +954,62 @@ function isTicketClaims(value: unknown): value is CollaborationTicketClaims {
     typeof claims.exp === "number" &&
     ((typeof claims.pageId === "string" && claims.meetingId === undefined) ||
       (typeof claims.meetingId === "string" && claims.pageId === undefined)) &&
-    (claims.scope === "read-write" || claims.scope === "readonly") &&
+    (claims.scope === "comment" ||
+      claims.scope === "read-write" ||
+      claims.scope === "readonly") &&
     typeof claims.userId === "string" &&
     typeof claims.workspaceId === "string"
+  );
+}
+
+export function assertCommentOnlyCollaborationUpdate(
+  document: Y.Doc,
+  update: Uint8Array,
+) {
+  const before = serializeProtectedCollaborationFields(document);
+  const candidate = new Y.Doc();
+
+  try {
+    // Establish the concrete shared-type constructors before replaying updates.
+    // Yjs otherwise materializes unknown fields as a generic AbstractType whose
+    // JSON representation cannot be used for a permission comparison.
+    candidate.getXmlFragment(FIELD_NAME);
+    candidate.getMap(COMMENT_THREADS_FIELD);
+    Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));
+    Y.applyUpdate(candidate, update);
+
+    if (serializeProtectedCollaborationFields(candidate) !== before) {
+      throw new Error("Comment access cannot modify page content");
+    }
+  } finally {
+    candidate.destroy();
+  }
+}
+
+function serializeProtectedCollaborationFields(document: Y.Doc) {
+  return JSON.stringify(
+    [...document.share.entries()]
+      .filter(([field]) => field !== COMMENT_THREADS_FIELD)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([field, value]) => [
+        field,
+        stableJsonValue(
+          field === FIELD_NAME
+            ? document.getXmlFragment(FIELD_NAME).toJSON()
+            : value.toJSON(),
+        ),
+      ]),
+  );
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableJsonValue);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => [key, stableJsonValue(child)]),
   );
 }
 

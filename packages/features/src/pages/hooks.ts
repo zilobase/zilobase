@@ -35,6 +35,8 @@ import {
   pageGuestInvitationQueryOptions,
   pageGuestInvitationsQueryKey,
   pageGuestInvitationsQueryOptions,
+  pageGuestRequestsQueryKey,
+  pageGuestRequestsQueryOptions,
   pagePropertiesQueryOptions,
   zilobaseAiPagesQueryKey,
   zilobaseAiPagesQueryOptions,
@@ -225,6 +227,11 @@ export function usePageGuestInvitations(pageId: string | null | undefined) {
   return useQuery(pageGuestInvitationsQueryOptions(apiFetch, pageId));
 }
 
+export function usePageGuestRequests(pageId: string | null | undefined) {
+  const { apiFetch } = useZilobaseFeatures();
+  return useQuery(pageGuestRequestsQueryOptions(apiFetch, pageId));
+}
+
 export function usePageGuestInvitation(
   invitationId: string | null | undefined,
 ) {
@@ -241,7 +248,7 @@ export function useInvitePageGuest() {
       email: string;
       pageId: string;
     }) =>
-      apiFetch<{ invitation: unknown }>(
+      apiFetch<{ invitation?: unknown; request?: unknown }>(
         `/pages/${encodeURIComponent(input.pageId)}/guest-invitations`,
         {
           body: JSON.stringify({
@@ -252,9 +259,14 @@ export function useInvitePageGuest() {
         },
       ),
     onSuccess: async (_result, input) => {
-      await queryClient.invalidateQueries({
-        queryKey: pageGuestInvitationsQueryKey(input.pageId),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: pageGuestInvitationsQueryKey(input.pageId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: pageGuestRequestsQueryKey(input.pageId),
+        }),
+      ]);
     },
   });
 }

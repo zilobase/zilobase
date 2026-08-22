@@ -8,6 +8,7 @@ import {
 } from "../pages/queries"
 import {
   type AcceptWorkspaceInvitationResponse,
+  type GuestInviteMode,
   type InvitableWorkspaceRole,
   workspaceAccessTargetsQueryKey,
   workspaceAccessTargetsQueryOptions,
@@ -15,6 +16,10 @@ import {
   workspaceInvitationsQueryOptions,
   workspaceGuestsQueryKey,
   workspaceGuestsQueryOptions,
+  workspaceGuestPolicyQueryKey,
+  workspaceGuestPolicyQueryOptions,
+  workspaceGuestRequestsQueryKey,
+  workspaceGuestRequestsQueryOptions,
   workspacesQueryKey,
   workspacesQueryOptions,
   type Workspace,
@@ -52,6 +57,88 @@ export function useWorkspaceGuests(
   return useQuery({
     ...workspaceGuestsQueryOptions(apiFetch, workspaceId),
     enabled: Boolean(workspaceId) && (options?.enabled ?? true),
+  })
+}
+
+export function useWorkspaceGuestPolicy(
+  workspaceId: string | null | undefined,
+  options?: { enabled?: boolean },
+) {
+  const { apiFetch } = useZilobaseFeatures()
+  return useQuery({
+    ...workspaceGuestPolicyQueryOptions(apiFetch, workspaceId),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
+  })
+}
+
+export function useWorkspaceGuestRequests(
+  workspaceId: string | null | undefined,
+  options?: { enabled?: boolean },
+) {
+  const { apiFetch } = useZilobaseFeatures()
+  return useQuery({
+    ...workspaceGuestRequestsQueryOptions(apiFetch, workspaceId),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
+  })
+}
+
+export function useUpdateWorkspaceGuestPolicy() {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+  return useMutation({
+    mutationFn: (input: { mode: GuestInviteMode; workspaceId: string }) =>
+      apiFetch(
+        `/workspaces/${encodeURIComponent(input.workspaceId)}/guest-policy`,
+        {
+          body: JSON.stringify({ mode: input.mode }),
+          method: "PATCH",
+        },
+      ),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceGuestPolicyQueryKey(input.workspaceId),
+      })
+    },
+  })
+}
+
+export function useReviewWorkspaceGuestRequest() {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+  return useMutation({
+    mutationFn: (input: {
+      action: "approve" | "reject"
+      requestId: string
+      workspaceId: string
+    }) =>
+      apiFetch(
+        `/workspaces/${encodeURIComponent(input.workspaceId)}/guest-requests/${encodeURIComponent(input.requestId)}/${input.action}`,
+        { method: "POST" },
+      ),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceGuestRequestsQueryKey(input.workspaceId),
+      })
+    },
+  })
+}
+
+export function usePromoteWorkspaceGuest() {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+  return useMutation({
+    mutationFn: (input: { userId: string; workspaceId: string }) =>
+      apiFetch(
+        `/workspaces/${encodeURIComponent(input.workspaceId)}/guests/${encodeURIComponent(input.userId)}/promote`,
+        { method: "POST" },
+      ),
+    onSuccess: async (_result, input) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: workspaceGuestsQueryKey(input.workspaceId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: workspaceAccessTargetsQueryKey(input.workspaceId),
+        }),
+      ])
+    },
   })
 }
 

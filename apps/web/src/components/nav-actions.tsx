@@ -80,10 +80,12 @@ import {
   usePageNavigation,
   usePagePersonAccessTargets,
   usePageGuestInvitations,
+  usePageGuestRequests,
   useInvitePageGuest,
   useCancelPageGuestInvitation,
   useRevokePageGuest,
 } from "@zilobase/features/pages";
+import { useWorkspaceGuestPolicy } from "@zilobase/features/workspaces";
 import {
   useDatabase,
   useDatabaseAccess,
@@ -133,6 +135,7 @@ const moreActions = [
 ];
 
 const accessLabels: Record<AccessLevel, string> = {
+  comment: "Comment access",
   edit: "Edit access",
   full: "Full access",
   view: "View access",
@@ -867,6 +870,16 @@ function ItemShareDropdownContent({
   const { data: guestInvitations } = usePageGuestInvitations(
     databaseId ? null : pageId,
   );
+  const { data: guestRequests } = usePageGuestRequests(
+    databaseId ? null : pageId,
+  );
+  const { data: guestPolicy } = useWorkspaceGuestPolicy(workspaceId, {
+    enabled: Boolean(
+      pageId &&
+        !databaseId &&
+        targets?.members.some((member) => member.id === session?.user?.id),
+    ),
+  });
   const upsertAccess = useUpsertPageAccess();
   const upsertDatabaseAccess = useUpsertDatabaseAccess();
   const deleteAccess = useDeletePageAccess();
@@ -890,6 +903,9 @@ function ItemShareDropdownContent({
     ? databasePayload?.database.accessLevel
     : accessLevel;
   const canManage = effectiveAccessLevel === "full";
+  const isWorkspaceMember = Boolean(
+    targets?.members.some((member) => member.id === session?.user?.id),
+  );
   const shareableMembers = React.useMemo(
     () =>
       (targets?.members ?? []).filter(
@@ -930,6 +946,13 @@ function ItemShareDropdownContent({
   const pendingGuestInvitations = (guestInvitations ?? []).filter(
     (invitation) => invitation.status === "pending",
   );
+  const pendingGuestRequests = (guestRequests ?? []).filter(
+    (request) => request.status === "pending",
+  );
+  const guestActionLabel =
+    guestPolicy?.mode === "request" && !guestPolicy.canApprove
+      ? "Request"
+      : "Invite";
   const selectedTarget = targetValue ? targetByKey.get(targetValue) : null;
   const publicUrl =
     typeof window === "undefined"
@@ -961,7 +984,8 @@ function ItemShareDropdownContent({
     if (isDatabase) {
       upsertDatabaseAccess.mutate(
         {
-          accessLevel: nextAccessLevel,
+          accessLevel:
+            nextAccessLevel === "comment" ? "view" : nextAccessLevel,
           targetId,
           targetType,
           databaseId: databaseId as string,
@@ -990,7 +1014,13 @@ function ItemShareDropdownContent({
   const invitePageGuest = () => {
     const email = guestEmail.trim().toLowerCase();
 
-    if (!pageId || !email || !canManage || inviteGuest.isPending) return;
+    if (
+      !pageId ||
+      !email ||
+      !canManage ||
+      !isWorkspaceMember ||
+      inviteGuest.isPending
+    ) return;
     inviteGuest.mutate(
       { accessLevel: guestAccessLevel, email, pageId },
       {
@@ -998,9 +1028,13 @@ function ItemShareDropdownContent({
           toast.error(
             error instanceof Error ? error.message : "Could not invite guest.",
           ),
-        onSuccess: () => {
+        onSuccess: (result) => {
           setGuestEmail("");
-          toast.success("Page guest invitation sent.");
+          toast.success(
+            result.request
+              ? "Guest invitation sent for owner approval."
+              : "Page guest invitation sent.",
+          );
         },
       },
     );
@@ -1131,6 +1165,9 @@ function ItemShareDropdownContent({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="view">View</SelectItem>
+                {!isDatabase ? (
+                  <SelectItem value="comment">Comment</SelectItem>
+                ) : null}
                 <SelectItem value="edit">Edit</SelectItem>
                 <SelectItem value="full">Full</SelectItem>
               </SelectContent>
@@ -1150,7 +1187,7 @@ function ItemShareDropdownContent({
             </Button>
           </div>
 
-          {!isDatabase && canManage ? (
+          {!isDatabase && canManage && isWorkspaceMember ? (
             <div className="grid gap-2 rounded-md border p-3">
               <div>
                 <div className="text-sm font-medium">Invite a page guest</div>
@@ -1185,6 +1222,7 @@ function ItemShareDropdownContent({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="view">View</SelectItem>
+                    <SelectItem value="comment">Comment</SelectItem>
                     <SelectItem value="edit">Edit</SelectItem>
                     <SelectItem value="full">Full</SelectItem>
                   </SelectContent>
@@ -1195,7 +1233,7 @@ function ItemShareDropdownContent({
                   type="button"
                 >
                   <MailPlusIcon />
-                  Invite
+                  {guestActionLabel}
                 </Button>
               </div>
               {pendingGuestInvitations.length > 0 ? (
@@ -1236,6 +1274,21 @@ function ItemShareDropdownContent({
                       >
                         <Trash2Icon />
                       </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {pendingGuestRequests.length > 0 ? (
+                <div className="grid gap-1 border-t pt-2">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Pending owner approval
+                  </div>
+                  {pendingGuestRequests.map((request) => (
+                    <div className="flex items-center gap-2 text-sm" key={request.id}>
+                      <span className="min-w-0 flex-1 truncate">{request.email}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {request.accessLevel}
+                      </span>
                     </div>
                   ))}
                 </div>

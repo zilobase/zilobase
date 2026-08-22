@@ -403,6 +403,12 @@ export function PageEditorPane({
     !pageLocked &&
     !page?.deletedAt &&
     (accessLevel === "edit" || accessLevel === "full");
+  const commentsEditable =
+    !readOnly &&
+    !page?.deletedAt &&
+    (accessLevel === "comment" ||
+      accessLevel === "edit" ||
+      accessLevel === "full");
   const { data: pageDatabaseIds = [] } = usePageDatabaseIds(pageId, {
     refetchOnMount: false,
   });
@@ -601,7 +607,7 @@ export function PageEditorPane({
     }
 
     return createPageCommentController({
-      canEdit: pageEditable,
+      canEdit: commentsEditable,
       canModerate: pageEditable && accessLevel === "full",
       document: collaboration.document,
       user: {
@@ -615,6 +621,7 @@ export function PageEditorPane({
     accessLevel,
     collaboration.provider,
     collaboration.document,
+    commentsEditable,
     enableComments,
     pageEditable,
     session?.user,

@@ -62,7 +62,7 @@ export async function upsertDatabaseAccessRuleService(input: {
     throw new ServiceMutationError("targetId is required", 400);
   }
 
-  if (!normalizedAccessLevel) {
+  if (!normalizedAccessLevel || normalizedAccessLevel === "comment") {
     throw new ServiceMutationError(
       "accessLevel must be view, edit, or full",
       400,

@@ -162,15 +162,25 @@ export const apikey = pgTable(
   ],
 );
 
-export const workspace = pgTable("workspace", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  logo: text("logo"),
-  metadata: text("metadata"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const workspace = pgTable(
+  "workspace",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    logo: text("logo"),
+    metadata: text("metadata"),
+    guestInviteMode: text("guest_invite_mode").notNull().default("direct"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "workspace_guest_invite_mode_check",
+      sql`${table.guestInviteMode} in ('direct', 'request', 'owners_only')`,
+    ),
+  ],
+);
 
 export const instanceSettings = pgTable(
   "instance_settings",
@@ -664,11 +674,58 @@ export const pageGuestInvitation = pgTable(
       .where(sql`${table.status} = 'pending'`),
     check(
       "page_guest_invitation_access_level_check",
-      sql`${table.accessLevel} in ('view', 'edit', 'full')`,
+      sql`${table.accessLevel} in ('view', 'comment', 'edit', 'full')`,
     ),
     check(
       "page_guest_invitation_status_check",
       sql`${table.status} in ('pending', 'accepted', 'cancelled', 'expired')`,
+    ),
+  ],
+);
+
+export const pageGuestRequest = pgTable(
+  "page_guest_request",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    pageId: text("page_id")
+      .notNull()
+      .references(() => page.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    accessLevel: text("access_level").notNull().default("view"),
+    status: text("status").notNull().default("pending"),
+    requesterId: text("requester_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    reviewerId: text("reviewer_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("page_guest_request_workspace_status_idx").on(
+      table.workspaceId,
+      table.status,
+    ),
+    index("page_guest_request_page_status_idx").on(table.pageId, table.status),
+    uniqueIndex("page_guest_request_pending_unique")
+      .on(table.pageId, sql`lower(${table.email})`)
+      .where(sql`${table.status} = 'pending'`),
+    check(
+      "page_guest_request_access_level_check",
+      sql`${table.accessLevel} in ('view', 'comment', 'edit', 'full')`,
+    ),
+    check(
+      "page_guest_request_status_check",
+      sql`${table.status} in ('pending', 'approved', 'rejected', 'cancelled')`,
     ),
   ],
 );

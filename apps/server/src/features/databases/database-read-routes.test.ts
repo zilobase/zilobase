@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   membership: vi.fn(),
   payload: vi.fn(),
   published: vi.fn(),
+  realtimeExpiration: vi.fn(),
   schemaPayload: vi.fn(),
   verifyTicket: vi.fn(),
 }));
@@ -20,6 +21,7 @@ vi.mock("../../access", () => ({
   canAccessDatabaseRecord: mocks.access,
   getEffectiveDatabaseAccessForRecord: mocks.accessLevel,
   getMembership: mocks.membership,
+  getWorkspaceRealtimeAccessExpiration: mocks.realtimeExpiration,
   isDatabasePublishedInWorkspace: mocks.published,
 }));
 vi.mock("../../database-realtime-ticket", () => ({
@@ -63,6 +65,7 @@ beforeEach(() => {
   mocks.payload.mockResolvedValue({ database: { id: "database-1" }, rows: [] });
   mocks.schemaPayload.mockResolvedValue({ database: { id: "database-1" } });
   mocks.published.mockResolvedValue(false);
+  mocks.realtimeExpiration.mockResolvedValue(null);
   mocks.createTicket.mockResolvedValue({ expiresAt: "2026-08-04T00:00:00.000Z", token: "ticket" });
 });
 

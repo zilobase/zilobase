@@ -4,6 +4,7 @@ import {
   canAccessDatabaseRecord,
   getEffectiveDatabaseAccessForRecord,
   getMembership,
+  getWorkspaceRealtimeAccessExpiration,
   isDatabasePublishedInWorkspace,
 } from "../../access";
 import {
@@ -125,8 +126,10 @@ databaseReadRoutes.post("/:id/realtime-ticket", async (c) => {
     },
     c.env,
     {
-      maxExpiresAt: (await getMembership(record.workspaceId, user.id))
-        ?.accessExpiresAt,
+      maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(
+        record.workspaceId,
+        user.id,
+      ),
     },
   );
   const websocketUrl = new URL(getDatabaseRealtimeWebSocketUrl(c.req.raw, c.env));

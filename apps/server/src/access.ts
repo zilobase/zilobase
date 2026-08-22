@@ -16,13 +16,14 @@ import {
 import { loadWorkspacePageGraph } from "./page-graph-loader";
 import { activeMembershipCondition } from "./services/temporary-membership";
 
-export type AccessLevel = "none" | "view" | "edit" | "full";
+export type AccessLevel = "none" | "view" | "comment" | "edit" | "full";
 
 const accessRank: Record<AccessLevel, number> = {
   none: 0,
   view: 1,
-  edit: 2,
-  full: 3,
+  comment: 2,
+  edit: 3,
+  full: 4,
 };
 
 export function hasAccess(
@@ -33,7 +34,10 @@ export function hasAccess(
 }
 
 export function normalizeAccessLevel(value: unknown): AccessLevel | null {
-  return value === "view" || value === "edit" || value === "full"
+  return value === "view" ||
+    value === "comment" ||
+    value === "edit" ||
+    value === "full"
     ? value
     : null;
 }
@@ -67,6 +71,17 @@ export async function getWorkspaceGuest(workspaceId: string, userId: string) {
     .limit(1);
 
   return record ?? null;
+}
+
+export async function getWorkspaceRealtimeAccessExpiration(
+  workspaceId: string,
+  userId: string,
+  now = new Date(),
+) {
+  const membership = await getMembership(workspaceId, userId);
+  if (membership) return membership.accessExpiresAt;
+  const guest = await getWorkspaceGuest(workspaceId, userId);
+  return guest ? new Date(now.getTime() + 30_000) : null;
 }
 
 export async function getWorkspacePrincipalKind(

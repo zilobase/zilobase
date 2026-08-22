@@ -202,7 +202,7 @@ export type PagePropertyPresenceTarget = {
   rowId: string;
 };
 
-export type AccessLevel = "view" | "edit" | "full";
+export type AccessLevel = "view" | "comment" | "edit" | "full";
 
 export type AccessTargetType = "public" | "user" | "team";
 
@@ -274,6 +274,19 @@ export type PageGuestInvitationDetail = Pick<
   workspaceName: string;
 };
 
+export type PageGuestRequest = {
+  accessLevel: AccessLevel;
+  createdAt: string;
+  email: string;
+  id: string;
+  pageId: string;
+  requesterEmail: string;
+  requesterId: string;
+  requesterName: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  workspaceId: string;
+};
+
 export type PagesDeletedFilter = "active" | "only";
 
 export const pagesQueryKey = (
@@ -337,6 +350,10 @@ export const pageGuestInvitationsQueryKey = (
 export const pageGuestInvitationQueryKey = (
   invitationId: string | null | undefined,
 ) => ["page-guest-invitation", invitationId ?? "none"] as const;
+
+export const pageGuestRequestsQueryKey = (
+  pageId: string | null | undefined,
+) => ["page", pageId ?? "none", "guest-requests"] as const;
 
 export const pagesQueryOptions = (
   apiFetch: ApiFetcher,
@@ -589,6 +606,35 @@ export const pageGuestInvitationsQueryOptions = (
           { method: "GET", signal },
         );
         return result.invitations;
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          error.status === 403
+        ) {
+          return [];
+        }
+        throw error;
+      }
+    },
+  });
+
+export const pageGuestRequestsQueryOptions = (
+  apiFetch: ApiFetcher,
+  pageId: string | null | undefined,
+) =>
+  queryOptions({
+    queryKey: pageGuestRequestsQueryKey(pageId),
+    enabled: Boolean(pageId),
+    queryFn: async ({ signal }) => {
+      if (!pageId) return [];
+      try {
+        const result = await apiFetch<{ requests: PageGuestRequest[] }>(
+          `/pages/${encodeURIComponent(pageId)}/guest-requests`,
+          { method: "GET", signal },
+        );
+        return result.requests;
       } catch (error) {
         if (
           error &&

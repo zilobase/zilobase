@@ -5,7 +5,7 @@ import { AiProviderConfigError } from "../../ai/ai-provider";
 
 import {
   getEffectivePageAccessInWorkspace,
-  getMembership,
+  getWorkspaceRealtimeAccessExpiration,
   hasAccess,
 } from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
@@ -174,8 +174,10 @@ meetingRoutes.post("/:id/collaboration-ticket", async (c) => {
       },
       c.env,
       {
-        maxExpiresAt: (await getMembership(existing.workspaceId, user.id))
-          ?.accessExpiresAt,
+        maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(
+          existing.workspaceId,
+          user.id,
+        ),
       },
     );
     const websocketUrl = new URL(

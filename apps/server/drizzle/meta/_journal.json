@@ -330,6 +330,13 @@
       "when": 1787401800000,
       "tag": "0046_page_guests",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1787405400000,
+      "tag": "0047_guest_access_controls",
+      "breakpoints": true
     }
   ]
 }

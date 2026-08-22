@@ -61,16 +61,45 @@ export type WorkspaceGuest = {
   email: string
   name: string
   pages: Array<{
-    accessLevel: "view" | "edit" | "full"
+    accessLevel: "view" | "comment" | "edit" | "full"
     id: string
     name: string
   }>
   userId: string
 }
 
+export type GuestInviteMode = "direct" | "request" | "owners_only"
+
+export type WorkspaceGuestPolicy = {
+  canApprove: boolean
+  mode: GuestInviteMode
+}
+
+export type WorkspaceGuestRequest = {
+  accessLevel: "view" | "comment" | "edit" | "full"
+  createdAt: string
+  email: string
+  id: string
+  pageId: string
+  pageName: string
+  requesterEmail: string
+  requesterId: string
+  requesterName: string
+  status: "pending" | "approved" | "rejected" | "cancelled"
+  workspaceId: string
+}
+
 export const workspaceGuestsQueryKey = (
   workspaceId: string | null | undefined,
 ) => ["workspace", workspaceId ?? "none", "guests"] as const
+
+export const workspaceGuestPolicyQueryKey = (
+  workspaceId: string | null | undefined,
+) => ["workspace", workspaceId ?? "none", "guest-policy"] as const
+
+export const workspaceGuestRequestsQueryKey = (
+  workspaceId: string | null | undefined,
+) => ["workspace", workspaceId ?? "none", "guest-requests"] as const
 
 export const workspaceGuestsQueryOptions = (
   apiFetch: ApiFetcher,
@@ -86,6 +115,40 @@ export const workspaceGuestsQueryOptions = (
         { method: "GET", signal },
       )
       return result.guests
+    },
+  })
+
+export const workspaceGuestPolicyQueryOptions = (
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+) =>
+  queryOptions({
+    queryKey: workspaceGuestPolicyQueryKey(workspaceId),
+    enabled: Boolean(workspaceId),
+    queryFn: async ({ signal }) => {
+      if (!workspaceId) return null
+      const result = await apiFetch<{ policy: WorkspaceGuestPolicy }>(
+        `/workspaces/${encodeURIComponent(workspaceId)}/guest-policy`,
+        { method: "GET", signal },
+      )
+      return result.policy
+    },
+  })
+
+export const workspaceGuestRequestsQueryOptions = (
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+) =>
+  queryOptions({
+    queryKey: workspaceGuestRequestsQueryKey(workspaceId),
+    enabled: Boolean(workspaceId),
+    queryFn: async ({ signal }) => {
+      if (!workspaceId) return []
+      const result = await apiFetch<{ requests: WorkspaceGuestRequest[] }>(
+        `/workspaces/${encodeURIComponent(workspaceId)}/guest-requests`,
+        { method: "GET", signal },
+      )
+      return result.requests
     },
   })
 

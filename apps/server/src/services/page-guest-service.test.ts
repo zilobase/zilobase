@@ -7,20 +7,33 @@ import {
   normalizeGuestEmail,
   PageGuestServiceError,
   parseGuestAccessLevel,
+  resolveGuestInviteSubmission,
 } from "./page-guest-service";
 
 test("page guest inputs normalize email and validate access levels", () => {
   assert.equal(normalizeGuestEmail(" Guest@Example.COM "), "guest@example.com");
   assert.equal(parseGuestAccessLevel("view"), "view");
+  assert.equal(parseGuestAccessLevel("comment"), "comment");
   assert.equal(parseGuestAccessLevel("edit"), "edit");
   assert.equal(parseGuestAccessLevel("full"), "full");
   assert.throws(
-    () => parseGuestAccessLevel("comment"),
+    () => parseGuestAccessLevel("invalid"),
     (error) =>
       error instanceof PageGuestServiceError &&
       error.status === 400 &&
-      error.message.includes("view, edit, or full"),
+      error.message.includes("view, comment, edit, or full"),
   );
+});
+
+test("guest invitation policy resolves direct, approval, and owner-only modes", () => {
+  assert.equal(resolveGuestInviteSubmission("direct", "member"), "invitation");
+  assert.equal(resolveGuestInviteSubmission("request", "member"), "request");
+  assert.equal(resolveGuestInviteSubmission("request", "owner"), "invitation");
+  assert.equal(
+    resolveGuestInviteSubmission("owners_only", "admin"),
+    "forbidden",
+  );
+  assert.equal(resolveGuestInviteSubmission("direct", null), "forbidden");
 });
 
 test("page guest invitations require a pending, unexpired, matching email", () => {
@@ -67,4 +80,16 @@ test("page guest migration enforces explicit principals and invitation states", 
   assert.match(migration, /page_guest_invitation_pending_unique/);
   assert.match(migration, /'pending', 'accepted', 'cancelled', 'expired'/);
   assert.match(migration, /'view', 'edit', 'full'/);
+});
+
+test("guest access controls migration adds comment access and approval requests", async () => {
+  const migration = await readFile(
+    new URL("../../drizzle/0047_guest_access_controls.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(migration, /guest_invite_mode/);
+  assert.match(migration, /page_guest_request_pending_unique/);
+  assert.match(migration, /'view', 'comment', 'edit', 'full'/);
+  assert.match(migration, /'direct', 'request', 'owners_only'/);
 });
