@@ -78,6 +78,7 @@ export function SignupForm({
     setFormError(null)
     try {
       await signUp.mutateAsync({
+        callbackURL: returnTo,
         name,
         email,
         password,

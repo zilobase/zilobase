@@ -13,6 +13,8 @@ import {
   workspaceAccessTargetsQueryOptions,
   workspaceInvitationsQueryKey,
   workspaceInvitationsQueryOptions,
+  workspaceGuestsQueryKey,
+  workspaceGuestsQueryOptions,
   workspacesQueryKey,
   workspacesQueryOptions,
   type Workspace,
@@ -40,6 +42,34 @@ export function useWorkspaceInvitations(
   const { auth } = useZilobaseFeatures()
 
   return useQuery(workspaceInvitationsQueryOptions(auth, workspaceId))
+}
+
+export function useWorkspaceGuests(
+  workspaceId: string | null | undefined,
+  options?: { enabled?: boolean },
+) {
+  const { apiFetch } = useZilobaseFeatures()
+  return useQuery({
+    ...workspaceGuestsQueryOptions(apiFetch, workspaceId),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
+  })
+}
+
+export function useRevokeWorkspaceGuest() {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+
+  return useMutation({
+    mutationFn: (input: { userId: string; workspaceId: string }) =>
+      apiFetch<{ guest: unknown }>(
+        `/workspaces/${encodeURIComponent(input.workspaceId)}/guests/${encodeURIComponent(input.userId)}`,
+        { method: "DELETE" },
+      ),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: workspaceGuestsQueryKey(input.workspaceId),
+      })
+    },
+  })
 }
 
 export function useCreateWorkspace() {

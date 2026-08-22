@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query"
 
-import type { ZilobaseAuthClient } from "../context"
+import type { ApiFetcher, ZilobaseAuthClient } from "../context"
 
 export type Workspace = {
   id: string
@@ -55,6 +55,39 @@ export type WorkspaceMemberMutationResponse = {
     workspaceId?: string
   }
 }
+
+export type WorkspaceGuest = {
+  createdAt: string
+  email: string
+  name: string
+  pages: Array<{
+    accessLevel: "view" | "edit" | "full"
+    id: string
+    name: string
+  }>
+  userId: string
+}
+
+export const workspaceGuestsQueryKey = (
+  workspaceId: string | null | undefined,
+) => ["workspace", workspaceId ?? "none", "guests"] as const
+
+export const workspaceGuestsQueryOptions = (
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+) =>
+  queryOptions({
+    queryKey: workspaceGuestsQueryKey(workspaceId),
+    enabled: Boolean(workspaceId),
+    queryFn: async ({ signal }) => {
+      if (!workspaceId) return []
+      const result = await apiFetch<{ guests: WorkspaceGuest[] }>(
+        `/workspaces/${encodeURIComponent(workspaceId)}/guests`,
+        { method: "GET", signal },
+      )
+      return result.guests
+    },
+  })
 
 export type AcceptWorkspaceInvitationResponse = {
   invitation: WorkspaceInvitation

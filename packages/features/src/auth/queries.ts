@@ -36,6 +36,7 @@ export type SignInWithPasswordInput = {
 }
 
 export type SignUpInput = {
+  callbackURL?: string
   name: string
   email: string
   password: string

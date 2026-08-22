@@ -5,7 +5,7 @@ import {
   useRouteContext,
   useSearch,
 } from "@tanstack/react-router";
-import { ArrowRight, Maximize2 } from "lucide-react";
+import { ArrowRight, CopyIcon, Maximize2 } from "lucide-react";
 
 import { AppLayout } from "@/components/app-layout";
 import { AuthenticatedRouteError } from "@/components/authenticated-route-error";
@@ -18,6 +18,7 @@ import {
 } from "@/contexts/page-side-pane";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { TrashedItemBanner } from "@/components/trashed-item-banner";
 import { isEmbeddedMobileViewer } from "@/lib/embedded-view";
 import { cn } from "@/lib/utils";
@@ -107,6 +108,10 @@ export default function Page() {
     return <PublicPage />;
   }
 
+  if (publishedShare === "guest") {
+    return <GuestPage />;
+  }
+
   return (
     <AppLayout>
       <FallbackErrorBoundary
@@ -177,7 +182,23 @@ function PublicPage() {
   );
 }
 
-function PublicPageContent({ pageId }: { pageId: string }) {
+function GuestPage() {
+  const { pageId } = useParams({ from: "/p/$pageId" });
+
+  return (
+    <PageSidePaneProvider resetKey={pageId}>
+      <PublicPageContent guest pageId={pageId} />
+    </PageSidePaneProvider>
+  );
+}
+
+function PublicPageContent({
+  guest = false,
+  pageId,
+}: {
+  guest?: boolean;
+  pageId: string;
+}) {
   const { data: page } = usePage(pageId, { refetchOnMount: false });
   const {
     closeSidePane,
@@ -199,12 +220,16 @@ function PublicPageContent({ pageId }: { pageId: string }) {
         viewportHeightClass="h-svh"
         main={
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <PublicPaneTopbar pageId={pageId} />
+            {guest ? (
+              <GuestPaneTopbar pageId={pageId} />
+            ) : (
+              <PublicPaneTopbar pageId={pageId} />
+            )}
             <PageEditorPane
               className="min-h-0 min-w-0 flex-1 overflow-y-auto"
               key={pageId}
               onOpenPage={openPage}
-              readOnly
+              readOnly={!guest}
               pageId={pageId}
             />
           </div>
@@ -246,7 +271,7 @@ function PublicPageContent({ pageId }: { pageId: string }) {
                   enableComments={false}
                   key={renderedSidePanePageId}
                   onOpenPage={openPage}
-                  readOnly
+                  readOnly={!guest}
                   pageId={renderedSidePanePageId}
                 />
               ) : null}
@@ -258,6 +283,29 @@ function PublicPageContent({ pageId }: { pageId: string }) {
       />
       <EmbeddedPageDialog onOpenPage={openPage} />
     </>
+  );
+}
+
+function GuestPaneTopbar({ pageId }: { pageId: string }) {
+  const { data: page } = usePage(pageId);
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    toast.success("Page link copied.");
+  };
+
+  if (isEmbeddedMobileViewer()) return null;
+
+  return (
+    <header className="flex h-12 shrink-0 items-center gap-3 border-b px-3">
+      <div className="min-w-0 flex-1 truncate text-sm font-medium">
+        {page ? getPageBreadcrumbLabel(page) : "Shared page"}
+      </div>
+      <Badge variant="outline">Guest</Badge>
+      <Button onClick={copyLink} size="sm" type="button" variant="outline">
+        <CopyIcon />
+        Copy link
+      </Button>
+    </header>
   );
 }
 

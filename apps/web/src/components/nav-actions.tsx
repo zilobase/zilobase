@@ -13,6 +13,7 @@ import {
   LockIcon,
   MoreHorizontalIcon,
   MessageSquareTextIcon,
+  MailPlusIcon,
   Share2Icon,
   SparklesIcon,
   StarIcon,
@@ -77,6 +78,11 @@ import {
   usePageAccessLevel,
   usePageAccessTargets,
   usePageNavigation,
+  usePagePersonAccessTargets,
+  usePageGuestInvitations,
+  useInvitePageGuest,
+  useCancelPageGuestInvitation,
+  useRevokePageGuest,
 } from "@zilobase/features/pages";
 import {
   useDatabase,
@@ -855,17 +861,29 @@ function ItemShareDropdownContent({
   const { data: databasePayload } = useDatabase(databaseId);
   const { data: databaseAccessPayload } = useDatabaseAccess(databaseId);
   const { data: targets } = usePageAccessTargets(workspaceId);
+  const { data: personTargets } = usePagePersonAccessTargets(pageId, {
+    enabled: Boolean(pageId && !databaseId),
+  });
+  const { data: guestInvitations } = usePageGuestInvitations(
+    databaseId ? null : pageId,
+  );
   const upsertAccess = useUpsertPageAccess();
   const upsertDatabaseAccess = useUpsertDatabaseAccess();
   const deleteAccess = useDeletePageAccess();
   const deleteDatabaseAccess = useDeleteDatabaseAccess();
   const setPublished = useSetPagePublished();
   const setDatabasePublished = useSetDatabasePublished();
+  const inviteGuest = useInvitePageGuest();
+  const cancelGuestInvitation = useCancelPageGuestInvitation();
+  const revokeGuest = useRevokePageGuest();
   const [targetValue, setTargetValue] = React.useState<ShareTargetValue | "">(
     "",
   );
   const [targetPickerOpen, setTargetPickerOpen] = React.useState(false);
   const [nextAccessLevel, setNextAccessLevel] =
+    React.useState<AccessLevel>("view");
+  const [guestEmail, setGuestEmail] = React.useState("");
+  const [guestAccessLevel, setGuestAccessLevel] =
     React.useState<AccessLevel>("view");
   const isDatabase = Boolean(databaseId);
   const effectiveAccessLevel = isDatabase
@@ -889,8 +907,19 @@ function ItemShareDropdownContent({
       });
     }
 
+    for (const guest of personTargets?.guests ?? []) {
+      map.set(`user:${guest.id}`, {
+        detail: `${guest.email} · Guest`,
+        label: guest.name || guest.email,
+      });
+    }
+
     return map;
-  }, [targets?.members]);
+  }, [personTargets?.guests, targets?.members]);
+  const guestUserIds = React.useMemo(
+    () => new Set((personTargets?.guests ?? []).map((guest) => guest.id)),
+    [personTargets?.guests],
+  );
   const rules = isDatabase
     ? (databaseAccessPayload?.access ?? [])
     : (accessPayload?.access ?? []);
@@ -898,6 +927,9 @@ function ItemShareDropdownContent({
     (rule) => rule.targetType === "public" && rule.targetId === "*",
   );
   const sharingRules = rules.filter((rule) => rule.targetType !== "public");
+  const pendingGuestInvitations = (guestInvitations ?? []).filter(
+    (invitation) => invitation.status === "pending",
+  );
   const selectedTarget = targetValue ? targetByKey.get(targetValue) : null;
   const publicUrl =
     typeof window === "undefined"
@@ -953,6 +985,25 @@ function ItemShareDropdownContent({
   const copyLink = async () => {
     await navigator.clipboard.writeText(publicUrl || window.location.href);
     toast.success("Page link copied.");
+  };
+
+  const invitePageGuest = () => {
+    const email = guestEmail.trim().toLowerCase();
+
+    if (!pageId || !email || !canManage || inviteGuest.isPending) return;
+    inviteGuest.mutate(
+      { accessLevel: guestAccessLevel, email, pageId },
+      {
+        onError: (error) =>
+          toast.error(
+            error instanceof Error ? error.message : "Could not invite guest.",
+          ),
+        onSuccess: () => {
+          setGuestEmail("");
+          toast.success("Page guest invitation sent.");
+        },
+      },
+    );
   };
 
   const togglePublished = (checked: boolean) => {
@@ -1099,6 +1150,99 @@ function ItemShareDropdownContent({
             </Button>
           </div>
 
+          {!isDatabase && canManage ? (
+            <div className="grid gap-2 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-medium">Invite a page guest</div>
+                <div className="text-xs text-muted-foreground">
+                  Guests can access this page and its nested pages, but not the
+                  workspace.
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  aria-label="Guest email"
+                  className="min-w-0 flex-1"
+                  onChange={(event) => setGuestEmail(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      invitePageGuest();
+                    }
+                  }}
+                  placeholder="guest@example.com"
+                  type="email"
+                  value={guestEmail}
+                />
+                <Select
+                  onValueChange={(value) =>
+                    setGuestAccessLevel(value as AccessLevel)
+                  }
+                  value={guestAccessLevel}
+                >
+                  <SelectTrigger className="sm:w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="view">View</SelectItem>
+                    <SelectItem value="edit">Edit</SelectItem>
+                    <SelectItem value="full">Full</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  disabled={!guestEmail.trim() || inviteGuest.isPending}
+                  onClick={invitePageGuest}
+                  type="button"
+                >
+                  <MailPlusIcon />
+                  Invite
+                </Button>
+              </div>
+              {pendingGuestInvitations.length > 0 ? (
+                <div className="grid gap-1 border-t pt-2">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Pending guest invitations
+                  </div>
+                  {pendingGuestInvitations.map((invitation) => (
+                    <div
+                      className="flex items-center gap-2 text-sm"
+                      key={invitation.id}
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {invitation.email}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {invitation.accessLevel}
+                      </span>
+                      <Button
+                        aria-label={`Cancel invitation for ${invitation.email}`}
+                        disabled={cancelGuestInvitation.isPending}
+                        onClick={() =>
+                          cancelGuestInvitation.mutate(
+                            { invitationId: invitation.id, pageId: pageId as string },
+                            {
+                              onError: (error) =>
+                                toast.error(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Could not cancel invitation.",
+                                ),
+                            },
+                          )
+                        }
+                        size="icon-sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="grid gap-2">
             <AccessRow
               detail={session?.user?.email}
@@ -1123,7 +1267,23 @@ function ItemShareDropdownContent({
                           },
                         },
                       )
-                    : deleteAccess.mutate(
+                    : guestUserIds.has(rule.targetId)
+                      ? revokeGuest.mutate(
+                          {
+                            pageId: pageId as string,
+                            userId: rule.targetId,
+                          },
+                          {
+                            onError: (error) => {
+                              toast.error(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Could not remove guest access.",
+                              );
+                            },
+                          },
+                        )
+                      : deleteAccess.mutate(
                         { ruleId: rule.id, pageId: pageId as string },
                         {
                           onError: (error) => {

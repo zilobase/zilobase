@@ -15,7 +15,7 @@ export function register({ assert, test }) {
     assert.match(signup, /signInWithGoogle\(returnTo, invitationId\)/)
     assert.match(otp, /window\.location\.assign\(returnTo\)/)
     assert.match(invitationPage, /to="\/signup"/)
-    assert.match(provider, /callbackURL: input\.invitationId/)
+    assert.match(provider, /input\.callbackURL \?\?/)
   })
 
   test("self-hosted registration settings are owner-facing", async () => {

@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Link } from "@tanstack/react-router"
 import {
   CalendarClockIcon,
   MailPlusIcon,
@@ -50,13 +51,16 @@ import { useSession } from "@zilobase/features/auth"
 import {
   useInviteWorkspaceMember,
   useRemoveWorkspaceMember,
+  useRevokeWorkspaceGuest,
   useUpdateWorkspaceMember,
   useWorkspaceAccessTargets,
+  useWorkspaceGuests,
   useWorkspaceInvitations,
 } from "@zilobase/features/workspaces"
 import type {
   InvitableWorkspaceRole,
   WorkspaceInvitation,
+  WorkspaceGuest,
   WorkspaceMember,
   WorkspaceRole,
 } from "@zilobase/features/workspaces"
@@ -95,6 +99,10 @@ export default function TeamSettingsPage() {
   )
   const currentRole = normalizeWorkspaceRole(currentMembership?.role)
   const canManageMembers = currentRole === "owner" || currentRole === "admin"
+  const { data: guests, isLoading: isLoadingGuests } = useWorkspaceGuests(
+    activeWorkspaceId,
+    { enabled: canManageMembers },
+  )
   const isInstanceOwner = Boolean(
     sessionData?.workspacePinned &&
       accessTargets?.members.some(
@@ -123,6 +131,28 @@ export default function TeamSettingsPage() {
         ) : null}
 
         <Separator />
+
+        {canManageMembers ? (
+          <>
+            <section className="grid gap-3">
+              <div className="space-y-1">
+                <h3 className="font-heading text-base leading-snug font-medium">
+                  Page guests
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  External people invited to individual pages. Guests do not
+                  receive workspace membership.
+                </p>
+              </div>
+              <GuestList
+                guests={guests ?? []}
+                isLoading={isLoadingGuests}
+                workspaceId={activeWorkspaceId}
+              />
+            </section>
+            <Separator />
+          </>
+        ) : null}
 
         <section className="grid gap-3">
           <div className="space-y-1">
@@ -163,6 +193,98 @@ export default function TeamSettingsPage() {
         </section>
       </div>
     </main>
+  )
+}
+
+function GuestList({
+  guests,
+  isLoading,
+  workspaceId,
+}: {
+  guests: WorkspaceGuest[]
+  isLoading: boolean
+  workspaceId: string | null | undefined
+}) {
+  const revokeGuest = useRevokeWorkspaceGuest()
+
+  if (isLoading) return <RowsSkeleton />
+
+  if (guests.length === 0) {
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <UsersIcon />
+          </EmptyMedia>
+          <EmptyTitle>No page guests</EmptyTitle>
+          <EmptyDescription>
+            Invite an external person from a page’s Share menu.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    )
+  }
+
+  return (
+    <ItemGroup className="gap-2">
+      {guests.map((guest) => (
+        <Item key={guest.userId} variant="outline">
+          <ItemMedia className="size-8 rounded-lg bg-muted text-xs font-medium uppercase">
+            {getInitials(guest.name || guest.email)}
+          </ItemMedia>
+          <ItemContent className="min-w-0">
+            <ItemTitle className="truncate">{guest.name || guest.email}</ItemTitle>
+            <ItemDescription className="flex flex-wrap gap-x-2 gap-y-1">
+              <span>{guest.email}</span>
+              {guest.pages.map((page) => (
+                <Link
+                  className="hover:underline"
+                  key={page.id}
+                  params={{ pageId: page.id }}
+                  to="/p/$pageId"
+                >
+                  {page.name || "Untitled"} · {page.accessLevel}
+                </Link>
+              ))}
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <Button
+              aria-label={`Remove guest ${guest.name || guest.email}`}
+              disabled={!workspaceId || revokeGuest.isPending}
+              onClick={() => {
+                if (
+                  !workspaceId ||
+                  !window.confirm(
+                    `Remove ${guest.name || guest.email} from every shared page?`,
+                  )
+                ) {
+                  return
+                }
+                revokeGuest.mutate(
+                  { userId: guest.userId, workspaceId },
+                  {
+                    onError: (error) =>
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : "Could not remove guest.",
+                      ),
+                    onSuccess: () => toast.success("Guest access removed."),
+                  },
+                )
+              }}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
+              <Trash2Icon />
+              Remove
+            </Button>
+          </ItemActions>
+        </Item>
+      ))}
+    </ItemGroup>
   )
 }
 

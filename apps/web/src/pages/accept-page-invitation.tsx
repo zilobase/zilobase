@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
-  MailCheckIcon,
+  FileCheck2Icon,
   SendIcon,
 } from "lucide-react"
 
@@ -21,41 +21,32 @@ import {
   FieldGroup,
 } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
-import { useSession } from "@zilobase/features/auth"
-import { useAcceptWorkspaceInvitation } from "@zilobase/features/workspaces"
 import { getApiErrorMessage } from "@/lib/api"
 import { readSingleInvitationId } from "@/lib/invitation-link"
+import { useSession } from "@zilobase/features/auth"
+import {
+  useAcceptPageGuestInvitation,
+  usePageGuestInvitation,
+} from "@zilobase/features/pages"
 
-export default function AcceptInvitationPage() {
+export default function AcceptPageInvitationPage() {
   const navigate = useNavigate()
   const invitationId = readSingleInvitationId(window.location.search)
   const { data: session, isLoading: isLoadingSession } = useSession()
-  const acceptInvitation = useAcceptWorkspaceInvitation()
+  const invitationQuery = usePageGuestInvitation(invitationId)
+  const acceptInvitation = useAcceptPageGuestInvitation()
   const isSignedIn = Boolean(session?.user)
+  const invitation = invitationQuery.data
+  const acceptedPageId = acceptInvitation.data?.pageId ?? invitation?.pageId
   const hasAccepted = acceptInvitation.isSuccess
-
-  const accept = () => {
-    if (!invitationId) {
-      return
-    }
-
-    acceptInvitation.mutate(invitationId)
-  }
+  const isUnavailable = Boolean(
+    invitation && invitation.status !== "pending" && !hasAccepted,
+  )
+  const returnTo = `${window.location.pathname}${window.location.search}`
 
   const signIn = () => {
-    const returnTo = `${window.location.pathname}${window.location.search}`
-    void navigate({
-      to: "/login",
-      search: { returnTo },
-    })
+    void navigate({ to: "/login", search: { returnTo } })
   }
-
-  const createAccountSearch = invitationId
-    ? {
-        invitation: invitationId,
-        returnTo: `${window.location.pathname}${window.location.search}`,
-      }
-    : {}
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-background p-6">
@@ -64,20 +55,23 @@ export default function AcceptInvitationPage() {
           <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-muted text-foreground">
             {hasAccepted ? (
               <CheckCircle2Icon className="size-5" />
-            ) : acceptInvitation.isError || !invitationId ? (
+            ) : !invitationId || invitationQuery.isError || isUnavailable ? (
               <AlertCircleIcon className="size-5" />
             ) : (
-              <MailCheckIcon className="size-5" />
+              <FileCheck2Icon className="size-5" />
             )}
           </div>
-          <CardTitle>{getTitle(hasAccepted, isSignedIn)}</CardTitle>
+          <CardTitle>
+            {hasAccepted
+              ? "Page invitation accepted"
+              : isSignedIn
+                ? "Accept page invitation"
+                : "Sign in to open this page"}
+          </CardTitle>
           <CardDescription>
-            {getDescription({
-              hasAccepted,
-              hasInvitationId: Boolean(invitationId),
-              isSignedIn,
-              userEmail: session?.user?.email,
-            })}
+            {invitation
+              ? `${invitation.workspaceName} invited ${invitation.email} to “${invitation.pageName}” with ${invitation.accessLevel} access.`
+              : "Use the email address that received this page invitation."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -88,16 +82,38 @@ export default function AcceptInvitationPage() {
               </Field>
             ) : null}
 
+            {invitationQuery.isLoading ? (
+              <Field className="items-center">
+                <Spinner />
+              </Field>
+            ) : null}
+
+            {invitationQuery.isError ? (
+              <Field>
+                <FieldError>{getApiErrorMessage(invitationQuery.error)}</FieldError>
+              </Field>
+            ) : null}
+
+            {isUnavailable ? (
+              <Field>
+                <FieldError>
+                  This invitation is {invitation?.status ?? "unavailable"}.
+                </FieldError>
+              </Field>
+            ) : null}
+
             {acceptInvitation.isError ? (
               <Field>
                 <FieldError>{getApiErrorMessage(acceptInvitation.error)}</FieldError>
               </Field>
             ) : null}
 
-            {hasAccepted ? (
+            {hasAccepted && acceptedPageId ? (
               <Field>
                 <Button asChild>
-                  <Link to="/recents">Go to recents</Link>
+                  <Link params={{ pageId: acceptedPageId }} to="/p/$pageId">
+                    Open page
+                  </Link>
                 </Button>
               </Field>
             ) : isLoadingSession ? (
@@ -107,15 +123,22 @@ export default function AcceptInvitationPage() {
             ) : isSignedIn ? (
               <Field>
                 <Button
-                  disabled={!invitationId || acceptInvitation.isPending}
-                  onClick={accept}
+                  disabled={
+                    !invitationId ||
+                    !invitation ||
+                    isUnavailable ||
+                    acceptInvitation.isPending
+                  }
+                  onClick={() =>
+                    invitationId && acceptInvitation.mutate(invitationId)
+                  }
                   type="button"
                 >
                   {acceptInvitation.isPending ? <Spinner /> : <SendIcon />}
-                  Accept invitation
+                  Accept page invitation
                 </Button>
                 <FieldDescription className="text-center">
-                  You must be signed in with the invited email address.
+                  Continue as {session?.user?.email}.
                 </FieldDescription>
               </Field>
             ) : (
@@ -124,13 +147,17 @@ export default function AcceptInvitationPage() {
                   Sign in to accept
                 </Button>
                 <Button asChild disabled={!invitationId} variant="outline">
-                  <Link to="/signup" search={createAccountSearch}>
+                  <Link
+                    search={
+                      invitationId
+                        ? { invitation: invitationId, returnTo }
+                        : {}
+                    }
+                    to="/signup"
+                  >
                     Create an account
                   </Link>
                 </Button>
-                <FieldDescription className="text-center">
-                  We will bring you back to this invitation after sign in.
-                </FieldDescription>
               </Field>
             )}
           </FieldGroup>
@@ -138,40 +165,4 @@ export default function AcceptInvitationPage() {
       </Card>
     </main>
   )
-}
-
-function getTitle(hasAccepted: boolean, isSignedIn: boolean) {
-  if (hasAccepted) {
-    return "Invitation accepted"
-  }
-
-  return isSignedIn ? "Accept invitation" : "Sign in to accept"
-}
-
-function getDescription({
-  hasAccepted,
-  hasInvitationId,
-  isSignedIn,
-  userEmail,
-}: {
-  hasAccepted: boolean
-  hasInvitationId: boolean
-  isSignedIn: boolean
-  userEmail?: string
-}) {
-  if (!hasInvitationId) {
-    return "This invitation link is incomplete."
-  }
-
-  if (hasAccepted) {
-    return "You have joined the workspace."
-  }
-
-  if (isSignedIn) {
-    return userEmail
-      ? `Continue as ${userEmail}.`
-      : "Continue with your current account."
-  }
-
-  return "Use the email address that received the invitation."
 }

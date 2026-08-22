@@ -240,7 +240,38 @@ export type PageAccessTargetsPayload = {
 };
 
 export type PagePersonAccessTargetsPayload = {
+  guests: PageAccessTargetGuest[];
   members: PageAccessTargetMember[];
+};
+
+export type PageAccessTargetGuest = {
+  email: string;
+  guestId: string;
+  id: string;
+  name: string;
+};
+
+export type PageGuestInvitation = {
+  accessLevel: AccessLevel;
+  acceptedAt?: string | null;
+  acceptedByUserId?: string | null;
+  createdAt: string;
+  email: string;
+  expiresAt: string;
+  id: string;
+  inviterId?: string | null;
+  pageId: string;
+  status: "pending" | "accepted" | "cancelled" | "expired";
+  updatedAt: string;
+  workspaceId: string;
+};
+
+export type PageGuestInvitationDetail = Pick<
+  PageGuestInvitation,
+  "accessLevel" | "email" | "expiresAt" | "id" | "pageId" | "status" | "workspaceId"
+> & {
+  pageName: string;
+  workspaceName: string;
 };
 
 export type PagesDeletedFilter = "active" | "only";
@@ -268,6 +299,7 @@ export type PageDetail = {
   accessLevel?: AccessLevel | null;
   databaseIds?: string[];
   page: Page;
+  viewerType?: "member" | "guest" | "public" | null;
 };
 
 export function getPageFromDetail(
@@ -297,6 +329,14 @@ export const pageAccessTargetsQueryKey = (
 export const pagePersonAccessTargetsQueryKey = (
   pageId: string | null | undefined,
 ) => ["page", pageId ?? "none", "access-targets"] as const;
+
+export const pageGuestInvitationsQueryKey = (
+  pageId: string | null | undefined,
+) => ["page", pageId ?? "none", "guest-invitations"] as const;
+
+export const pageGuestInvitationQueryKey = (
+  invitationId: string | null | undefined,
+) => ["page-guest-invitation", invitationId ?? "none"] as const;
 
 export const pagesQueryOptions = (
   apiFetch: ApiFetcher,
@@ -337,7 +377,7 @@ export const pagesQueryOptions = (
           typeof error === "object" &&
           error !== null &&
           "status" in error &&
-          error.status === 401
+          (error.status === 401 || error.status === 403)
         ) {
           return { databases: [], pages: [], placements: [] };
         }
@@ -404,12 +444,14 @@ export const pageQueryOptions = (
           accessLevel?: AccessLevel;
           databaseIds?: string[];
           page: Page;
+          viewerType?: PageDetail["viewerType"];
         }>(`/pages/${pageId}`, { method: "GET", signal });
 
         return {
           accessLevel: result.accessLevel ?? null,
           databaseIds: result.databaseIds ?? [],
           page: result.page,
+          viewerType: result.viewerType ?? null,
         };
       } catch (error) {
         if (
@@ -522,13 +564,61 @@ export const pagePersonAccessTargetsQueryOptions = (
     enabled: Boolean(pageId),
     queryFn: async ({ signal }) => {
       if (!pageId) {
-        return { members: [] };
+        return { guests: [], members: [] };
       }
 
       return apiFetch<PagePersonAccessTargetsPayload>(
         `/pages/${pageId}/access-targets`,
         { method: "GET", signal },
       );
+    },
+  });
+
+export const pageGuestInvitationsQueryOptions = (
+  apiFetch: ApiFetcher,
+  pageId: string | null | undefined,
+) =>
+  queryOptions({
+    queryKey: pageGuestInvitationsQueryKey(pageId),
+    enabled: Boolean(pageId),
+    queryFn: async ({ signal }) => {
+      if (!pageId) return [];
+      try {
+        const result = await apiFetch<{ invitations: PageGuestInvitation[] }>(
+          `/pages/${encodeURIComponent(pageId)}/guest-invitations`,
+          { method: "GET", signal },
+        );
+        return result.invitations;
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "status" in error &&
+          error.status === 403
+        ) {
+          return [];
+        }
+        throw error;
+      }
+    },
+  });
+
+export const pageGuestInvitationQueryOptions = (
+  apiFetch: ApiFetcher,
+  invitationId: string | null | undefined,
+) =>
+  queryOptions({
+    queryKey: pageGuestInvitationQueryKey(invitationId),
+    enabled: Boolean(invitationId),
+    queryFn: async ({ signal }) => {
+      if (!invitationId) return null;
+      const result = await apiFetch<{
+        invitation: PageGuestInvitationDetail;
+      }>(`/page-guest-invitations/${encodeURIComponent(invitationId)}`, {
+        method: "GET",
+        signal,
+      });
+      return result.invitation;
     },
   });
 

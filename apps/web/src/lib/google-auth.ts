@@ -115,16 +115,21 @@ export function getAuthReturnPath(
 export function getInvitationAuthSearch(search = window.location.search) {
   const parameters = new URLSearchParams(search)
   const directInvitation = readSingleNonEmpty(parameters, "invitation")
+  const safeReturnTo = getAuthReturnPath("/recents", search)
 
   if (directInvitation) {
-    const returnTo = `/accept-invitation?id=${encodeURIComponent(directInvitation)}`
+    const requestedReturnTo = readInvitationReturnTo(
+      safeReturnTo,
+      directInvitation,
+    )
+    const returnTo =
+      requestedReturnTo ??
+      `/accept-invitation?id=${encodeURIComponent(directInvitation)}`
     return {
       invitation: directInvitation,
       returnTo,
     }
   }
-
-  const safeReturnTo = getAuthReturnPath("/recents", search)
 
   try {
     const url = new URL(safeReturnTo, window.location.origin)
@@ -132,7 +137,7 @@ export function getInvitationAuthSearch(search = window.location.search) {
 
     if (
       url.origin === window.location.origin &&
-      url.pathname === "/accept-invitation" &&
+      isInvitationAcceptancePath(url.pathname) &&
       invitation
     ) {
       return { invitation, returnTo: `${url.pathname}${url.search}` }
@@ -142,6 +147,26 @@ export function getInvitationAuthSearch(search = window.location.search) {
   }
 
   return {}
+}
+
+function readInvitationReturnTo(returnTo: string, invitationId: string) {
+  try {
+    const url = new URL(returnTo, window.location.origin)
+    return url.origin === window.location.origin &&
+      isInvitationAcceptancePath(url.pathname) &&
+      readSingleNonEmpty(url.searchParams, "id") === invitationId
+      ? `${url.pathname}${url.search}`
+      : null
+  } catch {
+    return null
+  }
+}
+
+function isInvitationAcceptancePath(pathname: string) {
+  return (
+    pathname === "/accept-invitation" ||
+    pathname === "/accept-page-invitation"
+  )
 }
 
 function readSingleNonEmpty(parameters: URLSearchParams, key: string) {

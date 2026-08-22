@@ -13,12 +13,13 @@ import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import AcceptInvitationPage from "@/pages/accept-invitation"
+import AcceptPageInvitationPage from "@/pages/accept-page-invitation"
 import AiPage from "@/pages/ai"
 import CanvasPage from "@/pages/canvas"
 import ApiKeysSettingsPage from "@/pages/settings/api-keys"
 import RecentsPage from "@/pages/recents"
 import { libraryViewIds } from "@zilobase/features/user-settings"
-import { pagesQueryOptions } from "@zilobase/features/pages"
+import { pageQueryOptions, pagesQueryOptions } from "@zilobase/features/pages"
 import DatabasePage from "@/pages/database"
 import MeetingPage from "@/pages/meeting"
 import IntegrationsSettingsPage from "@/pages/settings/integrations"
@@ -207,6 +208,12 @@ const acceptInvitationRoute = createRoute({
   component: AcceptInvitationPage,
 })
 
+const acceptPageInvitationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/accept-page-invitation",
+  component: AcceptPageInvitationPage,
+})
+
 const setupRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup",
@@ -279,9 +286,7 @@ const pageRoute = createRoute({
       ? { meeting: search.meeting.trim() }
       : {},
   beforeLoad: async ({ params }) => ({
-    publishedShare: await applyPublishedShareAccess(() =>
-      isPagePublished(params.pageId),
-    ),
+    publishedShare: await applyPageShareAccess(params.pageId),
   }),
   component: Page,
 })
@@ -373,6 +378,7 @@ const routeTree = rootRoute.addChildren([
   onboardingRoute,
   otpRoute,
   acceptInvitationRoute,
+  acceptPageInvitationRoute,
   setupRoute,
   appRoute.addChildren([
     aiRoute,
@@ -530,6 +536,39 @@ async function applyPublishedShareAccess(isPublished: () => Promise<boolean>) {
   }
 
   return decision.type
+}
+
+async function applyPageShareAccess(pageId: string) {
+  const session = await getFreshSession({ optional: true })
+
+  if (!session.user) {
+    return applyPublishedShareAccess(() => isPagePublished(pageId))
+  }
+
+  try {
+    const detail = await queryClient.fetchQuery({
+      ...pageQueryOptions(apiFetch, pageId),
+      staleTime: 0,
+    })
+
+    if (detail?.viewerType === "guest") return "guest" as const
+    if (detail?.viewerType === "public") return "public" as const
+    if (detail?.viewerType === "member") return "app" as const
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "name" in error &&
+      error.name === "ActiveWorkspaceMismatchError"
+    ) {
+      return "app" as const
+    }
+    throw error
+  }
+
+  const workspaces = await getWorkspaces()
+  if (workspaces.length === 0) throw redirect({ to: "/onboarding" })
+  return "app" as const
 }
 
 function getStartupConnectivity() {

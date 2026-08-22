@@ -53,6 +53,15 @@ export function register({ assert, loadModule, test }) {
       )
       assert.deepEqual(
         getInvitationAuthSearch(
+          "?invitation=page-invite-1&returnTo=%2Faccept-page-invitation%3Fid%3Dpage-invite-1",
+        ),
+        {
+          invitation: "page-invite-1",
+          returnTo: "/accept-page-invitation?id=page-invite-1",
+        },
+      )
+      assert.deepEqual(
+        getInvitationAuthSearch(
           "?returnTo=https%3A%2F%2Fevil.test%2Faccept-invitation%3Fid%3Dstolen",
         ),
         {},
