@@ -122,7 +122,7 @@ export function DatabasePropertyFiles({
   const triggerContent = files.length > 0 ? (
     files.map((file) => (
       <span
-        className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-xs font-normal leading-4 text-foreground"
+        className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-xs font-medium leading-4 text-foreground"
         key={file}
       >
         <FileIcon className="size-3.5 shrink-0" />
@@ -146,7 +146,7 @@ export function DatabasePropertyFiles({
 
           return (
             <a
-              className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-xs font-normal leading-4 text-foreground no-underline transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-xs font-medium leading-4 text-foreground no-underline transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40"
               href={href}
               key={file}
               onClick={(event) => event.stopPropagation()}
