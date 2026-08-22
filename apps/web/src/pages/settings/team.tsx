@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate, useSearch } from "@tanstack/react-router"
 import {
   CalendarClockIcon,
   MailPlusIcon,
@@ -47,6 +47,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 import { useSession } from "@zilobase/features/auth"
 import {
   useInviteWorkspaceMember,
@@ -80,6 +86,7 @@ import {
   localDateTimeToIso,
   normalizeWorkspaceRole,
 } from "@/pages/settings/team-access"
+import { getTeamSettingsTabCounts } from "@/pages/settings/team-settings-tabs"
 import { useAppStore } from "@/stores/app-store"
 
 type RegistrationMode = "invite-only" | "open"
@@ -95,6 +102,8 @@ type InstanceSettingsResponse = {
 }
 
 export default function TeamSettingsPage() {
+  const navigate = useNavigate()
+  const { tab } = useSearch({ from: "/app/settings/team" })
   const activeWorkspaceId = useActiveWorkspaceId()
   const { data: sessionData } = useSession()
   const { data: accessTargets, isLoading: isLoadingAccessTargets } =
@@ -125,6 +134,18 @@ export default function TeamSettingsPage() {
           member.id === sessionData.user?.id && member.role === "owner",
       ),
   )
+  const pendingInvitations = (invitations ?? []).filter(
+    (invitation) => invitation.status === "pending",
+  )
+  const pendingGuestRequests = (guestRequests ?? []).filter(
+    (request) => request.status === "pending",
+  )
+  const tabCounts = getTeamSettingsTabCounts({
+    guests: guests?.length ?? 0,
+    members: accessTargets?.members.length ?? 0,
+    pendingGuestRequests: pendingGuestRequests.length,
+    pendingInvitations: pendingInvitations.length,
+  })
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">
@@ -133,31 +154,93 @@ export default function TeamSettingsPage() {
         description="Invite collaborators and manage team access."
       />
 
-      <div className="mx-auto grid w-full max-w-3xl gap-6">
-        {isInstanceOwner ? (
-          <>
-            <RegistrationSettingsSection />
-            <Separator />
-          </>
-        ) : null}
+      <Tabs
+        className="mx-auto w-full max-w-3xl gap-6"
+        onValueChange={(value) => {
+          void navigate({
+            replace: true,
+            search: { tab: value === "guests" ? "guests" : "team" },
+            to: "/settings/team",
+          })
+        }}
+        value={tab}
+      >
+        <TabsList
+          aria-label="Team settings sections"
+          className="w-full justify-start overflow-x-auto border-b"
+          variant="underline"
+        >
+          <TabsTrigger className="h-9 gap-2 px-3" value="team">
+            Team
+            <Badge variant="outline">{tabCounts.team}</Badge>
+          </TabsTrigger>
+          <TabsTrigger className="h-9 gap-2 px-3" value="guests">
+            Guests
+            <Badge variant="outline">{tabCounts.guests}</Badge>
+          </TabsTrigger>
+        </TabsList>
 
-        {canManageMembers ? (
-          <InviteMemberSection workspaceId={activeWorkspaceId} />
-        ) : null}
+        <TabsContent className="grid gap-6 text-sm" value="team">
+          {isInstanceOwner ? (
+            <>
+              <RegistrationSettingsSection />
+              <Separator />
+            </>
+          ) : null}
 
-        <Separator />
+          {canManageMembers ? (
+            <InviteMemberSection workspaceId={activeWorkspaceId} />
+          ) : null}
 
-        {canManageMembers ? (
-          <>
-            {isWorkspaceOwner ? (
-              <>
-                <GuestPolicySection
-                  policy={guestPolicy?.mode ?? "direct"}
-                  requests={(guestRequests ?? []).filter(
-                    (request) => request.status === "pending",
-                  )}
-                  isLoadingRequests={isLoadingGuestRequests}
-                  workspaceId={activeWorkspaceId}
+          {canManageMembers || isInstanceOwner ? <Separator /> : null}
+
+          <section className="grid gap-3">
+            <div className="space-y-1">
+              <h3 className="font-heading text-base leading-snug font-medium">
+                Members
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                People with access to this workspace.
+              </p>
+            </div>
+            <MemberList
+              actorRole={currentRole}
+              canManage={canManageMembers}
+              currentUserId={sessionData?.user?.id ?? null}
+              isLoading={isLoadingAccessTargets}
+              members={accessTargets?.members ?? []}
+              workspaceId={activeWorkspaceId}
+            />
+          </section>
+
+          <Separator />
+
+          <section className="grid gap-3">
+            <div className="space-y-1">
+              <h3 className="font-heading text-base leading-snug font-medium">
+                Pending invitations
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Invitations waiting to be accepted.
+              </p>
+            </div>
+            <InvitationList
+              invitations={pendingInvitations}
+              isLoading={isLoadingInvitations}
+            />
+          </section>
+        </TabsContent>
+
+        <TabsContent className="grid gap-6 text-sm" value="guests">
+          {canManageMembers ? (
+            <>
+              {isWorkspaceOwner ? (
+                <>
+                  <GuestPolicySection
+                    policy={guestPolicy?.mode ?? "direct"}
+                    requests={pendingGuestRequests}
+                    isLoadingRequests={isLoadingGuestRequests}
+                    workspaceId={activeWorkspaceId}
                 />
                 <Separator />
               </>
@@ -179,48 +262,24 @@ export default function TeamSettingsPage() {
                 workspaceId={activeWorkspaceId}
               />
             </section>
-            <Separator />
-          </>
-        ) : null}
-
-        <section className="grid gap-3">
-          <div className="space-y-1">
-            <h3 className="font-heading text-base leading-snug font-medium">
-              Members
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              People with access to this workspace.
-            </p>
-          </div>
-          <MemberList
-            actorRole={currentRole}
-            canManage={canManageMembers}
-            currentUserId={sessionData?.user?.id ?? null}
-            isLoading={isLoadingAccessTargets}
-            members={accessTargets?.members ?? []}
-            workspaceId={activeWorkspaceId}
-          />
-        </section>
-
-        <Separator />
-
-        <section className="grid gap-3">
-          <div className="space-y-1">
-            <h3 className="font-heading text-base leading-snug font-medium">
-              Pending invitations
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Invitations waiting to be accepted.
-            </p>
-          </div>
-          <InvitationList
-            invitations={(invitations ?? []).filter(
-              (invitation) => invitation.status === "pending",
-            )}
-            isLoading={isLoadingInvitations}
-          />
-        </section>
-      </div>
+              <Separator />
+            </>
+          ) : (
+            <Empty>
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <UsersIcon />
+                </EmptyMedia>
+                <EmptyTitle>Guest administration is restricted</EmptyTitle>
+                <EmptyDescription>
+                  Workspace owners and admins can review page guests. Ask an
+                  owner to change guest access or invitation policy.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+        </TabsContent>
+      </Tabs>
     </main>
   )
 }

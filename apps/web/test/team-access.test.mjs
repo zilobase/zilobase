@@ -38,4 +38,31 @@ export function register({ assert, loadModule, test }) {
     assert.equal(normalizeWorkspaceRole("owner"), "owner");
     assert.equal(normalizeWorkspaceRole("guest"), null);
   });
+
+  test("team settings tabs normalize deep links", async () => {
+    const { normalizeTeamSettingsTab } = await loadModule(
+      "/src/pages/settings/team-settings-tabs.ts",
+    );
+
+    assert.equal(normalizeTeamSettingsTab("team"), "team");
+    assert.equal(normalizeTeamSettingsTab("guests"), "guests");
+    assert.equal(normalizeTeamSettingsTab("unknown"), "team");
+    assert.equal(normalizeTeamSettingsTab(undefined), "team");
+  });
+
+  test("team settings tab counts include pending work", async () => {
+    const { getTeamSettingsTabCounts } = await loadModule(
+      "/src/pages/settings/team-settings-tabs.ts",
+    );
+
+    assert.deepEqual(
+      getTeamSettingsTabCounts({
+        guests: 2,
+        members: 4,
+        pendingGuestRequests: 3,
+        pendingInvitations: 1,
+      }),
+      { guests: 5, team: 5 },
+    );
+  });
 }

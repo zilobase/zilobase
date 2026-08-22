@@ -32,6 +32,7 @@ import ZilobaseAiSettingsPage from "@/pages/settings/zilobase-ai"
 import WorkspaceSettingsPage from "@/pages/settings/workspace"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
+import { normalizeTeamSettingsTab } from "@/pages/settings/team-settings-tabs"
 import SignupPage from "@/pages/signup"
 import SetupPage from "@/pages/setup"
 import Page from "@/pages/page"
@@ -361,6 +362,9 @@ const zilobaseAiSettingsRoute = createRoute({
 const teamSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/team",
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: normalizeTeamSettingsTab(search.tab),
+  }),
   component: TeamSettingsPage,
 })
 
