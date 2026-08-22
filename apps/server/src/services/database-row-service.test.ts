@@ -195,6 +195,7 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
     content: null,
     createdAt: (inserts[0] as Record<string, unknown>).createdAt,
     createdById: "user-1",
+    hasContent: false,
     id: "00000000-0000-4000-8000-000000000001",
     metadata: null,
     name: "New task",
