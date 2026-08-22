@@ -260,8 +260,8 @@ export function buildPageSections(
   }
 
   return {
-    privatePages: roots.filter((item) => !item.isTeamspace && !item.teamspaceId),
-    teamspacePages: roots.filter((item) => item.isTeamspace && !item.teamspaceId),
+    privatePages: roots.filter((item) => !item.isShared && !item.teamspaceId),
+    teamspacePages: roots.filter((item) => item.isShared && !item.teamspaceId),
     teamspacePagesById: Object.fromEntries(
       [...new Set(roots.flatMap((item) => item.teamspaceId ? [item.teamspaceId] : []))]
         .map((teamspaceId) => [
@@ -289,7 +289,7 @@ function createMeetingNode(
     emoji: icons.getMeetingIcon?.(meeting) ?? null,
     id: `meeting:${meeting.id}`,
     isMeeting: true,
-    isTeamspace: false,
+    isShared: false,
     meetingId: meeting.id,
     name: meeting.title,
     navNodeId,
@@ -310,7 +310,7 @@ function createPageNode(
   return {
     id: page.id,
     isFavorite: Boolean(page.isFavorite),
-    isTeamspace: Boolean(page.isTeamspace),
+    isShared: Boolean(page.isShared),
     lastVisitedAt: page.lastVisitedAt,
     name: page.name,
     emoji: icons.getPageIcon(page),
@@ -332,7 +332,7 @@ function createDatabaseNode(
     id: `database:${database.id}`,
     isDatabase: true,
     isFavorite: Boolean(database.isFavorite),
-    isTeamspace: Boolean(page?.isTeamspace),
+    isShared: Boolean(page?.isShared),
     lastVisitedAt: database.lastVisitedAt,
     name: database.name,
     emoji: icons.getDatabaseIcon(database),
@@ -344,7 +344,7 @@ function createDatabaseNode(
         databaseViewId: view.id,
         id: `database-view:${view.id}`,
         isDatabaseView: true,
-        isTeamspace: Boolean(page?.isTeamspace),
+        isShared: Boolean(page?.isShared),
         name: view.name,
         emoji: icons.getDatabaseViewIcon(view),
         pageId: database.pageId,

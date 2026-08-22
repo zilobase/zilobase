@@ -96,15 +96,21 @@ test("teamspace management covers settings, discovery, and membership flows", as
     { canManage: true, creationPolicy: "workspace_owners" },
   );
 
-  queues.select.push([ownerPrincipal]);
+  queues.select.push([], [ownerPrincipal]);
   assert.equal(await service.getRole(baseTeamspace.id, userId), "owner");
 
-  queues.select.push([baseTeamspace], [ownerPrincipal]);
+  queues.select.push(
+    [{ teamId: "team-1" }],
+    [{ ...ownerPrincipal, principalId: "team-1", principalType: "team" }],
+  );
+  assert.equal(await service.getRole(baseTeamspace.id, userId), "owner");
+
+  queues.select.push([baseTeamspace], [ownerPrincipal], []);
   const listed = await service.list({ userId, workspaceId });
   assert.equal(listed[0]?.currentUserRole, "owner");
   assert.equal(listed[0]?.memberCount, 1);
 
-  queues.select.push([baseTeamspace], [ownerPrincipal]);
+  queues.select.push([baseTeamspace], [], [ownerPrincipal]);
   assert.equal(
     (await service.get({ teamspaceId: baseTeamspace.id, userId, workspaceId }))
       .name,
@@ -146,7 +152,7 @@ test("teamspace management covers create, update, and principal operations", asy
   });
   assert.equal(created.currentUserRole, "owner");
 
-  queues.select.push([baseTeamspace], [ownerPrincipal]);
+  queues.select.push([baseTeamspace], [], [ownerPrincipal]);
   queues.update.push([{ ...baseTeamspace, name: "Product Engineering" }]);
   assert.equal(
     (
@@ -160,7 +166,12 @@ test("teamspace management covers create, update, and principal operations", asy
     "Product Engineering",
   );
 
-  queues.select.push([baseTeamspace], [ownerPrincipal], [{ id: "member-2" }]);
+  queues.select.push(
+    [baseTeamspace],
+    [],
+    [ownerPrincipal],
+    [{ id: "member-2" }],
+  );
   queues.insert.push([
     {
       id: "principal-2",
@@ -183,13 +194,47 @@ test("teamspace management covers create, update, and principal operations", asy
     "user-2",
   );
 
+  queues.select.push(
+    [baseTeamspace],
+    [],
+    [ownerPrincipal],
+    [{ id: "team-2" }],
+  );
+  queues.insert.push([
+    {
+      id: "principal-team-2",
+      principalId: "team-2",
+      principalType: "team",
+      role: "member",
+      teamspaceId: baseTeamspace.id,
+    },
+  ]);
+  assert.equal(
+    (
+      await service.addPrincipal({
+        principalType: "team",
+        role: "member",
+        targetUserId: "team-2",
+        teamspaceId: baseTeamspace.id,
+        userId,
+        workspaceId,
+      })
+    ).principalType,
+    "team",
+  );
+
   const memberPrincipal = {
     ...ownerPrincipal,
     id: "principal-2",
     principalId: "user-2",
     role: "member",
   };
-  queues.select.push([baseTeamspace], [ownerPrincipal], [memberPrincipal]);
+  queues.select.push(
+    [baseTeamspace],
+    [],
+    [ownerPrincipal],
+    [memberPrincipal],
+  );
   queues.update.push([{ ...memberPrincipal, role: "owner" }]);
   assert.equal(
     (
@@ -204,7 +249,12 @@ test("teamspace management covers create, update, and principal operations", asy
     "owner",
   );
 
-  queues.select.push([baseTeamspace], [ownerPrincipal], [memberPrincipal]);
+  queues.select.push(
+    [baseTeamspace],
+    [],
+    [ownerPrincipal],
+    [memberPrincipal],
+  );
   queues.delete.push([]);
   assert.deepEqual(
     await service.removePrincipal({
@@ -221,7 +271,7 @@ test("teamspace management covers lifecycle, recovery, links, and defaults", asy
   const { database, queues } = createFakeDatabase();
   const service = new TeamspaceManagementService(database);
 
-  queues.select.push([baseTeamspace], [ownerPrincipal]);
+  queues.select.push([baseTeamspace], [], [ownerPrincipal]);
   queues.update.push([{ ...baseTeamspace, archivedAt: new Date() }]);
   assert.ok(
     (
@@ -259,7 +309,7 @@ test("teamspace management covers lifecycle, recovery, links, and defaults", asy
     "owner",
   );
 
-  queues.select.push([baseTeamspace], [ownerPrincipal]);
+  queues.select.push([baseTeamspace], [], [ownerPrincipal]);
   queues.update.push([]);
   const link = await service.updateInviteLink({
     enabled: true,

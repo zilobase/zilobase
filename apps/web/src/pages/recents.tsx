@@ -69,7 +69,7 @@ type HomepageRow = {
   iconKind: "database" | "page";
   id: string;
   isFavorite: boolean;
-  isTeamspace: boolean;
+  isShared: boolean;
   lastVisitedAt: string | null;
   metadata: Page["metadata"] | null;
   name: string;
@@ -780,7 +780,7 @@ function buildHomepageRows(
           iconKind: "page" as const,
           id: `page:${page.id}`,
           isFavorite: Boolean(page.isFavorite),
-          isTeamspace: Boolean(page.isTeamspace),
+          isShared: Boolean(page.isShared),
           lastVisitedAt: page.lastVisitedAt ?? null,
           metadata: page.metadata ?? null,
           name: page.name || "Untitled",
@@ -819,7 +819,7 @@ function buildHomepageRows(
           iconKind: "database" as const,
           id: `database:${database.id}`,
           isFavorite: Boolean(database.isFavorite),
-          isTeamspace: Boolean(page?.isTeamspace),
+          isShared: Boolean(page?.isShared),
           lastVisitedAt: database.lastVisitedAt ?? null,
           metadata: databaseEmoji ? { emoji: databaseEmoji } : null,
           name: database.name || "Untitled",
@@ -905,9 +905,9 @@ function applyHomepageView(rows: HomepageRow[], view: HomepageView) {
     case "favourites":
       return rows.filter((row) => row.isFavorite);
     case "shared":
-      return rows.filter((row) => row.isTeamspace);
+      return rows.filter((row) => row.isShared);
     case "private":
-      return rows.filter((row) => !row.isTeamspace);
+      return rows.filter((row) => !row.isShared);
     case "recents":
     default:
       return rows;

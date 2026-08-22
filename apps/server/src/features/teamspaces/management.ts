@@ -4,6 +4,8 @@ import { getMembership } from "../../access";
 import { db, type Database } from "../../db";
 import {
   member,
+  team,
+  teamMember,
   teamspace,
   teamspacePrincipal,
   user,
@@ -71,9 +73,9 @@ export class TeamspaceManagementService {
         ),
       )
       .orderBy(asc(teamspace.name));
-    const principalRows =
+    const [principalRows, teamRows] = await Promise.all([
       records.length > 0
-        ? await this.database
+        ? this.database
             .select()
             .from(teamspacePrincipal)
             .where(
@@ -82,9 +84,19 @@ export class TeamspaceManagementService {
                 records.map((record) => record.id),
               ),
             )
-        : [];
+        : Promise.resolve([]),
+      this.database
+        .select({ teamId: teamMember.teamId })
+        .from(teamMember)
+        .where(eq(teamMember.userId, input.userId)),
+    ]);
     const visible = records.filter((record) => {
-      const role = getDirectRole(principalRows, record.id, input.userId);
+      const role = getEffectiveRole(
+        principalRows,
+        record.id,
+        input.userId,
+        teamRows.map((row) => row.teamId),
+      );
       return canDiscoverTeamspace({
         accessMode: record.accessMode as TeamspaceAccessMode,
         isTeamspacePrincipal: Boolean(role),
@@ -94,7 +106,12 @@ export class TeamspaceManagementService {
 
     return visible.map((record) => ({
       ...record,
-      currentUserRole: getDirectRole(principalRows, record.id, input.userId),
+      currentUserRole: getEffectiveRole(
+        principalRows,
+        record.id,
+        input.userId,
+        teamRows.map((row) => row.teamId),
+      ),
       memberCount: principalRows.filter(
         (principal) => principal.teamspaceId === record.id,
       ).length,
@@ -579,7 +596,7 @@ export class TeamspaceManagementService {
     workspaceId: string;
   }) {
     await this.get(input);
-    return this.database
+    const rows = await this.database
       .select({
         accessLevelOverride: teamspacePrincipal.accessLevelOverride,
         createdAt: teamspacePrincipal.createdAt,
@@ -587,6 +604,7 @@ export class TeamspaceManagementService {
         id: teamspacePrincipal.id,
         membershipSource: teamspacePrincipal.membershipSource,
         name: user.name,
+        teamName: team.name,
         principalId: teamspacePrincipal.principalId,
         principalType: teamspacePrincipal.principalType,
         role: teamspacePrincipal.role,
@@ -599,11 +617,24 @@ export class TeamspaceManagementService {
           eq(teamspacePrincipal.principalId, user.id),
         ),
       )
+      .leftJoin(
+        team,
+        and(
+          eq(teamspacePrincipal.principalType, "team"),
+          eq(teamspacePrincipal.principalId, team.id),
+        ),
+      )
       .where(eq(teamspacePrincipal.teamspaceId, input.teamspaceId))
       .orderBy(asc(user.name), asc(user.email));
+    return rows.map(({ teamName, ...row }) => ({
+      ...row,
+      name: row.name ?? teamName,
+    }));
   }
 
   async addPrincipal(input: {
+    accessLevelOverride?: "view" | "comment" | "edit" | "full" | null;
+    principalType?: "user" | "team";
     role: TeamspaceRole;
     targetUserId: string;
     teamspaceId: string;
@@ -622,20 +653,35 @@ export class TeamspaceManagementService {
     if (input.role === "owner" && role !== "owner") {
       throw new TeamspaceManagementError("Only owners can add owners.", 403);
     }
-    const [target] = await this.database
-      .select({ id: member.id })
-      .from(member)
-      .where(
-        and(
-          eq(member.organizationId, input.workspaceId),
-          eq(member.userId, input.targetUserId),
-          activeMembershipCondition(),
-        ),
-      )
-      .limit(1);
+    const principalType = input.principalType ?? "user";
+    const [target] =
+      principalType === "user"
+        ? await this.database
+            .select({ id: member.id })
+            .from(member)
+            .where(
+              and(
+                eq(member.organizationId, input.workspaceId),
+                eq(member.userId, input.targetUserId),
+                activeMembershipCondition(),
+              ),
+            )
+            .limit(1)
+        : await this.database
+            .select({ id: team.id })
+            .from(team)
+            .where(
+              and(
+                eq(team.organizationId, input.workspaceId),
+                eq(team.id, input.targetUserId),
+              ),
+            )
+            .limit(1);
     if (!target) {
       throw new TeamspaceManagementError(
-        "Only active workspace members can join a teamspace.",
+        principalType === "user"
+          ? "Only active workspace members can join a teamspace."
+          : "The sharing group was not found in this workspace.",
         409,
       );
     }
@@ -643,10 +689,11 @@ export class TeamspaceManagementService {
       .insert(teamspacePrincipal)
       .values({
         addedById: input.userId,
+        accessLevelOverride: input.accessLevelOverride ?? null,
         id: crypto.randomUUID(),
         membershipSource: "explicit",
         principalId: input.targetUserId,
-        principalType: "user",
+        principalType,
         role: input.role,
         teamspaceId: input.teamspaceId,
       })
@@ -654,7 +701,7 @@ export class TeamspaceManagementService {
       .returning();
     if (!created) {
       throw new TeamspaceManagementError(
-        "This person is already in the teamspace.",
+        "This member or group is already in the teamspace.",
         409,
       );
     }
@@ -666,6 +713,7 @@ export class TeamspaceManagementService {
   }
 
   async updatePrincipal(input: {
+    accessLevelOverride?: "view" | "comment" | "edit" | "full" | null;
     principalId: string;
     role: TeamspaceRole;
     teamspaceId: string;
@@ -678,7 +726,13 @@ export class TeamspaceManagementService {
     await this.assertOwnerRemains(input.teamspaceId, principal, input.role);
     const [updated] = await this.database
       .update(teamspacePrincipal)
-      .set({ role: input.role, updatedAt: new Date() })
+      .set({
+        role: input.role,
+        ...(input.accessLevelOverride !== undefined
+          ? { accessLevelOverride: input.accessLevelOverride }
+          : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(teamspacePrincipal.id, principal.id))
       .returning();
     await this.audit("teamspace.role_changed", input, {
@@ -744,9 +798,27 @@ export class TeamspaceManagementService {
     return { canManage: true, ...updated! };
   }
 
-  async getRole(teamspaceId: string, userId: string) {
-    const principal = await this.getDirectPrincipal(teamspaceId, userId);
-    return (principal?.role as TeamspaceRole | undefined) ?? null;
+  async getRole(
+    teamspaceId: string,
+    userId: string,
+  ): Promise<TeamspaceRole | null> {
+    const teamIds = (
+      await this.database
+        .select({ teamId: teamMember.teamId })
+        .from(teamMember)
+        .where(eq(teamMember.userId, userId))
+    ).map((row) => row.teamId);
+    const principals = await this.database
+      .select()
+      .from(teamspacePrincipal)
+      .where(
+        and(
+          eq(teamspacePrincipal.teamspaceId, teamspaceId),
+          inArray(teamspacePrincipal.principalType, ["user", "team"]),
+          inArray(teamspacePrincipal.principalId, [userId, ...teamIds]),
+        ),
+      );
+    return getEffectiveRole(principals, teamspaceId, userId, teamIds);
   }
 
   private getRecord(workspaceId: string, teamspaceId: string) {
@@ -870,18 +942,22 @@ export class TeamspaceManagementService {
   }
 }
 
-function getDirectRole(
+function getEffectiveRole(
   principals: Array<typeof teamspacePrincipal.$inferSelect>,
   teamspaceId: string,
   userId: string,
-) {
-  const record = principals.find(
+  teamIds: string[],
+): TeamspaceRole | null {
+  const roles = principals.filter(
     (principal) =>
       principal.teamspaceId === teamspaceId &&
-      principal.principalType === "user" &&
-      principal.principalId === userId,
+      ((principal.principalType === "user" &&
+        principal.principalId === userId) ||
+        (principal.principalType === "team" &&
+          teamIds.includes(principal.principalId))),
   );
-  return (record?.role as TeamspaceRole | undefined) ?? null;
+  if (roles.some((principal) => principal.role === "owner")) return "owner";
+  return roles.length > 0 ? "member" : null;
 }
 
 function getDatabaseErrorCode(error: unknown) {

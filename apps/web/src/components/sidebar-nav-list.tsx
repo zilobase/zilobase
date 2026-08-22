@@ -42,7 +42,7 @@ export type SidebarNavItem = {
   isFavorite?: boolean
   isLinked?: boolean
   isMeeting?: boolean
-  isTeamspace: boolean
+  isShared: boolean
   lastVisitedAt?: string | null
   meetingId?: string | null
   name: string

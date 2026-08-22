@@ -477,7 +477,7 @@ pageRoutes.get("/", async (c) => {
     }
   }
 
-  const teamspaceIds = new Set(sharedPageRows.map((row) => row.pageId));
+  const sharedPageIds = new Set(sharedPageRows.map((row) => row.pageId));
   const favoritePageIds = new Set(
     favoriteRows
       .map((row) => row.pageId)
@@ -665,7 +665,7 @@ pageRoutes.get("/", async (c) => {
         ? (creatorsById.get(record.deletedById) ?? null)
         : null,
       isFavorite: favoritePageIds.has(record.id),
-      isTeamspace: teamspaceIds.has(record.id),
+      isShared: sharedPageIds.has(record.id),
       lastVisitedAt: visitsByKey.get(`page:${record.id}`) ?? null,
     })),
   });

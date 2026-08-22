@@ -34,11 +34,18 @@ const updateSchema = z
   .refine((value) => Object.keys(value).length > 0, "Provide a field to update.");
 const principalSchema = z
   .object({
+    accessLevelOverride: z.enum(["view", "comment", "edit", "full"]).nullable().optional(),
+    principalType: z.enum(["user", "team"]).default("user"),
     role: z.enum(["owner", "member"]),
     userId: z.string().min(1),
   })
   .strict();
-const roleSchema = z.object({ role: z.enum(["owner", "member"]) }).strict();
+const roleSchema = z
+  .object({
+    accessLevelOverride: z.enum(["view", "comment", "edit", "full"]).nullable().optional(),
+    role: z.enum(["owner", "member"]),
+  })
+  .strict();
 
 teamspaceRoutes.get("/:workspaceId/teamspace-settings", async (c) =>
   handle(c, (service, userId, workspaceId) =>
@@ -195,6 +202,8 @@ teamspaceRoutes.post(
     return handle(c, (service, userId, workspaceId) =>
       service.addPrincipal({
         role: parsed.data.role,
+        accessLevelOverride: parsed.data.accessLevelOverride,
+        principalType: parsed.data.principalType,
         targetUserId: parsed.data.userId,
         teamspaceId: c.req.param("teamspaceId"),
         userId,
@@ -213,6 +222,7 @@ teamspaceRoutes.patch(
       service.updatePrincipal({
         principalId: c.req.param("principalId"),
         role: parsed.data.role,
+        accessLevelOverride: parsed.data.accessLevelOverride,
         teamspaceId: c.req.param("teamspaceId"),
         userId,
         workspaceId,

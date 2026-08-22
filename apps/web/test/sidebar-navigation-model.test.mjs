@@ -6,7 +6,7 @@ export function register({ assert, loadModule, test }) {
     const privatePage = createPage("private", "Private", "2026-08-01T00:00:00.000Z")
     const sharedPage = {
       ...createPage("shared", "Shared", "2026-08-02T00:00:00.000Z"),
-      isTeamspace: true,
+      isShared: true,
     }
     const teamspacePage = {
       ...createPage("team-page", "Team page", "2026-08-03T00:00:00.000Z"),

@@ -522,7 +522,7 @@ function getLibrarySectionBreadcrumbEntry(
     };
   }
 
-  const view = rootPage.isTeamspace ? "shared" : "private";
+  const view = rootPage.isShared ? "shared" : "private";
 
   return {
     id: `library-${view}`,

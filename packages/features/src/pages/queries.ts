@@ -82,7 +82,7 @@ export type Page = {
     pageFullWidth: boolean;
   } | null;
   isFavorite?: boolean;
-  isTeamspace?: boolean;
+  isShared?: boolean;
   teamspaceId?: string | null;
   lastVisitedAt?: string | null;
   workspaceId: string;

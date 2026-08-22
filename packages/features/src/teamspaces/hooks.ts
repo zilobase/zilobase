@@ -219,7 +219,9 @@ function usePrincipalMutation(method: "POST" | "PATCH" | "DELETE") {
   const { apiFetch, queryClient } = useZilobaseFeatures()
   return useMutation({
     mutationFn: (input: {
+      accessLevelOverride?: "view" | "comment" | "edit" | "full" | null
       principalId?: string
+      principalType?: "user" | "team"
       role?: TeamspaceRole
       teamspaceId: string
       userId?: string
@@ -231,7 +233,7 @@ function usePrincipalMutation(method: "POST" | "PATCH" | "DELETE") {
       return apiFetch(
         `/workspaces/${encodeURIComponent(input.workspaceId)}/teamspaces/${encodeURIComponent(input.teamspaceId)}/principals${suffix}`,
         {
-          body: method === "DELETE" ? undefined : JSON.stringify({ role: input.role, userId: input.userId }),
+          body: method === "DELETE" ? undefined : JSON.stringify({ accessLevelOverride: input.accessLevelOverride, principalType: input.principalType, role: input.role, userId: input.userId }),
           method,
         },
       )

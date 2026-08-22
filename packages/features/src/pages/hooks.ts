@@ -451,7 +451,7 @@ export function useCreatePage() {
             ...(current?.page ?? {}),
             ...pageRecord,
             isFavorite: pageRecord.isFavorite ?? current?.page.isFavorite,
-            isTeamspace: pageRecord.isTeamspace ?? current?.page.isTeamspace,
+            isShared: pageRecord.isShared ?? current?.page.isShared,
           },
         }),
       );
