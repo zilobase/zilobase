@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import { organizationRoles } from "./auth";
 import { getTrustedOrigins } from "./config";
 
 describe("browser authentication configuration", () => {
@@ -17,5 +18,23 @@ describe("browser authentication configuration", () => {
       "mobile://",
       "mobile://*",
     ]);
+  });
+
+  test("keeps built-in organization permissions when adding temporary access", () => {
+    expect(Object.keys(organizationRoles)).toEqual([
+      "admin",
+      "owner",
+      "member",
+      "temporary",
+    ]);
+    expect(
+      organizationRoles.owner.authorize({ invitation: ["create"] }).success,
+    ).toBe(true);
+    expect(
+      organizationRoles.admin.authorize({ invitation: ["create"] }).success,
+    ).toBe(true);
+    expect(
+      organizationRoles.temporary.authorize({ invitation: ["create"] }).success,
+    ).toBe(false);
   });
 });

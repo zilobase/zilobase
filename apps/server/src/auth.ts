@@ -9,7 +9,10 @@ import {
   magicLink,
   organization as organizationPlugin,
 } from "better-auth/plugins";
-import { memberAc } from "better-auth/plugins/organization/access";
+import {
+  defaultRoles,
+  memberAc,
+} from "better-auth/plugins/organization/access";
 import { eq } from "drizzle-orm";
 import { API_KEY_PREFIX } from "./api-keys";
 import { db, type Database } from "./db";
@@ -36,6 +39,11 @@ import {
 import { TeamspaceService } from "./features/teamspaces/service";
 
 type AuthEnv = Record<string, unknown>;
+
+export const organizationRoles = {
+  ...defaultRoles,
+  temporary: memberAc,
+};
 
 export function createAuth(
   env: AuthEnv,
@@ -176,9 +184,7 @@ function sharedAuthOptions(
         },
       }),
       organizationPlugin({
-        roles: {
-          temporary: memberAc,
-        },
+        roles: organizationRoles,
         schema: {
           session: {
             fields: {
