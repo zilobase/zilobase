@@ -1,7 +1,14 @@
 import { and, eq, inArray, lte, ne, or, sql } from "drizzle-orm";
 
 import { db, type Database } from "../db";
-import { member, session, team, teamMember } from "../db/schema";
+import {
+  member,
+  session,
+  team,
+  teamMember,
+  teamspace,
+  teamspacePrincipal,
+} from "../db/schema";
 
 export const WORKSPACE_ROLES = [
   "owner",
@@ -112,6 +119,10 @@ export async function expireTemporaryMemberships(
         .select({ id: team.id })
         .from(team)
         .where(eq(team.organizationId, workspaceId));
+      const workspaceTeamspaceIds = transaction
+        .select({ id: teamspace.id })
+        .from(teamspace)
+        .where(eq(teamspace.workspaceId, workspaceId));
 
       await transaction
         .delete(teamMember)
@@ -119,6 +130,16 @@ export async function expireTemporaryMemberships(
           and(
             inArray(teamMember.userId, userIds),
             inArray(teamMember.teamId, workspaceTeamIds),
+          ),
+        );
+
+      await transaction
+        .delete(teamspacePrincipal)
+        .where(
+          and(
+            eq(teamspacePrincipal.principalType, "user"),
+            inArray(teamspacePrincipal.principalId, userIds),
+            inArray(teamspacePrincipal.teamspaceId, workspaceTeamspaceIds),
           ),
         );
 

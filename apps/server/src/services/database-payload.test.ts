@@ -41,6 +41,7 @@ const existingRecord: typeof database.$inferSelect = {
   id: "database-1",
   name: "Tasks",
   pageId: "host-page",
+  teamspaceId: null,
   updatedAt: new Date("2026-01-02T00:00:00.000Z"),
   version: 3,
   workspaceId: "workspace-1",

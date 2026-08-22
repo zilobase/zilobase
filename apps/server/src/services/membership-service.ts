@@ -6,6 +6,7 @@ import type {
   MembershipGrantSource,
   ZilobaseEditionExtension,
 } from "../edition-extension";
+import { ensureDefaultTeamspaceMembership } from "../features/teamspaces/service";
 
 export type GrantMembershipInput = {
   id?: string;
@@ -83,6 +84,15 @@ export class MembershipService {
 
         return { created: false, membership: concurrentMembership };
       }
+
+      await ensureDefaultTeamspaceMembership(
+        transactionalDatabase,
+        this.editionExtension,
+        {
+          userId: input.userId,
+          workspaceId: input.workspaceId,
+        },
+      );
 
       await this.editionExtension?.recordSecurityEvent({
         database: transactionalDatabase,

@@ -29,6 +29,10 @@ export const appConfig = {
       import.meta.env.VITE_FEATURE_NOTION_IMPORT,
       false,
     ),
+    teamspaces: readBooleanFeatureFlag(
+      import.meta.env.VITE_FEATURE_TEAMSPACES,
+      false,
+    ),
   },
 } as const
 

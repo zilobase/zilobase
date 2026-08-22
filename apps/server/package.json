@@ -38,6 +38,7 @@
     "test:quality": "npm run test:coverage:full && npm run test:query-regression && npm run build",
     "test:api-keys": "tsx src/scripts/test-api-key-flow.ts",
     "test:flow": "tsx src/scripts/simulate-user-flow.ts",
+    "teamspaces:check": "tsx src/scripts/check-teamspaces.ts",
     "db:generate": "DOTENV_CONFIG_PATH=../../.env.development drizzle-kit generate",
     "db:migrate": "DOTENV_CONFIG_PATH=../../.env.development drizzle-kit migrate",
     "db:migrate:production": "tsx src/scripts/migrate.ts",

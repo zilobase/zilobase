@@ -12,6 +12,8 @@ import {
   workspace,
   team,
   teamMember,
+  teamspace,
+  teamspacePrincipal,
   user,
 } from "../db/schema";
 import type { AppBindings } from "../types";
@@ -418,6 +420,10 @@ workspaceRoutes.delete("/:workspaceId/members/:memberId", async (c) => {
       .select({ id: team.id })
       .from(team)
       .where(eq(team.organizationId, workspaceId));
+    const workspaceTeamspaceIds = transaction
+      .select({ id: teamspace.id })
+      .from(teamspace)
+      .where(eq(teamspace.workspaceId, workspaceId));
 
     await transaction
       .delete(teamMember)
@@ -425,6 +431,15 @@ workspaceRoutes.delete("/:workspaceId/members/:memberId", async (c) => {
         and(
           eq(teamMember.userId, target.userId),
           inArray(teamMember.teamId, workspaceTeamIds),
+        ),
+      );
+    await transaction
+      .delete(teamspacePrincipal)
+      .where(
+        and(
+          eq(teamspacePrincipal.principalType, "user"),
+          eq(teamspacePrincipal.principalId, target.userId),
+          inArray(teamspacePrincipal.teamspaceId, workspaceTeamspaceIds),
         ),
       );
     await transaction

@@ -33,6 +33,7 @@ import {
   parseMembershipAccessExpiry,
   TemporaryMembershipValidationError,
 } from "./services/temporary-membership";
+import { TeamspaceService } from "./features/teamspaces/service";
 
 type AuthEnv = Record<string, unknown>;
 
@@ -283,6 +284,14 @@ function sharedAuthOptions(
               .set({ accessExpiresAt })
               .where(eq(schema.member.id, created.id));
 
+            await new TeamspaceService(
+              database,
+              options.editionExtension,
+            ).ensureDefaultMembership({
+              userId: created.userId,
+              workspaceId: invitation.organizationId,
+            });
+
             await options.editionExtension?.recordSecurityEvent({
               database,
               details: {
@@ -297,6 +306,14 @@ function sharedAuthOptions(
             });
           },
           async afterAddMember({ member: created }) {
+            await new TeamspaceService(
+              database,
+              options.editionExtension,
+            ).ensureDefaultMembership({
+              userId: created.userId,
+              workspaceId: created.organizationId,
+            });
+
             await options.editionExtension?.recordSecurityEvent({
               database,
               details: { role: created.role, source: "admin" },
@@ -304,6 +321,12 @@ function sharedAuthOptions(
               type: "membership.granted",
               userId: created.userId,
               workspaceId: created.organizationId,
+            });
+          },
+          async afterRemoveMember({ member: removed }) {
+            await new TeamspaceService(database).removeUserPrincipals({
+              userId: removed.userId,
+              workspaceId: removed.organizationId,
             });
           },
         },

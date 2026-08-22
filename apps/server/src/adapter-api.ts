@@ -122,6 +122,19 @@ export {
   type GrantMembershipResult,
 } from "./services/membership-service";
 export {
+  TeamspaceService,
+  ensureDefaultTeamspaceMembership,
+  removeUserTeamspacePrincipals,
+  type EnsureDefaultTeamspaceMembershipInput,
+  type EnsureDefaultTeamspaceMembershipResult,
+} from "./features/teamspaces/service";
+export {
+  inspectTeamspaceIntegrity,
+  findTeamspaceIntegrityIssues,
+  type TeamspaceIntegrityIssue,
+  type TeamspaceIntegritySnapshot,
+} from "./features/teamspaces/integrity";
+export {
   appendMeetingTranscript,
   appendMeetingTranscriptInHocuspocus,
   appendMeetingTranscriptToDocument,

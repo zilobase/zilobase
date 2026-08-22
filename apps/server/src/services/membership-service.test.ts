@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import type { Database } from "../db";
+import { member, teamspace, teamspacePrincipal } from "../db/schema";
 import type { ZilobaseEditionExtension } from "../edition-extension";
 import { MembershipService } from "./membership-service";
 
@@ -35,7 +36,11 @@ test("membership grants run edition policy and audit inside the transaction", as
   assert.deepEqual(events, [
     "transaction",
     "policy:sso-jit",
-    "insert",
+    "insert:member",
+    "insert:teamspace",
+    "audit:teamspace.created",
+    "insert:teamspace_principal",
+    "audit:teamspace.principal_added",
     "audit:membership.granted",
   ]);
 });
@@ -44,6 +49,8 @@ function createMembershipDatabase(
   rows: Array<Record<string, unknown>>,
   events: string[],
 ) {
+  const teamspaceRows: Array<Record<string, unknown>> = [];
+  const principalRows: Array<Record<string, unknown>> = [];
   const database = {
     async transaction(run: (transaction: unknown) => Promise<unknown>) {
       events.push("transaction");
@@ -51,28 +58,51 @@ function createMembershipDatabase(
     },
     select() {
       return {
-        from() {
+        from(table: unknown) {
           return {
             where() {
-              return { async limit() { return rows; } };
+              const selectedRows =
+                table === member
+                  ? rows
+                  : table === teamspace
+                    ? teamspaceRows
+                    : principalRows;
+              const result = Promise.resolve(selectedRows);
+
+              return {
+                limit: async () => selectedRows,
+                then: result.then.bind(result),
+              };
             },
           };
         },
       };
     },
-    insert() {
+    insert(table: unknown) {
       return {
         values(value: Record<string, unknown>) {
           return {
             onConflictDoNothing() {
               return {
                 async returning() {
-                  events.push("insert");
+                  const selectedRows =
+                    table === member
+                      ? rows
+                      : table === teamspace
+                        ? teamspaceRows
+                        : principalRows;
                   const created = {
                     createdAt: new Date(),
                     ...value,
                   };
-                  rows.push(created);
+                  selectedRows.push(created);
+                  events.push(
+                    table === member
+                      ? "insert:member"
+                      : table === teamspace
+                        ? "insert:teamspace"
+                        : "insert:teamspace_principal",
+                  );
                   return [created];
                 },
               };

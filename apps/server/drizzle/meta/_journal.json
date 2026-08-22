@@ -337,6 +337,13 @@
       "when": 1787405400000,
       "tag": "0047_guest_access_controls",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1787409000000,
+      "tag": "0048_teamspace_foundation",
+      "breakpoints": true
     }
   ]
 }
