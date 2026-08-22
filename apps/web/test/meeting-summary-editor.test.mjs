@@ -38,6 +38,8 @@ export function register({ assert, test }) {
 
     assert.match(summaryEditorSource, /import \{ Editor \}/)
     assert.match(summaryEditorSource, /collaborationField=\{field\}/)
+    assert.match(summaryEditorSource, /databaseEditable=\{editable\}/)
+    assert.match(summaryEditorSource, /pageId=\{pageId\}/)
     assert.match(meetingViewSource, /const transcriptEditable = editable/)
     assert.match(meetingViewSource, /editable=\{transcriptEditable\}/)
     assert.match(meetingViewSource, /livePreview=\{transcriptPreview\}/)
@@ -45,6 +47,7 @@ export function register({ assert, test }) {
     assert.doesNotMatch(meetingViewSource, /LiveTranscriptDraft/)
     assert.match(summaryEditorSource, /"notes" \| "summary" \| "transcript"/)
     assert.match(meetingViewSource, /field=\{activeTab\}/)
+    assert.match(meetingViewSource, /pageId=\{meeting\.pageId\}/)
     assert.match(meetingViewSource, /setActiveTab\("summary"\)/)
     assert.match(
       meetingViewSource,

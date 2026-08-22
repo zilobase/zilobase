@@ -752,6 +752,7 @@ export function MeetingView({
               field={activeTab}
               livePreview={transcriptPreview}
               onOpenPage={openPage}
+              pageId={meeting.pageId}
               provider={collaboration.provider}
               status={collaboration.status}
               workspaceId={meeting.workspaceId}

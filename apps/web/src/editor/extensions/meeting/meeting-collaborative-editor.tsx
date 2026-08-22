@@ -16,6 +16,7 @@ export function MeetingCollaborativeEditor({
   field,
   livePreview = null,
   onOpenPage,
+  pageId,
   provider,
   status,
   workspaceId,
@@ -25,6 +26,7 @@ export function MeetingCollaborativeEditor({
   field: "notes" | "summary" | "transcript"
   livePreview?: MeetingTranscriptPreviewState[] | null
   onOpenPage: (pageId: string, options?: OpenPageOptions) => void
+  pageId: string
   provider: HocuspocusProvider | null
   status: "connecting" | "connected" | "disconnected" | "blocked"
   workspaceId: string
@@ -57,7 +59,7 @@ export function MeetingCollaborativeEditor({
         }}
         collaborationField={field}
         commentsEditable={false}
-        databaseEditable={false}
+        databaseEditable={editable}
         editable={editable}
         enableComments={false}
         fullWidth
@@ -65,6 +67,7 @@ export function MeetingCollaborativeEditor({
         metadataEditable={false}
         onEditorReady={onEditorReady}
         onOpenPage={onOpenPage}
+        pageId={pageId}
         structuralEditingEnabled={editable}
         workspaceId={workspaceId}
       />
