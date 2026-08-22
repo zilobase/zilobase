@@ -4,16 +4,28 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
+import { useSyncExternalStore } from "react"
 
 import { MeetingView } from "./meeting-view"
 
 export type MeetingBlockOptions = {
   editable?: boolean
+  editorRuntime?: {
+    getEditable: () => boolean
+    subscribe: (listener: () => void) => () => void
+  }
 }
 
-function MeetingBlockView({ extension, node }: ReactNodeViewProps) {
+function MeetingBlockView({ editor, extension, node }: ReactNodeViewProps) {
   const meetingId = node.attrs.meetingId as string | null
   const options = extension.options as MeetingBlockOptions
+  const isEditable = useSyncExternalStore(
+    options.editorRuntime?.subscribe ?? (() => () => {}),
+    options.editorRuntime?.getEditable ??
+      (() => options.editable !== false && editor.isEditable),
+    options.editorRuntime?.getEditable ??
+      (() => options.editable !== false && editor.isEditable),
+  )
 
   return (
     <NodeViewWrapper
@@ -22,7 +34,7 @@ function MeetingBlockView({ extension, node }: ReactNodeViewProps) {
       data-type="meetingBlock"
     >
       {meetingId ? (
-        <MeetingView editable={options.editable !== false} meetingId={meetingId} />
+        <MeetingView editable={isEditable} meetingId={meetingId} />
       ) : (
         <div className="rounded-xl border p-4 text-sm text-muted-foreground">
           Meeting setup is incomplete.

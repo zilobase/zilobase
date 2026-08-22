@@ -18,6 +18,20 @@ export type DatabaseRecord = {
   version: number
 }
 
+export function isDatabaseLocked(
+  database: Pick<DatabaseRecord, "config"> | null | undefined,
+) {
+  if (
+    !database?.config ||
+    typeof database.config !== "object" ||
+    Array.isArray(database.config)
+  ) {
+    return false
+  }
+
+  return (database.config as { locked?: unknown }).locked === true
+}
+
 export function getDatabaseEmoji(database: Pick<DatabaseRecord, "config">) {
   if (
     !database.config ||

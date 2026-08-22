@@ -27,6 +27,7 @@ import {
   getPageCover,
   getPageEmoji,
   getPageIconPosition,
+  isPageLocked,
   resolvePageFullWidth,
   type PageIconPosition,
   type PageMetadata,
@@ -348,6 +349,12 @@ export function PageEditorPane({
   const { data: accessLevel } = usePageAccessLevel(pageId, {
     refetchOnMount: false,
   });
+  const pageLocked = isPageLocked(page);
+  const pageEditable =
+    !readOnly &&
+    !pageLocked &&
+    !page?.deletedAt &&
+    (accessLevel === "edit" || accessLevel === "full");
   const { data: pageDatabaseIds = [] } = usePageDatabaseIds(pageId, {
     refetchOnMount: false,
   });
@@ -407,7 +414,7 @@ export function PageEditorPane({
 
   const deleteStructuralBlock = useCallback(
     async (request: StructuralBlockDeleteRequest) => {
-      if (!page) {
+      if (!page || !pageEditable) {
         throw new Error("Page is unavailable.");
       }
 
@@ -432,6 +439,7 @@ export function PageEditorPane({
       deleteMeeting,
       getStructuralBlockDeleteAction,
       page,
+      pageEditable,
       removePageEmbed,
     ],
   );
@@ -441,10 +449,6 @@ export function PageEditorPane({
   const [iconPosition, setIconPosition] =
     useState<PageIconPosition>("inline");
   const fullWidth = resolvePageFullWidth(page, userSettings?.pageFullWidth);
-  const pageEditable =
-    !readOnly &&
-    !page?.deletedAt &&
-    (accessLevel === "edit" || accessLevel === "full");
   const { setTitle: setName, title: name } = useTitleDraft({
     enabled: pageEditable,
     onSave: async (nextName) => {
@@ -550,7 +554,7 @@ export function PageEditorPane({
 
     return createPageCommentController({
       canEdit: pageEditable,
-      canModerate: accessLevel === "full",
+      canModerate: pageEditable && accessLevel === "full",
       document: collaboration.document,
       user: {
         email: session.user.email ?? null,
@@ -635,12 +639,7 @@ export function PageEditorPane({
   const updateCover = (nextCover: string) => {
     setCover(nextCover);
 
-    if (
-      readOnly ||
-      !page ||
-      page.deletedAt ||
-      (accessLevel !== "edit" && accessLevel !== "full")
-    ) {
+    if (!page || !pageEditable) {
       return;
     }
 
@@ -656,12 +655,7 @@ export function PageEditorPane({
   const updateEmoji = (nextEmoji: string) => {
     setEmoji(nextEmoji);
 
-    if (
-      readOnly ||
-      !page ||
-      page.deletedAt ||
-      (accessLevel !== "edit" && accessLevel !== "full")
-    ) {
+    if (!page || !pageEditable) {
       return;
     }
 
@@ -677,12 +671,7 @@ export function PageEditorPane({
   const updateIconPosition = (nextPosition: PageIconPosition) => {
     setIconPosition(nextPosition);
 
-    if (
-      readOnly ||
-      !page ||
-      page.deletedAt ||
-      (accessLevel !== "edit" && accessLevel !== "full")
-    ) {
+    if (!page || !pageEditable) {
       return;
     }
 
@@ -700,11 +689,7 @@ export function PageEditorPane({
       if (!page) {
         return;
       }
-      if (
-        readOnly ||
-        page.deletedAt ||
-        (accessLevel !== "edit" && accessLevel !== "full")
-      ) {
+      if (!pageEditable) {
         return;
       }
 
@@ -749,10 +734,9 @@ export function PageEditorPane({
       }, 800);
     },
     [
-      accessLevel,
       clearContentSaveTimeout,
       collaboration.document,
-      readOnly,
+      pageEditable,
       removePageEmbed,
       updatePage,
       page,
@@ -906,12 +890,7 @@ export function PageEditorPane({
   );
 
   const createNestedPage = useCallback(async () => {
-    if (
-      readOnly ||
-      !page ||
-      page.deletedAt ||
-      (accessLevel !== "edit" && accessLevel !== "full")
-    ) {
+    if (!page || !pageEditable) {
       throw new Error("Page is required");
     }
 
@@ -922,7 +901,7 @@ export function PageEditorPane({
       workspaceId: page.workspaceId,
       parentItemId: page.id,
     });
-  }, [accessLevel, createPage, readOnly, page]);
+  }, [createPage, page, pageEditable]);
 
   if (isLoading || waitingForCollaboration) {
     if (

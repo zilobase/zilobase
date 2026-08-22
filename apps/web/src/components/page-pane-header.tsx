@@ -91,6 +91,7 @@ export function PagePaneHeader({
 }) {
   const pageId = useRoutePageId(pathname);
   const databaseId = getDatabaseId(pathname);
+  const meetingId = getMeetingId(pathname);
   const leadingControls = showPaneControls ? (
     <PagePaneControls
       leadingControl={leadingControl}
@@ -115,6 +116,7 @@ export function PagePaneHeader({
         <div className="ml-auto px-3">
           <NavActions
             databaseId={databaseId}
+            meetingId={meetingId}
             discussionsOpen={discussionsOpen}
             onToggleDiscussions={onToggleDiscussions}
             onTogglePageSidebar={onTogglePageSidebar}

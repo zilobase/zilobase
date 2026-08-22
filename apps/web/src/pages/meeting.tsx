@@ -17,6 +17,7 @@ import {
   getPageCover,
   getPageEmoji,
   getPageIconPosition,
+  isMeetingLocked,
   resolvePageFullWidth,
   usePage,
   usePageAccessLevel,
@@ -137,7 +138,9 @@ function MeetingMainPane({
   const updateMeeting = useUpdateMeeting(meetingId)
   const updatePage = useUpdatePage()
   const accessLevel = notesAccessLevel ?? hostAccessLevel
-  const editable = accessLevel === "edit" || accessLevel === "full"
+  const editable =
+    !isMeetingLocked(metadataPage) &&
+    (accessLevel === "edit" || accessLevel === "full")
   const fullWidth = resolvePageFullWidth(
     metadataPage,
     userSettings?.pageFullWidth,

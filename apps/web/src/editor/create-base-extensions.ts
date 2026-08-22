@@ -49,7 +49,10 @@ import { SelectionAiPreview } from "@/packages/editor/extensions/selection-ai-pr
 import { SlashCommand } from "@/packages/editor/extensions/slash-command"
 import { VideoBlock } from "@/packages/editor/extensions/video-block"
 import type { OpenPageOptions } from "./types"
-import { OfflineStructureGuard } from "./offline-structure-guard"
+import {
+  OfflineStructureGuard,
+  shouldEnableOfflineStructureGuard,
+} from "./offline-structure-guard"
 
 export type BaseExtensionsOptions = {
   collaboration?: import("./types").EditorCollaboration
@@ -122,7 +125,12 @@ export const createBaseExtensions = ({
           : []),
       ]
     : []),
-  ...(!structuralEditingEnabled ? [OfflineStructureGuard] : []),
+  ...(shouldEnableOfflineStructureGuard({
+    contentEditable: editable,
+    structuralEditingEnabled,
+  })
+    ? [OfflineStructureGuard]
+    : []),
   CommentExtension.configure({
     HTMLAttributes: { class: "editor-comment-anchor" },
   }),
@@ -162,7 +170,10 @@ export const createBaseExtensions = ({
     onOpenPage,
     workspaceId,
   }),
-  MeetingBlock.configure({ editable }),
+  MeetingBlock.configure({
+    editable,
+    editorRuntime: databaseEditorRuntime,
+  }),
   PageBlock.configure({
     currentPageId: pageId,
     onCreatePage,

@@ -20,6 +20,7 @@ import {
   getDatabaseCover,
   getDatabaseEmoji,
   getDatabaseIconPosition,
+  isDatabaseLocked,
 } from "@zilobase/features/databases"
 import {
   useUpdatePage,
@@ -449,6 +450,7 @@ export function DatabaseMainPane({
     !readOnly &&
     connectivity === "online" &&
     !payload?.database.deletedAt &&
+    !isDatabaseLocked(payload?.database) &&
     (payload?.database.accessLevel === "edit" ||
       payload?.database.accessLevel === "full" ||
       accessLevel === "edit" ||

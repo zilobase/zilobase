@@ -15,6 +15,13 @@ export const OfflineStructureGuard = Extension.create({
   },
 })
 
+export function shouldEnableOfflineStructureGuard(input: {
+  contentEditable: boolean
+  structuralEditingEnabled: boolean
+}) {
+  return input.contentEditable && !input.structuralEditingEnabled
+}
+
 export function allowsOfflineTransaction(
   transaction: Transaction,
   state: EditorState,

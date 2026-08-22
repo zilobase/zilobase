@@ -3,8 +3,26 @@ import { EditorState } from "@tiptap/pm/state"
 
 export function register({ assert, loadModule, test }) {
   test("offline structural guard permits text but rejects page block changes", async () => {
-    const { allowsOfflineTransaction } = await loadModule(
+    const {
+      allowsOfflineTransaction,
+      shouldEnableOfflineStructureGuard,
+    } = await loadModule(
       "/src/editor/offline-structure-guard.ts",
+    )
+
+    assert.equal(
+      shouldEnableOfflineStructureGuard({
+        contentEditable: true,
+        structuralEditingEnabled: false,
+      }),
+      true,
+    )
+    assert.equal(
+      shouldEnableOfflineStructureGuard({
+        contentEditable: false,
+        structuralEditingEnabled: false,
+      }),
+      false,
     )
     const schema = new Schema({
       nodes: {

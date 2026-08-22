@@ -14,6 +14,7 @@ import {
   useAddDatabaseRow,
   useDatabase,
   useDeleteDatabaseView,
+  isDatabaseLocked,
   useUpdateDatabase,
   useUpdateDatabaseView,
   useUpdateDatabaseProperty,
@@ -67,7 +68,7 @@ export type DatabaseViewProps = {
 export function useDatabaseViewController({
   activeViewId: requestedActiveViewId,
   databaseId,
-  editable = true,
+  editable: requestedEditable = true,
   fullPage = false,
   includeDeleted = false,
   onActiveViewIdChange,
@@ -109,6 +110,7 @@ export function useDatabaseViewController({
   } = useDatabase(databaseId, {
     includeDeleted: includeDeletedDatabases,
   })
+  const editable = requestedEditable && !isDatabaseLocked(payload?.database)
   const [draftDatabaseTitle, setDraftDatabaseTitle] = useState("New database")
   const [draftViewTitle, setDraftViewTitle] = useState("Table")
   const [activeViewId, setActiveViewId] = useState<string | null>(

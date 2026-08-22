@@ -36,4 +36,19 @@ export function register({ assert, loadModule, test }) {
       false,
     )
   })
+
+  test("a locked page makes its embedded database runtime read-only", async () => {
+    const { canEditOnlineDatabase } = await loadModule(
+      "/src/editor/database-editability.ts",
+    )
+
+    assert.equal(
+      canEditOnlineDatabase({
+        connectivity: "online",
+        offlineSessionLocked: false,
+        pageEditable: false,
+      }),
+      false,
+    )
+  })
 }

@@ -49,6 +49,10 @@ export function register({ assert, test }) {
     assert.doesNotMatch(meetingViewSource, /useMeetingTranscript/)
     assert.doesNotMatch(meetingViewSource, /MeetingNotesEditor/)
     assert.match(extensionSource, /field: collaborationField/)
+    assert.match(
+      extensionSource,
+      /MeetingBlock\.configure\(\{[\s\S]*?editorRuntime: databaseEditorRuntime/,
+    )
     assert.match(editorExtensionHookSource, /collaborationField \?\? "default"/)
     assert.match(meetingPageSource, /PageMetadata as PageMetadataHeader/)
     assert.match(meetingPageSource, /onCoverChange=/)

@@ -85,6 +85,8 @@ import {
   useDeleteDatabase,
   useSetDatabaseFavorite,
   useSetDatabasePublished,
+  isDatabaseLocked,
+  useUpdateDatabase,
   useUpsertDatabaseAccess,
 } from "@zilobase/features/databases";
 import {
@@ -139,6 +141,7 @@ export function NavActions({
   onTogglePageSidebar,
   pageSidebarOpen = false,
   pageId,
+  meetingId,
 }: {
   databaseId?: string | null;
   discussionsOpen?: boolean;
@@ -146,6 +149,7 @@ export function NavActions({
   onTogglePageSidebar?: () => void;
   pageSidebarOpen?: boolean;
   pageId?: string | null;
+  meetingId?: string | null;
 }) {
   const navigate = useNavigate();
   const { openLayoutEditor } = useLayoutEditor();
@@ -164,6 +168,7 @@ export function NavActions({
   const createPage = useCreatePage();
   const deletePage = useDeletePage();
   const deleteDatabase = useDeleteDatabase();
+  const updateDatabase = useUpdateDatabase();
   const updatePage = useUpdatePage();
   const setFavorite = useSetPageFavorite();
   const setDatabaseFavorite = useSetDatabaseFavorite();
@@ -175,10 +180,14 @@ export function NavActions({
   const offlineSessionLocked = useOfflineSessionLocked();
   const listPage = pages.find((item) => item.id === actionPageId);
   const isDatabasePage = Boolean(databaseId);
+  const isMeetingPage = Boolean(meetingId);
   const hasPageActions = Boolean(actionPageId || databaseId);
   const comments = usePageCommentsSnapshot(pageId);
   const openDiscussionCount = comments.threads.filter((thread) => !thread.resolvedAt).length;
   const pageMetadata = (page?.metadata ?? {}) as PageMetadata;
+  const { data: pageAccessLevel } = usePageAccessLevel(actionPageId, {
+    refetchOnMount: false,
+  });
   const effectiveFullWidth = resolvePageFullWidth(
     page,
     userSettings?.pageFullWidth,
@@ -192,6 +201,73 @@ export function NavActions({
     (isDatabasePage ? databasePayload?.database.name : page?.name)?.trim() ||
     "Untitled";
   const isDeleting = deletePage.isPending || deleteDatabase.isPending;
+  const lockLabel = isMeetingPage
+    ? "Lock meeting"
+    : isDatabasePage
+      ? "Lock database"
+      : "Lock page";
+  const locked = isMeetingPage
+    ? pageMetadata.meetingLocked === true
+    : isDatabasePage
+      ? isDatabaseLocked(databasePayload?.database)
+      : pageMetadata.locked === true;
+  const canToggleLock = isDatabasePage
+    ? databasePayload?.database.accessLevel === "edit" ||
+      databasePayload?.database.accessLevel === "full" ||
+      pageAccessLevel === "edit" ||
+      pageAccessLevel === "full"
+    : pageAccessLevel === "edit" || pageAccessLevel === "full";
+  const lockUpdatePending = isDatabasePage
+    ? updateDatabase.isPending
+    : updatePage.isPending;
+  const toggleLock = () => {
+    if (lockUpdatePending || !canToggleLock) {
+      return;
+    }
+
+    const onError = (error: unknown) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : `Could not update ${lockLabel.toLowerCase()}.`,
+      );
+    };
+
+    if (isDatabasePage) {
+      if (!databaseId || !databasePayload) {
+        return;
+      }
+
+      updateDatabase.mutate(
+        {
+          databaseId,
+          config: {
+            ...((databasePayload.database.config ?? {}) as Record<string, unknown>),
+            locked: !locked,
+          },
+        },
+        { onError },
+      );
+      return;
+    }
+
+    if (!page) {
+      return;
+    }
+
+    updatePage.mutate(
+      {
+        id: page.id,
+        metadata: {
+          ...pageMetadata,
+          ...(isMeetingPage
+            ? { meetingLocked: !locked }
+            : { locked: !locked }),
+        },
+      },
+      { onError },
+    );
+  };
   const toggleFavorite = () => {
     if (databaseId) {
       if (setDatabaseFavorite.isPending) {
@@ -501,6 +577,22 @@ export function NavActions({
                 pageId={actionPageId}
                 workspaceId={workspaceId}
               />
+              <DropDrawerItem
+                disabled={!canToggleLock || lockUpdatePending}
+                onSelect={(event) => {
+                  event.preventDefault();
+                  toggleLock();
+                }}
+              >
+                <LockIcon />
+                <span>{lockLabel}</span>
+                <Switch
+                  checked={locked}
+                  className="ml-auto pointer-events-none"
+                  size="sm"
+                  tabIndex={-1}
+                />
+              </DropDrawerItem>
               {!isDatabasePage && !isMobile ? (
                 <>
                   <DropDrawerItem

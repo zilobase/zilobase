@@ -15,10 +15,24 @@ export type PageMetadata = {
   embeddedItemsOpenAs?: EmbeddedItemsOpenAs | null;
   fullWidth?: boolean | null;
   iconPosition?: PageIconPosition | null;
+  locked?: boolean | null;
+  meetingLocked?: boolean | null;
   zilobaseai?: "instruction" | "skill" | null;
   useUserEmbeddedItemsPreference?: boolean | null;
   useUserFullWidthPreference?: boolean | null;
 };
+
+export function isPageLocked(
+  page: { metadata?: PageMetadata | null } | null | undefined,
+) {
+  return page?.metadata?.locked === true;
+}
+
+export function isMeetingLocked(
+  page: { metadata?: PageMetadata | null } | null | undefined,
+) {
+  return page?.metadata?.meetingLocked === true;
+}
 
 export function readMetadataRecord(metadata: unknown): PageMetadata {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {

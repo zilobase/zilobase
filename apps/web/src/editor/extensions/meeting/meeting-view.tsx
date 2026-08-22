@@ -34,6 +34,7 @@ import {
 } from "@zilobase/features/meetings"
 import {
   getPageEmoji,
+  isMeetingLocked,
   usePage,
   useUpdatePage,
   type PageMetadata,
@@ -85,7 +86,7 @@ import { useMeetingCapture } from "./use-meeting-capture"
 export type MeetingTab = "summary" | "notes" | "transcript"
 
 export function MeetingView({
-  editable,
+  editable: requestedEditable,
   embeddedPage,
   fullPage = false,
   meetingId,
@@ -132,6 +133,7 @@ export function MeetingView({
   const meeting = meetingQuery.data?.meeting
   const notesPageId = meeting?.notesPageId ?? null
   const { data: notesPage } = usePage(notesPageId)
+  const editable = requestedEditable && !isMeetingLocked(notesPage)
   const updatePage = useUpdatePage()
   const embeddedOpen = useOpenEmbeddedPage({
     contextPageId: notesPageId,
