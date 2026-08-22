@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { HocuspocusProvider } from "@hocuspocus/provider"
+import type { SessionUser } from "@zilobase/features/auth"
 import * as Y from "yjs"
 
+import { collaborationColor } from "@/packages/editor/collaboration-color"
 import { apiFetch } from "@/lib/api"
 import {
   applyTicketState,
@@ -16,7 +18,10 @@ function getMeetingTicket(meetingId: string, signal?: AbortSignal) {
   )
 }
 
-export function useMeetingCollaboration(meetingId: string | null) {
+export function useMeetingCollaboration(
+  meetingId: string | null,
+  user: SessionUser | null | undefined,
+) {
   const [document, setDocument] = useState<Y.Doc | null>(null)
   const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
   const [status, setStatus] = useState<
@@ -24,9 +29,21 @@ export function useMeetingCollaboration(meetingId: string | null) {
   >("disconnected")
   const [error, setError] = useState<string | null>(null)
   const [, setRevision] = useState(0)
+  const collaborationUser = useMemo(
+    () =>
+      user
+        ? {
+            avatar: user.image,
+            color: collaborationColor(user.id),
+            id: user.id,
+            name: user.name || user.email,
+          }
+        : undefined,
+    [user?.email, user?.id, user?.image, user?.name],
+  )
 
   useEffect(() => {
-    if (!meetingId) return
+    if (!meetingId || !collaborationUser) return
 
     const controller = new AbortController()
     const nextDocument = new Y.Doc()
@@ -42,6 +59,7 @@ export function useMeetingCollaboration(meetingId: string | null) {
         if (disposed) return
         applyTicketState(nextDocument, ticket)
         activeProvider = connectLocalPageDocument({
+          autoConnect: false,
           document: nextDocument,
           onAuthenticationFailed: (reason) => {
             if (!disposed) {
@@ -56,8 +74,12 @@ export function useMeetingCollaboration(meetingId: string | null) {
           refreshTicket: () => getMeetingTicket(meetingId),
           ticket,
         })
+        activeProvider.setAwarenessField("user", collaborationUser)
         setDocument(nextDocument)
         setProvider(activeProvider)
+        void activeProvider.connect().catch(() => {
+          if (!disposed) setStatus("disconnected")
+        })
       })
       .catch((reason: unknown) => {
         if (disposed || controller.signal.aborted) return
@@ -78,7 +100,7 @@ export function useMeetingCollaboration(meetingId: string | null) {
       setDocument(null)
       setProvider(null)
     }
-  }, [meetingId])
+  }, [collaborationUser, meetingId])
 
-  return { document, error, provider, status }
+  return { document, error, provider, status, user: collaborationUser }
 }

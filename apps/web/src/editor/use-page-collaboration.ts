@@ -18,6 +18,7 @@ import {
   shouldMarkOfflineDocumentDirty,
   type CollaborationTicket,
 } from "@/lib/offline-documents"
+import { collaborationColor } from "./collaboration-color"
 import { patchOfflineItem } from "@/lib/offline-store"
 import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider"
 
@@ -351,11 +352,4 @@ function readCollaborationUsers(states: StatesArray) {
     })
   }
   return [...users.values()]
-}
-
-function collaborationColor(userId: string) {
-  const colors = ["#0ea5e9", "#8b5cf6", "#ec4899", "#f97316", "#22c55e", "#eab308"]
-  let hash = 0
-  for (const character of userId) hash = (hash * 31 + character.charCodeAt(0)) | 0
-  return colors[Math.abs(hash) % colors.length] ?? colors[0]
 }

@@ -32,6 +32,7 @@ import {
   meetingKeys,
   type MeetingLifecycleAction,
 } from "@zilobase/features/meetings"
+import { useSession } from "@zilobase/features/auth"
 import {
   getPageEmoji,
   isMeetingLocked,
@@ -109,7 +110,8 @@ export function MeetingView({
   const lifecycle = useMeetingLifecycle(meetingId)
   const recorder = useMeetingRecorder(meetingId)
   const recordConsent = useRecordMeetingConsent(meetingId)
-  const collaboration = useMeetingCollaboration(meetingId)
+  const { data: session } = useSession()
+  const collaboration = useMeetingCollaboration(meetingId, session?.user)
   const meetingCapture = useMeetingCapture(meetingId)
   const [activeTab, setActiveTabState] = useState<MeetingTab>("notes")
   const setActiveTab = (tab: MeetingTab) => {
@@ -744,7 +746,7 @@ export function MeetingView({
       </div>
 
       <div className="database-scroll-section meeting-block-body">
-        {collaboration.document ? (
+        {collaboration.document && collaboration.provider && collaboration.user ? (
           <>
             <MeetingCollaborativeEditor
               document={collaboration.document}
@@ -755,6 +757,7 @@ export function MeetingView({
               pageId={meeting.pageId}
               provider={collaboration.provider}
               status={collaboration.status}
+              user={collaboration.user}
               workspaceId={meeting.workspaceId}
             />
             {activeTab === "transcript" && transcriptSegmentCount > 0 ? (

@@ -1,4 +1,9 @@
-import { useCallback, useEffect, useRef } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
 import type { HocuspocusProvider } from "@hocuspocus/provider"
 import type { Editor as TiptapEditor } from "@tiptap/core"
 import type * as Y from "yjs"
@@ -19,6 +24,7 @@ export function MeetingCollaborativeEditor({
   pageId,
   provider,
   status,
+  user,
   workspaceId,
 }: {
   document: Y.Doc
@@ -29,6 +35,7 @@ export function MeetingCollaborativeEditor({
   pageId: string
   provider: HocuspocusProvider | null
   status: "connecting" | "connected" | "disconnected" | "blocked"
+  user?: { avatar?: string | null; color: string; id: string; name: string }
   workspaceId: string
 }) {
   const editorRef = useRef<TiptapEditor | null>(null)
@@ -38,6 +45,25 @@ export function MeetingCollaborativeEditor({
     editorRef.current = editor
     if (editor) setMeetingTranscriptPreview(editor, livePreviewRef.current)
   }, [])
+  const focusNestedEditor = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const editor = editorRef.current
+      const target = event.target
+      if (
+        !editor ||
+        editor.isDestroyed ||
+        !editor.isEditable ||
+        !(target instanceof Node) ||
+        !editor.view.dom.contains(target) ||
+        editor.view.hasFocus()
+      ) {
+        return
+      }
+
+      editor.view.dom.focus({ preventScroll: true })
+    },
+    [],
+  )
 
   useEffect(() => {
     const editor = editorRef.current
@@ -48,6 +74,7 @@ export function MeetingCollaborativeEditor({
     <div
       className="meeting-collaborative-editor"
       data-meeting-field={field}
+      onPointerDownCapture={focusNestedEditor}
     >
       <Editor
         collaboration={{
@@ -55,12 +82,14 @@ export function MeetingCollaborativeEditor({
           provider: provider ?? undefined,
           status,
           unsyncedChanges: 0,
+          user,
           users: [],
         }}
         collaborationField={field}
         commentsEditable={false}
         databaseEditable={editable}
         editable={editable}
+        editorTabIndex={0}
         enableComments={false}
         fullWidth
         hideMetadata

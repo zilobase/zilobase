@@ -9,6 +9,7 @@ export function register({ assert, test }) {
       editorStyles,
       extensionSource,
       editorExtensionHookSource,
+      meetingCollaborationSource,
     ] = await Promise.all([
         readFile(
           new URL(
@@ -34,15 +35,40 @@ export function register({ assert, test }) {
           new URL("../src/editor/use-editor-extensions.ts", import.meta.url),
           "utf8",
         ),
+        readFile(
+          new URL(
+            "../src/editor/extensions/meeting/use-meeting-collaboration.ts",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
       ])
 
     assert.match(summaryEditorSource, /import \{ Editor \}/)
     assert.match(summaryEditorSource, /collaborationField=\{field\}/)
+    assert.match(summaryEditorSource, /user,\s+users: \[\]/)
     assert.match(summaryEditorSource, /databaseEditable=\{editable\}/)
+    assert.match(summaryEditorSource, /editorTabIndex=\{0\}/)
+    assert.match(summaryEditorSource, /onPointerDownCapture=\{focusNestedEditor\}/)
     assert.match(summaryEditorSource, /pageId=\{pageId\}/)
     assert.match(meetingViewSource, /const transcriptEditable = editable/)
     assert.match(meetingViewSource, /editable=\{transcriptEditable\}/)
     assert.match(meetingViewSource, /livePreview=\{transcriptPreview\}/)
+    assert.match(
+      meetingViewSource,
+      /useMeetingCollaboration\(meetingId, session\?\.user\)/,
+    )
+    assert.match(meetingViewSource, /user=\{collaboration\.user\}/)
+    assert.match(
+      meetingCollaborationSource,
+      /setAwarenessField\("user", collaborationUser\)/,
+    )
+    assert.match(meetingCollaborationSource, /autoConnect: false/)
+    assert.match(meetingCollaborationSource, /activeProvider\.connect\(\)/)
+    assert.match(
+      meetingViewSource,
+      /collaboration\.document && collaboration\.provider && collaboration\.user/,
+    )
     assert.match(meetingViewSource, /resolveMeetingTranscriptPreview/)
     assert.doesNotMatch(meetingViewSource, /LiveTranscriptDraft/)
     assert.match(summaryEditorSource, /"notes" \| "summary" \| "transcript"/)
@@ -61,6 +87,10 @@ export function register({ assert, test }) {
       /MeetingBlock\.configure\(\{[\s\S]*?editorRuntime: databaseEditorRuntime/,
     )
     assert.match(editorExtensionHookSource, /collaborationField \?\? "default"/)
+    assert.match(
+      editorExtensionHookSource,
+      /collaboration\?\.provider && collaboration\.user \? "presence" : "content-only"/,
+    )
     assert.match(meetingPageSource, /PageMetadata as PageMetadataHeader/)
     assert.match(meetingPageSource, /onCoverChange=/)
     assert.match(meetingPageSource, /onIconChange=/)

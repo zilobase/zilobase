@@ -69,6 +69,7 @@ export function Editor({
   databaseId,
   databaseIds = [],
   editorContentRef,
+  editorTabIndex,
   editable = true,
   enableComments = true,
   contentEditable = editable,
@@ -160,6 +161,7 @@ export function Editor({
     editorId,
     editorLifecycleKey,
     editorRuntimeRef,
+    editorTabIndex,
     initialContent,
     onContentChange,
     onCrossEditorDatabaseDrop: ({ payload, pos }) => {

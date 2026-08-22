@@ -62,6 +62,7 @@ type UseEditorInstanceOptions = {
     editable: boolean;
     listeners: Set<() => void>;
   }>;
+  editorTabIndex?: number;
   initialContent: Content | undefined;
   onContentChange?: (content: unknown) => void;
   onCrossEditorDatabaseDrop?: (input: {
@@ -113,6 +114,7 @@ export const useEditorInstance = ({
   editorId,
   editorLifecycleKey,
   editorRuntimeRef,
+  editorTabIndex,
   initialContent,
   onContentChange,
   onCrossEditorDatabaseDrop,
@@ -217,7 +219,13 @@ export const useEditorInstance = ({
         if (editable) onContentChangeRef.current?.(currentEditor.getJSON());
       },
       editorProps: {
-        attributes: { class: "tiptap-editor", "aria-label": "Document editor" },
+        attributes: {
+          class: "tiptap-editor",
+          "aria-label": "Document editor",
+          ...(editorTabIndex === undefined
+            ? {}
+            : { tabindex: String(editorTabIndex) }),
+        },
         handleDrop: dragDrop.handleDrop,
         handleClick: (view, pos, event) => {
           if (!isClickAboveFirstNonTextBlock(view, pos, event)) return false;

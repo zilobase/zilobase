@@ -85,6 +85,7 @@ export type EditorProps = {
   databaseId?: string | null
   databaseIds?: string[]
   editorContentRef?: MutableRefObject<(() => unknown) | null>
+  editorTabIndex?: number
   onEditorReady?: (editor: Editor | null) => void
   emoji?: string
   iconPosition?: PageIconPosition
