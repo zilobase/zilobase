@@ -46,6 +46,10 @@ export function register({ assert, test }) {
     assert.match(summaryEditorSource, /"notes" \| "summary" \| "transcript"/)
     assert.match(meetingViewSource, /field=\{activeTab\}/)
     assert.match(meetingViewSource, /setActiveTab\("summary"\)/)
+    assert.match(
+      meetingViewSource,
+      /TabsTrigger[\s\S]*?className="h-8 shrink-0 grow-0 gap-2 px-3 capitalize"/,
+    )
     assert.doesNotMatch(meetingViewSource, /useMeetingTranscript/)
     assert.doesNotMatch(meetingViewSource, /MeetingNotesEditor/)
     assert.match(extensionSource, /field: collaborationField/)

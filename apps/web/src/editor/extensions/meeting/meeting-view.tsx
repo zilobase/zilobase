@@ -495,22 +495,33 @@ export function MeetingView({
         ) : null}
         <div className="flex min-w-0 items-center gap-2">
           <Tabs
+            className="min-w-0"
             onValueChange={(value) => {
               if (value) setActiveTab(value as MeetingTab)
             }}
             value={activeTab}
           >
-            <TabsList className="justify-start overflow-x-auto" variant="tab">
+            <TabsList className="min-w-0 w-full justify-start overflow-x-auto" variant="tab">
               {tabs.map((tab) => (
-                <TabsTrigger className="grow-0 capitalize" key={tab} value={tab}>
-                  {tab === "summary" ? <Sparkles /> : tab === "notes" ? <Settings2 /> : <Mic />}
+                <TabsTrigger
+                  className="h-8 shrink-0 grow-0 gap-2 px-3 capitalize"
+                  key={tab}
+                  value={tab}
+                >
+                  {tab === "summary" ? (
+                    <Sparkles className="size-4 shrink-0" />
+                  ) : tab === "notes" ? (
+                    <Settings2 className="size-4 shrink-0" />
+                  ) : (
+                    <Mic className="size-4 shrink-0" />
+                  )}
                   {tab}
                 </TabsTrigger>
               ))}
               {embeddedPage ? (
                 <Link
                   aria-label={`Open ${embeddedPage.name}`}
-                  className="relative inline-flex h-7 max-w-52 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium text-foreground/60 outline-none transition-colors hover:bg-active hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+                  className="relative inline-flex h-8 max-w-52 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent px-3 py-0.5 text-xs font-medium text-foreground/60 outline-none transition-colors hover:bg-active hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
                   params={{ pageId: embeddedPage.id }}
                   search={{ meeting: meetingId }}
                   title={`Open ${embeddedPage.name}`}

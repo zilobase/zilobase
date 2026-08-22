@@ -781,7 +781,7 @@ export function PageMetadata({
       ) : null}
 
       <div
-        className={`${contentClassName ?? ""} relative ${compact ? (compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4") : "px-5 pt-4 pb-0 sm:px-8 md:px-20 lg:px-24"}`}
+        className={`${contentClassName ?? ""} relative ${compact ? (compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4") : "px-5 pt-1 pb-0 sm:px-8 md:px-20 lg:px-24"}`}
       >
         {showHeading && iconPosition === "top" && pageIcon ? (
           <div
@@ -796,7 +796,7 @@ export function PageMetadata({
         ) : null}
 
         {showHeading && showMetadataActions ? (
-          <div className="relative mb-4 min-h-8">
+          <div className="relative mb-1 min-h-8">
             <div
               className={`absolute inset-0 flex flex-wrap items-center gap-2 ${metadataActionVisibilityClassName}`}
             >
