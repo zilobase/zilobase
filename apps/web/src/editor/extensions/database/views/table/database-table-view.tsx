@@ -68,6 +68,7 @@ import {
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer"
 import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
+import { PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/lib/utils"
 import { useUndoHistory } from "@/shortcuts"
 import {
@@ -106,6 +107,7 @@ import {
   type DatabasePropertyValue as DatabasePropertyValueType,
 } from "../../core/utils"
 import {
+  getDatabasePropertyIcon,
   getDatabasePropertyOrder,
   getPersonLimit,
   getNameColumnWrapContent,
@@ -2991,6 +2993,12 @@ export function DatabaseTableView() {
           const propertyWrapContent = property
             ? getPropertyWrapContent(property.property.config)
             : false
+          const PropertyIcon = property
+            ? getDatabasePropertyType(property.property.type).icon
+            : null
+          const customPropertyIcon = property
+            ? getDatabasePropertyIcon(property.property.config)
+            : ""
 
           return (
             <Fragment key={columnId}>
@@ -3180,7 +3188,7 @@ export function DatabaseTableView() {
                       />
                     ) : property ? (
                       <span
-                        className="database-property-header-label"
+                        className="database-property-header-label flex h-8 min-w-0 items-center gap-2 px-3 py-1"
                         onPointerDownCapture={startHeaderDrag}
                         title={
                           canReorderColumns
@@ -3188,7 +3196,19 @@ export function DatabaseTableView() {
                             : undefined
                         }
                       >
-                        {property.property.name}
+                        {customPropertyIcon ? (
+                          <span className="shrink-0">
+                            <PageIconDisplay
+                              size="sm"
+                              value={customPropertyIcon}
+                            />
+                          </span>
+                        ) : PropertyIcon ? (
+                          <PropertyIcon className="size-4 shrink-0 text-muted-foreground" />
+                        ) : null}
+                        <span className="truncate">
+                          {property.property.name}
+                        </span>
                       </span>
                     ) : null}
                     <span
