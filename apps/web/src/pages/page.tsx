@@ -989,6 +989,14 @@ export function PageEditorPane({
   return (
     <section
       className={cn(className, "animate-in fade-in-0 duration-300")}
+      onDragOverCapture={pageLocked ? (event) => event.preventDefault() : undefined}
+      onDropCapture={pageLocked
+        ? (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            toast.error("This page is locked.");
+          }
+        : undefined}
       ref={paneRef}
     >
       {page.deletedAt ? (
