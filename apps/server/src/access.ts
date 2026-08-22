@@ -13,6 +13,7 @@ import {
   workspace,
 } from "./db/schema";
 import { loadWorkspacePageGraph } from "./page-graph-loader";
+import { activeMembershipCondition } from "./services/temporary-membership";
 
 export type AccessLevel = "none" | "view" | "edit" | "full";
 
@@ -41,7 +42,11 @@ export async function getMembership(workspaceId: string, userId: string) {
     .select()
     .from(member)
     .where(
-      and(eq(member.organizationId, workspaceId), eq(member.userId, userId)),
+      and(
+        eq(member.organizationId, workspaceId),
+        eq(member.userId, userId),
+        activeMembershipCondition(),
+      ),
     )
     .limit(1);
 
@@ -57,7 +62,7 @@ export function getWorkspaceMemberships(userId: string) {
     })
     .from(member)
     .innerJoin(workspace, eq(workspace.id, member.organizationId))
-    .where(eq(member.userId, userId))
+    .where(and(eq(member.userId, userId), activeMembershipCondition()))
     .orderBy(asc(member.createdAt), asc(member.id));
 }
 
@@ -114,6 +119,7 @@ export async function getEffectivePageAccessInWorkspace(
         and(
           eq(member.organizationId, workspaceId),
           eq(member.userId, userId),
+          activeMembershipCondition(),
         ),
       )
       .limit(1),

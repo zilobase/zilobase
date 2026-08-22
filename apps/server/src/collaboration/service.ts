@@ -69,11 +69,19 @@ export async function createCollaborationTicket(
     | Omit<PageCollaborationTicketClaims, "exp">
     | Omit<MeetingCollaborationTicketClaims, "exp">,
   env: RuntimeEnv,
+  options: { maxExpiresAt?: Date | null } = {},
 ) {
+  const defaultExpiration = Date.now() + TICKET_TTL_MS;
   const payload: CollaborationTicketClaims = {
     ...claims,
-    exp: Date.now() + TICKET_TTL_MS,
+    exp: options.maxExpiresAt
+      ? Math.min(defaultExpiration, options.maxExpiresAt.getTime())
+      : defaultExpiration,
   };
+
+  if (payload.exp <= Date.now()) {
+    throw new Error("Collaboration access has expired");
+  }
   const encoded = encodeJson(payload);
   const signature = await sign(encoded, getTicketSecret(env));
 
@@ -369,6 +377,13 @@ export function createCollaborationHocuspocus(
       void documentLoad.catch(() => undefined);
 
       return claims;
+    },
+    async connected({ connection, context }) {
+      const timeout = setTimeout(
+        () => connection.close(),
+        Math.max(0, context.exp - Date.now()),
+      );
+      connection.onClose(() => clearTimeout(timeout));
     },
   });
 }

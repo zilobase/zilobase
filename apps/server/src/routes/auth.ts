@@ -9,6 +9,7 @@ import {
 } from "../features/instance/registration";
 import { isSelfHostedRuntime } from "../runtime-adapter";
 import type { AppBindings } from "../types";
+import { expireTemporaryMemberships } from "../services/temporary-membership";
 
 export const authRoutes = new Hono<AppBindings>();
 
@@ -173,6 +174,11 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
     const auth = createAuth(c.env, request, undefined, {
       editionExtension: c.get("editionExtension") ?? undefined,
     });
+
+    if (new URL(request.url).pathname.startsWith("/api/auth/organization/")) {
+      await expireTemporaryMemberships();
+    }
+
     const response = await auth
       .handler(request)
       .then((response) => toWorkspaceAuthResponse(response, rewritten));

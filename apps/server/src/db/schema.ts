@@ -214,6 +214,7 @@ export const member = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     role: text("role").notNull().default("member"),
+    accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
@@ -222,6 +223,11 @@ export const member = pgTable(
       table.userId,
     ),
     index("member_user_id_idx").on(table.userId),
+    index("member_access_expires_at_idx").on(table.accessExpiresAt),
+    check(
+      "member_temporary_expiry_check",
+      sql`(${table.role} = 'temporary' and ${table.accessExpiresAt} is not null) or (${table.role} <> 'temporary' and ${table.accessExpiresAt} is null)`,
+    ),
   ],
 );
 
@@ -236,6 +242,9 @@ export const invitation = pgTable(
     role: text("role").notNull(),
     status: text("status").notNull().default("pending"),
     expiresAt: timestamp("expires_at"),
+    membershipExpiresAt: timestamp("membership_expires_at", {
+      withTimezone: true,
+    }),
     inviterId: text("inviter_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -248,6 +257,13 @@ export const invitation = pgTable(
       table.status,
     ),
     index("invitation_email_idx").on(table.email),
+    index("invitation_membership_expires_at_idx").on(
+      table.membershipExpiresAt,
+    ),
+    check(
+      "invitation_temporary_expiry_check",
+      sql`(${table.role} = 'temporary' and ${table.membershipExpiresAt} is not null) or (${table.role} <> 'temporary' and ${table.membershipExpiresAt} is null)`,
+    ),
   ],
 );
 

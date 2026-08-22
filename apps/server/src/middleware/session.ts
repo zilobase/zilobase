@@ -11,6 +11,7 @@ import { runWithDbEnv } from "../db";
 import { db } from "../db";
 import { user as userTable } from "../db/schema";
 import type { AppBindings } from "../types";
+import { expireTemporaryMemberships } from "../services/temporary-membership";
 
 function normalizeAuthSession<TSession extends Record<string, unknown>>(
   session: TSession | null | undefined,
@@ -131,8 +132,29 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (
       }),
     );
 
+    if (session?.user) {
+      await timed(c, "session_expire_temporary_memberships", () =>
+        expireTemporaryMemberships(db, { userId: session.user.id }),
+      );
+    }
+
     c.set("user", session?.user ?? null);
-    c.set("session", normalizeAuthSession(session?.session));
+    const normalizedSession = normalizeAuthSession(session?.session);
+    const activeMembership =
+      session?.user && normalizedSession?.activeWorkspaceId
+        ? await getMembership(
+            normalizedSession.activeWorkspaceId,
+            session.user.id,
+          )
+        : null;
+    c.set(
+      "session",
+      normalizedSession &&
+        normalizedSession.activeWorkspaceId &&
+        !activeMembership
+        ? { ...normalizedSession, activeTeamId: null, activeWorkspaceId: null }
+        : normalizedSession,
+    );
     c.set("authMethod", session?.user ? "session" : null);
 
     await timed(c, "session_next", next);

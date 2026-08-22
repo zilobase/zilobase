@@ -37,6 +37,36 @@ test("collaboration tickets are scoped and reject tampering", async () => {
   );
 });
 
+test("collaboration tickets do not outlive temporary membership access", async () => {
+  const maxExpiresAt = new Date(Date.now() + 30_000);
+  const ticket = await createCollaborationTicket(
+    {
+      pageId: "page-1",
+      scope: "readonly",
+      userId: "user-1",
+      workspaceId: "workspace-1",
+    },
+    env,
+    { maxExpiresAt },
+  );
+  const claims = await verifyCollaborationTicket(ticket.token, env);
+
+  assert.equal(claims.exp, maxExpiresAt.getTime());
+  await assert.rejects(
+    createCollaborationTicket(
+      {
+        pageId: "page-1",
+        scope: "readonly",
+        userId: "user-1",
+        workspaceId: "workspace-1",
+      },
+      env,
+      { maxExpiresAt: new Date(Date.now() - 1) },
+    ),
+    /access has expired/,
+  );
+});
+
 test("canonical page JSON round-trips through Yjs", () => {
   const content = {
     type: "doc",

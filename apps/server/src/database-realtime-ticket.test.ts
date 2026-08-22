@@ -56,6 +56,24 @@ test("database realtime tickets preserve scope, identity, and edit capability", 
   assert.equal(claims.workspaceId, "workspace-1");
 });
 
+test("database realtime tickets are capped by temporary membership expiry", async () => {
+  const maxExpiresAt = new Date(Date.now() + 45_000);
+  const ticket = await createDatabaseRealtimeTicket(
+    {
+      canEdit: true,
+      databaseId: "database-1",
+      user: { id: "user-1", name: "User One" },
+      version: 7,
+      workspaceId: "workspace-1",
+    },
+    env,
+    { maxExpiresAt },
+  );
+  const claims = await verifyDatabaseRealtimeTicket(ticket.token, env);
+
+  assert.equal(claims.exp, maxExpiresAt.getTime());
+});
+
 test("database realtime tickets reject tampering", async () => {
   const { token } = await createDatabaseRealtimeTicket(
     {

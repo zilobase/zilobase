@@ -10,6 +10,7 @@ import {
 import { isSelfHostedRuntime } from "../runtime-adapter";
 import type { AppBindings } from "../types";
 import { MembershipService } from "../services/membership-service";
+import { activeMembershipCondition } from "../services/temporary-membership";
 
 export const sessionRoutes = new Hono<AppBindings>();
 
@@ -75,7 +76,13 @@ async function ensurePinnedWorkspaceMembership(
   const [existingMembership] = await db
     .select({ id: member.id })
     .from(member)
-    .where(and(eq(member.organizationId, workspaceId), eq(member.userId, userId)))
+    .where(
+      and(
+        eq(member.organizationId, workspaceId),
+        eq(member.userId, userId),
+        activeMembershipCondition(),
+      ),
+    )
     .limit(1);
 
   if (!existingMembership) {

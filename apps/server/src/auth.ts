@@ -9,6 +9,8 @@ import {
   magicLink,
   organization as organizationPlugin,
 } from "better-auth/plugins";
+import { memberAc } from "better-auth/plugins/organization/access";
+import { eq } from "drizzle-orm";
 import { API_KEY_PREFIX } from "./api-keys";
 import { db, type Database } from "./db";
 import * as schema from "./db/schema";
@@ -27,6 +29,10 @@ import {
 } from "./features/instance/registration";
 import { isSelfHostedRuntime } from "./runtime-adapter";
 import type { EditionExtensionOptions } from "./edition-extension";
+import {
+  parseMembershipAccessExpiry,
+  TemporaryMembershipValidationError,
+} from "./services/temporary-membership";
 
 type AuthEnv = Record<string, unknown>;
 
@@ -169,6 +175,9 @@ function sharedAuthOptions(
         },
       }),
       organizationPlugin({
+        roles: {
+          temporary: memberAc,
+        },
         schema: {
           session: {
             fields: {
@@ -178,12 +187,57 @@ function sharedAuthOptions(
           organization: {
             modelName: "workspace",
           },
+          member: {
+            additionalFields: {
+              accessExpiresAt: {
+                fieldName: "access_expires_at",
+                input: false,
+                required: false,
+                type: "date",
+              },
+            },
+          },
+          invitation: {
+            additionalFields: {
+              membershipExpiresAt: {
+                fieldName: "membership_expires_at",
+                input: false,
+                required: false,
+                type: "date",
+              },
+            },
+          },
         },
         teams: {
           enabled: true,
         },
         organizationHooks: {
+          async beforeCreateInvitation({ invitation }) {
+            if (invitation.role === "temporary") {
+              throw new APIError("BAD_REQUEST", {
+                code: "TEMPORARY_INVITATION_ENDPOINT_REQUIRED",
+                message:
+                  "Temporary invitations must include an expiration date.",
+              });
+            }
+          },
           async beforeAcceptInvitation({ invitation, user }) {
+            try {
+              parseMembershipAccessExpiry(
+                invitation.role as "owner" | "admin" | "member" | "temporary",
+                invitation.membershipExpiresAt,
+              );
+            } catch (error) {
+              if (error instanceof TemporaryMembershipValidationError) {
+                throw new APIError("BAD_REQUEST", {
+                  code: "INVALID_TEMPORARY_MEMBERSHIP_EXPIRATION",
+                  message: error.message,
+                });
+              }
+
+              throw error;
+            }
+
             await options.editionExtension?.beforeMembershipGrant({
               database,
               role: invitation.role,
@@ -193,6 +247,14 @@ function sharedAuthOptions(
             });
           },
           async beforeAddMember({ member: candidate }) {
+            if (candidate.role === "temporary") {
+              throw new APIError("BAD_REQUEST", {
+                code: "TEMPORARY_MEMBERSHIP_EXPIRATION_REQUIRED",
+                message:
+                  "Temporary memberships must include an expiration date.",
+              });
+            }
+
             await options.editionExtension?.beforeMembershipGrant({
               database,
               role: candidate.role,
@@ -201,10 +263,33 @@ function sharedAuthOptions(
               workspaceId: candidate.organizationId,
             });
           },
+          async beforeUpdateMemberRole({ member: existing, newRole }) {
+            if (existing.role === "temporary" || newRole === "temporary") {
+              throw new APIError("BAD_REQUEST", {
+                code: "TEMPORARY_MEMBERSHIP_ENDPOINT_REQUIRED",
+                message:
+                  "Use the workspace member endpoint to change temporary access.",
+              });
+            }
+          },
           async afterAcceptInvitation({ invitation, member: created }) {
+            const accessExpiresAt = parseMembershipAccessExpiry(
+              created.role as "owner" | "admin" | "member" | "temporary",
+              invitation.membershipExpiresAt,
+            );
+
+            await database
+              .update(schema.member)
+              .set({ accessExpiresAt })
+              .where(eq(schema.member.id, created.id));
+
             await options.editionExtension?.recordSecurityEvent({
               database,
-              details: { role: created.role, source: "invitation" },
+              details: {
+                accessExpiresAt: accessExpiresAt?.toISOString() ?? null,
+                role: created.role,
+                source: "invitation",
+              },
               occurredAt: new Date(),
               type: "membership.granted",
               userId: created.userId,

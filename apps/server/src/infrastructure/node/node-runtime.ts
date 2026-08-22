@@ -18,6 +18,7 @@ import {
   type ServerRuntimeAdapter,
 } from "../../runtime-adapter";
 import { drainDatabaseRealtimeOutbox } from "../../services/database-realtime";
+import { expireTemporaryMemberships } from "../../services/temporary-membership";
 import type { AppBindings } from "../../types";
 import { isNodeApiPath } from "./api-routing";
 import { runMigrationSets, type MigrationSet } from "./migrations";
@@ -160,7 +161,10 @@ function startDatabaseRealtimeOutboxDrainer(
 
     try {
       await runWithDbEnv(env, () =>
-        drainDatabaseRealtimeOutbox(env, { limit: 250 }),
+        Promise.all([
+          drainDatabaseRealtimeOutbox(env, { limit: 250 }),
+          expireTemporaryMemberships(),
+        ]),
       );
     } catch (error) {
       console.error(

@@ -37,6 +37,7 @@ import {
   pageSettings,
 } from "../../db/schema";
 import type { AppBindings } from "../../types";
+import { activeMembershipCondition } from "../../services/temporary-membership";
 import {
   buildNavigationPlacements,
   softDeletePageItemPlacement,
@@ -1508,10 +1509,16 @@ pageRoutes.get("/:id/access-targets", async (c) => {
       memberId: member.id,
       name: userTable.name,
       role: member.role,
+      accessExpiresAt: member.accessExpiresAt,
     })
     .from(member)
     .innerJoin(userTable, eq(member.userId, userTable.id))
-    .where(eq(member.organizationId, record.workspaceId))
+    .where(
+      and(
+        eq(member.organizationId, record.workspaceId),
+        activeMembershipCondition(),
+      ),
+    )
     .orderBy(asc(userTable.name), asc(userTable.email));
 
   const accessByUserId = await getEffectivePageAccessForUsers(
@@ -1609,6 +1616,7 @@ pageRoutes.put("/:id/access", async (c) => {
               and(
                 eq(member.organizationId, record.workspaceId),
                 eq(member.userId, targetId),
+                activeMembershipCondition(),
               ),
             )
             .limit(1)
@@ -1971,6 +1979,8 @@ pageRoutes.post("/:id/collaboration-ticket", async (c) => {
     return workspaceMismatch;
   }
 
+  const membership = await getMembership(existing.workspaceId, user.id);
+
   const [ticket, initialState] = await Promise.all([
     createCollaborationTicket(
       {
@@ -1980,6 +1990,7 @@ pageRoutes.post("/:id/collaboration-ticket", async (c) => {
         workspaceId: existing.workspaceId,
       },
       c.env,
+      { maxExpiresAt: membership?.accessExpiresAt },
     ),
     getOrCreateCollaborationDocumentState(existing.id),
   ]);

@@ -3,7 +3,11 @@ import type { Context } from "hono";
 import { z } from "zod";
 import { AiProviderConfigError } from "../../ai/ai-provider";
 
-import { getEffectivePageAccessInWorkspace, hasAccess } from "../../access";
+import {
+  getEffectivePageAccessInWorkspace,
+  getMembership,
+  hasAccess,
+} from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
 import {
   createCollaborationTicket,
@@ -169,6 +173,10 @@ meetingRoutes.post("/:id/collaboration-ticket", async (c) => {
         workspaceId: existing.workspaceId,
       },
       c.env,
+      {
+        maxExpiresAt: (await getMembership(existing.workspaceId, user.id))
+          ?.accessExpiresAt,
+      },
     );
     const websocketUrl = new URL(
       getMeetingCollaborationWebSocketUrl(c.req.raw, c.env),

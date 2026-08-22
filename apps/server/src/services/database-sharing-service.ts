@@ -3,6 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { normalizeAccessLevel } from "../access";
 import { db } from "../db";
 import { databaseAccess, member, team } from "../db/schema";
+import { activeMembershipCondition } from "./temporary-membership";
 import { requireDatabaseAccess } from "./database-access";
 import { ServiceMutationError } from "./mutation-error";
 
@@ -86,6 +87,7 @@ export async function upsertDatabaseAccessRuleService(input: {
               and(
                 eq(member.organizationId, existing.workspaceId),
                 eq(member.userId, targetId),
+                activeMembershipCondition(),
               ),
             )
             .limit(1)

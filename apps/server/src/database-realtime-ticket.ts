@@ -32,12 +32,20 @@ export async function createDatabaseRealtimeTicket(
     version: number;
   },
   env: RuntimeEnv,
+  options: { maxExpiresAt?: Date | null } = {},
 ) {
+  const defaultExpiration = Date.now() + TICKET_TTL_MS;
   const payload: DatabaseRealtimeTicketClaims = {
     ...claims,
-    exp: Date.now() + TICKET_TTL_MS,
+    exp: options.maxExpiresAt
+      ? Math.min(defaultExpiration, options.maxExpiresAt.getTime())
+      : defaultExpiration,
     sessionId: claims.sessionId ?? crypto.randomUUID(),
   };
+
+  if (payload.exp <= Date.now()) {
+    throw new Error("Database realtime access has expired");
+  }
   const encoded = encodeJson(payload);
   const signature = await sign(encoded, getTicketSecret(env));
 

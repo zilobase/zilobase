@@ -124,6 +124,10 @@ databaseReadRoutes.post("/:id/realtime-ticket", async (c) => {
       workspaceId: record.workspaceId,
     },
     c.env,
+    {
+      maxExpiresAt: (await getMembership(record.workspaceId, user.id))
+        ?.accessExpiresAt,
+    },
   );
   const websocketUrl = new URL(getDatabaseRealtimeWebSocketUrl(c.req.raw, c.env));
   websocketUrl.searchParams.set("database", record.id);
