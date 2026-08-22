@@ -170,13 +170,44 @@ export function PageSidePaneMainCell({
   className?: string
 }) {
   return (
+    <PageScrollViewport scrollClassName={className}>
+      {children}
+    </PageScrollViewport>
+  )
+}
+
+export function PageScrollViewport({
+  children,
+  className,
+  scrollClassName,
+}: {
+  children: ReactNode
+  className?: string
+  scrollClassName?: string
+}) {
+  return (
     <div
       className={cn(
-        "min-h-0 min-w-0 overflow-y-auto [scrollbar-gutter:stable]",
+        "relative min-h-0 min-w-0 overflow-hidden",
         className,
       )}
     >
-      {children}
+      <div
+        className={cn(
+          "flex h-full min-h-0 min-w-0 flex-col overflow-y-auto [scrollbar-gutter:stable]",
+          scrollClassName,
+        )}
+      >
+        {children}
+      </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 z-20 h-3 bg-gradient-to-b from-background to-transparent"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-5 bg-gradient-to-t from-background to-transparent"
+      />
     </div>
   )
 }
@@ -207,9 +238,9 @@ export function PageSidePaneSideCell({
       data-page-side-pane-panel
       inert={open ? undefined : true}
     >
-      <div className="flex h-full min-h-0 w-full flex-col overflow-y-auto [scrollbar-gutter:stable]">
+      <PageScrollViewport className="h-full w-full">
         {children}
-      </div>
+      </PageScrollViewport>
     </aside>
   )
 }

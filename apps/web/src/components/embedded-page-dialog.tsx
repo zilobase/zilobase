@@ -6,7 +6,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { usePageSidePane } from "@/contexts/page-side-pane"
+import {
+  PageScrollViewport,
+  usePageSidePane,
+} from "@/contexts/page-side-pane"
 import { PageWorkspaceGate } from "@/components/page-workspace-gate"
 import { PagePaneHeader } from "@/components/page-pane-header"
 import { PageEditorPane } from "@/pages/page"
@@ -80,7 +83,7 @@ export function EmbeddedPageDialog({
           rowNavigationDatabaseId={dialogDatabaseId}
           showPaneControls
         />
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <PageScrollViewport className="flex-1">
           {dialogPageId ? (
             <PageWorkspaceGate pageId={dialogPageId}>
               <PageEditorPane
@@ -92,7 +95,7 @@ export function EmbeddedPageDialog({
               />
             </PageWorkspaceGate>
           ) : null}
-        </div>
+        </PageScrollViewport>
       </DialogContent>
     </Dialog>
   )
