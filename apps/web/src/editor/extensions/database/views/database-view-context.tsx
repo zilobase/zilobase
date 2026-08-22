@@ -72,6 +72,7 @@ export type DatabaseActiveConditionalColor = Omit<
 }
 
 export type DatabaseViewTab = {
+  icon?: string
   id: string
   isLinked?: boolean
   name: string
@@ -180,6 +181,7 @@ export type DatabaseViewContextValue = {
   reorderDatabaseFilters: (filterIds: string[]) => void
   saveDatabaseTitle: (nextTitle: string) => void
   saveDatabaseEmoji: (nextEmoji: string) => void
+  saveDatabaseViewIcon: (view: DatabaseViewTab, nextIcon: string) => void
   saveDatabaseViewTitle: (nextTitle: string) => void
   saveDatabaseConditionalColors: (
     nextConditionalColors: DatabaseConditionalColorConfig[]
@@ -265,9 +267,6 @@ export type DatabaseViewContextValue = {
   visiblePropertyCount: number
   viewTabs: DatabaseViewTab[]
   views: DatabaseView[]
-  viewSettingsOpen?: boolean
-  viewSettingsPanelTarget?: HTMLElement | null
-  onViewSettingsOpenChange?: (open: boolean) => void
 }
 
 const DatabaseViewContext = createContext<DatabaseViewContextValue | null>(null)

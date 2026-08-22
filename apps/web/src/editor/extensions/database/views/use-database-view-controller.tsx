@@ -37,6 +37,7 @@ import {
   getDatabaseLinkedViewKey,
   getDatabaseLinkedViews,
   getDatabaseSetupDismissed,
+  getDatabaseViewIcon,
   getMergedDatabaseConfig,
   type DatabaseLinkedViewConfig,
 } from "./database-view-config"
@@ -55,14 +56,11 @@ export type DatabaseViewProps = {
   onDismissSetup?: () => void
   onSetupComplete?: () => void
   onShowTitleChange?: (showTitle: boolean) => void
-  onViewSettingsOpenChange?: (open: boolean) => void
   workspaceId?: string | null
   setupMode?: boolean
   showExpandButton?: boolean
   showTitle?: boolean
   pageId?: string | null
-  viewSettingsOpen?: boolean
-  viewSettingsPanelTarget?: HTMLElement | null
 }
 
 export function useDatabaseViewController({
@@ -76,14 +74,11 @@ export function useDatabaseViewController({
   onDismissSetup,
   onSetupComplete,
   onShowTitleChange,
-  onViewSettingsOpenChange,
   workspaceId,
   setupMode = false,
   showExpandButton = false,
   showTitle = true,
   pageId = null,
-  viewSettingsOpen,
-  viewSettingsPanelTarget,
 }: DatabaseViewProps) {
   const updateDatabase = useUpdateDatabase()
   const updateDatabaseView = useUpdateDatabaseView()
@@ -126,14 +121,16 @@ export function useDatabaseViewController({
     () => getDatabaseLinkedViews(payload?.database.config),
     [payload?.database.config],
   )
-  const viewTabs = useMemo(
+  const baseViewTabs = useMemo(
     () => [
       ...(payload?.views ?? []).map((view) => ({
+        icon: getDatabaseViewIcon(view.config),
         id: view.id,
         name: view.name,
         type: view.type,
       })),
       ...linkedDatabaseViews.map((linkedView) => ({
+        icon: linkedView.viewIcon,
         id: getDatabaseLinkedViewKey(linkedView),
         isLinked: true,
         name: linkedView.viewName,
@@ -147,11 +144,11 @@ export function useDatabaseViewController({
   )
   const requestedViewId =
     requestedActiveViewId &&
-    viewTabs.some((view) => view.id === requestedActiveViewId)
+    baseViewTabs.some((view) => view.id === requestedActiveViewId)
       ? requestedActiveViewId
       : null
   const resolvedActiveViewId = isControlledActiveView
-    ? (requestedViewId ?? viewTabs[0]?.id ?? null)
+    ? (requestedViewId ?? baseViewTabs[0]?.id ?? null)
     : activeViewId
   const setupDismissed = getDatabaseSetupDismissed(payload?.database.config)
   const hasDatabaseSetupContent = Boolean(
@@ -187,6 +184,21 @@ export function useDatabaseViewController({
   })
   const activePayload = activeLinkedDatabaseView ? linkedPayload : payload
   const activeDatabaseId = activeLinkedDatabaseView?.databaseId ?? databaseId
+  const viewTabs = useMemo(() => {
+    if (!activeLinkedDatabaseView || !linkedPayload) {
+      return baseViewTabs
+    }
+
+    const sourceView = linkedPayload.views.find(
+      (view) => view.id === activeLinkedDatabaseView.viewId,
+    )
+    const sourceIcon = getDatabaseViewIcon(sourceView?.config)
+    const linkedViewKey = getDatabaseLinkedViewKey(activeLinkedDatabaseView)
+
+    return baseViewTabs.map((view) =>
+      view.id === linkedViewKey ? { ...view, icon: sourceIcon } : view,
+    )
+  }, [activeLinkedDatabaseView, baseViewTabs, linkedPayload])
   const activeFetchNextPage = activeLinkedDatabaseView
     ? fetchNextLinkedPage
     : fetchNextPage
@@ -444,6 +456,63 @@ export function useDatabaseViewController({
         onSuccess: () => setSelectedActiveViewId(linkedViewKey),
       },
     )
+  }
+
+  const saveDatabaseViewIcon: DatabaseViewContextValue["saveDatabaseViewIcon"] = (
+    view,
+    nextIcon,
+  ) => {
+    if (!editable || !databaseId) {
+      return
+    }
+
+    if (view.isLinked) {
+      const linkedView = linkedDatabaseViews.find(
+        (candidate) => getDatabaseLinkedViewKey(candidate) === view.id,
+      )
+
+      if (!linkedView) {
+        return
+      }
+
+      const sourceView = activeLinkedDatabaseView
+        ? linkedPayload?.views.find(
+            (candidate) => candidate.id === linkedView.viewId,
+          )
+        : undefined
+
+      updateDatabaseView.mutate({
+        config: getMergedDatabaseConfig(sourceView?.config, { icon: nextIcon }),
+        databaseId: linkedView.databaseId,
+        databaseViewId: linkedView.viewId,
+      })
+
+      updateDatabase.mutate({
+        config: getMergedDatabaseConfig(payload?.database.config, {
+          linkedDatabaseViews: linkedDatabaseViews.map((candidate) =>
+            getDatabaseLinkedViewKey(candidate) === view.id
+              ? { ...candidate, viewIcon: nextIcon }
+              : candidate,
+          ),
+        }),
+        databaseId,
+      })
+      return
+    }
+
+    const sourceView = payload?.views.find(
+      (candidate) => candidate.id === view.id,
+    )
+
+    if (!sourceView) {
+      return
+    }
+
+    updateDatabaseView.mutate({
+      config: getMergedDatabaseConfig(sourceView.config, { icon: nextIcon }),
+      databaseId,
+      databaseViewId: sourceView.id,
+    })
   }
 
   const duplicateDatabaseView = (
@@ -709,6 +778,7 @@ export function useDatabaseViewController({
     savePropertyValue: commands.savePropertyValue,
     saveDatabaseEmoji: commands.saveDatabaseEmoji,
     saveDatabaseTitle: commands.saveDatabaseTitle,
+    saveDatabaseViewIcon,
     saveDatabaseConditionalColors: commands.saveDatabaseConditionalColors,
     saveDatabaseFilters: commands.saveDatabaseFilters,
     saveDatabasePropertyOrder: commands.saveDatabasePropertyOrder,
@@ -731,7 +801,6 @@ export function useDatabaseViewController({
     showPropertyTitles,
     showTitle,
     onShowTitleChange,
-    onViewSettingsOpenChange,
     sortFieldOptions,
     sortPickerOpen,
     sortedItems,
@@ -758,8 +827,6 @@ export function useDatabaseViewController({
     visiblePropertyCount,
     viewTabs,
     views: activePayload?.views ?? [],
-    viewSettingsOpen,
-    viewSettingsPanelTarget,
   }
 
   return {

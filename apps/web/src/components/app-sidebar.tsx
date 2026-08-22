@@ -115,12 +115,19 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { editionWebModule } from "@zilobase/edition-web";
+import { getDatabaseViewIcon } from "@/editor/extensions/database/views/database-view-config";
 
 const sidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
     getDatabaseIconNode(database) ?? <DatabaseIcon className="size-4" />,
-  getDatabaseViewIcon: (view: { type?: string | null }) =>
-    view.type === "kanban" ? (
+  getDatabaseViewIcon: (view: { config?: unknown; type?: string | null }) => {
+    const customIcon = getDatabaseViewIcon(view.config);
+
+    if (customIcon) {
+      return <PageIconDisplay size="sm" value={customIcon} />;
+    }
+
+    return view.type === "kanban" ? (
       <Kanban className="size-4" />
     ) : view.type === "timeline" ? (
       <CalendarRange className="size-4" />
@@ -132,7 +139,8 @@ const sidebarNavigationIcons = {
       <List className="size-4" />
     ) : (
       <Table2 className="size-4" />
-    ),
+    );
+  },
   getMeetingIcon: (meeting: { emoji?: string | null }) =>
     meeting.emoji ? (
       <PageIconDisplay size="sm" value={meeting.emoji} />

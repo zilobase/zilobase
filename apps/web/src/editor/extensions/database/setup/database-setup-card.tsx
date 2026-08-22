@@ -48,6 +48,7 @@ import {
 import {
   getDatabaseLinkedViews,
   getDatabaseSetupDismissed,
+  getDatabaseViewIcon,
   getMergedDatabaseConfig,
   type DatabaseLinkedViewConfig,
 } from "../views/database-view-config";
@@ -728,6 +729,7 @@ export function DatabaseSetupCard({
                       databaseId: selectedLinkDatabaseId,
                       databaseName,
                       viewId: viewItem.id,
+                      viewIcon: getDatabaseViewIcon(viewItem.config),
                       viewName: viewItem.name,
                       viewType: viewItem.type,
                     })

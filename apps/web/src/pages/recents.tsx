@@ -475,6 +475,7 @@ export default function RecentsPage({
                   saveDatabasePropertyOrder: () => {},
                   saveDatabaseSorts,
                   saveDatabaseTitle: () => {},
+                  saveDatabaseViewIcon: () => {},
                   saveDatabaseViewTitle: () => {},
                   savePropertyValue: () => {},
                   setActiveViewId: (nextView) =>

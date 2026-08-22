@@ -25,7 +25,10 @@ import { usePageNavigation } from "@zilobase/features/pages";
 import { getDatabasePropertyType } from "../../core/database-property-types";
 import { hasDatabasePropertyEditSettings } from "../../properties/property-settings";
 import { DatabasePropertyEditSubmenu } from "../../properties/database-property-menu";
-import { getDatabaseLinkedViewKey } from "../database-view-config";
+import {
+  getDatabaseLinkedViewKey,
+  getDatabaseViewIcon,
+} from "../database-view-config";
 import {
   DatabaseSearchableMenuItems,
   type DatabaseSearchableMenuOption,
@@ -46,6 +49,7 @@ type LinkableDatabaseOption = DatabaseSearchableMenuOption & {
 };
 
 type LinkableDatabaseViewOption = DatabaseSearchableMenuOption & {
+  viewIcon?: string;
   viewType: string;
 };
 
@@ -131,8 +135,9 @@ export function DataSourceSettingsSection({
           label: view.name,
           searchText:
             `${view.name} ${selectedLinkDatabasePayload.database.name}`.trim(),
-          value: view.id,
-          viewType: view.type,
+        value: view.id,
+        viewIcon: getDatabaseViewIcon(view.config),
+        viewType: view.type,
         };
       },
     ) ?? [];
@@ -317,6 +322,7 @@ export function DataSourceSettingsSection({
                             selectedDatabaseOption?.label ||
                             "Untitled database",
                           viewId: viewOption.value,
+                          viewIcon: viewOption.viewIcon,
                           viewName: viewOption.label,
                           viewType: viewOption.viewType,
                         };

@@ -61,6 +61,7 @@ export type DatabaseConditionalColorConfig = {
 export type DatabaseLinkedViewConfig = {
   databaseId: string;
   databaseName: string;
+  viewIcon?: string;
   linkedViewId?: string;
   viewId: string;
   viewName: string;
@@ -144,6 +145,7 @@ type DatabaseConfig = {
   formQuestions?: Record<string, DatabaseFormQuestionSettingsPatch>;
   formShare?: DatabaseFormShareSettings;
   groupPropertyId?: string;
+  icon?: string;
   hiddenPropertyIds?: string[];
   linkedDatabaseViews?: DatabaseLinkedViewConfig[];
   layout?: DatabaseLayoutSettings;
@@ -868,6 +870,8 @@ function normalizeDatabaseLinkedView(
         ? linkedView.linkedViewId
         : undefined,
     viewId: linkedView.viewId,
+    viewIcon:
+      typeof linkedView.viewIcon === "string" ? linkedView.viewIcon : undefined,
     viewName:
       typeof linkedView.viewName === "string" &&
       linkedView.viewName.trim().length > 0

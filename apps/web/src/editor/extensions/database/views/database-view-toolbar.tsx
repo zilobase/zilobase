@@ -39,6 +39,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -61,13 +62,13 @@ import {
 } from "@/components/ui/dropdrawer"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { useIsMobile } from "@/hooks/use-mobile"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 
 import { DatabaseSearchableMenuItems } from "./database-searchable-menu-items"
 import { DatabaseFilterPopover } from "./database-filter-menu"
 import { DatabaseSortPopover } from "./database-sort-menu"
 import { useDatabaseViewContext } from "./database-view-context"
+import { DatabaseViewToolbarButton } from "./database-view-toolbar-button"
 import { DatabaseViewSettingsMenu } from "./view-settings"
 import {
   captureDatabaseViewScroll,
@@ -80,6 +81,8 @@ import {
 } from "./database-view-config"
 import { DatabaseFormShareMenu } from "./form/database-form-share-menu"
 import { DatabaseFormView } from "./form/database-form-view"
+import { ViewTypeOptionGrid } from "./view-settings/view-type-option-grid"
+import type { DatabaseViewType } from "./view-settings/view-type-options"
 
 function ToolbarMenuRow({
   icon,
@@ -109,8 +112,10 @@ export function DatabaseViewToolbar() {
   const toolbarRef = useRef<HTMLDivElement | null>(null)
   const pendingViewScrollRef = useRef<DatabaseViewScrollSnapshot | null>(null)
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+  const [viewIconPickerOpenId, setViewIconPickerOpenId] = useState<string | null>(null)
   const [titleActionsOpen, setTitleActionsOpen] = useState(false)
   const [openViewMenuId, setOpenViewMenuId] = useState<string | null>(null)
+  const [addViewMenuOpen, setAddViewMenuOpen] = useState(false)
   const [localViewSettingsOpen, setLocalViewSettingsOpen] = useState(false)
   const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [formPreviewOpen, setFormPreviewOpen] = useState(false)
@@ -153,7 +158,6 @@ export function DatabaseViewToolbar() {
     filterFieldOptions,
     filterPickerOpen,
     filterValueOptionsByField,
-    fullPage,
     groupProperty,
     groupableProperties,
     hostDatabaseId,
@@ -166,7 +170,6 @@ export function DatabaseViewToolbar() {
     linkedDatabaseViews,
     layoutSettings,
     onShowTitleChange,
-    onViewSettingsOpenChange,
     titlePropertyLabel,
     workspaceId,
     properties,
@@ -176,6 +179,7 @@ export function DatabaseViewToolbar() {
     saveDatabaseConditionalColors,
     saveDatabaseEmoji,
     saveDatabaseTitle,
+    saveDatabaseViewIcon,
     saveDatabaseViewTitle,
     setActiveViewId,
     setDraftDatabaseTitle,
@@ -209,16 +213,9 @@ export function DatabaseViewToolbar() {
     updateNameColumnConfig,
     visiblePropertyCount,
     viewTabs,
-    viewSettingsOpen: controlledViewSettingsOpen,
-    viewSettingsPanelTarget,
   } = useDatabaseViewContext()
-  const isMobile = useIsMobile()
-  const viewSettingsOpen =
-    controlledViewSettingsOpen ?? localViewSettingsOpen
-  const setViewSettingsOpen =
-    onViewSettingsOpenChange ?? setLocalViewSettingsOpen
-  const viewSettingsPresentation =
-    fullPage && !isMobile && onViewSettingsOpenChange ? "sidebar" : "menu"
+  const viewSettingsOpen = localViewSettingsOpen
+  const setViewSettingsOpen = setLocalViewSettingsOpen
   const canRenderAddView = canAddDatabaseViews ?? editable
   const canRenderAddRow = canAddDatabaseRows ?? editable
   const formQuestionCount = properties.length + 1
@@ -245,6 +242,38 @@ export function DatabaseViewToolbar() {
     pendingViewScrollRef.current = captureDatabaseViewScroll(toolbarRef.current)
     setActiveViewId(viewId)
   }
+  const addView = (type: DatabaseViewType) => {
+    setAddViewMenuOpen(false)
+
+    switch (type) {
+      case "table":
+        addTableView()
+        break
+      case "kanban":
+        addKanbanView()
+        break
+      case "timeline":
+        addTimelineView()
+        break
+      case "list":
+        addListView()
+        break
+      case "gallery":
+        addGalleryView()
+        break
+      case "chart":
+        addChartView()
+        break
+      case "form":
+        setFormDialogOpen(true)
+        break
+    }
+  }
+  const isAddViewTypeDisabled = (type: DatabaseViewType) =>
+    !databaseId ||
+    isAddingDatabaseView ||
+    ((type === "kanban" || type === "timeline") &&
+      isAddingDatabaseProperty)
 
   useLayoutEffect(() => {
     const scrollSnapshot = pendingViewScrollRef.current
@@ -368,15 +397,12 @@ export function DatabaseViewToolbar() {
           />
           <DropDrawer open={titleActionsOpen} onOpenChange={setTitleActionsOpen}>
             <DropDrawerTrigger asChild>
-              <Button
+              <DatabaseViewToolbarButton
                 aria-label="Open database title actions"
-                className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/title:opacity-100 group-hover/title:opacity-100 data-[state=open]:opacity-100"
-                size="icon-xs"
-                type="button"
-                variant="ghost"
+                className="opacity-0 transition-opacity group-focus-within/title:opacity-100 group-hover/title:opacity-100 data-[state=open]:opacity-100"
               >
                 <MoreHorizontal />
-              </Button>
+              </DatabaseViewToolbarButton>
             </DropDrawerTrigger>
             <DropDrawerContent align="start" className="w-64">
               <DropDrawerItem
@@ -467,20 +493,6 @@ export function DatabaseViewToolbar() {
                     view.sourceDatabaseId ?? hostDatabaseId ?? databaseId
                   const sourceDatabaseName =
                     view.sourceDatabaseName ?? hostDisplayTitle
-                  const renameView = () => {
-                    const currentTitle = isActiveView ? draftViewTitle : view.name
-                    const nextTitle = window
-                      .prompt("Rename view", currentTitle)
-                      ?.trim()
-
-                    if (!nextTitle || nextTitle === currentTitle) {
-                      return
-                    }
-
-                    selectActiveView(view.id)
-                    setDraftViewTitle(nextTitle)
-                    window.setTimeout(() => saveDatabaseViewTitle(nextTitle), 0)
-                  }
                   const handleViewContextMenu = (
                     event: MouseEvent<HTMLButtonElement>
                   ) => {
@@ -557,7 +569,11 @@ export function DatabaseViewToolbar() {
                             onPointerDownCapture={handleViewPointerDownCapture}
                             value={view.id}
                           >
-                            <ViewIcon className="size-4 shrink-0" />
+                            {view.icon ? (
+                              <PageIconDisplay size="sm" value={view.icon} />
+                            ) : (
+                              <ViewIcon className="size-4 shrink-0" />
+                            )}
                             <span className="truncate">
                               {isActiveView ? draftViewTitle : view.name}
                             </span>
@@ -575,13 +591,85 @@ export function DatabaseViewToolbar() {
                         className="w-72"
                         onCloseAutoFocus={(event) => event.preventDefault()}
                       >
-                    <DropDrawerItem
-                      disabled={!editable || !databaseId}
-                      onSelect={renameView}
-                    >
-                      <Pencil />
-                      <span>Rename</span>
-                    </DropDrawerItem>
+                    <div className="flex items-center gap-1.5 p-1.5">
+                      <Popover
+                        onOpenChange={(open) =>
+                          setViewIconPickerOpenId(open ? view.id : null)
+                        }
+                        open={viewIconPickerOpenId === view.id}
+                      >
+                        <div className="group/view-icon relative shrink-0">
+                          <PopoverTrigger asChild>
+                            <button
+                              aria-label="Change view icon"
+                              className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+                              disabled={!editable || !databaseId}
+                              type="button"
+                            >
+                              {view.icon ? (
+                                <PageIconDisplay size="sm" value={view.icon} />
+                              ) : (
+                                <ViewIcon className="size-4" />
+                              )}
+                            </button>
+                          </PopoverTrigger>
+                          {view.icon ? (
+                            <button
+                              aria-label="Reset view icon"
+                              className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground group-focus-within/view-icon:flex group-hover/view-icon:flex [&_svg]:size-2.5"
+                              disabled={!editable || !databaseId}
+                              onClick={() => saveDatabaseViewIcon(view, "")}
+                              type="button"
+                            >
+                              <X />
+                            </button>
+                          ) : null}
+                        </div>
+                        <PopoverContent
+                          align="start"
+                          className="w-auto gap-0 overflow-hidden p-0"
+                          onMouseDown={(event) => event.stopPropagation()}
+                          onPointerDown={(event) => event.stopPropagation()}
+                          sideOffset={6}
+                        >
+                          <IconEmojiPicker
+                            onEmojiSelect={(icon) => {
+                              saveDatabaseViewIcon(view, icon)
+                              setViewIconPickerOpenId(null)
+                            }}
+                            onIconSelect={(icon) => {
+                              saveDatabaseViewIcon(view, icon)
+                              setViewIconPickerOpenId(null)
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <Input
+                        aria-label="View name"
+                        className="h-8 min-w-0 flex-1 text-sm font-medium"
+                        defaultValue={isActiveView ? draftViewTitle : view.name}
+                        disabled={!editable || !databaseId}
+                        key={`${view.id}:${view.name}`}
+                        onBlur={(event) => {
+                          const nextTitle = event.target.value.trim() || "Untitled view"
+                          const currentTitle = isActiveView ? draftViewTitle : view.name
+
+                          if (nextTitle !== currentTitle) {
+                            selectActiveView(view.id)
+                            setDraftViewTitle(nextTitle)
+                            window.setTimeout(
+                              () => saveDatabaseViewTitle(nextTitle),
+                              0,
+                            )
+                          }
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.currentTarget.blur()
+                          }
+                        }}
+                      />
+                    </div>
                     <DropDrawerSub>
                       <DropDrawerSubTrigger>
                         <ToolbarMenuRow
@@ -772,81 +860,30 @@ export function DatabaseViewToolbar() {
               </TabsList>
             </Tabs>
             {canRenderAddView ? (
-            <DropDrawer>
+            <DropDrawer
+              onOpenChange={setAddViewMenuOpen}
+              open={addViewMenuOpen}
+            >
               <DropDrawerTrigger asChild>
-                <Button
+                <DatabaseViewToolbarButton
                   aria-label="Add database view"
-                  className="h-8 w-8 shrink-0 rounded-full"
                   disabled={!databaseId || isAddingDatabaseView}
-                  size="icon"
-                  type="button"
-                  variant="ghost"
                 >
                   {isAddingDatabaseView ? (
-                    <Loader2 className="size-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                   ) : (
-                    <Plus className="size-4" />
+                    <Plus />
                   )}
-                </Button>
+                </DatabaseViewToolbarButton>
               </DropDrawerTrigger>
-              <DropDrawerContent align="start" className="w-40">
-                <DropDrawerItem
-                  disabled={!databaseId || isAddingDatabaseView}
-                  onSelect={addTableView}
-                >
-                  <Table2 className="size-4" />
-                  <span>Table</span>
-                </DropDrawerItem>
-                <DropDrawerItem
-                  disabled={!databaseId || isAddingDatabaseView}
-                  onSelect={addGalleryView}
-                >
-                  <GalleryThumbnails className="size-4" />
-                  <span>Gallery</span>
-                </DropDrawerItem>
-                <DropDrawerItem
-                  disabled={!databaseId || isAddingDatabaseView}
-                  onSelect={addListView}
-                >
-                  <List className="size-4" />
-                  <span>List</span>
-                </DropDrawerItem>
-                <DropDrawerItem
-                  disabled={
-                    !databaseId ||
-                    isAddingDatabaseView ||
-                    isAddingDatabaseProperty
-                  }
-                  onSelect={addKanbanView}
-                >
-                  <Kanban className="size-4" />
-                  <span>Kanban</span>
-                </DropDrawerItem>
-                <DropDrawerItem
-                  disabled={!databaseId || isAddingDatabaseView}
-                  onSelect={addChartView}
-                >
-                  <ChartPie className="size-4" />
-                  <span>Chart</span>
-                </DropDrawerItem>
-                <DropDrawerItem
-                  disabled={!databaseId || isAddingDatabaseView}
-                  onSelect={() => setFormDialogOpen(true)}
-                >
-                  <FilePenLine className="size-4" />
-                  <span>Form</span>
-                </DropDrawerItem>
-                <DropDrawerItem
-                  disabled={
-                    !databaseId ||
-                    isAddingDatabaseView ||
-                    isAddingDatabaseProperty
-                  }
-                  onSelect={addTimelineView}
-                >
-                  <CalendarRange className="size-4" />
-                  <span>Timeline</span>
-                </DropDrawerItem>
+              <DropDrawerContent
+                align="start"
+                className="w-72 max-w-[calc(100vw-1rem)] p-1"
+              >
+                <ViewTypeOptionGrid
+                  isOptionDisabled={isAddViewTypeDisabled}
+                  onSelect={addView}
+                />
               </DropDrawerContent>
             </DropDrawer>
             ) : null}
@@ -1027,6 +1064,7 @@ export function DatabaseViewToolbar() {
                     : []
                 }
                 draftViewTitle={draftViewTitle}
+                editable={editable}
                 groupProperties={groupableProperties}
                 groupPropertyId={groupProperty?.property.id ?? null}
                 canAddDatabaseFilter={canAddDatabaseFilter}
@@ -1053,6 +1091,11 @@ export function DatabaseViewToolbar() {
                 onRemoveDatabaseSort={removeDatabaseSort}
                 onReorderDatabaseFilters={reorderDatabaseFilters}
                 onSaveDatabaseConditionalColors={saveDatabaseConditionalColors}
+                onSaveDatabaseViewIcon={(icon) => {
+                  if (activeViewTab) {
+                    saveDatabaseViewIcon(activeViewTab, icon)
+                  }
+                }}
                 onSaveDatabaseViewTitle={saveDatabaseViewTitle}
                 dateProperties={timelineDateProperties}
                 datePropertyId={timelineDateProperty?.property.id ?? null}
@@ -1074,8 +1117,6 @@ export function DatabaseViewToolbar() {
                 onUpdateDatabaseSort={updateDatabaseSort}
                 onUpdateDatabaseSubItemsSettings={updateDatabaseSubItemsSettings}
                 properties={properties}
-                presentation={viewSettingsPresentation}
-                portalTarget={viewSettingsPanelTarget}
                 filterFieldOptions={filterFieldOptions}
                 filterValueOptionsByField={filterValueOptionsByField}
                 sortFieldOptions={sortFieldOptions}

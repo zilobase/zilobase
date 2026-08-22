@@ -24,10 +24,8 @@ import { NameColumnGlyph } from "../../interactions/name-column-glyph";
 import { getPropertyHiddenForView } from "../database-view-config";
 import { DatabaseChartSettingsSection } from "./chart-settings";
 import type { DatabaseViewSettingsMenuProps } from "./types";
-import {
-  databaseViewTypeOptions,
-  getDatabaseViewTypePresentation,
-} from "./view-type-options";
+import { ViewTypeOptionGrid } from "./view-type-option-grid";
+import { getDatabaseViewTypePresentation } from "./view-type-options";
 import { ViewSettingsRow } from "./view-settings-row";
 
 type LayoutSettingsSectionProps = Pick<
@@ -117,31 +115,10 @@ export function LayoutSettingsSection({
             />
           </DropDrawerSubTrigger>
           <DropDrawerSubContent className="w-72 max-w-[calc(100vw-1rem)] p-1">
-            <div className="grid grid-cols-3 gap-1.5 px-1 pb-1">
-              {databaseViewTypeOptions.map((option) => {
-                const selected = activeViewType === option.type;
-
-                return (
-                  <button
-                    aria-pressed={selected}
-                    className={cn(
-                      "flex h-20 flex-col items-center justify-center gap-1.5 rounded-md border text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40",
-                      selected &&
-                        "border-primary bg-primary/10 text-primary",
-                    )}
-                    key={option.type}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      onSetViewType(option.type);
-                    }}
-                    type="button"
-                  >
-                    <option.icon className="size-5" />
-                    <span>{option.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <ViewTypeOptionGrid
+              onSelect={onSetViewType}
+              selectedType={activeViewType}
+            />
 
             <DropDrawerSeparator />
             <DropDrawerItem

@@ -50,6 +50,7 @@ export type DatabaseViewSettingsMenuProps = {
   databaseName?: string;
   dataSources: DatabaseSourceMenuItem[];
   draftViewTitle: string;
+  editable?: boolean;
   filterFieldOptions: DatabaseSearchableMenuOption[];
   filterValueOptionsByField: Record<string, DatabaseSearchableMenuOption[]>;
   groupProperties: DatabaseViewProperty[];
@@ -73,6 +74,7 @@ export type DatabaseViewSettingsMenuProps = {
     settings: DatabaseConditionalColorConfig[],
   ) => void;
   onSaveDatabaseViewTitle: (title: string) => void;
+  onSaveDatabaseViewIcon: (icon: string) => void;
   onSetAllContentWrapped: (wrapContent: boolean) => void;
   onSetViewDateProperty: (datePropertyId: string | null) => void;
   onSetViewGroupProperty: (groupPropertyId: string | null) => void;
@@ -105,8 +107,6 @@ export type DatabaseViewSettingsMenuProps = {
     settings: Partial<DatabaseSubItemsSettings>,
   ) => void;
   properties: DatabaseViewProperty[];
-  presentation?: "menu" | "sidebar";
-  portalTarget?: HTMLElement | null;
   sortFieldOptions: DatabaseSearchableMenuOption[];
   sourceDatabaseId?: string;
   viewConfig?: unknown;

@@ -1,7 +1,6 @@
 import {
   ArrowDownUp,
   Check,
-  ChevronsRight,
   Eye,
   EyeOff,
   Filter,
@@ -10,11 +9,10 @@ import {
   Lock,
   Palette,
   Settings2,
+  X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -26,9 +24,20 @@ import {
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer";
 import { Input } from "@/components/ui/input";
+import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker";
+import { PageIconDisplay } from "@/lib/page-icon";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import { getDatabasePropertyType } from "../../core/database-property-types";
-import { getPropertyHiddenForView } from "../database-view-config";
+import {
+  getDatabaseViewIcon,
+  getPropertyHiddenForView,
+} from "../database-view-config";
+import { DatabaseViewToolbarButton } from "../database-view-toolbar-button";
 import { DatabaseFilterSubmenu } from "../database-filter-menu";
 import { DatabaseSortSubmenu } from "../database-sort-menu";
 import { NameColumnGlyph } from "../../interactions/name-column-glyph";
@@ -57,6 +66,7 @@ export function DatabaseViewSettingsMenu({
   databaseName,
   dataSources,
   draftViewTitle,
+  editable = true,
   filterFieldOptions,
   filterValueOptionsByField,
   groupProperties,
@@ -77,6 +87,7 @@ export function DatabaseViewSettingsMenu({
   onRemoveDatabaseSort,
   onReorderDatabaseFilters,
   onSaveDatabaseConditionalColors,
+  onSaveDatabaseViewIcon,
   onSaveDatabaseViewTitle,
   onSetAllContentWrapped,
   onSetViewDateProperty,
@@ -92,8 +103,6 @@ export function DatabaseViewSettingsMenu({
   onUpdateDatabaseSort,
   onUpdateDatabaseSubItemsSettings,
   properties,
-  presentation = "menu",
-  portalTarget,
   sortFieldOptions,
   sourceDatabaseId,
   viewConfig,
@@ -104,6 +113,7 @@ export function DatabaseViewSettingsMenu({
   subItemsSettings,
 }: DatabaseViewSettingsMenuProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = (nextOpen: boolean) => {
     if (controlledOpen === undefined) {
@@ -113,47 +123,73 @@ export function DatabaseViewSettingsMenu({
     onOpenChange?.(nextOpen);
   };
   const { Icon: ViewTypeIcon } = getDatabaseViewTypePresentation(activeViewType);
+  const viewIcon = getDatabaseViewIcon(viewConfig);
   const activeGroupProperty = groupProperties.find(
     (property) => property.property.id === groupPropertyId,
   );
 
   const handleOpenChange = (nextOpen: boolean) => setOpen(nextOpen);
 
-  useEffect(() => {
-    if (presentation !== "sidebar" || !open) return;
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") handleOpenChange(false);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [open, presentation]);
-
-
   const settingsContent = (
     <>
-        <div className="flex items-center justify-between px-2 py-1.5">
+        <div className="flex items-center px-2 py-1.5">
           <div className="text-sm font-semibold text-foreground">
             View settings
           </div>
-          <Button
-            aria-label="Close view settings"
-            className="text-muted-foreground"
-            onClick={() => setOpen(false)}
-            size="icon-sm"
-            type="button"
-            variant="ghost"
-          >
-            <ChevronsRight className="size-4" />
-          </Button>
         </div>
-        <div className="flex items-center gap-1.5 px-1.5 py-1">
-          <ViewTypeIcon className="size-4 shrink-0 text-muted-foreground" />
+        <div className="flex items-center gap-1.5 p-1.5">
+          <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
+            <div className="group/view-settings-icon relative shrink-0">
+              <PopoverTrigger asChild>
+                <button
+                  aria-label="Change view icon"
+                  className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+                  disabled={!editable}
+                  type="button"
+                >
+                  {viewIcon ? (
+                    <PageIconDisplay size="sm" value={viewIcon} />
+                  ) : (
+                    <ViewTypeIcon className="size-4" />
+                  )}
+                </button>
+              </PopoverTrigger>
+              {viewIcon ? (
+                <button
+                  aria-label="Reset view icon"
+                  className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground group-focus-within/view-settings-icon:flex group-hover/view-settings-icon:flex [&_svg]:size-2.5"
+                  disabled={!editable}
+                  onClick={() => onSaveDatabaseViewIcon("")}
+                  type="button"
+                >
+                  <X />
+                </button>
+              ) : null}
+            </div>
+            <PopoverContent
+              align="start"
+              className="w-auto gap-0 overflow-hidden p-0"
+              onMouseDown={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+              sideOffset={6}
+            >
+              <IconEmojiPicker
+                onEmojiSelect={(icon) => {
+                  onSaveDatabaseViewIcon(icon);
+                  setIconPickerOpen(false);
+                }}
+                onIconSelect={(icon) => {
+                  onSaveDatabaseViewIcon(icon);
+                  setIconPickerOpen(false);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
           <Input
             aria-label="View name"
-            className="h-auto rounded-none border-0 bg-transparent px-0 py-0 text-sm font-medium shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
+            className="h-8 min-w-0 flex-1 text-sm font-medium"
             defaultValue={draftViewTitle}
+            disabled={!editable}
             key={draftViewTitle}
             onBlur={(event) => {
               const nextTitle = event.target.value.trim();
@@ -388,38 +424,13 @@ export function DatabaseViewSettingsMenu({
   );
 
   const trigger = (
-    <Button
+    <DatabaseViewToolbarButton
       aria-label="Open view settings"
       aria-expanded={open}
-      className="text-muted-foreground"
-      onClick={
-        presentation === "sidebar" ? () => handleOpenChange(!open) : undefined
-      }
-      size="icon"
-      type="button"
-      variant="ghost"
     >
       <Settings2 />
-    </Button>
+    </DatabaseViewToolbarButton>
   );
-
-  if (presentation === "sidebar") {
-    return (
-      <>
-        {trigger}
-        {open && portalTarget
-          ? createPortal(
-              <DropDrawer inline>
-                <DropDrawerContent className="h-full w-full">
-                  {settingsContent}
-                </DropDrawerContent>
-              </DropDrawer>,
-              portalTarget,
-            )
-          : null}
-      </>
-    );
-  }
 
   return (
     <DropDrawer open={open} onOpenChange={handleOpenChange}>
@@ -434,5 +445,3 @@ export function DatabaseViewSettingsMenu({
     </DropDrawer>
   );
 }
-
-
