@@ -720,7 +720,7 @@ export function useDatabaseViewController({
     canAddDatabaseFilter,
     canAddDatabaseProperties: true,
     canAddDatabaseRows: true,
-    canAddDatabaseViews: true,
+    canAddDatabaseViews: editable,
     canAddDatabaseSort,
     chartSettings,
     propertyValuesByKey,

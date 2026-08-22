@@ -561,7 +561,7 @@ export function getDatabaseViewCommands({
       );
     },
     addChartView: () => {
-      if (!databaseId || addDatabaseView.isPending) {
+      if (!editable || !databaseId || addDatabaseView.isPending) {
         return;
       }
 
@@ -596,7 +596,7 @@ export function getDatabaseViewCommands({
       );
     },
     addGalleryView: () => {
-      if (!databaseId || addDatabaseView.isPending) {
+      if (!editable || !databaseId || addDatabaseView.isPending) {
         return;
       }
 
@@ -625,7 +625,7 @@ export function getDatabaseViewCommands({
       );
     },
     addFormView: (hiddenPropertyIds: string[]) => {
-      if (!databaseId || addDatabaseView.isPending) {
+      if (!editable || !databaseId || addDatabaseView.isPending) {
         return;
       }
 
@@ -655,7 +655,7 @@ export function getDatabaseViewCommands({
       );
     },
     addKanbanView: () => {
-      if (!databaseId || addDatabaseView.isPending) {
+      if (!editable || !databaseId || addDatabaseView.isPending) {
         return;
       }
 
@@ -714,7 +714,7 @@ export function getDatabaseViewCommands({
       addView("name", []);
     },
     addListView: () => {
-      if (!databaseId || addDatabaseView.isPending) {
+      if (!editable || !databaseId || addDatabaseView.isPending) {
         return;
       }
 
@@ -765,7 +765,12 @@ export function getDatabaseViewCommands({
       });
     },
     addTimelineView: () => {
-      if (!databaseId || addDatabaseView.isPending || addProperty.isPending) {
+      if (
+        !editable ||
+        !databaseId ||
+        addDatabaseView.isPending ||
+        addProperty.isPending
+      ) {
         return;
       }
 
@@ -804,7 +809,7 @@ export function getDatabaseViewCommands({
       });
     },
     addTableView: () => {
-      if (!databaseId || addDatabaseView.isPending) {
+      if (!editable || !databaseId || addDatabaseView.isPending) {
         return;
       }
 

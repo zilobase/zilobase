@@ -1399,6 +1399,43 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(activeViewIds, ["view-chart"]);
   });
 
+  test("database view commands do not add views when editing is locked", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-commands.ts",
+    );
+    const addDatabaseView = createMutation();
+    const addProperty = createMutation();
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: null,
+      databaseId,
+      editable: false,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addDatabaseView, addProperty }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.addChartView();
+    commands.addFormView([]);
+    commands.addGalleryView();
+    commands.addKanbanView();
+    commands.addListView();
+    commands.addTableView();
+    commands.addTimelineView();
+
+    assert.equal(addDatabaseView.calls.length, 0);
+    assert.equal(addProperty.calls.length, 0);
+  });
+
   test("database view commands create forms with normal view visibility", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/editor/extensions/database/views/database-view-commands.ts",
