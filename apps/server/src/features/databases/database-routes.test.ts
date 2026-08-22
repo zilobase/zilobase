@@ -7,8 +7,13 @@ import type { AppBindings } from "../../types";
 const mocks = vi.hoisted(() => ({
   cell: vi.fn(),
   createProperty: vi.fn(),
+  createDatabase: vi.fn(),
+  databasePayload: vi.fn(),
+  deleteDatabase: vi.fn(),
   duplicateProperty: vi.fn(),
+  restoreDatabase: vi.fn(),
   template: vi.fn(),
+  updateDatabase: vi.fn(),
 }));
 
 vi.mock("../../services/database-cell-service", () => ({
@@ -23,6 +28,16 @@ vi.mock("../../services/database-property-duplication-service", () => ({
 }));
 vi.mock("../../services/database-template-service", () => ({
   applyDatabaseTemplateService: mocks.template,
+}));
+vi.mock("../../services/database-payload", () => ({
+  getDatabasePayload: mocks.databasePayload,
+  getDatabaseSchemaPayload: vi.fn(),
+}));
+vi.mock("../../services/database-service", () => ({
+  createDatabaseService: mocks.createDatabase,
+  deleteDatabaseService: mocks.deleteDatabase,
+  restoreDatabaseService: mocks.restoreDatabase,
+  updateDatabaseService: mocks.updateDatabase,
 }));
 
 import { databaseRoutes } from "./database-routes";
@@ -67,6 +82,43 @@ test("database mutation routes require authentication", async () => {
     method: "POST",
   });
   assert.equal(response.status, 401);
+});
+
+test("embedded database creation preserves an omitted teamspace for parent inheritance", async () => {
+  mocks.createDatabase.mockResolvedValue({
+    databaseId: "database-1",
+    name: "New database",
+    parentPlacement: null,
+  });
+  mocks.databasePayload.mockResolvedValue({
+    database: {
+      id: "database-1",
+      pageId: "page-1",
+      teamspaceId: "teamspace-1",
+      workspaceId: "workspace-1",
+    },
+    views: [],
+  });
+
+  const response = await appWithUser().request("/databases", {
+    body: JSON.stringify({
+      name: "New database",
+      pageId: "page-1",
+      workspaceId: "workspace-1",
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+
+  assert.equal(response.status, 201);
+  assert.deepEqual(mocks.createDatabase.mock.calls[0]?.[0], {
+    name: "New database",
+    pageId: "page-1",
+    standalone: false,
+    teamspaceId: undefined,
+    userId: "user-1",
+    workspaceId: "workspace-1",
+  });
 });
 
 test("database property route validates input before calling services", async () => {

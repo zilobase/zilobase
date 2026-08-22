@@ -123,7 +123,10 @@ databaseRoutes.post("/", async (c) => {
       name,
       pageId: typeof pageId === "string" ? pageId : undefined,
       standalone: standalone === true,
-      teamspaceId: typeof teamspaceId === "string" ? teamspaceId : null,
+      teamspaceId:
+        typeof teamspaceId === "string" || teamspaceId === null
+          ? teamspaceId
+          : undefined,
       userId: user.id,
       workspaceId,
     });
