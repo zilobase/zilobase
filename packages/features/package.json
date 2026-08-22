@@ -68,6 +68,10 @@
     "./pages/layouts": {
       "types": "./src/pages/page-layouts.ts",
       "default": "./src/pages/page-layouts.ts"
+    },
+    "./pages/content-state": {
+      "types": "./src/pages/content-state.ts",
+      "default": "./src/pages/content-state.ts"
     }
   }
 }

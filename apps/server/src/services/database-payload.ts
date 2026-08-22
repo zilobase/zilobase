@@ -60,6 +60,7 @@ async function loadDatabasePayload(
             id: page.id,
             name: page.name,
             metadata: page.metadata,
+            hasContent: page.hasContent,
             updatedAt: page.updatedAt,
           },
         })

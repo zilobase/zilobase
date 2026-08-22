@@ -324,6 +324,7 @@ export const page = pgTable(
     name: text("name").notNull(),
     url: text("url").notNull().default("#"),
     content: jsonb("content"),
+    hasContent: boolean("has_content").notNull().default(false),
     metadata: jsonb("metadata"),
     deletedById: text("deleted_by_id").references(() => user.id, {
       onDelete: "set null",

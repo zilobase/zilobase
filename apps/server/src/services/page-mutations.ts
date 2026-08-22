@@ -1,4 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
+import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
 
 import {
   canAccessDatabaseInWorkspace,
@@ -53,6 +54,7 @@ export async function createPageService(input: {
         name: input.name ?? "",
         url: input.url ?? "#",
         content: input.content ?? null,
+        hasContent: hasPageBodyContent(input.content),
         metadata: input.metadata ?? null,
       })
       .returning();

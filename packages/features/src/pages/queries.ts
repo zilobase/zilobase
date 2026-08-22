@@ -90,6 +90,7 @@ export type Page = {
   parentPageId?: string | null;
   url: string;
   content?: unknown;
+  hasContent?: boolean;
   metadata?: PageMetadata | null;
   deletedById?: string | null;
   deletedAt?: string | null;

@@ -166,6 +166,7 @@ export async function fetchDatabaseRowDelta(
         createdAt: page.createdAt,
         id: page.id,
         metadata: page.metadata,
+        hasContent: page.hasContent,
         name: page.name,
         updatedAt: page.updatedAt,
       },

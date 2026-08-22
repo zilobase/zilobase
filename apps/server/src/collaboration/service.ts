@@ -4,6 +4,7 @@ import { ProsemirrorTransformer } from "@hocuspocus/transformer";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { Schema, type MarkSpec, type NodeSpec } from "@tiptap/pm/model";
 import * as Y from "yjs";
+import { isPageBodyEmpty } from "@zilobase/features/pages/content-state";
 import { canAccessPageInWorkspace } from "../access";
 import { db, runWithDbEnv } from "../db";
 import {
@@ -668,7 +669,11 @@ async function storeDocument(
         });
       await tx
         .update(page)
-        .set({ content: nextContent, updatedAt: now })
+        .set({
+          content: nextContent,
+          hasContent: !isEmptyPageContent(content),
+          updatedAt: now,
+        })
         .where(eq(page.id, pageId));
     }),
   );
@@ -721,46 +726,7 @@ function transcriptTimestampSeconds(serializedNode: string) {
 }
 
 export function isEmptyPageContent(content: unknown): boolean {
-  if (content == null) {
-    return true;
-  }
-
-  if (typeof content === "string") {
-    const trimmed = content.trim();
-    if (!trimmed) {
-      return true;
-    }
-
-    try {
-      return isEmptyPageContent(JSON.parse(trimmed) as unknown);
-    } catch {
-      return false;
-    }
-  }
-
-  if (typeof content !== "object" || Array.isArray(content)) {
-    return false;
-  }
-
-  return isEffectivelyEmptyNode(content as ProseMirrorJson);
-}
-
-function isEffectivelyEmptyNode(node: ProseMirrorJson): boolean {
-  if (node.type === "text") {
-    return !node.text?.trim();
-  }
-
-  if (
-    node.type === "hardBreak" ||
-    node.type === "paragraph" ||
-    node.type === "heading" ||
-    node.type === "doc" ||
-    !node.type
-  ) {
-    return (node.content ?? []).every(isEffectivelyEmptyNode);
-  }
-
-  return false;
+  return isPageBodyEmpty(content);
 }
 
 export function isPlaceholderCollaborationState(state: Uint8Array): boolean {

@@ -21,6 +21,7 @@ import {
   type UserSettings,
 } from "../user-settings/queries";
 import type { NavItemKind } from "./item-relationships";
+import { hasPageBodyContent } from "./content-state";
 import {
   pageQueryKey,
   pageQueryOptions,
@@ -549,7 +550,10 @@ export function useUpdatePage() {
       const optimisticPage: Page = {
         ...currentPage,
         ...(variables.content !== undefined
-          ? { content: variables.content }
+          ? {
+              content: variables.content,
+              hasContent: hasPageBodyContent(variables.content),
+            }
           : {}),
         ...(variables.metadata !== undefined
           ? { metadata: variables.metadata }
@@ -600,7 +604,10 @@ export function useUpdatePage() {
                 ...current.page,
                 ...pagePatch,
                 ...(variables.content !== undefined
-                  ? { content: variables.content }
+                  ? {
+                      content: variables.content,
+                      hasContent: hasPageBodyContent(variables.content),
+                    }
                   : {}),
               }
             : null;
@@ -623,7 +630,9 @@ export function useUpdatePage() {
       const rowPageDatabaseIds = patchDatabaseCachePage(queryClient, page);
 
       const navFieldsChanged =
-        variables.name !== undefined || variables.metadata !== undefined;
+        variables.content !== undefined ||
+        variables.name !== undefined ||
+        variables.metadata !== undefined;
 
       if (!navFieldsChanged) {
         return;

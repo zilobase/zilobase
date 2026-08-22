@@ -1,4 +1,5 @@
 import { and, desc, eq, gt, inArray, isNull, lt, ne, or } from "drizzle-orm";
+import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
 
 import {
   canAccessPageInWorkspace,
@@ -107,6 +108,7 @@ export async function createMeeting(input: {
   const [created] = await db.transaction(async (tx) => {
     await tx.insert(page).values({
       content: EMPTY_NOTES_CONTENT,
+      hasContent: hasPageBodyContent(EMPTY_NOTES_CONTENT),
       createdById: input.userId,
       id: notesPageId,
       metadata: { emoji: "📅" },

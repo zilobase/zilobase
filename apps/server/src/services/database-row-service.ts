@@ -147,6 +147,7 @@ export async function createDatabaseRowService(input: {
       .select({
         id: page.id,
         metadata: page.metadata,
+        hasContent: page.hasContent,
         name: page.name,
         workspaceId: page.workspaceId,
       })
@@ -268,6 +269,7 @@ export async function createDatabaseRowService(input: {
         name: title as string,
         url: "#",
         content: null,
+        hasContent: false,
         metadata: null,
         createdAt: now,
         updatedAt: now,

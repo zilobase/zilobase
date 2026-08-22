@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
+import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
 import {
   canAccessDatabaseInWorkspace,
   canAccessPageInWorkspace,
@@ -308,6 +309,7 @@ pageRoutes.get("/", async (c) => {
         type: page.type,
         name: page.name,
         url: page.url,
+        hasContent: page.hasContent,
         metadata: page.metadata,
         deletedById: page.deletedById,
         deletedAt: page.deletedAt,
@@ -447,6 +449,7 @@ pageRoutes.get("/", async (c) => {
           type: page.type,
           name: page.name,
           url: page.url,
+          hasContent: page.hasContent,
           metadata: page.metadata,
           deletedById: page.deletedById,
           deletedAt: page.deletedAt,
@@ -526,6 +529,7 @@ pageRoutes.get("/", async (c) => {
         type: page.type,
         name: page.name,
         url: page.url,
+        hasContent: page.hasContent,
         metadata: page.metadata,
         deletedById: page.deletedById,
         deletedAt: page.deletedAt,
@@ -856,6 +860,7 @@ pageRoutes.post("/", async (c) => {
         name,
         url,
         content,
+        hasContent: hasPageBodyContent(content),
         metadata,
       })
       .returning();

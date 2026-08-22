@@ -1,6 +1,11 @@
-import { FileIcon, FileTextIcon } from "lucide-react"
+import { File } from "reicon-react/icons/File"
+import { FileContent } from "reicon-react/icons/FileContent"
 
-import { getPageEmoji, type Page } from "@zilobase/features/pages"
+import {
+  getPageEmoji,
+  hasPageBodyContent,
+  type Page,
+} from "@zilobase/features/pages"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 import { getIconTextClassName } from "@/lib/color-tokens"
 import { cn } from "@/lib/utils"
@@ -12,41 +17,7 @@ import {
 } from "@/lib/page-icon-utils"
 
 export function hasPageContent(content: unknown): boolean {
-  if (content === null || content === undefined) {
-    return false
-  }
-
-  if (typeof content === "string") {
-    return content.trim().length > 0
-  }
-
-  if (Array.isArray(content)) {
-    return content.some(hasPageContent)
-  }
-
-  if (typeof content !== "object") {
-    return true
-  }
-
-  const node = content as {
-    attrs?: unknown
-    content?: unknown
-    text?: unknown
-    type?: unknown
-  }
-
-  if (typeof node.text === "string" && node.text.trim().length > 0) {
-    return true
-  }
-
-  if (
-    typeof node.type === "string" &&
-    !["doc", "paragraph", "text"].includes(node.type)
-  ) {
-    return true
-  }
-
-  return hasPageContent(node.content)
+  return hasPageBodyContent(content)
 }
 
 const iconSizeClasses = {
@@ -126,7 +97,7 @@ export function getStoredIconValue(
 }
 
 export function getPageIconNode(
-  page: Pick<Page, "content" | "metadata">,
+  page: Pick<Page, "content" | "hasContent" | "metadata">,
 ) {
   const icon = getPageEmoji(page)
 
@@ -134,10 +105,10 @@ export function getPageIconNode(
     return <PageIconDisplay size="sm" value={icon} />
   }
 
-  return hasPageContent(page.content) ? (
-    <FileTextIcon className="size-4 text-muted-foreground" />
+  return (page.hasContent ?? hasPageContent(page.content)) ? (
+    <FileContent className="size-4 text-muted-foreground" />
   ) : (
-    <FileIcon className="size-4 text-muted-foreground" />
+    <File className="size-4 text-muted-foreground" />
   )
 }
 
@@ -152,7 +123,7 @@ export function getDatabaseIconNode(database: { config?: unknown }) {
 }
 
 export function getPageIcon(
-  page: Pick<Page, "content" | "metadata">,
+  page: Pick<Page, "content" | "hasContent" | "metadata">,
 ) {
   return getPageIconNode(page)
 }
@@ -160,7 +131,7 @@ export function getPageIcon(
 export function PageIcon({
   page,
 }: {
-  page: Pick<Page, "content" | "metadata">
+  page: Pick<Page, "content" | "hasContent" | "metadata">
 }) {
   return getPageIconNode(page)
 }
