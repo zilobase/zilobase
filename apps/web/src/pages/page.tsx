@@ -7,7 +7,6 @@ import {
 } from "@tanstack/react-router";
 import { ArrowRight, CopyIcon, Maximize2 } from "lucide-react";
 
-import { AppLayout } from "@/components/app-layout";
 import { AuthenticatedRouteError } from "@/components/authenticated-route-error";
 import { FallbackErrorBoundary } from "@/components/fallback-error-boundary";
 import { PageWorkspaceGate } from "@/components/page-workspace-gate";
@@ -113,15 +112,13 @@ export default function Page() {
   }
 
   return (
-    <AppLayout>
-      <FallbackErrorBoundary
-        fallback={<AuthenticatedRouteError resource="page" />}
-        key={pageId}
-        name="page.authenticated"
-      >
-        <AuthenticatedPage />
-      </FallbackErrorBoundary>
-    </AppLayout>
+    <FallbackErrorBoundary
+      fallback={<AuthenticatedRouteError resource="page" />}
+      key={pageId}
+      name="page.authenticated"
+    >
+      <AuthenticatedPage />
+    </FallbackErrorBoundary>
   );
 }
 

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react"
 import { Link, useParams, useRouteContext, useSearch } from "@tanstack/react-router"
 import { ArrowRight, Maximize2 } from "lucide-react"
 
-import { AppLayout } from "@/components/app-layout"
 import { AuthenticatedRouteError } from "@/components/authenticated-route-error"
 import { FallbackErrorBoundary } from "@/components/fallback-error-boundary"
 import {
@@ -55,15 +54,13 @@ export default function DatabasePage() {
   }
 
   return (
-    <AppLayout>
-      <FallbackErrorBoundary
-        fallback={<AuthenticatedRouteError resource="database" />}
-        key={databaseId}
-        name="database.authenticated"
-      >
-        <AuthenticatedDatabasePage />
-      </FallbackErrorBoundary>
-    </AppLayout>
+    <FallbackErrorBoundary
+      fallback={<AuthenticatedRouteError resource="database" />}
+      key={databaseId}
+      name="database.authenticated"
+    >
+      <AuthenticatedDatabasePage />
+    </FallbackErrorBoundary>
   )
 }
 

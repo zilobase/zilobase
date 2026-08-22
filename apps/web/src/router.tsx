@@ -7,7 +7,7 @@ import {
   type ErrorComponentProps,
   useRouterState,
 } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { AppLayout } from "@/components/app-layout"
 import { Button } from "@/components/ui/button"
@@ -69,11 +69,12 @@ import { getAuthReturnPath } from "@/lib/google-auth"
 import { decidePublishedShareAccess } from "@/lib/published-share-access"
 import { describeRouteError } from "@/lib/route-error"
 import { editionWebModule } from "@zilobase/edition-web"
+import { DocumentFavicon } from "@/components/document-favicon"
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000
 
 const rootRoute = createRootRoute({
-  component: () => <Outlet />,
+  component: RootRouteShell,
 })
 
 const indexRoute = createRoute({
@@ -238,7 +239,7 @@ const appRoute = createRoute({
       throw redirect({ to: "/onboarding" })
     }
   },
-  component: AppLayout,
+  component: Outlet,
 })
 
 const recentsRoute = createRoute({
@@ -291,6 +292,7 @@ const pageRoute = createRoute({
     publishedShare: await applyPageShareAccess(params.pageId),
   }),
   component: Page,
+  pendingComponent: AppContentPendingPage,
 })
 
 const meetingRoute = createRoute({
@@ -314,6 +316,7 @@ const databaseRoute = createRoute({
     ),
   }),
   component: DatabasePage,
+  pendingComponent: AppContentPendingPage,
 })
 
 const settingsRoute = createRoute({
@@ -431,7 +434,52 @@ export const router = createRouter({
   defaultPendingComponent: RoutePendingPage,
   defaultPendingMinMs: 300,
   defaultPendingMs: 250,
+  defaultPreload: "intent",
 })
+
+function RootRouteShell() {
+  const matches = useRouterState({ select: (state) => state.matches })
+  const shellVisibleForResolvedRoute = matches.some((match) => {
+    if (match.routeId === "/app") return true
+    if (match.routeId !== "/p/$pageId" && match.routeId !== "/d/$databaseId") {
+      return false
+    }
+
+    const context = match.context as { publishedShare?: string }
+    return context.publishedShare === "app"
+  })
+  const routePending = matches.some((match) => match.status === "pending")
+  const resolvedShellVisibleRef = useRef(false)
+
+  if (!routePending) {
+    resolvedShellVisibleRef.current = shellVisibleForResolvedRoute
+  }
+
+  const showAppShell = routePending
+    ? resolvedShellVisibleRef.current
+    : shellVisibleForResolvedRoute
+
+  return (
+    <>
+      <DocumentFavicon />
+      {showAppShell ? (
+        <AppLayout>
+          <Outlet />
+        </AppLayout>
+      ) : (
+        <Outlet />
+      )}
+    </>
+  )
+}
+
+function AppContentPendingPage() {
+  return (
+    <main className="flex min-h-full flex-1 items-center justify-center p-6">
+      <Spinner className="size-5" />
+    </main>
+  )
+}
 
 function EditionRouteHost() {
   const pathname = useRouterState({
@@ -573,7 +621,6 @@ async function applyPageShareAccess(pageId: string) {
   try {
     const detail = await queryClient.fetchQuery({
       ...pageQueryOptions(apiFetch, pageId),
-      staleTime: 0,
     })
 
     if (detail?.viewerType === "guest") return "guest" as const

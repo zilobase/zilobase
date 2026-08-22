@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { ReactNode } from "react"
+import type { Dispatch, ReactNode, SetStateAction } from "react"
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
 import { ChevronsRightIcon, PanelRightIcon } from "lucide-react"
 
@@ -130,48 +130,89 @@ function AppLayoutWithRoutePage({
   utilitySidebar?: ReactNode
   utilitySidebarOpen: boolean
 }) {
+  const navigate = useNavigate()
   const routePageId = useRoutePageId(pathname)
+  const isSettingsPage = pathname.startsWith("/settings")
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(isSettingsPage)
+  const [activeSettingsSection, setActiveSettingsSection] =
+    useState<SettingsSection>(() => getSettingsSection(pathname))
+
+  useEffect(() => {
+    if (!isSettingsPage) return
+    setActiveSettingsSection(getSettingsSection(pathname))
+    setSettingsDialogOpen(true)
+  }, [isSettingsPage, pathname])
+
+  const handleSettingsOpenChange = useCallback(
+    (open: boolean) => {
+      setSettingsDialogOpen(open)
+
+      if (!open && isSettingsPage) {
+        void navigate({ to: "/recents", replace: true })
+      }
+    },
+    [isSettingsPage, navigate],
+  )
 
   return (
-    <PageLayoutSidebarProvider
-      key={routePageId ?? pathname}
-      pageId={routePageId}
-    >
-      <LayoutEditorProvider>
-        <AppLayoutContent
-          utilitySidebar={utilitySidebar}
-          utilitySidebarOpen={utilitySidebarOpen}
-        >
-          {children}
-        </AppLayoutContent>
-      </LayoutEditorProvider>
-    </PageLayoutSidebarProvider>
+    <>
+      <AppSidebar
+        onOpenSettings={() => {
+          setActiveSettingsSection("preferences")
+          setSettingsDialogOpen(true)
+        }}
+        settingsOpen={settingsDialogOpen}
+      />
+      <PageLayoutSidebarProvider
+        key={routePageId ?? pathname}
+        pageId={routePageId}
+      >
+        <LayoutEditorProvider>
+          <AppLayoutContent
+            activeSettingsSection={activeSettingsSection}
+            isSettingsPage={isSettingsPage}
+            onSettingsOpenChange={handleSettingsOpenChange}
+            setActiveSettingsSection={setActiveSettingsSection}
+            settingsDialogOpen={settingsDialogOpen}
+            utilitySidebar={utilitySidebar}
+            utilitySidebarOpen={utilitySidebarOpen}
+          >
+            {children}
+          </AppLayoutContent>
+        </LayoutEditorProvider>
+      </PageLayoutSidebarProvider>
+    </>
   )
 }
 
 function AppLayoutContent({
+  activeSettingsSection,
   children,
+  isSettingsPage,
+  onSettingsOpenChange,
+  setActiveSettingsSection,
+  settingsDialogOpen,
   utilitySidebar,
   utilitySidebarOpen,
 }: {
+  activeSettingsSection: SettingsSection
   children?: ReactNode
+  isSettingsPage: boolean
+  onSettingsOpenChange: (open: boolean) => void
+  setActiveSettingsSection: Dispatch<SetStateAction<SettingsSection>>
+  settingsDialogOpen: boolean
   utilitySidebar?: ReactNode
   utilitySidebarOpen: boolean
 }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   })
-  const navigate = useNavigate()
   const embeddedMobileViewer = isEmbeddedMobileViewer()
   const {
     isMobile,
     open: appSidebarOpen,
     setOpen: setAppSidebarOpen,
   } = useSidebar()
-  const isSettingsPage = pathname.startsWith("/settings")
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(isSettingsPage)
-  const [activeSettingsSection, setActiveSettingsSection] =
-    useState<SettingsSection>(() => getSettingsSection(pathname))
   const isAiPage = pathname === "/ai"
   const pageId = useRoutePageId(pathname)
   const databaseId = getDatabaseId(pathname)
@@ -216,22 +257,6 @@ function AppLayoutContent({
   const { editorCommentsOpenRequest } = usePageEditorComments()
   const commentController = usePageCommentController(pageId)
 
-  useEffect(() => {
-    if (!isSettingsPage) return
-    setActiveSettingsSection(getSettingsSection(pathname))
-    setSettingsDialogOpen(true)
-  }, [isSettingsPage, pathname])
-
-  const handleSettingsOpenChange = useCallback(
-    (open: boolean) => {
-      setSettingsDialogOpen(open)
-
-      if (!open && isSettingsPage) {
-        void navigate({ to: "/recents", replace: true })
-      }
-    },
-    [isSettingsPage, navigate],
-  )
   const openDiscussionsSidebar = useCallback(() => {
     if (!discussionsEnabled) return
     if (appSidebarOpen) closeSidePane()
@@ -457,19 +482,12 @@ function AppLayoutContent({
       <PageLayoutOverlayDrawer />
       <SettingsDialog
         activeSection={activeSettingsSection}
-        onOpenChange={handleSettingsOpenChange}
+        onOpenChange={onSettingsOpenChange}
         onSectionChange={setActiveSettingsSection}
         open={settingsDialogOpen}
       >
         <SettingsSectionContent section={activeSettingsSection} />
       </SettingsDialog>
-      <AppSidebar
-        onOpenSettings={() => {
-          setActiveSettingsSection("preferences")
-          setSettingsDialogOpen(true)
-        }}
-        settingsOpen={settingsDialogOpen}
-      />
       <ResizablePanelGroup
         className="relative min-h-0 min-w-0 flex-1 overflow-hidden has-data-[desktop-tabs]:pt-9"
         orientation="horizontal"

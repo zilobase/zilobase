@@ -1,0 +1,116 @@
+import { useEffect } from "react"
+import { useRouterState } from "@tanstack/react-router"
+import { useTheme } from "next-themes"
+
+import {
+  getDatabaseId,
+  getMeetingId,
+  getPageId,
+} from "@/components/page-pane-header"
+import {
+  createFaviconHref,
+  getFaviconColor,
+  getRouteFaviconIcon,
+} from "@/lib/favicon"
+import { getDatabaseEmoji, useDatabase } from "@zilobase/features/databases"
+import { useMeeting } from "@zilobase/features/meetings"
+import { getPageEmoji, usePage } from "@zilobase/features/pages"
+
+export function DocumentFavicon() {
+  const location = useRouterState({ select: (state) => state.location })
+  const { resolvedTheme } = useTheme()
+  const directPageId = getPageId(location.pathname)
+  const databaseId = getDatabaseId(location.pathname)
+  const meetingId = getMeetingId(location.pathname)
+  const { data: databasePayload } = useDatabase(databaseId, {
+    includeDeleted: true,
+  })
+  const { data: meetingPayload } = useMeeting(meetingId)
+  const pageId =
+    directPageId ??
+    meetingPayload?.meeting.notesPageId ??
+    meetingPayload?.meeting.pageId ??
+    null
+  const { data: page } = usePage(pageId, { refetchOnMount: false })
+  const search = location.search as Record<string, unknown>
+  const itemIcon = databasePayload?.database
+    ? getDatabaseEmoji(databasePayload.database)
+    : page
+      ? getPageEmoji(page)
+      : null
+  const icon = getRouteFaviconIcon({
+    itemIcon,
+    libraryView: typeof search.view === "string" ? search.view : null,
+    pathname: location.pathname,
+  })
+
+  useEffect(() => {
+    const links = getManagedFaviconLinks()
+
+    if (!icon) {
+      restoreDefaultFavicons(links)
+      return
+    }
+
+    const color = getFaviconColor(
+      icon,
+      resolveCssColorToken,
+    )
+    const href = createFaviconHref(icon, { color })
+
+    if (!href) {
+      restoreDefaultFavicons(links)
+      return
+    }
+
+    for (const link of links) {
+      link.href = href
+      link.type = "image/svg+xml"
+      link.removeAttribute("media")
+    }
+  }, [icon, resolvedTheme])
+
+  useEffect(
+    () => () => {
+      restoreDefaultFavicons(getManagedFaviconLinks())
+    },
+    [],
+  )
+
+  return null
+}
+
+function resolveCssColorToken(name: string) {
+  const probe = document.createElement("span")
+  probe.style.color = `var(${name})`
+  probe.style.display = "none"
+  document.body.append(probe)
+  const color = getComputedStyle(probe).color
+  probe.remove()
+  return color
+}
+
+type ManagedFaviconLink = HTMLLinkElement & {
+  dataset: DOMStringMap & {
+    defaultHref?: string
+    defaultMedia?: string
+  }
+}
+
+function getManagedFaviconLinks() {
+  return Array.from(
+    document.querySelectorAll<ManagedFaviconLink>("link[data-app-favicon]"),
+  )
+}
+
+function restoreDefaultFavicons(links: ManagedFaviconLink[]) {
+  for (const link of links) {
+    if (link.dataset.defaultHref) link.href = link.dataset.defaultHref
+
+    if (link.dataset.defaultMedia) {
+      link.media = link.dataset.defaultMedia
+    } else {
+      link.removeAttribute("media")
+    }
+  }
+}

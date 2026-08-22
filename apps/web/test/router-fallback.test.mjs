@@ -33,6 +33,10 @@ export function register({ assert, test }) {
   })
 
   test("published routes keep the authenticated shell after route authorization", async () => {
+    const routerSource = await readFile(
+      new URL("../src/router.tsx", import.meta.url),
+      "utf8",
+    )
     const pageSource = await readFile(
       new URL("../src/pages/page.tsx", import.meta.url),
       "utf8",
@@ -50,5 +54,10 @@ export function register({ assert, test }) {
 
     assert.doesNotMatch(pageSource, /fallback=\{<PublicPage \/>\}/)
     assert.doesNotMatch(databaseSource, /fallback=\{publicPage\}/)
+    assert.match(routerSource, /component: RootRouteShell/)
+    assert.match(routerSource, /<AppLayout>\s*<Outlet \/>\s*<\/AppLayout>/)
+    assert.doesNotMatch(routerSource, /staleTime: 0/)
+    assert.doesNotMatch(pageSource, /import \{ AppLayout \}/)
+    assert.doesNotMatch(databaseSource, /import \{ AppLayout \}/)
   })
 }
