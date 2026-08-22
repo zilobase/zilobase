@@ -92,7 +92,7 @@ const IntegrationToolTaskItem = ({
           src={integrationIcons[source]}
         />
       ) : (
-        <span className="mt-2 size-2 shrink-0 rounded-full bg-muted-foreground/60" />
+        <span className="mt-2 size-2 shrink-0 rounded-full bg-muted-indicator" />
       )}
       <span className="min-w-0 flex-1">
         {isRunning ? (

@@ -323,7 +323,7 @@ export function NavPageSection({
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton
                     className={cn(
-                      "peer/menu-button pr-20 text-sidebar-foreground/85",
+                      "peer/menu-button pr-20 text-muted-foreground",
                       SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
                     )}
                     title={teamspace.name}
@@ -396,7 +396,7 @@ export function NavPageSection({
                   />
                   {displayedPages.length === 0 ? (
                     <SidebarMenuItem>
-                      <SidebarMenuButton className="text-sidebar-foreground/50">
+                      <SidebarMenuButton className="text-muted-foreground">
                         <span>No pages</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -522,7 +522,7 @@ export function NavPageSection({
               />
               {displayedPages.length === 0 ? (
                 <SidebarMenuItem>
-                  <SidebarMenuButton className="text-sidebar-foreground/50">
+                  <SidebarMenuButton className="text-muted-foreground">
                     <span>No pages</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -531,7 +531,7 @@ export function NavPageSection({
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
-                    className="text-sidebar-foreground/70"
+                    className="text-muted-foreground"
                   >
                     <Link
                       onClick={() => {

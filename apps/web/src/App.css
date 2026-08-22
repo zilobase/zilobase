@@ -6,12 +6,12 @@
 @import "@fontsource-variable/geist";
 @import "./styles/design-tokens.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark *));
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
-    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 24%, transparent) transparent;
+    @apply border-border outline-ring;
+    scrollbar-color: var(--scrollbar-thumb-firefox) transparent;
     scrollbar-width: thin;
     }
   *::-webkit-scrollbar {
@@ -22,13 +22,13 @@
     background: transparent;
     }
   *::-webkit-scrollbar-thumb {
-    background-color: color-mix(in oklab, var(--muted-foreground) 22%, transparent);
+    background-color: var(--scrollbar-thumb);
     background-clip: padding-box;
     border: 3px solid transparent;
     border-radius: 999px;
     }
   *::-webkit-scrollbar-thumb:hover {
-    background-color: color-mix(in oklab, var(--muted-foreground) 32%, transparent);
+    background-color: var(--scrollbar-thumb-hover);
     }
   *::-webkit-scrollbar-corner {
     background: transparent;
@@ -51,7 +51,6 @@
 }
 
 [data-desktop-tabs] {
-  --desktop-tab-border: color-mix(in oklab, var(--border) 60%, transparent);
   background-image: linear-gradient(
     to bottom,
     transparent calc(100% - 1px),

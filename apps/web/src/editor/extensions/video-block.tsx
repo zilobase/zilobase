@@ -61,7 +61,7 @@ function VideoBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       <Popover onOpenChange={setOpen} open={open}>
         <PopoverTrigger asChild>
           <button
-            className="flex h-10 w-full items-center gap-2 rounded-md bg-muted/50 px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
+            className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-subtle-surface hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
             contentEditable={false}
             disabled={Boolean(src)}
             type="button"
@@ -128,7 +128,7 @@ function VideoBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       </Popover>
       {src ? (
         <div
-          className="overflow-hidden rounded-md border bg-muted [&_video]:block [&_video]:max-h-[520px] [&_video]:w-full [&_video]:bg-black"
+          className="overflow-hidden rounded-md border bg-muted [&_video]:block [&_video]:max-h-[520px] [&_video]:w-full [&_video]:bg-media-canvas"
           contentEditable={false}
         >
           <video controls src={src} title={title} />

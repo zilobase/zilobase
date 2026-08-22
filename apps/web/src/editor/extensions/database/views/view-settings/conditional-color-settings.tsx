@@ -90,19 +90,19 @@ function ConditionalColorPreview() {
         <div className="border-l px-2 py-1.5 text-right"># Units</div>
       </div>
       {[
-        ["Keesha", "Miami", "160", "bg-emerald-100 dark:bg-emerald-700/55"],
+        ["Keesha", "Miami", "160", "bg-status-success-surface"],
         ["Rahul", "Orlando", "120", ""],
-        ["Jackson", "Tampa", "140", "bg-emerald-100 dark:bg-emerald-700/55"],
-        ["Marcus", "Tampa", "100", "bg-amber-100 dark:bg-amber-700/50"],
-        ["John", "Miami", "100", "bg-rose-100 dark:bg-rose-700/55"],
+        ["Jackson", "Tampa", "140", "bg-status-success-surface"],
+        ["Marcus", "Tampa", "100", "bg-status-warning-surface"],
+        ["John", "Miami", "100", "bg-status-danger-diff-surface"],
       ].map(([name, office, units, colorClass]) => (
         <div
           className={cn("grid grid-cols-3 text-xs text-foreground", colorClass)}
           key={name}
         >
           <div className="px-2 py-1.5">{name}</div>
-          <div className="border-l border-border/40 px-2 py-1.5">{office}</div>
-          <div className="border-l border-border/40 px-2 py-1.5 text-right">
+          <div className="border-l border-border px-2 py-1.5">{office}</div>
+          <div className="border-l border-border px-2 py-1.5 text-right">
             {units}
           </div>
         </div>
@@ -138,7 +138,7 @@ function ConditionalColorPropertyPicker({
         <input
           aria-label="Search for a property"
           autoFocus
-          className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground/70"
+          className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
           onChange={(event) => setPropertySearch(event.target.value)}
           placeholder="Search for a property..."
           value={propertySearch}

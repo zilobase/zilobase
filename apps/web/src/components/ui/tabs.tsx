@@ -38,7 +38,7 @@ export function TabsList({
       className={cn(
         "group/tabs-list relative z-0 flex w-fit items-center justify-center gap-0.5 text-muted-foreground data-[orientation=vertical]:flex-col",
         variant === "default" &&
-          "rounded-lg bg-muted p-[3px] dark:bg-input/30",
+          "rounded-lg bg-muted p-[3px] dark:bg-input",
         variant === "tab" && "rounded-lg p-[3px]",
         isLineVariant &&
           "bg-transparent data-[orientation=horizontal]:py-1 data-[orientation=vertical]:px-1",
@@ -71,7 +71,7 @@ export function TabsTab({
   return (
     <TabsPrimitive.Tab
       className={cn(
-        "relative inline-flex h-7 shrink-0 grow cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium text-foreground/60 outline-none transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 data-disabled:pointer-events-none data-disabled:opacity-50 data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-foreground dark:text-muted-foreground dark:hover:text-foreground dark:data-active:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+        "relative inline-flex h-7 shrink-0 grow cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium text-muted-foreground outline-none transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring data-disabled:pointer-events-none data-disabled:opacity-50 data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-foreground dark:text-muted-foreground dark:hover:text-foreground dark:data-active:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
         "group-data-[variant=tab]/tabs-list:transition-none group-data-[variant=tab]/tabs-list:data-active:bg-active",
         "group-data-[variant=line]/tabs-list:hover:bg-accent group-data-[variant=underline]/tabs-list:hover:bg-accent",
         className,

@@ -16,7 +16,7 @@ export function EditorToolbar({
   runCommand: RunToolbarCommand
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b bg-muted/35 p-2">
+    <div className="flex flex-wrap items-center gap-2 border-b bg-subtle-surface p-2">
       {toolbarGroups.map((group, groupIndex) => (
         <ButtonGroup key={groupIndex}>
           {group.map((item) => (

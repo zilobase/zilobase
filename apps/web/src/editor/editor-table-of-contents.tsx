@@ -46,7 +46,7 @@ export function EditorTableOfContents({
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "block h-0.5 rounded-full bg-muted-foreground/40",
+                    "block h-0.5 rounded-full bg-muted-indicator",
                     item.originalLevel === 1 && "w-8",
                     item.originalLevel === 2 && "w-6",
                     item.originalLevel === 3 && "w-4",

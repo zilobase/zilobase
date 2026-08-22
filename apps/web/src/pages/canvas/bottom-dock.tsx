@@ -23,7 +23,7 @@ export function BottomDock({
     <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
       <div className="pointer-events-auto relative flex items-center gap-3">
         {open ? (
-          <div className="absolute bottom-full left-1/2 mb-2 flex -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-border bg-background/95 p-1.5 shadow-lg backdrop-blur">
+          <div className="absolute bottom-full left-1/2 mb-2 flex -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-border bg-backdrop p-1.5 shadow-lg backdrop-blur">
             {canvasToolOptions.map((option) => {
               const Icon = option.icon
 
@@ -45,7 +45,7 @@ export function BottomDock({
             })}
           </div>
         ) : null}
-        <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-background/95 p-1.5 shadow-lg backdrop-blur">
+        <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-backdrop p-1.5 shadow-lg backdrop-blur">
           <Button
             className={cn(
               "h-8 rounded-xl px-3 text-sm",

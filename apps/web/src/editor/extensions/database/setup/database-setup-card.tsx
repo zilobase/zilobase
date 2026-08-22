@@ -719,7 +719,7 @@ export function DatabaseSetupCard({
                 <SetupOptionButton
                   disabled={isSubmitting}
                   icon={
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-subtle-surface text-muted-foreground">
                       <ViewIcon className="size-4" />
                     </span>
                   }
@@ -781,7 +781,7 @@ export function DatabaseSetupCard({
             <SetupOptionButton
               disabled={isSubmitting}
               icon={
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-subtle-surface text-muted-foreground">
                   <Database className="size-4" />
                 </span>
               }
@@ -818,7 +818,7 @@ export function DatabaseSetupCard({
         </Button>
         {view === "main" ? renderMainContent() : renderLinkPicker()}
         {isSubmitting ? (
-          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/70 backdrop-blur-[1px]">
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-backdrop backdrop-blur-[1px]">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : null}

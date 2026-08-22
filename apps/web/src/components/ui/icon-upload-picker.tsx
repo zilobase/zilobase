@@ -82,8 +82,8 @@ export function IconUploadPicker({
             className={cn(
               "mx-2 mt-2 flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed px-4 py-6 text-center transition-colors",
               dragActive
-                ? "border-ring bg-muted/60"
-                : "border-border/80 bg-muted/20 hover:bg-muted/40",
+                ? "border-ring bg-subtle-surface"
+                : "border-border bg-subtle-surface hover:bg-subtle-surface",
             )}
             onClick={() => inputRef.current?.click()}
             onDragEnter={(event) => {
@@ -141,7 +141,7 @@ export function IconUploadPicker({
             </button>
           </div>
           <div className="mt-4 flex justify-center">
-            <span className="flex size-16 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
+            <span className="flex size-16 items-center justify-center rounded-lg bg-subtle-surface text-muted-foreground">
               <IconSvgPreview
                 content={uploadedIcon.content}
                 size={40}

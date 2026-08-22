@@ -78,7 +78,7 @@ export function SettingsSidebar({
     <aside className="min-w-0 border-b border-sidebar-border bg-sidebar text-sidebar-foreground sm:h-full sm:w-64 sm:border-r sm:border-b-0">
       <SidebarContent className="overflow-visible sm:overflow-auto">
         <SidebarGroup className="p-2 sm:py-0">
-          <SidebarGroupLabel className="hidden h-8 rounded-md px-2 text-xs text-sidebar-foreground/55 sm:flex">
+          <SidebarGroupLabel className="hidden h-8 rounded-md px-2 text-xs text-muted-foreground sm:flex">
             Settings
           </SidebarGroupLabel>
           <SidebarGroupContent>

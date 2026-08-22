@@ -22,55 +22,55 @@ export const PALETTE: Record<ColorTokenId, PaletteEntry> = {
     name: "Gray",
     textClass: "text-editor-gray",
     backgroundClass: "bg-editor-gray-surface",
-    swatchClass: "bg-editor-gray-swatch",
+    swatchClass: "bg-editor-gray",
   },
   brown: {
     name: "Brown",
     textClass: "text-editor-brown",
     backgroundClass: "bg-editor-brown-surface",
-    swatchClass: "bg-editor-brown-swatch",
+    swatchClass: "bg-editor-brown",
   },
   orange: {
     name: "Orange",
     textClass: "text-editor-orange",
     backgroundClass: "bg-editor-orange-surface",
-    swatchClass: "bg-editor-orange-swatch",
+    swatchClass: "bg-editor-orange",
   },
   yellow: {
     name: "Yellow",
     textClass: "text-editor-yellow",
     backgroundClass: "bg-editor-yellow-surface",
-    swatchClass: "bg-editor-yellow-swatch",
+    swatchClass: "bg-editor-yellow",
   },
   green: {
     name: "Green",
     textClass: "text-editor-green",
     backgroundClass: "bg-editor-green-surface",
-    swatchClass: "bg-editor-green-swatch",
+    swatchClass: "bg-editor-green",
   },
   blue: {
     name: "Blue",
     textClass: "text-editor-blue",
     backgroundClass: "bg-editor-blue-surface",
-    swatchClass: "bg-editor-blue-swatch",
+    swatchClass: "bg-editor-blue",
   },
   purple: {
     name: "Purple",
     textClass: "text-editor-purple",
     backgroundClass: "bg-editor-purple-surface",
-    swatchClass: "bg-editor-purple-swatch",
+    swatchClass: "bg-editor-purple",
   },
   pink: {
     name: "Pink",
     textClass: "text-editor-pink",
     backgroundClass: "bg-editor-pink-surface",
-    swatchClass: "bg-editor-pink-swatch",
+    swatchClass: "bg-editor-pink",
   },
   red: {
     name: "Red",
     textClass: "text-editor-red",
     backgroundClass: "bg-editor-red-surface",
-    swatchClass: "bg-editor-red-swatch",
+    swatchClass: "bg-editor-red",
   },
 }
 
@@ -183,11 +183,15 @@ export function getColorTokenDotClassName(color?: string | null) {
 }
 
 export function colorWithAlpha(color?: string | null, alpha = 1) {
-  const source = getPaletteColor(color)
+  const normalizedColor = color?.toLowerCase()
 
-  if (!source) {
+  if (
+    !normalizedColor ||
+    !isPaletteColor(normalizedColor) ||
+    Math.round(alpha * 100) !== 18
+  ) {
     return null
   }
 
-  return `color-mix(in oklab, ${source} ${Math.round(alpha * 100)}%, transparent)`
+  return `color-mix(in oklab, var(--editor-${normalizedColor}) 18%, transparent)`
 }

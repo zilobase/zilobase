@@ -100,7 +100,7 @@ function EnableSubItemsSettings({ onEnable }: { onEnable: () => void }) {
       </div>
       <SubItemsPreview />
       <DropDrawerItem
-        className="justify-center bg-primary font-medium text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground"
+        className="justify-center bg-primary font-medium text-primary-foreground focus:bg-primary-subtle focus:text-primary-foreground"
         onSelect={(event) => {
           event.preventDefault()
           onEnable()
@@ -218,7 +218,7 @@ function SettingsSelect<Value extends string>({
 
 function SubItemsPreview() {
   return (
-    <div className="rounded-md border bg-muted/20 p-3 text-sm">
+    <div className="rounded-md border bg-subtle-surface p-3 text-sm">
       <div className="flex items-center gap-2 font-medium">
         <ChevronDown className="size-4 text-muted-foreground" />
         <span>Parent item</span>

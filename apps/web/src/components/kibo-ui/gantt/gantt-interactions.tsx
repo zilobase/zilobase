@@ -87,7 +87,7 @@ export function GanttFeatureDragHelper({
         )}
       />
       {date ? (
-        <div className="-translate-x-1/2 absolute top-10 hidden whitespace-nowrap rounded-lg border border-border/50 bg-background/90 px-2 py-1 text-foreground text-xs backdrop-blur-lg group-hover:block">
+        <div className="-translate-x-1/2 absolute top-10 hidden whitespace-nowrap rounded-lg border border-border bg-backdrop px-2 py-1 text-foreground text-xs backdrop-blur-lg group-hover:block">
           {format(date, "MMM dd, yyyy")}
         </div>
       ) : null}
@@ -508,7 +508,7 @@ export function GanttCreateMarkerTrigger({
           <PlusIcon className="text-muted-foreground" size={12} />
         </button>
         <div
-          className="whitespace-nowrap rounded-full border border-border/50 bg-background/90 px-2 py-1 text-foreground text-xs backdrop-blur-lg"
+          className="whitespace-nowrap rounded-full border border-border bg-backdrop px-2 py-1 text-foreground text-xs backdrop-blur-lg"
           data-gantt-marker-date
         />
       </div>

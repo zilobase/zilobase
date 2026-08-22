@@ -120,8 +120,8 @@ export function AiChatThreadsPanel({
                     className={cn(
                       "group flex items-start gap-2 rounded-md border px-3 py-2",
                       isActive
-                        ? "border-primary/30 bg-primary/5"
-                        : "border-transparent hover:border-border hover:bg-muted/50",
+                        ? "border-primary bg-primary-subtle"
+                        : "border-transparent hover:border-border hover:bg-subtle-surface",
                     )}
                   >
                     <button

@@ -128,13 +128,13 @@ export function HistorySidebar({
             <SidebarMenu>
               {threadsQuery.isLoading ? (
                 <SidebarMenuItem>
-                  <SidebarMenuButton className="text-sidebar-foreground/50">
+                  <SidebarMenuButton className="text-muted-foreground">
                     <span>Loading chats...</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ) : threads.length === 0 ? (
                 <SidebarMenuItem>
-                  <SidebarMenuButton className="text-sidebar-foreground/50">
+                  <SidebarMenuButton className="text-muted-foreground">
                     <span>No chats yet</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -41,7 +41,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.equal(yellowToken?.textClass, "text-editor-yellow")
     assert.equal(yellowToken?.backgroundClass, "bg-editor-yellow-surface")
-    assert.equal(yellowToken?.swatchClass, "bg-editor-yellow-swatch")
+    assert.equal(yellowToken?.swatchClass, "bg-editor-yellow")
     assert.equal(
       yellowToken?.solidClass,
       "bg-editor-yellow-surface text-editor-color-foreground",
@@ -88,7 +88,10 @@ export function register({ assert, loadModule, test }) {
       new URL("../src/styles/design-tokens.css", import.meta.url),
       "utf8",
     )
-    const themes = [readRule(css, ":root"), readRule(css, ".dark")]
+    const themes = [
+      readRule(css, ".light"),
+      readRule(css, ".dark"),
+    ]
 
     for (const rule of themes) {
       const foreground = readHexToken(rule, "editor-color-foreground")
@@ -106,7 +109,10 @@ export function register({ assert, loadModule, test }) {
 }
 
 function readRule(css, selector) {
-  const rule = css.match(new RegExp(`\\${selector}\\s*\\{([\\s\\S]*?)\\n\\}`))?.[1]
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const rule = css.match(
+    new RegExp(`${escapedSelector}\\s*\\{([\\s\\S]*?)\\n\\}`),
+  )?.[1]
 
   if (!rule) throw new Error(`Missing ${selector} design-token rule`)
   return rule

@@ -73,13 +73,13 @@ export function LayoutEditorSettings({
               className={cn(
                 "rounded-lg border p-3 text-left capitalize",
                 draft.structure === structure &&
-                  "border-primary bg-primary/5 ring-1 ring-primary",
+                  "border-primary bg-primary-subtle ring-1 ring-primary",
               )}
               key={structure}
               onClick={() => onChange({ ...draft, structure })}
               type="button"
             >
-              <div className="mb-2 h-12 rounded border bg-muted/50" />
+              <div className="mb-2 h-12 rounded border bg-subtle-surface" />
               <span className="text-sm font-medium">{structure}</span>
             </button>
           ))}

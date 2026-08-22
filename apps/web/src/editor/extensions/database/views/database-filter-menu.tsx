@@ -111,7 +111,7 @@ function DatabaseFilterMenuContent({
       ) : null}
       {activeDatabaseFilters.length === 0 && !addFilterPickerOpen ? (
         <div className="mb-2 px-1">
-          <div className="rounded-md bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
+          <div className="rounded-md bg-subtle-surface px-3 py-2 text-xs text-muted-foreground">
             No filters yet
           </div>
         </div>

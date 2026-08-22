@@ -3,19 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <link
+      data-app-favicon="light"
+      data-default-href="/zilobase-light.svg"
+      data-default-media="(prefers-color-scheme: light)"
       rel="icon"
       type="image/svg+xml"
       href="/zilobase-light.svg"
       media="(prefers-color-scheme: light)"
     />
     <link
+      data-app-favicon="dark"
+      data-default-href="/zilobase-dark.svg"
+      data-default-media="(prefers-color-scheme: dark)"
       rel="icon"
       type="image/svg+xml"
       href="/zilobase-dark.svg"
       media="(prefers-color-scheme: dark)"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="" />
     <meta
       name="description"
       content="Zilobase is the open-source workspace for notes, structured data, AI, and connected tools."
@@ -24,16 +30,30 @@
       (() => {
         try {
           const savedTheme = localStorage.getItem("theme");
-          const isDark =
-            savedTheme === "dark" ||
-            (savedTheme !== "light" &&
-              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+          const families = ["default", "warm", "midnight", "rose", "forest", "ocean", "lilac", "dusk", "ember", "notion"];
+          const legacyDarkFamilies = ["midnight", "forest", "ocean", "dusk", "ember"];
+          let mode = savedTheme;
+          let family = localStorage.getItem("zilobase-theme-family");
 
-          document.documentElement.classList.toggle("dark", isDark);
-          document.documentElement.style.colorScheme = isDark ? "dark" : "light";
-          document
-            .querySelector('meta[name="theme-color"]')
-            ?.setAttribute("content", isDark ? "#0d0d0f" : "#ffffff");
+          if (families.includes(savedTheme) && savedTheme !== "default") {
+            family = savedTheme;
+            mode = legacyDarkFamilies.includes(savedTheme) ? "dark" : "light";
+            localStorage.setItem("theme", mode);
+            localStorage.setItem("zilobase-theme-family", family);
+          }
+
+          const resolvedMode = ["light", "dark"].includes(mode)
+            ? mode
+            : systemTheme;
+          const resolvedFamily = families.includes(family) ? family : "default";
+
+          document.documentElement.classList.remove("light", "dark", ...families);
+          document.documentElement.classList.add(resolvedMode);
+          document.documentElement.dataset.theme = resolvedFamily;
+          document.documentElement.style.colorScheme = resolvedMode;
         } catch {
           // The default light tokens remain valid when storage is unavailable.
         }

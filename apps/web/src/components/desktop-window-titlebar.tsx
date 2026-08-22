@@ -116,7 +116,7 @@ export function DesktopWindowTitlebar({
           </button>
           <button
             aria-label="Close window"
-            className="flex h-full w-10 items-center justify-center text-muted-foreground hover:bg-destructive hover:text-white"
+            className="flex h-full w-10 items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
             onClick={() => void appWindow.close()}
             title="Close"
             type="button"

@@ -539,7 +539,7 @@ export function DatabasePagePreview({
           />
         </div>
         <div className="overflow-hidden rounded-md border">
-          <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] border-b bg-muted/30">
+          <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] border-b bg-subtle-surface">
             {Array.from({ length: 4 }).map((_, index) => (
               <div
                 className={cn(

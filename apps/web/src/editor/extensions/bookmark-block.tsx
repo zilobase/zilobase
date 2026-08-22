@@ -77,7 +77,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       <Popover onOpenChange={setOpen} open={open}>
         <PopoverTrigger asChild>
           <button
-            className="flex h-10 w-full items-center gap-2 rounded-md bg-muted/50 px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
+            className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-subtle-surface hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
             contentEditable={false}
             disabled={Boolean(href)}
             type="button"
@@ -116,7 +116,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
             {url ? (
               <button
                 aria-label="Clear URL"
-                className="absolute right-2 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none [&_svg]:size-4"
+                className="absolute right-2 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-4"
                 onClick={() => setUrl("")}
                 type="button"
               >
@@ -141,7 +141,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       </Popover>
       {href ? (
         <a
-          className="grid overflow-hidden rounded-md bg-muted/50 text-card-foreground no-underline transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none data-[image=true]:grid-cols-[minmax(0,1fr)_minmax(12rem,35%)] data-[image=true]:grid-rows-[10rem]"
+          className="grid overflow-hidden rounded-md bg-subtle-surface text-card-foreground no-underline transition-colors hover:bg-subtle-surface focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[image=true]:grid-cols-[minmax(0,1fr)_minmax(12rem,35%)] data-[image=true]:grid-rows-[10rem]"
           contentEditable={false}
           data-image={image ? "true" : "false"}
           href={href}

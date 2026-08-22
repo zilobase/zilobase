@@ -326,7 +326,9 @@ export function getColorVariant(color: string, index: number) {
     return color
   }
 
-  return `color-mix(in oklab, ${color} ${colorPercentage}%, var(--background))`
+  return color.startsWith("var(--editor-")
+    ? `color-mix(in oklab, ${color} ${colorPercentage}%, var(--background))`
+    : color
 }
 
 export function getChartGroupProperty(

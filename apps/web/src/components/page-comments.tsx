@@ -393,8 +393,8 @@ function CommentItemComponent({
                     aria-label={`${reaction.emoji} reaction, ${reaction.count}`}
                     className={
                       reaction.reactedByMe
-                        ? "h-7 gap-1 rounded-full border-transparent bg-primary/15 px-2 text-primary hover:bg-primary/20 dark:bg-primary/25 dark:hover:bg-primary/30"
-                        : "h-7 gap-1 rounded-full bg-muted px-2 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                        ? "h-7 gap-1 rounded-full border-transparent bg-primary-subtle px-2 text-primary hover:bg-primary-subtle dark:bg-primary-subtle dark:hover:bg-primary-subtle"
+                        : "h-7 gap-1 rounded-full bg-muted px-2 text-muted-foreground hover:bg-subtle-surface hover:text-foreground"
                     }
                     disabled={isMutating}
                     key={reaction.emoji}
@@ -422,7 +422,7 @@ function CommentItemComponent({
                   >
                     <Button
                       aria-label="Add another reaction"
-                      className="h-7 rounded-full bg-muted px-2 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                      className="h-7 rounded-full bg-muted px-2 text-muted-foreground hover:bg-subtle-surface hover:text-foreground"
                       disabled={isMutating}
                       size="sm"
                       type="button"
@@ -514,7 +514,7 @@ function CommentMentionMenu({
   }, [selectedIndex])
 
   return (
-    <div className="absolute left-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-4rem))] overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
+    <div className="absolute left-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-4rem))] overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-border">
       <Command
         shouldFilter={false}
         value={selectedMember?.id ?? ""}
@@ -785,8 +785,8 @@ export function PageCommentThread({
   const hasComments = comments.length > 0
   const threadLineClassName =
     pageId && !threadResolved
-      ? "bg-muted-foreground/70"
-      : "bg-muted-foreground/40"
+      ? "bg-muted-indicator"
+      : "bg-muted-indicator"
 
   const createComment = () => {
     const body = newCommentBody.trim()
@@ -1132,7 +1132,7 @@ export function PageCommentThread({
                   <Button
                     aria-label="Send reply"
                     className={cn(
-                      "rounded-full bg-surface-inverse text-text-inverse hover:bg-surface-inverse/90",
+                      "rounded-full bg-primary text-primary-foreground hover:bg-primary",
                       !compact && "h-7 w-7",
                     )}
                     disabled={isMutating || !newCommentBody.trim()}

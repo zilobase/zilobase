@@ -341,7 +341,7 @@ export function DatabaseViewToolbar() {
           <PopoverTrigger asChild>
             <button
               aria-label="Change database icon"
-              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               type="button"
             >
               <PageIconDisplay size="lg" value={databaseEmoji} />
@@ -351,7 +351,7 @@ export function DatabaseViewToolbar() {
         </Popover>
         <button
           aria-label="Remove database icon"
-          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
+          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
           onClick={() => {
             saveDatabaseEmoji("")
             setEmojiPickerOpen(false)
@@ -384,7 +384,7 @@ export function DatabaseViewToolbar() {
           ) : null}
           <input
             aria-label="Database title"
-            className="h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none outline-none [field-sizing:content] placeholder:text-muted-foreground/40 focus-visible:ring-0 md:text-2xl"
+            className="h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none outline-none [field-sizing:content] placeholder:text-muted-foreground focus-visible:ring-0 md:text-2xl"
             disabled={!databaseId}
             data-structural-block-title
             onBlur={(event) => saveDatabaseTitle(event.target.value)}
@@ -602,7 +602,7 @@ export function DatabaseViewToolbar() {
                           <PopoverTrigger asChild>
                             <button
                               aria-label="Change view icon"
-                              className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+                              className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                               disabled={!editable || !databaseId}
                               type="button"
                             >

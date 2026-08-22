@@ -127,8 +127,8 @@ function ModuleSection({
   module: PageLayoutModule
 }) {
   return (
-    <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-background transition-colors group-hover/layout-module:border-primary/50">
-      <header className="flex h-9 items-center gap-2 rounded-t-lg border-b bg-muted/40 px-2 text-xs font-medium text-muted-foreground">
+    <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-background transition-colors group-hover/layout-module:border-primary">
+      <header className="flex h-9 items-center gap-2 rounded-t-lg border-b bg-subtle-surface px-2 text-xs font-medium text-muted-foreground">
         {handle}
         <span>{formatModuleLabel(module)}</span>
         {fixed ? (
@@ -384,7 +384,7 @@ export function PageLayoutModuleCanvas({
             ))}
           </div>
           {inlinePanelVisible ? (
-            <aside className="min-w-0 border-l bg-muted/10">
+            <aside className="min-w-0 border-l bg-subtle-surface">
               {panelModules.map((module) => (
                 <Fragment key={module.id}>{renderModule(module)}</Fragment>
               ))}

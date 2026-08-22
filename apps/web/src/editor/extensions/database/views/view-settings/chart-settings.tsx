@@ -525,9 +525,9 @@ export function DatabaseChartSettingsSection({
                 <ChevronDown className="transition-transform group-data-[state=open]:rotate-180" />
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mx-2 space-y-2 rounded-lg border bg-muted/20 p-2">
+            <CollapsibleContent className="mx-2 space-y-2 rounded-lg border bg-subtle-surface p-2">
               {referenceLines.map((line) => (
-                <div className="space-y-2 rounded-md bg-muted/30 p-2" key={line.id}>
+                <div className="space-y-2 rounded-md bg-subtle-surface p-2" key={line.id}>
                   <div className="flex items-end gap-2">
                     <label className="grid flex-1 gap-1 text-xs font-medium text-muted-foreground">
                       Value

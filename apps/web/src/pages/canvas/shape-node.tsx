@@ -134,7 +134,7 @@ export function ShapeNode({
         offset={40}
         position={Position.Top}
       >
-        <div className="flex items-center gap-1 rounded-2xl border border-border bg-background/95 p-1.5 shadow-lg backdrop-blur">
+        <div className="flex items-center gap-1 rounded-2xl border border-border bg-backdrop p-1.5 shadow-lg backdrop-blur">
           <button
             aria-label="Use default shape color"
             className={cn(

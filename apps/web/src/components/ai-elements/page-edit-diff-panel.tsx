@@ -26,7 +26,7 @@ export function PageEditDiffPanel({
   return (
     <div
       className={cn(
-        "not-prose max-h-72 overflow-auto rounded-xl border bg-muted/20 p-3 text-sm leading-relaxed",
+        "not-prose max-h-72 overflow-auto rounded-xl border bg-subtle-surface p-3 text-sm leading-relaxed",
         className,
       )}
     >
@@ -36,9 +36,9 @@ export function PageEditDiffPanel({
             <span
               className={cn(
                 segment.operation === DIFF_DELETE &&
-                  "bg-destructive/15 text-destructive line-through decoration-destructive/70",
+                  "bg-status-danger-diff-surface text-destructive line-through decoration-destructive",
                 segment.operation === DIFF_INSERT &&
-                  "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+                  "bg-status-success-surface text-status-success-foreground ",
               )}
               key={`${segment.operation}-${index}`}
             >

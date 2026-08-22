@@ -110,7 +110,7 @@ export const ThreadLine = React.forwardRef<HTMLDivElement, ThreadLineProps>(
           else if (ref) (ref as any).current = node
           lineRef.current = node
         }}
-        className={cn("absolute left-3 z-0 w-px bg-muted-foreground/40 pointer-events-none", className)}
+        className={cn("absolute left-3 z-0 w-px bg-muted-indicator pointer-events-none", className)}
       />
     )
   }
@@ -145,7 +145,7 @@ export function ThreadConnector() {
     <div className="pt-2 pb-2">
       <div className="h-2 flex items-center">
         <div className="w-6 flex justify-center">
-          <div className="w-px h-2 bg-muted-foreground/40" />
+          <div className="w-px h-2 bg-muted-indicator" />
         </div>
       </div>
     </div>

@@ -243,7 +243,7 @@ function PageBlockView({
     >
       {pageId ? (
         <button
-          className="flex h-10 w-full items-center gap-2 rounded-md bg-muted/50 px-3 text-left text-sm text-foreground transition-colors hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none [&_svg]:size-4"
+          className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm text-foreground transition-colors hover:bg-subtle-surface focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-4"
           contentEditable={false}
           data-open-in-new-tab-href={`/p/${encodeURIComponent(pageId)}`}
           data-open-in-new-tab-title={title}
@@ -262,7 +262,7 @@ function PageBlockView({
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
-              className="flex h-10 w-full justify-start gap-2 rounded-md bg-muted/50 px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none [&_svg]:size-4"
+              className="flex h-10 w-full justify-start gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-subtle-surface hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-4"
               contentEditable={false}
               style={cardStyle}
               type="button"

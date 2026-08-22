@@ -143,7 +143,7 @@ export function DatabaseViewSettingsMenu({
               <PopoverTrigger asChild>
                 <button
                   aria-label="Change view icon"
-                  className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+                  className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   disabled={!editable}
                   type="button"
                 >

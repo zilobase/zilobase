@@ -167,7 +167,7 @@ function CodeBlockShikiView({ node, updateAttributes }: ReactNodeViewProps) {
       >
         <Button
           aria-label={copied ? "Copied code" : "Copy code"}
-          className="bg-background/95 shadow-sm"
+          className="bg-backdrop shadow-sm"
           onClick={() => {
             void copyCode()
           }}

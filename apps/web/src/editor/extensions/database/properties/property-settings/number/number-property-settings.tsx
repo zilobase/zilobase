@@ -71,7 +71,7 @@ export function NumberPropertySettings({
               className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
                 isSelected
                   ? "border-primary bg-accent text-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
               key={option.value}
               onClick={() =>
@@ -86,12 +86,12 @@ export function NumberPropertySettings({
         })}
       </div>
       {showVisualOptions ? (
-        <div className="space-y-3 rounded-md border border-border/80 bg-muted/30 px-3 py-3">
+        <div className="space-y-3 rounded-md border border-border bg-subtle-surface px-3 py-3">
           <PropertySettingSubmenu
             icon={
               <span
                 aria-hidden="true"
-                className={`size-4 rounded-sm border border-foreground/10 ${getColorSwatchClassName(config.numberDisplayColor)}`}
+                className={`size-4 rounded-sm border border-border ${getColorSwatchClassName(config.numberDisplayColor)}`}
               />
             }
             label="Color"
@@ -262,7 +262,7 @@ const numberColorOptions = colorTokens.map((color) => ({
   icon: (
     <span
       aria-hidden="true"
-      className={`size-4 rounded-sm border border-foreground/10 ${color.swatchClass}`}
+      className={`size-4 rounded-sm border border-border ${color.swatchClass}`}
     />
   ),
   label: color.name,

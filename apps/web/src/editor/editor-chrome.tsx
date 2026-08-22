@@ -121,7 +121,7 @@ export function EditorChrome({
           />
         </div>
       ) : null}
-      {blockDropLine ? (
+      {editable && blockDropLine ? (
         <div
           aria-hidden="true"
           className="drag-drop-line block-drag-drop-line"

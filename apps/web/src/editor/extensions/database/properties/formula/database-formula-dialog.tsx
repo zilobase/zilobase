@@ -408,7 +408,7 @@ export function DatabaseFormulaDialog({
           {debugMode ? (
             <>
               <Separator />
-              <pre className="max-h-28 overflow-auto bg-muted/30 px-5 py-2.5 text-xs text-muted-foreground">
+              <pre className="max-h-28 overflow-auto bg-subtle-surface px-5 py-2.5 text-xs text-muted-foreground">
                 {JSON.stringify(
                   {
                     formula: draftFormula,
@@ -584,7 +584,7 @@ function FormulaEditor({
 
       <Textarea
         aria-label="Formula"
-        className="relative z-10 min-h-24 resize-none border-transparent bg-transparent font-mono text-sm leading-6 text-transparent caret-foreground selection:bg-primary/20 focus-visible:border-ring/60"
+        className="relative z-10 min-h-24 resize-none border-transparent bg-transparent font-mono text-sm leading-6 text-transparent caret-foreground selection:bg-primary-subtle focus-visible:border-ring"
         id={id}
         onChange={(event) => {
           onChange(event.target.value)

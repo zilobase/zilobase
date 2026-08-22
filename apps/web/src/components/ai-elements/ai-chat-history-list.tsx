@@ -171,14 +171,14 @@ export function AiChatHistoryList({
             return (
               <Fragment key={thread.id}>
                 {showLabel ? (
-                  <li className="flex h-8 shrink-0 items-center px-2 text-sidebar-foreground/70">
+                  <li className="flex h-8 shrink-0 items-center px-2 text-muted-foreground">
                     {label}
                   </li>
                 ) : null}
                 <SidebarMenuItem>
                   <div className="group/nav-row relative">
                     <SidebarMenuButton
-                      className="data-[active=false]:text-sidebar-foreground/70"
+                      className="data-[active=false]:text-muted-foreground"
                       isActive={isActive}
                       onClick={() => onSelectThread(thread.id)}
                       title={`${thread.title} · ${formatRelativeTime(thread.lastActivityAt)}`}

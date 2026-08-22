@@ -262,7 +262,7 @@ export function DatabasePropertyMenu({
         <DropDrawerTrigger asChild>
           <button
             aria-label={`${name} property options`}
-            className="database-property-menu-trigger group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none data-[state=open]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
+            className="database-property-menu-trigger group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
             type="button"
             {...triggerDragProps}
           >
@@ -282,7 +282,7 @@ export function DatabasePropertyMenu({
                 <PopoverTrigger asChild>
                   <button
                     aria-label="Change property icon"
-                    className="flex size-8 items-center justify-center rounded-md border bg-background transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+                    className="flex size-8 items-center justify-center rounded-md border bg-background transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     type="button"
                   >
                     {renderPropertyIcon()}

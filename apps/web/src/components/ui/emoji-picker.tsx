@@ -33,7 +33,7 @@ function EmojiPickerSearch({
   return (
     <FrimousseEmojiPicker.Search
       className={cn(
-        "mx-2 mt-2 h-8 rounded-md border border-input bg-input/20 px-2.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30",
+        "mx-2 mt-2 h-8 rounded-md border border-input bg-input px-2.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring dark:bg-input",
         className
       )}
       {...props}
@@ -88,7 +88,7 @@ function EmojiPickerFooter({ className }: { className?: string }) {
           )
         }
       </FrimousseEmojiPicker.ActiveEmoji>
-      <FrimousseEmojiPicker.SkinToneSelector className="ml-auto flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none" />
+      <FrimousseEmojiPicker.SkinToneSelector className="ml-auto flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" />
     </div>
   )
 }
@@ -101,7 +101,7 @@ function EmojiPickerCategoryHeader({
   return (
     <div
       className={cn(
-        "bg-popover/95 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur",
+        "bg-popover px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur",
         className
       )}
       {...props}
@@ -119,7 +119,7 @@ function EmojiPickerEmoji({
   return (
     <button
       className={cn(
-        "flex aspect-square size-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-muted data-[active]:bg-muted focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none",
+        "flex aspect-square size-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-muted data-[active]:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         className
       )}
       type="button"

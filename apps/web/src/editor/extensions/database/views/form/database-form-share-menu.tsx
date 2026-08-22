@@ -266,7 +266,7 @@ function FillAccessItem({
           className={cn(
             "font-normal",
             value === "public"
-              ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+              ? "bg-status-warning-surface text-status-warning-surface-foreground"
               : "bg-muted text-muted-foreground",
           )}
           variant="secondary"

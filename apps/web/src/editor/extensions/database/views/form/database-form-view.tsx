@@ -380,8 +380,8 @@ function FormQuestion({
         className={cn(
           "group/question relative space-y-4",
           !interactive &&
-            "cursor-pointer rounded-xl border border-primary/25 bg-card p-5 transition-colors hover:border-primary/50 sm:p-6",
-          open && "border-primary ring-1 ring-primary/20",
+            "cursor-pointer rounded-xl border border-primary bg-card p-5 transition-colors hover:border-primary sm:p-6",
+          open && "border-primary ring-1 ring-primary",
         )}
         onClick={() => editable && onOpenChange(true)}
       >

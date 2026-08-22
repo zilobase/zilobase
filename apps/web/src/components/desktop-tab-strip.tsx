@@ -173,8 +173,8 @@ const DesktopTabItem = memo(function DesktopTabItem({
       className={cn(
         "group/tab relative flex h-8 min-w-12 max-w-60 flex-[1_1_15rem] cursor-grab items-center px-1 text-sm active:cursor-grabbing",
         active
-          ? "desktop-tab-active z-10 rounded-t-lg rounded-b-none border-x border-t border-border/60 bg-background text-foreground"
-          : "rounded-md text-muted-foreground hover:bg-background/60 hover:text-foreground",
+          ? "desktop-tab-active z-10 rounded-t-lg rounded-b-none border-x border-t border-border bg-background text-foreground"
+          : "rounded-md text-muted-foreground hover:bg-backdrop hover:text-foreground",
       )}
       dragMomentum={false}
       onDragEnter={(event) => {
@@ -222,7 +222,7 @@ function DesktopNewTabButton({
   return (
     <motion.button
       aria-label="New tab"
-      className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-background/60 hover:text-foreground"
+      className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-backdrop hover:text-foreground"
       layout="position"
       onClick={onCreate}
       onPointerDown={stopReorderPointerDown}

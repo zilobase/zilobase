@@ -368,7 +368,7 @@ export function LayoutSettingsSection({
                     ))}
                   </div>
                 </div>
-                <div className="mt-1 rounded-md bg-muted/40 p-2">
+                <div className="mt-1 rounded-md bg-subtle-surface p-2">
                   <div className="mb-2 px-1 text-xs font-medium text-muted-foreground">
                     Card layout
                   </div>
@@ -415,15 +415,15 @@ export function LayoutSettingsSection({
                     </DropDrawerSubTrigger>
                     <DropDrawerSubContent className="w-72">
                       <div className="px-2 pb-2 pt-1">
-                        <div className="rounded-md bg-muted/40 p-3">
+                        <div className="rounded-md bg-subtle-surface p-3">
                           <div className="rounded-md border bg-background p-3">
-                            <div className="mb-3 h-2.5 w-24 rounded bg-muted-foreground/30" />
+                            <div className="mb-3 h-2.5 w-24 rounded bg-muted-indicator" />
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="size-3 rounded-full bg-muted-foreground/25" />
-                              <span className="h-2 w-14 rounded bg-muted-foreground/20" />
-                              <span className="h-2 w-9 rounded bg-muted-foreground/20" />
-                              <span className="h-3 w-3 rounded-sm bg-muted-foreground/20" />
-                              <span className="h-2 w-12 rounded bg-muted-foreground/20" />
+                              <span className="size-3 rounded-full bg-muted-indicator" />
+                              <span className="h-2 w-14 rounded bg-muted-indicator" />
+                              <span className="h-2 w-9 rounded bg-muted-indicator" />
+                              <span className="h-3 w-3 rounded-sm bg-muted-indicator" />
+                              <span className="h-2 w-12 rounded bg-muted-indicator" />
                             </div>
                           </div>
                         </div>

@@ -173,14 +173,17 @@ export default function TeamSettingsPage() {
       >
         <TabsList
           aria-label="Team settings sections"
-          className="w-full justify-start overflow-x-auto border-b"
-          variant="underline"
+          className="min-w-0 w-full justify-start overflow-x-auto"
+          variant="tab"
         >
-          <TabsTrigger className="h-9 gap-2 px-3" value="team">
+          <TabsTrigger className="h-8 shrink-0 grow-0 gap-2 px-3" value="team">
             Team
             <Badge variant="outline">{tabCounts.team}</Badge>
           </TabsTrigger>
-          <TabsTrigger className="h-9 gap-2 px-3" value="guests">
+          <TabsTrigger
+            className="h-8 shrink-0 grow-0 gap-2 px-3"
+            value="guests"
+          >
             Guests
             <Badge variant="outline">{tabCounts.guests}</Badge>
           </TabsTrigger>

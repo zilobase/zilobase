@@ -260,7 +260,7 @@ function CreatedKeyPanel({ apiKey }: { apiKey: CreatedApiKeyRecord }) {
 
   return (
     <div className="grid gap-4">
-      <div className="rounded-md border bg-muted/40 p-3">
+      <div className="rounded-md border bg-subtle-surface p-3">
         <div className="break-all font-mono text-sm">{apiKey.key}</div>
       </div>
       <Button className="w-fit" onClick={copyKey} type="button">

@@ -112,7 +112,7 @@ function openSlashEmojiPicker({
 
   root.render(
     <div
-      className="overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10"
+      className="overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-border"
       onMouseDown={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
     >

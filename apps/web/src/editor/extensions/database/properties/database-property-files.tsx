@@ -146,7 +146,7 @@ export function DatabasePropertyFiles({
 
           return (
             <a
-              className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-xs font-medium leading-4 text-foreground no-underline transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-xs font-medium leading-4 text-foreground no-underline transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
               href={href}
               key={file}
               onClick={(event) => event.stopPropagation()}
@@ -260,7 +260,7 @@ export function DatabasePropertyFiles({
 
               return (
                 <div
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/60"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-subtle-surface"
                   key={file}
                 >
                   <a
@@ -274,7 +274,7 @@ export function DatabasePropertyFiles({
                   </a>
                   <button
                     aria-label={`Remove ${getFileLabel(file)}`}
-                    className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
+                    className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     onClick={() => removeFile(file)}
                     type="button"
                   >

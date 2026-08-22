@@ -80,7 +80,7 @@ export function ReiconIconPicker({
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <input
           autoFocus
-          className="h-8 w-full rounded-md border border-input bg-input/20 pr-2.5 pl-8 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 dark:bg-input/30"
+          className="h-8 w-full rounded-md border border-input bg-input pr-2.5 pl-8 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring dark:bg-input"
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search icons..."
           type="search"
@@ -139,7 +139,7 @@ function ReiconIconOption({
       <DropdownMenuTrigger asChild>
         <button
           aria-label={icon.label}
-          className="flex aspect-square size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none data-[state=open]:bg-muted"
+          className="flex aspect-square size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:bg-muted"
           title={icon.label}
           type="button"
         >

@@ -11,6 +11,8 @@ import { WebFeaturesProvider } from "@/providers/features-provider"
 import { queryClient } from "@/lib/query-client"
 import { ShortcutProvider } from "@/shortcuts"
 import { OfflineQueryProvider } from "@/providers/offline-provider"
+import { getThemeColorScheme, selectableThemeIds } from "@/lib/themes"
+import { ThemeFamilyProvider } from "@/providers/theme-family-provider"
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
@@ -22,19 +24,22 @@ export function AppProviders({ children }: React.PropsWithChildren) {
             defaultTheme="system"
             enableSystem
             disableTransitionOnChange
+            themes={selectableThemeIds}
           >
-            <ThemeDocumentSync />
-            <TooltipProvider>
-              <PageEditorRegistryProvider>
-                <PageCommentsRegistryProvider>
-                  <PageEditorCommentsProvider>
-                    {children}
-                  </PageEditorCommentsProvider>
-                </PageCommentsRegistryProvider>
-              </PageEditorRegistryProvider>
-              <DesktopUpdater />
-              <Toaster />
-            </TooltipProvider>
+            <ThemeFamilyProvider>
+              <ThemeDocumentSync />
+              <TooltipProvider>
+                <PageEditorRegistryProvider>
+                  <PageCommentsRegistryProvider>
+                    <PageEditorCommentsProvider>
+                      {children}
+                    </PageEditorCommentsProvider>
+                  </PageCommentsRegistryProvider>
+                </PageEditorRegistryProvider>
+                <DesktopUpdater />
+                <Toaster />
+              </TooltipProvider>
+            </ThemeFamilyProvider>
           </ThemeProvider>
         </ShortcutProvider>
       </WebFeaturesProvider>
@@ -46,13 +51,13 @@ function ThemeDocumentSync() {
   const { resolvedTheme } = useTheme()
 
   React.useEffect(() => {
-    if (resolvedTheme !== "light" && resolvedTheme !== "dark") return
+    const colorScheme = getThemeColorScheme(resolvedTheme)
+    if (!colorScheme) return
 
-    const color = resolvedTheme === "dark" ? "#0d0d0f" : "#ffffff"
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
 
-    document.documentElement.style.colorScheme = resolvedTheme
-    meta?.setAttribute("content", color)
+    document.documentElement.style.colorScheme = colorScheme
+    meta?.setAttribute("content", getComputedStyle(document.body).backgroundColor)
   }, [resolvedTheme])
 
   return null

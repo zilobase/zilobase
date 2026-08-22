@@ -29,7 +29,7 @@ export function TrashedItemBanner({
 
   return (
     <>
-      <div className="sticky top-0 z-20 flex min-h-12 items-center justify-between gap-3 border-b bg-background/95 px-4 py-2 text-sm shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="sticky top-0 z-20 flex min-h-12 items-center justify-between gap-3 border-b bg-backdrop px-4 py-2 text-sm shadow-sm backdrop-blur supports-[backdrop-filter]:bg-backdrop">
         <span className="font-medium">This {itemLabel} is in trash.</span>
         {showRestore ? (
           <Button

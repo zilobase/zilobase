@@ -173,15 +173,15 @@ export function DiscussionsSidebarPanel({
 
             {visibleThreads.map((thread) => (
               <article
-                className={`rounded-xl border border-border/70 bg-background px-3 py-3 transition-[border-color,background-color,box-shadow] hover:border-border hover:bg-muted/15 ${
+                className={`rounded-xl border border-border bg-background px-3 py-3 transition-[border-color,background-color,box-shadow] hover:border-border hover:bg-subtle-surface ${
                   snapshot.activeThreadId === thread.id
-                    ? "border-foreground/25 bg-muted/25 ring-1 ring-foreground/10"
+                    ? "border-border bg-subtle-surface ring-1 ring-border"
                     : ""
                 }`}
                 key={thread.id}
                 onClick={() => controller.activateThread(thread.id, { openSidebar: false })}
               >
-                <div className="mb-2.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/75">
+                <div className="mb-2.5 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   <span>
                     {thread.kind === "block"
                       ? "Block comment"
@@ -196,7 +196,7 @@ export function DiscussionsSidebarPanel({
                   ) : null}
                 </div>
                 {thread.quote ? (
-                  <blockquote className="mb-3 line-clamp-3 rounded-md border-l-2 border-border bg-muted/30 px-2.5 py-2 text-[12px] leading-5 text-muted-foreground">
+                  <blockquote className="mb-3 line-clamp-3 rounded-md border-l-2 border-border bg-subtle-surface px-2.5 py-2 text-[12px] leading-5 text-muted-foreground">
                     {thread.quote}
                   </blockquote>
                 ) : null}
@@ -229,7 +229,7 @@ function ComposerCard({
   title: string
 }) {
   return (
-    <section className="rounded-xl border border-border/70 bg-muted/15 p-3">
+    <section className="rounded-xl border border-border bg-subtle-surface p-3">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-xs font-medium">{title}</h3>
         <Button onClick={onCancel} size="xs" type="button" variant="ghost">

@@ -495,7 +495,7 @@ export function DatabaseChartView() {
           />
           <RadialBar background dataKey="count" name={metricLabel}>
             <LabelList
-              className="fill-white text-[11px] capitalize mix-blend-luminosity"
+              className="fill-data-label-foreground text-[11px] capitalize mix-blend-luminosity"
               dataKey="name"
               position="insideStart"
               stroke="none"

@@ -37,7 +37,7 @@ export function IconColorGrid({
             aria-label={
               label ? `${label} in ${color.name}` : `Icon in ${color.name}`
             }
-            className="flex aspect-square size-8 items-center justify-center rounded-md border border-transparent transition-colors hover:border-border hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+            className="flex aspect-square size-8 items-center justify-center rounded-md border border-transparent transition-colors hover:border-border hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             key={color.value}
             onClick={(event) => {
               const svgElement = event.currentTarget.querySelector("svg")

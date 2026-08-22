@@ -518,7 +518,7 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
 
   return (
     <NodeViewWrapper className="ask-ai-block w-full" contentEditable={false}>
-      <div className="flex min-h-12 w-full items-end gap-2 rounded-md border bg-background px-3 py-2 shadow-sm transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20">
+      <div className="flex min-h-12 w-full items-end gap-2 rounded-md border bg-background px-3 py-2 shadow-sm transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring">
         <Sparkles
           aria-hidden="true"
           className="mt-2 size-4 shrink-0 text-muted-foreground"

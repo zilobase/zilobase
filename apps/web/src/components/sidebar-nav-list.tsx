@@ -77,7 +77,7 @@ type SidebarNavListProps = {
 }
 
 const rowClassName = cn(
-  "peer/menu-button pr-8 data-[active=false]:text-sidebar-foreground/70",
+  "peer/menu-button pr-8 data-[active=false]:text-muted-foreground",
   SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
 )
 
@@ -307,18 +307,18 @@ function ItemIndicators({ item }: { item: SidebarNavItem }) {
       {availableOffline ? (
         <HardDriveDownloadIcon
           aria-label="Available offline"
-          className="size-3.5 text-sidebar-foreground/60"
+          className="size-3.5 text-muted-foreground"
         />
       ) : null}
       {showAiMode ? (
-        <span className="text-xs text-sidebar-foreground/60">
+        <span className="text-xs text-muted-foreground">
           {item.zilobaseai}
         </span>
       ) : null}
       {item.isLinked ? (
         <ArrowUpRightIcon
           aria-label="Linked from another parent"
-          className="size-3 text-sidebar-foreground/45"
+          className="size-3 text-muted-foreground"
         />
       ) : null}
     </span>

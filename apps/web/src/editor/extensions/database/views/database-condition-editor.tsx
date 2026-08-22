@@ -657,7 +657,7 @@ export function DatabaseConditionEditor({
     <button
       aria-label={removeLabel ?? `Remove ${condition.label} condition`}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none",
+        "inline-flex shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         isStacked
           ? "mt-1 size-7 rounded-full hover:bg-background"
           : "size-8 rounded-md hover:bg-muted"
@@ -715,8 +715,8 @@ export function DatabaseConditionEditor({
     <Reorder.Item
       as="div"
       className={cn(
-        "rounded-md bg-muted/35 p-2 transition-colors",
-        drag.isDragging && "relative z-10 bg-popover shadow-lg ring-1 ring-ring/50"
+        "rounded-md bg-subtle-surface p-2 transition-colors",
+        drag.isDragging && "relative z-10 bg-popover shadow-lg ring-1 ring-ring"
       )}
       dragControls={dragControls}
       dragListener={false}

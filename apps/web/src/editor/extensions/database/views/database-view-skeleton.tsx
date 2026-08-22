@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 function DatabaseTableSkeleton() {
   return (
     <div className="overflow-hidden border-y">
-      <div className="grid grid-cols-[minmax(180px,1.6fr)_repeat(3,minmax(120px,1fr))] border-b bg-muted/20">
+      <div className="grid grid-cols-[minmax(180px,1.6fr)_repeat(3,minmax(120px,1fr))] border-b bg-subtle-surface">
         {Array.from({ length: 4 }).map((_, index) => (
           <div className="border-r p-3 last:border-r-0" key={index}>
             <Skeleton className={index === 0 ? "h-4 w-28" : "h-4 w-20"} />

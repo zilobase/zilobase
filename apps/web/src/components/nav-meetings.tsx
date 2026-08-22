@@ -25,7 +25,7 @@ export function NavMeetings({
       <SidebarGroupContent>
         <SidebarMenu>
           {meetings.length === 0 ? (
-            <p className="px-2 py-1.5 text-xs text-sidebar-foreground/55">
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">
               Meeting blocks on pages appear here.
             </p>
           ) : (

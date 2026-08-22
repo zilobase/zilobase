@@ -674,7 +674,7 @@ export const ContextAttachMenu = forwardRef<
   }
 
   return (
-    <div className="absolute bottom-full left-0 z-50 mb-2 w-full max-w-md overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10">
+    <div className="absolute bottom-full left-0 z-50 mb-2 w-full max-w-md overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-border">
       <PromptInputCommand
         onValueChange={(value) => {
           const nextIndex = menuEntries.findIndex(

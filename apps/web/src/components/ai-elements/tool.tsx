@@ -127,7 +127,7 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
     <h4 className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
       Parameters
     </h4>
-    <div className="rounded-md bg-muted/50">
+    <div className="rounded-md bg-subtle-surface">
       <CodeBlock code={stringifyToolValue(input)} language="json" />
     </div>
   </div>
@@ -165,8 +165,8 @@ export const ToolOutput = ({
         className={cn(
           "overflow-x-auto rounded-md text-xs [&_table]:w-full",
           errorText
-            ? "bg-destructive/10 text-destructive"
-            : "bg-muted/50 text-foreground"
+            ? "bg-status-danger-diff-surface text-destructive"
+            : "bg-subtle-surface text-foreground"
         )}
       >
         {errorText && <div>{errorText}</div>}

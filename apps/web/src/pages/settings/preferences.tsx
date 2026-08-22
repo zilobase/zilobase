@@ -25,6 +25,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/components/ui/spinner"
 import { getApiErrorMessage } from "@/lib/api"
@@ -56,12 +65,13 @@ import { useAppStore } from "@/stores/app-store"
 import { useOfflineManifest } from "@/providers/offline-provider"
 import { useSession } from "@zilobase/features/auth"
 import { useWorkspaces } from "@zilobase/features/workspaces"
-
-const appearanceOptions = [
-  { label: "Light", value: "light" },
-  { label: "Dark", value: "dark" },
-  { label: "System", value: "system" },
-] as const
+import {
+  appearanceModes,
+  themeFamilies,
+  type AppearanceModeId,
+  type ThemeFamilyId,
+} from "@/lib/themes"
+import { useThemeFamily } from "@/providers/theme-family-provider"
 
 export default function PreferencesSettingsPage() {
   return (
@@ -164,7 +174,7 @@ function DesktopServerSection() {
             : []
         ).map((profile) => (
           <div
-            className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3 text-sm"
+            className="flex items-center justify-between gap-3 rounded-lg border bg-subtle-surface p-3 text-sm"
             key={`${profile.server.instanceId}:${profile.server.apiOrigin}`}
           >
             <div className="min-w-0">
@@ -342,6 +352,7 @@ function DiagnosticsSection() {
 
 function AppearanceSection() {
   const { theme = "system", setTheme } = useTheme()
+  const { themeFamily, setThemeFamily } = useThemeFamily()
 
   return (
     <section className="grid gap-3">
@@ -351,26 +362,58 @@ function AppearanceSection() {
           Choose how Zilobase looks on this device.
         </p>
       </div>
-      <div className="flex flex-wrap items-start gap-2">
-        {appearanceOptions.map((option) => {
-          const selected = option.value === theme
+      <div className="grid gap-4">
+        <div
+          aria-label="Appearance mode"
+          className="flex flex-wrap items-start gap-2"
+          role="group"
+        >
+          {appearanceModes.map((option) => {
+            const selected = theme === option.value
 
-          return (
-            <button
-              aria-pressed={selected}
-              className="group relative grid w-40 gap-1.5 rounded-lg p-1 text-left text-sm font-medium outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40 aria-pressed:bg-muted/70"
-              key={option.value}
-              onClick={() => setTheme(option.value)}
-              type="button"
-            >
-              <ThemePreview mode={option.value} selected={selected} />
-              <span className="flex items-center justify-between px-0.5">
-                {option.label}
-                {selected ? <CheckIcon className="size-4 text-primary" /> : null}
-              </span>
-            </button>
-          )
-        })}
+            return (
+              <button
+                aria-pressed={selected}
+                className="group relative grid w-40 gap-1.5 rounded-lg p-1 text-left text-sm font-medium outline-none transition-colors hover:bg-subtle-surface focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-muted"
+                key={option.value}
+                onClick={() => setTheme(option.value as AppearanceModeId)}
+                type="button"
+              >
+                <ThemePreview
+                  mode={option.value}
+                  selected={selected}
+                  themeFamily={themeFamily}
+                />
+                <span className="flex items-center justify-between px-0.5">
+                  {option.label}
+                  {selected ? <CheckIcon className="size-4 text-primary" /> : null}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="grid gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Theme</span>
+          <Select
+            value={themeFamily}
+            onValueChange={(value) => setThemeFamily(value as ThemeFamilyId)}
+          >
+            <SelectTrigger aria-label="Theme" className="w-full sm:w-72">
+              <SelectValue placeholder="Select a theme" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Themes</SelectLabel>
+                {themeFamilies.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </section>
   )
@@ -379,56 +422,76 @@ function AppearanceSection() {
 function ThemePreview({
   mode,
   selected,
+  themeFamily,
 }: {
-  mode: (typeof appearanceOptions)[number]["value"]
+  mode: AppearanceModeId
   selected: boolean
+  themeFamily: ThemeFamilyId
 }) {
-  const isLight = mode === "light"
-  const isDark = mode === "dark"
-
   return (
     <div
+      aria-hidden="true"
       className={`relative aspect-[8/5] w-full overflow-hidden rounded-lg border-2 transition-colors ${
         selected
-          ? "border-primary ring-2 ring-primary/15"
-          : "border-border group-hover:border-foreground/25"
-      } ${
-        isLight
-          ? "bg-zinc-100"
-          : isDark
-            ? "bg-zinc-900"
-            : "bg-[linear-gradient(to_right,#f4f4f5_0%,#f4f4f5_50%,#18181b_50%,#18181b_100%)]"
+          ? "border-primary ring-2 ring-ring"
+          : "border-border group-hover:border-ring"
       }`}
-      aria-hidden="true"
     >
-      <div
-        className={`absolute inset-y-0 left-0 w-[27%] border-r ${
-          isDark
-            ? "border-zinc-700 bg-zinc-800"
-            : "border-zinc-300 bg-white/80"
-        }`}
-      />
-      <div className="absolute top-[13%] left-[13%] flex -translate-x-1/2 gap-1">
-        <span className={`size-1.5 rounded-full ${isDark ? "bg-zinc-600" : "bg-zinc-300"}`} />
-        <span className={`size-1.5 rounded-full ${isDark ? "bg-zinc-600" : "bg-zinc-300"}`} />
-        <span className={`size-1.5 rounded-full ${isDark ? "bg-zinc-600" : "bg-zinc-300"}`} />
-      </div>
-      <div className="absolute top-[34%] left-[35%] grid w-[51%] gap-2">
-        <span
-          className={`h-2 rounded-full ${
-            isLight ? "bg-zinc-300" : "bg-zinc-700"
-          }`}
+      {mode === "system" ? (
+        <>
+          <ThemePreviewPane
+            className="absolute inset-y-0 left-0 w-1/2"
+            sceneClassName="left-0 w-[200%]"
+            scheme="light"
+            themeFamily={themeFamily}
+          />
+          <ThemePreviewPane
+            className="absolute inset-y-0 right-0 w-1/2"
+            sceneClassName="right-0 w-[200%]"
+            scheme="dark"
+            themeFamily={themeFamily}
+          />
+        </>
+      ) : (
+        <ThemePreviewPane
+          className="absolute inset-0"
+          sceneClassName="inset-x-0"
+          scheme={mode}
+          themeFamily={themeFamily}
         />
-        <span
-          className={`h-2 w-4/5 rounded-full ${
-            isLight ? "bg-zinc-300" : "bg-zinc-700"
-          }`}
-        />
-        <span
-          className={`h-2 w-3/5 rounded-full ${
-            isLight ? "bg-zinc-300" : "bg-zinc-700"
-          }`}
-        />
+      )}
+    </div>
+  )
+}
+
+function ThemePreviewPane({
+  className,
+  sceneClassName,
+  scheme,
+  themeFamily,
+}: {
+  className: string
+  sceneClassName: string
+  scheme: Exclude<AppearanceModeId, "system">
+  themeFamily: ThemeFamilyId
+}) {
+  return (
+    <div
+      className={`${scheme} overflow-hidden bg-background ${className}`}
+      data-theme={themeFamily}
+    >
+      <div className={`absolute inset-y-0 ${sceneClassName}`}>
+        <div className="absolute inset-y-0 left-0 w-[27%] border-r border-sidebar-border bg-sidebar" />
+        <div className="absolute left-[13%] top-[13%] flex -translate-x-1/2 gap-1">
+          <span className="size-1.5 rounded-full bg-muted-foreground" />
+          <span className="size-1.5 rounded-full bg-muted-foreground" />
+          <span className="size-1.5 rounded-full bg-muted-foreground" />
+        </div>
+        <div className="absolute left-[35%] top-[34%] grid w-[51%] gap-2">
+          <span className="h-2 rounded-full bg-muted-foreground" />
+          <span className="h-2 w-4/5 rounded-full bg-muted-foreground" />
+          <span className="h-2 w-3/5 rounded-full bg-muted-foreground" />
+        </div>
       </div>
     </div>
   )

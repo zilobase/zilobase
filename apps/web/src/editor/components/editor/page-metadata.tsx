@@ -629,7 +629,7 @@ export function PageMetadata({
         <PopoverTrigger asChild>
           <button
               aria-label={`Change ${metadataSubjectLowercase} icon`}
-            className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex items-center justify-center rounded-md transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none`}
+            className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex items-center justify-center rounded-md transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}
             disabled={!editable}
             type="button"
           >
@@ -662,7 +662,7 @@ export function PageMetadata({
       </Popover>
       <button
           aria-label={`Remove ${metadataSubjectLowercase} icon`}
-        className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none group-focus-within/metadata:flex group-hover/icon:flex group-hover/metadata:flex [&_svg]:size-3"
+        className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/metadata:flex group-hover/icon:flex group-hover/metadata:flex [&_svg]:size-3"
         onClick={() => {
           updateIcon("")
           setIconOpen(false)
@@ -754,7 +754,7 @@ export function PageMetadata({
           {editable ? (
             <Button
               aria-label={`Remove ${metadataSubjectLowercase} cover`}
-              className="absolute right-3 top-3 bg-background/80 opacity-0 shadow-sm backdrop-blur transition-opacity group-focus-within/metadata:opacity-100 group-hover/metadata:opacity-100 focus-visible:opacity-100"
+              className="absolute right-3 top-3 bg-backdrop opacity-0 shadow-sm backdrop-blur transition-opacity group-focus-within/metadata:opacity-100 group-hover/metadata:opacity-100 focus-visible:opacity-100"
               disabled={!editable}
               onClick={() => updateCover("")}
               size="icon-sm"
@@ -864,7 +864,7 @@ export function PageMetadata({
           {iconPosition === "inline" ? pageIcon : null}
           <textarea
               aria-label={headingLabel ? `${headingLabel} title` : "Page title"}
-            className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-foreground shadow-none outline-none placeholder:text-muted-foreground/40 focus-visible:ring-0 dark:bg-transparent"
+            className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
             onChange={(event) => updateTitle(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -893,7 +893,7 @@ export function PageMetadata({
                   ? `${headingLabel} description`
                   : "Page description"
               }
-              className="min-h-6 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-base leading-relaxed text-muted-foreground shadow-none outline-none placeholder:text-muted-foreground/55 focus-visible:ring-0 dark:bg-transparent"
+              className="min-h-6 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-base leading-relaxed text-muted-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
               onChange={(event) => updateDescription(event.target.value)}
               placeholder={descriptionPlaceholder}
               readOnly={!editable}

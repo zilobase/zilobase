@@ -511,7 +511,7 @@ function DropDrawerItem({
           "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-popover-foreground outline-hidden select-none hover:bg-accent [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
           inset && "pl-8",
           variant === "destructive" &&
-            "text-destructive hover:bg-destructive/10 hover:text-destructive [&_svg]:text-destructive",
+            "text-destructive hover:bg-status-danger-diff-surface hover:text-destructive [&_svg]:text-destructive",
           disabled &&
             "pointer-events-none text-muted-foreground opacity-60 hover:bg-transparent",
           className,

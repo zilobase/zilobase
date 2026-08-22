@@ -489,7 +489,7 @@ export function NavActions({
           />
           <span
             aria-hidden="true"
-            className="hidden text-xs text-muted-foreground/60 md:inline"
+            className="hidden text-xs text-muted-foreground md:inline"
           >
             ·
           </span>
@@ -552,7 +552,7 @@ export function NavActions({
             aria-label={
               isFavorite ? "Remove from favorites" : "Add to favorites"
             }
-            className={cn("h-7 w-7", isFavorite && "text-yellow-500")}
+            className={cn("h-7 w-7", isFavorite && "text-status-favorite")}
             disabled={
               databaseId
                 ? !databasePayload || setDatabaseFavorite.isPending

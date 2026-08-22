@@ -871,7 +871,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
           </button>
           <div className="-mx-1 my-1 h-px bg-border" />
           <button
-            className="column-actions-menu-item text-destructive hover:bg-destructive/10 focus-visible:bg-destructive/10"
+            className="column-actions-menu-item text-destructive hover:bg-status-danger-diff-surface focus-visible:bg-status-danger-diff-surface"
             onClick={() =>
               runColumnCommand(() => deleteColumn(editor, rect, menu.index))
             }

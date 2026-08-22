@@ -23,7 +23,7 @@ export function GanttContentHeader({
 
   return (
     <div
-      className="gantt-content-header sticky top-0 z-20 flex w-full shrink-0 flex-col border-border/50 border-b bg-background"
+      className="gantt-content-header sticky top-0 z-20 flex w-full shrink-0 flex-col border-border border-b bg-background"
       style={{ height: "var(--gantt-header-height)" }}
     >
       {!gantt.hideHeaderTitle ? (
@@ -44,7 +44,7 @@ export function GanttContentHeader({
       >
         {Array.from({ length: columns }, (_, index) => (
           <div
-            className="flex h-full shrink-0 items-center justify-center border-border/50 border-r py-0 text-center text-xs last:border-r-0"
+            className="flex h-full shrink-0 items-center justify-center border-border border-r py-0 text-center text-xs last:border-r-0"
             key={`${id}-${index}`}
           >
             {renderHeaderItem(index)}

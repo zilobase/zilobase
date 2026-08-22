@@ -96,7 +96,7 @@ function ImageBlockView({
       <Popover onOpenChange={setOpen} open={open}>
         <PopoverTrigger asChild>
           <button
-            className="flex h-10 w-full items-center gap-2 rounded-md bg-muted/50 px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
+            className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-subtle-surface hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
             contentEditable={false}
             disabled={Boolean(src)}
             type="button"
@@ -128,7 +128,7 @@ function ImageBlockView({
       {src ? (
         <button
           aria-label="Image"
-          className="group/image-preview relative mx-auto block max-w-full overflow-hidden rounded-md border bg-muted p-0 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none [&>img]:block [&>img]:w-full"
+          className="group/image-preview relative mx-auto block max-w-full overflow-hidden rounded-md border bg-muted p-0 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&>img]:block [&>img]:w-full"
           contentEditable={false}
           data-image-block-preview
           style={width ? { width: `${width}px` } : undefined}
@@ -136,7 +136,7 @@ function ImageBlockView({
         >
           <span
             aria-hidden="true"
-            className="absolute left-1 top-1/2 z-10 hidden h-14 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center touch-none before:block before:h-10 before:w-0.5 before:rounded-full before:bg-primary/80 before:content-[''] group-focus-visible/image-preview:flex group-hover/image-preview:flex"
+            className="absolute left-1 top-1/2 z-10 hidden h-14 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center touch-none before:block before:h-10 before:w-0.5 before:rounded-full before:bg-primary-subtle before:content-[''] group-focus-visible/image-preview:flex group-hover/image-preview:flex"
             onPointerDown={(event) => startResize(event, "left")}
             onPointerMove={updateResize}
             onPointerUp={stopResize}
@@ -144,7 +144,7 @@ function ImageBlockView({
           <img alt={alt} src={src} title={node.attrs.title ?? undefined} />
           <span
             aria-hidden="true"
-            className="absolute right-1 top-1/2 z-10 hidden h-14 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center touch-none before:block before:h-10 before:w-0.5 before:rounded-full before:bg-primary/80 before:content-[''] group-focus-visible/image-preview:flex group-hover/image-preview:flex"
+            className="absolute right-1 top-1/2 z-10 hidden h-14 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center touch-none before:block before:h-10 before:w-0.5 before:rounded-full before:bg-primary-subtle before:content-[''] group-focus-visible/image-preview:flex group-hover/image-preview:flex"
             onPointerDown={(event) => startResize(event, "right")}
             onPointerMove={updateResize}
             onPointerUp={stopResize}

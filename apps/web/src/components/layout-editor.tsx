@@ -316,7 +316,7 @@ function LayoutEditor({
             <DropdownMenuTrigger asChild>
               <Button
                 aria-label="Choose apply scope"
-                className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                className="rounded-l-none border-l border-primary-foreground px-2"
                 disabled={layoutMutationPending}
               >
                 <ChevronDown />
@@ -360,7 +360,7 @@ function LayoutEditor({
           onFullWidthChange={setFullWidth}
         />
 
-        <main className="min-w-0 flex-1 overflow-hidden bg-muted/10">
+        <main className="min-w-0 flex-1 overflow-hidden bg-subtle-surface">
           <div className="h-full w-full">
             <Editor
               content={page?.content ?? ""}
