@@ -36,7 +36,7 @@ async function seed() {
   const ready = await fetch(`${internalOrigin}/ready`)
   assert.equal(ready.status, 200)
   assert.deepEqual(await ready.json(), {
-    checks: { database: "ok", objectStorage: "ok" },
+    checks: { database: "ok", objectStorage: "ok", realtime: "ok" },
     ok: true,
     service: "zilobase-server",
   })
