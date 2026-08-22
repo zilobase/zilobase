@@ -410,7 +410,7 @@ export function NavActions({
           </span>
         </>
       ) : null}
-      <div className="hidden text-xs/relaxed font-normal text-muted-foreground md:inline-block">
+      <div className="hidden text-sm font-medium text-muted-foreground md:inline-block">
         Edited recently
       </div>
       {hasPageActions ? (
