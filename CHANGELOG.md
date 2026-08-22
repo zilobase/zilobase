@@ -4,6 +4,27 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.45
+
+### Added
+
+- Teamspaces now support icons, member and group administration, role-aware permissions, lifecycle controls, and a dedicated Library tab.
+- Workspace members can receive expiring temporary access, and page guests can be invited with approval and comment controls.
+- Database properties support configurable field icons, while database view and setup controls use the redesigned editing experience.
+
+### Changed
+
+- Teamspaces use the same expandable, full-width sidebar navigation behavior as other sections while keeping nested pages visually indented.
+- Pages, meetings, databases, side peeks, and dialogs show consistent top and bottom scroll-edge fades.
+- Deep breadcrumbs collapse more cleanly, editor metadata and meeting tabs are tighter, and AI chats are created only after the first message is sent.
+- Page content state is persisted explicitly and structural editing follows page access locks.
+
+### Fixed
+
+- Embedded databases inherit their parent page's teamspace and can be created inside editable meeting blocks.
+- Read-only meetings hide settings, and locked databases prevent new view creation.
+- The Community Helm gate now validates the current readiness response, including realtime health.
+
 ## 0.0.44
 
 ### Added
