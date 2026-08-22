@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 const MINUTE_IN_MS = 60_000;
 const DAY_IN_MS = 24 * 60 * MINUTE_IN_MS;
 
@@ -48,6 +50,17 @@ export function register({ assert, loadModule, test }) {
     assert.equal(normalizeTeamSettingsTab("guests"), "guests");
     assert.equal(normalizeTeamSettingsTab("unknown"), "team");
     assert.equal(normalizeTeamSettingsTab(undefined), "team");
+  });
+
+  test("team settings can open from the settings dialog on any route", async () => {
+    const source = await readFile(
+      new URL("../src/pages/settings/team.tsx", import.meta.url),
+      "utf8",
+    );
+
+    assert.match(source, /useSearch\(\{\s*strict: false,/);
+    assert.match(source, /normalizeTeamSettingsTab\(search\.tab\)/);
+    assert.doesNotMatch(source, /useSearch\(\{ from: "\/app\/settings\/team" \}\)/);
   });
 
   test("team settings tab counts include pending work", async () => {

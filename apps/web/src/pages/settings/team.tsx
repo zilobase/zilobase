@@ -86,7 +86,10 @@ import {
   localDateTimeToIso,
   normalizeWorkspaceRole,
 } from "@/pages/settings/team-access"
-import { getTeamSettingsTabCounts } from "@/pages/settings/team-settings-tabs"
+import {
+  getTeamSettingsTabCounts,
+  normalizeTeamSettingsTab,
+} from "@/pages/settings/team-settings-tabs"
 import { useAppStore } from "@/stores/app-store"
 
 type RegistrationMode = "invite-only" | "open"
@@ -103,7 +106,10 @@ type InstanceSettingsResponse = {
 
 export default function TeamSettingsPage() {
   const navigate = useNavigate()
-  const { tab } = useSearch({ from: "/app/settings/team" })
+  const tab = useSearch({
+    strict: false,
+    select: (search) => normalizeTeamSettingsTab(search.tab),
+  })
   const activeWorkspaceId = useActiveWorkspaceId()
   const { data: sessionData } = useSession()
   const { data: accessTargets, isLoading: isLoadingAccessTargets } =
