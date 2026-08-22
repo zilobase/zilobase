@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Breadcrumb,
+  BreadcrumbEllipsis,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
@@ -361,13 +362,13 @@ export function AppBreadcrumbs({ pathname }: { pathname: string }) {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem className="hidden sm:inline-flex">
-            <BreadcrumbLink asChild>
-              <Link to="/settings">Settings</Link>
+            <BreadcrumbLink render={<Link to="/settings" />}>
+              Settings
             </BreadcrumbLink>
           </BreadcrumbItem>
           {settingsPageTitle ? (
             <>
-              <BreadcrumbSeparator className="hidden sm:inline-flex" />
+              <BreadcrumbSlash className="hidden sm:inline-flex" />
               <BreadcrumbItem>
                 <BreadcrumbPage className="line-clamp-1">
                   {settingsPageTitle}
@@ -386,6 +387,24 @@ export function AppBreadcrumbs({ pathname }: { pathname: string }) {
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbPage className="line-clamp-1">Canvas</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    );
+  }
+
+  if (pathname === "/recents") {
+    return (
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink render={<Link to="/recents" />}>
+              Library
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSlash />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="line-clamp-1">Recents</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -411,40 +430,22 @@ function PageBreadcrumb({ pageId }: { pageId: string }) {
   const breadcrumbs = page
     ? buildPageBreadcrumbs(page, pages, navigation?.placements ?? [])
     : [];
+  const entries: AppBreadcrumbEntry[] = [
+    getLibrarySectionBreadcrumbEntry(breadcrumbs[0] ?? page),
+    ...(breadcrumbs.length > 0
+      ? breadcrumbs.map((item, index) => ({
+          current: index === breadcrumbs.length - 1,
+          id: item.id,
+          label: getPageBreadcrumbLabel(item),
+          target:
+            index === breadcrumbs.length - 1
+              ? undefined
+              : ({ pageId: item.id, type: "page" } as const),
+        }))
+      : [{ current: true, id: "page", label: "Page" }]),
+  ];
 
-  return (
-    <Breadcrumb className="min-w-0">
-      <BreadcrumbList className="flex-nowrap">
-        <BreadcrumbItem className="hidden sm:inline-flex">
-          <BreadcrumbLink asChild>
-            <Link to="/recents">Recents</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator className="hidden sm:inline-flex" />
-        {breadcrumbs.length > 0 ? (
-          breadcrumbs.map((item, index) => {
-            const isCurrent = index === breadcrumbs.length - 1;
-            const label = getPageBreadcrumbLabel(item);
-
-            return (
-              <BreadcrumbFragment
-                isCurrent={isCurrent}
-                item={item}
-                key={item.id}
-                label={label}
-              />
-            );
-          })
-        ) : (
-          <BreadcrumbItem className="min-w-0">
-            <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
-              Page
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        )}
-      </BreadcrumbList>
-    </Breadcrumb>
-  );
+  return <CollapsedBreadcrumbTrail entries={entries} />;
 }
 
 function MeetingBreadcrumb({ meetingId }: { meetingId: string }) {
@@ -456,7 +457,7 @@ function MeetingBreadcrumb({ meetingId }: { meetingId: string }) {
         <BreadcrumbItem className="hidden sm:inline-flex">
           <BreadcrumbPage>Meetings</BreadcrumbPage>
         </BreadcrumbItem>
-        <BreadcrumbSeparator className="hidden sm:inline-flex" />
+        <BreadcrumbSlash className="hidden sm:inline-flex" />
         <BreadcrumbItem className="min-w-0">
           <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
             {data?.meeting.title.trim() || "Meeting"}
@@ -481,64 +482,207 @@ function DatabaseBreadcrumb({ databaseId }: { databaseId: string }) {
   const breadcrumbs = page
     ? buildPageBreadcrumbs(page, pages, navigation?.placements ?? [])
     : [];
+  const entries: AppBreadcrumbEntry[] = [
+    getLibrarySectionBreadcrumbEntry(breadcrumbs[0] ?? page),
+    ...breadcrumbs.map((item) => ({
+      id: item.id,
+      label: getPageBreadcrumbLabel(item),
+      target: { pageId: item.id, type: "page" } as const,
+    })),
+    {
+      current: true,
+      id: `database-${databaseId}`,
+      label: payload?.database.name.trim() || "Database",
+    },
+  ];
+
+  return <CollapsedBreadcrumbTrail entries={entries} />;
+}
+
+type AppBreadcrumbTarget =
+  | { type: "library"; view: "private" | "shared" }
+  | { type: "recents" }
+  | { pageId: string; type: "page" };
+
+type AppBreadcrumbEntry = {
+  current?: boolean;
+  id: string;
+  label: string;
+  target?: AppBreadcrumbTarget;
+};
+
+function getLibrarySectionBreadcrumbEntry(
+  rootPage: Page | undefined,
+): AppBreadcrumbEntry {
+  if (!rootPage) {
+    return {
+      id: "library",
+      label: "Library",
+      target: { type: "recents" },
+    };
+  }
+
+  const view = rootPage.isTeamspace ? "shared" : "private";
+
+  return {
+    id: `library-${view}`,
+    label: view === "shared" ? "Shared" : "Private",
+    target: { type: "library", view },
+  };
+}
+
+function CollapsedBreadcrumbTrail({
+  entries,
+}: {
+  entries: AppBreadcrumbEntry[];
+}) {
+  const shouldCollapse = entries.length > 3;
+  const firstEntry = entries[0];
+  const collapsedEntries = shouldCollapse ? entries.slice(1, -2) : [];
+  const trailingEntries = shouldCollapse ? entries.slice(-2) : entries.slice(1);
 
   return (
     <Breadcrumb className="min-w-0">
       <BreadcrumbList className="flex-nowrap">
-        <BreadcrumbItem className="hidden sm:inline-flex">
-          <BreadcrumbLink asChild>
-            <Link to="/recents">Recents</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator className="hidden sm:inline-flex" />
-        {breadcrumbs.map((item) => (
-          <BreadcrumbFragment
-            isCurrent={false}
-            item={item}
-            key={item.id}
-            label={getPageBreadcrumbLabel(item)}
-          />
+        {firstEntry ? <BreadcrumbTrailEntry entry={firstEntry} /> : null}
+        {collapsedEntries.length > 0 ? (
+          <>
+            <BreadcrumbSlash />
+            <BreadcrumbItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    aria-label="More pages"
+                    className="-m-1.5 text-muted-foreground"
+                    size="icon-sm"
+                    variant="ghost"
+                  >
+                    <BreadcrumbEllipsis />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {collapsedEntries.map((entry) => (
+                    <CollapsedBreadcrumbMenuItem
+                      entry={entry}
+                      key={entry.id}
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </BreadcrumbItem>
+          </>
+        ) : null}
+        {trailingEntries.map((entry) => (
+          <BreadcrumbTrailPart entry={entry} key={entry.id} />
         ))}
-        <BreadcrumbItem className="min-w-0">
-          <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
-            {payload?.database.name.trim() || "Database"}
-          </BreadcrumbPage>
-        </BreadcrumbItem>
       </BreadcrumbList>
     </Breadcrumb>
   );
 }
 
-function BreadcrumbFragment({
-  isCurrent,
-  item,
-  label,
-}: {
-  isCurrent: boolean;
-  item: Page;
-  label: string;
-}) {
+function BreadcrumbTrailPart({ entry }: { entry: AppBreadcrumbEntry }) {
   return (
     <>
-      <BreadcrumbItem className="min-w-0">
-        {isCurrent ? (
-          <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
-            {label}
-          </BreadcrumbPage>
-        ) : (
-          <BreadcrumbLink
-            asChild
-            className="block max-w-32 truncate sm:max-w-48"
-          >
-            <Link to="/p/$pageId" params={{ pageId: item.id }}>
-              {label}
-            </Link>
-          </BreadcrumbLink>
-        )}
-      </BreadcrumbItem>
-      {!isCurrent ? <BreadcrumbSeparator /> : null}
+      <BreadcrumbSlash />
+      <BreadcrumbTrailEntry entry={entry} />
     </>
   );
+}
+
+function BreadcrumbTrailEntry({ entry }: { entry: AppBreadcrumbEntry }) {
+  return (
+    <BreadcrumbItem className="min-w-0">
+      {entry.current || !entry.target ? (
+        <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
+          {entry.label}
+        </BreadcrumbPage>
+      ) : (
+        <BreadcrumbEntryLink entry={entry} />
+      )}
+    </BreadcrumbItem>
+  );
+}
+
+function BreadcrumbEntryLink({ entry }: { entry: AppBreadcrumbEntry }) {
+  if (entry.target?.type === "page") {
+    return (
+      <BreadcrumbLink
+        className="block max-w-32 truncate sm:max-w-48"
+        render={
+          <Link
+            params={{ pageId: entry.target.pageId }}
+            to="/p/$pageId"
+          />
+        }
+      >
+        {entry.label}
+      </BreadcrumbLink>
+    );
+  }
+
+  if (entry.target?.type === "library") {
+    return (
+      <BreadcrumbLink
+        className="block max-w-32 truncate sm:max-w-48"
+        render={
+          <Link
+            search={{ view: entry.target.view } as never}
+            to="/recents"
+          />
+        }
+      >
+        {entry.label}
+      </BreadcrumbLink>
+    );
+  }
+
+  return (
+    <BreadcrumbLink
+      className="block max-w-32 truncate sm:max-w-48"
+      render={<Link to="/recents" />}
+    >
+      {entry.label}
+    </BreadcrumbLink>
+  );
+}
+
+function CollapsedBreadcrumbMenuItem({
+  entry,
+}: {
+  entry: AppBreadcrumbEntry;
+}) {
+  if (entry.target?.type === "page") {
+    return (
+      <DropdownMenuItem asChild>
+        <Link params={{ pageId: entry.target.pageId }} to="/p/$pageId">
+          {entry.label}
+        </Link>
+      </DropdownMenuItem>
+    );
+  }
+
+  if (entry.target?.type === "library") {
+    return (
+      <DropdownMenuItem asChild>
+        <Link
+          search={{ view: entry.target.view } as never}
+          to="/recents"
+        >
+          {entry.label}
+        </Link>
+      </DropdownMenuItem>
+    );
+  }
+
+  return (
+    <DropdownMenuItem asChild>
+      <Link to="/recents">{entry.label}</Link>
+    </DropdownMenuItem>
+  );
+}
+
+function BreadcrumbSlash({ className }: { className?: string }) {
+  return <BreadcrumbSeparator className={className}>/</BreadcrumbSeparator>;
 }
 
 function buildPageBreadcrumbs(
