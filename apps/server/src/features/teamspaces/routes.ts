@@ -13,6 +13,8 @@ const createSchema = z
   .object({
     accessMode: z.enum(["open", "closed", "private"]),
     description: z.string().trim().max(2000).nullable().optional(),
+    exportEnabled: z.boolean().optional(),
+    guestsEnabled: z.boolean().optional(),
     icon: z.unknown().optional(),
     name: z.string().trim().min(1).max(120),
   })
@@ -25,6 +27,7 @@ const updateSchema = z
     invitePolicy: z.enum(["owners", "owners_and_members"]).optional(),
     memberAccessLevel: z.enum(["view", "comment", "edit", "full"]).optional(),
     name: z.string().trim().min(1).max(120).optional(),
+    publicSharingEnabled: z.boolean().optional(),
     sidebarEditPolicy: z.enum(["owners", "owners_and_members"]).optional(),
   })
   .strict()
@@ -53,6 +56,17 @@ teamspaceRoutes.patch("/:workspaceId/teamspace-settings", async (c) => {
   if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
   return handle(c, (service, userId, workspaceId) =>
     service.updateWorkspaceSettings({ ...parsed.data, userId, workspaceId }),
+  );
+});
+
+teamspaceRoutes.patch("/:workspaceId/teamspace-defaults", async (c) => {
+  const parsed = z
+    .object({ defaultTeamspaceIds: z.array(z.string().min(1)).min(1) })
+    .strict()
+    .safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
+  return handle(c, (service, userId, workspaceId) =>
+    service.updateDefaults({ ...parsed.data, userId, workspaceId }),
   );
 });
 
@@ -113,6 +127,53 @@ for (const action of ["join", "leave"] as const) {
       ),
   );
 }
+
+for (const action of ["archive", "restore", "recover-owner"] as const) {
+  teamspaceRoutes.post(
+    `/:workspaceId/teamspaces/:teamspaceId/${action}`,
+    async (c) =>
+      handle(c, (service, userId, workspaceId) =>
+        service[
+          action === "recover-owner" ? "recoverOwner" : action
+        ]({
+          teamspaceId: c.req.param("teamspaceId"),
+          userId,
+          workspaceId,
+        }),
+      ),
+  );
+}
+
+teamspaceRoutes.patch(
+  "/:workspaceId/teamspaces/:teamspaceId/invite-link",
+  async (c) => {
+    const parsed = z
+      .object({ enabled: z.boolean() })
+      .strict()
+      .safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
+    return handle(c, (service, userId, workspaceId) =>
+      service.updateInviteLink({
+        enabled: parsed.data.enabled,
+        teamspaceId: c.req.param("teamspaceId"),
+        userId,
+        workspaceId,
+      }),
+    );
+  },
+);
+
+teamspaceRoutes.post(
+  "/:workspaceId/teamspace-invites/:token/accept",
+  async (c) =>
+    handle(c, (service, userId, workspaceId) =>
+      service.acceptInvite({
+        token: c.req.param("token"),
+        userId,
+        workspaceId,
+      }),
+    ),
+);
 
 teamspaceRoutes.get(
   "/:workspaceId/teamspaces/:teamspaceId/principals",

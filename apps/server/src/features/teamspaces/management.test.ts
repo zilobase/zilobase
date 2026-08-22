@@ -28,6 +28,7 @@ function createFakeDatabase() {
       leftJoin: () => chain,
       limit: async () => rows,
       onConflictDoNothing: () => chain,
+      onConflictDoUpdate: () => chain,
       orderBy: () => chain,
       returning: async () => rows,
       set: () => chain,
@@ -213,5 +214,87 @@ test("teamspace management covers create, update, and principal operations", asy
       workspaceId,
     }),
     { removed: true },
+  );
+});
+
+test("teamspace management covers lifecycle, recovery, links, and defaults", async () => {
+  const { database, queues } = createFakeDatabase();
+  const service = new TeamspaceManagementService(database);
+
+  queues.select.push([baseTeamspace], [ownerPrincipal]);
+  queues.update.push([{ ...baseTeamspace, archivedAt: new Date() }]);
+  assert.ok(
+    (
+      await service.archive({
+        teamspaceId: baseTeamspace.id,
+        userId,
+        workspaceId,
+      })
+    ).archivedAt,
+  );
+
+  queues.select.push([{ ...baseTeamspace, archivedAt: new Date() }]);
+  queues.update.push([baseTeamspace]);
+  assert.equal(
+    (
+      await service.restore({
+        teamspaceId: baseTeamspace.id,
+        userId,
+        workspaceId,
+      })
+    ).archivedAt,
+    null,
+  );
+
+  queues.select.push([baseTeamspace], [{ count: 0 }]);
+  queues.insert.push([ownerPrincipal]);
+  assert.equal(
+    (
+      await service.recoverOwner({
+        teamspaceId: baseTeamspace.id,
+        userId,
+        workspaceId,
+      })
+    ).role,
+    "owner",
+  );
+
+  queues.select.push([baseTeamspace], [ownerPrincipal]);
+  queues.update.push([]);
+  const link = await service.updateInviteLink({
+    enabled: true,
+    teamspaceId: baseTeamspace.id,
+    userId,
+    workspaceId,
+  });
+  assert.equal(link.enabled, true);
+  assert.ok(link.token);
+
+  queues.select.push([baseTeamspace]);
+  queues.insert.push([{ ...ownerPrincipal, role: "member" }]);
+  assert.equal(
+    (
+      await service.acceptInvite({
+        token: link.token!,
+        userId,
+        workspaceId,
+      })
+    ).teamspaceId,
+    baseTeamspace.id,
+  );
+
+  queues.select.push(
+    [{ id: baseTeamspace.id }],
+    [{ userId }, { userId: "user-2" }],
+  );
+  queues.update.push([], []);
+  queues.insert.push([], []);
+  assert.deepEqual(
+    await service.updateDefaults({
+      defaultTeamspaceIds: [baseTeamspace.id],
+      userId,
+      workspaceId,
+    }),
+    { defaultTeamspaceIds: [baseTeamspace.id] },
   );
 });

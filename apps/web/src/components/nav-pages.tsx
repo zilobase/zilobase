@@ -4,11 +4,13 @@ import { useDeleteDatabase } from "@zilobase/features/databases"
 import { useActiveWorkspaceId } from "@zilobase/features/integrations"
 import {
   useDeletePage,
+  useConvertPageToTeamspace,
   useMovePageToTeamspace,
 } from "@zilobase/features/pages"
 import { useTeamspaces } from "@zilobase/features/teamspaces"
 import {
   ArrowUpRightIcon,
+  Building2Icon,
   DatabaseIcon,
   FileIcon,
   FolderInputIcon,
@@ -419,6 +421,7 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
   const deletePage = useDeletePage()
   const deleteDatabase = useDeleteDatabase()
   const movePage = useMovePageToTeamspace()
+  const convertPage = useConvertPageToTeamspace()
   const { data: teamspaces = [] } = useTeamspaces(workspaceId)
   const activePageId = getActivePageId(location.pathname)
   const activeDatabaseId = getActiveDatabaseId(location.pathname)
@@ -561,6 +564,27 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
                       <span>{teamspace.name}</span>
                     </DropDrawerItem>
                   ))}
+                {!item.teamspaceId ? (
+                  <>
+                    <DropDrawerSeparator />
+                    <DropDrawerItem
+                      disabled={convertPage.isPending}
+                      onSelect={() => {
+                        if (!workspaceId || !item.pageId) return
+                        convertPage.mutate(
+                          { name: displayName, pageId: item.pageId, workspaceId },
+                          {
+                            onError: (error) => toast.error(error instanceof Error ? error.message : "Could not create teamspace."),
+                            onSuccess: () => toast.success("Page turned into a teamspace."),
+                          },
+                        )
+                      }}
+                    >
+                      <Building2Icon />
+                      <span>Turn into teamspace</span>
+                    </DropDrawerItem>
+                  </>
+                ) : null}
               </DropDrawerSubContent>
             </DropDrawerSub>
           ) : null}

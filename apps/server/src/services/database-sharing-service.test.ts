@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   insert: vi.fn(),
   insertRows: [] as unknown[],
   requireAccess: vi.fn(),
+  securityPolicy: vi.fn(),
   select: vi.fn(),
   selectResults: [] as unknown[][],
   values: vi.fn(),
@@ -14,6 +15,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("./database-access", () => ({
   requireDatabaseAccess: mocks.requireAccess,
+}));
+vi.mock("../features/teamspaces/security", () => ({
+  getDatabaseTeamspaceSecurityPolicy: mocks.securityPolicy,
 }));
 vi.mock("../db", () => ({
   db: {
@@ -74,6 +78,8 @@ beforeEach(() => {
     workspaceId: "workspace-1",
   });
   mocks.select.mockReset();
+  mocks.securityPolicy.mockReset();
+  mocks.securityPolicy.mockResolvedValue(null);
   mocks.selectResults = [];
   mocks.values.mockReset();
   vi.restoreAllMocks();
@@ -122,6 +128,21 @@ test("upsertDatabaseAccessRuleService creates public view access", async () => {
     workspaceId: "workspace-1",
   });
   assert.equal(mocks.conflict.mock.calls.length, 1);
+});
+
+test("teamspace security can disable database public sharing", async () => {
+  mocks.securityPolicy.mockResolvedValue({ publicSharingEnabled: false });
+
+  await assert.rejects(
+    upsertDatabaseAccessRuleService({
+      body: { accessLevel: "view", targetId: "*", targetType: "public" },
+      databaseId: "database-1",
+      userId: "user-1",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 403,
+  );
+  assert.equal(mocks.insert.mock.calls.length, 0);
 });
 
 for (const targetType of ["user", "team"] as const) {

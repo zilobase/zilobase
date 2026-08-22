@@ -26,6 +26,7 @@ test("createApp registers every public feature route group", () => {
     "POST /user-settings/profile/image/uploads",
     "GET /metadata/bookmark",
     "GET /pages",
+    "POST /pages/:id/convert-to-teamspace",
     "POST /pages/:pageId/guest-invitations",
     "POST /page-guest-invitations/:invitationId/accept",
     "GET /search",
@@ -35,6 +36,8 @@ test("createApp registers every public feature route group", () => {
     "GET /workspaces/:workspaceId/teamspaces",
     "POST /workspaces/:workspaceId/teamspaces",
     "GET /workspaces/:workspaceId/teamspace-settings",
+    "POST /workspaces/:workspaceId/teamspaces/:teamspaceId/archive",
+    "PATCH /workspaces/:workspaceId/teamspaces/:teamspaceId/invite-link",
   ]) {
     assert.ok(routes.includes(expected), `missing route: ${expected}`);
   }

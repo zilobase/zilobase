@@ -4,8 +4,10 @@ import { beforeEach, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   ancestorIds: ["page-1"] as string[],
   hasOwnedRootAccess: vi.fn(),
+  pageSecurityPolicy: vi.fn(),
   selectCalls: 0,
   selectResults: [] as unknown[][],
+  teamspaceId: null as string | null,
 }));
 
 vi.mock("./db", () => ({
@@ -31,9 +33,14 @@ vi.mock("./page-graph-loader", () => ({
   async loadWorkspacePageGraph() {
     return {
       getAncestorIds: () => mocks.ancestorIds,
+      getTeamspaceId: () => mocks.teamspaceId,
       hasOwnedRootAccess: mocks.hasOwnedRootAccess,
     };
   },
+}));
+vi.mock("./features/teamspaces/security", () => ({
+  getDatabaseTeamspaceSecurityPolicy: vi.fn(),
+  getPageTeamspaceSecurityPolicy: mocks.pageSecurityPolicy,
 }));
 
 import {
@@ -56,6 +63,12 @@ beforeEach(() => {
   mocks.hasOwnedRootAccess.mockReturnValue(false);
   mocks.selectCalls = 0;
   mocks.selectResults.length = 0;
+  mocks.teamspaceId = null;
+  mocks.pageSecurityPolicy.mockReset();
+  mocks.pageSecurityPolicy.mockResolvedValue({
+    guestsEnabled: true,
+    publicSharingEnabled: true,
+  });
 });
 
 test("access primitives normalize and rank supported levels", () => {
@@ -199,6 +212,25 @@ test("page guests receive only explicit inherited user access", async () => {
     "none",
   );
   assert.equal(mocks.selectCalls, 3);
+});
+
+test("teamspace guest ceilings override existing explicit page rules", async () => {
+  mocks.teamspaceId = "teamspace-1";
+  mocks.pageSecurityPolicy.mockResolvedValue({ guestsEnabled: false });
+  mocks.selectResults.push(
+    [],
+    [{ id: "guest-1" }],
+    [{ accessLevel: "edit" }],
+  );
+
+  assert.equal(
+    await getEffectivePageAccessInWorkspace(
+      "page-1",
+      "workspace-1",
+      "guest-1",
+    ),
+    "none",
+  );
 });
 
 test("page access resolves ownership and the strongest shared rule", async () => {

@@ -58,6 +58,8 @@ import {
   replacePageContent,
 } from "../../collaboration/service";
 import { getCollaborationWebSocketUrl } from "../../runtime-adapter";
+import { getPageTeamspaceSecurityPolicy } from "../teamspaces/security";
+import { TeamspaceManagementService } from "../teamspaces/management";
 import {
   commitDatabaseMutationBatch,
   mutationResponse,
@@ -1040,6 +1042,84 @@ pageRoutes.post("/:id/move-teamspace", async (c) => {
   return c.json({ movedPageIds: pageIds, teamspaceId: destinationId });
 });
 
+pageRoutes.post("/:id/convert-to-teamspace", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const record = await getPage(c.req.param("id"));
+  if (!record) return c.json({ error: "Page not found" }, 404);
+  if (record.teamspaceId) {
+    return c.json({ error: "This page is already in a teamspace." }, 409);
+  }
+  if (
+    !(await canAccessPageInWorkspace(
+      record.id,
+      record.workspaceId,
+      user.id,
+      "full",
+    ))
+  ) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  const body = await c.req.json().catch(() => ({}));
+  const accessMode =
+    body && typeof body === "object" &&
+    ["open", "closed", "private"].includes(
+      String((body as { accessMode?: unknown }).accessMode),
+    )
+      ? (body as { accessMode: "open" | "closed" | "private" }).accessMode
+      : "closed";
+  const requestedName =
+    body && typeof body === "object" &&
+    typeof (body as { name?: unknown }).name === "string"
+      ? (body as { name: string }).name.trim()
+      : "";
+  const service = new TeamspaceManagementService(
+    undefined,
+    c.get("editionExtension") ?? undefined,
+  );
+  try {
+    const created = await service.create({
+      accessMode,
+      name: requestedName || record.name.trim() || "Untitled teamspace",
+      userId: user.id,
+      workspaceId: record.workspaceId,
+    });
+    const graph = await loadWorkspacePageGraph(record.workspaceId);
+    const pageIds = graph.getPrimaryNestedPageIds(record.id);
+    await db.transaction(async (tx) => {
+      await tx
+        .update(page)
+        .set({ teamspaceId: created.id, updatedAt: new Date() })
+        .where(inArray(page.id, pageIds));
+      await tx
+        .update(database)
+        .set({ teamspaceId: created.id, updatedAt: new Date() })
+        .where(inArray(database.pageId, pageIds));
+      await tx
+        .update(pageItemPlacement)
+        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .where(
+          and(
+            eq(pageItemPlacement.workspaceId, record.workspaceId),
+            eq(pageItemPlacement.itemKind, "page"),
+            eq(pageItemPlacement.itemId, record.id),
+            eq(pageItemPlacement.placementKind, "primary"),
+            isNull(pageItemPlacement.deletedAt),
+          ),
+        );
+    });
+    return c.json({ movedPageIds: pageIds, teamspace: created }, 201);
+  } catch (error) {
+    if (error instanceof Error && "status" in error) {
+      return c.json(
+        { error: error.message },
+        (error as { status: 400 | 403 | 404 | 409 }).status,
+      );
+    }
+    throw error;
+  }
+});
+
 pageRoutes.post("/:id/embed-item", async (c) => {
   const user = requireUser(c);
 
@@ -1748,6 +1828,13 @@ pageRoutes.put("/:id/access", async (c) => {
   }
 
   if (targetType === "public") {
+    const teamspacePolicy = await getPageTeamspaceSecurityPolicy(record.id);
+    if (teamspacePolicy && !teamspacePolicy.publicSharingEnabled) {
+      return c.json(
+        { error: "Public sharing is disabled for this teamspace." },
+        403,
+      );
+    }
     if (targetId !== "*") {
       return c.json({ error: "public targetId must be *" }, 400);
     }

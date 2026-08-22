@@ -15,6 +15,10 @@ export type Teamspace = {
   invitePolicy: "owners" | "owners_and_members"
   sidebarEditPolicy: "owners" | "owners_and_members"
   isDefault: boolean
+  exportEnabled: boolean
+  guestsEnabled: boolean
+  publicSharingEnabled: boolean
+  inviteLinkEnabled: boolean
   archivedAt: string | null
   currentUserRole: TeamspaceRole | null
   memberCount?: number
@@ -63,6 +67,27 @@ export const teamspacesQueryOptions = (
       if (!workspaceId) return []
       const result = await apiFetch<{ teamspaces: Teamspace[] }>(
         `/workspaces/${encodeURIComponent(workspaceId)}/teamspaces`,
+        { signal },
+      )
+      return result.teamspaces
+    },
+  })
+
+export const archivedTeamspacesQueryKey = (
+  workspaceId: string | null | undefined,
+) => ["workspace", workspaceId ?? "none", "teamspaces", "archived"] as const
+
+export const archivedTeamspacesQueryOptions = (
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+) =>
+  queryOptions({
+    enabled: Boolean(workspaceId),
+    queryKey: archivedTeamspacesQueryKey(workspaceId),
+    queryFn: async ({ signal }) => {
+      if (!workspaceId) return []
+      const result = await apiFetch<{ teamspaces: Teamspace[] }>(
+        `/workspaces/${encodeURIComponent(workspaceId)}/teamspaces?status=archived`,
         { signal },
       )
       return result.teamspaces

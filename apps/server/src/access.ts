@@ -17,6 +17,10 @@ import {
 } from "./db/schema";
 import { loadWorkspacePageGraph } from "./page-graph-loader";
 import { activeMembershipCondition } from "./services/temporary-membership";
+import {
+  getDatabaseTeamspaceSecurityPolicy,
+  getPageTeamspaceSecurityPolicy,
+} from "./features/teamspaces/security";
 
 export type AccessLevel = "none" | "view" | "comment" | "edit" | "full";
 
@@ -230,6 +234,12 @@ export async function getEffectivePageAccessInWorkspace(
   }, "none");
 
   if (!isMember) {
+    if (
+      pageTeamspaceId &&
+      !(await getPageTeamspaceSecurityPolicy(pageId))?.guestsEnabled
+    ) {
+      return "none";
+    }
     return pageLevel;
   }
 
@@ -290,6 +300,10 @@ export async function isPagePublishedInWorkspace(
   workspaceId: string,
 ): Promise<boolean> {
   const graph = await loadWorkspacePageGraph(workspaceId);
+  if (graph.getTeamspaceId?.(pageId)) {
+    const policy = await getPageTeamspaceSecurityPolicy(pageId);
+    if (policy && !policy.publicSharingEnabled) return false;
+  }
   const ancestorIds = graph.getAncestorIds(pageId);
 
   if (ancestorIds.length > 0) {
@@ -499,13 +513,18 @@ export async function isDatabasePublishedInWorkspace(
   workspaceId: string,
 ): Promise<boolean> {
   const [record] = await db
-    .select({ pageId: database.pageId })
+    .select({ pageId: database.pageId, teamspaceId: database.teamspaceId })
     .from(database)
     .where(and(eq(database.id, databaseId), eq(database.workspaceId, workspaceId)))
     .limit(1);
 
   if (record?.pageId) {
     return isPagePublishedInWorkspace(record.pageId, workspaceId);
+  }
+
+  if (record?.teamspaceId) {
+    const policy = await getDatabaseTeamspaceSecurityPolicy(databaseId);
+    if (policy && !policy.publicSharingEnabled) return false;
   }
 
   const [rule] = await db

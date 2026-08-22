@@ -494,6 +494,31 @@ export function useMovePageToTeamspace() {
   });
 }
 
+export function useConvertPageToTeamspace() {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  return useMutation({
+    mutationFn: (input: {
+      accessMode?: "open" | "closed" | "private";
+      name?: string;
+      pageId: string;
+      workspaceId: string;
+    }) =>
+      apiFetch<{ teamspace: { id: string; name: string } }>(
+        `/pages/${encodeURIComponent(input.pageId)}/convert-to-teamspace`,
+        {
+          body: JSON.stringify({ accessMode: input.accessMode, name: input.name }),
+          method: "POST",
+        },
+      ),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({ queryKey: pagesQueryKey(input.workspaceId) });
+      await queryClient.invalidateQueries({
+        queryKey: ["workspace", input.workspaceId, "teamspaces"],
+      });
+    },
+  });
+}
+
 export function useUpsertPageAccess() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 

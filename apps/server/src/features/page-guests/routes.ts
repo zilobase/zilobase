@@ -25,6 +25,7 @@ import {
   updateWorkspaceGuestInvitePolicy,
 } from "../../services/page-guest-service";
 import type { AppBindings } from "../../types";
+import { getPageTeamspaceSecurityPolicy } from "../teamspaces/security";
 
 export const pageGuestRoutes = new Hono<AppBindings>();
 
@@ -46,6 +47,13 @@ pageGuestRoutes.post("/pages/:pageId/guest-invitations", async (c) => {
       { error: parsed.error.issues[0]?.message ?? "Invalid page invitation." },
       400,
     );
+  }
+
+  const teamspacePolicy = await getPageTeamspaceSecurityPolicy(
+    c.req.param("pageId"),
+  );
+  if (teamspacePolicy && !teamspacePolicy.guestsEnabled) {
+    return c.json({ error: "Guest access is disabled for this teamspace." }, 403);
   }
 
   try {

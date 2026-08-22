@@ -6,6 +6,7 @@ import { databaseAccess, member, team } from "../db/schema";
 import { activeMembershipCondition } from "./temporary-membership";
 import { requireDatabaseAccess } from "./database-access";
 import { ServiceMutationError } from "./mutation-error";
+import { getDatabaseTeamspaceSecurityPolicy } from "../features/teamspaces/security";
 
 export async function listDatabaseAccessRulesService(input: {
   databaseId: string;
@@ -74,6 +75,16 @@ export async function upsertDatabaseAccessRuleService(input: {
     (targetId !== "*" || normalizedAccessLevel !== "view")
   ) {
     throw new ServiceMutationError("public access must be view for *", 400);
+  }
+
+  if (targetType === "public") {
+    const teamspacePolicy = await getDatabaseTeamspaceSecurityPolicy(existing.id);
+    if (teamspacePolicy && !teamspacePolicy.publicSharingEnabled) {
+      throw new ServiceMutationError(
+        "Public sharing is disabled for this teamspace.",
+        403,
+      );
+    }
   }
 
   const [target] =

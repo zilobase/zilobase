@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { getMembership } from "../../access";
 import { db, type Database } from "../../db";
@@ -40,6 +40,9 @@ export type TeamspaceUpdateInput = {
   invitePolicy?: TeamspaceInvitePolicy;
   memberAccessLevel?: "view" | "comment" | "edit" | "full";
   name?: string;
+  exportEnabled?: boolean;
+  guestsEnabled?: boolean;
+  publicSharingEnabled?: boolean;
   sidebarEditPolicy?: TeamspaceInvitePolicy;
 };
 
@@ -62,7 +65,9 @@ export class TeamspaceManagementService {
       .where(
         and(
           eq(teamspace.workspaceId, input.workspaceId),
-          input.includeArchived ? undefined : isNull(teamspace.archivedAt),
+          input.includeArchived
+            ? isNotNull(teamspace.archivedAt)
+            : isNull(teamspace.archivedAt),
         ),
       )
       .orderBy(asc(teamspace.name));
@@ -232,6 +237,15 @@ export class TeamspaceManagementService {
           ? { memberAccessLevel: input.memberAccessLevel }
           : {}),
         ...(input.name !== undefined ? { name: input.name } : {}),
+        ...(input.exportEnabled !== undefined
+          ? { exportEnabled: input.exportEnabled }
+          : {}),
+        ...(input.guestsEnabled !== undefined
+          ? { guestsEnabled: input.guestsEnabled }
+          : {}),
+        ...(input.publicSharingEnabled !== undefined
+          ? { publicSharingEnabled: input.publicSharingEnabled }
+          : {}),
         ...(input.sidebarEditPolicy !== undefined
           ? { sidebarEditPolicy: input.sidebarEditPolicy }
           : {}),
@@ -243,6 +257,250 @@ export class TeamspaceManagementService {
       teamspaceId: record.id,
     });
     return { ...updated!, currentUserRole: role };
+  }
+
+  async archive(input: {
+    teamspaceId: string;
+    userId: string;
+    workspaceId: string;
+  }) {
+    const { record } = await this.requireManage(input);
+    if (record.isDefault) {
+      throw new TeamspaceManagementError(
+        "Choose another default teamspace before archiving this one.",
+        409,
+      );
+    }
+    const [updated] = await this.database
+      .update(teamspace)
+      .set({
+        archivedAt: new Date(),
+        archivedById: input.userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(teamspace.id, record.id))
+      .returning();
+    await this.audit("teamspace.archived", input, { teamspaceId: record.id });
+    return updated!;
+  }
+
+  async restore(input: {
+    teamspaceId: string;
+    userId: string;
+    workspaceId: string;
+  }) {
+    const membership = await getMembership(input.workspaceId, input.userId);
+    if (membership?.role !== "owner") {
+      throw new TeamspaceManagementError(
+        "Only workspace owners can restore teamspaces.",
+        403,
+      );
+    }
+    const record = await this.getRecord(input.workspaceId, input.teamspaceId);
+    if (!record) throw new TeamspaceManagementError("Teamspace not found.", 404);
+    try {
+      const [updated] = await this.database
+        .update(teamspace)
+        .set({ archivedAt: null, archivedById: null, updatedAt: new Date() })
+        .where(eq(teamspace.id, record.id))
+        .returning();
+      await this.audit("teamspace.restored", input, { teamspaceId: record.id });
+      return updated!;
+    } catch (error) {
+      if (getDatabaseErrorCode(error) === "23505") {
+        throw new TeamspaceManagementError(
+          "Rename the active teamspace with this name before restoring.",
+          409,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async recoverOwner(input: {
+    teamspaceId: string;
+    userId: string;
+    workspaceId: string;
+  }) {
+    const membership = await getMembership(input.workspaceId, input.userId);
+    const record = await this.getRecord(input.workspaceId, input.teamspaceId);
+    if (membership?.role !== "owner" || !record) {
+      throw new TeamspaceManagementError("Forbidden", 403);
+    }
+    const [{ count }] = await this.database
+      .select({ count: sql<number>`count(*)::integer` })
+      .from(teamspacePrincipal)
+      .where(
+        and(
+          eq(teamspacePrincipal.teamspaceId, record.id),
+          eq(teamspacePrincipal.role, "owner"),
+        ),
+      );
+    if ((count ?? 0) > 0) {
+      throw new TeamspaceManagementError(
+        "This teamspace already has an owner.",
+        409,
+      );
+    }
+    const [principal] = await this.database
+      .insert(teamspacePrincipal)
+      .values({
+        addedById: input.userId,
+        id: crypto.randomUUID(),
+        membershipSource: "explicit",
+        principalId: input.userId,
+        principalType: "user",
+        role: "owner",
+        teamspaceId: record.id,
+      })
+      .onConflictDoUpdate({
+        set: { role: "owner", updatedAt: new Date() },
+        target: [
+          teamspacePrincipal.teamspaceId,
+          teamspacePrincipal.principalType,
+          teamspacePrincipal.principalId,
+        ],
+      })
+      .returning();
+    await this.audit("teamspace.owner_recovered", input, {
+      teamspaceId: record.id,
+    });
+    return principal!;
+  }
+
+  async updateInviteLink(input: {
+    enabled: boolean;
+    teamspaceId: string;
+    userId: string;
+    workspaceId: string;
+  }) {
+    const { record } = await this.requireManage(input);
+    const token = input.enabled ? createInviteToken() : null;
+    await this.database
+      .update(teamspace)
+      .set({
+        inviteLinkEnabled: input.enabled,
+        inviteLinkTokenHash: token ? await hashInviteToken(token) : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(teamspace.id, record.id));
+    await this.audit("teamspace.invite_link_changed", input, {
+      enabled: input.enabled,
+      teamspaceId: record.id,
+    });
+    return { enabled: input.enabled, token };
+  }
+
+  async acceptInvite(input: {
+    token: string;
+    userId: string;
+    workspaceId: string;
+  }) {
+    const membership = await getMembership(input.workspaceId, input.userId);
+    if (!membership) throw new TeamspaceManagementError("Forbidden", 403);
+    const [record] = await this.database
+      .select()
+      .from(teamspace)
+      .where(
+        and(
+          eq(teamspace.workspaceId, input.workspaceId),
+          eq(teamspace.inviteLinkEnabled, true),
+          eq(teamspace.inviteLinkTokenHash, await hashInviteToken(input.token)),
+          isNull(teamspace.archivedAt),
+        ),
+      )
+      .limit(1);
+    if (!record) throw new TeamspaceManagementError("Invite link is invalid.", 404);
+    const [principal] = await this.database
+      .insert(teamspacePrincipal)
+      .values({
+        addedById: input.userId,
+        id: crypto.randomUUID(),
+        membershipSource: "invite_link",
+        principalId: input.userId,
+        principalType: "user",
+        role: "member",
+        teamspaceId: record.id,
+      })
+      .onConflictDoNothing()
+      .returning();
+    return {
+      principal: principal ?? (await this.getDirectPrincipal(record.id, input.userId)),
+      teamspaceId: record.id,
+    };
+  }
+
+  async updateDefaults(input: {
+    defaultTeamspaceIds: string[];
+    userId: string;
+    workspaceId: string;
+  }) {
+    const membership = await getMembership(input.workspaceId, input.userId);
+    if (membership?.role !== "owner") {
+      throw new TeamspaceManagementError(
+        "Only workspace owners can change defaults.",
+        403,
+      );
+    }
+    const ids = [...new Set(input.defaultTeamspaceIds)];
+    if (ids.length === 0) {
+      throw new TeamspaceManagementError(
+        "At least one default teamspace is required.",
+        409,
+      );
+    }
+    const records = await this.database
+      .select({ id: teamspace.id })
+      .from(teamspace)
+      .where(
+        and(
+          eq(teamspace.workspaceId, input.workspaceId),
+          inArray(teamspace.id, ids),
+          isNull(teamspace.archivedAt),
+        ),
+      );
+    if (records.length !== ids.length) {
+      throw new TeamspaceManagementError("A default teamspace was not found.", 404);
+    }
+    const members = await this.database
+      .select({ userId: member.userId })
+      .from(member)
+      .where(
+        and(
+          eq(member.organizationId, input.workspaceId),
+          activeMembershipCondition(),
+        ),
+      );
+    await this.database.transaction(async (transaction) => {
+      await transaction
+        .update(teamspace)
+        .set({ isDefault: false, updatedAt: new Date() })
+        .where(eq(teamspace.workspaceId, input.workspaceId));
+      await transaction
+        .update(teamspace)
+        .set({ isDefault: true, updatedAt: new Date() })
+        .where(inArray(teamspace.id, ids));
+      for (const defaultId of ids) {
+        for (const workspaceMember of members) {
+          await transaction
+            .insert(teamspacePrincipal)
+            .values({
+              addedById: input.userId,
+              id: crypto.randomUUID(),
+              membershipSource: "default",
+              principalId: workspaceMember.userId,
+              principalType: "user",
+              role: "member",
+              teamspaceId: defaultId,
+            })
+            .onConflictDoNothing();
+        }
+      }
+    });
+    await this.audit("teamspace.defaults_changed", input, {
+      defaultCount: ids.length,
+    });
+    return { defaultTeamspaceIds: ids };
   }
 
   async join(input: { teamspaceId: string; userId: string; workspaceId: string }) {
@@ -630,4 +888,18 @@ function getDatabaseErrorCode(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error
     ? String(error.code)
     : null;
+}
+
+function createInviteToken() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Buffer.from(bytes).toString("base64url");
+}
+
+async function hashInviteToken(token: string) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(token),
+  );
+  return Buffer.from(digest).toString("hex");
 }
