@@ -560,6 +560,7 @@ export function MeetingView({
           {summaryIsStale ? (
             <span className="text-xs text-amber-600">Summary out of date</span>
           ) : null}
+          {editable ? (
           <DropDrawer open={settingsOpen} onOpenChange={setSettingsOpen}>
             <DropDrawerTrigger asChild>
               <Button
@@ -667,6 +668,7 @@ export function MeetingView({
               ) : null}
             </DropDrawerContent>
           </DropDrawer>
+          ) : null}
           {editable ? (
             effectiveMeetingStatus === "idle" || effectiveMeetingStatus === "failed" ? (
               <Button
