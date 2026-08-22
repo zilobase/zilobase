@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   cell: vi.fn(),
   createProperty: vi.fn(),
   duplicateProperty: vi.fn(),
+  template: vi.fn(),
 }));
 
 vi.mock("../../services/database-cell-service", () => ({
@@ -19,6 +20,9 @@ vi.mock("../../services/database-property-service", () => ({
 }));
 vi.mock("../../services/database-property-duplication-service", () => ({
   duplicateDatabasePropertyService: mocks.duplicateProperty,
+}));
+vi.mock("../../services/database-template-service", () => ({
+  applyDatabaseTemplateService: mocks.template,
 }));
 
 import { databaseRoutes } from "./database-routes";
@@ -130,4 +134,57 @@ test("duplicate and row routes reject malformed bodies", async () => {
   });
   assert.equal(row.status, 400);
   assert.equal(mocks.duplicateProperty.mock.calls.length, 0);
+});
+
+test("database template route validates and applies the whole template once", async () => {
+  const invalid = await appWithUser().request(
+    "/databases/database-1/apply-template",
+    {
+      body: JSON.stringify({ name: "Tasks", properties: [], rows: [{}] }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+  );
+  assert.equal(invalid.status, 400);
+  assert.equal(mocks.template.mock.calls.length, 0);
+
+  const payload = {
+    database: { id: "database-1", name: "Tasks" },
+    properties: [],
+    rows: [],
+    values: [],
+    views: [],
+  };
+  mocks.template.mockResolvedValue({ commit, payload });
+
+  const template = {
+    config: { emoji: "✅", setupDismissed: true },
+    name: "Tasks",
+    properties: [{ config: null, name: "Status", type: "status" }],
+    rows: [
+      {
+        content: { type: "doc" },
+        metadata: { emoji: "📌" },
+        title: "Plan launch",
+        values: [{ propertyName: "Status", value: "In progress" }],
+      },
+    ],
+  };
+  const response = await appWithUser().request(
+    "/databases/database-1/apply-template",
+    {
+      body: JSON.stringify(template),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), payload);
+  assert.deepEqual(mocks.template.mock.calls[0]?.[0], {
+    ...template,
+    databaseId: "database-1",
+    env: undefined,
+    userId: "user-1",
+  });
 });

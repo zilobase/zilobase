@@ -31,14 +31,11 @@ import { Input } from "@/components/ui/input";
 import { getIconSolidClassName } from "@/lib/color-tokens";
 import { cn } from "@/lib/utils";
 import {
-  useAddDatabaseProperty,
-  useAddDatabaseRow,
+  useApplyDatabaseTemplate,
   useDatabase,
   useUpdateDatabase,
-  useUpdateDatabasePropertyValue,
-  type DatabaseProperty,
 } from "@zilobase/features/databases";
-import { useUpdatePage, usePageNavigation } from "@zilobase/features/pages";
+import { usePageNavigation } from "@zilobase/features/pages";
 
 import {
   getDatabaseSetupTemplate,
@@ -341,11 +338,8 @@ export function DatabaseSetupCard({
     string | null
   >(null);
 
-  const addProperty = useAddDatabaseProperty();
-  const addRow = useAddDatabaseRow();
+  const applyTemplate = useApplyDatabaseTemplate();
   const updateDatabase = useUpdateDatabase();
-  const updateValue = useUpdateDatabasePropertyValue();
-  const updatePage = useUpdatePage();
   const { data: databasePayload } = useDatabase(databaseId);
   const { data: navigation, isLoading: isLoadingPages } = usePageNavigation(
     workspaceId,
@@ -398,106 +392,6 @@ export function DatabaseSetupCard({
     );
   }, [linkSearch, linkableDatabases]);
 
-  const applyTemplateProperties = useCallback(
-    async (
-      databaseId: string,
-      template: DatabaseSetupTemplate,
-      existingPropertyNames: Set<string>,
-    ) => {
-      const propertiesByName = new Map(
-        (databasePayload?.properties ?? []).map((property) => [
-          property.property.name.toLowerCase(),
-          property,
-        ]),
-      );
-
-      for (const property of template.properties) {
-        const propertyKey = property.name.toLowerCase();
-
-        if (existingPropertyNames.has(propertyKey)) {
-          continue;
-        }
-
-        const nextPayload = await addProperty.mutateAsync({
-          config: property.config,
-          databaseId,
-          name: property.name,
-          type: property.type,
-        });
-        const addedProperty = nextPayload.properties.find(
-          (item) => item.property.name.toLowerCase() === propertyKey,
-        );
-
-        if (addedProperty) {
-          propertiesByName.set(propertyKey, addedProperty);
-        }
-
-        existingPropertyNames.add(propertyKey);
-      }
-
-      return propertiesByName;
-    },
-    [addProperty, databasePayload?.properties],
-  );
-
-  const applyTemplateSampleRows = useCallback(
-    async (
-      databaseId: string,
-      template: DatabaseSetupTemplate,
-      propertiesByName: Map<string, DatabaseProperty>,
-    ) => {
-      if ((databasePayload?.rows ?? []).length > 0) {
-        return;
-      }
-
-      const knownRowIds = new Set(
-        (databasePayload?.rows ?? []).map((row) => row.id),
-      );
-
-      for (const [position, sampleRow] of template.sampleRows.entries()) {
-        const nextPayload = await addRow.mutateAsync({
-          databaseId,
-          position,
-          title: sampleRow.title,
-        });
-        const addedRow =
-          nextPayload.rows.find((row) => !knownRowIds.has(row.id)) ??
-          nextPayload.rows.at(-1);
-
-        if (!addedRow) {
-          continue;
-        }
-
-        knownRowIds.add(addedRow.id);
-
-        await updatePage.mutateAsync({
-          content: createSampleRowContent(sampleRow.content),
-          id: addedRow.pageId,
-          metadata: getPageMetadataWithEmoji(
-            addedRow.page.metadata,
-            sampleRow.emoji,
-          ),
-        });
-
-        for (const [propertyName, value] of Object.entries(sampleRow.values ?? {})) {
-          const property = propertiesByName.get(propertyName.toLowerCase());
-
-          if (!property) {
-            continue;
-          }
-
-          await updateValue.mutateAsync({
-            databaseId,
-            propertyId: property.property.id,
-            rowId: addedRow.id,
-            value: serializePropertyValue(property.property.type, value),
-          });
-        }
-      }
-    },
-    [addRow, databasePayload?.rows, updateValue, updatePage],
-  );
-
   const finishSetup = useCallback(
     async ({
       databaseName,
@@ -549,25 +443,49 @@ export function DatabaseSetupCard({
               nextDatabasePatch.name = template.name;
             }
 
-            await updateDatabase.mutateAsync(nextDatabasePatch);
-            setupDismissedPersisted = true;
-
-            const existingPropertyNames = new Set(
-              (databasePayload?.properties ?? []).map((property) =>
+            const propertyTypesByName = new Map(
+              (databasePayload?.properties ?? []).map((property) => [
                 property.property.name.toLowerCase(),
-              ),
+                property.property.type,
+              ]),
             );
 
-            const propertiesByName = await applyTemplateProperties(
+            for (const property of template.properties) {
+              const propertyKey = property.name.toLowerCase();
+
+              if (!propertyTypesByName.has(propertyKey)) {
+                propertyTypesByName.set(propertyKey, property.type);
+              }
+            }
+
+            await applyTemplate.mutateAsync({
+              config: nextDatabasePatch.config,
               databaseId,
-              template,
-              existingPropertyNames,
-            );
-            await applyTemplateSampleRows(
-              databaseId,
-              template,
-              propertiesByName,
-            );
+              name: nextDatabasePatch.name ?? template.name,
+              properties: template.properties,
+              rows: template.sampleRows.map((sampleRow) => ({
+                content: createSampleRowContent(sampleRow.content),
+                metadata: getPageMetadataWithEmoji(null, sampleRow.emoji),
+                title: sampleRow.title,
+                values: Object.entries(sampleRow.values ?? {}).flatMap(
+                  ([propertyName, value]) => {
+                    const propertyType = propertyTypesByName.get(
+                      propertyName.toLowerCase(),
+                    );
+
+                    return propertyType
+                      ? [
+                          {
+                            propertyName,
+                            value: serializePropertyValue(propertyType, value),
+                          },
+                        ]
+                      : [];
+                  },
+                ),
+              })),
+            });
+            setupDismissedPersisted = true;
           }
         } else if (
           databaseName &&
@@ -595,8 +513,7 @@ export function DatabaseSetupCard({
       }
     },
     [
-      applyTemplateProperties,
-      applyTemplateSampleRows,
+      applyTemplate,
       databaseId,
       databasePayload,
       dismissSetup,

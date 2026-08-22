@@ -90,6 +90,26 @@ type AddPropertyInput = {
   type?: string;
 };
 
+export type ApplyDatabaseTemplateInput = {
+  config: unknown;
+  databaseId: string;
+  name: string;
+  properties: Array<{
+    config?: unknown;
+    name: string;
+    type: string;
+  }>;
+  rows: Array<{
+    content?: unknown;
+    metadata?: unknown;
+    title: string;
+    values: Array<{
+      propertyName: string;
+      value: unknown;
+    }>;
+  }>;
+};
+
 type UpdatePropertyInput = {
   databaseId: string;
   databasePropertyId: string;
@@ -744,6 +764,41 @@ export function useAddDatabaseProperty() {
       );
 
       return commitDatabaseMutation(queryClient, databaseId, response);
+    },
+  });
+}
+
+export function useApplyDatabaseTemplate() {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+
+  return useMutation({
+    mutationFn: async ({ databaseId, ...input }: ApplyDatabaseTemplateInput) => {
+      const payload = await apiFetch<DatabasePayload>(
+        `/databases/${databaseId}/apply-template`,
+        {
+          body: JSON.stringify(input),
+          method: "POST",
+        },
+      );
+      const current = queryClient.getQueryData<DatabasePayload | null>(
+        databaseQueryKey(databaseId),
+      );
+      const nextPayload: DatabasePayload = {
+        ...payload,
+        database: {
+          ...payload.database,
+          accessLevel:
+            payload.database.accessLevel ?? current?.database.accessLevel,
+        },
+      };
+
+      setDatabasePayloadQueryData(queryClient, databaseId, nextPayload);
+
+      if (nextPayload.database.isFavorite) {
+        await queryClient.invalidateQueries({ queryKey: pagesRootQueryKey() });
+      }
+
+      return nextPayload;
     },
   });
 }

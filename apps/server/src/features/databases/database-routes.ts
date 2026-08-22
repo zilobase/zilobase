@@ -17,6 +17,7 @@ import {
 import { duplicateDatabasePropertyService } from "../../services/database-property-duplication-service";
 import { createDatabaseRowService } from "../../services/database-row-service";
 import { setDatabaseCellValueService } from "../../services/database-cell-service";
+import { applyDatabaseTemplateService } from "../../services/database-template-service";
 import {
   moveDatabaseRowService,
   reorderDatabaseRowsService,
@@ -466,6 +467,92 @@ databaseRoutes.delete("/:id/views/:viewId", async (c) => {
     });
 
     return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
+  }
+});
+
+databaseRoutes.post("/:id/apply-template", async (c) => {
+  const user = requireUser(c);
+
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const body = await c.req.json().catch(() => null);
+
+  if (!body || typeof body !== "object") {
+    return c.json({ error: "A JSON body is required" }, 400);
+  }
+
+  const { config, name, properties, rows } = body as {
+    config?: unknown;
+    name?: unknown;
+    properties?: unknown;
+    rows?: unknown;
+  };
+  const hasInvalidProperty =
+    !Array.isArray(properties) ||
+    properties.length > 50 ||
+    properties.some(
+      (property) =>
+        !property ||
+        typeof property !== "object" ||
+        typeof (property as { name?: unknown }).name !== "string" ||
+        typeof (property as { type?: unknown }).type !== "string",
+    );
+  const hasInvalidRow =
+    !Array.isArray(rows) ||
+    rows.length > 100 ||
+    rows.some((row) => {
+      if (
+        !row ||
+        typeof row !== "object" ||
+        typeof (row as { title?: unknown }).title !== "string" ||
+        !Array.isArray((row as { values?: unknown }).values)
+      ) {
+        return true;
+      }
+
+      return (row as { values: unknown[] }).values.some(
+        (value) =>
+          !value ||
+          typeof value !== "object" ||
+          typeof (value as { propertyName?: unknown }).propertyName !==
+            "string" ||
+          !("value" in value),
+      );
+    });
+
+  if (typeof name !== "string" || hasInvalidProperty || hasInvalidRow) {
+    return c.json({ error: "Invalid database template input" }, 400);
+  }
+
+  try {
+    const result = await applyDatabaseTemplateService({
+      config: config ?? null,
+      databaseId: c.req.param("id"),
+      env: c.env,
+      name,
+      properties: properties as Array<{
+        config?: unknown;
+        name: string;
+        type: string;
+      }>,
+      rows: rows as Array<{
+        content?: unknown;
+        metadata?: unknown;
+        title: string;
+        values: Array<{ propertyName: string; value: unknown }>;
+      }>,
+      userId: user.id,
+    });
+
+    return c.json(result.payload);
   } catch (error) {
     if (error instanceof ServiceMutationError) {
       return serviceMutationErrorResponse(c, error);
