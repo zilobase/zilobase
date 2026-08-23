@@ -51,6 +51,13 @@ same destructive workflow.
 `http://localhost:3000`. Packaged releases keep Zilobase Cloud
 (`https://api.zilobase.com`) as the default.
 
+On macOS, Cargo signs the local debug executable with the first valid Apple
+Development identity before launching it. The stable `com.zilobase.debug`
+identity prevents rebuilt debug binaries from repeatedly requesting access to
+the saved desktop session in Keychain. Set
+`ZILOBASE_APPLE_DEVELOPMENT_IDENTITY` to a certificate SHA-1 to select a
+specific identity, or `ZILOBASE_SKIP_DEBUG_SIGNING=1` to opt out.
+
 For an end-to-end Compose server, run `npm run selfhost:up` at the repository root.
 After the one-time setup page is complete, open the printed
 `zilobase://connect?server=http%3A%2F%2F127.0.0.1%3A8787` link or enter
