@@ -124,10 +124,16 @@ import {
 } from "lucide-react";
 import { editionWebModule } from "@zilobase/edition-web";
 import { getDatabaseViewIcon } from "@/editor/extensions/database/views/database-view-config";
+import {
+  DEFAULT_DATABASE_ITEM_ICON,
+  DEFAULT_MEETING_ITEM_ICON,
+} from "@/lib/item-icons";
 
 const sidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
-    getDatabaseIconNode(database) ?? <DatabaseIcon className="size-4" />,
+    getDatabaseIconNode(database) ?? (
+      <PageIconDisplay size="sm" value={DEFAULT_DATABASE_ITEM_ICON} />
+    ),
   getDatabaseViewIcon: (view: { config?: unknown; type?: string | null }) => {
     const customIcon = getDatabaseViewIcon(view.config);
 
@@ -150,11 +156,10 @@ const sidebarNavigationIcons = {
     );
   },
   getMeetingIcon: (meeting: { emoji?: string | null }) =>
-    meeting.emoji ? (
-      <PageIconDisplay size="sm" value={meeting.emoji} />
-    ) : (
-      <CalendarDays className="size-4" />
-    ),
+    <PageIconDisplay
+      size="sm"
+      value={meeting.emoji ?? DEFAULT_MEETING_ITEM_ICON}
+    />,
   getPageIcon: getPageIconNode,
 };
 
