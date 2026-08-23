@@ -1,19 +1,35 @@
 export function register({ assert, loadModule, test }) {
-  test("route favicons follow library views and item icons", async () => {
+  test("only item routes use their active item icon", async () => {
     const { getRouteFaviconIcon } = await loadModule("/src/lib/favicon.ts")
 
     assert.equal(
-      getRouteFaviconIcon({ pathname: "/recents", libraryView: "shared" }),
-      "👥",
-    )
-    assert.equal(
-      getRouteFaviconIcon({ pathname: "/recents", libraryView: "teamspaces" }),
-      "🏢",
-    )
-    assert.equal(getRouteFaviconIcon({ pathname: "/trash" }), "🗑️")
-    assert.equal(
       getRouteFaviconIcon({ pathname: "/p/page-1", itemIcon: "🚀" }),
       "🚀",
+    )
+    assert.equal(
+      getRouteFaviconIcon({ pathname: "/d/database-1", itemIcon: "🗃️" }),
+      "🗃️",
+    )
+    assert.equal(
+      getRouteFaviconIcon({ pathname: "/recents", itemIcon: "👥" }),
+      null,
+    )
+    assert.equal(getRouteFaviconIcon({ pathname: "/settings" }), null)
+  })
+
+  test("item route titles include the Zilobase brand", async () => {
+    const { getRouteDocumentTitle } = await loadModule("/src/lib/favicon.ts")
+
+    assert.equal(
+      getRouteDocumentTitle({
+        pathname: "/p/page-1",
+        itemTitle: "This is a test page",
+      }),
+      "This is a test page | Zilobase",
+    )
+    assert.equal(
+      getRouteDocumentTitle({ pathname: "/recents", itemTitle: "Recents" }),
+      "Zilobase",
     )
   })
 

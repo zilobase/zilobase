@@ -5,47 +5,29 @@ import {
   sanitizeStoredSvg,
 } from "@/lib/page-icon-utils"
 
-export type LibraryFaviconView =
-  | "favourites"
-  | "private"
-  | "recents"
-  | "shared"
-  | "teamspaces"
-
-const routeIcons: Array<[matches: (pathname: string) => boolean, icon: string]> = [
-  [(pathname) => pathname === "/trash", "🗑️"],
-  [(pathname) => pathname === "/ai", "✨"],
-  [(pathname) => pathname === "/canvas", "🎨"],
-  [(pathname) => pathname.startsWith("/settings"), "⚙️"],
-  [(pathname) => pathname.startsWith("/m/"), "🎙️"],
-  [(pathname) => pathname.startsWith("/d/"), "🗃️"],
-  [(pathname) => pathname.startsWith("/p/"), "📄"],
-]
-
-const libraryIcons: Record<LibraryFaviconView, string> = {
-  favourites: "⭐",
-  private: "🔒",
-  recents: "🕘",
-  shared: "👥",
-  teamspaces: "🏢",
-}
+export const DEFAULT_DOCUMENT_TITLE = "Zilobase"
 
 export function getRouteFaviconIcon({
   itemIcon,
-  libraryView,
   pathname,
 }: {
   itemIcon?: string | null
-  libraryView?: string | null
   pathname: string
 }) {
-  if (itemIcon) return itemIcon
+  return isItemRoute(pathname) ? itemIcon ?? null : null
+}
 
-  if (pathname === "/recents") {
-    return libraryIcons[normalizeLibraryView(libraryView)]
-  }
-
-  return routeIcons.find(([matches]) => matches(pathname))?.[1] ?? null
+export function getRouteDocumentTitle({
+  itemTitle,
+  pathname,
+}: {
+  itemTitle?: string | null
+  pathname: string
+}) {
+  const title = itemTitle?.trim()
+  return isItemRoute(pathname) && title
+    ? `${title} | ${DEFAULT_DOCUMENT_TITLE}`
+    : DEFAULT_DOCUMENT_TITLE
 }
 
 export function createFaviconHref(
@@ -74,13 +56,8 @@ export function getFaviconColor(
   return paletteColor || getCssVariable("--favicon-foreground").trim()
 }
 
-function normalizeLibraryView(value?: string | null): LibraryFaviconView {
-  return value === "favourites" ||
-    value === "private" ||
-    value === "shared" ||
-    value === "teamspaces"
-    ? value
-    : "recents"
+function isItemRoute(pathname: string) {
+  return /^\/(?:p|d|m)\/[^/]+/.test(pathname)
 }
 
 function createEmojiSvg(icon: string) {

@@ -9,9 +9,16 @@ import {
 } from "@/components/page-pane-header"
 import {
   createFaviconHref,
+  DEFAULT_DOCUMENT_TITLE,
   getFaviconColor,
+  getRouteDocumentTitle,
   getRouteFaviconIcon,
 } from "@/lib/favicon"
+import {
+  DEFAULT_DATABASE_ITEM_ICON,
+  DEFAULT_MEETING_ITEM_ICON,
+  DEFAULT_PAGE_ITEM_ICON,
+} from "@/lib/item-icons"
 import { getDatabaseEmoji, useDatabase } from "@zilobase/features/databases"
 import { useMeeting } from "@zilobase/features/meetings"
 import { getPageEmoji, usePage } from "@zilobase/features/pages"
@@ -32,17 +39,34 @@ export function DocumentFavicon() {
     meetingPayload?.meeting.pageId ??
     null
   const { data: page } = usePage(pageId, { refetchOnMount: false })
-  const search = location.search as Record<string, unknown>
-  const itemIcon = databasePayload?.database
-    ? getDatabaseEmoji(databasePayload.database)
-    : page
-      ? getPageEmoji(page)
-      : null
+  const itemIcon = databaseId
+    ? databasePayload?.database
+      ? getDatabaseEmoji(databasePayload.database) ?? DEFAULT_DATABASE_ITEM_ICON
+      : DEFAULT_DATABASE_ITEM_ICON
+    : meetingId
+      ? (page ? getPageEmoji(page) : null) ?? DEFAULT_MEETING_ITEM_ICON
+      : directPageId
+        ? (page ? getPageEmoji(page) : null) ?? DEFAULT_PAGE_ITEM_ICON
+        : null
+  const itemTitle = databaseId
+    ? databasePayload?.database.name
+    : meetingId
+      ? meetingPayload?.meeting.title
+      : directPageId
+        ? page?.name
+        : null
   const icon = getRouteFaviconIcon({
     itemIcon,
-    libraryView: typeof search.view === "string" ? search.view : null,
     pathname: location.pathname,
   })
+  const title = getRouteDocumentTitle({
+    itemTitle,
+    pathname: location.pathname,
+  })
+
+  useEffect(() => {
+    document.title = title
+  }, [title])
 
   useEffect(() => {
     const links = getManagedFaviconLinks()
@@ -73,6 +97,7 @@ export function DocumentFavicon() {
   useEffect(
     () => () => {
       restoreDefaultFavicons(getManagedFaviconLinks())
+      document.title = DEFAULT_DOCUMENT_TITLE
     },
     [],
   )
