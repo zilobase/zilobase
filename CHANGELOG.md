@@ -4,6 +4,13 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.48
+
+### Fixed
+
+- Protected editor blocks retain their selection state when pointer interactions are rejected.
+- Release images build on native architecture runners, restoring reliable multi-platform publishing.
+
 ## 0.0.47
 
 ### Added
