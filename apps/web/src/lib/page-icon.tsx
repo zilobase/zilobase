@@ -1,6 +1,3 @@
-import { File } from "reicon-react/icons/File"
-import { FileContent } from "reicon-react/icons/FileContent"
-
 import {
   getPageEmoji,
   hasPageBodyContent,
@@ -8,6 +5,7 @@ import {
 } from "@zilobase/features/pages"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 import { getIconTextClassName } from "@/lib/color-tokens"
+import { DEFAULT_PAGE_ITEM_ICON } from "@/lib/item-icons"
 import { cn } from "@/lib/utils"
 import {
   getStoredIconColor,
@@ -100,15 +98,12 @@ export function getPageIconNode(
   page: Pick<Page, "content" | "hasContent" | "metadata">,
 ) {
   const icon = getPageEmoji(page)
-
-  if (icon) {
-    return <PageIconDisplay size="sm" value={icon} />
-  }
-
-  return (page.hasContent ?? hasPageContent(page.content)) ? (
-    <FileContent className="size-4 text-muted-foreground" />
-  ) : (
-    <File className="size-4 text-muted-foreground" />
+  return (
+    <PageIconDisplay
+      className={icon ? undefined : "text-muted-foreground"}
+      size="sm"
+      value={icon ?? DEFAULT_PAGE_ITEM_ICON}
+    />
   )
 }
 
