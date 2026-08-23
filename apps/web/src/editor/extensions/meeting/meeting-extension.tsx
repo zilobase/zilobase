@@ -1,10 +1,15 @@
 import { Node, mergeAttributes } from "@tiptap/core"
+import { AllSelection, NodeSelection, TextSelection } from "@tiptap/pm/state"
 import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { useSyncExternalStore } from "react"
+import {
+  useSyncExternalStore,
+  type FocusEvent as ReactFocusEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
 
 import { MeetingView } from "./meeting-view"
 
@@ -16,7 +21,7 @@ export type MeetingBlockOptions = {
   }
 }
 
-function MeetingBlockView({ editor, extension, node }: ReactNodeViewProps) {
+function MeetingBlockView({ editor, extension, getPos, node }: ReactNodeViewProps) {
   const meetingId = node.attrs.meetingId as string | null
   const options = extension.options as MeetingBlockOptions
   const isEditable = useSyncExternalStore(
@@ -27,11 +32,44 @@ function MeetingBlockView({ editor, extension, node }: ReactNodeViewProps) {
       (() => options.editable !== false && editor.isEditable),
   )
 
+  const clearOuterBlockSelection = (target: EventTarget | null) => {
+    if (
+      !(target instanceof HTMLElement) ||
+      !target.closest(".meeting-block-shell")
+    ) {
+      return
+    }
+
+    const pos = getPos()
+    if (typeof pos !== "number") {
+      return
+    }
+
+    const { doc, selection } = editor.state
+    const meetingIsSelected =
+      selection instanceof AllSelection ||
+      (selection instanceof NodeSelection && selection.from === pos)
+
+    if (!meetingIsSelected) {
+      return
+    }
+
+    editor.view.dispatch(
+      editor.state.tr.setSelection(TextSelection.near(doc.resolve(pos), -1)),
+    )
+  }
+
   return (
     <NodeViewWrapper
       className="meeting-block"
       data-meeting-id={meetingId ?? undefined}
       data-type="meetingBlock"
+      onFocusCapture={(event: ReactFocusEvent<HTMLDivElement>) =>
+        clearOuterBlockSelection(event.target)
+      }
+      onPointerDownCapture={(event: ReactPointerEvent<HTMLDivElement>) =>
+        clearOuterBlockSelection(event.target)
+      }
     >
       {meetingId ? (
         <MeetingView editable={isEditable} meetingId={meetingId} />
