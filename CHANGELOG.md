@@ -4,6 +4,26 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.47
+
+### Added
+
+- Selected editor blocks can be dragged together, and selected task items can be checked or unchecked as one action.
+- Added theme families, semantic application color tokens, default item icons, document titles, and generated favicons.
+- Desktop settings now include native window translucency, with signed local macOS debug builds for development.
+- Home and Library navigation are separated, and database property icons appear in table headers.
+
+### Changed
+
+- Block selections render as consistent overlays, the standard page canvas is narrower, and database page controls use the updated editor styling.
+- Upgraded the web build to Vite 8.
+
+### Fixed
+
+- Navigation and meeting routes keep the authenticated app shell mounted, and collaborative meeting presence initializes reliably.
+- Locked pages reject editor drops, while desktop development recognizes local servers after instance identifier changes.
+- Production images resolve the server bundler from its declaring workspace, restoring the Helm, Compose, migration, and packaged-desktop CI gates.
+
 ## 0.0.46
 
 ### Fixed
