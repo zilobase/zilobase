@@ -45,6 +45,10 @@ export function register({ assert, test }) {
       new URL("../src/pages/database.tsx", import.meta.url),
       "utf8",
     )
+    const meetingSource = await readFile(
+      new URL("../src/pages/meeting.tsx", import.meta.url),
+      "utf8",
+    )
 
     for (const source of [pageSource, databaseSource]) {
       assert.match(source, /if \(publishedShare === "public"\)/)
@@ -56,8 +60,11 @@ export function register({ assert, test }) {
     assert.doesNotMatch(databaseSource, /fallback=\{publicPage\}/)
     assert.match(routerSource, /component: RootRouteShell/)
     assert.match(routerSource, /<AppLayout>\s*<Outlet \/>\s*<\/AppLayout>/)
+    assert.match(routerSource, /authenticatedMeeting/)
+    assert.match(routerSource, /component: Outlet,\s*pendingComponent: AppContentPendingPage/)
     assert.doesNotMatch(routerSource, /staleTime: 0/)
     assert.doesNotMatch(pageSource, /import \{ AppLayout \}/)
     assert.doesNotMatch(databaseSource, /import \{ AppLayout \}/)
+    assert.doesNotMatch(meetingSource, /import \{ AppLayout \}/)
   })
 }

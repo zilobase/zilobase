@@ -240,6 +240,7 @@ const appRoute = createRoute({
     }
   },
   component: Outlet,
+  pendingComponent: AppContentPendingPage,
 })
 
 const recentsRoute = createRoute({
@@ -298,7 +299,13 @@ const pageRoute = createRoute({
 const meetingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/m/$meetingId",
+  beforeLoad: async () => ({
+    authenticatedMeeting: Boolean(
+      (await getFreshSession({ optional: true })).user,
+    ),
+  }),
   component: MeetingPage,
+  pendingComponent: AppContentPendingPage,
 })
 
 const databaseRoute = createRoute({
@@ -441,6 +448,10 @@ function RootRouteShell() {
   const matches = useRouterState({ select: (state) => state.matches })
   const shellVisibleForResolvedRoute = matches.some((match) => {
     if (match.routeId === "/app") return true
+    if (match.routeId === "/m/$meetingId") {
+      const context = match.context as { authenticatedMeeting?: boolean }
+      return context.authenticatedMeeting === true
+    }
     if (match.routeId !== "/p/$pageId" && match.routeId !== "/d/$databaseId") {
       return false
     }

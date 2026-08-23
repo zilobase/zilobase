@@ -1,6 +1,5 @@
 import { useParams } from "@tanstack/react-router"
 
-import { AppLayout } from "@/components/app-layout"
 import { FallbackErrorBoundary } from "@/components/fallback-error-boundary"
 import { PageWorkspaceGate } from "@/components/page-workspace-gate"
 import {
@@ -52,9 +51,7 @@ export default function MeetingPage() {
       key={meetingId}
       name="meeting.authenticated"
     >
-      <AppLayout>
-        <AuthenticatedMeetingPage />
-      </AppLayout>
+      <AuthenticatedMeetingPage />
     </FallbackErrorBoundary>
   )
 }
