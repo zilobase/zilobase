@@ -1077,7 +1077,7 @@ function PageEditorSkeleton({ fullWidth }: { fullWidth: boolean }) {
       <div
         className={cn(
           "w-full px-5 py-6 sm:px-8 md:px-20 md:py-8 lg:px-24",
-          fullWidth ? "" : "mx-auto max-w-5xl",
+          fullWidth ? "" : "mx-auto max-w-[900px]",
         )}
       >
         <div className="space-y-8">

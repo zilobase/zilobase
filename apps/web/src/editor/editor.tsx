@@ -118,7 +118,7 @@ export function Editor({
   const pendingPageEditRef = useRef<PageEditPreviewRequest | null>(null)
   const pageContentLayout = fullWidth
     ? { className: "", mode: "full" as const }
-    : { className: "mx-auto max-w-5xl", mode: "narrow" as const }
+    : { className: "mx-auto max-w-[900px]", mode: "narrow" as const }
   const activeLinkedTab = layoutConfig?.linkedTabs.find(
     (tab) => tab.id === activeLayoutTab,
   )
