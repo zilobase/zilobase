@@ -6507,8 +6507,10 @@ dependencies = [
  "cpal",
  "dirs",
  "getrandom 0.3.4",
+ "gtk",
  "keyring",
  "log",
+ "objc2-app-kit",
  "reqwest",
  "semver",
  "serde",
@@ -6527,6 +6529,7 @@ dependencies = [
  "tokio",
  "tungstenite",
  "url",
+ "windows-sys 0.61.2",
  "zip",
 ]
 
