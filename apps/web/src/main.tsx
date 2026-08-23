@@ -16,6 +16,7 @@ import {
   recordDesktopDiagnostic,
 } from "@/lib/desktop-diagnostics";
 import { AppProviders } from "@/providers/app-providers";
+import { initializeDesktopTranslucency } from "@/lib/desktop-translucency";
 import "./App.css";
 import "@/packages/editor/styles.css";
 
@@ -48,6 +49,9 @@ async function bootstrap() {
     status: "started",
   });
   await initializeDesktopAuthToken();
+  await initializeDesktopTranslucency().catch(() => {
+    // Older desktop shells can continue at the default, fully opaque setting.
+  });
   await Promise.all([
     useAppStore.persist.rehydrate(),
     useAuthFlowStore.persist.rehydrate(),

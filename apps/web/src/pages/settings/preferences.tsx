@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { Slider } from "@/components/ui/slider"
 import { Spinner } from "@/components/ui/spinner"
 import { getApiErrorMessage } from "@/lib/api"
 import {
@@ -72,6 +73,11 @@ import {
   type ThemeFamilyId,
 } from "@/lib/themes"
 import { useThemeFamily } from "@/providers/theme-family-provider"
+import {
+  getDesktopTranslucency,
+  MAX_DESKTOP_TRANSLUCENCY,
+  setDesktopTranslucency,
+} from "@/lib/desktop-translucency"
 
 export default function PreferencesSettingsPage() {
   return (
@@ -353,6 +359,17 @@ function DiagnosticsSection() {
 function AppearanceSection() {
   const { theme = "system", setTheme } = useTheme()
   const { themeFamily, setThemeFamily } = useThemeFamily()
+  const [translucency, setTranslucency] = React.useState(
+    getDesktopTranslucency,
+  )
+
+  const updateTranslucency = (values: number[]) => {
+    const value = values[0] ?? 0
+    setTranslucency(value)
+    void setDesktopTranslucency(value).catch(() => {
+      toast.error("Zilobase could not update window translucency.")
+    })
+  }
 
   return (
     <section className="grid gap-3">
@@ -414,6 +431,34 @@ function AppearanceSection() {
             </SelectContent>
           </Select>
         </div>
+
+        {isTauri() ? (
+          <div className="grid max-w-md gap-2">
+            <div className="flex items-center justify-between gap-4">
+              <label
+                className="text-xs font-medium text-muted-foreground"
+                htmlFor="desktop-translucency"
+              >
+                Translucency
+              </label>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {translucency}%
+              </span>
+            </div>
+            <Slider
+              aria-label="Desktop app translucency"
+              id="desktop-translucency"
+              max={MAX_DESKTOP_TRANSLUCENCY}
+              onValueChange={updateTranslucency}
+              step={1}
+              value={[translucency]}
+            />
+            <p className="text-xs text-muted-foreground">
+              Let a little of the desktop show through the entire Zilobase
+              window.
+            </p>
+          </div>
+        ) : null}
       </div>
     </section>
   )
