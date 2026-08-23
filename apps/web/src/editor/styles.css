@@ -3,9 +3,6 @@
 @layer components {
 .tiptap-editor {
     @apply min-h-[520px] px-5 pt-4 pb-5 text-base leading-7 text-foreground outline-none sm:px-8 md:px-20 md:pt-4 md:pb-6 lg:px-24;
-    --editor-selection-background: var(--selection);
-    --editor-selection-solid-background: var(--selection);
-    --editor-selection-foreground: var(--selection-foreground);
   }
 
   .collaboration-carets__caret {
@@ -73,8 +70,6 @@
       h4,
       h5,
       h6,
-      ul,
-      ol,
       blockquote,
       pre,
       .code-block-shiki,
@@ -111,14 +106,16 @@
   }
 
   .tiptap-editor > * + :is(
-      ul,
-      ol,
       pre,
       .code-block-shiki,
       .editor-details,
       .tableWrapper
     ) {
     @apply pt-2;
+  }
+
+  .tiptap-editor > * + :is(ul, ol) {
+    @apply pt-1;
   }
 
   .tiptap-editor > * + :is(.column-block, blockquote, hr) {
@@ -146,6 +143,19 @@
     @apply pt-1;
   }
 
+  /* Match ordinary dragged text selection to the lighter block palette. */
+  .tiptap-editor ::selection,
+  .tiptap-editor *::selection {
+    background-color: var(--editor-selection-overlay);
+    color: inherit;
+  }
+
+  .tiptap-editor ::-moz-selection,
+  .tiptap-editor *::-moz-selection {
+    background-color: var(--editor-selection-overlay);
+    color: inherit;
+  }
+
   /* Hide native text selection only during Ctrl/Cmd+A select-all. */
   .tiptap-editor.ProseMirror-hideselection ::selection,
   .tiptap-editor.ProseMirror-hideselection *::selection {
@@ -160,8 +170,7 @@
   }
 
   .tiptap-editor.dragging {
-    --editor-selection-background: transparent;
-    --editor-selection-foreground: inherit;
+    --editor-selection-overlay: transparent;
     user-select: none;
   }
 
@@ -183,7 +192,62 @@
     color: inherit !important;
   }
 
-  /* Select-all block selection: full-width blocks, gaps between blocks. */
+  /* One translucent layer over every selected block; content keeps its styling. */
+  .tiptap-editor :where(
+      .editor-block-selection,
+      .tableWrapper:has(> table.editor-block-selection),
+      .node-databaseBlock.editor-block-selection:has(
+          .database-inline-scroll-wrap[data-inline-scroll="true"]
+        )
+        .database-toolbar-section,
+      .node-databaseBlock.editor-block-selection
+        .database-inline-scroll-wrap[data-inline-scroll="true"]
+        .database-inline-scroll-content
+        :is(
+          .database-table,
+          .database-kanban-board,
+          .database-page-create-row:not(.database-table *)
+        )
+    ) {
+    box-sizing: border-box;
+    isolation: isolate;
+    position: relative;
+  }
+
+  .tiptap-editor :where(
+      .editor-block-selection:not(table),
+      .tableWrapper:has(> table.editor-block-selection),
+      .node-databaseBlock.editor-block-selection:has(
+          .database-inline-scroll-wrap[data-inline-scroll="true"]
+        )
+        .database-toolbar-section,
+      .node-databaseBlock.editor-block-selection
+        .database-inline-scroll-wrap[data-inline-scroll="true"]
+        .database-inline-scroll-content
+        :is(
+          .database-table,
+          .database-kanban-board,
+          .database-page-create-row:not(.database-table *)
+        )
+    )::after {
+    background-color: var(--editor-selection-overlay);
+    border-radius: 4px;
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1000;
+  }
+
+  /* Inline databases paint over their full scroll content, not just the viewport. */
+  .tiptap-editor
+    .node-databaseBlock.editor-block-selection:has(
+      .database-inline-scroll-wrap[data-inline-scroll="true"]
+    )::after {
+    display: none;
+  }
+
+  /* Select-all block geometry: full-width blocks with gaps between them. */
   .tiptap-editor :is(
       p,
       h1,
@@ -206,11 +270,6 @@
       .column-block,
       table
     ).editor-block-selection {
-    background-clip: border-box;
-    background-color: var(--editor-selection-background);
-    border-radius: 4px;
-    box-sizing: border-box;
-    color: var(--editor-selection-foreground);
     display: block;
     width: 100%;
   }
@@ -232,82 +291,20 @@
 
   .tiptap-editor
     :is(ul, ol):not([data-type="taskList"])
-    > li.editor-block-selection {
-    box-sizing: border-box;
-    color: var(--editor-selection-foreground);
-    isolation: isolate;
-    position: relative;
-  }
-
-  .tiptap-editor
-    :is(ul, ol):not([data-type="taskList"])
-    > li.editor-block-selection::before {
-    background-color: var(--editor-selection-background);
-    border-radius: 4px;
-    content: "";
-    inset: 0 0 0 -1.5rem;
-    pointer-events: none;
-    position: absolute;
-    z-index: -1;
-  }
-
-  .tiptap-editor
-    :is(ul, ol):not([data-type="taskList"])
-    > li.editor-block-selection::marker {
-    color: var(--editor-selection-foreground);
+    > li.editor-block-selection::after {
+    left: -1.5rem;
   }
 
   .tiptap-editor
     > * + :is(ul, ol):not([data-type="taskList"])
-    > li.editor-block-selection:first-child::before {
-    top: -0.5rem;
-  }
-
-  .tiptap-editor
-    > :is(ul, ol):not([data-type="taskList"])
-    > li.editor-block-selection:last-child::before {
-    bottom: -0.125rem;
-  }
-
-  .tiptap-editor ul[data-type="taskList"] > li.editor-block-selection,
-  .tiptap-editor .node-taskItem.editor-block-selection,
-  .tiptap-editor [data-type="taskItem"].editor-block-selection,
-  .tiptap-editor .task-item.editor-block-selection {
-    box-sizing: border-box;
-    color: var(--editor-selection-foreground);
-    isolation: isolate;
-    position: relative;
-  }
-
-  .tiptap-editor ul[data-type="taskList"] > li.editor-block-selection::before,
-  .tiptap-editor .node-taskItem.editor-block-selection::before,
-  .tiptap-editor [data-type="taskItem"].editor-block-selection::before,
-  .tiptap-editor .task-item.editor-block-selection::before {
-    background-color: var(--editor-selection-background);
-    border-radius: 4px;
-    content: "";
-    inset: 0;
-    pointer-events: none;
-    position: absolute;
-    z-index: 0;
+    > li.editor-block-selection:first-child::after {
+    top: -0.25rem;
   }
 
   .tiptap-editor
     > * + ul[data-type="taskList"]
-    > li.editor-block-selection:first-child::before {
-    top: -0.5rem;
-  }
-
-  .tiptap-editor
-    > ul[data-type="taskList"]
-    > li.editor-block-selection:last-child::before {
-    bottom: -0.125rem;
-  }
-
-  /* Database blocks split into toolbar + scroll sections for separate highlights. */
-  .tiptap-editor .node-databaseBlock.editor-block-selection {
-    background: transparent !important;
-    color: inherit;
+    > :is(li, .node-taskItem).editor-block-selection:first-child::after {
+    top: -0.25rem;
   }
 
   .tiptap-editor .node-databaseBlock .database-toolbar-section {
@@ -322,103 +319,6 @@
     :is(.database-table-wrap, .database-kanban-wrap, .database-list-view, .database-gallery-view) {
     @apply mt-0;
   }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-toolbar-section {
-    background-clip: border-box;
-    background-color: var(--editor-selection-background);
-    border-radius: 4px;
-    box-sizing: border-box;
-    color: var(--editor-selection-foreground);
-    display: block;
-    width: 100%;
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-scroll-section:has(
-      .database-inline-scroll-wrap:not([data-inline-scroll="true"])
-    ) {
-    background-color: var(--editor-selection-background);
-    border-radius: 4px;
-    color: var(--editor-selection-foreground);
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-inline-scroll-wrap[data-inline-scroll="true"]
-    :is(.database-table, .database-page-create-row, .database-kanban-board),
-  .tiptap-editor .node-databaseBlock.editor-block-selection
-    :is(.database-chart-view, .database-timeline-view, .database-list-view, .database-gallery-view) {
-    isolation: isolate;
-    position: relative;
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-inline-scroll-wrap[data-inline-scroll="true"]
-    :is(.database-table, .database-page-create-row, .database-kanban-board)::before,
-  .tiptap-editor .node-databaseBlock.editor-block-selection
-    :is(.database-chart-view, .database-timeline-view, .database-list-view, .database-gallery-view)::before {
-    background-color: var(--editor-selection-background);
-    border-radius: 4px;
-    content: "";
-    inset: 0;
-    pointer-events: none;
-    position: absolute;
-    z-index: -1;
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-inline-scroll-wrap[data-inline-scroll="true"]
-    :is(.database-table, .database-page-create-row, .database-kanban-board),
-  .tiptap-editor .node-databaseBlock.editor-block-selection
-    :is(.database-chart-view, .database-timeline-view, .database-list-view, .database-gallery-view) {
-    color: var(--editor-selection-foreground);
-  }
-
-  /* Toolbar controls stay transparent so the section highlight reads as one overlay. */
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-toolbar-section
-    :is(button, a, input) {
-    background-color: transparent !important;
-    border-color: transparent !important;
-    box-shadow: none !important;
-    color: inherit !important;
-  }
-
-  /* Keep kanban surfaces from stacking darker fills over the shared selection layer. */
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    :is(
-      .database-kanban-column:not(.database-kanban-new-column),
-      .database-kanban-card,
-      .database-kanban-new-card
-    ) {
-    background-color: transparent !important;
-    border-color: var(--editor-selection-border) !important;
-    color: var(--editor-selection-foreground) !important;
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    :is(
-      .database-kanban-count,
-      .database-select-badge,
-      .database-table-group-count
-    ) {
-    background-color: var(--editor-selection-subtle-background) !important;
-    border-color: var(--editor-selection-border) !important;
-    color: var(--editor-selection-foreground) !important;
-  }
-
-  .tiptap-editor .node-databaseBlock.editor-block-selection .database-block-shell {
-    background-color: transparent;
-  }
-
 
   .tiptap-editor :is(p, li, blockquote, td, th) strong {
     @apply font-semibold;
@@ -1272,58 +1172,6 @@
   .database-timeline-view [data-roadmap-ui="gantt-sidebar"] {
     @apply border-0 bg-background backdrop-blur-none;
     background-color: var(--background) !important;
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-timeline-view
-    :is(
-      .database-timeline-toolbar-chrome,
-      .database-timeline-toolbar-sidebar-spacer,
-      .database-timeline-toolbar,
-      .database-timeline-gantt-scroll,
-      .database-timeline-gantt .gantt-content-header,
-      .database-timeline-sidebar-thead,
-      .database-timeline-sidebar-thead th,
-      .database-timeline-sidebar-name-header
-    ) {
-    background-color: transparent !important;
-    color: var(--editor-selection-foreground);
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-timeline-view
-    .database-timeline-gantt-scroll {
-    isolation: auto;
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-timeline-view
-    .database-timeline-sidebar-cell {
-    background-color: var(--editor-selection-solid-background) !important;
-    color: var(--editor-selection-foreground);
-    position: sticky;
-    z-index: 60 !important;
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-timeline-view
-    .database-timeline-bar
-    [data-slot="card"] {
-    background-color: transparent !important;
-    border-color: var(--editor-selection-border) !important;
-    color: var(--editor-selection-foreground) !important;
-  }
-
-  .tiptap-editor
-    .node-databaseBlock.editor-block-selection
-    .database-timeline-view
-    :is(.database-select-badge, .database-table-group-count) {
-    background-color: var(--editor-selection-subtle-background) !important;
-    color: var(--editor-selection-foreground) !important;
   }
 
   .database-timeline-view .database-timeline-sidebar-cell .database-page-create-row {
@@ -2590,12 +2438,13 @@
 }
 
 .tiptap-editor .node-meetingBlock {
-  @apply my-4 min-w-0;
+  @apply min-w-0;
 }
 
 .tiptap-editor .node-meetingBlock.editor-block-selection {
-  background: transparent !important;
-  color: inherit;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
 }
 
 .tiptap-editor
@@ -2611,13 +2460,6 @@
   > [data-node-view-wrapper]
   > .meeting-block-shell {
   @apply min-w-0 overflow-visible rounded-xl border border-border bg-transparent transition-[border-color,box-shadow];
-}
-
-.tiptap-editor
-  .node-meetingBlock.editor-block-selection
-  > [data-node-view-wrapper]
-  > .meeting-block-shell {
-  @apply border-primary ring-2 ring-primary;
 }
 
 .tiptap-editor

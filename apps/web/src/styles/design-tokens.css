@@ -76,8 +76,7 @@
   --scrollbar-thumb-firefox: color-mix(in oklab, var(--muted-foreground) 24%, transparent);
   --scrollbar-thumb-hover: color-mix(in oklab, var(--muted-foreground) 32%, transparent);
   --desktop-tab-border: var(--border);
-  --editor-selection-border: color-mix(in srgb, var(--selection-foreground) 18%, transparent);
-  --editor-selection-subtle-background: color-mix(in srgb, var(--selection) 70%, transparent);
+  --editor-selection-overlay: rgb(35 131 226 / 13%);
   --timeline-grid-border: color-mix(in oklab, var(--border) 28%, transparent);
   --timeline-bar-background: color-mix(
     in oklab,
@@ -284,6 +283,7 @@
   --scrim: rgb(0 0 0 / 70%);
   --selection: #52525b;
   --selection-foreground: #ffffff;
+  --editor-selection-overlay: rgb(35 131 226 / 23%);
   --control-knob: var(--foreground);
 
   --editor-gray: #9b9a97;
