@@ -303,7 +303,12 @@ pub(crate) fn is_cloud_server(server: &DesktopServer) -> bool {
 }
 
 pub(crate) fn is_development_server(server: &DesktopServer) -> bool {
-    server.instance_id == DEV_INSTANCE_ID
+    if !cfg!(debug_assertions) {
+        return false;
+    }
+
+    let development = development_server();
+    server.api_origin == development.api_origin && server.issuer == development.issuer
 }
 
 fn is_cloud_origin(origin: &Url) -> bool {
@@ -908,7 +913,7 @@ fn find_profile_index(
     api_origin: &str,
 ) -> Option<usize> {
     config.profiles.iter().position(|profile| {
-        profile.server.instance_id == instance_id && profile.server.api_origin == api_origin
+            profile.server.instance_id == instance_id && profile.server.api_origin == api_origin
     }).or_else(|| {
         config.profiles.iter().position(|profile| {
             servers_refer_to_same_instance(
@@ -1074,7 +1079,8 @@ fn config_path(directory: &Path) -> PathBuf {
 mod tests {
     use super::{
         cloud_server, commit_candidate_to_directory, config_file_name, config_path,
-        default_server, development_server, find_profile_index, load_or_initialize_config,
+        default_server, development_server, find_profile_index, is_development_server,
+        load_or_initialize_config,
         load_or_initialize_from_directory, parse_config, parse_server_origin,
         remove_profile_from_directory, save_to_directory, servers_refer_to_same_instance,
         validate_discovery_document, verify_desktop_server, write_config,
@@ -1117,6 +1123,20 @@ mod tests {
         {
             assert_eq!(default_server(), cloud_server());
             assert_eq!(config_file_name(), super::CONFIG_FILE_NAME);
+        }
+    }
+
+    #[test]
+    fn debug_recognizes_a_discovered_local_server_after_its_instance_id_changes() {
+        #[cfg(debug_assertions)]
+        {
+            let mut discovered = development_server();
+            discovered.instance_id = "database-instance".to_string();
+            assert!(is_development_server(&discovered));
+
+            discovered.api_origin = "https://notes.example.com".to_string();
+            discovered.issuer = discovered.api_origin.clone();
+            assert!(!is_development_server(&discovered));
         }
     }
 
