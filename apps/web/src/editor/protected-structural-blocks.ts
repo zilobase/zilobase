@@ -119,8 +119,10 @@ export function handleProtectedStructuralBlockDeleteKey(
   event: KeyboardEvent,
 ) {
   const isDeleteKey = event.key === "Backspace" || event.key === "Delete"
+  const hasCommandModifier = event.metaKey || event.ctrlKey || event.altKey
   const replacesSelection =
     !view.state.selection.empty &&
+    !hasCommandModifier &&
     (event.key === "Enter" || event.key.length === 1)
 
   if (!isDeleteKey && !replacesSelection) {

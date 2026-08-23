@@ -14,6 +14,10 @@ export function register({ assert, test }) {
       css,
       /\.editor-block-selection:not\(table\),[\s\S]*?\)::after \{[\s\S]*?background-color: var\(--editor-selection-overlay\);[\s\S]*?pointer-events: none;[\s\S]*?z-index: 1000;/
     )
+    assert.match(
+      css,
+      /background-color: var\(--editor-selection-overlay\);\s*border-radius: 4px;/
+    )
     assert.match(tokens, /--editor-selection-overlay: rgb\(35 131 226 \/ 13%\);/)
     assert.match(
       tokens,
@@ -50,6 +54,11 @@ export function register({ assert, test }) {
 
     assert.ok(paddedBlockRule)
     assert.doesNotMatch(paddedBlockRule, /\bul,|\bol,/)
+    assert.match(css, /\.tiptap-editor > \* \+ \* \{\s*@apply mt-1;/)
+    assert.doesNotMatch(
+      css,
+      /ProseMirror-hideselection[\s\S]*?\+ \.editor-block-selection::after/
+    )
   })
 
   test("database selection does not restyle any database content", async () => {

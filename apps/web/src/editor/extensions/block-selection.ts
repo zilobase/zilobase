@@ -2,12 +2,17 @@ import { Extension } from "@tiptap/core"
 import type { Node as ProseMirrorNode, ResolvedPos } from "@tiptap/pm/model"
 import {
   AllSelection,
+  type EditorState,
   Plugin,
   PluginKey,
   TextSelection,
   type Selection,
 } from "@tiptap/pm/state"
-import { Decoration, DecorationSet } from "@tiptap/pm/view"
+import {
+  Decoration,
+  DecorationSet,
+  type EditorView,
+} from "@tiptap/pm/view"
 
 import { selectionAiPreviewPluginKey } from "./selection-ai-preview"
 
@@ -28,6 +33,91 @@ const emptyPluginState = (): BlockSelectionPluginState => ({
   decorations: DecorationSet.empty,
   mode: "none",
 })
+
+const blockSelectionNavigationKeys = new Set([
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "End",
+  "Escape",
+  "Home",
+  "PageDown",
+  "PageUp",
+])
+
+const modifierKeys = new Set(["Alt", "Control", "Meta", "Shift"])
+
+const dragInputTypes = new Set(["deleteByDrag", "insertFromDrop"])
+
+export const isBlockSelectionActive = (state: EditorState) =>
+  blockSelectionPluginKey.getState(state)?.mode === "all"
+
+export const shouldBlockBlockSelectionKeydown = (
+  event: Pick<KeyboardEvent, "altKey" | "ctrlKey" | "key" | "metaKey">,
+) => {
+  const primaryModifier = event.metaKey || event.ctrlKey
+  const key = event.key.toLowerCase()
+
+  if (
+    modifierKeys.has(event.key) ||
+    blockSelectionNavigationKeys.has(event.key)
+  ) {
+    return false
+  }
+
+  if (!event.altKey && primaryModifier && (key === "a" || key === "c")) {
+    return false
+  }
+
+  if (!event.altKey && event.ctrlKey && event.key === "Insert") {
+    return false
+  }
+
+  return true
+}
+
+export const handleBlockSelectionKeyDown = (
+  view: EditorView,
+  event: KeyboardEvent,
+) => {
+  if (
+    !isBlockSelectionActive(view.state) ||
+    !shouldBlockBlockSelectionKeydown(event)
+  ) {
+    return false
+  }
+
+  event.preventDefault()
+  return true
+}
+
+export const handleBlockSelectionBeforeInput = (
+  view: EditorView,
+  event: InputEvent,
+) => {
+  if (
+    !isBlockSelectionActive(view.state) ||
+    dragInputTypes.has(event.inputType)
+  ) {
+    return false
+  }
+
+  event.preventDefault()
+  return true
+}
+
+export const handleBlockSelectionClipboardMutation = (
+  view: EditorView,
+  event: ClipboardEvent,
+) => {
+  if (!isBlockSelectionActive(view.state)) {
+    return false
+  }
+
+  event.preventDefault()
+  return true
+}
 
 const listContainerTypes = new Set([
   "bulletList",
@@ -169,7 +259,10 @@ const createBlockSelectionDecorations = (
   )
 }
 
-const buildAllBlockDecorations = (doc: ProseMirrorNode, selection: Selection) =>
+export const buildAllBlockDecorations = (
+  doc: ProseMirrorNode,
+  selection: Selection,
+) =>
   DecorationSet.create(
     doc,
     createBlockSelectionDecorations(doc, selection.from, selection.to),
@@ -249,9 +342,9 @@ export const BlockSelection = Extension.create({
             if (tr.docChanged && previous.mode !== "none") {
               return {
                 ...previous,
-                decorations: previous.decorations.map(
-                  tr.mapping,
-                  tr.doc,
+                decorations: buildAllBlockDecorations(
+                  newState.doc,
+                  newState.selection,
                 ),
               }
             }

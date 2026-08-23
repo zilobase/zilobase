@@ -58,6 +58,37 @@ export function register({ assert, loadModule, test }) {
 
     assert.equal(getProtectedStructuralBlockForDelete(state), null)
   })
+
+  test("modified character shortcuts do not replace a structural selection", async () => {
+    const { Schema } = await import("@tiptap/pm/model")
+    const { AllSelection, EditorState } = await import("@tiptap/pm/state")
+    const { handleProtectedStructuralBlockDeleteKey } = await loadModule(
+      "/src/editor/protected-structural-blocks.ts",
+    )
+    const schema = createSchema(Schema)
+    const doc = schema.node("doc", null, [
+      schema.node("paragraph", null, schema.text("Before")),
+      schema.node("databaseBlock", { databaseId: "database-1" }),
+    ])
+    const state = EditorState.create({
+      doc,
+      selection: new AllSelection(doc),
+    })
+    const event = {
+      altKey: false,
+      ctrlKey: false,
+      key: "a",
+      metaKey: true,
+      preventDefault() {
+        throw new Error("Cmd+A must reach the editor shortcut handler")
+      },
+    }
+
+    assert.equal(
+      handleProtectedStructuralBlockDeleteKey({ state }, event),
+      false,
+    )
+  })
 }
 
 function createSchema(Schema) {

@@ -48,6 +48,11 @@ import {
   handleProtectedStructuralBlockClipboardMutation,
   handleProtectedStructuralBlockDeleteKey,
 } from "./protected-structural-blocks";
+import {
+  handleBlockSelectionBeforeInput,
+  handleBlockSelectionClipboardMutation,
+  handleBlockSelectionKeyDown,
+} from "@/packages/editor/extensions/block-selection";
 
 type UseEditorInstanceOptions = {
   databaseEditorRuntime: DatabaseBlockEditorRuntime;
@@ -238,7 +243,17 @@ export const useEditorInstance = ({
         },
         handleDOMEvents: {
           ...dragDrop.domEvents,
+          beforeinput: (view, event) =>
+            editableRef.current &&
+            handleBlockSelectionBeforeInput(view, event),
           keydown: (view, event) => {
+            if (
+              editableRef.current &&
+              handleBlockSelectionKeyDown(view, event)
+            ) {
+              return true;
+            }
+
             if (
               editableRef.current &&
               handleProtectedStructuralBlockDeleteKey(view, event)
@@ -264,13 +279,21 @@ export const useEditorInstance = ({
           },
           cut: (view, event) =>
             editableRef.current &&
-            handleProtectedStructuralBlockClipboardMutation(view, event),
+            (handleBlockSelectionClipboardMutation(view, event) ||
+              handleProtectedStructuralBlockClipboardMutation(view, event)),
           keyup: (view, event) =>
             event.key === " "
               ? handleTypedLinkChoiceRef.current(view, event)
               : false,
         },
         handlePaste: (view, event) => {
+          if (
+            editableRef.current &&
+            handleBlockSelectionClipboardMutation(view, event)
+          ) {
+            return true;
+          }
+
           if (
             editableRef.current &&
             handleProtectedStructuralBlockClipboardMutation(view, event)
