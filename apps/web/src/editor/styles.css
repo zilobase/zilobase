@@ -2100,7 +2100,7 @@
   }
 
   .database-page-open {
-    @apply invisible absolute right-2 top-1/2 z-20 flex h-6 -translate-y-1/2 items-center gap-1.5 rounded-md border bg-backdrop px-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground opacity-0 shadow-sm transition-[color,background-color,opacity] duration-75 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    @apply invisible absolute right-2 top-1/2 z-20 flex h-6 -translate-y-1/2 items-center gap-1.5 rounded-md border bg-muted px-2 text-xs font-semibold uppercase tracking-wide text-foreground opacity-0 shadow-sm transition-opacity duration-75 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
   }
 
   .database-page-link:hover .database-page-open,
