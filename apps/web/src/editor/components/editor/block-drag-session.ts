@@ -1,5 +1,8 @@
 import type { Editor } from "@tiptap/react"
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
+import {
+  Slice,
+  type Node as ProseMirrorNode,
+} from "@tiptap/pm/model"
 import { NodeSelection } from "@tiptap/pm/state"
 import type { EditorView } from "@tiptap/pm/view"
 
@@ -8,18 +11,36 @@ import {
   readDragPayload,
   writeDragPayload,
 } from "@/editor/drag-drop"
-import { setDatabaseBlockDragImage } from "./block-drag-preview"
+import { getSelectedBlockRangesForTarget } from "../../extensions/block-selection"
+import {
+  setDatabaseBlockDragImage,
+  setMultiBlockDragImage,
+} from "./block-drag-preview"
 import type { DragHandleTarget } from "./types"
 
 export const EDITOR_BLOCK_DRAG_MIME =
   "application/x-zilobase-editor-block-drag"
 
 export type BlockDragPayload = {
+  blockCount?: number
   editorId: string
+  from?: number
   node: unknown
+  parentTypeName?: string
   pos: number
+  slice?: unknown
   textContent: string
+  to?: number
   typeName: string
+}
+
+type BlockDragSource = {
+  blockCount: number
+  from: number
+  parentTypeName: string
+  ranges: Array<{ from: number; to: number }>
+  slice: Slice
+  to: number
 }
 
 const EDITOR_DRAGGING_CLASS = "dragging"
@@ -32,6 +53,7 @@ export const isListItemType = (typeName?: string) =>
 function createBlockDragPayload(
   editorId: string,
   target: DragHandleTarget,
+  source?: BlockDragSource,
 ): BlockDragPayload {
   return {
     editorId,
@@ -39,6 +61,43 @@ function createBlockDragPayload(
     pos: target.pos,
     textContent: target.node.textContent,
     typeName: target.node.type.name,
+    ...(source && source.blockCount > 1
+      ? {
+          blockCount: source.blockCount,
+          from: source.from,
+          parentTypeName: source.parentTypeName,
+          slice: source.slice.toJSON(),
+          to: source.to,
+        }
+      : {}),
+  }
+}
+
+function getBlockDragSource(
+  view: EditorView,
+  target: DragHandleTarget,
+): BlockDragSource {
+  const { doc, selection } = view.state
+  const selectedRanges = getSelectedBlockRangesForTarget(
+    doc,
+    selection.from,
+    selection.to,
+    target.pos,
+  )
+  const ranges =
+    selectedRanges.length > 1
+      ? selectedRanges
+      : [{ from: target.pos, to: target.pos + target.node.nodeSize }]
+  const from = ranges[0].from
+  const to = ranges.at(-1)?.to ?? from
+
+  return {
+    blockCount: ranges.length,
+    from,
+    parentTypeName: doc.resolve(from).parent.type.name,
+    ranges,
+    slice: doc.slice(from, to),
+    to,
   }
 }
 
@@ -46,12 +105,42 @@ function isBlockDragPayload(value: unknown): value is BlockDragPayload {
   if (typeof value !== "object" || value === null) return false
 
   const payload = value as Record<string, unknown>
-  return (
+  const basePayloadIsValid =
     typeof payload.editorId === "string" &&
     typeof payload.pos === "number" &&
     typeof payload.textContent === "string" &&
     typeof payload.typeName === "string" &&
     payload.node != null
+
+  if (!basePayloadIsValid) return false
+
+  const hasMultiBlockFields =
+    payload.blockCount !== undefined ||
+    payload.from !== undefined ||
+    payload.parentTypeName !== undefined ||
+    payload.slice !== undefined ||
+    payload.to !== undefined
+
+  if (!hasMultiBlockFields) return true
+
+  return (
+    typeof payload.blockCount === "number" &&
+    payload.blockCount > 1 &&
+    typeof payload.from === "number" &&
+    typeof payload.to === "number" &&
+    payload.to > payload.from &&
+    typeof payload.parentTypeName === "string" &&
+    payload.slice != null
+  )
+}
+
+export function isMultiBlockDragPayload(payload: BlockDragPayload) {
+  return (
+    typeof payload.blockCount === "number" &&
+    payload.blockCount > 1 &&
+    typeof payload.from === "number" &&
+    typeof payload.to === "number" &&
+    payload.slice != null
   )
 }
 
@@ -75,6 +164,7 @@ export function hasEditorBlockDragData(dataTransfer: DataTransfer | null) {
 
 export function getBlockDragDatabaseId(payload: BlockDragPayload) {
   if (
+    isMultiBlockDragPayload(payload) ||
     payload.typeName !== "databaseBlock" ||
     !payload.node ||
     typeof payload.node !== "object"
@@ -119,7 +209,12 @@ export function getBlockDragSourceEditor(editorId: string) {
 }
 
 export function armBlockDrag(editorId: string, target: DragHandleTarget) {
-  activeDragPayload = createBlockDragPayload(editorId, target)
+  const sourceView = sourceEditors.get(editorId)?.view
+  activeDragPayload = createBlockDragPayload(
+    editorId,
+    target,
+    sourceView ? getBlockDragSource(sourceView, target) : undefined,
+  )
 }
 
 export function startBlockDrag({
@@ -133,19 +228,24 @@ export function startBlockDrag({
   target: DragHandleTarget
   view: EditorView
 }) {
+  const source = getBlockDragSource(view, target)
+  const isMultiBlockDrag = source.blockCount > 1
+
   view.dom.classList.add(EDITOR_DRAGGING_CLASS)
   document.getSelection()?.removeAllRanges()
   view.focus()
 
-  try {
-    view.dispatch(
-      view.state.tr.setSelection(
-        NodeSelection.create(view.state.doc, target.pos),
-      ),
-    )
-  } catch {
-    resetBlockDragSession(view)
-    return false
+  if (!isMultiBlockDrag) {
+    try {
+      view.dispatch(
+        view.state.tr.setSelection(
+          NodeSelection.create(view.state.doc, target.pos),
+        ),
+      )
+    } catch {
+      resetBlockDragSession(view)
+      return false
+    }
   }
 
   const { dataTransfer } = event
@@ -154,14 +254,17 @@ export function startBlockDrag({
     return false
   }
 
-  const payload = createBlockDragPayload(editorId, target)
+  const payload = createBlockDragPayload(editorId, target, source)
   activeDragPayload = payload
 
-  const slice = view.state.selection.content()
+  const slice = isMultiBlockDrag
+    ? source.slice
+    : view.state.selection.content()
   const { dom, text } = view.serializeForClipboard(slice)
   const isNodeViewBlock =
-    target.node.type.name === "databaseBlock" ||
-    target.node.type.name === "meetingBlock"
+    !isMultiBlockDrag &&
+    (target.node.type.name === "databaseBlock" ||
+      target.node.type.name === "meetingBlock")
   const dragImageSource = view.nodeDOM(target.pos)
 
   dataTransfer.effectAllowed = "copyMove"
@@ -169,7 +272,15 @@ export function startBlockDrag({
   if (!isNodeViewBlock) dataTransfer.setData("text/html", dom.innerHTML)
   dataTransfer.setData("text/plain", text)
 
-  if (
+  if (isMultiBlockDrag) {
+    setMultiBlockDragImage(
+      event,
+      source.ranges.flatMap((range) => {
+        const domNode = view.nodeDOM(range.from)
+        return domNode instanceof HTMLElement ? [domNode] : []
+      }),
+    )
+  } else if (
     dragImageSource instanceof Element &&
     (!isNodeViewBlock || !setDatabaseBlockDragImage(event, dragImageSource))
   ) {
@@ -207,10 +318,38 @@ export function findBlockDragSourceNode(
   return null
 }
 
+export function findBlockDragSourceSlice(
+  view: EditorView,
+  payload: BlockDragPayload,
+): { from: number; slice: Slice; to: number } | null {
+  if (!isMultiBlockDragPayload(payload)) return null
+
+  try {
+    const expected = Slice.fromJSON(view.state.schema, payload.slice)
+    const current = view.state.doc.slice(payload.from!, payload.to!)
+
+    return current.eq(expected)
+      ? { from: payload.from!, slice: current, to: payload.to! }
+      : null
+  } catch {
+    return null
+  }
+}
+
 export function deleteBlockDragSource(
   view: EditorView,
   payload: BlockDragPayload,
 ) {
+  const selectedBlocks = findBlockDragSourceSlice(view, payload)
+  if (selectedBlocks) {
+    view.dispatch(
+      view.state.tr
+        .delete(selectedBlocks.from, selectedBlocks.to)
+        .scrollIntoView(),
+    )
+    return true
+  }
+
   const node = findBlockDragSourceNode(view, payload)
   if (!node) return false
 

@@ -3,6 +3,7 @@ import {
   deleteDraggedEditorBlockSource,
   getDraggedEditorBlockPayload,
   getEditorInsertDropTarget,
+  isMultiBlockDragPayload,
   type BlockDragPayload,
 } from "@/packages/editor/components/editor/block-drag";
 import {
@@ -95,7 +96,13 @@ const getDraggedPageBlockPayload = (
   event: DragEvent,
 ): DatabasePageDropPayload | null => {
   const blockPayload = getDraggedEditorBlockPayload(event.dataTransfer);
-  if (blockPayload?.typeName !== "pageBlock") return null;
+  if (
+    !blockPayload ||
+    isMultiBlockDragPayload(blockPayload) ||
+    blockPayload.typeName !== "pageBlock"
+  ) {
+    return null;
+  }
 
   const pageId = (blockPayload.node as { attrs?: { pageId?: unknown } }).attrs
     ?.pageId;

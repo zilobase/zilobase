@@ -75,6 +75,39 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(getDraggedEditorBlockPayload(dataTransfer), payload)
   })
 
+  test("block drag payload parser accepts complete multi-block ranges", async () => {
+    const {
+      EDITOR_BLOCK_DRAG_MIME,
+      getBlockDragDatabaseId,
+      getDraggedEditorBlockPayload,
+      isMultiBlockDragPayload,
+    } = await loadModule("/src/editor/components/editor/block-drag.ts")
+    const payload = {
+      blockCount: 3,
+      editorId: "editor-1",
+      from: 4,
+      node: { attrs: { databaseId: "tasks" }, type: "databaseBlock" },
+      parentTypeName: "doc",
+      pos: 4,
+      slice: { content: [{ type: "databaseBlock" }, { type: "paragraph" }] },
+      textContent: "",
+      to: 12,
+      typeName: "databaseBlock",
+    }
+    const dataTransfer = {
+      getData: (type) =>
+        type === EDITOR_BLOCK_DRAG_MIME ? JSON.stringify(payload) : "",
+    }
+    const parsed = getDraggedEditorBlockPayload(dataTransfer)
+
+    assert.deepEqual(parsed, payload)
+    assert.equal(isMultiBlockDragPayload(parsed), true)
+    assert.equal(getBlockDragDatabaseId(parsed), null)
+
+    delete payload.to
+    assert.equal(getDraggedEditorBlockPayload(dataTransfer), null)
+  })
+
   test("block drag session bridges browsers that hide custom transfer data", async () => {
     const {
       armBlockDrag,
@@ -178,6 +211,92 @@ export function register({ assert, loadModule, test }) {
 
     unregister()
   })
+
+  test("cross-editor multi-block drops move the complete selected range", async () => {
+    const { Schema } = await import("@tiptap/pm/model")
+    const { EditorState } = await import("@tiptap/pm/state")
+    const { dropCrossEditorBlock, registerBlockDragSource } = await loadModule(
+      "/src/editor/components/editor/block-drag.ts"
+    )
+    const schema = new Schema({
+      nodes: {
+        doc: { content: "block+" },
+        paragraph: { content: "text*", group: "block" },
+        text: {},
+      },
+      marks: {},
+    })
+    const paragraph = (text) =>
+      schema.node("paragraph", null, schema.text(text))
+    const source = statefulEditorView(
+      EditorState.create({
+        doc: schema.node("doc", null, [
+          paragraph("First"),
+          paragraph("Second"),
+          paragraph("Keep"),
+        ]),
+      })
+    )
+    const target = statefulEditorView(
+      EditorState.create({
+        doc: schema.node("doc", null, [paragraph("Target")]),
+      })
+    )
+    const secondEnd = source.view.state.doc.child(0).nodeSize +
+      source.view.state.doc.child(1).nodeSize
+    const slice = source.view.state.doc.slice(0, secondEnd)
+    const payload = {
+      blockCount: 2,
+      editorId: "source-editor",
+      from: 0,
+      node: source.view.state.doc.child(0).toJSON(),
+      parentTypeName: "doc",
+      pos: 0,
+      slice: slice.toJSON(),
+      textContent: "First",
+      to: secondEnd,
+      typeName: "paragraph",
+    }
+    const unregister = registerBlockDragSource("source-editor", {
+      view: source.view,
+    })
+
+    assert.equal(
+      dropCrossEditorBlock(target.view, payload, 0, "move"),
+      true,
+    )
+    assert.deepEqual(
+      Array.from({ length: target.view.state.doc.childCount }, (_, index) =>
+        target.view.state.doc.child(index).textContent
+      ),
+      ["First", "Second", "Target"],
+    )
+    assert.deepEqual(
+      Array.from({ length: source.view.state.doc.childCount }, (_, index) =>
+        source.view.state.doc.child(index).textContent
+      ),
+      ["Keep"],
+    )
+
+    unregister()
+  })
+}
+
+function statefulEditorView(initialState) {
+  let state = initialState
+  const classList = { remove() {} }
+  const view = {
+    get state() {
+      return state
+    },
+    dispatch(transaction) {
+      state = state.apply(transaction)
+    },
+    dom: { classList },
+    focus() {},
+  }
+
+  return { view }
 }
 
 function fakeEditorView() {

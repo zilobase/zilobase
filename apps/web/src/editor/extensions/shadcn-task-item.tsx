@@ -7,6 +7,7 @@ import {
 } from "@tiptap/react"
 
 import { Checkbox } from "@/components/ui/checkbox"
+import { getSelectedTaskItemPositions } from "./block-selection"
 
 type ShadcnTaskItemOptions = {
   editable: boolean
@@ -16,6 +17,7 @@ type ShadcnTaskItemOptions = {
 function ShadcnTaskItemView({
   editor,
   extension,
+  getPos,
   node,
   updateAttributes,
 }: NodeViewProps) {
@@ -40,7 +42,38 @@ function ShadcnTaskItemView({
               return
             }
 
-            updateAttributes({ checked: nextChecked === true })
+            const checked = nextChecked === true
+            const pos = getPos()
+            const { doc, selection } = editor.state
+            const selectedTaskItemPositions =
+              typeof pos === "number"
+                ? getSelectedTaskItemPositions(
+                    doc,
+                    selection.from,
+                    selection.to,
+                    pos,
+                  )
+                : []
+
+            if (selectedTaskItemPositions.length > 1) {
+              const transaction = editor.state.tr
+
+              selectedTaskItemPositions.forEach((taskItemPos) => {
+                const taskItem = doc.nodeAt(taskItemPos)
+
+                if (taskItem?.type.name === "taskItem") {
+                  transaction.setNodeMarkup(taskItemPos, undefined, {
+                    ...taskItem.attrs,
+                    checked,
+                  })
+                }
+              })
+
+              editor.view.dispatch(transaction)
+              return
+            }
+
+            updateAttributes({ checked })
           }}
           onMouseDown={(event) => event.preventDefault()}
         />

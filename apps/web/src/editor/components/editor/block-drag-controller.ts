@@ -7,6 +7,7 @@ import { getEditorInsertDropTarget } from "./block-drag-geometry"
 import {
   getDraggedEditorBlockPayload,
   hasEditorBlockDragData,
+  isMultiBlockDragPayload,
   isListItemType,
   resetBlockDragSession,
 } from "./block-drag-session"
@@ -123,7 +124,10 @@ export function createEditorDragDrop(
     if (bridge.dropPageOnDatabase(event)) return true
 
     const payload = getDraggedEditorBlockPayload(event.dataTransfer)
-    if (payload && !isListItemType(payload.typeName)) {
+    if (
+      payload &&
+      (isMultiBlockDragPayload(payload) || !isListItemType(payload.typeName))
+    ) {
       const target = getEditorInsertDropTarget(view, event)
       if (
         target &&

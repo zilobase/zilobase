@@ -38,6 +38,7 @@ import {
   type SlashCommandItem,
 } from "@/packages/editor/extensions/slash-command"
 import { SlashCommandMenu } from "@/packages/editor/extensions/slash-command-menu"
+import { getSelectedBlockRangesForTarget } from "../../extensions/block-selection"
 
 import { blockContentForItem, insertBlockFromPlus } from "./block-insert"
 import {
@@ -618,6 +619,15 @@ export function DragBlockMenu({
                 return
               }
 
+              const { doc, selection } = editor.state
+              const draggingMultipleBlocks =
+                getSelectedBlockRangesForTarget(
+                  doc,
+                  selection.from,
+                  selection.to,
+                  target.pos,
+                ).length > 1
+
               event.stopPropagation()
               event.nativeEvent.stopImmediatePropagation()
               const didStartDrag = startBlockDrag({
@@ -637,6 +647,7 @@ export function DragBlockMenu({
               const pageId = target.node.attrs.pageId
 
               if (
+                !draggingMultipleBlocks &&
                 target.node.type.name === "pageBlock" &&
                 typeof pageId === "string"
               ) {

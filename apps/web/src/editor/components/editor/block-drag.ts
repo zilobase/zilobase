@@ -4,6 +4,7 @@ export { dropCrossEditorBlock } from "./block-drop"
 export {
   canMoveDatabaseBlockToPage,
   getBlockDragDatabaseId,
+  isMultiBlockDragPayload,
   type BlockDragPayload,
 } from "./block-drag-session"
 

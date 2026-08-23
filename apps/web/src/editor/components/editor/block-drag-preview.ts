@@ -105,3 +105,61 @@ export function setDatabaseBlockDragImage(event: DragEvent, image: Element) {
   window.requestAnimationFrame(() => dragImage.remove())
   return true
 }
+
+export function setMultiBlockDragImage(
+  event: DragEvent,
+  images: HTMLElement[],
+) {
+  if (!event.dataTransfer || images.length < 2) return false
+
+  const visibleImages = images
+    .map((image) => ({ image, rect: image.getBoundingClientRect() }))
+    .filter(({ rect }) => rect.width > 0 && rect.height > 0)
+  if (visibleImages.length < 2) return false
+
+  const firstRect = visibleImages[0].rect
+  const width = Math.max(...visibleImages.map(({ rect }) => rect.width))
+  const dragImage = document.createElement("div")
+
+  dragImage.className =
+    "tiptap-editor editor-multi-block-drag-image shadow-xl"
+  Object.assign(dragImage.style, {
+    background: "var(--background)",
+    border: "1px solid var(--border)",
+    borderRadius: "10px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+    left: "0",
+    maxHeight: "320px",
+    minHeight: "0",
+    overflow: "hidden",
+    padding: "8px",
+    pointerEvents: "none",
+    position: "fixed",
+    top: "-10000px",
+    width: `${width + 16}px`,
+  })
+
+  visibleImages.forEach(({ image, rect }) => {
+    const clone = image.cloneNode(true) as HTMLElement
+
+    clone.classList.remove("editor-block-selection")
+    Object.assign(clone.style, {
+      margin: "0",
+      maxWidth: `${width}px`,
+      minHeight: `${rect.height}px`,
+      width: `${width}px`,
+    })
+    dragImage.appendChild(clone)
+  })
+
+  document.body.appendChild(dragImage)
+  event.dataTransfer.setDragImage(
+    dragImage,
+    Math.max(0, Math.min(width, event.clientX - firstRect.left + 8)),
+    Math.max(0, event.clientY - firstRect.top + 8),
+  )
+  window.requestAnimationFrame(() => dragImage.remove())
+  return true
+}

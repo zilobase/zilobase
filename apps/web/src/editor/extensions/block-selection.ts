@@ -13,7 +13,7 @@ import { selectionAiPreviewPluginKey } from "./selection-ai-preview"
 
 export const blockSelectionPluginKey = new PluginKey("blockSelection")
 
-type BlockRange = { from: number; to: number }
+export type BlockRange = { from: number; to: number }
 
 type BlockSelectionMode = "none" | "all"
 
@@ -123,6 +123,39 @@ export const getBlockSelectionRanges = (
 
   return [...ranges.values()]
 }
+
+export const getSelectedBlockRangesForTarget = (
+  doc: ProseMirrorNode,
+  selectionFrom: number,
+  selectionTo: number,
+  targetPos: number,
+) => {
+  if (selectionFrom === selectionTo) return []
+
+  const ranges = getBlockSelectionRanges(doc, selectionFrom, selectionTo)
+  if (ranges.length < 2) return []
+
+  return ranges.some(
+    (range) => targetPos >= range.from && targetPos < range.to,
+  )
+    ? ranges
+    : []
+}
+
+export const getSelectedTaskItemPositions = (
+  doc: ProseMirrorNode,
+  selectionFrom: number,
+  selectionTo: number,
+  targetPos: number,
+) =>
+  getSelectedBlockRangesForTarget(
+    doc,
+    selectionFrom,
+    selectionTo,
+    targetPos,
+  ).flatMap((range) =>
+    doc.nodeAt(range.from)?.type.name === "taskItem" ? [range.from] : [],
+  )
 
 const createBlockSelectionDecorations = (
   doc: ProseMirrorNode,
