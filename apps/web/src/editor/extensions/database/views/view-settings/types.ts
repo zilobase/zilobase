@@ -15,6 +15,7 @@ import type {
   DatabaseSortUpdatePatch,
 } from "../database-sort-menu";
 import type { DatabaseChartSettings } from "../chart/database-chart-config";
+import type { DatabaseViewType } from "./view-type-options";
 
 export type DatabaseViewProperty = {
   id: string;
@@ -27,6 +28,7 @@ export type DatabaseViewProperty = {
 };
 
 export type DatabaseSourceMenuItem = {
+  hiddenViewCount?: number;
   id: string;
   name: string;
   viewCount: number;
@@ -38,6 +40,8 @@ export type DatabaseViewSettingsMenuProps = {
   activeDatabaseFilters: DatabaseActiveFilter[];
   activeDatabaseSorts: DatabaseActiveSort[];
   activeViewType?: string;
+  activeSourceDatabaseId?: string;
+  activeSourceDatabaseName?: string;
   dateProperties?: DatabaseViewProperty[];
   datePropertyId?: string | null;
   addableFilterFieldOptions: DatabaseSearchableMenuOption[];
@@ -60,6 +64,10 @@ export type DatabaseViewSettingsMenuProps = {
   open?: boolean;
   workspaceId?: string;
   onAddLinkedDatabaseView: (view: DatabaseLinkedViewConfig) => void;
+  onAddDataSourceView?: (
+    sourceDatabaseId: string,
+    type: DatabaseViewType,
+  ) => void;
   onAddDataSource?: () => void;
   onCopyDatabaseViewLink: () => void;
   onOpenChange?: (open: boolean) => void;
@@ -82,13 +90,7 @@ export type DatabaseViewSettingsMenuProps = {
   onSetViewGroupProperty: (groupPropertyId: string | null) => void;
   onSetViewType: (
     type:
-      | "table"
-      | "kanban"
-      | "timeline"
-      | "chart"
-      | "gallery"
-      | "list"
-      | "form",
+      "table" | "kanban" | "timeline" | "chart" | "gallery" | "list" | "form",
   ) => void;
   onShowPageIconChange: (showPageIcon: boolean) => void;
   onShowTitleChange?: (showTitle: boolean) => void;

@@ -116,6 +116,7 @@ export function buildPageSections(
     orderedPages.map((page) => [page.id, createPageNode(page, icons)]),
   )
   const placementsByPageParent = groupPagePlacements(placements)
+  const placementsByDatabaseParent = groupDatabasePlacements(placements)
   const meetingsByNotesPageId = new Map(
     meetings.flatMap((meeting) =>
       meeting.notesPageId ? [[meeting.notesPageId, meeting] as const] : [],
@@ -151,11 +152,12 @@ export function buildPageSections(
       if (placement.placementKind === "database_row") {
         databaseRowPageIds.add(placement.itemId)
       }
-    } else if (placement.parentKind === "page") {
+    } else {
       placedDatabaseIds.add(placement.itemId)
     }
   }
 
+  const visitingDatabaseIds = new Set<string>()
   const buildDatabaseNode = (
     databaseId: string,
     navNodeId: string,
@@ -163,7 +165,42 @@ export function buildPageSections(
   ): SidebarNavItem | null => {
     const node = databaseNodesById.get(databaseId)
 
-    return node ? { ...node, isLinked, navNodeId } : null
+    if (!node) {
+      return null
+    }
+
+    if (visitingDatabaseIds.has(databaseId)) {
+      return { ...node, isLinked: true, navNodeId }
+    }
+
+    visitingDatabaseIds.add(databaseId)
+    const nestedDataSources = (
+      placementsByDatabaseParent.get(databaseId) ?? []
+    ).flatMap((placement) => {
+      if (
+        placement.itemKind !== "database" ||
+        (placement.placementKind !== "primary" &&
+          placement.placementKind !== "linked")
+      ) {
+        return []
+      }
+
+      const child = buildDatabaseNode(
+        placement.itemId,
+        placement.id,
+        placement.placementKind !== "primary",
+      )
+
+      return child ? [child] : []
+    })
+    visitingDatabaseIds.delete(databaseId)
+
+    return {
+      ...node,
+      isLinked,
+      navNodeId,
+      pages: [...node.pages, ...nestedDataSources],
+    }
   }
 
   const visitingPageIds = new Set<string>()
@@ -359,10 +396,21 @@ function createDatabaseNode(
 }
 
 function groupPagePlacements(placements: PageItemPlacement[]) {
+  return groupPlacements(placements, "page")
+}
+
+function groupDatabasePlacements(placements: PageItemPlacement[]) {
+  return groupPlacements(placements, "database")
+}
+
+function groupPlacements(
+  placements: PageItemPlacement[],
+  parentKind: PageItemPlacement["parentKind"],
+) {
   const grouped = new Map<string, PageItemPlacement[]>()
 
   for (const placement of placements) {
-    if (placement.parentKind !== "page") {
+    if (placement.parentKind !== parentKind) {
       continue
     }
 

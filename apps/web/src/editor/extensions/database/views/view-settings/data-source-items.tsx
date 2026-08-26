@@ -1,15 +1,25 @@
 import {
   ArrowUpRightIcon,
+  Copy,
   Database,
+  FolderInput,
   MoreHorizontal,
+  Plus,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
-import { DropDrawerItem } from "@/components/ui/dropdrawer";
+import {
+  DropDrawerItem,
+  DropDrawerSub,
+  DropDrawerSubContent,
+  DropDrawerSubTrigger,
+} from "@/components/ui/dropdrawer";
 
 import type { DatabaseLinkedViewConfig } from "../database-view-config";
 import type { DatabaseSourceMenuItem } from "./types";
 import { getDatabaseViewTypePresentation } from "./view-type-options";
+import type { DatabaseViewType } from "./view-type-options";
+import { ViewTypeOptionGrid } from "./view-type-option-grid";
 
 export function DataSourceSectionLabel({ children }: { children: ReactNode }) {
   return (
@@ -27,20 +37,68 @@ export function DataSourceAddGlyph() {
   );
 }
 
-export function DataSourceMenuItem({ item }: { item: DatabaseSourceMenuItem }) {
+export function DataSourceMenuItem({
+  icon,
+  item,
+  onAddView,
+  onMove,
+}: {
+  icon?: ReactNode;
+  item: DatabaseSourceMenuItem;
+  onAddView?: (sourceDatabaseId: string, type: DatabaseViewType) => void;
+  onMove: (item: DatabaseSourceMenuItem) => void;
+}) {
+  const [addViewOpen, setAddViewOpen] = useState(false);
   const viewLabel = `${item.viewCount} view${item.viewCount === 1 ? "" : "s"}`;
 
   return (
-    <DropDrawerItem disabled>
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <Database className="text-muted-foreground" />
-        <span className="truncate">{item.name}</span>
-        <span className="ml-auto shrink-0 text-muted-foreground">
-          {viewLabel}
-        </span>
-        <MoreHorizontal className="text-muted-foreground" />
-      </div>
-    </DropDrawerItem>
+    <DropDrawerSub>
+      <DropDrawerSubTrigger>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {icon ?? <Database className="text-muted-foreground" />}
+          <span className="truncate">{item.name}</span>
+          <span className="ml-auto shrink-0 text-muted-foreground">
+            {viewLabel}
+          </span>
+          <MoreHorizontal className="text-muted-foreground" />
+        </div>
+      </DropDrawerSubTrigger>
+      <DropDrawerSubContent className="w-56">
+        {onAddView ? (
+          <DropDrawerSub onOpenChange={setAddViewOpen} open={addViewOpen}>
+            <DropDrawerSubTrigger>
+              <Plus />
+              <span>Add view</span>
+            </DropDrawerSubTrigger>
+            <DropDrawerSubContent className="w-72 max-w-[calc(100vw-1rem)] p-1">
+              <ViewTypeOptionGrid
+                onSelect={(type) => {
+                  setAddViewOpen(false);
+                  onAddView(item.id, type);
+                }}
+              />
+            </DropDrawerSubContent>
+          </DropDrawerSub>
+        ) : null}
+        <DropDrawerItem
+          onSelect={() => {
+            void navigator.clipboard?.writeText(item.id);
+          }}
+        >
+          <Copy />
+          <span>Copy data source ID</span>
+        </DropDrawerItem>
+        <DropDrawerItem
+          onSelect={(event) => {
+            event.preventDefault();
+            onMove(item);
+          }}
+        >
+          <FolderInput />
+          <span>Move to</span>
+        </DropDrawerItem>
+      </DropDrawerSubContent>
+    </DropDrawerSub>
   );
 }
 

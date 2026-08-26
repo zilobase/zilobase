@@ -6,8 +6,8 @@ import {
   type MouseEvent,
   type PointerEvent,
   type ReactNode,
-} from "react"
-import { Link, useNavigate } from "@tanstack/react-router"
+} from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowDownUp,
   ArrowRight,
@@ -36,20 +36,30 @@ import {
   Table2,
   Trash2,
   X,
-} from "lucide-react"
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker"
-import { PageIconDisplay } from "@/lib/page-icon"
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker";
+import { PageIconDisplay } from "@/lib/page-icon";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -59,39 +69,46 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { getDatabaseEmoji } from "@zilobase/features/databases"
+} from "@/components/ui/dropdrawer";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { getDatabaseEmoji } from "@zilobase/features/databases";
 
-import { DatabaseSearchableMenuItems } from "./database-searchable-menu-items"
-import { DatabaseFilterPopover } from "./database-filter-menu"
-import { DatabaseSortPopover } from "./database-sort-menu"
-import { useDatabaseViewContext } from "./database-view-context"
-import { DatabaseViewToolbarButton } from "./database-view-toolbar-button"
-import { DatabaseViewSettingsMenu } from "./view-settings"
+import { DatabaseSearchableMenuItems } from "./database-searchable-menu-items";
+import { DatabaseFilterPopover } from "./database-filter-menu";
+import { DatabaseSortPopover } from "./database-sort-menu";
+import {
+  useDatabaseViewContext,
+  type DatabaseViewTab,
+} from "./database-view-context";
+import { DatabaseViewToolbarButton } from "./database-view-toolbar-button";
+import { DatabaseViewSettingsMenu } from "./view-settings";
 import {
   captureDatabaseViewScroll,
   restoreDatabaseViewScroll,
   type DatabaseViewScrollSnapshot,
-} from "./database-view-scroll"
+} from "./database-view-scroll";
 import {
   getNameColumnWrapContent,
   getPropertyWrapContent,
-} from "./database-view-config"
-import { DatabaseFormShareMenu } from "./form/database-form-share-menu"
-import { DatabaseFormView } from "./form/database-form-view"
-import { ViewTypeOptionGrid } from "./view-settings/view-type-option-grid"
-import type { DatabaseViewType } from "./view-settings/view-type-options"
+} from "./database-view-config";
+import { DatabaseFormShareMenu } from "./form/database-form-share-menu";
+import { DatabaseFormView } from "./form/database-form-view";
+import { ViewTypeOptionGrid } from "./view-settings/view-type-option-grid";
+import type { DatabaseViewType } from "./view-settings/view-type-options";
 
 function ToolbarMenuRow({
   icon,
   label,
   right,
 }: {
-  icon: ReactNode
-  label: string
-  right?: ReactNode
+  icon: ReactNode;
+  label: string;
+  right?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -103,22 +120,26 @@ function ToolbarMenuRow({
         </span>
       ) : null}
     </div>
-  )
+  );
 }
 
 export function DatabaseViewToolbar() {
-  const navigate = useNavigate()
-  const databaseTitleInputRef = useRef<HTMLInputElement | null>(null)
-  const toolbarRef = useRef<HTMLDivElement | null>(null)
-  const pendingViewScrollRef = useRef<DatabaseViewScrollSnapshot | null>(null)
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
-  const [viewIconPickerOpenId, setViewIconPickerOpenId] = useState<string | null>(null)
-  const [titleActionsOpen, setTitleActionsOpen] = useState(false)
-  const [openViewMenuId, setOpenViewMenuId] = useState<string | null>(null)
-  const [addViewMenuOpen, setAddViewMenuOpen] = useState(false)
-  const [localViewSettingsOpen, setLocalViewSettingsOpen] = useState(false)
-  const [formDialogOpen, setFormDialogOpen] = useState(false)
-  const [formPreviewOpen, setFormPreviewOpen] = useState(false)
+  const navigate = useNavigate();
+  const databaseTitleInputRef = useRef<HTMLInputElement | null>(null);
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const pendingViewScrollRef = useRef<DatabaseViewScrollSnapshot | null>(null);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const [viewIconPickerOpenId, setViewIconPickerOpenId] = useState<
+    string | null
+  >(null);
+  const [titleActionsOpen, setTitleActionsOpen] = useState(false);
+  const [openViewMenuId, setOpenViewMenuId] = useState<string | null>(null);
+  const [pendingDeleteView, setPendingDeleteView] =
+    useState<DatabaseViewTab | null>(null);
+  const [addViewMenuOpen, setAddViewMenuOpen] = useState(false);
+  const [localViewSettingsOpen, setLocalViewSettingsOpen] = useState(false);
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [formPreviewOpen, setFormPreviewOpen] = useState(false);
   const {
     activeConditionalColors,
     activeDatabaseFilters,
@@ -136,6 +157,7 @@ export function DatabaseViewToolbar() {
     addKanbanView,
     addListView,
     addLinkedDatabaseView,
+    addDataSourceView,
     addTableView,
     addTimelineView,
     canAddDatabaseSort,
@@ -218,116 +240,127 @@ export function DatabaseViewToolbar() {
     updateNameColumnConfig,
     visiblePropertyCount,
     viewTabs,
-  } = useDatabaseViewContext()
-  const viewSettingsOpen = localViewSettingsOpen
-  const setViewSettingsOpen = setLocalViewSettingsOpen
-  const canRenderAddView = canAddDatabaseViews ?? editable
-  const canRenderAddRow = canAddDatabaseRows ?? editable
-  const formQuestionCount = properties.length + 1
+  } = useDatabaseViewContext();
+  const viewSettingsOpen = localViewSettingsOpen;
+  const setViewSettingsOpen = setLocalViewSettingsOpen;
+  const canRenderAddView = canAddDatabaseViews ?? editable;
+  const canRenderAddRow = canAddDatabaseRows ?? editable;
+  const formQuestionCount = properties.length + 1;
   const allContentWrapped =
     getNameColumnWrapContent(databaseConfig) &&
     properties.every((property) =>
-      getPropertyWrapContent(property.property.config)
-    )
+      getPropertyWrapContent(property.property.config),
+    );
   const setAllContentWrapped = async (wrapContent: boolean) => {
-    updateDatabaseLayoutSettings({ wrapAllContent: false })
-    await updateNameColumnConfig?.({ wrapContent })
+    updateDatabaseLayoutSettings({ wrapAllContent: false });
+    await updateNameColumnConfig?.({ wrapContent });
 
     for (const property of properties) {
-      await updateDatabasePropertyConfig(property.id, { wrapContent })
+      await updateDatabasePropertyConfig(property.id, { wrapContent });
     }
-  }
-  const activeViewTab = viewTabs.find((view) => view.id === activeViewTabId)
-  const isFormView = (activeView?.type ?? activeViewTab?.type) === "form"
+  };
+  const activeViewTab = viewTabs.find((view) => view.id === activeViewTabId);
+  const isLinkedDataSourceView = (view?: DatabaseViewTab | null) =>
+    Boolean(view?.isLinked && view.sourceKind !== "source");
+  const isLastSeparateDataSourceView = Boolean(
+    pendingDeleteView?.sourceKind === "source" &&
+    pendingDeleteView.sourceDatabaseId &&
+    viewTabs.filter(
+      (view) =>
+        view.sourceKind === "source" &&
+        view.sourceDatabaseId === pendingDeleteView.sourceDatabaseId,
+    ).length === 1,
+  );
+  const isFormView = (activeView?.type ?? activeViewTab?.type) === "form";
   const selectActiveView = (viewId: string) => {
     if (viewId === activeViewTabId) {
-      return
+      return;
     }
 
-    pendingViewScrollRef.current = captureDatabaseViewScroll(toolbarRef.current)
-    setActiveViewId(viewId)
-  }
+    pendingViewScrollRef.current = captureDatabaseViewScroll(
+      toolbarRef.current,
+    );
+    setActiveViewId(viewId);
+  };
   const addView = (type: DatabaseViewType) => {
-    setAddViewMenuOpen(false)
+    setAddViewMenuOpen(false);
 
     switch (type) {
       case "table":
-        addTableView()
-        break
+        addTableView();
+        break;
       case "kanban":
-        addKanbanView()
-        break
+        addKanbanView();
+        break;
       case "timeline":
-        addTimelineView()
-        break
+        addTimelineView();
+        break;
       case "list":
-        addListView()
-        break
+        addListView();
+        break;
       case "gallery":
-        addGalleryView()
-        break
+        addGalleryView();
+        break;
       case "chart":
-        addChartView()
-        break
+        addChartView();
+        break;
       case "form":
-        setFormDialogOpen(true)
-        break
+        setFormDialogOpen(true);
+        break;
     }
-  }
+  };
   const isAddViewTypeDisabled = (type: DatabaseViewType) =>
     !databaseId ||
     isAddingDatabaseView ||
-    ((type === "kanban" || type === "timeline") &&
-      isAddingDatabaseProperty)
+    ((type === "kanban" || type === "timeline") && isAddingDatabaseProperty);
 
   useLayoutEffect(() => {
-    const scrollSnapshot = pendingViewScrollRef.current
+    const scrollSnapshot = pendingViewScrollRef.current;
 
     if (!scrollSnapshot) {
-      return
+      return;
     }
 
-    restoreDatabaseViewScroll(scrollSnapshot)
-    pendingViewScrollRef.current = null
-  }, [activeViewTabId])
+    restoreDatabaseViewScroll(scrollSnapshot);
+    pendingViewScrollRef.current = null;
+  }, [activeViewTabId]);
 
-  const hostDisplayTitle =
-    activeViewTab?.isLinked
-      ? hostDatabaseName || "Untitled"
-      : draftDatabaseTitle || hostDatabaseName || "Untitled"
-  const databaseEmoji = getDatabaseEmoji({ config: databaseConfig })
-  const canEditDatabaseEmoji = editable && Boolean(databaseId)
+  const hostDisplayTitle = activeViewTab?.isLinked
+    ? hostDatabaseName || "Untitled"
+    : draftDatabaseTitle || hostDatabaseName || "Untitled";
+  const databaseEmoji = getDatabaseEmoji({ config: databaseConfig });
+  const canEditDatabaseEmoji = editable && Boolean(databaseId);
   const focusDatabaseTitleInput = () => {
     window.setTimeout(() => {
-      databaseTitleInputRef.current?.focus()
-      databaseTitleInputRef.current?.select()
-    }, 0)
-  }
+      databaseTitleInputRef.current?.focus();
+      databaseTitleInputRef.current?.select();
+    }, 0);
+  };
   const openDatabaseFullPage = (nextDatabaseId: string | null | undefined) => {
     if (!nextDatabaseId) {
-      return
+      return;
     }
 
     void navigate({
       params: { databaseId: nextDatabaseId },
       search: { view: undefined },
       to: "/d/$databaseId",
-    })
-  }
+    });
+  };
   const renderDatabaseEmojiPicker = (onSelect?: () => void) => (
     <IconEmojiPicker
       onEmojiSelect={(emoji) => {
-        saveDatabaseEmoji(emoji)
-        setEmojiPickerOpen(false)
-        onSelect?.()
+        saveDatabaseEmoji(emoji);
+        setEmojiPickerOpen(false);
+        onSelect?.();
       }}
       onIconSelect={(svg) => {
-        saveDatabaseEmoji(svg)
-        setEmojiPickerOpen(false)
-        onSelect?.()
+        saveDatabaseEmoji(svg);
+        setEmojiPickerOpen(false);
+        onSelect?.();
       }}
     />
-  )
+  );
   const databaseEmojiPopoverContent = (
     <PopoverContent
       align="start"
@@ -338,7 +371,7 @@ export function DatabaseViewToolbar() {
     >
       {renderDatabaseEmojiPicker()}
     </PopoverContent>
-  )
+  );
   const databaseEmojiPicker = databaseEmoji ? (
     canEditDatabaseEmoji ? (
       <div className="group/icon relative shrink-0">
@@ -358,8 +391,8 @@ export function DatabaseViewToolbar() {
           aria-label="Remove database icon"
           className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
           onClick={() => {
-            saveDatabaseEmoji("")
-            setEmojiPickerOpen(false)
+            saveDatabaseEmoji("");
+            setEmojiPickerOpen(false);
           }}
           type="button"
         >
@@ -374,16 +407,16 @@ export function DatabaseViewToolbar() {
         <PageIconDisplay size="lg" value={databaseEmoji} />
       </span>
     )
-  ) : null
+  ) : null;
 
   return (
     <div className="database-toolbar" ref={toolbarRef}>
       {showTitle ? (
         <div className="group/title flex min-w-0 items-center gap-3">
           {databaseEmojiPicker}
-          {activeViewTab?.isLinked ? (
+          {isLinkedDataSourceView(activeViewTab) ? (
             <ArrowUpRightIcon
-              aria-label={`Linked from ${activeViewTab.sourceDatabaseName ?? "another database"}`}
+              aria-label={`Linked from ${activeViewTab?.sourceDatabaseName ?? "another database"}`}
               className="size-5 shrink-0 text-muted-foreground"
             />
           ) : null}
@@ -394,13 +427,16 @@ export function DatabaseViewToolbar() {
             data-structural-block-title
             onBlur={(event) => saveDatabaseTitle(event.target.value)}
             onChange={(event) => {
-              setDraftDatabaseTitle(event.target.value)
+              setDraftDatabaseTitle(event.target.value);
             }}
             placeholder="New database"
             ref={databaseTitleInputRef}
             value={draftDatabaseTitle}
           />
-          <DropDrawer open={titleActionsOpen} onOpenChange={setTitleActionsOpen}>
+          <DropDrawer
+            open={titleActionsOpen}
+            onOpenChange={setTitleActionsOpen}
+          >
             <DropDrawerTrigger asChild>
               <DatabaseViewToolbarButton
                 aria-label="Open database title actions"
@@ -414,13 +450,15 @@ export function DatabaseViewToolbar() {
                 disabled={!databaseId}
                 onSelect={() =>
                   openDatabaseFullPage(
-                    activeViewTab?.sourceDatabaseId ?? databaseId
+                    activeViewTab?.sourceDatabaseId ?? databaseId,
                   )
                 }
               >
                 <ArrowUpRightIcon />
                 <span>
-                  {activeViewTab?.isLinked ? "View data source" : "View database"}
+                  {activeViewTab?.isLinked
+                    ? "View data source"
+                    : "View database"}
                 </span>
               </DropDrawerItem>
               <DropDrawerItem
@@ -434,7 +472,7 @@ export function DatabaseViewToolbar() {
                 <DropDrawerSubTrigger
                   className={cn(
                     (!canEditDatabaseEmoji || !databaseId) &&
-                      "pointer-events-none opacity-50"
+                      "pointer-events-none opacity-50",
                   )}
                 >
                   <Smile />
@@ -448,8 +486,8 @@ export function DatabaseViewToolbar() {
               <DropDrawerItem
                 disabled={!onShowTitleChange}
                 onSelect={() => {
-                  onShowTitleChange?.(false)
-                  setTitleActionsOpen(false)
+                  onShowTitleChange?.(false);
+                  setTitleActionsOpen(false);
                 }}
               >
                 <EyeOff />
@@ -469,17 +507,20 @@ export function DatabaseViewToolbar() {
             <Tabs
               onValueChange={(value) => {
                 if (value == null) {
-                  return
+                  return;
                 }
 
-                setOpenViewMenuId(null)
-                selectActiveView(String(value))
+                setOpenViewMenuId(null);
+                selectActiveView(String(value));
               }}
               value={activeViewTabId}
             >
-              <TabsList variant="tab" className="min-w-0 w-full justify-start overflow-x-auto">
+              <TabsList
+                variant="tab"
+                className="min-w-0 w-full justify-start overflow-x-auto"
+              >
                 {viewTabs.map((view) => {
-                  const isActiveView = view.id === activeViewTabId
+                  const isActiveView = view.id === activeViewTabId;
                   const ViewIcon =
                     view.type === "kanban"
                       ? Kanban
@@ -491,70 +532,70 @@ export function DatabaseViewToolbar() {
                             ? GalleryThumbnails
                             : view.type === "form"
                               ? FilePenLine
-                            : view.type === "list"
-                              ? List
-                              : Table2
+                              : view.type === "list"
+                                ? List
+                                : Table2;
                   const sourceDatabaseId =
-                    view.sourceDatabaseId ?? hostDatabaseId ?? databaseId
+                    view.sourceDatabaseId ?? hostDatabaseId ?? databaseId;
                   const sourceDatabaseName =
-                    view.sourceDatabaseName ?? hostDisplayTitle
+                    view.sourceDatabaseName ?? hostDisplayTitle;
                   const handleViewContextMenu = (
-                    event: MouseEvent<HTMLButtonElement>
+                    event: MouseEvent<HTMLButtonElement>,
                   ) => {
-                    event.preventDefault()
-                    selectActiveView(view.id)
-                    setOpenViewMenuId(view.id)
-                  }
+                    event.preventDefault();
+                    selectActiveView(view.id);
+                    setOpenViewMenuId(view.id);
+                  };
                   const handleViewClick = (
-                    event: MouseEvent<HTMLButtonElement>
+                    event: MouseEvent<HTMLButtonElement>,
                   ) => {
                     if (isActiveView) {
-                      return
+                      return;
                     }
 
-                    event.preventDefault()
-                    event.stopPropagation()
-                    setOpenViewMenuId(null)
-                    selectActiveView(view.id)
-                  }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setOpenViewMenuId(null);
+                    selectActiveView(view.id);
+                  };
                   const selectInactiveView = () => {
-                    setOpenViewMenuId(null)
-                    selectActiveView(view.id)
-                  }
+                    setOpenViewMenuId(null);
+                    selectActiveView(view.id);
+                  };
                   const handleViewPointerDownCapture = (
-                    event: PointerEvent<HTMLButtonElement>
+                    event: PointerEvent<HTMLButtonElement>,
                   ) => {
                     if (isActiveView || event.button !== 0) {
-                      return
+                      return;
                     }
 
-                    event.preventDefault()
-                    event.stopPropagation()
-                    selectInactiveView()
-                  }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    selectInactiveView();
+                  };
                   const handleViewKeyDownCapture = (
-                    event: KeyboardEvent<HTMLButtonElement>
+                    event: KeyboardEvent<HTMLButtonElement>,
                   ) => {
                     if (
                       isActiveView ||
                       (event.key !== "Enter" && event.key !== " ")
                     ) {
-                      return
+                      return;
                     }
 
-                    event.preventDefault()
-                    event.stopPropagation()
-                    selectInactiveView()
-                  }
+                    event.preventDefault();
+                    event.stopPropagation();
+                    selectInactiveView();
+                  };
 
                   return (
                     <DropDrawer
                       key={view.id}
                       onOpenChange={(open) => {
-                        setOpenViewMenuId(open ? view.id : null)
+                        setOpenViewMenuId(open ? view.id : null);
 
                         if (open) {
-                          selectActiveView(view.id)
+                          selectActiveView(view.id);
                         }
                       }}
                       open={openViewMenuId === view.id}
@@ -582,7 +623,7 @@ export function DatabaseViewToolbar() {
                             <span className="truncate">
                               {isActiveView ? draftViewTitle : view.name}
                             </span>
-                            {view.isLinked ? (
+                            {isLinkedDataSourceView(view) ? (
                               <ArrowUpRightIcon
                                 aria-label={`Linked from ${view.sourceDatabaseName ?? "another database"}`}
                                 className="size-3 shrink-0 text-muted-foreground"
@@ -596,301 +637,315 @@ export function DatabaseViewToolbar() {
                         className="w-72"
                         onCloseAutoFocus={(event) => event.preventDefault()}
                       >
-                    <div className="flex items-center gap-1.5 p-1.5">
-                      <Popover
-                        onOpenChange={(open) =>
-                          setViewIconPickerOpenId(open ? view.id : null)
-                        }
-                        open={viewIconPickerOpenId === view.id}
-                      >
-                        <div className="group/view-icon relative shrink-0">
-                          <PopoverTrigger asChild>
-                            <button
-                              aria-label="Change view icon"
-                              className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                              disabled={!editable || !databaseId}
-                              type="button"
-                            >
+                        <div className="flex items-center gap-1.5 p-1.5">
+                          <Popover
+                            onOpenChange={(open) =>
+                              setViewIconPickerOpenId(open ? view.id : null)
+                            }
+                            open={viewIconPickerOpenId === view.id}
+                          >
+                            <div className="group/view-icon relative shrink-0">
+                              <PopoverTrigger asChild>
+                                <button
+                                  aria-label="Change view icon"
+                                  className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                  disabled={!editable || !databaseId}
+                                  type="button"
+                                >
+                                  {view.icon ? (
+                                    <PageIconDisplay
+                                      size="sm"
+                                      value={view.icon}
+                                    />
+                                  ) : (
+                                    <ViewIcon className="size-4" />
+                                  )}
+                                </button>
+                              </PopoverTrigger>
                               {view.icon ? (
-                                <PageIconDisplay size="sm" value={view.icon} />
-                              ) : (
-                                <ViewIcon className="size-4" />
-                              )}
-                            </button>
-                          </PopoverTrigger>
-                          {view.icon ? (
-                            <button
-                              aria-label="Reset view icon"
-                              className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground group-focus-within/view-icon:flex group-hover/view-icon:flex [&_svg]:size-2.5"
-                              disabled={!editable || !databaseId}
-                              onClick={() => saveDatabaseViewIcon(view, "")}
-                              type="button"
+                                <button
+                                  aria-label="Reset view icon"
+                                  className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground group-focus-within/view-icon:flex group-hover/view-icon:flex [&_svg]:size-2.5"
+                                  disabled={!editable || !databaseId}
+                                  onClick={() => saveDatabaseViewIcon(view, "")}
+                                  type="button"
+                                >
+                                  <X />
+                                </button>
+                              ) : null}
+                            </div>
+                            <PopoverContent
+                              align="start"
+                              className="w-auto gap-0 overflow-hidden p-0"
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              sideOffset={6}
                             >
-                              <X />
-                            </button>
-                          ) : null}
-                        </div>
-                        <PopoverContent
-                          align="start"
-                          className="w-auto gap-0 overflow-hidden p-0"
-                          onMouseDown={(event) => event.stopPropagation()}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          sideOffset={6}
-                        >
-                          <IconEmojiPicker
-                            onEmojiSelect={(icon) => {
-                              saveDatabaseViewIcon(view, icon)
-                              setViewIconPickerOpenId(null)
+                              <IconEmojiPicker
+                                onEmojiSelect={(icon) => {
+                                  saveDatabaseViewIcon(view, icon);
+                                  setViewIconPickerOpenId(null);
+                                }}
+                                onIconSelect={(icon) => {
+                                  saveDatabaseViewIcon(view, icon);
+                                  setViewIconPickerOpenId(null);
+                                }}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <Input
+                            aria-label="View name"
+                            className="h-8 min-w-0 flex-1 text-sm font-medium"
+                            defaultValue={
+                              isActiveView ? draftViewTitle : view.name
+                            }
+                            disabled={!editable || !databaseId}
+                            key={`${view.id}:${view.name}`}
+                            onBlur={(event) => {
+                              const nextTitle =
+                                event.target.value.trim() || "Untitled view";
+                              const currentTitle = isActiveView
+                                ? draftViewTitle
+                                : view.name;
+
+                              if (nextTitle !== currentTitle) {
+                                selectActiveView(view.id);
+                                setDraftViewTitle(nextTitle);
+                                window.setTimeout(
+                                  () => saveDatabaseViewTitle(nextTitle),
+                                  0,
+                                );
+                              }
                             }}
-                            onIconSelect={(icon) => {
-                              saveDatabaseViewIcon(view, icon)
-                              setViewIconPickerOpenId(null)
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.currentTarget.blur();
+                              }
                             }}
                           />
-                        </PopoverContent>
-                      </Popover>
-                      <Input
-                        aria-label="View name"
-                        className="h-8 min-w-0 flex-1 text-sm font-medium"
-                        defaultValue={isActiveView ? draftViewTitle : view.name}
-                        disabled={!editable || !databaseId}
-                        key={`${view.id}:${view.name}`}
-                        onBlur={(event) => {
-                          const nextTitle = event.target.value.trim() || "Untitled view"
-                          const currentTitle = isActiveView ? draftViewTitle : view.name
-
-                          if (nextTitle !== currentTitle) {
-                            selectActiveView(view.id)
-                            setDraftViewTitle(nextTitle)
-                            window.setTimeout(
-                              () => saveDatabaseViewTitle(nextTitle),
-                              0,
-                            )
-                          }
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.currentTarget.blur()
-                          }
-                        }}
-                      />
-                    </div>
-                    <DropDrawerSub>
-                      <DropDrawerSubTrigger>
-                        <ToolbarMenuRow
-                          icon={<Paintbrush />}
-                          label="Display as"
-                        />
-                      </DropDrawerSubTrigger>
-                      <DropDrawerSubContent className="w-56">
-                        <DropDrawerItem
-                          disabled={!editable || view.type === "table"}
-                          onSelect={() => {
-                            selectActiveView(view.id)
-                            setViewType("table")
-                          }}
-                        >
-                          <Table2 />
-                          <span>Table</span>
-                          {view.type === "table" ? (
-                            <Check className="ml-auto text-foreground" />
-                          ) : null}
-                        </DropDrawerItem>
-                        <DropDrawerItem
-                          disabled={!editable || view.type === "kanban"}
-                          onSelect={() => {
-                            selectActiveView(view.id)
-                            setViewType("kanban")
-                          }}
-                        >
-                          <Kanban />
-                          <span>Board</span>
-                          {view.type === "kanban" ? (
-                            <Check className="ml-auto text-foreground" />
-                          ) : null}
-                        </DropDrawerItem>
-                        <DropDrawerItem
-                          disabled={!editable || view.type === "gallery"}
-                          onSelect={() => {
-                            selectActiveView(view.id)
-                            setViewType("gallery")
-                          }}
-                        >
-                          <GalleryThumbnails />
-                          <span>Gallery</span>
-                          {view.type === "gallery" ? (
-                            <Check className="ml-auto text-foreground" />
-                          ) : null}
-                        </DropDrawerItem>
-                        <DropDrawerItem
-                          disabled={!editable || view.type === "list"}
-                          onSelect={() => {
-                            selectActiveView(view.id)
-                            setViewType("list")
-                          }}
-                        >
-                          <List />
-                          <span>List</span>
-                          {view.type === "list" ? (
-                            <Check className="ml-auto text-foreground" />
-                          ) : null}
-                        </DropDrawerItem>
-                        <DropDrawerItem
-                          disabled={!editable || view.type === "chart"}
-                          onSelect={() => {
-                            selectActiveView(view.id)
-                            setViewType("chart")
-                          }}
-                        >
-                          <ChartPie />
-                          <span>Chart</span>
-                          {view.type === "chart" ? (
-                            <Check className="ml-auto text-foreground" />
-                          ) : null}
-                        </DropDrawerItem>
-                        <DropDrawerItem
-                          disabled={!editable || view.type === "timeline"}
-                          onSelect={() => {
-                            selectActiveView(view.id)
-                            setViewType("timeline")
-                          }}
-                        >
-                          <CalendarRange />
-                          <span>Timeline</span>
-                          {view.type === "timeline" ? (
-                            <Check className="ml-auto text-foreground" />
-                          ) : null}
-                        </DropDrawerItem>
-                        <DropDrawerItem
-                          disabled={!editable || view.type === "form"}
-                          onSelect={() => {
-                            selectActiveView(view.id)
-                            setViewType("form")
-                          }}
-                        >
-                          <FilePenLine />
-                          <span>Form</span>
-                          {view.type === "form" ? (
-                            <Check className="ml-auto text-foreground" />
-                          ) : null}
-                        </DropDrawerItem>
-                      </DropDrawerSubContent>
-                    </DropDrawerSub>
-                    <DropDrawerItem
-                      onSelect={() => {
-                        selectActiveView(view.id)
-                        setViewSettingsOpen(true)
-                      }}
-                    >
-                      <Settings2 />
-                      <span>Edit view</span>
-                    </DropDrawerItem>
-                    <DropDrawerSub>
-                      <DropDrawerSubTrigger>
-                        <ToolbarMenuRow
-                          icon={<Database />}
-                          label="Source"
-                          right={
-                            <>
-                              {view.isLinked ? (
-                                <ArrowUpRightIcon className="size-3" />
+                        </div>
+                        <DropDrawerSub>
+                          <DropDrawerSubTrigger>
+                            <ToolbarMenuRow
+                              icon={<Paintbrush />}
+                              label="Display as"
+                            />
+                          </DropDrawerSubTrigger>
+                          <DropDrawerSubContent className="w-56">
+                            <DropDrawerItem
+                              disabled={!editable || view.type === "table"}
+                              onSelect={() => {
+                                selectActiveView(view.id);
+                                setViewType("table");
+                              }}
+                            >
+                              <Table2 />
+                              <span>Table</span>
+                              {view.type === "table" ? (
+                                <Check className="ml-auto text-foreground" />
                               ) : null}
-                              <span className="block max-w-28 truncate">
-                                {sourceDatabaseName}
+                            </DropDrawerItem>
+                            <DropDrawerItem
+                              disabled={!editable || view.type === "kanban"}
+                              onSelect={() => {
+                                selectActiveView(view.id);
+                                setViewType("kanban");
+                              }}
+                            >
+                              <Kanban />
+                              <span>Board</span>
+                              {view.type === "kanban" ? (
+                                <Check className="ml-auto text-foreground" />
+                              ) : null}
+                            </DropDrawerItem>
+                            <DropDrawerItem
+                              disabled={!editable || view.type === "gallery"}
+                              onSelect={() => {
+                                selectActiveView(view.id);
+                                setViewType("gallery");
+                              }}
+                            >
+                              <GalleryThumbnails />
+                              <span>Gallery</span>
+                              {view.type === "gallery" ? (
+                                <Check className="ml-auto text-foreground" />
+                              ) : null}
+                            </DropDrawerItem>
+                            <DropDrawerItem
+                              disabled={!editable || view.type === "list"}
+                              onSelect={() => {
+                                selectActiveView(view.id);
+                                setViewType("list");
+                              }}
+                            >
+                              <List />
+                              <span>List</span>
+                              {view.type === "list" ? (
+                                <Check className="ml-auto text-foreground" />
+                              ) : null}
+                            </DropDrawerItem>
+                            <DropDrawerItem
+                              disabled={!editable || view.type === "chart"}
+                              onSelect={() => {
+                                selectActiveView(view.id);
+                                setViewType("chart");
+                              }}
+                            >
+                              <ChartPie />
+                              <span>Chart</span>
+                              {view.type === "chart" ? (
+                                <Check className="ml-auto text-foreground" />
+                              ) : null}
+                            </DropDrawerItem>
+                            <DropDrawerItem
+                              disabled={!editable || view.type === "timeline"}
+                              onSelect={() => {
+                                selectActiveView(view.id);
+                                setViewType("timeline");
+                              }}
+                            >
+                              <CalendarRange />
+                              <span>Timeline</span>
+                              {view.type === "timeline" ? (
+                                <Check className="ml-auto text-foreground" />
+                              ) : null}
+                            </DropDrawerItem>
+                            <DropDrawerItem
+                              disabled={!editable || view.type === "form"}
+                              onSelect={() => {
+                                selectActiveView(view.id);
+                                setViewType("form");
+                              }}
+                            >
+                              <FilePenLine />
+                              <span>Form</span>
+                              {view.type === "form" ? (
+                                <Check className="ml-auto text-foreground" />
+                              ) : null}
+                            </DropDrawerItem>
+                          </DropDrawerSubContent>
+                        </DropDrawerSub>
+                        <DropDrawerItem
+                          onSelect={() => {
+                            selectActiveView(view.id);
+                            setViewSettingsOpen(true);
+                          }}
+                        >
+                          <Settings2 />
+                          <span>Edit view</span>
+                        </DropDrawerItem>
+                        <DropDrawerSub>
+                          <DropDrawerSubTrigger>
+                            <ToolbarMenuRow
+                              icon={<Database />}
+                              label="Source"
+                              right={
+                                <>
+                                  {isLinkedDataSourceView(view) ? (
+                                    <ArrowUpRightIcon className="size-3" />
+                                  ) : null}
+                                  <span className="block max-w-28 truncate">
+                                    {sourceDatabaseName}
+                                  </span>
+                                </>
+                              }
+                            />
+                          </DropDrawerSubTrigger>
+                          <DropDrawerSubContent className="w-60">
+                            <DropDrawerItem
+                              disabled={!sourceDatabaseId}
+                              onSelect={() =>
+                                openDatabaseFullPage(sourceDatabaseId)
+                              }
+                            >
+                              <ArrowUpRightIcon />
+                              <span>
+                                {view.isLinked
+                                  ? "Open source database"
+                                  : "Open database"}
                               </span>
-                            </>
-                          }
-                        />
-                      </DropDrawerSubTrigger>
-                      <DropDrawerSubContent className="w-60">
+                            </DropDrawerItem>
+                          </DropDrawerSubContent>
+                        </DropDrawerSub>
+                        <DropDrawerSeparator />
+                        <DropDrawerItem onSelect={copyDatabaseViewLink}>
+                          <Copy />
+                          <span>Copy link to view</span>
+                        </DropDrawerItem>
                         <DropDrawerItem
                           disabled={!sourceDatabaseId}
-                          onSelect={() => openDatabaseFullPage(sourceDatabaseId)}
+                          onSelect={() =>
+                            openDatabaseFullPage(sourceDatabaseId)
+                          }
                         >
                           <ArrowUpRightIcon />
                           <span>
                             {view.isLinked
                               ? "Open source database"
-                              : "Open database"}
+                              : "Open as full page"}
                           </span>
                         </DropDrawerItem>
-                      </DropDrawerSubContent>
-                    </DropDrawerSub>
-                    <DropDrawerSeparator />
-                    <DropDrawerItem onSelect={copyDatabaseViewLink}>
-                      <Copy />
-                      <span>Copy link to view</span>
-                    </DropDrawerItem>
-                    <DropDrawerItem
-                      disabled={!sourceDatabaseId}
-                      onSelect={() => openDatabaseFullPage(sourceDatabaseId)}
-                    >
-                      <ArrowUpRightIcon />
-                      <span>
-                        {view.isLinked
-                          ? "Open source database"
-                          : "Open as full page"}
-                      </span>
-                    </DropDrawerItem>
-                    <DropDrawerItem
-                      disabled={!onShowTitleChange}
-                      onSelect={() => onShowTitleChange?.(!showTitle)}
-                    >
-                      <EyeOff />
-                      <span>
-                        {showTitle
-                          ? "Hide data source titles"
-                          : "Show data source title"}
-                      </span>
-                    </DropDrawerItem>
-                    <DropDrawerSeparator />
-                    <DropDrawerItem
-                      disabled={!editable || !databaseId}
-                      onSelect={() => duplicateDatabaseView(view)}
-                    >
-                      <CopyPlus />
-                      <span>Duplicate view</span>
-                    </DropDrawerItem>
-                    <DropDrawerItem
-                      disabled={!editable || !databaseId || viewTabs.length <= 1}
-                      onSelect={() => deleteDatabaseView(view)}
-                    >
-                      <Trash2 />
-                      <span>Delete view</span>
-                    </DropDrawerItem>
-                  </DropDrawerContent>
+                        <DropDrawerItem
+                          disabled={!onShowTitleChange}
+                          onSelect={() => onShowTitleChange?.(!showTitle)}
+                        >
+                          <EyeOff />
+                          <span>
+                            {showTitle
+                              ? "Hide data source titles"
+                              : "Show data source title"}
+                          </span>
+                        </DropDrawerItem>
+                        <DropDrawerSeparator />
+                        <DropDrawerItem
+                          disabled={!editable || !databaseId}
+                          onSelect={() => duplicateDatabaseView(view)}
+                        >
+                          <CopyPlus />
+                          <span>Duplicate view</span>
+                        </DropDrawerItem>
+                        <DropDrawerItem
+                          disabled={
+                            !editable || !databaseId || viewTabs.length <= 1
+                          }
+                          onSelect={() => setPendingDeleteView(view)}
+                        >
+                          <Trash2 />
+                          <span>Delete view</span>
+                        </DropDrawerItem>
+                      </DropDrawerContent>
                     </DropDrawer>
-                  )
+                  );
                 })}
               </TabsList>
             </Tabs>
             {canRenderAddView ? (
-            <DropDrawer
-              onOpenChange={setAddViewMenuOpen}
-              open={addViewMenuOpen}
-            >
-              <DropDrawerTrigger asChild>
-                <DatabaseViewToolbarButton
-                  aria-label="Add database view"
-                  disabled={!databaseId || isAddingDatabaseView}
-                >
-                  {isAddingDatabaseView ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Plus />
-                  )}
-                </DatabaseViewToolbarButton>
-              </DropDrawerTrigger>
-              <DropDrawerContent
-                align="start"
-                className="w-72 max-w-[calc(100vw-1rem)] p-1"
+              <DropDrawer
+                onOpenChange={setAddViewMenuOpen}
+                open={addViewMenuOpen}
               >
-                <ViewTypeOptionGrid
-                  isOptionDisabled={isAddViewTypeDisabled}
-                  onSelect={addView}
-                />
-              </DropDrawerContent>
-            </DropDrawer>
+                <DropDrawerTrigger asChild>
+                  <DatabaseViewToolbarButton
+                    aria-label="Add database view"
+                    disabled={!databaseId || isAddingDatabaseView}
+                  >
+                    {isAddingDatabaseView ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Plus />
+                    )}
+                  </DatabaseViewToolbarButton>
+                </DropDrawerTrigger>
+                <DropDrawerContent
+                  align="start"
+                  className="w-72 max-w-[calc(100vw-1rem)] p-1"
+                >
+                  <ViewTypeOptionGrid
+                    isOptionDisabled={isAddViewTypeDisabled}
+                    onSelect={addView}
+                  />
+                </DropDrawerContent>
+              </DropDrawer>
             ) : null}
           </div>
           {(activeDatabaseFilters.length > 0 && showFilterPill) ||
@@ -1039,7 +1094,9 @@ export function DatabaseViewToolbar() {
                 </DropDrawer>
               ) : (
                 <Button
-                  aria-label={showSortPill ? "Hide sort pill" : "Show sort pill"}
+                  aria-label={
+                    showSortPill ? "Hide sort pill" : "Show sort pill"
+                  }
                   className={
                     showSortPill ? "text-foreground" : "text-muted-foreground"
                   }
@@ -1055,15 +1112,23 @@ export function DatabaseViewToolbar() {
                 activeConditionalColors={activeConditionalColors}
                 allContentWrapped={allContentWrapped}
                 activeDatabaseSorts={activeDatabaseSorts}
+                activeSourceDatabaseId={
+                  activeViewTab?.sourceDatabaseId ?? hostDatabaseId ?? undefined
+                }
+                activeSourceDatabaseName={
+                  activeViewTab?.sourceDatabaseName ?? hostDisplayTitle
+                }
                 activeViewType={activeView?.type ?? activeViewTab?.type}
                 activeDatabaseFilters={activeDatabaseFilters}
                 addableFilterFieldOptions={addableFilterFieldOptions}
                 databaseId={databaseId ?? undefined}
                 databaseName={hostDisplayTitle}
                 dataSources={
-                  configuredDataSources ?? (hostDatabaseId
+                  configuredDataSources ??
+                  (hostDatabaseId
                     ? [
                         {
+                          hiddenViewCount: 0,
                           id: hostDatabaseId,
                           name: hostDisplayTitle,
                           viewCount: hostViews.length,
@@ -1089,6 +1154,7 @@ export function DatabaseViewToolbar() {
                 isAddingDataSource={isAddingDataSource}
                 onAddDataSource={addDataSource}
                 onAddLinkedDatabaseView={addLinkedDatabaseView}
+                onAddDataSourceView={addDataSourceView}
                 open={viewSettingsOpen}
                 onCopyDatabaseViewLink={copyDatabaseViewLink}
                 onClearDatabaseFilter={clearDatabaseFilter}
@@ -1104,7 +1170,7 @@ export function DatabaseViewToolbar() {
                 onSaveDatabaseConditionalColors={saveDatabaseConditionalColors}
                 onSaveDatabaseViewIcon={(icon) => {
                   if (activeViewTab) {
-                    saveDatabaseViewIcon(activeViewTab, icon)
+                    saveDatabaseViewIcon(activeViewTab, icon);
                   }
                 }}
                 onSaveDatabaseViewTitle={saveDatabaseViewTitle}
@@ -1126,7 +1192,9 @@ export function DatabaseViewToolbar() {
                 onUpdateDatabaseChartSettings={updateDatabaseChartSettings}
                 onUpdateDatabaseLayoutSettings={updateDatabaseLayoutSettings}
                 onUpdateDatabaseSort={updateDatabaseSort}
-                onUpdateDatabaseSubItemsSettings={updateDatabaseSubItemsSettings}
+                onUpdateDatabaseSubItemsSettings={
+                  updateDatabaseSubItemsSettings
+                }
                 properties={properties}
                 filterFieldOptions={filterFieldOptions}
                 filterValueOptionsByField={filterValueOptionsByField}
@@ -1190,6 +1258,58 @@ export function DatabaseViewToolbar() {
           ) : null}
         </div>
       </div>
+      <AlertDialog
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteView(null);
+        }}
+        open={pendingDeleteView !== null}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isLastSeparateDataSourceView
+                ? "Delete the last data source view?"
+                : "Delete this view?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isLastSeparateDataSourceView
+                ? `“${pendingDeleteView?.name}” is the last view of “${pendingDeleteView?.sourceDatabaseName ?? "this data source"}”. Delete only this view to keep the data source, or delete both.`
+                : `“${pendingDeleteView?.name}” will be removed. This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:flex-col-reverse">
+            <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+            {isLastSeparateDataSourceView ? (
+              <AlertDialogAction
+                className="w-full"
+                onClick={() => {
+                  if (pendingDeleteView) {
+                    deleteDatabaseView(pendingDeleteView);
+                  }
+                }}
+                variant="outline"
+              >
+                Delete view only
+              </AlertDialogAction>
+            ) : null}
+            <AlertDialogAction
+              className="w-full"
+              onClick={() => {
+                if (pendingDeleteView) {
+                  deleteDatabaseView(pendingDeleteView, {
+                    deleteDataSource: isLastSeparateDataSourceView,
+                  });
+                }
+              }}
+              variant="destructive"
+            >
+              {isLastSeparateDataSourceView
+                ? "Delete data source and view"
+                : "Delete view"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Dialog open={formDialogOpen} onOpenChange={setFormDialogOpen}>
         <DialogContent
           className="gap-5 p-5 sm:max-w-sm"
@@ -1218,8 +1338,8 @@ export function DatabaseViewToolbar() {
               className="w-full"
               disabled={isAddingDatabaseView}
               onClick={() => {
-                setFormDialogOpen(false)
-                addFormView([])
+                setFormDialogOpen(false);
+                addFormView([]);
               }}
               type="button"
             >
@@ -1230,8 +1350,8 @@ export function DatabaseViewToolbar() {
               className="w-full text-muted-foreground"
               disabled={isAddingDatabaseView}
               onClick={() => {
-                setFormDialogOpen(false)
-                addFormView(properties.map((property) => property.id))
+                setFormDialogOpen(false);
+                addFormView(properties.map((property) => property.id));
               }}
               type="button"
               variant="ghost"
@@ -1253,5 +1373,5 @@ export function DatabaseViewToolbar() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

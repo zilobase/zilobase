@@ -291,6 +291,40 @@ export function register({ assert, loadModule, test }) {
     assert.equal(result.favorites[0].name, "Row page")
   })
 
+  test("sidebar nests a moved data source inside another database", async () => {
+    const { buildSidebarNavigation } = await loadModule(
+      "/src/components/sidebar-navigation-model.tsx"
+    )
+    const parentDatabase = createDatabase("projects", "Projects")
+    const movedDatabase = createDatabase("tasks", "Tasks")
+    const placement = {
+      ...createPlacement(
+        "nested-database-placement",
+        parentDatabase.id,
+        movedDatabase.id,
+        0,
+      ),
+      itemKind: "database",
+      parentKind: "database",
+    }
+
+    const { sections } = buildSidebarNavigation(
+      [],
+      [parentDatabase, movedDatabase],
+      [placement],
+      icons,
+    )
+
+    assert.deepEqual(
+      sections.privatePages.map((item) => item.id),
+      ["database:projects"],
+    )
+    assert.deepEqual(
+      sections.privatePages[0].pages.map((item) => item.id),
+      ["database:tasks"],
+    )
+  })
+
   test("detached database-row favorites keep linked database children", async () => {
     const { buildSidebarNavigation } = await loadModule(
       "/src/components/sidebar-navigation-model.tsx"
@@ -372,6 +406,18 @@ function createPlacement(id, parentId, itemId, position) {
     parentKind: "page",
     placementKind: "primary",
     position,
+    workspaceId: "workspace",
+  }
+}
+
+function createDatabase(id, name) {
+  return {
+    createdAt: "2026-08-01T00:00:00.000Z",
+    id,
+    name,
+    pageId: null,
+    updatedAt: "2026-08-01T00:00:00.000Z",
+    views: [],
     workspaceId: "workspace",
   }
 }

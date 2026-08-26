@@ -26,7 +26,10 @@ export function register({ assert, loadModule, test }) {
       ),
     ]);
 
-    assert.match(controller, /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/);
+    assert.match(
+      controller,
+      /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/,
+    );
     assert.match(databaseView, /<DatabaseSetupCard[\s\S]*?onSelectDataSource/);
     assert.match(setupCard, /if \(onSelectDataSource\)/);
     assert.match(setupCard, /New empty data source/);
@@ -44,6 +47,7 @@ export function register({ assert, loadModule, test }) {
           {
             databaseId: "new-source",
             databaseName: "New data source",
+            hidden: true,
             sourceKind: "source",
             viewId: "table",
             viewName: "Table",
@@ -57,12 +61,105 @@ export function register({ assert, loadModule, test }) {
             viewType: "list",
           },
         ],
-      }).map(({ databaseId, sourceKind }) => ({ databaseId, sourceKind })),
+      }).map(({ databaseId, hidden, sourceKind }) => ({
+        databaseId,
+        hidden,
+        sourceKind,
+      })),
       [
-        { databaseId: "new-source", sourceKind: "source" },
-        { databaseId: "external", sourceKind: "linked" },
+        {
+          databaseId: "new-source",
+          hidden: true,
+          sourceKind: "source",
+        },
+        {
+          databaseId: "external",
+          hidden: undefined,
+          sourceKind: "linked",
+        },
       ],
     );
+  });
+
+  test("deleting a final source view keeps it recoverable", async () => {
+    const [controller, sourceItems] = await Promise.all([
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/use-database-view-controller.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/view-settings/data-source-items.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ]);
+
+    assert.match(controller, /keepSourceWithoutView/);
+    assert.match(controller, /\{ \.\.\.linkedView, hidden: true \}/);
+    assert.match(controller, /addDataSourceView/);
+    assert.match(controller, /addDatabaseView\.mutateAsync/);
+    assert.match(sourceItems, /Add view/);
+    assert.match(sourceItems, /ViewTypeOptionGrid/);
+  });
+
+  test("separate data sources omit linked badges and offer final-view deletion choices", async () => {
+    const [controller, toolbar] = await Promise.all([
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/use-database-view-controller.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/database-view-toolbar.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ]);
+
+    assert.match(controller, /sourceKind: linkedView\.sourceKind/);
+    assert.match(toolbar, /view\?\.isLinked && view\.sourceKind !== "source"/);
+    assert.match(toolbar, /Delete view only/);
+    assert.match(toolbar, /Delete data source and view/);
+    assert.match(
+      controller,
+      /deleteDataSource\.mutateAsync\(sourceDatabaseId\)/,
+    );
+  });
+
+  test("view source settings show the active source in a fixed-header picker", async () => {
+    const [settings, toolbar] = await Promise.all([
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/view-settings/data-source-settings.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/database-view-toolbar.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ]);
+
+    assert.match(toolbar, /activeSourceDatabaseId=/);
+    assert.match(toolbar, /activeViewTab\?\.sourceDatabaseId/);
+    assert.match(settings, /activeSourceDatabaseName/);
+    assert.match(settings, /getDatabaseIconNode\(database\)/);
+    assert.match(settings, /flex h-96 flex-col overflow-hidden/);
+    assert.match(settings, /shrink-0 bg-popover/);
+    assert.match(settings, /min-h-0 flex-1 overflow-y-auto/);
   });
 
   test("database property icons persist in property and name-column config", async () => {
@@ -80,7 +177,10 @@ export function register({ assert, loadModule, test }) {
     assert.equal(getDatabasePropertyIcon({ icon: 42 }), "");
     assert.equal(getNameColumnIcon({ nameColumn: { icon: "📝" } }), "📝");
     assert.equal(getNameColumnIcon({}), "");
-    assert.equal(getDatabaseViewIcon({ icon: "<svg>view</svg>" }), "<svg>view</svg>");
+    assert.equal(
+      getDatabaseViewIcon({ icon: "<svg>view</svg>" }),
+      "<svg>view</svg>",
+    );
     assert.equal(getDatabaseViewIcon({ icon: 42 }), "");
     assert.deepEqual(
       getMergedPropertyConfig({ wrapContent: true }, { icon: "🌐" }),

@@ -76,6 +76,7 @@ export type DatabaseViewTab = {
   id: string
   isLinked?: boolean
   name: string
+  sourceKind?: "source" | "linked"
   sourceDatabaseId?: string
   sourceDatabaseName?: string
   sourceViewId?: string
@@ -110,6 +111,17 @@ export type DatabaseViewContextValue = {
   addKanbanView: () => void
   addListView: () => void
   addLinkedDatabaseView: (view: DatabaseLinkedViewConfig) => void
+  addDataSourceView?: (
+    sourceDatabaseId: string,
+    type:
+      | "table"
+      | "kanban"
+      | "timeline"
+      | "list"
+      | "gallery"
+      | "chart"
+      | "form",
+  ) => void
   addTableView: () => void
   addTimelineRow: (
     startAt: Date,
@@ -130,14 +142,22 @@ export type DatabaseViewContextValue = {
   copyDatabaseViewLink: () => void
   createDatabaseFilter: (field: string) => void
   createDatabaseSort: (field: string) => void
-  dataSources?: Array<{ id: string; name: string; viewCount: number }>
+  dataSources?: Array<{
+    hiddenViewCount?: number
+    id: string
+    name: string
+    viewCount: number
+  }>
   databaseConfig?: unknown
   databaseId: string | null | undefined
   databaseName?: string
   databasePageId?: string | null
   databaseWorkspaceId?: string
   realtimeEnabled?: boolean
-  deleteDatabaseView: (view: DatabaseViewTab) => void
+  deleteDatabaseView: (
+    view: DatabaseViewTab,
+    options?: { deleteDataSource?: boolean },
+  ) => void
   duplicateDatabaseView: (view: DatabaseViewTab) => void
   draftDatabaseTitle: string
   draftViewTitle: string
