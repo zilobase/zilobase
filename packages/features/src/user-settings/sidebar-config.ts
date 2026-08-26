@@ -16,6 +16,7 @@ export const sidebarSectionIds = [
 export const sidebarItemIds = [
   "askAi",
   "meetings",
+  "tasks",
   ...sidebarSectionIds,
   "calendar",
   "templates",
@@ -35,6 +36,7 @@ export type SidebarSectionSort = (typeof sidebarSectionSorts)[number]
 export type SidebarConfig = {
   hiddenItems: SidebarItemId[]
   libraryView: LibraryView
+  taskDatabaseIds: string[]
   sectionLimits: Record<SidebarSectionId, SidebarSectionLimit>
   sectionOrder: SidebarSectionId[]
   sectionSorts: Record<SidebarSectionId, SidebarSectionSort>
@@ -43,6 +45,7 @@ export type SidebarConfig = {
 export const defaultSidebarConfig: SidebarConfig = {
   hiddenItems: [],
   libraryView: "recents",
+  taskDatabaseIds: [],
   sectionLimits: {
     recents: 10,
     favorites: 10,
@@ -70,6 +73,7 @@ export function normalizeSidebarConfig(value: unknown): SidebarConfig {
     libraryView: isIncluded(config.libraryView, libraryViewIds)
       ? config.libraryView
       : defaultSidebarConfig.libraryView,
+    taskDatabaseIds: uniqueStrings(config.taskDatabaseIds).slice(0, 10),
     sectionLimits: Object.fromEntries(
       sidebarSectionIds.map((sectionId) => [
         sectionId,
@@ -88,6 +92,18 @@ export function normalizeSidebarConfig(value: unknown): SidebarConfig {
       ]),
     ) as SidebarConfig["sectionSorts"],
   }
+}
+
+function uniqueStrings(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+
+  return [
+    ...new Set(
+      value.filter(
+        (item): item is string => typeof item === "string" && item.trim().length > 0,
+      ),
+    ),
+  ]
 }
 
 function completeSectionOrder(value: unknown): SidebarSectionId[] {

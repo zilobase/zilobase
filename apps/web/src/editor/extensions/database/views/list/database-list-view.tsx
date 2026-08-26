@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 import { GripVertical, Loader2, Plus } from "lucide-react"
 
+import { Checkbox } from "@/components/ui/checkbox"
 import { DatabasePageLink } from "../../interactions/database-page-link"
 import { DatabasePropertyValue } from "../../properties/database-property-value"
 import { useDatabaseRowsScroll } from "../../interactions/use-database-rows-scroll"
@@ -19,13 +20,16 @@ export function DatabaseListView() {
     hasNextPage,
     isAddingDatabaseRow,
     isFetchingNextPage,
+    isRowComplete,
     items,
     layoutSettings,
+    newRowLabel,
     onOpenPage,
     personOptions,
     properties,
     propertyValuesByKey,
     savePropertyValue,
+    setRowComplete,
     showPageIconInTitle,
     sortedItems,
     titlePropertyLabel,
@@ -101,6 +105,21 @@ export function DatabaseListView() {
                 <GripVertical />
               </button>
             ) : null}
+            {isRowComplete && setRowComplete ? (
+              <Checkbox
+                aria-label={
+                  isRowComplete(row)
+                    ? `Mark ${row.page.name || "task"} as not done`
+                    : `Mark ${row.page.name || "task"} as done`
+                }
+                checked={isRowComplete(row)}
+                className="database-list-row-checkbox"
+                disabled={!editable}
+                onCheckedChange={(checked) =>
+                  setRowComplete(row, checked === true)
+                }
+              />
+            ) : null}
             <div className="database-list-title">
               <DatabasePageLink
                 onOpen={onOpenPage}
@@ -162,7 +181,7 @@ export function DatabaseListView() {
             type="button"
           >
             <Plus />
-            <span>New page</span>
+            <span>{newRowLabel ?? "New page"}</span>
           </button>
         ) : null}
       </div>

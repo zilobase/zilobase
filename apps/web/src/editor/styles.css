@@ -694,7 +694,8 @@
   }
 
   .database-list-view {
-    @apply overflow-x-auto py-1;
+    @apply overflow-x-auto py-1 pl-8;
+    margin-left: -2rem;
   }
 
   .database-list-rows {
@@ -724,7 +725,7 @@
   }
 
   .database-list-drag-handle {
-    @apply flex size-7 shrink-0 cursor-grab items-center justify-center text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-default disabled:opacity-0;
+    @apply absolute left-[-2rem] top-1/2 flex size-7 -translate-y-1/2 cursor-grab items-center justify-center text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-default disabled:opacity-0;
   }
 
   .database-list-row:hover .database-list-drag-handle {
@@ -735,6 +736,10 @@
   .database-list-new-row svg,
   .database-gallery-new-card svg {
     @apply size-4 shrink-0;
+  }
+
+  .database-list-row-checkbox {
+    @apply ml-1.5 mr-1 size-5 shrink-0;
   }
 
   .database-list-title {

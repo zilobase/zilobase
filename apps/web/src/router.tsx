@@ -18,6 +18,7 @@ import AiPage from "@/pages/ai"
 import CanvasPage from "@/pages/canvas"
 import ApiKeysSettingsPage from "@/pages/settings/api-keys"
 import RecentsPage from "@/pages/recents"
+import TasksPage from "@/pages/tasks"
 import { libraryViewIds } from "@zilobase/features/user-settings"
 import { pageQueryOptions, pagesQueryOptions } from "@zilobase/features/pages"
 import DatabasePage from "@/pages/database"
@@ -262,6 +263,12 @@ const trashRoute = createRoute({
   component: () => <RecentsPage mode="trash" />,
 })
 
+const tasksRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/tasks",
+  component: TasksPage,
+})
+
 const canvasRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/canvas",
@@ -418,6 +425,7 @@ const routeTree = rootRoute.addChildren([
     aiRoute,
     canvasRoute,
     recentsRoute,
+    tasksRoute,
     trashRoute,
     settingsRoute,
     preferencesSettingsRoute,

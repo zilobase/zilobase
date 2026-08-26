@@ -173,6 +173,7 @@ export function DatabaseViewToolbar() {
     isAddingDatabaseView,
     linkedDatabaseViews,
     layoutSettings,
+    newRowLabel,
     onShowTitleChange,
     titlePropertyLabel,
     workspaceId,
@@ -1156,14 +1157,14 @@ export function DatabaseViewToolbar() {
                 </div>
               ) : canRenderAddRow ? (
                 <Button
-                  aria-label="New page"
+                  aria-label={newRowLabel ?? "New page"}
                   className="database-new-button"
                   disabled={!databaseId || isAddingDatabaseRow}
                   onClick={() => addDatabaseRow()}
                   type="button"
                 >
                   <Plus />
-                  <span>New</span>
+                  <span>{newRowLabel ?? "New"}</span>
                 </Button>
               ) : null}
             </>

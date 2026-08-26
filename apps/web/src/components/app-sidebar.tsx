@@ -115,6 +115,7 @@ import {
   Kanban,
   LibraryIcon,
   List,
+  ListChecksIcon,
   MessageCircleQuestionIcon,
   MessageSquarePlusIcon,
   MonitorUpIcon,
@@ -185,6 +186,11 @@ const data = {
       title: "Meetings",
       icon: CalendarDays,
     },
+    {
+      id: "tasks" as const,
+      title: "Tasks",
+      icon: ListChecksIcon,
+    },
   ],
   navSecondary: [
     {
@@ -219,6 +225,8 @@ const data = {
     },
   ],
 };
+
+type SidebarMode = "home" | "askAi" | "meetings" | "tasks";
 
 export function AppSidebar({
   onOpenSettings,
@@ -289,11 +297,11 @@ export function AppSidebar({
     workspaces.find((workspace) => workspace.id === sessionWorkspaceId) ?? null;
   const workspaceId =
     storedWorkspace?.id ?? sessionWorkspace?.id ?? workspaces[0]?.id ?? null;
-  const [sidebarMode, setSidebarMode] = React.useState<
-    "home" | "askAi" | "meetings"
-  >(
+  const [sidebarMode, setSidebarMode] = React.useState<SidebarMode>(
     pathname === "/ai"
       ? "askAi"
+      : pathname === "/tasks"
+        ? "tasks"
       : pathname.startsWith("/m/")
         ? "meetings"
         : "home",
@@ -302,8 +310,9 @@ export function AppSidebar({
   React.useEffect(() => {
     setSidebarMode((current) => {
       if (pathname === "/ai") return "askAi";
+      if (pathname === "/tasks") return "tasks";
       if (pathname.startsWith("/m/")) return "meetings";
-      return current === "askAi" ? "home" : current;
+      return current === "askAi" || current === "tasks" ? "home" : current;
     });
   }, [pathname]);
 
@@ -507,7 +516,17 @@ export function AppSidebar({
               (item) =>
                 item.id === "home" || !hiddenSidebarItems.has(item.id),
             )}
+            onOpenHome={() => {
+              setSidebarMode("home");
+              if (pathname === "/tasks") {
+                void navigate({ to: "/recents" });
+              }
+            }}
             onOpenSearch={openSearch}
+            onOpenTasks={() => {
+              setSidebarMode("tasks");
+              void navigate({ to: "/tasks" });
+            }}
             onStartAiDraft={() => void handleCreateChat()}
             onSidebarModeChange={setSidebarMode}
             sidebarMode={sidebarMode}
@@ -827,27 +846,33 @@ function NewMenu({
 
 function NavMain({
   items,
+  onOpenHome,
   onOpenSearch,
+  onOpenTasks,
   onStartAiDraft,
   onSidebarModeChange,
   sidebarMode,
 }: {
   items: {
-    id: "home" | "meetings" | SidebarItemId;
+    id: "home" | "meetings" | "tasks" | SidebarItemId;
     title: string;
     url?: string;
     icon: LucideIcon;
   }[];
+  onOpenHome: () => void;
   onOpenSearch: () => void;
+  onOpenTasks: () => void;
   onStartAiDraft: () => void;
-  onSidebarModeChange: (mode: "home" | "askAi" | "meetings") => void;
-  sidebarMode: "home" | "askAi" | "meetings";
+  onSidebarModeChange: (mode: SidebarMode) => void;
+  sidebarMode: SidebarMode;
 }) {
   const routeSelected = items.findIndex((item) =>
     sidebarMode === "home"
       ? item.id === "home"
       : sidebarMode === "meetings"
         ? item.id === "meetings"
+        : sidebarMode === "tasks"
+          ? item.id === "tasks"
         : item.id === "askAi",
   );
   const [selected, setSelected] = React.useState<number | null>(routeSelected);
@@ -872,12 +897,17 @@ function NavMain({
     if (!item) return;
 
     if (item.id === "home") {
-      onSidebarModeChange("home");
+      onOpenHome();
       return;
     }
 
     if (item.id === "meetings") {
       onSidebarModeChange("meetings");
+      return;
+    }
+
+    if (item.id === "tasks") {
+      onOpenTasks();
       return;
     }
 

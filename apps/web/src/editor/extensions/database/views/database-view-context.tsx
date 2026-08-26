@@ -167,9 +167,11 @@ export type DatabaseViewContextValue = {
   isAddingDatabaseView: boolean
   isTimelineView: boolean
   isFetchingNextPage: boolean
+  isRowComplete?: (row: DatabaseRow) => boolean
   items: DatabaseRow[]
   linkedDatabaseViews: DatabaseLinkedViewConfig[]
   layoutSettings: DatabaseLayoutSettings
+  newRowLabel?: string
   onOpenPage?: (
     pageId: string,
     options?: { databaseId?: string | null },
@@ -204,6 +206,7 @@ export type DatabaseViewContextValue = {
   setDraftDatabaseTitle: Dispatch<SetStateAction<string>>
   setDraftViewTitle: Dispatch<SetStateAction<string>>
   setFilterPickerOpen: Dispatch<SetStateAction<boolean>>
+  setRowComplete?: (row: DatabaseRow, complete: boolean) => void
   setViewDateProperty: (datePropertyId: string | null) => void
   setupTimelineDateProperty: () => void
   setViewGroupProperty: (groupPropertyId: string | null) => void

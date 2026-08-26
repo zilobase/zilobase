@@ -224,6 +224,7 @@ test("user settings route returns existing normalized preferences", async () => 
       sidebarConfig: {
         hiddenItems: ["calendar"],
         libraryView: "shared",
+        taskDatabaseIds: [],
         sectionLimits: { recents: 10, favorites: 10, private: 10, shared: 10 },
         sectionOrder: ["recents", "shared", "private", "favorites"],
         sectionSorts: {
@@ -244,6 +245,7 @@ const defaultUserSettingsPayload = {
     sidebarConfig: {
       hiddenItems: [],
       libraryView: "recents",
+      taskDatabaseIds: [],
       sectionLimits: { recents: 10, favorites: 10, private: 10, shared: 10 },
       sectionOrder: ["recents", "favorites", "private", "shared"],
       sectionSorts: {
