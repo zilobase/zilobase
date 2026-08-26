@@ -1,7 +1,13 @@
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 
 import { db } from "./db";
-import { database, databaseRow, page, pageItemPlacement } from "./db/schema";
+import {
+  dataSource,
+  database,
+  databaseRow,
+  page,
+  pageItemPlacement,
+} from "./db/schema";
 import {
   PageGraph,
   type PageGraphDatabase,
@@ -32,11 +38,12 @@ export async function loadWorkspacePageGraph(workspaceId: string) {
       ),
     db
       .select({
-        databaseId: databaseRow.databaseId,
+        databaseId: dataSource.parentDatabaseId,
         pageId: databaseRow.pageId,
       })
       .from(databaseRow)
-      .innerJoin(database, eq(databaseRow.databaseId, database.id))
+      .innerJoin(dataSource, eq(databaseRow.dataSourceId, dataSource.id))
+      .innerJoin(database, eq(dataSource.parentDatabaseId, database.id))
       .where(
         and(
           eq(database.workspaceId, workspaceId),

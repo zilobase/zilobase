@@ -1,6 +1,5 @@
 import {
   getDatabaseFilters,
-  getDatabaseLinkedViews,
   getDatabaseSorts,
   getNameColumnLabel,
   getPropertyLabel,
@@ -13,21 +12,19 @@ import type { DatabaseContextPayload } from "./types"
 type ViewDescriptor = {
   viewName: string
   viewType: string
-  isLinked: boolean
-  linkedViewId?: string
-  sourceDatabaseId?: string
-  sourceDatabaseName?: string
-  sourceViewId?: string
+  isExternal: boolean
+  dataSourceId: string
+  dataSourceName: string
   schema: DatabaseContextPayload
   view: DatabaseContextPayload["views"][number]
 }
 
 export function buildDatabaseMarkdown(
   hostSchema: DatabaseContextPayload,
-  linkedSourceSchemas: Record<string, DatabaseContextPayload>,
+  dataSourceSchemas: Record<string, DatabaseContextPayload>,
 ): string {
   const lines: string[] = []
-  const descriptors = collectViewDescriptors(hostSchema, linkedSourceSchemas)
+  const descriptors = collectViewDescriptors(hostSchema, dataSourceSchemas)
 
   lines.push(`#### Database: ${hostSchema.database.name}`)
   lines.push(`- ID: ${hostSchema.database.id}`)
@@ -35,116 +32,70 @@ export function buildDatabaseMarkdown(
   lines.push("")
 
   for (const descriptor of descriptors) {
-    lines.push(...buildViewSection(descriptor, hostSchema))
+    lines.push(...buildViewSection(descriptor))
     lines.push(...buildViewRowsSection(descriptor))
     lines.push("")
   }
 
-  lines.push(...buildPropertyUnion(descriptors, hostSchema))
+  lines.push(...buildPropertyUnion(descriptors))
 
   return lines.join("\n").trim()
 }
 
 function collectViewDescriptors(
   hostSchema: DatabaseContextPayload,
-  linkedSourceSchemas: Record<string, DatabaseContextPayload>,
+  dataSourceSchemas: Record<string, DatabaseContextPayload>,
 ) {
   const descriptors: ViewDescriptor[] = []
 
   for (const view of [...hostSchema.views].sort(
     (left, right) => left.position - right.position,
   )) {
-    descriptors.push({
-      viewName: view.name,
-      viewType: view.type,
-      isLinked: false,
-      schema: hostSchema,
-      view,
-    })
-  }
+    const source = hostSchema.dataSources.find(
+      (candidate) => candidate.id === view.dataSourceId,
+    )
+    const sourceSchema =
+      hostSchema.activeDataSource?.id === view.dataSourceId
+        ? hostSchema
+        : dataSourceSchemas[view.dataSourceId]
 
-  for (const linkedView of getDatabaseLinkedViews(hostSchema.database.config)) {
-    const sourceSchema = linkedSourceSchemas[linkedView.databaseId]
-
-    if (!sourceSchema) {
-      descriptors.push({
-        viewName: linkedView.viewName,
-        viewType: linkedView.viewType,
-        isLinked: true,
-        linkedViewId: linkedView.linkedViewId,
-        sourceDatabaseId: linkedView.databaseId,
-        sourceDatabaseName: linkedView.databaseName,
-        sourceViewId: linkedView.viewId,
-        schema: hostSchema,
-        view: {
-          id: linkedView.viewId,
-          type: linkedView.viewType,
-          name: linkedView.viewName,
-          position: Number.MAX_SAFE_INTEGER,
-        },
-      })
+    if (!source || !sourceSchema) {
       continue
     }
 
-    const sourceView =
-      sourceSchema.views.find((view) => view.id === linkedView.viewId) ?? {
-        id: linkedView.viewId,
-        type: linkedView.viewType,
-        name: linkedView.viewName,
-        config: undefined,
-        position: Number.MAX_SAFE_INTEGER,
-      }
-
     descriptors.push({
-      viewName: linkedView.viewName,
-      viewType: linkedView.viewType,
-      isLinked: true,
-      linkedViewId: linkedView.linkedViewId,
-      sourceDatabaseId: linkedView.databaseId,
-      sourceDatabaseName: linkedView.databaseName,
-      sourceViewId: linkedView.viewId,
+      viewName: view.name,
+      viewType: view.type,
+      isExternal: source.parentDatabaseId !== hostSchema.database.id,
+      dataSourceId: source.id,
+      dataSourceName: source.name,
       schema: sourceSchema,
-      view: sourceView,
+      view,
     })
   }
 
   return descriptors
 }
 
-function buildViewSection(
-  descriptor: ViewDescriptor,
-  hostSchema: DatabaseContextPayload,
-) {
+function buildViewSection(descriptor: ViewDescriptor) {
   const lines: string[] = []
   const activeViewConfig =
     descriptor.view.config ??
-    (descriptor.isLinked ? descriptor.schema.database.config : hostSchema.database.config)
+    descriptor.schema.activeDataSource?.config
   const visibleProperties = getVisiblePropertiesForView(
     descriptor.schema,
     descriptor.view,
   )
-  const nameLabel = getNameColumnLabel(descriptor.schema.database.config)
+  const nameLabel = getNameColumnLabel(descriptor.schema.activeDataSource?.config)
 
   lines.push(
-    `##### View: ${descriptor.viewName} (${descriptor.isLinked ? "linked" : "native"}, ${descriptor.viewType})`,
+    `##### View: ${descriptor.viewName} (${descriptor.isExternal ? "attached" : "native"}, ${descriptor.viewType})`,
   )
 
-  if (descriptor.isLinked) {
-    if (descriptor.sourceDatabaseName || descriptor.sourceDatabaseId) {
-      const sourceLabel = descriptor.sourceDatabaseName ?? "Untitled database"
-      const sourceId = descriptor.sourceDatabaseId
-        ? ` (id: ${descriptor.sourceDatabaseId})`
-        : ""
-      lines.push(`- Linked source database: ${sourceLabel}${sourceId}`)
-    }
-
-    if (descriptor.sourceViewId) {
-      lines.push(`- Linked source view ID: ${descriptor.sourceViewId}`)
-    }
-
-    if (descriptor.linkedViewId) {
-      lines.push(`- Linked view tab ID: ${descriptor.linkedViewId}`)
-    }
+  if (descriptor.isExternal) {
+    lines.push(
+      `- Attached data source: ${descriptor.dataSourceName} (id: ${descriptor.dataSourceId})`,
+    )
   }
 
   lines.push("- Visible properties:")
@@ -260,16 +211,15 @@ function escapeTableCell(value: string) {
   return value.replace(/\|/g, "\\|").replace(/\n/g, " ")
 }
 
-function buildPropertyUnion(
-  descriptors: ViewDescriptor[],
-  hostSchema: DatabaseContextPayload,
-) {
+function buildPropertyUnion(descriptors: ViewDescriptor[]) {
   const union = new Map<
     string,
     { label: string; typeHint: string; views: Set<string> }
   >()
 
-  const nameLabel = getNameColumnLabel(hostSchema.database.config)
+  const nameLabel = getNameColumnLabel(
+    descriptors[0]?.schema.activeDataSource?.config,
+  )
   union.set("name", {
     label: nameLabel,
     typeHint: "text",
@@ -310,18 +260,22 @@ function buildPropertyUnion(
   return lines
 }
 
-export function collectRequiredLinkedDatabaseIds(
-  schemas: DatabaseContextPayload[],
-): string[] {
-  const ids = new Set<string>()
+export function collectRequiredDataSourceRefs(schemas: DatabaseContextPayload[]) {
+  const refs = new Map<string, { dataSourceId: string; parentDatabaseId: string }>()
 
   for (const schema of schemas) {
-    for (const linkedView of getDatabaseLinkedViews(schema.database.config)) {
-      if (linkedView.databaseId !== schema.database.id) {
-        ids.add(linkedView.databaseId)
-      }
+    for (const view of schema.views) {
+      if (view.dataSourceId === schema.activeDataSource?.id) continue
+      const source = schema.dataSources.find(
+        (candidate) => candidate.id === view.dataSourceId,
+      )
+      if (!source) continue
+      refs.set(source.id, {
+        dataSourceId: source.id,
+        parentDatabaseId: source.parentDatabaseId,
+      })
     }
   }
 
-  return [...ids]
+  return [...refs.values()]
 }

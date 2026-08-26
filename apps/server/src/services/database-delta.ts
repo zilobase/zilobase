@@ -14,6 +14,7 @@ import {
 type DatabaseReader = Pick<Database, "select">;
 
 export type DatabaseChangedArea =
+  | "dataSource"
   | "database"
   | "views"
   | "properties"
@@ -21,6 +22,7 @@ export type DatabaseChangedArea =
   | "values";
 
 export type DatabaseDelta = {
+  dataSource?: Record<string, unknown>;
   database?: Record<string, unknown>;
   properties?: Array<Record<string, unknown>>;
   removedPagePropertyIds?: string[];
@@ -117,7 +119,7 @@ export async function fetchDatabasePropertyDelta(
     .where(
       and(
         eq(databaseProperty.id, databasePropertyId),
-        eq(databaseProperty.databaseId, databaseId),
+        eq(databaseProperty.dataSourceId, databaseId),
         isNull(pageProperty.deletedAt),
       ),
     )

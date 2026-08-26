@@ -2,8 +2,8 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../config";
 import { databaseProperty, pageProperty } from "../db/schema";
-import { requireDatabaseEditAccess } from "./database-access";
-import { commitDatabaseMutation } from "./database-commit";
+import { requireDataSourceEditAccess } from "./data-source-access";
+import { commitDataSourceMutation } from "./database-commit";
 import { propertyPositionDelta } from "./database-delta";
 import {
   hasDuplicateValues,
@@ -17,7 +17,7 @@ export async function reorderDatabasePropertiesService(input: {
   propertyIds: string[];
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
@@ -29,11 +29,11 @@ export async function reorderDatabasePropertiesService(input: {
     );
   }
 
-  const commit = await commitDatabaseMutation(
+  const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
       changed: ["properties"],
-      databaseId: existing.id,
+      dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
@@ -46,7 +46,7 @@ export async function reorderDatabasePropertiesService(input: {
         )
         .where(
           and(
-            eq(databaseProperty.databaseId, existing.id),
+            eq(databaseProperty.dataSourceId, existing.id),
             isNull(pageProperty.deletedAt),
           ),
         );
@@ -77,7 +77,7 @@ export async function reorderDatabasePropertiesService(input: {
     },
   );
 
-  return { commit, databaseId: existing.id };
+  return { commit, dataSourceId: existing.id };
 }
 
 export async function deleteDatabasePropertyService(input: {
@@ -86,15 +86,15 @@ export async function deleteDatabasePropertyService(input: {
   env?: RuntimeEnv;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
-  const commit = await commitDatabaseMutation(
+  const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
       changed: ["properties"],
-      databaseId: existing.id,
+      dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
@@ -111,7 +111,7 @@ export async function deleteDatabasePropertyService(input: {
         .where(
           and(
             eq(databaseProperty.id, input.databasePropertyId),
-            eq(databaseProperty.databaseId, existing.id),
+            eq(databaseProperty.dataSourceId, existing.id),
             eq(pageProperty.workspaceId, existing.workspaceId),
             isNull(pageProperty.deletedAt),
           ),
@@ -131,7 +131,7 @@ export async function deleteDatabasePropertyService(input: {
         )
         .where(
           and(
-            eq(databaseProperty.databaseId, existing.id),
+            eq(databaseProperty.dataSourceId, existing.id),
             isNull(pageProperty.deletedAt),
           ),
         )
@@ -166,5 +166,5 @@ export async function deleteDatabasePropertyService(input: {
     },
   );
 
-  return { commit, databaseId: existing.id };
+  return { commit, dataSourceId: existing.id };
 }

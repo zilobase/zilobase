@@ -13,6 +13,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./database-access", () => ({
   requireDatabaseEditAccess: mocks.access,
 }));
+vi.mock("./data-source-access", () => ({
+  requireDataSourceAccess: mocks.access,
+  requireDataSourceEditAccess: mocks.access,
+}));
 vi.mock("./database-commit", () => ({
   commitDatabaseMutation: mocks.commit,
 }));
@@ -37,8 +41,8 @@ vi.mock("../db", () => ({
         where() {
           return builder;
         },
-        async orderBy() {
-          return rows;
+        orderBy() {
+          return builder;
         },
         async limit() {
           return rows;
@@ -108,6 +112,7 @@ function transactionRecorder() {
 
 test("createDatabaseViewService creates a uniquely named trailing view", async () => {
   const { inserts } = transactionRecorder();
+  mocks.selectResults.push([{ dataSourceId: "database-1" }]);
   mocks.selectResults.push([
     { name: "Board", position: 0 },
     { name: "Board 2", position: 1 },
@@ -120,6 +125,7 @@ test("createDatabaseViewService creates a uniquely named trailing view", async (
   const result = await createDatabaseViewService({
     config: { layout: "compact" },
     databaseId: "database-1",
+    dataSourceId: "database-1",
     env: { ENV: "test" },
     name: " Board ",
     type: " board ",
@@ -128,6 +134,7 @@ test("createDatabaseViewService creates a uniquely named trailing view", async (
 
   assert.deepEqual(result, {
     commit: { delta: { views: [{ id: "view-1" }] } },
+    dataSourceId: "database-1",
     databaseId: "database-1",
     name: "Board 3",
     type: "board",
@@ -137,6 +144,7 @@ test("createDatabaseViewService creates a uniquely named trailing view", async (
     config: { layout: "compact" },
     createdAt: (inserts[0] as Record<string, unknown>).createdAt,
     databaseId: "database-1",
+    dataSourceId: "database-1",
     id: "00000000-0000-4000-8000-000000000001",
     name: "Board 3",
     position: 2,
@@ -157,11 +165,13 @@ test("createDatabaseViewService creates a uniquely named trailing view", async (
 
 test("createDatabaseViewService applies table defaults and empty deltas", async () => {
   const { inserts } = transactionRecorder();
+  mocks.selectResults.push([{ dataSourceId: "database-1" }]);
   mocks.selectResults.push([]);
   mocks.fetchDelta.mockResolvedValue(null);
 
   const result = await createDatabaseViewService({
     databaseId: "database-1",
+    dataSourceId: "database-1",
     userId: "user-1",
   });
 
@@ -326,7 +336,7 @@ test("deleteDatabaseViewService rejects missing and last views", async () => {
       viewId: "view-1",
     }),
     (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 400,
+      error instanceof ServiceMutationError && error.status === 409,
   );
   assert.equal(mocks.commit.mock.calls.length, 0);
 });

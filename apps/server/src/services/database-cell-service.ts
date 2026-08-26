@@ -9,8 +9,8 @@ import {
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
-import { requireDatabaseEditAccess } from "./database-access";
-import { commitDatabaseMutation } from "./database-commit";
+import { requireDataSourceEditAccess } from "./data-source-access";
+import { commitDataSourceMutation } from "./database-commit";
 import type { DatabaseDelta } from "./database-delta";
 import { validateCellValue } from "./database-property-config";
 import { ServiceMutationError } from "./mutation-error";
@@ -23,7 +23,7 @@ export async function setDatabaseCellValueService(input: {
   value: unknown;
   pagePropertyId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
@@ -34,7 +34,7 @@ export async function setDatabaseCellValueService(input: {
     .where(
       and(
         eq(databaseRow.id, input.rowId),
-        eq(databaseRow.databaseId, existing.id),
+        eq(databaseRow.dataSourceId, existing.id),
         isNull(databaseRow.deletedAt),
       ),
     )
@@ -50,7 +50,7 @@ export async function setDatabaseCellValueService(input: {
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
-        eq(databaseProperty.databaseId, existing.id),
+        eq(databaseProperty.dataSourceId, existing.id),
         eq(databaseProperty.propertyId, input.pagePropertyId),
         eq(pageProperty.workspaceId, existing.workspaceId),
         isNull(pageProperty.deletedAt),
@@ -66,11 +66,11 @@ export async function setDatabaseCellValueService(input: {
 
   const now = new Date();
 
-  const commit = await commitDatabaseMutation(
+  const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
       changed: ["rows", "values"],
-      databaseId: existing.id,
+      dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
@@ -119,7 +119,8 @@ export async function setDatabaseCellValueService(input: {
 
   return {
     commit,
-    databaseId: existing.id,
+    databaseId: existing.parentDatabaseId,
+    dataSourceId: existing.id,
     rowId: row.id,
     rowPageId: row.pageId,
     pagePropertyId: input.pagePropertyId,

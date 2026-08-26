@@ -28,9 +28,15 @@ vi.mock("./database-access", () => ({
   requireDatabaseAccess: mocks.sourceAccess,
   requireDatabaseEditAccess: mocks.access,
 }));
+vi.mock("./data-source-access", () => ({
+  requireDataSourceAccess: mocks.sourceAccess,
+  requireDataSourceEditAccess: mocks.access,
+}));
 vi.mock("./database-commit", () => ({
   commitDatabaseMutation: mocks.commit,
   commitDatabaseMutationBatch: mocks.batch,
+  commitDataSourceMutation: mocks.commit,
+  commitDataSourceMutationBatch: mocks.batch,
 }));
 vi.mock("./database-delta", () => ({
   fetchDatabaseRowDelta: mocks.fetchDelta,
@@ -79,7 +85,8 @@ beforeEach(() => {
   mocks.access.mockReset();
   mocks.access.mockResolvedValue({
     id: "database-1",
-    pageId: "host-page",
+    parentDatabaseId: "database-1",
+    parentPageId: "host-page",
     workspaceId: "workspace-1",
   });
   mocks.canAccessPage.mockReset();
@@ -96,6 +103,8 @@ beforeEach(() => {
   mocks.sourceAccess.mockReset();
   mocks.sourceAccess.mockResolvedValue({
     id: "database-source",
+    parentDatabaseId: "database-source-parent",
+    parentPageId: null,
     workspaceId: "workspace-1",
   });
   mocks.inherit.mockReset();
@@ -135,6 +144,7 @@ function transactionRecorder() {
         ...mutation,
         actorId: "user-1",
         committedAt: new Date().toISOString(),
+        databaseId: mutation.dataSourceId,
         mutationId: crypto.randomUUID(),
         version: 1,
       })),
@@ -183,6 +193,7 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
     commit: await mocks.commit.mock.results[0]?.value,
     createdAt: result.createdAt,
     databaseId: "database-1",
+    dataSourceId: "database-1",
     isFavorite: false,
     parentRowId: "parent-row",
     position: 1,
@@ -234,7 +245,7 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
     actorId: "user-1",
     changed: ["rows", "values"],
-    databaseId: "database-1",
+    dataSourceId: "database-1",
     env: { ENV: "test" },
   });
   const delta = (await mocks.commit.mock.results[0]?.value)?.delta;
@@ -412,7 +423,7 @@ test("createDatabaseRowService imports source properties and values", async () =
   const result = await createDatabaseRowService({
     databaseId: "database-1",
     pageId: "page-1",
-    sourceDatabaseId: "database-source",
+    sourceDataSourceId: "database-source",
     sourcePropertyMode: "match",
     sourceRowId: "source-row",
     userId: "user-1",

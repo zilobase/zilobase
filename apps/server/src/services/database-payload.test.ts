@@ -55,15 +55,23 @@ beforeEach(() => {
 test("getDatabasePayload assembles rows, values, schema, and favorite state", async () => {
   mocks.selectResults.push(
     [{
-      column: { id: "column-1", propertyId: "property-1" },
+      link: { createdAt: new Date("2026-01-01"), position: 0 },
+      source: {
+        id: "source-1",
+        name: "Tasks",
+        parentDatabaseId: "database-1",
+      },
+    }],
+    [{ dataSourceId: "source-1", id: "view-1", name: "Table" }],
+    [{ id: "favorite-1" }],
+    [{
+      column: { dataSourceId: "source-1", id: "column-1", propertyId: "property-1" },
       property: { id: "property-1", name: "Status" },
     }],
-    [{ id: "view-1", name: "Table" }],
     [{
       page: { id: "page-1", name: "Task" },
-      row: { id: "row-1", pageId: "page-1", position: 0 },
+      row: { dataSourceId: "source-1", id: "row-1", pageId: "page-1", position: 0 },
     }],
-    [{ id: "favorite-1" }],
     [{ id: "value-1", pageId: "page-1", propertyId: "property-1" }],
   );
 
@@ -75,28 +83,36 @@ test("getDatabasePayload assembles rows, values, schema, and favorite state", as
 
   assert.equal(payload?.database.isFavorite, true);
   assert.deepEqual(payload?.properties, [{
+    dataSourceId: "source-1",
     id: "column-1",
     property: { id: "property-1", name: "Status" },
     propertyId: "property-1",
   }]);
   assert.deepEqual(payload?.rows, [{
+    dataSourceId: "source-1",
     id: "row-1",
     page: { id: "page-1", name: "Task" },
     pageId: "page-1",
     position: 0,
   }]);
   assert.equal(payload?.values[0]?.id, "value-1");
-  assert.equal(mocks.selectCalls, 5);
+  assert.equal(payload?.activeDataSource?.id, "source-1");
+  assert.equal(payload?.views[0]?.dataSourceId, "source-1");
+  assert.equal(mocks.selectCalls, 6);
 });
 
 test("getDatabaseSchemaPayload skips row and value queries", async () => {
   mocks.selectResults.push(
     [{
-      column: { id: "column-1", propertyId: "property-1" },
+      link: { createdAt: new Date("2026-01-01"), position: 0 },
+      source: { id: "source-1", name: "Tasks", parentDatabaseId: "database-1" },
+    }],
+    [{ dataSourceId: "source-1", id: "view-1", name: "Table" }],
+    [],
+    [{
+      column: { dataSourceId: "source-1", id: "column-1", propertyId: "property-1" },
       property: { id: "property-1", name: "Status" },
     }],
-    [{ id: "view-1", name: "Table" }],
-    [],
   );
 
   const payload = await getDatabaseSchemaPayload(
@@ -108,11 +124,11 @@ test("getDatabaseSchemaPayload skips row and value queries", async () => {
   assert.deepEqual(payload?.rows, []);
   assert.deepEqual(payload?.values, []);
   assert.equal(payload?.database.isFavorite, false);
-  assert.equal(mocks.selectCalls, 3);
+  assert.equal(mocks.selectCalls, 4);
 });
 
-test("getDatabasePayload skips favorite and value queries when unnecessary", async () => {
-  mocks.selectResults.push([], [], []);
+test("getDatabasePayload skips favorite and source queries when no sources are linked", async () => {
+  mocks.selectResults.push([], []);
 
   const payload = await getDatabasePayload(
     "database-1",
@@ -123,7 +139,7 @@ test("getDatabasePayload skips favorite and value queries when unnecessary", asy
   assert.equal(payload?.database.isFavorite, false);
   assert.deepEqual(payload?.rows, []);
   assert.deepEqual(payload?.values, []);
-  assert.equal(mocks.selectCalls, 3);
+  assert.equal(mocks.selectCalls, 2);
 });
 
 test("getDatabasePayload returns null when the database is missing", async () => {

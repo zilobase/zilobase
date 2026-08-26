@@ -28,9 +28,9 @@ export async function inheritDatabaseRowProperties(
   input: {
     now: Date;
     pageId: string;
-    sourceDatabaseId: string;
+    sourceDataSourceId: string;
     sourcePropertyMode: "duplicate" | "match";
-    targetDatabaseId: string;
+    targetDataSourceId: string;
     workspaceId: string;
   },
   tx: DatabaseTransaction,
@@ -44,7 +44,7 @@ export async function inheritDatabaseRowProperties(
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
-        eq(databaseProperty.databaseId, input.targetDatabaseId),
+        eq(databaseProperty.dataSourceId, input.targetDataSourceId),
         eq(pageProperty.workspaceId, input.workspaceId),
         isNull(pageProperty.deletedAt),
       ),
@@ -55,7 +55,7 @@ export async function inheritDatabaseRowProperties(
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
-        eq(databaseProperty.databaseId, input.sourceDatabaseId),
+        eq(databaseProperty.dataSourceId, input.sourceDataSourceId),
         eq(pageProperty.workspaceId, input.workspaceId),
         isNull(pageProperty.deletedAt),
       ),
@@ -206,7 +206,7 @@ export async function inheritDatabaseRowProperties(
   if (columnsToInsert.length > 0) {
     const insertedColumns = columnsToInsert.map(({ column }, index) => ({
       createdAt: input.now,
-      databaseId: input.targetDatabaseId,
+      dataSourceId: input.targetDataSourceId,
       id: crypto.randomUUID(),
       position: targetColumns.length + index,
       propertyId: column.propertyId,

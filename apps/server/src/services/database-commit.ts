@@ -3,7 +3,12 @@ import { eq, sql, type SQL } from "drizzle-orm";
 import type { RuntimeEnv } from "../config";
 import { db } from "../db";
 import type { Database } from "../db";
-import { database, databaseRealtimeOutbox } from "../db/schema";
+import {
+  dataSource,
+  database,
+  databaseDataSource,
+  databaseRealtimeOutbox,
+} from "../db/schema";
 import {
   type DatabaseChangedArea,
   type DatabaseDelta,
@@ -39,6 +44,12 @@ type CommitOptions = {
 type BatchMutation = {
   changed: DatabaseChangedArea[];
   databaseId: string;
+  delta: DatabaseDelta;
+};
+
+type DataSourceBatchMutation = {
+  changed: DatabaseChangedArea[];
+  dataSourceId: string;
   delta: DatabaseDelta;
 };
 
@@ -217,6 +228,153 @@ export async function commitDatabaseMutation(
   }
 
   return committed;
+}
+
+/**
+ * Commits schema/row mutations against a data source, then fans the same
+ * delta out to every database container currently displaying that source.
+ * Source versioning and all container outbox writes happen in one transaction.
+ */
+export async function commitDataSourceMutation(
+  options: Omit<CommitOptions, "databaseId"> & { dataSourceId: string },
+  mutate: (tx: DatabaseTransaction) => Promise<{ delta: DatabaseDelta }>,
+): Promise<DatabaseMutationCommitResult> {
+  const { commits, result: metadata } = await commitDatabaseMutationBatch(
+    { actorId: options.actorId, env: options.env },
+    async (tx) => {
+      const result = await mutate(tx);
+      const [versioned] = await tx
+        .update(dataSource)
+        .set({
+          updatedAt: new Date(),
+          version: sql`${dataSource.version} + 1`,
+        })
+        .where(eq(dataSource.id, options.dataSourceId))
+        .returning({
+          parentDatabaseId: dataSource.parentDatabaseId,
+          version: dataSource.version,
+        });
+
+      if (!versioned) {
+        throw new DatabaseMutationError("Data source not found", 404);
+      }
+
+      const links = await tx
+        .select({ databaseId: databaseDataSource.databaseId })
+        .from(databaseDataSource)
+        .where(eq(databaseDataSource.dataSourceId, options.dataSourceId));
+      const databaseIds = [
+        ...new Set([
+          versioned.parentDatabaseId,
+          ...links.map((link) => link.databaseId),
+        ]),
+      ];
+
+      return {
+        mutations: databaseIds.map((databaseId) => ({
+          changed: options.changed,
+          databaseId,
+          delta: result.delta,
+        })),
+        result: { parentDatabaseId: versioned.parentDatabaseId },
+      };
+    },
+  );
+
+  const ownerCommit = commits.find(
+    (commit) => commit.databaseId === metadata.parentDatabaseId,
+  );
+  if (!ownerCommit) {
+    throw new Error("Data source mutation did not produce a commit");
+  }
+
+  return ownerCommit;
+}
+
+/**
+ * Atomic multi-source variant used by operations such as moving a row from
+ * one source to another. Each source gets its own version, and every attached
+ * database container receives an ordered durable realtime mutation.
+ */
+export async function commitDataSourceMutationBatch<T>(
+  options: Omit<CommitOptions, "databaseId" | "changed">,
+  mutate: (
+    tx: DatabaseTransaction,
+  ) => Promise<{ mutations: DataSourceBatchMutation[]; result: T }>,
+) {
+  const batch = await commitDatabaseMutationBatch(
+    { actorId: options.actorId, env: options.env },
+    async (tx) => {
+      const mutationResult = await mutate(tx);
+      const owners: Array<{ containerCount: number; ownerDatabaseId: string }> = [];
+      const containerMutations: BatchMutation[] = [];
+
+      for (const mutation of mutationResult.mutations) {
+        const [versioned] = await tx
+          .update(dataSource)
+          .set({
+            updatedAt: new Date(),
+            version: sql`${dataSource.version} + 1`,
+          })
+          .where(eq(dataSource.id, mutation.dataSourceId))
+          .returning({ parentDatabaseId: dataSource.parentDatabaseId });
+
+        if (!versioned) {
+          throw new DatabaseMutationError("Data source not found", 404);
+        }
+
+        const links = await tx
+          .select({ databaseId: databaseDataSource.databaseId })
+          .from(databaseDataSource)
+          .where(eq(databaseDataSource.dataSourceId, mutation.dataSourceId));
+        const databaseIds = [
+          ...new Set([
+            versioned.parentDatabaseId,
+            ...links.map((link) => link.databaseId),
+          ]),
+        ];
+
+        owners.push({
+          containerCount: databaseIds.length,
+          ownerDatabaseId: versioned.parentDatabaseId,
+        });
+        containerMutations.push(
+          ...databaseIds.map((databaseId) => ({
+            changed: mutation.changed,
+            databaseId,
+            delta: mutation.delta,
+          })),
+        );
+      }
+
+      return {
+        mutations: containerMutations,
+        result: { owners, result: mutationResult.result },
+      };
+    },
+  );
+
+  let offset = 0;
+  const commits = batch.result.owners.map((owner) => {
+    const sourceCommits = batch.commits.slice(
+      offset,
+      offset + owner.containerCount,
+    );
+    offset += owner.containerCount;
+    const ownerCommit = sourceCommits.find(
+      (commit) => commit.databaseId === owner.ownerDatabaseId,
+    );
+    if (!ownerCommit) {
+      throw new Error("Data source mutation did not produce an owner commit");
+    }
+    return ownerCommit;
+  });
+
+  return {
+    commits,
+    containerCommits: batch.commits,
+    result: batch.result.result,
+  };
 }
 
 export function mutationResponse(

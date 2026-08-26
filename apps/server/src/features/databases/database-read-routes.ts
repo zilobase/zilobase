@@ -56,11 +56,16 @@ databaseReadRoutes.get("/:id", async (c) => {
   }
 
   const schemaOnly = c.req.query("schemaOnly") === "1";
+  const payloadOptions = {
+    includeDeleted,
+    ...(c.req.query("viewId") ? { viewId: c.req.query("viewId") } : {}),
+    ...(c.req.query("dataSourceId")
+      ? { dataSourceId: c.req.query("dataSourceId") }
+      : {}),
+  };
   const payload = schemaOnly
-    ? await getDatabaseSchemaPayload(record.id, user?.id, record, {
-        includeDeleted,
-      })
-    : await getDatabasePayload(record.id, user?.id, record, { includeDeleted });
+    ? await getDatabaseSchemaPayload(record.id, user?.id, record, payloadOptions)
+    : await getDatabasePayload(record.id, user?.id, record, payloadOptions);
   const accessLevel = user
     ? record.deletedAt
       ? "none"

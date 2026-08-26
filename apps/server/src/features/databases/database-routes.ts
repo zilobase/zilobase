@@ -4,6 +4,13 @@ import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
 import type { AppBindings } from "../../types";
 import { mutationResponse } from "../../services/database-commit";
 import { getDatabasePayload } from "../../services/database-payload";
+import { updateDataSourceService } from "../../services/data-source-service";
+import {
+  createDatabaseDataSourceService,
+  linkDatabaseDataSourceService,
+  replaceDatabaseViewDataSourceService,
+  unlinkDatabaseDataSourceService,
+} from "../../services/database-data-source-service";
 import { hasDuplicateValues } from "../../services/database-position-service";
 import { updateDatabaseFavoriteService } from "../../services/database-favorite-service";
 import {
@@ -32,7 +39,6 @@ import {
 import {
   createDatabaseService,
   deleteDatabaseService,
-  moveDatabaseService,
   restoreDatabaseService,
   updateDatabaseService,
 } from "../../services/database-service";
@@ -386,69 +392,31 @@ databaseRoutes.patch("/:id", async (c) => {
   }
 });
 
-databaseRoutes.post("/:id/move", async (c) => {
+databaseRoutes.patch("/data-sources/:dataSourceId", async (c) => {
   const user = requireUser(c);
-
-  if (!user) {
-    return c.json({ error: "Unauthorized" }, 401);
-  }
-
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
   const body = await c.req.json().catch(() => null);
-
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
-
-  const {
-    destinationId,
-    destinationKind,
-    hostDatabaseId,
-    moveViews = true,
-  } = body as {
-    destinationId?: unknown;
-    destinationKind?: unknown;
-    hostDatabaseId?: unknown;
-    moveViews?: unknown;
-  };
-
-  if (typeof destinationId !== "string" || destinationId.length === 0) {
-    return c.json({ error: "destinationId is required" }, 400);
-  }
-
-  if (destinationKind !== "database" && destinationKind !== "page") {
-    return c.json(
-      { error: "destinationKind must be database or page" },
-      400,
-    );
-  }
-
-  if (typeof moveViews !== "boolean") {
-    return c.json({ error: "moveViews must be a boolean" }, 400);
-  }
-
-  if (
-    hostDatabaseId !== undefined &&
-    (typeof hostDatabaseId !== "string" || hostDatabaseId.length === 0)
-  ) {
-    return c.json({ error: "hostDatabaseId must be a string" }, 400);
+  const { config, name } = body as { config?: unknown; name?: unknown };
+  if (name !== undefined && typeof name !== "string") {
+    return c.json({ error: "name must be a string" }, 400);
   }
 
   try {
-    return c.json(
-      await moveDatabaseService({
-        databaseId: c.req.param("id"),
-        destination: { id: destinationId, kind: destinationKind },
-        hostDatabaseId:
-          typeof hostDatabaseId === "string" ? hostDatabaseId : undefined,
-        moveViews,
-        userId: user.id,
-      }),
-    );
+    const result = await updateDataSourceService({
+      config,
+      dataSourceId: c.req.param("dataSourceId"),
+      env: c.env,
+      ...(typeof name === "string" ? { name } : {}),
+      userId: user.id,
+    });
+    return c.json(mutationResponse(result.commit));
   } catch (error) {
     if (error instanceof ServiceMutationError) {
       return serviceMutationErrorResponse(c, error);
     }
-
     throw error;
   }
 });
@@ -507,10 +475,12 @@ databaseRoutes.post("/:id/views", async (c) => {
   const body = await c.req.json().catch(() => ({}));
   const {
     config = null,
+    dataSourceId,
     name = "Table",
     type = "table",
   } = body as {
     config?: unknown;
+    dataSourceId?: unknown;
     name?: unknown;
     type?: unknown;
   };
@@ -518,11 +488,15 @@ databaseRoutes.post("/:id/views", async (c) => {
   if (typeof name !== "string" || typeof type !== "string") {
     return c.json({ error: "name and type must be strings" }, 400);
   }
+  if (typeof dataSourceId !== "string" || dataSourceId.length === 0) {
+    return c.json({ error: "dataSourceId is required" }, 400);
+  }
 
   try {
     const result = await createDatabaseViewService({
       config,
       databaseId: c.req.param("id"),
+      dataSourceId,
       env: c.env,
       name,
       type,
@@ -535,6 +509,129 @@ databaseRoutes.post("/:id/views", async (c) => {
       return serviceMutationErrorResponse(c, error);
     }
 
+    throw error;
+  }
+});
+
+databaseRoutes.post("/:id/data-sources/new", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const body = await c.req.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return c.json({ error: "A JSON body is required" }, 400);
+  }
+  const { config, name, viewName, viewType } = body as Record<string, unknown>;
+  if (name !== undefined && typeof name !== "string") {
+    return c.json({ error: "name must be a string" }, 400);
+  }
+  if (viewName !== undefined && typeof viewName !== "string") {
+    return c.json({ error: "viewName must be a string" }, 400);
+  }
+  if (viewType !== undefined && typeof viewType !== "string") {
+    return c.json({ error: "viewType must be a string" }, 400);
+  }
+
+  try {
+    const result = await createDatabaseDataSourceService({
+      config,
+      databaseId: c.req.param("id"),
+      env: c.env,
+      ...(typeof name === "string" ? { name } : {}),
+      userId: user.id,
+      ...(typeof viewName === "string" ? { viewName } : {}),
+      ...(typeof viewType === "string" ? { viewType } : {}),
+    });
+    return c.json(result.payload, 201);
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+    throw error;
+  }
+});
+
+databaseRoutes.post("/:id/data-sources", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const body = await c.req.json().catch(() => null);
+  if (!body || typeof body !== "object") {
+    return c.json({ error: "A JSON body is required" }, 400);
+  }
+  const { config, dataSourceId, name, type } = body as Record<string, unknown>;
+  if (typeof dataSourceId !== "string" || dataSourceId.length === 0) {
+    return c.json({ error: "dataSourceId must be a string" }, 400);
+  }
+  if (name !== undefined && typeof name !== "string") {
+    return c.json({ error: "name must be a string" }, 400);
+  }
+  if (type !== undefined && typeof type !== "string") {
+    return c.json({ error: "type must be a string" }, 400);
+  }
+
+  try {
+    const result = await linkDatabaseDataSourceService({
+      config,
+      databaseId: c.req.param("id"),
+      dataSourceId,
+      env: c.env,
+      ...(typeof name === "string" ? { name } : {}),
+      ...(typeof type === "string" ? { type } : {}),
+      userId: user.id,
+    });
+    return c.json(mutationResponse(result.commit), 201);
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+    throw error;
+  }
+});
+
+databaseRoutes.put("/:id/views/:viewId/source", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const body = await c.req.json().catch(() => null);
+  const dataSourceId =
+    body && typeof body === "object"
+      ? (body as { dataSourceId?: unknown }).dataSourceId
+      : undefined;
+  if (typeof dataSourceId !== "string" || dataSourceId.length === 0) {
+    return c.json({ error: "dataSourceId must be a string" }, 400);
+  }
+
+  try {
+    const result = await replaceDatabaseViewDataSourceService({
+      databaseId: c.req.param("id"),
+      dataSourceId,
+      env: c.env,
+      userId: user.id,
+      viewId: c.req.param("viewId"),
+    });
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+    throw error;
+  }
+});
+
+databaseRoutes.delete("/:id/data-sources/:dataSourceId", async (c) => {
+  const user = requireUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  try {
+    const result = await unlinkDatabaseDataSourceService({
+      databaseId: c.req.param("id"),
+      dataSourceId: c.req.param("dataSourceId"),
+      env: c.env,
+      userId: user.id,
+    });
+    return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
     throw error;
   }
 });
@@ -893,7 +990,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
     pageId = null,
     parentRowId = null,
     position,
-    sourceDatabaseId = null,
+    sourceDataSourceId = null,
     sourcePropertyMode = "match",
     sourceRowId = null,
     title,
@@ -901,7 +998,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
     pageId?: unknown;
     parentRowId?: unknown;
     position?: unknown;
-    sourceDatabaseId?: unknown;
+    sourceDataSourceId?: unknown;
     sourcePropertyMode?: unknown;
     sourceRowId?: unknown;
     title?: unknown;
@@ -911,7 +1008,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
     (title !== undefined && typeof title !== "string") ||
     (pageId !== null && typeof pageId !== "string") ||
     (parentRowId !== null && typeof parentRowId !== "string") ||
-    (sourceDatabaseId !== null && typeof sourceDatabaseId !== "string") ||
+    (sourceDataSourceId !== null && typeof sourceDataSourceId !== "string") ||
     (sourceRowId !== null && typeof sourceRowId !== "string") ||
     sourcePropertyMode !== "match" ||
     (position !== undefined &&
@@ -927,7 +1024,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
       pageId: pageId as string | null,
       parentRowId: parentRowId as string | null,
       position: position as number | undefined,
-      sourceDatabaseId: sourceDatabaseId as string | null,
+      sourceDataSourceId: sourceDataSourceId as string | null,
       sourcePropertyMode,
       sourceRowId: sourceRowId as string | null,
       title: title as string | undefined,
@@ -939,6 +1036,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
         ...mutationResponse(result.commit),
         createdAt: result.createdAt,
         databaseId: result.databaseId,
+        dataSourceId: result.dataSourceId,
         isFavorite: result.isFavorite,
         pageId: result.rowPageId,
         parentRowId: result.parentRowId,

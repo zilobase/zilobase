@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   customType,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -1084,6 +1085,76 @@ export const database = pgTable(
   ],
 );
 
+export const dataSource = pgTable(
+  "data_source",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    parentDatabaseId: text("parent_database_id")
+      .notNull()
+      .references(() => database.id, { onDelete: "restrict" }),
+    createdById: text("created_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    config: jsonb("config"),
+    configVersion: integer("config_version").notNull().default(1),
+    version: integer("version").notNull().default(0),
+    deletedById: text("deleted_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("data_source_workspace_deleted_idx").on(
+      table.workspaceId,
+      table.deletedAt,
+    ),
+    index("data_source_parent_database_idx").on(table.parentDatabaseId),
+  ],
+);
+
+export const databaseDataSource = pgTable(
+  "database_data_source",
+  {
+    databaseId: text("database_id")
+      .notNull()
+      .references(() => database.id, { onDelete: "cascade" }),
+    dataSourceId: text("data_source_id")
+      .notNull()
+      .references(() => dataSource.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    linkedById: text("linked_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("database_data_source_unique").on(
+      table.databaseId,
+      table.dataSourceId,
+    ),
+    index("database_data_source_position_idx").on(
+      table.databaseId,
+      table.position,
+    ),
+    index("database_data_source_source_idx").on(table.dataSourceId),
+  ],
+);
+
 export const databaseRealtimeOutbox = pgTable(
   "database_realtime_outbox",
   {
@@ -1153,9 +1224,9 @@ export const databaseProperty = pgTable(
   "database_property",
   {
     id: text("id").primaryKey(),
-    databaseId: text("database_id")
+    dataSourceId: text("data_source_id")
       .notNull()
-      .references(() => database.id, { onDelete: "cascade" }),
+      .references(() => dataSource.id, { onDelete: "cascade" }),
     propertyId: text("property_id")
       .notNull()
       .references(() => pageProperty.id, { onDelete: "cascade" }),
@@ -1171,11 +1242,11 @@ export const databaseProperty = pgTable(
   },
   (table) => [
     index("database_property_position_idx").on(
-      table.databaseId,
+      table.dataSourceId,
       table.position,
     ),
     uniqueIndex("database_property_database_property_unique").on(
-      table.databaseId,
+      table.dataSourceId,
       table.propertyId,
     ),
   ],
@@ -1188,6 +1259,9 @@ export const databaseView = pgTable(
     databaseId: text("database_id")
       .notNull()
       .references(() => database.id, { onDelete: "cascade" }),
+    dataSourceId: text("data_source_id")
+      .notNull()
+      .references(() => dataSource.id, { onDelete: "cascade" }),
     type: text("type").notNull(),
     name: text("name").notNull(),
     config: jsonb("config"),
@@ -1201,6 +1275,15 @@ export const databaseView = pgTable(
   },
   (table) => [
     index("database_view_position_idx").on(table.databaseId, table.position),
+    index("database_view_data_source_idx").on(table.dataSourceId),
+    foreignKey({
+      columns: [table.databaseId, table.dataSourceId],
+      foreignColumns: [
+        databaseDataSource.databaseId,
+        databaseDataSource.dataSourceId,
+      ],
+      name: "database_view_database_data_source_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -1208,9 +1291,9 @@ export const databaseRow = pgTable(
   "database_row",
   {
     id: text("id").primaryKey(),
-    databaseId: text("database_id")
+    dataSourceId: text("data_source_id")
       .notNull()
-      .references(() => database.id, { onDelete: "cascade" }),
+      .references(() => dataSource.id, { onDelete: "cascade" }),
     pageId: text("page_id")
       .notNull()
       .references(() => page.id, { onDelete: "cascade" }),
@@ -1235,16 +1318,16 @@ export const databaseRow = pgTable(
   },
   (table) => [
     index("database_row_database_deleted_position_idx").on(
-      table.databaseId,
+      table.dataSourceId,
       table.deletedAt,
       table.position,
     ),
-    index("database_row_parent_idx").on(table.databaseId, table.parentRowId),
-    index("database_row_position_idx").on(table.databaseId, table.position),
+    index("database_row_parent_idx").on(table.dataSourceId, table.parentRowId),
+    index("database_row_position_idx").on(table.dataSourceId, table.position),
     index("database_row_page_id_idx").on(table.pageId),
     index("database_row_deleted_at_idx").on(table.deletedAt),
     uniqueIndex("database_row_database_page_unique").on(
-      table.databaseId,
+      table.dataSourceId,
       table.pageId,
     ),
   ],

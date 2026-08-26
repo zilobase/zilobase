@@ -15,12 +15,12 @@ import {
 } from "../db/schema";
 import { upsertPageItemPlacement } from "../page-item-placements";
 import {
-  requireDatabaseAccess,
-  requireDatabaseEditAccess,
-} from "./database-access";
+  requireDataSourceAccess,
+  requireDataSourceEditAccess,
+} from "./data-source-access";
 import {
-  commitDatabaseMutation,
-  commitDatabaseMutationBatch,
+  commitDataSourceMutation,
+  commitDataSourceMutationBatch,
   type DatabaseMutationCommitResult,
 } from "./database-commit";
 import { fetchDatabaseRowDelta } from "./database-delta";
@@ -40,48 +40,48 @@ export async function createDatabaseRowService(input: {
   pageId?: string | null;
   parentRowId?: string | null;
   position?: number;
-  sourceDatabaseId?: string | null;
+  sourceDataSourceId?: string | null;
   sourcePropertyMode?: "duplicate" | "match";
   sourceRowId?: string | null;
   title?: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
-  let sourceDatabase: Awaited<ReturnType<typeof requireDatabaseAccess>> | null =
+  let sourceDataSource: Awaited<ReturnType<typeof requireDataSourceAccess>> | null =
     null;
 
-  if (input.sourceDatabaseId && input.sourceDatabaseId !== existing.id) {
+  if (input.sourceDataSourceId && input.sourceDataSourceId !== existing.id) {
     try {
-      sourceDatabase = await requireDatabaseAccess(
-        input.sourceDatabaseId,
+      sourceDataSource = await requireDataSourceAccess(
+        input.sourceDataSourceId,
         input.userId,
         input.sourceRowId ? "edit" : "view",
       );
     } catch (error) {
       if (error instanceof ServiceMutationError && error.status === 404) {
-        throw new ServiceMutationError("Source database not found", 404);
+        throw new ServiceMutationError("Data source not found", 404);
       }
 
       throw error;
     }
 
-    if (sourceDatabase.workspaceId !== existing.workspaceId) {
-      throw new ServiceMutationError("Source database not found", 404);
+    if (sourceDataSource.workspaceId !== existing.workspaceId) {
+      throw new ServiceMutationError("Data source not found", 404);
     }
   }
 
-  if (input.sourceRowId && !sourceDatabase) {
-    throw new ServiceMutationError("Source database not found", 404);
+  if (input.sourceRowId && !sourceDataSource) {
+    throw new ServiceMutationError("Data source not found", 404);
   }
 
-  if (sourceDatabase && !input.sourceRowId) {
+  if (sourceDataSource && !input.sourceRowId) {
     throw new ServiceMutationError("A source row is required for a move", 400);
   }
 
-  if (isDatabaseHostPageId(input.pageId, existing.pageId)) {
+  if (isDatabaseHostPageId(input.pageId, existing.parentPageId)) {
     throw new ServiceMutationError(
       "A page cannot be nested inside itself",
       400,
@@ -97,14 +97,14 @@ export async function createDatabaseRowService(input: {
     .from(databaseRow)
     .where(
       and(
-        eq(databaseRow.databaseId, existing.id),
+        eq(databaseRow.dataSourceId, existing.id),
         isNull(databaseRow.deletedAt),
       ),
     )
     .orderBy(asc(databaseRow.position));
 
   const sourceRows =
-    sourceDatabase && input.sourceRowId
+    sourceDataSource && input.sourceRowId
       ? await db
           .select({
             id: databaseRow.id,
@@ -115,7 +115,7 @@ export async function createDatabaseRowService(input: {
           .from(databaseRow)
           .where(
             and(
-              eq(databaseRow.databaseId, sourceDatabase.id),
+              eq(databaseRow.dataSourceId, sourceDataSource.id),
               isNull(databaseRow.deletedAt),
             ),
           )
@@ -197,7 +197,7 @@ export async function createDatabaseRowService(input: {
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
-        eq(databaseProperty.databaseId, existing.id),
+        eq(databaseProperty.dataSourceId, existing.id),
         eq(pageProperty.type, "status"),
         isNull(pageProperty.deletedAt),
       ),
@@ -219,7 +219,7 @@ export async function createDatabaseRowService(input: {
     .where(
       and(
         eq(favorite.userId, input.userId),
-        eq(favorite.databaseId, existing.id),
+        eq(favorite.databaseId, existing.parentDatabaseId),
       ),
     )
     .limit(1);
@@ -228,7 +228,7 @@ export async function createDatabaseRowService(input: {
   const rowId = crypto.randomUUID();
   let createdAt = "";
 
-  const targetChanged = sourceDatabase
+  const targetChanged = sourceDataSource
     ? (["rows", "properties", "values"] as const)
     : defaultStatusValues.length > 0
       ? (["rows", "values"] as const)
@@ -238,14 +238,14 @@ export async function createDatabaseRowService(input: {
   ) => {
     const now = new Date();
     createdAt = now.toISOString();
-    const inherited = sourceDatabase
+    const inherited = sourceDataSource
       ? await inheritDatabaseRowProperties(
           {
             now,
             pageId,
-            sourceDatabaseId: sourceDatabase.id,
+            sourceDataSourceId: sourceDataSource.id,
             sourcePropertyMode: input.sourcePropertyMode ?? "match",
-            targetDatabaseId: existing.id,
+            targetDataSourceId: existing.id,
             workspaceId: existing.workspaceId,
           },
           tx,
@@ -289,7 +289,7 @@ export async function createDatabaseRowService(input: {
       })
       .where(
         and(
-          eq(databaseRow.databaseId, existing.id),
+          eq(databaseRow.dataSourceId, existing.id),
           isNull(databaseRow.deletedAt),
           gte(databaseRow.position, targetPosition),
         ),
@@ -303,7 +303,7 @@ export async function createDatabaseRowService(input: {
 
     await tx.insert(databaseRow).values({
       id: rowId,
-      databaseId: existing.id,
+      dataSourceId: existing.id,
       pageId,
       parentRowId: input.parentRowId ?? null,
       position: targetPosition,
@@ -315,7 +315,7 @@ export async function createDatabaseRowService(input: {
     await upsertPageItemPlacement(tx, {
       workspaceId: existing.workspaceId,
       parentKind: "database",
-      parentId: existing.id,
+      parentId: existing.parentDatabaseId,
       itemKind: "page",
       itemId: pageId,
       placementKind: "database_row",
@@ -376,7 +376,7 @@ export async function createDatabaseRowService(input: {
 
     return {
       delta: {
-        ...(sourceDatabase ? { properties: inherited.properties } : {}),
+        ...(sourceDataSource ? { properties: inherited.properties } : {}),
         rows: [...shiftedRows, ...(delta?.rows ?? [])],
         ...(insertedValues.length > 0 || inherited.values.length > 0
           ? { values: [...insertedValues, ...inherited.values] }
@@ -388,10 +388,10 @@ export async function createDatabaseRowService(input: {
   let commit: DatabaseMutationCommitResult;
   let sourceCommit: DatabaseMutationCommitResult | undefined;
 
-  if (sourceDatabase && sourceRow && input.sourceRowId) {
-    const sourceDatabaseId = sourceDatabase.id;
+  if (sourceDataSource && sourceRow && input.sourceRowId) {
+    const sourceDataSourceId = sourceDataSource.id;
     const sourceRowId = input.sourceRowId;
-    const batch = await commitDatabaseMutationBatch(
+    const batch = await commitDataSourceMutationBatch(
       { actorId: input.userId, env: input.env },
       async (tx) => {
         const targetResult = await createTargetRow(tx);
@@ -405,7 +405,7 @@ export async function createDatabaseRowService(input: {
           .where(
             and(
               eq(databaseRow.id, sourceRowId),
-              eq(databaseRow.databaseId, sourceDatabaseId),
+              eq(databaseRow.dataSourceId, sourceDataSourceId),
             ),
           );
 
@@ -414,7 +414,7 @@ export async function createDatabaseRowService(input: {
           .set({ parentRowId: null, updatedAt: now })
           .where(
             and(
-              eq(databaseRow.databaseId, sourceDatabaseId),
+              eq(databaseRow.dataSourceId, sourceDataSourceId),
               eq(databaseRow.parentRowId, sourceRowId),
               isNull(databaseRow.deletedAt),
             ),
@@ -423,13 +423,13 @@ export async function createDatabaseRowService(input: {
         const remainingSourceRowIds = remainingSourceRows.map((row) => row.id);
         await updateDatabaseRowPositions(
           tx,
-          sourceDatabaseId,
+          sourceDataSourceId,
           remainingSourceRowIds,
           now,
         );
         await updateDatabaseRowPlacementPositions(
           tx,
-          sourceDatabaseId,
+          sourceDataSourceId,
           remainingSourceRowIds,
           now,
         );
@@ -438,12 +438,12 @@ export async function createDatabaseRowService(input: {
           mutations: [
             {
               changed: [...targetChanged],
-              databaseId: existing.id,
+              dataSourceId: existing.id,
               delta: targetResult.delta,
             },
             {
               changed: ["rows"],
-              databaseId: sourceDatabaseId,
+              dataSourceId: sourceDataSource.id,
               delta: {
                 removedRowIds: [sourceRowId],
                 rows: remainingSourceRows.map((row, position) => ({
@@ -461,18 +461,14 @@ export async function createDatabaseRowService(input: {
         };
       },
     );
-    commit = batch.commits.find(
-      (candidate) => candidate.databaseId === existing.id,
-    )!;
-    sourceCommit = batch.commits.find(
-      (candidate) => candidate.databaseId === sourceDatabaseId,
-    );
+    commit = batch.commits[0]!;
+    sourceCommit = batch.commits[1];
   } else {
-    commit = await commitDatabaseMutation(
+    commit = await commitDataSourceMutation(
       {
         actorId: input.userId,
         changed: [...targetChanged],
-        databaseId: existing.id,
+        dataSourceId: existing.id,
         env: input.env,
       },
       createTargetRow,
@@ -486,7 +482,8 @@ export async function createDatabaseRowService(input: {
     isFavorite: shouldInheritFavorite,
     parentRowId: input.parentRowId ?? null,
     position: targetPosition,
-    databaseId: existing.id,
+    databaseId: existing.parentDatabaseId,
+    dataSourceId: existing.id,
     rowId,
     rowPageId: pageId,
     title: title as string,

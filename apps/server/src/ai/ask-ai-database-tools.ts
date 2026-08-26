@@ -9,9 +9,9 @@ import {
   createDatabaseViewService,
   setDatabaseCellValueService,
   updateDatabasePropertyService,
-  updateDatabaseService,
   updateDatabaseViewService,
 } from "../services/database-mutations";
+import { updateDataSourceService } from "../services/data-source-service";
 import {
   defaultStatusOptions,
   selectOptionColors,
@@ -174,6 +174,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
         return toToolResult(`Created database "${result.name}".`, {
           databaseId: result.databaseId,
+          dataSourceId: result.dataSourceId,
           defaultViewId: result.defaultViewId,
           pageId,
         }, [
@@ -187,7 +188,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       description:
         "Embed a database inline in page content using [Database (<uuid>)]. Only call when the user explicitly asks to embed or place the database in the page/page. Call immediately after createDatabase and before properties, rows, or cell values when embedding was requested.",
       inputSchema: z.object({
-        databaseId: z.string().trim().min(1),
+        dataSourceId: z.string().trim().min(1),
         pageId: z.string().trim().optional(),
         afterHeading: z
           .string()
@@ -204,7 +205,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
         const result = await embedDatabaseInPageService({
           afterHeading: input.afterHeading,
-          databaseId: input.databaseId,
+          databaseId: input.dataSourceId,
           env: context.env,
           userId: context.userId,
           pageId,
@@ -259,7 +260,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       description:
         "Add a property/column to a database. Prefer type status (not select) for task/workflow columns — it auto-seeds Not started / In progress / Done with colors and kanban groups. For select/multi_select, pass config.options with { id, name }; colors are auto-assigned when omitted. Valid colors: gray, brown, orange, yellow, green, blue, purple, pink, red.",
       inputSchema: z.object({
-        databaseId: z.string().trim().min(1),
+        dataSourceId: z.string().trim().min(1),
         name: z.string().trim().min(1).max(120).optional(),
         type: z.string().trim().min(1).optional(),
         config: propertyConfigSchema,
@@ -268,7 +269,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       execute: withDbExecute(context, async (input) => {
         const result = await createDatabasePropertyService({
           config: input.config ?? null,
-          databaseId: input.databaseId,
+          databaseId: input.dataSourceId,
           env: context.env,
 
           name: input.name,
@@ -299,6 +300,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
         return toToolResult(`Created property "${result.name}" (${result.type}).`, {
           databaseId: result.databaseId,
+          dataSourceId: result.dataSourceId,
           databasePropertyId: result.databasePropertyId,
           pagePropertyId: result.pagePropertyId,
         }, hints);
@@ -309,7 +311,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       description:
         "Update an existing database property. Use to add or extend select/status/multi_select options before setDatabaseCellValue. Status options support color and group (To-do, In progress, Complete). Colors are auto-filled when omitted.",
       inputSchema: z.object({
-        databaseId: z.string().trim().min(1),
+        dataSourceId: z.string().trim().min(1),
         databasePropertyId: z.string().trim().min(1),
         name: z.string().trim().min(1).max(120).optional(),
         type: z.string().trim().optional(),
@@ -319,7 +321,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       execute: withDbExecute(context, async (input) => {
         const result = await updateDatabasePropertyService({
           config: input.config,
-          databaseId: input.databaseId,
+          databaseId: input.dataSourceId,
           databasePropertyId: input.databasePropertyId,
           env: context.env,
 
@@ -331,6 +333,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
         return toToolResult("Updated database property.", {
           databaseId: result.databaseId,
+          dataSourceId: result.dataSourceId,
           databasePropertyId: result.databasePropertyId,
           pagePropertyId: result.pagePropertyId,
         });
@@ -342,6 +345,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         "Create an additional database view. Skip if the default Table view from createDatabase is enough.",
       inputSchema: z.object({
         databaseId: z.string().trim().min(1),
+        dataSourceId: z.string().trim().min(1),
         name: z.string().trim().min(1).optional(),
         type: z.string().trim().min(1).optional(),
         config: propertyConfigSchema,
@@ -350,6 +354,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         const result = await createDatabaseViewService({
           config: input.config ?? null,
           databaseId: input.databaseId,
+          dataSourceId: input.dataSourceId,
           env: context.env,
 
           name: input.name,
@@ -393,25 +398,25 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       }),
     }),
 
-    updateDatabase: tool({
-      description: "Update database-level settings such as name or config (emoji, name column, etc.).",
+    updateDataSource: tool({
+      description: "Update data-source settings such as its name, emoji, or name-column config.",
       inputSchema: z.object({
-        databaseId: z.string().trim().min(1),
+        dataSourceId: z.string().trim().min(1),
         name: z.string().trim().min(1).optional(),
         config: z.record(z.string(), z.unknown()).optional(),
       }),
       execute: withDbExecute(context, async (input) => {
-        const result = await updateDatabaseService({
+        const result = await updateDataSourceService({
           config: input.config,
-          databaseId: input.databaseId,
+          dataSourceId: input.dataSourceId,
           env: context.env,
 
           name: input.name,
           userId: context.userId,
         });
 
-        return toToolResult("Updated database.", {
-          databaseId: result.databaseId,
+        return toToolResult("Updated data source.", {
+          dataSourceId: result.dataSourceId,
         });
       }),
     }),
@@ -420,7 +425,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       description:
         "Add a row to a database. Creates a sub-page for the row unless pageId is provided.",
       inputSchema: z.object({
-        databaseId: z.string().trim().min(1),
+        dataSourceId: z.string().trim().min(1),
         title: z.string().trim().min(1).optional(),
         pageId: z.string().trim().optional(),
         position: z.number().int().min(0).optional(),
@@ -428,7 +433,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       }),
       execute: withDbExecute(context, async (input) => {
         const result = await createDatabaseRowService({
-          databaseId: input.databaseId,
+          databaseId: input.dataSourceId,
           env: context.env,
 
           pageId: input.pageId,
@@ -440,6 +445,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
         return toToolResult(`Created row "${result.title}".`, {
           databaseId: result.databaseId,
+          dataSourceId: result.dataSourceId,
           rowId: result.rowId,
           rowPageId: result.rowPageId,
         }, [
@@ -452,14 +458,14 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       description:
         "Set a cell value. Requires rowId and pagePropertyId from prior tool results. For select/status use option names; for multi_select use an array of option names.",
       inputSchema: z.object({
-        databaseId: z.string().trim().min(1),
+        dataSourceId: z.string().trim().min(1),
         rowId: z.string().trim().min(1),
         pagePropertyId: z.string().trim().min(1),
         value: z.unknown(),
       }),
       execute: withDbExecute(context, async (input) => {
         const result = await setDatabaseCellValueService({
-          databaseId: input.databaseId,
+          databaseId: input.dataSourceId,
           env: context.env,
 
           rowId: input.rowId,
@@ -470,6 +476,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
         return toToolResult("Updated cell value.", {
           databaseId: result.databaseId,
+          dataSourceId: result.dataSourceId,
           rowId: result.rowId,
           rowPageId: result.rowPageId,
           pagePropertyId: result.pagePropertyId,
@@ -496,7 +503,7 @@ export function buildDatabaseConfigInstruction(input: {
     "## Zilobase database and page configuration",
     "You can create and configure Zilobase databases and pages using the database tools.",
     "Call tools one at a time in dependency order. Never invent a batch tool.",
-    "Typical order: createPage (optional) -> createDatabase -> embed/link (only if user asked) -> createDatabaseProperty -> createDatabaseView/updateDatabaseView -> createDatabaseRow -> setDatabaseCellValue.",
+    "Typical order: createPage (optional) -> createDatabase -> embed/link (only if user asked) -> createDatabaseProperty -> createDatabaseView/updateDatabaseView -> createDatabaseRow -> setDatabaseCellValue. Use the dataSourceId returned by createDatabase for property, row, and cell tools.",
     "When the user asks to embed or add the database to the page/page, call embedDatabaseInPage immediately after createDatabase and before properties, rows, or cell values.",
     "createDatabase does not embed the database. Call embedDatabaseInPage only when the user asks to embed or place it in page content. Call linkDatabaseInPage only when the user asks for sidebar/navigation links.",
     "Inline embed format: [Database (<databaseId>)].",

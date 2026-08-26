@@ -11,8 +11,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./database-access", () => ({
   requireDatabaseEditAccess: mocks.access,
 }));
+vi.mock("./data-source-access", () => ({
+  requireDataSourceEditAccess: mocks.access,
+}));
 vi.mock("./database-commit", () => ({
   commitDatabaseMutation: mocks.commit,
+  commitDataSourceMutation: mocks.commit,
 }));
 vi.mock("./database-delta", () => ({
   fetchDatabasePropertyDelta: mocks.fetchDelta,
@@ -45,6 +49,7 @@ beforeEach(() => {
   mocks.access.mockReset();
   mocks.access.mockResolvedValue({
     id: "database-1",
+    parentDatabaseId: "database-1",
     workspaceId: "workspace-1",
   });
   mocks.commit.mockReset();
@@ -121,6 +126,7 @@ test("createDatabasePropertyService inserts and shifts a positioned property", a
   assert.deepEqual(result, {
     commit: await mocks.commit.mock.results[0]?.value,
     databaseId: "database-1",
+    dataSourceId: "database-1",
     databasePropertyId: "00000000-0000-4000-8000-000000000002",
     name: "Cost",
     pagePropertyId: "00000000-0000-4000-8000-000000000001",
@@ -138,7 +144,7 @@ test("createDatabasePropertyService inserts and shifts a positioned property", a
   });
   assert.deepEqual(inserts[1], {
     createdAt: (inserts[1] as Record<string, unknown>).createdAt,
-    databaseId: "database-1",
+    dataSourceId: "database-1",
     id: "00000000-0000-4000-8000-000000000002",
     position: 1,
     propertyId: "00000000-0000-4000-8000-000000000001",
@@ -147,7 +153,7 @@ test("createDatabasePropertyService inserts and shifts a positioned property", a
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
     actorId: "user-1",
     changed: ["properties"],
-    databaseId: "database-1",
+    dataSourceId: "database-1",
     env: { ENV: "test" },
   });
   const delta = (await mocks.commit.mock.results[0]?.value)?.delta;
@@ -201,6 +207,7 @@ test("updateDatabasePropertyService updates supplied metadata", async () => {
   assert.deepEqual(result, {
     commit: await mocks.commit.mock.results[0]?.value,
     databaseId: "database-1",
+    dataSourceId: "database-1",
     databasePropertyId: "column-1",
     pagePropertyId: "property-1",
   });

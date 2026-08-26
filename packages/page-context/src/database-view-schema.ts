@@ -1,15 +1,5 @@
 import type { DatabaseContextPayload, DatabasePropertySchema } from "./types";
 
-export type DatabaseLinkedViewConfig = {
-  databaseId: string;
-  databaseName: string;
-  linkedViewId?: string;
-  sourceKind?: "source" | "linked";
-  viewId: string;
-  viewName: string;
-  viewType: string;
-};
-
 export type DatabaseSortConfig = {
   column: string;
   direction: "ascending" | "descending";
@@ -26,51 +16,10 @@ type DatabaseConfig = {
   filters?: unknown[];
   groupPropertyId?: string;
   hiddenPropertyIds?: string[];
-  linkedDatabaseViews?: unknown[];
   nameColumn?: { label?: string };
   sort?: unknown;
   sorts?: unknown[];
 };
-
-export function getDatabaseLinkedViews(
-  config: unknown,
-): DatabaseLinkedViewConfig[] {
-  const linkedViews =
-    config && typeof config === "object" && !Array.isArray(config)
-      ? (config as DatabaseConfig).linkedDatabaseViews
-      : undefined;
-
-  if (!Array.isArray(linkedViews)) {
-    return [];
-  }
-
-  const seenKeys = new Set<string>();
-
-  return linkedViews.flatMap((linkedView) => {
-    const normalized = normalizeDatabaseLinkedView(linkedView);
-
-    if (!normalized) {
-      return [];
-    }
-
-    const key = getDatabaseLinkedViewKey(normalized);
-
-    if (seenKeys.has(key)) {
-      return [];
-    }
-
-    seenKeys.add(key);
-    return [normalized];
-  });
-}
-
-export function getDatabaseLinkedViewKey(view: DatabaseLinkedViewConfig) {
-  if (view.linkedViewId) {
-    return `linked:${view.linkedViewId}`;
-  }
-
-  return `linked:${view.databaseId}:${view.viewId}`;
-}
 
 export function getNameColumnLabel(config: unknown) {
   if (
@@ -283,52 +232,6 @@ export function getPropertyTypeHint(property: DatabasePropertySchema) {
   }
 
   return hints.join(": ");
-}
-
-function normalizeDatabaseLinkedView(
-  value: unknown,
-): DatabaseLinkedViewConfig | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const linkedView = value as DatabaseLinkedViewConfig;
-
-  if (
-    typeof linkedView.databaseId !== "string" ||
-    linkedView.databaseId.length === 0 ||
-    typeof linkedView.viewId !== "string" ||
-    linkedView.viewId.length === 0
-  ) {
-    return null;
-  }
-
-  return {
-    databaseId: linkedView.databaseId,
-    databaseName:
-      typeof linkedView.databaseName === "string" &&
-      linkedView.databaseName.trim().length > 0
-        ? linkedView.databaseName
-        : "Untitled database",
-    linkedViewId:
-      typeof linkedView.linkedViewId === "string" &&
-      linkedView.linkedViewId.length > 0
-        ? linkedView.linkedViewId
-        : undefined,
-    sourceKind:
-      linkedView.sourceKind === "source" ? "source" : "linked",
-    viewId: linkedView.viewId,
-    viewName:
-      typeof linkedView.viewName === "string" &&
-      linkedView.viewName.trim().length > 0
-        ? linkedView.viewName
-        : "Untitled view",
-    viewType:
-      typeof linkedView.viewType === "string" &&
-      linkedView.viewType.trim().length > 0
-        ? linkedView.viewType
-        : "table",
-  };
 }
 
 function normalizeDatabaseFilters(values: unknown[]) {

@@ -87,7 +87,7 @@ function buildPageSection(section: PageContextSection) {
   const roleLabel = section.role === "primary" ? "Primary" : "Attached"
   const pageMarkdown = prosemirrorToMarkdown(section.content)
   const databaseSections = section.databases.map((database) =>
-    buildDatabaseMarkdown(database.schema, database.linkedSourceSchemas),
+    buildDatabaseMarkdown(database.schema, database.dataSourceSchemas),
   )
 
   return [
@@ -107,7 +107,7 @@ function buildDatabaseSection(section: DatabaseContextSection) {
 
   return [
     `## [${roleLabel}] ${section.schema.database.name} (database)`,
-    buildDatabaseMarkdown(section.schema, section.linkedSourceSchemas),
+    buildDatabaseMarkdown(section.schema, section.dataSourceSchemas),
   ].join("\n\n")
 }
 

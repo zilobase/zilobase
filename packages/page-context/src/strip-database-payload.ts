@@ -16,6 +16,8 @@ type DatabaseValueLike = {
 }
 
 type DatabasePayloadLike = {
+  activeDataSource: DatabaseContextPayload["activeDataSource"]
+  dataSources: DatabaseContextPayload["dataSources"]
   database: {
     id: string
     name: string
@@ -70,6 +72,8 @@ export function stripDatabasePayload(
   const rows = toDatabaseRows(payload.rows)
 
   return {
+    activeDataSource: payload.activeDataSource,
+    dataSources: payload.dataSources,
     database: {
       id: payload.database.id,
       name: payload.database.name,

@@ -6,6 +6,7 @@ import {
   database,
   databaseAccess,
   databaseRow,
+  dataSource,
   member,
   page,
   pageAccess,
@@ -258,9 +259,10 @@ export async function getEffectivePageAccessInWorkspace(
   }
 
   const [standaloneDatabaseRow] = await db
-    .select({ databaseId: databaseRow.databaseId })
+    .select({ databaseId: dataSource.parentDatabaseId })
     .from(databaseRow)
-    .innerJoin(database, eq(database.id, databaseRow.databaseId))
+    .innerJoin(dataSource, eq(dataSource.id, databaseRow.dataSourceId))
+    .innerJoin(database, eq(database.id, dataSource.parentDatabaseId))
     .where(
       and(
         eq(databaseRow.pageId, pageId),
@@ -326,9 +328,10 @@ export async function isPagePublishedInWorkspace(
   }
 
   const [standaloneDatabaseRow] = await db
-    .select({ databaseId: databaseRow.databaseId })
+    .select({ databaseId: dataSource.parentDatabaseId })
     .from(databaseRow)
-    .innerJoin(database, eq(database.id, databaseRow.databaseId))
+    .innerJoin(dataSource, eq(dataSource.id, databaseRow.dataSourceId))
+    .innerJoin(database, eq(database.id, dataSource.parentDatabaseId))
     .where(
       and(
         eq(databaseRow.pageId, pageId),

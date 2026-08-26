@@ -32,7 +32,7 @@ export async function updateDatabasePropertyPositions(
         "updated_at" = ${updatedAt}
     from (values ${getPositionValuesSql(propertyIds)}) as positions(id, position)
     where ${databaseProperty.id} = positions.id
-      and ${databaseProperty.databaseId} = ${databaseId}
+      and ${databaseProperty.dataSourceId} = ${databaseId}
       and ${databaseProperty.position} <> positions.position
   `);
 }
@@ -53,7 +53,7 @@ export async function updateDatabaseRowPositions(
         "updated_at" = ${updatedAt}
     from (values ${getPositionValuesSql(rowIds)}) as positions(id, position)
     where ${databaseRow.id} = positions.id
-      and ${databaseRow.databaseId} = ${databaseId}
+      and ${databaseRow.dataSourceId} = ${databaseId}
       and ${databaseRow.position} <> positions.position
   `);
 }

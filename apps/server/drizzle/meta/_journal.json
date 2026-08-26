@@ -344,6 +344,20 @@
       "when": 1787409000000,
       "tag": "0048_teamspace_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1787821200000,
+      "tag": "0049_data_source_architecture",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1787824800000,
+      "tag": "0050_normalized_data_source_cleanup",
+      "breakpoints": true
     }
   ]
 }

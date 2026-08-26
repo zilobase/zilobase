@@ -28,10 +28,18 @@ export type DatabasePropertySchema = {
 
 export type DatabaseViewSchema = {
   id: string
+  dataSourceId: string
   type: string
   name: string
   config?: unknown
   position: number
+}
+
+export type DataSourceContext = {
+  id: string
+  name: string
+  parentDatabaseId: string
+  config?: unknown
 }
 
 export type DatabaseRowContext = {
@@ -48,6 +56,8 @@ export type DatabaseValueContext = {
 }
 
 export type DatabaseContextPayload = {
+  activeDataSource: DataSourceContext | null
+  dataSources: DataSourceContext[]
   database: {
     id: string
     name: string
@@ -63,7 +73,7 @@ export type DatabaseContextPayload = {
 
 export type PageDatabaseContext = {
   schema: DatabaseContextPayload
-  linkedSourceSchemas: Record<string, DatabaseContextPayload>
+  dataSourceSchemas: Record<string, DatabaseContextPayload>
 }
 
 export type PageContextSection = {
@@ -80,7 +90,7 @@ export type DatabaseContextSection = {
   kind: "database"
   role: ContextSourceRole
   schema: DatabaseContextPayload
-  linkedSourceSchemas: Record<string, DatabaseContextPayload>
+  dataSourceSchemas: Record<string, DatabaseContextPayload>
 }
 
 export type ContextSection = PageContextSection | DatabaseContextSection

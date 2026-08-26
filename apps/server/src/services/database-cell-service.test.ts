@@ -11,8 +11,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./database-access", () => ({
   requireDatabaseEditAccess: mocks.access,
 }));
+vi.mock("./data-source-access", () => ({
+  requireDataSourceEditAccess: mocks.access,
+}));
 vi.mock("./database-commit", () => ({
   commitDatabaseMutation: mocks.commit,
+  commitDataSourceMutation: mocks.commit,
 }));
 vi.mock("./database-property-config", () => ({
   validateCellValue: mocks.validate,
@@ -39,6 +43,7 @@ beforeEach(() => {
   mocks.access.mockReset();
   mocks.access.mockResolvedValue({
     id: "database-1",
+    parentDatabaseId: "database-1",
     workspaceId: "workspace-1",
   });
   mocks.commit.mockReset();
@@ -99,6 +104,7 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
   assert.deepEqual(result, {
     commit: await mocks.commit.mock.results[0]?.value,
     databaseId: "database-1",
+    dataSourceId: "database-1",
     pagePropertyId: "property-1",
     rowId: "row-1",
     rowPageId: "page-1",
@@ -123,7 +129,7 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
     actorId: "user-1",
     changed: ["rows", "values"],
-    databaseId: "database-1",
+    dataSourceId: "database-1",
     env: { ENV: "test" },
   });
   const delta = (await mocks.commit.mock.results[0]?.value)?.delta;

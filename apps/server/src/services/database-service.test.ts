@@ -60,7 +60,6 @@ vi.mock("../db", () => ({
 import {
   createDatabaseService,
   deleteDatabaseService,
-  removeHostedDataSourceViews,
   restoreDatabaseService,
   updateDatabaseService,
 } from "./database-service";
@@ -86,25 +85,6 @@ beforeEach(() => {
   mocks.softDelete.mockReset();
   mocks.transaction.mockReset();
   vi.restoreAllMocks();
-});
-
-test("removeHostedDataSourceViews keeps linked views and other sources", () => {
-  const config = {
-    layout: "table",
-    linkedDatabaseViews: [
-      { databaseId: "source-1", sourceKind: "source", viewId: "view-1" },
-      { databaseId: "source-1", sourceKind: "linked", viewId: "view-2" },
-      { databaseId: "source-2", sourceKind: "source", viewId: "view-3" },
-    ],
-  };
-
-  assert.deepEqual(removeHostedDataSourceViews(config, "source-1"), {
-    layout: "table",
-    linkedDatabaseViews: [
-      { databaseId: "source-1", sourceKind: "linked", viewId: "view-2" },
-      { databaseId: "source-2", sourceKind: "source", viewId: "view-3" },
-    ],
-  });
 });
 
 function transactionRecorder() {
@@ -136,6 +116,13 @@ function transactionRecorder() {
 function restoreTransactionRecorder(returningResults: unknown[][]) {
   const updates: unknown[] = [];
   const tx = {
+    select() {
+      const builder = {
+        from() { return builder; },
+        where() { return builder; },
+      };
+      return builder;
+    },
     update() {
       return {
         set(value: unknown) {
@@ -159,7 +146,8 @@ test("createDatabaseService creates database, default view, and placement atomic
   vi.spyOn(crypto, "randomUUID")
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000001")
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000002")
-    .mockReturnValueOnce("00000000-0000-4000-8000-000000000003");
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000003")
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000004");
 
   const result = await createDatabaseService({
     name: " Roadmap ",
@@ -170,11 +158,12 @@ test("createDatabaseService creates database, default view, and placement atomic
 
   assert.deepEqual(result, {
     databaseId: "00000000-0000-4000-8000-000000000001",
-    defaultViewId: "00000000-0000-4000-8000-000000000002",
+    dataSourceId: "00000000-0000-4000-8000-000000000002",
+    defaultViewId: "00000000-0000-4000-8000-000000000003",
     name: "Roadmap",
     pageId: "page-1",
     parentPlacement: {
-      id: "00000000-0000-4000-8000-000000000003",
+      id: "00000000-0000-4000-8000-000000000004",
       itemId: "00000000-0000-4000-8000-000000000001",
       itemKind: "database",
       parentId: "page-1",
@@ -195,8 +184,23 @@ test("createDatabaseService creates database, default view, and placement atomic
       workspaceId: "workspace-1",
     },
     {
-      databaseId: "00000000-0000-4000-8000-000000000001",
       id: "00000000-0000-4000-8000-000000000002",
+      config: {},
+      createdById: "user-1",
+      name: "Roadmap",
+      parentDatabaseId: "00000000-0000-4000-8000-000000000001",
+      workspaceId: "workspace-1",
+    },
+    {
+      dataSourceId: "00000000-0000-4000-8000-000000000002",
+      databaseId: "00000000-0000-4000-8000-000000000001",
+      linkedById: "user-1",
+      position: 0,
+    },
+    {
+      dataSourceId: "00000000-0000-4000-8000-000000000002",
+      databaseId: "00000000-0000-4000-8000-000000000001",
+      id: "00000000-0000-4000-8000-000000000003",
       name: "Table",
       position: 0,
       type: "table",
@@ -205,7 +209,7 @@ test("createDatabaseService creates database, default view, and placement atomic
   assert.deepEqual(mocks.placement.mock.calls[0], [
     tx,
     {
-      id: "00000000-0000-4000-8000-000000000003",
+      id: "00000000-0000-4000-8000-000000000004",
       itemId: "00000000-0000-4000-8000-000000000001",
       itemKind: "database",
       parentId: "page-1",
@@ -283,7 +287,8 @@ test("createDatabaseService skips parent reads and placement for standalone data
   const { inserts } = transactionRecorder();
   vi.spyOn(crypto, "randomUUID")
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000001")
-    .mockReturnValueOnce("00000000-0000-4000-8000-000000000002");
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000002")
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000003");
 
   const result = await createDatabaseService({
     standalone: true,
@@ -299,12 +304,13 @@ test("createDatabaseService skips parent reads and placement for standalone data
   ]);
   assert.deepEqual(result, {
     databaseId: "00000000-0000-4000-8000-000000000001",
-    defaultViewId: "00000000-0000-4000-8000-000000000002",
+    dataSourceId: "00000000-0000-4000-8000-000000000002",
+    defaultViewId: "00000000-0000-4000-8000-000000000003",
     name: "New database",
     pageId: null,
     parentPlacement: null,
   });
-  assert.equal(inserts.length, 2);
+  assert.equal(inserts.length, 4);
   assert.equal((inserts[0] as { pageId: unknown }).pageId, null);
 });
 
@@ -354,7 +360,8 @@ test("createDatabaseService inherits the parent page favorite", async () => {
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000001")
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000002")
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000003")
-    .mockReturnValueOnce("00000000-0000-4000-8000-000000000004");
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000004")
+    .mockReturnValueOnce("00000000-0000-4000-8000-000000000005");
 
   await createDatabaseService({
     pageId: "page-1",
@@ -362,9 +369,9 @@ test("createDatabaseService inherits the parent page favorite", async () => {
     workspaceId: "workspace-1",
   });
 
-  assert.deepEqual(inserts[2], {
+  assert.deepEqual(inserts[4], {
     databaseId: "00000000-0000-4000-8000-000000000001",
-    id: "00000000-0000-4000-8000-000000000004",
+    id: "00000000-0000-4000-8000-000000000005",
     userId: "user-1",
   });
 });

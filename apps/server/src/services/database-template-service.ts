@@ -1,12 +1,12 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
 
-import { getEffectiveDatabaseAccessForRecord } from "../access";
 import { encodePageContentAsYjs } from "../collaboration/service";
 import type { RuntimeEnv } from "../config";
 import { db } from "../db";
 import {
   database,
+  dataSource,
   databaseProperty,
   databaseRow,
   favorite,
@@ -16,8 +16,8 @@ import {
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
-import { requireDatabaseEditAccess } from "./database-access";
-import { commitDatabaseMutation } from "./database-commit";
+import { requireDataSourceEditAccess } from "./data-source-access";
+import { commitDataSourceMutation } from "./database-commit";
 import type { DatabaseDelta } from "./database-delta";
 import { getDatabasePayload } from "./database-payload";
 import {
@@ -62,7 +62,7 @@ type TemplateProperty = {
 export async function applyDatabaseTemplateService(
   input: DatabaseTemplateInput,
 ) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
@@ -80,11 +80,11 @@ export async function applyDatabaseTemplateService(
     };
   });
 
-  const commit = await commitDatabaseMutation(
+  const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
-      changed: ["database", "properties", "rows", "values"],
-      databaseId: existing.id,
+      changed: ["dataSource", "properties", "rows", "values"],
+      dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
@@ -94,9 +94,9 @@ export async function applyDatabaseTemplateService(
       // Serialize repeated template clicks before checking for existing rows and
       // properties, so a template can never be partially or doubly seeded.
       await tx
-        .select({ id: database.id })
-        .from(database)
-        .where(eq(database.id, existing.id))
+        .select({ id: dataSource.id })
+        .from(dataSource)
+        .where(eq(dataSource.id, existing.id))
         .for("update");
 
       const [existingProperties, existingRows, databaseFavorites] =
@@ -117,7 +117,7 @@ export async function applyDatabaseTemplateService(
             )
             .where(
               and(
-                eq(databaseProperty.databaseId, existing.id),
+                eq(databaseProperty.dataSourceId, existing.id),
                 isNull(pageProperty.deletedAt),
               ),
             )
@@ -127,7 +127,7 @@ export async function applyDatabaseTemplateService(
             .from(databaseRow)
             .where(
               and(
-                eq(databaseRow.databaseId, existing.id),
+                eq(databaseRow.dataSourceId, existing.id),
                 isNull(databaseRow.deletedAt),
               ),
             )
@@ -138,7 +138,7 @@ export async function applyDatabaseTemplateService(
             .where(
               and(
                 eq(favorite.userId, input.userId),
-                eq(favorite.databaseId, existing.id),
+                eq(favorite.databaseId, existing.parentDatabaseId),
               ),
             )
             .limit(1),
@@ -177,9 +177,9 @@ export async function applyDatabaseTemplateService(
       );
 
       await tx
-        .update(database)
+        .update(dataSource)
         .set({ config: input.config, name: input.name, updatedAt: now })
-        .where(eq(database.id, existing.id));
+        .where(eq(dataSource.id, existing.id));
 
       if (createdProperties.length > 0) {
         await tx.insert(pageProperty).values(
@@ -196,7 +196,7 @@ export async function applyDatabaseTemplateService(
         await tx.insert(databaseProperty).values(
           createdProperties.map((property) => ({
             createdAt: now,
-            databaseId: existing.id,
+            dataSourceId: existing.id,
             id: property.databasePropertyId,
             position: property.position,
             propertyId: property.pagePropertyId,
@@ -242,7 +242,7 @@ export async function applyDatabaseTemplateService(
           createdRows.map((row) => ({
             createdAt: now,
             createdById: input.userId,
-            databaseId: existing.id,
+            dataSourceId: existing.id,
             id: row.rowId,
             lastEditedById: input.userId,
             pageId: row.pageId,
@@ -256,7 +256,7 @@ export async function applyDatabaseTemplateService(
             id: crypto.randomUUID(),
             itemId: row.pageId,
             itemKind: "page",
-            parentId: existing.id,
+            parentId: existing.parentDatabaseId,
             parentKind: "database",
             placementKind: "database_row",
             position: row.position,
@@ -337,7 +337,7 @@ export async function applyDatabaseTemplateService(
 
       return {
         delta: {
-          database: {
+          dataSource: {
             config: input.config,
             id: existing.id,
             name: input.name,
@@ -347,7 +347,7 @@ export async function applyDatabaseTemplateService(
             ? {
                 properties: createdProperties.map((property) => ({
                   createdAt: nowIso,
-                  databaseId: existing.id,
+                  dataSourceId: existing.id,
                   id: property.databasePropertyId,
                   position: property.position,
                   property: {
@@ -373,7 +373,7 @@ export async function applyDatabaseTemplateService(
                 rows: createdRows.map((row) => ({
                   createdAt: nowIso,
                   createdById: input.userId,
-                  databaseId: existing.id,
+                  dataSourceId: existing.id,
                   deletedAt: null,
                   deletedById: null,
                   id: row.rowId,
@@ -407,7 +407,10 @@ export async function applyDatabaseTemplateService(
     },
   );
 
-  const payload = await getDatabasePayload(existing.id, input.userId);
+  const payload = await getDatabasePayload(
+    existing.parentDatabaseId,
+    input.userId,
+  );
 
   if (!payload) {
     throw new Error("Database template was applied but could not be loaded");
@@ -415,15 +418,6 @@ export async function applyDatabaseTemplateService(
 
   return {
     commit,
-    payload: {
-      ...payload,
-      database: {
-        ...payload.database,
-        accessLevel: await getEffectiveDatabaseAccessForRecord(
-          existing,
-          input.userId,
-        ),
-      },
-    },
+    payload,
   };
 }

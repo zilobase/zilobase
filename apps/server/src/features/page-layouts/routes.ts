@@ -18,7 +18,13 @@ import {
   isPrivilegedOrgRole,
 } from "../../access"
 import { db } from "../../db"
-import { database, databaseRow, page, pageLayout } from "../../db/schema"
+import {
+  dataSource,
+  database,
+  databaseRow,
+  page,
+  pageLayout,
+} from "../../db/schema"
 import type { AppBindings } from "../../types"
 
 export const pageLayoutRoutes = new Hono<AppBindings>()
@@ -71,7 +77,13 @@ async function deleteDatabasePageOverrides(
     .from(databaseRow)
     .where(
       and(
-        eq(databaseRow.databaseId, databaseId),
+        inArray(
+          databaseRow.dataSourceId,
+          writer
+            .select({ id: dataSource.id })
+            .from(dataSource)
+            .where(eq(dataSource.parentDatabaseId, databaseId)),
+        ),
         isNull(databaseRow.deletedAt),
       ),
     )
@@ -102,7 +114,13 @@ async function getTargetContext(input: {
     const [firstRow] = await db
       .select({ pageId: databaseRow.pageId })
       .from(databaseRow)
-      .where(and(eq(databaseRow.databaseId, record.id), isNull(databaseRow.deletedAt)))
+      .innerJoin(dataSource, eq(dataSource.id, databaseRow.dataSourceId))
+      .where(
+        and(
+          eq(dataSource.parentDatabaseId, record.id),
+          isNull(databaseRow.deletedAt),
+        ),
+      )
       .orderBy(asc(databaseRow.position))
       .limit(1)
 
@@ -124,9 +142,10 @@ async function getTargetContext(input: {
   if (!record) return null
 
   const [row] = await db
-    .select({ databaseId: databaseRow.databaseId })
+    .select({ databaseId: dataSource.parentDatabaseId })
     .from(databaseRow)
-    .innerJoin(database, eq(database.id, databaseRow.databaseId))
+    .innerJoin(dataSource, eq(dataSource.id, databaseRow.dataSourceId))
+    .innerJoin(database, eq(database.id, dataSource.parentDatabaseId))
     .where(
       and(
         eq(databaseRow.pageId, record.id),

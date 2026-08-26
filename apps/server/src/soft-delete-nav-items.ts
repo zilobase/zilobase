@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db } from "./db";
-import { database, databaseRow, page } from "./db/schema";
+import { dataSource, database, databaseRow, page } from "./db/schema";
 import { loadWorkspacePageGraph } from "./page-graph-loader";
 
 type SoftDeleteResult = {
@@ -87,7 +87,13 @@ async function softDeleteRecords({
         })
         .where(
           and(
-            inArray(databaseRow.databaseId, databaseIds),
+            inArray(
+              databaseRow.dataSourceId,
+              tx
+                .select({ id: dataSource.id })
+                .from(dataSource)
+                .where(inArray(dataSource.parentDatabaseId, databaseIds)),
+            ),
             isNull(databaseRow.deletedAt),
           ),
         );

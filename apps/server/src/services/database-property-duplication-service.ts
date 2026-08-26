@@ -7,8 +7,8 @@ import {
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
-import { requireDatabaseEditAccess } from "./database-access";
-import { commitDatabaseMutation } from "./database-commit";
+import { requireDataSourceEditAccess } from "./data-source-access";
+import { commitDataSourceMutation } from "./database-commit";
 import { fetchDatabasePropertyDelta } from "./database-delta";
 import { getDuplicatePropertyName } from "./database-property-import";
 import { ServiceMutationError } from "./mutation-error";
@@ -20,7 +20,7 @@ export async function duplicateDatabasePropertyService(input: {
   includeValues?: boolean;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
@@ -29,11 +29,11 @@ export async function duplicateDatabasePropertyService(input: {
   const databasePropertyId = crypto.randomUUID();
   let duplicateName = "";
 
-  const commit = await commitDatabaseMutation(
+  const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
       changed: includeValues ? ["properties", "values"] : ["properties"],
-      databaseId: existing.id,
+      dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
@@ -47,7 +47,7 @@ export async function duplicateDatabasePropertyService(input: {
         .where(
           and(
             eq(databaseProperty.id, input.databasePropertyId),
-            eq(databaseProperty.databaseId, existing.id),
+            eq(databaseProperty.dataSourceId, existing.id),
             eq(pageProperty.workspaceId, existing.workspaceId),
             isNull(pageProperty.deletedAt),
           ),
@@ -71,7 +71,7 @@ export async function duplicateDatabasePropertyService(input: {
         )
         .where(
           and(
-            eq(databaseProperty.databaseId, existing.id),
+            eq(databaseProperty.dataSourceId, existing.id),
             eq(pageProperty.workspaceId, existing.workspaceId),
             isNull(pageProperty.deletedAt),
           ),
@@ -90,7 +90,7 @@ export async function duplicateDatabasePropertyService(input: {
             .where(
               and(
                 eq(pagePropertyValue.propertyId, source.property.id),
-                eq(databaseRow.databaseId, existing.id),
+                eq(databaseRow.dataSourceId, existing.id),
                 isNull(databaseRow.deletedAt),
               ),
             )
@@ -110,7 +110,7 @@ export async function duplicateDatabasePropertyService(input: {
         })
         .where(
           and(
-            eq(databaseProperty.databaseId, existing.id),
+            eq(databaseProperty.dataSourceId, existing.id),
             gte(databaseProperty.position, targetPosition),
           ),
         );
@@ -125,7 +125,7 @@ export async function duplicateDatabasePropertyService(input: {
       });
       await tx.insert(databaseProperty).values({
         createdAt: now,
-        databaseId: existing.id,
+        dataSourceId: existing.id,
         id: databasePropertyId,
         position: targetPosition,
         propertyId: newPropertyId,
@@ -177,7 +177,7 @@ export async function duplicateDatabasePropertyService(input: {
 
   return {
     commit,
-    databaseId: existing.id,
+    dataSourceId: existing.id,
     databasePropertyId,
     name: duplicateName,
     pagePropertyId: newPropertyId,

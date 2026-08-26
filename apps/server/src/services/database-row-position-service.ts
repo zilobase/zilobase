@@ -8,8 +8,8 @@ import {
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
-import { requireDatabaseEditAccess } from "./database-access";
-import { commitDatabaseMutation } from "./database-commit";
+import { requireDataSourceEditAccess } from "./data-source-access";
+import { commitDataSourceMutation } from "./database-commit";
 import { rowPositionDelta } from "./database-delta";
 import {
   hasDuplicateValues,
@@ -40,7 +40,7 @@ export async function reorderDatabaseRowsService(input: {
   rowIds: string[];
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
@@ -49,11 +49,11 @@ export async function reorderDatabaseRowsService(input: {
     throw new ServiceMutationError("rowIds must not contain duplicates", 400);
   }
 
-  const commit = await commitDatabaseMutation(
+  const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
       changed: ["rows"],
-      databaseId: existing.id,
+      dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
@@ -62,7 +62,7 @@ export async function reorderDatabaseRowsService(input: {
         .from(databaseRow)
         .where(
           and(
-            eq(databaseRow.databaseId, existing.id),
+            eq(databaseRow.dataSourceId, existing.id),
             isNull(databaseRow.deletedAt),
           ),
         );
@@ -84,7 +84,7 @@ export async function reorderDatabaseRowsService(input: {
     },
   );
 
-  return { commit, databaseId: existing.id };
+  return { commit, dataSourceId: existing.id };
 }
 
 export async function moveDatabaseRowService(input: {
@@ -96,7 +96,7 @@ export async function moveDatabaseRowService(input: {
   rowIds: string[];
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
@@ -105,11 +105,11 @@ export async function moveDatabaseRowService(input: {
     throw new ServiceMutationError("rowIds must not contain duplicates", 400);
   }
 
-  const commit = await commitDatabaseMutation(
+  const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
       changed: input.groupPropertyId ? ["rows", "values"] : ["rows"],
-      databaseId: existing.id,
+      dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
@@ -118,7 +118,7 @@ export async function moveDatabaseRowService(input: {
         .from(databaseRow)
         .where(
           and(
-            eq(databaseRow.databaseId, existing.id),
+            eq(databaseRow.dataSourceId, existing.id),
             isNull(databaseRow.deletedAt),
           ),
         );
@@ -148,7 +148,7 @@ export async function moveDatabaseRowService(input: {
           )
           .where(
             and(
-              eq(databaseProperty.databaseId, existing.id),
+              eq(databaseProperty.dataSourceId, existing.id),
               eq(databaseProperty.propertyId, input.groupPropertyId),
               eq(pageProperty.workspaceId, existing.workspaceId),
               isNull(pageProperty.deletedAt),
@@ -196,7 +196,7 @@ export async function moveDatabaseRowService(input: {
           .where(
             and(
               eq(databaseRow.id, input.rowId),
-              eq(databaseRow.databaseId, existing.id),
+              eq(databaseRow.dataSourceId, existing.id),
             ),
           );
         await tx.update(page).set({ updatedAt: now }).where(eq(page.id, row.pageId));
@@ -231,5 +231,5 @@ export async function moveDatabaseRowService(input: {
     },
   );
 
-  return { commit, databaseId: existing.id };
+  return { commit, dataSourceId: existing.id };
 }

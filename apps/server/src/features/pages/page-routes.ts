@@ -23,6 +23,8 @@ import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
 import { db } from "../../db";
 import {
   database,
+  dataSource,
+  databaseDataSource,
   databaseProperty,
   databaseRow,
   databaseView,
@@ -171,12 +173,13 @@ const getPagePropertyPayload = async (
   // handshake will refetch it instead of treating stale data as current.
   const memberships = await db
     .selectDistinct({
-      databaseId: databaseRow.databaseId,
+      databaseId: dataSource.parentDatabaseId,
       rowId: databaseRow.id,
       version: database.version,
     })
     .from(databaseRow)
-    .innerJoin(database, eq(databaseRow.databaseId, database.id))
+    .innerJoin(dataSource, eq(databaseRow.dataSourceId, dataSource.id))
+    .innerJoin(database, eq(dataSource.parentDatabaseId, database.id))
     .where(
       and(
         eq(databaseRow.pageId, pageId),
@@ -187,14 +190,15 @@ const getPagePropertyPayload = async (
   const [databaseProperties, values] = await Promise.all([
     db
       .select({
-        databaseId: databaseRow.databaseId,
+        databaseId: dataSource.parentDatabaseId,
         property: pageProperty,
       })
       .from(databaseRow)
       .innerJoin(
         databaseProperty,
-        eq(databaseRow.databaseId, databaseProperty.databaseId),
+        eq(databaseRow.dataSourceId, databaseProperty.dataSourceId),
       )
+      .innerJoin(dataSource, eq(databaseRow.dataSourceId, dataSource.id))
       .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
       .where(
         and(
@@ -508,15 +512,16 @@ pageRoutes.get("/", async (c) => {
     activeDatabaseIds.size > 0
       ? await db
           .select({
-            databaseId: databaseRow.databaseId,
+            databaseId: dataSource.parentDatabaseId,
             id: databaseRow.id,
             pageId: databaseRow.pageId,
             position: databaseRow.position,
           })
           .from(databaseRow)
+          .innerJoin(dataSource, eq(databaseRow.dataSourceId, dataSource.id))
           .where(
             and(
-              inArray(databaseRow.databaseId, [...activeDatabaseIds]),
+              inArray(dataSource.parentDatabaseId, [...activeDatabaseIds]),
               isNull(databaseRow.deletedAt),
             ),
           )
@@ -574,7 +579,7 @@ pageRoutes.get("/", async (c) => {
       ].filter((createdById): createdById is string => Boolean(createdById)),
     ),
   ];
-  const [creatorRows, databaseViews] = await Promise.all([
+  const [creatorRows, databaseViews, databaseSourceLinks] = await Promise.all([
     creatorIds.length > 0
       ? db
           .select({
@@ -591,6 +596,7 @@ pageRoutes.get("/", async (c) => {
           .select({
             config: databaseView.config,
             createdAt: databaseView.createdAt,
+            dataSourceId: databaseView.dataSourceId,
             databaseId: databaseView.databaseId,
             id: databaseView.id,
             name: databaseView.name,
@@ -600,6 +606,27 @@ pageRoutes.get("/", async (c) => {
           })
           .from(databaseView)
           .where(inArray(databaseView.databaseId, [...activeDatabaseIds]))
+      : Promise.resolve([]),
+    activeDatabaseIds.size > 0
+      ? db
+          .select({
+            config: dataSource.config,
+            databaseId: databaseDataSource.databaseId,
+            parentDatabaseId: dataSource.parentDatabaseId,
+            position: databaseDataSource.position,
+          })
+          .from(databaseDataSource)
+          .innerJoin(
+            dataSource,
+            eq(databaseDataSource.dataSourceId, dataSource.id),
+          )
+          .where(
+            and(
+              inArray(databaseDataSource.databaseId, [...activeDatabaseIds]),
+              isNull(dataSource.deletedAt),
+            ),
+          )
+          .orderBy(asc(databaseDataSource.position))
       : Promise.resolve([]),
   ]);
   const creatorsById = new Map(
@@ -622,8 +649,23 @@ pageRoutes.get("/", async (c) => {
       view,
     ]);
   }
+  const primarySourceByDatabaseId = new Map<
+    string,
+    (typeof databaseSourceLinks)[number]
+  >();
+
+  for (const sourceLink of databaseSourceLinks) {
+    const current = primarySourceByDatabaseId.get(sourceLink.databaseId);
+    const isOwned = sourceLink.parentDatabaseId === sourceLink.databaseId;
+    const currentIsOwned = current?.parentDatabaseId === current?.databaseId;
+
+    if (!current || (isOwned && !currentIsOwned)) {
+      primarySourceByDatabaseId.set(sourceLink.databaseId, sourceLink);
+    }
+  }
   type ActiveDatabasePayload = (typeof activeDatabases)[number] & {
     createdBy: (typeof creatorRows)[number] | null;
+    dataSourceConfig: unknown;
     deletedBy: (typeof creatorRows)[number] | null;
     isFavorite: boolean;
     lastVisitedAt: Date | null;
@@ -646,6 +688,8 @@ pageRoutes.get("/", async (c) => {
         : null,
       isFavorite: favoriteDatabaseIds.has(record.id),
       lastVisitedAt: visitsByKey.get(`database:${record.id}`) ?? null,
+      dataSourceConfig:
+        primarySourceByDatabaseId.get(record.id)?.config ?? null,
       views,
     });
   }
@@ -1486,9 +1530,10 @@ pageRoutes.get("/:id", async (c) => {
         : Promise.resolve([]),
       user && hasAccess(accessLevel, "view")
         ? db
-            .selectDistinct({ databaseId: databaseRow.databaseId })
+            .selectDistinct({ databaseId: dataSource.parentDatabaseId })
             .from(databaseRow)
-            .innerJoin(database, eq(databaseRow.databaseId, database.id))
+            .innerJoin(dataSource, eq(databaseRow.dataSourceId, dataSource.id))
+            .innerJoin(database, eq(dataSource.parentDatabaseId, database.id))
             .where(
               and(
                 eq(databaseRow.pageId, record.id),
@@ -2092,7 +2137,7 @@ pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
   const { value = null } = body as { value?: unknown };
   const candidateMemberships = await db
     .select({
-      databaseId: databaseRow.databaseId,
+      databaseId: dataSource.parentDatabaseId,
       property: pageProperty,
       rowId: databaseRow.id,
     })
@@ -2100,12 +2145,13 @@ pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
     .innerJoin(
       databaseProperty,
       and(
-        eq(databaseProperty.databaseId, databaseRow.databaseId),
+        eq(databaseProperty.dataSourceId, databaseRow.dataSourceId),
         eq(databaseProperty.propertyId, propertyId),
       ),
     )
     .innerJoin(pageProperty, eq(pageProperty.id, databaseProperty.propertyId))
-    .innerJoin(database, eq(database.id, databaseRow.databaseId))
+    .innerJoin(dataSource, eq(dataSource.id, databaseRow.dataSourceId))
+    .innerJoin(database, eq(database.id, dataSource.parentDatabaseId))
     .where(
       and(
         eq(databaseRow.pageId, record.id),
@@ -2454,8 +2500,12 @@ pageRoutes.patch("/:id", async (c) => {
             }
 
             const rows = await tx
-              .select()
+              .select({
+                databaseId: dataSource.parentDatabaseId,
+                row: databaseRow,
+              })
               .from(databaseRow)
+              .innerJoin(dataSource, eq(dataSource.id, databaseRow.dataSourceId))
               .where(
                 and(
                   eq(databaseRow.pageId, existing.id),
@@ -2464,9 +2514,9 @@ pageRoutes.patch("/:id", async (c) => {
               );
 
             return {
-              mutations: rows.map((row) => ({
+              mutations: rows.map(({ databaseId, row }) => ({
                 changed: ["rows" as const],
-                databaseId: row.databaseId,
+                databaseId,
                 delta: {
                   rows: [
                     {
@@ -2596,7 +2646,15 @@ pageRoutes.post("/:id/restore", async (c) => {
         })
         .where(
           and(
-            inArray(databaseRow.databaseId, restoredDatabaseIds),
+            inArray(
+              databaseRow.dataSourceId,
+              tx
+                .select({ id: dataSource.id })
+                .from(dataSource)
+                .where(
+                  inArray(dataSource.parentDatabaseId, restoredDatabaseIds),
+                ),
+            ),
             eq(databaseRow.deletedAt, deletedAt),
             existing.deletedById
               ? eq(databaseRow.deletedById, existing.deletedById)

@@ -9,7 +9,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("./database-access", () => ({ requireDatabaseEditAccess: mocks.access }));
-vi.mock("./database-commit", () => ({ commitDatabaseMutation: mocks.commit }));
+vi.mock("./data-source-access", () => ({ requireDataSourceEditAccess: mocks.access }));
+vi.mock("./database-commit", () => ({
+  commitDatabaseMutation: mocks.commit,
+  commitDataSourceMutation: mocks.commit,
+}));
 vi.mock("./database-position-service", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./database-position-service")>()),
   updateDatabaseRowPlacementPositions: mocks.placements,

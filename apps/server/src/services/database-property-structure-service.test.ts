@@ -10,8 +10,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./database-access", () => ({
   requireDatabaseEditAccess: mocks.access,
 }));
+vi.mock("./data-source-access", () => ({
+  requireDataSourceEditAccess: mocks.access,
+}));
 vi.mock("./database-commit", () => ({
   commitDatabaseMutation: mocks.commit,
+  commitDataSourceMutation: mocks.commit,
 }));
 vi.mock("./database-position-service", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./database-position-service")>()),
@@ -86,7 +90,7 @@ test("reorderDatabasePropertiesService validates and persists the full order", a
         ],
       },
     },
-    databaseId: "database-1",
+    dataSourceId: "database-1",
   });
   assert.equal(mocks.updatePositions.mock.calls[0]?.[0], tx);
   assert.deepEqual(mocks.updatePositions.mock.calls[0]?.slice(1, 3), [
@@ -96,7 +100,7 @@ test("reorderDatabasePropertiesService validates and persists the full order", a
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
     actorId: "user-1",
     changed: ["properties"],
-    databaseId: "database-1",
+    dataSourceId: "database-1",
     env: { ENV: "test" },
   });
 });
@@ -149,7 +153,7 @@ test("deleteDatabasePropertyService soft deletes and compacts positions", async 
         removedPropertyIds: ["column-2"],
       },
     },
-    databaseId: "database-1",
+    dataSourceId: "database-1",
   });
   assert.equal((updates[0] as Record<string, unknown>).deletedById, "user-1");
   assert.equal(mocks.updatePositions.mock.calls[0]?.[0], tx);

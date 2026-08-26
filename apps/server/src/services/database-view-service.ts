@@ -6,10 +6,15 @@ import {
   databaseProperty,
   databaseRow,
   databaseView,
+  databaseDataSource,
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
 import { requireDatabaseEditAccess } from "./database-access";
+import {
+  requireDataSourceAccess,
+  requireDataSourceEditAccess,
+} from "./data-source-access";
 import { commitDatabaseMutation } from "./database-commit";
 import {
   fetchDatabasePropertyDelta,
@@ -58,6 +63,7 @@ function toStringArray(value: unknown) {
 export async function createDatabaseViewService(input: {
   config?: unknown;
   databaseId: string;
+  dataSourceId: string;
   env?: RuntimeEnv;
   name?: string;
   type?: string;
@@ -70,6 +76,24 @@ export async function createDatabaseViewService(input: {
   const type = input.type?.trim() || "table";
   const baseName = input.name?.trim() || "Table";
   const config = input.config ?? null;
+
+  const [sourceLink] = await db
+    .select({ dataSourceId: databaseDataSource.dataSourceId })
+    .from(databaseDataSource)
+    .where(
+      and(
+        eq(databaseDataSource.databaseId, existing.id),
+        eq(databaseDataSource.dataSourceId, input.dataSourceId),
+      ),
+    )
+    .orderBy(asc(databaseDataSource.position))
+    .limit(1);
+
+  if (!sourceLink) {
+    throw new ServiceMutationError("Data source is not linked", 404);
+  }
+
+  await requireDataSourceAccess(sourceLink.dataSourceId, input.userId, "view");
 
   const existingViews = await db
     .select({ name: databaseView.name, position: databaseView.position })
@@ -96,6 +120,7 @@ export async function createDatabaseViewService(input: {
       await tx.insert(databaseView).values({
         id: viewId,
         databaseId: existing.id,
+        dataSourceId: sourceLink.dataSourceId,
         name: nextName,
         type,
         config,
@@ -115,6 +140,7 @@ export async function createDatabaseViewService(input: {
   return {
     commit,
     databaseId: existing.id,
+    dataSourceId: sourceLink.dataSourceId,
     name: nextName,
     type,
     viewId,
@@ -136,7 +162,7 @@ export async function updateDatabaseViewService(input: {
   );
 
   const [existingView] = await db
-    .select({ id: databaseView.id })
+    .select({ id: databaseView.id, dataSourceId: databaseView.dataSourceId })
     .from(databaseView)
     .where(
       and(
@@ -178,13 +204,17 @@ export async function updateDatabaseViewService(input: {
   let effectiveConfig = input.config;
 
   if (needsSubItemProperties && requestedSubItems) {
+    const source = await requireDataSourceEditAccess(
+      existingView.dataSourceId,
+      input.userId,
+    );
     const columns = await db
       .select({ column: databaseProperty, property: pageProperty })
       .from(databaseProperty)
       .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
       .where(
         and(
-          eq(databaseProperty.databaseId, existing.id),
+          eq(databaseProperty.dataSourceId, existingView.dataSourceId),
           isNull(pageProperty.deletedAt),
         ),
       )
@@ -203,9 +233,10 @@ export async function updateDatabaseViewService(input: {
     const parentName = parentColumn?.property.name ?? "Parent item";
     const subItemName = subItemColumn?.property.name ?? "Sub-item";
     const relationBase = {
-      relatedDatabaseId: existing.id,
-      relatedDatabaseName: existing.name,
-      relatedPageName: existing.name,
+      relatedDatabaseId: source.parentDatabaseId,
+      relatedDataSourceId: source.id,
+      relatedDatabaseName: source.name,
+      relatedPageName: source.name,
       syncStatus: "synced",
       twoWayRelation: true,
     };
@@ -234,7 +265,7 @@ export async function updateDatabaseViewService(input: {
       .from(databaseRow)
       .where(
         and(
-          eq(databaseRow.databaseId, existing.id),
+          eq(databaseRow.dataSourceId, existingView.dataSourceId),
           isNull(databaseRow.deletedAt),
         ),
       );
@@ -379,7 +410,7 @@ export async function updateDatabaseViewService(input: {
           });
           await tx.insert(databaseProperty).values({
             id: parentColumnId,
-            databaseId: existing.id,
+            dataSourceId: existingView.dataSourceId,
             propertyId: parentPropertyId,
             position: columns.length,
             createdAt: now,
@@ -404,7 +435,7 @@ export async function updateDatabaseViewService(input: {
           });
           await tx.insert(databaseProperty).values({
             id: subItemColumnId,
-            databaseId: existing.id,
+            dataSourceId: existingView.dataSourceId,
             propertyId: subItemPropertyId,
             position: columns.length + (existingParent ? 0 : 1),
             createdAt: now,
@@ -440,12 +471,12 @@ export async function updateDatabaseViewService(input: {
       if (subItemSetup) {
         const [parentDelta, subItemDelta] = await Promise.all([
           fetchDatabasePropertyDelta(
-            existing.id,
+            existingView.dataSourceId,
             subItemSetup.parentColumnId,
             tx,
           ),
           fetchDatabasePropertyDelta(
-            existing.id,
+            existingView.dataSourceId,
             subItemSetup.subItemColumnId,
             tx,
           ),
@@ -497,8 +528,8 @@ export async function deleteDatabaseViewService(input: {
 
   if (views.length <= 1) {
     throw new ServiceMutationError(
-      "A database must have at least one view",
-      400,
+      "The last view cannot be deleted. A database must always have one view.",
+      409,
     );
   }
 

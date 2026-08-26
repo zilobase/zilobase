@@ -7,8 +7,8 @@ import {
   pageProperty,
   pagePropertyValue,
 } from "../db/schema";
-import { requireDatabaseEditAccess } from "./database-access";
-import { commitDatabaseMutation } from "./database-commit";
+import { requireDataSourceEditAccess } from "./data-source-access";
+import { commitDataSourceMutation } from "./database-commit";
 import { fetchDatabasePropertyDelta } from "./database-delta";
 import {
   formatDatePropertyValueAsText,
@@ -29,7 +29,7 @@ export async function createDatabasePropertyService(input: {
   type?: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
@@ -48,7 +48,7 @@ export async function createDatabasePropertyService(input: {
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
-        eq(databaseProperty.databaseId, existing.id),
+        eq(databaseProperty.dataSourceId, existing.id),
         isNull(pageProperty.deletedAt),
       ),
     );
@@ -60,11 +60,11 @@ export async function createDatabasePropertyService(input: {
       ? columns.length
       : Math.min(input.position, columns.length);
 
-  const commit = await commitDatabaseMutation(
+  const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
       changed: ["properties"],
-      databaseId: existing.id,
+      dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
@@ -78,7 +78,7 @@ export async function createDatabasePropertyService(input: {
         })
         .where(
           and(
-            eq(databaseProperty.databaseId, existing.id),
+            eq(databaseProperty.dataSourceId, existing.id),
             gte(databaseProperty.position, targetPosition),
           ),
         );
@@ -93,7 +93,7 @@ export async function createDatabasePropertyService(input: {
       });
       await tx.insert(databaseProperty).values({
         id: databasePropertyId,
-        databaseId: existing.id,
+        dataSourceId: existing.id,
         propertyId: pagePropertyId,
         position: targetPosition,
         createdAt: now,
@@ -125,7 +125,8 @@ export async function createDatabasePropertyService(input: {
 
   return {
     commit,
-    databaseId: existing.id,
+    databaseId: existing.parentDatabaseId,
+    dataSourceId: existing.id,
     databasePropertyId,
     name,
     type,
@@ -143,7 +144,7 @@ export async function updateDatabasePropertyService(input: {
   type?: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
+  const existing = await requireDataSourceEditAccess(
     input.databaseId,
     input.userId,
   );
@@ -154,7 +155,7 @@ export async function updateDatabasePropertyService(input: {
     .where(
       and(
         eq(databaseProperty.id, input.databasePropertyId),
-        eq(databaseProperty.databaseId, existing.id),
+        eq(databaseProperty.dataSourceId, existing.id),
       ),
     )
     .limit(1);
@@ -220,7 +221,7 @@ export async function updateDatabasePropertyService(input: {
     columnValues.position = input.position;
   }
 
-  const commit = await commitDatabaseMutation(
+  const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
       changed:
@@ -231,7 +232,7 @@ export async function updateDatabasePropertyService(input: {
           (previousType === "date" && effectiveType === "text"))
           ? ["properties", "values"]
           : ["properties"],
-      databaseId: existing.id,
+      dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
@@ -334,7 +335,8 @@ export async function updateDatabasePropertyService(input: {
 
   return {
     commit,
-    databaseId: existing.id,
+    databaseId: existing.parentDatabaseId,
+    dataSourceId: existing.id,
     databasePropertyId: column.id,
     pagePropertyId: column.propertyId,
   };
