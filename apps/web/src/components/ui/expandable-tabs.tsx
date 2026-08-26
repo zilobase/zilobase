@@ -107,7 +107,7 @@ export function ExpandableTabs({
           return (
             <div
               aria-hidden="true"
-              className="mx-1 h-6 w-px bg-sidebar-border"
+              className="mx-1 h-6 w-px bg-border"
               key={`separator-${index}`}
             />
           )
@@ -122,9 +122,12 @@ export function ExpandableTabs({
             aria-current={isSelected ? "page" : undefined}
             aria-label={tab.title}
             className={cn(
-              "relative inline-flex h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-transparent py-0.5 text-xs font-medium text-muted-foreground outline-none transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring dark:text-muted-foreground dark:hover:text-foreground",
+              "relative inline-flex h-8 min-w-8 shrink-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-md border border-transparent py-0.5 text-xs font-medium text-muted-foreground outline-none transition-[color,background-color,box-shadow] hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground dark:text-muted-foreground dark:hover:text-accent-foreground",
               isSelected
-                ? cn("bg-active", activeColor)
+                ? cn(
+                    "bg-accent text-accent-foreground hover:bg-active hover:text-active-foreground",
+                    activeColor,
+                  )
                 : undefined,
             )}
             custom={isSelected}

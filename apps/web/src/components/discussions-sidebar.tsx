@@ -173,7 +173,7 @@ export function DiscussionsSidebarPanel({
 
             {visibleThreads.map((thread) => (
               <article
-                className={`rounded-xl border border-border bg-background px-3 py-3 transition-[border-color,background-color,box-shadow] hover:border-border hover:bg-subtle-surface ${
+                className={`rounded-xl border border-border bg-background px-3 py-3 transition-[border-color,background-color,box-shadow] hover:border-border hover:bg-accent ${
                   snapshot.activeThreadId === thread.id
                     ? "border-border bg-subtle-surface ring-1 ring-border"
                     : ""

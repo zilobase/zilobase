@@ -391,7 +391,7 @@ function AppearanceSection() {
             return (
               <button
                 aria-pressed={selected}
-                className="group relative grid w-40 gap-1.5 rounded-lg p-1 text-left text-sm font-medium outline-none transition-colors hover:bg-subtle-surface focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-muted"
+                className="group relative grid w-40 gap-1.5 rounded-lg p-1 text-left text-sm font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-accent"
                 key={option.value}
                 onClick={() => setTheme(option.value as AppearanceModeId)}
                 type="button"
@@ -526,7 +526,7 @@ function ThemePreviewPane({
       data-theme={themeFamily}
     >
       <div className={`absolute inset-y-0 ${sceneClassName}`}>
-        <div className="absolute inset-y-0 left-0 w-[27%] border-r border-sidebar-border bg-sidebar" />
+        <div className="absolute inset-y-0 left-0 w-[27%] border-r border-border bg-sidebar" />
         <div className="absolute left-[13%] top-[13%] flex -translate-x-1/2 gap-1">
           <span className="size-1.5 rounded-full bg-muted-foreground" />
           <span className="size-1.5 rounded-full bg-muted-foreground" />

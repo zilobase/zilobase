@@ -394,7 +394,7 @@ function CommentItemComponent({
                     className={
                       reaction.reactedByMe
                         ? "h-7 gap-1 rounded-full border-transparent bg-primary-subtle px-2 text-primary hover:bg-primary-subtle dark:bg-primary-subtle dark:hover:bg-primary-subtle"
-                        : "h-7 gap-1 rounded-full bg-muted px-2 text-muted-foreground hover:bg-subtle-surface hover:text-foreground"
+                        : "h-7 gap-1 rounded-full bg-muted px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
                     }
                     disabled={isMutating}
                     key={reaction.emoji}
@@ -422,7 +422,7 @@ function CommentItemComponent({
                   >
                     <Button
                       aria-label="Add another reaction"
-                      className="h-7 rounded-full bg-muted px-2 text-muted-foreground hover:bg-subtle-surface hover:text-foreground"
+                      className="h-7 rounded-full bg-muted px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
                       disabled={isMutating}
                       size="sm"
                       type="button"

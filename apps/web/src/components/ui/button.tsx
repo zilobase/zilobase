@@ -11,11 +11,11 @@ const buttonVariants = cva(
       variant: {
         default: "bg-action-primary text-action-primary-foreground hover:bg-action-primary-hover",
         outline:
-          "border-border hover:bg-input hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-input",
+          "border-border hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground aria-expanded:hover:bg-active aria-expanded:hover:text-active-foreground dark:bg-input",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary-hover aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-secondary text-secondary-foreground hover:bg-secondary-hover active:bg-active active:text-active-foreground aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-subtle-surface",
+          "hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground aria-expanded:bg-accent aria-expanded:text-accent-foreground aria-expanded:hover:bg-active aria-expanded:hover:text-active-foreground",
         destructive:
           "bg-status-danger-diff-surface text-destructive hover:bg-status-danger-diff-surface focus-visible:border-destructive focus-visible:ring-destructive dark:bg-status-danger-diff-surface dark:hover:bg-status-danger-diff-surface dark:focus-visible:ring-destructive",
         link: "text-primary underline-offset-4 hover:underline",

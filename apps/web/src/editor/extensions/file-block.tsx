@@ -67,7 +67,7 @@ function FileBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       <Popover onOpenChange={setOpen} open={open}>
         <PopoverTrigger asChild>
           <button
-            className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-subtle-surface hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
+            className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
             contentEditable={false}
             disabled={Boolean(href)}
             type="button"
@@ -133,7 +133,7 @@ function FileBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       </Popover>
       {href ? (
         <a
-          className="flex items-center gap-3 rounded-md border bg-subtle-surface px-3 py-2 text-sm text-foreground no-underline transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
+          className="flex items-center gap-3 rounded-md border bg-subtle-surface px-3 py-2 text-sm text-foreground no-underline transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-5 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
           contentEditable={false}
           download
           href={href}

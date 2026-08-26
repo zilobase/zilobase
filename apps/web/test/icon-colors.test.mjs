@@ -48,6 +48,21 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
+  test("collaborator colors reuse the editor palette", async () => {
+    const { collaboratorColorIds } = await loadModule("/src/lib/color-tokens.ts")
+
+    assert.deepEqual([...collaboratorColorIds], [
+      "blue",
+      "purple",
+      "pink",
+      "orange",
+      "green",
+      "yellow",
+      "red",
+      "brown",
+    ])
+  })
+
   test("icons use palette accents or contrast-safe palette surfaces", async () => {
     const { getIconSolidClassName, getIconTextClassName } = await loadModule(
       "/src/lib/color-tokens.ts",

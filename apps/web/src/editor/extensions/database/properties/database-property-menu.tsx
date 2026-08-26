@@ -282,7 +282,7 @@ export function DatabasePropertyMenu({
                 <PopoverTrigger asChild>
                   <button
                     aria-label="Change property icon"
-                    className="flex size-8 items-center justify-center rounded-md border bg-background transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="flex size-8 items-center justify-center rounded-md border bg-background transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     type="button"
                   >
                     {renderPropertyIcon()}
@@ -291,7 +291,7 @@ export function DatabasePropertyMenu({
                 {customIcon ? (
                   <button
                     aria-label="Reset property icon"
-                    className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground group-focus-within/property-icon:flex group-hover/property-icon:flex [&_svg]:size-2.5"
+                    className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground group-focus-within/property-icon:flex group-hover/property-icon:flex [&_svg]:size-2.5"
                     onClick={() => updatePropertyConfig({ icon: "" })}
                     type="button"
                   >
@@ -741,7 +741,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
                   Triggers
                 </div>
                 <button
-                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
                   type="button"
                 >
                   <span>On page creation</span>
@@ -751,7 +751,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
                   </span>
                 </button>
                 <button
-                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
                   type="button"
                 >
                   <span>On page update</span>

@@ -196,7 +196,7 @@ const DesktopTabItem = memo(function DesktopTabItem({
       <button
         aria-label={`Close ${tab.title}`}
         className={cn(
-          "shrink-0 rounded-sm p-1 hover:bg-muted focus-visible:opacity-100",
+          "shrink-0 rounded-sm p-1 hover:bg-accent hover:text-accent-foreground focus-visible:opacity-100 active:bg-active active:text-active-foreground",
           active ? "opacity-100" : "opacity-0 group-hover/tab:opacity-100",
         )}
         onClick={() => onRemove(tab.id)}

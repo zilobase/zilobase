@@ -118,6 +118,41 @@ export function register({ assert, test }) {
       "Found duplicated, brand-specific, or numbered opacity tokens",
     )
   })
+
+  test("duplicate role colors are aliases, not extra values", async () => {
+    const appDir = join(dirname(fileURLToPath(import.meta.url)), "..")
+    const source = await readFile(
+      join(appDir, "src/styles/design-tokens.css"),
+      "utf8",
+    )
+    const themeSource = source.slice(0, source.indexOf("@theme inline"))
+    const retired = [
+      "--card-foreground",
+      "--popover-foreground",
+      "--muted:",
+      "--active-foreground",
+      "--sidebar-foreground",
+      "--sidebar-primary",
+      "--sidebar-accent",
+      "--sidebar-border",
+      "--sidebar-ring",
+      "--control-knob",
+      "--collaborator-",
+      "--chart-1",
+      "--database-selection-accent",
+      "--desktop-tab-border",
+      "--favicon-foreground",
+      "--transparent-color",
+    ]
+    const found = retired.filter((token) => themeSource.includes(token))
+
+    assert.deepEqual(found, [], "Found retired duplicate color tokens")
+    assert.match(source, /--color-muted: var\(--secondary\)/)
+    assert.match(source, /--color-card-foreground: var\(--foreground\)/)
+    assert.match(source, /--color-active-foreground: var\(--accent-foreground\)/)
+    assert.match(source, /--color-sidebar: var\(--sidebar\)/)
+    assert.doesNotMatch(source, /--color-sidebar-accent:/)
+  })
 }
 
 async function sourceFiles(directory) {

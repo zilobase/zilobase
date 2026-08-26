@@ -54,7 +54,7 @@
   background-image: linear-gradient(
     to bottom,
     transparent calc(100% - 1px),
-    var(--desktop-tab-border) calc(100% - 1px)
+    var(--border) calc(100% - 1px)
   );
 }
 
@@ -93,7 +93,7 @@
   background: radial-gradient(
     circle at 0 0,
     transparent 7px,
-    var(--desktop-tab-border) 7px 8px,
+    var(--border) 7px 8px,
     var(--background) 8px
   );
 }
@@ -103,7 +103,7 @@
   background: radial-gradient(
     circle at 100% 0,
     transparent 7px,
-    var(--desktop-tab-border) 7px 8px,
+    var(--border) 7px 8px,
     var(--background) 8px
   );
 }

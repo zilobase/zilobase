@@ -99,7 +99,7 @@ export function ZilobaseAiItem({
     <>
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          "flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-accent hover:text-accent-foreground",
           isFirst && "rounded-t-none",
           isLast && "rounded-b-none",
         )}

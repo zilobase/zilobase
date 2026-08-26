@@ -291,7 +291,7 @@ export function NavPageSection({
     return {
       className:
         databaseDropTargetId === item.id
-          ? "bg-sidebar-accent text-sidebar-accent-foreground ring-1 ring-sidebar-ring"
+          ? "bg-accent text-accent-foreground ring-1 ring-ring"
           : undefined,
       draggable: !item.isDatabase && !item.isDatabaseView && !item.isMeeting,
       onDragEnter: handleDatabaseDragOver,
@@ -418,7 +418,7 @@ export function NavPageSection({
             <SidebarGroupLabel
               asChild
               className={cn(
-                "group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground",
+                "group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground",
                 showCreateAction
                   ? showSectionMenu
                     ? "pr-24"

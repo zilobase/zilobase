@@ -114,7 +114,7 @@ function DatabaseSortMenuContent({
             </Select>
             <button
               aria-label={`Remove ${sort.label} sort`}
-              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
               onClick={() => onRemoveDatabaseSort(index)}
               type="button"
             >
@@ -127,7 +127,7 @@ function DatabaseSortMenuContent({
         <DropDrawer open={addSortPickerOpen} onOpenChange={setAddSortPickerOpen}>
           <DropDrawerTrigger asChild>
             <button
-              className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
               type="button"
             >
               <Plus className="size-4" />
@@ -151,7 +151,7 @@ function DatabaseSortMenuContent({
         </DropDrawer>
       ) : null}
       <button
-        className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:pointer-events-none disabled:opacity-50"
         disabled={activeDatabaseSorts.length === 0}
         onClick={onClearDatabaseSort}
         type="button"

@@ -738,14 +738,14 @@ function withColor<T extends Omit<DatabasePresenceCollaborator, "color">>(
 
 function stableColor(value: string) {
   const colors = [
-    "var(--collaborator-1)",
-    "var(--collaborator-2)",
-    "var(--collaborator-3)",
-    "var(--collaborator-4)",
-    "var(--collaborator-5)",
-    "var(--collaborator-6)",
-    "var(--collaborator-7)",
-    "var(--collaborator-8)",
+    "var(--editor-blue)",
+    "var(--editor-purple)",
+    "var(--editor-pink)",
+    "var(--editor-orange)",
+    "var(--editor-green)",
+    "var(--editor-yellow)",
+    "var(--editor-red)",
+    "var(--editor-brown)",
   ]
   let hash = 0
   for (let index = 0; index < value.length; index += 1) {

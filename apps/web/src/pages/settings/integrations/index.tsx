@@ -207,7 +207,7 @@ function ConnectorRow({
   const icon = connectorIcon(connector);
 
   return (
-    <div className="flex min-h-20 items-center gap-3 px-4 py-3 hover:bg-sidebar-accent">
+    <div className="flex min-h-20 items-center gap-3 px-4 py-3 hover:bg-accent">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background">
         {icon ? (
           <img alt="" aria-hidden="true" className="size-5" src={icon} />

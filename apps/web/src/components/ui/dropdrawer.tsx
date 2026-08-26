@@ -232,7 +232,7 @@ function MobileDropDrawerContent({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={goBack}
-                    className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
                   >
                     <ChevronLeftIcon className="size-4" />
                   </button>
@@ -508,7 +508,7 @@ function DropDrawerItem({
         data-inset={inset}
         data-disabled={disabled}
         className={cn(
-          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-popover-foreground outline-hidden select-none hover:bg-accent [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-popover-foreground outline-hidden select-none hover:bg-accent active:bg-active [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
           inset && "pl-8",
           variant === "destructive" &&
             "text-destructive hover:bg-status-danger-diff-surface hover:text-destructive [&_svg]:text-destructive",
@@ -884,7 +884,7 @@ function DropDrawerSubTrigger({
         data-slot="drop-drawer-sub-trigger"
         data-inset={inset}
         className={cn(
-          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-popover-foreground outline-hidden select-none hover:bg-accent [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-popover-foreground outline-hidden select-none hover:bg-accent active:bg-active [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
           inset && "pl-8",
           className,
         )}

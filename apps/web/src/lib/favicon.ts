@@ -53,7 +53,7 @@ export function getFaviconColor(
   const paletteColor =
     color === "default" ? "" : getCssVariable(`--editor-${color}`).trim()
 
-  return paletteColor || getCssVariable("--favicon-foreground").trim()
+  return paletteColor || getCssVariable("--foreground").trim()
 }
 
 function isItemRoute(pathname: string) {

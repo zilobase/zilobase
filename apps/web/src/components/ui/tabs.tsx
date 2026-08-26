@@ -38,8 +38,8 @@ export function TabsList({
       className={cn(
         "group/tabs-list relative z-0 flex w-fit items-center justify-center gap-0.5 text-muted-foreground data-[orientation=vertical]:flex-col",
         variant === "default" &&
-          "rounded-lg bg-muted p-[3px] dark:bg-input",
-        variant === "tab" && "rounded-lg p-[3px]",
+          "rounded-lg bg-muted p-1 dark:bg-input",
+        variant === "tab" && "rounded-lg p-1",
         isLineVariant &&
           "bg-transparent data-[orientation=horizontal]:py-1 data-[orientation=vertical]:px-1",
         className,
@@ -71,9 +71,8 @@ export function TabsTab({
   return (
     <TabsPrimitive.Tab
       className={cn(
-        "relative inline-flex h-7 shrink-0 grow cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium text-muted-foreground outline-none transition-[color,background-color,box-shadow] hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring data-disabled:pointer-events-none data-disabled:opacity-50 data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-foreground dark:text-muted-foreground dark:hover:text-foreground dark:data-active:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
-        "group-data-[variant=tab]/tabs-list:transition-none group-data-[variant=tab]/tabs-list:data-active:bg-active",
-        "group-data-[variant=line]/tabs-list:hover:bg-accent group-data-[variant=underline]/tabs-list:hover:bg-accent",
+        "relative inline-flex h-7 shrink-0 grow cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-transparent px-1.5 py-0.5 text-xs font-medium text-muted-foreground outline-none transition-[color,background-color,box-shadow] hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground data-disabled:pointer-events-none data-disabled:opacity-50 data-[orientation=vertical]:w-full data-[orientation=vertical]:justify-start data-active:text-foreground dark:text-muted-foreground dark:hover:text-foreground dark:data-active:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
+        "group-data-[variant=tab]/tabs-list:transition-none group-data-[variant=tab]/tabs-list:data-active:bg-accent group-data-[variant=tab]/tabs-list:data-active:text-accent-foreground group-data-[variant=tab]/tabs-list:data-active:hover:bg-active group-data-[variant=tab]/tabs-list:data-active:hover:text-active-foreground group-data-[variant=tab]/tabs-list:data-active:active:bg-active group-data-[variant=tab]/tabs-list:data-active:active:text-active-foreground",
         className,
       )}
       data-slot="tabs-tab"

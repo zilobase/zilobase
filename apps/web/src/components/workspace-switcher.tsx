@@ -111,7 +111,7 @@ function SingleWorkspaceLabel({
               className="h-8 w-full max-w-full px-1.5"
               disabled={isLoading}
             >
-              <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+              <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-primary text-primary-foreground">
                 {activeWorkspace ? (
                   <span className="text-[10px] font-semibold">
                     {getWorkspaceInitials(activeWorkspace.name)}
@@ -244,7 +244,7 @@ function MultiWorkspaceSwitcher({
                 className="h-8 w-full max-w-full px-1.5 py-0"
                 disabled={isLoading}
               >
-                <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+                <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-primary text-primary-foreground">
                   {activeWorkspace ? (
                     <span className="text-[10px] font-semibold">
                       {getWorkspaceInitials(activeWorkspace.name)}

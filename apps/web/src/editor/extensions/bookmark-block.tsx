@@ -77,7 +77,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       <Popover onOpenChange={setOpen} open={open}>
         <PopoverTrigger asChild>
           <button
-            className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-subtle-surface hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
+            className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
             contentEditable={false}
             disabled={Boolean(href)}
             type="button"
@@ -141,7 +141,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       </Popover>
       {href ? (
         <a
-          className="grid overflow-hidden rounded-md bg-subtle-surface text-card-foreground no-underline transition-colors hover:bg-subtle-surface focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[image=true]:grid-cols-[minmax(0,1fr)_minmax(12rem,35%)] data-[image=true]:grid-rows-[10rem]"
+          className="grid overflow-hidden rounded-md bg-subtle-surface text-card-foreground no-underline transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[image=true]:grid-cols-[minmax(0,1fr)_minmax(12rem,35%)] data-[image=true]:grid-rows-[10rem]"
           contentEditable={false}
           data-image={image ? "true" : "false"}
           href={href}

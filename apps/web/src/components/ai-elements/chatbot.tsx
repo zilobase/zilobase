@@ -531,7 +531,7 @@ const SourceSelector = ({
             <span>{source.label}</span>
             <button
               aria-label={`Remove ${source.label}`}
-              className="-mr-1 inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="-mr-1 inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active"
               onClick={() => onRemoveSource(source.id)}
               type="button"
             >

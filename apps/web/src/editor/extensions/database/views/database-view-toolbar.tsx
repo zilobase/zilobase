@@ -341,7 +341,7 @@ export function DatabaseViewToolbar() {
           <PopoverTrigger asChild>
             <button
               aria-label="Change database icon"
-              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               type="button"
             >
               <PageIconDisplay size="lg" value={databaseEmoji} />
@@ -351,7 +351,7 @@ export function DatabaseViewToolbar() {
         </Popover>
         <button
           aria-label="Remove database icon"
-          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
+          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
           onClick={() => {
             saveDatabaseEmoji("")
             setEmojiPickerOpen(false)
@@ -602,7 +602,7 @@ export function DatabaseViewToolbar() {
                           <PopoverTrigger asChild>
                             <button
                               aria-label="Change view icon"
-                              className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                              className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                               disabled={!editable || !databaseId}
                               type="button"
                             >
@@ -616,7 +616,7 @@ export function DatabaseViewToolbar() {
                           {view.icon ? (
                             <button
                               aria-label="Reset view icon"
-                              className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-muted hover:text-foreground group-focus-within/view-icon:flex group-hover/view-icon:flex [&_svg]:size-2.5"
+                              className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground group-focus-within/view-icon:flex group-hover/view-icon:flex [&_svg]:size-2.5"
                               disabled={!editable || !databaseId}
                               onClick={() => saveDatabaseViewIcon(view, "")}
                               type="button"

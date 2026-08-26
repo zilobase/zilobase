@@ -88,7 +88,7 @@ export function IntegrationGridCard({
   return (
     <div
       className={cn(
-        "flex min-h-16 items-center gap-3 px-4 py-2 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        "flex min-h-16 items-center gap-3 px-4 py-2 hover:bg-accent hover:text-accent-foreground",
         isFirst && "rounded-t-none",
         isLast && "rounded-b-none",
       )}

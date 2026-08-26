@@ -45,7 +45,7 @@ function LinkMentionView({ node }: ReactNodeViewProps) {
       <HoverCard closeDelay={100} openDelay={250}>
         <HoverCardTrigger asChild>
           <a
-            className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-muted px-1.5 py-0.5 text-sm font-medium text-foreground no-underline transition-colors hover:bg-subtle-surface"
+            className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-muted px-1.5 py-0.5 text-sm font-medium text-foreground no-underline transition-colors hover:bg-accent"
             href={href}
             rel="noreferrer"
             target="_blank"

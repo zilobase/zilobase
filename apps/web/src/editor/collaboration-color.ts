@@ -1,11 +1,8 @@
-const collaboratorColorTokens = [
-  "--collaborator-1",
-  "--collaborator-2",
-  "--collaborator-3",
-  "--collaborator-4",
-  "--collaborator-5",
-  "--collaborator-6",
-] as const
+import { collaboratorColorIds } from "@/lib/color-tokens"
+
+const collaboratorColorTokens = collaboratorColorIds.map(
+  (id) => `--editor-${id}` as const,
+)
 
 export function collaborationColor(userId: string) {
   let hash = 0

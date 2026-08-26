@@ -110,6 +110,17 @@ export const colorTokens: ColorToken[] = [
 
 export const cyclingColorTokens = colorTokens.filter((token) => token.value)
 
+export const collaboratorColorIds = [
+  "blue",
+  "purple",
+  "pink",
+  "orange",
+  "green",
+  "yellow",
+  "red",
+  "brown",
+] as const satisfies readonly ColorTokenId[]
+
 export const iconColorOptions = colorTokens.map((token) => ({
   name: token.name,
   value: token.value ?? "default",

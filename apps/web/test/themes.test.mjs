@@ -71,12 +71,12 @@ export function register({ assert, loadModule, test }) {
 
 const contrastPairs = [
   ["foreground", "background"],
-  ["card-foreground", "card"],
+  ["foreground", "card"],
   ["primary-foreground", "primary"],
   ["secondary-foreground", "secondary"],
-  ["muted-foreground", "muted"],
+  ["muted-foreground", "secondary"],
   ["accent-foreground", "accent"],
-  ["active-foreground", "active"],
+  ["accent-foreground", "active"],
 ]
 
 function readRule(css, selector) {

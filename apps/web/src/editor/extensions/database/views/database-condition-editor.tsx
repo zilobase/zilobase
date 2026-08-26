@@ -660,7 +660,7 @@ export function DatabaseConditionEditor({
         "inline-flex shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         isStacked
           ? "mt-1 size-7 rounded-full hover:bg-background"
-          : "size-8 rounded-md hover:bg-muted"
+          : "size-8 rounded-md hover:bg-accent"
       )}
       onClick={onRemove}
       type="button"

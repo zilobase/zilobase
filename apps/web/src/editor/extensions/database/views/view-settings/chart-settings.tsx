@@ -150,7 +150,7 @@ export function DatabaseChartSettingsSection({
   const colorLabel = selectedColorToken?.name ?? "Auto";
   const colorSwatch = selectedColorToken
     ? getPaletteColor(selectedColorToken.value) ?? "var(--primary)"
-    : "linear-gradient(90deg, var(--chart-1), var(--chart-2), var(--chart-3), var(--chart-4))";
+    : "linear-gradient(90deg, var(--editor-blue), var(--editor-purple), var(--editor-pink), var(--editor-orange))";
   const updateReferenceLine = (
     id: string,
     patch: Partial<DatabaseChartReferenceLine>,

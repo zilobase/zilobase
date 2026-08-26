@@ -533,7 +533,7 @@ export function AppSidebar({
                             <CollapsibleTrigger asChild>
                               <SidebarGroupLabel
                                 asChild
-                                className="pr-16 group-hover/section-header:bg-sidebar-accent group-hover/section-header:text-sidebar-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-sidebar-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-sidebar-accent-foreground"
+                                className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground"
                               >
                                 <button
                                   className="group/section-label w-full cursor-pointer"
@@ -712,7 +712,7 @@ export function AppSidebar({
           {!isTauri() && desktopLinkServer ? (
             <SidebarMenuItem>
               <a
-                className="flex w-full items-start gap-2.5 rounded-lg bg-sidebar-accent p-3 text-sidebar-foreground ring-1 ring-border transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2!"
+                className="flex w-full items-start gap-2.5 rounded-lg bg-accent p-3 text-foreground ring-1 ring-border transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2!"
                 href={buildDesktopDeepLink(location.href, desktopLinkServer)}
               >
                 <MonitorUpIcon className="mt-0.5 size-4 shrink-0 group-data-[collapsible=icon]:mt-0" />
@@ -768,7 +768,7 @@ function NewMenu({
       <DropDrawer>
         <DropDrawerTrigger asChild>
           <SidebarMenuButton
-            className="h-10 w-full justify-center gap-2 bg-background text-base font-semibold text-primary ring-1 ring-border hover:bg-subtle-surface hover:text-primary data-open:bg-subtle-surface data-open:text-primary dark:bg-muted dark:hover:bg-subtle-surface dark:data-open:bg-subtle-surface group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-2! [&_svg]:size-5"
+            className="h-10 w-full justify-center gap-2 bg-background text-base font-semibold text-primary ring-1 ring-border hover:bg-accent hover:text-primary data-open:bg-accent data-open:text-primary active:bg-active dark:bg-muted dark:hover:bg-accent dark:data-open:bg-accent group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-2! [&_svg]:size-5"
             tooltip="New"
           >
             <PencilIcon />
@@ -876,7 +876,7 @@ function NavMain({
               />
               <button
                 aria-label="Search"
-                className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={onOpenSearch}
                 title="Search"
                 type="button"

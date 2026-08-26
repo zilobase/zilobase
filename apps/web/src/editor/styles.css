@@ -406,7 +406,7 @@
   }
 
   .tiptap-editor .editor-details > button {
-    @apply absolute left-0 top-1.5 flex size-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    @apply absolute left-0 top-1.5 flex size-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active active:text-active-foreground;
   }
 
   .tiptap-editor .editor-details > button::before {
@@ -585,7 +585,7 @@
   }
 
   .database-setup-option {
-    @apply flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-subtle-surface disabled:pointer-events-none disabled:opacity-50;
+    @apply flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:pointer-events-none disabled:opacity-50;
   }
 
   .database-setup-option-subtle {
@@ -650,7 +650,7 @@
   .database-selection-count,
   .database-selection-property-action,
   .database-selection-more {
-    @apply flex h-9 shrink-0 items-center gap-2 border-r px-3 text-sm transition-colors hover:bg-subtle-surface focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45;
+    @apply flex h-9 shrink-0 items-center gap-2 border-r px-3 text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground disabled:cursor-not-allowed disabled:opacity-45;
   }
 
   .database-selection-count {
@@ -682,7 +682,7 @@
   }
 
   .database-selection-value-option {
-    @apply flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors hover:bg-subtle-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground;
   }
 
   .database-selection-apply {
@@ -699,7 +699,7 @@
   }
 
   .database-list-row {
-    @apply relative flex min-h-8 min-w-full items-center rounded-md text-left text-sm transition-colors hover:bg-subtle-surface;
+    @apply relative flex min-h-8 min-w-full items-center rounded-md text-left text-sm transition-colors hover:bg-accent;
   }
 
   .database-list-row[data-dragging="true"] {
@@ -766,7 +766,7 @@
   }
 
   .database-list-new-row {
-    @apply flex h-8 min-w-full items-center gap-2 rounded-md px-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-subtle-surface hover:text-foreground disabled:opacity-70;
+    @apply flex h-8 min-w-full items-center gap-2 rounded-md px-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-70;
   }
 
   .database-gallery-view {
@@ -809,7 +809,7 @@
   }
 
   .database-gallery-card {
-    @apply relative hover:border-border hover:bg-subtle-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply relative hover:border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
 
   .database-gallery-card[data-dragging="true"] {
@@ -830,7 +830,7 @@
   }
 
   .database-gallery-card-drag-handle {
-    @apply absolute left-2 top-2 z-40 hidden size-7 cursor-grab items-center justify-center rounded-sm bg-backdrop text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    @apply absolute left-2 top-2 z-40 hidden size-7 cursor-grab items-center justify-center rounded-sm bg-backdrop text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground active:cursor-grabbing focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
   }
 
   .database-gallery-card:hover .database-gallery-card-drag-handle {
@@ -968,7 +968,7 @@
   }
 
   .database-gallery-new-card {
-    @apply items-center justify-center gap-2 border-dashed bg-transparent text-muted-foreground hover:border-border hover:bg-subtle-surface hover:text-foreground disabled:opacity-70;
+    @apply items-center justify-center gap-2 border-dashed bg-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-70;
   }
 
   .database-table-wrap[data-vertical-lines="false"] .database-table tbody td {
@@ -1194,9 +1194,9 @@
     box-shadow: none !important;
     color: var(--timeline-bar-foreground);
     --tw-ring-width: 0 !important;
-    --tw-ring-shadow: 0 0 var(--transparent-color) !important;
+    --tw-ring-shadow: 0 0 transparent !important;
     --tw-ring-offset-width: 0 !important;
-    --tw-ring-offset-shadow: 0 0 var(--transparent-color) !important;
+    --tw-ring-offset-shadow: 0 0 transparent !important;
   }
 
   .database-timeline-view .database-timeline-bar [data-slot="card"] > div {
@@ -1275,7 +1275,7 @@
   }
 
   .database-table-group-toggle {
-    @apply mb-2 flex min-h-8 items-center gap-2 rounded-sm px-1 py-1 text-left text-foreground transition-colors hover:bg-subtle-surface focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    @apply mb-2 flex min-h-8 items-center gap-2 rounded-sm px-1 py-1 text-left text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active active:text-active-foreground;
   }
 
   .database-table-wrap[data-inline-scroll="true"] .database-table-group-toggle {
@@ -1369,7 +1369,7 @@
   }
 
   .database-kanban-card-drag-handle {
-    @apply absolute left-2 top-1/2 z-30 hidden size-6 -translate-y-1/2 cursor-grab items-center justify-center rounded-sm bg-backdrop text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    @apply absolute left-2 top-1/2 z-30 hidden size-6 -translate-y-1/2 cursor-grab items-center justify-center rounded-sm bg-backdrop text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground active:cursor-grabbing focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
   }
 
   .database-kanban-card:hover .database-kanban-card-drag-handle,
@@ -1477,7 +1477,7 @@
   }
 
   .database-kanban-new-card {
-    @apply flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground transition-colors hover:bg-background hover:text-foreground disabled:opacity-70;
+    @apply flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-70;
   }
 
   .database-kanban-new-card svg {
@@ -1486,7 +1486,7 @@
 
   .database-table {
     @apply w-full table-fixed border-collapse overflow-hidden;
-    --database-selection-color: var(--database-selection-accent);
+    --database-selection-color: var(--action-primary);
     min-width: max(100%, var(--database-table-min-width, 100%));
   }
 
@@ -1913,7 +1913,7 @@
 
   .database-select-option,
   .database-select-create {
-    @apply flex min-h-7 min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground;
+    @apply flex min-h-7 min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground active:bg-active active:text-active-foreground;
   }
 
   .database-select-option svg {
@@ -1957,7 +1957,7 @@
   }
 
   .database-sub-item-toggle {
-    @apply absolute inset-y-0 z-20 flex w-6 cursor-pointer select-none items-center justify-center text-muted-foreground outline-none hover:bg-subtle-surface hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring;
+    @apply absolute inset-y-0 z-20 flex w-6 cursor-pointer select-none items-center justify-center text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground;
     left: calc(var(--database-sub-item-depth, 0) * 1.25rem);
   }
 
@@ -1975,7 +1975,7 @@
 
   .database-sub-item-create,
   .database-table-create {
-    @apply flex h-8 w-full items-center gap-2 px-3 text-left text-sm text-muted-foreground hover:bg-subtle-surface hover:text-foreground disabled:opacity-60;
+    @apply flex h-8 w-full items-center gap-2 px-3 text-left text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-60;
   }
 
   .database-sub-item-create {
@@ -1988,7 +1988,7 @@
   }
 
   .database-page-create {
-    @apply text-muted-foreground hover:bg-subtle-surface hover:text-foreground disabled:opacity-70;
+    @apply text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-70;
   }
 
   .database-page-create-row {
@@ -2100,7 +2100,7 @@
   }
 
   .database-page-open {
-    @apply invisible absolute right-2 top-1/2 z-20 flex h-6 -translate-y-1/2 items-center gap-1.5 rounded-md border bg-muted px-2 text-xs font-semibold uppercase tracking-wide text-foreground opacity-0 shadow-sm transition-opacity duration-75 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    @apply invisible absolute right-2 top-1/2 z-20 flex h-6 -translate-y-1/2 items-center gap-1.5 rounded-md border bg-accent px-2 text-xs font-semibold uppercase tracking-wide text-accent-foreground opacity-0 shadow-sm transition-[opacity,background-color,color] duration-75 hover:bg-active hover:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active active:text-active-foreground;
   }
 
   .database-page-link:hover .database-page-open,
@@ -2270,7 +2270,7 @@
   }
 
   .column-actions-menu-item {
-    @apply flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent;
+    @apply flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent active:bg-active active:text-active-foreground;
   }
 
   .column-actions-menu-item svg {
@@ -2392,7 +2392,7 @@
   }
 
   .selection-ai-skill {
-    @apply flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground;
+    @apply flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground active:bg-active active:text-active-foreground;
   }
 
   .selection-ai-skill-active {

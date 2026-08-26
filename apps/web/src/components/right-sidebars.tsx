@@ -291,7 +291,7 @@ function OverlayRightSidebarPanel({
       aria-label={ariaLabel}
       id={panelId}
       className={cn(
-        "fixed inset-y-0 right-0 h-svh w-[min(100vw,var(--right-sidebar-panel-width))] border-l border-sidebar-border transition-[transform,opacity] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+        "fixed inset-y-0 right-0 h-svh w-[min(100vw,var(--right-sidebar-panel-width))] border-l border-border transition-[transform,opacity] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
         zIndexClassName,
         open
           ? rightOffset

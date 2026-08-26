@@ -139,7 +139,7 @@ function ReiconIconOption({
       <DropdownMenuTrigger asChild>
         <button
           aria-label={icon.label}
-          className="flex aspect-square size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:bg-muted"
+          className="flex aspect-square size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active data-[state=open]:bg-accent"
           title={icon.label}
           type="button"
         >

@@ -35,7 +35,7 @@ function AttachmentChip({
       <span className="truncate">{attachment.title}</span>
       <button
         aria-label={`Remove ${attachment.title}`}
-        className="-mr-1 inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="-mr-1 inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active"
         onClick={onRemove}
         type="button"
       >

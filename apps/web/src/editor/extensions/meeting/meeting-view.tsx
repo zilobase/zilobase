@@ -388,7 +388,7 @@ export function MeetingView({
           <PopoverTrigger asChild>
             <button
               aria-label="Change meeting icon"
-              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               type="button"
             >
               <PageIconDisplay size="lg" value={notesEmoji} />
@@ -406,7 +406,7 @@ export function MeetingView({
         </Popover>
         <button
           aria-label="Remove meeting icon"
-          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
+          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
           onClick={() => saveMeetingEmoji("")}
           type="button"
         >
@@ -523,7 +523,7 @@ export function MeetingView({
               {embeddedPage ? (
                 <Link
                   aria-label={`Open ${embeddedPage.name}`}
-                  className="relative inline-flex h-8 max-w-52 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent px-3 py-0.5 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-active hover:text-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring"
+                  className="relative inline-flex h-8 max-w-52 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent px-3 py-0.5 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground"
                   params={{ pageId: embeddedPage.id }}
                   search={{ meeting: meetingId }}
                   title={`Open ${embeddedPage.name}`}

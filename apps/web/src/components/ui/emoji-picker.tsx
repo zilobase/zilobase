@@ -88,7 +88,7 @@ function EmojiPickerFooter({ className }: { className?: string }) {
           )
         }
       </FrimousseEmojiPicker.ActiveEmoji>
-      <FrimousseEmojiPicker.SkinToneSelector className="ml-auto flex size-7 items-center justify-center rounded-md hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" />
+      <FrimousseEmojiPicker.SkinToneSelector className="ml-auto flex size-7 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active" />
     </div>
   )
 }
@@ -119,7 +119,7 @@ function EmojiPickerEmoji({
   return (
     <button
       className={cn(
-        "flex aspect-square size-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-muted data-[active]:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        "flex aspect-square size-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-accent data-[active]:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active",
         className
       )}
       type="button"

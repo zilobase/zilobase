@@ -629,7 +629,7 @@ export function PageMetadata({
         <PopoverTrigger asChild>
           <button
               aria-label={`Change ${metadataSubjectLowercase} icon`}
-            className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex items-center justify-center rounded-md transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}
+            className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}
             disabled={!editable}
             type="button"
           >
@@ -662,7 +662,7 @@ export function PageMetadata({
       </Popover>
       <button
           aria-label={`Remove ${metadataSubjectLowercase} icon`}
-        className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/metadata:flex group-hover/icon:flex group-hover/metadata:flex [&_svg]:size-3"
+        className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/metadata:flex group-hover/icon:flex group-hover/metadata:flex [&_svg]:size-3"
         onClick={() => {
           updateIcon("")
           setIconOpen(false)

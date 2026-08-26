@@ -63,7 +63,7 @@ export function DesktopWindowTitlebar({
     <header
       className={cn(
         "absolute inset-x-0 top-0 z-30 flex h-9 shrink-0 items-center bg-sidebar px-1",
-        variant === "fallback" && "border-b border-sidebar-border",
+        variant === "fallback" && "border-b border-border",
         className,
       )}
       data-desktop-fallback-titlebar={
@@ -89,12 +89,12 @@ export function DesktopWindowTitlebar({
       {linuxDesktopApp ? (
         <div
           aria-label="Window controls"
-          className="relative z-50 flex h-full shrink-0 items-stretch text-sidebar-foreground"
+          className="relative z-50 flex h-full shrink-0 items-stretch text-foreground"
           role="group"
         >
           <button
             aria-label="Minimize window"
-            className="flex h-full w-10 items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="flex h-full w-10 items-center justify-center text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             onClick={() => void appWindow.minimize()}
             title="Minimize"
             type="button"
@@ -103,7 +103,7 @@ export function DesktopWindowTitlebar({
           </button>
           <button
             aria-label={maximizeLabel}
-            className="flex h-full w-10 items-center justify-center text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="flex h-full w-10 items-center justify-center text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             onClick={() => void toggleMaximize()}
             title={maximized ? "Restore" : "Maximize"}
             type="button"
