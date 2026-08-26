@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { GripVertical, Loader2, Plus } from "lucide-react"
+import { Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
 import {
   getColorTokenBadgeClassName,
@@ -223,7 +223,6 @@ function getDerivedKanbanGroupId(groupValue: string, propertyType: string) {
 
 export function DatabaseKanbanView() {
   const {
-    activeDatabaseFilters,
     activeDatabaseSorts,
     propertyValuesByKey,
     canAddDatabaseProperties,
@@ -272,7 +271,6 @@ export function DatabaseKanbanView() {
     null
   )
   const isKanbanSorted = activeDatabaseSorts.length > 0
-  const isKanbanFiltered = activeDatabaseFilters.length > 0
   const canEditStructure = editable && (canAddDatabaseProperties ?? true)
   const canUsePropertyMenus =
     Boolean(databaseId) && (headerMenusEnabled ?? editable)
@@ -280,21 +278,6 @@ export function DatabaseKanbanView() {
     () => new Map(personOptions.map((person) => [person.id, person.name])),
     [personOptions]
   )
-  const kanbanCardDragTitle = (() => {
-    if (isKanbanSorted && isKanbanFiltered) {
-      return "Drag page. Clear sorting to save the new order; hidden cards keep their relative order."
-    }
-
-    if (isKanbanSorted) {
-      return "Drag page. Clear sorting to save the new order."
-    }
-
-    if (isKanbanFiltered) {
-      return "Drag page. Hidden cards keep their relative order."
-    }
-
-    return "Drag page"
-  })()
   const kanbanOptions = useMemo(() => {
     if (!groupProperty) {
       return []
@@ -668,11 +651,6 @@ export function DatabaseKanbanView() {
                 return (
                   <section
                     className="database-kanban-column"
-                    data-drag-over={
-                      cardDrag.dragOverOptionId === option.id
-                        ? "true"
-                        : undefined
-                    }
                     key={option.id}
                     onDragLeave={(event) => cardDrag.leave(option, event)}
                     onDragOver={(event) => cardDrag.dragOver(option, event)}
@@ -713,33 +691,9 @@ export function DatabaseKanbanView() {
                           onDragStart={(event) =>
                             cardDrag.startDrag(item, option, event)
                           }
+                          onPointerDownCapture={cardDrag.captureDragOrigin}
                         >
-                          <div
-                            className="database-kanban-card-title"
-                            data-can-drag={editable ? "true" : undefined}
-                          >
-                            {editable ? (
-                              <button
-                                aria-label="Drag page"
-                                className="database-kanban-card-drag-handle"
-                                draggable
-                                onClick={(event) => {
-                                  event.preventDefault()
-                                  event.stopPropagation()
-                                }}
-                                onDragEnd={cardDrag.clearDrag}
-                                onDragStart={(event) =>
-                                  cardDrag.startDrag(item, option, event)
-                                }
-                                onPointerDown={(event) =>
-                                  event.stopPropagation()
-                                }
-                                title={kanbanCardDragTitle}
-                                type="button"
-                              >
-                                <GripVertical />
-                              </button>
-                            ) : null}
+                          <div className="database-kanban-card-title">
                             <DatabasePageLink
                               editable={editable}
                               onOpen={onOpenPage}

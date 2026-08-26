@@ -818,7 +818,7 @@
   }
 
   .database-gallery-card {
-    @apply relative hover:border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply relative shadow-none hover:border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
 
   .database-gallery-card[data-dragging="true"] {
@@ -836,18 +836,6 @@
 
   .database-gallery-card[data-drop-after="true"]::after {
     @apply bottom-0;
-  }
-
-  .database-gallery-card-drag-handle {
-    @apply absolute left-2 top-2 z-40 hidden size-7 cursor-grab items-center justify-center rounded-sm bg-backdrop text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground active:cursor-grabbing focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
-  }
-
-  .database-gallery-card:hover .database-gallery-card-drag-handle {
-    @apply flex;
-  }
-
-  .database-gallery-card-drag-handle svg {
-    @apply size-4;
   }
 
   .database-gallery-preview {
@@ -1311,10 +1299,6 @@
     @apply flex w-72 shrink-0 flex-col rounded-md bg-subtle-surface transition-colors;
   }
 
-  .database-kanban-column[data-drag-over="true"] {
-    @apply bg-subtle-surface ring-2 ring-primary;
-  }
-
   .database-kanban-new-column {
     @apply border border-dashed border-border bg-transparent;
   }
@@ -1354,7 +1338,7 @@
   }
 
   .database-kanban-card {
-    @apply relative overflow-hidden rounded-md border bg-background shadow-xs transition-opacity;
+    @apply relative overflow-hidden rounded-md border bg-background shadow-none transition-opacity;
   }
 
   .database-kanban-card[data-dragging="true"] {
@@ -1371,24 +1355,6 @@
 
   .database-kanban-card-title {
     @apply relative min-w-0 overflow-hidden;
-  }
-
-  .database-kanban-card-title[data-can-drag="true"] .database-page-link {
-    @apply pl-9;
-  }
-
-  .database-kanban-card-drag-handle {
-    @apply absolute left-2 top-1/2 z-30 hidden size-6 -translate-y-1/2 cursor-grab items-center justify-center rounded-sm bg-backdrop text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground active:cursor-grabbing focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
-  }
-
-  .database-kanban-card:hover .database-kanban-card-drag-handle,
-  .database-kanban-card:focus-within .database-kanban-card-drag-handle,
-  .database-kanban-card-drag-handle:active {
-    @apply flex;
-  }
-
-  .database-kanban-card-drag-handle svg {
-    @apply size-4;
   }
 
   .database-kanban-card-title > .database-page-link {

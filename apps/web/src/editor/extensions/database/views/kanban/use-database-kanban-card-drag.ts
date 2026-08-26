@@ -1,4 +1,10 @@
-import { useCallback, useState, type DragEvent as ReactDragEvent } from "react"
+import {
+  useCallback,
+  useRef,
+  useState,
+  type DragEvent as ReactDragEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react"
 import { toast } from "sonner"
 import {
   useMoveDatabaseRow,
@@ -20,6 +26,7 @@ import {
   getFilteredReorderedRowIds,
   startDatabaseRowDrag,
 } from "../../interactions/database-row-drag"
+import { isInteractiveDatabaseCardTarget } from "../../interactions/database-card-drag-target"
 import {
   canMoveRowsAcrossKanbanGroups,
   type DatabasePropertyListItem,
@@ -82,36 +89,13 @@ type KanbanCardDragInput<
   saveDatabaseSorts: (sorts: []) => Promise<unknown>
 }
 
-function isInteractiveCardTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false
-  if (target.closest(".database-kanban-card-drag-handle")) return false
-
-  return Boolean(
-    target.closest(
-      [
-        "a",
-        "button",
-        "input",
-        "select",
-        "textarea",
-        "[contenteditable='true']",
-        "[data-database-cell-input]",
-        ".database-checkbox-cell",
-        ".database-date-cell-trigger",
-        ".database-input-cell-trigger",
-        ".database-select-cell-trigger",
-      ].join(","),
-    ),
-  )
-}
-
 export function useDatabaseKanbanCardDrag<
   Row extends KanbanDragRow,
   Option extends KanbanDragOption,
 >(input: KanbanCardDragInput<Row, Option>) {
+  const dragOriginRef = useRef<EventTarget | null>(null)
   const [draggedCard, setDraggedCard] = useState<DraggedKanbanCard | null>(null)
   const [isExternalDragActive, setIsExternalDragActive] = useState(false)
-  const [dragOverOptionId, setDragOverOptionId] = useState<string | null>(null)
   const [dropTarget, setDropTarget] = useState<KanbanCardDropTarget | null>(null)
   const [pendingSortedMove, setPendingSortedMove] =
     useState<KanbanCardMove | null>(null)
@@ -120,12 +104,19 @@ export function useDatabaseKanbanCardDrag<
   const updatePage = useUpdatePage()
 
   const clearDrag = useCallback(() => {
+    dragOriginRef.current = null
     finishDatabaseRowDrag()
     setDraggedCard(null)
     setIsExternalDragActive(false)
-    setDragOverOptionId(null)
     setDropTarget(null)
   }, [])
+
+  const captureDragOrigin = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      dragOriginRef.current = event.target
+    },
+    [],
+  )
 
   const getMove = useCallback(
     (target = dropTarget): KanbanCardMove | null => {
@@ -243,12 +234,20 @@ export function useDatabaseKanbanCardDrag<
         event.preventDefault()
         return
       }
-      if (isInteractiveCardTarget(event.target)) {
+      const dragOrigin = dragOriginRef.current ?? event.target
+      dragOriginRef.current = null
+      if (isInteractiveDatabaseCardTarget(dragOrigin)) {
         event.preventDefault()
         return
       }
 
       const title = row.page.name?.trim() || "Untitled"
+      const cardRect = event.currentTarget.getBoundingClientRect()
+      event.dataTransfer.setDragImage(
+        event.currentTarget,
+        event.clientX - cardRect.left,
+        event.clientY - cardRect.top,
+      )
       event.stopPropagation()
       startDatabaseRowDrag()
       setDatabasePageDragPayload(event.dataTransfer, {
@@ -263,7 +262,6 @@ export function useDatabaseKanbanCardDrag<
         sourceOptionId: option.id,
         sourceGroupValue: option.groupValue,
       })
-      setDragOverOptionId(option.id)
       setDropTarget({
         optionId: option.id,
         targetIndex: Math.max(
@@ -291,7 +289,6 @@ export function useDatabaseKanbanCardDrag<
       event.stopPropagation()
       event.dataTransfer.dropEffect = "move"
       setIsExternalDragActive(hasExternalDragPayload)
-      setDragOverOptionId(option.id)
       setDropTarget({
         optionId: option.id,
         targetIndex: getKanbanCardDropTargetIndex(
@@ -371,7 +368,6 @@ export function useDatabaseKanbanCardDrag<
         return
       }
 
-      setDragOverOptionId(null)
       setIsExternalDragActive(false)
       setDropTarget((current) =>
         current?.optionId === option.id ? null : current,
@@ -381,11 +377,11 @@ export function useDatabaseKanbanCardDrag<
   )
 
   return {
+    captureDragOrigin,
     clearDrag,
     confirmSortedMove,
     dragOver,
     draggedCard,
-    dragOverOptionId,
     drop,
     dropTarget,
     getMove,

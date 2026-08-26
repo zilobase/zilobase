@@ -1,4 +1,10 @@
-import { useCallback, useState, type DragEvent } from "react"
+import {
+  useCallback,
+  useRef,
+  useState,
+  type DragEvent,
+  type PointerEvent,
+} from "react"
 import { useReorderDatabaseRows } from "@zilobase/features/databases"
 
 import type { SortableDatabaseItem } from "../../interactions/database-item-utils"
@@ -14,6 +20,7 @@ import {
   getFilteredReorderedRowIds,
   startDatabaseRowDrag,
 } from "../../interactions/database-row-drag"
+import { isInteractiveDatabaseCardTarget } from "../../interactions/database-card-drag-target"
 import type { DatabaseTableGroupSection } from "../../interactions/database-table-group-sections"
 import type { DatabasePropertyListItem } from "../kanban/database-kanban-config"
 
@@ -42,25 +49,44 @@ type DatabaseGalleryCardDragInput = {
 export function useDatabaseGalleryCardDrag(
   input: DatabaseGalleryCardDragInput,
 ) {
+  const dragOriginRef = useRef<EventTarget | null>(null)
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null)
   const [isExternalDragActive, setIsExternalDragActive] = useState(false)
   const [dropTarget, setDropTarget] = useState<GalleryDropTarget | null>(null)
   const reorderRows = useReorderDatabaseRows()
 
   const clearDrag = useCallback(() => {
+    dragOriginRef.current = null
     finishDatabaseRowDrag()
     setDraggedRowId(null)
     setIsExternalDragActive(false)
     setDropTarget(null)
   }, [])
 
+  const captureDragOrigin = useCallback((event: PointerEvent<HTMLElement>) => {
+    dragOriginRef.current = event.target
+  }, [])
+
   const startDrag = useCallback(
-    (row: SortableDatabaseItem, event: DragEvent<HTMLButtonElement>) => {
+    (row: SortableDatabaseItem, event: DragEvent<HTMLElement>) => {
       if (!input.editable || !input.databaseId) {
         event.preventDefault()
         return
       }
 
+      const dragOrigin = dragOriginRef.current ?? event.target
+      dragOriginRef.current = null
+      if (isInteractiveDatabaseCardTarget(dragOrigin)) {
+        event.preventDefault()
+        return
+      }
+
+      const cardRect = event.currentTarget.getBoundingClientRect()
+      event.dataTransfer.setDragImage(
+        event.currentTarget,
+        event.clientX - cardRect.left,
+        event.clientY - cardRect.top,
+      )
       event.stopPropagation()
       startDatabaseRowDrag()
       setDatabasePageDragPayload(event.dataTransfer, {
@@ -176,6 +202,7 @@ export function useDatabaseGalleryCardDrag(
   )
 
   return {
+    captureDragOrigin,
     clearDrag,
     dragOver,
     draggedRowId,

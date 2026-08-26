@@ -3,7 +3,6 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
-  GripVertical,
   Loader2,
   Plus,
 } from "lucide-react"
@@ -134,7 +133,9 @@ export function DatabaseGalleryView() {
             ? "true"
             : undefined
         }
+        draggable={editable}
         key={row.id}
+        onDragEnd={cardDrag.clearDrag}
         onDragOver={(event) => {
           const rect = event.currentTarget.getBoundingClientRect()
           cardDrag.dragOver(
@@ -146,24 +147,9 @@ export function DatabaseGalleryView() {
           )
         }}
         onDrop={(event) => cardDrag.drop(event, sectionId, rowIndex)}
+        onDragStart={(event) => cardDrag.startDrag(row, event)}
+        onPointerDownCapture={cardDrag.captureDragOrigin}
       >
-        {editable ? (
-          <button
-            aria-label={`Drag ${row.page.name?.trim() || "Untitled"}`}
-            className="database-gallery-card-drag-handle"
-            draggable
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
-            onDragEnd={cardDrag.clearDrag}
-            onDragStart={(event) => cardDrag.startDrag(row, event)}
-            title="Drag page"
-            type="button"
-          >
-            <GripVertical />
-          </button>
-        ) : null}
         {layoutSettings.cardPreview === "page-cover" ? (
           <button
             aria-label={`Open ${row.page.name?.trim() || "Untitled"}`}
@@ -177,6 +163,7 @@ export function DatabaseGalleryView() {
               <img
                 alt=""
                 className="database-gallery-preview-image"
+                draggable={false}
                 src={cover}
               />
             ) : null}
