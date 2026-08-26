@@ -834,7 +834,7 @@ function ItemShareDropdown({
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>
         <Button
-          className="h-8 gap-2 data-[state=open]:bg-accent"
+          className="h-7 gap-2 data-[state=open]:bg-accent"
           size="sm"
           variant="outline"
         >
