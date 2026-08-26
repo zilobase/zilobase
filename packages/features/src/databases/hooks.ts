@@ -63,6 +63,15 @@ type UpdateDatabaseInput = {
   config?: unknown;
 };
 
+export type MoveDatabaseInput = {
+  databaseId: string;
+  destinationId: string;
+  destinationKind: "database" | "page";
+  hostDatabaseId?: string;
+  moveViews: boolean;
+  workspaceId: string;
+};
+
 type UpdateDatabaseViewInput = {
   config?: unknown;
   databaseId: string;
@@ -587,6 +596,46 @@ export function useUpdateDatabase() {
           queryKey: pagesQueryKey(payload.database.workspaceId),
         });
       }
+    },
+  });
+}
+
+export function useMoveDatabase() {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+
+  return useMutation({
+    mutationFn: async ({
+      databaseId,
+      workspaceId: _workspaceId,
+      ...input
+    }: MoveDatabaseInput) =>
+      apiFetch<{
+        databaseId: string;
+        destination: { id: string; kind: "database" | "page" };
+        hostDatabaseId: string | null;
+        moveViews: boolean;
+        pageId: string | null;
+        teamspaceId: string | null;
+      }>(`/databases/${databaseId}/move`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: async (_result, input) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: databasePayloadRootQueryKey(input.databaseId),
+        }),
+        ...(input.hostDatabaseId && input.hostDatabaseId !== input.databaseId
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: databasePayloadRootQueryKey(input.hostDatabaseId),
+              }),
+            ]
+          : []),
+        queryClient.invalidateQueries({
+          queryKey: pagesQueryKey(input.workspaceId),
+        }),
+      ]);
     },
   });
 }

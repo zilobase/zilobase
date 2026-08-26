@@ -32,6 +32,7 @@ import {
 import {
   createDatabaseService,
   deleteDatabaseService,
+  moveDatabaseService,
   restoreDatabaseService,
   updateDatabaseService,
 } from "../../services/database-service";
@@ -376,6 +377,73 @@ databaseRoutes.patch("/:id", async (c) => {
     });
 
     return c.json(mutationResponse(result.commit));
+  } catch (error) {
+    if (error instanceof ServiceMutationError) {
+      return serviceMutationErrorResponse(c, error);
+    }
+
+    throw error;
+  }
+});
+
+databaseRoutes.post("/:id/move", async (c) => {
+  const user = requireUser(c);
+
+  if (!user) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const body = await c.req.json().catch(() => null);
+
+  if (!body || typeof body !== "object") {
+    return c.json({ error: "A JSON body is required" }, 400);
+  }
+
+  const {
+    destinationId,
+    destinationKind,
+    hostDatabaseId,
+    moveViews = true,
+  } = body as {
+    destinationId?: unknown;
+    destinationKind?: unknown;
+    hostDatabaseId?: unknown;
+    moveViews?: unknown;
+  };
+
+  if (typeof destinationId !== "string" || destinationId.length === 0) {
+    return c.json({ error: "destinationId is required" }, 400);
+  }
+
+  if (destinationKind !== "database" && destinationKind !== "page") {
+    return c.json(
+      { error: "destinationKind must be database or page" },
+      400,
+    );
+  }
+
+  if (typeof moveViews !== "boolean") {
+    return c.json({ error: "moveViews must be a boolean" }, 400);
+  }
+
+  if (
+    hostDatabaseId !== undefined &&
+    (typeof hostDatabaseId !== "string" || hostDatabaseId.length === 0)
+  ) {
+    return c.json({ error: "hostDatabaseId must be a string" }, 400);
+  }
+
+  try {
+    return c.json(
+      await moveDatabaseService({
+        databaseId: c.req.param("id"),
+        destination: { id: destinationId, kind: destinationKind },
+        hostDatabaseId:
+          typeof hostDatabaseId === "string" ? hostDatabaseId : undefined,
+        moveViews,
+        userId: user.id,
+      }),
+    );
   } catch (error) {
     if (error instanceof ServiceMutationError) {
       return serviceMutationErrorResponse(c, error);

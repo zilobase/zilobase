@@ -60,6 +60,7 @@ vi.mock("../db", () => ({
 import {
   createDatabaseService,
   deleteDatabaseService,
+  removeHostedDataSourceViews,
   restoreDatabaseService,
   updateDatabaseService,
 } from "./database-service";
@@ -85,6 +86,25 @@ beforeEach(() => {
   mocks.softDelete.mockReset();
   mocks.transaction.mockReset();
   vi.restoreAllMocks();
+});
+
+test("removeHostedDataSourceViews keeps linked views and other sources", () => {
+  const config = {
+    layout: "table",
+    linkedDatabaseViews: [
+      { databaseId: "source-1", sourceKind: "source", viewId: "view-1" },
+      { databaseId: "source-1", sourceKind: "linked", viewId: "view-2" },
+      { databaseId: "source-2", sourceKind: "source", viewId: "view-3" },
+    ],
+  };
+
+  assert.deepEqual(removeHostedDataSourceViews(config, "source-1"), {
+    layout: "table",
+    linkedDatabaseViews: [
+      { databaseId: "source-1", sourceKind: "linked", viewId: "view-2" },
+      { databaseId: "source-2", sourceKind: "source", viewId: "view-3" },
+    ],
+  });
 });
 
 function transactionRecorder() {

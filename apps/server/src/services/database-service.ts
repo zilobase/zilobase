@@ -15,6 +15,7 @@ import {
   databaseView,
   favorite,
   page,
+  pageItemPlacement,
 } from "../db/schema";
 import { upsertPageItemPlacement } from "../page-item-placements";
 import { softDeleteDatabaseTree } from "../soft-delete-nav-items";
@@ -220,6 +221,300 @@ export async function updateDatabaseService(input: {
   );
 
   return { commit, databaseId: existing.id };
+}
+
+export type MoveDatabaseDestination = {
+  id: string;
+  kind: "database" | "page";
+};
+
+export async function moveDatabaseService(input: {
+  databaseId: string;
+  destination: MoveDatabaseDestination;
+  hostDatabaseId?: string;
+  moveViews: boolean;
+  userId: string;
+}) {
+  const source = await requireDatabaseEditAccess(
+    input.databaseId,
+    input.userId,
+  );
+  const destination = await resolveDatabaseMoveDestination({
+    destination: input.destination,
+    source,
+    userId: input.userId,
+  });
+  const host =
+    input.hostDatabaseId && input.hostDatabaseId !== source.id
+      ? await requireDatabaseEditAccess(input.hostDatabaseId, input.userId)
+      : null;
+
+  if (host && host.workspaceId !== source.workspaceId) {
+    throw new ServiceMutationError(
+      "The data source host must be in the same workspace.",
+      409,
+    );
+  }
+  const activePlacements = await db
+    .select()
+    .from(pageItemPlacement)
+    .where(
+      and(
+        eq(pageItemPlacement.workspaceId, source.workspaceId),
+        eq(pageItemPlacement.itemKind, "database"),
+        eq(pageItemPlacement.itemId, source.id),
+        isNull(pageItemPlacement.deletedAt),
+      ),
+    );
+  const currentPrimary = activePlacements.find(
+    (placement) => placement.placementKind === "primary",
+  );
+
+  if (
+    currentPrimary?.parentKind === destination.kind &&
+    currentPrimary.parentId === destination.id
+  ) {
+    throw new ServiceMutationError(
+      "The data source is already in that destination.",
+      409,
+    );
+  }
+
+  if (destination.kind === "database") {
+    await assertDatabaseMoveDoesNotCreateCycle(
+      source.workspaceId,
+      source.id,
+      destination.id,
+    );
+  }
+
+  const now = new Date();
+  const primaryPlacement = {
+    id: crypto.randomUUID(),
+    workspaceId: source.workspaceId,
+    parentKind: destination.kind,
+    parentId: destination.id,
+    itemKind: "database" as const,
+    itemId: source.id,
+    placementKind: "primary" as const,
+    position: 0,
+  };
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(pageItemPlacement)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(pageItemPlacement.workspaceId, source.workspaceId),
+          eq(pageItemPlacement.itemKind, "database"),
+          eq(pageItemPlacement.itemId, source.id),
+          eq(pageItemPlacement.placementKind, "primary"),
+          isNull(pageItemPlacement.deletedAt),
+        ),
+      );
+
+    // A linked instance in the destination is replaced by the new primary one.
+    await tx
+      .update(pageItemPlacement)
+      .set({ deletedAt: now, updatedAt: now })
+      .where(
+        and(
+          eq(pageItemPlacement.workspaceId, source.workspaceId),
+          eq(pageItemPlacement.parentKind, destination.kind),
+          eq(pageItemPlacement.parentId, destination.id),
+          eq(pageItemPlacement.itemKind, "database"),
+          eq(pageItemPlacement.itemId, source.id),
+          eq(pageItemPlacement.placementKind, "linked"),
+          isNull(pageItemPlacement.deletedAt),
+        ),
+      );
+
+    await tx
+      .update(database)
+      .set({
+        pageId: destination.kind === "page" ? destination.id : null,
+        teamspaceId: destination.teamspaceId,
+        updatedAt: now,
+      })
+      .where(eq(database.id, source.id));
+
+    if (input.moveViews && host) {
+      await tx
+        .update(database)
+        .set({
+          config: removeHostedDataSourceViews(host.config, source.id),
+          updatedAt: now,
+        })
+        .where(eq(database.id, host.id));
+    }
+
+    await upsertPageItemPlacement(tx, primaryPlacement);
+
+    if (
+      !input.moveViews &&
+      currentPrimary &&
+      !activePlacements.some(
+        (placement) =>
+          placement.parentKind === currentPrimary.parentKind &&
+          placement.parentId === currentPrimary.parentId &&
+          placement.placementKind === "linked",
+      )
+    ) {
+      await upsertPageItemPlacement(tx, {
+        workspaceId: source.workspaceId,
+        parentKind: currentPrimary.parentKind as "database" | "page",
+        parentId: currentPrimary.parentId,
+        itemKind: "database",
+        itemId: source.id,
+        placementKind: "linked",
+        position: currentPrimary.position,
+      });
+    }
+  });
+
+  return {
+    databaseId: source.id,
+    destination: input.destination,
+    hostDatabaseId: host?.id ?? null,
+    moveViews: input.moveViews,
+    pageId: destination.kind === "page" ? destination.id : null,
+    teamspaceId: destination.teamspaceId,
+  };
+}
+
+export function removeHostedDataSourceViews(
+  config: unknown,
+  sourceDatabaseId: string,
+) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return config;
+  }
+
+  const record = config as Record<string, unknown>;
+  const linkedViews = record.linkedDatabaseViews;
+
+  if (!Array.isArray(linkedViews)) {
+    return config;
+  }
+
+  const nextLinkedViews = linkedViews.filter((view) => {
+    if (!view || typeof view !== "object" || Array.isArray(view)) {
+      return true;
+    }
+
+    const linkedView = view as Record<string, unknown>;
+    return !(
+      linkedView.databaseId === sourceDatabaseId &&
+      linkedView.sourceKind === "source"
+    );
+  });
+
+  return nextLinkedViews.length === linkedViews.length
+    ? config
+    : { ...record, linkedDatabaseViews: nextLinkedViews };
+}
+
+async function resolveDatabaseMoveDestination(input: {
+  destination: MoveDatabaseDestination;
+  source: typeof database.$inferSelect;
+  userId: string;
+}) {
+  if (input.destination.kind === "database") {
+    if (input.destination.id === input.source.id) {
+      throw new ServiceMutationError(
+        "A data source cannot be moved into itself.",
+        409,
+      );
+    }
+
+    const target = await requireDatabaseEditAccess(
+      input.destination.id,
+      input.userId,
+    );
+
+    if (target.workspaceId !== input.source.workspaceId) {
+      throw new ServiceMutationError(
+        "Data sources cannot be moved between workspaces.",
+        409,
+      );
+    }
+
+    return {
+      id: target.id,
+      kind: "database" as const,
+      teamspaceId: target.teamspaceId,
+    };
+  }
+
+  const [target] = await db
+    .select()
+    .from(page)
+    .where(
+      and(
+        eq(page.id, input.destination.id),
+        eq(page.workspaceId, input.source.workspaceId),
+        isNull(page.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!target) {
+    throw new ServiceMutationError("Page not found", 404);
+  }
+
+  if (!(await canAccessPage(target.id, input.userId, "edit"))) {
+    throw new ServiceMutationError("Forbidden", 403);
+  }
+
+  return {
+    id: target.id,
+    kind: "page" as const,
+    teamspaceId: target.teamspaceId,
+  };
+}
+
+async function assertDatabaseMoveDoesNotCreateCycle(
+  workspaceId: string,
+  sourceDatabaseId: string,
+  destinationDatabaseId: string,
+) {
+  const placements = await db
+    .select({
+      itemId: pageItemPlacement.itemId,
+      parentId: pageItemPlacement.parentId,
+      parentKind: pageItemPlacement.parentKind,
+    })
+    .from(pageItemPlacement)
+    .where(
+      and(
+        eq(pageItemPlacement.workspaceId, workspaceId),
+        eq(pageItemPlacement.itemKind, "database"),
+        eq(pageItemPlacement.placementKind, "primary"),
+        isNull(pageItemPlacement.deletedAt),
+      ),
+    );
+  const parentDatabaseByDatabaseId = new Map(
+    placements.flatMap((placement) =>
+      placement.parentKind === "database"
+        ? [[placement.itemId, placement.parentId] as const]
+        : [],
+    ),
+  );
+  const visited = new Set<string>();
+  let currentId: string | undefined = destinationDatabaseId;
+
+  while (currentId && !visited.has(currentId)) {
+    if (currentId === sourceDatabaseId) {
+      throw new ServiceMutationError(
+        "Moving the data source there would create a cycle.",
+        409,
+      );
+    }
+
+    visited.add(currentId);
+    currentId = parentDatabaseByDatabaseId.get(currentId);
+  }
 }
 
 export async function deleteDatabaseService(input: {
