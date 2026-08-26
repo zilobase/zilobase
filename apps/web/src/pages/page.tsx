@@ -314,7 +314,9 @@ export function PublicPaneTopbar({ pageId }: { pageId: string | null }) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b px-3">
       <PublicPageBreadcrumb pageId={pageId} />
-      <PublicLoginButton />
+      <div data-page-side-pane-avoid>
+        <PublicLoginButton />
+      </div>
     </header>
   );
 }

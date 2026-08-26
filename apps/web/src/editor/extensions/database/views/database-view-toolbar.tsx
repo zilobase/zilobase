@@ -948,7 +948,10 @@ export function DatabaseViewToolbar() {
             </div>
           ) : null}
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-0">
+        <div
+          className="ml-auto flex shrink-0 items-center gap-0"
+          data-page-side-pane-avoid
+        >
           {editable ? (
             <>
               {activeDatabaseFilters.length === 0 ? (

@@ -114,7 +114,7 @@ export function PagePaneHeader({
         <AppBreadcrumbs pathname={pathname} />
       </div>
       {showActions ? (
-        <div className="ml-auto px-3">
+        <div className="ml-auto px-3" data-page-side-pane-avoid>
           <NavActions
             databaseId={databaseId}
             meetingId={meetingId}
@@ -226,6 +226,7 @@ function PagePaneControls({
       {onClose ? (
         <Button
           aria-label="Close"
+          data-page-side-pane-promoted-hide
           onClick={onClose}
           size="icon-sm"
           type="button"
@@ -239,6 +240,7 @@ function PagePaneControls({
       <Button
         aria-label="Open as full page"
         asChild
+        data-page-side-pane-promoted-hide
         size="icon-sm"
         variant="ghost"
       >
@@ -254,7 +256,7 @@ function PagePaneControls({
         />
       ) : null}
       {rowDatabaseId ? (
-        <>
+        <div className="contents" data-page-side-pane-promoted-hide>
           <Separator
             orientation="vertical"
             className="mx-1 data-[orientation=vertical]:h-4"
@@ -279,7 +281,7 @@ function PagePaneControls({
           >
             <ChevronDown />
           </Button>
-        </>
+        </div>
       ) : null}
     </div>
   );

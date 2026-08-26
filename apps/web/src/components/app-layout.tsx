@@ -712,7 +712,7 @@ function AppHeader({
   return (
     <>
       <PageSidePaneHeaderCell
-        className="z-20"
+        className="z-10"
         side="main"
         splitActive={splitActive}
       >
@@ -720,7 +720,7 @@ function AppHeader({
           bordered={false}
           className="min-w-0 flex-1"
           leadingControl={
-            <MainPaneHeaderLeadingControl splitActive={splitActive} />
+            <MainPaneHeaderLeadingControl />
           }
           discussionsOpen={discussionsOpen}
           pathname={pathname}
@@ -732,7 +732,7 @@ function AppHeader({
       </PageSidePaneHeaderCell>
       {showSidePaneHeader ? (
         <PageSidePaneHeaderCell
-          className="z-20"
+          className="z-40 shadow-[-10px_0_24px_-20px_rgb(0_0_0/0.45)]"
           side="side"
           splitActive={splitActive}
         >
@@ -757,20 +757,12 @@ function AppHeader({
   )
 }
 
-function MainPaneHeaderLeadingControl({
-  splitActive,
-}: {
-  splitActive: boolean
-}) {
+function MainPaneHeaderLeadingControl() {
   const { isMobile, open, openMobile } = useSidebar()
   const isCollapsed = isMobile ? !openMobile : !open
 
   if (isCollapsed) {
     return <CollapsedSidebarTrigger />
-  }
-
-  if (splitActive) {
-    return <div aria-hidden className="size-8 shrink-0" />
   }
 
   return null

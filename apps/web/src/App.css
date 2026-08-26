@@ -78,6 +78,63 @@
   padding-top: 0;
 }
 
+/* Page side panes cover the main surface. While one is open, the main page's
+   usable canvas ends at the divider so its content and table of contents never
+   render underneath the pane. Breadcrumbs stay anchored; only header actions
+   move out of the pane's way. */
+[data-page-side-pane-avoid] {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+[data-page-side-pane-main-content] {
+  min-width: 0;
+  transition: width 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+  will-change: width;
+}
+
+[data-page-side-pane-panel],
+[data-page-side-pane-side-header] {
+  transition-duration: 200ms;
+  transition-property: transform, width;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, width;
+}
+
+[data-page-side-pane-promoted="true"]
+  [data-page-side-pane-side-header]
+  [data-page-side-pane-promoted-hide],
+[data-page-side-pane-promoted="true"]
+  [data-page-side-pane-resize-handle] {
+  display: none;
+}
+
+[data-page-side-pane-open="true"]
+  [data-page-side-pane-main-header]
+  [data-page-side-pane-avoid] {
+  transform: translate3d(
+    calc(var(--page-side-pane-width, 50%) * -1),
+    0,
+    0
+  );
+}
+
+[data-page-side-pane-open="true"]
+  [data-page-side-pane-main-content] {
+  width: calc(100% - var(--page-side-pane-width, 50%));
+}
+
+[data-page-side-pane-resizing="true"]
+  :is(
+    [data-page-side-pane-avoid],
+    [data-page-side-pane-main-content],
+    [data-page-side-pane-panel],
+    [data-page-side-pane-side-header]
+  ) {
+  transition: none;
+}
+
 .desktop-tab-active::before,
 .desktop-tab-active::after {
   position: absolute;
@@ -116,6 +173,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   [data-panel][data-sidebar-transitioning] {
+    transition: none;
+  }
+  [data-page-side-pane-avoid],
+  [data-page-side-pane-main-content],
+  [data-page-side-pane-panel],
+  [data-page-side-pane-side-header] {
     transition: none;
   }
 }

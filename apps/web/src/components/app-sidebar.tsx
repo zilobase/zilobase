@@ -98,6 +98,10 @@ import {
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
 import {
+  clearPromotedFullPagePath,
+  usePromotedFullPagePath,
+} from "@/contexts/page-side-pane";
+import {
   BlocksIcon,
   CalendarDays,
   CalendarIcon,
@@ -227,9 +231,26 @@ export function AppSidebar({
   const navigate = useNavigate();
   const location = useLocation();
   const { openSearch } = useAppSearch();
-  const pathname = useRouterState({
+  const routerPathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const promotedFullPagePath = usePromotedFullPagePath();
+  const pathname = promotedFullPagePath ?? routerPathname;
+
+  React.useEffect(() => {
+    const handlePopState = () => clearPromotedFullPagePath();
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  React.useEffect(() => {
+    if (
+      promotedFullPagePath &&
+      window.location.pathname !== promotedFullPagePath
+    ) {
+      clearPromotedFullPagePath();
+    }
+  }, [promotedFullPagePath, routerPathname]);
   const activeWorkspaceId = useAppStore((state) => state.activeWorkspaceId);
   const { data: session } = useSession();
   const { data: rawWorkspaces = [] } = useWorkspaces();
@@ -570,14 +591,14 @@ export function AppSidebar({
                               {pageSections.teamspacePages.length > 0 ? (
                                 <NavPageSection
                                   activeDatabaseId={getActiveDatabaseId(
-                                    location.pathname,
+                                    pathname,
                                   )}
                                   activeDatabaseViewId={getActiveDatabaseViewId(
                                     location.search,
                                   )}
                                   activeMeetingId={activeMeetingId}
                                   activePageId={getActivePageId(
-                                    location.pathname,
+                                    pathname,
                                   )}
                                   databaseDropTargetId={databaseDropTargetId}
                                   label="Shared pages"
@@ -597,14 +618,14 @@ export function AppSidebar({
                               {visibleTeamspaces.map((teamspace) => (
                                   <NavPageSection
                                     activeDatabaseId={getActiveDatabaseId(
-                                      location.pathname,
+                                      pathname,
                                     )}
                                     activeDatabaseViewId={getActiveDatabaseViewId(
                                       location.search,
                                     )}
                                     activeMeetingId={activeMeetingId}
                                     activePageId={getActivePageId(
-                                      location.pathname,
+                                      pathname,
                                     )}
                                     databaseDropTargetId={databaseDropTargetId}
                                     key={`teamspace:${teamspace.id}`}
@@ -647,11 +668,11 @@ export function AppSidebar({
                     )
                   : (
                     <NavPageSection
-                      activeDatabaseId={getActiveDatabaseId(location.pathname)}
+                      activeDatabaseId={getActiveDatabaseId(pathname)}
                       activeDatabaseViewId={getActiveDatabaseViewId(
                         location.search,
                       )}
-                      activePageId={getActivePageId(location.pathname)}
+                      activePageId={getActivePageId(pathname)}
                       activeMeetingId={activeMeetingId}
                       databaseDropTargetId={databaseDropTargetId}
                       key={sectionId}
