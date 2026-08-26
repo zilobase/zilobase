@@ -32,7 +32,7 @@ export function SidebarNavItemAction({
   return (
     <SidebarMenuAction
       className={cn(
-        "rounded-sm opacity-0 text-muted-foreground group-hover/nav-row:opacity-100 group-hover/nav-row:text-accent-foreground hover:bg-sidebar-control-hover hover:text-muted-foreground focus-visible:bg-sidebar-control-hover focus-visible:opacity-100 focus-visible:text-muted-foreground",
+        "rounded-md opacity-0 text-muted-foreground group-hover/nav-row:opacity-100 group-hover/nav-row:text-accent-foreground hover:bg-sidebar-control-hover hover:text-muted-foreground focus-visible:bg-sidebar-control-hover focus-visible:opacity-100 focus-visible:text-muted-foreground",
         variant === "disclosure" && "data-[state=open]:rotate-90",
         variant === "menu" &&
           "aria-expanded:bg-sidebar-control-hover aria-expanded:opacity-100 aria-expanded:text-muted-foreground data-[state=open]:bg-sidebar-control-hover data-[state=open]:opacity-100 data-[state=open]:text-muted-foreground",

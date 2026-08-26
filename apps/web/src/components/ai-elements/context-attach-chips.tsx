@@ -30,7 +30,7 @@ function AttachmentChip({
   onRemove: () => void
 }) {
   return (
-    <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-full border bg-background px-2 text-foreground text-xs">
+    <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border bg-background px-2 text-foreground text-xs">
       <AttachmentIcon attachment={attachment} />
       <span className="truncate">{attachment.title}</span>
       <button

@@ -508,7 +508,7 @@ export function GanttCreateMarkerTrigger({
           <PlusIcon className="text-muted-foreground" size={12} />
         </button>
         <div
-          className="whitespace-nowrap rounded-full border border-border bg-backdrop px-2 py-1 text-foreground text-xs backdrop-blur-lg"
+          className="whitespace-nowrap rounded-md border border-border bg-backdrop px-2 py-1 text-foreground text-xs backdrop-blur-lg"
           data-gantt-marker-date
         />
       </div>

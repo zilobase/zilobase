@@ -235,7 +235,7 @@
         )
     )::after {
     background-color: var(--editor-selection-overlay);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     content: "";
     inset: 0;
     pointer-events: none;
@@ -1620,7 +1620,7 @@
   }
 
   .database-cell-presence-border {
-    @apply absolute -inset-px rounded-[3px] border-2;
+    @apply absolute -inset-px rounded-xs border-2;
     border-color: var(--database-presence-color);
   }
 
@@ -1896,7 +1896,7 @@
   }
 
   .database-select-badge {
-    @apply inline-flex max-w-full items-center gap-1.5 truncate rounded-sm px-2 py-0.5 text-xs font-medium leading-4;
+    @apply inline-flex max-w-full items-center gap-1.5 truncate rounded-md px-2 py-0.5 text-xs font-medium leading-4;
   }
 
   .database-select-badge-dot {
@@ -2377,7 +2377,7 @@
   }
 
   .block-comment-count {
-    @apply absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground;
+    @apply absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-md bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground;
   }
 
   .plus-block-menu {

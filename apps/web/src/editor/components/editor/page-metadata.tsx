@@ -1014,7 +1014,7 @@ export function PageMetadata({
                     <span className="truncate">{property.name}</span>
                   </span>
                   <div
-                    className="relative min-w-0 rounded-[3px]"
+                    className="relative min-w-0 rounded-xs"
                     data-presence={
                       (propertyPresenceById[property.id]?.length ?? 0) > 0
                         ? "true"

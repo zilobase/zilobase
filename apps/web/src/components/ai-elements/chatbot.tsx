@@ -519,7 +519,7 @@ const SourceSelector = ({
 
         return (
           <span
-            className="inline-flex h-7 items-center gap-1.5 rounded-full border bg-background px-2 text-muted-foreground text-xs"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md border bg-background px-2 text-muted-foreground text-xs"
             key={source.id}
           >
             <img

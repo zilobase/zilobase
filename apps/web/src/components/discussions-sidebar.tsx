@@ -137,7 +137,7 @@ export function DiscussionsSidebarPanel({
             value="open"
           >
             Open
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+            <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
               {openCount}
             </span>
           </TabsTrigger>
@@ -146,7 +146,7 @@ export function DiscussionsSidebarPanel({
             value="resolved"
           >
             Resolved
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+            <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground">
               {resolvedCount}
             </span>
           </TabsTrigger>
@@ -190,7 +190,7 @@ export function DiscussionsSidebarPanel({
                         : "Page discussion"}
                   </span>
                   {thread.kind !== "page" && !thread.anchorAttached ? (
-                    <span className="rounded-full bg-muted px-1.5 py-0.5 normal-case tracking-normal">
+                    <span className="rounded-md bg-muted px-1.5 py-0.5 normal-case tracking-normal">
                       Original text removed
                     </span>
                   ) : null}

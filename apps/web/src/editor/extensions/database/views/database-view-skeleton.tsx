@@ -38,7 +38,7 @@ function DatabaseKanbanSkeleton() {
       {Array.from({ length: 3 }).map((_, columnIndex) => (
         <div className="w-64 shrink-0 space-y-2" key={columnIndex}>
           <div className="flex items-center justify-between px-1 py-2">
-            <Skeleton className="h-5 w-24 rounded-full" />
+            <Skeleton className="h-5 w-24 rounded-md" />
             <Skeleton className="size-5 rounded-full" />
           </div>
           {Array.from({ length: columnIndex === 1 ? 2 : 3 }).map(

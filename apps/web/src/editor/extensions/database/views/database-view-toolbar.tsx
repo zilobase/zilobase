@@ -911,7 +911,7 @@ export function DatabaseViewToolbar() {
                 >
                   <Button
                     aria-label="Open filter options"
-                    className="group h-8 shrink-0 rounded-full px-3"
+                    className="group h-8 shrink-0 rounded-md px-3"
                     type="button"
                     variant="secondary"
                   >
@@ -937,7 +937,7 @@ export function DatabaseViewToolbar() {
                 >
                   <Button
                     aria-label="Open sort options"
-                    className="group h-8 shrink-0 rounded-full px-3"
+                    className="group h-8 shrink-0 rounded-md px-3"
                     type="button"
                     variant="secondary"
                   >

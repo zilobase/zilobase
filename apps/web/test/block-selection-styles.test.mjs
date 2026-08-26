@@ -16,7 +16,7 @@ export function register({ assert, test }) {
     )
     assert.match(
       css,
-      /background-color: var\(--editor-selection-overlay\);\s*border-radius: 4px;/
+      /background-color: var\(--editor-selection-overlay\);\s*border-radius: var\(--radius-sm\);/
     )
     assert.match(tokens, /--editor-selection-overlay: rgb\(35 131 226 \/ 13%\);/)
     assert.match(

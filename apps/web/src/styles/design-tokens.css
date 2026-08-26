@@ -119,7 +119,8 @@
    * The Tailwind radius scale below moves in one spacing-unit increments, so
    * `rounded-lg p-1` + `rounded-md` produces concentric nested corners.
    */
-  --radius: 0.75rem;
+  --radius: 0.625rem;
+  --radius-round: 999px;
   --spacing: 0.25rem;
   --tracking-normal: 0em;
   --shadow-x: 0;
@@ -681,7 +682,8 @@
   --font-heading: var(--font-family-sans);
   --font-mono: var(--font-family-mono);
   --font-serif: var(--font-family-serif);
-  --radius-xs: max(0px, calc(var(--radius) - (2.5 * var(--spacing))));
+  --radius-2xs: max(0px, calc(var(--radius) - (2.5 * var(--spacing))));
+  --radius-xs: max(0px, calc(var(--radius) - (2.25 * var(--spacing))));
   --radius-sm: max(0px, calc(var(--radius) - (2 * var(--spacing))));
   --radius-md: max(0px, calc(var(--radius) - var(--spacing)));
   --radius-lg: var(--radius);
@@ -689,6 +691,7 @@
   --radius-2xl: calc(var(--radius) + (2 * var(--spacing)));
   --radius-3xl: calc(var(--radius) + (3 * var(--spacing)));
   --radius-4xl: calc(var(--radius) + (4 * var(--spacing)));
+  --radius-full: var(--radius-round);
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);
   --shadow-sm: var(--shadow-sm);
