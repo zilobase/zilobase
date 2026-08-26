@@ -52,6 +52,10 @@
     @apply scroll-m-20 text-base font-medium leading-snug tracking-normal;
   }
 
+  .tiptap-editor :is(h1, h2, h3, h4, h5, h6) :is(strong, b) {
+    font-weight: inherit;
+  }
+
   .tiptap-editor p {
     @apply leading-7 text-foreground;
   }
