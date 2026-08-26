@@ -32,3 +32,6 @@ target
 .env.selfhost
 .env.selfhost.development
 .dev.vars
+
+# local ui-skills install (https://github.com/ibelick/ui-skills)
+.grok/
