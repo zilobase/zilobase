@@ -126,6 +126,7 @@ export function DatabaseViewToolbar() {
     activeView,
     activeViewTabId,
     activeVisibilityConfig,
+    addDataSource,
     addableFilterFieldOptions,
     addableSortFieldOptions,
     addDatabaseRow,
@@ -144,9 +145,11 @@ export function DatabaseViewToolbar() {
     canAddDatabaseViews,
     clearDatabaseFilter,
     clearDatabaseSort,
+    configureDataSources,
     copyDatabaseViewLink,
     createDatabaseFilter,
     createDatabaseSort,
+    dataSources: configuredDataSources,
     databaseConfig,
     databaseId,
     databaseWorkspaceId,
@@ -166,6 +169,7 @@ export function DatabaseViewToolbar() {
     hostViews,
     isAddingDatabaseProperty,
     isAddingDatabaseRow,
+    isAddingDataSource,
     isAddingDatabaseView,
     linkedDatabaseViews,
     layoutSettings,
@@ -1056,7 +1060,7 @@ export function DatabaseViewToolbar() {
                 databaseId={databaseId ?? undefined}
                 databaseName={hostDisplayTitle}
                 dataSources={
-                  hostDatabaseId
+                  configuredDataSources ?? (hostDatabaseId
                     ? [
                         {
                           id: hostDatabaseId,
@@ -1064,7 +1068,7 @@ export function DatabaseViewToolbar() {
                           viewCount: hostViews.length,
                         },
                       ]
-                    : []
+                    : [])
                 }
                 draftViewTitle={draftViewTitle}
                 editable={editable}
@@ -1081,11 +1085,14 @@ export function DatabaseViewToolbar() {
                   undefined
                 }
                 linkedViews={linkedDatabaseViews}
+                isAddingDataSource={isAddingDataSource}
+                onAddDataSource={addDataSource}
                 onAddLinkedDatabaseView={addLinkedDatabaseView}
                 open={viewSettingsOpen}
                 onCopyDatabaseViewLink={copyDatabaseViewLink}
                 onClearDatabaseFilter={clearDatabaseFilter}
                 onClearDatabaseSort={clearDatabaseSort}
+                onConfigureDataSources={configureDataSources}
                 onCreateDatabaseFilter={createDatabaseFilter}
                 onCreateDatabaseSort={createDatabaseSort}
                 onDraftViewTitleChange={setDraftViewTitle}

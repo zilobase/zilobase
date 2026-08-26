@@ -12,6 +12,8 @@ import {
   useAddDatabaseView,
   useAddDatabaseProperty,
   useAddDatabaseRow,
+  useApplyDatabaseTemplate,
+  useCreateDatabase,
   useDatabase,
   useDeleteDatabaseView,
   isDatabaseLocked,
@@ -20,6 +22,13 @@ import {
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
 } from "@zilobase/features/databases"
+import { toast } from "sonner"
+import {
+  createSampleRowContent,
+  type DatabaseSetupSelection,
+} from "../setup/database-setup-card"
+import { getDatabaseSetupTemplate } from "../setup/database-setup-templates"
+import { serializePropertyValue } from "../core/utils"
 import {
   usePage,
   usePagePersonAccessTargets,
@@ -81,6 +90,8 @@ export function useDatabaseViewController({
   pageId = null,
 }: DatabaseViewProps) {
   const updateDatabase = useUpdateDatabase()
+  const applyDataSourceTemplate = useApplyDatabaseTemplate()
+  const createDataSource = useCreateDatabase()
   const updateDatabaseView = useUpdateDatabaseView()
   const addDatabaseView = useAddDatabaseView()
   const deleteDatabaseView = useDeleteDatabaseView()
@@ -115,12 +126,46 @@ export function useDatabaseViewController({
   const [showSortPill, setShowSortPill] = useState(true)
   const [filterPickerOpen, setFilterPickerOpen] = useState(false)
   const [sortPickerOpen, setSortPickerOpen] = useState(false)
+  const [dataSourceSetupOpen, setDataSourceSetupOpen] = useState(false)
   const latestViewConfigRef = useRef(new Map<string, unknown>())
   const isControlledActiveView = Boolean(onActiveViewIdChange)
   const linkedDatabaseViews = useMemo(
     () => getDatabaseLinkedViews(payload?.database.config),
     [payload?.database.config],
   )
+  const sourceDatabaseViews = useMemo(
+    () => linkedDatabaseViews.filter((view) => view.sourceKind === "source"),
+    [linkedDatabaseViews],
+  )
+  const externallyLinkedDatabaseViews = useMemo(
+    () => linkedDatabaseViews.filter((view) => view.sourceKind !== "source"),
+    [linkedDatabaseViews],
+  )
+  const dataSources = useMemo(() => {
+    const sources = new Map<
+      string,
+      { id: string; name: string; viewCount: number }
+    >()
+
+    if (payload?.database.id) {
+      sources.set(payload.database.id, {
+        id: payload.database.id,
+        name: payload.database.name || "Untitled database",
+        viewCount: payload.views.length,
+      })
+    }
+
+    for (const view of sourceDatabaseViews) {
+      const source = sources.get(view.databaseId)
+      sources.set(view.databaseId, {
+        id: view.databaseId,
+        name: view.databaseName,
+        viewCount: (source?.viewCount ?? 0) + 1,
+      })
+    }
+
+    return [...sources.values()]
+  }, [payload?.database, payload?.views.length, sourceDatabaseViews])
   const baseViewTabs = useMemo(
     () => [
       ...(payload?.views ?? []).map((view) => ({
@@ -458,6 +503,133 @@ export function useDatabaseViewController({
     )
   }
 
+  const handleDataSourceSetupSelection = async (
+    selection: DatabaseSetupSelection,
+  ) => {
+    const hostWorkspaceId = payload?.database.workspaceId ?? workspaceId
+
+    if (
+      !editable ||
+      !databaseId ||
+      !hostWorkspaceId ||
+      createDataSource.isPending ||
+      updateDatabase.isPending
+    ) {
+      return
+    }
+
+    try {
+      if (selection.linkedView) {
+        const linkedView = {
+          ...selection.linkedView,
+          sourceKind: "linked" as const,
+        }
+        const linkedViewKey = getDatabaseLinkedViewKey(linkedView)
+
+        if (
+          linkedDatabaseViews.some(
+            (existingView) =>
+              getDatabaseLinkedViewKey(existingView) === linkedViewKey,
+          )
+        ) {
+          setSelectedActiveViewId(linkedViewKey)
+          return
+        }
+
+        await updateDatabase.mutateAsync({
+          config: getMergedDatabaseConfig(payload?.database.config, {
+            linkedDatabaseViews: [...linkedDatabaseViews, linkedView],
+          }),
+          databaseId,
+        })
+        setSelectedActiveViewId(linkedViewKey)
+        toast.success("Data source linked.")
+        return
+      }
+
+      const template = selection.templateId
+        ? getDatabaseSetupTemplate(selection.templateId)
+        : null
+      const databaseName =
+        selection.databaseName || template?.name || "New data source"
+      const created = await createDataSource.mutateAsync({
+        name: databaseName,
+        standalone: true,
+        workspaceId: hostWorkspaceId,
+      })
+      const defaultView = created.views[0]
+
+      if (!defaultView) {
+        throw new Error("The new data source has no default view.")
+      }
+
+      if (template) {
+        const propertyTypesByName = new Map(
+          template.properties.map((property) => [
+            property.name.toLowerCase(),
+            property.type,
+          ]),
+        )
+
+        await applyDataSourceTemplate.mutateAsync({
+          config: getMergedDatabaseConfig(created.database.config, {
+            emoji: template.emoji,
+            setupDismissed: true,
+          }),
+          databaseId: created.database.id,
+          name: databaseName,
+          properties: template.properties,
+          rows: template.sampleRows.map((sampleRow) => ({
+            content: createSampleRowContent(sampleRow.content),
+            metadata: { emoji: sampleRow.emoji },
+            title: sampleRow.title,
+            values: Object.entries(sampleRow.values ?? {}).flatMap(
+              ([propertyName, value]) => {
+                const propertyType = propertyTypesByName.get(
+                  propertyName.toLowerCase(),
+                )
+
+                return propertyType
+                  ? [
+                      {
+                        propertyName,
+                        value: serializePropertyValue(propertyType, value),
+                      },
+                    ]
+                  : []
+              },
+            ),
+          })),
+        })
+      }
+
+      const sourceView: DatabaseLinkedViewConfig = {
+        databaseId: created.database.id,
+        databaseName,
+        sourceKind: "source",
+        viewId: defaultView.id,
+        viewName: defaultView.name || "Table",
+        viewType: defaultView.type || "table",
+      }
+      const sourceViewKey = getDatabaseLinkedViewKey(sourceView)
+
+      await updateDatabase.mutateAsync({
+        config: getMergedDatabaseConfig(payload?.database.config, {
+          linkedDatabaseViews: [...linkedDatabaseViews, sourceView],
+        }),
+        databaseId,
+      })
+      setSelectedActiveViewId(sourceViewKey)
+      toast.success("Data source added.")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not add the data source.",
+      )
+    }
+  }
+
   const saveDatabaseViewIcon: DatabaseViewContextValue["saveDatabaseViewIcon"] = (
     view,
     nextIcon,
@@ -703,6 +875,7 @@ export function useDatabaseViewController({
     activeView,
     activeViewTabId,
     activeVisibilityConfig,
+    addDataSource: () => setDataSourceSetupOpen(true),
     addableFilterFieldOptions,
     addableSortFieldOptions,
     addDatabaseProperty: commands.addDatabaseProperty,
@@ -729,6 +902,7 @@ export function useDatabaseViewController({
     copyDatabaseViewLink: commands.copyDatabaseViewLink,
     createDatabaseFilter: commands.createDatabaseFilter,
     createDatabaseSort: commands.createDatabaseSort,
+    dataSources,
     databaseConfig: activePayload?.database.config,
     databaseId: activeDatabaseId,
     databaseName: activePayload?.database.name,
@@ -758,16 +932,18 @@ export function useDatabaseViewController({
     hostViews: payload?.views ?? [],
     isAddingDatabaseProperty: addProperty.isPending,
     isAddingDatabaseRow: addRow.isPending,
+    isAddingDataSource:
+      createDataSource.isPending || applyDataSourceTemplate.isPending,
     isAddingDatabaseView: addDatabaseView.isPending,
     isTimelineView,
     isFetchingNextPage: activeIsFetchingNextPage,
-    linkedDatabaseViews,
+    linkedDatabaseViews: externallyLinkedDatabaseViews,
     layoutSettings,
     titlePropertyLabel,
     showPageIconInTitle,
     onOpenPage,
     options: kanbanOptions,
-    workspaceId,
+    workspaceId: payload?.database.workspaceId ?? workspaceId,
     personOptions,
     properties,
     removeDatabaseFilter: commands.removeDatabaseFilter,
@@ -834,6 +1010,7 @@ export function useDatabaseViewController({
       ? "database-block-shell database-block-shell-full"
       : "database-block-shell",
     context: databaseViewContext,
+    dataSourceSetupOpen,
     databaseId,
     error: activeLinkedDatabaseView ? linkedError : error,
     isError: activeLinkedDatabaseView ? isLinkedError : isError,
@@ -842,8 +1019,10 @@ export function useDatabaseViewController({
     isLoading:
       isLoading || Boolean(activeLinkedDatabaseView && isLoadingLinkedPayload),
     onDismissSetup,
+    onDataSourceSetupClose: () => setDataSourceSetupOpen(false),
+    onDataSourceSetupSelect: handleDataSourceSetupSelection,
     onSetupComplete,
-    workspaceId,
+    workspaceId: payload?.database.workspaceId ?? workspaceId,
     payload: activePayload,
     sourcePropertyDialog: null,
     setupMode: effectiveSetupMode,

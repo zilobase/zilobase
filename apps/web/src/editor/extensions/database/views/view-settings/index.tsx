@@ -72,14 +72,17 @@ export function DatabaseViewSettingsMenu({
   groupProperties,
   groupPropertyId,
   linkedViews = [],
+  isAddingDataSource,
   titlePropertyLabel,
   open: controlledOpen,
   workspaceId,
   onAddLinkedDatabaseView,
+  onAddDataSource,
   onCopyDatabaseViewLink,
   onOpenChange,
   onClearDatabaseFilter,
   onClearDatabaseSort,
+  onConfigureDataSources,
   onCreateDatabaseFilter,
   onCreateDatabaseSort,
   onDraftViewTitleChange,
@@ -401,8 +404,11 @@ export function DatabaseViewSettingsMenu({
           databaseId={databaseId}
           databaseName={databaseName}
           dataSources={dataSources}
+          isAddingDataSource={isAddingDataSource}
           linkedViews={linkedViews}
+          onAddDataSource={onAddDataSource}
           onAddLinkedDatabaseView={onAddLinkedDatabaseView}
+          onConfigureDataSources={onConfigureDataSources}
           onUpdateDatabaseSubItemsSettings={onUpdateDatabaseSubItemsSettings}
           onCloseSettings={() => setOpen(false)}
           open={open}

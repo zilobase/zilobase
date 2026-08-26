@@ -58,10 +58,18 @@ type SetupView = "main" | "link";
 
 type DatabaseSetupCardProps = {
   databaseId: string;
+  excludedDatabaseIds?: string[];
   onComplete: () => void;
   onDismiss: () => void;
+  onSelectDataSource?: (selection: DatabaseSetupSelection) => Promise<void>;
   workspaceId?: string | null;
   pageId?: string | null;
+};
+
+export type DatabaseSetupSelection = {
+  databaseName?: string;
+  linkedView?: DatabaseLinkedViewConfig;
+  templateId?: DatabaseSetupTemplateId | null;
 };
 
 type TextNode = {
@@ -158,7 +166,7 @@ function createTaskItemNode(text: string, checked: boolean): ContentNode {
   };
 }
 
-function createSampleRowContent(markdown: string) {
+export function createSampleRowContent(markdown: string) {
   const content: ContentNode[] = [];
   const lines = markdown.trim().split("\n");
 
@@ -326,8 +334,10 @@ function getTemplateGlyph(template: DatabaseSetupTemplate) {
 
 export function DatabaseSetupCard({
   databaseId,
+  excludedDatabaseIds = [],
   onComplete,
   onDismiss,
+  onSelectDataSource,
   workspaceId,
 }: DatabaseSetupCardProps) {
   const [view, setView] = useState<SetupView>("main");
@@ -367,19 +377,20 @@ export function DatabaseSetupCard({
   }, [databaseId, databasePayload, onDismiss, updateDatabase]);
 
   const linkableDatabases = useMemo(() => {
+    const excludedIds = new Set([databaseId, ...excludedDatabaseIds]);
     const pagesById = new Map(
       (navigation?.pages ?? []).map((page) => [page.id, page]),
     );
 
     return (navigation?.databases ?? [])
-      .filter((database) => database.id !== databaseId)
+      .filter((database) => !excludedIds.has(database.id))
       .map((database) => ({
         database,
         pageName: database.pageId
           ? pagesById.get(database.pageId)?.name.trim() || "Untitled"
           : "Standalone",
       }));
-  }, [databaseId, navigation]);
+  }, [databaseId, excludedDatabaseIds, navigation]);
 
   const filteredLinkableDatabases = useMemo(() => {
     const query = linkSearch.trim().toLowerCase();
@@ -398,14 +409,16 @@ export function DatabaseSetupCard({
       databaseName,
       linkedView,
       templateId,
-    }: {
-      databaseName?: string;
-      linkedView?: DatabaseLinkedViewConfig;
-      templateId?: DatabaseSetupTemplateId | null;
-    }) => {
+    }: DatabaseSetupSelection) => {
       setIsSubmitting(true);
 
       try {
+        if (onSelectDataSource) {
+          await onSelectDataSource({ databaseName, linkedView, templateId });
+          onComplete();
+          return;
+        }
+
         let setupDismissedPersisted = false;
 
         if (linkedView) {
@@ -520,6 +533,7 @@ export function DatabaseSetupCard({
       dismissSetup,
       onComplete,
       onDismiss,
+      onSelectDataSource,
       updateDatabase,
     ],
   );
@@ -614,7 +628,14 @@ export function DatabaseSetupCard({
                 <Plus className="size-4" />
               </span>
             }
-            onClick={onDismiss}
+            onClick={() => {
+              if (onSelectDataSource) {
+                void finishSetup({ databaseName: "New data source" });
+                return;
+              }
+
+              onDismiss();
+            }}
           >
             New empty data source
           </SetupOptionButton>
@@ -808,6 +829,11 @@ export function DatabaseSetupCard({
           aria-label="Close database setup"
           className="database-setup-close"
           onClick={() => {
+            if (onSelectDataSource) {
+              onDismiss();
+              return;
+            }
+
             void dismissSetup();
           }}
           size="icon-sm"

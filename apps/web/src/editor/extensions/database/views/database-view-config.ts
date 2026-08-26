@@ -61,6 +61,7 @@ export type DatabaseConditionalColorConfig = {
 export type DatabaseLinkedViewConfig = {
   databaseId: string;
   databaseName: string;
+  sourceKind?: "source" | "linked";
   viewIcon?: string;
   linkedViewId?: string;
   viewId: string;
@@ -869,6 +870,8 @@ function normalizeDatabaseLinkedView(
       linkedView.linkedViewId.length > 0
         ? linkedView.linkedViewId
         : undefined,
+    sourceKind:
+      linkedView.sourceKind === "source" ? "source" : "linked",
     viewId: linkedView.viewId,
     viewIcon:
       typeof linkedView.viewIcon === "string" ? linkedView.viewIcon : undefined,

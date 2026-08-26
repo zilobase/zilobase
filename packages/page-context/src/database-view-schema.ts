@@ -4,6 +4,7 @@ export type DatabaseLinkedViewConfig = {
   databaseId: string;
   databaseName: string;
   linkedViewId?: string;
+  sourceKind?: "source" | "linked";
   viewId: string;
   viewName: string;
   viewType: string;
@@ -314,6 +315,8 @@ function normalizeDatabaseLinkedView(
       linkedView.linkedViewId.length > 0
         ? linkedView.linkedViewId
         : undefined,
+    sourceKind:
+      linkedView.sourceKind === "source" ? "source" : "linked",
     viewId: linkedView.viewId,
     viewName:
       typeof linkedView.viewName === "string" &&

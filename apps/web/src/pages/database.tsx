@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useParams, useRouteContext, useSearch } from "@tanstack/react-router"
-import { ArrowRight, Maximize2 } from "lucide-react"
+import { ArrowRight, ArrowUpRight, Maximize2 } from "lucide-react"
 
 import { AuthenticatedRouteError } from "@/components/authenticated-route-error"
 import { FallbackErrorBoundary } from "@/components/fallback-error-boundary"
@@ -41,6 +41,7 @@ import {
   PageEditorPane,
 } from "@/pages/page"
 import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
+import { resolveDatabasePageSource } from "@/pages/database-page-source"
 import type { OpenPageOptions } from "@/packages/editor/types"
 import { useTitleDraft } from "@/hooks/use-title-draft"
 import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider"
@@ -317,7 +318,6 @@ export function DatabaseMainPane({
     includeDeleted: true,
   })
   const databasePageId = payload?.database.pageId ?? null
-  const { data: page } = usePage(databasePageId)
   const { data: accessLevel } = usePageAccessLevel(databasePageId)
   const updateDatabase = useUpdateDatabase()
   const restoreDatabase = useRestoreDatabase()
@@ -327,6 +327,22 @@ export function DatabaseMainPane({
   const [iconPosition, setIconPosition] =
     useState<PageIconPosition>("inline")
   const [embeddedViewId, setEmbeddedViewId] = useState<string | undefined>()
+  const activeViewId = embedded ? embeddedViewId : localActiveViewId
+  const activeSource = resolveDatabasePageSource({
+    activeViewId,
+    config: payload?.database.config,
+    hostDatabaseId: databaseId,
+  })
+  const { data: sourcePayload } = useDatabase(
+    activeSource.linkedView ? activeSource.databaseId : null,
+    { includeDeleted: true },
+  )
+  const sourceDatabase = activeSource.linkedView
+    ? sourcePayload?.database
+    : payload?.database
+  const sourcePageId = sourceDatabase?.pageId ?? null
+  const { data: sourcePage } = usePage(sourcePageId)
+  const { data: sourceAccessLevel } = usePageAccessLevel(sourcePageId)
   const editable =
     !readOnly &&
     connectivity === "online" &&
@@ -336,52 +352,68 @@ export function DatabaseMainPane({
       payload?.database.accessLevel === "full" ||
       accessLevel === "edit" ||
       accessLevel === "full")
+  const sourceEditable =
+    editable &&
+    Boolean(sourceDatabase) &&
+    !sourceDatabase?.deletedAt &&
+    !isDatabaseLocked(sourceDatabase) &&
+    (sourceDatabase?.accessLevel === "edit" ||
+      sourceDatabase?.accessLevel === "full" ||
+      sourceAccessLevel === "edit" ||
+      sourceAccessLevel === "full")
+  const sourceTitle =
+    sourceDatabase?.name ??
+    activeSource.linkedView?.databaseName ??
+    payload?.database.name ??
+    ""
   const { setTitle, title } = useTitleDraft({
-    enabled: editable,
+    enabled: sourceEditable,
     onSave: async (nextTitle) => {
-      if (!payload) return
+      if (!sourceDatabase) return
 
       const saves: Promise<unknown>[] = [
         updateDatabase.mutateAsync({
-          databaseId: payload.database.id,
+          databaseId: sourceDatabase.id,
           name: nextTitle,
         }),
       ]
 
-      if (page && page.name !== nextTitle) {
-        saves.push(updatePage.mutateAsync({ id: page.id, name: nextTitle }))
+      if (sourcePage && sourcePage.name !== nextTitle) {
+        saves.push(
+          updatePage.mutateAsync({ id: sourcePage.id, name: nextTitle }),
+        )
       }
 
       await Promise.all(saves)
     },
-    sourceId: payload?.database.id ?? null,
-    sourceTitle: payload?.database.name ?? "",
+    sourceId: activeSource.databaseId,
+    sourceTitle,
   })
 
   useEffect(() => {
-    if (!payload) {
+    if (!sourceDatabase) {
       setCover("")
       setEmoji("")
       setIconPosition("inline")
       return
     }
 
-    setCover(getDatabaseCover(payload.database) ?? "")
-    setEmoji(getDatabaseEmoji(payload.database) ?? "")
-    setIconPosition(getDatabaseIconPosition(payload.database))
-  }, [payload])
+    setCover(getDatabaseCover(sourceDatabase) ?? "")
+    setEmoji(getDatabaseEmoji(sourceDatabase) ?? "")
+    setIconPosition(getDatabaseIconPosition(sourceDatabase))
+  }, [sourceDatabase])
 
   const updateCover = (nextCover: string) => {
     setCover(nextCover)
 
-    if (!payload || !editable) {
+    if (!sourceDatabase || !sourceEditable) {
       return
     }
 
     updateDatabase.mutate({
-      databaseId: payload.database.id,
+      databaseId: sourceDatabase.id,
       config: {
-        ...((payload.database.config ?? {}) as Record<string, unknown>),
+        ...((sourceDatabase.config ?? {}) as Record<string, unknown>),
         cover: nextCover,
       },
     })
@@ -390,14 +422,14 @@ export function DatabaseMainPane({
   const updateEmoji = (nextEmoji: string) => {
     setEmoji(nextEmoji)
 
-    if (!payload || !editable) {
+    if (!sourceDatabase || !sourceEditable) {
       return
     }
 
     updateDatabase.mutate({
-      databaseId: payload.database.id,
+      databaseId: sourceDatabase.id,
       config: {
-        ...((payload.database.config ?? {}) as Record<string, unknown>),
+        ...((sourceDatabase.config ?? {}) as Record<string, unknown>),
         emoji: nextEmoji,
       },
     })
@@ -406,14 +438,14 @@ export function DatabaseMainPane({
   const updateIconPosition = (nextPosition: PageIconPosition) => {
     setIconPosition(nextPosition)
 
-    if (!payload || !editable) {
+    if (!sourceDatabase || !sourceEditable) {
       return
     }
 
     updateDatabase.mutate({
-      databaseId: payload.database.id,
+      databaseId: sourceDatabase.id,
       config: {
-        ...((payload.database.config ?? {}) as Record<string, unknown>),
+        ...((sourceDatabase.config ?? {}) as Record<string, unknown>),
         iconPosition: nextPosition,
       },
     })
@@ -458,19 +490,28 @@ export function DatabaseMainPane({
       ) : null}
       <PageMetadataView
         cover={cover}
-        databaseId={databaseId}
-        editable={editable}
+        databaseId={activeSource.databaseId}
+        editable={sourceEditable}
         enableComments={false}
         icon={emoji}
         iconPosition={iconPosition}
+        layoutSection="heading"
         onCoverChange={updateCover}
         onIconChange={updateEmoji}
         onIconPositionChange={updateIconPosition}
         onOpenPage={onOpenPage}
         onTitleChange={setTitle}
-        workspaceId={payload?.database.workspaceId}
+        workspaceId={sourceDatabase?.workspaceId}
         title={title}
-        pageId={databasePageId}
+        titlePrefix={
+          activeSource.linkedView ? (
+            <ArrowUpRight
+              aria-label={`Linked from ${sourceTitle || "another database"}`}
+              className="size-6"
+            />
+          ) : undefined
+        }
+        pageId={sourcePageId}
       />
       <div className="tiptap-editor px-5 pb-10 sm:px-8 md:px-20 lg:px-24">
         <DatabaseView

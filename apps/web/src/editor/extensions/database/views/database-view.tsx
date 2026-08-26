@@ -30,6 +30,7 @@ export function DatabaseView(props: DatabaseViewProps) {
   const {
     className,
     context,
+    dataSourceSetupOpen,
     databaseId,
     error,
     handleDatabaseBlockDragOver,
@@ -37,6 +38,8 @@ export function DatabaseView(props: DatabaseViewProps) {
     isError,
     isLoading,
     onDismissSetup,
+    onDataSourceSetupClose,
+    onDataSourceSetupSelect,
     onSetupComplete,
     workspaceId,
     payload,
@@ -84,6 +87,16 @@ export function DatabaseView(props: DatabaseViewProps) {
               databaseId={databaseId}
               onComplete={onSetupComplete ?? (() => {})}
               onDismiss={onDismissSetup ?? (() => {})}
+              workspaceId={workspaceId}
+              pageId={pageId}
+            />
+          ) : null}
+          {dataSourceSetupOpen && databaseId ? (
+            <DatabaseSetupCard
+              databaseId={databaseId}
+              onComplete={onDataSourceSetupClose}
+              onDismiss={onDataSourceSetupClose}
+              onSelectDataSource={onDataSourceSetupSelect}
               workspaceId={workspaceId}
               pageId={pageId}
             />

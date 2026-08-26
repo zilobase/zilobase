@@ -96,6 +96,7 @@ type PageMetadataProps = {
   onTitleChange?: (title: string) => void
   workspaceId?: string | null
   title?: string
+  titlePrefix?: ReactNode
   titlePlaceholder?: string
   pageId?: string | null
   ref?: Ref<PageMetadataHandle>
@@ -221,6 +222,7 @@ export function PageMetadata({
   onTitleChange,
   workspaceId,
   title: titleProp,
+  titlePrefix,
   titlePlaceholder,
   pageId,
   ref,
@@ -861,8 +863,13 @@ export function PageMetadata({
 
         {showHeading ? (
           <div className="flex items-start gap-3" ref={titleRowRef}>
-          {iconPosition === "inline" ? pageIcon : null}
-          <textarea
+            {iconPosition === "inline" ? pageIcon : null}
+            {titlePrefix ? (
+              <span className="flex min-h-10 shrink-0 items-center text-muted-foreground">
+                {titlePrefix}
+              </span>
+            ) : null}
+            <textarea
               aria-label={headingLabel ? `${headingLabel} title` : "Page title"}
             className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
             onChange={(event) => updateTitle(event.target.value)}

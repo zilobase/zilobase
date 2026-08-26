@@ -1,4 +1,70 @@
+import { readFile } from "node:fs/promises";
+
 export function register({ assert, loadModule, test }) {
+  test("adding a data source opens the shared database setup chooser", async () => {
+    const [controller, databaseView, setupCard] = await Promise.all([
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/use-database-view-controller.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/database-view.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/setup/database-setup-card.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ]);
+
+    assert.match(controller, /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/);
+    assert.match(databaseView, /<DatabaseSetupCard[\s\S]*?onSelectDataSource/);
+    assert.match(setupCard, /if \(onSelectDataSource\)/);
+    assert.match(setupCard, /New empty data source/);
+    assert.match(setupCard, /Link to existing data source/);
+  });
+
+  test("database data sources retain source ownership", async () => {
+    const { getDatabaseLinkedViews } = await loadModule(
+      "/src/editor/extensions/database/views/database-view-config.ts",
+    );
+
+    assert.deepEqual(
+      getDatabaseLinkedViews({
+        linkedDatabaseViews: [
+          {
+            databaseId: "new-source",
+            databaseName: "New data source",
+            sourceKind: "source",
+            viewId: "table",
+            viewName: "Table",
+            viewType: "table",
+          },
+          {
+            databaseId: "external",
+            databaseName: "External",
+            viewId: "list",
+            viewName: "List",
+            viewType: "list",
+          },
+        ],
+      }).map(({ databaseId, sourceKind }) => ({ databaseId, sourceKind })),
+      [
+        { databaseId: "new-source", sourceKind: "source" },
+        { databaseId: "external", sourceKind: "linked" },
+      ],
+    );
+  });
+
   test("database property icons persist in property and name-column config", async () => {
     const {
       getDatabasePropertyIcon,

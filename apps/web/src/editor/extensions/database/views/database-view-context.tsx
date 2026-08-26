@@ -89,6 +89,7 @@ export type DatabaseViewContextValue = {
   activeView: DatabaseView | null
   activeViewTabId: string | null
   activeVisibilityConfig: unknown
+  addDataSource?: () => void
   addableFilterFieldOptions: DatabaseSearchableMenuOption[]
   addableSortFieldOptions: DatabaseSearchableMenuOption[]
   addDatabaseProperty: (type?: string, label?: string, position?: number) => void
@@ -125,9 +126,11 @@ export type DatabaseViewContextValue = {
   chartSettings: DatabaseChartSettings
   clearDatabaseFilter: () => void
   clearDatabaseSort: () => void
+  configureDataSources?: () => void
   copyDatabaseViewLink: () => void
   createDatabaseFilter: (field: string) => void
   createDatabaseSort: (field: string) => void
+  dataSources?: Array<{ id: string; name: string; viewCount: number }>
   databaseConfig?: unknown
   databaseId: string | null | undefined
   databaseName?: string
@@ -160,6 +163,7 @@ export type DatabaseViewContextValue = {
   hostViews: DatabaseView[]
   isAddingDatabaseProperty: boolean
   isAddingDatabaseRow: boolean
+  isAddingDataSource?: boolean
   isAddingDatabaseView: boolean
   isTimelineView: boolean
   isFetchingNextPage: boolean

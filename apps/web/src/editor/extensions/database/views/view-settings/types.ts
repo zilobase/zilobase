@@ -60,10 +60,12 @@ export type DatabaseViewSettingsMenuProps = {
   open?: boolean;
   workspaceId?: string;
   onAddLinkedDatabaseView: (view: DatabaseLinkedViewConfig) => void;
+  onAddDataSource?: () => void;
   onCopyDatabaseViewLink: () => void;
   onOpenChange?: (open: boolean) => void;
   onClearDatabaseFilter: () => void;
   onClearDatabaseSort: () => void;
+  onConfigureDataSources?: () => void;
   onCreateDatabaseFilter: (field: string) => void;
   onCreateDatabaseSort: (field: string) => void;
   onDraftViewTitleChange: (title: string) => void;
@@ -107,6 +109,7 @@ export type DatabaseViewSettingsMenuProps = {
     settings: Partial<DatabaseSubItemsSettings>,
   ) => void;
   properties: DatabaseViewProperty[];
+  isAddingDataSource?: boolean;
   sortFieldOptions: DatabaseSearchableMenuOption[];
   sourceDatabaseId?: string;
   viewConfig?: unknown;

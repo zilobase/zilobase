@@ -58,8 +58,11 @@ type DataSourceSettingsSectionProps = Pick<
   | "databaseId"
   | "databaseName"
   | "dataSources"
+  | "isAddingDataSource"
   | "linkedViews"
+  | "onAddDataSource"
   | "onAddLinkedDatabaseView"
+  | "onConfigureDataSources"
   | "onUpdateDatabaseSubItemsSettings"
   | "properties"
   | "sourceDatabaseId"
@@ -74,8 +77,11 @@ export function DataSourceSettingsSection({
   databaseId,
   databaseName,
   dataSources,
+  isAddingDataSource,
   linkedViews = [],
+  onAddDataSource,
   onAddLinkedDatabaseView,
+  onConfigureDataSources,
   onUpdateDatabaseSubItemsSettings,
   onCloseSettings,
   open,
@@ -155,13 +161,24 @@ export function DataSourceSettingsSection({
         <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
           Data source settings
         </DropDrawerLabel>
-        <DropDrawerItem disabled>
+        <DropDrawerItem
+          disabled={!onConfigureDataSources}
+          onSelect={() => {
+            if (!onConfigureDataSources) return;
+            onCloseSettings();
+            onConfigureDataSources();
+          }}
+        >
           <ViewSettingsRow
             icon={<Database />}
             label="Source"
             right={
               <span className="block max-w-28 truncate">
-                {databaseName || "Untitled database"}
+                {dataSources.length === 1
+                  ? dataSources[0]?.name
+                  : dataSources.length > 1
+                    ? `${dataSources.length} databases`
+                    : databaseName || "No databases"}
               </span>
             }
           />
@@ -415,9 +432,18 @@ export function DataSourceSettingsSection({
                     <span>No data sources</span>
                   </DropDrawerItem>
                 )}
-                <DropDrawerItem disabled>
+                <DropDrawerItem
+                  disabled={!onAddDataSource || isAddingDataSource}
+                  onSelect={() => {
+                    if (!onAddDataSource) return;
+                    onCloseSettings();
+                    onAddDataSource();
+                  }}
+                >
                   <DataSourceAddGlyph />
-                  <span>Add data source</span>
+                  <span>
+                    {isAddingDataSource ? "Adding data source..." : "Add data source"}
+                  </span>
                 </DropDrawerItem>
                 <DropDrawerSeparator />
                 <DataSourceSectionLabel>Linked</DataSourceSectionLabel>
