@@ -1,6 +1,7 @@
 type PageContentNode = {
   attrs?: Record<string, unknown>;
   content?: PageContentNode[];
+  marks?: Array<{ attrs?: Record<string, unknown>; type: string }>;
   text?: string;
   type: string;
 };
@@ -9,6 +10,7 @@ export function markdownToPageContent(markdown: string) {
   const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
   const content: PageContentNode[] = [];
   let index = 0;
+  let taskListHeadingActive = false;
 
   while (index < lines.length) {
     const line = lines[index]!;
@@ -45,9 +47,10 @@ export function markdownToPageContent(markdown: string) {
     if (heading) {
       content.push({
         attrs: { level: heading[1]!.length },
-        content: textContent(heading[2]!),
+        content: inlineContent(heading[2]!),
         type: "heading",
       });
+      taskListHeadingActive = isTaskListHeading(heading[2]!);
       index += 1;
       continue;
     }
@@ -76,6 +79,7 @@ export function markdownToPageContent(markdown: string) {
       }
 
       content.push({ content: items, type: "taskList" });
+      taskListHeadingActive = false;
       continue;
     }
 
@@ -86,13 +90,23 @@ export function markdownToPageContent(markdown: string) {
         const match = lines[index]!.trim().match(/^[-*+]\s+(.+)$/);
 
         if (!match) break;
-        items.push({ content: [paragraph(match[1]!)], type: "listItem" });
+        items.push({
+          ...(taskListHeadingActive ? { attrs: { checked: false } } : {}),
+          content: [paragraph(match[1]!)],
+          type: taskListHeadingActive ? "taskItem" : "listItem",
+        });
         index += 1;
       }
 
-      content.push({ content: items, type: "bulletList" });
+      content.push({
+        content: items,
+        type: taskListHeadingActive ? "taskList" : "bulletList",
+      });
+      taskListHeadingActive = false;
       continue;
     }
+
+    taskListHeadingActive = false;
 
     const orderedMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
     if (orderedMatch) {
@@ -147,6 +161,10 @@ export function markdownToPageContent(markdown: string) {
   };
 }
 
+function isTaskListHeading(value: string) {
+  return /\b(?:checklist|tasks?|to[- ]?do)\b/i.test(value);
+}
+
 function startsBlock(line: string) {
   return /^(?:```|#{1,6}\s|[-*+]\s|\d+\.\s|>\s?|(?:[-*_]\s*){3,}$)/.test(
     line,
@@ -155,9 +173,51 @@ function startsBlock(line: string) {
 
 function paragraph(text: string): PageContentNode {
   return {
-    content: textContent(text),
+    content: inlineContent(text),
     type: "paragraph",
   };
+}
+
+function inlineContent(text: string): PageContentNode[] | undefined {
+  if (!text) return undefined;
+
+  const nodes: PageContentNode[] = [];
+  const pattern = /(\*\*[^*\n]+\*\*|`[^`\n]+`|\*[^*\n]+\*)/g;
+  let cursor = 0;
+
+  for (const match of text.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    if (index > cursor) {
+      nodes.push({ text: text.slice(cursor, index), type: "text" });
+    }
+    const token = match[0];
+    if (token.startsWith("**")) {
+      nodes.push({
+        marks: [{ type: "bold" }],
+        text: token.slice(2, -2),
+        type: "text",
+      });
+    } else if (token.startsWith("`")) {
+      nodes.push({
+        marks: [{ type: "code" }],
+        text: token.slice(1, -1),
+        type: "text",
+      });
+    } else {
+      nodes.push({
+        marks: [{ type: "italic" }],
+        text: token.slice(1, -1),
+        type: "text",
+      });
+    }
+    cursor = index + token.length;
+  }
+
+  if (cursor < text.length) {
+    nodes.push({ text: text.slice(cursor), type: "text" });
+  }
+
+  return nodes.length > 0 ? nodes : undefined;
 }
 
 function textContent(text: string): PageContentNode[] | undefined {

@@ -18,6 +18,7 @@ import { page, pageCollaborationDocument } from "../db/schema";
 import { searchWorkspaceItems } from "../features/search/service";
 import { getDatabaseRecord } from "../services/database-access";
 import { getDatabasePayload } from "../services/database-payload";
+import { hashPageContentMarkdown } from "./page-content-version";
 
 const MAX_PAGE_MARKDOWN_CHARS = 48_000;
 const MAX_COMMENT_BODY_CHARS = 4_000;
@@ -114,14 +115,14 @@ export function buildWorkspaceReadTools(
       execute: (input) =>
         context.withDb(async () => {
           const record = await readAccessiblePage(context, input.pageId);
-          const markdown = truncateMarkdown(
-            prosemirrorToMarkdown(record.content),
-          );
+          const fullMarkdown = prosemirrorToMarkdown(record.content);
+          const markdown = truncateMarkdown(fullMarkdown);
           const citation = pageCitation(record.id, record.name, markdown);
 
           return succeeded(
             `Read page "${displayPageName(record.name)}".`,
             {
+              contentHash: await hashPageContentMarkdown(fullMarkdown),
               id: record.id,
               markdown,
               title: displayPageName(record.name),
