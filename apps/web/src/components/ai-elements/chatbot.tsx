@@ -6,6 +6,8 @@ import {
 } from "@/components/ai-elements/conversation";
 import {
   Message,
+  MessageAction,
+  MessageActions,
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
@@ -64,6 +66,7 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import type { ToolPart } from "@/components/ai-elements/tool";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   aiChatThreadMessagesQueryKey,
   aiChatThreadMessagesQueryOptions,
@@ -77,10 +80,12 @@ import {
   readAgentCitations,
   readAgentResultTable,
   type AgentCitation,
+  type AiChatFeedback,
   type AiChatThreadMessagesResponse,
   type ProposePageContentUpdateOutput,
   type PageEditSnapshotPart,
   useCreateAiChatThread,
+  useSubmitAiChatFeedback,
 } from "@zilobase/features/ai-chat";
 import { useSession } from "@zilobase/features/auth";
 import { useZilobaseFeatures } from "@zilobase/features";
@@ -116,6 +121,8 @@ import {
   FileTextIcon,
   InboxIcon,
   PlusIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -128,6 +135,15 @@ import {
 } from "@/lib/ai-file-upload";
 
 const fallbackModels: WorkspaceAiChatModel[] = [
+  {
+    chef: "Zilobase",
+    chefSlug: "openai",
+    description: "Automatically uses the workspace default model.",
+    gatewayId: "auto",
+    id: "auto",
+    name: "Auto",
+    providers: ["openai"],
+  },
   {
     chef: "OpenAI",
     chefSlug: "openai",
@@ -438,7 +454,11 @@ const ModelItem = ({
   }, [onSelect, m.id]);
 
   return (
-    <ModelSelectorItem onSelect={handleSelect} value={m.id}>
+    <ModelSelectorItem
+      onSelect={handleSelect}
+      title={m.description}
+      value={m.id}
+    >
       <ModelSelectorLogo provider={getProviderLogoSlug(m.chefSlug)} />
       <ModelSelectorName>{m.name}</ModelSelectorName>
       <ModelSelectorLogoGroup>
@@ -648,15 +668,89 @@ const AgentCitations = ({ citations }: { citations: AgentCitation[] }) => {
   );
 };
 
+const AssistantFeedback = ({
+  isPending,
+  onSubmit,
+  rating,
+}: {
+  isPending: boolean;
+  onSubmit: (rating: -1 | 1, reason?: string) => void | Promise<void>;
+  rating?: -1 | 1;
+}) => {
+  const [showReason, setShowReason] = useState(false);
+  const [reason, setReason] = useState("");
+
+  const submitNegative = useCallback(async () => {
+    await onSubmit(-1, reason.trim() || undefined);
+    setShowReason(false);
+    setReason("");
+  }, [onSubmit, reason]);
+
+  return (
+    <div className="not-prose mt-1 grid w-fit gap-2">
+      <MessageActions className="opacity-70 transition-opacity hover:opacity-100">
+        <MessageAction
+          aria-pressed={rating === 1}
+          disabled={isPending}
+          label="Helpful response"
+          onClick={() => void onSubmit(1)}
+          tooltip="Helpful"
+          variant={rating === 1 ? "secondary" : "ghost"}
+        >
+          <ThumbsUpIcon className="size-3.5" />
+        </MessageAction>
+        <MessageAction
+          aria-pressed={rating === -1}
+          disabled={isPending}
+          label="Unhelpful response"
+          onClick={() => setShowReason(true)}
+          tooltip="Not helpful"
+          variant={rating === -1 ? "secondary" : "ghost"}
+        >
+          <ThumbsDownIcon className="size-3.5" />
+        </MessageAction>
+      </MessageActions>
+      {showReason ? (
+        <div className="flex max-w-md items-center gap-2">
+          <Input
+            aria-label="Optional feedback reason"
+            autoFocus
+            className="h-8 text-xs"
+            maxLength={500}
+            onChange={(event) => setReason(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") void submitNegative();
+              if (event.key === "Escape") setShowReason(false);
+            }}
+            placeholder="What could be better? (optional)"
+            value={reason}
+          />
+          <Button
+            disabled={isPending}
+            onClick={() => void submitNegative()}
+            size="sm"
+            type="button"
+          >
+            Send
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
 const ChatMessage = ({
   applyingToolCallIds,
   getPageEditBaselineCurrent,
   getPageEditReviewAvailable,
   message,
+  feedbackRating,
+  feedbackPending,
   onApplyPageEdit,
   onDiscardPageEdit,
   onTogglePageEditChanges,
   onUndoPageEdit,
+  onSubmitFeedback,
   snapshotByToolCallId,
   visibleDiffToolCallId,
 }: {
@@ -664,10 +758,17 @@ const ChatMessage = ({
   getPageEditBaselineCurrent: (snapshot: PageEditSnapshotPart) => boolean;
   getPageEditReviewAvailable: (snapshot: PageEditSnapshotPart) => boolean;
   message: UIMessage;
+  feedbackRating?: -1 | 1;
+  feedbackPending: boolean;
   onApplyPageEdit: (toolCallId: string) => void | Promise<void>;
   onDiscardPageEdit: (toolCallId: string) => void | Promise<void>;
   onTogglePageEditChanges: (toolCallId: string) => void;
   onUndoPageEdit: (toolCallId: string) => void | Promise<void>;
+  onSubmitFeedback: (
+    messageId: string,
+    rating: -1 | 1,
+    reason?: string,
+  ) => void | Promise<void>;
   snapshotByToolCallId: Map<string, PageEditSnapshotPart>;
   visibleDiffToolCallId: string | null;
 }) => {
@@ -782,12 +883,27 @@ const ChatMessage = ({
           <AgentResultTable key={toolCallId} table={table} />
         ))}
         <AgentCitations citations={citations} />
+        {message.role === "assistant" ? (
+          <AssistantFeedback
+            isPending={feedbackPending}
+            onSubmit={(rating, reason) =>
+              onSubmitFeedback(message.id, rating, reason)
+            }
+            rating={feedbackRating}
+          />
+        ) : null}
       </MessageContent>
     </Message>
   );
 };
 
-const EmptyState = () => (
+const EmptyState = ({
+  isSidebar,
+  onSuggestion,
+}: {
+  isSidebar: boolean;
+  onSuggestion: (value: string) => void;
+}) => (
   <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-5 px-4 pb-6 text-center">
     <div className="flex size-12 items-center justify-center rounded-md border bg-background shadow-sm">
       <InboxIcon className="size-6 text-muted-foreground" />
@@ -798,6 +914,30 @@ const EmptyState = () => (
         Search accessible Zilobase pages and databases, use attached context,
         analyze uploaded files, create downloads, and complete supported actions.
       </p>
+    </div>
+    <div className="flex max-w-2xl flex-wrap justify-center gap-2">
+      {(isSidebar
+        ? [
+            "Summarize this page and list open questions",
+            "Turn this page into an action plan",
+            "Find related pages in this workspace",
+          ]
+        : [
+            "Find the latest decisions in this workspace",
+            "Create a project tracker with owners and status",
+            "Analyze an uploaded file and show the key trends",
+          ]
+      ).map((suggestion) => (
+        <Button
+          key={suggestion}
+          onClick={() => onSuggestion(suggestion)}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          {suggestion}
+        </Button>
+      ))}
     </div>
   </div>
 );
@@ -825,6 +965,7 @@ const Chatbot = (props: ChatbotProps) => {
   const initialMessagesKey = `${workspaceId ?? "no-workspace"}:${props.threadId}`;
   const queriedInitialMessages =
     threadMessagesQuery.data?.messages ?? emptyAgentChatMessages;
+  const queriedInitialFeedback = threadMessagesQuery.data?.feedback ?? [];
   const [seededInitialMessages, setSeededInitialMessages] =
     useState<SeededInitialMessages>(() => ({
       key: initialMessagesKey,
@@ -859,6 +1000,7 @@ const Chatbot = (props: ChatbotProps) => {
       <ChatbotInner
         {...props}
         initialMessages={emptyAgentChatMessages}
+        initialFeedback={[]}
         key={initialMessagesKey}
       />
     );
@@ -880,6 +1022,7 @@ const Chatbot = (props: ChatbotProps) => {
     <ChatbotInner
       {...props}
       initialMessages={seededInitialMessages.messages}
+      initialFeedback={queriedInitialFeedback}
       key={initialMessagesKey}
     />
   );
@@ -887,18 +1030,20 @@ const Chatbot = (props: ChatbotProps) => {
 
 const ChatbotInner = ({
   databaseId = null,
+  initialFeedback,
   initialMessages,
   isSidebar = false,
   onThreadCreated,
   threadId,
   pageId = null,
 }: ChatbotProps & {
+  initialFeedback: AiChatFeedback[];
   initialMessages: UIMessage[];
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const previousMessageCountRef = useRef(0);
   const threadCreationPromiseRef = useRef<Promise<string> | null>(null);
-  const [model, setModel] = useState<string>(fallbackModels[0].id);
+  const [model, setModel] = useState<string>("auto");
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [text, setText] = useState<string>("");
   const [textCursor, setTextCursor] = useState(0);
@@ -1041,8 +1186,13 @@ const ChatbotInner = ({
 
   const { queryClient } = useZilobaseFeatures();
   const createThread = useCreateAiChatThread();
+  const submitFeedback = useSubmitAiChatFeedback();
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
+  const feedbackByMessageId = useMemo(
+    () => new Map(initialFeedback.map((item) => [item.messageId, item])),
+    [initialFeedback],
+  );
   const isAgentReady = Boolean(workspaceId && userId && threadId);
   const isComposerReady = Boolean(workspaceId && userId);
   const agentName = isAgentReady
@@ -1081,6 +1231,9 @@ const ChatbotInner = ({
     (requestThreadId: string | null, attachmentIds: string[] = []) => ({
       attachmentIds,
       model,
+      mentionedUserIds: attachments
+        .filter((attachment) => attachment.type === "person")
+        .map((attachment) => attachment.id),
       threadId: requestThreadId,
       ...(workspaceId ? { workspaceId } : {}),
       ...(userId ? { userId } : {}),
@@ -1800,6 +1953,30 @@ const ChatbotInner = ({
     [setModel, setModelSelectorOpen],
   );
 
+  const handleSubmitFeedback = useCallback(
+    async (messageId: string, rating: -1 | 1, reason?: string) => {
+      if (!threadId) return;
+
+      try {
+        await submitFeedback.mutateAsync({
+          messageId,
+          rating,
+          reason,
+          threadId,
+        });
+        toast.success("Feedback saved.");
+      } catch (feedbackError) {
+        toast.error("Could not save feedback", {
+          description:
+            feedbackError instanceof Error
+              ? feedbackError.message
+              : "Try again.",
+        });
+      }
+    },
+    [submitFeedback, threadId],
+  );
+
   const hasMessages = visibleMessages.length > 0;
   const showPendingAssistant = shouldShowPendingAssistant(messages, status);
 
@@ -1845,17 +2022,25 @@ const ChatbotInner = ({
           }
         >
           {!hasMessages ? (
-            <EmptyState />
+            <EmptyState isSidebar={isSidebar} onSuggestion={setText} />
           ) : (
             visibleMessages.map((message) => (
               <ChatMessage
                 applyingToolCallIds={applyingToolCallIds}
+                feedbackPending={
+                  submitFeedback.isPending &&
+                  submitFeedback.variables?.messageId === message.id
+                }
+                feedbackRating={
+                  feedbackByMessageId.get(message.id)?.rating
+                }
                 getPageEditBaselineCurrent={getPageEditBaselineCurrent}
                 getPageEditReviewAvailable={getPageEditReviewAvailable}
                 key={message.id}
                 message={message}
                 onApplyPageEdit={handleApplyPageEdit}
                 onDiscardPageEdit={handleDiscardPageEdit}
+                onSubmitFeedback={handleSubmitFeedback}
                 onTogglePageEditChanges={handleTogglePageEditChanges}
                 onUndoPageEdit={handleUndoPageEdit}
                 snapshotByToolCallId={snapshotByToolCallId}

@@ -4,10 +4,12 @@ import {
   asc,
   desc,
   eq,
+  ilike,
   inArray,
   isNull,
   ne,
   notInArray,
+  or,
   sql,
 } from "drizzle-orm";
 
@@ -22,6 +24,7 @@ export type AiChatThreadRecord = {
   workspaceId: string;
   userId: string;
   title: string;
+  pinnedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   lastActivityAt: Date;
@@ -30,27 +33,48 @@ export type AiChatThreadRecord = {
 export async function listAiChatThreads(
   workspaceId: string,
   userId: string,
+  search?: string,
 ): Promise<AiChatThreadRecord[]> {
+  const normalizedSearch = normalizeThreadSearch(search);
+  const pattern = normalizedSearch ? `%${normalizedSearch}%` : null;
+  const filters = [
+    eq(aiChatThread.workspaceId, workspaceId),
+    eq(aiChatThread.userId, userId),
+    isNull(aiChatThread.deletedAt),
+    isNull(aiChatThread.archivedAt),
+  ];
+
+  if (pattern) {
+    filters.push(
+      or(
+        ilike(aiChatThread.title, pattern),
+        sql`exists (
+          select 1 from ${aiChatMessage}
+          where ${aiChatMessage.threadId} = ${aiChatThread.id}
+            and ${aiChatMessage.role} in ('user', 'assistant')
+            and ${aiChatMessage.parts}::text ilike ${pattern}
+        )`,
+      )!,
+    );
+  }
+
   const rows = await db
     .select({
       id: aiChatThread.id,
       workspaceId: aiChatThread.workspaceId,
       userId: aiChatThread.userId,
       title: aiChatThread.title,
+      pinnedAt: aiChatThread.pinnedAt,
       createdAt: aiChatThread.createdAt,
       updatedAt: aiChatThread.updatedAt,
       lastActivityAt: aiChatThread.lastActivityAt,
     })
     .from(aiChatThread)
-    .where(
-      and(
-        eq(aiChatThread.workspaceId, workspaceId),
-        eq(aiChatThread.userId, userId),
-        isNull(aiChatThread.deletedAt),
-        isNull(aiChatThread.archivedAt),
-      ),
-    )
-    .orderBy(desc(aiChatThread.lastActivityAt));
+    .where(and(...filters))
+    .orderBy(
+      sql`${aiChatThread.pinnedAt} desc nulls last`,
+      desc(aiChatThread.lastActivityAt),
+    );
 
   return rows;
 }
@@ -92,6 +116,7 @@ export async function getAiChatThreadForUser(input: {
       workspaceId: aiChatThread.workspaceId,
       userId: aiChatThread.userId,
       title: aiChatThread.title,
+      pinnedAt: aiChatThread.pinnedAt,
       createdAt: aiChatThread.createdAt,
       updatedAt: aiChatThread.updatedAt,
       lastActivityAt: aiChatThread.lastActivityAt,
@@ -144,6 +169,43 @@ export async function renameAiChatThread(input: {
       workspaceId: aiChatThread.workspaceId,
       userId: aiChatThread.userId,
       title: aiChatThread.title,
+      pinnedAt: aiChatThread.pinnedAt,
+      createdAt: aiChatThread.createdAt,
+      updatedAt: aiChatThread.updatedAt,
+      lastActivityAt: aiChatThread.lastActivityAt,
+    });
+
+  return row ?? null;
+}
+
+export async function setAiChatThreadPinned(input: {
+  pinned: boolean;
+  workspaceId: string;
+  threadId: string;
+  userId: string;
+}) {
+  const now = new Date();
+  const [row] = await db
+    .update(aiChatThread)
+    .set({
+      pinnedAt: input.pinned ? now : null,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(aiChatThread.id, input.threadId),
+        eq(aiChatThread.workspaceId, input.workspaceId),
+        eq(aiChatThread.userId, input.userId),
+        isNull(aiChatThread.deletedAt),
+        isNull(aiChatThread.archivedAt),
+      ),
+    )
+    .returning({
+      id: aiChatThread.id,
+      workspaceId: aiChatThread.workspaceId,
+      userId: aiChatThread.userId,
+      title: aiChatThread.title,
+      pinnedAt: aiChatThread.pinnedAt,
       createdAt: aiChatThread.createdAt,
       updatedAt: aiChatThread.updatedAt,
       lastActivityAt: aiChatThread.lastActivityAt,
@@ -383,6 +445,12 @@ function normalizeThreadTitle(title?: string) {
   const normalized = title?.replace(/\s+/g, " ").trim();
 
   return normalized ? normalized.slice(0, 120) : null;
+}
+
+export function normalizeThreadSearch(search?: string) {
+  const normalized = search?.replace(/\s+/g, " ").trim();
+
+  return normalized ? normalized.slice(0, 80) : null;
 }
 
 function isPersistableUiMessage(message: UIMessage) {

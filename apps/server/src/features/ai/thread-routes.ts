@@ -11,7 +11,16 @@ import {
   listAiChatThreads,
   loadAiChatThreadMessages,
   renameAiChatThread,
+  setAiChatThreadPinned,
 } from "../../ai/chat-persistence";
+import {
+  AI_AGENT_INSTRUCTIONS_MAX_CHARS,
+  AI_CHAT_FEEDBACK_REASON_MAX_CHARS,
+  getAiAgentPreference,
+  listAiChatFeedback,
+  saveAiAgentPreference,
+  saveAiChatFeedback,
+} from "../../ai/agent-experience";
 import { getMembership } from "../../access";
 import type { AppBindings } from "../../types";
 
@@ -23,6 +32,16 @@ const renameThreadSchema = z.object({
   title: z.string().trim().min(1).max(120),
 });
 
+const pinThreadSchema = z.object({ pinned: z.boolean() });
+const preferenceSchema = z.object({
+  instructions: z.string().max(AI_AGENT_INSTRUCTIONS_MAX_CHARS),
+  responseStyle: z.enum(["concise", "balanced", "detailed"]),
+});
+const feedbackSchema = z.object({
+  rating: z.union([z.literal(-1), z.literal(1)]),
+  reason: z.string().trim().max(AI_CHAT_FEEDBACK_REASON_MAX_CHARS).optional(),
+});
+
 export const aiThreadRoutes = new Hono<AppBindings>();
 
 aiThreadRoutes.get("/threads", async (c) => {
@@ -32,7 +51,11 @@ aiThreadRoutes.get("/threads", async (c) => {
     return auth.response;
   }
 
-  const threads = await listAiChatThreads(auth.workspaceId, auth.user.id);
+  const threads = await listAiChatThreads(
+    auth.workspaceId,
+    auth.user.id,
+    c.req.query("q"),
+  );
 
   return c.json({
     threads: threads.map(serializeThread),
@@ -112,6 +135,33 @@ aiThreadRoutes.post("/threads/:threadId/archive", async (c) => {
   return c.json({ success: true });
 });
 
+aiThreadRoutes.put("/threads/:threadId/pin", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  const body = await parseJson(c, pinThreadSchema);
+
+  if (!body.success) {
+    return body.response;
+  }
+
+  const thread = await setAiChatThreadPinned({
+    pinned: body.data.pinned,
+    workspaceId: auth.workspaceId,
+    threadId: c.req.param("threadId"),
+    userId: auth.user.id,
+  });
+
+  if (!thread) {
+    return c.json({ error: "Thread not found" }, 404);
+  }
+
+  return c.json({ thread: serializeThread(thread) });
+});
+
 aiThreadRoutes.delete("/threads/:threadId", async (c) => {
   const auth = await requireActiveWorkspace(c);
 
@@ -149,11 +199,88 @@ aiThreadRoutes.get("/threads/:threadId/messages", async (c) => {
     return c.json({ error: "Thread not found" }, 404);
   }
 
-  const messages = await loadAiChatThreadMessages(thread.id);
+  const [messages, feedback] = await Promise.all([
+    loadAiChatThreadMessages(thread.id),
+    listAiChatFeedback({
+      threadId: thread.id,
+      userId: auth.user.id,
+      workspaceId: auth.workspaceId,
+    }),
+  ]);
 
   return c.json({
+    feedback,
     messages: messages as UIMessage[],
     thread: serializeThread(thread),
+  });
+});
+
+aiThreadRoutes.put(
+  "/threads/:threadId/messages/:messageId/feedback",
+  async (c) => {
+    const auth = await requireActiveWorkspace(c);
+
+    if ("response" in auth) {
+      return auth.response;
+    }
+
+    const body = await parseJson(c, feedbackSchema);
+
+    if (!body.success) {
+      return body.response;
+    }
+
+    const feedback = await saveAiChatFeedback({
+      messageId: c.req.param("messageId"),
+      rating: body.data.rating,
+      reason: body.data.reason,
+      threadId: c.req.param("threadId"),
+      userId: auth.user.id,
+      workspaceId: auth.workspaceId,
+    });
+
+    if (!feedback) {
+      return c.json({ error: "Assistant message not found" }, 404);
+    }
+
+    return c.json({ feedback });
+  },
+);
+
+aiThreadRoutes.get("/preferences", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  return c.json({
+    preference: await getAiAgentPreference({
+      userId: auth.user.id,
+      workspaceId: auth.workspaceId,
+    }),
+  });
+});
+
+aiThreadRoutes.put("/preferences", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  const body = await parseJson(c, preferenceSchema);
+
+  if (!body.success) {
+    return body.response;
+  }
+
+  return c.json({
+    preference: await saveAiAgentPreference({
+      ...body.data,
+      userId: auth.user.id,
+      workspaceId: auth.workspaceId,
+    }),
   });
 });
 
@@ -222,6 +349,7 @@ async function parseJson<T extends z.ZodType>(
 function serializeThread(thread: {
   id: string;
   title: string;
+  pinnedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   lastActivityAt: Date;
@@ -229,6 +357,8 @@ function serializeThread(thread: {
   return {
     id: thread.id,
     title: thread.title,
+    pinnedAt: thread.pinnedAt?.toISOString() ?? null,
+    pinned: Boolean(thread.pinnedAt),
     createdAt: thread.createdAt.toISOString(),
     updatedAt: thread.updatedAt.toISOString(),
     lastActivityAt: thread.lastActivityAt.toISOString(),

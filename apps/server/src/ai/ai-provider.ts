@@ -21,7 +21,7 @@ export async function resolveWorkspaceAiModel(
 }
 
 function parseSelectedModelId(selectedModelId?: string) {
-  if (!selectedModelId) {
+  if (!selectedModelId || selectedModelId === "auto") {
     return { modelId: DEFAULT_OPENAI_CHAT_MODEL };
   }
 

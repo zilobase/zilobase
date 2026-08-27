@@ -4,6 +4,7 @@ import {
   useAiChatThreads,
   useArchiveAiChatThread,
   useDeleteAiChatThread,
+  useSetAiChatThreadPinned,
 } from "@zilobase/features/ai-chat";
 import { useCallback } from "react";
 import { toast } from "sonner";
@@ -12,14 +13,17 @@ export function useAiChatThreadActions({
   activeThreadId,
   enabled = true,
   onSelectThread,
+  search,
 }: {
   activeThreadId: string | null;
   enabled?: boolean;
   onSelectThread: (threadId: string | null) => void;
+  search?: string;
 }) {
-  const threadsQuery = useAiChatThreads({ enabled });
+  const threadsQuery = useAiChatThreads({ enabled, search });
   const deleteThread = useDeleteAiChatThread();
   const archiveThread = useArchiveAiChatThread();
+  const pinThread = useSetAiChatThreadPinned();
   const threads = threadsQuery.data?.threads ?? [];
 
   const selectFallbackThread = useCallback(
@@ -72,13 +76,28 @@ export function useAiChatThreadActions({
     [archiveThread, selectFallbackThread],
   );
 
+  const handleSetPinned = useCallback(
+    async (threadId: string, pinned: boolean) => {
+      try {
+        await pinThread.mutateAsync({ pinned, threadId });
+      } catch (error) {
+        toast.error(pinned ? "Failed to pin chat" : "Failed to unpin chat", {
+          description: error instanceof Error ? error.message : "Try again.",
+        });
+      }
+    },
+    [pinThread],
+  );
+
   return {
     threads,
     threadsQuery,
     deleteThread,
     archiveThread,
+    pinThread,
     handleStartNewChat,
     handleDeleteThread,
     handleArchiveThread,
+    handleSetPinned,
   };
 }

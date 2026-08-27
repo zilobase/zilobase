@@ -12,6 +12,8 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - Ask AI page and database actions now return durable idempotent receipts, can create pages with populated Markdown bodies, and can safely update accessible pages with stale-write protection.
 - Ask AI accepts owned, expiring PDF, CSV, XLSX, DOCX, PPTX, text, Markdown, JSON, ZIP, and image attachments with bounded extraction and archive safety checks.
 - Ask AI can run deterministic table analysis, render interactive result tables, and create expiring downloadable CSV, XLSX, DOCX, PPTX, PDF, Markdown, JSON, and ZIP artifacts.
+- Ask AI now supports durable pinned and searchable chat history, reusable skill and people attachments, suggested starting actions, and per-response feedback.
+- Ask AI personal settings now include server-applied instructions and response style, while model selection includes Auto routing and capability descriptions.
 
 ### Changed
 
@@ -19,6 +21,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - Ask AI now resolves page view and edit permissions on the server and applies explicit negative-capability policy before exposing tools to a model.
 - Ask AI exposes only supported database property and view types; formula, rollup, button, and unavailable map-view creation remain excluded.
 - Removed the brokered connector SDK, settings surface, source picker, and connector-only AI endpoint; external connected-app capabilities now remain explicitly unavailable until native provider adapters exist.
+- Ask AI instruction pages and mentioned people are permission-checked on the server and cannot expand the requesting user's access.
 
 ### Fixed
 

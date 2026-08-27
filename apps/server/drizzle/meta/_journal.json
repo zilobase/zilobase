@@ -372,6 +372,13 @@
       "when": 1787835000000,
       "tag": "0052_ai_chat_files_and_artifacts",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1787840000000,
+      "tag": "0053_ai_teammate_experience",
+      "breakpoints": true
     }
   ]
 }

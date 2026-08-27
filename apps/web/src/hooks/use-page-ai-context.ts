@@ -333,6 +333,10 @@ export function usePageAiContext({
           continue;
         }
 
+        if (attachment.type !== "database") {
+          continue;
+        }
+
         const schema = await resolveDatabaseContext(
           attachment.id,
           queryClient,

@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { DatabaseIcon, FileTextIcon } from "lucide-react";
+import { DatabaseIcon, FileTextIcon, UserIcon } from "lucide-react";
 
 import {
   PromptInputCommand,
@@ -32,6 +32,10 @@ import type {
   ContextAttachment,
   ContextSourceRef,
 } from "@zilobase/page-context";
+import {
+  useWorkspaceAccessTargets,
+  type WorkspaceMember,
+} from "@zilobase/features/workspaces";
 
 const MAX_VISIBLE_PER_GROUP = 3;
 
@@ -39,13 +43,15 @@ type AttachMenuCategory =
   | "current-page"
   | "skills"
   | "link-to-page"
-  | "databases";
+  | "databases"
+  | "people";
 
 const categoryHeadings: Record<AttachMenuCategory, string> = {
   "current-page": "Current page",
   skills: "Skills",
   "link-to-page": "Link to page",
   databases: "Databases",
+  people: "People",
 };
 
 const categoryOrder: AttachMenuCategory[] = [
@@ -53,7 +59,16 @@ const categoryOrder: AttachMenuCategory[] = [
   "skills",
   "link-to-page",
   "databases",
+  "people",
 ];
+
+type AttachMenuResult = AppSearchResult | {
+  email: string;
+  id: string;
+  path: string;
+  title: string;
+  type: "person";
+};
 
 function buildPagePath(
   pagesById: Map<string, Page>,
@@ -104,7 +119,17 @@ function matchesQuery(text: string, query: string) {
   return text.toLowerCase().includes(normalizedQuery);
 }
 
-function toAttachment(result: AppSearchResult): ContextAttachment {
+function toAttachment(result: AttachMenuResult): ContextAttachment {
+  if (result.type === "person") {
+    return {
+      email: result.email,
+      id: result.id,
+      path: result.path,
+      title: result.title,
+      type: "person",
+    };
+  }
+
   return {
     id: result.id,
     type: result.type === "database" ? "database" : "page",
@@ -118,7 +143,7 @@ type AttachMenuItem = {
   attachment: ContextAttachment;
   category: AttachMenuCategory;
   key: string;
-  result: AppSearchResult;
+  result: AttachMenuResult;
 };
 
 export type ContextAttachMenuEntry =
@@ -189,6 +214,7 @@ function buildAttachMenuItems({
   databases: databaseRecords,
   pages,
   placements,
+  members,
 }: {
   currentDatabaseId?: string | null;
   currentPageId?: string | null;
@@ -197,19 +223,23 @@ function buildAttachMenuItems({
   databases: PageDatabase[];
   pages: Page[];
   placements: PageItemPlacement[];
+  members: WorkspaceMember[];
 }): AttachMenuItem[] {
   const pagesById = new Map(pages.map((page) => [page.id, page]));
   const items: AttachMenuItem[] = [];
 
-  const pushItem = (result: AppSearchResult, category: AttachMenuCategory) => {
-    const key = `${result.type === "database" ? "database" : "page"}:${result.id}`;
+  const pushItem = (result: AttachMenuResult, category: AttachMenuCategory) => {
+    const key = `${result.type}:${result.id}`;
 
     if (existingAttachmentKeys.has(key)) {
       return;
     }
 
     items.push({
-      attachment: toAttachment(result),
+      attachment: {
+        ...toAttachment(result),
+        ...(category === "skills" ? { mode: "skill" as const } : {}),
+      },
       category,
       key,
       result,
@@ -324,6 +354,24 @@ function buildAttachMenuItems({
     .sort((left, right) => left.title.localeCompare(right.title))
     .forEach((result) => pushItem(result, "databases"));
 
+  members
+    .filter((member) =>
+      matchesQuery(`${member.name} ${member.email}`, query),
+    )
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .forEach((member) =>
+      pushItem(
+        {
+          email: member.email,
+          id: member.id,
+          path: member.email,
+          title: member.name.trim() || member.email,
+          type: "person",
+        },
+        "people",
+      ),
+    );
+
   return items;
 }
 
@@ -387,6 +435,10 @@ export function buildPrimaryAttachment({
 }
 
 function AttachMenuItemIcon({ item }: { item: AttachMenuItem }) {
+  if (item.result.type === "person") {
+    return <UserIcon className="size-4 shrink-0 text-muted-foreground" />;
+  }
+
   if (item.result.type === "database") {
     if (item.result.emoji) {
       return <PageIconDisplay size="sm" value={item.result.emoji} />;
@@ -563,9 +615,11 @@ export const ContextAttachMenu = forwardRef<
     isFetching,
     isLoading,
   } = usePageNavigation(workspaceId, { enabled: open });
+  const membersQuery = useWorkspaceAccessTargets(workspaceId);
   const pages = navigation?.pages ?? [];
   const databases = navigation?.databases ?? [];
   const placements = navigation?.placements ?? [];
+  const members = membersQuery.data?.members ?? [];
   const selectedItemRef = useRef<HTMLDivElement | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<
     Set<AttachMenuCategory>
@@ -582,6 +636,7 @@ export const ContextAttachMenu = forwardRef<
             databases,
             pages,
             placements,
+            members,
           })
         : [],
     [
@@ -593,6 +648,7 @@ export const ContextAttachMenu = forwardRef<
       databases,
       pages,
       placements,
+      members,
     ],
   );
 
@@ -602,6 +658,7 @@ export const ContextAttachMenu = forwardRef<
       databases: [],
       "link-to-page": [],
       skills: [],
+      people: [],
     };
 
     for (const item of items) {
@@ -621,7 +678,9 @@ export const ContextAttachMenu = forwardRef<
   );
 
   const selectedEntry = menuEntries[selectedIndex];
-  const isLoadingResults = (isLoading || isFetching) && pages.length === 0;
+  const isLoadingResults =
+    ((isLoading || isFetching) && pages.length === 0) ||
+    (membersQuery.isLoading && members.length === 0);
 
   const handleExpandCategory = useCallback((category: AttachMenuCategory) => {
     setExpandedCategories((current) => {
@@ -691,11 +750,11 @@ export const ContextAttachMenu = forwardRef<
         <PromptInputCommandList className="max-h-60">
           {isLoadingResults ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-              Loading pages and databases...
+              Loading workspace context...
             </div>
           ) : items.length === 0 ? (
             <PromptInputCommandEmpty>
-              No pages or databases found.
+              No pages, databases, skills, or people found.
             </PromptInputCommandEmpty>
           ) : (
             categoryOrder.map((category) => (

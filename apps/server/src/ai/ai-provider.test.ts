@@ -46,6 +46,10 @@ test("resolveWorkspaceAiModel delegates selected and default models", async () =
     await resolveWorkspaceAiModel("workspace-1", undefined, "key"),
     { modelId: DEFAULT_OPENAI_CHAT_MODEL },
   );
+  assert.deepEqual(
+    await resolveWorkspaceAiModel("workspace-1", "auto", "key"),
+    { modelId: DEFAULT_OPENAI_CHAT_MODEL },
+  );
 });
 
 test("AI model resolution rejects missing credentials", () => {

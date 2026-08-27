@@ -13,11 +13,19 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
 import type { AiChatThread } from "@zilobase/features/ai-chat";
-import { ArchiveIcon, MoreHorizontalIcon, Trash2Icon } from "lucide-react";
-import { Fragment, useMemo } from "react";
+import {
+  ArchiveIcon,
+  MoreHorizontalIcon,
+  PinIcon,
+  PinOffIcon,
+  SearchIcon,
+  Trash2Icon,
+} from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
 
 function formatRelativeTime(value: string) {
   const date = new Date(value);
@@ -74,9 +82,13 @@ function getDateLabel(dateStr: string): string {
 
 function groupThreadsByDate(threads: AiChatThread[]) {
   return threads.map((thread, index) => {
-    const label = getDateLabel(thread.lastActivityAt);
+    const label = thread.pinned ? "Pinned" : getDateLabel(thread.lastActivityAt);
     const prevLabel =
-      index > 0 ? getDateLabel(threads[index - 1].lastActivityAt) : null;
+      index > 0
+        ? threads[index - 1].pinned
+          ? "Pinned"
+          : getDateLabel(threads[index - 1].lastActivityAt)
+        : null;
 
     return {
       thread,
@@ -90,10 +102,12 @@ function AiChatThreadMoreMenu({
   thread,
   onArchive,
   onDelete,
+  onSetPinned,
 }: {
   thread: AiChatThread;
   onArchive: (threadId: string) => void;
   onDelete: (threadId: string) => void;
+  onSetPinned: (threadId: string, pinned: boolean) => void;
 }) {
   return (
     <DropDrawer>
@@ -108,6 +122,18 @@ function AiChatThreadMoreMenu({
         </SidebarNavItemAction>
       </DropDrawerTrigger>
       <DropDrawerContent align="end" className="w-52 rounded-lg" side="bottom">
+        <DropDrawerItem
+          onSelect={() => {
+            void onSetPinned(thread.id, !thread.pinned);
+          }}
+        >
+          {thread.pinned ? (
+            <PinOffIcon className="text-muted-foreground" />
+          ) : (
+            <PinIcon className="text-muted-foreground" />
+          )}
+          <span>{thread.pinned ? "Unpin conversation" : "Pin conversation"}</span>
+        </DropDrawerItem>
         <DropDrawerItem
           onSelect={() => {
             void onArchive(thread.id);
@@ -140,16 +166,18 @@ export function AiChatHistoryList({
   className?: string;
   onSelectThread: (threadId: string | null) => void;
 }) {
+  const [search, setSearch] = useState("");
   const {
     threads,
     threadsQuery,
     handleArchiveThread,
     handleDeleteThread,
+    handleSetPinned,
   } = useAiChatThreadActions({
     activeThreadId,
     onSelectThread,
+    search,
   });
-
   const groupedThreads = useMemo(() => groupThreadsByDate(threads), [threads]);
 
   return (
@@ -157,11 +185,26 @@ export function AiChatHistoryList({
       className={cn("min-h-0 flex-1 overflow-y-auto px-2 py-1 text-xs", className)}
       data-ai-history-scroll-shell
     >
+      <div className="sticky top-0 z-10 bg-sidebar px-1 pb-2 pt-1">
+        <div className="relative">
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            aria-label="Search chat history"
+            className="h-8 pl-8 text-xs"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search chats"
+            type="search"
+            value={search}
+          />
+        </div>
+      </div>
       {threadsQuery.isLoading ? (
         <p className="px-2 py-3 text-muted-foreground">Loading chats...</p>
       ) : threads.length === 0 ? (
         <p className="px-2 py-3 text-muted-foreground">
-          Start a new chat to ask about your page.
+          {search.trim()
+            ? "No chats match your search."
+            : "Start a new chat to ask about your page."}
         </p>
       ) : (
         <SidebarMenu>
@@ -194,6 +237,7 @@ export function AiChatHistoryList({
                     <AiChatThreadMoreMenu
                       onArchive={handleArchiveThread}
                       onDelete={handleDeleteThread}
+                      onSetPinned={handleSetPinned}
                       thread={thread}
                     />
                   </div>

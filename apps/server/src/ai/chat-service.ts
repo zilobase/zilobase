@@ -30,12 +30,17 @@ import {
 import { resolveAiFileContext, withoutAiFileParts } from "./ai-file-context";
 import { buildArtifactTools } from "./ask-ai-artifact-tools";
 import { buildAnalysisTools } from "./ask-ai-analysis-tools";
+import {
+  loadAiAgentContextInstruction,
+  loadMentionedPeopleInstruction,
+} from "./agent-experience";
 
 export type AiChatRequestBody = {
   attachmentIds: string[];
   allowedPageIds: string[];
   canEditPages: boolean;
   model: string | undefined;
+  mentionedUserIds: string[];
   workspaceId: string | null;
   primaryPageId: string | null;
   threadId: string | null;
@@ -215,6 +220,17 @@ export async function runAiChatTurn(input: {
     }),
   ].join("");
   const policyInstruction = buildAgentPolicyInstruction(capabilityPolicy);
+  const [experienceInstruction, mentionedPeopleInstruction] =
+    await input.withDb(() => Promise.all([
+      loadAiAgentContextInstruction({
+        userId: auth.userId,
+        workspaceId,
+      }),
+      loadMentionedPeopleInstruction({
+        userIds: requestBody.mentionedUserIds,
+        workspaceId,
+      }),
+    ]));
 
   const result = streamText({
     abortSignal: input.abortSignal,
@@ -224,7 +240,7 @@ export async function runAiChatTurn(input: {
     stopWhen: stepCountIs(15),
     tools: hasTools ? tools : undefined,
     temperature: 0.2,
-    system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction}${fileContext.instruction}\n${policyInstruction}`,
+    system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction}${fileContext.instruction}\n${policyInstruction}\n${experienceInstruction}\n${mentionedPeopleInstruction}`,
     onError: ({ error }) => {
       console.warn(`AI chat ${auth.userId}: ${toProviderErrorMessage(error)}`);
     },
@@ -258,6 +274,7 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
       canEditPages: false,
       primaryPageId: null,
       model: undefined,
+      mentionedUserIds: [],
       workspaceId: null,
       threadId: null,
       userId: null,
@@ -282,6 +299,7 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
     attachmentIds: readStringIds(raw.attachmentIds),
     canEditPages: raw.canEditPages === true,
     model: rawModel,
+    mentionedUserIds: readStringIds(raw.mentionedUserIds).slice(0, 12),
     primaryPageId: pageContextMeta.primaryId,
     workspaceId: rawWorkspaceId.length > 0 ? rawWorkspaceId : null,
     threadId: rawThreadId.length > 0 ? rawThreadId : null,

@@ -1,4 +1,4 @@
-import { DatabaseIcon, XIcon } from "lucide-react"
+import { DatabaseIcon, UserIcon, WandSparklesIcon, XIcon } from "lucide-react"
 
 import { PageIconDisplay, PageIcon } from "@/lib/page-icon"
 import type { ContextAttachment } from "@zilobase/page-context"
@@ -10,6 +10,14 @@ function AttachmentIcon({ attachment }: { attachment: ContextAttachment }) {
 
   if (attachment.type === "database") {
     return <DatabaseIcon className="size-3.5 shrink-0" />
+  }
+
+  if (attachment.type === "person") {
+    return <UserIcon className="size-3.5 shrink-0" />
+  }
+
+  if (attachment.mode === "skill") {
+    return <WandSparklesIcon className="size-3.5 shrink-0" />
   }
 
   return (
@@ -32,7 +40,9 @@ function AttachmentChip({
   return (
     <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border bg-background px-2 text-foreground text-xs">
       <AttachmentIcon attachment={attachment} />
-      <span className="truncate">{attachment.title}</span>
+      <span className="truncate">
+        {attachment.mode === "skill" ? `Skill: ${attachment.title}` : attachment.title}
+      </span>
       <button
         aria-label={`Remove ${attachment.title}`}
         className="-mr-1 inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active"

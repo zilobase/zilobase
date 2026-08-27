@@ -34,26 +34,38 @@ workspaceSettingsRoutes.get("/ai/models", async (c) => {
   const providers = await listAiProviderConfigs(auth.workspaceId);
 
   return c.json({
-    models: providers.flatMap((config) => {
-      const provider = getCatalogItem(config.providerId);
+    models: [
+      {
+        chef: "Zilobase",
+        chefSlug: "openai",
+        description: "Automatically uses the workspace default model.",
+        gatewayId: "auto",
+        id: "auto",
+        name: "Auto",
+        providers: ["openai"],
+      },
+      ...providers.flatMap((config) => {
+        const provider = getCatalogItem(config.providerId);
 
-      if (!config.enabled || (provider.requiresApiKey && !config.apiKeyConfigured)) {
-        return [];
-      }
+        if (!config.enabled || (provider.requiresApiKey && !config.apiKeyConfigured)) {
+          return [];
+        }
 
-      const modelIds = config.modelIds.length
-        ? config.modelIds
-        : provider.models.map((model) => model.id);
+        const modelIds = config.modelIds.length
+          ? config.modelIds
+          : provider.models.map((model) => model.id);
 
-      return modelIds.map((modelId) => ({
-        chef: provider.name,
-        chefSlug: provider.id,
-        gatewayId: `${provider.id}:${modelId}`,
-        id: `${provider.id}:${modelId}`,
-        name: provider.models.find((model) => model.id === modelId)?.name ?? modelId,
-        providers: [provider.id],
-      }));
-    }),
+        return modelIds.map((modelId) => ({
+          chef: provider.name,
+          chefSlug: provider.id,
+          description: "Workspace chat, tools, files, and structured answers.",
+          gatewayId: `${provider.id}:${modelId}`,
+          id: `${provider.id}:${modelId}`,
+          name: provider.models.find((model) => model.id === modelId)?.name ?? modelId,
+          providers: [provider.id],
+        }));
+      }),
+    ],
   });
 });
 

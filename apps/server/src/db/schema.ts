@@ -1275,6 +1275,7 @@ export const aiChatThread = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("New chat"),
+    pinnedAt: timestamp("pinned_at", { withTimezone: true }),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     ...timestampColumns(),
@@ -1312,6 +1313,65 @@ export const aiChatMessage = pgTable(
   },
   (table) => [
     index("ai_chat_message_thread_created_idx").on(table.threadId, table.createdAt),
+  ],
+);
+
+export const aiAgentUserPreference = pgTable(
+  "ai_agent_user_preference",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    instructions: text("instructions").notNull().default(""),
+    responseStyle: text("response_style").notNull().default("concise"),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("ai_agent_user_preference_workspace_user_unique").on(
+      table.workspaceId,
+      table.userId,
+    ),
+    check(
+      "ai_agent_user_preference_response_style_check",
+      sql`${table.responseStyle} in ('concise', 'balanced', 'detailed')`,
+    ),
+  ],
+);
+
+export const aiChatFeedback = pgTable(
+  "ai_chat_feedback",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => aiChatThread.id, { onDelete: "cascade" }),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => aiChatMessage.id, { onDelete: "cascade" }),
+    rating: integer("rating").notNull(),
+    reason: text("reason"),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("ai_chat_feedback_user_message_unique").on(
+      table.userId,
+      table.messageId,
+    ),
+    index("ai_chat_feedback_workspace_created_idx").on(
+      table.workspaceId,
+      table.createdAt,
+    ),
+    check("ai_chat_feedback_rating_check", sql`${table.rating} in (-1, 1)`),
   ],
 );
 

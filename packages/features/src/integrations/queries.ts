@@ -33,6 +33,7 @@ export type WorkspaceAiProvidersResponse = {
 export type WorkspaceAiChatModel = {
   chef: string
   chefSlug: string
+  description?: string
   gatewayId: string
   id: string
   name: string

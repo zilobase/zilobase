@@ -283,7 +283,7 @@ Acceptance: production bundles and dependency manifests contain no brokered
 connector client; Ask AI exposes no external source selector or external tools,
 and the capability policy explicitly prevents claims of external reads/writes.
 
-### Pass 5 — teammate experience
+### Pass 5 — teammate experience (complete)
 
 - Add persistent per-user instructions and workspace behavior preferences.
 - Promote skill pages into reusable named skill attachments with a clear active
@@ -297,6 +297,18 @@ and the capability policy explicitly prevents claims of external reads/writes.
 Acceptance: personalization applies to every new turn, pinned/history behavior
 is durable, feedback is stored but not added to model context, and all modes use
 the same thread and permission model.
+
+Implementation note: personal instructions and response style are resolved on
+the server for every turn together with accessible pages explicitly marked as
+AI instructions. People mentions are server-verified workspace references and
+never grant content access. Reusable skill attachments have a distinct active
+state, while page and database context keep their existing authorization path.
+Thread pinning and message-aware history search are durable; feedback is stored
+separately from chat parts and is never replayed to the model. The existing
+full-page chat, page sidebar, and fixed floating launcher share the same thread
+store. Model selection includes an Auto policy and operator-provided capability
+descriptions. Connected-app selection remains absent until native adapters are
+available.
 
 ### Pass 6 — operations, quotas, and audit
 
@@ -335,7 +347,7 @@ is clean after the final commit.
 | Reference behavior | Zilobase delivery |
 | --- | --- |
 | Multi-step tasks | Existing bounded tool loop; standardize in Pass 1 |
-| Current/selected/attached context | Existing page/database attachments; selected blocks and people in Pass 5 |
+| Current/selected/attached context | Page/database/selected-block context plus server-verified people mentions; Pass 5 complete |
 | Workspace and database Q&A | Pass 1 |
 | Comments and revision search | Read-only in Pass 1; no comment mutations |
 | Connected-app research | Unavailable after Pass 4; requires native provider adapters |
@@ -350,10 +362,10 @@ is clean after the final commit.
 | Gmail actions | Unavailable; requires a native adapter and confirmation receipts |
 | Calendar scheduling | Unavailable; requires a native adapter plus organizer/mobile enforcement |
 | Existing formula evaluation | Passes 1–2; no formula-property creation |
-| Instructions and skills | Existing skill-page context; persistent experience in Pass 5 |
-| Sidebar/floating/full-page modes | Existing sidebar/full page; floating in Pass 5 |
-| Pin and search history | Pass 5 |
-| Response feedback | Pass 5 |
+| Instructions and skills | Persistent personal instructions, response style, instruction pages, and active skill attachments; Pass 5 complete |
+| Sidebar/floating/full-page modes | Shared full page and sidebar thread model with a fixed floating launcher; Pass 5 complete |
+| Pin and search history | Pass 5 complete |
+| Response feedback | Pass 5 complete; stored outside model context |
 
 ## Commit and verification discipline
 

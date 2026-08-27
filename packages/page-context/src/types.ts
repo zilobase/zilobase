@@ -2,10 +2,12 @@ export type ContextSourceRole = "primary" | "attached"
 
 export type ContextAttachment = {
   id: string
-  type: "page" | "database"
+  type: "page" | "database" | "person"
   title: string
   path: string
   emoji?: string | null
+  email?: string
+  mode?: "skill"
 }
 
 export type ContextSourceRef = {
