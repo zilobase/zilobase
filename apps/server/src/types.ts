@@ -42,6 +42,9 @@ export type AppBindings = {
     AI_AGENT_STREAM_CHUNK_TIMEOUT_MS?: string;
     AI_AGENT_STREAM_STEP_TIMEOUT_MS?: string;
     AI_AGENT_TURN_TIMEOUT_MS?: string;
+    AI_LEGACY_CHAT_ENABLED?: string;
+    AI_PROVIDER_ALLOWED_BASE_URLS?: string;
+    AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY?: string;
     OPENAI_API_KEY?: string;
     SMTP_HOST?: string;
     SMTP_PASSWORD?: string;
