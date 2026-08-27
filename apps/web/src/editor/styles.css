@@ -2148,6 +2148,7 @@
 
   .database-row-dragging,
   .database-row-dragging * {
+    cursor: grabbing !important;
     user-select: none !important;
   }
 

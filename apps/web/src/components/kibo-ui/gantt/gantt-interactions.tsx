@@ -258,6 +258,7 @@ export function GanttFeatureItem({
         className={cn(
           "pointer-events-auto absolute touch-none",
           stacked ? "inset-y-0" : "top-0.5",
+          onMove && "cursor-grab active:cursor-grabbing",
         )}
         onClickCapture={(event) => {
           if (!suppressClickRef.current) return

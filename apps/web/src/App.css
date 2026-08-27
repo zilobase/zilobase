@@ -182,3 +182,90 @@
     transition: none;
   }
 }
+
+/*
+ * Keep cursor feedback consistent across native controls and headless UI
+ * primitives. These rules intentionally live outside Tailwind's layers so a
+ * primitive's generated `cursor-default` utility cannot hide its interaction.
+ */
+:where(
+  a[href],
+  area[href],
+  button,
+  summary,
+  select,
+  label[for],
+  input:is(
+    [type="button"],
+    [type="checkbox"],
+    [type="color"],
+    [type="file"],
+    [type="radio"],
+    [type="range"],
+    [type="reset"],
+    [type="submit"]
+  ),
+  [role="button"],
+  [role="checkbox"],
+  [role="link"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="radio"],
+  [role="switch"],
+  [role="tab"],
+  [data-slot$="-trigger"]
+):not(:disabled):not([aria-disabled="true"]):not([data-disabled]) {
+  cursor: pointer;
+}
+
+:where(
+  button,
+  select,
+  input,
+  [role="button"],
+  [role="checkbox"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="radio"],
+  [role="switch"],
+  [role="tab"]
+):is(:disabled, [aria-disabled="true"], [data-disabled]) {
+  cursor: not-allowed;
+}
+
+:where(
+  [draggable="true"],
+  [aria-grabbed="true"],
+  [data-slot="slider-thumb"],
+  [data-slot="scroll-area-thumb"],
+  [data-tauri-drag-region],
+  .react-flow__node.draggable,
+  .react-flow__pane.draggable
+) {
+  cursor: grab;
+}
+
+:where(
+  [draggable="true"],
+  [aria-grabbed="true"],
+  [data-slot="slider-thumb"],
+  [data-slot="scroll-area-thumb"],
+  [data-tauri-drag-region],
+  .react-flow__node.draggable,
+  .react-flow__pane.draggable
+):active,
+:where([data-dragging="true"], [aria-grabbed="true"]) {
+  cursor: grabbing;
+}
+
+[data-slot="resizable-handle"][aria-orientation="vertical"] {
+  cursor: col-resize;
+}
+
+[data-slot="resizable-handle"][aria-orientation="horizontal"] {
+  cursor: row-resize;
+}
