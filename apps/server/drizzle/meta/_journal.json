@@ -393,6 +393,41 @@
       "when": 1787850000000,
       "tag": "0055_remove_legacy_provider_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1787855000000,
+      "tag": "0056_ai_provider_credentials",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1787860000000,
+      "tag": "0057_ai_canonical_turns",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1787865000000,
+      "tag": "0058_ai_pending_actions",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1787870000000,
+      "tag": "0059_search_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1787875000000,
+      "tag": "0060_ai_jobs",
+      "breakpoints": true
     }
   ]
 }

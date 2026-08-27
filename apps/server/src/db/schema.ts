@@ -19,6 +19,12 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   },
 });
 
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
+
 function timestampColumns() {
   return {
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -466,6 +472,10 @@ export const workspaceAiProviderConfig = pgTable(
       .references(() => workspace.id, { onDelete: "cascade" }),
     providerId: text("provider_id").notNull(),
     enabled: boolean("enabled").notNull().default(false),
+    credentialCiphertext: text("credential_ciphertext"),
+    credentialIv: text("credential_iv"),
+    credentialKeyVersion: text("credential_key_version"),
+    credentialFingerprint: text("credential_fingerprint"),
     apiKey: text("api_key"),
     baseUrl: text("base_url"),
     modelIds: jsonb("model_ids").$type<string[]>().notNull().default([]),
@@ -1275,6 +1285,7 @@ export const aiChatThread = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("New chat"),
+    nextMessageSequence: integer("next_message_sequence").notNull().default(0),
     pinnedAt: timestamp("pinned_at", { withTimezone: true }),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -1304,15 +1315,47 @@ export const aiChatMessage = pgTable(
   "ai_chat_message",
   {
     id: text("id").primaryKey(),
+    clientId: text("client_id"),
     threadId: text("thread_id")
       .notNull()
       .references(() => aiChatThread.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
     parts: jsonb("parts").$type<unknown[]>().notNull().default([]),
+    sequence: integer("sequence").notNull().default(0),
+    status: text("status").notNull().default("completed"),
+    turnId: text("turn_id"),
     ...timestampColumns(),
   },
   (table) => [
     index("ai_chat_message_thread_created_idx").on(table.threadId, table.createdAt),
+    uniqueIndex("ai_chat_message_thread_client_unique").on(
+      table.threadId,
+      table.clientId,
+    ),
+    uniqueIndex("ai_chat_message_thread_sequence_unique").on(
+      table.threadId,
+      table.sequence,
+    ),
+    check(
+      "ai_chat_message_status_check",
+      sql`${table.status} in ('completed', 'failed', 'cancelled')`,
+    ),
+  ],
+);
+
+export const aiChatThreadSummary = pgTable(
+  "ai_chat_thread_summary",
+  {
+    id: text("id").primaryKey(),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => aiChatThread.id, { onDelete: "cascade" }),
+    coveredThroughSequence: integer("covered_through_sequence").notNull(),
+    summary: text("summary").notNull(),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("ai_chat_thread_summary_thread_unique").on(table.threadId),
   ],
 );
 
@@ -1388,6 +1431,10 @@ export const aiAgentTurn = pgTable(
     threadId: text("thread_id")
       .notNull()
       .references(() => aiChatThread.id, { onDelete: "cascade" }),
+    clientTurnId: text("client_turn_id"),
+    userMessageId: text("user_message_id").references(() => aiChatMessage.id, {
+      onDelete: "set null",
+    }),
     requestedModel: text("requested_model").notNull(),
     status: text("status").notNull().default("running"),
     inputMessageCount: integer("input_message_count").notNull().default(0),
@@ -1418,6 +1465,10 @@ export const aiAgentTurn = pgTable(
       table.workspaceId,
       table.status,
       table.startedAt,
+    ),
+    uniqueIndex("ai_agent_turn_thread_client_unique").on(
+      table.threadId,
+      table.clientTurnId,
     ),
     check(
       "ai_agent_turn_status_check",
@@ -1499,6 +1550,153 @@ export const aiAgentActionReceipt = pgTable(
       table.userId,
       table.createdAt,
     ),
+  ],
+);
+
+export const aiAgentPendingAction = pgTable(
+  "ai_agent_pending_action",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => aiChatThread.id, { onDelete: "cascade" }),
+    toolCallId: text("tool_call_id").notNull(),
+    toolName: text("tool_name").notNull(),
+    toolVersion: integer("tool_version").notNull(),
+    toolInput: jsonb("tool_input").notNull(),
+    inputHash: text("input_hash").notNull(),
+    status: text("status").notNull().default("pending"),
+    result: jsonb("result"),
+    error: text("error"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestampColumns(),
+  },
+  (table) => [
+    index("ai_agent_pending_action_owner_status_idx").on(
+      table.workspaceId,
+      table.userId,
+      table.threadId,
+      table.status,
+    ),
+    index("ai_agent_pending_action_expiry_idx").on(table.status, table.expiresAt),
+    uniqueIndex("ai_agent_pending_action_thread_call_unique").on(
+      table.threadId,
+      table.toolCallId,
+    ),
+    check(
+      "ai_agent_pending_action_status_check",
+      sql`${table.status} in ('pending', 'executing', 'succeeded', 'failed', 'rejected', 'expired')`,
+    ),
+  ],
+);
+
+export const searchDocument = pgTable(
+  "search_document",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").notNull(),
+    sourceId: text("source_id").notNull(),
+    sourcePageId: text("source_page_id"),
+    title: text("title").notNull(),
+    path: text("path").notNull(),
+    emoji: text("emoji"),
+    contentText: text("content_text").notNull().default(""),
+    searchVector: tsvector("search_vector").notNull(),
+    sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }).notNull(),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("search_document_source_unique").on(
+      table.workspaceId,
+      table.sourceType,
+      table.sourceId,
+    ),
+    index("search_document_workspace_type_updated_idx").on(
+      table.workspaceId,
+      table.sourceType,
+      table.sourceUpdatedAt,
+    ),
+  ],
+);
+
+export const searchChunk = pgTable(
+  "search_chunk",
+  {
+    id: text("id").primaryKey(),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => searchDocument.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    chunkIndex: integer("chunk_index").notNull(),
+    content: text("content").notNull(),
+    tokenEstimate: integer("token_estimate").notNull().default(0),
+    searchVector: tsvector("search_vector").notNull(),
+    metadata: jsonb("metadata").notNull().default({}),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("search_chunk_document_index_unique").on(
+      table.documentId,
+      table.chunkIndex,
+    ),
+    index("search_chunk_workspace_document_idx").on(
+      table.workspaceId,
+      table.documentId,
+    ),
+  ],
+);
+
+export const aiJob = pgTable(
+  "ai_job",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    type: text("type").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    status: text("status").notNull().default("queued"),
+    input: jsonb("input").notNull(),
+    output: jsonb("output"),
+    error: text("error"),
+    progress: integer("progress").notNull().default(0),
+    attempt: integer("attempt").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    availableAt: timestamp("available_at", { withTimezone: true }).notNull(),
+    leasedAt: timestamp("leased_at", { withTimezone: true }),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    workerId: text("worker_id"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("ai_job_dedupe_unique").on(
+      table.workspaceId,
+      table.type,
+      table.dedupeKey,
+    ),
+    index("ai_job_claim_idx").on(table.status, table.availableAt, table.leaseExpiresAt),
+    index("ai_job_owner_created_idx").on(table.workspaceId, table.userId, table.createdAt),
+    check(
+      "ai_job_status_check",
+      sql`${table.status} in ('queued', 'running', 'succeeded', 'failed', 'cancelled')`,
+    ),
+    check("ai_job_progress_check", sql`${table.progress} between 0 and 100`),
   ],
 );
 
