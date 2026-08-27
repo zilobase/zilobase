@@ -1,7 +1,9 @@
-import type { DatabaseActiveConditionalColor } from "../database-view-context";
+import type {
+  DatabaseActiveConditionalColor,
+  DatabaseSourceViewSelection,
+} from "../database-view-context";
 import type {
   DatabaseConditionalColorConfig,
-  DatabaseLinkedViewConfig,
   DatabaseLayoutSettings,
   DatabaseSubItemsSettings,
 } from "../database-view-config";
@@ -28,9 +30,12 @@ export type DatabaseViewProperty = {
 };
 
 export type DatabaseSourceMenuItem = {
+  config?: unknown;
   hiddenViewCount?: number;
   id: string;
   name: string;
+  parentDatabaseId: string;
+  position?: number;
   viewCount: number;
 };
 
@@ -40,8 +45,8 @@ export type DatabaseViewSettingsMenuProps = {
   activeDatabaseFilters: DatabaseActiveFilter[];
   activeDatabaseSorts: DatabaseActiveSort[];
   activeViewType?: string;
-  activeSourceDatabaseId?: string;
-  activeSourceDatabaseName?: string;
+  activeDataSourceId?: string;
+  activeDataSourceName?: string;
   dateProperties?: DatabaseViewProperty[];
   datePropertyId?: string | null;
   addableFilterFieldOptions: DatabaseSearchableMenuOption[];
@@ -51,7 +56,6 @@ export type DatabaseViewSettingsMenuProps = {
   chartSettings: DatabaseChartSettings;
   layoutSettings: DatabaseLayoutSettings;
   databaseId?: string;
-  databaseName?: string;
   dataSources: DatabaseSourceMenuItem[];
   draftViewTitle: string;
   editable?: boolean;
@@ -59,18 +63,20 @@ export type DatabaseViewSettingsMenuProps = {
   filterValueOptionsByField: Record<string, DatabaseSearchableMenuOption[]>;
   groupProperties: DatabaseViewProperty[];
   groupPropertyId: string | null;
-  linkedViews?: DatabaseLinkedViewConfig[];
   titlePropertyLabel: string;
   open?: boolean;
   workspaceId?: string;
-  onAddLinkedDatabaseView: (view: DatabaseLinkedViewConfig) => void;
+  onLinkDataSourceView: (view: DatabaseSourceViewSelection) => void;
+  onUnlinkDataSource?: (dataSourceId: string) => void;
   onAddDataSourceView?: (
-    sourceDatabaseId: string,
+    dataSourceId: string,
     type: DatabaseViewType,
+    mode?: "add" | "replace",
   ) => void;
   onAddDataSource?: () => void;
   onCopyDatabaseViewLink: () => void;
   onOpenChange?: (open: boolean) => void;
+  onReplaceActiveViewSource: (view: DatabaseSourceViewSelection) => void;
   onClearDatabaseFilter: () => void;
   onClearDatabaseSort: () => void;
   onConfigureDataSources?: () => void;
@@ -113,7 +119,7 @@ export type DatabaseViewSettingsMenuProps = {
   properties: DatabaseViewProperty[];
   isAddingDataSource?: boolean;
   sortFieldOptions: DatabaseSearchableMenuOption[];
-  sourceDatabaseId?: string;
+  hostDatabaseId?: string;
   viewConfig?: unknown;
   visiblePropertyCount: number;
   showPropertyTitles: boolean;

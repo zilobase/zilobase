@@ -45,7 +45,7 @@ export function register({ assert, loadModule, test }) {
     assert.match(listView, /className="database-list-row-checkbox"/);
     assert.match(
       dataSourceSettings,
-      /open=\{sourcePickerOpen\}[\s\S]*?label="Source"/,
+      /displayMode="inline"[\s\S]*?title="Source"[\s\S]*?label="Source"/,
     );
     assert.doesNotMatch(dataSourceSettings, /Configure data sources/);
     assert.match(

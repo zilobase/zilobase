@@ -27,8 +27,7 @@ type PersonNotificationsValue = "users_and_groups" | "users_only" | "none";
 type RelationLimitValue = "one_page" | "no_limit";
 type SelectOptionSortValue = "manual" | "alphabetical" | "reverse_alphabetical";
 export type DatabaseConditionalColorApplyTarget =
-  | "entire-row"
-  | "this-property";
+  "entire-row" | "this-property";
 export type DatabaseConditionalColorStyle = "page-background";
 export type DatabaseRollupCalculation =
   | "show_original"
@@ -58,23 +57,9 @@ export type DatabaseConditionalColorConfig = {
   style: DatabaseConditionalColorStyle;
 };
 
-export type DatabaseLinkedViewConfig = {
-  databaseId: string;
-  databaseName: string;
-  hidden?: boolean;
-  sourceKind?: "source" | "linked";
-  viewIcon?: string;
-  linkedViewId?: string;
-  viewId: string;
-  viewName: string;
-  viewType: string;
-};
-
 export type DatabaseSubItemsDisplay = "nested" | "flattened" | "disabled";
 export type DatabaseSubItemsFilter =
-  | "parents-only"
-  | "parents-and-sub-items"
-  | "sub-items-only";
+  "parents-only" | "parents-and-sub-items" | "sub-items-only";
 export type DatabaseSubItemsProperty = "sub-item" | "parent-item";
 
 export type DatabaseSubItemsSettings = {
@@ -149,7 +134,6 @@ type DatabaseConfig = {
   groupPropertyId?: string;
   icon?: string;
   hiddenPropertyIds?: string[];
-  linkedDatabaseViews?: DatabaseLinkedViewConfig[];
   layout?: DatabaseLayoutSettings;
   nameColumn?: DatabaseNameColumnConfig;
   propertyOrder?: string[];
@@ -230,8 +214,7 @@ export type DatabaseFilterGroupConfig = {
 };
 
 export type DatabaseFilterItemConfig =
-  | DatabaseFilterGroupConfig
-  | DatabasePropertyFilterConfig;
+  DatabaseFilterGroupConfig | DatabasePropertyFilterConfig;
 
 export const databasePropertyFilterOperators: {
   label: string;
@@ -384,46 +367,6 @@ export function getDatabaseConditionalColors(
 
     return setting ? [setting] : [];
   });
-}
-
-export function getDatabaseLinkedViews(
-  config: unknown,
-): DatabaseLinkedViewConfig[] {
-  const linkedViews =
-    config && typeof config === "object" && !Array.isArray(config)
-      ? (config as DatabaseConfig).linkedDatabaseViews
-      : undefined;
-
-  if (!Array.isArray(linkedViews)) {
-    return [];
-  }
-
-  const seenKeys = new Set<string>();
-
-  return linkedViews.flatMap((linkedView) => {
-    const normalized = normalizeDatabaseLinkedView(linkedView);
-
-    if (!normalized) {
-      return [];
-    }
-
-    const key = getDatabaseLinkedViewKey(normalized);
-
-    if (seenKeys.has(key)) {
-      return [];
-    }
-
-    seenKeys.add(key);
-    return [normalized];
-  });
-}
-
-export function getDatabaseLinkedViewKey(view: DatabaseLinkedViewConfig) {
-  if (view.linkedViewId) {
-    return `linked:${view.linkedViewId}`;
-  }
-
-  return `linked:${view.databaseId}:${view.viewId}`;
 }
 
 export function getDatabaseSubItemsSettings(
@@ -839,55 +782,6 @@ function isDatabaseSortConfig(value: unknown): value is DatabaseSortConfig {
     (value as DatabaseSortConfig).column.length > 0 &&
     isDatabaseSortDirection((value as DatabaseSortConfig).direction)
   );
-}
-
-function normalizeDatabaseLinkedView(
-  value: unknown,
-): DatabaseLinkedViewConfig | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const linkedView = value as DatabaseLinkedViewConfig;
-
-  if (
-    typeof linkedView.databaseId !== "string" ||
-    linkedView.databaseId.length === 0 ||
-    typeof linkedView.viewId !== "string" ||
-    linkedView.viewId.length === 0
-  ) {
-    return null;
-  }
-
-  return {
-    databaseId: linkedView.databaseId,
-    databaseName:
-      typeof linkedView.databaseName === "string" &&
-      linkedView.databaseName.trim().length > 0
-        ? linkedView.databaseName
-        : "Untitled database",
-    hidden: linkedView.hidden === true ? true : undefined,
-    linkedViewId:
-      typeof linkedView.linkedViewId === "string" &&
-      linkedView.linkedViewId.length > 0
-        ? linkedView.linkedViewId
-        : undefined,
-    sourceKind:
-      linkedView.sourceKind === "source" ? "source" : "linked",
-    viewId: linkedView.viewId,
-    viewIcon:
-      typeof linkedView.viewIcon === "string" ? linkedView.viewIcon : undefined,
-    viewName:
-      typeof linkedView.viewName === "string" &&
-      linkedView.viewName.trim().length > 0
-        ? linkedView.viewName
-        : "Untitled view",
-    viewType:
-      typeof linkedView.viewType === "string" &&
-      linkedView.viewType.trim().length > 0
-        ? linkedView.viewType
-        : "table",
-  };
 }
 
 export function isDatabaseFilterGroup(

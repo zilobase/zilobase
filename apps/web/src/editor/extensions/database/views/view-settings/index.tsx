@@ -53,8 +53,8 @@ export function DatabaseViewSettingsMenu({
   allContentWrapped,
   activeDatabaseFilters,
   activeDatabaseSorts,
-  activeSourceDatabaseId,
-  activeSourceDatabaseName,
+  activeDataSourceId,
+  activeDataSourceName,
   activeViewType,
   dateProperties = [],
   datePropertyId = null,
@@ -65,7 +65,6 @@ export function DatabaseViewSettingsMenu({
   chartSettings,
   layoutSettings,
   databaseId,
-  databaseName,
   dataSources,
   draftViewTitle,
   editable = true,
@@ -73,16 +72,17 @@ export function DatabaseViewSettingsMenu({
   filterValueOptionsByField,
   groupProperties,
   groupPropertyId,
-  linkedViews = [],
   isAddingDataSource,
   titlePropertyLabel,
   open: controlledOpen,
   workspaceId,
-  onAddLinkedDatabaseView,
+  onLinkDataSourceView,
+  onUnlinkDataSource,
   onAddDataSourceView,
   onAddDataSource,
   onCopyDatabaseViewLink,
   onOpenChange,
+  onReplaceActiveViewSource,
   onClearDatabaseFilter,
   onClearDatabaseSort,
   onCreateDatabaseFilter,
@@ -109,7 +109,7 @@ export function DatabaseViewSettingsMenu({
   onUpdateDatabaseSubItemsSettings,
   properties,
   sortFieldOptions,
-  sourceDatabaseId,
+  hostDatabaseId,
   viewConfig,
   visiblePropertyCount,
   showPropertyTitles,
@@ -402,30 +402,30 @@ export function DatabaseViewSettingsMenu({
       </DropDrawerItem>
       <DropDrawerSeparator />
       <DataSourceSettingsSection
-        activeSourceDatabaseId={activeSourceDatabaseId}
-        activeSourceDatabaseName={activeSourceDatabaseName}
+        activeDataSourceId={activeDataSourceId}
+        activeDataSourceName={activeDataSourceName}
         databaseId={databaseId}
-        databaseName={databaseName}
         dataSources={dataSources}
         isAddingDataSource={isAddingDataSource}
-        linkedViews={linkedViews}
         onAddDataSource={onAddDataSource}
-        onAddLinkedDatabaseView={onAddLinkedDatabaseView}
+        onLinkDataSourceView={onLinkDataSourceView}
+        onUnlinkDataSource={onUnlinkDataSource}
         onAddDataSourceView={onAddDataSourceView}
+        onReplaceActiveViewSource={onReplaceActiveViewSource}
         onUpdateDatabaseSubItemsSettings={onUpdateDatabaseSubItemsSettings}
         onCloseSettings={() => setOpen(false)}
         open={open}
         properties={properties}
-        sourceDatabaseId={sourceDatabaseId}
+        hostDatabaseId={hostDatabaseId}
         workspaceId={workspaceId}
         subItemsSettings={subItemsSettings}
       />
-      <DropDrawerSub>
+      <DropDrawerSub title="Lock database">
         <DropDrawerSubTrigger>
           <Lock />
           <span>Lock database</span>
         </DropDrawerSubTrigger>
-        <DropDrawerSubContent>
+        <DropDrawerSubContent className="w-72">
           <DropDrawerItem disabled>Database lock settings</DropDrawerItem>
         </DropDrawerSubContent>
       </DropDrawerSub>
@@ -442,11 +442,15 @@ export function DatabaseViewSettingsMenu({
   );
 
   return (
-    <DropDrawer open={open} onOpenChange={handleOpenChange}>
+    <DropDrawer
+      defaultSubDisplayMode="inline"
+      open={open}
+      onOpenChange={handleOpenChange}
+    >
       <DropDrawerTrigger asChild>{trigger}</DropDrawerTrigger>
       <DropDrawerContent
         align="start"
-        className="w-72"
+        className="w-72 max-h-none overflow-visible"
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
         {settingsContent}

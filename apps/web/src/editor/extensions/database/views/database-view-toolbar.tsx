@@ -156,8 +156,8 @@ export function DatabaseViewToolbar() {
     addGalleryView,
     addKanbanView,
     addListView,
-    addLinkedDatabaseView,
     addDataSourceView,
+    replaceActiveViewSource,
     addTableView,
     addTimelineView,
     canAddDatabaseSort,
@@ -193,7 +193,8 @@ export function DatabaseViewToolbar() {
     isAddingDatabaseRow,
     isAddingDataSource,
     isAddingDatabaseView,
-    linkedDatabaseViews,
+    linkDataSourceView,
+    unlinkDataSource,
     layoutSettings,
     newRowLabel,
     onShowTitleChange,
@@ -260,17 +261,12 @@ export function DatabaseViewToolbar() {
     }
   };
   const activeViewTab = viewTabs.find((view) => view.id === activeViewTabId);
-  const isLinkedDataSourceView = (view?: DatabaseViewTab | null) =>
-    Boolean(view?.isLinked && view.sourceKind !== "source");
-  const isLastSeparateDataSourceView = Boolean(
-    pendingDeleteView?.sourceKind === "source" &&
-    pendingDeleteView.sourceDatabaseId &&
-    viewTabs.filter(
-      (view) =>
-        view.sourceKind === "source" &&
-        view.sourceDatabaseId === pendingDeleteView.sourceDatabaseId,
-    ).length === 1,
-  );
+  const isExternalDataSourceView = (view?: DatabaseViewTab | null) =>
+    Boolean(
+      view?.sourceParentDatabaseId &&
+        hostDatabaseId &&
+        view.sourceParentDatabaseId !== hostDatabaseId,
+    );
   const isFormView = (activeView?.type ?? activeViewTab?.type) === "form";
   const selectActiveView = (viewId: string) => {
     if (viewId === activeViewTabId) {
@@ -325,7 +321,7 @@ export function DatabaseViewToolbar() {
     pendingViewScrollRef.current = null;
   }, [activeViewTabId]);
 
-  const hostDisplayTitle = activeViewTab?.isLinked
+  const hostDisplayTitle = isExternalDataSourceView(activeViewTab)
     ? hostDatabaseName || "Untitled"
     : draftDatabaseTitle || hostDatabaseName || "Untitled";
   const databaseEmoji = getDatabaseEmoji({ config: databaseConfig });
@@ -414,9 +410,9 @@ export function DatabaseViewToolbar() {
       {showTitle ? (
         <div className="group/title flex min-w-0 items-center gap-3">
           {databaseEmojiPicker}
-          {isLinkedDataSourceView(activeViewTab) ? (
+          {isExternalDataSourceView(activeViewTab) ? (
             <ArrowUpRightIcon
-              aria-label={`Linked from ${activeViewTab?.sourceDatabaseName ?? "another database"}`}
+              aria-label={`Linked from ${activeViewTab?.dataSourceName ?? "another database"}`}
               className="size-5 shrink-0 text-muted-foreground"
             />
           ) : null}
@@ -450,13 +446,13 @@ export function DatabaseViewToolbar() {
                 disabled={!databaseId}
                 onSelect={() =>
                   openDatabaseFullPage(
-                    activeViewTab?.sourceDatabaseId ?? databaseId,
+                    activeViewTab?.sourceParentDatabaseId ?? databaseId,
                   )
                 }
               >
                 <ArrowUpRightIcon />
                 <span>
-                  {activeViewTab?.isLinked
+                  {isExternalDataSourceView(activeViewTab)
                     ? "View data source"
                     : "View database"}
                 </span>
@@ -492,7 +488,7 @@ export function DatabaseViewToolbar() {
               >
                 <EyeOff />
                 <span>
-                  {activeViewTab?.isLinked
+                  {isExternalDataSourceView(activeViewTab)
                     ? "Hide data source titles"
                     : "Hide title"}
                 </span>
@@ -535,10 +531,10 @@ export function DatabaseViewToolbar() {
                               : view.type === "list"
                                 ? List
                                 : Table2;
-                  const sourceDatabaseId =
-                    view.sourceDatabaseId ?? hostDatabaseId ?? databaseId;
+                  const sourceParentDatabaseId =
+                    view.sourceParentDatabaseId ?? hostDatabaseId ?? databaseId;
                   const sourceDatabaseName =
-                    view.sourceDatabaseName ?? hostDisplayTitle;
+                    view.dataSourceName ?? hostDisplayTitle;
                   const handleViewContextMenu = (
                     event: MouseEvent<HTMLButtonElement>,
                   ) => {
@@ -623,9 +619,9 @@ export function DatabaseViewToolbar() {
                             <span className="truncate">
                               {isActiveView ? draftViewTitle : view.name}
                             </span>
-                            {isLinkedDataSourceView(view) ? (
+                            {isExternalDataSourceView(view) ? (
                               <ArrowUpRightIcon
-                                aria-label={`Linked from ${view.sourceDatabaseName ?? "another database"}`}
+                                aria-label={`Linked from ${view.dataSourceName ?? "another database"}`}
                                 className="size-3 shrink-0 text-muted-foreground"
                               />
                             ) : null}
@@ -841,7 +837,7 @@ export function DatabaseViewToolbar() {
                               label="Source"
                               right={
                                 <>
-                                  {isLinkedDataSourceView(view) ? (
+                                  {isExternalDataSourceView(view) ? (
                                     <ArrowUpRightIcon className="size-3" />
                                   ) : null}
                                   <span className="block max-w-28 truncate">
@@ -853,14 +849,14 @@ export function DatabaseViewToolbar() {
                           </DropDrawerSubTrigger>
                           <DropDrawerSubContent className="w-60">
                             <DropDrawerItem
-                              disabled={!sourceDatabaseId}
+                              disabled={!sourceParentDatabaseId}
                               onSelect={() =>
-                                openDatabaseFullPage(sourceDatabaseId)
+                                openDatabaseFullPage(sourceParentDatabaseId)
                               }
                             >
                               <ArrowUpRightIcon />
                               <span>
-                                {view.isLinked
+                                {isExternalDataSourceView(view)
                                   ? "Open source database"
                                   : "Open database"}
                               </span>
@@ -873,14 +869,14 @@ export function DatabaseViewToolbar() {
                           <span>Copy link to view</span>
                         </DropDrawerItem>
                         <DropDrawerItem
-                          disabled={!sourceDatabaseId}
+                          disabled={!sourceParentDatabaseId}
                           onSelect={() =>
-                            openDatabaseFullPage(sourceDatabaseId)
+                            openDatabaseFullPage(sourceParentDatabaseId)
                           }
                         >
                           <ArrowUpRightIcon />
                           <span>
-                            {view.isLinked
+                            {isExternalDataSourceView(view)
                               ? "Open source database"
                               : "Open as full page"}
                           </span>
@@ -1112,25 +1108,26 @@ export function DatabaseViewToolbar() {
                 activeConditionalColors={activeConditionalColors}
                 allContentWrapped={allContentWrapped}
                 activeDatabaseSorts={activeDatabaseSorts}
-                activeSourceDatabaseId={
-                  activeViewTab?.sourceDatabaseId ?? hostDatabaseId ?? undefined
+                activeDataSourceId={
+                  activeViewTab?.dataSourceId ?? undefined
                 }
-                activeSourceDatabaseName={
-                  activeViewTab?.sourceDatabaseName ?? hostDisplayTitle
+                activeDataSourceName={
+                  activeViewTab?.dataSourceName ?? hostDisplayTitle
                 }
                 activeViewType={activeView?.type ?? activeViewTab?.type}
                 activeDatabaseFilters={activeDatabaseFilters}
                 addableFilterFieldOptions={addableFilterFieldOptions}
                 databaseId={databaseId ?? undefined}
-                databaseName={hostDisplayTitle}
                 dataSources={
                   configuredDataSources ??
-                  (hostDatabaseId
+                  (hostDatabaseId && activeViewTab?.dataSourceId
                     ? [
                         {
                           hiddenViewCount: 0,
-                          id: hostDatabaseId,
+                          id: activeViewTab.dataSourceId,
                           name: hostDisplayTitle,
+                          parentDatabaseId:
+                            activeViewTab.sourceParentDatabaseId ?? hostDatabaseId,
                           viewCount: hostViews.length,
                         },
                       ]
@@ -1150,11 +1147,14 @@ export function DatabaseViewToolbar() {
                   workspaceId ??
                   undefined
                 }
-                linkedViews={linkedDatabaseViews}
                 isAddingDataSource={isAddingDataSource}
                 onAddDataSource={addDataSource}
-                onAddLinkedDatabaseView={addLinkedDatabaseView}
+                onLinkDataSourceView={linkDataSourceView}
+                onUnlinkDataSource={unlinkDataSource}
                 onAddDataSourceView={addDataSourceView}
+                onReplaceActiveViewSource={
+                  replaceActiveViewSource ?? linkDataSourceView
+                }
                 open={viewSettingsOpen}
                 onCopyDatabaseViewLink={copyDatabaseViewLink}
                 onClearDatabaseFilter={clearDatabaseFilter}
@@ -1199,7 +1199,7 @@ export function DatabaseViewToolbar() {
                 filterFieldOptions={filterFieldOptions}
                 filterValueOptionsByField={filterValueOptionsByField}
                 sortFieldOptions={sortFieldOptions}
-                sourceDatabaseId={hostDatabaseId ?? undefined}
+                hostDatabaseId={hostDatabaseId ?? undefined}
                 addableSortFieldOptions={addableSortFieldOptions}
                 canAddDatabaseSort={canAddDatabaseSort}
                 viewConfig={activeVisibilityConfig}
@@ -1267,45 +1267,24 @@ export function DatabaseViewToolbar() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isLastSeparateDataSourceView
-                ? "Delete the last data source view?"
-                : "Delete this view?"}
+              Delete this view?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {isLastSeparateDataSourceView
-                ? `“${pendingDeleteView?.name}” is the last view of “${pendingDeleteView?.sourceDatabaseName ?? "this data source"}”. Delete only this view to keep the data source, or delete both.`
-                : `“${pendingDeleteView?.name}” will be removed. This action cannot be undone.`}
+              {`“${pendingDeleteView?.name}” will be removed. Its data source remains linked and can be used to create another view later.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:flex-col-reverse">
             <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
-            {isLastSeparateDataSourceView ? (
-              <AlertDialogAction
-                className="w-full"
-                onClick={() => {
-                  if (pendingDeleteView) {
-                    deleteDatabaseView(pendingDeleteView);
-                  }
-                }}
-                variant="outline"
-              >
-                Delete view only
-              </AlertDialogAction>
-            ) : null}
             <AlertDialogAction
               className="w-full"
               onClick={() => {
                 if (pendingDeleteView) {
-                  deleteDatabaseView(pendingDeleteView, {
-                    deleteDataSource: isLastSeparateDataSourceView,
-                  });
+                  deleteDatabaseView(pendingDeleteView);
                 }
               }}
               variant="destructive"
             >
-              {isLastSeparateDataSourceView
-                ? "Delete data source and view"
-                : "Delete view"}
+              Delete view
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -37,7 +37,6 @@ import type {
 import type {
   DatabasePropertyFilterConfig,
   DatabaseConditionalColorConfig,
-  DatabaseLinkedViewConfig,
   DatabaseSortConfig,
   DatabaseLayoutSettings,
   DatabaseNameColumnConfig,
@@ -74,13 +73,22 @@ export type DatabaseActiveConditionalColor = Omit<
 export type DatabaseViewTab = {
   icon?: string
   id: string
-  isLinked?: boolean
   name: string
-  sourceKind?: "source" | "linked"
-  sourceDatabaseId?: string
-  sourceDatabaseName?: string
-  sourceViewId?: string
+  dataSourceId: string
+  dataSourceName?: string
+  sourceParentDatabaseId?: string
   type: string
+}
+
+export type DatabaseSourceViewSelection = {
+  dataSourceId: string
+  dataSourceName: string
+  parentDatabaseId: string
+  viewConfig?: unknown
+  viewIcon?: string
+  viewId: string
+  viewName: string
+  viewType: string
 }
 
 export type DatabaseViewContextValue = {
@@ -110,9 +118,10 @@ export type DatabaseViewContextValue = {
   ) => void | Promise<void>
   addKanbanView: () => void
   addListView: () => void
-  addLinkedDatabaseView: (view: DatabaseLinkedViewConfig) => void
+  linkDataSourceView: (view: DatabaseSourceViewSelection) => void
+  unlinkDataSource?: (dataSourceId: string) => void
   addDataSourceView?: (
-    sourceDatabaseId: string,
+    dataSourceId: string,
     type:
       | "table"
       | "kanban"
@@ -121,7 +130,9 @@ export type DatabaseViewContextValue = {
       | "gallery"
       | "chart"
       | "form",
+    mode?: "add" | "replace",
   ) => void
+  replaceActiveViewSource?: (view: DatabaseSourceViewSelection) => void
   addTableView: () => void
   addTimelineRow: (
     startAt: Date,
@@ -143,9 +154,12 @@ export type DatabaseViewContextValue = {
   createDatabaseFilter: (field: string) => void
   createDatabaseSort: (field: string) => void
   dataSources?: Array<{
+    config?: unknown
     hiddenViewCount?: number
     id: string
     name: string
+    parentDatabaseId: string
+    position?: number
     viewCount: number
   }>
   databaseConfig?: unknown
@@ -189,7 +203,6 @@ export type DatabaseViewContextValue = {
   isFetchingNextPage: boolean
   isRowComplete?: (row: DatabaseRow) => boolean
   items: DatabaseRow[]
-  linkedDatabaseViews: DatabaseLinkedViewConfig[]
   layoutSettings: DatabaseLayoutSettings
   newRowLabel?: string
   onOpenPage?: (

@@ -229,8 +229,8 @@ function AppLayoutContent({
       : pageId
         ? hostPage?.name.trim()
         : null) || getDesktopTabTitle(pathname)
-  const desktopTabIcon = databasePayload?.database
-    ? getDatabaseEmoji(databasePayload.database)
+  const desktopTabIcon = databasePayload?.activeDataSource
+    ? getDatabaseEmoji(databasePayload.activeDataSource)
     : hostPage
       ? getPageEmoji(hostPage)
       : null

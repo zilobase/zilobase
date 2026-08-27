@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useMemo,
@@ -8,6 +9,8 @@ import {
 import { Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
 import {
+  colorWithAlpha,
+  getColorToken,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
 } from "@/lib/color-tokens"
@@ -639,6 +642,7 @@ export function DatabaseKanbanView() {
               {kanbanOptions.map((option) => {
                 const isEmptyOption = option.isEmpty === true
                 const optionItems = getKanbanOptionItems(option)
+                const colorToken = getColorToken(option.color)
                 const canAddPageToOption =
                   !isEmptyOption && canCreateRowInKanbanGroup(groupProperty)
                 const activeCardDropTarget =
@@ -651,10 +655,22 @@ export function DatabaseKanbanView() {
                 return (
                   <section
                     className="database-kanban-column"
+                    data-color-token={colorToken.value ?? undefined}
                     key={option.id}
                     onDragLeave={(event) => cardDrag.leave(option, event)}
                     onDragOver={(event) => cardDrag.dragOver(option, event)}
                     onDrop={(event) => cardDrag.drop(option, event)}
+                    style={
+                      colorToken.value
+                        ? ({
+                            "--database-kanban-accent": `var(--editor-${colorToken.value})`,
+                            "--database-kanban-tint": colorWithAlpha(
+                              colorToken.value,
+                              0.18
+                            ),
+                          } as CSSProperties)
+                        : undefined
+                    }
                   >
                     <div className="database-kanban-column-header">
                       <span className={getColorTokenBadgeClassName(option.color)}>

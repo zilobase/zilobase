@@ -21,6 +21,7 @@ export function DatabaseSearchableMenuItems({
   onSelect,
   open,
   options,
+  pinSearch = false,
   renderOption,
 }: {
   emptyMessage?: string
@@ -30,6 +31,7 @@ export function DatabaseSearchableMenuItems({
   onSelect?: (value: string) => void
   open?: boolean
   options: DatabaseSearchableMenuOption[]
+  pinSearch?: boolean
   renderOption?: (option: DatabaseSearchableMenuOption) => ReactNode
 }) {
   const [query, setQuery] = useState("")
@@ -58,7 +60,7 @@ export function DatabaseSearchableMenuItems({
     onSelect?.(value)
   }
 
-  return (
+  const search = (
     <>
       <div className="flex items-center gap-1.5 px-1.5 py-1">
         {inputIcon ? (
@@ -75,22 +77,41 @@ export function DatabaseSearchableMenuItems({
         />
       </div>
       <DropDrawerSeparator />
-      {filteredOptions.length > 0 ? (
-        filteredOptions.map((option) => (
-          <Fragment key={option.value}>
-            {renderOption ? (
-              renderOption(option)
-            ) : (
-              <DropDrawerItem onSelect={() => handleSelect(option.value)}>
-                {option.icon}
-                <span>{option.label}</span>
-              </DropDrawerItem>
-            )}
-          </Fragment>
-        ))
-      ) : (
-        <DropDrawerItem disabled>{emptyMessage}</DropDrawerItem>
-      )}
+    </>
+  )
+  const results =
+    filteredOptions.length > 0 ? (
+      filteredOptions.map((option) => (
+        <Fragment key={option.value}>
+          {renderOption ? (
+            renderOption(option)
+          ) : (
+            <DropDrawerItem onSelect={() => handleSelect(option.value)}>
+              {option.icon}
+              <span>{option.label}</span>
+            </DropDrawerItem>
+          )}
+        </Fragment>
+      ))
+    ) : (
+      <DropDrawerItem disabled>{emptyMessage}</DropDrawerItem>
+    )
+
+  if (pinSearch) {
+    return (
+      <div className="flex h-[min(32rem,calc(100vh-5rem))] max-h-full min-h-0 flex-col overflow-hidden">
+        <div className="shrink-0 bg-popover">{search}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          {results}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {search}
+      {results}
     </>
   )
 }

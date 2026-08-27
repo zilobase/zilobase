@@ -1,5 +1,5 @@
-import { ArrowDownUp, Check, Plus, X } from "lucide-react"
-import { useState, type ReactNode } from "react"
+import { ArrowDownUp, Check, Plus, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 import {
   DropDrawer,
@@ -10,47 +10,47 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
+} from "@/components/ui/dropdrawer";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
-import { type DatabaseSortDirection } from "./database-view-config"
+import { type DatabaseSortDirection } from "./database-view-config";
 import {
   DatabaseSearchableMenuItems,
   type DatabaseSearchableMenuOption,
-} from "./database-searchable-menu-items"
+} from "./database-searchable-menu-items";
 
 export type DatabaseActiveSort = {
-  column: string
-  direction: DatabaseSortDirection
-  label: string
-}
+  column: string;
+  direction: DatabaseSortDirection;
+  label: string;
+};
 
 export type DatabaseSortUpdatePatch = {
-  column?: string
-  direction?: DatabaseSortDirection
-}
+  column?: string;
+  direction?: DatabaseSortDirection;
+};
 
 type DatabaseSortMenuProps = {
-  activeDatabaseSorts: DatabaseActiveSort[]
-  addableSortFieldOptions: DatabaseSearchableMenuOption[]
-  canAddDatabaseSort: boolean
-  onClearDatabaseSort: () => void
-  onCreateDatabaseSort: (field: string) => void
-  onRemoveDatabaseSort: (index: number) => void
-  onUpdateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void
-  sortFieldOptions: DatabaseSearchableMenuOption[]
-}
+  activeDatabaseSorts: DatabaseActiveSort[];
+  addableSortFieldOptions: DatabaseSearchableMenuOption[];
+  canAddDatabaseSort: boolean;
+  onClearDatabaseSort: () => void;
+  onCreateDatabaseSort: (field: string) => void;
+  onRemoveDatabaseSort: (index: number) => void;
+  onUpdateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void;
+  sortFieldOptions: DatabaseSearchableMenuOption[];
+};
 
 function DatabaseSortMenuContent({
   activeDatabaseSorts,
@@ -62,7 +62,7 @@ function DatabaseSortMenuContent({
   onUpdateDatabaseSort,
   sortFieldOptions,
 }: DatabaseSortMenuProps) {
-  const [addSortPickerOpen, setAddSortPickerOpen] = useState(false)
+  const [addSortPickerOpen, setAddSortPickerOpen] = useState(false);
 
   return (
     <div className="flex w-fit max-w-full flex-col gap-2">
@@ -72,12 +72,15 @@ function DatabaseSortMenuContent({
             option.value === sort.column ||
             !activeDatabaseSorts.some(
               (activeSort, activeIndex) =>
-                activeIndex !== index && activeSort.column === option.value
-            )
-        )
+                activeIndex !== index && activeSort.column === option.value,
+            ),
+        );
 
         return (
-          <div className="flex items-center gap-2" key={`${sort.column}:${index}`}>
+          <div
+            className="flex items-center gap-2"
+            key={`${sort.column}:${index}`}
+          >
             <ArrowDownUp className="size-4 text-muted-foreground" />
             <Select
               onValueChange={(field) =>
@@ -121,10 +124,13 @@ function DatabaseSortMenuContent({
               <X className="size-4" />
             </button>
           </div>
-        )
+        );
       })}
       {canAddDatabaseSort ? (
-        <DropDrawer open={addSortPickerOpen} onOpenChange={setAddSortPickerOpen}>
+        <DropDrawer
+          open={addSortPickerOpen}
+          onOpenChange={setAddSortPickerOpen}
+        >
           <DropDrawerTrigger asChild>
             <button
               className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
@@ -160,11 +166,11 @@ function DatabaseSortMenuContent({
         <span>Delete sort</span>
       </button>
     </div>
-  )
+  );
 }
 
 function getSortDirectionLabel(direction: DatabaseSortDirection) {
-  return direction === "ascending" ? "Ascending" : "Descending"
+  return direction === "ascending" ? "Ascending" : "Descending";
 }
 
 function DatabaseSortNestedMenuContent({
@@ -185,12 +191,12 @@ function DatabaseSortNestedMenuContent({
               option.value === sort.column ||
               !activeDatabaseSorts.some(
                 (activeSort, activeIndex) =>
-                  activeIndex !== index && activeSort.column === option.value
-              )
-          )
+                  activeIndex !== index && activeSort.column === option.value,
+              ),
+          );
 
           return (
-            <DropDrawerSub key={`${sort.column}:${index}`}>
+            <DropDrawerSub key={`${sort.column}:${index}`} title={sort.label}>
               <DropDrawerSubTrigger>
                 <ArrowDownUp />
                 <span className="truncate">{sort.label}</span>
@@ -237,7 +243,7 @@ function DatabaseSortNestedMenuContent({
                 </DropDrawerItem>
               </DropDrawerSubContent>
             </DropDrawerSub>
-          )
+          );
         })
       ) : (
         <DropDrawerItem disabled>No sorts yet</DropDrawerItem>
@@ -245,7 +251,7 @@ function DatabaseSortNestedMenuContent({
       {canAddDatabaseSort ? (
         <>
           <DropDrawerSeparator />
-          <DropDrawerSub>
+          <DropDrawerSub title="Add sort">
             <DropDrawerSubTrigger>
               <Plus />
               <span>Add sort</span>
@@ -264,7 +270,7 @@ function DatabaseSortNestedMenuContent({
         </>
       ) : null}
     </>
-  )
+  );
 }
 
 export function DatabaseSortPopover({
@@ -278,7 +284,7 @@ export function DatabaseSortPopover({
   onUpdateDatabaseSort,
   sortFieldOptions,
 }: DatabaseSortMenuProps & {
-  children: ReactNode
+  children: ReactNode;
 }) {
   return (
     <Popover>
@@ -299,7 +305,7 @@ export function DatabaseSortPopover({
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 export function DatabaseSortSubmenu({
@@ -315,9 +321,9 @@ export function DatabaseSortSubmenu({
   displayMode = "nested",
   title = "Sort",
 }: DatabaseSortMenuProps & {
-  children: ReactNode
-  displayMode?: "inline" | "nested"
-  title?: string
+  children: ReactNode;
+  displayMode?: "inline" | "nested";
+  title?: string;
 }) {
   return (
     <DropDrawerSub displayMode={displayMode} title={title}>
@@ -335,5 +341,5 @@ export function DatabaseSortSubmenu({
         />
       </DropDrawerSubContent>
     </DropDrawerSub>
-  )
+  );
 }

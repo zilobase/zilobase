@@ -9,7 +9,7 @@ import type {
   useAddDatabaseProperty,
   useAddDatabaseRow,
   useAddDatabaseView,
-  useUpdateDatabase,
+  useUpdateDataSource,
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
   useUpdateDatabaseView,
@@ -83,7 +83,7 @@ type DatabaseMutations = {
   addDatabaseView: ReturnType<typeof useAddDatabaseView>;
   addProperty: ReturnType<typeof useAddDatabaseProperty>;
   addRow: ReturnType<typeof useAddDatabaseRow>;
-  updateDatabase: ReturnType<typeof useUpdateDatabase>;
+  updateDatabase: ReturnType<typeof useUpdateDataSource>;
   updateDatabaseView: ReturnType<typeof useUpdateDatabaseView>;
   updatePage: ReturnType<typeof useUpdatePage>;
   updateProperty: ReturnType<typeof useUpdateDatabaseProperty>;
@@ -112,6 +112,7 @@ export function getDatabaseViewCommands({
   activeDatabaseSorts,
   activeView,
   databaseId,
+  viewDatabaseId,
   editable,
   isKanbanView,
   items,
@@ -133,6 +134,7 @@ export function getDatabaseViewCommands({
   activeDatabaseSorts: DatabaseSortConfig[];
   activeView: DatabaseView | null;
   databaseId: string | null | undefined;
+  viewDatabaseId?: string | null;
   editable: boolean;
   isKanbanView: boolean;
   items: DatabaseRow[];
@@ -259,7 +261,7 @@ export function getDatabaseViewCommands({
       config: getMergedDatabaseConfig(activeView.config, {
         sorts: nextSorts.length > 0 ? nextSorts : undefined,
       }),
-      databaseId,
+      databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
   };
@@ -273,7 +275,7 @@ export function getDatabaseViewCommands({
       config: getMergedDatabaseConfig(activeView.config, {
         filters: nextFilters.length > 0 ? nextFilters : undefined,
       }),
-      databaseId,
+      databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
   };
@@ -290,7 +292,7 @@ export function getDatabaseViewCommands({
         conditionalColors:
           nextConditionalColors.length > 0 ? nextConditionalColors : undefined,
       }),
-      databaseId,
+      databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
   };
@@ -342,7 +344,7 @@ export function getDatabaseViewCommands({
       config: getMergedDatabaseConfig(activeView.config, {
         datePropertyId: datePropertyId ?? undefined,
       }),
-      databaseId,
+      databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
   };
@@ -367,7 +369,7 @@ export function getDatabaseViewCommands({
     setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
     updateDatabaseView.mutate({
       config: nextConfig,
-      databaseId,
+      databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
   };
@@ -392,7 +394,7 @@ export function getDatabaseViewCommands({
     setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
     updateDatabaseView.mutate({
       config: nextConfig,
-      databaseId,
+      databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
   };
@@ -518,7 +520,7 @@ export function getDatabaseViewCommands({
             : {}),
           pageId: dragPayload.pageId,
           position,
-          sourceDatabaseId: isCrossDatabaseMove
+          sourceDataSourceId: isCrossDatabaseMove
             ? dragPayload.databaseId
             : undefined,
           sourceRowId: isCrossDatabaseMove ? dragPayload.rowId : undefined,
@@ -577,7 +579,8 @@ export function getDatabaseViewCommands({
               valueColors: {},
             },
           },
-          databaseId,
+          databaseId: viewDatabaseId ?? databaseId,
+          dataSourceId: databaseId ?? undefined,
           name: "Chart",
           type: "chart",
         },
@@ -606,7 +609,8 @@ export function getDatabaseViewCommands({
 
       addDatabaseView.mutate(
         {
-          databaseId,
+          databaseId: viewDatabaseId ?? databaseId,
+          dataSourceId: databaseId ?? undefined,
           name: "Gallery",
           type: "gallery",
         },
@@ -636,7 +640,8 @@ export function getDatabaseViewCommands({
       addDatabaseView.mutate(
         {
           config: { hiddenPropertyIds },
-          databaseId,
+          databaseId: viewDatabaseId ?? databaseId,
+          dataSourceId: databaseId ?? undefined,
           name: "Form",
           type: "form",
         },
@@ -682,7 +687,8 @@ export function getDatabaseViewCommands({
         addDatabaseView.mutate(
           {
             config: { groupPropertyId, hiddenPropertyIds },
-            databaseId,
+            databaseId: viewDatabaseId ?? databaseId,
+            dataSourceId: databaseId ?? undefined,
             name: "Kanban",
             type: "kanban",
           },
@@ -724,7 +730,8 @@ export function getDatabaseViewCommands({
 
       addDatabaseView.mutate(
         {
-          databaseId,
+          databaseId: viewDatabaseId ?? databaseId,
+          dataSourceId: databaseId ?? undefined,
           name: "List",
           type: "list",
         },
@@ -788,7 +795,8 @@ export function getDatabaseViewCommands({
               datePropertyId,
               ...(groupPropertyId ? { groupPropertyId } : {}),
             },
-            databaseId,
+            databaseId: viewDatabaseId ?? databaseId,
+            dataSourceId: databaseId ?? undefined,
             name: "Timeline",
             type: "timeline",
           },
@@ -819,7 +827,8 @@ export function getDatabaseViewCommands({
 
       addDatabaseView.mutate(
         {
-          databaseId,
+          databaseId: viewDatabaseId ?? databaseId,
+          dataSourceId: databaseId ?? undefined,
           name: "Table",
           type: "table",
         },
@@ -866,7 +875,7 @@ export function getDatabaseViewCommands({
         config: getMergedDatabaseConfig(activeView.config, {
           groupPropertyId: groupPropertyId ?? undefined,
         }),
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
     },
@@ -987,7 +996,7 @@ export function getDatabaseViewCommands({
       setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
         config: nextConfig,
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
     },
@@ -1020,7 +1029,7 @@ export function getDatabaseViewCommands({
       }
 
       updateDatabaseView.mutate({
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
         name: nextTitle,
       });
@@ -1051,7 +1060,7 @@ export function getDatabaseViewCommands({
               datePropertyId,
               ...(groupPropertyId ? { groupPropertyId } : {}),
             }),
-            databaseId,
+            databaseId: viewDatabaseId ?? databaseId,
             databaseViewId: activeView.id,
             type,
           });
@@ -1068,7 +1077,7 @@ export function getDatabaseViewCommands({
                   (properties.length === 0 ? "name" : undefined),
               })
             : activeView.config,
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
         type,
       });
@@ -1100,7 +1109,7 @@ export function getDatabaseViewCommands({
       setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
         config: nextConfig,
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
     },
@@ -1135,7 +1144,7 @@ export function getDatabaseViewCommands({
       setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
         config: nextConfig,
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
     },
@@ -1159,7 +1168,7 @@ export function getDatabaseViewCommands({
       setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
         config: nextConfig,
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
     },
@@ -1183,7 +1192,7 @@ export function getDatabaseViewCommands({
       setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
         config: nextConfig,
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
     },
@@ -1254,7 +1263,7 @@ export function getDatabaseViewCommands({
       setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
         config: nextConfig,
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
     },
@@ -1273,7 +1282,7 @@ export function getDatabaseViewCommands({
       setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
         config: nextConfig,
-        databaseId,
+        databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
     },

@@ -30,9 +30,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
 const DropDrawerContext = React.createContext<{
+  defaultSubDisplayMode: "inline" | "nested";
   inline: boolean;
   isMobile: boolean;
 }>({
+  defaultSubDisplayMode: "nested",
   inline: false,
   isMobile: false,
 });
@@ -75,17 +77,21 @@ const useDropDrawerContext = () => {
 
 function DropDrawer({
   children,
+  defaultSubDisplayMode = "nested",
   inline = false,
   ...props
 }: (
   | React.ComponentProps<typeof Drawer>
   | React.ComponentProps<typeof DropdownMenu>
-) & { inline?: boolean }) {
+) & {
+  defaultSubDisplayMode?: "inline" | "nested";
+  inline?: boolean;
+}) {
   const isMobile = useIsMobile();
   const DropdownComponent = isMobile ? Drawer : DropdownMenu;
   const contextValue = React.useMemo(
-    () => ({ inline, isMobile }),
-    [inline, isMobile],
+    () => ({ defaultSubDisplayMode, inline, isMobile }),
+    [defaultSubDisplayMode, inline, isMobile],
   );
 
   if (inline) {
@@ -174,20 +180,19 @@ function MobileDropDrawerContent({
   activeSubmenuRef.current = activeSubmenu;
 
   // Function to navigate to a submenu
-  const navigateToSubmenu = React.useCallback((
-    id: string,
-    title: string,
-    content?: React.ReactNode,
-  ) => {
-    setSubmenuNavigation((currentNavigation) => {
-      if (currentNavigation.stack.at(-1)?.id === id) return currentNavigation;
+  const navigateToSubmenu = React.useCallback(
+    (id: string, title: string, content?: React.ReactNode) => {
+      setSubmenuNavigation((currentNavigation) => {
+        if (currentNavigation.stack.at(-1)?.id === id) return currentNavigation;
 
-      return {
-        direction: "forward",
-        stack: [...currentNavigation.stack, { content, id, title }],
-      };
-    });
-  }, []);
+        return {
+          direction: "forward",
+          stack: [...currentNavigation.stack, { content, id, title }],
+        };
+      });
+    },
+    [],
+  );
 
   // Function to go back to previous menu
   const goBack = React.useCallback(() => {
@@ -223,87 +228,87 @@ function MobileDropDrawerContent({
         )}
         {...drawerContentProps}
       >
-          {activeSubmenu ? (
-            <>
-              <div aria-hidden hidden inert>
-                {children}
-              </div>
-              <DrawerHeader className="px-2 py-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={goBack}
-                    className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
-                  >
-                    <ChevronLeftIcon className="size-4" />
-                  </button>
-                  <DrawerTitle className="text-sm font-medium">
-                    {submenuTitle || "Submenu"}
-                  </DrawerTitle>
-                  <DrawerClose asChild>
-                    <Button
-                      aria-label={`Close ${submenuTitle || "submenu"}`}
-                      className="ml-auto text-muted-foreground"
-                      size="icon-sm"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <XIcon className="size-4" />
-                    </Button>
-                  </DrawerClose>
-                </div>
-              </DrawerHeader>
-              <div className="relative max-h-[70vh] flex-1 overflow-y-auto">
-                {/* Use AnimatePresence to handle exit animations */}
-                <AnimatePresence
-                  initial={false}
-                  mode="wait"
-                  custom={animationDirection}
+        {activeSubmenu ? (
+          <>
+            <div aria-hidden hidden inert>
+              {children}
+            </div>
+            <DrawerHeader className="px-2 py-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={goBack}
+                  className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
                 >
-                  <motion.div
-                    key={activeSubmenu || "main"}
-                    custom={animationDirection}
-                    variants={submenuAnimationVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={submenuAnimationTransition}
-                    className="h-full w-full space-y-0.5 px-1 pb-2"
+                  <ChevronLeftIcon className="size-4" />
+                </button>
+                <DrawerTitle className="text-sm font-medium">
+                  {submenuTitle || "Submenu"}
+                </DrawerTitle>
+                <DrawerClose asChild>
+                  <Button
+                    aria-label={`Close ${submenuTitle || "submenu"}`}
+                    className="ml-auto text-muted-foreground"
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
                   >
-                    <SubmenuPanelContext.Provider value>
-                      {activeSubmenuEntry?.content ??
-                        submenuContentRef.current.get(activeSubmenu)}
-                    </SubmenuPanelContext.Provider>
-                  </motion.div>
-                </AnimatePresence>
+                    <XIcon className="size-4" />
+                  </Button>
+                </DrawerClose>
               </div>
-            </>
-          ) : (
-            <>
-              <DrawerHeader className="sr-only">
-                <DrawerTitle>Menu</DrawerTitle>
-              </DrawerHeader>
-              <div className="max-h-[70vh] overflow-y-auto">
-                <AnimatePresence
-                  initial={false}
-                  mode="wait"
+            </DrawerHeader>
+            <div className="relative max-h-[70vh] flex-1 overflow-y-auto">
+              {/* Use AnimatePresence to handle exit animations */}
+              <AnimatePresence
+                initial={false}
+                mode="wait"
+                custom={animationDirection}
+              >
+                <motion.div
+                  key={activeSubmenu || "main"}
                   custom={animationDirection}
+                  variants={submenuAnimationVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={submenuAnimationTransition}
+                  className="h-full w-full space-y-0.5 px-1 pb-2"
                 >
-                  <motion.div
-                    key="main-menu"
-                    custom={animationDirection}
-                    variants={submenuAnimationVariants}
-                    initial="enter"
-                    animate="center"
-                    exit="exit"
-                    transition={submenuAnimationTransition}
-                    className="w-full space-y-0.5 px-1 pb-2 pt-1"
-                  >
-                    {children}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </>
-          )}
+                  <SubmenuPanelContext.Provider value>
+                    {activeSubmenuEntry?.content ??
+                      submenuContentRef.current.get(activeSubmenu)}
+                  </SubmenuPanelContext.Provider>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </>
+        ) : (
+          <>
+            <DrawerHeader className="sr-only">
+              <DrawerTitle>Menu</DrawerTitle>
+            </DrawerHeader>
+            <div className="max-h-[70vh] overflow-y-auto">
+              <AnimatePresence
+                initial={false}
+                mode="wait"
+                custom={animationDirection}
+              >
+                <motion.div
+                  key="main-menu"
+                  custom={animationDirection}
+                  variants={submenuAnimationVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={submenuAnimationTransition}
+                  className="w-full space-y-0.5 px-1 pb-2 pt-1"
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </>
+        )}
       </DrawerContent>
     </SubmenuContext.Provider>
   );
@@ -327,19 +332,18 @@ function InlineDropDrawerContent({
     0,
   );
 
-  const navigateToSubmenu = React.useCallback((
-    id: string,
-    title: string,
-    content?: React.ReactNode,
-  ) => {
-    setSubmenuNavigation((currentNavigation) => ({
-      direction: "forward",
-      stack:
-        currentNavigation.stack.at(-1)?.id === id
-          ? currentNavigation.stack
-          : [...currentNavigation.stack, { content, id, title }],
-    }));
-  }, []);
+  const navigateToSubmenu = React.useCallback(
+    (id: string, title: string, content?: React.ReactNode) => {
+      setSubmenuNavigation((currentNavigation) => ({
+        direction: "forward",
+        stack:
+          currentNavigation.stack.at(-1)?.id === id
+            ? currentNavigation.stack
+            : [...currentNavigation.stack, { content, id, title }],
+      }));
+    },
+    [],
+  );
   const goBack = React.useCallback(() => {
     setSubmenuNavigation((currentNavigation) => ({
       direction: "backward",
@@ -368,9 +372,7 @@ function InlineDropDrawerContent({
       >
         <motion.div
           animate={
-            activeSubmenu
-              ? { opacity: 0, x: "-100%" }
-              : { opacity: 1, x: 0 }
+            activeSubmenu ? { opacity: 0, x: "-100%" } : { opacity: 1, x: 0 }
           }
           aria-hidden={activeSubmenu ? true : undefined}
           className={cn(
@@ -388,44 +390,42 @@ function InlineDropDrawerContent({
             const isActive = index === submenuNavigation.stack.length - 1;
 
             return (
-            <motion.div
-              animate={
-                isActive
-                  ? { opacity: 1, x: 0 }
-                  : { opacity: 0, x: "-100%" }
-              }
-              aria-hidden={isActive ? undefined : true}
-              className={cn(
-                "absolute inset-0 flex h-full min-h-0 flex-col",
-                !isActive && "pointer-events-none",
-              )}
-              exit={{ opacity: 0, x: "100%" }}
-              inert={isActive ? undefined : true}
-              initial={{ opacity: 0, x: "100%" }}
-              key={entry.id}
-              transition={submenuAnimationTransition}
-            >
-              <div className="flex h-11 shrink-0 items-center gap-2 border-b px-2">
-                <Button
-                  aria-label={`Back from ${entry.title || "submenu"}`}
-                  className="text-muted-foreground"
-                  onClick={goBack}
-                  size="icon-sm"
-                  type="button"
-                  variant="ghost"
-                >
-                  <ChevronLeftIcon className="size-4" />
-                </Button>
-                <div className="truncate text-sm font-medium">
-                  {entry.title || "Submenu"}
+              <motion.div
+                animate={
+                  isActive ? { opacity: 1, x: 0 } : { opacity: 0, x: "-100%" }
+                }
+                aria-hidden={isActive ? undefined : true}
+                className={cn(
+                  "absolute inset-0 flex h-full min-h-0 flex-col",
+                  !isActive && "pointer-events-none",
+                )}
+                exit={{ opacity: 0, x: "100%" }}
+                inert={isActive ? undefined : true}
+                initial={{ opacity: 0, x: "100%" }}
+                key={entry.id}
+                transition={submenuAnimationTransition}
+              >
+                <div className="flex h-11 shrink-0 items-center gap-2 border-b px-2">
+                  <Button
+                    aria-label={`Back from ${entry.title || "submenu"}`}
+                    className="text-muted-foreground"
+                    onClick={goBack}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ChevronLeftIcon className="size-4" />
+                  </Button>
+                  <div className="truncate text-sm font-medium">
+                    {entry.title || "Submenu"}
+                  </div>
                 </div>
-              </div>
-              <SubmenuPanelContext.Provider value>
-                <div className="min-h-0 flex-1 overflow-y-auto p-1">
-                  {submenuContentRef.current.get(entry.id) ?? entry.content}
-                </div>
-              </SubmenuPanelContext.Provider>
-            </motion.div>
+                <SubmenuPanelContext.Provider value>
+                  <div className="min-h-0 flex-1 overflow-y-auto p-1">
+                    {submenuContentRef.current.get(entry.id) ?? entry.content}
+                  </div>
+                </SubmenuPanelContext.Provider>
+              </motion.div>
             );
           })}
         </AnimatePresence>
@@ -467,7 +467,7 @@ function DropDrawerContent({
       sideOffset={4}
       sticky="always"
       className={cn(
-        "max-h-none overflow-x-visible overflow-y-visible",
+        "max-h-[min(36rem,calc(100vh-1rem))] max-w-[min(20rem,calc(100vw-1rem))] overflow-x-hidden overflow-y-auto overscroll-contain",
         className,
       )}
       {...props}
@@ -782,7 +782,7 @@ const SubmenuDefinitionContext = React.createContext<SubmenuDefinition | null>(
 // Submenu components
 function DropDrawerSub({
   children,
-  displayMode = "nested",
+  displayMode,
   id,
   title,
   ...props
@@ -790,7 +790,8 @@ function DropDrawerSub({
   displayMode?: "inline" | "nested";
   id?: string;
 }) {
-  const { inline, isMobile } = useDropDrawerContext();
+  const { defaultSubDisplayMode, inline, isMobile } = useDropDrawerContext();
+  const resolvedDisplayMode = displayMode ?? defaultSubDisplayMode;
   const submenuNavigation = React.useContext(SubmenuContext);
 
   const generatedId = React.useId();
@@ -840,7 +841,7 @@ function DropDrawerSub({
     <DropdownMenuSub
       data-slot="drop-drawer-sub"
       data-submenu-id={submenuId}
-      displayMode={displayMode}
+      displayMode={resolvedDisplayMode}
       title={title}
       // Don't pass id to DropdownMenuSub as it doesn't accept this prop
       {...props}
@@ -928,7 +929,10 @@ function DropDrawerSubContent({
     <DropdownMenuSubContent
       data-slot="drop-drawer-sub-content"
       sideOffset={sideOffset}
-      className={className}
+      className={cn(
+        "max-h-[min(36rem,calc(100vh-1rem))] max-w-[min(20rem,calc(100vw-1rem))] overflow-y-auto overscroll-contain",
+        className,
+      )}
       {...props}
     >
       {children}

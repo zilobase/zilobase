@@ -12,10 +12,7 @@ import {
   isDateLikePropertyType,
   isSelectLikePropertyType,
 } from "../../core/database-property-types";
-import {
-  getNumberPropertyConfig,
-  NumberPropertySettings,
-} from "./number";
+import { getNumberPropertyConfig, NumberPropertySettings } from "./number";
 import {
   getDateFormatConfig,
   getTimeFormatConfig,
@@ -52,10 +49,16 @@ type PropertySettingsProps = {
 
 export function DatabasePropertyEditSubmenu({
   children,
+  displayMode = "nested",
+  title = "Edit property",
   ...settingsProps
-}: PropertySettingsProps & { children: ReactNode }) {
+}: PropertySettingsProps & {
+  children: ReactNode;
+  displayMode?: "inline" | "nested";
+  title?: string;
+}) {
   return (
-    <DropDrawerSub>
+    <DropDrawerSub displayMode={displayMode} title={title}>
       <DropDrawerSubTrigger>{children}</DropDrawerSubTrigger>
       <DropDrawerSubContent
         className={getPropertySettingsContentClassName(settingsProps.type)}

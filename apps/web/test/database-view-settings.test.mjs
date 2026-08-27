@@ -1,6 +1,72 @@
 import { readFile } from "node:fs/promises";
 
 export function register({ assert, loadModule, test }) {
+  test("link existing data source owns its nested picker state", async () => {
+    const settings = await readFile(
+      new URL(
+        "../src/editor/extensions/database/views/view-settings/data-source-settings.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    assert.match(settings, /function LinkExistingDataSourcePicker/);
+    assert.match(
+      settings,
+      /LinkExistingDataSourcePicker[\s\S]*?useState<string \| null>/,
+    );
+    assert.match(settings, /<LinkExistingDataSourcePicker/);
+    assert.doesNotMatch(settings, /const renderLinkExistingPicker/);
+  });
+
+  test("manage data sources uses explicit ownership and hides stale links", async () => {
+    const { partitionManagedDataSources } = await loadModule(
+      "/src/editor/extensions/database/views/view-settings/data-source-model.ts",
+    );
+    const { linked, owned } = partitionManagedDataSources(
+      [
+        {
+          id: "default",
+          name: "Default",
+          parentDatabaseId: "host",
+          position: 0,
+          viewCount: 0,
+        },
+        {
+          id: "created",
+          name: "Created here",
+          parentDatabaseId: "host",
+          position: 2,
+          viewCount: 0,
+        },
+        {
+          id: "linked",
+          name: "Linked with a view",
+          parentDatabaseId: "other",
+          position: 1,
+          viewCount: 1,
+        },
+        {
+          id: "stale-link",
+          name: "Linked without views",
+          parentDatabaseId: "other",
+          position: 3,
+          viewCount: 0,
+        },
+      ],
+      "host",
+    );
+
+    assert.deepEqual(
+      owned.map((source) => source.id),
+      ["default", "created"],
+    );
+    assert.deepEqual(
+      linked.map((source) => source.id),
+      ["linked"],
+    );
+  });
+
   test("adding a data source opens the shared database setup chooser", async () => {
     const [controller, databaseView, setupCard] = await Promise.all([
       readFile(
@@ -30,55 +96,26 @@ export function register({ assert, loadModule, test }) {
       controller,
       /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/,
     );
+    assert.match(controller, /useCreateDatabaseDataSource/);
+    assert.match(controller, /parentDatabaseId: source\.parentDatabaseId/);
+    assert.match(
+      controller,
+      /createDataSource\.mutateAsync\(\{[\s\S]*?databaseId,[\s\S]*?name: databaseName/,
+    );
+    assert.doesNotMatch(controller, /standalone: true/);
+    assert.match(controller, /const unlinkDataSource = async/);
+    assert.match(controller, /unlinkDatabaseDataSource\.mutateAsync/);
     assert.match(databaseView, /<DatabaseSetupCard[\s\S]*?onSelectDataSource/);
     assert.match(setupCard, /if \(onSelectDataSource\)/);
     assert.match(setupCard, /New empty data source/);
+    assert.match(setupCard, /accept="\.csv,text\/csv"/);
+    assert.match(setupCard, /function parseCsv/);
+    assert.match(setupCard, /csvImport:/);
+    assert.doesNotMatch(setupCard, /CSV import is coming soon/);
     assert.match(setupCard, /Link to existing data source/);
-  });
-
-  test("database data sources retain source ownership", async () => {
-    const { getDatabaseLinkedViews } = await loadModule(
-      "/src/editor/extensions/database/views/database-view-config.ts",
-    );
-
-    assert.deepEqual(
-      getDatabaseLinkedViews({
-        linkedDatabaseViews: [
-          {
-            databaseId: "new-source",
-            databaseName: "New data source",
-            hidden: true,
-            sourceKind: "source",
-            viewId: "table",
-            viewName: "Table",
-            viewType: "table",
-          },
-          {
-            databaseId: "external",
-            databaseName: "External",
-            viewId: "list",
-            viewName: "List",
-            viewType: "list",
-          },
-        ],
-      }).map(({ databaseId, hidden, sourceKind }) => ({
-        databaseId,
-        hidden,
-        sourceKind,
-      })),
-      [
-        {
-          databaseId: "new-source",
-          hidden: true,
-          sourceKind: "source",
-        },
-        {
-          databaseId: "external",
-          hidden: undefined,
-          sourceKind: "linked",
-        },
-      ],
-    );
+    assert.match(setupCard, /Create a new view/);
+    assert.match(setupCard, /ViewTypeOptionGrid/);
+    assert.match(setupCard, /viewConfig: viewItem\.config/);
   });
 
   test("deleting a final source view keeps it recoverable", async () => {
@@ -99,15 +136,27 @@ export function register({ assert, loadModule, test }) {
       ),
     ]);
 
-    assert.match(controller, /keepSourceWithoutView/);
-    assert.match(controller, /\{ \.\.\.linkedView, hidden: true \}/);
+    assert.match(
+      controller,
+      /viewTabs\.length <= 1[\s\S]*?A database must always have at least one view/,
+    );
     assert.match(controller, /addDataSourceView/);
-    assert.match(controller, /addDatabaseView\.mutateAsync/);
+    assert.match(controller, /linkDatabaseDataSource\.mutateAsync/);
+    assert.match(controller, /const replaceActiveViewSource = async/);
+    assert.match(
+      controller,
+      /replaceDatabaseViewDataSource\.mutateAsync\([\s\S]*?databaseViewId: resolvedActiveViewId/,
+    );
+    assert.match(controller, /mode: "add" \| "replace" = "add"/);
+    assert.match(
+      controller,
+      /mode === "replace"[\s\S]*?replaceDatabaseViewDataSource\.mutateAsync/,
+    );
     assert.match(sourceItems, /Add view/);
     assert.match(sourceItems, /ViewTypeOptionGrid/);
   });
 
-  test("separate data sources omit linked badges and offer final-view deletion choices", async () => {
+  test("deleting a view never deletes its linked data source", async () => {
     const [controller, toolbar] = await Promise.all([
       readFile(
         new URL(
@@ -125,41 +174,99 @@ export function register({ assert, loadModule, test }) {
       ),
     ]);
 
-    assert.match(controller, /sourceKind: linkedView\.sourceKind/);
-    assert.match(toolbar, /view\?\.isLinked && view\.sourceKind !== "source"/);
-    assert.match(toolbar, /Delete view only/);
-    assert.match(toolbar, /Delete data source and view/);
-    assert.match(
-      controller,
-      /deleteDataSource\.mutateAsync\(sourceDatabaseId\)/,
-    );
+    assert.match(controller, /deleteDatabaseView\.mutate/);
+    assert.match(toolbar, /Its data source remains linked/);
+    assert.doesNotMatch(toolbar, /Delete data source and view/);
+    assert.doesNotMatch(controller, /deleteDataSource\.mutateAsync/);
   });
 
-  test("view source settings show the active source in a fixed-header picker", async () => {
-    const [settings, toolbar] = await Promise.all([
-      readFile(
-        new URL(
-          "../src/editor/extensions/database/views/view-settings/data-source-settings.tsx",
-          import.meta.url,
+  test("view settings use full-panel navigation with only More settings nested", async () => {
+    const [dropdrawer, dropdrawerContent, menu, settings, subItems, toolbar] =
+      await Promise.all([
+        readFile(
+          new URL("../src/components/ui/dropdown-menu.tsx", import.meta.url),
+          "utf8",
         ),
-        "utf8",
-      ),
-      readFile(
-        new URL(
-          "../src/editor/extensions/database/views/database-view-toolbar.tsx",
-          import.meta.url,
+        readFile(
+          new URL("../src/components/ui/dropdrawer.tsx", import.meta.url),
+          "utf8",
         ),
-        "utf8",
-      ),
-    ]);
+        readFile(
+          new URL(
+            "../src/editor/extensions/database/views/view-settings/index.tsx",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+        readFile(
+          new URL(
+            "../src/editor/extensions/database/views/view-settings/data-source-settings.tsx",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+        readFile(
+          new URL(
+            "../src/editor/extensions/database/views/view-settings/sub-items-settings.tsx",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+        readFile(
+          new URL(
+            "../src/editor/extensions/database/views/database-view-toolbar.tsx",
+            import.meta.url,
+          ),
+          "utf8",
+        ),
+      ]);
 
-    assert.match(toolbar, /activeSourceDatabaseId=/);
-    assert.match(toolbar, /activeViewTab\?\.sourceDatabaseId/);
-    assert.match(settings, /activeSourceDatabaseName/);
+    assert.match(toolbar, /activeDataSourceId=/);
+    assert.match(toolbar, /activeViewTab\?\.dataSourceId/);
+    assert.match(settings, /activeDataSourceName/);
+    assert.match(settings, /icon=\{<Cable \/>\}/);
     assert.match(settings, /getDatabaseIconNode\(database\)/);
-    assert.match(settings, /flex h-96 flex-col overflow-hidden/);
-    assert.match(settings, /shrink-0 bg-popover/);
-    assert.match(settings, /min-h-0 flex-1 overflow-y-auto/);
+    assert.match(settings, /getDatabaseIconNode\(source\)/);
+    assert.match(settings, /DEFAULT_DATABASE_ITEM_ICON/);
+    assert.match(settings, /pinSearch/);
+    assert.match(menu, /defaultSubDisplayMode="inline"/);
+    assert.match(
+      menu,
+      /className="w-72 max-h-none overflow-visible"/,
+    );
+    assert.match(settings, /displayMode="nested"[\s\S]*?More settings/);
+    assert.match(
+      settings,
+      /Link existing data source[\s\S]*?<LinkExistingDataSourcePicker/,
+    );
+    assert.match(
+      settings,
+      /renderDataSourcePicker\(dataSourceOptions\)/,
+    );
+    assert.doesNotMatch(settings, /<span>Add new view<\/span>/);
+    assert.match(settings, /const sourceView = databaseOption\.database\.views\[0\]/);
+    assert.match(settings, /onReplaceActiveViewSource\(sourceSelection\)/);
+    assert.match(settings, /ownedDataSources/);
+    assert.match(settings, /linkedDataSources/);
+    assert.match(settings, /LinkedDataSourceMenuItem/);
+    assert.match(settings, /Create a new view/);
+    assert.match(settings, /ViewTypeOptionGrid/);
+    assert.match(settings, /viewConfig: config/);
+    assert.match(settings, /onUnlinkDataSource/);
+    assert.match(subItems, /displayMode="inline"[\s\S]*?title="Sub-items"/);
+    assert.match(
+      dropdrawer,
+      /aria-label=\{`Back from \$\{activePanel\.title\}`\}/,
+    );
+    assert.match(dropdrawer, /aria-label=\{`Close \$\{activePanel\.title\}`\}/);
+    assert.match(
+      dropdrawer,
+      /min-h-0 flex-1 overflow-y-auto overscroll-contain/,
+    );
+    assert.match(
+      dropdrawerContent,
+      /max-h-\[min\(36rem,calc\(100vh-1rem\)\)\] max-w-\[min\(20rem,calc\(100vw-1rem\)\)\]/,
+    );
   });
 
   test("database property icons persist in property and name-column config", async () => {

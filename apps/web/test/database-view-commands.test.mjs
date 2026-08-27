@@ -58,7 +58,7 @@ export function register({ assert, loadModule, test }) {
       optimisticValues: [{ propertyId: "property-status", value: "Done" }],
       pageId: "source-page",
       position: 1,
-      sourceDatabaseId: "source-database",
+      sourceDataSourceId: "source-database",
       sourcePropertyMode: "match",
       sourceRowId: "source-row",
       title: "Imported task",
@@ -911,6 +911,7 @@ export function register({ assert, loadModule, test }) {
       [
         {
           config: { groupPropertyId: "name", hiddenPropertyIds: [] },
+          dataSourceId: databaseId,
           databaseId,
           name: "Kanban",
           type: "kanban",
@@ -1067,6 +1068,7 @@ export function register({ assert, loadModule, test }) {
             datePropertyId: "property-date",
             groupPropertyId: "property-status",
           },
+          dataSourceId: databaseId,
           databaseId,
           name: "Timeline",
           type: "timeline",
@@ -1234,6 +1236,7 @@ export function register({ assert, loadModule, test }) {
       [
         {
           config: { datePropertyId: "property-date" },
+          dataSourceId: databaseId,
           databaseId,
           name: "Timeline",
           type: "timeline",
@@ -1392,6 +1395,7 @@ export function register({ assert, loadModule, test }) {
           valueColors: {},
         },
       },
+      dataSourceId: databaseId,
       databaseId,
       name: "Chart",
       type: "chart",
@@ -1468,6 +1472,7 @@ export function register({ assert, loadModule, test }) {
       [
         {
           config: { hiddenPropertyIds: [] },
+          dataSourceId: databaseId,
           databaseId,
           name: "Form",
           type: "form",
@@ -1476,6 +1481,7 @@ export function register({ assert, loadModule, test }) {
           config: {
             hiddenPropertyIds: ["property-status", "property-rollup"],
           },
+          dataSourceId: databaseId,
           databaseId,
           name: "Form",
           type: "form",
@@ -1673,8 +1679,8 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(
       addDatabaseView.calls.map(([input]) => input),
       [
-        { databaseId, name: "List", type: "list" },
-        { databaseId, name: "Gallery", type: "gallery" },
+        { dataSourceId: databaseId, databaseId, name: "List", type: "list" },
+        { dataSourceId: databaseId, databaseId, name: "Gallery", type: "gallery" },
       ],
     );
     assert.deepEqual(activeViewIds, ["view-list", "view-gallery"]);

@@ -379,7 +379,7 @@ function RollupCalculationSubmenu({
   const optionGroups = groupCalculationOptions(options);
 
   return (
-    <DropDrawerSub>
+    <DropDrawerSub title="Calculate">
       <DropDrawerSubTrigger>
         <Sigma />
         <span className="flex-1">Calculate</span>
@@ -420,7 +420,7 @@ function RollupCalculationGroupSubmenu({
   options: RollupCalculationOption[];
 }) {
   return (
-    <DropDrawerSub>
+    <DropDrawerSub title={label}>
       <DropDrawerSubTrigger>
         <span>{label}</span>
       </DropDrawerSubTrigger>

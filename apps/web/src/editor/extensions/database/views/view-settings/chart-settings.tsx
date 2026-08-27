@@ -140,16 +140,14 @@ export function DatabaseChartSettingsSection({
   const axisGroups = getChartAxisGroups(axisProperty);
   const hiddenGroupNames = settings.hiddenGroupNames ?? [];
   const referenceLines = settings.referenceLines ?? [];
-  const supportsCartesianControls = [
-    "bar",
-    "horizontal-bar",
-    "line",
-  ].includes(settings.type);
+  const supportsCartesianControls = ["bar", "horizontal-bar", "line"].includes(
+    settings.type,
+  );
   const selectedColorToken =
     settings.color === "auto" ? null : getColorToken(settings.color);
   const colorLabel = selectedColorToken?.name ?? "Auto";
   const colorSwatch = selectedColorToken
-    ? getPaletteColor(selectedColorToken.value) ?? "var(--primary)"
+    ? (getPaletteColor(selectedColorToken.value) ?? "var(--primary)")
     : "linear-gradient(90deg, var(--editor-blue), var(--editor-purple), var(--editor-pink), var(--editor-orange))";
   const updateReferenceLine = (
     id: string,
@@ -174,8 +172,7 @@ export function DatabaseChartSettingsSection({
             aria-pressed={settings.type === option.value}
             className={cn(
               "flex h-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-              settings.type === option.value &&
-                "border-primary text-primary",
+              settings.type === option.value && "border-primary text-primary",
             )}
             key={option.value}
             onClick={(event) => {
@@ -193,7 +190,7 @@ export function DatabaseChartSettingsSection({
       <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
         X axis
       </DropDrawerLabel>
-      <DropDrawerSub>
+      <DropDrawerSub title="What to show">
         <DropDrawerSubTrigger>
           <ViewSettingsRow
             icon={<Zap />}
@@ -242,7 +239,7 @@ export function DatabaseChartSettingsSection({
           })}
         </DropDrawerSubContent>
       </DropDrawerSub>
-      <DropDrawerSub>
+      <DropDrawerSub title="Sort by">
         <DropDrawerSubTrigger>
           <ViewSettingsRow
             icon={<ArrowDownUp />}
@@ -306,7 +303,8 @@ export function DatabaseChartSettingsSection({
                       className="size-2.5 rounded-full"
                       style={{
                         backgroundColor:
-                          getPaletteColor(group.color) ?? "var(--muted-foreground)",
+                          getPaletteColor(group.color) ??
+                          "var(--muted-foreground)",
                       }}
                     />
                     <span>{group.name}</span>
@@ -342,7 +340,7 @@ export function DatabaseChartSettingsSection({
       <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
         Y axis
       </DropDrawerLabel>
-      <DropDrawerSub>
+      <DropDrawerSub title="What to show">
         <DropDrawerSubTrigger>
           <ViewSettingsRow
             icon={<ChartLine />}
@@ -351,7 +349,9 @@ export function DatabaseChartSettingsSection({
           />
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
-          <DropDrawerItem onSelect={() => onChange({ measurePropertyId: "count" })}>
+          <DropDrawerItem
+            onSelect={() => onChange({ measurePropertyId: "count" })}
+          >
             <ChartLine />
             <span>Task count</span>
             {measurePropertyId === "count" ? (
@@ -382,7 +382,7 @@ export function DatabaseChartSettingsSection({
         </DropDrawerSubContent>
       </DropDrawerSub>
 
-      <DropDrawerSub>
+      <DropDrawerSub title="Group by">
         <DropDrawerSubTrigger>
           <ViewSettingsRow
             icon={<Rows3 />}
@@ -414,7 +414,7 @@ export function DatabaseChartSettingsSection({
 
             if (isChartDateProperty(property)) {
               return (
-                <DropDrawerSub key={property.id}>
+                <DropDrawerSub key={property.id} title={property.property.name}>
                   <DropDrawerSubTrigger>
                     <PropertyIcon />
                     <span>{property.property.name}</span>
@@ -467,7 +467,7 @@ export function DatabaseChartSettingsSection({
 
       {supportsCartesianControls ? (
         <>
-          <DropDrawerSub>
+          <DropDrawerSub title="Range">
             <DropDrawerSubTrigger>
               <ViewSettingsRow
                 icon={<ArrowDownUp />}
@@ -527,7 +527,10 @@ export function DatabaseChartSettingsSection({
             </CollapsibleTrigger>
             <CollapsibleContent className="mx-2 space-y-2 rounded-lg border bg-subtle-surface p-2">
               {referenceLines.map((line) => (
-                <div className="space-y-2 rounded-md bg-subtle-surface p-2" key={line.id}>
+                <div
+                  className="space-y-2 rounded-md bg-subtle-surface p-2"
+                  key={line.id}
+                >
                   <div className="flex items-end gap-2">
                     <label className="grid flex-1 gap-1 text-xs font-medium text-muted-foreground">
                       Value
@@ -653,7 +656,7 @@ export function DatabaseChartSettingsSection({
       <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
         Style
       </DropDrawerLabel>
-      <DropDrawerSub>
+      <DropDrawerSub title="Color">
         <DropDrawerSubTrigger>
           <ViewSettingsRow
             icon={<Palette />}
@@ -682,7 +685,9 @@ export function DatabaseChartSettingsSection({
                 })
               }
             >
-              <span className={cn("size-3 rounded-sm border", color.swatchClass)} />
+              <span
+                className={cn("size-3 rounded-sm border", color.swatchClass)}
+              />
               <span>{color.name}</span>
               {settings.color === color.value ? (
                 <Check className="ml-auto text-foreground" />

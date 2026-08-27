@@ -1,11 +1,4 @@
-import {
-  ArrowUpRightIcon,
-  Copy,
-  Database,
-  FolderInput,
-  MoreHorizontal,
-  Plus,
-} from "lucide-react";
+import { Copy, Database, MoreHorizontal, Plus, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import {
@@ -15,9 +8,7 @@ import {
   DropDrawerSubTrigger,
 } from "@/components/ui/dropdrawer";
 
-import type { DatabaseLinkedViewConfig } from "../database-view-config";
 import type { DatabaseSourceMenuItem } from "./types";
-import { getDatabaseViewTypePresentation } from "./view-type-options";
 import type { DatabaseViewType } from "./view-type-options";
 import { ViewTypeOptionGrid } from "./view-type-option-grid";
 
@@ -41,18 +32,16 @@ export function DataSourceMenuItem({
   icon,
   item,
   onAddView,
-  onMove,
 }: {
   icon?: ReactNode;
   item: DatabaseSourceMenuItem;
-  onAddView?: (sourceDatabaseId: string, type: DatabaseViewType) => void;
-  onMove: (item: DatabaseSourceMenuItem) => void;
+  onAddView?: (dataSourceId: string, type: DatabaseViewType) => void;
 }) {
   const [addViewOpen, setAddViewOpen] = useState(false);
   const viewLabel = `${item.viewCount} view${item.viewCount === 1 ? "" : "s"}`;
 
   return (
-    <DropDrawerSub>
+    <DropDrawerSub title={item.name}>
       <DropDrawerSubTrigger>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {icon ?? <Database className="text-muted-foreground" />}
@@ -65,7 +54,11 @@ export function DataSourceMenuItem({
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-56">
         {onAddView ? (
-          <DropDrawerSub onOpenChange={setAddViewOpen} open={addViewOpen}>
+          <DropDrawerSub
+            onOpenChange={setAddViewOpen}
+            open={addViewOpen}
+            title="Add view"
+          >
             <DropDrawerSubTrigger>
               <Plus />
               <span>Add view</span>
@@ -88,42 +81,31 @@ export function DataSourceMenuItem({
           <Copy />
           <span>Copy data source ID</span>
         </DropDrawerItem>
-        <DropDrawerItem
-          onSelect={(event) => {
-            event.preventDefault();
-            onMove(item);
-          }}
-        >
-          <FolderInput />
-          <span>Move to</span>
-        </DropDrawerItem>
       </DropDrawerSubContent>
     </DropDrawerSub>
   );
 }
 
 export function LinkedDataSourceMenuItem({
-  view,
+  icon,
+  item,
+  onUnlink,
 }: {
-  view: DatabaseLinkedViewConfig;
+  icon?: ReactNode;
+  item: DatabaseSourceMenuItem;
+  onUnlink?: (dataSourceId: string) => void;
 }) {
-  const { Icon: ViewIcon } = getDatabaseViewTypePresentation(view.viewType);
+  const viewLabel = `${item.viewCount} view${item.viewCount === 1 ? "" : "s"}`;
 
   return (
-    <DropDrawerItem disabled>
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <ViewIcon className="text-muted-foreground" />
-        <div className="min-w-0 flex-1">
-          <div className="truncate">{view.viewName}</div>
-          <div className="truncate text-xs text-muted-foreground">
-            {view.databaseName}
-          </div>
-        </div>
-        <ArrowUpRightIcon
-          aria-label="Linked from another database"
-          className="size-3 text-muted-foreground"
-        />
-      </div>
+    <DropDrawerItem
+      disabled={!onUnlink}
+      onSelect={() => onUnlink?.(item.id)}
+    >
+      {icon ?? <Database className="text-muted-foreground" />}
+      <span className="min-w-0 flex-1 truncate">{item.name}</span>
+      <span className="shrink-0 text-muted-foreground">{viewLabel}</span>
+      <X aria-label={`Remove ${item.name}`} className="text-muted-foreground" />
     </DropDrawerItem>
   );
 }

@@ -13,12 +13,14 @@ import {
   useAddDatabaseProperty,
   useAddDatabaseRow,
   useApplyDatabaseTemplate,
-  useCreateDatabase,
+  useCreateDatabaseDataSource,
   useDatabase,
-  useDeleteDatabase,
   useDeleteDatabaseView,
   isDatabaseLocked,
-  useUpdateDatabase,
+  useLinkDatabaseDataSource,
+  useReplaceDatabaseViewDataSource,
+  useUnlinkDatabaseDataSource,
+  useUpdateDataSource,
   useUpdateDatabaseView,
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
@@ -40,16 +42,16 @@ import {
   hasDatabasePageDragPayload,
   type DatabasePageDragPayload,
 } from "../interactions/database-page-drop"
-import type { DatabaseViewContextValue } from "./database-view-context"
+import type {
+  DatabaseSourceViewSelection,
+  DatabaseViewContextValue,
+} from "./database-view-context"
 import { getDatabaseViewCommands } from "./database-view-commands"
 import { getDatabaseViewModel } from "./database-view-model"
 import {
-  getDatabaseLinkedViewKey,
-  getDatabaseLinkedViews,
   getDatabaseSetupDismissed,
   getDatabaseViewIcon,
   getMergedDatabaseConfig,
-  type DatabaseLinkedViewConfig,
 } from "./database-view-config"
 import {
   databaseViewTypeOptions,
@@ -94,12 +96,14 @@ export function useDatabaseViewController({
   showTitle = true,
   pageId = null,
 }: DatabaseViewProps) {
-  const updateDatabase = useUpdateDatabase()
+  const updateDatabase = useUpdateDataSource()
   const applyDataSourceTemplate = useApplyDatabaseTemplate()
-  const createDataSource = useCreateDatabase()
+  const createDataSource = useCreateDatabaseDataSource()
   const updateDatabaseView = useUpdateDatabaseView()
   const addDatabaseView = useAddDatabaseView()
-  const deleteDataSource = useDeleteDatabase()
+  const linkDatabaseDataSource = useLinkDatabaseDataSource()
+  const replaceDatabaseViewDataSource = useReplaceDatabaseViewDataSource()
+  const unlinkDatabaseDataSource = useUnlinkDatabaseDataSource()
   const deleteDatabaseView = useDeleteDatabaseView()
   const addProperty = useAddDatabaseProperty()
   const updateProperty = useUpdateDatabaseProperty()
@@ -135,69 +139,35 @@ export function useDatabaseViewController({
   const [dataSourceSetupOpen, setDataSourceSetupOpen] = useState(false)
   const latestViewConfigRef = useRef(new Map<string, unknown>())
   const isControlledActiveView = Boolean(onActiveViewIdChange)
-  const linkedDatabaseViews = useMemo(
-    () => getDatabaseLinkedViews(payload?.database.config),
-    [payload?.database.config],
-  )
-  const sourceDatabaseViews = useMemo(
-    () => linkedDatabaseViews.filter((view) => view.sourceKind === "source"),
-    [linkedDatabaseViews],
-  )
-  const externallyLinkedDatabaseViews = useMemo(
-    () => linkedDatabaseViews.filter((view) => view.sourceKind !== "source"),
-    [linkedDatabaseViews],
-  )
   const dataSources = useMemo(() => {
-    const sources = new Map<
-      string,
-      { hiddenViewCount: number; id: string; name: string; viewCount: number }
-    >()
-
-    if (payload?.database.id) {
-      sources.set(payload.database.id, {
-        id: payload.database.id,
-        hiddenViewCount: 0,
-        name: payload.database.name || "Untitled database",
-        viewCount: payload.views.length,
-      })
-    }
-
-    for (const view of sourceDatabaseViews) {
-      const source = sources.get(view.databaseId)
-      sources.set(view.databaseId, {
-        id: view.databaseId,
-        hiddenViewCount:
-          (source?.hiddenViewCount ?? 0) + (view.hidden ? 1 : 0),
-        name: view.databaseName,
-        viewCount: (source?.viewCount ?? 0) + (view.hidden ? 0 : 1),
-      })
-    }
-
-    return [...sources.values()]
-  }, [payload?.database, payload?.views.length, sourceDatabaseViews])
+    return (payload?.dataSources ?? []).map((source) => ({
+      config: source.config,
+      hiddenViewCount: 0,
+      id: source.id,
+      name: source.name || "Untitled data source",
+      parentDatabaseId: source.parentDatabaseId,
+      position: source.position,
+      viewCount:
+        payload?.views.filter((view) => view.dataSourceId === source.id).length ??
+        0,
+    }))
+  }, [payload?.dataSources, payload?.views])
   const baseViewTabs = useMemo(
-    () => [
-      ...(payload?.views ?? []).map((view) => ({
+    () =>
+      (payload?.views ?? []).map((view) => ({
         icon: getDatabaseViewIcon(view.config),
         id: view.id,
         name: view.name,
+        dataSourceId: view.dataSourceId,
+        dataSourceName: payload?.dataSources.find(
+          (source) => source.id === view.dataSourceId,
+        )?.name,
+        sourceParentDatabaseId: payload?.dataSources.find(
+          (source) => source.id === view.dataSourceId,
+        )?.parentDatabaseId,
         type: view.type,
       })),
-      ...linkedDatabaseViews
-        .filter((linkedView) => !linkedView.hidden)
-        .map((linkedView) => ({
-          icon: linkedView.viewIcon,
-          id: getDatabaseLinkedViewKey(linkedView),
-          isLinked: true,
-          name: linkedView.viewName,
-          sourceKind: linkedView.sourceKind,
-          sourceDatabaseId: linkedView.databaseId,
-          sourceDatabaseName: linkedView.databaseName,
-          sourceViewId: linkedView.viewId,
-          type: linkedView.viewType,
-        })),
-    ],
-    [linkedDatabaseViews, payload?.views],
+    [payload?.dataSources, payload?.views],
   )
   const requestedViewId =
     requestedActiveViewId &&
@@ -207,12 +177,14 @@ export function useDatabaseViewController({
   const resolvedActiveViewId = isControlledActiveView
     ? (requestedViewId ?? baseViewTabs[0]?.id ?? null)
     : activeViewId
-  const setupDismissed = getDatabaseSetupDismissed(payload?.database.config)
+  const setupDismissed = getDatabaseSetupDismissed(
+    payload?.activeDataSource?.config,
+  )
   const hasDatabaseSetupContent = Boolean(
     payload &&
     (payload.properties.length > 0 ||
       (payload.rowCount ?? payload.rows.length) > 0 ||
-      linkedDatabaseViews.length > 0),
+      payload.dataSources.length > 1),
   )
   const effectiveSetupMode = Boolean(
     editable &&
@@ -220,53 +192,26 @@ export function useDatabaseViewController({
     !setupDismissed &&
     (setupMode || !hasDatabaseSetupContent),
   )
-  const activeLinkedDatabaseView = useMemo(
-    () =>
-      linkedDatabaseViews.find(
-        (linkedView) =>
-          getDatabaseLinkedViewKey(linkedView) === resolvedActiveViewId,
-      ) ?? null,
-    [linkedDatabaseViews, resolvedActiveViewId],
-  )
   const {
-    data: linkedPayload,
-    fetchNextPage: fetchNextLinkedPage,
-    hasNextPage: hasNextLinkedPage,
-    isFetchingNextPage: isFetchingNextLinkedPage,
-    error: linkedError,
-    isError: isLinkedError,
-    isLoading: isLoadingLinkedPayload,
-  } = useDatabase(activeLinkedDatabaseView?.databaseId, {
+    data: selectedSourcePayload,
+    fetchNextPage: fetchNextSourcePage,
+    hasNextPage: hasNextSourcePage,
+    isFetchingNextPage: isFetchingNextSourcePage,
+    error: sourceError,
+    isError: isSourceError,
+    isLoading: isLoadingSourcePayload,
+  } = useDatabase(databaseId, {
     includeDeleted: includeDeletedDatabases,
+    ...(resolvedActiveViewId ? { viewId: resolvedActiveViewId } : {}),
   })
-  const activePayload = activeLinkedDatabaseView ? linkedPayload : payload
-  const activeDatabaseId = activeLinkedDatabaseView?.databaseId ?? databaseId
-  const viewTabs = useMemo(() => {
-    if (!activeLinkedDatabaseView || !linkedPayload) {
-      return baseViewTabs
-    }
-
-    const sourceView = linkedPayload.views.find(
-      (view) => view.id === activeLinkedDatabaseView.viewId,
-    )
-    const sourceIcon = getDatabaseViewIcon(sourceView?.config)
-    const linkedViewKey = getDatabaseLinkedViewKey(activeLinkedDatabaseView)
-
-    return baseViewTabs.map((view) =>
-      view.id === linkedViewKey ? { ...view, icon: sourceIcon } : view,
-    )
-  }, [activeLinkedDatabaseView, baseViewTabs, linkedPayload])
-  const activeFetchNextPage = activeLinkedDatabaseView
-    ? fetchNextLinkedPage
-    : fetchNextPage
-  const activeHasNextPage = activeLinkedDatabaseView
-    ? hasNextLinkedPage
-    : hasNextPage
-  const activeIsFetchingNextPage = activeLinkedDatabaseView
-    ? isFetchingNextLinkedPage
-    : isFetchingNextPage
-  const activeViewLookupId =
-    activeLinkedDatabaseView?.viewId ?? resolvedActiveViewId
+  const activePayload = selectedSourcePayload ?? payload
+  const activeDatabaseId = activePayload?.activeDataSource?.id ?? null
+  const viewTabs = baseViewTabs
+  const activeFetchNextPage = fetchNextSourcePage ?? fetchNextPage
+  const activeHasNextPage = hasNextSourcePage ?? hasNextPage
+  const activeIsFetchingNextPage =
+    isFetchingNextSourcePage || isFetchingNextPage
+  const activeViewLookupId = resolvedActiveViewId
   const { data: session } = useSession()
   const needsPersonAccessTargets = useMemo(
     () =>
@@ -279,9 +224,7 @@ export function useDatabaseViewController({
     activePayload?.database.pageId,
     { enabled: needsPersonAccessTargets },
   )
-  const activeViewTabId = activeLinkedDatabaseView
-    ? getDatabaseLinkedViewKey(activeLinkedDatabaseView)
-    : resolvedActiveViewId
+  const activeViewTabId = resolvedActiveViewId
   const setSelectedActiveViewId = useCallback<
     DatabaseViewContextValue["setActiveViewId"]
   >(
@@ -357,6 +300,7 @@ export function useDatabaseViewController({
   useEffect(() => {
     if (
       !editable ||
+      !databaseId ||
       !activeDatabaseId ||
       !activeView?.id ||
       !subItemsSettings.enabled ||
@@ -375,7 +319,7 @@ export function useDatabaseViewController({
         config: getMergedDatabaseConfig(activeView.config, {
           subItems: subItemsSettings,
         }),
-        databaseId: activeDatabaseId,
+        databaseId,
         databaseViewId: activeView.id,
       },
       {
@@ -393,16 +337,13 @@ export function useDatabaseViewController({
     updateDatabaseView,
   ])
   useEffect(() => {
-    const nextDatabaseTitle =
-      activePayload?.database.name ?? activeLinkedDatabaseView?.databaseName
+    const nextDatabaseTitle = activePayload?.activeDataSource?.name
 
     if (nextDatabaseTitle) {
       setDraftDatabaseTitle(nextDatabaseTitle)
     }
   }, [
-    activeLinkedDatabaseView?.databaseName,
-    activePayload?.database.id,
-    activePayload?.database.name,
+    activePayload?.activeDataSource?.name,
   ])
 
   useEffect(() => {
@@ -423,12 +364,12 @@ export function useDatabaseViewController({
   }, [isControlledActiveView, viewTabs])
 
   useEffect(() => {
-    const nextViewTitle = activeView?.name ?? activeLinkedDatabaseView?.viewName
+    const nextViewTitle = activeView?.name
 
     if (nextViewTitle) {
       setDraftViewTitle(nextViewTitle)
     }
-  }, [activeLinkedDatabaseView?.viewName, activeView?.id, activeView?.name])
+  }, [activeView?.id, activeView?.name])
 
   useEffect(() => {
     if (activeDatabaseSorts.length === 0) {
@@ -485,60 +426,95 @@ export function useDatabaseViewController({
     [],
   )
 
-  const addLinkedDatabaseView = (linkedView: DatabaseLinkedViewConfig) => {
-    if (!databaseId) {
-      return
-    }
-
-    const linkedViewKey = getDatabaseLinkedViewKey(linkedView)
-
-    const existingView = linkedDatabaseViews.find(
-      (candidate) => getDatabaseLinkedViewKey(candidate) === linkedViewKey,
-    )
-
-    if (existingView) {
-      if (existingView.hidden) {
-        updateDatabase.mutate(
-          {
-            config: getMergedDatabaseConfig(payload?.database.config, {
-              linkedDatabaseViews: linkedDatabaseViews.map((candidate) =>
-                getDatabaseLinkedViewKey(candidate) === linkedViewKey
-                  ? { ...candidate, hidden: false }
-                  : candidate,
-              ),
-            }),
-            databaseId,
-          },
-          { onSuccess: () => setSelectedActiveViewId(linkedViewKey) },
-        )
-      } else {
-        setSelectedActiveViewId(linkedViewKey)
-      }
-      return
-    }
-
-    updateDatabase.mutate(
+  const linkDataSourceView = (selection: DatabaseSourceViewSelection) => {
+    if (!databaseId || linkDatabaseDataSource.isPending) return
+    const existingIds = new Set(payload?.views.map((view) => view.id) ?? [])
+    linkDatabaseDataSource.mutate(
       {
-        config: getMergedDatabaseConfig(payload?.database.config, {
-          linkedDatabaseViews: [...linkedDatabaseViews, linkedView],
-        }),
         databaseId,
+        config: selection.viewConfig,
+        dataSourceId: selection.dataSourceId,
+        name: selection.viewName,
+        type: selection.viewType,
       },
       {
-        onSuccess: () => setSelectedActiveViewId(linkedViewKey),
+        onSuccess: (nextPayload) => {
+          const added = nextPayload.views.find((view) => !existingIds.has(view.id))
+          setSelectedActiveViewId(added?.id ?? null)
+          toast.success("Data source linked.")
+        },
       },
     )
   }
 
+  const unlinkDataSource = async (dataSourceId: string) => {
+    if (
+      !databaseId ||
+      !editable ||
+      unlinkDatabaseDataSource.isPending ||
+      deleteDatabaseView.isPending
+    ) {
+      return
+    }
+
+    const source = payload?.dataSources.find(
+      (candidate) => candidate.id === dataSourceId,
+    )
+    if (!source || source.parentDatabaseId === databaseId) return
+
+    const sourceViewIds =
+      payload?.views
+        .filter((view) => view.dataSourceId === dataSourceId)
+        .map((view) => view.id) ?? []
+    const fallbackViewId =
+      payload?.views.find((view) => view.dataSourceId !== dataSourceId)?.id ??
+      null
+
+    try {
+      for (const databaseViewId of sourceViewIds) {
+        await deleteDatabaseView.mutateAsync({ databaseId, databaseViewId })
+      }
+      await unlinkDatabaseDataSource.mutateAsync({ databaseId, dataSourceId })
+      setSelectedActiveViewId(fallbackViewId)
+      toast.success("Linked data source removed.")
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not remove the linked data source.",
+      )
+    }
+  }
+
+  const replaceActiveViewSource = async (
+    selection: DatabaseSourceViewSelection,
+  ) => {
+    if (
+      !databaseId ||
+      !resolvedActiveViewId ||
+      !editable ||
+      replaceDatabaseViewDataSource.isPending
+    ) return
+
+    await replaceDatabaseViewDataSource.mutateAsync({
+      databaseId,
+      databaseViewId: resolvedActiveViewId,
+      dataSourceId: selection.dataSourceId,
+    })
+    setSelectedActiveViewId(resolvedActiveViewId)
+    toast.success("View source replaced.")
+  }
+
   const addDataSourceView = async (
-    sourceDatabaseId: string,
+    dataSourceId: string,
     type: DatabaseViewType,
+    mode: "add" | "replace" = "add",
   ) => {
     if (
       !databaseId ||
       !editable ||
-      addDatabaseView.isPending ||
-      updateDatabase.isPending
+      linkDatabaseDataSource.isPending ||
+      replaceDatabaseViewDataSource.isPending
     ) {
       return
     }
@@ -549,48 +525,25 @@ export function useDatabaseViewController({
     const viewName = option?.label ?? "Table"
 
     try {
-      const sourcePayload = await addDatabaseView.mutateAsync({
-        databaseId: sourceDatabaseId,
+      if (mode === "replace") {
+        if (!resolvedActiveViewId) return
+        await replaceDatabaseViewDataSource.mutateAsync({
+          databaseId,
+          databaseViewId: resolvedActiveViewId,
+          dataSourceId,
+        })
+        toast.success("View source replaced.")
+        return
+      }
+      const existingIds = new Set(payload?.views.map((view) => view.id) ?? [])
+      const nextPayload = await linkDatabaseDataSource.mutateAsync({
+        databaseId,
+        dataSourceId,
         name: viewName,
         type,
       })
-      const createdView = sourcePayload.views.at(-1)
-
-      if (!createdView) {
-        throw new Error("The data source view could not be created.")
-      }
-
-      if (sourceDatabaseId === databaseId) {
-        setSelectedActiveViewId(createdView.id)
-        return
-      }
-
-      const source = dataSources.find(
-        (candidate) => candidate.id === sourceDatabaseId,
-      )
-      const sourceView: DatabaseLinkedViewConfig = {
-        databaseId: sourceDatabaseId,
-        databaseName: source?.name ?? "Untitled data source",
-        sourceKind: "source",
-        viewId: createdView.id,
-        viewName: createdView.name || viewName,
-        viewType: createdView.type || type,
-      }
-      const sourceViewKey = getDatabaseLinkedViewKey(sourceView)
-
-      await updateDatabase.mutateAsync({
-        config: getMergedDatabaseConfig(payload?.database.config, {
-          linkedDatabaseViews: [
-            ...linkedDatabaseViews.filter(
-              (view) =>
-                view.databaseId !== sourceDatabaseId || !view.hidden,
-            ),
-            sourceView,
-          ],
-        }),
-        databaseId,
-      })
-      setSelectedActiveViewId(sourceViewKey)
+      const createdView = nextPayload.views.find((view) => !existingIds.has(view.id))
+      setSelectedActiveViewId(createdView?.id ?? null)
       toast.success(`${viewName} view added.`)
     } catch (error) {
       toast.error(
@@ -602,12 +555,9 @@ export function useDatabaseViewController({
   const handleDataSourceSetupSelection = async (
     selection: DatabaseSetupSelection,
   ) => {
-    const hostWorkspaceId = payload?.database.workspaceId ?? workspaceId
-
     if (
       !editable ||
       !databaseId ||
-      !hostWorkspaceId ||
       createDataSource.isPending ||
       updateDatabase.isPending
     ) {
@@ -615,30 +565,17 @@ export function useDatabaseViewController({
     }
 
     try {
-      if (selection.linkedView) {
-        const linkedView = {
-          ...selection.linkedView,
-          sourceKind: "linked" as const,
-        }
-        const linkedViewKey = getDatabaseLinkedViewKey(linkedView)
-
-        if (
-          linkedDatabaseViews.some(
-            (existingView) =>
-              getDatabaseLinkedViewKey(existingView) === linkedViewKey,
-          )
-        ) {
-          setSelectedActiveViewId(linkedViewKey)
-          return
-        }
-
-        await updateDatabase.mutateAsync({
-          config: getMergedDatabaseConfig(payload?.database.config, {
-            linkedDatabaseViews: [...linkedDatabaseViews, linkedView],
-          }),
+      if (selection.sourceView) {
+        const existingIds = new Set(payload?.views.map((view) => view.id) ?? [])
+        const nextPayload = await linkDatabaseDataSource.mutateAsync({
           databaseId,
+          config: selection.sourceView.viewConfig,
+          dataSourceId: selection.sourceView.dataSourceId,
+          name: selection.sourceView.viewName,
+          type: selection.sourceView.viewType,
         })
-        setSelectedActiveViewId(linkedViewKey)
+        const added = nextPayload.views.find((view) => !existingIds.has(view.id))
+        setSelectedActiveViewId(added?.id ?? null)
         toast.success("Data source linked.")
         return
       }
@@ -647,19 +584,45 @@ export function useDatabaseViewController({
         ? getDatabaseSetupTemplate(selection.templateId)
         : null
       const databaseName =
-        selection.databaseName || template?.name || "New data source"
-      const created = await createDataSource.mutateAsync({
+        selection.databaseName ||
+        selection.csvImport?.name ||
+        template?.name ||
+        "New data source"
+      const existingSourceIds = new Set(
+        payload?.dataSources.map((source) => source.id) ?? [],
+      )
+      let createdPayload = await createDataSource.mutateAsync({
+        databaseId,
         name: databaseName,
-        standalone: true,
-        workspaceId: hostWorkspaceId,
       })
-      const defaultView = created.views[0]
-
-      if (!defaultView) {
-        throw new Error("The new data source has no default view.")
+      const createdSource = createdPayload.dataSources.find(
+        (source) => !existingSourceIds.has(source.id),
+      )
+      if (!createdSource) {
+        throw new Error("The new data source could not be resolved.")
       }
-
-      if (template) {
+      if (selection.csvImport) {
+        createdPayload = await applyDataSourceTemplate.mutateAsync({
+          config: getMergedDatabaseConfig(createdSource.config, {
+            setupDismissed: true,
+          }),
+          databaseId: createdSource.id,
+          name: databaseName,
+          properties: selection.csvImport.headers.slice(1).map((name) => ({
+            name,
+            type: "text",
+          })),
+          rows: selection.csvImport.rows.map((row, rowIndex) => ({
+            title: row[0]?.trim() || `Row ${rowIndex + 1}`,
+            values: selection.csvImport!.headers
+              .slice(1)
+              .map((propertyName, index) => ({
+                propertyName,
+                value: serializePropertyValue("text", row[index + 1] ?? ""),
+              })),
+          })),
+        })
+      } else if (template) {
         const propertyTypesByName = new Map(
           template.properties.map((property) => [
             property.name.toLowerCase(),
@@ -667,12 +630,12 @@ export function useDatabaseViewController({
           ]),
         )
 
-        await applyDataSourceTemplate.mutateAsync({
-          config: getMergedDatabaseConfig(created.database.config, {
+        createdPayload = await applyDataSourceTemplate.mutateAsync({
+          config: getMergedDatabaseConfig(createdSource.config, {
             emoji: template.emoji,
             setupDismissed: true,
           }),
-          databaseId: created.database.id,
+          databaseId: createdSource.id,
           name: databaseName,
           properties: template.properties,
           rows: template.sampleRows.map((sampleRow) => ({
@@ -699,23 +662,10 @@ export function useDatabaseViewController({
         })
       }
 
-      const sourceView: DatabaseLinkedViewConfig = {
-        databaseId: created.database.id,
-        databaseName,
-        sourceKind: "source",
-        viewId: defaultView.id,
-        viewName: defaultView.name || "Table",
-        viewType: defaultView.type || "table",
-      }
-      const sourceViewKey = getDatabaseLinkedViewKey(sourceView)
-
-      await updateDatabase.mutateAsync({
-        config: getMergedDatabaseConfig(payload?.database.config, {
-          linkedDatabaseViews: [...linkedDatabaseViews, sourceView],
-        }),
-        databaseId,
-      })
-      setSelectedActiveViewId(sourceViewKey)
+      const added = createdPayload.views.find(
+        (view) => view.dataSourceId === createdSource.id,
+      )
+      setSelectedActiveViewId(added?.id ?? null)
       toast.success("Data source added.")
     } catch (error) {
       toast.error(
@@ -731,40 +681,6 @@ export function useDatabaseViewController({
     nextIcon,
   ) => {
     if (!editable || !databaseId) {
-      return
-    }
-
-    if (view.isLinked) {
-      const linkedView = linkedDatabaseViews.find(
-        (candidate) => getDatabaseLinkedViewKey(candidate) === view.id,
-      )
-
-      if (!linkedView) {
-        return
-      }
-
-      const sourceView = activeLinkedDatabaseView
-        ? linkedPayload?.views.find(
-            (candidate) => candidate.id === linkedView.viewId,
-          )
-        : undefined
-
-      updateDatabaseView.mutate({
-        config: getMergedDatabaseConfig(sourceView?.config, { icon: nextIcon }),
-        databaseId: linkedView.databaseId,
-        databaseViewId: linkedView.viewId,
-      })
-
-      updateDatabase.mutate({
-        config: getMergedDatabaseConfig(payload?.database.config, {
-          linkedDatabaseViews: linkedDatabaseViews.map((candidate) =>
-            getDatabaseLinkedViewKey(candidate) === view.id
-              ? { ...candidate, viewIcon: nextIcon }
-              : candidate,
-          ),
-        }),
-        databaseId,
-      })
       return
     }
 
@@ -790,41 +706,6 @@ export function useDatabaseViewController({
       return
     }
 
-    if (view.isLinked) {
-      const sourceLinkedView = linkedDatabaseViews.find(
-        (linkedView) => getDatabaseLinkedViewKey(linkedView) === view.id,
-      )
-
-      if (!sourceLinkedView) {
-        return
-      }
-
-      const linkedViewId =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : `${sourceLinkedView.databaseId}-${sourceLinkedView.viewId}-${Date.now()}`
-
-      updateDatabase.mutate(
-        {
-          config: getMergedDatabaseConfig(payload?.database.config, {
-            linkedDatabaseViews: [
-              ...linkedDatabaseViews,
-              {
-                ...sourceLinkedView,
-                linkedViewId,
-                viewName: `${sourceLinkedView.viewName} copy`,
-              },
-            ],
-          }),
-          databaseId,
-        },
-        {
-          onSuccess: () => setSelectedActiveViewId(`linked:${linkedViewId}`),
-        },
-      )
-      return
-    }
-
     const sourceView = (payload?.views ?? []).find(
       (databaseView) => databaseView.id === view.id,
     )
@@ -841,6 +722,7 @@ export function useDatabaseViewController({
       {
         config: sourceView.config,
         databaseId,
+        dataSourceId: sourceView.dataSourceId,
         name: `${sourceView.name} copy`,
         type: sourceView.type,
       },
@@ -859,18 +741,16 @@ export function useDatabaseViewController({
 
   const deleteDatabaseViewByTab = (
     view: DatabaseViewContextValue["viewTabs"][number],
-    options?: { deleteDataSource?: boolean },
   ) => {
     if (
       !databaseId ||
-      deleteDataSource.isPending ||
-      deleteDatabaseView.isPending ||
-      updateDatabase.isPending
+      deleteDatabaseView.isPending
     ) {
       return
     }
 
     if (viewTabs.length <= 1) {
+      toast.error("A database must always have at least one view.")
       return
     }
 
@@ -878,54 +758,6 @@ export function useDatabaseViewController({
       activeViewTabId === view.id
         ? (viewTabs.find((viewTab) => viewTab.id !== view.id)?.id ?? null)
         : activeViewTabId
-
-    if (view.isLinked) {
-      const sourceDatabaseId = view.sourceDatabaseId
-      const keepSourceWithoutView = Boolean(
-        view.sourceKind === "source" &&
-          sourceDatabaseViews.filter(
-            (candidate) =>
-              candidate.databaseId === sourceDatabaseId && !candidate.hidden,
-          ).length === 1,
-      )
-      const removeViewFromHost = {
-        config: getMergedDatabaseConfig(payload?.database.config, {
-          linkedDatabaseViews: linkedDatabaseViews.flatMap((linkedView) =>
-            options?.deleteDataSource &&
-            sourceDatabaseId &&
-            linkedView.databaseId === sourceDatabaseId
-              ? []
-              : getDatabaseLinkedViewKey(linkedView) !== view.id
-              ? [linkedView]
-              : keepSourceWithoutView
-                ? [{ ...linkedView, hidden: true }]
-                : [],
-          ),
-        }),
-        databaseId,
-      }
-
-      if (
-        options?.deleteDataSource &&
-        view.sourceKind === "source" &&
-        sourceDatabaseId
-      ) {
-        void updateDatabase
-          .mutateAsync(removeViewFromHost)
-          .then(() => deleteDataSource.mutateAsync(sourceDatabaseId))
-          .then(() => {
-            setSelectedActiveViewId(nextActiveViewId)
-            toast.success("Data source and view deleted.")
-          })
-          .catch(() => toast.error("Could not delete the data source and view."))
-        return
-      }
-
-      updateDatabase.mutate(removeViewFromHost, {
-        onSuccess: () => setSelectedActiveViewId(nextActiveViewId),
-      })
-      return
-    }
 
     deleteDatabaseView.mutate(
       {
@@ -943,6 +775,7 @@ export function useDatabaseViewController({
     activeDatabaseSorts,
     activeView,
     databaseId: activeDatabaseId,
+    viewDatabaseId: databaseId,
     editable,
     isKanbanView,
     items,
@@ -1014,8 +847,10 @@ export function useDatabaseViewController({
     addDraggedPageRow: commands.addDraggedPageRow,
     addKanbanView: commands.addKanbanView,
     addListView: commands.addListView,
-    addLinkedDatabaseView,
+    linkDataSourceView,
+    unlinkDataSource,
     addDataSourceView,
+    replaceActiveViewSource,
     addDatabaseRow: commands.addDatabaseRow,
     addTableView: commands.addTableView,
     addTimelineRow: commands.addTimelineRow,
@@ -1033,9 +868,11 @@ export function useDatabaseViewController({
     createDatabaseFilter: commands.createDatabaseFilter,
     createDatabaseSort: commands.createDatabaseSort,
     dataSources,
-    databaseConfig: activePayload?.database.config,
+    databaseConfig:
+      activePayload?.activeDataSource?.config,
     databaseId: activeDatabaseId,
-    databaseName: activePayload?.database.name,
+    databaseName:
+      activePayload?.activeDataSource?.name,
     databasePageId: activePayload?.database.pageId,
     databaseWorkspaceId: activePayload?.database.workspaceId,
     deleteDatabaseView: deleteDatabaseViewByTab,
@@ -1063,11 +900,13 @@ export function useDatabaseViewController({
     isAddingDatabaseProperty: addProperty.isPending,
     isAddingDatabaseRow: addRow.isPending,
     isAddingDataSource:
-      createDataSource.isPending || applyDataSourceTemplate.isPending,
-    isAddingDatabaseView: addDatabaseView.isPending,
+      createDataSource.isPending ||
+      applyDataSourceTemplate.isPending ||
+      linkDatabaseDataSource.isPending,
+    isAddingDatabaseView:
+      addDatabaseView.isPending || replaceDatabaseViewDataSource.isPending,
     isTimelineView,
     isFetchingNextPage: activeIsFetchingNextPage,
-    linkedDatabaseViews: externallyLinkedDatabaseViews,
     layoutSettings,
     titlePropertyLabel,
     showPageIconInTitle,
@@ -1142,12 +981,11 @@ export function useDatabaseViewController({
     context: databaseViewContext,
     dataSourceSetupOpen,
     databaseId,
-    error: activeLinkedDatabaseView ? linkedError : error,
-    isError: activeLinkedDatabaseView ? isLinkedError : isError,
+    error: sourceError ?? error,
+    isError: isSourceError || isError,
     handleDatabaseBlockDragOver,
     handleDatabaseBlockDrop,
-    isLoading:
-      isLoading || Boolean(activeLinkedDatabaseView && isLoadingLinkedPayload),
+    isLoading: isLoading || isLoadingSourcePayload,
     onDismissSetup,
     onDataSourceSetupClose: () => setDataSourceSetupOpen(false),
     onDataSourceSetupSelect: handleDataSourceSetupSelection,

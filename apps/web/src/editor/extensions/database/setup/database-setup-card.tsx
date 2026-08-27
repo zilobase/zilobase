@@ -1,4 +1,10 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -8,13 +14,11 @@ import {
   CircleDashed,
   Database,
   FileText,
-  Kanban,
   Loader2,
   MoreHorizontal,
   Plus,
   Search,
   Sparkles,
-  Table2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,11 +33,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getIconSolidClassName } from "@/lib/color-tokens";
+import { DEFAULT_DATABASE_ITEM_ICON } from "@/lib/item-icons";
+import { getDatabaseIconNode, PageIconDisplay } from "@/lib/page-icon";
 import { cn } from "@/lib/utils";
 import {
   useApplyDatabaseTemplate,
   useDatabase,
-  useUpdateDatabase,
+  useLinkDatabaseDataSource,
+  useUpdateDataSource,
 } from "@zilobase/features/databases";
 import { usePageNavigation } from "@zilobase/features/pages";
 
@@ -46,12 +53,16 @@ import {
   type DatabaseSetupTemplateId,
 } from "./database-setup-templates";
 import {
-  getDatabaseLinkedViews,
   getDatabaseSetupDismissed,
   getDatabaseViewIcon,
   getMergedDatabaseConfig,
-  type DatabaseLinkedViewConfig,
 } from "../views/database-view-config";
+import type { DatabaseSourceViewSelection } from "../views/database-view-context";
+import { ViewTypeOptionGrid } from "../views/view-settings/view-type-option-grid";
+import {
+  getDatabaseViewTypePresentation,
+  type DatabaseViewType,
+} from "../views/view-settings/view-type-options";
 import { serializePropertyValue } from "../core/utils";
 
 type SetupView = "main" | "link";
@@ -67,10 +78,62 @@ type DatabaseSetupCardProps = {
 };
 
 export type DatabaseSetupSelection = {
+  csvImport?: {
+    headers: string[];
+    name: string;
+    rows: string[][];
+  };
   databaseName?: string;
-  linkedView?: DatabaseLinkedViewConfig;
+  sourceView?: DatabaseSourceViewSelection;
   templateId?: DatabaseSetupTemplateId | null;
 };
+
+function parseCsv(text: string) {
+  const records: string[][] = [];
+  let field = "";
+  let quoted = false;
+  let record: string[] = [];
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+
+    if (quoted) {
+      if (character === '"' && text[index + 1] === '"') {
+        field += '"';
+        index += 1;
+      } else if (character === '"') {
+        quoted = false;
+      } else {
+        field += character;
+      }
+      continue;
+    }
+
+    if (character === '"') {
+      quoted = true;
+    } else if (character === ",") {
+      record.push(field);
+      field = "";
+    } else if (character === "\n") {
+      record.push(field.replace(/\r$/, ""));
+      if (record.some((value) => value.length > 0)) records.push(record);
+      record = [];
+      field = "";
+    } else {
+      field += character;
+    }
+  }
+
+  record.push(field.replace(/\r$/, ""));
+  if (record.some((value) => value.length > 0)) records.push(record);
+
+  return {
+    headers: (records[0] ?? []).map((value, index) =>
+      value.trim() || (index === 0 ? "Name" : `Column ${index + 1}`),
+    ),
+    rows: records.slice(1),
+  };
+}
 
 type TextNode = {
   type: "text";
@@ -341,6 +404,7 @@ export function DatabaseSetupCard({
   workspaceId,
 }: DatabaseSetupCardProps) {
   const [view, setView] = useState<SetupView>("main");
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMoreTemplates, setShowMoreTemplates] = useState(false);
@@ -348,9 +412,12 @@ export function DatabaseSetupCard({
   const [selectedLinkDatabaseId, setSelectedLinkDatabaseId] = useState<
     string | null
   >(null);
+  const [creatingLinkView, setCreatingLinkView] = useState(false);
+  const [linkViewName, setLinkViewName] = useState("");
 
   const applyTemplate = useApplyDatabaseTemplate();
-  const updateDatabase = useUpdateDatabase();
+  const updateDatabase = useUpdateDataSource();
+  const linkDatabaseDataSource = useLinkDatabaseDataSource();
   const { data: databasePayload } = useDatabase(databaseId);
   const { data: navigation, isLoading: isLoadingPages } = usePageNavigation(
     workspaceId,
@@ -363,13 +430,17 @@ export function DatabaseSetupCard({
   const dismissSetup = useCallback(async () => {
     if (
       databasePayload &&
-      !getDatabaseSetupDismissed(databasePayload.database.config)
+      databasePayload.activeDataSource &&
+      !getDatabaseSetupDismissed(databasePayload.activeDataSource.config)
     ) {
       await updateDatabase.mutateAsync({
-        config: getMergedDatabaseConfig(databasePayload.database.config, {
+        config: getMergedDatabaseConfig(
+          databasePayload.activeDataSource.config,
+          {
           setupDismissed: true,
-        }),
-        databaseId,
+          },
+        ),
+        databaseId: databasePayload.activeDataSource.id,
       });
     }
 
@@ -406,32 +477,66 @@ export function DatabaseSetupCard({
 
   const finishSetup = useCallback(
     async ({
+      csvImport,
       databaseName,
-      linkedView,
+      sourceView,
       templateId,
     }: DatabaseSetupSelection) => {
       setIsSubmitting(true);
 
       try {
         if (onSelectDataSource) {
-          await onSelectDataSource({ databaseName, linkedView, templateId });
+          await onSelectDataSource({
+            csvImport,
+            databaseName,
+            sourceView,
+            templateId,
+          });
           onComplete();
           return;
         }
 
+        const activeDataSource = databasePayload?.activeDataSource;
+
+        if (!activeDataSource) {
+          throw new Error("Database has no active data source.");
+        }
+
         let setupDismissedPersisted = false;
 
-        if (linkedView) {
-          const linkedDatabaseViews = getDatabaseLinkedViews(
-            databasePayload?.database.config,
-          );
-
+        if (sourceView) {
+          await linkDatabaseDataSource.mutateAsync({
+            databaseId,
+            config: sourceView.viewConfig,
+            dataSourceId: sourceView.dataSourceId,
+            name: sourceView.viewName,
+            type: sourceView.viewType,
+          });
           await updateDatabase.mutateAsync({
-            config: getMergedDatabaseConfig(databasePayload?.database.config, {
-              linkedDatabaseViews: [...linkedDatabaseViews, linkedView],
+            config: getMergedDatabaseConfig(activeDataSource.config, {
               setupDismissed: true,
             }),
-            databaseId,
+            databaseId: activeDataSource.id,
+          });
+          setupDismissedPersisted = true;
+        } else if (csvImport) {
+          await applyTemplate.mutateAsync({
+            config: getMergedDatabaseConfig(activeDataSource.config, {
+              setupDismissed: true,
+            }),
+            databaseId: activeDataSource.id,
+            name: csvImport.name,
+            properties: csvImport.headers.slice(1).map((name) => ({
+              name,
+              type: "text",
+            })),
+            rows: csvImport.rows.map((row, rowIndex) => ({
+              title: row[0]?.trim() || `Row ${rowIndex + 1}`,
+              values: csvImport.headers.slice(1).map((propertyName, index) => ({
+                propertyName,
+                value: serializePropertyValue("text", row[index + 1] ?? ""),
+              })),
+            })),
           });
           setupDismissedPersisted = true;
         } else if (templateId) {
@@ -444,13 +549,13 @@ export function DatabaseSetupCard({
               name?: string;
             } = {
               config: getMergedDatabaseConfig(
-                databasePayload?.database.config,
+                activeDataSource.config,
                 {
                   emoji: template.emoji,
                   setupDismissed: true,
                 },
               ),
-              databaseId,
+              databaseId: activeDataSource.id,
             };
 
             if (template.name !== databasePayload?.database.name) {
@@ -503,10 +608,10 @@ export function DatabaseSetupCard({
           }
         } else if (
           databaseName &&
-          databaseName !== databasePayload?.database.name
+          databaseName !== activeDataSource.name
         ) {
           await updateDatabase.mutateAsync({
-            databaseId,
+            databaseId: activeDataSource.id,
             name: databaseName,
           });
         }
@@ -561,8 +666,8 @@ export function DatabaseSetupCard({
   );
 
   const handleLinkView = useCallback(
-    async (linkedView: DatabaseLinkedViewConfig) => {
-      await finishSetup({ linkedView });
+    async (sourceView: DatabaseSourceViewSelection) => {
+      await finishSetup({ sourceView });
     },
     [finishSetup],
   );
@@ -646,11 +751,7 @@ export function DatabaseSetupCard({
                 <ArrowDownToLine className="size-4" />
               </span>
             }
-            onClick={() =>
-              toast.message("CSV import is coming soon", {
-                description: "Use a template or empty data source for now.",
-              })
-            }
+            onClick={() => csvInputRef.current?.click()}
           >
             Import CSV
           </SetupOptionButton>
@@ -687,6 +788,8 @@ export function DatabaseSetupCard({
             onClick={() => {
               setView("link");
               setSelectedLinkDatabaseId(null);
+              setCreatingLinkView(false);
+              setLinkViewName("");
               setLinkSearch("");
             }}
           >
@@ -699,7 +802,13 @@ export function DatabaseSetupCard({
 
   const renderLinkPicker = () => {
     if (selectedLinkDatabaseId) {
-      const views = selectedLinkDatabasePayload?.views ?? [];
+      const sourceDataSourceId =
+        selectedLinkDatabasePayload?.activeDataSource?.id;
+      const views =
+        selectedLinkDatabasePayload?.views.filter(
+          (viewItem) =>
+            !sourceDataSourceId || viewItem.dataSourceId === sourceDataSourceId,
+        ) ?? [];
       const databaseName =
         selectedLinkDatabasePayload?.database.name ??
         linkableDatabases.find(
@@ -707,77 +816,135 @@ export function DatabaseSetupCard({
         )?.database.name ??
         "Untitled database";
 
+      if (creatingLinkView && sourceDataSourceId) {
+        return (
+          <div className="space-y-3 px-3 py-3 pr-12">
+            <SetupOptionButton
+              icon={<ChevronLeft className="size-4 text-muted-foreground" />}
+              onClick={() => {
+                setCreatingLinkView(false);
+                setLinkViewName("");
+              }}
+            >
+              Choose another view
+            </SetupOptionButton>
+            <Input
+              aria-label="Linked view name"
+              autoFocus
+              onChange={(event) => setLinkViewName(event.currentTarget.value)}
+              placeholder="View name"
+              value={linkViewName}
+            />
+            <ViewTypeOptionGrid
+              className="p-0"
+              onSelect={(type: DatabaseViewType) => {
+                const { label } = getDatabaseViewTypePresentation(type);
+
+                void handleLinkView({
+                  dataSourceId: sourceDataSourceId,
+                  dataSourceName:
+                    selectedLinkDatabasePayload.activeDataSource?.name ||
+                    databaseName,
+                  parentDatabaseId: selectedLinkDatabaseId,
+                  viewId: `new-${type}`,
+                  viewName: linkViewName.trim() || label,
+                  viewType: type,
+                });
+              }}
+            />
+          </div>
+        );
+      }
+
       return (
-        <div className="space-y-2 px-1 pb-1">
+        <div className="flex max-h-[min(32rem,calc(100vh-5rem))] min-h-0 flex-col px-1 pb-1">
           <SetupOptionButton
             icon={<ChevronLeft className="size-4 text-muted-foreground" />}
-            onClick={() => setSelectedLinkDatabaseId(null)}
+            onClick={() => {
+              setSelectedLinkDatabaseId(null);
+              setCreatingLinkView(false);
+              setLinkViewName("");
+            }}
           >
             Back
           </SetupOptionButton>
-          <div className="px-2 text-muted-foreground text-xs">
-            {databaseName}
-          </div>
-          {isLoadingLinkViews ? (
-            <div className="flex items-center justify-center gap-2 px-2 py-8 text-muted-foreground text-sm">
-              <Loader2 className="size-4 animate-spin" />
-              Loading views...
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <SetupOptionButton
+              disabled={!sourceDataSourceId || isSubmitting}
+              icon={
+                <span className="database-setup-option-icon">
+                  <Plus className="size-4" />
+                </span>
+              }
+              onClick={() => setCreatingLinkView(true)}
+            >
+              Create a new view
+            </SetupOptionButton>
+            <div className="px-2 pt-3 text-muted-foreground text-xs">
+              Views on {databaseName}
             </div>
-          ) : views.length === 0 ? (
-            <div className="px-2 py-8 text-center text-muted-foreground text-sm">
-              No views available.
-            </div>
-          ) : (
-            views.map((viewItem) => {
-              const ViewIcon =
-                viewItem.type === "kanban"
-                  ? Kanban
-                  : viewItem.type === "timeline"
-                    ? CalendarRange
-                    : Table2;
+            {isLoadingLinkViews ? (
+              <div className="flex items-center justify-center gap-2 px-2 py-8 text-muted-foreground text-sm">
+                <Loader2 className="size-4 animate-spin" />
+                Loading views...
+              </div>
+            ) : views.length === 0 ? (
+              <div className="px-2 py-8 text-center text-muted-foreground text-sm">
+                No existing views.
+              </div>
+            ) : (
+              views.map((viewItem) => {
+                const { Icon: ViewIcon } = getDatabaseViewTypePresentation(
+                  viewItem.type,
+                );
 
-              return (
-                <SetupOptionButton
-                  disabled={isSubmitting}
-                  icon={
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-subtle-surface text-muted-foreground">
-                      <ViewIcon className="size-4" />
-                    </span>
-                  }
-                  key={viewItem.id}
-                  onClick={() =>
-                    void handleLinkView({
-                      databaseId: selectedLinkDatabaseId,
-                      databaseName,
-                      viewId: viewItem.id,
-                      viewIcon: getDatabaseViewIcon(viewItem.config),
-                      viewName: viewItem.name,
-                      viewType: viewItem.type,
-                    })
-                  }
-                >
-                  {viewItem.name}
-                </SetupOptionButton>
-              );
-            })
-          )}
+                return (
+                  <SetupOptionButton
+                    disabled={isSubmitting}
+                    icon={
+                      <span className="database-setup-option-icon">
+                        <ViewIcon className="size-4" />
+                      </span>
+                    }
+                    key={viewItem.id}
+                    onClick={() =>
+                      void handleLinkView({
+                        dataSourceId: viewItem.dataSourceId,
+                        dataSourceName: databaseName,
+                        parentDatabaseId: selectedLinkDatabaseId,
+                        viewConfig: viewItem.config,
+                        viewIcon: getDatabaseViewIcon(viewItem.config),
+                        viewId: viewItem.id,
+                        viewName: viewItem.name,
+                        viewType: viewItem.type,
+                      })
+                    }
+                  >
+                    {viewItem.name}
+                  </SetupOptionButton>
+                );
+              })
+            )}
+          </div>
         </div>
       );
     }
 
     return (
-      <div className="space-y-2 px-1 pb-1">
-        <SetupOptionButton
-          icon={<ChevronLeft className="size-4 text-muted-foreground" />}
-          onClick={() => {
-            setView("main");
-            setSelectedLinkDatabaseId(null);
-            setLinkSearch("");
-          }}
-        >
-          Back
-        </SetupOptionButton>
-        <div className="px-1">
+      <div className="flex max-h-[min(32rem,calc(100vh-5rem))] min-h-0 flex-col overflow-hidden px-1 pb-1">
+        <div className="shrink-0 space-y-2 bg-card">
+          <SetupOptionButton
+            icon={<ChevronLeft className="size-4 text-muted-foreground" />}
+            onClick={() => {
+              setView("main");
+              setSelectedLinkDatabaseId(null);
+              setCreatingLinkView(false);
+              setLinkViewName("");
+              setLinkSearch("");
+            }}
+          >
+            Back
+          </SetupOptionButton>
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -788,36 +955,41 @@ export function DatabaseSetupCard({
             />
           </div>
         </div>
-        {isLoadingPages ? (
-          <div className="flex items-center justify-center gap-2 px-2 py-8 text-muted-foreground text-sm">
-            <Loader2 className="size-4 animate-spin" />
-            Loading databases...
-          </div>
-        ) : filteredLinkableDatabases.length === 0 ? (
-          <div className="px-2 py-8 text-center text-muted-foreground text-sm">
-            No databases available.
-          </div>
-        ) : (
-          filteredLinkableDatabases.map(({ database, pageName }) => (
-            <SetupOptionButton
-              disabled={isSubmitting}
-              icon={
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-md border bg-subtle-surface text-muted-foreground">
-                  <Database className="size-4" />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-2">
+          {isLoadingPages ? (
+            <div className="flex items-center justify-center gap-2 px-2 py-8 text-muted-foreground text-sm">
+              <Loader2 className="size-4 animate-spin" />
+              Loading databases...
+            </div>
+          ) : filteredLinkableDatabases.length === 0 ? (
+            <div className="px-2 py-8 text-center text-muted-foreground text-sm">
+              No databases available.
+            </div>
+          ) : (
+            filteredLinkableDatabases.map(({ database, pageName }) => (
+              <SetupOptionButton
+                disabled={isSubmitting}
+                icon={
+                  getDatabaseIconNode(database) ?? (
+                    <PageIconDisplay
+                      size="sm"
+                      value={DEFAULT_DATABASE_ITEM_ICON}
+                    />
+                  )
+                }
+                key={database.id}
+                onClick={() => setSelectedLinkDatabaseId(database.id)}
+              >
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">{database.name}</span>
+                  <span className="truncate text-muted-foreground text-xs">
+                    {pageName}
+                  </span>
                 </span>
-              }
-              key={database.id}
-              onClick={() => setSelectedLinkDatabaseId(database.id)}
-            >
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate">{database.name}</span>
-                <span className="truncate text-muted-foreground text-xs">
-                  {pageName}
-                </span>
-              </span>
-            </SetupOptionButton>
-          ))
-        )}
+              </SetupOptionButton>
+            ))
+          )}
+        </div>
       </div>
     );
   };
@@ -825,6 +997,35 @@ export function DatabaseSetupCard({
   return (
     <div className="database-setup-overlay">
       <div className="database-setup-card">
+        <input
+          accept=".csv,text/csv"
+          className="sr-only"
+          onChange={(event) => {
+            const file = event.currentTarget.files?.[0];
+            event.currentTarget.value = "";
+            if (!file) return;
+
+            void file
+              .text()
+              .then((text) => {
+                const csv = parseCsv(text);
+                if (csv.headers.length === 0) {
+                  toast.error("The CSV file has no columns.");
+                  return;
+                }
+
+                const name =
+                  file.name.replace(/\.csv$/i, "").trim() || "Imported data";
+                void finishSetup({
+                  csvImport: { ...csv, name },
+                  databaseName: name,
+                });
+              })
+              .catch(() => toast.error("The CSV file could not be read."));
+          }}
+          ref={csvInputRef}
+          type="file"
+        />
         <Button
           aria-label="Close database setup"
           className="database-setup-close"

@@ -40,8 +40,8 @@ export function DocumentFavicon() {
     null
   const { data: page } = usePage(pageId, { refetchOnMount: false })
   const itemIcon = databaseId
-    ? databasePayload?.database
-      ? getDatabaseEmoji(databasePayload.database) ?? DEFAULT_DATABASE_ITEM_ICON
+    ? databasePayload?.activeDataSource
+      ? getDatabaseEmoji(databasePayload.activeDataSource) ?? DEFAULT_DATABASE_ITEM_ICON
       : DEFAULT_DATABASE_ITEM_ICON
     : meetingId
       ? (page ? getPageEmoji(page) : null) ?? DEFAULT_MEETING_ITEM_ICON

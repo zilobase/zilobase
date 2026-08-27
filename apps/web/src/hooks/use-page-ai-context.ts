@@ -21,7 +21,7 @@ import {
 } from "@zilobase/features/pages";
 import {
   buildContextMarkdown,
-  collectRequiredLinkedDatabaseIds,
+  collectRequiredDataSourceRefs,
   extractDatabaseIds,
   logPageContext,
   stripDatabasePayload,
@@ -93,13 +93,18 @@ async function resolveDatabaseContext(
   queryClient: ReturnType<typeof useQueryClient>,
   apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"],
   contextCache: Map<string, DatabaseContextPayload>,
+  dataSourceId?: string,
 ): Promise<DatabaseContextPayload | null> {
-  if (contextCache.has(databaseId)) {
-    return contextCache.get(databaseId) ?? null;
+  const cacheKey = dataSourceId
+    ? `${databaseId}:source:${dataSourceId}`
+    : databaseId;
+
+  if (contextCache.has(cacheKey)) {
+    return contextCache.get(cacheKey) ?? null;
   }
 
   const fullCached = queryClient.getQueryData<DatabasePayload | null>(
-    databaseQueryKey(databaseId),
+    databaseQueryKey(databaseId, dataSourceId ? { dataSourceId } : undefined),
   );
 
   if (
@@ -108,13 +113,17 @@ async function resolveDatabaseContext(
     Array.isArray(fullCached.values)
   ) {
     const contextPayload = stripDatabasePayload(fullCached);
-    contextCache.set(databaseId, contextPayload);
+    contextCache.set(cacheKey, contextPayload);
     return contextPayload;
   }
 
   try {
     const payload = await queryClient.fetchQuery(
-      databaseQueryOptions(apiFetch, databaseId),
+      databaseQueryOptions(
+        apiFetch,
+        databaseId,
+        dataSourceId ? { dataSourceId } : undefined,
+      ),
     );
 
     if (!payload) {
@@ -122,38 +131,39 @@ async function resolveDatabaseContext(
     }
 
     const contextPayload = stripDatabasePayload(payload);
-    contextCache.set(databaseId, contextPayload);
+    contextCache.set(cacheKey, contextPayload);
     return contextPayload;
   } catch {
     return null;
   }
 }
 
-async function resolveLinkedSchemas(
+async function resolveDataSourceSchemas(
   schema: DatabaseContextPayload,
   queryClient: ReturnType<typeof useQueryClient>,
   apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"],
   contextCache: Map<string, DatabaseContextPayload>,
 ) {
-  const linkedSourceSchemas: Record<string, DatabaseContextPayload> = {};
-  const requiredIds = collectRequiredLinkedDatabaseIds([schema]);
+  const dataSourceSchemas: Record<string, DatabaseContextPayload> = {};
+  const requiredSources = collectRequiredDataSourceRefs([schema]);
 
   await Promise.all(
-    requiredIds.map(async (databaseId) => {
+    requiredSources.map(async ({ dataSourceId, parentDatabaseId }) => {
       const linkedSchema = await resolveDatabaseContext(
-        databaseId,
+        parentDatabaseId,
         queryClient,
         apiFetch,
         contextCache,
+        dataSourceId,
       );
 
       if (linkedSchema) {
-        linkedSourceSchemas[databaseId] = linkedSchema;
+        dataSourceSchemas[dataSourceId] = linkedSchema;
       }
     }),
   );
 
-  return linkedSourceSchemas;
+  return dataSourceSchemas;
 }
 
 async function resolvePageDatabases(
@@ -179,7 +189,7 @@ async function resolvePageDatabases(
 
     databases.push({
       schema,
-      linkedSourceSchemas: await resolveLinkedSchemas(
+      dataSourceSchemas: await resolveDataSourceSchemas(
         schema,
         queryClient,
         apiFetch,
@@ -310,7 +320,7 @@ export function usePageAiContext({
             kind: "database",
             role: "primary",
             schema,
-            linkedSourceSchemas: await resolveLinkedSchemas(
+            dataSourceSchemas: await resolveDataSourceSchemas(
               schema,
               queryClient,
               apiFetch,
@@ -369,7 +379,7 @@ export function usePageAiContext({
           kind: "database",
           role: "attached",
           schema,
-          linkedSourceSchemas: await resolveLinkedSchemas(
+          dataSourceSchemas: await resolveDataSourceSchemas(
             schema,
             queryClient,
             apiFetch,

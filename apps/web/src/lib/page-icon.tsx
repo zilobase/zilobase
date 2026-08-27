@@ -107,8 +107,18 @@ export function getPageIconNode(
   )
 }
 
-export function getDatabaseIconNode(database: { config?: unknown }) {
-  const icon = getDatabaseEmoji(database)
+export function getDatabaseIconValue(database: {
+  config?: unknown
+  dataSourceConfig?: unknown
+}) {
+  return getDatabaseEmoji({ config: database.dataSourceConfig })
+}
+
+export function getDatabaseIconNode(database: {
+  config?: unknown
+  dataSourceConfig?: unknown
+}) {
+  const icon = getDatabaseIconValue(database)
 
   if (icon) {
     return <PageIconDisplay size="sm" value={icon} />

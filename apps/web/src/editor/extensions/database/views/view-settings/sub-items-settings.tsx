@@ -7,8 +7,8 @@ import {
   Rows3,
   Settings2,
   Trash2,
-} from "lucide-react"
-import { useEffect, useState } from "react"
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 import {
   DropDrawerItem,
@@ -17,66 +17,70 @@ import {
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
-} from "@/components/ui/dropdrawer"
+} from "@/components/ui/dropdrawer";
 
 import type {
   DatabaseSubItemsDisplay,
   DatabaseSubItemsFilter,
   DatabaseSubItemsProperty,
   DatabaseSubItemsSettings,
-} from "../database-view-config"
+} from "../database-view-config";
 
 const displayOptions: Array<{
-  label: string
-  value: DatabaseSubItemsDisplay
+  label: string;
+  value: DatabaseSubItemsDisplay;
 }> = [
   { label: "Nested in toggle", value: "nested" },
   { label: "Flattened list", value: "flattened" },
   { label: "Disabled", value: "disabled" },
-]
+];
 
 const filterOptions: Array<{
-  label: string
-  value: DatabaseSubItemsFilter
+  label: string;
+  value: DatabaseSubItemsFilter;
 }> = [
   { label: "Parents only", value: "parents-only" },
   { label: "Parents and sub-items", value: "parents-and-sub-items" },
   { label: "Sub-items only", value: "sub-items-only" },
-]
+];
 
 const propertyOptions: Array<{
-  label: string
-  value: DatabaseSubItemsProperty
+  label: string;
+  value: DatabaseSubItemsProperty;
 }> = [
   { label: "Sub-item", value: "sub-item" },
   { label: "Parent item", value: "parent-item" },
-]
+];
 
 export function SubItemsSettingsSection({
   onSettingsChange,
   settings,
 }: {
-  onSettingsChange: (settings: Partial<DatabaseSubItemsSettings>) => void
-  settings: DatabaseSubItemsSettings
+  onSettingsChange: (settings: Partial<DatabaseSubItemsSettings>) => void;
+  settings: DatabaseSubItemsSettings;
 }) {
-  const [draftSettings, setDraftSettings] = useState(settings)
+  const [draftSettings, setDraftSettings] = useState(settings);
 
   useEffect(() => {
-    setDraftSettings(settings)
-  }, [settings])
+    setDraftSettings(settings);
+  }, [settings]);
 
   const updateSettings = (patch: Partial<DatabaseSubItemsSettings>) => {
-    setDraftSettings((current) => ({ ...current, ...patch }))
-    onSettingsChange(patch)
-  }
+    setDraftSettings((current) => ({ ...current, ...patch }));
+    onSettingsChange(patch);
+  };
 
   return (
-    <DropDrawerSub id="database-sub-items-settings" title="Sub-items">
+    <DropDrawerSub
+      displayMode="inline"
+      id="database-sub-items-settings"
+      title="Sub-items"
+    >
       <DropDrawerSubTrigger>
         <ListTree />
         <span>Sub-items</span>
       </DropDrawerSubTrigger>
-      <DropDrawerSubContent className="w-80 overflow-hidden">
+      <DropDrawerSubContent className="w-72 overflow-hidden">
         {draftSettings.enabled ? (
           <EnabledSubItemsSettings
             onSettingsChange={updateSettings}
@@ -89,7 +93,7 @@ export function SubItemsSettingsSection({
         )}
       </DropDrawerSubContent>
     </DropDrawerSub>
-  )
+  );
 }
 
 function EnableSubItemsSettings({ onEnable }: { onEnable: () => void }) {
@@ -102,22 +106,22 @@ function EnableSubItemsSettings({ onEnable }: { onEnable: () => void }) {
       <DropDrawerItem
         className="justify-center bg-primary font-medium text-primary-foreground focus:bg-primary-subtle focus:text-primary-foreground"
         onSelect={(event) => {
-          event.preventDefault()
-          onEnable()
+          event.preventDefault();
+          onEnable();
         }}
       >
         Turn on sub-items
       </DropDrawerItem>
     </div>
-  )
+  );
 }
 
 function EnabledSubItemsSettings({
   onSettingsChange,
   settings,
 }: {
-  onSettingsChange: (settings: Partial<DatabaseSubItemsSettings>) => void
-  settings: DatabaseSubItemsSettings
+  onSettingsChange: (settings: Partial<DatabaseSubItemsSettings>) => void;
+  settings: DatabaseSubItemsSettings;
 }) {
   return (
     <>
@@ -146,10 +150,7 @@ function EnabledSubItemsSettings({
         {getFilterDescription(settings.filter)}
       </p>
       <DropDrawerSeparator />
-      <DropDrawerSub
-        id="database-sub-items-advanced"
-        title="Advanced settings"
-      >
+      <DropDrawerSub id="database-sub-items-advanced" title="Advanced settings">
         <DropDrawerSubTrigger>
           <Settings2 />
           <span>Advanced settings</span>
@@ -180,7 +181,7 @@ function EnabledSubItemsSettings({
         <span>Turn off sub-items</span>
       </DropDrawerItem>
     </>
-  )
+  );
 }
 
 function SettingsSelect<Value extends string>({
@@ -191,12 +192,12 @@ function SettingsSelect<Value extends string>({
   options,
   selected,
 }: {
-  id: string
-  icon: React.ReactNode
-  label: string
-  onSelect: (value: Value) => void
-  options: Array<{ label: string; value: Value }>
-  selected: Value
+  id: string;
+  icon: React.ReactNode;
+  label: string;
+  onSelect: (value: Value) => void;
+  options: Array<{ label: string; value: Value }>;
+  selected: Value;
 }) {
   return (
     <DropDrawerSub id={id} title={label}>
@@ -206,14 +207,17 @@ function SettingsSelect<Value extends string>({
       </DropDrawerSubTrigger>
       <DropDrawerSubContent>
         {options.map((option) => (
-          <DropDrawerItem key={option.value} onSelect={() => onSelect(option.value)}>
+          <DropDrawerItem
+            key={option.value}
+            onSelect={() => onSelect(option.value)}
+          >
             <span>{option.label}</span>
             {selected === option.value ? <Check className="ml-auto" /> : null}
           </DropDrawerItem>
         ))}
       </DropDrawerSubContent>
     </DropDrawerSub>
-  )
+  );
 }
 
 function SubItemsPreview() {
@@ -234,24 +238,24 @@ function SubItemsPreview() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function getOptionLabel<Value extends string>(
   options: Array<{ label: string; value: Value }>,
   value: Value,
 ) {
-  return options.find((option) => option.value === value)?.label ?? value
+  return options.find((option) => option.value === value)?.label ?? value;
 }
 
 function getFilterDescription(filter: DatabaseSubItemsFilter) {
   if (filter === "parents-and-sub-items") {
-    return "Filters are applied to parents and sub-items. Matching rows keep their parent context."
+    return "Filters are applied to parents and sub-items. Matching rows keep their parent context.";
   }
 
   if (filter === "sub-items-only") {
-    return "Filters are applied to sub-items. Parent rows remain visible as context."
+    return "Filters are applied to sub-items. Parent rows remain visible as context.";
   }
 
-  return "Filters are applied to parent rows. Their sub-items stay nested underneath."
+  return "Filters are applied to parent rows. Their sub-items stay nested underneath.";
 }

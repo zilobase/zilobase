@@ -424,7 +424,7 @@ export default function RecentsPage({
                   addDraggedPageRow: () => {},
                   addKanbanView: () => {},
                   addListView: () => {},
-                  addLinkedDatabaseView: () => {},
+                  linkDataSourceView: () => {},
                   addTableView: () => {},
                   addTimelineRow: () => {},
                   addTimelineView: () => {},
@@ -462,7 +462,6 @@ export default function RecentsPage({
                   isAddingDatabaseRow: false,
                   isAddingDatabaseView: false,
                   isFetchingNextPage: false,
-                  linkedDatabaseViews: [],
                   onOpenPage: openHomepagePage,
                   onShowTitleChange: undefined,
                   options: viewModel.kanbanOptions,
@@ -523,8 +522,10 @@ export default function RecentsPage({
                     ),
                   updateNameColumnConfig,
                   viewTabs: homepageViews.map((view) => ({
+                    dataSourceId: payload.activeDataSource!.id,
                     id: view.id,
                     name: view.label,
+                    sourceParentDatabaseId: payload.database.id,
                     type: "table",
                   })),
                   views: payload.views,
@@ -634,6 +635,7 @@ function buildHomepagePayload({
   viewConfigs: Record<string, unknown>;
 }): DatabasePayload {
   const homepageDatabaseId = mode === "trash" ? "trash" : "homepage";
+  const homepageDataSourceId = `${homepageDatabaseId}:source`;
   const propertyDefinitions =
     mode === "trash"
       ? [...homepagePropertyDefinitions, ...trashPropertyDefinitions]
@@ -656,7 +658,7 @@ function buildHomepagePayload({
 
       return {
         createdAt: "",
-        databaseId: homepageDatabaseId,
+        dataSourceId: homepageDataSourceId,
         id: definition.id,
         position: index,
         property: {
@@ -687,6 +689,30 @@ function buildHomepagePayload({
   );
 
   return {
+    activeDataSource: {
+      config: databaseConfig,
+      configVersion: 1,
+      createdAt: "",
+      id: homepageDataSourceId,
+      name: mode === "trash" ? "Trash" : "Recents",
+      parentDatabaseId: homepageDatabaseId,
+      updatedAt: "",
+      version: 0,
+      workspaceId: workspaceId ?? homepageDatabaseId,
+    },
+    dataSources: [
+      {
+        config: databaseConfig,
+        configVersion: 1,
+        createdAt: "",
+        id: homepageDataSourceId,
+        name: mode === "trash" ? "Trash" : "Recents",
+        parentDatabaseId: homepageDatabaseId,
+        updatedAt: "",
+        version: 0,
+        workspaceId: workspaceId ?? homepageDatabaseId,
+      },
+    ],
     database: {
       config: databaseConfig,
       createdAt: "",
@@ -700,7 +726,7 @@ function buildHomepagePayload({
     properties,
     rows: filteredRows.map((row, index) => ({
       createdAt: row.createdAt,
-      databaseId: homepageDatabaseId,
+      dataSourceId: homepageDataSourceId,
       id: row.id,
       page: {
         createdAt: row.createdAt,
@@ -722,6 +748,7 @@ function buildHomepagePayload({
         config: viewConfigs[view.id],
         createdAt: "",
         databaseId: homepageDatabaseId,
+        dataSourceId: homepageDataSourceId,
         id: view.id,
         name: view.label,
         position: index,
@@ -803,7 +830,9 @@ function buildHomepageRows(
     ...databases
       .filter(({ database, page }) => includeDatabase(database, page))
       .map(({ database, page }) => {
-        const databaseEmoji = getDatabaseEmoji(database);
+        const databaseEmoji = getDatabaseEmoji({
+          config: database.dataSourceConfig,
+        });
         const sourcePage = parentKeys.has(`database:${database.id}`)
           ? null
           : (resolveSourcePage(
@@ -890,7 +919,7 @@ function getPageSourcePage(page: Page): HomepageSourcePage {
 }
 
 function getDatabaseSourcePage(database: PageDatabase): HomepageSourcePage {
-  const emoji = getDatabaseEmoji(database);
+  const emoji = getDatabaseEmoji({ config: database.dataSourceConfig });
 
   return {
     iconKind: "database",

@@ -83,6 +83,7 @@ import {
 } from "@/pages/tasks-model"
 
 const TASKS_DATABASE_ID = "my-tasks"
+const TASKS_DATA_SOURCE_ID = "my-tasks:source"
 const TASKS_VIEW_ID = "my-tasks-list"
 const STATUS_COLUMN_ID = "my-tasks-status-column"
 const STATUS_PROPERTY_ID = "my-tasks-status"
@@ -473,7 +474,7 @@ function TasksDatabaseView({
         addFormView: () => {},
         addGalleryView: () => {},
         addKanbanView: () => {},
-        addLinkedDatabaseView: () => {},
+        linkDataSourceView: () => {},
         addListView: () => {},
         addTableView: () => {},
         addTimelineRow: () => {},
@@ -515,13 +516,23 @@ function TasksDatabaseView({
           setSortPickerOpen(false)
           setShowSortPill(true)
         },
-        dataSources: payloads.map((source) => ({
-          id: source.database.id,
-          name: source.database.name || "Untitled database",
-          viewCount: source.views.length,
-        })),
-        databaseConfig: payload.database.config,
-        databaseId: payloads.length > 0 ? TASKS_DATABASE_ID : null,
+        dataSources: payloads.flatMap((source) =>
+          source.activeDataSource
+            ? [
+                {
+                  config: source.activeDataSource.config,
+                  id: source.activeDataSource.id,
+                  name: source.activeDataSource.name || "Untitled data source",
+                  parentDatabaseId: source.activeDataSource.parentDatabaseId,
+                  viewCount: source.views.filter(
+                    (view) => view.dataSourceId === source.activeDataSource!.id,
+                  ).length,
+                },
+              ]
+            : [],
+        ),
+        databaseConfig: payload.activeDataSource?.config,
+        databaseId: payloads.length > 0 ? TASKS_DATA_SOURCE_ID : null,
         databaseName: "My Tasks",
         databaseWorkspaceId: workspaceId ?? undefined,
         deleteDatabaseView: () => {},
@@ -547,7 +558,6 @@ function TasksDatabaseView({
         isFetchingNextPage: false,
         isRowComplete: (row) =>
           rowsBySyntheticId.get(row.id)?.isCompleted ?? false,
-        linkedDatabaseViews: [],
         newRowLabel: "New task",
         onOpenPage: (pageId) => {
           if (pageId.startsWith("task-source:")) {
@@ -688,7 +698,15 @@ function TasksDatabaseView({
           setDatabaseConfig((current: unknown) =>
             getMergedNameColumnConfig(current, config)
           ),
-        viewTabs: [{ id: TASKS_VIEW_ID, name: "My Tasks", type: "list" }],
+        viewTabs: [
+          {
+            dataSourceId: TASKS_DATA_SOURCE_ID,
+            id: TASKS_VIEW_ID,
+            name: "My Tasks",
+            sourceParentDatabaseId: TASKS_DATABASE_ID,
+            type: "list",
+          },
+        ],
         views: payload.views,
         workspaceId,
       }}
@@ -745,17 +763,18 @@ function buildTasksPayload({
     ).values()
   )
   const sourceSummaries = Object.fromEntries(
-    sourcePayloads.map((source) => [
-      `task-source:${source.database.id}`,
-      {
-        iconKind: "database",
-        id: `task-source:${source.database.id}`,
-        metadata: getDatabaseEmoji(source.database)
-          ? { emoji: getDatabaseEmoji(source.database) }
-          : null,
-        name: source.database.name || "Untitled database",
-      },
-    ])
+    sourcePayloads.map((source) => {
+      const emoji = getDatabaseEmoji({ config: source.database.dataSourceConfig })
+      return [
+        `task-source:${source.database.id}`,
+        {
+          iconKind: "database",
+          id: `task-source:${source.database.id}`,
+          metadata: emoji ? { emoji } : null,
+          name: source.database.name || "Untitled database",
+        },
+      ]
+    })
   )
   const propertyDefinitions = [
     {
@@ -797,7 +816,7 @@ function buildTasksPayload({
   const properties: DatabaseProperty[] = propertyDefinitions.map(
     (definition, position) => ({
       createdAt: "",
-      databaseId: TASKS_DATABASE_ID,
+      dataSourceId: TASKS_DATA_SOURCE_ID,
       id: definition.databasePropertyId,
       position,
       property: {
@@ -831,6 +850,7 @@ function buildTasksPayload({
       config: viewConfig,
       createdAt: "",
       databaseId: TASKS_DATABASE_ID,
+      dataSourceId: TASKS_DATA_SOURCE_ID,
       id: TASKS_VIEW_ID,
       name: "My Tasks",
       position: 0,
@@ -840,6 +860,30 @@ function buildTasksPayload({
   ]
 
   return {
+    activeDataSource: {
+      config: databaseConfig,
+      configVersion: 1,
+      createdAt: "",
+      id: TASKS_DATA_SOURCE_ID,
+      name: "My Tasks",
+      parentDatabaseId: TASKS_DATABASE_ID,
+      updatedAt: "",
+      version: 0,
+      workspaceId: workspaceId ?? TASKS_DATABASE_ID,
+    },
+    dataSources: [
+      {
+        config: databaseConfig,
+        configVersion: 1,
+        createdAt: "",
+        id: TASKS_DATA_SOURCE_ID,
+        name: "My Tasks",
+        parentDatabaseId: TASKS_DATABASE_ID,
+        updatedAt: "",
+        version: 0,
+        workspaceId: workspaceId ?? TASKS_DATABASE_ID,
+      },
+    ],
     database: {
       config: databaseConfig,
       createdAt: "",
@@ -853,7 +897,7 @@ function buildTasksPayload({
     properties,
     rows: rows.map((row, position) => ({
       createdAt: row.createdAt,
-      databaseId: TASKS_DATABASE_ID,
+      dataSourceId: TASKS_DATA_SOURCE_ID,
       id: getSyntheticRowId(row),
       page: {
         createdAt: row.createdAt,
@@ -1076,14 +1120,14 @@ async function createTaskDatabase({
 }) {
   if (!workspaceId) throw new Error("Choose a workspace first.")
 
-  if (selection.linkedView) {
-    if (selectedDatabaseIds.includes(selection.linkedView.databaseId)) {
+  if (selection.sourceView) {
+    if (selectedDatabaseIds.includes(selection.sourceView.parentDatabaseId)) {
       toast.message("That data source is already connected.")
       return
     }
 
     await saveTaskDatabaseIds(
-      [...selectedDatabaseIds, selection.linkedView.databaseId].slice(0, 10)
+      [...selectedDatabaseIds, selection.sourceView.parentDatabaseId].slice(0, 10)
     )
     toast.success("Data source linked.")
     return

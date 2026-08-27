@@ -175,7 +175,7 @@ function NumberFormatSettingSubmenu({
     numberFormatOptions[0];
 
   return (
-    <DropDrawerSub>
+    <DropDrawerSub title="Number format">
       <DropDrawerSubTrigger>
         <Hash />
         <span className="flex-1">Number format</span>

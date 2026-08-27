@@ -31,7 +31,7 @@ export function PropertySettingSubmenu<TValue extends string | number>({
     options.find((option) => option.value === selectedValue) ?? options[0];
 
   return (
-    <DropDrawerSub>
+    <DropDrawerSub title={label}>
       <DropDrawerSubTrigger>
         {icon}
         <span className="flex-1">{label}</span>

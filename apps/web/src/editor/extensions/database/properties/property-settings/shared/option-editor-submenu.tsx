@@ -42,7 +42,7 @@ export function OptionEditorSubmenu({
 }) {
   const dragControls = useDragControls();
   const content = (
-    <DropDrawerSub>
+    <DropDrawerSub title={option.name}>
       <DropDrawerSubTrigger>
         <span
           aria-label={`Drag ${option.name} option`}
