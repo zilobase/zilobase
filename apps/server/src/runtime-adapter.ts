@@ -1,7 +1,6 @@
 import { getRequiredStringEnv, getStringEnv, type RuntimeEnv } from "./config";
 import type { ImageStorage } from "./image-storage";
 import type { DatabaseRealtimeMutationEvent } from "./services/database-delta";
-import type { ToolSet } from "ai";
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { MeetingLifecycleAction, MeetingStatus } from "./features/meetings/meeting-types";
 import type { MeetingAudioSource } from "./features/meetings/meeting-audio-ticket";
@@ -15,12 +14,6 @@ export type OutboundEmailMessage = {
 };
 
 export type ServerRuntimeAdapter = {
-  buildConnectorTools?(input: {
-    env: RuntimeEnv;
-    sources: readonly string[];
-    userId: string;
-    workspaceId: string;
-  }): ToolSet;
   applyPageContentUpdate?(input: {
     content: unknown;
     env: RuntimeEnv;

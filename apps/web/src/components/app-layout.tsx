@@ -74,7 +74,6 @@ import {
 } from "@/contexts/page-layout-sidebar"
 import { Button } from "@/components/ui/button"
 import ApiKeysSettingsPage from "@/pages/settings/api-keys"
-import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import PreferencesSettingsPage from "@/pages/settings/preferences"
 import ProfileSettingsPage from "@/pages/settings/profile"
 import TeamSettingsPage from "@/pages/settings/team"
@@ -606,8 +605,6 @@ function SettingsSectionContent({ section }: { section: SettingsSection }) {
       return <PreferencesSettingsPage />
     case "workspace":
       return <WorkspaceSettingsPage />
-    case "integrations":
-      return <IntegrationsSettingsPage />
     case "zilobase-ai":
       return <ZilobaseAiSettingsPage />
     case "api-keys":

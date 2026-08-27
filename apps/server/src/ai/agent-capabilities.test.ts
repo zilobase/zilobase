@@ -20,6 +20,8 @@ test("agent capability policy keeps direct edits behind item-level checks", () =
     ["updateWorkspacePage"],
   );
   assert.equal(policy.hasCapability("page.comments.mutate"), false);
+  assert.equal(policy.hasCapability("connected-apps.read"), false);
+  assert.equal(policy.hasCapability("connected-apps.mutate"), false);
 });
 
 test("agent capability instruction carries explicit negative capabilities", () => {
@@ -30,4 +32,5 @@ test("agent capability instruction carries explicit negative capabilities", () =
   assert.match(instruction, /Do not create, edit, resolve, delete, or react/);
   assert.match(instruction, /Do not share content/);
   assert.match(instruction, /Page revision history is not retained/);
+  assert.match(instruction, /native provider adapters/);
 });

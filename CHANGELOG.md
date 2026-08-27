@@ -18,6 +18,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - Interactive controls, drag surfaces, sliders, scroll thumbs, and resize handles now use consistent cursors across the web and desktop apps.
 - Ask AI now resolves page view and edit permissions on the server and applies explicit negative-capability policy before exposing tools to a model.
 - Ask AI exposes only supported database property and view types; formula, rollup, button, and unavailable map-view creation remain excluded.
+- Removed the brokered connector SDK, settings surface, source picker, and connector-only AI endpoint; external connected-app capabilities now remain explicitly unavailable until native provider adapters exist.
 
 ### Fixed
 

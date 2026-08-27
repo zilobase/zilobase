@@ -54,6 +54,20 @@ const alwaysAvailableCapabilities: AgentCapability[] = [
 
 const unavailableCapabilities: AgentCapability[] = [
   {
+    id: "connected-apps.read",
+    status: "unavailable",
+    summary:
+      "External connected-app reads are unavailable until native provider adapters are implemented and configured.",
+    toolNames: [],
+  },
+  {
+    id: "connected-apps.mutate",
+    status: "unavailable",
+    summary:
+      "External connected-app actions are unavailable until native provider adapters and confirmation receipts are implemented.",
+    toolNames: [],
+  },
+  {
     id: "page.revisions.read",
     status: "unavailable",
     summary: "Page revision history is not retained by this installation.",

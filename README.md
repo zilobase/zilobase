@@ -27,14 +27,13 @@
 
 ---
 
-Zilobase is an open-source workspace for building and organizing knowledge with structured pages, database views, comments, AI-assisted workflows, and connected tools. It is designed to run as a hosted product or as a self-hosted Docker deployment.
+Zilobase is an open-source workspace for building and organizing knowledge with structured pages, database views, comments, and AI-assisted workflows. It is designed to run as a hosted product or as a self-hosted Docker deployment.
 
 ## What You Can Do
 
 - **Write and organize pages** with a rich editor, nested navigation, comments, and workspace context.
 - **Model structured information** with standalone or embedded databases, table views, kanban views, timeline views, properties, filters, sorting, and grouping.
 - **Work with AI in context** using page-aware chat, workspace tools, and supported page/database edit flows.
-- **Connect external systems** through the server-side Toolkit SDK for GitHub, Gmail, Google Calendar, Google Drive, Linear, and Slack.
 - **Run it yourself** with Docker Compose, Caddy, Postgres, and MinIO.
 
 ## Quick Start

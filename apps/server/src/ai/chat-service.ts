@@ -9,7 +9,6 @@ import {
 } from "ai";
 import { canAccessPageInWorkspace, getMembership } from "../access";
 import type { AppBindings } from "../types";
-import { getRuntimeAdapter } from "../runtime-adapter";
 import {
   buildDatabaseConfigInstruction,
   buildDatabaseConfigTools,
@@ -23,10 +22,6 @@ import {
   resolveAgentCapabilityPolicy,
 } from "./agent-capabilities";
 import {
-  buildToolkitTools,
-  isToolkitConfigured,
-} from "../integrations/toolkit";
-import {
   getAiChatThreadForUser,
   maybeAutoTitleAiChatThread,
   syncAiChatThreadMessages,
@@ -35,14 +30,6 @@ import {
 import { resolveAiFileContext, withoutAiFileParts } from "./ai-file-context";
 import { buildArtifactTools } from "./ask-ai-artifact-tools";
 import { buildAnalysisTools } from "./ask-ai-analysis-tools";
-
-export type SourceId =
-  | "gmail"
-  | "github"
-  | "google-calendar"
-  | "google-drive"
-  | "slack"
-  | "linear";
 
 export type AiChatRequestBody = {
   attachmentIds: string[];
@@ -53,27 +40,15 @@ export type AiChatRequestBody = {
   primaryPageId: string | null;
   threadId: string | null;
   userId: string | null;
-  sources: SourceId[];
   pageContext: string | null;
 };
 
 const MAX_WORKSPACE_CONTEXT_CHARS = 32_000;
 
-const REQUESTABLE_SOURCES: SourceId[] = [
-  "gmail",
-  "github",
-  "google-calendar",
-  "google-drive",
-  "slack",
-  "linear",
-];
-
 const SYSTEM_PROMPT =
   "You are Zilobase's workspace agent. Complete bounded multi-step research and supported actions using tools, and clearly report partial failures. When Zilobase page context is provided, treat it as the authoritative source for questions about the current page, attached pages, embedded databases, properties, and rows shown in that context. Use searchWorkspace for workspace-wide discovery, readWorkspacePage for a page's stored body, readPageComments only when comments matter, and queryWorkspaceDatabase for current structured rows and properties. Use citation URLs returned by tools when attributing workspace facts."
-  + " Use Gmail tools when the user asks about email, inbox, people, timelines, project updates, decisions, blockers, or messages from email. Use GitHub tools when the user asks about repositories, issues, pull requests, commits, files, code, releases, bugs, reviews, or work tracked in GitHub. Use Google Calendar tools when the user asks about meetings, schedules, events, availability, free/busy windows, calendars, attendees, or time-based planning. Use Google Drive tools when the user asks about Drive files, Docs, Sheets, Slides, documents, folders, file owners, recently changed files, or content stored in Google Drive. Use Slack tools for workspace Slack context only: channels, private channels the Zilobase app can access, threads, canvases, files, project chatter, decisions, blockers, and page messages. Use Linear tools when the user asks about issues, tickets, bugs, tasks, projects, teams, cycles, status, assignees, priorities, blockers, scope, delivery progress, or roadmap work tracked in Linear."
-  + " The connected Gmail, GitHub, Google Calendar, Google Drive, Slack, and Linear tools are read-only. Never claim you sent, modified, archived, labeled, deleted, drafted, posted, updated, assigned, commented on, scheduled, canceled, merged, closed, reopened, reviewed, uploaded, moved, shared, or marked any connected external item."
   + " Zilobase database and page configuration tools may create and update Zilobase pages, databases, properties, rows, views, and embeds when the user asks."
-  + " Prefer concise answers with dates, participants, links, and message subjects when useful. If available integration results are insufficient, say what is missing and suggest a narrower query.";
+  + " Prefer concise answers with dates, participants, links, and page titles when useful. External connected-app access is unavailable in this build; do not imply that email, calendar, chat, source-control, or cloud-drive content was searched or changed.";
 
 export async function runAiChatTurn(input: {
   abortSignal?: AbortSignal;
@@ -157,21 +132,6 @@ export async function runAiChatTurn(input: {
   const capabilityPolicy = resolveAgentCapabilityPolicy({
     canEditAttachedPages: hasPageEditAccess,
   });
-  const connectorTools = isToolkitConfigured(input.env)
-    ? await buildToolkitTools({
-        env: input.env,
-        signal: input.abortSignal,
-        sources: requestBody.sources,
-        userId: auth.userId,
-        workspaceId,
-      })
-    : getRuntimeAdapter().buildConnectorTools?.({
-        env: input.env,
-        sources: requestBody.sources,
-        userId: auth.userId,
-        workspaceId,
-      }) ?? {};
-
   if (hasPageContext) {
     console.warn(
       `AI chat page access: clientCanEdit=${requestBody.canEditPages} readableIds=${readablePageIds.join(",") || "(none)"} editableIds=${editablePageIds.join(",") || "(none)"} primaryEditableId=${primaryEditablePageId ?? "(none)"}`,
@@ -217,7 +177,6 @@ export async function runAiChatTurn(input: {
           ...buildPageEditTools(editablePageIds),
         }
       : {}),
-    ...connectorTools,
   };
 
   const model = resolveOpenAiChatModel(input.env.OPENAI_API_KEY, requestBody.model);
@@ -255,11 +214,6 @@ export async function runAiChatTurn(input: {
       primaryPageId: primaryEditablePageId,
     }),
   ].join("");
-  const sourceInstruction = buildSourceInstruction({
-    hasConnectorTools: Object.keys(connectorTools).length > 0,
-    hasPageContext,
-    sources: requestBody.sources,
-  });
   const policyInstruction = buildAgentPolicyInstruction(capabilityPolicy);
 
   const result = streamText({
@@ -270,7 +224,7 @@ export async function runAiChatTurn(input: {
     stopWhen: stepCountIs(15),
     tools: hasTools ? tools : undefined,
     temperature: 0.2,
-    system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction}${fileContext.instruction}\n${policyInstruction}\n${sourceInstruction}`,
+    system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction}${fileContext.instruction}\n${policyInstruction}`,
     onError: ({ error }) => {
       console.warn(`AI chat ${auth.userId}: ${toProviderErrorMessage(error)}`);
     },
@@ -307,7 +261,6 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
       workspaceId: null,
       threadId: null,
       userId: null,
-      sources: [],
       pageContext: null,
     };
   }
@@ -322,15 +275,6 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
     typeof raw.threadId === "string" ? raw.threadId.trim() : "";
   const rawUserId =
     typeof raw.userId === "string" ? raw.userId.trim() : "";
-  const sources = Array.isArray(raw.sources)
-    ? raw.sources
-        .filter((source): source is string => typeof source === "string")
-        .map((source) => source.trim())
-        .filter((source): source is SourceId =>
-          REQUESTABLE_SOURCES.includes(source as SourceId),
-        )
-    : [];
-
   const pageContextMeta = readPageContextMeta(raw);
 
   return {
@@ -342,7 +286,6 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
     workspaceId: rawWorkspaceId.length > 0 ? rawWorkspaceId : null,
     threadId: rawThreadId.length > 0 ? rawThreadId : null,
     userId: rawUserId.length > 0 ? rawUserId : null,
-    sources,
     pageContext: readPageContext(raw),
   };
 }
@@ -395,24 +338,6 @@ function buildPageContextInstruction(pageContext: string | null) {
     "",
     pageContext,
   ].join("\n");
-}
-
-function buildSourceInstruction(input: {
-  hasConnectorTools: boolean;
-  hasPageContext: boolean;
-  sources: SourceId[];
-}) {
-  if (input.hasConnectorTools) {
-    return input.sources.length > 0
-      ? `Only use these selected sources for this request: ${input.sources.join(", ")}.`
-      : "Use all connected integration sources when the user asks about external tools.";
-  }
-
-  if (input.hasPageContext) {
-    return "No external integration sources are connected. Answer page questions from the Zilobase page context above.";
-  }
-
-  return "No external integration sources are connected. Use the permission-scoped Zilobase workspace tools for workspace questions, and answer general questions from general knowledge.";
 }
 
 async function resolveReferencedPageAccess(input: {

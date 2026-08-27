@@ -23,7 +23,6 @@ import { libraryViewIds } from "@zilobase/features/user-settings"
 import { pageQueryOptions, pagesQueryOptions } from "@zilobase/features/pages"
 import DatabasePage from "@/pages/database"
 import MeetingPage from "@/pages/meeting"
-import IntegrationsSettingsPage from "@/pages/settings/integrations"
 import PreferencesSettingsPage from "@/pages/settings/preferences"
 import ConnectPage from "@/pages/connect"
 import LoginPage from "@/pages/login"
@@ -359,12 +358,6 @@ const workspaceSettingsRoute = createRoute({
   component: WorkspaceSettingsPage,
 })
 
-const integrationsSettingsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/settings/integrations",
-  component: IntegrationsSettingsPage,
-})
-
 const apiKeysSettingsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/settings/api-keys",
@@ -431,7 +424,6 @@ const routeTree = rootRoute.addChildren([
     preferencesSettingsRoute,
     profileSettingsRoute,
     workspaceSettingsRoute,
-    integrationsSettingsRoute,
     apiKeysSettingsRoute,
     zilobaseAiSettingsRoute,
     teamSettingsRoute,

@@ -1,7 +1,6 @@
 import {
   Building2Icon,
   KeyRoundIcon,
-  PlugIcon,
   SlidersHorizontalIcon,
   SparklesIcon,
   UserIcon,
@@ -32,7 +31,6 @@ export type CoreSettingsSection =
   | "profile"
   | "preferences"
   | "workspace"
-  | "integrations"
   | "zilobase-ai"
   | "api-keys"
   | "team"
@@ -51,7 +49,6 @@ const settingsItems: Array<{
     icon: SlidersHorizontalIcon,
   },
   { title: "Workspace", section: "workspace", icon: Building2Icon },
-  { title: "Integrations", section: "integrations", icon: PlugIcon },
   { title: "Zilobase AI", section: "zilobase-ai", icon: SparklesIcon },
   { title: "API Keys", section: "api-keys", icon: KeyRoundIcon },
   { title: "Team", section: "team", icon: UsersIcon },

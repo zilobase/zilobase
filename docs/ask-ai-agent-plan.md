@@ -95,7 +95,7 @@ checks, not only by the system prompt.
 | Native reads | Page context is serialized client-side | Server-side permission-scoped page/database search and reads |
 | Page actions | Suggested page patch/full edits with client review | Server-created page body, newly-created page continuation, action receipts |
 | Database actions | Create page/database/property/view/row, update property/view/data source, set cells, embed/link | Query tool, relations, supported map/form views, richer bulk operations |
-| Connected apps | Gmail, GitHub, Calendar, Drive, Slack, Linear read tools through Toolkit/adapters | Capability negotiation, write tools, confirmation receipts |
+| Connected apps | No brokered connector dependency or configured native provider adapters | Native per-provider adapters, capability negotiation, and confirmation receipts |
 | Files | Generic prompt-input attachment component exists | Chat wiring, upload/scan/extract lifecycle, artifact storage/download |
 | Presentation | Full page and page sidebar chat | Floating mode, interactive tables, action approvals |
 | Personalization | Skill pages can be attached | Persistent instructions, preferred sources, default behavior |
@@ -269,26 +269,27 @@ copy, row navigation, and CSV export. Receipted artifacts support CSV, XLSX,
 DOCX, PPTX, PDF, Markdown, JSON, and ZIP, are checksum-addressed in owned object
 storage, and expire after seven days.
 
-### Pass 4 — connected-app actions and approvals
+### Pass 4 — connected-app boundary and broker removal (complete)
 
-- Extend runtime adapter descriptors with per-operation read/write capability.
-- Add supported Gmail mutation tools and Calendar scheduling/mutation tools.
-- Add supported Slack post/reply/edit-own-message/reaction tools.
-- Use the confirmation protocol for every consequential external write.
-- Enforce organizer/ownership/provider restrictions and mobile gates.
-- Keep GitHub, Drive, Linear, or other providers read-only unless their adapter
-  explicitly advertises a reviewed write operation.
+- Remove the brokered connector SDK, configuration, routes, settings UI, source
+  picker, tool metadata dependency, and legacy connector-only endpoint.
+- Keep external reads and writes out of the model-visible tool set.
+- Registry-gate connected-app reads and mutations as unavailable until native,
+  per-provider adapters exist.
+- Preserve the confirmation, idempotency, ownership, organizer, and mobile rules
+  below as requirements for a future native-adapter pass.
 
-Acceptance: approved actions execute exactly once with a receipt; rejection,
-expiry, payload mismatch, missing provider capability, and organizer violations
-execute nothing.
+Acceptance: production bundles and dependency manifests contain no brokered
+connector client; Ask AI exposes no external source selector or external tools,
+and the capability policy explicitly prevents claims of external reads/writes.
 
 ### Pass 5 — teammate experience
 
-- Add persistent per-user instructions and preferred sources.
+- Add persistent per-user instructions and workspace behavior preferences.
 - Promote skill pages into reusable named skill attachments with a clear active
   state; instructions never expand permissions.
-- Add page/person mentions and an All sources selector with availability states.
+- Add page/person mentions; external source selection remains unavailable until
+  native providers exist.
 - Add pin/unpin, history search, and response thumbs up/down with optional reason.
 - Add floating chat on web/desktop while retaining full-page and sidebar modes.
 - Add suggested context-aware actions and model capability labels/Auto mode.
@@ -337,17 +338,17 @@ is clean after the final commit.
 | Current/selected/attached context | Existing page/database attachments; selected blocks and people in Pass 5 |
 | Workspace and database Q&A | Pass 1 |
 | Comments and revision search | Read-only in Pass 1; no comment mutations |
-| Connected-app research | Existing connector reads; normalize/cite in Pass 1 |
-| Slack actions | Pass 4 with capability check and confirmation |
-| General MCP/connector servers | Passes 4–5; desktop/web setup only, never agent-managed |
+| Connected-app research | Unavailable after Pass 4; requires native provider adapters |
+| Slack actions | Unavailable; requires a native adapter and confirmation receipts |
+| General MCP/connector servers | Not exposed to the agent; setup is never agent-managed |
 | Create/edit pages | Existing partial support; complete in Pass 2 |
 | Create/edit databases/views/properties/relations | Existing partial support; complete supported domain in Pass 2 |
 | Interactive chat tables | Pass 3 complete |
 | File ingestion and Q&A | Pass 3 complete |
 | Calculations and downloadable files | Pass 3 complete |
 | Inbox management | Unavailable until Zilobase Inbox exists; registry-gated |
-| Gmail actions | Pass 4 with confirmation |
-| Calendar scheduling | Pass 4 with organizer/mobile enforcement |
+| Gmail actions | Unavailable; requires a native adapter and confirmation receipts |
+| Calendar scheduling | Unavailable; requires a native adapter plus organizer/mobile enforcement |
 | Existing formula evaluation | Passes 1–2; no formula-property creation |
 | Instructions and skills | Existing skill-page context; persistent experience in Pass 5 |
 | Sidebar/floating/full-page modes | Existing sidebar/full page; floating in Pass 5 |

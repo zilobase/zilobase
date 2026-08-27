@@ -1,12 +1,4 @@
-import {
-  convertToModelMessages,
-  smoothStream,
-  stepCountIs,
-  streamText,
-  type ModelMessage,
-  type ToolSet,
-  type UIMessage,
-} from "ai";
+import { smoothStream, streamText, type UIMessage } from "ai";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import * as z from "zod";
@@ -14,41 +6,12 @@ import * as z from "zod";
 import { AiProviderConfigError, resolveWorkspaceAiModel } from "../../ai/ai-provider";
 import { canAccessPage, getMembership, getPageRecord } from "../../access";
 import { db, runWithDbEnv } from "../../db";
-import { getRuntimeAdapter } from "../../runtime-adapter";
 import type { AppBindings } from "../../types";
 import {
   coerceAiChatRequestBody,
   runAiChatTurn,
 } from "../../ai/chat-service";
-import {
-  buildToolkitTools,
-  isToolkitConfigured,
-} from "../../integrations/toolkit";
 import { aiFileRoutes } from "./file-routes";
-
-const askAiRequestSchema = z
-  .object({
-    apiKey: z.string().trim().optional(),
-    messages: z.array(z.unknown()).default([]),
-    model: z.string().trim().optional(),
-    prompt: z.string().trim().optional(),
-    sources: z
-      .array(
-        z.enum([
-          "gmail",
-          "github",
-          "google-calendar",
-          "google-drive",
-          "slack",
-          "linear",
-        ]),
-      )
-      .default([])
-      .transform((sources) => Array.from(new Set(sources))),
-  })
-  .refine((value) => value.prompt || value.messages.length > 0, {
-    message: "Either prompt or messages is required",
-  });
 
 const editorAiRequestSchema = z.object({
   model: z.string().trim().optional(),
@@ -103,106 +66,6 @@ aiRoutes.post("/chat", async (c) => {
     requestBody,
     withDb: (fn) => runWithDbEnv(c.env, fn),
   });
-});
-
-aiRoutes.post("/ask", async (c) => {
-  const auth = await requireActiveWorkspace(c);
-
-  if ("response" in auth) {
-    return auth.response;
-  }
-
-  const body = await parseJson(c, askAiRequestSchema);
-
-  if (!body.success) {
-    return body.response;
-  }
-
-  const messages = await toModelMessages(body.data.messages, body.data.prompt);
-
-  if (!messages.success) {
-    return messages.response;
-  }
-
-  const tools: ToolSet = isToolkitConfigured(c.env)
-    ? await buildToolkitTools({
-        env: c.env,
-        signal: c.req.raw.signal,
-        sources: body.data.sources,
-        userId: auth.user.id,
-        workspaceId: auth.workspaceId,
-      })
-    : getRuntimeAdapter().buildConnectorTools?.({
-        env: c.env,
-        sources: body.data.sources,
-        userId: auth.user.id,
-        workspaceId: auth.workspaceId,
-      }) ?? {};
-
-  if (Object.keys(tools).length === 0) {
-    return c.json(
-      {
-        code: "ASK_AI_SELECTED_SOURCES_NOT_CONNECTED",
-        message:
-          "The selected sources are not connected. Add a connected source or remove the source filter.",
-      },
-      409,
-    );
-  }
-
-  try {
-    const model = await resolveWorkspaceAiModel(
-      auth.workspaceId,
-      body.data.model,
-      c.env.OPENAI_API_KEY,
-    );
-    const result = streamText({
-      abortSignal: c.req.raw.signal,
-      maxOutputTokens: 1600,
-      messages: messages.data,
-      model,
-      stopWhen: stepCountIs(5),
-      system: [
-        "You are Zilobase's page research assistant.",
-        "Use Gmail tools when the user asks about email, inbox, people, timelines, project updates, decisions, blockers, or messages from email.",
-        "Use GitHub tools when the user asks about repositories, issues, pull requests, commits, branches, files, code, releases, bugs, reviews, or work tracked in GitHub.",
-        "Use Google Calendar tools when the user asks about meetings, schedules, events, availability, free/busy windows, calendars, attendees, or time-based planning.",
-        "Use Google Drive tools when the user asks about Drive files, Docs, Sheets, Slides, documents, folders, file owners, recently changed files, or content stored in Google Drive.",
-        "Use Slack tools for workspace Slack context only: channels, private channels the Zilobase app can access, threads, canvases, files, project chatter, decisions, blockers, and page messages.",
-        "Use Linear tools when the user asks about issues, tickets, bugs, tasks, projects, teams, cycles, status, assignees, priorities, blockers, scope, delivery progress, or roadmap work tracked in Linear.",
-        body.data.sources.length
-          ? `Only use these selected sources for this request: ${body.data.sources.join(", ")}. Do not use tools from unselected sources.`
-          : "If the user has not selected sources for this request, choose among all connected Gmail, GitHub, Google Calendar, Google Drive, Slack, and Linear tools as needed.",
-        "The connected workspace tools are read-only. Never claim you sent, modified, archived, labeled, deleted, drafted, posted, updated, assigned, commented on, scheduled, canceled, merged, closed, reopened, reviewed, uploaded, moved, shared, or marked any Gmail, GitHub, Google Calendar, Google Drive, Slack, or Linear item.",
-        "Prefer concise answers with dates, participants, links, and message subjects when useful.",
-        "If the available integration results are insufficient, say what is missing and suggest a narrower query.",
-      ].join("\n"),
-      temperature: 0.2,
-      tools,
-      onError: ({ error }) => {
-        console.warn("Ask AI stream provider error", toProviderErrorMessage(error));
-      },
-    });
-
-    return result.toUIMessageStreamResponse({
-      onError: (error) => toProviderErrorMessage(error),
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      return new Response(null, { status: 408 });
-    }
-
-    if (error instanceof AiProviderConfigError) {
-      return Response.json(
-        { error: error.message, message: error.message },
-        { status: error.status },
-      );
-    }
-
-    console.error("Ask AI integration request failed", error);
-
-    return c.json({ error: "Failed to process integration AI request" }, 500);
-  }
 });
 
 aiRoutes.post("/editor", async (c) => {
@@ -580,33 +443,6 @@ function applySkillMarks(
 
     return current;
   }, text);
-}
-
-async function toModelMessages(rawMessages: unknown[], prompt?: string): Promise<
-  | { success: true; data: ModelMessage[] }
-  | { success: false; response: Response }
-> {
-  if (rawMessages.length === 0 && prompt) {
-    return {
-      success: true,
-      data: [{ content: prompt, role: "user" }],
-    };
-  }
-
-  try {
-    return {
-      success: true,
-      data: await convertToModelMessages(rawMessages as UIMessage[]),
-    };
-  } catch {
-    return {
-      success: false,
-      response: Response.json(
-        { code: "VALIDATION_ERROR", message: "Invalid AI messages" },
-        { status: 400 },
-      ),
-    };
-  }
 }
 
 async function parseJson<T extends z.ZodType>(

@@ -25,8 +25,6 @@ export type AppBindings = {
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
     OPENAI_API_KEY?: string;
-    TOOLKIT_API_KEY?: string;
-    TOOLKIT_BASE_URL?: string;
     SMTP_HOST?: string;
     SMTP_PASSWORD?: string;
     SMTP_PORT?: string;

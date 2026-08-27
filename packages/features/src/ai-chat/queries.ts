@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query"
 import type { UIMessage } from "ai"
 
 import type { ApiFetcher } from "../context"
-import { integrationRequestOptions } from "../integrations/queries"
+import { workspaceRequestOptions } from "../integrations/queries"
 
 export type AiChatThread = {
   id: string
@@ -52,7 +52,7 @@ export const aiChatThreadsQueryOptions = (
     queryFn: ({ signal }) =>
       apiFetch<AiChatThreadsResponse>(
         "/api/ai/threads",
-        integrationRequestOptions(workspaceId, { signal }),
+        workspaceRequestOptions(workspaceId, { signal }),
       ),
   })
 
@@ -67,6 +67,6 @@ export const aiChatThreadMessagesQueryOptions = (
     queryFn: ({ signal }) =>
       apiFetch<AiChatThreadMessagesResponse>(
         `/api/ai/threads/${encodeURIComponent(threadId!)}/messages`,
-        integrationRequestOptions(workspaceId, { signal }),
+        workspaceRequestOptions(workspaceId, { signal }),
       ),
   })

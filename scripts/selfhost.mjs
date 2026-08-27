@@ -97,8 +97,6 @@ async function ensureDevelopmentEnvironment() {
     "GOOGLE_CLIENT_ID=",
     "GOOGLE_CLIENT_SECRET=",
     "OPENAI_API_KEY=",
-    "TOOLKIT_API_KEY=",
-    "TOOLKIT_BASE_URL=",
     "",
   ].join("\n")
 

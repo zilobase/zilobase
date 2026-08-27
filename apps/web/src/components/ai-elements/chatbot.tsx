@@ -65,14 +65,6 @@ import { Shimmer } from "@/components/ai-elements/shimmer";
 import type { ToolPart } from "@/components/ai-elements/tool";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   aiChatThreadMessagesQueryKey,
   aiChatThreadMessagesQueryOptions,
   aiChatThreadsQueryKey,
@@ -95,7 +87,6 @@ import { useZilobaseFeatures } from "@zilobase/features";
 import { useDatabase } from "@zilobase/features/databases";
 import {
   useActiveWorkspaceId,
-  useIntegrations,
   useWorkspaceAiModels,
 } from "@zilobase/features/integrations";
 import { usePageAccessLevel, usePageNavigation } from "@zilobase/features/pages";
@@ -125,7 +116,6 @@ import {
   FileTextIcon,
   InboxIcon,
   PlusIcon,
-  XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -233,51 +223,6 @@ function logAiChatError(
   console.info("context", context);
   console.groupEnd();
 }
-
-type SourceId =
-  | "gmail"
-  | "github"
-  | "google-calendar"
-  | "google-drive"
-  | "slack"
-  | "linear";
-
-const availableSources: Array<{
-  description: string;
-  id: SourceId;
-  label: string;
-}> = [
-  {
-    description: "Email, inbox, threads, people, and message context.",
-    id: "gmail",
-    label: "Gmail",
-  },
-  {
-    description: "Repositories, issues, pull requests, commits, and files.",
-    id: "github",
-    label: "GitHub",
-  },
-  {
-    description: "Meetings, events, schedules, and coworker availability.",
-    id: "google-calendar",
-    label: "Calendar",
-  },
-  {
-    description: "Drive files, Docs, Sheets, Slides, folders, and owners.",
-    id: "google-drive",
-    label: "Drive",
-  },
-  {
-    description: "Page channels, threads, canvases, and files.",
-    id: "slack",
-    label: "Slack",
-  },
-  {
-    description: "Issues, projects, teams, priorities, and roadmap work.",
-    id: "linear",
-    label: "Linear",
-  },
-];
 
 const toolTitles: Record<string, string> = {
   getGmailDraft: "Read Gmail draft",
@@ -510,104 +455,6 @@ const ModelItem = ({
         <div className="ml-auto size-4" />
       )}
     </ModelSelectorItem>
-  );
-};
-
-const SourceSelector = ({
-  enabledSources,
-  selectedSources,
-  onAddSource,
-  onRemoveSource,
-}: {
-  enabledSources: SourceId[] | null;
-  selectedSources: SourceId[];
-  onAddSource: (source: SourceId) => void;
-  onRemoveSource: (source: SourceId) => void;
-}) => {
-  const visibleSources = availableSources.filter((source) =>
-    enabledSources?.includes(source.id),
-  );
-  const remainingSources = visibleSources.filter(
-    (source) => !selectedSources.includes(source.id),
-  );
-
-  return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2 px-2">
-      {selectedSources.map((sourceId) => {
-        const source = availableSources.find((item) => item.id === sourceId);
-
-        if (!source) {
-          return null;
-        }
-
-        return (
-          <span
-            className="inline-flex h-7 items-center gap-1.5 rounded-md border bg-background px-2 text-muted-foreground text-xs"
-            key={source.id}
-          >
-            <img
-              alt=""
-              aria-hidden="true"
-              className="size-3.5 shrink-0"
-              src={integrationIcons[source.id]}
-            />
-            <span>{source.label}</span>
-            <button
-              aria-label={`Remove ${source.label}`}
-              className="-mr-1 inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active"
-              onClick={() => onRemoveSource(source.id)}
-              type="button"
-            >
-              <XIcon className="size-3" />
-            </button>
-          </span>
-        );
-      })}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <PromptInputButton>
-            <PlusIcon className="size-4" />
-            <span>Add source</span>
-          </PromptInputButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-72">
-          <DropdownMenuLabel>
-            {selectedSources.length
-              ? "Add another source"
-              : "Choose sources for this query"}
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {enabledSources === null ? (
-            <DropdownMenuItem disabled>Loading sources...</DropdownMenuItem>
-          ) : remainingSources.length ? (
-            remainingSources.map((source) => (
-              <DropdownMenuItem
-                className="items-start gap-2 py-2"
-                key={source.id}
-                onSelect={() => onAddSource(source.id)}
-              >
-                <img
-                  alt=""
-                  aria-hidden="true"
-                  className="mt-0.5 size-4 shrink-0"
-                  src={integrationIcons[source.id]}
-                />
-                <span className="grid gap-0.5">
-                  <span className="font-medium">{source.label}</span>
-                  <span className="text-muted-foreground text-xs">
-                    {source.description}
-                  </span>
-                </span>
-              </DropdownMenuItem>
-            ))
-          ) : enabledSources.length ? (
-            <DropdownMenuItem disabled>All sources added</DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem disabled>No enabled sources</DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
   );
 };
 
@@ -949,8 +796,7 @@ const EmptyState = () => (
       <h2 className="font-semibold text-xl">Ask AI about your page</h2>
       <p className="mx-auto max-w-xl text-muted-foreground text-sm">
         Search accessible Zilobase pages and databases, use attached context,
-        analyze uploaded files, create downloads, or research connected Gmail,
-        GitHub, Calendar, Drive, Slack, and Linear sources.
+        analyze uploaded files, create downloads, and complete supported actions.
       </p>
     </div>
   </div>
@@ -1054,7 +900,6 @@ const ChatbotInner = ({
   const threadCreationPromiseRef = useRef<Promise<string> | null>(null);
   const [model, setModel] = useState<string>(fallbackModels[0].id);
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
-  const [selectedSources, setSelectedSources] = useState<SourceId[]>([]);
   const [text, setText] = useState<string>("");
   const [textCursor, setTextCursor] = useState(0);
   const [attachments, setAttachments] = useState<ContextAttachment[]>([]);
@@ -1136,31 +981,12 @@ const ChatbotInner = ({
     workspaceId,
     primarySource: effectivePrimarySource,
   });
-  const integrationsQuery = useIntegrations();
   const aiModelsQuery = useWorkspaceAiModels();
   const models = useMemo(() => {
     const queryModels = aiModelsQuery.data?.models ?? [];
 
     return queryModels.length ? queryModels : fallbackModels;
   }, [aiModelsQuery.data?.models]);
-  const enabledSources = useMemo<SourceId[] | null>(() => {
-    const integrations = integrationsQuery.data;
-
-    if (!integrations && integrationsQuery.isLoading) {
-      return null;
-    }
-
-    const connectedConnectorIds = new Set(
-      integrations?.accounts
-        .filter((account) => account.status === "active")
-        .map((account) => account.connectorId) ?? [],
-    );
-
-    return availableSources
-      .map((source) => source.id)
-      .filter((sourceId) => connectedConnectorIds.has(sourceId));
-  }, [integrationsQuery.data, integrationsQuery.isLoading]);
-
   const selectedModelData = useMemo(
     () => models.find((m) => m.id === model),
     [models, model],
@@ -1213,16 +1039,6 @@ const ChatbotInner = ({
     });
   }, [attachments.length, isContextLoading, isSidebar, pageContext]);
 
-  useEffect(() => {
-    if (!enabledSources) {
-      return;
-    }
-
-    setSelectedSources((current) =>
-      current.filter((source) => enabledSources.includes(source)),
-    );
-  }, [enabledSources]);
-
   const { queryClient } = useZilobaseFeatures();
   const createThread = useCreateAiChatThread();
   const { data: session } = useSession();
@@ -1265,7 +1081,6 @@ const ChatbotInner = ({
     (requestThreadId: string | null, attachmentIds: string[] = []) => ({
       attachmentIds,
       model,
-      sources: selectedSources,
       threadId: requestThreadId,
       ...(workspaceId ? { workspaceId } : {}),
       ...(userId ? { userId } : {}),
@@ -1287,7 +1102,6 @@ const ChatbotInner = ({
       effectivePrimarySource?.id,
       model,
       pageContext,
-      selectedSources,
       userId,
       workspaceId,
     ],
@@ -1986,16 +1800,6 @@ const ChatbotInner = ({
     [setModel, setModelSelectorOpen],
   );
 
-  const handleAddSource = useCallback((source: SourceId) => {
-    setSelectedSources((current) =>
-      current.includes(source) ? current : [...current, source],
-    );
-  }, []);
-
-  const handleRemoveSource = useCallback((source: SourceId) => {
-    setSelectedSources((current) => current.filter((item) => item !== source));
-  }, []);
-
   const hasMessages = visibleMessages.length > 0;
   const showPendingAssistant = shouldShowPendingAssistant(messages, status);
 
@@ -2137,12 +1941,6 @@ const ChatbotInner = ({
                     <PromptInputActionAddAttachments />
                   </PromptInputActionMenuContent>
                 </PromptInputActionMenu>
-                <SourceSelector
-                  enabledSources={enabledSources}
-                  selectedSources={selectedSources}
-                  onAddSource={handleAddSource}
-                  onRemoveSource={handleRemoveSource}
-                />
                 <ModelSelector
                   onOpenChange={setModelSelectorOpen}
                   open={modelSelectorOpen}
