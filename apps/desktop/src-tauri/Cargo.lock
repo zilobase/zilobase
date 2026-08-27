@@ -6501,7 +6501,7 @@ dependencies = [
 
 [[package]]
 name = "zilobase-client"
-version = "0.0.49"
+version = "0.0.50"
 dependencies = [
  "base64 0.22.1",
  "cpal",

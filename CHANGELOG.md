@@ -4,6 +4,17 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.50
+
+### Changed
+
+- Interactive controls, drag surfaces, sliders, scroll thumbs, and resize handles now use consistent cursors across the web and desktop apps.
+
+### Fixed
+
+- Embedded database expand actions now open the host database instead of navigating to an unresolvable data source.
+- Database row and kanban drags retain the grabbing cursor throughout the active drag.
+
 ## 0.0.49
 
 ### Fixed
