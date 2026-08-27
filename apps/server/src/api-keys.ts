@@ -40,7 +40,7 @@ export function readApiKeyWorkspaceId(metadata: unknown) {
     : null;
 }
 
-export function getApiKeyWorkspaceId(c: Context<AppBindings>) {
+function getApiKeyWorkspaceId(c: Context<AppBindings>) {
   return c.get("apiKey")?.workspaceId ?? null;
 }
 

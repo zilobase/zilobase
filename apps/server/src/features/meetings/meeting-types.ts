@@ -1,6 +1,6 @@
 export const MEETING_MAX_DURATION_MS = 3 * 60 * 60 * 1000;
 
-export const meetingStatuses = [
+const meetingStatuses = [
   "idle",
   "recording",
   "paused",

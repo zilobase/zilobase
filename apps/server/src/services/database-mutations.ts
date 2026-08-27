@@ -1,6 +1,4 @@
-export { getDatabaseRecord } from "./database-access";
 export { setDatabaseCellValueService } from "./database-cell-service";
-export { updateDatabaseFavoriteService } from "./database-favorite-service";
 export {
   defaultStatusOptions,
   formatDatePropertyValueAsText,
@@ -16,8 +14,6 @@ export {
   deleteDatabasePropertyService,
   reorderDatabasePropertiesService,
 } from "./database-property-structure-service";
-export { duplicateDatabasePropertyService } from "./database-property-duplication-service";
-export { isDatabaseHostPageId } from "./database-host-page";
 export { createDatabaseRowService } from "./database-row-service";
 export {
   moveDatabaseRowService,
@@ -40,4 +36,3 @@ export {
   deleteDatabaseViewService,
   updateDatabaseViewService,
 } from "./database-view-service";
-export { ServiceMutationError } from "./mutation-error";

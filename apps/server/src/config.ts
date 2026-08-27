@@ -1,6 +1,6 @@
 export type RuntimeEnv = Record<string, unknown>;
 
-export const DESKTOP_CLIENT_ORIGINS = [
+const DESKTOP_CLIENT_ORIGINS = [
   "tauri://localhost",
   "http://tauri.localhost",
 ] as const;

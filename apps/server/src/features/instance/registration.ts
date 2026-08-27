@@ -24,7 +24,7 @@ import {
   INSTANCE_SETTINGS_ROW_ID,
 } from "./service";
 
-export const REGISTRATION_MODES = ["invite-only", "open"] as const;
+const REGISTRATION_MODES = ["invite-only", "open"] as const;
 export const SELF_HOSTED_INVITATION_COOKIE = "zilobase_registration_invitation";
 export type RegistrationMode = (typeof REGISTRATION_MODES)[number];
 

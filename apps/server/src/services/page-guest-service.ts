@@ -123,7 +123,7 @@ export async function updateWorkspaceGuestInvitePolicy(input: {
   return { canApprove: true, mode: record.guestInviteMode as GuestInviteMode };
 }
 
-export async function createPageGuestRequest(input: {
+async function createPageGuestRequest(input: {
   accessLevel: unknown;
   email: string;
   pageId: string;
@@ -413,7 +413,7 @@ export async function approvePageGuestRequest(input: {
   return { ...invitation, request: approved };
 }
 
-export async function createPageGuestInvitation(input: {
+async function createPageGuestInvitation(input: {
   accessLevel: unknown;
   email: string;
   inviterId: string;

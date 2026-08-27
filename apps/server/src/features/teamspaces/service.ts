@@ -4,7 +4,7 @@ import { db, type Database } from "../../db";
 import { teamspace, teamspacePrincipal } from "../../db/schema";
 import type { ZilobaseEditionExtension } from "../../edition-extension";
 
-export const INITIAL_TEAMSPACE_NAME = "General";
+const INITIAL_TEAMSPACE_NAME = "General";
 
 export type EnsureDefaultTeamspaceMembershipInput = {
   userId: string;

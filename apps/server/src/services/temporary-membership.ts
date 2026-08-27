@@ -10,7 +10,7 @@ import {
   teamspacePrincipal,
 } from "../db/schema";
 
-export const WORKSPACE_ROLES = [
+const WORKSPACE_ROLES = [
   "owner",
   "admin",
   "member",
@@ -18,7 +18,7 @@ export const WORKSPACE_ROLES = [
 ] as const;
 export type WorkspaceRole = (typeof WORKSPACE_ROLES)[number];
 
-export const TEMPORARY_MEMBER_ROLE = "temporary" as const;
+const TEMPORARY_MEMBER_ROLE = "temporary" as const;
 export const MAX_TEMPORARY_ACCESS_MS = 365 * 24 * 60 * 60 * 1000;
 
 export class TemporaryMembershipValidationError extends Error {
@@ -28,7 +28,7 @@ export class TemporaryMembershipValidationError extends Error {
   }
 }
 
-export function isWorkspaceRole(value: unknown): value is WorkspaceRole {
+function isWorkspaceRole(value: unknown): value is WorkspaceRole {
   return WORKSPACE_ROLES.includes(value as WorkspaceRole);
 }
 

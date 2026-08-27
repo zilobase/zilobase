@@ -172,7 +172,7 @@ function getDateBetweenFilterValueLabel(values: string[]) {
   return startValue || "Date range"
 }
 
-export function getNextConditionValuesForOperator(
+function getNextConditionValuesForOperator(
   condition: DatabaseCondition,
   operator: DatabasePropertyFilterOperator
 ) {

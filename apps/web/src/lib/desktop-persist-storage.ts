@@ -3,7 +3,7 @@ import { createJSONStorage, type StateStorage } from "zustand/middleware"
 
 import { desktopPersistKey } from "@/lib/desktop-server"
 
-export function createDesktopScopedStorage(): StateStorage {
+function createDesktopScopedStorage(): StateStorage {
   return {
     getItem: (name) => {
       if (typeof localStorage === "undefined") return null

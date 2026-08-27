@@ -86,7 +86,7 @@ type CommentAvatarAuthor =
   | { email?: string | null; id?: string | null; image?: string | null; name?: string | null }
   | null
 
-export function CommentAvatar({
+function CommentAvatar({
   author,
   authorId,
   className,
@@ -441,7 +441,7 @@ function CommentItemComponent({
   )
 }
 
-export const CommentItem = memo(
+const CommentItem = memo(
   CommentItemComponent,
   (previous, next) =>
     previous.canEdit === next.canEdit &&
@@ -592,7 +592,7 @@ export function formatCommentButtonLabel(commentCount: number) {
   return `${commentCount} ${commentCount === 1 ? "comment" : "comments"}`
 }
 
-export function getCommentAuthorName(author: CommentAvatarAuthor) {
+function getCommentAuthorName(author: CommentAvatarAuthor) {
   return author?.name?.trim() || author?.email?.trim() || "Unknown"
 }
 
@@ -604,7 +604,7 @@ function getCommentAvatarSeed(
   return author?.id?.trim() || authorId?.trim() || label
 }
 
-export function getCommentInitials(label: string) {
+function getCommentInitials(label: string) {
   const parts = label
     .split(/\s+/)
     .map((part) => part.trim())
@@ -620,7 +620,7 @@ export function getCommentInitials(label: string) {
     .join("")
 }
 
-export function formatCommentTime(value: string) {
+function formatCommentTime(value: string) {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {

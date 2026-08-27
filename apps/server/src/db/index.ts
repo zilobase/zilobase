@@ -133,7 +133,7 @@ export function runWithDbEnv<T>(
   return runWithDbClient(createDbClient(env), callback, options);
 }
 
-export function hasDatabaseContext() {
+function hasDatabaseContext() {
   return Boolean(databaseStore.getStore());
 }
 

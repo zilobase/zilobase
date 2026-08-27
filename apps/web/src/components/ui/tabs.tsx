@@ -94,4 +94,4 @@ function TabsPanel({
   )
 }
 
-export { TabsPrimitive, TabsTab as TabsTrigger, TabsPanel as TabsContent }
+export { TabsTab as TabsTrigger, TabsPanel as TabsContent }

@@ -65,7 +65,7 @@ export async function getMembership(workspaceId: string, userId: string) {
   return record ?? null;
 }
 
-export async function getWorkspaceGuest(workspaceId: string, userId: string) {
+async function getWorkspaceGuest(workspaceId: string, userId: string) {
   const [record] = await db
     .select()
     .from(workspaceGuest)
@@ -133,7 +133,7 @@ export async function getPageRecord(id: string) {
   return record ?? null;
 }
 
-export async function getEffectivePageAccess(
+async function getEffectivePageAccess(
   pageId: string,
   userId: string,
 ): Promise<AccessLevel> {
@@ -287,7 +287,7 @@ export async function getEffectivePageAccessInWorkspace(
     : "none";
 }
 
-export async function isPagePublished(pageId: string) {
+async function isPagePublished(pageId: string) {
   const record = await getPageRecord(pageId);
 
   if (!record) {
@@ -544,9 +544,9 @@ export async function isDatabasePublishedInWorkspace(
   return Boolean(rule);
 }
 
-export const ACTIVE_ORGANIZATION_MISMATCH_CODE = "ACTIVE_ORGANIZATION_MISMATCH";
+const ACTIVE_ORGANIZATION_MISMATCH_CODE = "ACTIVE_ORGANIZATION_MISMATCH";
 
-export function activeWorkspaceMismatchResponse(
+function activeWorkspaceMismatchResponse(
   c: Context<AppBindings>,
   workspaceId: string,
 ) {

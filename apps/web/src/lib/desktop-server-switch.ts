@@ -33,7 +33,7 @@ export function subscribeDesktopServerSwitch(listener: SwitchListener) {
   }
 }
 
-export function notifyDesktopServerSwitch(
+function notifyDesktopServerSwitch(
   progress: DesktopServerSwitchProgress | null,
 ) {
   switchListener?.(progress)

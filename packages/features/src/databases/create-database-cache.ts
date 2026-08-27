@@ -35,7 +35,7 @@ function getPrimaryDatabasePlacement(
   }
 }
 
-export function getCreatedDatabaseNavDelta(payload: DatabasePayload): NavDelta {
+function getCreatedDatabaseNavDelta(payload: DatabasePayload): NavDelta {
   const database = toPageDatabase(payload)
   const placement = getPrimaryDatabasePlacement(payload)
 

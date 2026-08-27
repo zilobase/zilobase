@@ -130,7 +130,7 @@ function openSlashEmojiPicker({
   )
 }
 
-export function createSlashCommandItems(
+function createSlashCommandItems(
   options: SlashCommandOptions = {}
 ): SlashCommandItem[] {
   return [

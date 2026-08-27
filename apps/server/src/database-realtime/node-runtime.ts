@@ -20,7 +20,7 @@ import {
   type RealtimeSubscription,
 } from "../infrastructure/node/realtime-bus";
 
-export const NODE_DATABASE_REALTIME_MAX_MESSAGE_BYTES = 16 * 1024;
+const NODE_DATABASE_REALTIME_MAX_MESSAGE_BYTES = 16 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;
 const CONNECTION_LIMIT_WINDOW_MS = 60_000;
 const MESSAGE_RATE_LIMIT = 30;

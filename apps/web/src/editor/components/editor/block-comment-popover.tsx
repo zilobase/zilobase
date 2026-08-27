@@ -21,7 +21,7 @@ import { getCommentIdsInRange } from "@zilobase/tiptap-comment-extension"
 
 import type { DragHandleTarget } from "./types"
 
-export function getBlockCommentRange(target: DragHandleTarget) {
+function getBlockCommentRange(target: DragHandleTarget) {
   if (target.node.isLeaf || target.node.isAtom) return null
 
   const from = target.pos + 1

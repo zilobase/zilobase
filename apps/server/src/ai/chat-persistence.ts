@@ -14,8 +14,8 @@ import {
 import { db } from "../db";
 import { aiChatMessage, aiChatThread } from "../db/schema";
 
-export const DEFAULT_AI_CHAT_THREAD_TITLE = "New chat";
-export const MAX_AI_CHAT_MESSAGES_PER_THREAD = 500;
+const DEFAULT_AI_CHAT_THREAD_TITLE = "New chat";
+const MAX_AI_CHAT_MESSAGES_PER_THREAD = 500;
 
 export type AiChatThreadRecord = {
   id: string;
@@ -328,7 +328,7 @@ export async function maybeAutoTitleAiChatThread(
     .where(eq(aiChatThread.id, threadId));
 }
 
-export function buildAiChatAgentInstanceName(input: {
+function buildAiChatAgentInstanceName(input: {
   workspaceId: string;
   threadId: string;
   userId: string;

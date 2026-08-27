@@ -1,12 +1,12 @@
 import type { AccessLevel } from "../../access";
 
-export const TEAMSPACE_ACCESS_MODES = ["open", "closed", "private"] as const;
-export const TEAMSPACE_ROLES = ["owner", "member"] as const;
-export const TEAMSPACE_INVITE_POLICIES = [
+const TEAMSPACE_ACCESS_MODES = ["open", "closed", "private"] as const;
+const TEAMSPACE_ROLES = ["owner", "member"] as const;
+const TEAMSPACE_INVITE_POLICIES = [
   "owners",
   "owners_and_members",
 ] as const;
-export const TEAMSPACE_CREATION_POLICIES = [
+const TEAMSPACE_CREATION_POLICIES = [
   "workspace_owners",
   "workspace_members",
 ] as const;

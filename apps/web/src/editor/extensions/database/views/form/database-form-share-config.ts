@@ -13,7 +13,7 @@ export type DatabaseFormShareSettings = {
   submissionAccess: DatabaseFormSubmissionAccess
 }
 
-export const defaultDatabaseFormShareSettings: DatabaseFormShareSettings = {
+const defaultDatabaseFormShareSettings: DatabaseFormShareSettings = {
   anonymousResponses: true,
   fillAccess: "workspace",
   submissionAccess: "none",

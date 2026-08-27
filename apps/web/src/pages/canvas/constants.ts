@@ -80,7 +80,7 @@ export const defaultCanvasStrokeWidth: CanvasStrokeWidth = 4
 export const defaultCanvasStrokeStyle: CanvasStrokeStyle = "solid"
 export const defaultCanvasSloppiness = "artist"
 
-export const canvasShapeOptions: Array<{
+const canvasShapeOptions: Array<{
   icon: LucideIcon
   label: string
   shape: CanvasShape

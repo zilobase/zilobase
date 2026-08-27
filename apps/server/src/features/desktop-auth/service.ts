@@ -9,7 +9,7 @@ import { isLoopbackHost } from "../../config";
 
 export const DESKTOP_AUTH_CLIENT_ID = "zilobase-desktop";
 export const DESKTOP_AUTH_CODE_TTL_MS = 5 * 60 * 1000;
-export const DESKTOP_CONSENT_TOKEN_TTL_MS = 10 * 60 * 1000;
+const DESKTOP_CONSENT_TOKEN_TTL_MS = 10 * 60 * 1000;
 export const DESKTOP_AUTH_REQUEST_MAX_BYTES = 16 * 1024;
 
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;

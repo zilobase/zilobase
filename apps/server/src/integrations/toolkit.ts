@@ -4,7 +4,7 @@ import type { ToolSet } from "ai";
 
 import { getStringEnv, type RuntimeEnv } from "../config";
 
-export const TOOLKIT_CHAT_CONNECTORS = [
+const TOOLKIT_CHAT_CONNECTORS = [
   "gmail",
   "github",
   "google-calendar",

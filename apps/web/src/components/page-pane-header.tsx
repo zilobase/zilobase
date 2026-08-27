@@ -340,7 +340,7 @@ function OpenPageAsDropdown({
   );
 }
 
-export function AppBreadcrumbs({ pathname }: { pathname: string }) {
+function AppBreadcrumbs({ pathname }: { pathname: string }) {
   const pageId = getPageId(pathname);
   const databaseId = getDatabaseId(pathname);
   const meetingId = getMeetingId(pathname);

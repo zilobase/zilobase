@@ -4,7 +4,7 @@ import type { Hono } from "hono";
 import type { Database } from "./db";
 import type { AppBindings } from "./types";
 
-export const MEMBERSHIP_GRANT_SOURCES = [
+const MEMBERSHIP_GRANT_SOURCES = [
   "bootstrap",
   "open-registration",
   "invitation",

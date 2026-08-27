@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils"
 const noOp = () => {}
 const hiddenGridTrack = "minmax(0, 0fr)"
 const visibleGridTrack = "minmax(0, 1fr)"
-export function RightSidebarSurface({
+function RightSidebarSurface({
   className,
   ...props
 }: ComponentProps<"aside">) {
@@ -58,7 +58,7 @@ type ResizableRightSidebarPanelProps = {
   panelId: string
 }
 
-export function ResizableRightSidebarPanel({
+function ResizableRightSidebarPanel({
   ariaLabel,
   children,
   defaultSize,

@@ -176,7 +176,7 @@ export function useInlineDatabaseScroll({
   }
 }
 
-export function handleInlineDatabaseScrollWheel(
+function handleInlineDatabaseScrollWheel(
   event: WheelEvent,
   scrollElement: HTMLElement
 ) {

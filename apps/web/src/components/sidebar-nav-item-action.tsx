@@ -3,7 +3,7 @@ import type { ComponentProps, CSSProperties } from "react"
 import { SidebarMenuAction } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 
-export const SIDEBAR_NAV_ACTION_EDGE_INSET = 6
+const SIDEBAR_NAV_ACTION_EDGE_INSET = 6
 
 export const SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME =
   "group-hover/nav-row:bg-accent group-hover/nav-row:text-accent-foreground group-hover/nav-row:data-active:bg-active group-hover/nav-row:data-active:text-active-foreground group-active/nav-row:bg-active group-active/nav-row:text-active-foreground group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:bg-accent group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:text-accent-foreground group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:bg-active group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:text-active-foreground group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:bg-accent group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:text-accent-foreground group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:bg-active group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:text-active-foreground"
