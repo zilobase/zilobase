@@ -4,6 +4,14 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.49
+
+### Fixed
+
+- Gallery and kanban cards drag reliably from the whole card while preserving interactive controls.
+- Database templates, realtime connections, and navigation refreshes target the active data source correctly.
+- Sidebar creation actions no longer pass menu selection events into page, database, or chat creation callbacks.
+
 ## 0.0.48
 
 ### Fixed
