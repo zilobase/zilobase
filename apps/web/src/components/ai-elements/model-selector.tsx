@@ -55,7 +55,7 @@ export const ModelSelectorContent = ({
   </DialogContent>
 );
 
-export type ModelSelectorDialogProps = ComponentProps<typeof CommandDialog>;
+type ModelSelectorDialogProps = ComponentProps<typeof CommandDialog>;
 
 export const ModelSelectorDialog = (props: ModelSelectorDialogProps) => (
   <CommandDialog {...props} />
@@ -94,13 +94,13 @@ export const ModelSelectorItem = (props: ModelSelectorItemProps) => (
   <CommandItem {...props} />
 );
 
-export type ModelSelectorShortcutProps = ComponentProps<typeof CommandShortcut>;
+type ModelSelectorShortcutProps = ComponentProps<typeof CommandShortcut>;
 
 export const ModelSelectorShortcut = (props: ModelSelectorShortcutProps) => (
   <CommandShortcut {...props} />
 );
 
-export type ModelSelectorSeparatorProps = ComponentProps<
+type ModelSelectorSeparatorProps = ComponentProps<
   typeof CommandSeparator
 >;
 

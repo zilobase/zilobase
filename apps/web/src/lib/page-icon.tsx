@@ -1,6 +1,5 @@
 import {
   getPageEmoji,
-  hasPageBodyContent,
   type Page,
 } from "@zilobase/features/pages"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
@@ -14,10 +13,6 @@ import {
   normalizeStoredIconPresentation,
   sanitizeStoredSvg,
 } from "@/lib/page-icon-utils"
-
-export function hasPageContent(content: unknown): boolean {
-  return hasPageBodyContent(content)
-}
 
 const iconSizeClasses = {
   sm: "size-4 text-base [&_svg]:size-4",
@@ -81,20 +76,6 @@ export function PageIconDisplay({
   )
 }
 
-export function getStoredIconValue(
-  value: string | null | undefined,
-): string | null {
-  if (!value) {
-    return null
-  }
-
-  if (isSvgIcon(value)) {
-    return sanitizeStoredSvg(value) ? value : null
-  }
-
-  return value
-}
-
 export function getPageIconNode(
   page: Pick<Page, "content" | "hasContent" | "metadata">,
 ) {
@@ -108,7 +89,7 @@ export function getPageIconNode(
   )
 }
 
-export function getDatabaseIconValue(database: {
+function getDatabaseIconValue(database: {
   config?: unknown
   dataSourceConfig?: unknown
 }) {
@@ -126,12 +107,6 @@ export function getDatabaseIconNode(database: {
   }
 
   return null
-}
-
-export function getPageIcon(
-  page: Pick<Page, "content" | "hasContent" | "metadata">,
-) {
-  return getPageIconNode(page)
 }
 
 export function PageIcon({

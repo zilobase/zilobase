@@ -171,9 +171,3 @@ export function useMeetingCapture(meetingId: string): MeetingCaptureController {
     stop,
   }
 }
-
-export type {
-  MeetingAudioDevice,
-  MeetingCaptureStatus,
-  RecoverableMeetingCapture,
-} from "./meeting-capture-types"

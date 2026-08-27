@@ -11,8 +11,6 @@ export const starterContent = `
   <blockquote>Fast notes, structured blocks, zero ceremony.</blockquote>
 `
 
-export const emptyContent = "<p></p>"
-
 export const pastedBlockElementSelector = [
   "address", "article", "aside", "blockquote", "details", "div", "dl",
   "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3",

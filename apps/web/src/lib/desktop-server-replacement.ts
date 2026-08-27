@@ -64,7 +64,7 @@ export function createDesktopServerReplacementDependencies(input: {
   };
 }
 
-export async function clearDesktopServerBrowserState() {
+async function clearDesktopServerBrowserState() {
   queryClient.clear();
   useAppStore.getState().resetAccountState();
   useAuthFlowStore.getState().clearAuthFlow();

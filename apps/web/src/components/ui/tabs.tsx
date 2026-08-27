@@ -64,7 +64,7 @@ export function TabsList({
   )
 }
 
-export function TabsTab({
+function TabsTab({
   className,
   ...props
 }: TabsPrimitive.Tab.Props): React.ReactElement {
@@ -81,7 +81,7 @@ export function TabsTab({
   )
 }
 
-export function TabsPanel({
+function TabsPanel({
   className,
   ...props
 }: TabsPrimitive.Panel.Props): React.ReactElement {

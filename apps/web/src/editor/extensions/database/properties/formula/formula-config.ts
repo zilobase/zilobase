@@ -3,7 +3,7 @@ import {
   type DatabasePropertyConfig,
 } from "../../views/database-view-config"
 
-export type DatabaseFormulaConfig = DatabasePropertyConfig & {
+type DatabaseFormulaConfig = DatabasePropertyConfig & {
   formula?: string
 }
 

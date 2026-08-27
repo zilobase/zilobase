@@ -72,8 +72,6 @@ import {
 } from "@/components/ui/sidebar"
 import {
   getActiveDatabaseId,
-  getActiveDatabaseViewId,
-  getActiveMeetingId,
   getActivePageId,
   SidebarNavList,
   type SidebarNavItem,
@@ -84,7 +82,6 @@ import {
 } from "@/components/sidebar-nav-item-action"
 import { useOpenInNewTab } from "@/components/desktop-tabs"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
-import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
 import { cn } from "@/lib/utils"
 import { getApiErrorMessage } from "@/lib/api"
 import { PageIconDisplay } from "@/lib/page-icon"
@@ -108,71 +105,6 @@ type DatabaseDropInput = {
   pageId: string
   targetPageId: string | null
   title?: string
-}
-
-export function NavPages({
-  onCreateDatabase,
-  onCreatePage,
-  onImportNotion,
-  onDropPageOnDatabase,
-  privatePages,
-  teamspacePages,
-  workspaceId,
-}: {
-  onCreateDatabase?: () => void
-  onCreatePage: () => void
-  onImportNotion?: () => void
-  onDropPageOnDatabase?: (input: DatabaseDropInput) => void
-  privatePages: SidebarNavItem[]
-  teamspacePages: SidebarNavItem[]
-  workspaceId: string | null
-}) {
-  const location = useLocation()
-  const activePageId = getActivePageId(location.pathname)
-  const activeDatabaseId = getActiveDatabaseId(location.pathname)
-  const activeDatabaseViewId = getActiveDatabaseViewId(location.search)
-  const activeMeetingId = getActiveMeetingId(
-    location.pathname,
-    location.search,
-  )
-  const [databaseDropTargetId, setDatabaseDropTargetId] = useState<
-    string | null
-  >(null)
-
-  return (
-    <>
-      <NavPageSection
-        activeDatabaseId={activeDatabaseId}
-        activeDatabaseViewId={activeDatabaseViewId}
-        activePageId={activePageId}
-        activeMeetingId={activeMeetingId}
-        databaseDropTargetId={databaseDropTargetId}
-        label="Private"
-        sectionId="private"
-        onCreateDatabase={onCreateDatabase}
-        onCreatePage={onCreatePage}
-        onImportNotion={onImportNotion}
-        onDatabaseDropTargetChange={setDatabaseDropTargetId}
-        onDropPageOnDatabase={onDropPageOnDatabase}
-        showCreateAction
-        pages={privatePages}
-        storageKey={getSidebarExpansionStorageKey(workspaceId, "private")}
-      />
-      <NavPageSection
-        activeDatabaseId={activeDatabaseId}
-        activeDatabaseViewId={activeDatabaseViewId}
-        activePageId={activePageId}
-        activeMeetingId={activeMeetingId}
-        databaseDropTargetId={databaseDropTargetId}
-        label="Shared"
-        sectionId="shared"
-        onDatabaseDropTargetChange={setDatabaseDropTargetId}
-        onDropPageOnDatabase={onDropPageOnDatabase}
-        pages={teamspacePages}
-        storageKey={getSidebarExpansionStorageKey(workspaceId, "team")}
-      />
-    </>
-  )
 }
 
 export function NavPageSection({

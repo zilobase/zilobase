@@ -1,2 +1,2 @@
 export * from "./meeting-extension"
-export { MeetingView, type MeetingTab } from "./meeting-view"
+export { MeetingView } from "./meeting-view"

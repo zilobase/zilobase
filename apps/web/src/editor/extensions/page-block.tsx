@@ -35,7 +35,7 @@ export type CreatedPage = {
   id: string;
 };
 
-export type PageBlockOptions = {
+type PageBlockOptions = {
   currentPageId?: string | null;
   onCreatePage?: () => Promise<CreatedPage>;
   onEmbedPage?: (pageId: string) => void | Promise<void>;

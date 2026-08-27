@@ -1,5 +1,4 @@
-export { Editor, default } from "./editor"
+export { Editor } from "./editor"
 export type {
   PageEditPreviewControls,
-  PageEditPreviewRequest,
 } from "./types"

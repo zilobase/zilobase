@@ -765,5 +765,3 @@ export function Editor({
     </UndoHistoryScope>
   )
 }
-
-export default Editor

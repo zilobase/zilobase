@@ -23,7 +23,7 @@ import {
   getNumberFormat,
 } from "../views/database-view-config"
 
-export function DatabaseInputCell({
+function DatabaseInputCell({
   editable = true,
   label,
   onActivate = () => {},

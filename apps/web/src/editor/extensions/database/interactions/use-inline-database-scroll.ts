@@ -10,7 +10,7 @@ import {
 
 import { getDatabaseHorizontalWheelScrollLeft } from "./database-wheel-scroll"
 
-export type InlineDatabaseScrollLayout = {
+type InlineDatabaseScrollLayout = {
   contentWidth: number
   offset: number
   trailingOffset: number

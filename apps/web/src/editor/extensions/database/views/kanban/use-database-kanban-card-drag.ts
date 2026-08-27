@@ -54,12 +54,12 @@ type DraggedKanbanCard = {
   sourceGroupValue: string
 }
 
-export type KanbanCardDropTarget = {
+type KanbanCardDropTarget = {
   optionId: string
   targetIndex: number
 }
 
-export type KanbanCardMove = {
+type KanbanCardMove = {
   groupPropertyId?: string
   groupValue?: unknown
   pageId?: string

@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils"
  * The component re-measures on parent re-renders (when comments/reactions change) and has
  * a ResizeObserver hook for robustness.
  */
-export interface ThreadLineProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface ThreadLineProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 function measureThreadLine(lineEl: HTMLDivElement) {
   const container = lineEl.parentElement
@@ -134,22 +134,3 @@ export function ThreadAvatar({
     </div>
   )
 }
-
-/**
- * Small vertical connector segment placed *between* avatar rows.
- * Provides a short centered line in the avatar column with gaps above and below.
- * Used to connect consecutive avatars in a thread without running beside message text.
- */
-export function ThreadConnector() {
-  return (
-    <div className="pt-2 pb-2">
-      <div className="h-2 flex items-center">
-        <div className="w-6 flex justify-center">
-          <div className="w-px h-2 bg-muted-indicator" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-

@@ -303,7 +303,7 @@ const CodeBlockBody = memo(
 
 CodeBlockBody.displayName = "CodeBlockBody";
 
-export const CodeBlockContainer = ({
+const CodeBlockContainer = ({
   className,
   language,
   style,
@@ -373,7 +373,7 @@ export const CodeBlockActions = ({
   </div>
 );
 
-export const CodeBlockContent = ({
+const CodeBlockContent = ({
   code,
   language,
   showLineNumbers = false,
@@ -458,7 +458,7 @@ export const CodeBlock = ({
   );
 };
 
-export type CodeBlockCopyButtonProps = ComponentProps<typeof Button> & {
+type CodeBlockCopyButtonProps = ComponentProps<typeof Button> & {
   onCopy?: () => void;
   onError?: (error: Error) => void;
   timeout?: number;
@@ -519,13 +519,13 @@ export const CodeBlockCopyButton = ({
   );
 };
 
-export type CodeBlockLanguageSelectorProps = ComponentProps<typeof Select>;
+type CodeBlockLanguageSelectorProps = ComponentProps<typeof Select>;
 
 export const CodeBlockLanguageSelector = (
   props: CodeBlockLanguageSelectorProps
 ) => <Select {...props} />;
 
-export type CodeBlockLanguageSelectorTriggerProps = ComponentProps<
+type CodeBlockLanguageSelectorTriggerProps = ComponentProps<
   typeof SelectTrigger
 >;
 
@@ -543,7 +543,7 @@ export const CodeBlockLanguageSelectorTrigger = ({
   />
 );
 
-export type CodeBlockLanguageSelectorValueProps = ComponentProps<
+type CodeBlockLanguageSelectorValueProps = ComponentProps<
   typeof SelectValue
 >;
 
@@ -551,7 +551,7 @@ export const CodeBlockLanguageSelectorValue = (
   props: CodeBlockLanguageSelectorValueProps
 ) => <SelectValue {...props} />;
 
-export type CodeBlockLanguageSelectorContentProps = ComponentProps<
+type CodeBlockLanguageSelectorContentProps = ComponentProps<
   typeof SelectContent
 >;
 
@@ -562,7 +562,7 @@ export const CodeBlockLanguageSelectorContent = ({
   <SelectContent align={align} {...props} />
 );
 
-export type CodeBlockLanguageSelectorItemProps = ComponentProps<
+type CodeBlockLanguageSelectorItemProps = ComponentProps<
   typeof SelectItem
 >;
 

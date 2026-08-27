@@ -84,7 +84,7 @@ import { meetingTranscriptPlainText } from "./meeting-transcript-text"
 import { useMeetingCollaboration } from "./use-meeting-collaboration"
 import { useMeetingCapture } from "./use-meeting-capture"
 
-export type MeetingTab = "summary" | "notes" | "transcript"
+type MeetingTab = "summary" | "notes" | "transcript"
 
 export function MeetingView({
   editable: requestedEditable,

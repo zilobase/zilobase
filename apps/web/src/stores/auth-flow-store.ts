@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware"
 
 import { desktopPersistOptions } from "@/lib/desktop-persist-storage"
 
-export type AuthFlowPurpose = "email-verification" | "sign-in"
+type AuthFlowPurpose = "email-verification" | "sign-in"
 
 type AuthFlowState = {
   email: string | null

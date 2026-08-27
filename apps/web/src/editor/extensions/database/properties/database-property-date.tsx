@@ -361,7 +361,6 @@ export function DatabasePropertyDate({
   )
 }
 
-export { DatabasePropertyDate as DatabaseDateCell }
 
 function getDateConfigWithFormat(
   config: unknown,

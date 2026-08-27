@@ -14,8 +14,5 @@ export {
   type EditorHistoryDepths,
 } from "./editor-history"
 export {
-  appShortcutDefinitions,
   isOpenInNewTabShortcut,
-  matchesAppShortcut,
-  type AppShortcutId,
 } from "./shortcut-definitions"

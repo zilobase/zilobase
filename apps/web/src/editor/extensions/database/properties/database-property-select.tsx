@@ -344,5 +344,3 @@ export function DatabasePropertySelect({
     </Popover>
   )
 }
-
-export { DatabasePropertySelect as DatabaseSelectCell }

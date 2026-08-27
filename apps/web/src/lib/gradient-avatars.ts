@@ -2,14 +2,7 @@ const DEFAULT_AVATAR_SEED = "zilobase"
 const MIN_HUE_DISTANCE = 72
 const AVATAR_LIGHTNESS = 42
 
-export function stringToColour(value: string): string {
-  const hash = hashString(value || DEFAULT_AVATAR_SEED)
-  const hue = Math.abs(hash) % 360
-
-  return hslToHex(hue, 100, AVATAR_LIGHTNESS)
-}
-
-export function generateColours(value: string): [string, string] {
+function generateColours(value: string): [string, string] {
   const seed = value || DEFAULT_AVATAR_SEED
   const firstHue = hashToHue(seed)
   const rawSecondHue = hashToHue(reverse(seed))
@@ -25,28 +18,6 @@ export function generateAvatarGradient(value: string): string {
   const [first, second] = generateColours(value)
 
   return `linear-gradient(135deg, ${first}, ${second})`
-}
-
-export function generateAvatarSVG(value: string, size = 256): string {
-  const [first, second] = generateColours(value)
-
-  return `
-<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="url(#gradient)" />
-  <defs>
-    <linearGradient id="gradient" x1="0" y1="0" x2="${size}" y2="${size}" gradientUnits="userSpaceOnUse">
-      <stop stop-color="${first}" />
-      <stop offset="1" stop-color="${second}" />
-    </linearGradient>
-  </defs>
-</svg>
-  `.trim()
-}
-
-export function generateAvatarDataUri(value: string, size = 256): string {
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-    generateAvatarSVG(value, size)
-  )}`
 }
 
 function hashString(value: string) {

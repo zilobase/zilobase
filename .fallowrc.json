@@ -19,6 +19,220 @@
       "packages/tiptap-comment-extension"
     ]
   },
+  // The custom web test harness bundles these literal loadModule() paths.
+  "dynamicallyLoaded": [
+    "apps/web/src/comments/yjs-comments.ts",
+    "apps/web/src/components/ai-elements/integration-tool-presentation.ts",
+    "apps/web/src/components/database-view-navigation.ts",
+    "apps/web/src/components/kibo-ui/gantt/gantt-geometry.ts",
+    "apps/web/src/components/kibo-ui/gantt/gantt-preview.ts",
+    "apps/web/src/components/kibo-ui/gantt/index.tsx",
+    "apps/web/src/components/sidebar-expansion-state.ts",
+    "apps/web/src/components/sidebar-nav-list.tsx",
+    "apps/web/src/components/sidebar-navigation-model.tsx",
+    "apps/web/src/components/sidebar-panel-sizing.ts",
+    "apps/web/src/components/sidebar-section-items.ts",
+    "apps/web/src/components/teamspace-sidebar-permissions.ts",
+    "apps/web/src/config/feature-flags.ts",
+    "apps/web/src/contexts/page-side-pane.tsx",
+    "apps/web/src/editor/components/editor/block-drag.ts",
+    "apps/web/src/editor/components/editor/column-drag.ts",
+    "apps/web/src/editor/components/editor/table-drag.ts",
+    "apps/web/src/editor/database-editability.ts",
+    "apps/web/src/editor/database-page-drop-target.ts",
+    "apps/web/src/editor/drag-drop.ts",
+    "apps/web/src/editor/extensions/block-selection.ts",
+    "apps/web/src/editor/extensions/database/core/database-property-types.ts",
+    "apps/web/src/editor/extensions/database/core/utils.ts",
+    "apps/web/src/editor/extensions/database/interactions/database-card-drag-target.ts",
+    "apps/web/src/editor/extensions/database/interactions/database-cell-fill.ts",
+    "apps/web/src/editor/extensions/database/interactions/database-page-drop.ts",
+    "apps/web/src/editor/extensions/database/interactions/database-row-drag.ts",
+    "apps/web/src/editor/extensions/database/interactions/database-table-layout.ts",
+    "apps/web/src/editor/extensions/database/interactions/database-wheel-scroll.ts",
+    "apps/web/src/editor/extensions/database/properties/database-relation-sync.ts",
+    "apps/web/src/editor/extensions/database/properties/formula/formula-engine.ts",
+    "apps/web/src/editor/extensions/database/properties/rollup/rollup-config.ts",
+    "apps/web/src/editor/extensions/database/properties/rollup/rollup-engine.ts",
+    "apps/web/src/editor/extensions/database/setup/database-setup-templates.ts",
+    "apps/web/src/editor/extensions/database/views/chart/database-chart-config.ts",
+    "apps/web/src/editor/extensions/database/views/chart/database-chart-data.ts",
+    "apps/web/src/editor/extensions/database/views/database-cell-content.tsx",
+    "apps/web/src/editor/extensions/database/views/database-cell-state.tsx",
+    "apps/web/src/editor/extensions/database/views/database-sub-items.ts",
+    "apps/web/src/editor/extensions/database/views/database-view-commands.ts",
+    "apps/web/src/editor/extensions/database/views/database-view-config.ts",
+    "apps/web/src/editor/extensions/database/views/database-view-model.tsx",
+    "apps/web/src/editor/extensions/database/views/database-view-scroll.ts",
+    "apps/web/src/editor/extensions/database/views/form/database-form-header-config.ts",
+    "apps/web/src/editor/extensions/database/views/form/database-form-question-config.ts",
+    "apps/web/src/editor/extensions/database/views/kanban/database-kanban-card-drag.ts",
+    "apps/web/src/editor/extensions/database/views/kanban/database-kanban-config.ts",
+    "apps/web/src/editor/extensions/database/views/table/database-table-selection.ts",
+    "apps/web/src/editor/extensions/database/views/timeline/database-timeline-config.ts",
+    "apps/web/src/editor/extensions/database/views/timeline/database-timeline-layout.ts",
+    "apps/web/src/editor/extensions/database/views/timeline/database-timeline-rows.ts",
+    "apps/web/src/editor/extensions/database/views/view-settings/chart-settings-model.ts",
+    "apps/web/src/editor/extensions/database/views/view-settings/data-source-model.ts",
+    "apps/web/src/editor/extensions/database/views/view-settings/view-type-options.ts",
+    "apps/web/src/editor/extensions/meeting-transcript-preview.ts",
+    "apps/web/src/editor/extensions/meeting-transcript-scroll.ts",
+    "apps/web/src/editor/extensions/meeting/browser-meeting-capture.ts",
+    "apps/web/src/editor/extensions/meeting/browser-meeting-recovery.ts",
+    "apps/web/src/editor/extensions/meeting/meeting-transcript-text.ts",
+    "apps/web/src/editor/offline-structure-guard.ts",
+    "apps/web/src/editor/paste.ts",
+    "apps/web/src/editor/protected-structural-blocks.ts",
+    "apps/web/src/hooks/use-title-draft.ts",
+    "apps/web/src/lib/api.ts",
+    "apps/web/src/lib/color-tokens.ts",
+    "apps/web/src/lib/connectivity-probe.ts",
+    "apps/web/src/lib/deferred-realtime.ts",
+    "apps/web/src/lib/desktop-deep-link.ts",
+    "apps/web/src/lib/desktop-diagnostics.ts",
+    "apps/web/src/lib/desktop-network.ts",
+    "apps/web/src/lib/desktop-server-replacement-core.ts",
+    "apps/web/src/lib/desktop-server.ts",
+    "apps/web/src/lib/desktop-translucency.ts",
+    "apps/web/src/lib/favicon.ts",
+    "apps/web/src/lib/google-auth.ts",
+    "apps/web/src/lib/image-upload.ts",
+    "apps/web/src/lib/invitation-link.ts",
+    "apps/web/src/lib/meeting-navigation.ts",
+    "apps/web/src/lib/notion-html-blocks.ts",
+    "apps/web/src/lib/notion-import.ts",
+    "apps/web/src/lib/offline-documents.ts",
+    "apps/web/src/lib/offline-recovery.ts",
+    "apps/web/src/lib/offline-store.ts",
+    "apps/web/src/lib/page-icon-utils.ts",
+    "apps/web/src/lib/published-page-preferences.ts",
+    "apps/web/src/lib/published-share-access.ts",
+    "apps/web/src/lib/recent-navigation.ts",
+    "apps/web/src/lib/route-error.ts",
+    "apps/web/src/lib/themes.ts",
+    "apps/web/src/pages/homepage-hierarchy.ts",
+    "apps/web/src/pages/page-hierarchy-blocks.ts",
+    "apps/web/src/pages/settings/team-access.ts",
+    "apps/web/src/pages/settings/team-settings-tabs.ts",
+    "apps/web/src/pages/settings/teamspace-filters.ts",
+    "apps/web/src/pages/tasks-model.ts",
+    "apps/web/src/shortcuts/editor-history.ts",
+    "apps/web/src/shortcuts/shortcut-definitions.ts",
+    "apps/web/src/stores/app-store.ts"
+  ],
+  // These workspace packages publish APIs consumed outside this repository.
+  "publicPackages": [
+    "@zilobase/server",
+    "@zilobase/features",
+    "markdown-text-splitter",
+    "@zilobase/page-context",
+    "@zilobase/tiptap-comment-extension"
+  ],
+  // Retain complete composable component APIs and namespaced public query types.
+  "ignoreExports": [
+    {
+      "file": "apps/web/src/components/ai-elements/code-block.tsx",
+      "exports": ["CodeBlockHeader", "CodeBlockTitle", "CodeBlockFilename", "CodeBlockActions", "CodeBlock", "CodeBlockCopyButton", "CodeBlockLanguageSelector", "CodeBlockLanguageSelectorTrigger", "CodeBlockLanguageSelectorValue", "CodeBlockLanguageSelectorContent", "CodeBlockLanguageSelectorItem"]
+    },
+    {
+      "file": "apps/web/src/components/ai-elements/conversation.tsx",
+      "exports": ["ConversationEmptyState", "ConversationScrollButton", "ConversationDownload"]
+    },
+    {
+      "file": "apps/web/src/components/ai-elements/message.tsx",
+      "exports": ["MessageActions", "MessageAction", "MessageBranch", "MessageBranchContent", "MessageBranchSelector", "MessageBranchPrevious", "MessageBranchNext", "MessageBranchPage", "MessageToolbar"]
+    },
+    {
+      "file": "apps/web/src/components/ai-elements/model-selector.tsx",
+      "exports": ["ModelSelectorDialog", "ModelSelectorShortcut", "ModelSelectorSeparator"]
+    },
+    {
+      "file": "apps/web/src/components/ai-elements/prompt-input.tsx",
+      "exports": ["usePromptInputController", "useProviderAttachments", "PromptInputProvider", "usePromptInputReferencedSources", "PromptInputActionAddAttachments", "PromptInputActionAddScreenshot", "PromptInputBody", "PromptInputHeader", "PromptInputActionMenu", "PromptInputActionMenuTrigger", "PromptInputActionMenuContent", "PromptInputActionMenuItem", "PromptInputSelect", "PromptInputSelectTrigger", "PromptInputSelectContent", "PromptInputSelectItem", "PromptInputSelectValue", "PromptInputHoverCard", "PromptInputHoverCardTrigger", "PromptInputHoverCardContent", "PromptInputTabsList", "PromptInputTab", "PromptInputTabLabel", "PromptInputTabBody", "PromptInputTabItem"]
+    },
+    {
+      "file": "apps/web/src/components/ui/alert-dialog.tsx",
+      "exports": ["AlertDialogOverlay", "AlertDialogPortal"]
+    },
+    {
+      "file": "apps/web/src/components/ui/avatar.tsx",
+      "exports": ["AvatarBadge"]
+    },
+    {
+      "file": "apps/web/src/components/ui/button-group.tsx",
+      "exports": ["buttonGroupVariants"]
+    },
+    {
+      "file": "apps/web/src/components/ui/card.tsx",
+      "exports": ["CardFooter", "CardAction"]
+    },
+    {
+      "file": "apps/web/src/components/ui/chart.tsx",
+      "exports": ["ChartStyle"]
+    },
+    {
+      "file": "apps/web/src/components/ui/context-menu.tsx",
+      "exports": ["ContextMenuCheckboxItem", "ContextMenuRadioItem", "ContextMenuLabel", "ContextMenuSeparator", "ContextMenuShortcut", "ContextMenuGroup", "ContextMenuPortal", "ContextMenuSub", "ContextMenuSubContent", "ContextMenuSubTrigger", "ContextMenuRadioGroup"]
+    },
+    {
+      "file": "apps/web/src/components/ui/dialog.tsx",
+      "exports": ["DialogClose", "DialogOverlay", "DialogPortal"]
+    },
+    {
+      "file": "apps/web/src/components/ui/dropdown-menu.tsx",
+      "exports": ["DropdownMenuPortal", "DropdownMenuGroup"]
+    },
+    {
+      "file": "apps/web/src/components/ui/dropdrawer.tsx",
+      "exports": ["DropDrawerFooter", "DropDrawerGroup"]
+    },
+    {
+      "file": "apps/web/src/components/ui/emoji-picker.tsx",
+      "exports": ["Emoji"]
+    },
+    {
+      "file": "apps/web/src/components/ui/empty.tsx",
+      "exports": ["EmptyContent"]
+    },
+    {
+      "file": "apps/web/src/components/ui/field.tsx",
+      "exports": ["FieldLegend", "FieldSet", "FieldContent", "FieldTitle"]
+    },
+    {
+      "file": "apps/web/src/components/ui/input-group.tsx",
+      "exports": ["InputGroupText"]
+    },
+    {
+      "file": "apps/web/src/components/ui/item.tsx",
+      "exports": ["ItemSeparator", "ItemHeader", "ItemFooter"]
+    },
+    {
+      "file": "apps/web/src/components/ui/popover.tsx",
+      "exports": ["PopoverDescription"]
+    },
+    {
+      "file": "apps/web/src/components/ui/select.tsx",
+      "exports": ["SelectScrollDownButton", "SelectScrollUpButton", "SelectSeparator"]
+    },
+    {
+      "file": "apps/web/src/components/ui/sheet.tsx",
+      "exports": ["SheetTrigger", "SheetClose", "SheetFooter"]
+    },
+    {
+      "file": "apps/web/src/components/ui/sidebar.tsx",
+      "exports": ["SidebarInput", "SidebarMenuSkeleton", "SidebarMenuSub", "SidebarMenuSubButton", "SidebarMenuSubItem", "SidebarRail", "SidebarSeparator"]
+    },
+    {
+      "file": "packages/features/src/databases/queries.ts",
+      "exports": ["PageProperty", "PagePropertyValue"]
+    },
+    {
+      "file": "packages/features/src/pages/queries.ts",
+      "exports": ["PageProperty", "PagePropertyValue"]
+    }
+  ],
+  // The self-host test runner loads ws at runtime from a dev-only script.
+  "ignoreDependencies": ["ws"],
   "duplicates": {
     // Hide pair-only clones; focus on widespread copy-paste
     // worth refactoring. Lower to 2 to report every duplicate pair.

@@ -34,7 +34,7 @@ import {
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
 import { desktopNetworkFetch } from "@/lib/desktop-network"
 
-export type AskAiBlockOptions = {
+type AskAiBlockOptions = {
   workspaceId?: string | null
 }
 

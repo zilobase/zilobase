@@ -50,7 +50,7 @@ import type { CreatedPage } from "@/packages/editor/extensions/page-block"
 
 import { SlashCommandMenu } from "./slash-command-menu"
 
-export type SlashCommandOptions = {
+type SlashCommandOptions = {
   onCreateDatabase?: () => Promise<string | null>
   onCreateMeeting?: () => Promise<string | null>
   onCreatePage?: () => Promise<CreatedPage>

@@ -13,7 +13,7 @@ import {
 
 import { MeetingView } from "./meeting-view"
 
-export type MeetingBlockOptions = {
+type MeetingBlockOptions = {
   editable?: boolean
   editorRuntime?: {
     getEditable: () => boolean

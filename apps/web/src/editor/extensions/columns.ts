@@ -370,5 +370,3 @@ export const ColumnsExtension = Extension.create({
     return extensions
   },
 })
-
-export default ColumnsExtension

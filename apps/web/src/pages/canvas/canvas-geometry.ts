@@ -23,12 +23,6 @@ export function getDistance(start: XYPosition, end: XYPosition) {
   return Math.hypot(end.x - start.x, end.y - start.y)
 }
 
-export function isCanvasShapeNode(
-  node: CanvasNodeWithLayout | null | undefined,
-): node is Extract<CanvasNodeWithLayout, { type: "shape" }> {
-  return node?.type === "shape"
-}
-
 export function isCanvasConnectableNode(
   node: CanvasNodeWithLayout | null | undefined,
 ): node is Extract<CanvasNodeWithLayout, { type: "shape" }> {
@@ -41,7 +35,7 @@ export function isCanvasAnchorNode(
   return node?.type === "anchor"
 }
 
-export function getNodeRect(node: CanvasNodeWithLayout): CanvasRect {
+function getNodeRect(node: CanvasNodeWithLayout): CanvasRect {
   const width = Math.max(node.measured?.width ?? node.width ?? 1, 1)
   const height = Math.max(node.measured?.height ?? node.height ?? 1, 1)
   const position =

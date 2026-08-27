@@ -475,5 +475,3 @@ export function getStrokeLineCap(
 ): "round" {
   return "round"
 }
-
-export type RoughShapePath = ShapePath

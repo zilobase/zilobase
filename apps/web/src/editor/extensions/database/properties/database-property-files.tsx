@@ -290,7 +290,6 @@ export function DatabasePropertyFiles({
   )
 }
 
-export { DatabasePropertyFiles as DatabaseFilesCell }
 
 function getFilesLimit(config: unknown): FilesLimitValue {
   if (
