@@ -3,7 +3,12 @@
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "entry": [
     "src/index.{js,jsx,mjs}",
-    "src/main.{js,jsx,mjs}"
+    "src/main.{js,jsx,mjs}",
+    // The web test runner discovers these modules with fs.readdir().
+    "apps/web/test/*.test.mjs",
+    // Runtime and developer entry points invoked outside package scripts.
+    "scripts/run-signed-macos-debug.mjs",
+    "scripts/test-selfhost.mjs"
   ],
   "workspaces": {
     "patterns": [

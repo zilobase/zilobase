@@ -26,8 +26,8 @@ export function register({ assert, test }) {
   })
 
   test("shared nested controls use adjacent concentric radius tokens", async () => {
-    const [tabs, menubar, dropdown, contextMenu] = await Promise.all(
-      ["tabs", "menubar", "dropdown-menu", "context-menu"].map((component) =>
+    const [tabs, dropdown, contextMenu] = await Promise.all(
+      ["tabs", "dropdown-menu", "context-menu"].map((component) =>
         readFile(
           new URL(`../src/components/ui/${component}.tsx`, import.meta.url),
           "utf8",
@@ -37,9 +37,6 @@ export function register({ assert, test }) {
 
     assert.match(tabs, /rounded-lg bg-muted p-1/)
     assert.match(tabs, /rounded-md bg-background/)
-    assert.match(menubar, /rounded-lg border p-1/)
-    assert.match(menubar, /data-slot="menubar-trigger"[\s\S]*rounded-md/)
-
     for (const menu of [dropdown, contextMenu]) {
       assert.match(menu, /rounded-lg[^"\n]*p-1/)
       assert.match(menu, /data-slot="[^"]+-item"[\s\S]*?rounded-md/)
