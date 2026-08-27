@@ -738,7 +738,6 @@ function AppHeader({
       </PageSidePaneHeaderCell>
       {showSidePaneHeader ? (
         <PageSidePaneHeaderCell
-          className="z-40 shadow-[-10px_0_24px_-20px_rgb(0_0_0/0.45)]"
           side="side"
           splitActive={splitActive}
         >

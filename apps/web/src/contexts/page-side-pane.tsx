@@ -187,10 +187,10 @@ export function getPageSidePaneHeaderCellClassName({
   splitActive: boolean
 }) {
   return cn(
-    "flex h-12 min-h-0 min-w-0 items-center overflow-hidden bg-background",
-    side === "main" && "h-full w-full",
+    "flex h-12 min-h-0 min-w-0 items-center overflow-hidden",
+    side === "main" && "h-full w-full bg-background",
     side === "side" && [
-      "absolute inset-y-0 right-0 z-30 w-[var(--page-side-pane-width)]",
+      "absolute inset-y-0 right-0 z-30 w-[var(--page-side-pane-width)] bg-background shadow-none dark:bg-sidebar",
       "transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
       splitActive
         ? "border-l border-border [transform:translate3d(0,0,0)]"
@@ -250,10 +250,12 @@ export function PageSidePaneMainCell({
 export function PageScrollViewport({
   children,
   className,
+  edgeFadeClassName,
   scrollClassName,
 }: {
   children: ReactNode
   className?: string
+  edgeFadeClassName?: string
   scrollClassName?: string
 }) {
   return (
@@ -273,11 +275,17 @@ export function PageScrollViewport({
       </div>
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 z-20 h-3 bg-gradient-to-b from-background to-transparent"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 top-0 z-20 h-3 bg-gradient-to-b from-background to-transparent",
+          edgeFadeClassName,
+        )}
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-5 bg-gradient-to-t from-background to-transparent"
+        className={cn(
+          "pointer-events-none absolute inset-x-0 bottom-0 z-20 h-5 bg-gradient-to-t from-background to-transparent",
+          edgeFadeClassName,
+        )}
       />
     </div>
   )
@@ -464,7 +472,7 @@ export function PageSidePaneSideCell({
     <aside
       aria-hidden={!open}
       className={cn(
-        "absolute inset-y-0 right-0 z-30 flex min-h-0 w-[var(--page-side-pane-width)] min-w-0 flex-col overflow-hidden border-l border-border bg-background shadow-[-10px_0_24px_-20px_rgb(0_0_0/0.45)]",
+        "absolute inset-y-0 right-0 z-30 flex min-h-0 w-[var(--page-side-pane-width)] min-w-0 flex-col overflow-hidden border-l border-border bg-background shadow-none dark:bg-sidebar",
         getPageSidePaneMobilePanelClassName(open),
         className,
       )}
@@ -484,7 +492,10 @@ export function PageSidePaneSideCell({
       >
         <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-focus-visible:bg-ring group-hover:bg-border" />
       </div>
-      <PageScrollViewport className="h-full w-full">
+      <PageScrollViewport
+        className="h-full w-full"
+        edgeFadeClassName="dark:from-sidebar"
+      >
         {children}
       </PageScrollViewport>
     </aside>
