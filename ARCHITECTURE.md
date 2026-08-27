@@ -29,6 +29,9 @@ Database property type IDs live in `packages/features` as the shared contract. T
 Uploaded images use the server image API. In the Docker self-hosted stack, image storage uses MinIO through the same S3-compatible path used for hosted object storage.
 
 AI features run through the server. The server builds page and workspace context, calls configured model providers, and applies supported edits through existing page and database mutation paths.
+The staged capability, safety, and verification contract for expanding Ask AI
+into a permission-scoped agent is documented in
+[`docs/ask-ai-agent-plan.md`](./docs/ask-ai-agent-plan.md).
 
 ## Auth and Access
 
