@@ -19,6 +19,7 @@ import {
   sanitizeAiFilename,
   sha256Hex,
 } from "./ai-file-storage";
+import { assertAiAgentArtifactQuota } from "./agent-operations";
 
 const ARTIFACT_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 
@@ -101,6 +102,13 @@ async function createArtifact(
       const checksum = await sha256Hex(generated.bytes);
       const now = new Date();
       const expiresAt = new Date(now.getTime() + ARTIFACT_TTL_MS);
+
+      await assertAiAgentArtifactQuota({
+        byteSize: generated.bytes.byteLength,
+        env: context.env,
+        userId: context.userId,
+        workspaceId: context.workspaceId,
+      });
 
       await putAiStoredObject({
         body: generated.bytes,

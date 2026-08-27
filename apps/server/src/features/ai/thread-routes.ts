@@ -21,7 +21,12 @@ import {
   saveAiAgentPreference,
   saveAiChatFeedback,
 } from "../../ai/agent-experience";
-import { getMembership } from "../../access";
+import {
+  listAiAgentToolExecutions,
+  listAiAgentTurnsForWorkspace,
+  readAiAgentLimits,
+} from "../../ai/agent-operations";
+import { getMembership, isPrivilegedOrgRole } from "../../access";
 import type { AppBindings } from "../../types";
 
 const createThreadSchema = z.object({
@@ -43,6 +48,84 @@ const feedbackSchema = z.object({
 });
 
 export const aiThreadRoutes = new Hono<AppBindings>();
+
+aiThreadRoutes.get("/operations/limits", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  const limits = readAiAgentLimits(c.env);
+  return c.json({
+    limits: {
+      auditRetentionDays: limits.auditRetentionDays,
+      maxArtifactBytesPerUserPerDay: limits.maxArtifactBytesPerUserPerDay,
+      maxArtifactsPerUserPerDay: limits.maxArtifactsPerUserPerDay,
+      maxConcurrentTurnsPerUser: limits.maxConcurrentTurnsPerUser,
+      maxConcurrentTurnsPerWorkspace: limits.maxConcurrentTurnsPerWorkspace,
+      maxFilesPerTurn: limits.maxFilesPerTurn,
+      maxInputCharacters: limits.maxInputCharacters,
+      maxInputMessages: limits.maxInputMessages,
+      maxOutputTokens: limits.maxOutputTokens,
+      maxSteps: limits.maxSteps,
+      maxTokensPerUserPerDay: limits.maxTokensPerUserPerDay,
+      maxTurnsPerUserPerDay: limits.maxTurnsPerUserPerDay,
+      maxUploadBytesPerUserPerDay: limits.maxUploadBytesPerUserPerDay,
+      turnTimeoutMs: limits.turnTimeoutMs,
+    },
+  });
+});
+
+aiThreadRoutes.get("/operations/turns", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  if (!isPrivilegedOrgRole(auth.membership.role)) {
+    return c.json({ error: "Only workspace admins can view AI audit data." }, 403);
+  }
+
+  const requestedLimit = Number(c.req.query("limit"));
+  const turns = await listAiAgentTurnsForWorkspace({
+    limit: Number.isSafeInteger(requestedLimit) ? requestedLimit : undefined,
+    workspaceId: auth.workspaceId,
+  });
+
+  return c.json({
+    turns: turns.map((turn) => ({
+      ...turn,
+      completedAt: turn.completedAt?.toISOString() ?? null,
+      startedAt: turn.startedAt.toISOString(),
+    })),
+  });
+});
+
+aiThreadRoutes.get("/operations/turns/:turnId/tools", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+
+  if ("response" in auth) {
+    return auth.response;
+  }
+
+  if (!isPrivilegedOrgRole(auth.membership.role)) {
+    return c.json({ error: "Only workspace admins can view AI audit data." }, 403);
+  }
+
+  const tools = await listAiAgentToolExecutions({
+    turnId: c.req.param("turnId"),
+    workspaceId: auth.workspaceId,
+  });
+
+  return c.json({
+    tools: tools.map((tool) => ({
+      ...tool,
+      completedAt: tool.completedAt?.toISOString() ?? null,
+    })),
+  });
+});
 
 aiThreadRoutes.get("/threads", async (c) => {
   const auth = await requireActiveWorkspace(c);
@@ -299,11 +382,13 @@ async function requireActiveWorkspace(c: Context<AppBindings>) {
     return { response: c.json({ error: "No active workspace" }, 409) };
   }
 
-  if (!(await getMembership(workspaceId, user.id))) {
+  const membership = await getMembership(workspaceId, user.id);
+
+  if (!membership) {
     return { response: c.json({ error: "Forbidden" }, 403) };
   }
 
-  return { workspaceId, user };
+  return { membership, workspaceId, user };
 }
 
 async function parseJson<T extends z.ZodType>(

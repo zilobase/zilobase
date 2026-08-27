@@ -34,6 +34,14 @@ import {
   loadAiAgentContextInstruction,
   loadMentionedPeopleInstruction,
 } from "./agent-experience";
+import {
+  finishAiAgentToolExecution,
+  finishAiAgentTurn,
+  normalizeAiAgentErrorCode,
+  reserveAiAgentTurn,
+  startAiAgentToolExecution,
+  summarizeAiAgentTurnInput,
+} from "./agent-operations";
 
 export type AiChatRequestBody = {
   attachmentIds: string[];
@@ -115,155 +123,262 @@ export async function runAiChatTurn(input: {
     return auth;
   }
 
-  const hasPageContext = Boolean(requestBody.pageContext);
-  const referencedPageAccess = await input.withDb(() =>
-    resolveReferencedPageAccess({
-      pageIds: requestBody.allowedPageIds,
-      userId: auth.userId,
-      workspaceId,
-    }),
-  );
-  const readablePageIds = referencedPageAccess
-    .filter((item) => item.canView)
-    .map((item) => item.pageId);
-  const editablePageIds = referencedPageAccess
-    .filter((item) => item.canEdit)
-    .map((item) => item.pageId);
-  const hasPageEditAccess = hasPageContext && editablePageIds.length > 0;
-  const primaryEditablePageId = requestBody.primaryPageId &&
-      editablePageIds.includes(requestBody.primaryPageId)
-    ? requestBody.primaryPageId
-    : null;
-  const capabilityPolicy = resolveAgentCapabilityPolicy({
-    canEditAttachedPages: hasPageEditAccess,
-  });
-  if (hasPageContext) {
-    console.warn(
-      `AI chat page access: clientCanEdit=${requestBody.canEditPages} readableIds=${readablePageIds.join(",") || "(none)"} editableIds=${editablePageIds.join(",") || "(none)"} primaryEditableId=${primaryEditablePageId ?? "(none)"}`,
-    );
-  }
-
-  const workspaceReadTools = buildWorkspaceReadTools({
-    userId: auth.userId,
-    workspaceId,
-    withDb: (fn) => input.withDb(fn),
-  });
-  const databaseConfigTools = buildDatabaseConfigTools({
-    allowedPageIds: new Set(editablePageIds),
-    env: input.env,
-    workspaceId,
-    primaryPageId: primaryEditablePageId,
-    threadId: auth.threadId,
-    userId: auth.userId,
-    withDb: (fn) => input.withDb(fn),
-  });
-  const workspaceActionTools = buildWorkspaceActionTools({
-    env: input.env,
-    threadId: auth.threadId,
-    userId: auth.userId,
-    workspaceId,
-    withDb: (fn) => input.withDb(fn),
-  });
-  const artifactTools = buildArtifactTools({
-    env: input.env,
-    threadId: auth.threadId,
-    userId: auth.userId,
-    workspaceId,
-    withDb: (fn) => input.withDb(fn),
-  });
-  const tools: ToolSet = {
-    ...buildAnalysisTools(),
-    ...workspaceReadTools,
-    ...workspaceActionTools,
-    ...artifactTools,
-    ...databaseConfigTools,
-    ...(hasPageEditAccess
-      ? {
-          ...buildPageEditTools(editablePageIds),
-        }
-      : {}),
-  };
-
-  const model = resolveOpenAiChatModel(input.env.OPENAI_API_KEY, requestBody.model);
-  const chatMessages = withoutAiFileParts(input.messages).filter(
-    (message) => (message.role as string) !== "data",
-  );
-  const persistedMessages = await convertToModelMessages(chatMessages);
-  const fileContext = await input.withDb(() =>
-    resolveAiFileContext({
+  const reservation = await input.withDb(() =>
+    reserveAiAgentTurn({
       env: input.env,
-      messages: input.messages,
-      requestedFileIds: requestBody.attachmentIds,
+      metrics: summarizeAiAgentTurnInput(
+        input.messages,
+        requestBody.attachmentIds,
+      ),
+      requestedModel: requestBody.model ?? "auto",
       threadId: auth.threadId,
       userId: auth.userId,
       workspaceId,
     }),
   );
-  const modelMessages: ModelMessage[] = [
-    ...persistedMessages,
-    ...fileContext.modelMessages,
-  ];
-  const hasTools = Object.keys(tools).length > 0;
-  const pageContextInstruction = buildPageContextInstruction(
-    requestBody.pageContext,
-  );
-  const pageEditInstruction = [
-    hasPageEditAccess
-      ? buildPageEditInstruction({
-          allowedPageIds: editablePageIds,
-          primaryPageId: primaryEditablePageId,
-        })
-      : "",
-    buildDatabaseConfigInstruction({
-      allowedPageIds: editablePageIds,
-      primaryPageId: primaryEditablePageId,
-    }),
-  ].join("");
-  const policyInstruction = buildAgentPolicyInstruction(capabilityPolicy);
-  const [experienceInstruction, mentionedPeopleInstruction] =
-    await input.withDb(() => Promise.all([
-      loadAiAgentContextInstruction({
+
+  if (!reservation.ok) {
+    return Response.json(
+      {
+        code: reservation.rejection.code,
+        error: reservation.rejection.message,
+        message: reservation.rejection.message,
+        retryAfterSeconds: reservation.rejection.retryAfterSeconds,
+      },
+      {
+        headers: reservation.rejection.retryAfterSeconds > 0
+          ? { "retry-after": String(reservation.rejection.retryAfterSeconds) }
+          : undefined,
+        status: reservation.rejection.retryAfterSeconds > 0 ? 429 : 413,
+      },
+    );
+  }
+
+  try {
+    const hasPageContext = Boolean(requestBody.pageContext);
+    const referencedPageAccess = await input.withDb(() =>
+      resolveReferencedPageAccess({
+        pageIds: requestBody.allowedPageIds,
         userId: auth.userId,
         workspaceId,
       }),
-      loadMentionedPeopleInstruction({
-        userIds: requestBody.mentionedUserIds,
+    );
+    const readablePageIds = referencedPageAccess
+      .filter((item) => item.canView)
+      .map((item) => item.pageId);
+    const editablePageIds = referencedPageAccess
+      .filter((item) => item.canEdit)
+      .map((item) => item.pageId);
+    const hasPageEditAccess = hasPageContext && editablePageIds.length > 0;
+    const primaryEditablePageId = requestBody.primaryPageId &&
+        editablePageIds.includes(requestBody.primaryPageId)
+      ? requestBody.primaryPageId
+      : null;
+    const capabilityPolicy = resolveAgentCapabilityPolicy({
+      canEditAttachedPages: hasPageEditAccess,
+    });
+    if (hasPageContext) {
+      console.warn(
+        `AI chat page access: clientCanEdit=${requestBody.canEditPages} readableIds=${readablePageIds.join(",") || "(none)"} editableIds=${editablePageIds.join(",") || "(none)"} primaryEditableId=${primaryEditablePageId ?? "(none)"}`,
+      );
+    }
+
+    const workspaceReadTools = buildWorkspaceReadTools({
+      userId: auth.userId,
+      workspaceId,
+      withDb: (fn) => input.withDb(fn),
+    });
+    const databaseConfigTools = buildDatabaseConfigTools({
+      allowedPageIds: new Set(editablePageIds),
+      env: input.env,
+      workspaceId,
+      primaryPageId: primaryEditablePageId,
+      threadId: auth.threadId,
+      userId: auth.userId,
+      withDb: (fn) => input.withDb(fn),
+    });
+    const workspaceActionTools = buildWorkspaceActionTools({
+      env: input.env,
+      threadId: auth.threadId,
+      userId: auth.userId,
+      workspaceId,
+      withDb: (fn) => input.withDb(fn),
+    });
+    const artifactTools = buildArtifactTools({
+      env: input.env,
+      threadId: auth.threadId,
+      userId: auth.userId,
+      workspaceId,
+      withDb: (fn) => input.withDb(fn),
+    });
+    const tools: ToolSet = {
+      ...buildAnalysisTools(),
+      ...workspaceReadTools,
+      ...workspaceActionTools,
+      ...artifactTools,
+      ...databaseConfigTools,
+      ...(hasPageEditAccess
+        ? {
+            ...buildPageEditTools(editablePageIds),
+          }
+        : {}),
+    };
+
+    const model = resolveOpenAiChatModel(input.env.OPENAI_API_KEY, requestBody.model);
+    const chatMessages = withoutAiFileParts(input.messages).filter(
+      (message) => (message.role as string) !== "data",
+    );
+    const persistedMessages = await convertToModelMessages(chatMessages);
+    const fileContext = await input.withDb(() =>
+      resolveAiFileContext({
+        env: input.env,
+        messages: input.messages,
+        requestedFileIds: requestBody.attachmentIds,
+        threadId: auth.threadId,
+        userId: auth.userId,
         workspaceId,
       }),
-    ]));
+    );
+    const modelMessages: ModelMessage[] = [
+      ...persistedMessages,
+      ...fileContext.modelMessages,
+    ];
+    const hasTools = Object.keys(tools).length > 0;
+    const pageContextInstruction = buildPageContextInstruction(
+      requestBody.pageContext,
+    );
+    const pageEditInstruction = [
+      hasPageEditAccess
+        ? buildPageEditInstruction({
+            allowedPageIds: editablePageIds,
+            primaryPageId: primaryEditablePageId,
+          })
+        : "",
+      buildDatabaseConfigInstruction({
+        allowedPageIds: editablePageIds,
+        primaryPageId: primaryEditablePageId,
+      }),
+    ].join("");
+    const policyInstruction = buildAgentPolicyInstruction(capabilityPolicy);
+    const [experienceInstruction, mentionedPeopleInstruction] =
+      await input.withDb(() => Promise.all([
+        loadAiAgentContextInstruction({
+          userId: auth.userId,
+          workspaceId,
+        }),
+        loadMentionedPeopleInstruction({
+          userIds: requestBody.mentionedUserIds,
+          workspaceId,
+        }),
+      ]));
 
-  const result = streamText({
-    abortSignal: input.abortSignal,
-    maxOutputTokens: 1600,
-    model,
-    messages: modelMessages,
-    stopWhen: stepCountIs(15),
-    tools: hasTools ? tools : undefined,
-    temperature: 0.2,
-    system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction}${fileContext.instruction}\n${policyInstruction}\n${experienceInstruction}\n${mentionedPeopleInstruction}`,
-    onError: ({ error }) => {
-      console.warn(`AI chat ${auth.userId}: ${toProviderErrorMessage(error)}`);
-    },
-    onFinish: input.onStreamFinish,
-  });
+    const result = streamText({
+      abortSignal: input.abortSignal,
+      maxOutputTokens: reservation.limits.maxOutputTokens,
+      maxRetries: reservation.limits.maxRetries,
+      model,
+      messages: modelMessages,
+      stopWhen: stepCountIs(reservation.limits.maxSteps),
+      tools: hasTools ? tools : undefined,
+      temperature: 0.2,
+      timeout: {
+        chunkMs: reservation.limits.streamChunkTimeoutMs,
+        stepMs: reservation.limits.streamStepTimeoutMs,
+        totalMs: reservation.limits.turnTimeoutMs,
+      },
+      system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction}${fileContext.instruction}\n${policyInstruction}\n${experienceInstruction}\n${mentionedPeopleInstruction}`,
+      experimental_onToolCallStart: ({ stepNumber, toolCall }) =>
+        persistAiAgentAudit(input, () =>
+          startAiAgentToolExecution({
+            stepNumber,
+            toolCallId: toolCall.toolCallId,
+            toolName: toolCall.toolName,
+            turnId: reservation.id,
+          }),
+        ),
+      experimental_onToolCallFinish: ({
+        durationMs,
+        error,
+        success,
+        toolCall,
+      }) =>
+        persistAiAgentAudit(input, () =>
+          finishAiAgentToolExecution({
+            durationMs,
+            error,
+            success,
+            toolCallId: toolCall.toolCallId,
+            turnId: reservation.id,
+          }),
+        ),
+      onError: async ({ error }) => {
+        console.warn(`AI chat ${auth.userId}: ${toProviderErrorMessage(error)}`);
+        await persistAiAgentAudit(input, () =>
+          finishAiAgentTurn({
+            errorCode: normalizeAiAgentErrorCode(error),
+            status: "failed",
+            turnId: reservation.id,
+          }),
+        );
+      },
+      onAbort: async ({ steps }) => {
+        await persistAiAgentAudit(input, () =>
+          finishAiAgentTurn({
+            errorCode: "cancelled",
+            status: "cancelled",
+            stepCount: steps.length,
+            toolCallCount: countToolCalls(steps),
+            turnId: reservation.id,
+          }),
+        );
+      },
+      onFinish: async (event) => {
+        const failed = event.finishReason === "error";
+        await persistAiAgentAudit(input, () =>
+          finishAiAgentTurn({
+            errorCode: failed ? "provider_or_tool_failed" : null,
+            inputTokens: event.totalUsage.inputTokens,
+            outputTokens: event.totalUsage.outputTokens,
+            status: failed ? "failed" : "succeeded",
+            stepCount: event.steps.length,
+            toolCallCount: countToolCalls(event.steps),
+            totalTokens: event.totalUsage.totalTokens,
+            turnId: reservation.id,
+          }),
+        );
+        await input.onStreamFinish?.(event);
+      },
+    });
 
-  return result.toUIMessageStreamResponse({
-    originalMessages: input.messages,
-    onError: (error) => toProviderErrorMessage(error),
-    onFinish: input.persistOnFinish === false
-      ? undefined
-      : async ({ messages, isAborted }) => {
-          if (isAborted) {
-            return;
-          }
+    return result.toUIMessageStreamResponse({
+      originalMessages: input.messages,
+      onError: (error) => toProviderErrorMessage(error),
+      onFinish: input.persistOnFinish === false
+        ? undefined
+        : async ({ messages, isAborted }) => {
+            if (isAborted) {
+              return;
+            }
 
-          await input.withDb(async () => {
-            await syncAiChatThreadMessages(auth.threadId, messages);
-            await touchAiChatThreadActivity(auth.threadId);
-            await maybeAutoTitleAiChatThread(auth.threadId, messages);
-          });
-        },
-  });
+            await input.withDb(async () => {
+              await syncAiChatThreadMessages(auth.threadId, messages);
+              await touchAiChatThreadActivity(auth.threadId);
+              await maybeAutoTitleAiChatThread(auth.threadId, messages);
+            });
+          },
+    });
+  } catch (error) {
+    await persistAiAgentAudit(input, () =>
+      finishAiAgentTurn({
+        errorCode: normalizeAiAgentErrorCode(error),
+        status: error instanceof Error && error.name === "AbortError"
+          ? "cancelled"
+          : "failed",
+        turnId: reservation.id,
+      }),
+    );
+    throw error;
+  }
 }
 
 export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
@@ -466,4 +581,24 @@ function toProviderErrorMessage(error: unknown) {
   }
 
   return "The AI provider failed while processing this request.";
+}
+
+function countToolCalls(steps: Array<{ toolCalls: readonly unknown[] }>) {
+  return steps.reduce((total, step) => total + step.toolCalls.length, 0);
+}
+
+async function persistAiAgentAudit(
+  input: { withDb<T>(fn: () => Promise<T>): Promise<T> },
+  operation: () => Promise<unknown>,
+) {
+  try {
+    await input.withDb(operation);
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        code: normalizeAiAgentErrorCode(error),
+        event: "ai_agent_audit_write_failed",
+      }),
+    );
+  }
 }

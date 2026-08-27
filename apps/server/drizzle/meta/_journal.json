@@ -379,6 +379,13 @@
       "when": 1787840000000,
       "tag": "0053_ai_teammate_experience",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1787845000000,
+      "tag": "0054_ai_agent_operations",
+      "breakpoints": true
     }
   ]
 }

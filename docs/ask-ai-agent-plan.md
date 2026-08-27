@@ -310,7 +310,7 @@ store. Model selection includes an Auto policy and operator-provided capability
 descriptions. Connected-app selection remains absent until native adapters are
 available.
 
-### Pass 6 — operations, quotas, and audit
+### Pass 6 — operations, quotas, and audit (complete)
 
 - Persist turns, tool executions, approvals, receipts, latency, token/file
   usage, and normalized failure codes without sensitive tool payloads in logs.
@@ -325,6 +325,18 @@ available.
 Acceptance: operators can explain a turn from audit metadata, quotas fail with
 actionable errors, and cleanup jobs remove expired data without breaking chat
 history.
+
+Implementation note: Postgres-backed turn reservations serialize workspace and
+user concurrency checks across replicas. Sanitized turn/tool audit rows retain
+only IDs, finite status/error labels, counts, usage, and timing—never prompts or
+tool payloads. Admin-only endpoints expose the latest audit metadata, while a
+member endpoint exposes effective limits. Provider retries, total/step/chunk
+timeouts, the existing client cancellation signal, rolling 24-hour turn/token/
+upload/artifact quotas, stale-run recovery, and scheduled blob/audit cleanup are
+active. Expired objects are removed while their metadata is marked expired so
+chat history remains structurally intact. Connected-app writes remain excluded,
+so approval issuance and stale-approval cleanup are intentionally inactive
+until a native adapter implements the confirmation protocol.
 
 ### Pass 7 — final cleanup and parity audit
 

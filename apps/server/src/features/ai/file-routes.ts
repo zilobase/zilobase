@@ -19,6 +19,10 @@ import { createImageStorage, resolveImageStorageMode } from "../../image-storage
 import type { AppBindings } from "../../types";
 import { requireActiveWorkspace } from "../../routes/workspace-settings/shared";
 import { getAiChatThreadForUser } from "../../ai/chat-persistence";
+import {
+  AiAgentOperationalLimitError,
+  assertAiAgentUploadQuota,
+} from "../../ai/agent-operations";
 
 const uploadInputSchema = z.object({
   byteSize: z.number().int().positive().max(AI_FILE_MAX_BYTES),
@@ -46,6 +50,28 @@ aiFileRoutes.post("/files/uploads", async (c) => {
     workspaceId: auth.workspaceId,
   });
   if (!thread) return c.json({ error: "Thread not found" }, 404);
+
+  try {
+    await assertAiAgentUploadQuota({
+      byteSize: parsed.data.byteSize,
+      env: c.env,
+      userId: auth.user.id,
+      workspaceId: auth.workspaceId,
+    });
+  } catch (error) {
+    if (error instanceof AiAgentOperationalLimitError) {
+      c.header("retry-after", String(error.retryAfterSeconds));
+      return c.json(
+        {
+          code: error.code,
+          error: error.message,
+          retryAfterSeconds: error.retryAfterSeconds,
+        },
+        error.status,
+      );
+    }
+    throw error;
+  }
 
   const id = crypto.randomUUID();
   const filename = sanitizeAiFilename(parsed.data.filename);

@@ -25,6 +25,7 @@ import { runMigrationSets, type MigrationSet } from "./migrations";
 import { createNodeRealtimeBus } from "./realtime-bus";
 import { createNodeCollaborationExtensions } from "./collaboration-redis";
 import { setRealtimeReadinessProbe } from "../../realtime-readiness";
+import { cleanupExpiredAiAgentData } from "../../ai/agent-operations";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -88,7 +89,7 @@ export function createNodeRuntime({
     publishDatabaseMutation: ({ event }) =>
       databaseRealtime.publishMutation(event),
   };
-  let stopOutboxDrainer: (() => void) | null = null;
+  let stopMaintenanceDrainer: (() => void) | null = null;
 
   setRuntimeAdapter(effectiveRuntimeAdapter);
   assertSelfHostedProductionConfiguration(env);
@@ -114,8 +115,8 @@ export function createNodeRuntime({
     },
     async start() {
       await realtimeBus?.connect();
-      if (!stopOutboxDrainer) {
-        stopOutboxDrainer = startDatabaseRealtimeOutboxDrainer(env);
+      if (!stopMaintenanceDrainer) {
+        stopMaintenanceDrainer = startMaintenanceDrainer(env);
       }
 
       await new Promise<void>((resolve, reject) => {
@@ -131,8 +132,8 @@ export function createNodeRuntime({
       });
     },
     async close() {
-      stopOutboxDrainer?.();
-      stopOutboxDrainer = null;
+      stopMaintenanceDrainer?.();
+      stopMaintenanceDrainer = null;
       await databaseRealtime.destroy();
       await meetingAudio.destroy();
       await collaboration.destroy();
@@ -150,7 +151,7 @@ export function createNodeRuntime({
   };
 }
 
-function startDatabaseRealtimeOutboxDrainer(
+function startMaintenanceDrainer(
   env: Record<string, unknown>,
 ) {
   let draining = false;
@@ -162,6 +163,15 @@ function startDatabaseRealtimeOutboxDrainer(
     try {
       await runWithDbEnv(env, () =>
         Promise.all([
+          cleanupExpiredAiAgentData(env).catch((error) => {
+            console.error(
+              JSON.stringify({
+                code: "ai_agent_cleanup_failed",
+                event: "background_maintenance_task_failed",
+                message: error instanceof Error ? error.message : String(error),
+              }),
+            );
+          }),
           drainDatabaseRealtimeOutbox(env, { limit: 250 }),
           expireTemporaryMemberships(),
         ]),
@@ -170,7 +180,7 @@ function startDatabaseRealtimeOutboxDrainer(
       console.error(
         JSON.stringify({
           error: error instanceof Error ? error.message : String(error),
-          event: "database_realtime_outbox_drain_failed",
+          event: "background_maintenance_failed",
         }),
       );
     } finally {

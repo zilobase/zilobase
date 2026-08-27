@@ -14,6 +14,8 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - Ask AI can run deterministic table analysis, render interactive result tables, and create expiring downloadable CSV, XLSX, DOCX, PPTX, PDF, Markdown, JSON, and ZIP artifacts.
 - Ask AI now supports durable pinned and searchable chat history, reusable skill and people attachments, suggested starting actions, and per-response feedback.
 - Ask AI personal settings now include server-applied instructions and response style, while model selection includes Auto routing and capability descriptions.
+- Ask AI now enforces database-backed concurrency and daily usage quotas, bounded provider retries/timeouts, cancellation tracking, and scheduled upload/artifact retention cleanup.
+- Workspace admins can inspect sanitized Ask AI turn and tool audit metadata without exposing prompts, page/file content, or tool payloads.
 
 ### Changed
 
