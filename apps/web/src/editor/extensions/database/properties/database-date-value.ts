@@ -27,10 +27,7 @@ export function parseDatabaseDateValue(value: string) {
   const dateOnlyMatch = trimmedValue.match(/^(\d{4})-(\d{2})-(\d{2})$/)
 
   if (dateOnlyMatch) {
-    const year = Number(dateOnlyMatch[1])
-    const month = Number(dateOnlyMatch[2])
-    const day = Number(dateOnlyMatch[3])
-    const date = new Date(year, month - 1, day)
+    const { date, day, month, year } = parseLocalDateMatch(dateOnlyMatch)
 
     return isSameDateParts(date, year, month, day) ? date : undefined
   }
@@ -38,6 +35,14 @@ export function parseDatabaseDateValue(value: string) {
   const date = new Date(trimmedValue)
 
   return Number.isNaN(date.getTime()) ? undefined : date
+}
+
+export function parseLocalDateMatch(match: RegExpMatchArray) {
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+
+  return { date: new Date(year, month - 1, day), day, month, year }
 }
 
 function isSameDateParts(date: Date, year: number, month: number, day: number) {

@@ -3,6 +3,7 @@ import { addDays } from "date-fns"
 import type { GanttFeature, GanttStatus } from "@/components/kibo-ui/gantt"
 
 import { getPaletteColor } from "@/lib/color-tokens"
+import { parseLocalDateMatch } from "../../properties/database-date-value"
 
 import { defaultStatusOptions } from "../../core/database-property-types"
 import {
@@ -266,10 +267,7 @@ function parseStoredDateValue(value: string) {
   const dateOnlyMatch = trimmedValue.match(/^(\d{4})-(\d{2})-(\d{2})$/)
 
   if (dateOnlyMatch) {
-    const year = Number(dateOnlyMatch[1])
-    const month = Number(dateOnlyMatch[2])
-    const day = Number(dateOnlyMatch[3])
-    const date = new Date(year, month - 1, day)
+    const { date } = parseLocalDateMatch(dateOnlyMatch)
 
     return Number.isNaN(date.getTime()) ? null : date
   }

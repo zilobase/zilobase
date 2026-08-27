@@ -40,6 +40,16 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+function softDeleteColumns() {
+  return {
+    deletedById: text("deleted_by_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    ...timestampColumns(),
+  };
+}
+
 export const pageSettings = pgTable("page_settings", {
   id: text("id").primaryKey(),
   userId: text("user_id")
@@ -488,11 +498,7 @@ export const page = pgTable(
     content: jsonb("content"),
     hasContent: boolean("has_content").notNull().default(false),
     metadata: jsonb("metadata"),
-    deletedById: text("deleted_by_id").references(() => user.id, {
-      onDelete: "set null",
-    }),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    ...timestampColumns(),
+    ...softDeleteColumns(),
   },
   (table) => [
     index("page_workspace_deleted_idx").on(
@@ -935,11 +941,7 @@ export const pageProperty = pgTable(
     name: text("name").notNull(),
     type: text("type").notNull(),
     config: jsonb("config"),
-    deletedById: text("deleted_by_id").references(() => user.id, {
-      onDelete: "set null",
-    }),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    ...timestampColumns(),
+    ...softDeleteColumns(),
   },
   (table) => [
     index("page_property_workspace_deleted_idx").on(
@@ -990,11 +992,7 @@ export const database = pgTable(
     name: text("name").notNull(),
     config: jsonb("config"),
     version: integer("version").notNull().default(0),
-    deletedById: text("deleted_by_id").references(() => user.id, {
-      onDelete: "set null",
-    }),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    ...timestampColumns(),
+    ...softDeleteColumns(),
   },
   (table) => [
     index("database_workspace_deleted_idx").on(
@@ -1028,11 +1026,7 @@ export const dataSource = pgTable(
     config: jsonb("config"),
     configVersion: integer("config_version").notNull().default(1),
     version: integer("version").notNull().default(0),
-    deletedById: text("deleted_by_id").references(() => user.id, {
-      onDelete: "set null",
-    }),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    ...timestampColumns(),
+    ...softDeleteColumns(),
   },
   (table) => [
     index("data_source_workspace_deleted_idx").on(
@@ -1206,11 +1200,7 @@ export const databaseRow = pgTable(
     lastEditedById: text("last_edited_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
-    deletedById: text("deleted_by_id").references(() => user.id, {
-      onDelete: "set null",
-    }),
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    ...timestampColumns(),
+    ...softDeleteColumns(),
   },
   (table) => [
     index("database_row_database_deleted_position_idx").on(
