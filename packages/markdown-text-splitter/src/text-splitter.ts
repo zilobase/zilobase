@@ -95,32 +95,14 @@ export abstract class TextSplitter {
     for (const split of splits) {
       const splitLength = this.lengthFunction(split);
 
-      if (
-        total +
-          splitLength +
-          (currentDoc.length > 0 ? separatorLength : 0) >
-        this.chunkSize
-      ) {
-        if (currentDoc.length > 0) {
-          const doc = this.joinDocs(currentDoc, separator);
-          if (doc !== null) {
-            documents.push(doc);
-          }
-
-          while (
-            total > this.chunkOverlap ||
-            (total +
-              splitLength +
-              (currentDoc.length > 0 ? separatorLength : 0) >
-              this.chunkSize &&
-              total > 0)
-          ) {
-            total -=
-              this.lengthFunction(currentDoc[0]) +
-              (currentDoc.length > 1 ? separatorLength : 0);
-            currentDoc = currentDoc.slice(1);
-          }
-        }
+      if (this.exceedsChunkSize(total, splitLength, currentDoc, separatorLength)) {
+        this.appendJoinedDocument(documents, currentDoc, separator);
+        ({ currentDoc, total } = this.trimOverlap(
+          currentDoc,
+          total,
+          splitLength,
+          separatorLength,
+        ));
       }
 
       currentDoc.push(split);
@@ -133,6 +115,57 @@ export abstract class TextSplitter {
     }
 
     return documents;
+  }
+
+  private appendJoinedDocument(
+    documents: string[],
+    parts: string[],
+    separator: string,
+  ): void {
+    if (parts.length === 0) return;
+
+    const document = this.joinDocs(parts, separator);
+    if (document !== null) documents.push(document);
+  }
+
+  private exceedsChunkSize(
+    total: number,
+    splitLength: number,
+    parts: string[],
+    separatorLength: number,
+  ): boolean {
+    return (
+      total + splitLength + (parts.length > 0 ? separatorLength : 0) >
+      this.chunkSize
+    );
+  }
+
+  private trimOverlap(
+    parts: string[],
+    total: number,
+    splitLength: number,
+    separatorLength: number,
+  ): { currentDoc: string[]; total: number } {
+    let currentDoc = parts;
+    let currentTotal = total;
+
+    while (
+      currentTotal > this.chunkOverlap ||
+      (currentTotal > 0 &&
+        this.exceedsChunkSize(
+          currentTotal,
+          splitLength,
+          currentDoc,
+          separatorLength,
+        ))
+    ) {
+      currentTotal -=
+        this.lengthFunction(currentDoc[0]) +
+        (currentDoc.length > 1 ? separatorLength : 0);
+      currentDoc = currentDoc.slice(1);
+    }
+
+    return { currentDoc, total: currentTotal };
   }
 }
 

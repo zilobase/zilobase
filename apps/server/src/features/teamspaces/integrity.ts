@@ -55,7 +55,6 @@ export type TeamspaceIntegritySnapshot = {
 export function findTeamspaceIntegrityIssues(
   snapshot: TeamspaceIntegritySnapshot,
 ): TeamspaceIntegrityIssue[] {
-  const issues: TeamspaceIntegrityIssue[] = [];
   const teamspacesById = new Map(
     snapshot.teamspaces.map((record) => [record.id, record]),
   );
@@ -72,25 +71,46 @@ export function findTeamspaceIntegrityIssues(
       .map((record) => record.teamspaceId),
   );
 
-  for (const workspaceRecord of snapshot.workspaces) {
-    const hasActiveDefault = snapshot.teamspaces.some(
-      (record) =>
-        record.workspaceId === workspaceRecord.id &&
-        record.isDefault &&
-        !record.archived,
-    );
+  return [
+    ...findWorkspaceDefaultIssues(snapshot),
+    ...findTeamspaceRecordIssues(snapshot.teamspaces, ownerTeamspaceIds),
+    ...findPrincipalIssues(snapshot.principals, {
+      memberKeys,
+      teamKeys,
+      teamspacesById,
+    }),
+    ...findPlacementIssues(snapshot.placements, pagesById),
+  ];
+}
 
-    if (!hasActiveDefault) {
-      issues.push({
-        code: "missing_default",
-        id: workspaceRecord.id,
-        message: "Workspace has no active default teamspace.",
-        workspaceId: workspaceRecord.id,
-      });
-    }
-  }
+function findWorkspaceDefaultIssues(
+  snapshot: TeamspaceIntegritySnapshot,
+): TeamspaceIntegrityIssue[] {
+  return snapshot.workspaces
+    .filter(
+      (workspaceRecord) =>
+        !snapshot.teamspaces.some(
+          (record) =>
+            record.workspaceId === workspaceRecord.id &&
+            record.isDefault &&
+            !record.archived,
+        ),
+    )
+    .map((workspaceRecord) => ({
+      code: "missing_default",
+      id: workspaceRecord.id,
+      message: "Workspace has no active default teamspace.",
+      workspaceId: workspaceRecord.id,
+    }));
+}
 
-  for (const record of snapshot.teamspaces) {
+function findTeamspaceRecordIssues(
+  teamspaces: TeamspaceIntegritySnapshot["teamspaces"],
+  ownerTeamspaceIds: Set<string>,
+): TeamspaceIntegrityIssue[] {
+  const issues: TeamspaceIntegrityIssue[] = [];
+
+  for (const record of teamspaces) {
     if (record.archived && record.isDefault) {
       issues.push({
         code: "archived_default",
@@ -117,39 +137,57 @@ export function findTeamspaceIntegrityIssues(
     }
   }
 
-  for (const principal of snapshot.principals) {
-    const teamspaceRecord = teamspacesById.get(principal.teamspaceId);
-    if (!teamspaceRecord) continue;
-    const valid =
-      principal.principalType === "user"
-        ? memberKeys.has(
-            `${teamspaceRecord.workspaceId}:${principal.principalId}`,
-          )
-        : principal.principalType === "team"
-          ? teamKeys.has(
-              `${teamspaceRecord.workspaceId}:${principal.principalId}`,
-            )
-          : false;
+  return issues;
+}
 
-    if (!valid) {
-      issues.push({
-        code: "invalid_principal",
-        id: principal.id,
-        message: "Teamspace principal is outside the workspace.",
-        workspaceId: teamspaceRecord.workspaceId,
-      });
-    }
+function findPrincipalIssues(
+  principals: TeamspaceIntegritySnapshot["principals"],
+  lookup: {
+    memberKeys: Set<string>;
+    teamKeys: Set<string>;
+    teamspacesById: Map<
+      string,
+      TeamspaceIntegritySnapshot["teamspaces"][number]
+    >;
+  },
+): TeamspaceIntegrityIssue[] {
+  const issues: TeamspaceIntegrityIssue[] = [];
+
+  for (const principal of principals) {
+    const teamspaceRecord = lookup.teamspacesById.get(principal.teamspaceId);
+    if (!teamspaceRecord) continue;
+    if (isPrincipalInWorkspace(principal, teamspaceRecord, lookup)) continue;
+
+    issues.push({
+      code: "invalid_principal",
+      id: principal.id,
+      message: "Teamspace principal is outside the workspace.",
+      workspaceId: teamspaceRecord.workspaceId,
+    });
   }
 
-  for (const placement of snapshot.placements) {
-    if (
-      placement.deleted ||
-      placement.parentKind !== "page" ||
-      placement.itemKind !== "page" ||
-      placement.placementKind !== "primary"
-    ) {
-      continue;
-    }
+  return issues;
+}
+
+function isPrincipalInWorkspace(
+  principal: TeamspaceIntegritySnapshot["principals"][number],
+  teamspaceRecord: TeamspaceIntegritySnapshot["teamspaces"][number],
+  lookup: { memberKeys: Set<string>; teamKeys: Set<string> },
+) {
+  const key = `${teamspaceRecord.workspaceId}:${principal.principalId}`;
+  if (principal.principalType === "user") return lookup.memberKeys.has(key);
+  if (principal.principalType === "team") return lookup.teamKeys.has(key);
+  return false;
+}
+
+function findPlacementIssues(
+  placements: TeamspaceIntegritySnapshot["placements"],
+  pagesById: Map<string, TeamspaceIntegritySnapshot["pages"][number]>,
+): TeamspaceIntegrityIssue[] {
+  const issues: TeamspaceIntegrityIssue[] = [];
+
+  for (const placement of placements) {
+    if (!isPrimaryPagePlacement(placement)) continue;
     const parent = pagesById.get(placement.parentId);
     const child = pagesById.get(placement.itemId);
     if (!parent || !child || parent.teamspaceId === child.teamspaceId) continue;
@@ -163,6 +201,17 @@ export function findTeamspaceIntegrityIssues(
   }
 
   return issues;
+}
+
+function isPrimaryPagePlacement(
+  placement: TeamspaceIntegritySnapshot["placements"][number],
+) {
+  return (
+    !placement.deleted &&
+    placement.parentKind === "page" &&
+    placement.itemKind === "page" &&
+    placement.placementKind === "primary"
+  );
 }
 
 export async function inspectTeamspaceIntegrity(

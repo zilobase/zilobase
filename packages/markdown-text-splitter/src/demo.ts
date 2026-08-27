@@ -107,67 +107,76 @@ function extractBlocks(content: string): ContentBlock[] {
       continue;
     }
 
-    if (isFenceStart(trimmed)) {
-      const codeLines = [line];
-      index += 1;
-
-      while (index < lines.length) {
-        const nextLine = lines[index] ?? "";
-        codeLines.push(nextLine);
-        index += 1;
-
-        if (nextLine.trim().startsWith(trimmed.slice(0, 3))) {
-          break;
-        }
-      }
-
-      blocks.push({ type: "code", content: codeLines.join("\n") });
-      continue;
-    }
-
-    if (isTableLine(trimmed)) {
-      const tableLines = [line];
-      index += 1;
-
-      while (index < lines.length) {
-        const nextLine = lines[index] ?? "";
-        const nextTrimmed = nextLine.trim();
-
-        if (!nextTrimmed || !isTableLine(nextTrimmed)) {
-          break;
-        }
-
-        tableLines.push(nextLine);
-        index += 1;
-      }
-
-      blocks.push({ type: "table", content: tableLines.join("\n") });
-      continue;
-    }
-
-    const proseLines = [line];
-    index += 1;
-
-    while (index < lines.length) {
-      const nextLine = lines[index] ?? "";
-      const nextTrimmed = nextLine.trim();
-
-      if (!nextTrimmed) {
-        break;
-      }
-
-      if (isFenceStart(nextTrimmed) || isTableLine(nextTrimmed)) {
-        break;
-      }
-
-      proseLines.push(nextLine);
-      index += 1;
-    }
-
-    blocks.push({ type: "prose", content: proseLines.join("\n") });
+    const result = readBlock(lines, index, trimmed);
+    blocks.push(result.block);
+    index = result.nextIndex;
   }
 
   return blocks;
+}
+
+function readBlock(
+  lines: string[],
+  index: number,
+  trimmedLine: string,
+): { block: ContentBlock; nextIndex: number } {
+  if (isFenceStart(trimmedLine)) {
+    return readFencedBlock(lines, index, trimmedLine.slice(0, 3));
+  }
+
+  if (isTableLine(trimmedLine)) {
+    return readConsecutiveBlock(lines, index, "table", isTableLine);
+  }
+
+  return readConsecutiveBlock(
+    lines,
+    index,
+    "prose",
+    (line) => !isFenceStart(line) && !isTableLine(line),
+  );
+}
+
+function readFencedBlock(
+  lines: string[],
+  index: number,
+  fence: string,
+): { block: ContentBlock; nextIndex: number } {
+  const blockLines = [lines[index] ?? ""];
+  let nextIndex = index + 1;
+
+  while (nextIndex < lines.length) {
+    const line = lines[nextIndex] ?? "";
+    blockLines.push(line);
+    nextIndex += 1;
+    if (line.trim().startsWith(fence)) break;
+  }
+
+  return {
+    block: { type: "code", content: blockLines.join("\n") },
+    nextIndex,
+  };
+}
+
+function readConsecutiveBlock(
+  lines: string[],
+  index: number,
+  type: Exclude<BlockType, "code">,
+  belongsToBlock: (line: string) => boolean,
+): { block: ContentBlock; nextIndex: number } {
+  const blockLines = [lines[index] ?? ""];
+  let nextIndex = index + 1;
+
+  while (nextIndex < lines.length) {
+    const trimmedLine = (lines[nextIndex] ?? "").trim();
+    if (!trimmedLine || !belongsToBlock(trimmedLine)) break;
+    blockLines.push(lines[nextIndex] ?? "");
+    nextIndex += 1;
+  }
+
+  return {
+    block: { type, content: blockLines.join("\n") },
+    nextIndex,
+  };
 }
 
 function isFenceStart(line: string): boolean {
