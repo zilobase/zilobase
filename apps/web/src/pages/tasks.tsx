@@ -64,7 +64,7 @@ import {
 } from "@zilobase/features/databases"
 import { useZilobaseFeatures } from "@zilobase/features"
 import { useSession } from "@zilobase/features/auth"
-import { useActiveWorkspaceId } from "@zilobase/features/integrations"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import { usePageNavigation } from "@zilobase/features/pages"
 import {
   defaultUserSettings,

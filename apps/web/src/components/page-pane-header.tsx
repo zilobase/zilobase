@@ -29,7 +29,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
-import { useActiveWorkspaceId } from "@zilobase/features/integrations";
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { useDatabase } from "@zilobase/features/databases";
 import { useMeeting } from "@zilobase/features/meetings";
 import {

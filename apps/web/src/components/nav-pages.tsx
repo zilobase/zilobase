@@ -1,7 +1,7 @@
 import { useState, type DragEvent } from "react"
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { useDeleteDatabase } from "@zilobase/features/databases"
-import { useActiveWorkspaceId } from "@zilobase/features/integrations"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
   useDeletePage,
   useConvertPageToTeamspace,

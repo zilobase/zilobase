@@ -8,14 +8,18 @@ import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
 import {
   ChevronsRightIcon,
   HistoryIcon,
+  PanelRightIcon,
+  PictureInPicture2Icon,
   PlusIcon,
   SparklesIcon,
+  XIcon,
 } from "lucide-react"
 import { lazy, Suspense, useCallback, useState } from "react"
 
 const Chatbot = lazy(() => import("@/components/ai-elements/chatbot"))
 
 type ChatSidebarView = "chat" | "history"
+export type ChatPresentationMode = "floating" | "sidebar"
 
 export function ChatSidebarTrigger({
   adjacentSidebarOpen = false,
@@ -46,13 +50,17 @@ export function ChatSidebarTrigger({
 export function ChatSidebarPanel({
   databaseId,
   onClose,
+  onPresentationModeChange,
   open = true,
   pageId,
+  presentationMode = "sidebar",
 }: {
   databaseId?: string | null
   onClose: () => void
+  onPresentationModeChange?: (mode: ChatPresentationMode) => void
   open?: boolean
   pageId?: string | null
+  presentationMode?: ChatPresentationMode
 }) {
   const { activeThreadId, isBootstrapping, setActiveThreadId } =
     useAiChatThreadState({ enabled: open })
@@ -90,14 +98,42 @@ export function ChatSidebarPanel({
           type="button"
           variant="ghost"
         >
-          <ChevronsRightIcon />
+          {presentationMode === "floating" ? <XIcon /> : <ChevronsRightIcon />}
         </Button>
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-medium text-sm">
-            {view === "history" ? "Chat history" : "Chat sidebar"}
+            {view === "history" ? "Chat history" : "Ask AI"}
           </h2>
         </div>
         <div className="flex items-center gap-0.5">
+          {onPresentationModeChange ? (
+            <Button
+              aria-label={
+                presentationMode === "sidebar"
+                  ? "Switch to floating chat"
+                  : "Dock chat in sidebar"
+              }
+              onClick={() =>
+                onPresentationModeChange(
+                  presentationMode === "sidebar" ? "floating" : "sidebar",
+                )
+              }
+              size="icon-sm"
+              title={
+                presentationMode === "sidebar"
+                  ? "Switch to floating chat"
+                  : "Dock chat in sidebar"
+              }
+              type="button"
+              variant="ghost"
+            >
+              {presentationMode === "sidebar" ? (
+                <PictureInPicture2Icon className="size-4" />
+              ) : (
+                <PanelRightIcon className="size-4" />
+              )}
+            </Button>
+          ) : null}
           <Button
             aria-label="New chat"
             onClick={handleNewChat}

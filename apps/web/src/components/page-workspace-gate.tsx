@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { getApiErrorMessage } from "@/lib/api"
 import { useZilobaseFeatures } from "@zilobase/features"
-import { useActiveWorkspaceId } from "@zilobase/features/integrations"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
   parseActiveWorkspaceMismatchError,
   pageQueryKey,

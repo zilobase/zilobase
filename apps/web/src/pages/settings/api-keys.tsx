@@ -69,7 +69,7 @@ import {
   useUpdateApiKey,
 } from "@zilobase/features/api-keys"
 import type { ApiKeyRecord, CreatedApiKeyRecord } from "@zilobase/features/api-keys"
-import { useActiveWorkspaceId } from "@zilobase/features/integrations"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import { useWorkspaces } from "@zilobase/features/workspaces"
 import { getApiErrorMessage } from "@/lib/api"
 

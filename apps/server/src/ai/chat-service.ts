@@ -46,7 +46,6 @@ import {
 export type AiChatRequestBody = {
   attachmentIds: string[];
   allowedPageIds: string[];
-  canEditPages: boolean;
   model: string | undefined;
   mentionedUserIds: string[];
   workspaceId: string | null;
@@ -61,7 +60,7 @@ const MAX_WORKSPACE_CONTEXT_CHARS = 32_000;
 const SYSTEM_PROMPT =
   "You are Zilobase's workspace agent. Complete bounded multi-step research and supported actions using tools, and clearly report partial failures. When Zilobase page context is provided, treat it as the authoritative source for questions about the current page, attached pages, embedded databases, properties, and rows shown in that context. Use searchWorkspace for workspace-wide discovery, readWorkspacePage for a page's stored body, readPageComments only when comments matter, and queryWorkspaceDatabase for current structured rows and properties. Use citation URLs returned by tools when attributing workspace facts."
   + " Zilobase database and page configuration tools may create and update Zilobase pages, databases, properties, rows, views, and embeds when the user asks."
-  + " Prefer concise answers with dates, participants, links, and page titles when useful. External connected-app access is unavailable in this build; do not imply that email, calendar, chat, source-control, or cloud-drive content was searched or changed.";
+  + " Prefer concise answers with dates, participants, links, and page titles when useful.";
 
 export async function runAiChatTurn(input: {
   abortSignal?: AbortSignal;
@@ -163,9 +162,6 @@ export async function runAiChatTurn(input: {
         workspaceId,
       }),
     );
-    const readablePageIds = referencedPageAccess
-      .filter((item) => item.canView)
-      .map((item) => item.pageId);
     const editablePageIds = referencedPageAccess
       .filter((item) => item.canEdit)
       .map((item) => item.pageId);
@@ -177,12 +173,6 @@ export async function runAiChatTurn(input: {
     const capabilityPolicy = resolveAgentCapabilityPolicy({
       canEditAttachedPages: hasPageEditAccess,
     });
-    if (hasPageContext) {
-      console.warn(
-        `AI chat page access: clientCanEdit=${requestBody.canEditPages} readableIds=${readablePageIds.join(",") || "(none)"} editableIds=${editablePageIds.join(",") || "(none)"} primaryEditableId=${primaryEditablePageId ?? "(none)"}`,
-      );
-    }
-
     const workspaceReadTools = buildWorkspaceReadTools({
       userId: auth.userId,
       workspaceId,
@@ -386,7 +376,6 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
     return {
       allowedPageIds: [],
       attachmentIds: [],
-      canEditPages: false,
       primaryPageId: null,
       model: undefined,
       mentionedUserIds: [],
@@ -412,7 +401,6 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
   return {
     allowedPageIds: readAllowedPageIds(raw, pageContextMeta),
     attachmentIds: readStringIds(raw.attachmentIds),
-    canEditPages: raw.canEditPages === true,
     model: rawModel,
     mentionedUserIds: readStringIds(raw.mentionedUserIds).slice(0, 12),
     primaryPageId: pageContextMeta.primaryId,

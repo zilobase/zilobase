@@ -174,7 +174,7 @@ Refresh the marketing website to improve clarity, conversion, and product storyt
 - Increase qualified signup conversion from product pages
 - Reduce bounce rate on the homepage
 - Improve page speed on mobile
-- Make pricing and integrations easier to discover
+- Make pricing and product features easier to discover
 
 ## Milestones
 - Discovery and analytics review

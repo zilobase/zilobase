@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { useZilobaseFeatures } from "../context"
-import { useActiveWorkspaceId } from "../integrations/hooks"
+import { useActiveWorkspaceId } from "../workspaces/hooks"
 import {
   aiChatThreadMessagesQueryKey,
   aiAgentPreferenceQueryKey,

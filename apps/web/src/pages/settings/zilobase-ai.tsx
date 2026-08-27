@@ -16,7 +16,7 @@ import {
   useUpdateAiAgentPreference,
   type AiAgentPreference,
 } from "@zilobase/features/ai-chat"
-import { useActiveWorkspaceId } from "@zilobase/features/integrations"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
   useZilobaseAiPages,
   usePages,

@@ -32,7 +32,7 @@ import {
   getDatabaseEmoji,
   useCreateDatabase,
 } from "@zilobase/features/databases";
-import { useActiveWorkspaceId } from "@zilobase/features/integrations";
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import {
   useCreatePage,
   usePageNavigation,

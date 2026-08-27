@@ -2,8 +2,7 @@
 
 Ask AI applies its limits and records audit metadata on the server. Client
 settings can reduce context but cannot raise a quota, extend retention, or add
-a tool. The implementation has no Toolkit dependency and exposes no connected-
-app read or write tools until a native provider adapter is available.
+a tool.
 
 ## Audit data
 
@@ -64,8 +63,19 @@ stale turns/action receipts and removes completed audit metadata and receipts
 after the configured retention period. Chat messages and threads are not
 deleted by this job.
 
-Connected-app mutations are registry-gated as unavailable, so the server does
-not create approval requests for them. A future native adapter must implement
-the confirmation protocol in the agent plan—including payload hashes, expiry,
-single consumption, and organizer/ownership checks—before its tools can become
-model-visible.
+## Rollout checklist
+
+1. Apply database migrations before starting the new application image.
+2. Configure `OPENAI_API_KEY` and verify object storage before enabling file or
+   artifact workflows.
+3. Review the effective limits at `GET /api/ai/operations/limits`; override only
+   variables that need installation-specific tuning.
+4. Verify an ordinary member can search only accessible content and that a
+   workspace admin can inspect sanitized turn/tool audit rows.
+5. Exercise Stop, an oversized upload, an expired artifact link, and a denied
+   page mutation before broad rollout.
+6. Monitor normalized failure codes, latency, daily token/upload usage, and the
+   scheduled cleanup job.
+
+See the [capability parity audit](./ask-ai-parity-audit.md) for the exact product
+boundary presented to users and models.

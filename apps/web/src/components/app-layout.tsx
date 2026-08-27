@@ -9,7 +9,11 @@ import {
   DesktopTabs,
   getDesktopTabTitle,
 } from "@/components/desktop-tabs"
-import { ChatSidebarPanel, ChatSidebarTrigger } from "@/components/chat-sidebar"
+import {
+  ChatSidebarPanel,
+  ChatSidebarTrigger,
+  type ChatPresentationMode,
+} from "@/components/chat-sidebar"
 import {
   usePageSidePaneState,
   PageSidePaneContext,
@@ -81,6 +85,8 @@ import TeamspacesSettingsPage from "@/pages/settings/teamspaces"
 import WorkspaceSettingsPage from "@/pages/settings/workspace"
 import ZilobaseAiSettingsPage from "@/pages/settings/zilobase-ai"
 import { editionWebModule } from "@zilobase/edition-web"
+
+const CHAT_PRESENTATION_MODE_STORAGE_KEY = "zilobase:ai-chat-presentation-mode"
 
 export function AppLayout({
   children,
@@ -249,6 +255,8 @@ function AppLayoutContent({
     sidePanePageId,
   } = sidePaneState
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false)
+  const [chatPresentationMode, setChatPresentationMode] =
+    useState<ChatPresentationMode>(readChatPresentationMode)
   const [discussionsSidebarOpen, setDiscussionsSidebarOpen] = useState(false)
   const pageLayoutSidebar = useOptionalPageLayoutSidebar()
   const pageLayoutSidebarOpen = Boolean(
@@ -305,7 +313,8 @@ function AppLayoutContent({
   )
   const desktopRightPanelCount = isMobile
     ? 0
-    : Number(chatSidebarOpen) + Number(primaryRightPanelOpen)
+    : Number(chatSidebarOpen && chatPresentationMode === "sidebar") +
+      Number(primaryRightPanelOpen)
   const handleRightSidebarResizeIntent = useCallback(
     (intent: SidebarResizeIntent) => {
       if (isMobile) return
@@ -346,6 +355,17 @@ function AppLayoutContent({
     }
     setChatSidebarOpen(true)
   }, [appSidebarOpen, closeSidePane])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        CHAT_PRESENTATION_MODE_STORAGE_KEY,
+        chatPresentationMode,
+      )
+    } catch {
+      // Storage is optional; the in-memory preference remains active.
+    }
+  }, [chatPresentationMode])
 
   const togglePageLayoutSidebar = useCallback(() => {
     if (!pageLayoutSidebar?.hasSidebar) return
@@ -460,10 +480,14 @@ function AppLayoutContent({
     <ChatSidebarPanel
       databaseId={databaseId}
       onClose={() => setChatSidebarOpen(false)}
+      onPresentationModeChange={isMobile ? undefined : setChatPresentationMode}
       open={chatSidebarOpen}
       pageId={pageId}
+      presentationMode={isMobile ? "sidebar" : chatPresentationMode}
     />
   )
+  const dockedChatOpen =
+    chatSidebarOpen && (isMobile || chatPresentationMode === "sidebar")
   const discussionsPanel = discussionsEnabled ? (
     <DiscussionsSidebarPanel
       onClose={() => setDiscussionsSidebarOpen(false)}
@@ -552,8 +576,8 @@ function AppLayoutContent({
           </SidebarInset>
         </ResizablePanel>
         <RightSidebars
-          chatOpen={chatSidebarOpen}
-          chatPanel={chatPanel}
+          chatOpen={dockedChatOpen}
+          chatPanel={dockedChatOpen ? chatPanel : null}
           discussionsEnabled={discussionsEnabled}
           discussionsOpen={discussionsSidebarOpen}
           discussionsPanel={discussionsPanel}
@@ -576,6 +600,14 @@ function AppLayoutContent({
         pageSidebarOpen={pageLayoutSidebarOpen}
         pageSidebarPanel={pageSidebarPanel}
       />
+      {chatSidebarOpen && !isMobile && chatPresentationMode === "floating" ? (
+        <aside
+          aria-label="Floating Ask AI chat"
+          className="fixed bottom-16 right-4 z-50 flex h-[min(44rem,calc(var(--app-viewport-height,100svh)-6rem))] w-[min(28rem,calc(100vw-2rem))] min-h-0 flex-col overflow-hidden rounded-xl border bg-background text-foreground shadow-2xl"
+        >
+          {chatPanel}
+        </aside>
+      ) : null}
       {chatSidebarOpen ? null : (
         <ChatSidebarTrigger
           adjacentSidebarOpen={
@@ -588,6 +620,17 @@ function AppLayoutContent({
       )}
     </PageSidePaneContext.Provider>
   )
+}
+
+function readChatPresentationMode(): ChatPresentationMode {
+  try {
+    return window.localStorage.getItem(CHAT_PRESENTATION_MODE_STORAGE_KEY) ===
+      "floating"
+      ? "floating"
+      : "sidebar"
+  } catch {
+    return "sidebar"
+  }
 }
 
 function SettingsSectionContent({ section }: { section: SettingsSection }) {

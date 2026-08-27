@@ -16,6 +16,7 @@ import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { AiChatThread } from "@zilobase/features/ai-chat";
 import {
   ArchiveIcon,
@@ -99,11 +100,13 @@ function groupThreadsByDate(threads: AiChatThread[]) {
 }
 
 function AiChatThreadMoreMenu({
+  canPin,
   thread,
   onArchive,
   onDelete,
   onSetPinned,
 }: {
+  canPin: boolean;
   thread: AiChatThread;
   onArchive: (threadId: string) => void;
   onDelete: (threadId: string) => void;
@@ -122,18 +125,22 @@ function AiChatThreadMoreMenu({
         </SidebarNavItemAction>
       </DropDrawerTrigger>
       <DropDrawerContent align="end" className="w-52 rounded-lg" side="bottom">
-        <DropDrawerItem
-          onSelect={() => {
-            void onSetPinned(thread.id, !thread.pinned);
-          }}
-        >
-          {thread.pinned ? (
-            <PinOffIcon className="text-muted-foreground" />
-          ) : (
-            <PinIcon className="text-muted-foreground" />
-          )}
-          <span>{thread.pinned ? "Unpin conversation" : "Pin conversation"}</span>
-        </DropDrawerItem>
+        {canPin ? (
+          <DropDrawerItem
+            onSelect={() => {
+              void onSetPinned(thread.id, !thread.pinned);
+            }}
+          >
+            {thread.pinned ? (
+              <PinOffIcon className="text-muted-foreground" />
+            ) : (
+              <PinIcon className="text-muted-foreground" />
+            )}
+            <span>
+              {thread.pinned ? "Unpin conversation" : "Pin conversation"}
+            </span>
+          </DropDrawerItem>
+        ) : null}
         <DropDrawerItem
           onSelect={() => {
             void onArchive(thread.id);
@@ -167,6 +174,7 @@ export function AiChatHistoryList({
   onSelectThread: (threadId: string | null) => void;
 }) {
   const [search, setSearch] = useState("");
+  const isMobile = useIsMobile();
   const {
     threads,
     threadsQuery,
@@ -235,6 +243,7 @@ export function AiChatHistoryList({
                       </span>
                     </SidebarMenuButton>
                     <AiChatThreadMoreMenu
+                      canPin={!isMobile}
                       onArchive={handleArchiveThread}
                       onDelete={handleDeleteThread}
                       onSetPinned={handleSetPinned}

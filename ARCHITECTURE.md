@@ -1,11 +1,13 @@
 # Zilobase Architecture
 
-Zilobase is an npm-workspaces monorepo for a notes, pages, databases, comments, AI workflows, and integrations product. It supports hosted infrastructure and a public self-hosted Docker path.
+Zilobase is an npm-workspaces monorepo for a notes, pages, databases, comments,
+and AI workflows product. It supports hosted infrastructure and a public
+self-hosted Docker path.
 
 ## System Overview
 
 - `apps/web`: Vite React client. It contains the main workspace UI, page editor, database views, settings, auth screens, and client-side routing.
-- `apps/server`: Hono server. It owns auth, workspace APIs, database persistence, image upload signing, AI chat tools, integration OAuth flows, and the serverful runtime.
+- `apps/server`: Hono server. It owns auth, workspace APIs, database persistence, image upload signing, AI chat tools, and the serverful runtime.
 - `apps/desktop`: Tauri shell for the desktop app. Native code owns the single
   persisted server selection, validates and holds discovery metadata before a
   candidate can be committed, and scopes keyring credentials to that instance. The
@@ -28,10 +30,21 @@ Database property type IDs live in `packages/features` as the shared contract. T
 
 Uploaded images use the server image API. In the Docker self-hosted stack, image storage uses MinIO through the same S3-compatible path used for hosted object storage.
 
-AI features run through the server. The server builds page and workspace context, calls configured model providers, and applies supported edits through existing page and database mutation paths.
-The staged capability, safety, and verification contract for expanding Ask AI
-into a permission-scoped agent is documented in
-[`docs/ask-ai-agent-plan.md`](./docs/ask-ai-agent-plan.md).
+AI features run through the server. Ask AI authenticates each turn, derives a
+server-owned capability policy, resolves page/database/file access, and only
+then sends native tools to the configured model provider. Reads return bounded
+citations or tables. Mutations reuse page/database services and persist
+idempotent action receipts before reporting success. Postgres also owns thread
+history, preferences, feedback, sanitized turn/tool audit metadata, and usage
+reservations; object storage owns expiring uploads and generated artifacts.
+
+The client cannot grant page access or add a tool, and the agent has no
+unrestricted code, network, filesystem, permission,
+comment-mutation, or workspace-administration capability. The complete
+capability, safety, and verification contract is documented in the
+[`Ask AI plan`](./docs/ask-ai-agent-plan.md), with the final result in the
+[`parity audit`](./docs/ask-ai-parity-audit.md) and deployment controls in
+[`Ask AI operations`](./docs/ask-ai-operations.md).
 
 ## Auth and Access
 
@@ -66,7 +79,8 @@ API keys are scoped through server-side checks. Routes that accept API-key acces
 
 Postgres is the source of truth for users, browser and desktop sessions,
 short-lived desktop authorization codes, workspaces, pages, databases, comments,
-integrations, and API keys. Drizzle migrations live under `apps/server/drizzle`.
+Ask AI threads/preferences/receipts/audit metadata, and API keys.
+Drizzle migrations live under `apps/server/drizzle`.
 
 Self-hosting uses:
 
@@ -91,7 +105,9 @@ public MinIO signing endpoint for browser uploads, and adds Mailpit. The root
 `Dockerfile` builds the web client and bundles the serverful Node entrypoint,
 then runs it as the unprivileged `zilobase` user.
 
-Hosted Zilobase Cloud may use private deployment infrastructure. The open-source server exposes adapter integration surfaces from `@zilobase/server/adapter-api`; hosted-only adapters are outside the public self-hosting path.
+Hosted Zilobase Cloud may use private deployment infrastructure. The open-source
+server exposes runtime extension surfaces from `@zilobase/server/adapter-api`;
+hosted deployment extensions are outside the public self-hosting path.
 
 ## Development Guidelines
 

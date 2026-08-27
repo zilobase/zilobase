@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { useActiveWorkspaceId } from "@zilobase/features/integrations"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import { usePageNavigation } from "@zilobase/features/pages"
 import type { PageLayoutLinkedTab } from "@zilobase/features/pages"
 import { Input } from "@/components/ui/input"

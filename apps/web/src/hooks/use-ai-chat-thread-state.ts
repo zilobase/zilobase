@@ -1,4 +1,4 @@
-import { useActiveWorkspaceId } from "@zilobase/features/integrations";
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { useAiChatThreads } from "@zilobase/features/ai-chat";
 import { useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect } from "react";

@@ -1,20 +1,13 @@
-import { integrationIcons } from "@/lib/integration-icons";
-
-export type IntegrationToolSource = keyof typeof integrationIcons;
-
-export type IntegrationToolPresentation = {
+export type AgentToolPresentation = {
   progressPhrases: string[];
-  source?: IntegrationToolSource;
   title: string;
-  toolId?: string;
 };
 
-export function resolveIntegrationToolPresentation(input: {
-  part: { title?: string; toolMetadata?: unknown };
-  source?: IntegrationToolSource;
+export function resolveAgentToolPresentation(input: {
+  part: { title?: string };
   title?: string;
   toolName: string;
-}): IntegrationToolPresentation {
+}): AgentToolPresentation {
   const title =
     input.part.title?.trim() ||
     input.title?.trim() ||
@@ -22,7 +15,6 @@ export function resolveIntegrationToolPresentation(input: {
 
   return {
     progressPhrases: [`Running ${title}`],
-    source: input.source,
     title,
   };
 }

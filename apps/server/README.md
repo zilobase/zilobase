@@ -50,9 +50,9 @@ it separately when collaboration tickets should have an independent signing
 key. Set `COLLABORATION_WEBSOCKET_URL` when the public WebSocket origin cannot
 be derived from the API request URL, such as behind a development proxy.
 
-## Runtime Integrations
+## Runtime extension API
 
-The server exports a runtime-neutral integration surface from
+The server exports a runtime-neutral extension surface from
 `@zilobase/server/adapter-api`. It includes the Hocuspocus factory, ticket
 helpers, Yjs conversion helpers, and collaboration runtime callbacks for
 alternate runtimes. Node-only migration and server runtime helpers are exported

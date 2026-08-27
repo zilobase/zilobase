@@ -13,6 +13,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - Ask AI accepts owned, expiring PDF, CSV, XLSX, DOCX, PPTX, text, Markdown, JSON, ZIP, and image attachments with bounded extraction and archive safety checks.
 - Ask AI can run deterministic table analysis, render interactive result tables, and create expiring downloadable CSV, XLSX, DOCX, PPTX, PDF, Markdown, JSON, and ZIP artifacts.
 - Ask AI now supports durable pinned and searchable chat history, reusable skill and people attachments, suggested starting actions, and per-response feedback.
+- Ask AI conversations can switch between a docked sidebar and a persisted floating panel on web and desktop; mobile remains docked and omits pin controls.
 - Ask AI personal settings now include server-applied instructions and response style, while model selection includes Auto routing and capability descriptions.
 - Ask AI now enforces database-backed concurrency and daily usage quotas, bounded provider retries/timeouts, cancellation tracking, and scheduled upload/artifact retention cleanup.
 - Workspace admins can inspect sanitized Ask AI turn and tool audit metadata without exposing prompts, page/file content, or tool payloads.
@@ -22,8 +23,9 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - Interactive controls, drag surfaces, sliders, scroll thumbs, and resize handles now use consistent cursors across the web and desktop apps.
 - Ask AI now resolves page view and edit permissions on the server and applies explicit negative-capability policy before exposing tools to a model.
 - Ask AI exposes only supported database property and view types; formula, rollup, button, and unavailable map-view creation remain excluded.
-- Removed the brokered connector SDK, settings surface, source picker, and connector-only AI endpoint; external connected-app capabilities now remain explicitly unavailable until native provider adapters exist.
+- Ask AI now ships only native Zilobase tools, with unused source-selection code, settings, and endpoints removed.
 - Ask AI instruction pages and mentioned people are permission-checked on the server and cannot expand the requesting user's access.
+- Ask AI now renders native tool progress without obsolete source metadata, and page edit availability is derived exclusively on the server.
 
 ### Fixed
 
@@ -546,7 +548,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 ### Added
 
-- Added realtime database updates, collaborative page comments, block comments, integration management, and configurable sidebar navigation.
+- Added realtime database updates, collaborative page comments, block comments, and configurable sidebar navigation.
 - Added database chart, list, and gallery views, sub-items, cell fill, undo and redo, cross-view row drag and drop, and configurable page layouts and icon positions.
 
 ### Changed

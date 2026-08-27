@@ -49,10 +49,6 @@
       "types": "./src/databases/property-types.ts",
       "default": "./src/databases/property-types.ts"
     },
-    "./integrations": {
-      "types": "./src/integrations/index.ts",
-      "default": "./src/integrations/index.ts"
-    },
     "./meetings": {
       "types": "./src/meetings/index.ts",
       "default": "./src/meetings/index.ts"

@@ -135,7 +135,7 @@ export function register({ assert, loadModule, test }) {
     assert.equal(shouldPersistOfflineQueryForManifest(query(["page", "page-1"]), manifest), true)
     assert.equal(shouldPersistOfflineQueryForManifest(query(["page", "page-2"]), manifest), false)
     assert.equal(shouldPersistOfflineQueryForManifest(query(["database", "database-1", "full", "active-only"]), manifest), true)
-    assert.equal(shouldPersistOfflineQueryForManifest(query(["integrations", "workspace-1"]), manifest), false)
+    assert.equal(shouldPersistOfflineQueryForManifest(query(["billing", "workspace-1"]), manifest), false)
     assert.equal(shouldPersistOfflineQueryForManifest(query(["ai", "conversation"]), manifest), false)
     assert.equal(shouldPersistOfflineQueryForManifest(query(["page", "page-1"], "error"), manifest), false)
   })

@@ -34,7 +34,7 @@ import { Switch } from "@/components/ui/switch"
 import { getApiErrorMessage } from "@/lib/api"
 import { PageIconDisplay } from "@/lib/page-icon"
 import { filterTeamspaces } from "./teamspace-filters"
-import { useActiveWorkspaceId } from "@zilobase/features/integrations"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
   useAddTeamspacePrincipal,
   useAcceptTeamspaceInvite,

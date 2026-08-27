@@ -1,28 +1,30 @@
 # Ask AI Agent implementation plan
 
-Status: approved for staged implementation  
-Reference: <https://www.notion.com/help/notion-agent> (reviewed 2026-08-27)  
+Status: complete
+
+Reference: <https://www.notion.com/help/notion-agent> (reviewed 2026-08-27)
+
 Owner: Zilobase product and engineering
 
 ## Outcome
 
-Ask AI becomes a permission-scoped Zilobase teammate that can research, plan,
-and complete multi-step work across Zilobase and explicitly connected apps. It
-must never claim an action succeeded unless a tool returned a durable success,
-and it must not expose tools for operations the product or current user cannot
-perform.
+Ask AI is a permission-scoped Zilobase teammate that can research, plan, and
+complete bounded multi-step work with native Zilobase pages, databases, files,
+and generated artifacts. It must never claim an action succeeded unless a tool
+returned a durable success, and it must not expose tools for operations the
+product or current user cannot perform.
 
 This is capability parity, not UI or naming imitation. Zilobase keeps its own
 interaction model and uses its existing page editor, database services,
-integrations, deployment adapters, and self-hosted runtime.
+deployment runtime, and self-hosted infrastructure.
 
 ## Product contract
 
 ### The agent can
 
-1. Answer from the current page, selected text, attached pages/databases,
-   accessible workspace content, comments, retained page revisions, and
-   connected sources. Answers cite the source records used.
+1. Answer from the current page, attached pages/databases, accessible workspace
+   content, and comments. Selected editor text has its own Ask AI rewrite flow.
+   Workspace answers cite the source records used.
 2. Run bounded multi-step work. Each step is visible in chat, failures are
    explicit, and mutations are idempotent where practical.
 3. Search accessible pages and databases; query database rows and properties;
@@ -32,33 +34,22 @@ integrations, deployment adapters, and self-hosted runtime.
    properties, and conditional colors through existing mutation services.
 5. Read user-uploaded PDF, CSV, XLSX, DOCX, PPTX, plain-text, Markdown, JSON,
    and ZIP files within documented size and extraction limits.
-6. Analyze data, calculate results in an isolated job, and create downloadable
+6. Analyze data with a bounded deterministic calculator and create downloadable
    CSV, XLSX, DOCX, PPTX, PDF, Markdown, JSON, or ZIP artifacts.
-7. Use connected apps for the operations their adapters advertise. Read tools
-   may run immediately. Consequential external writes require an explicit,
-   expiring user confirmation that shows the exact target and payload.
-8. Search, draft, send, label, archive, trash, and unsubscribe in Gmail when
-   the connected adapter supports the operation.
-9. Read calendars, query availability, rank meeting times, create or update
-   scheduling links, and create/edit/cancel events when the user is allowed to
-   do so. Calendar mutations require confirmation.
-10. Read and organize a future Zilobase Inbox once that product surface exists.
-    Until then the capability registry reports it as unavailable and no inbox
-    tools are sent to the model.
-11. Use per-user instructions and reusable skill pages, switch model and source
-    scope per turn, attach pages/people/files, pin and search chat history, send
-    response feedback, and use full-page, sidebar, or floating chat modes where
-    the client supports them.
+7. Use per-user instructions and reusable skill pages, switch models, attach
+   pages/people/files, pin and search chat history, send response feedback, and
+   use full-page, sidebar, or floating chat modes where the client supports
+   them.
 
 ### The agent cannot
 
 These boundaries are enforced by the capability registry and authorization
 checks, not only by the system prompt.
 
-1. Read inaccessible workspace content or connected-app data. The agent has
-   the current user's permissions and no broader service identity.
+1. Read inaccessible workspace content. The agent has the current user's
+   permissions and no broader service identity.
 2. Read content hidden inside non-PDF embeds, such as a video transcript, unless
-   that content was separately attached or returned by an authorized connector.
+   that content was separately attached.
 3. Create database automations, database templates, page layouts, formula,
    rollup, or button properties. It may read and evaluate existing supported
    formula results.
@@ -67,23 +58,18 @@ checks, not only by the system prompt.
 5. Share pages, invite people, or change page/database access levels.
 6. Start AI Meeting Notes or create reminders.
 7. Change workspace-level settings, member roles, billing, AI provider
-   credentials, security controls, integration connections, or MCP servers.
-8. Edit or cancel a calendar event when the connected provider says the user is
-   not the organizer or otherwise lacks permission.
-9. Perform external writes without confirmation, reuse an expired confirmation,
-   silently expand source scope, or continue after a tool reports failure.
-10. Execute arbitrary code in the API process, access the host filesystem, make
-    unrestricted network requests, or retain uploaded files past policy.
+   credentials, or security controls.
+8. Silently expand source scope or continue after a tool reports failure.
+9. Execute arbitrary code in the API process, access the host filesystem, make
+   unrestricted network requests, or retain uploaded files past policy.
 
 ### Platform qualifications
 
-- Web and desktop may expose the full capability set.
-- Mobile clients must not expose calendar mutations or connector/MCP setup.
-- Self-hosted installations only expose configured models, object storage,
-  artifact execution, and connector capabilities. Missing infrastructure is a
-  visible unavailable capability, not an inferred success.
-- Provider-specific actions are feature-detected through adapter descriptors;
-  Ask AI does not hard-code that every connector can write.
+- Web and desktop expose the implemented capability set.
+- Mobile clients do not expose floating mode or conversation pin controls.
+- Self-hosted installations expose only configured models and available object
+  storage. Missing infrastructure produces an actionable failure, not an
+  inferred success.
 
 ## Current-state audit
 
@@ -95,7 +81,6 @@ checks, not only by the system prompt.
 | Native reads | Page context is serialized client-side | Server-side permission-scoped page/database search and reads |
 | Page actions | Suggested page patch/full edits with client review | Server-created page body, newly-created page continuation, action receipts |
 | Database actions | Create page/database/property/view/row, update property/view/data source, set cells, embed/link | Query tool, relations, supported map/form views, richer bulk operations |
-| Connected apps | No brokered connector dependency or configured native provider adapters | Native per-provider adapters, capability negotiation, and confirmation receipts |
 | Files | Generic prompt-input attachment component exists | Chat wiring, upload/scan/extract lifecycle, artifact storage/download |
 | Presentation | Full page and page sidebar chat | Floating mode, interactive tables, action approvals |
 | Personalization | Skill pages can be attached | Persistent instructions, preferred sources, default behavior |
@@ -109,7 +94,7 @@ Create one server-owned registry that describes every tool with:
 
 - stable name and version;
 - category and read/write/consequential effect;
-- required product feature, adapter capability, client platform, and minimum
+- required product feature, client platform, and minimum
   access level;
 - input/output schema and display metadata;
 - confirmation policy;
@@ -143,32 +128,23 @@ type AgentToolResult<T> = {
 Every mutation rechecks authorization at execution time. IDs from one tool may
 feed later steps, but never become an authorization grant.
 
-### 3. Confirmation protocol
-
-Consequential external tools first return a proposed action. The server stores
-only a payload hash, target summary, requesting user/workspace, tool version,
-and a short expiry. The client renders Approve and Reject. Approval calls a
-dedicated endpoint that atomically consumes the token, rechecks authorization
-and adapter capability, runs the exact hashed payload once, and stores a
-receipt. The model cannot approve its own action.
-
-### 4. Files and artifacts
+### 3. Files and artifacts
 
 Uploads use object storage with workspace/user ownership, MIME sniffing,
-malware/zip-bomb checks, size/page/row limits, and expiry. Extractors run out of
-process or in an adapter-provided sandbox. Artifact jobs have no workspace
-credentials or ambient network access; they receive only explicitly staged
-files and return immutable outputs with checksums and expiring downloads.
+archive-bomb checks, size/page/row limits, and expiry. Bounded extractors and
+deterministic analysis receive only explicitly owned files. Generated artifacts
+have no ambient network access or workspace credentials and return immutable
+outputs with checksums and expiring downloads.
 
-### 5. Citations and interactive results
+### 4. Citations and interactive results
 
-Native and connector read tools return normalized citations with source type,
+Native read tools return normalized citations with source type,
 stable record ID, title, optional fragment, and user-visible URL. Tabular
 results return typed columns and bounded rows; the chat renderer supports sort,
 filter, copy, export, and opening the source without converting results into a
 permanent database unless the user asks.
 
-### 6. Persistence
+### 5. Persistence
 
 Add narrowly-scoped tables for:
 
@@ -176,9 +152,9 @@ Add narrowly-scoped tables for:
 - user agent instructions/preferences;
 - response feedback;
 - uploads and generated artifacts;
-- approval requests and action receipts;
+- action receipts;
 - agent turns/tool executions and usage counters;
-- retained page revisions only if no existing revision store can serve reads.
+- sanitized turn and tool-execution audit metadata.
 
 Store large extracted text and artifacts in object storage, not chat message
 JSON. Chat messages retain safe display parts and durable references.
@@ -269,27 +245,24 @@ copy, row navigation, and CSV export. Receipted artifacts support CSV, XLSX,
 DOCX, PPTX, PDF, Markdown, JSON, and ZIP, are checksum-addressed in owned object
 storage, and expire after seven days.
 
-### Pass 4 — connected-app boundary and broker removal (complete)
+### Pass 4 — native-only cleanup (complete)
 
-- Remove the brokered connector SDK, configuration, routes, settings UI, source
-  picker, tool metadata dependency, and legacy connector-only endpoint.
-- Keep external reads and writes out of the model-visible tool set.
-- Registry-gate connected-app reads and mutations as unavailable until native,
-  per-provider adapters exist.
-- Preserve the confirmation, idempotency, ownership, organizer, and mobile rules
-  below as requirements for a future native-adapter pass.
+- Remove unused optional dependencies, configuration, routes, settings UI,
+  source-selection code, tool metadata, and legacy endpoints.
+- Move ordinary workspace and AI-model helpers into their owning feature
+  namespaces.
+- Drop the legacy persistence tables through a forward migration.
 
-Acceptance: production bundles and dependency manifests contain no brokered
-connector client; Ask AI exposes no external source selector or external tools,
-and the capability policy explicitly prevents claims of external reads/writes.
+Acceptance: production bundles and dependency manifests contain only native
+Ask AI capabilities, with no obsolete source selector, routes, settings, or
+active persistence model.
 
 ### Pass 5 — teammate experience (complete)
 
 - Add persistent per-user instructions and workspace behavior preferences.
 - Promote skill pages into reusable named skill attachments with a clear active
   state; instructions never expand permissions.
-- Add page/person mentions; external source selection remains unavailable until
-  native providers exist.
+- Add page/person mentions.
 - Add pin/unpin, history search, and response thumbs up/down with optional reason.
 - Add floating chat on web/desktop while retaining full-page and sidebar modes.
 - Add suggested context-aware actions and model capability labels/Auto mode.
@@ -304,23 +277,22 @@ AI instructions. People mentions are server-verified workspace references and
 never grant content access. Reusable skill attachments have a distinct active
 state, while page and database context keep their existing authorization path.
 Thread pinning and message-aware history search are durable; feedback is stored
-separately from chat parts and is never replayed to the model. The existing
-full-page chat, page sidebar, and fixed floating launcher share the same thread
-store. Model selection includes an Auto policy and operator-provided capability
-descriptions. Connected-app selection remains absent until native adapters are
-available.
+separately from chat parts and is never replayed to the model. The full-page
+chat and persisted docked/floating desktop panel share the same thread store.
+Model selection includes an Auto policy and operator-provided capability
+descriptions.
 
 ### Pass 6 — operations, quotas, and audit (complete)
 
-- Persist turns, tool executions, approvals, receipts, latency, token/file
+- Persist turns, tool executions, action receipts, latency, token/file
   usage, and normalized failure codes without sensitive tool payloads in logs.
 - Add workspace/user concurrency, step, token, file, artifact, and retention
   limits with admin-visible configuration where appropriate. The agent cannot
   change those settings.
-- Add cancellation, retry boundaries, stale approval cleanup, artifact/upload
-  retention cleanup, and adapter timeout/circuit-breaker behavior.
+- Add cancellation, retry boundaries, stale receipt cleanup, artifact/upload
+  retention cleanup, and provider timeout/retry behavior.
 - Cover the capability matrix with permission, guest/teamspace, mobile,
-  self-hosted, and connector-failure tests.
+  self-hosted, and unavailable-capability tests.
 
 Acceptance: operators can explain a turn from audit metadata, quotas fail with
 actionable errors, and cleanup jobs remove expired data without breaking chat
@@ -334,15 +306,13 @@ member endpoint exposes effective limits. Provider retries, total/step/chunk
 timeouts, the existing client cancellation signal, rolling 24-hour turn/token/
 upload/artifact quotas, stale-run recovery, and scheduled blob/audit cleanup are
 active. Expired objects are removed while their metadata is marked expired so
-chat history remains structurally intact. Connected-app writes remain excluded,
-so approval issuance and stale-approval cleanup are intentionally inactive
-until a native adapter implements the confirmation protocol.
+chat history remains structurally intact.
 
-### Pass 7 — final cleanup and parity audit
+### Pass 7 — final cleanup and parity audit (complete)
 
 - Remove superseded prompts, duplicate tool metadata, dead client-only trust
   inputs, and transitional code.
-- Consolidate shared tool presentation and source metadata.
+- Consolidate shared tool presentation and remove obsolete source metadata.
 - Run server/web builds, focused tests, full available quality suites, migration
   checks, and the self-hosted smoke path where infrastructure permits.
 - Update README, architecture, changelog, self-host docs, and operator rollout
@@ -354,29 +324,31 @@ Acceptance: the final matrix marks every item implemented, intentionally
 unavailable with a product prerequisite, or forbidden by policy; the repository
 is clean after the final commit.
 
+Implementation note: the client no longer sends an edit-permission claim, and
+all mutation availability is derived server-side. Native agent steps use one
+shared presentation without obsolete source metadata. Web and desktop
+support a persisted docked/floating switch; mobile stays docked and omits pin
+controls. The line-by-line result is recorded in
+[`ask-ai-parity-audit.md`](./ask-ai-parity-audit.md).
+
 ## Capability matrix and pass ownership
 
 | Reference behavior | Zilobase delivery |
 | --- | --- |
 | Multi-step tasks | Existing bounded tool loop; standardize in Pass 1 |
-| Current/selected/attached context | Page/database/selected-block context plus server-verified people mentions; Pass 5 complete |
+| Current/selected/attached context | Current and attached page/database chat context, server-verified people mentions, plus the editor selection rewrite flow; complete |
 | Workspace and database Q&A | Pass 1 |
-| Comments and revision search | Read-only in Pass 1; no comment mutations |
-| Connected-app research | Unavailable after Pass 4; requires native provider adapters |
-| Slack actions | Unavailable; requires a native adapter and confirmation receipts |
-| General MCP/connector servers | Not exposed to the agent; setup is never agent-managed |
+| Comments and revision search | Comments are read-only; revision history is unavailable because Zilobase retains no revision store |
 | Create/edit pages | Existing partial support; complete in Pass 2 |
 | Create/edit databases/views/properties/relations | Existing partial support; complete supported domain in Pass 2 |
 | Interactive chat tables | Pass 3 complete |
 | File ingestion and Q&A | Pass 3 complete |
 | Calculations and downloadable files | Pass 3 complete |
 | Inbox management | Unavailable until Zilobase Inbox exists; registry-gated |
-| Gmail actions | Unavailable; requires a native adapter and confirmation receipts |
-| Calendar scheduling | Unavailable; requires a native adapter plus organizer/mobile enforcement |
 | Existing formula evaluation | Passes 1–2; no formula-property creation |
 | Instructions and skills | Persistent personal instructions, response style, instruction pages, and active skill attachments; Pass 5 complete |
-| Sidebar/floating/full-page modes | Shared full page and sidebar thread model with a fixed floating launcher; Pass 5 complete |
-| Pin and search history | Pass 5 complete |
+| Sidebar/floating/full-page modes | Shared full-page thread model plus a persisted docked/floating desktop presentation; complete |
+| Pin and search history | Complete; pin is intentionally desktop/web-only |
 | Response feedback | Pass 5 complete; stored outside model context |
 
 ## Commit and verification discipline
@@ -390,6 +362,6 @@ and name the completed pass. Before each commit:
 4. update this document's pass status and any public behavior docs;
 5. commit only the files belonging to that pass.
 
-If a required external adapter or infrastructure capability is absent, keep the
-registry entry unavailable, test that state, and document the prerequisite. Do
-not ship a model-visible stub that can imply the operation happened.
+If a required product or infrastructure capability is absent, keep the registry
+entry unavailable, test that state, and document the prerequisite. Do not ship
+a model-visible stub that can imply the operation happened.

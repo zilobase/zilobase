@@ -64,7 +64,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSession } from "@zilobase/features/auth";
-import { useActiveWorkspaceId } from "@zilobase/features/integrations";
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import {
   useCreatePage,
   useDeletePage,

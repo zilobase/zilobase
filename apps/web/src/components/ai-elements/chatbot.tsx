@@ -44,10 +44,10 @@ import {
 import { usePageEditApplier } from "@/hooks/use-page-edit-applier";
 import { DatabaseToolStepsGroup } from "@/components/ai-elements/database-tool-steps";
 import {
+  AgentToolTaskGroup,
   buildMessagePartGroups,
-  IntegrationToolTaskGroup,
-} from "@/components/ai-elements/integration-tool-task";
-import { resolveIntegrationToolPresentation } from "@/components/ai-elements/integration-tool-presentation";
+} from "@/components/ai-elements/agent-tool-task";
+import { resolveAgentToolPresentation } from "@/components/ai-elements/agent-tool-presentation";
 import { PageEditCard } from "@/components/ai-elements/page-edit-card";
 import {
   PromptInput,
@@ -82,22 +82,19 @@ import {
   type AgentCitation,
   type AiChatFeedback,
   type AiChatThreadMessagesResponse,
+  type WorkspaceAiChatModel,
   type ProposePageContentUpdateOutput,
   type PageEditSnapshotPart,
   useCreateAiChatThread,
   useSubmitAiChatFeedback,
+  useWorkspaceAiModels,
 } from "@zilobase/features/ai-chat";
 import { useSession } from "@zilobase/features/auth";
 import { useZilobaseFeatures } from "@zilobase/features";
 import { useDatabase } from "@zilobase/features/databases";
-import {
-  useActiveWorkspaceId,
-  useWorkspaceAiModels,
-} from "@zilobase/features/integrations";
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { usePageAccessLevel, usePageNavigation } from "@zilobase/features/pages";
-import type { WorkspaceAiChatModel } from "@zilobase/features/integrations";
 import { useQuery } from "@tanstack/react-query";
-import { integrationIcons } from "@/lib/integration-icons";
 import { useChat } from "@ai-sdk/react";
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api";
 import {
@@ -121,6 +118,7 @@ import {
   FileTextIcon,
   InboxIcon,
   PlusIcon,
+  SparklesIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
 } from "lucide-react";
@@ -241,53 +239,6 @@ function logAiChatError(
 }
 
 const toolTitles: Record<string, string> = {
-  getGmailDraft: "Read Gmail draft",
-  getGmailLabel: "Read Gmail label",
-  getGmailMessage: "Read Gmail message",
-  getGmailMessageAttachment: "Read Gmail attachment",
-  getGmailProfile: "Check Gmail profile",
-  getGmailRawMessage: "Read raw Gmail message",
-  getGmailThread: "Read Gmail thread",
-  getGithubContent: "Read GitHub content",
-  getGithubIssue: "Read GitHub issue",
-  getGithubProfile: "Check GitHub profile",
-  getGithubPullRequest: "Read GitHub PR",
-  getGithubRepository: "Read GitHub repo",
-  listGmailHistory: "List Gmail history",
-  listGmailDrafts: "List Gmail drafts",
-  listGmailLabels: "List Gmail labels",
-  listGmailMessageAttachments: "List Gmail attachments",
-  listGmailThreads: "List Gmail threads",
-  listGithubCommits: "List GitHub commits",
-  listGithubIssues: "List GitHub issues",
-  listGithubPullRequests: "List GitHub PRs",
-  listGithubRepositories: "List GitHub repos",
-  listGoogleCalendarCalendars: "List calendars",
-  listGoogleCalendarEvents: "List calendar events",
-  queryGoogleCalendarFreeBusy: "Check availability",
-  getGoogleDriveFile: "Read Drive file",
-  getGoogleDriveFileText: "Read Drive text",
-  getGoogleDriveProfile: "Check Drive profile",
-  listGoogleDriveFiles: "List Drive files",
-  searchGoogleDriveFiles: "Search Drive",
-  getLinearIssue: "Read Linear issue",
-  getLinearIssueComments: "Read Linear comments",
-  getLinearProfile: "Check Linear profile",
-  getSlackConversationHistory: "Read Slack history",
-  getSlackFileInfo: "Read Slack file",
-  getSlackProfile: "Check Slack profile",
-  getSlackThread: "Read Slack thread",
-  getSlackUser: "Read Slack user",
-  listLinearIssues: "List Linear issues",
-  listLinearProjects: "List Linear projects",
-  listLinearTeams: "List Linear teams",
-  listSlackCanvases: "List Slack canvases",
-  listSlackFiles: "List Slack files",
-  listSlackConversations: "List Slack channels",
-  lookupSlackCanvasSections: "Find canvas sections",
-  searchGmailMessages: "Search Gmail",
-  searchLinearIssues: "Search Linear issues",
-  searchSlackMessages: "Search Slack",
   proposePageContentUpdate: "Update page content",
   createPage: "Create page",
   createDatabase: "Create database",
@@ -309,60 +260,10 @@ const toolTitles: Record<string, string> = {
   analyzeDataTable: "Analyze data table",
 };
 
-const toolSources: Record<string, keyof typeof integrationIcons> = {
-  getGmailDraft: "gmail",
-  getGmailLabel: "gmail",
-  getGmailMessage: "gmail",
-  getGmailMessageAttachment: "gmail",
-  getGmailProfile: "gmail",
-  getGmailRawMessage: "gmail",
-  getGmailThread: "gmail",
-  listGmailHistory: "gmail",
-  listGmailDrafts: "gmail",
-  listGmailLabels: "gmail",
-  listGmailMessageAttachments: "gmail",
-  listGmailThreads: "gmail",
-  searchGmailMessages: "gmail",
-  getGithubContent: "github",
-  getGithubIssue: "github",
-  getGithubProfile: "github",
-  getGithubPullRequest: "github",
-  getGithubRepository: "github",
-  listGithubCommits: "github",
-  listGithubIssues: "github",
-  listGithubPullRequests: "github",
-  listGithubRepositories: "github",
-  listGoogleCalendarCalendars: "googleCalendar",
-  listGoogleCalendarEvents: "googleCalendar",
-  queryGoogleCalendarFreeBusy: "googleCalendar",
-  getGoogleDriveFile: "googleDrive",
-  getGoogleDriveFileText: "googleDrive",
-  getGoogleDriveProfile: "googleDrive",
-  listGoogleDriveFiles: "googleDrive",
-  searchGoogleDriveFiles: "googleDrive",
-  getLinearIssue: "linear",
-  getLinearIssueComments: "linear",
-  getLinearProfile: "linear",
-  listLinearIssues: "linear",
-  listLinearProjects: "linear",
-  listLinearTeams: "linear",
-  searchLinearIssues: "linear",
-  getSlackConversationHistory: "slack",
-  getSlackFileInfo: "slack",
-  getSlackProfile: "slack",
-  getSlackThread: "slack",
-  getSlackUser: "slack",
-  listSlackCanvases: "slack",
-  listSlackConversations: "slack",
-  listSlackFiles: "slack",
-  lookupSlackCanvasSections: "slack",
-  searchSlackMessages: "slack",
-};
-
 const pendingPhrases = [
   "Thinking through your question",
   "Analyzing page context",
-  "Searching connected sources",
+  "Searching your workspace",
   "Preparing tool calls",
 ];
 
@@ -496,32 +397,7 @@ const PendingAssistantStatus = () => {
     <Message from="assistant">
       <MessageContent>
         <div className="not-prose flex w-fit max-w-full items-center gap-2 text-muted-foreground">
-          <span className="flex shrink-0 items-center gap-1">
-            <img
-              alt=""
-              aria-hidden="true"
-              className="size-4"
-              src={integrationIcons.gmail}
-            />
-            <img
-              alt=""
-              aria-hidden="true"
-              className="size-4"
-              src={integrationIcons.slack}
-            />
-            <img
-              alt=""
-              aria-hidden="true"
-              className="size-4"
-              src={integrationIcons.github}
-            />
-            <img
-              alt=""
-              aria-hidden="true"
-              className="size-4"
-              src={integrationIcons.googleCalendar}
-            />
-          </span>
+          <SparklesIcon aria-hidden="true" className="size-4 shrink-0" />
           <Shimmer
             as="span"
             className="truncate font-medium text-sm"
@@ -797,18 +673,17 @@ const ChatMessage = ({
             );
           }
 
-          if (group.type === "integration-tools") {
+          if (group.type === "agent-tools") {
             return (
-              <IntegrationToolTaskGroup
+              <AgentToolTaskGroup
                 getToolPresentation={(part, toolName) =>
-                  resolveIntegrationToolPresentation({
+                  resolveAgentToolPresentation({
                     part,
-                    source: toolSources[toolName],
                     title: toolTitles[toolName],
                     toolName,
                   })
                 }
-                key={`${message.id}-integration-${group.startIndex}`}
+                key={`${message.id}-agent-${group.startIndex}`}
                 parts={group.parts}
               />
             );
@@ -1221,7 +1096,7 @@ const ChatbotInner = ({
     return [...ids];
   }, [attachments, effectivePrimarySource]);
 
-  const canEditPages = Boolean(
+  const canApplyPageEdits = Boolean(
     isSidebar &&
     pageId &&
     (pageAccessLevel === "edit" || pageAccessLevel === "full"),
@@ -1239,7 +1114,6 @@ const ChatbotInner = ({
       ...(userId ? { userId } : {}),
       ...(pageContext ? { pageContext } : {}),
       allowedPageIds,
-      canEditPages,
       pageContextMeta: pageContext
         ? {
             attachmentIds: attachments.map((item) => item.id),
@@ -1251,7 +1125,6 @@ const ChatbotInner = ({
     [
       allowedPageIds,
       attachments,
-      canEditPages,
       effectivePrimarySource?.id,
       model,
       pageContext,
@@ -1283,7 +1156,7 @@ const ChatbotInner = ({
     onError: (chatError) => {
       logAiChatError("useChat onError", chatError, {
         agentName,
-        canEditPages,
+        canApplyPageEdits,
         isAgentReady,
         isSidebar,
         workspaceId,
@@ -1391,7 +1264,7 @@ const ChatbotInner = ({
 
     logPageEdit("chat:page-edit-config", {
       allowedPageIds,
-      canEditPages,
+      canApplyPageEdits,
       primaryPageId:
         effectivePrimarySource?.type === "page"
           ? effectivePrimarySource.id
@@ -1402,7 +1275,7 @@ const ChatbotInner = ({
     });
   }, [
     allowedPageIds,
-    canEditPages,
+    canApplyPageEdits,
     effectivePrimarySource,
     isSidebar,
     pageAccessLevel,
@@ -1419,19 +1292,19 @@ const ChatbotInner = ({
   );
 
   const { applyingToolCallIds } = usePageEditAutoApply({
-    enabled: isSidebar && canEditPages,
+    enabled: isSidebar && canApplyPageEdits,
     getContextPageMarkdown,
     messages,
     setMessages,
   });
 
   useDatabaseToolCacheSync({
-    enabled: isSidebar && canEditPages,
+    enabled: isSidebar && canApplyPageEdits,
     messages,
   });
 
   useDatabaseEmbedAutoApply({
-    enabled: isSidebar && canEditPages,
+    enabled: isSidebar && canApplyPageEdits,
     messages,
   });
 

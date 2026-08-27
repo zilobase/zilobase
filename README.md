@@ -1,7 +1,7 @@
 <h1 align="center">Zilobase</h1>
 
 <p align="center">
-  Notes, pages, databases, comments, AI workflows, and integrations in one open-source workspace.
+  Notes, pages, databases, comments, and AI workflows in one open-source workspace.
 </p>
 
 <p align="center">
@@ -89,6 +89,18 @@ Read the self-hosting guide:
 - [Domains and TLS](./docs/self-hosting-domain.md)
 - [Operations guide](./docs/self-hosting-operations.md)
 
+## Ask AI
+
+Ask AI can search accessible Zilobase pages and databases, read page comments,
+complete supported page/database changes with durable receipts, analyze owned
+file uploads, and create expiring downloadable artifacts. The same conversation
+works in full-page chat and in a persisted docked or floating desktop panel.
+
+Permissions and tool availability are resolved on the server. See the
+[implementation plan](./docs/ask-ai-agent-plan.md),
+[capability parity audit](./docs/ask-ai-parity-audit.md), and
+[operations guide](./docs/ask-ai-operations.md).
+
 ## Development
 
 Prerequisites:
@@ -153,11 +165,10 @@ values are never written to diagnostics.
 zilobase/
 |-- apps/
 |   |-- web       # Vite React web client
-|   |-- server    # Hono API, auth, persistence, AI, integrations
+|   |-- server    # Hono API, auth, persistence, AI, and realtime
 |   `-- desktop   # Tauri desktop shell
 |-- packages/
 |   |-- features  # Shared client feature hooks and cache logic
-|   |-- connectors
 |   |-- page-context
 |   `-- markdown-text-splitter
 |-- docker/
@@ -175,7 +186,9 @@ The public self-hosted deployment uses Docker Compose with:
 - Postgres for relational data
 - MinIO for S3-compatible image storage
 
-Hosted Zilobase Cloud may use private deployment infrastructure. The open-source server exports adapter integration surfaces from `@zilobase/server/adapter-api`; hosted-only adapters are outside the public self-hosting path.
+Hosted Zilobase Cloud may use private deployment infrastructure. The open-source
+server exports runtime extension surfaces from `@zilobase/server/adapter-api`;
+hosted deployment extensions are outside the public self-hosting path.
 
 ## Community
 

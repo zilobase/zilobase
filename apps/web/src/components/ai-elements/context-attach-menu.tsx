@@ -19,7 +19,7 @@ import {
   PromptInputCommandList,
 } from "@/components/ai-elements/prompt-input";
 import { PageIconDisplay, PageIcon } from "@/lib/page-icon";
-import { useActiveWorkspaceId } from "@zilobase/features/integrations";
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import type { AppSearchResult } from "@zilobase/features/search";
 import {
   getPrimaryPageParentId,

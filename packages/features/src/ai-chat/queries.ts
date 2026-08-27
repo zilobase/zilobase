@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query"
 import type { UIMessage } from "ai"
 
 import type { ApiFetcher } from "../context"
-import { workspaceRequestOptions } from "../integrations/queries"
+import { workspaceRequestOptions } from "../workspaces/queries"
 
 export type AiChatThread = {
   id: string

@@ -203,6 +203,20 @@ function isWorkspace(value: Workspace | null): value is Workspace {
   )
 }
 
+export function workspaceRequestOptions(
+  workspaceId: string | null | undefined,
+  init?: RequestInit,
+): RequestInit {
+  if (!workspaceId) {
+    return init ?? {}
+  }
+
+  const headers = new Headers(init?.headers)
+  headers.set("x-zilobase-workspace-id", workspaceId)
+
+  return { ...init, headers }
+}
+
 export const workspaceAccessTargetsQueryOptions = (
   apiFetch: <T>(path: string, init?: RequestInit) => Promise<T>,
   workspaceId: string | null | undefined,

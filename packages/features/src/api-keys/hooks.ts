@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { useZilobaseFeatures } from "../context"
-import { useActiveWorkspaceId } from "../integrations/hooks"
+import { useActiveWorkspaceId } from "../workspaces/hooks"
 import {
   apiKeysQueryKey,
   apiKeysQueryOptions,

@@ -18,7 +18,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { getApiErrorMessage } from "@/lib/api"
 import { useNotionImport } from "@/hooks/use-notion-import"
-import { useActiveWorkspaceId } from "@zilobase/features/integrations"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
   useWorkspaces,
   useUpdateWorkspace,

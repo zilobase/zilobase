@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { useZilobaseFeatures } from "../context"
+import { useSession } from "../auth/hooks"
 import { sessionQueryKey, sessionQueryOptions } from "../auth/queries"
 import {
   pageRootQueryKey,
@@ -31,6 +32,27 @@ export function useWorkspaces() {
   const { auth } = useZilobaseFeatures()
 
   return useQuery(workspacesQueryOptions(auth))
+}
+
+export function useActiveWorkspaceId() {
+  const { auth, preferredActiveWorkspaceId } = useZilobaseFeatures()
+  const { data: sessionData } = useSession()
+  const { data: workspaces = [] } = useQuery(workspacesQueryOptions(auth))
+  const sessionWorkspaceId = sessionData?.session?.activeWorkspaceId ?? null
+  const storedWorkspace = workspaces.find(
+    (workspace) => workspace.id === preferredActiveWorkspaceId,
+  )
+  const sessionWorkspace = workspaces.find(
+    (workspace) => workspace.id === sessionWorkspaceId,
+  )
+
+  return (
+    storedWorkspace?.id ??
+    sessionWorkspace?.id ??
+    workspaces[0]?.id ??
+    sessionWorkspaceId ??
+    preferredActiveWorkspaceId
+  )
 }
 
 export function useWorkspaceAccessTargets(

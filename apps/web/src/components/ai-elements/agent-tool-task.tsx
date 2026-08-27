@@ -8,18 +8,17 @@ import {
 } from "@/components/ai-elements/task";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import type { ToolPart } from "@/components/ai-elements/tool";
-import { integrationIcons } from "@/lib/integration-icons";
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import { isProposePageContentUpdateToolName } from "@zilobase/features/ai-chat";
 import { isDatabaseConfigToolPart } from "@/components/ai-elements/database-tool-steps";
 import { useEffect, useState } from "react";
-import type { IntegrationToolPresentation } from "@/components/ai-elements/integration-tool-presentation";
+import type { AgentToolPresentation } from "@/components/ai-elements/agent-tool-presentation";
 
-type IntegrationToolTaskGroupProps = {
+type AgentToolTaskGroupProps = {
   getToolPresentation: (
     part: ToolPart,
     toolName: string,
-  ) => IntegrationToolPresentation;
+  ) => AgentToolPresentation;
   parts: ToolPart[];
 };
 
@@ -35,7 +34,7 @@ function getStaticToolName(part: ToolPart) {
     : part.type.replace(/^tool-/, "");
 }
 
-function isIntegrationToolPart(part: ToolPart) {
+function isAgentToolPart(part: ToolPart) {
   const toolName = getToolName(part);
 
   return (
@@ -44,18 +43,18 @@ function isIntegrationToolPart(part: ToolPart) {
   );
 }
 
-const IntegrationToolTaskItem = ({
+const AgentToolTaskItem = ({
   getToolPresentation,
   part,
 }: {
   getToolPresentation: (
     part: ToolPart,
     toolName: string,
-  ) => IntegrationToolPresentation;
+  ) => AgentToolPresentation;
   part: ToolPart;
 }) => {
   const toolName = getStaticToolName(part);
-  const { progressPhrases, source, title } = getToolPresentation(part, toolName);
+  const { progressPhrases, title } = getToolPresentation(part, toolName);
   const finishedLabel = finishedLabels[part.state];
   const isRunning =
     !finishedLabel &&
@@ -80,20 +79,12 @@ const IntegrationToolTaskItem = ({
     ? part.errorText
     : finishedLabel
       ? `${finishedLabel}: ${title}`
-      : progressPhrases[phraseIndex % progressPhrases.length] ?? `Running ${title}`;
+      : progressPhrases[phraseIndex % progressPhrases.length] ??
+        `Running ${title}`;
 
   return (
     <TaskItem className="flex items-start gap-2">
-      {source ? (
-        <img
-          alt=""
-          aria-hidden="true"
-          className="mt-0.5 size-4 shrink-0"
-          src={integrationIcons[source]}
-        />
-      ) : (
-        <span className="mt-2 size-2 shrink-0 rounded-full bg-muted-indicator" />
-      )}
+      <span className="mt-2 size-2 shrink-0 rounded-full bg-muted-indicator" />
       <span className="min-w-0 flex-1">
         {isRunning ? (
           <Shimmer
@@ -120,31 +111,30 @@ const IntegrationToolTaskItem = ({
   );
 };
 
-export const IntegrationToolTaskGroup = ({
+export const AgentToolTaskGroup = ({
   getToolPresentation,
   parts,
-}: IntegrationToolTaskGroupProps) => {
+}: AgentToolTaskGroupProps) => {
   const hasActiveStep = parts.some(
-    (part) =>
-      part.state !== "output-available" && part.state !== "output-error",
+    (part) => !finishedLabels[part.state],
   );
   const hasError = parts.some(
     (part) => part.state === "output-error" || Boolean(part.errorText),
   );
   const title = hasActiveStep
-    ? "Searching connected sources"
+    ? "Working with Zilobase"
     : hasError
-      ? "Search finished with errors"
+      ? "Work finished with errors"
       : parts.length === 1
         ? getToolPresentation(parts[0]!, getStaticToolName(parts[0]!)).title
-        : "Searched connected sources";
+        : "Completed agent steps";
 
   return (
     <Task className="not-prose mb-3" defaultOpen={hasActiveStep || hasError}>
       <TaskTrigger title={title} />
       <TaskContent>
         {parts.map((part) => (
-          <IntegrationToolTaskItem
+          <AgentToolTaskItem
             getToolPresentation={getToolPresentation}
             key={part.toolCallId}
             part={part}
@@ -169,7 +159,7 @@ export type MessagePartGroup =
   | {
       parts: ToolPart[];
       startIndex: number;
-      type: "integration-tools";
+      type: "agent-tools";
     };
 
 export function buildMessagePartGroups(
@@ -204,25 +194,25 @@ export function buildMessagePartGroups(
       continue;
     }
 
-    if (isToolUIPart(part) && isIntegrationToolPart(part)) {
-      const integrationParts: ToolPart[] = [part];
+    if (isToolUIPart(part) && isAgentToolPart(part)) {
+      const agentParts: ToolPart[] = [part];
       let nextIndex = index + 1;
 
       while (nextIndex < parts.length) {
         const nextPart = parts[nextIndex];
 
-        if (!(isToolUIPart(nextPart) && isIntegrationToolPart(nextPart))) {
+        if (!(isToolUIPart(nextPart) && isAgentToolPart(nextPart))) {
           break;
         }
 
-        integrationParts.push(nextPart);
+        agentParts.push(nextPart);
         nextIndex += 1;
       }
 
       groups.push({
-        type: "integration-tools",
+        type: "agent-tools",
         startIndex: index,
-        parts: integrationParts,
+        parts: agentParts,
       });
       index = nextIndex - 1;
       continue;
