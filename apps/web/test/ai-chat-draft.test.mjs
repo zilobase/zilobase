@@ -21,7 +21,7 @@ export function register({ assert, test }) {
     assert.match(chatbotSource, /if \(!targetThreadId\)[\s\S]*createThread[\s\S]*mutateAsync/)
     assert.match(
       chatbotSource,
-      /sendMessage\([\s\S]*buildChatRequestBody\(targetThreadId\)/,
+      /sendMessage\([\s\S]*buildChatRequestBody\(\s*targetThreadId(?:,|\s*\))/,
     )
   })
 }

@@ -41,6 +41,7 @@ import { cn } from "@/lib/utils";
 import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   CornerDownLeftIcon,
+  FileIcon,
   ImageIcon,
   Monitor,
   PlusIcon,
@@ -381,6 +382,38 @@ const usePromptInputAttachments = () => {
     );
   }
   return context;
+};
+
+export const PromptInputAttachments = ({
+  className,
+}: {
+  className?: string;
+}) => {
+  const attachments = usePromptInputAttachments();
+  if (attachments.files.length === 0) return null;
+
+  return (
+    <div className={cn("flex flex-wrap gap-1.5 px-2 pt-2", className)}>
+      {attachments.files.map((file) => (
+        <div
+          className="flex max-w-56 items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs"
+          key={file.id}
+          title={file.filename}
+        >
+          <FileIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">{file.filename ?? "Attachment"}</span>
+          <button
+            aria-label={`Remove ${file.filename ?? "attachment"}`}
+            className="ml-0.5 rounded-sm text-muted-foreground hover:text-foreground"
+            onClick={() => attachments.remove(file.id)}
+            type="button"
+          >
+            <XIcon className="size-3" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 };
 
 // ============================================================================

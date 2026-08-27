@@ -242,7 +242,7 @@ registry-gated and rows are created/updated as bounded receipted steps rather
 than through a misleading batch tool. Formula, rollup, and button property
 schemas remain structurally excluded.
 
-### Pass 3 — files, analysis, tables, and artifacts
+### Pass 3 — files, analysis, tables, and artifacts (complete)
 
 - Wire prompt attachments through upload, validation, extraction, chat
   persistence, and expiry.
@@ -256,6 +256,18 @@ schemas remain structurally excluded.
 Acceptance: fixture-based tests upload each supported format, answer a cited
 question, render a table, and download a verified artifact; malformed archives,
 oversized files, and unsupported embeds fail safely.
+
+Implementation note: chat uploads are user/workspace/thread owned, capped at
+five files and 20 MB each, validated by file signature, and expire after 24
+hours. Text, Markdown, JSON, CSV, DOCX, PPTX, XLSX, and bounded ZIP contents are
+extracted server-side; PDF and supported images are passed to the configured
+model from server-owned storage. ZIP central directories are checked before
+decompression for encryption, entry-count, and expanded-size limits. Analysis
+uses a deterministic table calculator with no arbitrary code, ambient network,
+filesystem, or workspace credentials. Result tables support filtering, sorting,
+copy, row navigation, and CSV export. Receipted artifacts support CSV, XLSX,
+DOCX, PPTX, PDF, Markdown, JSON, and ZIP, are checksum-addressed in owned object
+storage, and expire after seven days.
 
 ### Pass 4 — connected-app actions and approvals
 
@@ -330,9 +342,9 @@ is clean after the final commit.
 | General MCP/connector servers | Passes 4–5; desktop/web setup only, never agent-managed |
 | Create/edit pages | Existing partial support; complete in Pass 2 |
 | Create/edit databases/views/properties/relations | Existing partial support; complete supported domain in Pass 2 |
-| Interactive chat tables | Pass 3 |
-| File ingestion and Q&A | Pass 3 |
-| Calculations and downloadable files | Pass 3 |
+| Interactive chat tables | Pass 3 complete |
+| File ingestion and Q&A | Pass 3 complete |
+| Calculations and downloadable files | Pass 3 complete |
 | Inbox management | Unavailable until Zilobase Inbox exists; registry-gated |
 | Gmail actions | Pass 4 with confirmation |
 | Calendar scheduling | Pass 4 with organizer/mobile enforcement |

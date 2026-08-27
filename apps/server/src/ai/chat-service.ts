@@ -2,6 +2,7 @@ import {
   convertToModelMessages,
   stepCountIs,
   streamText,
+  type ModelMessage,
   type StreamTextOnFinishCallback,
   type ToolSet,
   type UIMessage,
@@ -31,6 +32,9 @@ import {
   syncAiChatThreadMessages,
   touchAiChatThreadActivity,
 } from "./chat-persistence";
+import { resolveAiFileContext, withoutAiFileParts } from "./ai-file-context";
+import { buildArtifactTools } from "./ask-ai-artifact-tools";
+import { buildAnalysisTools } from "./ask-ai-analysis-tools";
 
 export type SourceId =
   | "gmail"
@@ -41,6 +45,7 @@ export type SourceId =
   | "linear";
 
 export type AiChatRequestBody = {
+  attachmentIds: string[];
   allowedPageIds: string[];
   canEditPages: boolean;
   model: string | undefined;
@@ -194,9 +199,18 @@ export async function runAiChatTurn(input: {
     workspaceId,
     withDb: (fn) => input.withDb(fn),
   });
+  const artifactTools = buildArtifactTools({
+    env: input.env,
+    threadId: auth.threadId,
+    userId: auth.userId,
+    workspaceId,
+    withDb: (fn) => input.withDb(fn),
+  });
   const tools: ToolSet = {
+    ...buildAnalysisTools(),
     ...workspaceReadTools,
     ...workspaceActionTools,
+    ...artifactTools,
     ...databaseConfigTools,
     ...(hasPageEditAccess
       ? {
@@ -207,10 +221,24 @@ export async function runAiChatTurn(input: {
   };
 
   const model = resolveOpenAiChatModel(input.env.OPENAI_API_KEY, requestBody.model);
-  const chatMessages = input.messages.filter(
+  const chatMessages = withoutAiFileParts(input.messages).filter(
     (message) => (message.role as string) !== "data",
   );
   const persistedMessages = await convertToModelMessages(chatMessages);
+  const fileContext = await input.withDb(() =>
+    resolveAiFileContext({
+      env: input.env,
+      messages: input.messages,
+      requestedFileIds: requestBody.attachmentIds,
+      threadId: auth.threadId,
+      userId: auth.userId,
+      workspaceId,
+    }),
+  );
+  const modelMessages: ModelMessage[] = [
+    ...persistedMessages,
+    ...fileContext.modelMessages,
+  ];
   const hasTools = Object.keys(tools).length > 0;
   const pageContextInstruction = buildPageContextInstruction(
     requestBody.pageContext,
@@ -238,11 +266,11 @@ export async function runAiChatTurn(input: {
     abortSignal: input.abortSignal,
     maxOutputTokens: 1600,
     model,
-    messages: persistedMessages,
+    messages: modelMessages,
     stopWhen: stepCountIs(15),
     tools: hasTools ? tools : undefined,
     temperature: 0.2,
-    system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction}\n${policyInstruction}\n${sourceInstruction}`,
+    system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction}${fileContext.instruction}\n${policyInstruction}\n${sourceInstruction}`,
     onError: ({ error }) => {
       console.warn(`AI chat ${auth.userId}: ${toProviderErrorMessage(error)}`);
     },
@@ -272,6 +300,7 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
   if (!body || typeof body !== "object") {
     return {
       allowedPageIds: [],
+      attachmentIds: [],
       canEditPages: false,
       primaryPageId: null,
       model: undefined,
@@ -306,6 +335,7 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
 
   return {
     allowedPageIds: readAllowedPageIds(raw, pageContextMeta),
+    attachmentIds: readStringIds(raw.attachmentIds),
     canEditPages: raw.canEditPages === true,
     model: rawModel,
     primaryPageId: pageContextMeta.primaryId,
@@ -315,6 +345,14 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
     sources,
     pageContext: readPageContext(raw),
   };
+}
+
+function readStringIds(value: unknown) {
+  return Array.isArray(value)
+    ? [...new Set(value.filter((item): item is string =>
+        typeof item === "string" && item.trim().length > 0,
+      ).map((item) => item.trim()))]
+    : [];
 }
 
 function buildPageEditInstruction(input: {

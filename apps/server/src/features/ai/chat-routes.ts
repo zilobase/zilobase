@@ -24,6 +24,7 @@ import {
   buildToolkitTools,
   isToolkitConfigured,
 } from "../../integrations/toolkit";
+import { aiFileRoutes } from "./file-routes";
 
 const askAiRequestSchema = z
   .object({
@@ -57,6 +58,8 @@ const editorAiRequestSchema = z.object({
 });
 
 export const aiRoutes = new Hono<AppBindings>();
+
+aiRoutes.route("/", aiFileRoutes);
 
 aiRoutes.post("/chat", async (c) => {
   const auth = await requireActiveWorkspace(c);

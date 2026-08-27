@@ -31,7 +31,6 @@ import {
   type ContextAttachMenuEntry,
   type ContextAttachMenuHandle,
 } from "@/components/ai-elements/context-attach-menu";
-import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
 import { usePageAiContext } from "@/hooks/use-page-ai-context";
 import { useDatabaseEmbedAutoApply } from "@/hooks/use-database-embed-auto-apply";
@@ -50,11 +49,17 @@ import { resolveIntegrationToolPresentation } from "@/components/ai-elements/int
 import { PageEditCard } from "@/components/ai-elements/page-edit-card";
 import {
   PromptInput,
+  PromptInputActionAddAttachments,
+  PromptInputActionMenu,
+  PromptInputActionMenuContent,
+  PromptInputActionMenuTrigger,
+  PromptInputAttachments,
   PromptInputButton,
   PromptInputFooter,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import type { ToolPart } from "@/components/ai-elements/tool";
@@ -78,6 +83,7 @@ import {
   isPageEditReviewAvailable,
   logPageEdit,
   readAgentCitations,
+  readAgentResultTable,
   type AgentCitation,
   type AiChatThreadMessagesResponse,
   type ProposePageContentUpdateOutput,
@@ -123,6 +129,13 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { AgentResultTable } from "@/components/ai-elements/agent-result-table";
+import {
+  AI_FILE_ACCEPT,
+  MAX_AI_FILE_BYTES,
+  MAX_AI_FILES,
+  uploadAiChatFile,
+} from "@/lib/ai-file-upload";
 
 const fallbackModels: WorkspaceAiChatModel[] = [
   {
@@ -331,6 +344,8 @@ const toolTitles: Record<string, string> = {
   queryWorkspaceDatabase: "Query Zilobase database",
   readPageComments: "Read page comments",
   updateWorkspacePage: "Update Zilobase page",
+  createDownloadableArtifact: "Create downloadable file",
+  analyzeDataTable: "Analyze data table",
 };
 
 const toolSources: Record<string, keyof typeof integrationIcons> = {
@@ -764,11 +779,14 @@ const AgentCitations = ({ citations }: { citations: AgentCitation[] }) => {
     <div className="not-prose mt-3 flex flex-wrap gap-2" aria-label="Sources">
       {citations.map((citation) => {
         const external = citation.url.startsWith("https://");
+        const href = citation.url.startsWith("/api/")
+          ? toApiUrl(citation.url)
+          : citation.url;
 
         return (
           <a
             className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
-            href={citation.url}
+            href={href}
             key={`${citation.source}:${citation.id}`}
             rel={external ? "noreferrer" : undefined}
             target={external ? "_blank" : undefined}
@@ -812,6 +830,11 @@ const ChatMessage = ({
 
   const partGroups = buildMessagePartGroups(message.parts);
   const citations = collectMessageCitations(message);
+  const tables = message.parts.flatMap((part) => {
+    if (!isToolUIPart(part)) return [];
+    const table = readAgentResultTable(part.output);
+    return table ? [{ table, toolCallId: part.toolCallId }] : [];
+  });
 
   return (
     <Message from={message.role}>
@@ -857,6 +880,21 @@ const ChatMessage = ({
             return null;
           }
 
+          if (part.type === "file") {
+            return (
+              <a
+                className="not-prose flex w-fit max-w-full items-center gap-2 rounded-md border bg-background px-2.5 py-2 text-xs hover:bg-accent"
+                href={toApiUrl(part.url)}
+                key={`${message.id}-${index}`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
+                <span className="truncate">{part.filename ?? "Attached file"}</span>
+              </a>
+            );
+          }
+
           if (isToolUIPart(part)) {
             const toolName = getToolName(part);
 
@@ -893,6 +931,9 @@ const ChatMessage = ({
 
           return null;
         })}
+        {tables.map(({ table, toolCallId }) => (
+          <AgentResultTable key={toolCallId} table={table} />
+        ))}
         <AgentCitations citations={citations} />
       </MessageContent>
     </Message>
@@ -908,8 +949,8 @@ const EmptyState = () => (
       <h2 className="font-semibold text-xl">Ask AI about your page</h2>
       <p className="mx-auto max-w-xl text-muted-foreground text-sm">
         Search accessible Zilobase pages and databases, use attached context,
-        or research connected Gmail, GitHub, Calendar, Drive, Slack, and Linear
-        sources.
+        analyze uploaded files, create downloads, or research connected Gmail,
+        GitHub, Calendar, Drive, Slack, and Linear sources.
       </p>
     </div>
   </div>
@@ -1221,7 +1262,8 @@ const ChatbotInner = ({
   );
 
   const buildChatRequestBody = useCallback(
-    (requestThreadId: string | null) => ({
+    (requestThreadId: string | null, attachmentIds: string[] = []) => ({
+      attachmentIds,
       model,
       sources: selectedSources,
       threadId: requestThreadId,
@@ -1700,8 +1742,8 @@ const ChatbotInner = ({
   }, [clearError, error]);
 
   const submitText = useCallback(
-    async (content: string) => {
-      if (!content.trim()) {
+    async (content: string, files: PromptInputMessage["files"] = []) => {
+      if (!content.trim() && files.length === 0) {
         return;
       }
 
@@ -1739,6 +1781,22 @@ const ChatbotInner = ({
         }
       }
 
+      let uploadedFiles: Awaited<ReturnType<typeof uploadAiChatFile>>[] = [];
+      try {
+        uploadedFiles = await Promise.all(files.map((part) =>
+          uploadAiChatFile({
+            part,
+            threadId: targetThreadId,
+            workspaceId,
+          })
+        ));
+      } catch (uploadError) {
+        toast.error("File upload failed", {
+          description: uploadError instanceof Error ? uploadError.message : "Try again.",
+        });
+        throw uploadError;
+      }
+
       logPageContextSent({
         attachmentCount: attachments.length,
         charCount: pageContext.length,
@@ -1750,8 +1808,16 @@ const ChatbotInner = ({
 
       try {
         await sendMessage(
-          { text: content.trim() },
-          { body: buildChatRequestBody(targetThreadId) },
+          {
+            files: uploadedFiles.map((file) => file.part),
+            text: content.trim() || "Review the attached file(s).",
+          },
+          {
+            body: buildChatRequestBody(
+              targetThreadId,
+              uploadedFiles.map((file) => file.id),
+            ),
+          },
         );
       } finally {
         if (!threadId) {
@@ -1777,9 +1843,7 @@ const ChatbotInner = ({
   );
 
   const handleSubmit = useCallback(
-    (message: PromptInputMessage) => {
-      void submitText(message.text || "");
-    },
+    (message: PromptInputMessage) => submitText(message.text || "", message.files),
     [submitText],
   );
 
@@ -2019,9 +2083,18 @@ const ChatbotInner = ({
             </div>
           ) : null}
           <PromptInput
+            accept={AI_FILE_ACCEPT}
+            globalDrop
             inputGroupClassName="h-auto items-stretch overflow-visible focus-within:border-input focus-within:ring-0 has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+            maxFileSize={MAX_AI_FILE_BYTES}
+            maxFiles={MAX_AI_FILES}
+            multiple
+            onError={(attachmentError) => toast.error("Cannot attach file", {
+              description: attachmentError.message,
+            })}
             onSubmit={handleSubmit}
           >
+            <PromptInputAttachments />
             <ContextAttachChips
               attachments={attachments}
               onRemove={handleRemoveAttachment}
@@ -2056,6 +2129,14 @@ const ChatbotInner = ({
             </div>
             <PromptInputFooter>
               <PromptInputTools>
+                <PromptInputActionMenu>
+                  <PromptInputActionMenuTrigger tooltip="Attach files">
+                    <PlusIcon className="size-4" />
+                  </PromptInputActionMenuTrigger>
+                  <PromptInputActionMenuContent>
+                    <PromptInputActionAddAttachments />
+                  </PromptInputActionMenuContent>
+                </PromptInputActionMenu>
                 <SourceSelector
                   enabledSources={enabledSources}
                   selectedSources={selectedSources}

@@ -10,6 +10,8 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 - Ask AI can search accessible workspace pages and databases, read page bodies and comments, query structured database rows, and link cited Zilobase sources in its answers.
 - Ask AI page and database actions now return durable idempotent receipts, can create pages with populated Markdown bodies, and can safely update accessible pages with stale-write protection.
+- Ask AI accepts owned, expiring PDF, CSV, XLSX, DOCX, PPTX, text, Markdown, JSON, ZIP, and image attachments with bounded extraction and archive safety checks.
+- Ask AI can run deterministic table analysis, render interactive result tables, and create expiring downloadable CSV, XLSX, DOCX, PPTX, PDF, Markdown, JSON, and ZIP artifacts.
 
 ### Changed
 

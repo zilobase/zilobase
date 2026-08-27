@@ -1350,6 +1350,77 @@ export const aiAgentActionReceipt = pgTable(
   ],
 );
 
+export const aiChatUpload = pgTable(
+  "ai_chat_upload",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => aiChatThread.id, { onDelete: "cascade" }),
+    objectKey: text("object_key").notNull(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    checksum: text("checksum"),
+    status: text("status").notNull().default("pending"),
+    extractedText: text("extracted_text"),
+    extraction: jsonb("extraction"),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("ai_chat_upload_object_key_unique").on(table.objectKey),
+    index("ai_chat_upload_owner_thread_idx").on(
+      table.workspaceId,
+      table.userId,
+      table.threadId,
+      table.createdAt,
+    ),
+    index("ai_chat_upload_expiry_idx").on(table.status, table.expiresAt),
+  ],
+);
+
+export const aiChatArtifact = pgTable(
+  "ai_chat_artifact",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => aiChatThread.id, { onDelete: "cascade" }),
+    objectKey: text("object_key").notNull(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    checksum: text("checksum").notNull(),
+    status: text("status").notNull().default("ready"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("ai_chat_artifact_object_key_unique").on(table.objectKey),
+    index("ai_chat_artifact_owner_thread_idx").on(
+      table.workspaceId,
+      table.userId,
+      table.threadId,
+      table.createdAt,
+    ),
+    index("ai_chat_artifact_expiry_idx").on(table.status, table.expiresAt),
+  ],
+);
+
 export const rateLimit = pgTable("rateLimit", {
   key: text("key").primaryKey(),
   count: integer("count").notNull(),

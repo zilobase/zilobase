@@ -14,6 +14,19 @@ export type AgentCapabilityPolicy = {
 
 const alwaysAvailableCapabilities: AgentCapability[] = [
   {
+    id: "file.read",
+    status: "available",
+    summary:
+      "Read owned, expiring chat uploads after server-side validation and bounded extraction.",
+    toolNames: [],
+  },
+  {
+    id: "data.analyze",
+    status: "available",
+    summary: "Run bounded deterministic calculations over supplied tabular data.",
+    toolNames: ["analyzeDataTable"],
+  },
+  {
     id: "workspace.search",
     status: "available",
     summary: "Search pages and databases the current user can view.",
@@ -61,6 +74,13 @@ const unavailableCapabilities: AgentCapability[] = [
 ];
 
 const forbiddenCapabilities: AgentCapability[] = [
+  {
+    id: "code.arbitrary.execute",
+    status: "forbidden",
+    summary:
+      "Do not execute arbitrary code, use the host filesystem, or make unrestricted network requests for analysis.",
+    toolNames: [],
+  },
   {
     id: "embed.non-pdf.read",
     status: "forbidden",
@@ -111,6 +131,13 @@ export function resolveAgentCapabilityPolicy(input: {
   canEditAttachedPages: boolean;
 }) {
   const nativeMutationCapabilities: AgentCapability[] = [
+    {
+      id: "artifact.create",
+      status: "available",
+      summary:
+        "Create expiring downloadable artifacts in supported document and data formats.",
+      toolNames: ["createDownloadableArtifact"],
+    },
     {
       id: "page.content.update",
       status: "available",
