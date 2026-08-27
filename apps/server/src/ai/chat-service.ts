@@ -6,7 +6,7 @@ import {
   type ToolSet,
   type UIMessage,
 } from "ai";
-import { getMembership } from "../access";
+import { canAccessPageInWorkspace, getMembership } from "../access";
 import type { AppBindings } from "../types";
 import { getRuntimeAdapter } from "../runtime-adapter";
 import {
@@ -14,7 +14,12 @@ import {
   buildDatabaseConfigTools,
 } from "./ask-ai-database-tools";
 import { buildPageEditTools } from "./ask-ai-page-tools";
+import { buildWorkspaceReadTools } from "./ask-ai-workspace-tools";
 import { resolveOpenAiChatModel } from "./ai-provider";
+import {
+  buildAgentPolicyInstruction,
+  resolveAgentCapabilityPolicy,
+} from "./agent-capabilities";
 import {
   buildToolkitTools,
   isToolkitConfigured,
@@ -58,7 +63,7 @@ const REQUESTABLE_SOURCES: SourceId[] = [
 ];
 
 const SYSTEM_PROMPT =
-  "You are Zilobase's page research assistant. When Zilobase page context is provided, treat it as the authoritative source for questions about the current page, attached pages, embedded databases, properties, and rows shown in that context."
+  "You are Zilobase's workspace agent. Complete bounded multi-step research and supported actions using tools, and clearly report partial failures. When Zilobase page context is provided, treat it as the authoritative source for questions about the current page, attached pages, embedded databases, properties, and rows shown in that context. Use searchWorkspace for workspace-wide discovery, readWorkspacePage for a page's stored body, readPageComments only when comments matter, and queryWorkspaceDatabase for current structured rows and properties. Use citation URLs returned by tools when attributing workspace facts."
   + " Use Gmail tools when the user asks about email, inbox, people, timelines, project updates, decisions, blockers, or messages from email. Use GitHub tools when the user asks about repositories, issues, pull requests, commits, files, code, releases, bugs, reviews, or work tracked in GitHub. Use Google Calendar tools when the user asks about meetings, schedules, events, availability, free/busy windows, calendars, attendees, or time-based planning. Use Google Drive tools when the user asks about Drive files, Docs, Sheets, Slides, documents, folders, file owners, recently changed files, or content stored in Google Drive. Use Slack tools for workspace Slack context only: channels, private channels the Zilobase app can access, threads, canvases, files, project chatter, decisions, blockers, and page messages. Use Linear tools when the user asks about issues, tickets, bugs, tasks, projects, teams, cycles, status, assignees, priorities, blockers, scope, delivery progress, or roadmap work tracked in Linear."
   + " The connected Gmail, GitHub, Google Calendar, Google Drive, Slack, and Linear tools are read-only. Never claim you sent, modified, archived, labeled, deleted, drafted, posted, updated, assigned, commented on, scheduled, canceled, merged, closed, reopened, reviewed, uploaded, moved, shared, or marked any connected external item."
   + " Zilobase database and page configuration tools may create and update Zilobase pages, databases, properties, rows, views, and embeds when the user asks."
@@ -125,8 +130,27 @@ export async function runAiChatTurn(input: {
   }
 
   const hasPageContext = Boolean(requestBody.pageContext);
-  const allowedPageIds = requestBody.allowedPageIds;
-  const hasPageEditAccess = hasPageContext && requestBody.canEditPages;
+  const referencedPageAccess = await input.withDb(() =>
+    resolveReferencedPageAccess({
+      pageIds: requestBody.allowedPageIds,
+      userId: auth.userId,
+      workspaceId,
+    }),
+  );
+  const readablePageIds = referencedPageAccess
+    .filter((item) => item.canView)
+    .map((item) => item.pageId);
+  const editablePageIds = referencedPageAccess
+    .filter((item) => item.canEdit)
+    .map((item) => item.pageId);
+  const hasPageEditAccess = hasPageContext && editablePageIds.length > 0;
+  const primaryEditablePageId = requestBody.primaryPageId &&
+      editablePageIds.includes(requestBody.primaryPageId)
+    ? requestBody.primaryPageId
+    : null;
+  const capabilityPolicy = resolveAgentCapabilityPolicy({
+    canEditAttachedPages: hasPageEditAccess,
+  });
   const connectorTools = isToolkitConfigured(input.env)
     ? await buildToolkitTools({
         env: input.env,
@@ -144,19 +168,25 @@ export async function runAiChatTurn(input: {
 
   if (hasPageContext) {
     console.warn(
-      `AI chat page edit: canEdit=${requestBody.canEditPages} allowedIds=${allowedPageIds.join(",") || "(none)"} primaryId=${requestBody.primaryPageId ?? "(none)"}`,
+      `AI chat page access: clientCanEdit=${requestBody.canEditPages} readableIds=${readablePageIds.join(",") || "(none)"} editableIds=${editablePageIds.join(",") || "(none)"} primaryEditableId=${primaryEditablePageId ?? "(none)"}`,
     );
   }
 
+  const workspaceReadTools = buildWorkspaceReadTools({
+    userId: auth.userId,
+    workspaceId,
+    withDb: (fn) => input.withDb(fn),
+  });
   const tools: ToolSet = {
+    ...workspaceReadTools,
     ...(hasPageEditAccess
       ? {
-          ...buildPageEditTools(allowedPageIds),
+          ...buildPageEditTools(editablePageIds),
           ...buildDatabaseConfigTools({
-            allowedPageIds: new Set(allowedPageIds),
+            allowedPageIds: new Set(editablePageIds),
             env: input.env,
             workspaceId,
-            primaryPageId: requestBody.primaryPageId,
+            primaryPageId: primaryEditablePageId,
             userId: auth.userId,
             withDb: (fn) => input.withDb(fn),
           }),
@@ -177,20 +207,21 @@ export async function runAiChatTurn(input: {
   const pageEditInstruction = hasPageEditAccess
     ? [
         buildPageEditInstruction({
-          allowedPageIds,
-          primaryPageId: requestBody.primaryPageId,
+          allowedPageIds: editablePageIds,
+          primaryPageId: primaryEditablePageId,
         }),
         buildDatabaseConfigInstruction({
-          allowedPageIds,
-          primaryPageId: requestBody.primaryPageId,
+          allowedPageIds: editablePageIds,
+          primaryPageId: primaryEditablePageId,
         }),
       ].join("")
     : "";
   const sourceInstruction = buildSourceInstruction({
-    hasTools,
+    hasConnectorTools: Object.keys(connectorTools).length > 0,
     hasPageContext,
     sources: requestBody.sources,
   });
+  const policyInstruction = buildAgentPolicyInstruction(capabilityPolicy);
 
   const result = streamText({
     abortSignal: input.abortSignal,
@@ -200,7 +231,7 @@ export async function runAiChatTurn(input: {
     stopWhen: stepCountIs(15),
     tools: hasTools ? tools : undefined,
     temperature: 0.2,
-    system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction} ${sourceInstruction}`,
+    system: `${SYSTEM_PROMPT}${pageEditInstruction}${pageContextInstruction}\n${policyInstruction}\n${sourceInstruction}`,
     onError: ({ error }) => {
       console.warn(`AI chat ${auth.userId}: ${toProviderErrorMessage(error)}`);
     },
@@ -318,11 +349,11 @@ function buildPageContextInstruction(pageContext: string | null) {
 }
 
 function buildSourceInstruction(input: {
-  hasTools: boolean;
+  hasConnectorTools: boolean;
   hasPageContext: boolean;
   sources: SourceId[];
 }) {
-  if (input.hasTools) {
+  if (input.hasConnectorTools) {
     return input.sources.length > 0
       ? `Only use these selected sources for this request: ${input.sources.join(", ")}.`
       : "Use all connected integration sources when the user asks about external tools.";
@@ -332,7 +363,32 @@ function buildSourceInstruction(input: {
     return "No external integration sources are connected. Answer page questions from the Zilobase page context above.";
   }
 
-  return "No page integration sources are connected. Answer from general knowledge and ask the user to connect Gmail, GitHub, Google Calendar, Google Drive, Slack, or Linear for page-specific data.";
+  return "No external integration sources are connected. Use the permission-scoped Zilobase workspace tools for workspace questions, and answer general questions from general knowledge.";
+}
+
+async function resolveReferencedPageAccess(input: {
+  pageIds: string[];
+  userId: string;
+  workspaceId: string;
+}) {
+  return Promise.all(
+    [...new Set(input.pageIds)].map(async (pageId) => {
+      const canEdit = await canAccessPageInWorkspace(
+        pageId,
+        input.workspaceId,
+        input.userId,
+        "edit",
+      );
+      const canView = canEdit || await canAccessPageInWorkspace(
+        pageId,
+        input.workspaceId,
+        input.userId,
+        "view",
+      );
+
+      return { canEdit, canView, pageId };
+    }),
+  );
 }
 
 function readPageContext(body: Record<string, unknown>) {

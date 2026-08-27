@@ -6,9 +6,14 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 ## 0.0.50
 
+### Added
+
+- Ask AI can search accessible workspace pages and databases, read page bodies and comments, query structured database rows, and link cited Zilobase sources in its answers.
+
 ### Changed
 
 - Interactive controls, drag surfaces, sliders, scroll thumbs, and resize handles now use consistent cursors across the web and desktop apps.
+- Ask AI now resolves page view and edit permissions on the server and applies explicit negative-capability policy before exposing tools to a model.
 
 ### Fixed
 

@@ -190,7 +190,7 @@ apps, a documentation update, cleanup of code made obsolete by that pass, and a
 separate commit. A later pass may depend on earlier commits but must not hide an
 unverified partial feature behind optimistic UI.
 
-### Pass 0 — contract and baseline
+### Pass 0 — contract and baseline (complete)
 
 - Check in this plan and capability matrix.
 - Record existing tools and explicit non-capabilities.
@@ -200,7 +200,7 @@ Acceptance: reviewers can map every reference capability or restriction to an
 implementation pass, an existing Zilobase capability, or a declared unavailable
 product prerequisite.
 
-### Pass 1 — secure workspace intelligence
+### Pass 1 — secure workspace intelligence (complete)
 
 - Introduce the typed capability/result contracts and central policy builder.
 - Add permission-scoped tools to search workspace pages, read a page, query a
@@ -208,6 +208,10 @@ product prerequisite.
 - Resolve all content server-side and cap result sizes.
 - Return citations and show them in chat.
 - Replace prompt-only negative rules with tool exclusion and tests.
+
+Implementation note: current page comments are available read-only. Page
+revision search remains registry-gated as unavailable because Zilobase does not
+yet retain page revision history; no model-visible stub is exposed.
 
 Acceptance: a user can ask a workspace-wide question without manually attaching
 every page; inaccessible pages/rows never appear in results or citations.

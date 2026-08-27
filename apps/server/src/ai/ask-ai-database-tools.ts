@@ -23,6 +23,31 @@ import {
   linkDatabaseInPageService,
 } from "../services/page-mutations";
 
+export const AGENT_CREATABLE_DATABASE_PROPERTY_TYPES = [
+  "text",
+  "number",
+  "select",
+  "multi_select",
+  "status",
+  "date",
+  "person",
+  "files",
+  "checkbox",
+  "url",
+  "phone",
+  "email",
+  "relation",
+  "id",
+  "place",
+  "verification",
+  "created_time",
+  "edited_time",
+] as const;
+
+const agentCreatableDatabasePropertyTypeSchema = z.enum(
+  AGENT_CREATABLE_DATABASE_PROPERTY_TYPES,
+);
+
 const selectOptionSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
@@ -258,11 +283,11 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
     createDatabaseProperty: tool({
       description:
-        "Add a property/column to a database. Prefer type status (not select) for task/workflow columns — it auto-seeds Not started / In progress / Done with colors and kanban groups. For select/multi_select, pass config.options with { id, name }; colors are auto-assigned when omitted. Valid colors: gray, brown, orange, yellow, green, blue, purple, pink, red.",
+        "Add a supported property/column to a database. Formula, rollup, and button properties are forbidden and are not accepted by this tool. Prefer type status (not select) for task/workflow columns — it auto-seeds Not started / In progress / Done with colors and kanban groups. For select/multi_select, pass config.options with { id, name }; colors are auto-assigned when omitted. Valid colors: gray, brown, orange, yellow, green, blue, purple, pink, red.",
       inputSchema: z.object({
         dataSourceId: z.string().trim().min(1),
         name: z.string().trim().min(1).max(120).optional(),
-        type: z.string().trim().min(1).optional(),
+        type: agentCreatableDatabasePropertyTypeSchema.optional(),
         config: propertyConfigSchema,
         position: z.number().int().min(0).optional(),
       }),
@@ -309,12 +334,12 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
     updateDatabaseProperty: tool({
       description:
-        "Update an existing database property. Use to add or extend select/status/multi_select options before setDatabaseCellValue. Status options support color and group (To-do, In progress, Complete). Colors are auto-filled when omitted.",
+        "Update an existing database property. Changing a property to formula, rollup, or button is forbidden and is not accepted by this tool. Use to add or extend select/status/multi_select options before setDatabaseCellValue. Status options support color and group (To-do, In progress, Complete). Colors are auto-filled when omitted.",
       inputSchema: z.object({
         dataSourceId: z.string().trim().min(1),
         databasePropertyId: z.string().trim().min(1),
         name: z.string().trim().min(1).max(120).optional(),
-        type: z.string().trim().optional(),
+        type: agentCreatableDatabasePropertyTypeSchema.optional(),
         config: propertyConfigSchema,
         position: z.number().int().min(0).optional(),
       }),

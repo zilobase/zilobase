@@ -29,6 +29,14 @@
       "types": "./src/auth/index.ts",
       "default": "./src/auth/index.ts"
     },
+    "./ai-chat": {
+      "types": "./src/ai-chat/index.ts",
+      "default": "./src/ai-chat/index.ts"
+    },
+    "./ai-chat/agent-contract": {
+      "types": "./src/ai-chat/agent-contract.ts",
+      "default": "./src/ai-chat/agent-contract.ts"
+    },
     "./databases": {
       "types": "./src/databases/index.ts",
       "default": "./src/databases/index.ts"

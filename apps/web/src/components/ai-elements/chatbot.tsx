@@ -77,6 +77,8 @@ import {
   isPageEditBaselineCurrent,
   isPageEditReviewAvailable,
   logPageEdit,
+  readAgentCitations,
+  type AgentCitation,
   type AiChatThreadMessagesResponse,
   type ProposePageContentUpdateOutput,
   type PageEditSnapshotPart,
@@ -114,6 +116,7 @@ import {
 import {
   ArrowDownIcon,
   CheckIcon,
+  FileTextIcon,
   InboxIcon,
   PlusIcon,
   XIcon,
@@ -323,6 +326,10 @@ const toolTitles: Record<string, string> = {
   updateDatabase: "Update database",
   createDatabaseRow: "Add database row",
   setDatabaseCellValue: "Set cell value",
+  searchWorkspace: "Search Zilobase",
+  readWorkspacePage: "Read Zilobase page",
+  queryWorkspaceDatabase: "Query Zilobase database",
+  readPageComments: "Read page comments",
 };
 
 const toolSources: Record<string, keyof typeof integrationIcons> = {
@@ -729,6 +736,52 @@ const PageEditToolPart = ({
   );
 };
 
+function collectMessageCitations(message: UIMessage) {
+  const citations = message.parts.flatMap((part) =>
+    isToolUIPart(part) ? readAgentCitations(part.output) : [],
+  );
+  const seen = new Set<string>();
+
+  return citations.filter((citation) => {
+    const key = `${citation.source}:${citation.id}`;
+
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+const AgentCitations = ({ citations }: { citations: AgentCitation[] }) => {
+  if (citations.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="not-prose mt-3 flex flex-wrap gap-2" aria-label="Sources">
+      {citations.map((citation) => {
+        const external = citation.url.startsWith("https://");
+
+        return (
+          <a
+            className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+            href={citation.url}
+            key={`${citation.source}:${citation.id}`}
+            rel={external ? "noreferrer" : undefined}
+            target={external ? "_blank" : undefined}
+            title={citation.excerpt ?? citation.title}
+          >
+            <FileTextIcon className="size-3.5 shrink-0" />
+            <span className="truncate">{citation.title}</span>
+          </a>
+        );
+      })}
+    </div>
+  );
+};
+
 const ChatMessage = ({
   applyingToolCallIds,
   getPageEditBaselineCurrent,
@@ -757,6 +810,7 @@ const ChatMessage = ({
   }
 
   const partGroups = buildMessagePartGroups(message.parts);
+  const citations = collectMessageCitations(message);
 
   return (
     <Message from={message.role}>
@@ -838,6 +892,7 @@ const ChatMessage = ({
 
           return null;
         })}
+        <AgentCitations citations={citations} />
       </MessageContent>
     </Message>
   );
@@ -851,9 +906,9 @@ const EmptyState = () => (
     <div className="space-y-2">
       <h2 className="font-semibold text-xl">Ask AI about your page</h2>
       <p className="mx-auto max-w-xl text-muted-foreground text-sm">
-        The assistant can search connected Gmail, GitHub, Google Calendar,
-        Slack, and Linear context, then answer with project details and
-        insights.
+        Search accessible Zilobase pages and databases, use attached context,
+        or research connected Gmail, GitHub, Calendar, Drive, Slack, and Linear
+        sources.
       </p>
     </div>
   </div>

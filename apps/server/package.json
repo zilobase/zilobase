@@ -57,6 +57,7 @@
     "@hocuspocus/transformer": "^4.3.0",
     "@tiptap/pm": "^3.23.6",
     "@zilobase/features": "file:../../packages/features",
+    "@zilobase/page-context": "file:../../packages/page-context",
     "@zilobase/toolkit": "^0.1.2",
     "ai": "^6.0.193",
     "better-auth": "^1.6.25",
