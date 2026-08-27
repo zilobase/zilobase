@@ -6,6 +6,15 @@ export function isSvgIcon(value: string | null | undefined) {
   return value.trim().startsWith("<svg")
 }
 
+export function getDatabaseIconConfig(database: {
+  config?: unknown
+  dataSourceConfig?: unknown
+}) {
+  return "dataSourceConfig" in database
+    ? database.dataSourceConfig
+    : database.config
+}
+
 export function normalizeSvgContent(content: string) {
   return content
     .replace(/\sfill="[^"]*"/gi, "")

@@ -8,6 +8,7 @@ import { getIconTextClassName } from "@/lib/color-tokens"
 import { DEFAULT_PAGE_ITEM_ICON } from "@/lib/item-icons"
 import { cn } from "@/lib/utils"
 import {
+  getDatabaseIconConfig,
   getStoredIconColor,
   isSvgIcon,
   normalizeStoredIconPresentation,
@@ -111,7 +112,7 @@ export function getDatabaseIconValue(database: {
   config?: unknown
   dataSourceConfig?: unknown
 }) {
-  return getDatabaseEmoji({ config: database.dataSourceConfig })
+  return getDatabaseEmoji({ config: getDatabaseIconConfig(database) })
 }
 
 export function getDatabaseIconNode(database: {

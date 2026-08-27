@@ -1,4 +1,29 @@
 export function register({ assert, loadModule, test }) {
+  test("database icon config supports navigation and raw data source records", async () => {
+    const { getDatabaseIconConfig } = await loadModule(
+      "/src/lib/page-icon-utils.ts",
+    )
+
+    assert.deepEqual(
+      getDatabaseIconConfig({ config: { emoji: "📣" } }),
+      { emoji: "📣" },
+    )
+    assert.deepEqual(
+      getDatabaseIconConfig({
+        config: { emoji: "😊" },
+        dataSourceConfig: { emoji: "📝" },
+      }),
+      { emoji: "📝" },
+    )
+    assert.equal(
+      getDatabaseIconConfig({
+        config: { emoji: "😊" },
+        dataSourceConfig: null,
+      }),
+      null,
+    )
+  })
+
   test("buildColoredIconSvg stores themed icon metadata", async () => {
     const { buildColoredIconSvg, isSvgIcon, sanitizeStoredSvg } = await loadModule(
       "/src/lib/page-icon-utils.ts",

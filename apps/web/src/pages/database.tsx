@@ -27,6 +27,7 @@ import {
 import {
   useDatabase,
   useRestoreDatabase,
+  useUpdateDatabase,
   useUpdateDataSource,
 } from "@zilobase/features/databases"
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
@@ -317,6 +318,7 @@ export function DatabaseMainPane({
   })
   const databasePageId = payload?.database.pageId ?? null
   const { data: accessLevel } = usePageAccessLevel(databasePageId)
+  const updateDatabase = useUpdateDatabase()
   const updateDataSource = useUpdateDataSource()
   const restoreDatabase = useRestoreDatabase()
   const [cover, setCover] = useState("")
@@ -324,6 +326,7 @@ export function DatabaseMainPane({
   const [iconPosition, setIconPosition] =
     useState<PageIconPosition>("inline")
   const [embeddedViewId, setEmbeddedViewId] = useState<string | undefined>()
+  const [showDataSourceTitles, setShowDataSourceTitles] = useState(true)
   const activeViewId = embedded ? embeddedViewId : localActiveViewId
   const selectedView =
     payload?.views.find((view) => view.id === activeViewId) ?? payload?.views[0]
@@ -356,79 +359,101 @@ export function DatabaseMainPane({
       sourceContainer?.accessLevel === "full" ||
       sourceAccessLevel === "edit" ||
       sourceAccessLevel === "full")
-  const sourceTitle = activeDataSource?.name ?? ""
+  const hasMultipleDataSources = (payload?.dataSources.length ?? 0) > 1
+  const headingRecord = hasMultipleDataSources
+    ? payload?.database
+    : activeDataSource
+  const headingEditable = hasMultipleDataSources ? editable : sourceEditable
+  const headingTitle = headingRecord?.name ?? ""
   const { setTitle, title } = useTitleDraft({
-    enabled: sourceEditable,
+    enabled: headingEditable,
     onSave: async (nextTitle) => {
-      if (!activeDataSource) return
-      await updateDataSource.mutateAsync({
-        databaseId: activeDataSource.id,
-        name: nextTitle,
-      })
+      if (!headingRecord) return
+
+      if (hasMultipleDataSources) {
+        await updateDatabase.mutateAsync({
+          databaseId: headingRecord.id,
+          name: nextTitle,
+        })
+      } else {
+        await updateDataSource.mutateAsync({
+          databaseId: headingRecord.id,
+          name: nextTitle,
+        })
+      }
     },
-    sourceId: activeDataSource?.id ?? "no-data-source",
-    sourceTitle,
+    sourceId: headingRecord?.id ?? "no-database-heading",
+    sourceTitle: headingTitle,
   })
 
   useEffect(() => {
-    if (!activeDataSource) {
+    if (!headingRecord) {
       setCover("")
       setEmoji("")
       setIconPosition("inline")
       return
     }
 
-    setCover(getDatabaseCover(activeDataSource) ?? "")
-    setEmoji(getDatabaseEmoji(activeDataSource) ?? "")
-    setIconPosition(getDatabaseIconPosition(activeDataSource))
-  }, [activeDataSource])
+    setCover(getDatabaseCover(headingRecord) ?? "")
+    setEmoji(getDatabaseEmoji(headingRecord) ?? "")
+    setIconPosition(getDatabaseIconPosition(headingRecord))
+  }, [headingRecord])
 
   const updateCover = (nextCover: string) => {
     setCover(nextCover)
 
-    if (!activeDataSource || !sourceEditable) {
+    if (!headingRecord || !headingEditable) {
       return
     }
 
-    updateDataSource.mutate({
-      databaseId: activeDataSource.id,
+    const input = {
+      databaseId: headingRecord.id,
       config: {
-        ...((activeDataSource.config ?? {}) as Record<string, unknown>),
+        ...((headingRecord.config ?? {}) as Record<string, unknown>),
         cover: nextCover,
       },
-    })
+    }
+
+    if (hasMultipleDataSources) updateDatabase.mutate(input)
+    else updateDataSource.mutate(input)
   }
 
   const updateEmoji = (nextEmoji: string) => {
     setEmoji(nextEmoji)
 
-    if (!activeDataSource || !sourceEditable) {
+    if (!headingRecord || !headingEditable) {
       return
     }
 
-    updateDataSource.mutate({
-      databaseId: activeDataSource.id,
+    const input = {
+      databaseId: headingRecord.id,
       config: {
-        ...((activeDataSource.config ?? {}) as Record<string, unknown>),
+        ...((headingRecord.config ?? {}) as Record<string, unknown>),
         emoji: nextEmoji,
       },
-    })
+    }
+
+    if (hasMultipleDataSources) updateDatabase.mutate(input)
+    else updateDataSource.mutate(input)
   }
 
   const updateIconPosition = (nextPosition: PageIconPosition) => {
     setIconPosition(nextPosition)
 
-    if (!activeDataSource || !sourceEditable) {
+    if (!headingRecord || !headingEditable) {
       return
     }
 
-    updateDataSource.mutate({
-      databaseId: activeDataSource.id,
+    const input = {
+      databaseId: headingRecord.id,
       config: {
-        ...((activeDataSource.config ?? {}) as Record<string, unknown>),
+        ...((headingRecord.config ?? {}) as Record<string, unknown>),
         iconPosition: nextPosition,
       },
-    })
+    }
+
+    if (hasMultipleDataSources) updateDatabase.mutate(input)
+    else updateDataSource.mutate(input)
   }
   const updateActiveViewSearch = (viewId: string | null) => {
     if (embedded) {
@@ -470,8 +495,10 @@ export function DatabaseMainPane({
       ) : null}
       <PageMetadataView
         cover={cover}
-        databaseId={sourceParentDatabaseId}
-        editable={sourceEditable}
+        databaseId={
+          hasMultipleDataSources ? databaseId : sourceParentDatabaseId
+        }
+        editable={headingEditable}
         enableComments={false}
         icon={emoji}
         iconPosition={iconPosition}
@@ -481,17 +508,19 @@ export function DatabaseMainPane({
         onIconPositionChange={updateIconPosition}
         onOpenPage={onOpenPage}
         onTitleChange={setTitle}
-        workspaceId={activeDataSource?.workspaceId}
+        workspaceId={headingRecord?.workspaceId}
         title={title}
         titlePrefix={
-          sourceParentDatabaseId && sourceParentDatabaseId !== databaseId ? (
+          !hasMultipleDataSources &&
+          sourceParentDatabaseId &&
+          sourceParentDatabaseId !== databaseId ? (
             <ArrowUpRight
-              aria-label={`Linked from ${sourceTitle || "another database"}`}
+              aria-label={`Linked from ${headingTitle || "another database"}`}
               className="size-6"
             />
           ) : undefined
         }
-        pageId={sourcePageId}
+        pageId={hasMultipleDataSources ? databasePageId : sourcePageId}
       />
       <div className="tiptap-editor px-5 pb-10 sm:px-8 md:px-20 lg:px-24">
         <DatabaseView
@@ -502,8 +531,11 @@ export function DatabaseMainPane({
           includeDeleted={Boolean(payload?.database.deletedAt)}
           onActiveViewIdChange={updateActiveViewSearch}
           onOpenPage={onOpenPage}
+          onShowTitleChange={
+            hasMultipleDataSources ? setShowDataSourceTitles : undefined
+          }
           workspaceId={payload?.database.workspaceId}
-          showTitle={false}
+          showTitle={hasMultipleDataSources && showDataSourceTitles}
         />
       </div>
     </section>
