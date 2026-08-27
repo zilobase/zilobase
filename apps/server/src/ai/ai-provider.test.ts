@@ -4,10 +4,24 @@ import { beforeEach, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   chat: vi.fn(),
   createOpenAI: vi.fn(),
+  workspaceConfig: [] as unknown[],
 }));
 
 vi.mock("@ai-sdk/openai", () => ({
   createOpenAI: mocks.createOpenAI,
+}));
+
+vi.mock("../db", () => ({
+  db: {
+    select() {
+      const builder = {
+        from() { return builder; },
+        where() { return builder; },
+        async limit() { return mocks.workspaceConfig; },
+      };
+      return builder;
+    },
+  },
 }));
 
 import {
@@ -22,6 +36,7 @@ beforeEach(() => {
   mocks.chat.mockImplementation((modelId: string) => ({ modelId }));
   mocks.createOpenAI.mockReset();
   mocks.createOpenAI.mockReturnValue({ chat: mocks.chat });
+  mocks.workspaceConfig = [];
 });
 
 test("resolveOpenAiChatModel normalizes bearer keys and defaults the model", () => {
@@ -38,17 +53,33 @@ test("resolveOpenAiChatModel accepts provider-prefixed model identifiers", () =>
 });
 
 test("resolveWorkspaceAiModel delegates selected and default models", async () => {
-  assert.deepEqual(
-    await resolveWorkspaceAiModel("workspace-1", "openai:gpt-5", "key"),
-    { modelId: "gpt-5" },
+  const selected = await resolveWorkspaceAiModel(
+    "workspace-1",
+    "openai:gpt-4o",
+    { OPENAI_API_KEY: "key" },
   );
-  assert.deepEqual(
-    await resolveWorkspaceAiModel("workspace-1", undefined, "key"),
-    { modelId: DEFAULT_OPENAI_CHAT_MODEL },
+  assert.equal(selected.catalog.id, "gpt-4o");
+  assert.deepEqual(selected.model, { modelId: "gpt-4o" });
+  assert.equal(selected.credentialSource, "managed");
+
+  const automatic = await resolveWorkspaceAiModel(
+    "workspace-1",
+    "auto",
+    { OPENAI_API_KEY: "key" },
   );
-  assert.deepEqual(
-    await resolveWorkspaceAiModel("workspace-1", "auto", "key"),
-    { modelId: DEFAULT_OPENAI_CHAT_MODEL },
+  assert.equal(automatic.catalog.id, DEFAULT_OPENAI_CHAT_MODEL);
+  assert.deepEqual(automatic.model, { modelId: DEFAULT_OPENAI_CHAT_MODEL });
+});
+
+test("resolveWorkspaceAiModel rejects models outside the server catalog", async () => {
+  await assert.rejects(
+    () => resolveWorkspaceAiModel(
+      "workspace-1",
+      "openai:gpt-5-unlisted",
+      { OPENAI_API_KEY: "key" },
+    ),
+    (error: unknown) =>
+      error instanceof AiProviderConfigError && error.status === 400,
   );
 });
 

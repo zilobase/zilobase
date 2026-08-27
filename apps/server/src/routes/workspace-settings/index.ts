@@ -3,6 +3,10 @@ import { eq } from "drizzle-orm";
 
 import { db } from "../../db";
 import { workspaceAiProviderConfig } from "../../db/schema";
+import { isPrivilegedOrgRole } from "../../access";
+import { encryptAiProviderCredential } from "../../ai/ai-provider-credentials";
+import { AiProviderConfigError, validateAiProviderBaseUrl } from "../../ai/ai-provider";
+import { getStringEnv } from "../../config";
 import type { AppBindings } from "../../types";
 import {
   getAiProviderConfig,
@@ -47,7 +51,12 @@ workspaceSettingsRoutes.get("/ai/models", async (c) => {
       ...providers.flatMap((config) => {
         const provider = getCatalogItem(config.providerId);
 
-        if (!config.enabled || (provider.requiresApiKey && !config.apiKeyConfigured)) {
+        const managedCredentialAvailable = provider.id === "openai" &&
+          Boolean(getStringEnv(c.env, "OPENAI_API_KEY")?.trim());
+        if (
+          !config.enabled ||
+          (provider.requiresApiKey && !config.apiKeyConfigured && !managedCredentialAvailable)
+        ) {
           return [];
         }
 
@@ -76,6 +85,10 @@ workspaceSettingsRoutes.put("/ai/providers/:providerId", async (c) => {
     return auth.response;
   }
 
+  if (!isPrivilegedOrgRole(auth.membership.role)) {
+    return c.json({ message: "Only workspace owners and admins can configure AI providers." }, 403);
+  }
+
   const providerId = c.req.param("providerId");
   const provider = providerCatalog.find((item) => item.id === providerId);
 
@@ -91,15 +104,55 @@ workspaceSettingsRoutes.put("/ai/providers/:providerId", async (c) => {
   };
   const now = new Date();
   const existing = await getAiProviderConfig(auth.workspaceId, providerId);
+  const requestedModelIds = Array.isArray(body.modelIds)
+    ? [...new Set(body.modelIds.filter((modelId) =>
+        provider.models.some((model) => model.id === modelId)
+      ))]
+    : provider.models.map((model) => model.id);
+  if (Array.isArray(body.modelIds) && requestedModelIds.length !== body.modelIds.length) {
+    return c.json({ message: "One or more requested AI models are not in the server catalog." }, 400);
+  }
+
+  let encrypted = existing
+    ? {
+        ciphertext: existing.credentialCiphertext,
+        fingerprint: existing.credentialFingerprint,
+        iv: existing.credentialIv,
+        keyVersion: existing.credentialKeyVersion,
+      }
+    : null;
+  try {
+    if (typeof body.apiKey === "string" && body.apiKey.trim()) {
+      encrypted = await encryptAiProviderCredential(c.env, body.apiKey);
+    }
+  } catch (error) {
+    const status = error instanceof Error && "status" in error
+      ? Number((error as { status: number }).status)
+      : 503;
+    return c.json(
+      { message: error instanceof Error ? error.message : "Failed to encrypt AI credential." },
+      status === 400 ? 400 : 503,
+    );
+  }
+
+  let baseUrl: string;
+  try {
+    baseUrl = validateAiProviderBaseUrl(c.env, body.baseUrl, provider.baseUrl);
+  } catch (error) {
+    return c.json(
+      { message: error instanceof AiProviderConfigError ? error.message : "Invalid provider URL." },
+      400,
+    );
+  }
   const values = {
-    apiKey:
-      typeof body.apiKey === "string" && body.apiKey.trim()
-        ? body.apiKey.trim()
-        : existing?.apiKey ?? null,
-    baseUrl:
-      typeof body.baseUrl === "string" ? body.baseUrl.trim() : provider.baseUrl ?? "",
+    apiKey: existing?.apiKey ?? null,
+    baseUrl,
+    credentialCiphertext: encrypted?.ciphertext ?? null,
+    credentialFingerprint: encrypted?.fingerprint ?? null,
+    credentialIv: encrypted?.iv ?? null,
+    credentialKeyVersion: encrypted?.keyVersion ?? null,
     enabled: Boolean(body.enabled),
-    modelIds: Array.isArray(body.modelIds) ? body.modelIds : provider.models.map((model) => model.id),
+    modelIds: requestedModelIds,
     updatedAt: now,
   };
 
