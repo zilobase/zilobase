@@ -98,6 +98,7 @@ test("applyConfirmedAddedDatabaseRow replaces optimistic ids and adds values", (
     {
       createdAt: "2026-06-24T12:00:00.000Z",
       databaseId: "database-1",
+      dataSourceId: "data-source-1",
       pageId: "page-3",
       parentRowId: null,
       position: 1,
@@ -156,7 +157,7 @@ test("row confirmation removes the optimistic duplicate when realtime wins the r
       },
       {
         createdAt: "2026-07-14T12:00:00.000Z",
-        databaseId: "database-1",
+        dataSourceId: "data-source-1",
         id: "row-3",
         page: { id: "page-3", name: "Gamma" },
         pageId: "page-3",
@@ -179,6 +180,7 @@ test("row confirmation removes the optimistic duplicate when realtime wins the r
     {
       createdAt: "2026-07-14T12:00:00.000Z",
       databaseId: "database-1",
+      dataSourceId: "data-source-1",
       pageId: "page-3",
       parentRowId: null,
       position: 1,
@@ -228,6 +230,7 @@ test("row confirmation preserves intended values over imported server values", (
     {
       createdAt: "2026-07-14T12:00:00.000Z",
       databaseId: "database-1",
+      dataSourceId: "data-source-1",
       pageId: "page-3",
       parentRowId: null,
       position: 2,
@@ -261,6 +264,7 @@ test("isAddRowResponse detects compact row create responses", () => {
     isAddRowResponse({
       createdAt: "2026-06-24T12:00:00.000Z",
       databaseId: "database-1",
+      dataSourceId: "data-source-1",
       pageId: "page-3",
       position: 2,
       rowId: "row-3",

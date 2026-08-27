@@ -115,6 +115,25 @@ export function applyDatabaseDelta(
     }
   }
 
+  if (delta.dataSource) {
+    const sourceId =
+      typeof delta.dataSource.id === "string" ? delta.dataSource.id : null
+    const activeDataSource =
+      next.activeDataSource &&
+      (!sourceId || next.activeDataSource.id === sourceId)
+        ? mergeRecord(next.activeDataSource, delta.dataSource)
+        : next.activeDataSource
+    next = {
+      ...next,
+      activeDataSource,
+      dataSources: next.dataSources?.map((source) =>
+        !sourceId || source.id === sourceId
+          ? mergeRecord(source, delta.dataSource!)
+          : source,
+      ),
+    }
+  }
+
   if (delta.properties?.length) {
     const properties = [...next.properties]
 

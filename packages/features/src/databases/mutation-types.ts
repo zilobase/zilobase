@@ -1,4 +1,5 @@
 export type DatabaseChangedArea =
+  | "dataSource"
   | "database"
   | "views"
   | "properties"
@@ -6,6 +7,7 @@ export type DatabaseChangedArea =
   | "values"
 
 export type DatabaseDelta = {
+  dataSource?: Record<string, unknown>
   database?: Record<string, unknown>
   properties?: Array<Record<string, unknown>>
   removedPagePropertyIds?: string[]

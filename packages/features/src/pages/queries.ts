@@ -35,6 +35,7 @@ export const embeddedItemsOpenAsModes: EmbeddedItemsOpenAs[] = [
 export type PageDatabaseView = {
   id: string;
   databaseId: string;
+  dataSourceId: string;
   position: number;
   name: string;
   type: string;
@@ -51,6 +52,7 @@ export type PageDatabase = {
   createdById?: string | null;
   name: string;
   config?: unknown;
+  dataSourceConfig?: unknown;
   createdBy?: PageCreator | null;
   deletedBy?: PageCreator | null;
   isFavorite?: boolean;

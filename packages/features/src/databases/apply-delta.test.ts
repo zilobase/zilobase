@@ -16,6 +16,31 @@ test("applyDatabaseDelta updates database metadata", () => {
   assert.equal(next.database.name, "Roadmap")
 })
 
+test("applyDatabaseDelta updates a background source without replacing the active source", () => {
+  const payload = createTestDatabasePayload()
+  const sourceBase = {
+    configVersion: 1,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    parentDatabaseId: "database-1",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    version: 0,
+    workspaceId: "workspace-1",
+  }
+  payload.activeDataSource = { ...sourceBase, id: "source-1", name: "Tasks" }
+  payload.dataSources = [
+    payload.activeDataSource,
+    { ...sourceBase, id: "source-2", name: "Projects" },
+  ]
+
+  const next = applyDatabaseDelta(payload, {
+    dataSource: { id: "source-2", name: "Roadmap" },
+  })
+
+  assert.equal(next.activeDataSource?.id, "source-1")
+  assert.equal(next.activeDataSource?.name, "Tasks")
+  assert.equal(next.dataSources?.find(({ id }) => id === "source-2")?.name, "Roadmap")
+})
+
 test("applyDatabaseDelta patches an existing cell value", () => {
   const payload = createTestDatabasePayload()
   const next = applyDatabaseDelta(payload, {

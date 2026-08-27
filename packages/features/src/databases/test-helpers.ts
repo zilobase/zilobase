@@ -3,7 +3,23 @@ import type { DatabasePayload } from "./queries"
 export function createTestDatabasePayload(
   overrides: Partial<DatabasePayload> = {},
 ): DatabasePayload {
+  const defaultDataSource = {
+    configVersion: 1,
+    createdAt: "2026-06-01T00:00:00.000Z",
+    id: "data-source-1",
+    name: "Projects",
+    parentDatabaseId: "database-1",
+    updatedAt: "2026-06-01T00:00:00.000Z",
+    version: 0,
+    workspaceId: "org-1",
+  }
+
   return {
+    activeDataSource:
+      overrides.activeDataSource === undefined
+        ? defaultDataSource
+        : overrides.activeDataSource,
+    dataSources: overrides.dataSources ?? [defaultDataSource],
     database: {
       createdAt: "2026-06-01T00:00:00.000Z",
       id: "database-1",
@@ -17,7 +33,7 @@ export function createTestDatabasePayload(
     properties: overrides.properties ?? [
       {
         createdAt: "2026-06-01T00:00:00.000Z",
-        databaseId: "database-1",
+        dataSourceId: "data-source-1",
         id: "column-status",
         position: 0,
         property: {
@@ -34,7 +50,7 @@ export function createTestDatabasePayload(
       },
       {
         createdAt: "2026-06-01T00:00:00.000Z",
-        databaseId: "database-1",
+        dataSourceId: "data-source-1",
         id: "column-name",
         position: 1,
         property: {
@@ -53,7 +69,7 @@ export function createTestDatabasePayload(
     rows: overrides.rows ?? [
       {
         createdAt: "2026-06-01T00:00:00.000Z",
-        databaseId: "database-1",
+        dataSourceId: "data-source-1",
         id: "row-1",
         page: {
           id: "page-1",
@@ -65,7 +81,7 @@ export function createTestDatabasePayload(
       },
       {
         createdAt: "2026-06-01T00:00:00.000Z",
-        databaseId: "database-1",
+        dataSourceId: "data-source-1",
         id: "row-2",
         page: {
           id: "page-2",
@@ -91,6 +107,7 @@ export function createTestDatabasePayload(
         config: {},
         createdAt: "2026-06-01T00:00:00.000Z",
         databaseId: "database-1",
+        dataSourceId: "data-source-1",
         id: "view-table",
         name: "Table",
         position: 0,

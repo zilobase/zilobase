@@ -10,6 +10,7 @@ export type DatabaseRecord = {
   createdById?: string | null
   name: string
   config?: unknown
+  dataSourceConfig?: unknown
   isFavorite?: boolean
   deletedById?: string | null
   deletedAt?: string | null
@@ -32,16 +33,18 @@ export function isDatabaseLocked(
   return (database.config as { locked?: unknown }).locked === true
 }
 
-export function getDatabaseEmoji(database: Pick<DatabaseRecord, "config">) {
+export function getDatabaseEmoji(database: { config?: unknown }) {
+  const config = database.config
+
   if (
-    !database.config ||
-    typeof database.config !== "object" ||
-    Array.isArray(database.config)
+    !config ||
+    typeof config !== "object" ||
+    Array.isArray(config)
   ) {
     return null
   }
 
-  const emoji = (database.config as { emoji?: unknown }).emoji
+  const emoji = (config as { emoji?: unknown }).emoji
 
   return typeof emoji === "string" && emoji.length > 0 ? emoji : null
 }
@@ -78,7 +81,7 @@ export function getDatabaseIconPosition(
 
 export type DatabaseProperty = {
   id: string
-  databaseId: string
+  dataSourceId: string
   propertyId: string
   position: number
   width?: number | null
@@ -103,6 +106,7 @@ export type PageProperty = {
 export type DatabaseView = {
   id: string
   databaseId: string
+  dataSourceId: string
   type: string
   name: string
   config?: unknown
@@ -113,7 +117,7 @@ export type DatabaseView = {
 
 export type DatabaseRow = {
   id: string
-  databaseId: string
+  dataSourceId: string
   pageId: string
   parentRowId?: string | null
   position: number
@@ -148,6 +152,8 @@ export type DatabaseRowsPagination = {
 }
 
 export type DatabasePayload = {
+  activeDataSource: DataSourceRecord | null
+  dataSources: DataSourceRecord[]
   database: DatabaseRecord
   properties: DatabaseProperty[]
   views: DatabaseView[]
@@ -155,6 +161,23 @@ export type DatabasePayload = {
   rowCount?: number
   rowsPagination?: DatabaseRowsPagination
   values: PagePropertyValue[]
+}
+
+export type DataSourceRecord = {
+  id: string
+  workspaceId: string
+  parentDatabaseId: string
+  createdById?: string | null
+  name: string
+  config?: unknown
+  configVersion: number
+  version: number
+  deletedById?: string | null
+  deletedAt?: string | null
+  createdAt: string
+  updatedAt: string
+  linkedAt?: string
+  position?: number
 }
 
 export type DatabaseAccessRule = {
@@ -204,13 +227,19 @@ export const databaseAccessQueryOptions = (
 
 export const databaseQueryKey = (
   databaseId: string | null | undefined,
-  options?: { includeDeleted?: boolean; schemaOnly?: boolean },
+  options?: {
+    dataSourceId?: string
+    includeDeleted?: boolean
+    schemaOnly?: boolean
+    viewId?: string
+  },
 ) =>
   [
     "database",
     databaseId ?? "none",
     options?.schemaOnly ? "schema" : "full",
     options?.includeDeleted ? "include-deleted" : "active-only",
+    options?.viewId ?? options?.dataSourceId ?? "primary-source",
   ] as const
 
 export const databaseRootQueryKey = () => ["database"] as const
@@ -222,7 +251,12 @@ export const databasePayloadRootQueryKey = (
 export const databaseQueryOptions = (
   apiFetch: ApiFetcher,
   databaseId: string | null | undefined,
-  options?: { includeDeleted?: boolean; schemaOnly?: boolean },
+  options?: {
+    dataSourceId?: string
+    includeDeleted?: boolean
+    schemaOnly?: boolean
+    viewId?: string
+  },
 ) =>
   queryOptions({
     queryKey: databaseQueryKey(databaseId, options),
@@ -241,6 +275,9 @@ export const databaseQueryOptions = (
       if (options?.includeDeleted) {
         params.set("includeDeleted", "1")
       }
+
+      if (options?.viewId) params.set("viewId", options.viewId)
+      if (options?.dataSourceId) params.set("dataSourceId", options.dataSourceId)
 
       const queryString = params.toString()
 

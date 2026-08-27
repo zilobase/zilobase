@@ -5,7 +5,7 @@ export type AddRowCacheInput = {
   pageId?: string
   parentRowId?: string | null
   position?: number
-  sourceDatabaseId?: string
+  sourceDataSourceId?: string
   sourcePropertyMode?: "duplicate" | "match"
   sourceRowId?: string
   title?: string
@@ -18,6 +18,7 @@ export type AddRowCacheInput = {
 export type AddRowResponse = {
   createdAt: string
   databaseId: string
+  dataSourceId: string
   isFavorite?: boolean
   pageId: string
   parentRowId?: string | null
@@ -50,6 +51,7 @@ export function isAddRowResponse(
 
   return (
     typeof value.databaseId === "string" &&
+    typeof value.dataSourceId === "string" &&
     typeof value.rowId === "string" &&
     typeof value.pageId === "string" &&
     typeof value.position === "number" &&
@@ -74,7 +76,7 @@ export function applyOptimisticAddedDatabaseRow(
   const title = input.title ?? "Untitled"
   const optimisticRow: DatabaseRow = {
     createdAt: now,
-    databaseId: payload.database.id,
+    dataSourceId: payload.activeDataSource!.id,
     id: rowId,
     lastEditedById: null,
     page: {
@@ -179,7 +181,7 @@ export function applyConfirmedAddedDatabaseRow(
   const confirmedRow: DatabaseRow = {
     createdAt: response.createdAt,
     createdById: rowBase?.createdById ?? null,
-    databaseId: response.databaseId,
+    dataSourceId: response.dataSourceId,
     id: response.rowId,
     lastEditedById: rowBase?.lastEditedById ?? null,
     page: {

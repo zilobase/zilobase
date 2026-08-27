@@ -11,7 +11,15 @@ import {
   applyMutationToCache,
   applyVersionedDatabaseMutation,
 } from "./mutation-cache";
-import { setDatabasePayloadQueryData } from "./query-cache";
+import {
+  cancelDataSourcePayloadQueries,
+  getDataSourcePayloadQueryEntries,
+  restoreDatabasePayloadSnapshots,
+  setDatabasePayloadQueryData,
+  setDataSourcePayloadQueryData,
+  updateDataSourcePayloadQueryData,
+} from "./query-cache";
+import { applyDatabaseDelta } from "./apply-delta";
 import {
   databaseAccessQueryKey,
   databaseAccessQueryOptions,
@@ -63,15 +71,6 @@ type UpdateDatabaseInput = {
   config?: unknown;
 };
 
-export type MoveDatabaseInput = {
-  databaseId: string;
-  destinationId: string;
-  destinationKind: "database" | "page";
-  hostDatabaseId?: string;
-  moveViews: boolean;
-  workspaceId: string;
-};
-
 type UpdateDatabaseViewInput = {
   config?: unknown;
   databaseId: string;
@@ -83,6 +82,7 @@ type UpdateDatabaseViewInput = {
 type AddDatabaseViewInput = {
   config?: unknown;
   databaseId: string;
+  dataSourceId: string;
   name?: string;
   type?: string;
 };
@@ -90,6 +90,28 @@ type AddDatabaseViewInput = {
 type DeleteDatabaseViewInput = {
   databaseId: string;
   databaseViewId: string;
+};
+
+type LinkDatabaseDataSourceInput = {
+  config?: unknown;
+  databaseId: string;
+  dataSourceId: string;
+  name?: string;
+  type?: string;
+};
+
+type CreateDatabaseDataSourceInput = {
+  config?: unknown;
+  databaseId: string;
+  name?: string;
+  viewName?: string;
+  viewType?: string;
+};
+
+type ReplaceDatabaseViewDataSourceInput = {
+  databaseId: string;
+  databaseViewId: string;
+  dataSourceId: string;
 };
 
 type AddPropertyInput = {
@@ -139,7 +161,7 @@ type AddRowInput = {
   pageId?: string;
   parentRowId?: string | null;
   position?: number;
-  sourceDatabaseId?: string;
+  sourceDataSourceId?: string;
   sourcePropertyMode?: "duplicate" | "match";
   sourceRowId?: string;
   title?: string;
@@ -187,6 +209,29 @@ async function commitDatabaseMutation(
   response: unknown,
 ) {
   const payload = applyMutationToCache(queryClient, databaseId, response);
+
+  if (
+    isDatabaseMutationResponse(response) &&
+    response.databaseId !== databaseId
+  ) {
+    const sourceEntries = getDataSourcePayloadQueryEntries(
+      queryClient,
+      databaseId,
+    );
+
+    let activeSourcePayload: DatabasePayload | null = null;
+
+    for (const [queryKey, current] of sourceEntries) {
+      if (current && queryKey[2] === "full") {
+        const next = applyDatabaseDelta(current, response.delta);
+        queryClient.setQueryData(queryKey, next);
+        activeSourcePayload ??= next;
+      }
+      void queryClient.invalidateQueries({ queryKey });
+    }
+
+    if (activeSourcePayload) return activeSourcePayload;
+  }
 
   if (!payload) {
     throw new Error("Failed to apply database mutation");
@@ -401,7 +446,12 @@ function formatDatePropertyValueAsText(value: unknown) {
 
 export function useDatabase(
   databaseId: string | null | undefined,
-  options?: { includeDeleted?: boolean; schemaOnly?: boolean },
+  options?: {
+    dataSourceId?: string;
+    includeDeleted?: boolean;
+    schemaOnly?: boolean;
+    viewId?: string;
+  },
 ) {
   const { apiFetch } = useZilobaseFeatures();
   const query = useQuery(databaseQueryOptions(apiFetch, databaseId, options));
@@ -600,42 +650,69 @@ export function useUpdateDatabase() {
   });
 }
 
-export function useMoveDatabase() {
+export function useUpdateDataSource() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({
-      databaseId,
-      workspaceId: _workspaceId,
-      ...input
-    }: MoveDatabaseInput) =>
-      apiFetch<{
-        databaseId: string;
-        destination: { id: string; kind: "database" | "page" };
-        hostDatabaseId: string | null;
-        moveViews: boolean;
-        pageId: string | null;
-        teamspaceId: string | null;
-      }>(`/databases/${databaseId}/move`, {
-        method: "POST",
-        body: JSON.stringify(input),
-      }),
-    onSuccess: async (_result, input) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: databasePayloadRootQueryKey(input.databaseId),
-        }),
-        ...(input.hostDatabaseId && input.hostDatabaseId !== input.databaseId
-          ? [
-              queryClient.invalidateQueries({
-                queryKey: databasePayloadRootQueryKey(input.hostDatabaseId),
-              }),
-            ]
-          : []),
-        queryClient.invalidateQueries({
-          queryKey: pagesQueryKey(input.workspaceId),
-        }),
-      ]);
+      databaseId: dataSourceId,
+      ...patch
+    }: UpdateDatabaseInput) => {
+      const response = await apiFetch<DatabaseMutationResponse>(
+        `/databases/data-sources/${dataSourceId}`,
+        { method: "PATCH", body: JSON.stringify(patch) },
+      );
+      return commitDatabaseMutation(queryClient, dataSourceId, response);
+    },
+    onMutate: async (variables) => {
+      await cancelDataSourcePayloadQueries(queryClient, variables.databaseId);
+      const previous = updateDataSourcePayloadQueryData(
+        queryClient,
+        variables.databaseId,
+        (current) => {
+        const activeDataSource = {
+          ...current.activeDataSource!,
+          ...(variables.name !== undefined ? { name: variables.name } : {}),
+          ...(variables.config !== undefined ? { config: variables.config } : {}),
+          updatedAt: new Date().toISOString(),
+        };
+        return {
+          ...current,
+          activeDataSource,
+          dataSources: current.dataSources?.map((source) =>
+            source.id === activeDataSource.id ? activeDataSource : source,
+          ),
+        };
+        },
+      );
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      restoreDatabasePayloadSnapshots(queryClient, context?.previous ?? []);
+    },
+    onSuccess: async (_result, variables) => {
+      const workspaceIds = new Set<string>();
+      const entries = queryClient.getQueriesData<DatabasePayload | null>({
+        queryKey: ["database"],
+      });
+
+      for (const [, current] of entries) {
+        if (
+          current?.dataSources.some(
+            (source) => source.id === variables.databaseId,
+          )
+        ) {
+          workspaceIds.add(current.database.workspaceId);
+        }
+      }
+
+      await Promise.all(
+        [...workspaceIds].map((workspaceId) =>
+          queryClient.invalidateQueries({
+            queryKey: pagesNavRootQueryKey(workspaceId),
+          }),
+        ),
+      );
     },
   });
 }
@@ -736,6 +813,92 @@ export function useAddDatabaseView() {
   });
 }
 
+export function useLinkDatabaseDataSource() {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+
+  return useMutation({
+    mutationFn: async ({ databaseId, ...input }: LinkDatabaseDataSourceInput) => {
+      const response = await apiFetch<DatabaseMutationResponse>(
+        `/databases/${databaseId}/data-sources`,
+        { method: "POST", body: JSON.stringify(input) },
+      );
+      return commitDatabaseMutation(queryClient, databaseId, response);
+    },
+    onSettled: async (_result, _error, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+      });
+    },
+  });
+}
+
+export function useCreateDatabaseDataSource() {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+
+  return useMutation({
+    mutationFn: async ({
+      databaseId,
+      ...input
+    }: CreateDatabaseDataSourceInput) => {
+      const response = await apiFetch<DatabasePayload>(
+        `/databases/${databaseId}/data-sources/new`,
+        { method: "POST", body: JSON.stringify(input) },
+      );
+      return commitDatabaseMutation(queryClient, databaseId, response);
+    },
+    onSettled: async (_result, _error, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+      });
+    },
+  });
+}
+
+export function useReplaceDatabaseViewDataSource() {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+
+  return useMutation({
+    mutationFn: async ({
+      databaseId,
+      databaseViewId,
+      dataSourceId,
+    }: ReplaceDatabaseViewDataSourceInput) => {
+      const response = await apiFetch<DatabaseMutationResponse>(
+        `/databases/${databaseId}/views/${databaseViewId}/source`,
+        { method: "PUT", body: JSON.stringify({ dataSourceId }) },
+      );
+      return commitDatabaseMutation(queryClient, databaseId, response);
+    },
+    onSettled: async (_result, _error, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+      });
+    },
+  });
+}
+
+export function useUnlinkDatabaseDataSource() {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+
+  return useMutation({
+    mutationFn: async ({
+      databaseId,
+      dataSourceId,
+    }: Pick<LinkDatabaseDataSourceInput, "databaseId" | "dataSourceId">) => {
+      const response = await apiFetch<DatabaseMutationResponse>(
+        `/databases/${databaseId}/data-sources/${dataSourceId}`,
+        { method: "DELETE" },
+      );
+      return commitDatabaseMutation(queryClient, databaseId, response);
+    },
+    onSettled: async (_result, _error, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+      });
+    },
+  });
+}
+
 type DeleteDatabaseResult = {
   database: DatabasePayload["database"] | null;
   deletedDatabaseIds: string[];
@@ -830,9 +993,10 @@ export function useApplyDatabaseTemplate() {
           method: "POST",
         },
       );
-      const current = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(databaseId),
-      );
+      const current = getDataSourcePayloadQueryEntries(
+        queryClient,
+        databaseId,
+      ).find(([, cached]) => cached)?.[1];
       const nextPayload: DatabasePayload = {
         ...payload,
         database: {
@@ -842,7 +1006,7 @@ export function useApplyDatabaseTemplate() {
         },
       };
 
-      setDatabasePayloadQueryData(queryClient, databaseId, nextPayload);
+      setDataSourcePayloadQueryData(queryClient, databaseId, nextPayload);
 
       if (nextPayload.database.isFavorite) {
         await queryClient.invalidateQueries({ queryKey: pagesRootQueryKey() });
@@ -858,16 +1022,11 @@ export function useUpdateDatabaseProperty() {
 
   return useMutation({
     onMutate: async (variables) => {
-      await queryClient.cancelQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
-      });
-      const previous = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(variables.databaseId),
-      );
-
-      queryClient.setQueriesData<DatabasePayload | null>(
-        { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
-        (current) => updateDatabasePropertyInPayload(current, variables),
+      await cancelDataSourcePayloadQueries(queryClient, variables.databaseId);
+      const previous = updateDataSourcePayloadQueryData(
+        queryClient,
+        variables.databaseId,
+        (current) => updateDatabasePropertyInPayload(current, variables)!,
       );
 
       return { previous };
@@ -887,14 +1046,8 @@ export function useUpdateDatabaseProperty() {
 
       return commitDatabaseMutation(queryClient, databaseId, response);
     },
-    onError: (_error, variables, context) => {
-      if (context?.previous) {
-        restoreDatabasePayloadAfterFailedMutation(
-          queryClient,
-          variables.databaseId,
-          context.previous,
-        );
-      }
+    onError: (_error, _variables, context) => {
+      restoreDatabasePayloadSnapshots(queryClient, context?.previous ?? []);
     },
   });
 }
@@ -948,29 +1101,25 @@ export function useAddDatabaseRow() {
       optimisticValues,
       ...input
     }: AddRowInput) => {
-      const sourceDatabaseId =
-        input.sourceDatabaseId && input.sourceDatabaseId !== databaseId
-          ? input.sourceDatabaseId
+      const sourceDataSourceId =
+        input.sourceDataSourceId && input.sourceDataSourceId !== databaseId
+          ? input.sourceDataSourceId
           : null;
 
-      await Promise.all([
-        queryClient.cancelQueries({
-          queryKey: databaseQueryKey(databaseId),
-        }),
-        sourceDatabaseId
-          ? queryClient.cancelQueries({
-              queryKey: databaseQueryKey(sourceDatabaseId),
-            })
-          : Promise.resolve(),
+      const [targetSnapshots, sourceSnapshots] = await Promise.all([
+        cancelDataSourcePayloadQueries(queryClient, databaseId),
+        sourceDataSourceId
+          ? cancelDataSourcePayloadQueries(queryClient, sourceDataSourceId)
+          : Promise.resolve([]),
       ]);
 
-      const current = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(databaseId),
-      );
-      const sourceCurrent = sourceDatabaseId
-        ? queryClient.getQueryData<DatabasePayload | null>(
-            databaseQueryKey(sourceDatabaseId),
-          )
+      const current = targetSnapshots.find(
+        ([queryKey, cached]) => queryKey[2] === "full" && cached,
+      )?.[1];
+      const sourceCurrent = sourceDataSourceId
+        ? sourceSnapshots.find(
+            ([queryKey, cached]) => queryKey[2] === "full" && cached,
+          )?.[1]
         : null;
       const optimistic = current
         ? applyOptimisticAddedDatabaseRow(current, {
@@ -980,16 +1129,12 @@ export function useAddDatabaseRow() {
         : null;
 
       if (optimistic) {
-        setDatabasePayloadQueryData(
-          queryClient,
-          databaseId,
-          optimistic.payload,
-        );
+        setDataSourcePayloadQueryData(queryClient, databaseId, optimistic.payload);
       }
-      if (sourceDatabaseId && sourceCurrent && input.sourceRowId) {
-        setDatabasePayloadQueryData(
+      if (sourceDataSourceId && sourceCurrent && input.sourceRowId) {
+        setDataSourcePayloadQueryData(
           queryClient,
-          sourceDatabaseId,
+          sourceDataSourceId,
           applyOptimisticRemovedDatabaseRow(
             sourceCurrent,
             input.sourceRowId,
@@ -1018,9 +1163,9 @@ export function useAddDatabaseRow() {
         shouldInvalidatePages = response.isFavorite === true;
 
         const latest =
-          queryClient.getQueryData<DatabasePayload | null>(
-            databaseQueryKey(databaseId),
-          ) ??
+          getDataSourcePayloadQueryEntries(queryClient, databaseId).find(
+            ([queryKey, cached]) => queryKey[2] === "full" && cached,
+          )?.[1] ??
           optimistic?.payload ??
           current;
 
@@ -1036,7 +1181,7 @@ export function useAddDatabaseRow() {
           response,
           optimisticValues,
         );
-        setDatabasePayloadQueryData(queryClient, databaseId, payload);
+        setDataSourcePayloadQueryData(queryClient, databaseId, payload);
         payload =
           applyVersionedDatabaseMutation(queryClient, response).payload ??
           payload;
@@ -1047,26 +1192,17 @@ export function useAddDatabaseRow() {
             response,
             optimisticValues,
           );
-          setDatabasePayloadQueryData(queryClient, databaseId, payload);
+          setDataSourcePayloadQueryData(queryClient, databaseId, payload);
         }
         if (response.sourceMutation) {
           applyVersionedDatabaseMutation(queryClient, response.sourceMutation);
+          for (const [queryKey] of sourceSnapshots) {
+            void queryClient.invalidateQueries({ exact: true, queryKey });
+          }
         }
       } catch (error) {
-        if (current) {
-          restoreDatabasePayloadAfterFailedMutation(
-            queryClient,
-            databaseId,
-            current,
-          );
-        }
-        if (sourceDatabaseId && sourceCurrent) {
-          restoreDatabasePayloadAfterFailedMutation(
-            queryClient,
-            sourceDatabaseId,
-            sourceCurrent,
-          );
-        }
+        restoreDatabasePayloadSnapshots(queryClient, targetSnapshots);
+        restoreDatabasePayloadSnapshots(queryClient, sourceSnapshots);
 
         throw error;
       }
@@ -1087,16 +1223,11 @@ export function useReorderDatabaseRows() {
 
   return useMutation({
     onMutate: async (variables) => {
-      await queryClient.cancelQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
-      });
-      const previous = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(variables.databaseId),
-      );
-
-      queryClient.setQueriesData<DatabasePayload | null>(
-        { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
-        (current) => reorderDatabaseRows(current, variables.rowIds),
+      await cancelDataSourcePayloadQueries(queryClient, variables.databaseId);
+      const previous = updateDataSourcePayloadQueryData(
+        queryClient,
+        variables.databaseId,
+        (current) => reorderDatabaseRows(current, variables.rowIds)!,
       );
 
       return { previous };
@@ -1112,14 +1243,8 @@ export function useReorderDatabaseRows() {
 
       return commitDatabaseMutation(queryClient, databaseId, response);
     },
-    onError: (_error, variables, context) => {
-      if (context?.previous) {
-        restoreDatabasePayloadAfterFailedMutation(
-          queryClient,
-          variables.databaseId,
-          context.previous,
-        );
-      }
+    onError: (_error, _variables, context) => {
+      restoreDatabasePayloadSnapshots(queryClient, context?.previous ?? []);
     },
   });
 }
@@ -1129,16 +1254,11 @@ export function useMoveDatabaseRow() {
 
   return useMutation({
     onMutate: async (variables) => {
-      await queryClient.cancelQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
-      });
-      const previous = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(variables.databaseId),
-      );
-
-      queryClient.setQueriesData<DatabasePayload | null>(
-        { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
-        (current) => moveDatabaseRow(current, variables),
+      await cancelDataSourcePayloadQueries(queryClient, variables.databaseId);
+      const previous = updateDataSourcePayloadQueryData(
+        queryClient,
+        variables.databaseId,
+        (current) => moveDatabaseRow(current, variables)!,
       );
 
       return { previous };
@@ -1164,14 +1284,8 @@ export function useMoveDatabaseRow() {
 
       return commitDatabaseMutation(queryClient, databaseId, response);
     },
-    onError: (_error, variables, context) => {
-      if (context?.previous) {
-        restoreDatabasePayloadAfterFailedMutation(
-          queryClient,
-          variables.databaseId,
-          context.previous,
-        );
-      }
+    onError: (_error, _variables, context) => {
+      restoreDatabasePayloadSnapshots(queryClient, context?.previous ?? []);
     },
   });
 }
@@ -1181,16 +1295,11 @@ export function useUpdateDatabasePropertyValue() {
 
   return useMutation({
     onMutate: async (variables) => {
-      await queryClient.cancelQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
-      });
-      const previous = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(variables.databaseId),
-      );
-
-      queryClient.setQueriesData<DatabasePayload | null>(
-        { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
-        (current) => updateDatabasePropertyValue(current, variables),
+      await cancelDataSourcePayloadQueries(queryClient, variables.databaseId);
+      const previous = updateDataSourcePayloadQueryData(
+        queryClient,
+        variables.databaseId,
+        (current) => updateDatabasePropertyValue(current, variables)!,
       );
 
       return { previous };
@@ -1211,14 +1320,8 @@ export function useUpdateDatabasePropertyValue() {
 
       return commitDatabaseMutation(queryClient, databaseId, response);
     },
-    onError: (_error, variables, context) => {
-      if (context?.previous) {
-        restoreDatabasePayloadAfterFailedMutation(
-          queryClient,
-          variables.databaseId,
-          context.previous,
-        );
-      }
+    onError: (_error, _variables, context) => {
+      restoreDatabasePayloadSnapshots(queryClient, context?.previous ?? []);
     },
   });
 }

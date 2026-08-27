@@ -101,6 +101,7 @@ export function applyMutationToCache(
 
 function schemaDelta(delta: DatabaseDelta): DatabaseDelta {
   return {
+    dataSource: delta.dataSource,
     database: delta.database,
     properties: delta.properties,
     removedPropertyIds: delta.removedPropertyIds,
