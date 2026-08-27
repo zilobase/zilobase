@@ -33,7 +33,7 @@ export function register({ assert, loadModule, test }) {
       source,
       /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/,
     );
-    assert.match(source, /dataSources: payloads\.map/);
+    assert.match(source, /dataSources: payloads\.flatMap/);
     assert.match(source, /<DatabaseSetupCard/);
     assert.match(source, /onSelectDataSource=\{onSelectDataSource\}/);
     assert.doesNotMatch(source, /TasksPageHeader\(\{ onConfigure \}/);
