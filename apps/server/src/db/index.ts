@@ -6,22 +6,26 @@ import * as schema from "./schema";
 
 type DbEnv = Record<string, unknown>;
 type Database = NodePgDatabase<typeof schema>;
+type DatabaseScope = {
+  active: boolean;
+  database: Database;
+};
 type DatabaseClient =
   | ReturnType<typeof createDbClientForUrl>
   | ReturnType<typeof createPooledDbClientForUrl>;
 
-const databaseStore = new AsyncLocalStorage<Database>();
+const databaseStore = new AsyncLocalStorage<DatabaseScope>();
 const pools = new Map<string, Pool>();
 
 export const db = new Proxy({} as Database, {
   get(_target, property, receiver) {
-    const database = databaseStore.getStore();
+    const scope = databaseStore.getStore();
 
-    if (!database) {
+    if (!scope?.active) {
       throw new Error("No database context found. Wrap this code in runWithDb().");
     }
 
-    return Reflect.get(database, property, receiver);
+    return Reflect.get(scope.database, property, receiver);
   },
 });
 
@@ -83,7 +87,13 @@ function createPooledDbClientForUrl(connectionString: string) {
 }
 
 export async function runWithDb<T>(database: Database, callback: () => Promise<T>) {
-  return databaseStore.run(database, callback);
+  const scope: DatabaseScope = { active: true, database };
+
+  try {
+    return await databaseStore.run(scope, callback);
+  } finally {
+    scope.active = false;
+  }
 }
 
 export async function runWithDbClient<T>(
@@ -91,7 +101,7 @@ export async function runWithDbClient<T>(
   callback: () => Promise<T>,
   options?: { onTiming?: (name: string, durationMs: number) => void },
 ) {
-  if (databaseStore.getStore()) {
+  if (databaseStore.getStore()?.active) {
     return callback();
   }
 
@@ -126,7 +136,7 @@ export function runWithDbEnv<T>(
   callback: () => Promise<T>,
   options?: { onTiming?: (name: string, durationMs: number) => void },
 ) {
-  if (databaseStore.getStore()) {
+  if (databaseStore.getStore()?.active) {
     return callback();
   }
 
@@ -134,7 +144,7 @@ export function runWithDbEnv<T>(
 }
 
 function hasDatabaseContext() {
-  return Boolean(databaseStore.getStore());
+  return databaseStore.getStore()?.active === true;
 }
 
 function getConnectionString(env: DbEnv) {

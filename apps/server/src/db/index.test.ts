@@ -50,6 +50,27 @@ test("standalone database execution closes after success and failure", async () 
   assert.deepEqual(failing.calls, { connect: 1, end: 1 });
 });
 
+test("delayed work does not reuse a database context after its scope closes", async () => {
+  const first = fakeStandaloneClient();
+  const second = fakeStandaloneClient();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let delayed!: Promise<string>;
+
+  await runWithDbClient(first.databaseClient as never, async () => {
+    delayed = gate.then(() =>
+      runWithDbClient(second.databaseClient as never, async () => "fresh"),
+    );
+  });
+
+  assert.deepEqual(first.calls, { connect: 1, end: 1 });
+  release();
+  assert.equal(await delayed, "fresh");
+  assert.deepEqual(second.calls, { connect: 1, end: 1 });
+});
+
 test("a connection failure never runs the callback", async () => {
   const failure = new Error("connection timeout");
   const { calls, databaseClient } = fakeStandaloneClient({ connectError: failure });
