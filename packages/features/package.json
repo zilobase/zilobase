@@ -41,6 +41,10 @@
       "types": "./src/ai-chat/apply-page-content-patch.ts",
       "default": "./src/ai-chat/apply-page-content-patch.ts"
     },
+    "./ai-chat/tool-registry": {
+      "types": "./src/ai-chat/tool-registry.ts",
+      "default": "./src/ai-chat/tool-registry.ts"
+    },
     "./databases": {
       "types": "./src/databases/index.ts",
       "default": "./src/databases/index.ts"

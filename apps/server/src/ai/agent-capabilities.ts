@@ -1,3 +1,5 @@
+import { AGENT_TOOL_DESCRIPTORS } from "@zilobase/features/ai-chat/tool-registry";
+
 export type AgentCapabilityStatus = "available" | "forbidden" | "unavailable";
 
 export type AgentCapability = {
@@ -18,37 +20,37 @@ const alwaysAvailableCapabilities: AgentCapability[] = [
     status: "available",
     summary:
       "Read owned, expiring chat uploads after server-side validation and bounded extraction.",
-    toolNames: [],
+    toolNames: toolNamesFor("file.read"),
   },
   {
     id: "data.analyze",
     status: "available",
     summary: "Run bounded deterministic calculations over supplied tabular data.",
-    toolNames: ["analyzeDataTable"],
+    toolNames: toolNamesFor("data.analyze"),
   },
   {
     id: "workspace.search",
     status: "available",
     summary: "Search pages and databases the current user can view.",
-    toolNames: ["searchWorkspace"],
+    toolNames: toolNamesFor("workspace.search"),
   },
   {
     id: "page.read",
     status: "available",
     summary: "Read pages the current user can view.",
-    toolNames: ["readWorkspacePage"],
+    toolNames: toolNamesFor("page.read"),
   },
   {
     id: "page.comments.read",
     status: "available",
     summary: "Read comments on pages the current user can view.",
-    toolNames: ["readPageComments"],
+    toolNames: toolNamesFor("page.comments.read"),
   },
   {
     id: "database.query",
     status: "available",
     summary: "Query databases the current user can view.",
-    toolNames: ["queryWorkspaceDatabase"],
+    toolNames: toolNamesFor("database.query"),
   },
 ];
 
@@ -136,36 +138,23 @@ export function resolveAgentCapabilityPolicy(input: {
       status: "available",
       summary:
         "Create expiring downloadable artifacts in supported document and data formats.",
-      toolNames: ["createDownloadableArtifact"],
+      toolNames: toolNamesFor("artifact.create"),
     },
     {
       id: "page.content.update",
       status: "available",
       summary:
         "Update accessible pages durably, or propose reviewed edits for an attached open page.",
-      toolNames: [
-        "updateWorkspacePage",
-        ...(input.canEditAttachedPages ? ["proposePageContentUpdate"] : []),
-      ],
+      toolNames: toolNamesFor("page.content.update").filter(
+        (name) => name !== "proposePageContentUpdate" || input.canEditAttachedPages,
+      ),
     },
     {
       id: "page-database.configure",
       status: "available",
       summary:
         "Create supported pages and configure pages/databases after item-level edit checks.",
-      toolNames: [
-        "createPage",
-        "createDatabase",
-        "embedDatabaseInPage",
-        "linkDatabaseInPage",
-        "createDatabaseProperty",
-        "updateDatabaseProperty",
-        "createDatabaseView",
-        "updateDatabaseView",
-        "updateDataSource",
-        "createDatabaseRow",
-        "setDatabaseCellValue",
-      ],
+      toolNames: toolNamesFor("page-database.configure"),
     },
   ];
   const capabilities = [
@@ -183,6 +172,12 @@ export function resolveAgentCapabilityPolicy(input: {
       );
     },
   } satisfies AgentCapabilityPolicy;
+}
+
+function toolNamesFor(capability: string) {
+  return AGENT_TOOL_DESCRIPTORS
+    .filter((descriptor) => descriptor.capability === capability)
+    .map((descriptor) => descriptor.name);
 }
 
 export function buildAgentPolicyInstruction(policy: AgentCapabilityPolicy) {
