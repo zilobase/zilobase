@@ -893,7 +893,7 @@ export function useDatabaseViewController({
     hasDatabasePageDragPayload,
     hasNextPage: activeHasNextPage,
     headerMenusEnabled: editable,
-    hostDatabaseId: databaseId,
+    hostDatabaseId: payload?.database.id ?? databaseId,
     hostDatabaseName: payload?.database.name,
     hostDatabaseWorkspaceId: payload?.database.workspaceId,
     hostViews: payload?.views ?? [],

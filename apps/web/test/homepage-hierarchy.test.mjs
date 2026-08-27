@@ -65,6 +65,35 @@ export function register({ assert, loadModule, test }) {
     assert.match(homepage, /realtimeEnabled: false/)
     assert.match(context, /value\.realtimeEnabled !== false/)
   })
+
+  test("database realtime tickets use the host database id", async () => {
+    const [context, controller] = await Promise.all([
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/database-view-context.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      readFile(
+        new URL(
+          "../src/editor/extensions/database/views/use-database-view-controller.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    ])
+
+    assert.match(
+      context,
+      /useDatabaseRealtime\(value\.hostDatabaseId, \{/,
+    )
+    assert.doesNotMatch(context, /useDatabaseRealtime\(value\.databaseId, \{/)
+    assert.match(
+      controller,
+      /hostDatabaseId: payload\?\.database\.id \?\? databaseId/,
+    )
+  })
 }
 
 function createPlacement({

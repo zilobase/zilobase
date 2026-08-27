@@ -501,11 +501,11 @@ function DatabaseRealtimeStateProvider({
         viewId: value.activeView?.id ?? null,
       }
     : null
-  const realtime = useDatabaseRealtime(value.databaseId, {
+  const realtime = useDatabaseRealtime(value.hostDatabaseId, {
     enabled: Boolean(
       session?.user &&
-      value.databaseId &&
-      value.databaseWorkspaceId &&
+      value.hostDatabaseId &&
+      value.hostDatabaseWorkspaceId &&
       value.realtimeEnabled !== false,
     ),
     presence,

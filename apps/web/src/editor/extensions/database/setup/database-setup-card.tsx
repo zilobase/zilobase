@@ -579,7 +579,7 @@ export function DatabaseSetupCard({
 
             await applyTemplate.mutateAsync({
               config: nextDatabasePatch.config,
-              databaseId,
+              databaseId: activeDataSource.id,
               name: nextDatabasePatch.name ?? template.name,
               properties: template.properties,
               rows: template.sampleRows.map((sampleRow) => ({

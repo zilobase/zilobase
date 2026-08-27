@@ -1008,9 +1008,9 @@ export function useApplyDatabaseTemplate() {
 
       setDataSourcePayloadQueryData(queryClient, databaseId, nextPayload);
 
-      if (nextPayload.database.isFavorite) {
-        await queryClient.invalidateQueries({ queryKey: pagesRootQueryKey() });
-      }
+      await queryClient.invalidateQueries({
+        queryKey: pagesNavRootQueryKey(nextPayload.database.workspaceId),
+      });
 
       return nextPayload;
     },
