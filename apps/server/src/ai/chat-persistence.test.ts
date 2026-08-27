@@ -44,7 +44,10 @@ vi.mock("../db", () => ({
   },
 }));
 
-import { syncAiChatThreadMessages } from "./chat-persistence";
+import {
+  selectCanonicalAssistantMessages,
+  syncAiChatThreadMessages,
+} from "./chat-persistence";
 
 beforeEach(() => {
   mocks.conflictOptions.length = 0;
@@ -61,6 +64,29 @@ function message(id: string, role: "assistant" | "user", text: string) {
     parts: [{ type: "text", text }],
   } as UIMessage;
 }
+
+test("canonical assistant selection accepts response-only finish payloads", () => {
+  const assistant = message("assistant-1", "assistant", "Answer");
+
+  assert.deepEqual(
+    selectCanonicalAssistantMessages([assistant], "user-1"),
+    [assistant],
+  );
+});
+
+test("canonical assistant selection ignores history before the submitted user", () => {
+  const currentAssistant = message("assistant-2", "assistant", "Current answer");
+
+  assert.deepEqual(
+    selectCanonicalAssistantMessages([
+      message("user-0", "user", "Old question"),
+      message("assistant-0", "assistant", "Old answer"),
+      message("user-1", "user", "Current question"),
+      currentAssistant,
+    ], "user-1"),
+    [currentAssistant],
+  );
+});
 
 test("syncAiChatThreadMessages bulk upserts persistable messages", async () => {
   await syncAiChatThreadMessages("thread-1", [

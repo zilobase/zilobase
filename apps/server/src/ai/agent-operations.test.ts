@@ -4,11 +4,21 @@ import { test } from "vitest";
 
 import {
   AiAgentOperationalLimitError,
+  getAiAgentTurnStaleBefore,
   getAiAgentToolEffect,
   normalizeAiAgentErrorCode,
   readAiAgentLimits,
   summarizeAiAgentTurnInput,
 } from "./agent-operations";
+
+test("stale turn cutoff matches the configured total turn timeout", () => {
+  const now = new Date("2026-08-28T00:00:00.000Z");
+
+  assert.equal(
+    getAiAgentTurnStaleBefore(now, 180_000).toISOString(),
+    "2026-08-27T23:57:00.000Z",
+  );
+});
 
 test("agent limits use bounded defaults and operator overrides", () => {
   const defaults = readAiAgentLimits({});

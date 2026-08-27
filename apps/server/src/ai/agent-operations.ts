@@ -1,3 +1,4 @@
+import { getAgentToolDescriptor } from "@zilobase/features/ai-chat/tool-registry";
 import type { UIMessage } from "ai";
 import {
   and,
@@ -170,10 +171,12 @@ export function summarizeAiAgentTurnInput(
 }
 
 export async function reserveAiAgentTurn(input: {
+  clientTurnId?: string;
   env: RuntimeEnv;
   metrics: AiAgentTurnMetrics;
   requestedModel: string;
   threadId: string;
+  userMessageId?: string;
   userId: string;
   workspaceId: string;
 }) {
@@ -189,9 +192,7 @@ export async function reserveAiAgentTurn(input: {
       sql`select pg_advisory_xact_lock(hashtext(${`ai-agent-user:${input.workspaceId}:${input.userId}`}))`,
     );
 
-    const staleBefore = new Date(
-      now.getTime() - Math.max(limits.turnTimeoutMs * 2, 5 * 60_000),
-    );
+    const staleBefore = getAiAgentTurnStaleBefore(now, limits.turnTimeoutMs);
     await tx
       .update(aiAgentTurn)
       .set({
@@ -224,12 +225,14 @@ export async function reserveAiAgentTurn(input: {
       durationMs: rejection ? 0 : null,
       errorCode: rejection?.code ?? null,
       id,
+      clientTurnId: input.clientTurnId ?? null,
       inputCharacterCount: input.metrics.inputCharacterCount,
       inputMessageCount: input.metrics.inputMessageCount,
       requestedModel: input.requestedModel.slice(0, 160),
       startedAt: now,
       status: rejection ? "rejected" : "running",
       threadId: input.threadId,
+      userMessageId: input.userMessageId ?? null,
       updatedAt: now,
       userId: input.userId,
       workspaceId: input.workspaceId,
@@ -239,6 +242,21 @@ export async function reserveAiAgentTurn(input: {
       ? { id, limits, ok: false as const, rejection }
       : { id, limits, ok: true as const, startedAt: now };
   });
+}
+
+export async function getAiAgentTurnByClientId(input: {
+  clientTurnId: string;
+  threadId: string;
+}) {
+  const [turn] = await db
+    .select({ id: aiAgentTurn.id, status: aiAgentTurn.status })
+    .from(aiAgentTurn)
+    .where(and(
+      eq(aiAgentTurn.threadId, input.threadId),
+      eq(aiAgentTurn.clientTurnId, input.clientTurnId),
+    ))
+    .limit(1);
+  return turn ?? null;
 }
 
 export async function finishAiAgentTurn(input: {
@@ -505,9 +523,7 @@ export async function cleanupExpiredAiAgentData(
       .where(inArray(aiChatArtifact.id, deletedArtifactIds));
   }
 
-  const staleBefore = new Date(
-    now.getTime() - Math.max(limits.turnTimeoutMs * 2, 5 * 60_000),
-  );
+  const staleBefore = getAiAgentTurnStaleBefore(now, limits.turnTimeoutMs);
   await db
     .update(aiAgentTurn)
     .set({
@@ -579,19 +595,7 @@ export function normalizeAiAgentErrorCode(error: unknown) {
 export function getAiAgentToolEffect(
   toolName: string,
 ): "read" | "write" | "analysis" | "artifact" {
-  if (toolName === "analyzeDataTable") return "analysis";
-  if (toolName === "createDownloadableArtifact") return "artifact";
-  if (
-    toolName.startsWith("create") ||
-    toolName.startsWith("update") ||
-    toolName.startsWith("set") ||
-    toolName.startsWith("embed") ||
-    toolName.startsWith("link") ||
-    toolName.startsWith("propose")
-  ) {
-    return "write";
-  }
-  return "read";
+  return getAgentToolDescriptor(toolName)?.effect ?? "read";
 }
 
 function validateTurnInputMetrics(
@@ -707,6 +711,10 @@ function operationalRejection(
   retryAfterSeconds: number,
 ) {
   return { code, message, retryAfterSeconds };
+}
+
+export function getAiAgentTurnStaleBefore(now: Date, turnTimeoutMs: number) {
+  return new Date(now.getTime() - Math.max(1, turnTimeoutMs));
 }
 
 function readBoundedIntegerEnv(

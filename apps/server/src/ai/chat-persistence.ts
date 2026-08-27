@@ -14,7 +14,7 @@ import {
 } from "drizzle-orm";
 
 import { db } from "../db";
-import { aiChatMessage, aiChatThread } from "../db/schema";
+import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../db/schema";
 
 const DEFAULT_AI_CHAT_THREAD_TITLE = "New chat";
 const MAX_AI_CHAT_MESSAGES_PER_THREAD = 500;
@@ -287,13 +287,14 @@ export async function touchAiChatThreadActivity(threadId: string) {
 export async function loadAiChatThreadMessages(threadId: string): Promise<UIMessage[]> {
   const rows = await db
     .select({
+      clientId: aiChatMessage.clientId,
       id: aiChatMessage.id,
       role: aiChatMessage.role,
       parts: aiChatMessage.parts,
     })
     .from(aiChatMessage)
     .where(eq(aiChatMessage.threadId, threadId))
-    .orderBy(asc(aiChatMessage.createdAt));
+    .orderBy(asc(aiChatMessage.sequence), asc(aiChatMessage.createdAt));
 
   return rows
     .map((row) => toUiMessage(row))
@@ -327,11 +328,12 @@ export async function syncAiChatThreadMessages(
     await db
       .insert(aiChatMessage)
       .values(
-        [...persistableMessages.values()].map((message) => ({
+        [...persistableMessages.values()].map((message, sequence) => ({
           id: message.id,
           threadId,
           role: message.role,
           parts: message.parts,
+          sequence,
           createdAt: now,
           updatedAt: now,
         })),
@@ -341,6 +343,7 @@ export async function syncAiChatThreadMessages(
         set: {
           role: sql`excluded.${aiChatMessage.role}`,
           parts: sql`excluded.${aiChatMessage.parts}`,
+          sequence: sql`excluded.${aiChatMessage.sequence}`,
           updatedAt: now,
         },
       });
@@ -359,6 +362,119 @@ export async function syncAiChatThreadMessages(
   }
 
   await enforceAiChatMessageLimit(threadId);
+}
+
+export async function appendCanonicalUserMessage(input: {
+  clientMessageId: string;
+  parts: UIMessage["parts"];
+  threadId: string;
+}) {
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`ai-chat-thread:${input.threadId}`}))`,
+    );
+
+    const [existing] = await tx
+      .select({ id: aiChatMessage.id, parts: aiChatMessage.parts })
+      .from(aiChatMessage)
+      .where(and(
+        eq(aiChatMessage.threadId, input.threadId),
+        eq(aiChatMessage.clientId, input.clientMessageId),
+      ))
+      .limit(1);
+    if (existing) {
+      if (JSON.stringify(existing.parts) !== JSON.stringify(input.parts)) {
+        throw new Error("The client message id was reused with different content.");
+      }
+      return { duplicate: true as const, id: existing.id };
+    }
+
+    const sequence = await reserveMessageSequences(tx, input.threadId, 1);
+    const id = crypto.randomUUID();
+    const now = new Date();
+    await tx.insert(aiChatMessage).values({
+      clientId: input.clientMessageId,
+      createdAt: now,
+      id,
+      parts: input.parts,
+      role: "user",
+      sequence,
+      status: "completed",
+      threadId: input.threadId,
+      updatedAt: now,
+    });
+    return { duplicate: false as const, id };
+  });
+}
+
+export async function appendCanonicalAssistantMessages(input: {
+  messages: readonly UIMessage[];
+  threadId: string;
+  turnId: string;
+  userClientMessageId: string;
+}) {
+  const assistantMessages = selectCanonicalAssistantMessages(
+    input.messages,
+    input.userClientMessageId,
+  );
+  if (assistantMessages.length === 0) return null;
+
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`ai-chat-thread:${input.threadId}`}))`,
+    );
+    const clientIds = assistantMessages.map((message) => message.id);
+    const existing = await tx
+      .select({ clientId: aiChatMessage.clientId })
+      .from(aiChatMessage)
+      .where(and(
+        eq(aiChatMessage.threadId, input.threadId),
+        inArray(aiChatMessage.clientId, clientIds),
+      ));
+    const existingIds = new Set(existing.map((row) => row.clientId));
+    const pending = assistantMessages.filter((message) => !existingIds.has(message.id));
+    if (pending.length === 0) return null;
+
+    const firstSequence = await reserveMessageSequences(tx, input.threadId, pending.length);
+    const now = new Date();
+    await tx.insert(aiChatMessage).values(pending.map((message, index) => ({
+      clientId: message.id,
+      createdAt: now,
+      id: crypto.randomUUID(),
+      parts: message.parts,
+      role: "assistant",
+      sequence: firstSequence + index,
+      status: "completed",
+      threadId: input.threadId,
+      turnId: input.turnId,
+      updatedAt: now,
+    })));
+    return firstSequence + pending.length - 1;
+  });
+}
+
+export function selectCanonicalAssistantMessages(
+  messages: readonly UIMessage[],
+  userClientMessageId: string,
+) {
+  const userIndex = messages.findLastIndex(
+    (message) => message.role === "user" && message.id === userClientMessageId,
+  );
+
+  return messages
+    .slice(userIndex < 0 ? 0 : userIndex + 1)
+    .filter((message) =>
+      message.role === "assistant" && isPersistableUiMessage(message)
+    );
+}
+
+export async function getAiChatThreadSummary(threadId: string) {
+  const [summary] = await db
+    .select()
+    .from(aiChatThreadSummary)
+    .where(eq(aiChatThreadSummary.threadId, threadId))
+    .limit(1);
+  return summary ?? null;
 }
 
 export async function maybeAutoTitleAiChatThread(
@@ -466,6 +582,7 @@ function isPersistableUiMessage(message: UIMessage) {
 }
 
 function toUiMessage(row: {
+  clientId?: string | null;
   id: string;
   role: string;
   parts: unknown[] | null;
@@ -482,7 +599,7 @@ function toUiMessage(row: {
   }
 
   return {
-    id: row.id,
+    id: row.clientId ?? row.id,
     role: row.role as UIMessage["role"],
     parts: row.parts as UIMessage["parts"],
   };
@@ -493,7 +610,7 @@ async function enforceAiChatMessageLimit(threadId: string) {
     .select({ id: aiChatMessage.id })
     .from(aiChatMessage)
     .where(eq(aiChatMessage.threadId, threadId))
-    .orderBy(desc(aiChatMessage.createdAt))
+    .orderBy(desc(aiChatMessage.sequence), desc(aiChatMessage.createdAt))
     .offset(MAX_AI_CHAT_MESSAGES_PER_THREAD);
 
   if (rows.length === 0) {
@@ -508,4 +625,21 @@ async function enforceAiChatMessageLimit(threadId: string) {
         rows.map((row) => row.id),
       ),
     );
+}
+
+async function reserveMessageSequences(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  threadId: string,
+  count: number,
+) {
+  const [thread] = await tx
+    .update(aiChatThread)
+    .set({
+      nextMessageSequence: sql`${aiChatThread.nextMessageSequence} + ${count}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(aiChatThread.id, threadId))
+    .returning({ nextMessageSequence: aiChatThread.nextMessageSequence });
+  if (!thread) throw new Error("Chat thread not found.");
+  return thread.nextMessageSequence - count;
 }
