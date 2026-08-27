@@ -153,6 +153,28 @@ export function register({ assert, test }) {
     assert.match(source, /--color-sidebar: var\(--sidebar\)/)
     assert.doesNotMatch(source, /--color-sidebar-accent:/)
   })
+
+  test("focus and database selection derive from the primary action color", async () => {
+    const appDir = join(dirname(fileURLToPath(import.meta.url)), "..")
+    const tokens = await readFile(
+      join(appDir, "src/styles/design-tokens.css"),
+      "utf8",
+    )
+    const editorStyles = await readFile(
+      join(appDir, "src/editor/styles.css"),
+      "utf8",
+    )
+
+    assert.match(tokens, /--ring:\s*var\(--action-primary\)/)
+    assert.match(
+      tokens,
+      /--selection-focus-ring:\s*color-mix\([\s\S]*?var\(--action-primary\)/,
+    )
+    assert.match(
+      editorStyles,
+      /--database-selection-color:\s*var\(--action-primary\)/,
+    )
+  })
 }
 
 async function sourceFiles(directory) {

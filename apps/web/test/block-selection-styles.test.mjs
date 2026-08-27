@@ -18,10 +18,13 @@ export function register({ assert, test }) {
       css,
       /background-color: var\(--editor-selection-overlay\);\s*border-radius: var\(--radius-sm\);/
     )
-    assert.match(tokens, /--editor-selection-overlay: rgb\(35 131 226 \/ 13%\);/)
     assert.match(
       tokens,
-      /\.dark \{[\s\S]*?--editor-selection-overlay: rgb\(35 131 226 \/ 23%\);/
+      /--editor-selection-overlay: color-mix\(\s*in oklab,\s*var\(--action-primary\) 13%,\s*transparent\s*\);/,
+    )
+    assert.match(
+      tokens,
+      /\.dark \{[\s\S]*?--editor-selection-overlay: color-mix\(\s*in oklab,\s*var\(--action-primary\) 23%,\s*transparent\s*\);/,
     )
     assert.match(
       css,
