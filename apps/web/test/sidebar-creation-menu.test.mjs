@@ -15,6 +15,10 @@ export function register({ assert, test }) {
     assert.match(sidebarSource, /<span>Page<\/span>/)
     assert.match(sidebarSource, /<span>Database<\/span>/)
     assert.match(sidebarSource, /<span>New chat<\/span>/)
+    assert.match(sidebarSource, /onSelect=\{\(\) => onCreatePage\(\)\}/)
+    assert.match(sidebarSource, /onSelect=\{\(\) => onCreateDatabase\(\)\}/)
+    assert.match(sidebarSource, /onSelect=\{\(\) => onCreateChat\(\)\}/)
+    assert.doesNotMatch(sidebarSource, /onSelect=\{onCreate(?:Page|Database|Chat)\}/)
     assert.match(sidebarSource, /gap-3! px-4 pt-2 pb-3/)
     assert.match(
       sidebarSource,

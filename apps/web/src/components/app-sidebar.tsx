@@ -818,14 +818,14 @@ function NewMenu({
         <DropDrawerContent align="start" className="w-52 rounded-lg" side="top">
           <DropDrawerItem
             disabled={createPagePending}
-            onSelect={onCreatePage}
+            onSelect={() => onCreatePage()}
           >
             <FileIcon />
             <span>Page</span>
           </DropDrawerItem>
           <DropDrawerItem
             disabled={createDatabasePending}
-            onSelect={onCreateDatabase}
+            onSelect={() => onCreateDatabase()}
           >
             <DatabaseIcon />
             <span>Database</span>
@@ -833,7 +833,7 @@ function NewMenu({
           <DropDrawerSeparator />
           <DropDrawerItem
             disabled={createChatPending}
-            onSelect={onCreateChat}
+            onSelect={() => onCreateChat()}
           >
             <MessageSquarePlusIcon />
             <span>New chat</span>
