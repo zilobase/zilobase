@@ -704,7 +704,7 @@ export function DatabaseKanbanView() {
                           draggable={editable}
                           key={item.id}
                           onDragEnd={cardDrag.clearDrag}
-                          onDragStart={(event) =>
+                          onDragStartCapture={(event) =>
                             cardDrag.startDrag(item, option, event)
                           }
                           onPointerDownCapture={cardDrag.captureDragOrigin}

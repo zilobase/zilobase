@@ -147,7 +147,7 @@ export function DatabaseGalleryView() {
           )
         }}
         onDrop={(event) => cardDrag.drop(event, sectionId, rowIndex)}
-        onDragStart={(event) => cardDrag.startDrag(row, event)}
+        onDragStartCapture={(event) => cardDrag.startDrag(row, event)}
         onPointerDownCapture={cardDrag.captureDragOrigin}
       >
         {layoutSettings.cardPreview === "page-cover" ? (
