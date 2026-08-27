@@ -8,6 +8,8 @@ import type { HocuspocusProvider } from "@hocuspocus/provider"
 import type { Editor as TiptapEditor } from "@tiptap/core"
 import type * as Y from "yjs"
 
+// Meeting fields intentionally recurse into the shared editor shell.
+// fallow-ignore-next-line circular-dependency
 import { Editor } from "@/packages/editor/editor"
 import {
   setMeetingTranscriptPreview,

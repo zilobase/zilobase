@@ -278,7 +278,10 @@ function PublicPageContent({
         sidePaneOpen={sidePaneAnimatedOpen}
         sidePaneVisible={renderedSidePanePageId !== null}
       />
-      <EmbeddedPageDialog onOpenPage={openPage} />
+      <EmbeddedPageDialog
+        onOpenPage={openPage}
+        pageRenderer={PageEditorPane}
+      />
     </>
   );
 }

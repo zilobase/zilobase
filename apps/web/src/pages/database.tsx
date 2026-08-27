@@ -231,7 +231,10 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
         sidePaneOpen={sidePaneAnimatedOpen}
         sidePaneVisible={renderedSidePanePageId !== null}
       />
-      <EmbeddedPageDialog onOpenPage={handleOpenPage} />
+      <EmbeddedPageDialog
+        onOpenPage={handleOpenPage}
+        pageRenderer={PageEditorPane}
+      />
     </>
   )
 }
@@ -542,7 +545,7 @@ export function DatabaseMainPane({
   )
 }
 
-export function DatabasePagePreview({
+function DatabasePagePreview({
   className,
   compact = false,
 }: {

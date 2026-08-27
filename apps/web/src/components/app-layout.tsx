@@ -63,6 +63,7 @@ import {
   useRecordItemVisit,
 } from "@zilobase/features/pages"
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
+import { PageEditorPane } from "@/pages/page"
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
 import { LayoutEditorProvider } from "@/components/layout-editor"
 import { usePageEditorComments } from "@/components/page-editor-comments"
@@ -666,7 +667,12 @@ function EmbeddedPageDialogHost({
     page: hostPage,
   })
 
-  return <EmbeddedPageDialog onOpenPage={openPage} />
+  return (
+    <EmbeddedPageDialog
+      onOpenPage={openPage}
+      pageRenderer={PageEditorPane}
+    />
+  )
 }
 
 function AppHeader({

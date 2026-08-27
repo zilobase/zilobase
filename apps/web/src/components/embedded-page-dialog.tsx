@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { XIcon } from "lucide-react"
 
 import {
@@ -12,14 +13,20 @@ import {
 } from "@/contexts/page-side-pane"
 import { PageWorkspaceGate } from "@/components/page-workspace-gate"
 import { PagePaneHeader } from "@/components/page-pane-header"
-import { PageEditorPane } from "@/pages/page"
 import { useOptionalPageLayoutSidebar } from "@/contexts/page-layout-sidebar"
 import type { OpenPageOptions } from "@/packages/editor/types"
 
 export function EmbeddedPageDialog({
   onOpenPage,
+  pageRenderer: PageRenderer,
 }: {
   onOpenPage: (pageId: string, options?: OpenPageOptions) => void
+  pageRenderer: (props: {
+    databaseId?: string | null
+    layoutPanelMode?: "auto" | "overlay"
+    onOpenPage: (pageId: string, options?: OpenPageOptions) => void
+    pageId: string
+  }) => ReactNode
 }) {
   const {
     closeEmbeddedPageDialog,
@@ -86,7 +93,7 @@ export function EmbeddedPageDialog({
         <PageScrollViewport className="flex-1">
           {dialogPageId ? (
             <PageWorkspaceGate pageId={dialogPageId}>
-              <PageEditorPane
+              <PageRenderer
                 databaseId={dialogDatabaseId}
                 key={dialogPageId}
                 layoutPanelMode="overlay"
