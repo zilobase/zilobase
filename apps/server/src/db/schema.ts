@@ -19,6 +19,17 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   },
 });
 
+function timestampColumns() {
+  return {
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .$defaultFn(() => new Date())
+      .notNull(),
+  };
+}
+
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -39,12 +50,7 @@ export const pageSettings = pgTable("page_settings", {
     .default("sidepanel"),
   pageFullWidth: boolean("page_full_width").notNull().default(false),
   sidebarConfig: jsonb("sidebar_config").notNull().default({}),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .$defaultFn(() => new Date())
-    .notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .$defaultFn(() => new Date())
-    .notNull(),
+  ...timestampColumns(),
 }, (table) => [
   uniqueIndex("page_settings_user_id_unique").on(table.userId),
 ]);
@@ -350,12 +356,7 @@ export const teamspace = pgTable(
       onDelete: "set null",
     }),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("teamspace_workspace_archived_updated_idx").on(
@@ -411,12 +412,7 @@ export const teamspacePrincipal = pgTable(
     addedById: text("added_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     uniqueIndex("teamspace_principal_unique").on(
@@ -463,12 +459,7 @@ export const workspaceAiProviderConfig = pgTable(
     apiKey: text("api_key"),
     baseUrl: text("base_url"),
     modelIds: jsonb("model_ids").$type<string[]>().notNull().default([]),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     uniqueIndex("workspace_ai_provider_config_provider_idx").on(
@@ -501,12 +492,7 @@ export const page = pgTable(
       onDelete: "set null",
     }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("page_workspace_deleted_idx").on(
@@ -533,12 +519,7 @@ export const pageLayout = pgTable(
     scopeType: text("scope_type").notNull(),
     scopeId: text("scope_id").notNull(),
     config: jsonb("config").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("page_layout_workspace_idx").on(table.workspaceId),
@@ -553,12 +534,7 @@ export const pageCollaborationDocument = pgTable(
       .primaryKey()
       .references(() => page.id, { onDelete: "cascade" }),
     state: bytea("state").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [index("page_collaboration_document_updated_idx").on(table.updatedAt)],
 );
@@ -611,12 +587,7 @@ export const meeting = pgTable(
     }),
     durationMs: integer("duration_ms").notNull().default(0),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("meeting_page_deleted_idx").on(table.pageId, table.deletedAt),
@@ -640,12 +611,7 @@ export const meetingCollaborationDocument = pgTable(
       .primaryKey()
       .references(() => meeting.id, { onDelete: "cascade" }),
     state: bytea("state").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("meeting_collaboration_document_updated_idx").on(table.updatedAt),
@@ -731,12 +697,7 @@ export const pageAccess = pgTable(
     targetType: text("target_type").notNull(),
     targetId: text("target_id").notNull(),
     accessLevel: text("access_level").notNull().default("view"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("page_access_target_idx").on(
@@ -765,12 +726,7 @@ export const workspaceGuest = pgTable(
     invitedById: text("invited_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     uniqueIndex("workspace_guest_workspace_user_unique").on(
@@ -802,12 +758,7 @@ export const pageGuestInvitation = pgTable(
     }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("page_guest_invitation_workspace_status_idx").on(
@@ -853,12 +804,7 @@ export const pageGuestRequest = pgTable(
       onDelete: "set null",
     }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("page_guest_request_workspace_status_idx").on(
@@ -962,12 +908,7 @@ export const itemVisit = pgTable(
     lastVisitedAt: timestamp("last_visited_at", { withTimezone: true })
       .$defaultFn(() => new Date())
       .notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("item_visit_workspace_id_idx").on(table.workspaceId),
@@ -998,12 +939,7 @@ export const pageProperty = pgTable(
       onDelete: "set null",
     }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("page_property_workspace_deleted_idx").on(
@@ -1025,12 +961,7 @@ export const pagePropertyValue = pgTable(
       .notNull()
       .references(() => pageProperty.id, { onDelete: "cascade" }),
     value: jsonb("value"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("page_property_value_property_id_idx").on(table.propertyId),
@@ -1063,12 +994,7 @@ export const database = pgTable(
       onDelete: "set null",
     }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("database_workspace_deleted_idx").on(
@@ -1106,12 +1032,7 @@ export const dataSource = pgTable(
       onDelete: "set null",
     }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("data_source_workspace_deleted_idx").on(
@@ -1135,12 +1056,7 @@ export const databaseDataSource = pgTable(
     linkedById: text("linked_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     uniqueIndex("database_data_source_unique").on(
@@ -1199,12 +1115,7 @@ export const databaseAccess = pgTable(
     targetType: text("target_type").notNull(),
     targetId: text("target_id").notNull(),
     accessLevel: text("access_level").notNull().default("view"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("database_access_target_idx").on(
@@ -1233,12 +1144,7 @@ export const databaseProperty = pgTable(
     position: integer("position").notNull().default(0),
     width: integer("width"),
     visible: boolean("visible").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("database_property_position_idx").on(
@@ -1266,12 +1172,7 @@ export const databaseView = pgTable(
     name: text("name").notNull(),
     config: jsonb("config"),
     position: integer("position").notNull().default(0),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("database_view_position_idx").on(table.databaseId, table.position),
@@ -1309,12 +1210,7 @@ export const databaseRow = pgTable(
       onDelete: "set null",
     }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("database_row_database_deleted_position_idx").on(
@@ -1349,12 +1245,7 @@ export const pageItemPlacement = pgTable(
       onDelete: "cascade",
     }),
     position: integer("position").notNull().default(0),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
@@ -1396,12 +1287,7 @@ export const aiChatThread = pgTable(
     title: text("title").notNull().default("New chat"),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -1432,12 +1318,7 @@ export const aiChatMessage = pgTable(
       .references(() => aiChatThread.id, { onDelete: "cascade" }),
     role: text("role").notNull(),
     parts: jsonb("parts").$type<unknown[]>().notNull().default([]),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .$defaultFn(() => new Date())
-      .notNull(),
+    ...timestampColumns(),
   },
   (table) => [
     index("ai_chat_message_thread_created_idx").on(table.threadId, table.createdAt),

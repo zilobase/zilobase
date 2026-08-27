@@ -23,6 +23,7 @@ import {
   type DateFormatValue,
   type TimeFormatValue,
 } from "./database-date-config"
+import { parseDatabaseDateValue } from "./database-date-value"
 import { firstScalarValue } from "../core/utils"
 
 type DatabasePropertyDateProps = {
@@ -109,8 +110,8 @@ export function DatabasePropertyDate({
     startTimeValue = draftStartTimeValue,
     endTimeValue = draftEndTimeValue
   ) => {
-    const nextStartValue = parseDateValue(startValue)
-    const nextEndValue = parseDateValue(endValue)
+    const nextStartValue = parseDatabaseDateValue(startValue)
+    const nextEndValue = parseDatabaseDateValue(endValue)
     const serializedStartValue = nextStartValue
       ? toDateValue(nextStartValue, hasTime ? startTimeValue : "")
       : ""
@@ -187,7 +188,7 @@ export function DatabasePropertyDate({
               if (isRange) {
                 commitRange(nextValue, draftEndValue)
               } else {
-                const date = parseDateValue(nextValue)
+                const date = parseDatabaseDateValue(nextValue)
                 const nextValueWithTime = date
                   ? toDateValue(date, hasTime ? draftStartTimeValue : "")
                   : ""
@@ -213,7 +214,7 @@ export function DatabasePropertyDate({
                   return
                 }
 
-                const date = parseDateValue(draftStartValue)
+                const date = parseDatabaseDateValue(draftStartValue)
                 const nextDateValue = date ? toDateValue(date, nextValue) : ""
 
                 onSelect(nextDateValue)
@@ -557,9 +558,9 @@ function parseDateRange(value: string | string[]) {
     : [value, undefined]
 
   return {
-    end: endValue ? parseDateValue(endValue) : undefined,
+    end: endValue ? parseDatabaseDateValue(endValue) : undefined,
     endTime: endValue ? getTimeFromValue(endValue) : "",
-    start: startValue ? parseDateValue(startValue) : undefined,
+    start: startValue ? parseDatabaseDateValue(startValue) : undefined,
     startTime: startValue ? getTimeFromValue(startValue) : "",
   }
 }
@@ -586,60 +587,6 @@ function getDateFromValue(value: string) {
 
 function getTimeFromValue(value: string) {
   return value.match(/T(\d{2}:\d{2})/)?.[1] ?? ""
-}
-
-function parseDateValue(value: string) {
-  const trimmedValue = value.trim()
-
-  if (!trimmedValue) {
-    return undefined
-  }
-
-  const localDateTimeMatch = trimmedValue.match(
-    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/
-  )
-
-  if (localDateTimeMatch) {
-    const year = Number(localDateTimeMatch[1])
-    const month = Number(localDateTimeMatch[2])
-    const day = Number(localDateTimeMatch[3])
-    const hours = Number(localDateTimeMatch[4])
-    const minutes = Number(localDateTimeMatch[5])
-    const date = new Date(year, month - 1, day, hours, minutes)
-
-    return isSameDateParts(date, year, month, day) &&
-      date.getHours() === hours &&
-      date.getMinutes() === minutes
-      ? date
-      : undefined
-  }
-
-  const dateOnlyMatch = trimmedValue.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-
-  if (dateOnlyMatch) {
-    const year = Number(dateOnlyMatch[1])
-    const month = Number(dateOnlyMatch[2])
-    const day = Number(dateOnlyMatch[3])
-    const date = new Date(year, month - 1, day)
-
-    return isSameDateParts(date, year, month, day) ? date : undefined
-  }
-
-  const date = new Date(trimmedValue)
-
-  if (Number.isNaN(date.getTime())) {
-    return undefined
-  }
-
-  return date
-}
-
-function isSameDateParts(date: Date, year: number, month: number, day: number) {
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day
-  )
 }
 
 function toDateValue(date: Date, timeValue = "") {

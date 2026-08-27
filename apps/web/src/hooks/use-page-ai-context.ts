@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 
 import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
+import { buildPagePath } from "@/lib/page-path";
 import { useZilobaseFeatures } from "@zilobase/features";
 import {
   databaseQueryKey,
@@ -10,14 +11,11 @@ import {
 } from "@zilobase/features/databases";
 import {
   ensurePageDetail,
-  getPrimaryPageParentId,
   getPageFromDetail,
   pageQueryKey,
   pagesQueryKey,
-  type Page,
   type PageDetail,
   type PageNavigationPayload,
-  type PageItemPlacement,
 } from "@zilobase/features/pages";
 import {
   buildContextMarkdown,
@@ -39,35 +37,6 @@ type UsePageAiContextOptions = {
   workspaceId?: string | null;
   primarySource?: ContextSourceRef | null;
 };
-
-function buildPagePath(
-  pagesById: Map<string, Page>,
-  pageId: string,
-  placements: PageItemPlacement[],
-) {
-  const parts: string[] = [];
-  const visited = new Set<string>();
-  let current = pagesById.get(pageId);
-
-  while (current) {
-    if (visited.has(current.id)) {
-      break;
-    }
-
-    visited.add(current.id);
-    parts.unshift(current.name.trim() || "Untitled");
-
-    const parentItemId = getPrimaryPageParentId(placements, current.id);
-
-    if (!parentItemId) {
-      break;
-    }
-
-    current = pagesById.get(parentItemId);
-  }
-
-  return parts.join(" / ");
-}
 
 async function resolvePageForContext(
   pageId: string,
