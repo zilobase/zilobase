@@ -5,8 +5,15 @@ export const AGENT_WORKSPACE_READ_TOOL_NAMES = [
   "readPageComments",
 ] as const
 
+export const AGENT_WORKSPACE_ACTION_TOOL_NAMES = [
+  "updateWorkspacePage",
+] as const
+
 export type AgentWorkspaceReadToolName =
   (typeof AGENT_WORKSPACE_READ_TOOL_NAMES)[number]
+
+export type AgentWorkspaceActionToolName =
+  (typeof AGENT_WORKSPACE_ACTION_TOOL_NAMES)[number]
 
 export type AgentToolStatus =
   | "succeeded"

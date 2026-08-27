@@ -74,9 +74,9 @@ const databaseToolStepConfig: Record<DatabaseConfigToolName, DatabaseToolStepCon
       completeLabel: "Updated database view",
       icon: TablePropertiesIcon,
     },
-    updateDatabase: {
-      activeLabel: "Updating database",
-      completeLabel: "Updated database",
+    updateDataSource: {
+      activeLabel: "Updating data source",
+      completeLabel: "Updated data source",
       icon: Settings2Icon,
     },
     createDatabaseRow: {
@@ -171,7 +171,7 @@ function buildDatabaseToolInputDescription(
       const name = readStringField(input, "name");
       return name;
     }
-    case "updateDatabase": {
+    case "updateDataSource": {
       const name = readStringField(input, "name");
       return name ? `Rename to ${name}` : null;
     }

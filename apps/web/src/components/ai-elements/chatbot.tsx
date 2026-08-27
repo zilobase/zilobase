@@ -323,13 +323,14 @@ const toolTitles: Record<string, string> = {
   updateDatabaseProperty: "Update database property",
   createDatabaseView: "Create database view",
   updateDatabaseView: "Update database view",
-  updateDatabase: "Update database",
+  updateDataSource: "Update data source",
   createDatabaseRow: "Add database row",
   setDatabaseCellValue: "Set cell value",
   searchWorkspace: "Search Zilobase",
   readWorkspacePage: "Read Zilobase page",
   queryWorkspaceDatabase: "Query Zilobase database",
   readPageComments: "Read page comments",
+  updateWorkspacePage: "Update Zilobase page",
 };
 
 const toolSources: Record<string, keyof typeof integrationIcons> = {

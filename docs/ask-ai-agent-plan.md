@@ -216,7 +216,7 @@ yet retain page revision history; no model-visible stub is exposed.
 Acceptance: a user can ask a workspace-wide question without manually attaching
 every page; inaccessible pages/rows never appear in results or citations.
 
-### Pass 2 — native Zilobase actions
+### Pass 2 — native Zilobase actions (complete)
 
 - Move page mutations to durable server action receipts while preserving page
   diff review and undo in the editor.
@@ -230,6 +230,17 @@ every page; inaccessible pages/rows never appear in results or citations.
 Acceptance: end-to-end prompts can create a populated project page/database,
 edit it, and report durable IDs; forbidden comment/share/settings actions have
 no callable tools.
+
+Implementation note: native mutations now reserve a thread-scoped idempotency
+key and persist a durable receipt before reporting success. A new page may be
+created with Markdown content and used by later steps in the same turn. Pages
+outside the open editor use a stale-write guard; the open editor retains its
+review/undo proposal flow. Database relations use the supported relation
+property configuration, and form views are exposed. Map views and atomic bulk
+row mutations are absent from the core database service, so map remains
+registry-gated and rows are created/updated as bounded receipted steps rather
+than through a misleading batch tool. Formula, rollup, and button property
+schemas remain structurally excluded.
 
 ### Pass 3 — files, analysis, tables, and artifacts
 

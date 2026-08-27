@@ -37,6 +37,10 @@
       "types": "./src/ai-chat/agent-contract.ts",
       "default": "./src/ai-chat/agent-contract.ts"
     },
+    "./ai-chat/apply-page-content-patch": {
+      "types": "./src/ai-chat/apply-page-content-patch.ts",
+      "default": "./src/ai-chat/apply-page-content-patch.ts"
+    },
     "./databases": {
       "types": "./src/databases/index.ts",
       "default": "./src/databases/index.ts"

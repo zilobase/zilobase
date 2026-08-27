@@ -1,4 +1,5 @@
-import { tool, type ToolSet } from "ai";
+import type { AgentActionReceipt } from "@zilobase/features/ai-chat/agent-contract";
+import { tool, type ToolCallOptions, type ToolSet } from "ai";
 import * as z from "zod";
 
 import type { RuntimeEnv } from "../config";
@@ -17,6 +18,8 @@ import {
   selectOptionColors,
 } from "../services/database-property-config";
 import { ServiceMutationError } from "../services/mutation-error";
+import { runIdempotentAgentAction } from "./agent-action-receipts";
+import { markdownToPageContent } from "./markdown-to-page-content";
 import {
   createPageService,
   embedDatabaseInPageService,
@@ -44,9 +47,20 @@ export const AGENT_CREATABLE_DATABASE_PROPERTY_TYPES = [
   "edited_time",
 ] as const;
 
+export const AGENT_DATABASE_VIEW_TYPES = [
+  "table",
+  "kanban",
+  "timeline",
+  "chart",
+  "gallery",
+  "list",
+  "form",
+] as const;
+
 const agentCreatableDatabasePropertyTypeSchema = z.enum(
   AGENT_CREATABLE_DATABASE_PROPERTY_TYPES,
 );
+const agentDatabaseViewTypeSchema = z.enum(AGENT_DATABASE_VIEW_TYPES);
 
 const selectOptionSchema = z.object({
   id: z.string().trim().min(1),
@@ -71,6 +85,7 @@ const propertyConfigSchema = z
 type ToolContext = {
   allowedPageIds: Set<string>;
   env: RuntimeEnv;
+  threadId: string;
   workspaceId: string;
   primaryPageId: string | null;
   userId: string;
@@ -81,6 +96,8 @@ type ToolResult = {
   hints?: string[];
   ids: Record<string, string>;
   ok: true;
+  receipt?: AgentActionReceipt;
+  status: "succeeded";
   summary: string;
 };
 
@@ -95,21 +112,7 @@ function resolvePageId(
     throw new Error(`${fieldName} is required when no primary page is in context.`);
   }
 
-  if (!context.allowedPageIds.has(pageId)) {
-    throw new Error(
-      `${fieldName} ${pageId} is not in the current page context for this chat.`,
-    );
-  }
-
   return pageId;
-}
-
-function assertAllowedPage(context: ToolContext, pageId: string) {
-  if (!context.allowedPageIds.has(pageId)) {
-    throw new Error(
-      `Page ${pageId} is not in the current page context for this chat.`,
-    );
-  }
 }
 
 function toToolResult(
@@ -125,6 +128,7 @@ function toToolResult(
 
   return {
     ok: true,
+    status: "succeeded",
     summary,
     ids: filteredIds,
     hints,
@@ -139,13 +143,26 @@ function mapServiceError(error: unknown): never {
   throw error;
 }
 
-function withDbExecute<TInput, TOutput>(
+function withDbExecute<TInput, TOutput extends ToolResult>(
   context: ToolContext,
+  toolName: string,
   handler: (input: TInput) => Promise<TOutput>,
 ) {
-  return async (input: TInput) => {
+  return async (input: TInput, options: ToolCallOptions) => {
     try {
-      return await context.withDb(() => handler(input));
+      return await context.withDb(() =>
+        runIdempotentAgentAction({
+          context: {
+            threadId: context.threadId,
+            userId: context.userId,
+            workspaceId: context.workspaceId,
+          },
+          execute: () => handler(input),
+          toolCallId: options.toolCallId,
+          toolInput: input,
+          toolName,
+        }),
+      );
     } catch (error) {
       return mapServiceError(error);
     }
@@ -156,22 +173,25 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
   return {
     createPage: tool({
       description:
-        "Create a new Zilobase page. Use before createDatabase when the user wants a fresh host page.",
+        "Create a new Zilobase page, optionally with an emoji and populated Markdown body. Use before createDatabase when the user wants a fresh host page. The returned pageId is authorized for later tools in this turn.",
       inputSchema: z.object({
         name: z.string().trim().min(1).max(240),
         parentPageId: z.string().trim().optional(),
+        markdown: z.string().trim().max(64_000).optional(),
+        emoji: z.string().trim().max(32).optional(),
       }),
-      execute: withDbExecute(context, async (input) => {
-        if (input.parentPageId) {
-          assertAllowedPage(context, input.parentPageId);
-        }
-
+      execute: withDbExecute(context, "createPage", async (input) => {
         const result = await createPageService({
+          content: input.markdown
+            ? markdownToPageContent(input.markdown)
+            : undefined,
+          metadata: input.emoji ? { emoji: input.emoji } : undefined,
           name: input.name,
           parentPageId: input.parentPageId,
           workspaceId: context.workspaceId,
           userId: context.userId,
         });
+        context.allowedPageIds.add(result.pageId);
 
         return toToolResult(`Created page "${input.name}".`, {
           pageId: result.pageId,
@@ -186,7 +206,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         name: z.string().trim().min(1).max(240).optional(),
         pageId: z.string().trim().optional(),
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "createDatabase", async (input) => {
         const pageId = resolvePageId(context, input.pageId, "pageId");
 
         const result = await createDatabaseService({
@@ -221,7 +241,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
           .optional()
           .describe("Section heading text to insert the database block after."),
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "embedDatabaseInPage", async (input) => {
         const pageId = resolvePageId(
           context,
           input.pageId,
@@ -255,7 +275,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         databaseId: z.string().trim().min(1),
         hostPageId: z.string().trim().optional(),
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "linkDatabaseInPage", async (input) => {
         const hostPageId = resolvePageId(
           context,
           input.hostPageId,
@@ -291,7 +311,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         config: propertyConfigSchema,
         position: z.number().int().min(0).optional(),
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "createDatabaseProperty", async (input) => {
         const result = await createDatabasePropertyService({
           config: input.config ?? null,
           databaseId: input.dataSourceId,
@@ -343,7 +363,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         config: propertyConfigSchema,
         position: z.number().int().min(0).optional(),
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "updateDatabaseProperty", async (input) => {
         const result = await updateDatabasePropertyService({
           config: input.config,
           databaseId: input.dataSourceId,
@@ -367,15 +387,15 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
     createDatabaseView: tool({
       description:
-        "Create an additional database view. Skip if the default Table view from createDatabase is enough.",
+        "Create an additional supported database view: table, kanban, timeline, chart, gallery, list, or form. Map views are not supported. Skip if the default Table view from createDatabase is enough.",
       inputSchema: z.object({
         databaseId: z.string().trim().min(1),
         dataSourceId: z.string().trim().min(1),
         name: z.string().trim().min(1).optional(),
-        type: z.string().trim().min(1).optional(),
+        type: agentDatabaseViewTypeSchema.optional(),
         config: propertyConfigSchema,
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "createDatabaseView", async (input) => {
         const result = await createDatabaseViewService({
           config: input.config ?? null,
           databaseId: input.databaseId,
@@ -401,10 +421,10 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         databaseId: z.string().trim().min(1),
         viewId: z.string().trim().min(1),
         name: z.string().trim().min(1).optional(),
-        type: z.string().trim().optional(),
+        type: agentDatabaseViewTypeSchema.optional(),
         config: propertyConfigSchema,
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "updateDatabaseView", async (input) => {
         const result = await updateDatabaseViewService({
           config: input.config,
           databaseId: input.databaseId,
@@ -430,7 +450,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         name: z.string().trim().min(1).optional(),
         config: z.record(z.string(), z.unknown()).optional(),
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "updateDataSource", async (input) => {
         const result = await updateDataSourceService({
           config: input.config,
           dataSourceId: input.dataSourceId,
@@ -456,7 +476,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         position: z.number().int().min(0).optional(),
         parentRowId: z.string().trim().optional(),
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "createDatabaseRow", async (input) => {
         const result = await createDatabaseRowService({
           databaseId: input.dataSourceId,
           env: context.env,
@@ -488,7 +508,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         pagePropertyId: z.string().trim().min(1),
         value: z.unknown(),
       }),
-      execute: withDbExecute(context, async (input) => {
+      execute: withDbExecute(context, "setDatabaseCellValue", async (input) => {
         const result = await setDatabaseCellValueService({
           databaseId: input.dataSourceId,
           env: context.env,
@@ -515,10 +535,6 @@ export function buildDatabaseConfigInstruction(input: {
   allowedPageIds: string[];
   primaryPageId: string | null;
 }) {
-  if (input.allowedPageIds.length === 0) {
-    return "";
-  }
-
   const primaryHint = input.primaryPageId
     ? ` Default pageId/pageId to ${input.primaryPageId} unless the user names another page.`
     : "";
@@ -526,7 +542,7 @@ export function buildDatabaseConfigInstruction(input: {
   return [
     "",
     "## Zilobase database and page configuration",
-    "You can create and configure Zilobase databases and pages using the database tools.",
+    "You can create and configure accessible Zilobase databases and pages using the database tools. Every successful mutation returns a durable action receipt.",
     "Call tools one at a time in dependency order. Never invent a batch tool.",
     "Typical order: createPage (optional) -> createDatabase -> embed/link (only if user asked) -> createDatabaseProperty -> createDatabaseView/updateDatabaseView -> createDatabaseRow -> setDatabaseCellValue. Use the dataSourceId returned by createDatabase for property, row, and cell tools.",
     "When the user asks to embed or add the database to the page/page, call embedDatabaseInPage immediately after createDatabase and before properties, rows, or cell values.",
@@ -536,6 +552,8 @@ export function buildDatabaseConfigInstruction(input: {
     "For plain picklists use select or multi_select. Always create property options before setDatabaseCellValue. Option colors are assigned automatically; valid colors: gray, brown, orange, yellow, green, blue, purple, pink, red.",
     "Status cell values use option names (e.g. \"Not started\", \"In progress\", \"Done\"). Status supports kanban grouping via option group.",
     "setDatabaseCellValue uses pagePropertyId. View filters and conditionalColors use databasePropertyId.",
-    `Allowed pageIds: ${input.allowedPageIds.join(", ")}.${primaryHint}`,
+    input.allowedPageIds.length > 0
+      ? `Attached editable pageIds: ${input.allowedPageIds.join(", ")}.${primaryHint}`
+      : "No editable page is attached. Use createPage first when a new host page is needed, or use an exact accessible page/database ID found with workspace read tools.",
   ].join(" ");
 }

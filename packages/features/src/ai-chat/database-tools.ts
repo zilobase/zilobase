@@ -7,7 +7,7 @@ export const DATABASE_CONFIG_TOOL_NAMES = [
   "updateDatabaseProperty",
   "createDatabaseView",
   "updateDatabaseView",
-  "updateDatabase",
+  "updateDataSource",
   "createDatabaseRow",
   "setDatabaseCellValue",
 ] as const
@@ -19,6 +19,12 @@ export type DatabaseConfigToolOutput = {
   hints?: string[]
   ids: Record<string, string>
   ok: true
+  receipt?: {
+    actionId: string
+    completedAt: string
+    toolName: string
+  }
+  status: "succeeded"
   summary: string
 }
 

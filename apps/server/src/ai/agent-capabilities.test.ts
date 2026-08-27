@@ -6,13 +6,19 @@ import {
   resolveAgentCapabilityPolicy,
 } from "./agent-capabilities";
 
-test("agent capability policy excludes edits without server-resolved access", () => {
+test("agent capability policy keeps direct edits behind item-level checks", () => {
   const policy = resolveAgentCapabilityPolicy({
     canEditAttachedPages: false,
   });
 
   assert.equal(policy.hasCapability("workspace.search"), true);
-  assert.equal(policy.hasCapability("page.content.update"), false);
+  assert.equal(policy.hasCapability("page.content.update"), true);
+  assert.deepEqual(
+    policy.capabilities.find(
+      (capability) => capability.id === "page.content.update",
+    )?.toolNames,
+    ["updateWorkspacePage"],
+  );
   assert.equal(policy.hasCapability("page.comments.mutate"), false);
 });
 

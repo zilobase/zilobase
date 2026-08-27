@@ -15,6 +15,7 @@ import {
 } from "./ask-ai-database-tools";
 import { buildPageEditTools } from "./ask-ai-page-tools";
 import { buildWorkspaceReadTools } from "./ask-ai-workspace-tools";
+import { buildWorkspaceActionTools } from "./ask-ai-workspace-action-tools";
 import { resolveOpenAiChatModel } from "./ai-provider";
 import {
   buildAgentPolicyInstruction,
@@ -177,19 +178,29 @@ export async function runAiChatTurn(input: {
     workspaceId,
     withDb: (fn) => input.withDb(fn),
   });
+  const databaseConfigTools = buildDatabaseConfigTools({
+    allowedPageIds: new Set(editablePageIds),
+    env: input.env,
+    workspaceId,
+    primaryPageId: primaryEditablePageId,
+    threadId: auth.threadId,
+    userId: auth.userId,
+    withDb: (fn) => input.withDb(fn),
+  });
+  const workspaceActionTools = buildWorkspaceActionTools({
+    env: input.env,
+    threadId: auth.threadId,
+    userId: auth.userId,
+    workspaceId,
+    withDb: (fn) => input.withDb(fn),
+  });
   const tools: ToolSet = {
     ...workspaceReadTools,
+    ...workspaceActionTools,
+    ...databaseConfigTools,
     ...(hasPageEditAccess
       ? {
           ...buildPageEditTools(editablePageIds),
-          ...buildDatabaseConfigTools({
-            allowedPageIds: new Set(editablePageIds),
-            env: input.env,
-            workspaceId,
-            primaryPageId: primaryEditablePageId,
-            userId: auth.userId,
-            withDb: (fn) => input.withDb(fn),
-          }),
         }
       : {}),
     ...connectorTools,
@@ -204,18 +215,18 @@ export async function runAiChatTurn(input: {
   const pageContextInstruction = buildPageContextInstruction(
     requestBody.pageContext,
   );
-  const pageEditInstruction = hasPageEditAccess
-    ? [
-        buildPageEditInstruction({
+  const pageEditInstruction = [
+    hasPageEditAccess
+      ? buildPageEditInstruction({
           allowedPageIds: editablePageIds,
           primaryPageId: primaryEditablePageId,
-        }),
-        buildDatabaseConfigInstruction({
-          allowedPageIds: editablePageIds,
-          primaryPageId: primaryEditablePageId,
-        }),
-      ].join("")
-    : "";
+        })
+      : "",
+    buildDatabaseConfigInstruction({
+      allowedPageIds: editablePageIds,
+      primaryPageId: primaryEditablePageId,
+    }),
+  ].join("");
   const sourceInstruction = buildSourceInstruction({
     hasConnectorTools: Object.keys(connectorTools).length > 0,
     hasPageContext,

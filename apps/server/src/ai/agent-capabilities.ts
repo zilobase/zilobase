@@ -52,6 +52,12 @@ const unavailableCapabilities: AgentCapability[] = [
     summary: "Zilobase Inbox is not available.",
     toolNames: [],
   },
+  {
+    id: "database.map-view.configure",
+    status: "unavailable",
+    summary: "Zilobase does not currently implement database map views.",
+    toolNames: [],
+  },
 ];
 
 const forbiddenCapabilities: AgentCapability[] = [
@@ -107,35 +113,32 @@ export function resolveAgentCapabilityPolicy(input: {
   const nativeMutationCapabilities: AgentCapability[] = [
     {
       id: "page.content.update",
-      status: input.canEditAttachedPages ? "available" : "unavailable",
-      summary: input.canEditAttachedPages
-        ? "Update content on attached pages after server-side access checks."
-        : "No attached page is editable by the current user.",
-      toolNames: input.canEditAttachedPages
-        ? ["proposePageContentUpdate"]
-        : [],
+      status: "available",
+      summary:
+        "Update accessible pages durably, or propose reviewed edits for an attached open page.",
+      toolNames: [
+        "updateWorkspacePage",
+        ...(input.canEditAttachedPages ? ["proposePageContentUpdate"] : []),
+      ],
     },
     {
       id: "page-database.configure",
-      status: input.canEditAttachedPages ? "available" : "unavailable",
-      summary: input.canEditAttachedPages
-        ? "Create supported pages, databases, properties, views, and rows."
-        : "Page and database configuration requires edit access to an attached page.",
-      toolNames: input.canEditAttachedPages
-        ? [
-            "createPage",
-            "createDatabase",
-            "embedDatabaseInPage",
-            "linkDatabaseInPage",
-            "createDatabaseProperty",
-            "updateDatabaseProperty",
-            "createDatabaseView",
-            "updateDatabaseView",
-            "updateDataSource",
-            "createDatabaseRow",
-            "setDatabaseCellValue",
-          ]
-        : [],
+      status: "available",
+      summary:
+        "Create supported pages and configure pages/databases after item-level edit checks.",
+      toolNames: [
+        "createPage",
+        "createDatabase",
+        "embedDatabaseInPage",
+        "linkDatabaseInPage",
+        "createDatabaseProperty",
+        "updateDatabaseProperty",
+        "createDatabaseView",
+        "updateDatabaseView",
+        "updateDataSource",
+        "createDatabaseRow",
+        "setDatabaseCellValue",
+      ],
     },
   ];
   const capabilities = [

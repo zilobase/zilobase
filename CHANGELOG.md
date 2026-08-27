@@ -9,16 +9,19 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 ### Added
 
 - Ask AI can search accessible workspace pages and databases, read page bodies and comments, query structured database rows, and link cited Zilobase sources in its answers.
+- Ask AI page and database actions now return durable idempotent receipts, can create pages with populated Markdown bodies, and can safely update accessible pages with stale-write protection.
 
 ### Changed
 
 - Interactive controls, drag surfaces, sliders, scroll thumbs, and resize handles now use consistent cursors across the web and desktop apps.
 - Ask AI now resolves page view and edit permissions on the server and applies explicit negative-capability policy before exposing tools to a model.
+- Ask AI exposes only supported database property and view types; formula, rollup, button, and unavailable map-view creation remain excluded.
 
 ### Fixed
 
 - Embedded database expand actions now open the host database instead of navigating to an unresolvable data source.
 - Database row and kanban drags retain the grabbing cursor throughout the active drag.
+- Ask AI database tool presentation now recognizes the canonical `updateDataSource` action name.
 
 ## 0.0.49
 

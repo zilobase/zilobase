@@ -1315,6 +1315,41 @@ export const aiChatMessage = pgTable(
   ],
 );
 
+export const aiAgentActionReceipt = pgTable(
+  "ai_agent_action_receipt",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => aiChatThread.id, { onDelete: "cascade" }),
+    toolCallId: text("tool_call_id").notNull(),
+    toolName: text("tool_name").notNull(),
+    inputHash: text("input_hash").notNull(),
+    status: text("status").notNull().default("running"),
+    result: jsonb("result"),
+    error: text("error"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("ai_agent_action_receipt_thread_tool_call_unique").on(
+      table.threadId,
+      table.toolCallId,
+    ),
+    index("ai_agent_action_receipt_workspace_user_created_idx").on(
+      table.workspaceId,
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
+
 export const rateLimit = pgTable("rateLimit", {
   key: text("key").primaryKey(),
   count: integer("count").notNull(),
