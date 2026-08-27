@@ -50,7 +50,6 @@
     "@aws-sdk/client-s3": "^3.1070.0",
     "@aws-sdk/s3-request-presigner": "^3.1070.0",
     "@better-auth/api-key": "^1.6.25",
-    "@better-auth/drizzle-adapter": "^1.6.25",
     "@better-auth/expo": "^1.6.25",
     "@hocuspocus/extension-database": "^4.3.0",
     "@hocuspocus/extension-redis": "^4.6.0",
@@ -75,6 +74,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@hocuspocus/provider": "^4.3.0",
     "@types/node": "^25.9.1",
     "@types/nodemailer": "^7.0.12",
     "@types/pg": "^8.20.0",

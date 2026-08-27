@@ -13,6 +13,7 @@
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.100.14",
+    "ai": "^6.0.193",
     "react": "^19.1.0"
   },
   "exports": {
