@@ -324,6 +324,7 @@ export function DatabaseViewToolbar() {
   const hostDisplayTitle = isExternalDataSourceView(activeViewTab)
     ? hostDatabaseName || "Untitled"
     : draftDatabaseTitle || hostDatabaseName || "Untitled";
+  const expandDatabaseId = hostDatabaseId ?? databaseId;
   const databaseEmoji = getDatabaseEmoji({ config: databaseConfig });
   const canEditDatabaseEmoji = editable && Boolean(databaseId);
   const focusDatabaseTitleInput = () => {
@@ -1237,7 +1238,7 @@ export function DatabaseViewToolbar() {
               ) : null}
             </>
           ) : null}
-          {showExpandButton && databaseId ? (
+          {showExpandButton && expandDatabaseId ? (
             <Button
               aria-label="Expand database"
               asChild
@@ -1247,7 +1248,7 @@ export function DatabaseViewToolbar() {
               variant="ghost"
             >
               <Link
-                params={{ databaseId }}
+                params={{ databaseId: expandDatabaseId }}
                 search={{ view: undefined }}
                 title="Expand database"
                 to="/d/$databaseId"

@@ -180,6 +180,26 @@ export function register({ assert, loadModule, test }) {
     assert.doesNotMatch(controller, /deleteDataSource\.mutateAsync/);
   });
 
+  test("embedded database expand links use the host database id", async () => {
+    const toolbar = await readFile(
+      new URL(
+        "../src/editor/extensions/database/views/database-view-toolbar.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    assert.match(toolbar, /const expandDatabaseId = hostDatabaseId \?\? databaseId/);
+    assert.match(
+      toolbar,
+      /showExpandButton && expandDatabaseId[\s\S]*?params=\{\{ databaseId: expandDatabaseId \}\}/,
+    );
+    assert.doesNotMatch(
+      toolbar,
+      /showExpandButton && databaseId[\s\S]*?params=\{\{ databaseId \}\}/,
+    );
+  });
+
   test("view settings use full-panel navigation with only More settings nested", async () => {
     const [dropdrawer, dropdrawerContent, menu, settings, subItems, toolbar] =
       await Promise.all([
