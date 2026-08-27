@@ -55,7 +55,7 @@ const categoryOrder: AttachMenuCategory[] = [
   "databases",
 ];
 
-export function buildPagePath(
+function buildPagePath(
   pagesById: Map<string, Page>,
   pageId: string,
   placements: PageItemPlacement[],
