@@ -35,3 +35,4 @@ target
 
 # local ui-skills install (https://github.com/ibelick/ui-skills)
 .grok/
+.fallow/
