@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises"
 
 export function register({ assert, test }) {
-  test("sidebar footer exposes creation actions without theme or settings", async () => {
+  test("sidebar footer exposes pinned customization and creation actions", async () => {
     const sidebarSource = await readFile(
       new URL("../src/components/app-sidebar.tsx", import.meta.url),
       "utf8",
@@ -15,11 +15,21 @@ export function register({ assert, test }) {
     assert.match(sidebarSource, /<span>Page<\/span>/)
     assert.match(sidebarSource, /<span>Database<\/span>/)
     assert.match(sidebarSource, /<span>New chat<\/span>/)
+    assert.match(sidebarSource, /<span>Customize sidebar<\/span>/)
+    assert.match(
+      sidebarSource,
+      /onClick=\{\(\) => setCustomizeSidebarOpen\(true\)\}/,
+    )
     assert.match(sidebarSource, /onSelect=\{\(\) => onCreatePage\(\)\}/)
     assert.match(sidebarSource, /onSelect=\{\(\) => onCreateDatabase\(\)\}/)
     assert.match(sidebarSource, /onSelect=\{\(\) => onCreateChat\(\)\}/)
     assert.doesNotMatch(sidebarSource, /onSelect=\{onCreate(?:Page|Database|Chat)\}/)
     assert.match(sidebarSource, /gap-3! px-4 pt-2 pb-3/)
+    assert.ok(
+      sidebarSource.indexOf("<span>Customize sidebar</span>") <
+        sidebarSource.indexOf("Open in desktop app"),
+      "Customize sidebar must stay above the desktop-app card",
+    )
     assert.match(
       sidebarSource,
       /useWorkspaceMeetings\(\s*isMeetingsPage \? workspaceId : null/,

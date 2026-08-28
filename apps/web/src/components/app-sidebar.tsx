@@ -122,6 +122,7 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
+  SlidersHorizontalIcon,
   SparklesIcon,
   Table2,
   Trash2Icon,
@@ -749,6 +750,16 @@ export function AppSidebar({
           className="pointer-events-none absolute inset-x-0 bottom-full h-5 bg-gradient-to-t from-sidebar to-transparent"
         />
         <SidebarMenu className="gap-3! px-4 pt-2 pb-3 group-data-[collapsible=icon]:px-1">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => setCustomizeSidebarOpen(true)}
+              tooltip="Customize sidebar"
+              type="button"
+            >
+              <SlidersHorizontalIcon />
+              <span>Customize sidebar</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           {!isTauri() && desktopLinkServer ? (
             <SidebarMenuItem>
               <a
