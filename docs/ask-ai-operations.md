@@ -4,6 +4,20 @@ Ask AI applies its limits and records audit metadata on the server. Client
 settings can reduce context but cannot raise a quota, extend retention, or add
 a tool.
 
+Chat uses server-owned canonical turns at
+`POST /api/ai/threads/:threadId/turns`. The legacy endpoint is disabled unless
+`AI_LEGACY_CHAT_ENABLED=true`; do not enable it for untrusted clients.
+
+## Provider credentials
+
+`OPENAI_API_KEY` is the managed fallback. Workspace owners and admins may save
+a workspace credential only when `AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY` is a
+base64-encoded 32-byte operator secret. Credentials are stored as versioned
+AES-GCM ciphertext and never returned by the API. Rotate legacy plaintext
+credentials through workspace settings; plaintext values are not executed.
+Custom provider base URLs must be HTTPS origins listed in the comma-separated
+`AI_PROVIDER_ALLOWED_BASE_URLS` operator allowlist.
+
 ## Audit data
 
 Every accepted or rejected chat turn receives an `ai_agent_turn` row. It stores
@@ -56,7 +70,13 @@ Provider calls have total, per-step, and stalled-chunk timeouts plus bounded
 retries. Failures use finite error codes such as `provider_timeout`,
 `provider_rate_limited`, `permission_denied`, and `capability_unavailable`.
 
-Node deployments run maintenance on startup and every five minutes. Maintenance
+Node deployments run a PostgreSQL leased AI-job worker continuously and
+maintenance on startup and every five minutes. Hosted deployments dispatch the
+same idempotent handlers through the `AI_JOBS` Cloudflare Queue. Upload
+extraction, meeting summaries, and thread compaction expose durable job status
+at `GET /api/ai/jobs/:jobId`.
+
+Maintenance
 deletes expired upload and artifact objects, clears extracted upload text, and
 marks the metadata record `expired` so old chat links fail safely. It also closes
 stale turns/action receipts and removes completed audit metadata and receipts
@@ -68,13 +88,17 @@ deleted by this job.
 1. Apply database migrations before starting the new application image.
 2. Configure `OPENAI_API_KEY` and verify object storage before enabling file or
    artifact workflows.
-3. Review the effective limits at `GET /api/ai/operations/limits`; override only
+3. Configure `AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY` before enabling workspace
+   BYOK and preserve old key versions during a credential rotation.
+4. Confirm migrations created the GIN-backed `search_document` and
+   `search_chunk` indexes and the `ai_job` lease table before enabling traffic.
+5. Review the effective limits at `GET /api/ai/operations/limits`; override only
    variables that need installation-specific tuning.
-4. Verify an ordinary member can search only accessible content and that a
+6. Verify an ordinary member can search only accessible content and that a
    workspace admin can inspect sanitized turn/tool audit rows.
-5. Exercise Stop, an oversized upload, an expired artifact link, and a denied
+7. Exercise Stop, an oversized upload, an expired artifact link, and a denied
    page mutation before broad rollout.
-6. Monitor normalized failure codes, latency, daily token/upload usage, and the
+8. Monitor normalized failure codes, latency, daily token/upload usage, and the
    scheduled cleanup job.
 
 See the [capability parity audit](./ask-ai-parity-audit.md) for the exact product
