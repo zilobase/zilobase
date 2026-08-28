@@ -34,9 +34,9 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: var(--secondary);
+  --accent: oklch(0.94 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --active: oklch(0.94 0 0);
+  --active: oklch(0.9 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.922 0 0);
@@ -395,23 +395,25 @@
 .light[data-theme="notion"] {
   color-scheme: light;
   --background: #ffffff;
-  --foreground: #37352f;
+  --foreground: #2c2c2b;
   --card: #ffffff;
   --popover: #ffffff;
-  --primary: #37352f;
-  --primary-foreground: #ffffff;
-  --secondary: #f7f6f3;
-  --secondary-foreground: #37352f;
-  --muted-foreground: #6f6e69;
-  --accent: #efefed;
-  --accent-foreground: #37352f;
-  --active: #e9e9e7;
-  --border: #e9e9e7;
-  --input: #dddcd8;
-  --scrim: rgb(55 53 47 / 45%);
+  --primary: #2c2c2b;
+  --primary-foreground: #f0efed;
+  --secondary: #f9f8f7;
+  --secondary-foreground: #2c2c2b;
+  --muted-foreground: #5f5e59;
+  --accent: #f0efed;
+  --accent-foreground: #2c2c2b;
+  --active: #e5e4e2;
+  --border: #e6e5e3;
+  --input: #d4d3cf;
+  --secondary-hover: #f0efed;
+  --sidebar-control-hover: rgb(55 53 47 / 6%);
+  --scrim: rgb(15 15 15 / 60%);
   --selection: #c7c7c4;
-  --selection-foreground: #37352f;
-  --sidebar: #f7f6f3;
+  --selection-foreground: #2c2c2b;
+  --sidebar: #f9f8f7;
 }
 
 /* Every palette family supplies both appearance modes. */
@@ -585,22 +587,24 @@
 
 .dark[data-theme="notion"] {
   --background: #191919;
-  --foreground: #ffffff;
+  --foreground: #f0efed;
   --card: #202020;
   --popover: #252525;
-  --primary: #ffffff;
+  --primary: #f0efed;
   --primary-foreground: #191919;
-  --secondary: #2f2f2f;
-  --secondary-foreground: #e8e8e8;
-  --muted-foreground: #a0a0a0;
-  --accent: #333333;
-  --accent-foreground: #ffffff;
+  --secondary: #202020;
+  --secondary-foreground: #f0efed;
+  --muted-foreground: #ada9a3;
+  --accent: #2c2c2b;
+  --accent-foreground: #f0efed;
   --active: #3d3d3d;
-  --border: #303030;
-  --input: #3f3f3f;
-  --scrim: rgb(0 0 0 / 70%);
+  --border: #383836;
+  --input: #262626;
+  --secondary-hover: #2c2c2b;
+  --sidebar-control-hover: rgb(255 255 255 / 5.5%);
+  --scrim: rgb(15 15 15 / 80%);
   --selection: #525252;
-  --selection-foreground: #ffffff;
+  --selection-foreground: #f0efed;
   --sidebar: #202020;
 }
 
