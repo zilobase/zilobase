@@ -169,10 +169,7 @@ function AppLayoutWithRoutePage({
         }}
         settingsOpen={settingsDialogOpen}
       />
-      <PageLayoutSidebarProvider
-        key={routePageId ?? pathname}
-        pageId={routePageId}
-      >
+      <PageLayoutSidebarProvider pageId={routePageId}>
         <LayoutEditorProvider>
           <AppLayoutContent
             activeSettingsSection={activeSettingsSection}
@@ -250,6 +247,7 @@ function AppLayoutContent({
     openSidePane: openSidePaneBase,
     renderedSidePaneDatabaseId,
     renderedSidePanePageId,
+    mainPaneNavigationActive,
     sidePaneAnimatedOpen,
     sidePaneDatabaseId,
     sidePanePageId,
@@ -427,11 +425,18 @@ function AppLayoutContent({
     if (
       appSidebarOpen &&
       (sidePanePageId || sidePaneDatabaseId) &&
+      !mainPaneNavigationActive &&
       chatSidebarOpen
     ) {
       setChatSidebarOpen(false)
     }
-  }, [appSidebarOpen, chatSidebarOpen, sidePaneDatabaseId, sidePanePageId])
+  }, [
+    appSidebarOpen,
+    chatSidebarOpen,
+    mainPaneNavigationActive,
+    sidePaneDatabaseId,
+    sidePanePageId,
+  ])
 
   useEffect(() => {
     if (

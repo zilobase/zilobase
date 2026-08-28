@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -26,11 +27,17 @@ export type PageSidePaneContextValue = {
   closeSidePane: () => void
   dialogDatabaseId: string | null
   dialogPageId: string | null
+  mainPaneNavigationActive: boolean
   openEmbeddedPageDialog: (
     pageId: string,
     options?: OpenPageSidePaneOptions,
   ) => void
   openDatabaseSidePane: (databaseId: string) => void
+  openDatabaseInMainPane: (databaseId: string) => void
+  openPageInMainPane: (
+    pageId: string,
+    options?: OpenPageSidePaneOptions,
+  ) => void
   openSidePaneAsFullPage: () => void
   openSidePane: (
     pageId: string,
@@ -555,6 +562,7 @@ export function usePageSidePaneState(
 ): PageSidePaneContextValue {
   const router = useRouter()
   const isMobile = useIsMobile()
+  const promotedFullPagePath = usePromotedFullPagePath()
   const location = useLocation({
     select: ({ hash, pathname, searchStr }) => ({
       hash,
@@ -581,6 +589,7 @@ export function usePageSidePaneState(
   const [sidePaneAnimatedOpen, setSidePaneAnimatedOpen] = useState(false)
   const [sidePaneContentReady, setSidePaneContentReady] = useState(false)
   const sidePaneWasOpenRef = useRef(false)
+  const pendingMainPanePathRef = useRef<string | null>(null)
   const writeSidePaneParams = useCallback(
     (pageId: string | null, databaseId?: string | null, replace = false) => {
       const params = new URLSearchParams(location.searchStr)
@@ -648,6 +657,34 @@ export function usePageSidePaneState(
         return
       }
 
+      writeSidePaneParams(null, databaseId)
+    },
+    [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
+  )
+  const openPageInMainPane = useCallback(
+    (nextPageId: string, options?: OpenPageSidePaneOptions) => {
+      closeEmbeddedPageDialog()
+
+      if (isMobile || isMobileViewport()) {
+        router.history.push(getFullPagePath(nextPageId))
+        return
+      }
+
+      pendingMainPanePathRef.current = getFullPagePath(nextPageId)
+      writeSidePaneParams(nextPageId, options?.databaseId)
+    },
+    [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
+  )
+  const openDatabaseInMainPane = useCallback(
+    (databaseId: string) => {
+      closeEmbeddedPageDialog()
+
+      if (isMobile || isMobileViewport()) {
+        router.history.push(getFullDatabasePath(databaseId))
+        return
+      }
+
+      pendingMainPanePathRef.current = getFullDatabasePath(databaseId)
       writeSidePaneParams(null, databaseId)
     },
     [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
@@ -760,14 +797,51 @@ export function usePageSidePaneState(
     }
   }, [sidePaneDatabaseId, sidePanePageId])
 
+  useLayoutEffect(() => {
+    const targetPath = pendingMainPanePathRef.current
+    const renderedTargetPath = renderedSidePanePageId
+      ? getFullPagePath(renderedSidePanePageId)
+      : renderedSidePaneDatabaseId
+        ? getFullDatabasePath(renderedSidePaneDatabaseId)
+        : null
+
+    if (!targetPath || targetPath !== renderedTargetPath) return
+
+    const panel = document.querySelector<HTMLElement>(
+      "[data-page-side-pane-panel]",
+    )
+    const shell = panel?.closest<HTMLElement>("[data-page-side-pane-shell]")
+    if (!shell) return
+
+    shell.style.setProperty(
+      "--page-side-pane-width",
+      `${shell.getBoundingClientRect().width}px`,
+    )
+    shell.dataset.pageSidePanePromoted = "true"
+    pendingMainPanePathRef.current = null
+    setPromotedFullPagePath(targetPath)
+
+    window.History.prototype.replaceState.call(
+      window.history,
+      window.history.state,
+      "",
+      targetPath,
+    )
+  }, [renderedSidePaneDatabaseId, renderedSidePanePageId])
+
   return useMemo<PageSidePaneContextValue>(
     () => ({
       closeEmbeddedPageDialog,
       closeSidePane,
       dialogDatabaseId,
       dialogPageId,
+      mainPaneNavigationActive: Boolean(
+        promotedFullPagePath || pendingMainPanePathRef.current,
+      ),
       openEmbeddedPageDialog,
+      openDatabaseInMainPane,
       openDatabaseSidePane,
+      openPageInMainPane,
       openSidePaneAsFullPage,
       openSidePane,
       renderedSidePaneDatabaseId,
@@ -782,8 +856,11 @@ export function usePageSidePaneState(
       closeSidePane,
       dialogDatabaseId,
       dialogPageId,
+      promotedFullPagePath,
       openEmbeddedPageDialog,
+      openDatabaseInMainPane,
       openDatabaseSidePane,
+      openPageInMainPane,
       openSidePaneAsFullPage,
       openSidePane,
       renderedSidePaneDatabaseId,

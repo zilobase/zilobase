@@ -56,7 +56,7 @@ export function EmbeddedPageDialog({
       open={dialogPageId !== null}
     >
       <DialogContent
-        className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-h-[90vh] sm:max-w-4xl"
+        className="flex h-[90dvh] max-h-[90dvh] min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:h-[90vh] sm:max-h-[90vh] sm:max-w-4xl"
         hideMobileDragHandle
         showCloseButton={false}
         unstyledContent
@@ -90,7 +90,10 @@ export function EmbeddedPageDialog({
           rowNavigationDatabaseId={dialogDatabaseId}
           showPaneControls
         />
-        <PageScrollViewport className="flex-1">
+        <PageScrollViewport
+          className="min-h-0 flex-1"
+          edgeFadeClassName="hidden"
+        >
           {dialogPageId ? (
             <PageWorkspaceGate pageId={dialogPageId}>
               <PageRenderer

@@ -20,6 +20,7 @@ export type PageEditorHandle = {
   getContentJson: () => unknown | null
   isEditDiffPreviewActive: () => boolean
   isEditable: () => boolean
+  isSynchronized: () => boolean
   setContentFromMarkdown: (markdown: string) => boolean
   setContentJson: (content: unknown) => boolean
   showEditDiffPreview: (request: PageEditPreviewRequest) => boolean
