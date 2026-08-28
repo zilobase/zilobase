@@ -1255,12 +1255,8 @@
   }
 
   .database-table-sticky-header {
-    @apply sticky top-0 z-50 bg-background;
+    @apply sticky top-0 z-50 bg-transparent;
     scrollbar-width: none;
-  }
-
-  .dark [data-page-side-pane-panel] .database-table-sticky-header {
-    @apply bg-sidebar;
   }
 
   .database-table-sticky-header::-webkit-scrollbar {
@@ -1734,16 +1730,7 @@
   }
 
   .tiptap-editor .database-table thead th {
-    @apply h-8 bg-background p-0;
-  }
-
-  .dark
-    [data-page-side-pane-panel]
-    .tiptap-editor
-    .database-table
-    thead
-    th {
-    @apply bg-transparent;
+    @apply h-8 bg-transparent p-0;
   }
 
   .database-name-header {
