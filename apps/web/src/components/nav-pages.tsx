@@ -353,7 +353,7 @@ export function NavPageSection({
             <SidebarGroupLabel
               asChild
               className={cn(
-                "group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-data-[state=open]/collapsible:bg-accent group-data-[state=open]/collapsible:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground",
+                "group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground",
                 showCreateAction
                   ? showSectionMenu
                     ? "pr-24"

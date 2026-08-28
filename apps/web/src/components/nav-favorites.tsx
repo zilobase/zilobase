@@ -85,7 +85,7 @@ export function NavFavorites({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel
               asChild
-              className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-data-[state=open]/collapsible:bg-accent group-data-[state=open]/collapsible:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground"
+              className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground"
             >
               <button
                 className="group/section-label w-full cursor-pointer"

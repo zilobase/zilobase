@@ -33,7 +33,7 @@ export function NavMeetings({
     <Collapsible asChild onOpenChange={setOpen} open={open}>
       <SidebarGroup className="group/collapsible">
         <CollapsibleTrigger asChild>
-          <SidebarGroupLabel asChild className="group-data-[state=open]/collapsible:bg-accent group-data-[state=open]/collapsible:text-accent-foreground">
+          <SidebarGroupLabel asChild className="hover:bg-accent hover:text-accent-foreground">
             <button className="group/section-label w-full cursor-pointer" type="button">
               <span>Meetings</span>
               <ChevronRightIcon className="ml-1 size-3 text-muted-foreground transition-transform group-data-[state=open]/section-label:rotate-90" />

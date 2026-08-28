@@ -32,4 +32,16 @@ export function register({ assert, loadModule, test }) {
     assert.equal(hasShortcutTarget(tab, { type: "library", view: "recents" }), true)
     assert.equal(hasShortcutTarget(tab, { type: "library", view: "private" }), false)
   })
+
+  test("shortcuts are active only for their current route and library view", async () => {
+    const { isShortcutActive } = await loadModule("/src/components/sidebar-layout-model.ts")
+    const shortcut = (target) => ({ id: "shortcut", target })
+
+    assert.equal(isShortcutActive(shortcut({ type: "library", view: "meetings" }), "/recents", { view: "meetings" }), true)
+    assert.equal(isShortcutActive(shortcut({ type: "library", view: "recents" }), "/recents", { view: "meetings" }), false)
+    assert.equal(isShortcutActive(shortcut({ type: "route", route: "meetings" }), "/recents", { view: "meetings" }), true)
+    assert.equal(isShortcutActive(shortcut({ type: "route", route: "tasks" }), "/tasks", {}), true)
+    assert.equal(isShortcutActive(shortcut({ type: "route", route: "settings" }), "/recents", {}, true), true)
+    assert.equal(isShortcutActive(shortcut({ type: "action", action: "createPage" }), "/recents", {}), false)
+  })
 }

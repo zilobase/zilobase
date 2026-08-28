@@ -58,7 +58,7 @@ export function SidebarDatabaseViewSection({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel
               asChild
-              className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-data-[state=open]/collapsible:bg-accent group-data-[state=open]/collapsible:text-accent-foreground"
+              className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground"
             >
               <button className="group/section-label w-full cursor-pointer" type="button">
                 <span className="truncate">{title}</span>

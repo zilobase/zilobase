@@ -50,6 +50,29 @@ export function getShortcutLabel(shortcut: SidebarShortcut) {
   return target.type === "page" ? "Page" : "Database"
 }
 
+export function isShortcutActive(
+  shortcut: SidebarShortcut,
+  pathname: string,
+  search: Record<string, unknown>,
+  settingsOpen = false,
+) {
+  const target = shortcut.target
+  if (target.type === "action") return false
+  if (target.type === "library") {
+    return pathname === "/recents" && search.view === target.view
+  }
+  if (target.type === "page") return pathname === `/p/${target.pageId}`
+  if (target.type === "database") {
+    return pathname === `/d/${target.databaseId}` &&
+      (!target.viewId || search.view === target.viewId)
+  }
+  if (target.route === "settings") return settingsOpen
+  if (target.route === "meetings") {
+    return pathname === "/recents" && search.view === "meetings"
+  }
+  return pathname === `/${target.route}`
+}
+
 export function getSectionLabel(section: SidebarSection) {
   return section.label || sidebarSectionLabels[section.kind]
 }

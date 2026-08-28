@@ -33,7 +33,7 @@ import { NavPageSection } from "@/components/nav-pages"
 import { SidebarCustomizePanel } from "@/components/sidebar-customize-panel"
 import { SidebarDatabaseViewSection } from "@/components/sidebar-database-view-section"
 import { SidebarShortcutIcon } from "@/components/sidebar-layout-icons"
-import { getShortcutLabel } from "@/components/sidebar-layout-model"
+import { getShortcutLabel, isShortcutActive } from "@/components/sidebar-layout-model"
 import { SidebarLayoutTabs } from "@/components/sidebar-layout-tabs"
 import { SidebarTasksSection } from "@/components/sidebar-tasks-section"
 import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
@@ -290,7 +290,7 @@ export function AppSidebar({
       ) : (
         <SidebarContent>
           <div aria-hidden="true" className="h-3 shrink-0" />
-          <ShortcutList databases={navigation?.databases ?? []} onCreateChat={handleCreateChat} onCreateDatabase={handleCreateDatabase} onCreatePage={handleCreatePage} onOpenSettings={onOpenSettings} pages={navigation?.pages ?? []} shortcuts={activeTab.shortcuts} />
+          <ShortcutList databases={navigation?.databases ?? []} onCreateChat={handleCreateChat} onCreateDatabase={handleCreateDatabase} onCreatePage={handleCreatePage} onOpenSettings={onOpenSettings} pages={navigation?.pages ?? []} settingsOpen={settingsOpen} shortcuts={activeTab.shortcuts} />
           <DndContext collisionDetection={closestCenter} onDragEnd={handleRuntimeSectionDragEnd} sensors={runtimeSectionSensors}>
             <SortableContext items={activeTab.sections.map((section) => section.id)} strategy={verticalListSortingStrategy}>
               {activeTab.sections.map((section) => <RuntimeSectionDragItem id={section.id} key={section.id}>{renderSection(section)}</RuntimeSectionDragItem>)}
@@ -335,8 +335,9 @@ function RuntimeSectionDragItem({ children, id }: { children: React.ReactNode; i
   )
 }
 
-function ShortcutList({ databases, onCreateChat, onCreateDatabase, onCreatePage, onOpenSettings, pages, shortcuts }: { databases: Array<{ id: string; name: string; views: Array<{ id: string }> }>; onCreateChat: () => Promise<void>; onCreateDatabase: () => Promise<void>; onCreatePage: () => Promise<void>; onOpenSettings?: () => void; pages: Array<{ id: string; name: string }>; shortcuts: SidebarShortcut[] }) {
+function ShortcutList({ databases, onCreateChat, onCreateDatabase, onCreatePage, onOpenSettings, pages, settingsOpen, shortcuts }: { databases: Array<{ id: string; name: string; views: Array<{ id: string }> }>; onCreateChat: () => Promise<void>; onCreateDatabase: () => Promise<void>; onCreatePage: () => Promise<void>; onOpenSettings?: () => void; pages: Array<{ id: string; name: string }>; settingsOpen: boolean; shortcuts: SidebarShortcut[] }) {
   const navigate = useNavigate()
+  const location = useLocation()
   return <SidebarGroup className="pb-1"><SidebarGroupContent><SidebarMenu aria-label="Shortcuts">{shortcuts.map((shortcut) => {
     const target = shortcut.target
     const page = target.type === "page" ? pages.find((entry) => entry.id === target.pageId) : null
@@ -355,14 +356,14 @@ function ShortcutList({ databases, onCreateChat, onCreateDatabase, onCreatePage,
       else if (target.route === "settings") onOpenSettings?.()
       else void navigate({ to: target.route === "ai" ? "/ai" : target.route === "tasks" ? "/tasks" : "/trash" })
     }
-    return <SidebarMenuItem key={shortcut.id}><SidebarMenuButton onClick={activate} type="button"><SidebarShortcutIcon shortcut={shortcut} /><span>{label}</span></SidebarMenuButton></SidebarMenuItem>
+    return <SidebarMenuItem key={shortcut.id}><SidebarMenuButton isActive={isShortcutActive(shortcut, location.pathname, location.search, settingsOpen)} onClick={activate} type="button"><SidebarShortcutIcon shortcut={shortcut} /><span>{label}</span></SidebarMenuButton></SidebarMenuItem>
   })}</SidebarMenu></SidebarGroupContent></SidebarGroup>
 }
 
 function AiChatsSection({ limit, storageKey }: { limit: number; storageKey: string }) {
   const { activeThreadId, setActiveThreadId } = useAiChatThreadState()
   const [open, setOpen] = useSidebarSectionOpen(storageKey)
-  return <Collapsible asChild onOpenChange={setOpen} open={open}><SidebarGroup className="group/collapsible min-h-0"><CollapsibleTrigger asChild><SidebarGroupLabel asChild className="group-data-[state=open]/collapsible:bg-accent group-data-[state=open]/collapsible:text-accent-foreground"><button className="group/section-label w-full cursor-pointer" type="button"><span>AI chats</span><ChevronRightIcon className="ml-1 size-3 text-muted-foreground transition-transform group-data-[state=open]/section-label:rotate-90" /></button></SidebarGroupLabel></CollapsibleTrigger><CollapsibleContent className="pb-4 pt-0.5"><SidebarGroupContent><AiChatHistoryList activeThreadId={activeThreadId} className="px-0 py-0" limit={limit} onSelectThread={setActiveThreadId} /></SidebarGroupContent></CollapsibleContent></SidebarGroup></Collapsible>
+  return <Collapsible asChild onOpenChange={setOpen} open={open}><SidebarGroup className="group/collapsible min-h-0"><CollapsibleTrigger asChild><SidebarGroupLabel asChild className="hover:bg-accent hover:text-accent-foreground"><button className="group/section-label w-full cursor-pointer" type="button"><span>AI chats</span><ChevronRightIcon className="ml-1 size-3 text-muted-foreground transition-transform group-data-[state=open]/section-label:rotate-90" /></button></SidebarGroupLabel></CollapsibleTrigger><CollapsibleContent className="pb-4 pt-0.5"><SidebarGroupContent><AiChatHistoryList activeThreadId={activeThreadId} className="px-0 py-0" limit={limit} onSelectThread={setActiveThreadId} /></SidebarGroupContent></CollapsibleContent></SidebarGroup></Collapsible>
 }
 
 function createSectionPresentationConfig(config: SidebarConfig, layout: ReturnType<typeof resolveSidebarWorkspaceLayout>, section: Exclude<SidebarSection, { kind: "databaseView" }>): LegacySidebarConfig {
