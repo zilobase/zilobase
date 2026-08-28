@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/icons";
 import { Reorder } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 

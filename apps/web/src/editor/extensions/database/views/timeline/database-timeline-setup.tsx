@@ -1,4 +1,4 @@
-import { CalendarPlus } from "lucide-react"
+import { CalendarPlus } from "@/components/icons"
 import { Button } from "@/components/ui/button"
 import {
   Select,

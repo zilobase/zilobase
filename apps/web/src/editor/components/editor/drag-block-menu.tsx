@@ -8,7 +8,7 @@ import {
   Plus,
   Trash2,
   Type,
-} from "lucide-react"
+} from "@/components/icons"
 
 import {
   DropDrawer,

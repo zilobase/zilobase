@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, ReactNode, SetStateAction } from "react"
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
-import { ChevronsRightIcon, PanelRightIcon } from "lucide-react"
+import { ChevronsRightIcon, SidebarSimpleIcon } from "@/components/icons"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppSearchProvider } from "@/components/app-search"
@@ -66,6 +66,10 @@ import {
   usePage,
   useRecordItemVisit,
 } from "@zilobase/features/pages"
+import {
+  defaultUserSettings,
+  useUserSettings,
+} from "@zilobase/features/user-settings"
 import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
 import { PageEditorPane } from "@/pages/page"
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
@@ -240,7 +244,11 @@ function AppLayoutContent({
   const recordItemVisit = useRecordItemVisit()
   const recordedVisitKeyRef = useRef<string | null>(null)
   const discussionsEnabled = Boolean(pageId && !databaseId)
-  const sidePaneState = usePageSidePaneState(pageId)
+  const { data: userSettings = defaultUserSettings } = useUserSettings()
+  const sidePaneState = usePageSidePaneState(
+    pageId,
+    userSettings.embeddedItemsOpenAs,
+  )
   const {
     closeSidePane,
     openDatabaseSidePane: openDatabaseSidePaneBase,
@@ -460,7 +468,10 @@ function AppLayoutContent({
   const pageSidebarPanel = pageLayoutSidebar?.hasSidebar ? (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-        <PanelRightIcon className="size-4 text-muted-foreground" />
+        <SidebarSimpleIcon
+          className="size-4 text-muted-foreground"
+          mirrored
+        />
         <h2 className="min-w-0 flex-1 truncate text-sm font-medium">
           Page sidebar
         </h2>

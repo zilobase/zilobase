@@ -1,6 +1,6 @@
 import { useQueries } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { ChevronRightIcon, ListChecksIcon } from "lucide-react"
+import { ChevronRightIcon, ListChecksIcon } from "@/components/icons"
 import * as React from "react"
 
 import {

@@ -4,7 +4,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-} from "lucide-react"
+} from "@/components/icons"
 import { useContext, useMemo } from "react"
 
 import {

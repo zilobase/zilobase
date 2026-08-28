@@ -29,7 +29,7 @@ import {
   SparklesIcon,
   Trash2Icon,
   XIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import { PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/lib/utils"

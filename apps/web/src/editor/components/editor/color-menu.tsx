@@ -1,4 +1,4 @@
-import { Palette } from "lucide-react"
+import { Palette } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import {

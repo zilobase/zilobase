@@ -8,12 +8,12 @@ import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
 import {
   ChevronsRightIcon,
   HistoryIcon,
-  PanelRightIcon,
+  SidebarSimpleIcon,
   PictureInPicture2Icon,
   PlusIcon,
   SparklesIcon,
   XIcon,
-} from "lucide-react"
+} from "@/components/icons"
 import { lazy, Suspense, useCallback, useState } from "react"
 
 const Chatbot = lazy(() => import("@/components/ai-elements/chatbot"))
@@ -130,7 +130,7 @@ export function ChatSidebarPanel({
               {presentationMode === "sidebar" ? (
                 <PictureInPicture2Icon className="size-4" />
               ) : (
-                <PanelRightIcon className="size-4" />
+                <SidebarSimpleIcon className="size-4" mirrored />
               )}
             </Button>
           ) : null}

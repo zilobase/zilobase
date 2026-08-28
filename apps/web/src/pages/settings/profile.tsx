@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { CameraIcon, DownloadIcon, LogOutIcon, Trash2Icon } from "lucide-react"
+import { CameraIcon, DownloadIcon, LogOutIcon, Trash2Icon } from "@/components/icons"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"

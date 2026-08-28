@@ -1,4 +1,4 @@
-import { Loader2, Plus, Search } from "lucide-react"
+import { Loader2, Plus, Search } from "@/components/icons"
 import { useEffect, useRef, useState } from "react"
 
 import {

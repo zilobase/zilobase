@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { Link } from "@tanstack/react-router"
-import { ArrowUpRightIcon, ChevronRightIcon, HardDriveDownloadIcon } from "lucide-react"
+import { ArrowUpRightIcon, ChevronRightIcon, HardDriveDownloadIcon } from "@/components/icons"
 
 import { getSidebarDatabaseViewSearchId } from "@/components/database-view-navigation"
 import {

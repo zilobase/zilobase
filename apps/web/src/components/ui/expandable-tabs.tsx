@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import type { LucideIcon } from "lucide-react"
+import type { Icon } from "@/components/icons"
 
 import { cn } from "@/lib/utils"
 
 interface Tab {
   title: string
-  icon: LucideIcon
+  icon: Icon
   type?: never
 }
 

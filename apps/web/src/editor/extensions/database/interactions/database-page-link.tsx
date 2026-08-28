@@ -3,7 +3,13 @@ import {
   useRef,
   useState,
 } from "react"
-import { DatabaseIcon, FileText, PanelRightIcon, X } from "lucide-react"
+import {
+  DatabaseIcon,
+  FileText,
+  SidebarSimpleIcon,
+  SquareIcon,
+  X,
+} from "@/components/icons"
 import { toast } from "sonner"
 
 import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
@@ -269,7 +275,13 @@ export function DatabasePageLink({
           onClick={handleClick}
           type="button"
         >
-          {isOpen ? <X /> : <PanelRightIcon />}
+          {isOpen ? (
+            <X />
+          ) : sidePane?.embeddedItemsOpenAs === "dialog" ? (
+            <SquareIcon />
+          ) : (
+            <SidebarSimpleIcon mirrored />
+          )}
           <span>{actionLabel}</span>
         </button>
       ) : null}

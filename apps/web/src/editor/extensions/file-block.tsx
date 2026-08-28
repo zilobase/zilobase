@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { File as FileIcon, Link } from "lucide-react"
+import { File as FileIcon, Link } from "@/components/icons"
 import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"

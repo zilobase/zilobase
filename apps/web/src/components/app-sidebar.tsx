@@ -17,16 +17,16 @@ import { isTauri } from "@tauri-apps/api/core"
 import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
 import {
   ChevronRightIcon,
-  DatabaseIcon,
   MonitorUpIcon,
   SlidersHorizontalIcon,
-} from "lucide-react"
+} from "@/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list"
 import { AppSidebarHeader, AppSidebarShell } from "@/components/app-sidebar-shell"
 import { useAppSearch } from "@/components/app-search"
+import { DatabaseViewIcon } from "@/components/database-view-icon"
 import { NavFavorites } from "@/components/nav-favorites"
 import { NavMeetings } from "@/components/nav-meetings"
 import { NavPageSection } from "@/components/nav-pages"
@@ -37,7 +37,10 @@ import { getShortcutLabel } from "@/components/sidebar-layout-model"
 import { SidebarLayoutTabs } from "@/components/sidebar-layout-tabs"
 import { SidebarTasksSection } from "@/components/sidebar-tasks-section"
 import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
-import { buildSidebarNavigation } from "@/components/sidebar-navigation-model"
+import {
+  buildSidebarNavigation,
+  type SidebarNavigationIcons,
+} from "@/components/sidebar-navigation-model"
 import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,
@@ -97,10 +100,10 @@ import {
 } from "@zilobase/features/user-settings"
 import { useWorkspaces } from "@zilobase/features/workspaces"
 
-const sidebarNavigationIcons = {
+const sidebarNavigationIcons: SidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
     getDatabaseIconNode(database) ?? <PageIconDisplay size="sm" value={DEFAULT_DATABASE_ITEM_ICON} />,
-  getDatabaseViewIcon: () => <DatabaseIcon className="size-4" />,
+  getDatabaseViewIcon: (view) => <DatabaseViewIcon view={view} />,
   getMeetingIcon: (meeting: { emoji?: string | null }) =>
     <PageIconDisplay size="sm" value={meeting.emoji ?? DEFAULT_MEETING_ITEM_ICON} />,
   getPageIcon: getPageIconNode,

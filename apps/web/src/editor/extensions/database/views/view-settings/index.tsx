@@ -4,13 +4,13 @@ import {
   Eye,
   EyeOff,
   Filter,
-  GripVertical,
+  IntersectSquareIcon,
   Link as LinkIcon,
   Lock,
   Palette,
-  Settings2,
+  SlidersHorizontalIcon,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import { useState } from "react";
 
 import {
@@ -334,14 +334,14 @@ export function DatabaseViewSettingsMenu({
       <DropDrawerSub displayMode="inline" title="Group">
         <DropDrawerSubTrigger>
           <ViewSettingsRow
-            icon={<GripVertical />}
+            icon={<IntersectSquareIcon />}
             label="Group"
             right={activeGroupProperty?.property.name ?? "None"}
           />
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
           <DropDrawerItem onSelect={() => onSetViewGroupProperty(null)}>
-            <GripVertical />
+            <IntersectSquareIcon />
             <span>No grouping</span>
             {groupPropertyId === null ? (
               <Check className="ml-auto text-foreground" />
@@ -437,7 +437,7 @@ export function DatabaseViewSettingsMenu({
       aria-label="Open view settings"
       aria-expanded={open}
     >
-      <Settings2 />
+      <SlidersHorizontalIcon />
     </DatabaseViewToolbarButton>
   );
 

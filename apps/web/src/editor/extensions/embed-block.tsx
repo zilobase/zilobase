@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { CodeXml, FileWarning, Link, RefreshCw } from "lucide-react"
+import { CodeXml, FileWarning, Link, RefreshCw } from "@/components/icons"
 import {
   useEffect,
   useRef,

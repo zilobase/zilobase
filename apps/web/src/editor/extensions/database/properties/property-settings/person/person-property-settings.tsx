@@ -1,4 +1,4 @@
-import { Bell, CircleUserRound, Hash, UserRound } from "lucide-react";
+import { Bell, CircleUserRound, Hash, UserRound } from "@/components/icons";
 import type { ReactNode } from "react";
 
 import type { DatabasePropertyConfig } from "../../../views/database-view-config";

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { Building2Icon } from "lucide-react"
+import { Building2Icon } from "@/components/icons"
 
 import {
   AlertDialog,

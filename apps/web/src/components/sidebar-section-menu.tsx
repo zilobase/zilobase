@@ -6,7 +6,7 @@ import {
   HashIcon,
   MoreHorizontalIcon,
   SlidersHorizontalIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import {
   DropdownMenu,

@@ -1,4 +1,4 @@
-import { Check, Hash } from "lucide-react";
+import { Check, Hash } from "@/components/icons";
 import { useState, type ReactNode } from "react";
 
 import {

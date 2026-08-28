@@ -12,7 +12,7 @@ import {
   MoveVertical,
   Plus,
   Trash2,
-} from "lucide-react"
+} from "@/components/icons"
 import { useState, type ReactNode } from "react"
 
 import { PageMetadata } from "@/packages/editor/components/editor/page-metadata"

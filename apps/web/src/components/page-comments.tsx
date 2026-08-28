@@ -21,7 +21,7 @@ import {
   SmilePlus,
   Trash2,
   X,
-} from "lucide-react"
+} from "@/components/icons"
 
 import {
   AlertDialog,

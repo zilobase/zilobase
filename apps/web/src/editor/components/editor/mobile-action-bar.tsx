@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { ArrowDown, ArrowUp } from "lucide-react"
+import { ArrowDown, ArrowUp } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"

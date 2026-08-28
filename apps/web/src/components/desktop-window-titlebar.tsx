@@ -4,7 +4,7 @@ import type { ReactNode } from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import { CopyIcon, MinusIcon, SquareIcon, XIcon } from "lucide-react"
+import { CopyIcon, MinusIcon, SquareIcon, XIcon } from "@/components/icons"
 
 import { cn } from "@/lib/utils"
 

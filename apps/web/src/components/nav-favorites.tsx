@@ -7,7 +7,7 @@ import {
   LinkIcon,
   MoreHorizontalIcon,
   StarOffIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import {
   Collapsible,

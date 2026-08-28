@@ -6,9 +6,9 @@ import {
   ChevronUp,
   ChevronsRight,
   Maximize2,
-  PanelRightIcon,
+  SidebarSimpleIcon,
   SquareIcon,
-} from "lucide-react";
+} from "@/components/icons";
 import { toast } from "sonner";
 
 import { NavActions } from "@/components/nav-actions";
@@ -296,7 +296,7 @@ function OpenPageAsDropdown({
   mode: EmbeddedItemsOpenAs;
   onSelect: (mode: EmbeddedItemsOpenAs) => void;
 }) {
-  const ModeIcon = mode === "sidepanel" ? PanelRightIcon : SquareIcon;
+  const ModeIcon = mode === "sidepanel" ? SidebarSimpleIcon : SquareIcon;
   const [open, setOpen] = useState(false);
 
   return (
@@ -310,7 +310,7 @@ function OpenPageAsDropdown({
           type="button"
           variant="ghost"
         >
-          <ModeIcon />
+          <ModeIcon mirrored={mode === "sidepanel"} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -318,7 +318,7 @@ function OpenPageAsDropdown({
         className="w-52"
       >
         {embeddedItemsOpenAsModes.map((value) => {
-          const OptionIcon = value === "sidepanel" ? PanelRightIcon : SquareIcon;
+          const OptionIcon = value === "sidepanel" ? SidebarSimpleIcon : SquareIcon;
 
           return (
             <DropdownMenuItem
@@ -329,7 +329,7 @@ function OpenPageAsDropdown({
                 setOpen(false);
               }}
             >
-              <OptionIcon />
+              <OptionIcon mirrored={value === "sidepanel"} />
               <span>{embeddedItemsOpenAsLabels[value]}</span>
               {mode === value ? <CheckIcon className="ml-auto" /> : null}
             </DropdownMenuItem>

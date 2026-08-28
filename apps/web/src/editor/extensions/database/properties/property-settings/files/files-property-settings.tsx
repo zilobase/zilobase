@@ -1,4 +1,4 @@
-import { Hash } from "lucide-react";
+import { Hash } from "@/components/icons";
 
 import type { DatabasePropertyConfig } from "../../../views/database-view-config";
 import { PropertySettingSubmenu } from "../shared";

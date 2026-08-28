@@ -5,7 +5,7 @@ import {
   useRouteContext,
   useSearch,
 } from "@tanstack/react-router";
-import { ArrowRight, CopyIcon, Maximize2 } from "lucide-react";
+import { ArrowRight, CopyIcon, Maximize2 } from "@/components/icons";
 
 import { AuthenticatedRouteError } from "@/components/authenticated-route-error";
 import { FallbackErrorBoundary } from "@/components/fallback-error-boundary";

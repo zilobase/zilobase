@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Plus } from "@/components/icons"
 import { toast } from "sonner"
 import {
   colorWithAlpha,

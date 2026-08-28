@@ -1,4 +1,4 @@
-import { ChevronUpIcon, RotateCcwIcon } from "lucide-react"
+import { ChevronUpIcon, RotateCcwIcon } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"

@@ -1,4 +1,4 @@
-import { Check, Flag, GripVertical, Trash2 } from "lucide-react";
+import { Check, Flag, GripVertical, Trash2 } from "@/components/icons";
 import { Reorder, useDragControls } from "framer-motion";
 
 import {

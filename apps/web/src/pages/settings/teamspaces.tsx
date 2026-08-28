@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Layers3Icon, MoreHorizontalIcon, PlusIcon, UsersIcon } from "lucide-react"
+import { Layers3Icon, MoreHorizontalIcon, PlusIcon, UsersIcon } from "@/components/icons"
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 

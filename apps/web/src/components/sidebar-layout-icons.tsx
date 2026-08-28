@@ -17,7 +17,7 @@ import {
   StarIcon,
   Trash2Icon,
   UsersIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import type { LibraryView, SidebarShortcut, SidebarTabIconId } from "@zilobase/features/user-settings"
 import { PageIconDisplay } from "@/lib/page-icon"

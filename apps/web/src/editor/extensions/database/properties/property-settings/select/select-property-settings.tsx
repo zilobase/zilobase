@@ -1,4 +1,4 @@
-import { ArrowDownUp, Plus } from "lucide-react";
+import { ArrowDownUp, Plus } from "@/components/icons";
 import { Reorder } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 

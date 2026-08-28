@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { CheckIcon, DownloadIcon, LoaderCircleIcon } from "lucide-react"
+import { CheckIcon, DownloadIcon, LoaderCircleIcon } from "@/components/icons"
 import { toast } from "sonner"
 
 import { DropDrawerItem } from "@/components/ui/dropdrawer"

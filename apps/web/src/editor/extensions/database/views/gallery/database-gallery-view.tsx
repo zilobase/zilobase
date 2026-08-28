@@ -5,7 +5,7 @@ import {
   FileText,
   Loader2,
   Plus,
-} from "lucide-react"
+} from "@/components/icons"
 import {
   getPageCover,
   getPageEmoji,

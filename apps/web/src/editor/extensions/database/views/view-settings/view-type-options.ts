@@ -6,7 +6,7 @@ import {
   Kanban,
   List,
   Table2,
-} from "lucide-react";
+} from "@/components/icons";
 
 export const databaseViewTypeOptions = [
   { icon: Table2, label: "Table", type: "table" },

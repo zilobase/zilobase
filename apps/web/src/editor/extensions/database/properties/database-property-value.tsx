@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import { Check, FileText } from "lucide-react"
+import { Check, FileText } from "@/components/icons"
 
 import { Checkbox } from "@/components/ui/checkbox"
 import {

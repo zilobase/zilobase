@@ -12,7 +12,7 @@ import {
   Trash2Icon,
   UsersIcon,
   BlocksIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import {

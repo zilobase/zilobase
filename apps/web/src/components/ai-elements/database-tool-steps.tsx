@@ -13,7 +13,7 @@ import {
   isDatabaseConfigToolName,
 } from "@zilobase/features/ai-chat";
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
-import type { LucideIcon } from "lucide-react";
+import type { Icon } from "@/components/icons";
 import {
   Columns3Icon,
   DatabaseIcon,
@@ -24,12 +24,12 @@ import {
   Rows3Icon,
   Settings2Icon,
   TablePropertiesIcon,
-} from "lucide-react";
+} from "@/components/icons";
 
 type DatabaseToolStepConfig = {
   activeLabel: string;
   completeLabel: string;
-  icon: LucideIcon;
+  icon: Icon;
 };
 
 const databaseToolStepConfig: Record<DatabaseConfigToolName, DatabaseToolStepConfig> =

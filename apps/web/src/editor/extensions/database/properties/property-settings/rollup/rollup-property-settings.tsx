@@ -1,4 +1,4 @@
-import { ArrowUpRight, Check, Sigma, Type } from "lucide-react";
+import { ArrowUpRight, Check, Sigma, Type } from "@/components/icons";
 import type { ReactNode } from "react";
 
 import {

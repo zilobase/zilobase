@@ -1,6 +1,6 @@
 import * as React from "react"
-import { Search } from "lucide-react"
-import type { IconComponent } from "reicon-react"
+import type { Icon } from "@/components/icons"
+import { Search } from "@/components/icons"
 
 import { IconColorGrid } from "@/components/ui/icon-color-grid"
 import {
@@ -11,22 +11,35 @@ import {
 import { cn } from "@/lib/utils"
 import { buildStoredSvgFromRenderedSvg } from "@/lib/page-icon-utils"
 
-type ReiconCatalogEntry = {
-  Icon: React.LazyExoticComponent<IconComponent>
+export type PhosphorPickerWeight = "bold" | "fill"
+
+type PhosphorCatalogEntry = {
+  Icon: React.LazyExoticComponent<Icon>
   label: string
   name: string
   searchText: string
 }
 
-const iconModules = import.meta.glob<{ default: IconComponent }>(
-  "../../../../../node_modules/reicon-react/icons/*.js",
+type PhosphorIconModule = Record<string, Icon>
+
+const iconModules = import.meta.glob<PhosphorIconModule>(
+  "../../../../../node_modules/@phosphor-icons/react/dist/csr/*.es.js",
 )
 
-const reiconCatalog = Object.entries(iconModules)
+const phosphorCatalog = Object.entries(iconModules)
   .map(([path, loadIcon]) => {
-    const name = path.slice(path.lastIndexOf("/") + 1, -3)
-    const label = formatReiconLabel(name)
-    const Icon = React.lazy(loadIcon)
+    const name = path.slice(path.lastIndexOf("/") + 1, -6)
+    const label = formatPhosphorLabel(name)
+    const Icon = React.lazy(async () => {
+      const module = await loadIcon()
+      const component = module[`${name}Icon`] ?? module[name]
+
+      if (!component) {
+        throw new Error(`Phosphor icon module did not export ${name}`)
+      }
+
+      return { default: component }
+    })
 
     return {
       Icon,
@@ -37,17 +50,19 @@ const reiconCatalog = Object.entries(iconModules)
   })
   .sort((first, second) => first.label.localeCompare(second.label))
 
-type ReiconIconPickerProps = {
+type PhosphorIconPickerProps = {
   className?: string
   onIconSelect: (svg: string) => void
+  weight: PhosphorPickerWeight
 }
 
 const ICON_BATCH_SIZE = 72
 
-export function ReiconIconPicker({
+export function PhosphorIconPicker({
   className,
   onIconSelect,
-}: ReiconIconPickerProps) {
+  weight,
+}: PhosphorIconPickerProps) {
   const [query, setQuery] = React.useState("")
   const [visibleCount, setVisibleCount] = React.useState(ICON_BATCH_SIZE)
 
@@ -55,10 +70,10 @@ export function ReiconIconPicker({
     const normalizedQuery = query.trim().toLowerCase()
 
     if (!normalizedQuery) {
-      return reiconCatalog
+      return phosphorCatalog
     }
 
-    return reiconCatalog.filter((icon) =>
+    return phosphorCatalog.filter((icon) =>
       icon.searchText.includes(normalizedQuery),
     )
   }, [query])
@@ -82,7 +97,7 @@ export function ReiconIconPicker({
           autoFocus
           className="h-8 w-full rounded-md border border-input bg-input pr-2.5 pl-8 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring dark:bg-input"
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search icons..."
+          placeholder="Search Phosphor icons..."
           type="search"
           value={query}
         />
@@ -109,28 +124,31 @@ export function ReiconIconPicker({
         ) : (
           <div className="grid grid-cols-9 px-2 pt-2">
             {visibleIcons.map((icon) => (
-              <ReiconIconOption
+              <PhosphorIconOption
                 icon={icon}
                 key={icon.name}
                 onIconSelect={onIconSelect}
+                weight={weight}
               />
             ))}
           </div>
         )}
       </div>
       <div className="flex h-10 items-center border-t px-3 text-xs text-muted-foreground">
-        Select a Reicon icon
+        Select a Phosphor icon
       </div>
     </div>
   )
 }
 
-function ReiconIconOption({
+function PhosphorIconOption({
   icon,
   onIconSelect,
+  weight,
 }: {
-  icon: ReiconCatalogEntry
+  icon: PhosphorCatalogEntry
   onIconSelect: (svg: string) => void
+  weight: PhosphorPickerWeight
 }) {
   const { Icon } = icon
 
@@ -144,7 +162,7 @@ function ReiconIconOption({
           type="button"
         >
           <React.Suspense fallback={<span className="size-5" />}>
-            <Icon aria-hidden className="size-5" weight="Filled" />
+            <Icon aria-hidden className="size-5" weight={weight} />
           </React.Suspense>
         </button>
       </DropdownMenuTrigger>
@@ -172,7 +190,7 @@ function ReiconIconOption({
           }}
           preview={
             <React.Suspense fallback={<span className="size-5" />}>
-              <Icon aria-hidden weight="Filled" />
+              <Icon aria-hidden weight={weight} />
             </React.Suspense>
           }
         />
@@ -181,7 +199,7 @@ function ReiconIconOption({
   )
 }
 
-function formatReiconLabel(name: string) {
+function formatPhosphorLabel(name: string) {
   return name
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")

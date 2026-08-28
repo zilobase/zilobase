@@ -10,7 +10,7 @@ import {
   Sparkles,
   TextWrap,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import { useState, type ButtonHTMLAttributes } from "react";
 
 import {

@@ -1,4 +1,4 @@
-import { File as FileIcon, Link as LinkIcon, Loader2, Plus, X } from "lucide-react"
+import { File as FileIcon, Link as LinkIcon, Loader2, Plus, X } from "@/components/icons"
 import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"

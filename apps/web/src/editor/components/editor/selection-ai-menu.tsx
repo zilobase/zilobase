@@ -1,5 +1,5 @@
 import type { Editor, Range } from "@tiptap/core"
-import { Loader2, Sparkles } from "lucide-react"
+import { Loader2, Sparkles } from "@/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
 

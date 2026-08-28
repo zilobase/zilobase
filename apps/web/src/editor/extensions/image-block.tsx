@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { Image as ImageIcon } from "lucide-react"
+import { Image as ImageIcon } from "@/components/icons"
 import { useRef, useState } from "react"
 
 import {

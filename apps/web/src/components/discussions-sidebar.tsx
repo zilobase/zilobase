@@ -4,7 +4,7 @@ import {
   ChevronsRightIcon,
   FilterIcon,
   MessageSquarePlusIcon,
-} from "lucide-react"
+} from "@/components/icons"
 import { useEffect, useMemo, useState } from "react"
 
 import { PageCommentThread } from "@/components/page-comments"

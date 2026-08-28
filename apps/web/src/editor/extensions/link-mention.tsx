@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { Globe2 } from "lucide-react"
+import { Globe2 } from "@/components/icons"
 import { useState } from "react"
 
 import {

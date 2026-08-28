@@ -1,4 +1,4 @@
-import { CalendarIcon, GripVertical, X } from "lucide-react"
+import { CalendarIcon, GripVertical, X } from "@/components/icons"
 import { Reorder, useDragControls } from "framer-motion"
 import { useState, type ReactNode } from "react"
 import type { DateRange } from "react-day-picker"

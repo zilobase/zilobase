@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { GripVertical, Loader2, Plus } from "lucide-react"
+import { GripVertical, Loader2, Plus } from "@/components/icons"
 
 import { Checkbox } from "@/components/ui/checkbox"
 import { DatabasePageLink } from "../../interactions/database-page-link"

@@ -14,6 +14,10 @@ export function register({ assert, test }) {
       new URL("../src/components/app-sidebar-shell.tsx", import.meta.url),
       "utf8",
     )
+    const sidebarPrimitiveSource = await readFile(
+      new URL("../src/components/ui/sidebar.tsx", import.meta.url),
+      "utf8",
+    )
     const sidebarTabsSource = await readFile(
       new URL("../src/components/sidebar-layout-tabs.tsx", import.meta.url),
       "utf8",
@@ -86,10 +90,10 @@ export function register({ assert, test }) {
     assert.match(sidebarSource, /<SortableContext items=\{activeTab\.sections/)
     assert.match(sidebarSource, /closest\('\[data-sidebar="group-label"\]'\)/)
     assert.match(sidebarSource, /translate3d\(0, \$\{sortable\.transform\.y\}px, 0\)/)
-    assert.match(
-      sidebarShellSource,
-      /<ThemeSwitcher \/>[\s\S]*<SidebarTrigger[^>]*\[&_svg\]:size-4!/,
-    )
+    assert.match(sidebarPrimitiveSource, /<SidebarSimpleIcon className="size-4" \/>/)
+    assert.match(sidebarPrimitiveSource, /variant="ghost"[\s\S]*size="icon"/)
+    assert.doesNotMatch(sidebarShellSource, /<SidebarTrigger[^>]*\[&_svg\]:size-/)
+    assert.doesNotMatch(sidebarShellSource, /<SidebarTrigger[^>]*(size-7|hover:bg-accent)/)
     assert.doesNotMatch(
       sidebarShellSource,
       /group\/workspace-row|hover:bg-accent focus-within:bg-accent/,

@@ -125,7 +125,7 @@ import {
   SparklesIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
-} from "lucide-react";
+} from "@/components/icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AgentResultTable } from "@/components/ai-elements/agent-result-table";

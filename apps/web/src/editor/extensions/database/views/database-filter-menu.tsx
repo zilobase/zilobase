@@ -1,4 +1,4 @@
-import { Filter, Plus, X } from "lucide-react"
+import { Filter, Plus, X } from "@/components/icons"
 import { Reorder } from "framer-motion"
 import { useState, type ReactNode } from "react"
 

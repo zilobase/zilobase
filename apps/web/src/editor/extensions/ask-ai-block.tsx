@@ -5,11 +5,12 @@ import {
   type ReactNodeViewProps,
 } from "@tiptap/react"
 import type { Editor, Range } from "@tiptap/core"
-import { Loader2, Send, Sparkles, X } from "lucide-react"
+import { Loader2, Send, Sparkles, X } from "@/components/icons"
 import { useEffect, useRef, useState } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { toast } from "sonner"
 
+import { AppIconProvider } from "@/providers/app-icon-provider"
 import {
   PromptInput,
   PromptInputFooter,
@@ -317,13 +318,15 @@ export function openAskAiPopover({
   editor.chain().focus().deleteRange(range).setTextSelection(insertPos).run()
 
   root.render(
-    <AskAiPopover
-      anchorRect={coords}
-      editor={editor}
-      insertPos={insertPos}
-      onDone={cleanup}
-      workspaceId={workspaceId}
-    />
+    <AppIconProvider>
+      <AskAiPopover
+        anchorRect={coords}
+        editor={editor}
+        insertPos={insertPos}
+        onDone={cleanup}
+        workspaceId={workspaceId}
+      />
+    </AppIconProvider>
   )
 }
 

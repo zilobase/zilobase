@@ -17,6 +17,7 @@ import { useLocation, useRouter } from "@tanstack/react-router"
 
 import { cn } from "@/lib/utils"
 import { isMobileViewport, useIsMobile } from "@/hooks/use-mobile"
+import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 
 export type OpenPageSidePaneOptions = {
   databaseId?: string | null
@@ -27,6 +28,7 @@ export type PageSidePaneContextValue = {
   closeSidePane: () => void
   dialogDatabaseId: string | null
   dialogPageId: string | null
+  embeddedItemsOpenAs: EmbeddedItemsOpenAs
   mainPaneNavigationActive: boolean
   openEmbeddedPageDialog: (
     pageId: string,
@@ -559,6 +561,7 @@ export function PageSidePaneLayout({
 
 export function usePageSidePaneState(
   _resetKey?: string | null,
+  embeddedItemsOpenAs: EmbeddedItemsOpenAs = "sidepanel",
 ): PageSidePaneContextValue {
   const router = useRouter()
   const isMobile = useIsMobile()
@@ -835,6 +838,7 @@ export function usePageSidePaneState(
       closeSidePane,
       dialogDatabaseId,
       dialogPageId,
+      embeddedItemsOpenAs,
       mainPaneNavigationActive: Boolean(
         promotedFullPagePath || pendingMainPanePathRef.current,
       ),
@@ -856,6 +860,7 @@ export function usePageSidePaneState(
       closeSidePane,
       dialogDatabaseId,
       dialogPageId,
+      embeddedItemsOpenAs,
       promotedFullPagePath,
       openEmbeddedPageDialog,
       openDatabaseInMainPane,
@@ -895,12 +900,14 @@ export function getSidePaneDatabaseParam(
 
 export function PageSidePaneProvider({
   children,
+  embeddedItemsOpenAs = "sidepanel",
   resetKey,
 }: {
   children: ReactNode
+  embeddedItemsOpenAs?: EmbeddedItemsOpenAs
   resetKey?: string | null
 }) {
-  const sidePaneContext = usePageSidePaneState(resetKey)
+  const sidePaneContext = usePageSidePaneState(resetKey, embeddedItemsOpenAs)
 
   return (
     <PageSidePaneContext.Provider value={sidePaneContext}>

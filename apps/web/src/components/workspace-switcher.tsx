@@ -52,7 +52,7 @@ import {
   PlusIcon,
   ServerIcon,
   Settings2Icon,
-} from "lucide-react"
+} from "@/components/icons"
 
 export function WorkspaceSwitcher({
   onOpenSettings,

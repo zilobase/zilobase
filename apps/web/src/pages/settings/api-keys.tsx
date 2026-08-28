@@ -6,7 +6,7 @@ import {
   Loader2Icon,
   PlusIcon,
   Trash2Icon,
-} from "lucide-react"
+} from "@/components/icons"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"

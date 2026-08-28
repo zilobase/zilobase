@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2Icon, PlusIcon, SearchIcon } from "lucide-react";
+import { Loader2Icon, PlusIcon, SearchIcon } from "@/components/icons";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";

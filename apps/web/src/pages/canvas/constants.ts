@@ -1,10 +1,10 @@
-import type { LucideIcon } from "lucide-react"
+import type { Icon } from "@/components/icons"
 import {
   ArrowRightIcon,
   CircleIcon,
   DiamondIcon,
   SquareIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import { getPaletteColor } from "@/lib/color-tokens"
 
@@ -81,7 +81,7 @@ export const defaultCanvasStrokeStyle: CanvasStrokeStyle = "solid"
 export const defaultCanvasSloppiness = "artist"
 
 const canvasShapeOptions: Array<{
-  icon: LucideIcon
+  icon: Icon
   label: string
   shape: CanvasShape
 }> = [
@@ -100,7 +100,7 @@ export const canvasShapeDimensions: Record<
 }
 
 export const canvasToolOptions: Array<{
-  icon: LucideIcon
+  icon: Icon
   label: string
   tool: CanvasTool
 }> = [

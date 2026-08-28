@@ -1,5 +1,5 @@
 import * as React from "react"
-import { BookOpenIcon, WandSparklesIcon } from "lucide-react"
+import { BookOpenIcon, WandSparklesIcon } from "@/components/icons"
 
 import {
   Empty,

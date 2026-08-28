@@ -19,8 +19,8 @@ import {
   Sigma,
   Type,
   Users,
-  type LucideIcon,
-} from "lucide-react"
+  type Icon,
+} from "@/components/icons"
 import {
   isReadOnlyPropertyType as isCanonicalReadOnlyPropertyType,
   isSelectLikePropertyType as isCanonicalSelectLikePropertyType,
@@ -77,7 +77,7 @@ export type DatabasePropertyType = {
   editable?: boolean
   filterKind: DatabasePropertyFilterKind
   hasEditSettings?: boolean
-  icon: LucideIcon
+  icon: Icon
   label: string
   type: DatabasePropertyTypeId
 }

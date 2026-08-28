@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { Check, ChevronDown, LayoutPanelLeft, X } from "lucide-react"
+import { Check, ChevronDown, SidebarSimpleIcon, X } from "@/components/icons"
 import { toast } from "sonner"
 
 import { LayoutEditorSettings } from "@/components/layout-editor-settings"
@@ -290,7 +290,7 @@ function LayoutEditor({
     <div className="fixed inset-0 z-[100] flex h-svh flex-col bg-background text-foreground">
       <header className="flex h-14 shrink-0 items-center border-b px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <LayoutPanelLeft className="size-4 text-muted-foreground" />
+          <SidebarSimpleIcon className="size-4 text-muted-foreground" />
           <PreviewPageDropdown
             currentPageId={effectivePreviewPageId}
             loading={

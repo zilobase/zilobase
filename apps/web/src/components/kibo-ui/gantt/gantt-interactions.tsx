@@ -4,7 +4,7 @@ import {
   format,
   formatDate,
 } from "date-fns"
-import { PlusIcon, TrashIcon } from "lucide-react"
+import { PlusIcon, TrashIcon } from "@/components/icons"
 import type {
   PointerEvent as ReactPointerEvent,
   PointerEventHandler,

@@ -1,4 +1,4 @@
-import { Check, GripVertical } from "lucide-react"
+import { Check, GripVertical } from "@/components/icons"
 import { useState, type ReactNode } from "react"
 
 import {

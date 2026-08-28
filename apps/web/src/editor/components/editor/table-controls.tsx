@@ -10,7 +10,7 @@ import {
   TableMap,
 } from "@tiptap/pm/tables"
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
-import { MoreHorizontal, MoreVertical, Plus } from "lucide-react"
+import { MoreHorizontal, MoreVertical, Plus } from "@/components/icons"
 import {
   getAddControlVisibility,
   getHoveredTableCell,

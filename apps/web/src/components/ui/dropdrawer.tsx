@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "@/components/icons";
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";

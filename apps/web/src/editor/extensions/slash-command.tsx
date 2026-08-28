@@ -28,10 +28,11 @@ import {
   Sparkles,
   Table2,
   Video,
-} from "lucide-react"
+} from "@/components/icons"
 import { type ComponentType, type SVGProps } from "react"
 import { createRoot, type Root } from "react-dom/client"
 
+import { AppIconProvider } from "@/providers/app-icon-provider"
 import {
   EmojiPicker,
   EmojiPickerContent,
@@ -111,22 +112,24 @@ function openSlashEmojiPicker({
   document.addEventListener("keydown", handleKeyDown)
 
   root.render(
-    <div
-      className="overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-border"
-      onMouseDown={(event) => event.stopPropagation()}
-      onPointerDown={(event) => event.stopPropagation()}
-    >
-      <EmojiPicker
-        onEmojiSelect={({ emoji }) => {
-          editor.chain().focus().deleteRange(range).insertEmoji(emoji).run()
-          cleanup()
-        }}
+    <AppIconProvider>
+      <div
+        className="overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-border"
+        onMouseDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
       >
-        <EmojiPickerSearch autoFocus placeholder="Search emoji..." />
-        <EmojiPickerContent />
-        <EmojiPickerFooter />
-      </EmojiPicker>
-    </div>
+        <EmojiPicker
+          onEmojiSelect={({ emoji }) => {
+            editor.chain().focus().deleteRange(range).insertEmoji(emoji).run()
+            cleanup()
+          }}
+        >
+          <EmojiPickerSearch autoFocus placeholder="Search emoji..." />
+          <EmojiPickerContent />
+          <EmojiPickerFooter />
+        </EmojiPicker>
+      </div>
+    </AppIconProvider>
   )
 }
 
@@ -649,16 +652,18 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
             const rect = props.clientRect?.() ?? null
 
             root.render(
-              <SlashCommandPopover
-                anchorRect={rect}
-                items={props.items}
-                setSelectedIndex={(index) => {
-                  selectedIndex = index
-                  renderMenu()
-                }}
-                selectedIndex={selectedIndex}
-                selectItem={selectItem}
-              />
+              <AppIconProvider>
+                <SlashCommandPopover
+                  anchorRect={rect}
+                  items={props.items}
+                  setSelectedIndex={(index) => {
+                    selectedIndex = index
+                    renderMenu()
+                  }}
+                  selectedIndex={selectedIndex}
+                  selectItem={selectItem}
+                />
+              </AppIconProvider>
             )
           }
 

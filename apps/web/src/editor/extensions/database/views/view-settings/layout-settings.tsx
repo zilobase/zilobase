@@ -6,7 +6,7 @@ import {
   GripVertical,
   Image as ImageIcon,
   Settings2,
-} from "lucide-react";
+} from "@/components/icons";
 
 import {
   DropDrawerItem,

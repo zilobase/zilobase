@@ -1,5 +1,5 @@
 import { memo, type CSSProperties } from "react"
-import { ChevronDown, ChevronRight, Plus } from "lucide-react"
+import { ChevronDown, ChevronRight, Plus } from "@/components/icons"
 
 import {
   getColorTokenBadgeClassName,

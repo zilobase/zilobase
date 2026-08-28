@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { EyeIcon, EyeOffIcon } from "lucide-react"
+import { EyeIcon, EyeOffIcon } from "@/components/icons"
 import { useNavigate } from "@tanstack/react-router"
 
 import { Button } from "@/components/ui/button"

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { CalendarDays, ChevronRightIcon } from "lucide-react"
+import { CalendarDays, ChevronRightIcon } from "@/components/icons"
 
 import {
   Collapsible,

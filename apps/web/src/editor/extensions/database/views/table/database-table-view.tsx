@@ -33,7 +33,7 @@ import {
   MoreHorizontal,
   Plus,
   X,
-} from "lucide-react"
+} from "@/components/icons"
 import { toast } from "sonner"
 import {
   useMoveDatabaseRow,

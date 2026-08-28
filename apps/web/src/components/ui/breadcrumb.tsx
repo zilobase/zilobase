@@ -2,7 +2,7 @@
 
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
-import { ChevronRight, MoreHorizontal } from "lucide-react"
+import { ChevronRight, MoreHorizontal } from "@/components/icons"
 import type * as React from "react"
 
 import { cn } from "@/lib/utils"

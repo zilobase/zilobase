@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { DatabaseIcon, FileTextIcon, UserIcon } from "lucide-react";
+import { DatabaseIcon, FileTextIcon, UserIcon } from "@/components/icons";
 
 import {
   PromptInputCommand,

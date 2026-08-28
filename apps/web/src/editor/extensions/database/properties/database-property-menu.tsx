@@ -19,7 +19,7 @@ import {
   TextWrap,
   Trash2,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import { useState, type ButtonHTMLAttributes } from "react";
 
 import {

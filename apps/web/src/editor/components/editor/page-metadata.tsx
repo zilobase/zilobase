@@ -10,7 +10,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react"
-import { ImagePlus, MessageSquare, SmilePlus, X } from "lucide-react"
+import { ImagePlus, MessageSquare, SmilePlus, X } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"

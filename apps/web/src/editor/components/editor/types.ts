@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/react"
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
-import type { LucideIcon } from "lucide-react"
+import type { Icon } from "@/components/icons"
 
 export type ToolbarAction =
   | "toggleBold"
@@ -26,7 +26,7 @@ export type ToolbarAttrs = {
 
 export type ToolbarItem = {
   label: string
-  icon: LucideIcon
+  icon: Icon
   isActive: () => string | Record<string, unknown>
   action: ToolbarAction
   attrs?: ToolbarAttrs

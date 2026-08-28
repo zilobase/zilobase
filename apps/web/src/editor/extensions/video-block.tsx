@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { Link, PlaySquare } from "lucide-react"
+import { Link, PlaySquare } from "@/components/icons"
 import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"

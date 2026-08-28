@@ -9,7 +9,7 @@ import {
   Search,
   Settings2,
   Sparkles,
-} from "lucide-react";
+} from "@/components/icons";
 import { useEffect, useState } from "react";
 
 import {

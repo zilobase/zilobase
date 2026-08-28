@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { DatabaseIcon, FileIcon, FileTextIcon } from "lucide-react"
+import { DatabaseIcon, FileIcon, FileTextIcon } from "@/components/icons"
 
 import {
   Command,

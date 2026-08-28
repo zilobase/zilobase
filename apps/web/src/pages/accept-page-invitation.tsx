@@ -4,7 +4,7 @@ import {
   CheckCircle2Icon,
   FileCheck2Icon,
   SendIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import {

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { ArrowUpRightIcon } from "lucide-react"
+import { ArrowUpRightIcon } from "@/components/icons"
 
 import { SidebarGroupAction } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"

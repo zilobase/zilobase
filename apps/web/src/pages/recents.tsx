@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, Database, FileText, Loader2, Plus } from "lucide-react";
+import { ChevronDown, Database, FileText, Loader2, Plus } from "@/components/icons";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";

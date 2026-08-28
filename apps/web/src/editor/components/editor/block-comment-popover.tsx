@@ -3,7 +3,7 @@ import {
   ChevronsLeftIcon,
   MessageSquareIcon,
   MessageSquarePlusIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import type { PageCommentController } from "@/comments/yjs-comments"
 import { usePageEditorComments } from "@/components/page-editor-comments"

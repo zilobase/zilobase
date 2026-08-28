@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { EyeIcon, EyeOffIcon } from "lucide-react"
+import { EyeIcon, EyeOffIcon } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import { GoogleIcon } from "@/components/google-icon"

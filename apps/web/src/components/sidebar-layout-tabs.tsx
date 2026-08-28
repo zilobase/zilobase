@@ -14,7 +14,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable"
 import { AnimatePresence, motion } from "framer-motion"
-import { PlusIcon, SearchIcon } from "lucide-react"
+import { PlusIcon, SearchIcon } from "@/components/icons"
 import type * as React from "react"
 
 import { SidebarTabIcon } from "@/components/sidebar-layout-icons"

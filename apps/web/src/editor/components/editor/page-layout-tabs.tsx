@@ -8,7 +8,7 @@ import {
   List,
   Table2,
   Trash2,
-} from "lucide-react"
+} from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"

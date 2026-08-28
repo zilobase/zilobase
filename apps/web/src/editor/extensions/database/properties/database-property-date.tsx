@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react"
-import { Check, ChevronRight, HelpCircle } from "lucide-react"
+import { Check, ChevronRight, HelpCircle } from "@/components/icons"
 import type { DateRange } from "react-day-picker"
 
 import { Button } from "@/components/ui/button"

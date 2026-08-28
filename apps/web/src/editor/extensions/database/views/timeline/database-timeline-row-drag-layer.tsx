@@ -1,4 +1,4 @@
-import { FileText, GripVertical } from "lucide-react"
+import { FileText, GripVertical } from "@/components/icons"
 
 import type { SortableDatabaseItem } from "../../interactions/database-item-utils"
 import type { TimelineRowLayout } from "./database-timeline-layout"

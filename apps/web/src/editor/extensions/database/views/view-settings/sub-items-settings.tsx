@@ -7,7 +7,7 @@ import {
   Rows3,
   Settings2,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons";
 import { useEffect, useState } from "react";
 
 import {

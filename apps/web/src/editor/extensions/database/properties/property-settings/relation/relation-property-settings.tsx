@@ -6,7 +6,7 @@ import {
   Hash,
   Plus,
   Search,
-} from "lucide-react";
+} from "@/components/icons";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 

@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { Bookmark, CircleX, Globe2, Loader2 } from "lucide-react"
+import { Bookmark, CircleX, Globe2, Loader2 } from "@/components/icons"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"

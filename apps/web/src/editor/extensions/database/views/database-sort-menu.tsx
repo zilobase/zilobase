@@ -1,4 +1,4 @@
-import { ArrowDownUp, Check, Plus, X } from "lucide-react";
+import { ArrowDownUp, Check, Plus, X } from "@/components/icons";
 import { useState, type ReactNode } from "react";
 
 import {

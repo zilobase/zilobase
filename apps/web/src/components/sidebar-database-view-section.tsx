@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { ChevronRightIcon, DatabaseIcon, FileIcon, PlusIcon } from "lucide-react"
+import { ChevronRightIcon, DatabaseIcon, FileIcon, PlusIcon } from "@/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
 

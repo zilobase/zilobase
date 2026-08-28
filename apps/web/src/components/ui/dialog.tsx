@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/drawer"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
-import { XIcon } from "lucide-react"
+import { XIcon } from "@/components/icons"
 
 const DialogContext = React.createContext({ isMobile: false })
 

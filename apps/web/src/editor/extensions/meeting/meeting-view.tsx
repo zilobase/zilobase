@@ -21,7 +21,7 @@ import {
   Sparkles,
   Volume2,
   X,
-} from "lucide-react"
+} from "@/components/icons"
 import {
   useMeeting,
   useGenerateMeetingSummary,

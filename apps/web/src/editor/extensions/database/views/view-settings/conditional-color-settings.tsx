@@ -1,5 +1,5 @@
 import { Reorder } from "framer-motion";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Plus, Search, Trash2 } from "@/components/icons";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";

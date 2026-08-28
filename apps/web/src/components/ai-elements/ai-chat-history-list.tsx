@@ -25,7 +25,7 @@ import {
   PinOffIcon,
   SearchIcon,
   Trash2Icon,
-} from "lucide-react";
+} from "@/components/icons";
 import { Fragment, useMemo, useState } from "react";
 
 function formatRelativeTime(value: string) {

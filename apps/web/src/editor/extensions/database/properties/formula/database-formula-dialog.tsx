@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { Copy, HelpCircle, Sigma } from "lucide-react"
+import { Copy, HelpCircle, Sigma } from "@/components/icons"
 import type { ThemedToken } from "shiki"
 import { toast } from "sonner"
 

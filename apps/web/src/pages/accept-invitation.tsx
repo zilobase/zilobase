@@ -4,7 +4,7 @@ import {
   CheckCircle2Icon,
   MailCheckIcon,
   SendIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import {

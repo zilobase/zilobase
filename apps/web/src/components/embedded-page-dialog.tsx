@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { XIcon } from "lucide-react"
+import { XIcon } from "@/components/icons"
 
 import {
   Dialog,

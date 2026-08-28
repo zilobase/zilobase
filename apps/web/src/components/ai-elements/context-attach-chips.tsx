@@ -1,4 +1,4 @@
-import { DatabaseIcon, UserIcon, WandSparklesIcon, XIcon } from "lucide-react"
+import { DatabaseIcon, UserIcon, WandSparklesIcon, XIcon } from "@/components/icons"
 
 import { PageIconDisplay, PageIcon } from "@/lib/page-icon"
 import type { ContextAttachment } from "@zilobase/page-context"

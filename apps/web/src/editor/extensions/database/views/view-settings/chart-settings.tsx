@@ -17,7 +17,7 @@ import {
   Type,
   X,
   Zap,
-} from "lucide-react";
+} from "@/components/icons";
 
 import { Button } from "@/components/ui/button";
 import {

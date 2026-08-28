@@ -6,7 +6,7 @@ import {
   Link2,
   Share2,
   UserRoundCheck,
-} from "lucide-react"
+} from "@/components/icons"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 

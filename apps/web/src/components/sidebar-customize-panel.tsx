@@ -37,11 +37,12 @@ import {
   StarIcon,
   Trash2Icon,
   UsersIcon,
-} from "lucide-react"
+} from "@/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { SidebarLayoutTabs } from "@/components/sidebar-layout-tabs"
+import { DatabaseViewIcon } from "@/components/database-view-icon"
 import { libraryViewIcons, SidebarShortcutIcon, SidebarTabIcon } from "@/components/sidebar-layout-icons"
 import {
   getSectionLabel,
@@ -90,7 +91,6 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon"
-import { getDatabaseViewIcon } from "@/packages/editor/extensions/database/views/database-view-config"
 import { useAppSearchResults, type AppSearchResult } from "@zilobase/features/search"
 import type { Page, PageDatabase, PageDatabaseView } from "@zilobase/features/pages"
 import {
@@ -654,10 +654,7 @@ function DatabasePickerRow({ database, defaultOpen, onSelect }: { database: Page
 }
 
 function DatabaseViewPickerIcon({ view }: { view: PageDatabaseView }) {
-  const icon = getDatabaseViewIcon(view.config)
-  return icon
-    ? <PageIconDisplay size="sm" value={icon} />
-    : <DatabaseIcon className="text-muted-foreground" />
+  return <DatabaseViewIcon className="text-muted-foreground" view={view} />
 }
 
 function PickerPanel({ ariaLabel, children, emptyLabel, isSearching, onQueryChange, query }: { ariaLabel: string; children: React.ReactNode; emptyLabel: string; isSearching: boolean; onQueryChange: (query: string) => void; query: string }) {

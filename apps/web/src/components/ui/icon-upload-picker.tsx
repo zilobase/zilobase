@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Upload } from "lucide-react"
+import { Upload } from "@/components/icons"
 
 import { IconColorGrid } from "@/components/ui/icon-color-grid"
 import { IconSvgPreview } from "@/components/ui/icon-svg-preview"

@@ -1,4 +1,4 @@
-import { CheckIcon, Loader2Icon, XIcon } from "lucide-react"
+import { CheckIcon, Loader2Icon, XIcon } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 

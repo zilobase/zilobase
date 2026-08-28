@@ -1,4 +1,4 @@
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight } from "@/components/icons";
 
 import { DropDrawerItem } from "@/components/ui/dropdrawer";
 import { Switch } from "@/components/ui/switch";

@@ -1,5 +1,5 @@
 import type { AgentResultTable as AgentResultTableData } from "@zilobase/features/ai-chat/agent-contract"
-import { ArrowUpDownIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, SearchIcon } from "lucide-react"
+import { ArrowUpDownIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, SearchIcon } from "@/components/icons"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { UploadIcon } from "lucide-react"
+import { UploadIcon } from "@/components/icons"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"

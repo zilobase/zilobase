@@ -31,12 +31,12 @@ import {
   Paintbrush,
   Pencil,
   Plus,
-  Settings2,
+  SlidersHorizontalIcon,
   Smile,
   Table2,
   Trash2,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -828,7 +828,7 @@ export function DatabaseViewToolbar() {
                             setViewSettingsOpen(true);
                           }}
                         >
-                          <Settings2 />
+                          <SlidersHorizontalIcon />
                           <span>Edit view</span>
                         </DropDrawerItem>
                         <DropDrawerSub>

@@ -6,10 +6,9 @@ import {
   Copy,
   Eraser,
   MoreHorizontal,
-  PanelLeft,
-  PanelRight,
+  SidebarSimpleIcon,
   Trash2,
-} from "lucide-react"
+} from "@/components/icons"
 import {
   columnHandleGap,
   columnHandleHeight,
@@ -836,7 +835,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
             }
             type="button"
           >
-            <PanelLeft />
+            <SidebarSimpleIcon />
             <span>Insert left</span>
           </button>
           <button
@@ -846,7 +845,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
             }
             type="button"
           >
-            <PanelRight />
+            <SidebarSimpleIcon mirrored />
             <span>Insert right</span>
           </button>
           <button

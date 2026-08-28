@@ -1,4 +1,4 @@
-import { Copy, Database, MoreHorizontal, Plus, X } from "lucide-react";
+import { Copy, Database, MoreHorizontal, Plus, X } from "@/components/icons";
 import { useState, type ReactNode } from "react";
 
 import {

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { DownloadIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
+import { DownloadIcon, RefreshCwIcon, Trash2Icon } from "@/components/icons";
 import { toast } from "sonner";
 
 import {

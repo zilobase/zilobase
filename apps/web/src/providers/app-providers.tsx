@@ -13,37 +13,40 @@ import { ShortcutProvider } from "@/shortcuts"
 import { OfflineQueryProvider } from "@/providers/offline-provider"
 import { getThemeColorScheme, selectableThemeIds } from "@/lib/themes"
 import { ThemeFamilyProvider } from "@/providers/theme-family-provider"
+import { AppIconProvider } from "@/providers/app-icon-provider"
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
-    <OfflineQueryProvider client={queryClient}>
-      <WebFeaturesProvider>
-        <ShortcutProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-            themes={selectableThemeIds}
-          >
-            <ThemeFamilyProvider>
-              <ThemeDocumentSync />
-              <TooltipProvider>
-                <PageEditorRegistryProvider>
-                  <PageCommentsRegistryProvider>
-                    <PageEditorCommentsProvider>
-                      {children}
-                    </PageEditorCommentsProvider>
-                  </PageCommentsRegistryProvider>
-                </PageEditorRegistryProvider>
-                <DesktopUpdater />
-                <Toaster />
-              </TooltipProvider>
-            </ThemeFamilyProvider>
-          </ThemeProvider>
-        </ShortcutProvider>
-      </WebFeaturesProvider>
-    </OfflineQueryProvider>
+    <AppIconProvider>
+      <OfflineQueryProvider client={queryClient}>
+        <WebFeaturesProvider>
+          <ShortcutProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+              themes={selectableThemeIds}
+            >
+              <ThemeFamilyProvider>
+                <ThemeDocumentSync />
+                <TooltipProvider>
+                  <PageEditorRegistryProvider>
+                    <PageCommentsRegistryProvider>
+                      <PageEditorCommentsProvider>
+                        {children}
+                      </PageEditorCommentsProvider>
+                    </PageCommentsRegistryProvider>
+                  </PageEditorRegistryProvider>
+                  <DesktopUpdater />
+                  <Toaster />
+                </TooltipProvider>
+              </ThemeFamilyProvider>
+            </ThemeProvider>
+          </ShortcutProvider>
+        </WebFeaturesProvider>
+      </OfflineQueryProvider>
+    </AppIconProvider>
   )
 }
 

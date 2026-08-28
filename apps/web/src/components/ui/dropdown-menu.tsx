@@ -10,7 +10,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XIcon,
-} from "lucide-react"
+} from "@/components/icons"
 
 type DropdownMenuSubDisplayMode = "inline" | "nested"
 

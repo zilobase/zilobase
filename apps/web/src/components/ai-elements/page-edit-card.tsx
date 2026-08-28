@@ -13,7 +13,7 @@ import {
   Loader2Icon,
   Undo2Icon,
   XIcon,
-} from "lucide-react"
+} from "@/components/icons"
 import { useState } from "react"
 
 export function PageEditCard({

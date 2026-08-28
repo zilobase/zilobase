@@ -18,7 +18,7 @@ import {
   Strikethrough,
   Table2,
   Underline,
-} from "lucide-react"
+} from "@/components/icons"
 
 import type { ToolbarItem } from "./types"
 

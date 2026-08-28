@@ -19,7 +19,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core"
-import { GripVertical, Plus } from "lucide-react"
+import { GripVertical, Plus } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"

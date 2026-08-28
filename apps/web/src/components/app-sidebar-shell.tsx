@@ -3,7 +3,7 @@
 import * as React from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { useTheme } from "next-themes"
-import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
+import { MonitorIcon, MoonIcon, SunIcon } from "@/components/icons"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -61,7 +61,7 @@ export function AppSidebarHeader({
         <div className="h-full min-w-0 flex-1">{children}</div>
         <div className="flex shrink-0 items-center gap-0.5">
           <ThemeSwitcher />
-          <SidebarTrigger className="mr-0.5 size-7 shrink-0 rounded-md hover:bg-accent focus-visible:bg-accent [&_svg]:size-4!" />
+          <SidebarTrigger className="mr-0.5 shrink-0" />
         </div>
       </div>
       {navigation ? <div className="-mx-2">{navigation}</div> : null}

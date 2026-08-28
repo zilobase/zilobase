@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { Loader2Icon, XIcon } from "lucide-react"
+import { Loader2Icon, XIcon } from "@/components/icons"
 import { toast } from "sonner"
 
 import {

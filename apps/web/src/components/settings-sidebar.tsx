@@ -6,7 +6,7 @@ import {
   UserIcon,
   UsersIcon,
   Layers3Icon,
-} from "lucide-react"
+} from "@/components/icons"
 import type { ComponentType } from "react"
 import { useSession } from "@zilobase/features/auth"
 

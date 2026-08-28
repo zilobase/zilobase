@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react"
 import type { ReactNodeViewProps } from "@tiptap/react"
-import { Check, ChevronsUpDown, Copy } from "lucide-react"
+import { Check, ChevronsUpDown, Copy } from "@/components/icons"
 import { useState } from "react"
 import CodeBlockShikiBase from "tiptap-extension-code-block-shiki"
 

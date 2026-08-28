@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ArrowLeftIcon, RotateCcwIcon } from "lucide-react"
+import { ArrowLeftIcon, RotateCcwIcon } from "@/components/icons"
 import { Link, useNavigate } from "@tanstack/react-router"
 
 import { Button } from "@/components/ui/button"
