@@ -605,7 +605,7 @@ export function AppSidebar({
                               sectionId="shared"
                             />
                           </div>
-                          <CollapsibleContent className="pt-0.5">
+                          <CollapsibleContent className="pb-4 pt-0.5">
                             <SidebarGroupContent className="-mx-2 w-auto">
                               {pageSections.teamspacePages.length > 0 ? (
                                 <NavPageSection

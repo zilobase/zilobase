@@ -113,7 +113,7 @@ export function NavFavorites({
             sidebarConfig={sidebarConfig}
           />
         </div>
-        <CollapsibleContent className="pt-0.5">
+        <CollapsibleContent className="pb-4 pt-0.5">
           <SidebarMenu aria-label="Favorite pages">
             <SidebarNavList
               activeDatabaseId={activeDatabaseId}

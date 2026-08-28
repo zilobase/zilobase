@@ -435,7 +435,7 @@ export function NavPageSection({
             </DropDrawer>
           ) : null}
         </div>
-        <CollapsibleContent className="pt-0.5">
+        <CollapsibleContent className="pb-4 pt-0.5">
           <SidebarGroupContent>
             <SidebarMenu aria-label={`${label} pages`}>
               <SidebarNavList
