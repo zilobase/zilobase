@@ -34,9 +34,11 @@ import {
   type ContextAttachMenuHandle,
 } from "@/components/ai-elements/context-attach-menu";
 import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
+import { useOptionalPageSidePane } from "@/contexts/page-side-pane";
 import { usePageAiContext } from "@/hooks/use-page-ai-context";
 import { useDatabaseEmbedAutoApply } from "@/hooks/use-database-embed-auto-apply";
 import { useDatabaseToolCacheSync } from "@/hooks/use-database-tool-cache-sync";
+import { useAgentConversation } from "@/hooks/use-agent-conversation";
 import {
   updatePageEditSnapshotStatus,
   usePageEditAutoApply,
@@ -48,6 +50,7 @@ import {
   buildMessagePartGroups,
 } from "@/components/ai-elements/agent-tool-task";
 import { resolveAgentToolPresentation } from "@/components/ai-elements/agent-tool-presentation";
+import { AgentActionReviews } from "@/components/ai-elements/agent-action-review";
 import { PageEditCard } from "@/components/ai-elements/page-edit-card";
 import {
   PromptInput,
@@ -79,6 +82,8 @@ import {
   logPageEdit,
   readAgentCitations,
   readAgentResultTable,
+  readDatabaseConfigToolIds,
+  getAgentToolDescriptor,
   type AgentCitation,
   type AiChatFeedback,
   type AiChatThreadMessagesResponse,
@@ -95,11 +100,10 @@ import { useDatabase } from "@zilobase/features/databases";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { usePageAccessLevel, usePageNavigation } from "@zilobase/features/pages";
 import { useQuery } from "@tanstack/react-query";
-import { useChat } from "@ai-sdk/react";
-import { getApiRequestHeaders, toApiUrl } from "@/lib/api";
+import { useNavigate } from "@tanstack/react-router";
+import { toApiUrl } from "@/lib/api";
 import {
   type ChatStatus,
-  DefaultChatTransport,
   type UIMessage,
   getToolName,
   isToolUIPart,
@@ -125,6 +129,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AgentResultTable } from "@/components/ai-elements/agent-result-table";
+import { getAgentCitationSidePaneTarget } from "@/components/ai-elements/agent-citation-navigation";
 import {
   AI_FILE_ACCEPT,
   MAX_AI_FILE_BYTES,
@@ -237,28 +242,6 @@ function logAiChatError(
   console.info("context", context);
   console.groupEnd();
 }
-
-const toolTitles: Record<string, string> = {
-  proposePageContentUpdate: "Update page content",
-  createPage: "Create page",
-  createDatabase: "Create database",
-  embedDatabaseInPage: "Embed database in page",
-  linkDatabaseInPage: "Link database in sidebar",
-  createDatabaseProperty: "Add database property",
-  updateDatabaseProperty: "Update database property",
-  createDatabaseView: "Create database view",
-  updateDatabaseView: "Update database view",
-  updateDataSource: "Update data source",
-  createDatabaseRow: "Add database row",
-  setDatabaseCellValue: "Set cell value",
-  searchWorkspace: "Search Zilobase",
-  readWorkspacePage: "Read Zilobase page",
-  queryWorkspaceDatabase: "Query Zilobase database",
-  readPageComments: "Read page comments",
-  updateWorkspacePage: "Update Zilobase page",
-  createDownloadableArtifact: "Create downloadable file",
-  analyzeDataTable: "Analyze data table",
-};
 
 const pendingPhrases = [
   "Thinking through your question",
@@ -496,9 +479,62 @@ const PageEditToolPart = ({
 };
 
 function collectMessageCitations(message: UIMessage) {
-  const citations = message.parts.flatMap((part) =>
-    isToolUIPart(part) ? readAgentCitations(part.output) : [],
-  );
+  const citations = message.parts.flatMap((part) => {
+    if (!isToolUIPart(part)) {
+      return [];
+    }
+
+    const explicitCitations = readAgentCitations(part.output);
+
+    if (explicitCitations.length > 0) {
+      return explicitCitations;
+    }
+
+    const toolName = getToolName(part);
+    const ids = readDatabaseConfigToolIds(part.output);
+    const input =
+      part.input && typeof part.input === "object" && !Array.isArray(part.input)
+        ? (part.input as Record<string, unknown>)
+        : null;
+
+    if (toolName === "createPage" && ids?.pageId) {
+      return [{
+        id: ids.pageId,
+        source: "page" as const,
+        title:
+          typeof input?.name === "string" && input.name.trim()
+            ? input.name.trim()
+            : "Created page",
+        url: `/p/${encodeURIComponent(ids.pageId)}`,
+      }];
+    }
+
+    if (toolName === "createDatabase" && ids?.databaseId) {
+      return [{
+        id: ids.databaseId,
+        source: "database" as const,
+        title:
+          typeof input?.name === "string" && input.name.trim()
+            ? input.name.trim()
+            : "Created database",
+        url: `/d/${encodeURIComponent(ids.databaseId)}`,
+      }];
+    }
+
+    if (toolName === "createDatabaseRow" && ids?.rowPageId) {
+      return [{
+        id: ids.rowPageId,
+        source: "page" as const,
+        title:
+          typeof input?.title === "string" && input.title.trim()
+            ? input.title.trim()
+            : "Created database page",
+        url: `/p/${encodeURIComponent(ids.rowPageId)}`,
+      }];
+    }
+
+    return [];
+  });
   const seen = new Set<string>();
 
   return citations.filter((citation) => {
@@ -513,7 +549,16 @@ function collectMessageCitations(message: UIMessage) {
   });
 }
 
-const AgentCitations = ({ citations }: { citations: AgentCitation[] }) => {
+const AgentCitations = ({
+  citations,
+  openInMainPage,
+}: {
+  citations: AgentCitation[];
+  openInMainPage: boolean;
+}) => {
+  const navigate = useNavigate();
+  const sidePane = useOptionalPageSidePane();
+
   if (citations.length === 0) {
     return null;
   }
@@ -525,12 +570,65 @@ const AgentCitations = ({ citations }: { citations: AgentCitation[] }) => {
         const href = citation.url.startsWith("/api/")
           ? toApiUrl(citation.url)
           : citation.url;
+        const sidePaneTarget = getAgentCitationSidePaneTarget(citation);
 
         return (
           <a
             className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
             href={href}
             key={`${citation.source}:${citation.id}`}
+            onClick={(event) => {
+              if (
+                !sidePaneTarget ||
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              ) {
+                return;
+              }
+
+              event.preventDefault();
+
+              if (openInMainPage) {
+                if (sidePane) {
+                  if (sidePaneTarget.type === "database") {
+                    sidePane.openDatabaseInMainPane(sidePaneTarget.id);
+                    return;
+                  }
+
+                  sidePane.openPageInMainPane(sidePaneTarget.id);
+                  return;
+                }
+
+                if (sidePaneTarget.type === "database") {
+                  void navigate({
+                    params: { databaseId: sidePaneTarget.id },
+                    search: { view: undefined },
+                    to: "/d/$databaseId",
+                  });
+                  return;
+                }
+
+                void navigate({
+                  params: { pageId: sidePaneTarget.id },
+                  to: "/p/$pageId",
+                });
+                return;
+              }
+
+              if (!sidePane) {
+                return;
+              }
+
+              if (sidePaneTarget.type === "database") {
+                sidePane.openDatabaseSidePane(sidePaneTarget.id);
+                return;
+              }
+
+              sidePane.openSidePane(sidePaneTarget.id);
+            }}
             rel={external ? "noreferrer" : undefined}
             target={external ? "_blank" : undefined}
             title={citation.excerpt ?? citation.title}
@@ -619,6 +717,7 @@ const ChatMessage = ({
   applyingToolCallIds,
   getPageEditBaselineCurrent,
   getPageEditReviewAvailable,
+  isSidebar,
   message,
   feedbackRating,
   feedbackPending,
@@ -628,11 +727,14 @@ const ChatMessage = ({
   onUndoPageEdit,
   onSubmitFeedback,
   snapshotByToolCallId,
+  threadId,
   visibleDiffToolCallId,
+  workspaceId,
 }: {
   applyingToolCallIds: readonly string[];
   getPageEditBaselineCurrent: (snapshot: PageEditSnapshotPart) => boolean;
   getPageEditReviewAvailable: (snapshot: PageEditSnapshotPart) => boolean;
+  isSidebar: boolean;
   message: UIMessage;
   feedbackRating?: -1 | 1;
   feedbackPending: boolean;
@@ -646,7 +748,9 @@ const ChatMessage = ({
     reason?: string,
   ) => void | Promise<void>;
   snapshotByToolCallId: Map<string, PageEditSnapshotPart>;
+  threadId: string | null;
   visibleDiffToolCallId: string | null;
+  workspaceId: string | null;
 }) => {
   if (message.role === "system" || (message.role as string) === "data") {
     return null;
@@ -679,7 +783,7 @@ const ChatMessage = ({
                 getToolPresentation={(part, toolName) =>
                   resolveAgentToolPresentation({
                     part,
-                    title: toolTitles[toolName],
+                    title: getAgentToolDescriptor(toolName)?.title,
                     toolName,
                   })
                 }
@@ -757,7 +861,17 @@ const ChatMessage = ({
         {tables.map(({ table, toolCallId }) => (
           <AgentResultTable key={toolCallId} table={table} />
         ))}
-        <AgentCitations citations={citations} />
+        {threadId && workspaceId ? (
+          <AgentActionReviews
+            message={message}
+            threadId={threadId}
+            workspaceId={workspaceId}
+          />
+        ) : null}
+        <AgentCitations
+          citations={citations}
+          openInMainPage={isSidebar}
+        />
         {message.role === "assistant" ? (
           <AssistantFeedback
             isPending={feedbackPending}
@@ -1103,33 +1217,41 @@ const ChatbotInner = ({
   );
 
   const buildChatRequestBody = useCallback(
-    (requestThreadId: string | null, attachmentIds: string[] = []) => ({
+    (
+      requestThreadId: string | null,
+      attachmentIds: string[] = [],
+      clientTurnId = crypto.randomUUID(),
+    ) => ({
       attachmentIds,
-      model,
+      clientTurnId,
+      contextRefs: [
+        ...(effectivePrimarySource
+          ? [{
+              id: effectivePrimarySource.id,
+              role: "primary" as const,
+              type: effectivePrimarySource.type,
+            }]
+          : []),
+        ...attachments
+          .filter((attachment) =>
+            attachment.type === "page" || attachment.type === "database"
+          )
+          .map((attachment) => ({
+            id: attachment.id,
+            role: "attached" as const,
+            type: attachment.type as "page" | "database",
+          })),
+      ],
+      modelId: model,
       mentionedUserIds: attachments
         .filter((attachment) => attachment.type === "person")
         .map((attachment) => attachment.id),
       threadId: requestThreadId,
-      ...(workspaceId ? { workspaceId } : {}),
-      ...(userId ? { userId } : {}),
-      ...(pageContext ? { pageContext } : {}),
-      allowedPageIds,
-      pageContextMeta: pageContext
-        ? {
-            attachmentIds: attachments.map((item) => item.id),
-            charCount: pageContext.length,
-            primaryId: effectivePrimarySource?.id ?? null,
-          }
-        : undefined,
     }),
     [
-      allowedPageIds,
       attachments,
-      effectivePrimarySource?.id,
+      effectivePrimarySource,
       model,
-      pageContext,
-      userId,
-      workspaceId,
     ],
   );
 
@@ -1149,10 +1271,9 @@ const ChatbotInner = ({
     setMessages,
     status,
     stop,
-  } = useChat<UIMessage>({
-    experimental_throttle: 50,
+  } = useAgentConversation({
     id: agentName,
-    messages: initialMessages,
+    initialMessages,
     onError: (chatError) => {
       logAiChatError("useChat onError", chatError, {
         agentName,
@@ -1169,20 +1290,8 @@ const ChatbotInner = ({
         description: chatError.message,
       });
     },
-    transport: new DefaultChatTransport<UIMessage>({
-      api: toApiUrl("/api/ai/chat"),
-      body: () => buildChatRequestBody(threadId),
-      credentials: "include",
-      headers: () => {
-        const headers = getApiRequestHeaders();
-
-        if (workspaceId) {
-          headers.set("x-zilobase-workspace-id", workspaceId);
-        }
-
-        return headers;
-      },
-    }),
+    threadId,
+    workspaceId,
   });
 
   const debugContextRef = useRef<Record<string, unknown>>({});
@@ -1595,6 +1704,23 @@ const ChatbotInner = ({
         return;
       }
 
+      const referencedOpenPageIds = [
+        effectivePrimarySource?.type === "page" ? effectivePrimarySource.id : null,
+        ...attachments
+          .filter((attachment) => attachment.type === "page")
+          .map((attachment) => attachment.id),
+      ].filter((id): id is string => Boolean(id));
+      const unsynchronizedPage = referencedOpenPageIds.find((id) => {
+        const handle = getEditorHandle(id);
+        return handle ? !handle.isSynchronized() : false;
+      });
+      if (unsynchronizedPage) {
+        toast.error("Wait for the page to finish syncing", {
+          description: "Ask AI reads the server-owned page snapshot, so unsynced edits cannot be attached yet.",
+        });
+        return;
+      }
+
       let targetThreadId = threadId;
 
       if (!targetThreadId) {
@@ -1656,6 +1782,7 @@ const ChatbotInner = ({
             body: buildChatRequestBody(
               targetThreadId,
               uploadedFiles.map((file) => file.id),
+              crypto.randomUUID(),
             ),
           },
         );
@@ -1669,9 +1796,11 @@ const ChatbotInner = ({
       }
     },
     [
-      attachments.length,
+      attachments,
       buildChatRequestBody,
       createThread,
+      effectivePrimarySource,
+      getEditorHandle,
       isComposerReady,
       onThreadCreated,
       pageContext,
@@ -1909,6 +2038,7 @@ const ChatbotInner = ({
                 }
                 getPageEditBaselineCurrent={getPageEditBaselineCurrent}
                 getPageEditReviewAvailable={getPageEditReviewAvailable}
+                isSidebar={isSidebar}
                 key={message.id}
                 message={message}
                 onApplyPageEdit={handleApplyPageEdit}
@@ -1917,7 +2047,9 @@ const ChatbotInner = ({
                 onTogglePageEditChanges={handleTogglePageEditChanges}
                 onUndoPageEdit={handleUndoPageEdit}
                 snapshotByToolCallId={snapshotByToolCallId}
+                threadId={threadId}
                 visibleDiffToolCallId={visibleDiffToolCallId}
+                workspaceId={workspaceId}
               />
             ))
           )}
