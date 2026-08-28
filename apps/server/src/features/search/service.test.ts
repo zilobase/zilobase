@@ -2,26 +2,21 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import {
-  extractContentText,
-  normalizeSearchQuery,
+  SEARCH_HEADLINE_OPTIONS,
+  stripSearchHeadlineMarkers,
 } from "./service";
 
-test("workspace search query normalization is stable", () => {
-  assert.equal(normalizeSearchQuery("  Launch   Plan  "), "launch plan");
+test("PostgreSQL headline options use non-empty selection markers", () => {
+  assert.doesNotMatch(SEARCH_HEADLINE_OPTIONS, /StartSel=\s*(?:,|$)/);
+  assert.doesNotMatch(SEARCH_HEADLINE_OPTIONS, /StopSel=\s*(?:,|$)/);
 });
 
-test("workspace search extracts nested ProseMirror text", () => {
+test("search excerpts remove internal headline markers", () => {
   assert.equal(
-    extractContentText({
-      type: "doc",
-      content: [
-        { type: "heading", content: [{ type: "text", text: "Roadmap" }] },
-        {
-          type: "paragraph",
-          content: [{ type: "text", text: "Ship the agent" }],
-        },
-      ],
-    }),
-    "Roadmap Ship the agent",
+    stripSearchHeadlineMarkers(
+      "The __ZILOBASE_MATCH_START__decision__ZILOBASE_MATCH_STOP__ is final.",
+    ),
+    "The decision is final.",
   );
+  assert.equal(stripSearchHeadlineMarkers(null), null);
 });
