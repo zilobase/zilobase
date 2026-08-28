@@ -2,7 +2,17 @@
 
 import * as React from "react"
 import { isTauri } from "@tauri-apps/api/core"
+import { useTheme } from "next-themes"
+import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Sidebar,
   SidebarHeader,
@@ -47,11 +57,53 @@ export function AppSidebarHeader({
       className={cn("gap-0.5 pb-0", hasOverlayTitleBar && "pt-9")}
       data-tauri-drag-region={hasOverlayTitleBar ? "deep" : undefined}
     >
-      <div className="group/workspace-row flex h-8 items-center rounded-md transition-colors hover:bg-accent focus-within:bg-accent [&_[data-sidebar=menu]]:h-full [&_[data-sidebar=menu-item]]:h-full [&_[data-sidebar=menu-button]]:h-full [&_[data-sidebar=menu-button]]:hover:bg-transparent [&_[data-sidebar=menu-button][data-open]]:bg-transparent">
+      <div className="flex h-8 items-center">
         <div className="h-full min-w-0 flex-1">{children}</div>
-        <SidebarTrigger className="mr-0.5 size-7 shrink-0 rounded-md hover:bg-accent focus-visible:bg-accent group-hover/workspace-row:text-accent-foreground" />
+        <div className="flex shrink-0 items-center gap-0.5">
+          <ThemeSwitcher />
+          <SidebarTrigger className="mr-0.5 size-7 shrink-0 rounded-md hover:bg-accent focus-visible:bg-accent [&_svg]:size-4!" />
+        </div>
       </div>
-      {navigation}
+      {navigation ? <div className="-mx-2">{navigation}</div> : null}
     </SidebarHeader>
+  )
+}
+
+function ThemeSwitcher() {
+  const { setTheme, theme = "system" } = useTheme()
+  const ThemeIcon =
+    theme === "light" ? SunIcon : theme === "dark" ? MoonIcon : MonitorIcon
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          aria-label="Change theme"
+          className="size-7 text-muted-foreground [&_svg]:size-4!"
+          size="icon-lg"
+          title="Theme"
+          type="button"
+          variant="ghost"
+        >
+          <ThemeIcon />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-36" side="bottom">
+        <DropdownMenuRadioGroup onValueChange={setTheme} value={theme}>
+          <DropdownMenuRadioItem value="light">
+            <SunIcon />
+            <span>Light</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">
+            <MoonIcon />
+            <span>Dark</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system">
+            <MonitorIcon />
+            <span>System</span>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
