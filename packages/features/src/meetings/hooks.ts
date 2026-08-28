@@ -10,7 +10,6 @@ import {
   type MeetingPatch,
   type MeetingResponse,
   type MeetingRecorderClaim,
-  type MeetingSummaryResponse,
 } from "./queries"
 import {
   pageQueryKey,
@@ -166,11 +165,16 @@ export function useMeetingRecorder(meetingId: string) {
 export function useGenerateMeetingSummary(meetingId: string) {
   const { apiFetch, queryClient } = useZilobaseFeatures()
   return useMutation({
-    mutationFn: () =>
-      apiFetch<MeetingSummaryResponse>(`/meetings/${meetingId}/summary`, {
+    mutationFn: async () => {
+      const accepted = await apiFetch<{
+        job: { error: string | null; id: string; progress: number; status: string }
+      }>(`/meetings/${meetingId}/summary`, {
         body: "{}",
         method: "POST",
-      }),
+      })
+      await waitForAiJob(apiFetch, accepted.job.id)
+      return apiFetch<MeetingResponse>(`/meetings/${meetingId}`)
+    },
     onSuccess: (payload) => {
       queryClient.setQueryData<MeetingResponse>(meetingKeys.detail(meetingId), {
         meeting: payload.meeting,
@@ -181,6 +185,21 @@ export function useGenerateMeetingSummary(meetingId: string) {
       await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })
     },
   })
+}
+
+async function waitForAiJob(apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"], jobId: string) {
+  const deadline = Date.now() + 10 * 60 * 1_000
+  while (Date.now() < deadline) {
+    const { job } = await apiFetch<{
+      job: { error: string | null; status: string }
+    }>(`/ai/jobs/${encodeURIComponent(jobId)}`)
+    if (job.status === "succeeded") return
+    if (job.status === "failed" || job.status === "cancelled") {
+      throw new Error(job.error || "Meeting summary failed.")
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000))
+  }
+  throw new Error("Meeting summary is still processing. Try again shortly.")
 }
 
 export function useRecordMeetingConsent(meetingId: string) {

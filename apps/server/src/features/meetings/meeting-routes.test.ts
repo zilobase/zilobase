@@ -8,11 +8,11 @@ const mocks = vi.hoisted(() => ({
   claimRecorder: vi.fn(),
   create: vi.fn(),
   delete: vi.fn(),
+  enqueueJob: vi.fn(),
   get: vi.fn(),
   list: vi.fn(),
   releaseRecorder: vi.fn(),
   recordConsent: vi.fn(),
-  summarize: vi.fn(),
   transition: vi.fn(),
   update: vi.fn(),
 }));
@@ -31,8 +31,8 @@ vi.mock("./meeting-service", () => ({
   transitionMeeting: mocks.transition,
   updateMeeting: mocks.update,
 }));
-vi.mock("./meeting-summary-service", () => ({
-  generateMeetingSummary: mocks.summarize,
+vi.mock("../../ai/ai-jobs", () => ({
+  enqueueAiJob: mocks.enqueueJob,
 }));
 
 import { meetingRoutes } from "./meeting-routes";
@@ -75,11 +75,20 @@ beforeEach(() => {
       workspaceId: "workspace-1",
     },
   });
-  mocks.get.mockResolvedValue({ id: "meeting-1", status: "idle" });
+  mocks.get.mockResolvedValue({
+    id: "meeting-1",
+    status: "idle",
+    transcriptRevision: 2,
+    updatedAt: new Date("2026-08-18T00:00:00.000Z"),
+    workspaceId: "workspace-1",
+  });
   mocks.recordConsent.mockResolvedValue({ id: "consent-1", mode: "confirmed" });
-  mocks.summarize.mockResolvedValue({
-    meeting: { id: "meeting-1", status: "completed" },
-    summary: { overview: "Summary" },
+  mocks.enqueueJob.mockResolvedValue({
+    error: null,
+    id: "job-1",
+    progress: 0,
+    status: "queued",
+    type: "meeting-summary",
   });
   mocks.transition.mockResolvedValue({ id: "meeting-1", status: "recording" });
 });
@@ -196,11 +205,14 @@ test("summary generation is scoped to the authenticated editor", async () => {
     { method: "POST" },
     env,
   );
-  assert.equal(response.status, 200);
-  assert.deepEqual(mocks.summarize.mock.calls[0]?.[0], {
+  assert.equal(response.status, 202);
+  assert.deepEqual(mocks.enqueueJob.mock.calls[0]?.[0], {
+    dedupeKey: "meeting-1:2:2026-08-18T00:00:00.000Z",
     env,
-    meetingId: "meeting-1",
+    input: { meetingId: "meeting-1" },
+    type: "meeting-summary",
     userId: "user-1",
+    workspaceId: "workspace-1",
   });
 });
 

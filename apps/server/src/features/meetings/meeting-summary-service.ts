@@ -2,7 +2,7 @@ import { generateText, Output } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
-import { resolveOpenAiChatModel } from "../../ai/ai-provider";
+import { resolveWorkspaceAiModel, type ResolvedAiModel } from "../../ai/ai-provider";
 import { replaceMeetingSummary } from "../../collaboration/service";
 import { getRuntimeAdapter } from "../../runtime-adapter";
 import { db } from "../../db";
@@ -73,10 +73,11 @@ export async function generateMeetingSummary(input: {
   const transcript = segments
     .map((segment) => `[${formatOffset(segment.startMs)}] ${segment.text}`)
     .join("\n");
-  const model = resolveOpenAiChatModel(
-    typeof input.env.OPENAI_API_KEY === "string"
-      ? input.env.OPENAI_API_KEY
-      : undefined,
+  const model = await resolveWorkspaceAiModel(
+    record.workspaceId,
+    undefined,
+    input.env,
+    "meeting-summary",
   );
   const instructions = record.customInstructions?.trim() ||
     presetInstructions(record.instructionsPreset);
@@ -85,14 +86,14 @@ export async function generateMeetingSummary(input: {
     ? chunks[0]
     : (await Promise.all(chunks.map(async (chunk, index) => {
         const partial = await requestSummary(
-          model,
+          model.model,
           chunk,
           `Create an intermediate factual summary for transcript part ${index + 1} of ${chunks.length}.`,
         );
         return JSON.stringify(partial);
       }))).join("\n");
   const summary = await requestSummary(
-    model,
+    model.model,
     source,
     `${instructions}\nWrite the output in meeting language: ${record.language}.`,
   );
@@ -117,7 +118,7 @@ export async function generateMeetingSummary(input: {
 }
 
 async function requestSummary(
-  model: ReturnType<typeof resolveOpenAiChatModel>,
+  model: ResolvedAiModel["model"],
   transcript: string,
   instructions: string,
 ) {

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
 import { AiProviderConfigError } from "../../ai/ai-provider";
+import { enqueueAiJob } from "../../ai/ai-jobs";
 
 import {
   getEffectivePageAccessInWorkspace,
@@ -30,7 +31,6 @@ import {
 } from "./meeting-service";
 import { createMeetingAudioTicket } from "./meeting-audio-ticket";
 import { meetingLifecycleActions } from "./meeting-types";
-import { generateMeetingSummary } from "./meeting-summary-service";
 
 const createMeetingSchema = z.object({
   pageId: z.string().min(1),
@@ -276,11 +276,25 @@ meetingRoutes.post("/:id/summary", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
   try {
-    return c.json(await generateMeetingSummary({
+    const record = await getMeetingForUser(c.req.param("id"), user.id, "edit");
+    const job = await enqueueAiJob({
+      dedupeKey: `${record.id}:${record.transcriptRevision}:${record.updatedAt.toISOString()}`,
       env: c.env,
-      meetingId: c.req.param("id"),
+      input: { meetingId: record.id },
+      type: "meeting-summary",
       userId: user.id,
-    }));
+      workspaceId: record.workspaceId,
+    });
+    return c.json({
+      job: {
+        error: job.status === "failed" ? job.error : null,
+        id: job.id,
+        progress: job.progress,
+        status: job.status,
+        type: job.type,
+      },
+      meeting: record,
+    }, 202);
   } catch (error) {
     return serviceError(c, error);
   }
