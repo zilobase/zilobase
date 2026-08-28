@@ -228,6 +228,7 @@ function readWorkspaceIdFromPageDetail(detail: PageDetail | null | undefined) {
 export function createPageEditorHandle(input: {
   editable: boolean
   getEditor: () => Editor | null
+  isSynchronized?: () => boolean
   onContentChange?: (content: unknown) => void
   pageEditPreviewRef?: MutableRefObject<PageEditPreviewControls | null>
 }): PageEditorHandle {
@@ -254,6 +255,7 @@ export function createPageEditorHandle(input: {
     getContentJson: () => input.getEditor()?.getJSON() ?? null,
     isEditDiffPreviewActive: () => getPreviewControls()?.isActive() ?? false,
     isEditable: () => input.editable,
+    isSynchronized: () => input.isSynchronized?.() ?? true,
     setContentFromMarkdown: (markdown) => {
       const editor = input.getEditor()
 

@@ -524,6 +524,10 @@
     @apply w-full overflow-visible bg-background;
   }
 
+  [data-page-side-pane-panel] .database-block-shell-full {
+    @apply bg-transparent;
+  }
+
   .database-block-shell .database-scroll-section {
     @apply relative min-w-0 overflow-visible;
   }
@@ -533,7 +537,7 @@
   }
 
   .database-setup-overlay {
-    @apply absolute inset-0 z-20 flex items-center justify-center bg-backdrop p-4 backdrop-blur-[2px];
+    @apply absolute inset-0 z-20 flex items-center justify-center bg-transparent p-4;
   }
 
   .database-setup-card {
@@ -1255,6 +1259,10 @@
     scrollbar-width: none;
   }
 
+  .dark [data-page-side-pane-panel] .database-table-sticky-header {
+    @apply bg-sidebar;
+  }
+
   .database-table-sticky-header::-webkit-scrollbar {
     display: none;
   }
@@ -1727,6 +1735,15 @@
 
   .tiptap-editor .database-table thead th {
     @apply h-8 bg-background p-0;
+  }
+
+  .dark
+    [data-page-side-pane-panel]
+    .tiptap-editor
+    .database-table
+    thead
+    th {
+    @apply bg-transparent;
   }
 
   .database-name-header {

@@ -17,5 +17,15 @@ export function register({ assert, test }) {
       source,
       /<PageLayoutSidebarProvider[\s\S]*?<AppSidebar/,
     )
+    assert.doesNotMatch(
+      source,
+      /<PageLayoutSidebarProvider\s+key=/,
+      "route changes must not remount the app content or Ask AI sidebar",
+    )
+    assert.match(
+      source,
+      /!mainPaneNavigationActive\s*&&\s*chatSidebarOpen/,
+      "promoted AI navigation must not close the mounted chat sidebar",
+    )
   })
 }

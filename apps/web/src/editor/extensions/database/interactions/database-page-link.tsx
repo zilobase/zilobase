@@ -258,7 +258,9 @@ export function DatabasePageLink({
           <span className="database-page-title">{title}</span>
         )}
       </span>
-      {pageSummary && !isEditingTitle && openMode === "button" ? (
+      {pageSummary &&
+      !isEditingTitle &&
+      (openMode === "button" || (openMode === "title" && canEditTitle)) ? (
         <button
           aria-label={`${actionLabel} ${title}`}
           className="database-page-open"

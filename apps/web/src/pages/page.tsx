@@ -806,6 +806,9 @@ export function PageEditorPane({
       createPageEditorHandle({
         editable: pageEditable && liveEditingReady,
         getEditor: () => editorInstanceRef.current,
+        isSynchronized: () =>
+          !collaboration.document ||
+          (collaboration.synced && collaboration.unsyncedChanges === 0),
         onContentChange: updateContent,
         pageEditPreviewRef,
       }),
@@ -816,6 +819,9 @@ export function PageEditorPane({
     };
   }, [
     liveEditingReady,
+    collaboration.document,
+    collaboration.synced,
+    collaboration.unsyncedChanges,
     pageEditable,
     registerEditor,
     unregisterEditor,
