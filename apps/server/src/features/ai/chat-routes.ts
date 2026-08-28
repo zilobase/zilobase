@@ -1,3 +1,4 @@
+import { getAgentToolDescriptor } from "@zilobase/features/ai-chat/tool-registry";
 import { smoothStream, streamText, type UIMessage } from "ai";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -6,11 +7,27 @@ import * as z from "zod";
 import { AiProviderConfigError, resolveWorkspaceAiModel } from "../../ai/ai-provider";
 import { canAccessPage, getMembership, getPageRecord } from "../../access";
 import { db, runWithDbEnv } from "../../db";
+import { getStringEnv } from "../../config";
 import type { AppBindings } from "../../types";
 import {
   coerceAiChatRequestBody,
   runAiChatTurn,
 } from "../../ai/chat-service";
+import {
+  appendCanonicalUserMessage,
+  getAiChatThreadForUser,
+  loadAiChatThreadMessages,
+} from "../../ai/chat-persistence";
+import { getAiAgentTurnByClientId } from "../../ai/agent-operations";
+import {
+  expirePendingAgentAction,
+  finishPendingAgentAction,
+  getOwnedPendingAgentAction,
+  markPendingAgentActionExecuting,
+  rejectPendingAgentAction,
+} from "../../ai/agent-approvals";
+import { hashAgentToolInput } from "../../ai/agent-action-receipts";
+import { buildRegisteredAgentTools } from "../../ai/agent-tool-registry";
 import { aiFileRoutes } from "./file-routes";
 
 const editorAiRequestSchema = z.object({
@@ -20,11 +37,31 @@ const editorAiRequestSchema = z.object({
   skillPageId: z.string().trim().min(1).optional(),
 });
 
+const createAgentTurnSchema = z.object({
+  attachmentIds: z.array(z.string().trim().min(1)).max(5).default([]),
+  clientMessageId: z.string().trim().min(1).max(160),
+  clientTurnId: z.string().uuid(),
+  contextRefs: z.array(z.object({
+    id: z.string().trim().min(1),
+    role: z.enum(["primary", "attached"]),
+    type: z.enum(["page", "database"]),
+  })).max(20).default([]),
+  mentionedUserIds: z.array(z.string().trim().min(1)).max(12).default([]),
+  modelId: z.string().trim().min(1).max(160).default("auto"),
+  text: z.string().trim().min(1).max(100_000),
+});
+
 export const aiRoutes = new Hono<AppBindings>();
 
 aiRoutes.route("/", aiFileRoutes);
 
 aiRoutes.post("/chat", async (c) => {
+  if (getStringEnv(c.env, "AI_LEGACY_CHAT_ENABLED") !== "true") {
+    return c.json({
+      code: "LEGACY_CHAT_DISABLED",
+      error: "This client uses a retired AI chat protocol. Refresh or update the application.",
+    }, 410);
+  }
   const auth = await requireActiveWorkspace(c);
 
   if ("response" in auth) {
@@ -68,6 +105,185 @@ aiRoutes.post("/chat", async (c) => {
   });
 });
 
+aiRoutes.post("/threads/:threadId/turns", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+  if ("response" in auth) return auth.response;
+
+  const body = await parseJson(c, createAgentTurnSchema);
+  if (!body.success) return body.response;
+
+  const threadId = c.req.param("threadId");
+  const thread = await getAiChatThreadForUser({
+    threadId,
+    userId: auth.user.id,
+    workspaceId: auth.workspaceId,
+  });
+  if (!thread) return c.json({ error: "Thread not found" }, 404);
+
+  const existingTurn = await getAiAgentTurnByClientId({
+    clientTurnId: body.data.clientTurnId,
+    threadId,
+  });
+  if (existingTurn) {
+    return c.json({
+      code: "TURN_ALREADY_EXISTS",
+      error: "This turn was already accepted. Reload the canonical thread.",
+      status: existingTurn.status,
+      turnId: existingTurn.id,
+    }, 409);
+  }
+
+  const userMessage = await appendCanonicalUserMessage({
+    clientMessageId: body.data.clientMessageId,
+    parts: [{ type: "text", text: body.data.text }],
+    threadId,
+  });
+  const messages = await loadAiChatThreadMessages(threadId);
+  const pageRefs = body.data.contextRefs.filter((ref) => ref.type === "page");
+  const primaryPageId = pageRefs.find((ref) => ref.role === "primary")?.id ?? null;
+
+  return runAiChatTurn({
+    abortSignal: c.req.raw.signal,
+    env: c.env,
+    messages,
+    requestBody: {
+      allowedPageIds: pageRefs.map((ref) => ref.id),
+      attachmentIds: body.data.attachmentIds,
+      clientTurnId: body.data.clientTurnId,
+      contextRefs: body.data.contextRefs,
+      mentionedUserIds: body.data.mentionedUserIds,
+      model: body.data.modelId,
+      pageContext: null,
+      primaryPageId,
+      threadId,
+      userClientMessageId: body.data.clientMessageId,
+      userId: auth.user.id,
+      userMessageId: userMessage.id,
+      workspaceId: auth.workspaceId,
+    },
+    withDb: (fn) => runWithDbEnv(c.env, fn),
+  });
+});
+
+aiRoutes.get("/threads/:threadId/actions/:actionId", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+  if ("response" in auth) return auth.response;
+
+  const threadId = c.req.param("threadId");
+  const actionId = c.req.param("actionId");
+  const action = await getOwnedPendingAgentAction({
+    actionId,
+    threadId,
+    userId: auth.user.id,
+    workspaceId: auth.workspaceId,
+  });
+  if (!action) return c.json({ error: "Review request not found" }, 404);
+
+  if (action.status === "pending" && action.expiresAt.getTime() <= Date.now()) {
+    await expirePendingAgentAction(action.id);
+    return c.json({ actionId, error: null, status: "expired" });
+  }
+
+  return c.json({
+    actionId,
+    error: action.error,
+    status: action.status,
+  });
+});
+
+aiRoutes.post("/threads/:threadId/actions/:actionId/approve", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+  if ("response" in auth) return auth.response;
+
+  const threadId = c.req.param("threadId");
+  const actionId = c.req.param("actionId");
+  const action = await getOwnedPendingAgentAction({
+    actionId,
+    threadId,
+    userId: auth.user.id,
+    workspaceId: auth.workspaceId,
+  });
+  if (!action) return c.json({ error: "Review request not found" }, 404);
+  if (action.status === "succeeded") {
+    return c.json({ actionId, result: action.result, status: action.status });
+  }
+  if (action.status !== "pending") {
+    return c.json({
+      error: `Review request is ${action.status}`,
+      status: action.status,
+    }, 409);
+  }
+  if (action.expiresAt.getTime() <= Date.now()) {
+    await expirePendingAgentAction(action.id);
+    return c.json({ error: "Review request expired", status: "expired" }, 410);
+  }
+  const descriptor = getAgentToolDescriptor(action.toolName);
+  if (
+    !descriptor ||
+    descriptor.risk !== "review" ||
+    descriptor.version !== action.toolVersion ||
+    await hashAgentToolInput(action.toolInput) !== action.inputHash
+  ) {
+    return c.json({ error: "Review request no longer matches the executable tool" }, 409);
+  }
+
+  const executing = await markPendingAgentActionExecuting({
+    actionId,
+    threadId,
+    userId: auth.user.id,
+    workspaceId: auth.workspaceId,
+  });
+  if (!executing) {
+    return c.json({ error: "Review request was already handled" }, 409);
+  }
+
+  try {
+    const tools = buildRegisteredAgentTools({
+      editablePageIds: [],
+      env: c.env,
+      primaryPageId: null,
+      threadId,
+      userId: auth.user.id,
+      workspaceId: auth.workspaceId,
+      withDb: (fn) => runWithDbEnv(c.env, fn),
+    }, { bypassApprovals: true });
+    const registeredTool = tools[action.toolName] as {
+      execute?: (input: unknown, options: {
+        abortSignal: AbortSignal;
+        messages: never[];
+        toolCallId: string;
+      }) => Promise<unknown> | unknown;
+    } | undefined;
+    if (!registeredTool?.execute) {
+      throw new Error("Approved tool is no longer executable.");
+    }
+    const result = await registeredTool.execute(action.toolInput, {
+      abortSignal: c.req.raw.signal,
+      messages: [],
+      toolCallId: `approved:${action.id}`,
+    });
+    await finishPendingAgentAction({ actionId, result });
+    return c.json({ actionId, result, status: "succeeded" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Approved action failed";
+    await finishPendingAgentAction({ actionId, error: message });
+    return c.json({ error: message, status: "failed" }, 409);
+  }
+});
+
+aiRoutes.post("/threads/:threadId/actions/:actionId/reject", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+  if ("response" in auth) return auth.response;
+  const rejected = await rejectPendingAgentAction({
+    actionId: c.req.param("actionId"),
+    threadId: c.req.param("threadId"),
+    userId: auth.user.id,
+    workspaceId: auth.workspaceId,
+  });
+  if (!rejected) return c.json({ error: "Review request is unavailable" }, 409);
+  return c.json({ actionId: rejected.id, status: "rejected" });
+});
+
 aiRoutes.post("/editor", async (c) => {
   const auth = await requireActiveWorkspace(c);
 
@@ -97,13 +313,14 @@ aiRoutes.post("/editor", async (c) => {
     const model = await resolveWorkspaceAiModel(
       auth.workspaceId,
       body.data.model,
-      c.env.OPENAI_API_KEY,
+      c.env,
+      "editor",
     );
     const result = streamText({
       abortSignal: c.req.raw.signal,
       experimental_transform: smoothStream({ chunking: "word", delayInMs: 16 }),
       maxOutputTokens: 1800,
-      model,
+      model: model.model,
       prompt: buildEditorPrompt({
         prompt: body.data.prompt,
         selectedText: body.data.selectedText,
