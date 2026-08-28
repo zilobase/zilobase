@@ -23,7 +23,7 @@ import {
 import { SidebarGroupAction } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import type {
-  SidebarConfig,
+  LegacySidebarConfig,
   SidebarSectionId,
   SidebarSectionLimit,
   SidebarSectionSort,
@@ -41,9 +41,9 @@ export function SidebarSectionMenu({
   sectionId,
 }: {
   className?: string
-  config: SidebarConfig
+  config: LegacySidebarConfig
   label?: string
-  onChange: (config: SidebarConfig) => void
+  onChange: (config: LegacySidebarConfig) => void
   onCustomize: () => void
   sectionId: SidebarSectionId
 }) {

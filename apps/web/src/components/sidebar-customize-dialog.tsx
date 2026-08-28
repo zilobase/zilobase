@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import type {
-  SidebarConfig,
+  LegacySidebarConfig,
   SidebarItemId,
 } from "@zilobase/features/user-settings"
 
@@ -56,9 +56,9 @@ export function SidebarCustomizeDialog({
   onOpenChange,
   open,
 }: {
-  config: SidebarConfig
+  config: LegacySidebarConfig
   disabled?: boolean
-  onChange: (config: SidebarConfig) => void
+  onChange: (config: LegacySidebarConfig) => void
   onOpenChange: (open: boolean) => void
   open: boolean
 }) {

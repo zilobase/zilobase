@@ -519,7 +519,7 @@ export function DatabaseViewToolbar() {
                 {viewTabs.map((view) => {
                   const isActiveView = view.id === activeViewTabId;
                   const ViewIcon =
-                    view.type === "kanban"
+                    view.fallbackIcon ?? (view.type === "kanban"
                       ? Kanban
                       : view.type === "timeline"
                         ? CalendarRange
@@ -531,7 +531,7 @@ export function DatabaseViewToolbar() {
                               ? FilePenLine
                               : view.type === "list"
                                 ? List
-                                : Table2;
+                                : Table2);
                   const sourceParentDatabaseId =
                     view.sourceParentDatabaseId ?? hostDatabaseId ?? databaseId;
                   const sourceDatabaseName =

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
+import {
+  defaultSidebarConfig,
+  normalizeSidebarConfig,
+} from "@zilobase/features/user-settings/sidebar-config";
 
 import type { AppBindings } from "../types";
 
@@ -221,19 +225,11 @@ test("user settings route returns existing normalized preferences", async () => 
     settings: {
       embeddedItemsOpenAs: "dialog",
       pageFullWidth: true,
-      sidebarConfig: {
-        hiddenItems: ["calendar"],
+      sidebarConfig: normalizeSidebarConfig({
+        hiddenItems: ["calendar", "unknown"],
         libraryView: "shared",
-        taskDatabaseIds: [],
-        sectionLimits: { recents: 10, favorites: 10, private: 10, shared: 10 },
-        sectionOrder: ["recents", "shared", "private", "favorites"],
-        sectionSorts: {
-          recents: "lastEdited",
-          favorites: "lastEdited",
-          private: "lastEdited",
-          shared: "lastEdited",
-        },
-      },
+        sectionOrder: ["shared", "private"],
+      }),
     },
   });
 });
@@ -242,19 +238,7 @@ const defaultUserSettingsPayload = {
   settings: {
     embeddedItemsOpenAs: "sidepanel",
     pageFullWidth: false,
-    sidebarConfig: {
-      hiddenItems: [],
-      libraryView: "recents",
-      taskDatabaseIds: [],
-      sectionLimits: { recents: 10, favorites: 10, private: 10, shared: 10 },
-      sectionOrder: ["recents", "favorites", "private", "shared"],
-      sectionSorts: {
-        recents: "lastEdited",
-        favorites: "lastEdited",
-        private: "lastEdited",
-        shared: "lastEdited",
-      },
-    },
+    sidebarConfig: defaultSidebarConfig,
   },
 };
 

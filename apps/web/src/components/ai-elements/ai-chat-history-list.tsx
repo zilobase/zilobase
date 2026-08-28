@@ -167,10 +167,12 @@ function AiChatThreadMoreMenu({
 export function AiChatHistoryList({
   activeThreadId,
   className,
+  limit,
   onSelectThread,
 }: {
   activeThreadId: string | null;
   className?: string;
+  limit?: number;
   onSelectThread: (threadId: string | null) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -186,7 +188,10 @@ export function AiChatHistoryList({
     onSelectThread,
     search,
   });
-  const groupedThreads = useMemo(() => groupThreadsByDate(threads), [threads]);
+  const groupedThreads = useMemo(
+    () => groupThreadsByDate(limit ? threads.slice(0, limit) : threads),
+    [limit, threads],
+  );
 
   return (
     <div

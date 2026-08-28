@@ -88,13 +88,14 @@ import { PageIconDisplay } from "@/lib/page-icon"
 import { getTeamspaceSidebarPermissions } from "@/components/teamspace-sidebar-permissions"
 import { OfflineAvailabilityAction } from "@/components/offline-availability-action"
 import { SidebarSectionMenu } from "@/components/sidebar-section-menu"
+import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
 import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
 import {
   getLibraryViewForSection,
   SidebarLibraryLink,
 } from "@/components/sidebar-library-link"
 import type {
-  SidebarConfig,
+  LegacySidebarConfig,
   SidebarSectionId,
 } from "@zilobase/features/user-settings"
 
@@ -126,6 +127,7 @@ export function NavPageSection({
   pages,
   sectionId,
   sidebarConfig,
+  sectionStorageKey,
   onSidebarConfigChange,
   onCustomizeSidebar,
   storageKey,
@@ -147,12 +149,13 @@ export function NavPageSection({
   showCreateAction?: boolean
   pages: SidebarNavItem[]
   sectionId: SidebarSectionId
-  sidebarConfig?: SidebarConfig
-  onSidebarConfigChange?: (config: SidebarConfig) => void
+  sidebarConfig?: LegacySidebarConfig
+  sectionStorageKey?: string
+  onSidebarConfigChange?: (config: LegacySidebarConfig) => void
   onCustomizeSidebar?: () => void
   storageKey: string
 }) {
-  const [teamspaceExpanded, setTeamspaceExpanded] = useState(true)
+  const [sectionOpen, setSectionOpen] = useSidebarSectionOpen(sectionStorageKey ?? `${storageKey}:section`)
   const displayedPages = sidebarConfig
     ? getConfiguredSidebarItems(pages, sectionId, sidebarConfig)
     : pages
@@ -245,8 +248,8 @@ export function NavPageSection({
     return (
       <Collapsible
         asChild
-        onOpenChange={setTeamspaceExpanded}
-        open={teamspaceExpanded}
+        onOpenChange={setSectionOpen}
+        open={sectionOpen}
       >
         <SidebarGroup className="py-0">
           <SidebarMenu>
@@ -270,13 +273,13 @@ export function NavPageSection({
                 <CollapsibleTrigger asChild>
                   <SidebarNavItemAction
                     position="start"
-                    title={`${teamspaceExpanded ? "Collapse" : "Expand"} ${teamspace.name}`}
+                    title={`${sectionOpen ? "Collapse" : "Expand"} ${teamspace.name}`}
                     type="button"
                     variant="disclosure"
                   >
                     <ChevronRightIcon />
                     <span className="sr-only">
-                      {teamspaceExpanded ? "Collapse" : "Expand"}{" "}
+                      {sectionOpen ? "Collapse" : "Expand"}{" "}
                       {teamspace.name}
                     </span>
                   </SidebarNavItemAction>
@@ -343,14 +346,14 @@ export function NavPageSection({
   }
 
   return (
-    <Collapsible asChild defaultOpen>
-      <SidebarGroup>
+    <Collapsible asChild onOpenChange={setSectionOpen} open={sectionOpen}>
+      <SidebarGroup className="group/collapsible">
         <div className="group/section-header relative">
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel
               asChild
               className={cn(
-                "group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground",
+                "group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-data-[state=open]/collapsible:bg-accent group-data-[state=open]/collapsible:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground",
                 showCreateAction
                   ? showSectionMenu
                     ? "pr-24"

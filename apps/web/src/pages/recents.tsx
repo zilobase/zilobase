@@ -4,11 +4,13 @@ import { ChevronDown, Database, FileText, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { libraryViewIcons } from "@/components/sidebar-layout-icons";
 import { PageSidePaneLayout, usePageSidePane } from "@/contexts/page-side-pane";
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";
 import { PageEditorPane } from "@/pages/page";
 import { DatabaseMainPane } from "@/pages/database";
 import { buildHomepageHierarchy } from "@/pages/homepage-hierarchy";
+import { DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +34,10 @@ import {
   getDatabaseEmoji,
   useCreateDatabase,
 } from "@zilobase/features/databases";
+import {
+  useWorkspaceMeetings,
+  type MeetingListItem,
+} from "@zilobase/features/meetings";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import {
   useCreatePage,
@@ -70,11 +76,13 @@ type HomepageRow = {
   id: string;
   isFavorite: boolean;
   isShared: boolean;
+  itemKind: "database" | "meeting" | "page";
   teamspaceId: string | null;
   lastVisitedAt: string | null;
   metadata: Page["metadata"] | null;
   name: string;
   openDatabaseId: string | null;
+  openMeetingId: string | null;
   openPageId: string | null;
   parentRowId: string | null;
   position: number;
@@ -90,12 +98,17 @@ type HomepageSourcePage = {
   name: string;
 };
 
-const homepageViews: Array<{ id: HomepageView; label: string }> = [
-  { id: "recents", label: "Recents" },
-  { id: "favourites", label: "Favourites" },
-  { id: "shared", label: "Shared" },
-  { id: "teamspaces", label: "Teamspaces" },
-  { id: "private", label: "Private" },
+const homepageViews: Array<{
+  icon: (typeof libraryViewIcons)[HomepageView];
+  id: HomepageView;
+  label: string;
+}> = [
+  { icon: libraryViewIcons.recents, id: "recents", label: "Recents" },
+  { icon: libraryViewIcons.favourites, id: "favourites", label: "Favourites" },
+  { icon: libraryViewIcons.meetings, id: "meetings", label: "Meetings" },
+  { icon: libraryViewIcons.shared, id: "shared", label: "Shared" },
+  { icon: libraryViewIcons.teamspaces, id: "teamspaces", label: "Teamspaces" },
+  { icon: libraryViewIcons.private, id: "private", label: "Private" },
 ];
 
 const homepagePropertyDefinitions = [
@@ -142,6 +155,8 @@ export default function RecentsPage({
   const { data: navigation, isLoading } = usePageNavigation(workspaceId, {
     deleted: mode === "trash" ? "only" : "active",
   });
+  const { data: meetingsPayload, isLoading: meetingsLoading } =
+    useWorkspaceMeetings(mode === "home" ? workspaceId : null);
   const {
     openDatabaseSidePane,
     renderedSidePaneDatabaseId,
@@ -193,6 +208,7 @@ export default function RecentsPage({
     () => {
       const builtRows = buildHomepageRows(
         navigation ?? { databases: [], pages: [], placements: [] },
+        meetingsPayload?.meetings ?? [],
         mode,
       );
       if (!offlineMode) return builtRows;
@@ -212,7 +228,7 @@ export default function RecentsPage({
           (row.openDatabaseId && databaseIds.has(row.openDatabaseId)),
       );
     },
-    [downloadedItems, navigation, mode, offlineMode],
+    [downloadedItems, meetingsPayload?.meetings, navigation, mode, offlineMode],
   );
   const pageTitle = mode === "trash" ? "Trash" : "Recents";
 
@@ -381,6 +397,14 @@ export default function RecentsPage({
         return;
       }
 
+      if (row.openMeetingId) {
+        void navigate({
+          params: { meetingId: row.openMeetingId },
+          to: "/m/$meetingId",
+        });
+        return;
+      }
+
       if (row.openPageId) {
         openPage(row.openPageId);
       }
@@ -523,6 +547,7 @@ export default function RecentsPage({
                   updateNameColumnConfig,
                   viewTabs: homepageViews.map((view) => ({
                     dataSourceId: payload.activeDataSource!.id,
+                    fallbackIcon: view.icon,
                     id: view.id,
                     name: view.label,
                     sourceParentDatabaseId: payload.database.id,
@@ -575,7 +600,8 @@ export default function RecentsPage({
                     </div>
                   </div>
                   <div className="database-scroll-section">
-                    {isLoading ? (
+                    {isLoading ||
+                    (activeViewId === "meetings" && meetingsLoading) ? (
                       <DatabaseViewSkeleton viewType="table" />
                     ) : (
                       <DatabaseTableView />
@@ -761,6 +787,7 @@ function buildHomepagePayload({
 
 function buildHomepageRows(
   navigation: PageNavigationPayload,
+  meetings: MeetingListItem[],
   mode: RecentsMode,
 ): HomepageRow[] {
   const { databases: databaseRecords, pages, placements } = navigation;
@@ -810,11 +837,13 @@ function buildHomepageRows(
           id: `page:${page.id}`,
           isFavorite: Boolean(page.isFavorite),
           isShared: Boolean(page.isShared),
+          itemKind: "page" as const,
           teamspaceId: page.teamspaceId ?? null,
           lastVisitedAt: page.lastVisitedAt ?? null,
           metadata: page.metadata ?? null,
           name: page.name || "Untitled",
           openDatabaseId: null,
+          openMeetingId: null,
           openPageId: page.id,
           parentRowId:
             hierarchy.parentRowIdByRowId[`page:${page.id}`] ??
@@ -852,11 +881,13 @@ function buildHomepageRows(
           id: `database:${database.id}`,
           isFavorite: Boolean(database.isFavorite),
           isShared: Boolean(page?.isShared),
+          itemKind: "database" as const,
           teamspaceId: database.teamspaceId ?? page?.teamspaceId ?? null,
           lastVisitedAt: database.lastVisitedAt ?? null,
           metadata: databaseEmoji ? { emoji: databaseEmoji } : null,
           name: database.name || "Untitled",
           openDatabaseId: database.id,
+          openMeetingId: null,
           openPageId: database.pageId,
           parentRowId:
             hierarchy.parentRowIdByRowId[`database:${database.id}`] ?? null,
@@ -868,7 +899,42 @@ function buildHomepageRows(
           updatedAt: database.updatedAt,
         };
       }),
+    ...(mode === "home" ? buildMeetingRows(meetings, pagesById) : []),
   ];
+}
+
+function buildMeetingRows(
+  meetings: MeetingListItem[],
+  pagesById: Map<string, Page>,
+): HomepageRow[] {
+  return meetings.map((meeting, index) => {
+    const hostPage = pagesById.get(meeting.pageId) ?? null;
+    const sourcePage = hostPage ? getPageSourcePage(hostPage) : null;
+
+    return {
+      createdAt: meeting.createdAt,
+      createdBy: hostPage ? formatCreator(hostPage.createdBy) : "Unknown",
+      deletedAt: meeting.deletedAt ?? "",
+      deletedBy: "Unknown",
+      iconKind: "page",
+      id: `meeting:${meeting.id}`,
+      isFavorite: false,
+      isShared: false,
+      itemKind: "meeting",
+      lastVisitedAt: null,
+      metadata: { emoji: meeting.emoji ?? DEFAULT_MEETING_ITEM_ICON },
+      name: meeting.title?.trim() || "Untitled meeting",
+      openDatabaseId: null,
+      openMeetingId: meeting.id,
+      openPageId: null,
+      parentRowId: null,
+      position: index,
+      source: sourcePage?.id ?? "",
+      sourcePage,
+      teamspaceId: null,
+      updatedAt: meeting.updatedAt,
+    };
+  });
 }
 
 function isHomepageView(value: unknown): value is HomepageView {
@@ -936,16 +1002,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function applyHomepageView(rows: HomepageRow[], view: HomepageView) {
   switch (view) {
     case "favourites":
-      return rows.filter((row) => row.isFavorite);
+      return rows.filter((row) => row.itemKind !== "meeting" && row.isFavorite);
+    case "meetings":
+      return rows.filter((row) => row.itemKind === "meeting");
     case "shared":
-      return rows.filter((row) => row.isShared && !row.teamspaceId);
+      return rows.filter(
+        (row) => row.itemKind !== "meeting" && row.isShared && !row.teamspaceId,
+      );
     case "teamspaces":
-      return rows.filter((row) => Boolean(row.teamspaceId));
+      return rows.filter(
+        (row) => row.itemKind !== "meeting" && Boolean(row.teamspaceId),
+      );
     case "private":
-      return rows.filter((row) => !row.isShared && !row.teamspaceId);
+      return rows.filter(
+        (row) => row.itemKind !== "meeting" && !row.isShared && !row.teamspaceId,
+      );
     case "recents":
     default:
-      return rows;
+      return rows.filter((row) => row.itemKind !== "meeting");
   }
 }
 

@@ -1,5 +1,12 @@
 import { Link } from "@tanstack/react-router"
-import { CalendarDays } from "lucide-react"
+import { CalendarDays, ChevronRightIcon } from "lucide-react"
+
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
 
 import {
   SidebarGroup,
@@ -15,14 +22,26 @@ import type { MeetingListItem } from "@zilobase/features/meetings"
 export function NavMeetings({
   activeMeetingId,
   meetings,
+  storageKey,
 }: {
   activeMeetingId: string | null
   meetings: MeetingListItem[]
+  storageKey?: string
 }) {
+  const [open, setOpen] = useSidebarSectionOpen(storageKey ?? "zilobase:sidebar-section:meetings")
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Meetings</SidebarGroupLabel>
-      <SidebarGroupContent>
+    <Collapsible asChild onOpenChange={setOpen} open={open}>
+      <SidebarGroup className="group/collapsible">
+        <CollapsibleTrigger asChild>
+          <SidebarGroupLabel asChild className="group-data-[state=open]/collapsible:bg-accent group-data-[state=open]/collapsible:text-accent-foreground">
+            <button className="group/section-label w-full cursor-pointer" type="button">
+              <span>Meetings</span>
+              <ChevronRightIcon className="ml-1 size-3 text-muted-foreground transition-transform group-data-[state=open]/section-label:rotate-90" />
+            </button>
+          </SidebarGroupLabel>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pb-4 pt-0.5">
+          <SidebarGroupContent>
         <SidebarMenu>
           {meetings.length === 0 ? (
             <p className="px-2 py-1.5 text-xs text-muted-foreground">
@@ -51,7 +70,9 @@ export function NavMeetings({
             ))
           )}
         </SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
   )
 }

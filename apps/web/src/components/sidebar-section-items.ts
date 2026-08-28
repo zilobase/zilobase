@@ -1,13 +1,13 @@
 import type { SidebarNavItem } from "@/components/sidebar-nav-list"
 import type {
-  SidebarConfig,
+  LegacySidebarConfig,
   SidebarSectionId,
 } from "@zilobase/features/user-settings"
 
 export function getConfiguredSidebarItems(
   items: SidebarNavItem[],
   sectionId: SidebarSectionId,
-  config: SidebarConfig,
+  config: LegacySidebarConfig,
 ) {
   const sorted = [...items].sort((first, second) => {
     if (config.sectionSorts[sectionId] === "alphabetical") {

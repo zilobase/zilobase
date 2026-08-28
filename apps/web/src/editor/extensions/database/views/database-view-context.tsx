@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useMemo,
+  type ComponentType,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
@@ -71,6 +72,7 @@ export type DatabaseActiveConditionalColor = Omit<
 }
 
 export type DatabaseViewTab = {
+  fallbackIcon?: ComponentType<{ className?: string }>
   icon?: string
   id: string
   name: string

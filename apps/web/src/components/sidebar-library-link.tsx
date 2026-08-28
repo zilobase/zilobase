@@ -5,7 +5,7 @@ import { SidebarGroupAction } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 import type {
   LibraryView,
-  SidebarConfig,
+  LegacySidebarConfig,
   SidebarSectionId,
 } from "@zilobase/features/user-settings"
 
@@ -19,9 +19,9 @@ export function SidebarLibraryLink({
 }: {
   className?: string
   label: string
-  onSidebarConfigChange?: (config: SidebarConfig) => void
+  onSidebarConfigChange?: (config: LegacySidebarConfig) => void
   sectionId: SidebarSectionId
-  sidebarConfig?: SidebarConfig
+  sidebarConfig?: LegacySidebarConfig
   view?: LibraryView
 }) {
   const view = viewOverride ?? getLibraryViewForSection(sectionId)

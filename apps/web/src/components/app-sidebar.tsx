@@ -1,52 +1,54 @@
-"use client";
+"use client"
 
-import * as React from "react";
-import { isTauri } from "@tauri-apps/api/core";
 import {
-  useLocation,
-  useNavigate,
-  useRouterState,
-} from "@tanstack/react-router";
-import { toast } from "sonner";
+  closestCenter,
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { isTauri } from "@tauri-apps/api/core"
+import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
+import {
+  ChevronRightIcon,
+  DatabaseIcon,
+  MonitorUpIcon,
+  SlidersHorizontalIcon,
+} from "lucide-react"
+import * as React from "react"
+import { toast } from "sonner"
 
-import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list";
-import {
-  AppSidebarHeader,
-  AppSidebarShell,
-} from "@/components/app-sidebar-shell";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { useAppSearch } from "@/components/app-search";
-import { NavFavorites } from "@/components/nav-favorites";
-import { NavMeetings } from "@/components/nav-meetings";
-import { NavSecondary } from "@/components/nav-secondary";
-import { NavPageSection } from "@/components/nav-pages";
-import { buildSidebarNavigation } from "@/components/sidebar-navigation-model";
+import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list"
+import { AppSidebarHeader, AppSidebarShell } from "@/components/app-sidebar-shell"
+import { useAppSearch } from "@/components/app-search"
+import { NavFavorites } from "@/components/nav-favorites"
+import { NavMeetings } from "@/components/nav-meetings"
+import { NavPageSection } from "@/components/nav-pages"
+import { SidebarCustomizePanel } from "@/components/sidebar-customize-panel"
+import { SidebarDatabaseViewSection } from "@/components/sidebar-database-view-section"
+import { SidebarShortcutIcon } from "@/components/sidebar-layout-icons"
+import { getShortcutLabel } from "@/components/sidebar-layout-model"
+import { SidebarLayoutTabs } from "@/components/sidebar-layout-tabs"
+import { SidebarTasksSection } from "@/components/sidebar-tasks-section"
+import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
+import { buildSidebarNavigation } from "@/components/sidebar-navigation-model"
 import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,
   getActiveMeetingId,
   getActivePageId,
-} from "@/components/sidebar-nav-list";
-import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state";
-import { SidebarCustomizeDialog } from "@/components/sidebar-customize-dialog";
-import { SidebarLibraryLink } from "@/components/sidebar-library-link";
-import { SidebarSectionMenu } from "@/components/sidebar-section-menu";
-import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+} from "@/components/sidebar-nav-list"
 import {
-  DropDrawer,
-  DropDrawerContent,
-  DropDrawerItem,
-  DropDrawerSeparator,
-  DropDrawerTrigger,
-} from "@/components/ui/dropdrawer";
-import {
-  ExpandableTabs,
-  type ExpandableTabItem,
-} from "@/components/ui/expandable-tabs";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   Sidebar,
   SidebarContent,
@@ -57,953 +59,327 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { useSession } from "@zilobase/features/auth";
-import {
-  defaultUserSettings,
-  normalizeSidebarConfig,
-  useUpdateUserSettings,
-  useUserSettings,
-  type SidebarConfig,
-  type SidebarItemId,
-} from "@zilobase/features/user-settings";
-import { useWorkspaces } from "@zilobase/features/workspaces";
-import {
-  useTeamspaces,
-  useTeamspaceSettings,
-} from "@zilobase/features/teamspaces";
+} from "@/components/ui/sidebar"
+import { WorkspaceSwitcher } from "@/components/workspace-switcher"
+import { ZilobaseLogo } from "@/components/zilobase-logo"
+import { clearPromotedFullPagePath, usePromotedFullPagePath } from "@/contexts/page-side-pane"
+import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
+import { buildDesktopDeepLink } from "@/lib/desktop-deep-link"
+import { discoverRuntimeDesktopServer, getSelectedDesktopServer, type DesktopServer } from "@/lib/desktop-server"
+import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons"
+import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon"
+import { cn } from "@/lib/utils"
+import { useAppStore } from "@/stores/app-store"
+import { useSession } from "@zilobase/features/auth"
 import {
   useAddDatabaseRow,
   useCreateDatabase,
   useSetDatabaseFavorite,
-} from "@zilobase/features/databases";
-import { useWorkspaceMeetings } from "@zilobase/features/meetings";
+} from "@zilobase/features/databases"
+import { useWorkspaceMeetings } from "@zilobase/features/meetings"
 import {
   useCreatePage,
   usePageNavigation,
   useSetPageFavorite,
-} from "@zilobase/features/pages";
-import { useAppStore } from "@/stores/app-store";
+} from "@zilobase/features/pages"
+import { useTeamspaces, useTeamspaceSettings } from "@zilobase/features/teamspaces"
 import {
-  getDatabaseIconNode,
-  getPageIconNode,
-  PageIconDisplay,
-} from "@/lib/page-icon";
-import { buildDesktopDeepLink } from "@/lib/desktop-deep-link";
-import {
-  discoverRuntimeDesktopServer,
-  getSelectedDesktopServer,
-  type DesktopServer,
-} from "@/lib/desktop-server";
-import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
-import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
-import {
-  clearPromotedFullPagePath,
-  usePromotedFullPagePath,
-} from "@/contexts/page-side-pane";
-import {
-  BlocksIcon,
-  CalendarDays,
-  CalendarIcon,
-  CalendarRange,
-  ChartPie,
-  ChevronRightIcon,
-  DatabaseIcon,
-  FileIcon,
-  GalleryThumbnails,
-  HomeIcon,
-  Kanban,
-  LibraryIcon,
-  List,
-  ListChecksIcon,
-  MessageCircleQuestionIcon,
-  MessageSquarePlusIcon,
-  MonitorUpIcon,
-  PencilIcon,
-  PlusIcon,
-  SearchIcon,
-  SlidersHorizontalIcon,
-  SparklesIcon,
-  Table2,
-  Trash2Icon,
-  type LucideIcon,
-} from "lucide-react";
-import { editionWebModule } from "@zilobase/edition-web";
-import { getDatabaseViewIcon } from "@/editor/extensions/database/views/database-view-config";
-import {
-  DEFAULT_DATABASE_ITEM_ICON,
-  DEFAULT_MEETING_ITEM_ICON,
-} from "@/lib/item-icons";
+  defaultUserSettings,
+  normalizeSidebarConfig,
+  resolveSidebarWorkspaceLayout,
+  useUpdateUserSettings,
+  useUserSettings,
+  withSidebarWorkspaceLayout,
+  type LegacySidebarConfig,
+  type SidebarConfig,
+  type SidebarSection,
+  type SidebarShortcut,
+} from "@zilobase/features/user-settings"
+import { useWorkspaces } from "@zilobase/features/workspaces"
 
 const sidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
-    getDatabaseIconNode(database) ?? (
-      <PageIconDisplay size="sm" value={DEFAULT_DATABASE_ITEM_ICON} />
-    ),
-  getDatabaseViewIcon: (view: { config?: unknown; type?: string | null }) => {
-    const customIcon = getDatabaseViewIcon(view.config);
-
-    if (customIcon) {
-      return <PageIconDisplay size="sm" value={customIcon} />;
-    }
-
-    return view.type === "kanban" ? (
-      <Kanban className="size-4" />
-    ) : view.type === "timeline" ? (
-      <CalendarRange className="size-4" />
-    ) : view.type === "chart" ? (
-      <ChartPie className="size-4" />
-    ) : view.type === "gallery" ? (
-      <GalleryThumbnails className="size-4" />
-    ) : view.type === "list" ? (
-      <List className="size-4" />
-    ) : (
-      <Table2 className="size-4" />
-    );
-  },
+    getDatabaseIconNode(database) ?? <PageIconDisplay size="sm" value={DEFAULT_DATABASE_ITEM_ICON} />,
+  getDatabaseViewIcon: () => <DatabaseIcon className="size-4" />,
   getMeetingIcon: (meeting: { emoji?: string | null }) =>
-    <PageIconDisplay
-      size="sm"
-      value={meeting.emoji ?? DEFAULT_MEETING_ITEM_ICON}
-    />,
+    <PageIconDisplay size="sm" value={meeting.emoji ?? DEFAULT_MEETING_ITEM_ICON} />,
   getPageIcon: getPageIconNode,
-};
-
-const data = {
-  navMain: [
-    {
-      id: "home" as const,
-      title: "Home",
-      icon: HomeIcon,
-    },
-    {
-      id: "askAi" as const,
-      title: "Ask AI",
-      url: "/ai",
-      icon: SparklesIcon,
-    },
-    {
-      id: "meetings" as const,
-      title: "Meetings",
-      icon: CalendarDays,
-    },
-    {
-      id: "tasks" as const,
-      title: "Tasks",
-      icon: ListChecksIcon,
-    },
-  ],
-  navSecondary: [
-    {
-      id: "calendar" as const,
-      title: "Calendar",
-      url: "#",
-      icon: <CalendarIcon />,
-    },
-    {
-      id: "templates" as const,
-      title: "Templates",
-      url: "#",
-      icon: <BlocksIcon />,
-    },
-    {
-      id: "library" as const,
-      title: "Library",
-      url: "/recents",
-      icon: <LibraryIcon />,
-    },
-    {
-      id: "trash" as const,
-      title: "Trash",
-      url: "/trash",
-      icon: <Trash2Icon />,
-    },
-    {
-      id: "help" as const,
-      title: "Help",
-      url: "#",
-      icon: <MessageCircleQuestionIcon />,
-    },
-  ],
-};
-
-type SidebarMode = "home" | "askAi" | "meetings" | "tasks";
+}
 
 export function AppSidebar({
   onOpenSettings,
   settingsOpen = false,
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
-  onOpenSettings?: () => void;
-  settingsOpen?: boolean;
+  onOpenSettings?: () => void
+  settingsOpen?: boolean
 }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { openSearch } = useAppSearch();
-  const routerPathname = useRouterState({
-    select: (state) => state.location.pathname,
-  });
-  const promotedFullPagePath = usePromotedFullPagePath();
-  const pathname = promotedFullPagePath ?? routerPathname;
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { openSearch } = useAppSearch()
+  const routerPathname = useRouterState({ select: (state) => state.location.pathname })
+  const promotedFullPagePath = usePromotedFullPagePath()
+  const pathname = promotedFullPagePath ?? routerPathname
+  const activeWorkspaceId = useAppStore((state) => state.activeWorkspaceId)
+  const { data: session } = useSession()
+  const { data: rawWorkspaces = [] } = useWorkspaces()
+  const { data: userSettings = defaultUserSettings } = useUserSettings()
+  const updateUserSettings = useUpdateUserSettings()
+  const runtimeSectionSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  )
+  const [customizing, setCustomizing] = React.useState(false)
+  const [databaseDropTargetId, setDatabaseDropTargetId] = React.useState<string | null>(null)
+  const [desktopLinkServer, setDesktopLinkServer] = React.useState<DesktopServer | null>(getSelectedDesktopServer())
 
   React.useEffect(() => {
-    const handlePopState = () => clearPromotedFullPagePath();
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+    const handlePopState = () => clearPromotedFullPagePath()
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [])
+  React.useEffect(() => {
+    if (promotedFullPagePath && window.location.pathname !== promotedFullPagePath) clearPromotedFullPagePath()
+  }, [promotedFullPagePath, routerPathname])
+  React.useEffect(() => {
+    if (desktopLinkServer || isTauri()) return
+    let disposed = false
+    void discoverRuntimeDesktopServer().then((server) => {
+      if (!disposed) setDesktopLinkServer(server)
+    }).catch(() => undefined)
+    return () => { disposed = true }
+  }, [desktopLinkServer])
 
-  React.useEffect(() => {
-    if (
-      promotedFullPagePath &&
-      window.location.pathname !== promotedFullPagePath
-    ) {
-      clearPromotedFullPagePath();
-    }
-  }, [promotedFullPagePath, routerPathname]);
-  const activeWorkspaceId = useAppStore((state) => state.activeWorkspaceId);
-  const { data: session } = useSession();
-  const { data: rawWorkspaces = [] } = useWorkspaces();
-  const { data: userSettings = defaultUserSettings } = useUserSettings();
-  const updateUserSettings = useUpdateUserSettings();
-  const [customizeSidebarOpen, setCustomizeSidebarOpen] = React.useState(false);
-  const [databaseDropTargetId, setDatabaseDropTargetId] = React.useState<
-    string | null
-  >(null);
-  const [desktopLinkServer, setDesktopLinkServer] =
-    React.useState<DesktopServer | null>(getSelectedDesktopServer());
-  React.useEffect(() => {
-    if (desktopLinkServer || isTauri()) return;
-    let disposed = false;
-    void discoverRuntimeDesktopServer()
-      .then((server) => {
-        if (!disposed) setDesktopLinkServer(server);
-      })
-      .catch(() => undefined);
-    return () => {
-      disposed = true;
-    };
-  }, [desktopLinkServer]);
   const sidebarConfig = React.useMemo(
     () => normalizeSidebarConfig(userSettings.sidebarConfig),
     [userSettings.sidebarConfig],
-  );
-  const workspaces = React.useMemo(
-    () => rawWorkspaces.filter(Boolean),
-    [rawWorkspaces],
-  );
-  const sessionWorkspaceId = session?.session?.activeWorkspaceId ?? null;
-  const storedWorkspace =
-    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null;
-  const sessionWorkspace =
-    workspaces.find((workspace) => workspace.id === sessionWorkspaceId) ?? null;
-  const workspaceId =
-    storedWorkspace?.id ?? sessionWorkspace?.id ?? workspaces[0]?.id ?? null;
-  const [sidebarMode, setSidebarMode] = React.useState<SidebarMode>(
-    pathname === "/ai"
-      ? "askAi"
-      : pathname === "/tasks"
-        ? "tasks"
-      : pathname.startsWith("/m/")
-        ? "meetings"
-        : "home",
-  );
-
+  )
+  const workspaces = React.useMemo(() => rawWorkspaces.filter(Boolean), [rawWorkspaces])
+  const sessionWorkspaceId = session?.session?.activeWorkspaceId ?? null
+  const storedWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null
+  const sessionWorkspace = workspaces.find((workspace) => workspace.id === sessionWorkspaceId) ?? null
+  const workspaceId = storedWorkspace?.id ?? sessionWorkspace?.id ?? workspaces[0]?.id ?? null
+  const layout = React.useMemo(
+    () => resolveSidebarWorkspaceLayout(sidebarConfig, workspaceId),
+    [sidebarConfig, workspaceId],
+  )
+  const [activeTabId, setActiveTabId] = React.useState("home")
   React.useEffect(() => {
-    setSidebarMode((current) => {
-      if (pathname === "/ai") return "askAi";
-      if (pathname === "/tasks") return "tasks";
-      if (pathname.startsWith("/m/")) return "meetings";
-      return current === "askAi" || current === "tasks" ? "home" : current;
-    });
-  }, [pathname]);
-
-  const isAiPage = sidebarMode === "askAi";
-  const isMeetingsPage = sidebarMode === "meetings";
-  const { data: navigation } = usePageNavigation(
-    isAiPage || isMeetingsPage ? null : workspaceId,
-  );
-  const { data: teamspaces = [] } = useTeamspaces(
-    isAiPage || isMeetingsPage ? null : workspaceId,
-  );
-  const { data: teamspaceSettings } = useTeamspaceSettings(
-    isAiPage || isMeetingsPage ? null : workspaceId,
-  );
-  const { data: meetingsPayload } = useWorkspaceMeetings(
-    isMeetingsPage ? workspaceId : null,
-  );
-  const { isPending: isCreatingPage, mutateAsync: createPage } = useCreatePage();
-  const { isPending: isCreatingDatabase, mutateAsync: createDatabase } =
-    useCreateDatabase();
-  const { setActiveThreadId } = useAiChatThreadState({ enabled: isAiPage });
-  const activeMeetingId = getActiveMeetingId(pathname, location.search);
-  const { isPending: isSettingPageFavorite, mutate: setPageFavorite } =
-    useSetPageFavorite();
-  const { isPending: isAddingDatabaseRow, mutate: addDatabaseRow } =
-    useAddDatabaseRow();
-  const {
-    isPending: isSettingDatabaseFavorite,
-    mutate: setDatabaseFavorite,
-  } = useSetDatabaseFavorite();
+    const stored = readActiveTab(workspaceId)
+    const next = layout.tabs.some((tab) => tab.id === stored) ? stored : "home"
+    setActiveTabId(next)
+  }, [layout.tabs, workspaceId])
+  const selectTab = React.useCallback((tabId: string) => {
+    setActiveTabId(tabId)
+    writeActiveTab(workspaceId, tabId)
+  }, [workspaceId])
+  const activeTab = layout.tabs.find((tab) => tab.id === activeTabId) ?? layout.tabs[0]!
+  const needsMeetings = activeTab.sections.some((section) => section.kind === "meetings")
+  const { data: navigation } = usePageNavigation(workspaceId)
+  const { data: teamspaces = [] } = useTeamspaces(workspaceId)
+  const { data: teamspaceSettings } = useTeamspaceSettings(workspaceId)
+  const { data: meetingsPayload } = useWorkspaceMeetings(needsMeetings ? workspaceId : null)
+  const { isPending: isCreatingPage, mutateAsync: createPage } = useCreatePage()
+  const { isPending: isCreatingDatabase, mutateAsync: createDatabase } = useCreateDatabase()
+  const { setActiveThreadId } = useAiChatThreadState({ enabled: false })
+  const { isPending: isSettingPageFavorite, mutate: setPageFavorite } = useSetPageFavorite()
+  const { isPending: isAddingDatabaseRow, mutate: addDatabaseRow } = useAddDatabaseRow()
+  const { isPending: isSettingDatabaseFavorite, mutate: setDatabaseFavorite } = useSetDatabaseFavorite()
   const { favorites, recents, sections: pageSections } = React.useMemo(
-    () =>
-      buildSidebarNavigation(
-        navigation?.pages ?? [],
-        navigation?.databases ?? [],
-        navigation?.placements ?? [],
-        sidebarNavigationIcons,
-      ),
+    () => buildSidebarNavigation(navigation?.pages ?? [], navigation?.databases ?? [], navigation?.placements ?? [], sidebarNavigationIcons),
     [navigation],
-  );
-  const hiddenSidebarItems = React.useMemo(
-    () => new Set(sidebarConfig.hiddenItems),
-    [sidebarConfig.hiddenItems],
-  );
-  const visibleTeamspaces = React.useMemo(() => {
-    const joinedTeamspaces = teamspaces.filter(
-      (teamspace) => teamspace.currentUserRole,
-    );
-    const sortedTeamspaces = [...joinedTeamspaces].sort((left, right) =>
-      sidebarConfig.sectionSorts.shared === "alphabetical"
-        ? left.name.localeCompare(right.name, undefined, { sensitivity: "base" })
-        : Date.parse(right.updatedAt) - Date.parse(left.updatedAt),
-    );
-
-    return sortedTeamspaces.slice(0, sidebarConfig.sectionLimits.shared);
-  }, [sidebarConfig.sectionLimits.shared, sidebarConfig.sectionSorts.shared, teamspaces]);
-
-  const handleSidebarConfigChange = React.useCallback(
-    (nextConfig: SidebarConfig) => {
-      updateUserSettings.mutate(
-        { sidebarConfig: nextConfig },
-        {
-          onError: (error) => {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Could not save sidebar preferences.",
-            );
-          },
-        },
-      );
-    },
-    [updateUserSettings],
-  );
+  )
 
   const handleCreatePage = React.useCallback(async (teamspaceId?: string) => {
-    if (!workspaceId || isCreatingPage) {
-      return;
-    }
-
-    const page = await createPage({ teamspaceId, workspaceId });
-
-    await navigate({
-      to: "/p/$pageId",
-      params: { pageId: page.id },
-    });
-  }, [createPage, isCreatingPage, navigate, workspaceId]);
-
+    if (!workspaceId || isCreatingPage) return
+    const page = await createPage({ teamspaceId, workspaceId })
+    await navigate({ params: { pageId: page.id }, to: "/p/$pageId" })
+  }, [createPage, isCreatingPage, navigate, workspaceId])
   const handleCreateDatabase = React.useCallback(async (teamspaceId?: string) => {
-    if (!workspaceId || isCreatingDatabase) {
-      return;
-    }
-
-    const payload = await createDatabase({
-      workspaceId,
-      standalone: true,
-      teamspaceId,
-    });
-
-    await navigate({
-      to: "/d/$databaseId",
-      params: { databaseId: payload.database.id },
-      search: { view: undefined },
-    });
-  }, [createDatabase, isCreatingDatabase, navigate, workspaceId]);
-
+    if (!workspaceId || isCreatingDatabase) return
+    const payload = await createDatabase({ standalone: true, teamspaceId, workspaceId })
+    await navigate({ params: { databaseId: payload.database.id }, search: { view: undefined }, to: "/d/$databaseId" })
+  }, [createDatabase, isCreatingDatabase, navigate, workspaceId])
   const handleCreateChat = React.useCallback(async () => {
-    setActiveThreadId(null);
-    setSidebarMode("askAi");
-    await navigate({
-      search: { thread: undefined },
-      to: "/ai",
-    });
-  }, [navigate, setActiveThreadId]);
+    setActiveThreadId(null)
+    await navigate({ search: { thread: undefined }, to: "/ai" })
+  }, [navigate, setActiveThreadId])
+  const handleDropPageOnDatabase = React.useCallback((input: { databaseId: string; pageId: string; targetPageId: string | null; title?: string }) => {
+    if (input.targetPageId && input.pageId === input.targetPageId) {
+      toast.error("You can't nest a page inside itself.")
+      return
+    }
+    if (!isAddingDatabaseRow) addDatabaseRow(input, { onError: showMutationError("Could not move page.") })
+  }, [addDatabaseRow, isAddingDatabaseRow])
+  const handleRemoveFavorite = React.useCallback((pageId: string) => {
+    if (!isSettingPageFavorite) setPageFavorite({ isFavorite: false, pageId }, { onError: showMutationError("Could not update favorite.") })
+  }, [isSettingPageFavorite, setPageFavorite])
+  const handleRemoveDatabaseFavorite = React.useCallback((databaseId: string) => {
+    if (!isSettingDatabaseFavorite) setDatabaseFavorite({ databaseId, isFavorite: false }, { onError: showMutationError("Could not update favorite.") })
+  }, [isSettingDatabaseFavorite, setDatabaseFavorite])
+  const saveLayout = React.useCallback(async (nextLayout: typeof layout) => {
+    if (!workspaceId) return
+    await updateUserSettings.mutateAsync({
+      sidebarConfig: withSidebarWorkspaceLayout(sidebarConfig, workspaceId, nextLayout),
+    })
+    setCustomizing(false)
+  }, [sidebarConfig, updateUserSettings, workspaceId])
+  const handleRuntimeSectionDragEnd = React.useCallback(({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id || !workspaceId) return
+    const from = activeTab.sections.findIndex((section) => section.id === active.id)
+    const to = activeTab.sections.findIndex((section) => section.id === over.id)
+    if (from < 0 || to < 0) return
+    const sections = [...activeTab.sections]
+    const [section] = sections.splice(from, 1)
+    if (!section) return
+    sections.splice(to, 0, section)
+    const nextLayout = {
+      ...layout,
+      tabs: layout.tabs.map((tab) => tab.id === activeTab.id ? { ...tab, sections } : tab),
+    }
+    void updateUserSettings.mutateAsync({
+      sidebarConfig: withSidebarWorkspaceLayout(sidebarConfig, workspaceId, nextLayout),
+    }).catch(showMutationError("Could not reorder sidebar sections."))
+  }, [activeTab.id, activeTab.sections, layout, sidebarConfig, updateUserSettings, workspaceId])
 
-  const handleDropPageOnDatabase = React.useCallback(
-    ({
-      databaseId,
-      pageId,
-      targetPageId,
-      title,
-    }: {
-      databaseId: string;
-      pageId: string;
-      targetPageId: string | null;
-      title?: string;
-    }) => {
-      if (targetPageId && pageId === targetPageId) {
-        toast.error("You can't nest a page inside itself.");
-        return;
-      }
-
-      if (isAddingDatabaseRow) {
-        return;
-      }
-
-      addDatabaseRow(
-        { databaseId, pageId, title },
-        {
-          onError: (error) => {
-            toast.error(
-              error instanceof Error ? error.message : "Could not move page.",
-            );
-          },
-        },
-      );
-    },
-    [addDatabaseRow, isAddingDatabaseRow],
-  );
-
-  const handleRemoveFavorite = React.useCallback(
-    (pageId: string) => {
-      if (isSettingPageFavorite) {
-        return;
-      }
-
-      setPageFavorite(
-        { isFavorite: false, pageId },
-        {
-          onError: (error) => {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Could not update favorite.",
-            );
-          },
-        },
-      );
-    },
-    [isSettingPageFavorite, setPageFavorite],
-  );
-
-  const handleRemoveDatabaseFavorite = React.useCallback(
-    (databaseId: string) => {
-      if (isSettingDatabaseFavorite) {
-        return;
-      }
-
-      setDatabaseFavorite(
-        { databaseId, isFavorite: false },
-        {
-          onError: (error) => {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Could not update favorite.",
-            );
-          },
-        },
-      );
-    },
-    [isSettingDatabaseFavorite, setDatabaseFavorite],
-  );
+  const renderSection = (section: SidebarSection) => {
+    const legacyConfig = section.kind === "databaseView"
+      ? null
+      : createSectionPresentationConfig(sidebarConfig, layout, section)
+    const storageKey = `zilobase:sidebar-section:v2:${workspaceId ?? "default"}:${activeTab.id}:${section.id}`
+    if (section.kind === "databaseView") {
+      return <SidebarDatabaseViewSection currentUserId={session?.user?.id} key={section.id} section={section} storageKey={storageKey} />
+    }
+    if (section.kind === "favorites") {
+      return <NavFavorites favorites={favorites} key={section.id} onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite} onRemoveFavorite={handleRemoveFavorite} sectionStorageKey={storageKey} sidebarConfig={legacyConfig!} workspaceId={workspaceId} />
+    }
+    if (section.kind === "meetings") {
+      return <NavMeetings activeMeetingId={getActiveMeetingId(pathname, location.search)} key={section.id} meetings={(meetingsPayload?.meetings ?? []).slice(0, section.limit)} storageKey={storageKey} />
+    }
+    if (section.kind === "aiChats") {
+      return <AiChatsSection key={section.id} limit={section.limit} storageKey={storageKey} />
+    }
+    if (section.kind === "tasks") {
+      return <SidebarTasksSection databaseIds={layout.taskDatabaseIds} key={section.id} limit={section.limit} storageKey={storageKey} />
+    }
+    if (section.kind === "shared") {
+      const sortedTeamspaces = [...teamspaces]
+        .filter((teamspace) => teamspace.currentUserRole)
+        .sort((left, right) => section.sort === "alphabetical" ? left.name.localeCompare(right.name) : Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
+        .slice(0, section.limit)
+      return (
+        <React.Fragment key={section.id}>
+          {pageSections.teamspacePages.length ? <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} label={section.label || "Shared pages"} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pageSections.teamspacePages} sectionId="shared" sectionStorageKey={`${storageKey}:pages`} sidebarConfig={legacyConfig!} storageKey={`${storageKey}:pages:tree`} /> : null}
+          {sortedTeamspaces.map((teamspace) => <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={`${section.id}:${teamspace.id}`} label={teamspace.name} onCreateDatabase={() => void handleCreateDatabase(teamspace.id)} onCreatePage={() => void handleCreatePage(teamspace.id)} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pageSections.teamspacePagesById[teamspace.id] ?? []} sectionId="shared" sectionStorageKey={`${storageKey}:${teamspace.id}`} showCreateAction sidebarConfig={legacyConfig!} storageKey={`${storageKey}:${teamspace.id}:tree`} teamspace={teamspace} workspaceCanManage={Boolean(teamspaceSettings?.canManage)} workspaceId={workspaceId} />)}
+        </React.Fragment>
+      )
+    }
+    const pages = section.kind === "recents" ? recents : pageSections.privatePages
+    return <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={section.id} label={section.label || (section.kind === "recents" ? "Recents" : "Private")} onCreateDatabase={section.kind === "private" ? handleCreateDatabase : undefined} onCreatePage={section.kind === "private" ? handleCreatePage : undefined} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pages} sectionId={section.kind} sectionStorageKey={storageKey} showCreateAction={section.kind === "private"} sidebarConfig={legacyConfig!} storageKey={`${storageKey}:tree`} />
+  }
 
   return (
     <AppSidebarShell {...props}>
-      <AppSidebarHeader
-        navigation={
-          <NavMain
-            items={data.navMain.filter(
-              (item) =>
-                item.id === "home" || !hiddenSidebarItems.has(item.id),
-            )}
-            onOpenHome={() => {
-              setSidebarMode("home");
-              if (pathname === "/tasks") {
-                void navigate({ to: "/recents" });
-              }
-            }}
-            onOpenSearch={openSearch}
-            onOpenTasks={() => {
-              setSidebarMode("tasks");
-              void navigate({ to: "/tasks" });
-            }}
-            onStartAiDraft={() => void handleCreateChat()}
-            onSidebarModeChange={setSidebarMode}
-            sidebarMode={sidebarMode}
-          />
-        }
-      >
-        <WorkspaceSwitcher
-          onOpenSettings={onOpenSettings}
-          settingsOpen={settingsOpen}
-        />
+      <AppSidebarHeader navigation={!customizing ? <SidebarLayoutTabs activeTabId={activeTab.id} onOpenSearch={openSearch} onSelectTab={selectTab} tabs={layout.tabs} /> : null}>
+        <div className="flex h-full items-center px-1.5"><ZilobaseLogo className="h-5 w-auto" /><span className="sr-only">Zilobase</span></div>
       </AppSidebarHeader>
-      <SidebarContent>
-        <div aria-hidden="true" className="h-3 shrink-0" />
-        {isAiPage ? (
-          <AiSidebarHistory />
-        ) : isMeetingsPage ? (
-          <NavMeetings
-            activeMeetingId={activeMeetingId}
-            meetings={meetingsPayload?.meetings ?? []}
-          />
-        ) : (
-          <>
-            {sidebarConfig.sectionOrder.map((sectionId) =>
-              hiddenSidebarItems.has(sectionId)
-                ? null
-                : sectionId === "favorites"
-                  ? (
-                    <NavFavorites
-                      favorites={favorites}
-                      key={sectionId}
-                      onCustomizeSidebar={() => setCustomizeSidebarOpen(true)}
-                      onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite}
-                      onRemoveFavorite={handleRemoveFavorite}
-                      onSidebarConfigChange={handleSidebarConfigChange}
-                      sidebarConfig={sidebarConfig}
-                      workspaceId={workspaceId}
-                    />
-                  )
-                  : sectionId === "shared"
-                    ? (
-                      <Collapsible asChild defaultOpen key={sectionId}>
-                        <SidebarGroup>
-                          <div className="group/section-header relative">
-                            <CollapsibleTrigger asChild>
-                              <SidebarGroupLabel
-                                asChild
-                                className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground"
-                              >
-                                <button
-                                  className="group/section-label w-full cursor-pointer"
-                                  type="button"
-                                >
-                                  <span>Teamspaces</span>
-                                  <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
-                                </button>
-                              </SidebarGroupLabel>
-                            </CollapsibleTrigger>
-                            <SidebarLibraryLink
-                              className="right-9"
-                              label="Teamspaces"
-                              onSidebarConfigChange={
-                                handleSidebarConfigChange
-                              }
-                              sectionId="shared"
-                              sidebarConfig={sidebarConfig}
-                              view="teamspaces"
-                            />
-                            <SidebarSectionMenu
-                              className="right-2"
-                              config={sidebarConfig}
-                              label="Teamspaces"
-                              onChange={handleSidebarConfigChange}
-                              onCustomize={() =>
-                                setCustomizeSidebarOpen(true)
-                              }
-                              sectionId="shared"
-                            />
-                          </div>
-                          <CollapsibleContent className="pb-4 pt-0.5">
-                            <SidebarGroupContent className="-mx-2 w-auto">
-                              {pageSections.teamspacePages.length > 0 ? (
-                                <NavPageSection
-                                  activeDatabaseId={getActiveDatabaseId(
-                                    pathname,
-                                  )}
-                                  activeDatabaseViewId={getActiveDatabaseViewId(
-                                    location.search,
-                                  )}
-                                  activeMeetingId={activeMeetingId}
-                                  activePageId={getActivePageId(
-                                    pathname,
-                                  )}
-                                  databaseDropTargetId={databaseDropTargetId}
-                                  label="Shared pages"
-                                  onDatabaseDropTargetChange={
-                                    setDatabaseDropTargetId
-                                  }
-                                  onDropPageOnDatabase={handleDropPageOnDatabase}
-                                  pages={pageSections.teamspacePages}
-                                  sectionId="shared"
-                                  sidebarConfig={sidebarConfig}
-                                  storageKey={getSidebarExpansionStorageKey(
-                                    workspaceId,
-                                    "team",
-                                  )}
-                                />
-                              ) : null}
-                              {visibleTeamspaces.map((teamspace) => (
-                                  <NavPageSection
-                                    activeDatabaseId={getActiveDatabaseId(
-                                      pathname,
-                                    )}
-                                    activeDatabaseViewId={getActiveDatabaseViewId(
-                                      location.search,
-                                    )}
-                                    activeMeetingId={activeMeetingId}
-                                    activePageId={getActivePageId(
-                                      pathname,
-                                    )}
-                                    databaseDropTargetId={databaseDropTargetId}
-                                    key={`teamspace:${teamspace.id}`}
-                                    label={teamspace.name}
-                                    onCreateDatabase={() =>
-                                      void handleCreateDatabase(teamspace.id)
-                                    }
-                                    onCreatePage={() =>
-                                      void handleCreatePage(teamspace.id)
-                                    }
-                                    onDatabaseDropTargetChange={
-                                      setDatabaseDropTargetId
-                                    }
-                                    onDropPageOnDatabase={
-                                      handleDropPageOnDatabase
-                                    }
-                                    pages={
-                                      pageSections.teamspacePagesById[
-                                        teamspace.id
-                                      ] ?? []
-                                    }
-                                    sectionId="shared"
-                                    showCreateAction
-                                    sidebarConfig={sidebarConfig}
-                                    storageKey={`${getSidebarExpansionStorageKey(
-                                      workspaceId,
-                                      "team",
-                                    )}:${encodeURIComponent(teamspace.id)}`}
-                                    teamspace={teamspace}
-                                    workspaceCanManage={Boolean(
-                                      teamspaceSettings?.canManage,
-                                    )}
-                                    workspaceId={workspaceId}
-                                  />
-                                ))}
-                            </SidebarGroupContent>
-                          </CollapsibleContent>
-                        </SidebarGroup>
-                      </Collapsible>
-                    )
-                  : (
-                    <NavPageSection
-                      activeDatabaseId={getActiveDatabaseId(pathname)}
-                      activeDatabaseViewId={getActiveDatabaseViewId(
-                        location.search,
-                      )}
-                      activePageId={getActivePageId(pathname)}
-                      activeMeetingId={activeMeetingId}
-                      databaseDropTargetId={databaseDropTargetId}
-                      key={sectionId}
-                      label={sectionId === "recents" ? "Recents" : "Private"}
-                      onCreateDatabase={
-                        sectionId === "private" ? handleCreateDatabase : undefined
-                      }
-                      onCreatePage={
-                        sectionId === "private" ? handleCreatePage : undefined
-                      }
-                      onCustomizeSidebar={() => setCustomizeSidebarOpen(true)}
-                      onDatabaseDropTargetChange={setDatabaseDropTargetId}
-                      onDropPageOnDatabase={handleDropPageOnDatabase}
-                      onSidebarConfigChange={handleSidebarConfigChange}
-                      pages={
-                        sectionId === "recents"
-                          ? recents
-                          : pageSections.privatePages
-                      }
-                      sectionId={sectionId}
-                      showCreateAction={sectionId === "private"}
-                      sidebarConfig={sidebarConfig}
-                      storageKey={getSidebarExpansionStorageKey(
-                        workspaceId,
-                        sectionId === "recents"
-                          ? "recents"
-                          : "private",
-                      )}
-                    />
-                  ),
-            )}
-            <NavSecondary
-              className="mt-auto"
-              items={[
-                ...editionWebModule.navigation.map((item) => {
-                  const Icon = item.icon;
-                  return {
-                    title: item.title,
-                    url: item.url,
-                    icon: Icon ? <Icon /> : <BlocksIcon />,
-                  };
-                }),
-                ...data.navSecondary.filter(
-                  (item) =>
-                    item.id === "library" || !hiddenSidebarItems.has(item.id),
-                ),
-              ]}
-            />
-          </>
-        )}
-      </SidebarContent>
+      {customizing ? (
+        <SidebarCustomizePanel activeTabId={activeTab.id} databases={navigation?.databases ?? []} disabled={updateUserSettings.isPending} key={`${workspaceId}:${JSON.stringify(layout)}`} layout={layout} onActiveTabChange={selectTab} onCancel={() => setCustomizing(false)} onDone={saveLayout} onOpenSearch={openSearch} pages={navigation?.pages ?? []} workspaceId={workspaceId} />
+      ) : (
+        <SidebarContent>
+          <div aria-hidden="true" className="h-3 shrink-0" />
+          <ShortcutList databases={navigation?.databases ?? []} onCreateChat={handleCreateChat} onCreateDatabase={handleCreateDatabase} onCreatePage={handleCreatePage} onOpenSettings={onOpenSettings} pages={navigation?.pages ?? []} shortcuts={activeTab.shortcuts} />
+          <DndContext collisionDetection={closestCenter} onDragEnd={handleRuntimeSectionDragEnd} sensors={runtimeSectionSensors}>
+            <SortableContext items={activeTab.sections.map((section) => section.id)} strategy={verticalListSortingStrategy}>
+              {activeTab.sections.map((section) => <RuntimeSectionDragItem id={section.id} key={section.id}>{renderSection(section)}</RuntimeSectionDragItem>)}
+            </SortableContext>
+          </DndContext>
+        </SidebarContent>
+      )}
       <SidebarFooter className="relative z-10 bg-sidebar p-0">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-full h-5 bg-gradient-to-t from-sidebar to-transparent"
-        />
-        <SidebarMenu className="gap-3! px-4 pt-2 pb-3 group-data-[collapsible=icon]:px-1">
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={() => setCustomizeSidebarOpen(true)}
-              tooltip="Customize sidebar"
-              type="button"
-            >
-              <SlidersHorizontalIcon />
-              <span>Customize sidebar</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          {!isTauri() && desktopLinkServer ? (
-            <SidebarMenuItem>
-              <a
-                className="flex w-full items-start gap-2.5 rounded-lg bg-accent p-3 text-foreground ring-1 ring-border transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2!"
-                href={buildDesktopDeepLink(location.href, desktopLinkServer)}
-              >
-                <MonitorUpIcon className="mt-0.5 size-4 shrink-0 group-data-[collapsible=icon]:mt-0" />
-                <span className="min-w-0 group-data-[collapsible=icon]:hidden">
-                  <span className="block text-sm font-medium">
-                    Open in desktop app
-                  </span>
-                  <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
-                    Continue this page in the desktop experience.
-                  </span>
-                </span>
-              </a>
-            </SidebarMenuItem>
-          ) : null}
-          <NewMenu
-            createChatPending={false}
-            createDatabasePending={isCreatingDatabase}
-            createPagePending={isCreatingPage}
-            onCreateChat={handleCreateChat}
-            onCreateDatabase={handleCreateDatabase}
-            onCreatePage={handleCreatePage}
-          />
-        </SidebarMenu>
-      </SidebarFooter>
-      <SidebarCustomizeDialog
-        config={sidebarConfig}
-        disabled={updateUserSettings.isPending}
-        onChange={handleSidebarConfigChange}
-        onOpenChange={setCustomizeSidebarOpen}
-        open={customizeSidebarOpen}
-      />
-    </AppSidebarShell>
-  );
-}
-
-function NewMenu({
-  createChatPending,
-  createDatabasePending,
-  createPagePending,
-  onCreateChat,
-  onCreateDatabase,
-  onCreatePage,
-}: {
-  createChatPending: boolean;
-  createDatabasePending: boolean;
-  createPagePending: boolean;
-  onCreateChat: () => void;
-  onCreateDatabase: () => void;
-  onCreatePage: () => void;
-}) {
-  return (
-    <SidebarMenuItem>
-      <DropDrawer>
-        <DropDrawerTrigger asChild>
-          <SidebarMenuButton
-            className="h-10 w-full justify-center gap-2 bg-background text-base font-semibold text-primary ring-1 ring-border hover:bg-accent hover:text-primary data-open:bg-accent data-open:text-primary active:bg-active dark:bg-muted dark:hover:bg-accent dark:data-open:bg-accent group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:p-2! [&_svg]:size-5"
-            tooltip="New"
-          >
-            <PencilIcon />
-            <span>New</span>
-          </SidebarMenuButton>
-        </DropDrawerTrigger>
-        <DropDrawerContent align="start" className="w-52 rounded-lg" side="top">
-          <DropDrawerItem
-            disabled={createPagePending}
-            onSelect={() => onCreatePage()}
-          >
-            <FileIcon />
-            <span>Page</span>
-          </DropDrawerItem>
-          <DropDrawerItem
-            disabled={createDatabasePending}
-            onSelect={() => onCreateDatabase()}
-          >
-            <DatabaseIcon />
-            <span>Database</span>
-          </DropDrawerItem>
-          <DropDrawerSeparator />
-          <DropDrawerItem
-            disabled={createChatPending}
-            onSelect={() => onCreateChat()}
-          >
-            <MessageSquarePlusIcon />
-            <span>New chat</span>
-          </DropDrawerItem>
-        </DropDrawerContent>
-      </DropDrawer>
-    </SidebarMenuItem>
-  );
-}
-
-function NavMain({
-  items,
-  onOpenHome,
-  onOpenSearch,
-  onOpenTasks,
-  onStartAiDraft,
-  onSidebarModeChange,
-  sidebarMode,
-}: {
-  items: {
-    id: "home" | "meetings" | "tasks" | SidebarItemId;
-    title: string;
-    url?: string;
-    icon: LucideIcon;
-  }[];
-  onOpenHome: () => void;
-  onOpenSearch: () => void;
-  onOpenTasks: () => void;
-  onStartAiDraft: () => void;
-  onSidebarModeChange: (mode: SidebarMode) => void;
-  sidebarMode: SidebarMode;
-}) {
-  const routeSelected = items.findIndex((item) =>
-    sidebarMode === "home"
-      ? item.id === "home"
-      : sidebarMode === "meetings"
-        ? item.id === "meetings"
-        : sidebarMode === "tasks"
-          ? item.id === "tasks"
-        : item.id === "askAi",
-  );
-  const [selected, setSelected] = React.useState<number | null>(routeSelected);
-  const tabs = React.useMemo<ExpandableTabItem[]>(
-    () => items.map((item) => ({ title: item.title, icon: item.icon })),
-    [items],
-  );
-
-  React.useEffect(() => {
-    setSelected(routeSelected);
-  }, [routeSelected]);
-
-  const handleChange = (index: number | null) => {
-    if (index === null) {
-      setSelected(routeSelected);
-      return;
-    }
-
-    setSelected(index);
-    const item = items[index];
-
-    if (!item) return;
-
-    if (item.id === "home") {
-      onOpenHome();
-      return;
-    }
-
-    if (item.id === "meetings") {
-      onSidebarModeChange("meetings");
-      return;
-    }
-
-    if (item.id === "tasks") {
-      onOpenTasks();
-      return;
-    }
-
-    onStartAiDraft();
-  };
-
-  return (
-    <div className="relative z-10 bg-sidebar">
-      <SidebarGroup className="bg-sidebar px-0">
-        <SidebarGroupContent>
-          <nav aria-label="Main navigation" className="bg-sidebar py-2">
-            <div className="flex items-center gap-0.5">
-              <ExpandableTabs
-                onChange={handleChange}
-                selected={selected}
-                tabs={tabs}
-              />
-              <button
-                aria-label="Search"
-                className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={onOpenSearch}
-                title="Search"
-                type="button"
-              >
-                <SearchIcon className="size-4" />
-              </button>
-            </div>
-          </nav>
-        </SidebarGroupContent>
-      </SidebarGroup>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-full h-3 bg-gradient-to-b from-sidebar to-transparent"
-      />
-    </div>
-  );
-}
-
-function AiSidebarHistory() {
-  const { activeThreadId, setActiveThreadId } = useAiChatThreadState();
-  const { handleStartNewChat } = useAiChatThreadActions({
-    activeThreadId,
-    onSelectThread: setActiveThreadId,
-  });
-
-  return (
-    <>
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={handleStartNewChat}
-              >
-                <PlusIcon />
-                <span>New chat</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+        {!customizing ? (
+          <SidebarMenu className="gap-3 px-4 pb-3 pt-2 group-data-[collapsible=icon]:px-1">
+            <SidebarMenuItem><SidebarMenuButton onClick={() => setCustomizing(true)} tooltip="Customize sidebar" type="button"><SlidersHorizontalIcon /><span>Customize sidebar</span></SidebarMenuButton></SidebarMenuItem>
+            {!isTauri() && desktopLinkServer ? <SidebarMenuItem><a className="flex w-full items-start gap-2.5 rounded-lg bg-accent p-3 text-foreground ring-1 ring-border transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2!" href={buildDesktopDeepLink(location.href, desktopLinkServer)}><MonitorUpIcon className="mt-0.5 size-4 shrink-0" /><span className="min-w-0 group-data-[collapsible=icon]:hidden"><span className="block text-sm font-medium">Open in desktop app</span><span className="mt-0.5 block text-xs leading-snug text-muted-foreground">Continue this page in the desktop experience.</span></span></a></SidebarMenuItem> : null}
           </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-      <Collapsible asChild defaultOpen>
-        <SidebarGroup className="min-h-0 flex-1 overflow-hidden pt-0">
-          <CollapsibleTrigger asChild>
-            <SidebarGroupLabel asChild>
-              <button
-                className="group/section-label w-full cursor-pointer"
-                type="button"
-              >
-                <span>History</span>
-                <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
-              </button>
-            </SidebarGroupLabel>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="min-h-0 flex-1 pt-0.5">
-            <SidebarGroupContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <AiChatHistoryList
-                activeThreadId={activeThreadId}
-                className="px-0 py-0"
-                onSelectThread={setActiveThreadId}
-              />
-            </SidebarGroupContent>
-          </CollapsibleContent>
-        </SidebarGroup>
-      </Collapsible>
-    </>
-  );
+        ) : null}
+        <div className="border-t border-border px-2 py-2"><WorkspaceSwitcher onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} /></div>
+      </SidebarFooter>
+    </AppSidebarShell>
+  )
+}
+
+function RuntimeSectionDragItem({ children, id }: { children: React.ReactNode; id: string }) {
+  const sortable = useSortable({
+    animateLayoutChanges: ({ isSorting }) => isSorting,
+    id,
+  })
+  return (
+    <div
+      className={cn((sortable.isDragging || sortable.isOver) && "relative z-20 bg-sidebar")}
+      onPointerDown={(event) => {
+        const target = event.target
+        if (!(target instanceof Element) || !target.closest('[data-sidebar="group-label"]')) return
+        sortable.listeners?.onPointerDown?.(event)
+      }}
+      ref={sortable.setNodeRef}
+      style={{
+        transform: sortable.transform ? `translate3d(0, ${sortable.transform.y}px, 0)` : undefined,
+        transition: sortable.transition,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function ShortcutList({ databases, onCreateChat, onCreateDatabase, onCreatePage, onOpenSettings, pages, shortcuts }: { databases: Array<{ id: string; name: string; views: Array<{ id: string }> }>; onCreateChat: () => Promise<void>; onCreateDatabase: () => Promise<void>; onCreatePage: () => Promise<void>; onOpenSettings?: () => void; pages: Array<{ id: string; name: string }>; shortcuts: SidebarShortcut[] }) {
+  const navigate = useNavigate()
+  return <SidebarGroup className="pb-1"><SidebarGroupContent><SidebarMenu aria-label="Shortcuts">{shortcuts.map((shortcut) => {
+    const target = shortcut.target
+    const page = target.type === "page" ? pages.find((entry) => entry.id === target.pageId) : null
+    const database = target.type === "database" ? databases.find((entry) => entry.id === target.databaseId) : null
+    if ((target.type === "page" && !page) || (target.type === "database" && !database)) return null
+    const label = shortcut.label || page?.name || database?.name || getShortcutLabel(shortcut)
+    const activate = () => {
+      if (target.type === "action") {
+        if (target.action === "createPage") void onCreatePage()
+        else if (target.action === "createDatabase") void onCreateDatabase()
+        else void onCreateChat()
+      } else if (target.type === "page") void navigate({ params: { pageId: target.pageId }, to: "/p/$pageId" })
+      else if (target.type === "database") void navigate({ params: { databaseId: target.databaseId }, search: { view: target.viewId }, to: "/d/$databaseId" })
+      else if (target.type === "library") void navigate({ search: { view: target.view }, to: "/recents" })
+      else if (target.route === "meetings") void navigate({ search: { view: "meetings" }, to: "/recents" })
+      else if (target.route === "settings") onOpenSettings?.()
+      else void navigate({ to: target.route === "ai" ? "/ai" : target.route === "tasks" ? "/tasks" : "/trash" })
+    }
+    return <SidebarMenuItem key={shortcut.id}><SidebarMenuButton onClick={activate} type="button"><SidebarShortcutIcon shortcut={shortcut} /><span>{label}</span></SidebarMenuButton></SidebarMenuItem>
+  })}</SidebarMenu></SidebarGroupContent></SidebarGroup>
+}
+
+function AiChatsSection({ limit, storageKey }: { limit: number; storageKey: string }) {
+  const { activeThreadId, setActiveThreadId } = useAiChatThreadState()
+  const [open, setOpen] = useSidebarSectionOpen(storageKey)
+  return <Collapsible asChild onOpenChange={setOpen} open={open}><SidebarGroup className="group/collapsible min-h-0"><CollapsibleTrigger asChild><SidebarGroupLabel asChild className="group-data-[state=open]/collapsible:bg-accent group-data-[state=open]/collapsible:text-accent-foreground"><button className="group/section-label w-full cursor-pointer" type="button"><span>AI chats</span><ChevronRightIcon className="ml-1 size-3 text-muted-foreground transition-transform group-data-[state=open]/section-label:rotate-90" /></button></SidebarGroupLabel></CollapsibleTrigger><CollapsibleContent className="pb-4 pt-0.5"><SidebarGroupContent><AiChatHistoryList activeThreadId={activeThreadId} className="px-0 py-0" limit={limit} onSelectThread={setActiveThreadId} /></SidebarGroupContent></CollapsibleContent></SidebarGroup></Collapsible>
+}
+
+function createSectionPresentationConfig(config: SidebarConfig, layout: ReturnType<typeof resolveSidebarWorkspaceLayout>, section: Exclude<SidebarSection, { kind: "databaseView" }>): LegacySidebarConfig {
+  const sectionId = section.kind === "favorites" ? "favorites" : section.kind === "shared" ? "shared" : section.kind === "private" ? "private" : "recents"
+  return {
+    hiddenItems: [],
+    libraryView: config.libraryView,
+    sectionLimits: { favorites: 10, private: 10, recents: 10, shared: 10, [sectionId]: section.limit },
+    sectionOrder: [sectionId],
+    sectionSorts: { favorites: "lastEdited", private: "lastEdited", recents: "lastEdited", shared: "lastEdited", [sectionId]: section.sort },
+    taskDatabaseIds: layout.taskDatabaseIds,
+  }
+}
+
+function readActiveTab(workspaceId: string | null) {
+  try { return window.localStorage.getItem(`zilobase:sidebar-active-tab:v2:${workspaceId ?? "default"}`) ?? "home" } catch { return "home" }
+}
+function writeActiveTab(workspaceId: string | null, tabId: string) {
+  try { window.localStorage.setItem(`zilobase:sidebar-active-tab:v2:${workspaceId ?? "default"}`, tabId) } catch { /* Selection still works for this session. */ }
+}
+function showMutationError(fallback: string) {
+  return (error: unknown) => toast.error(error instanceof Error ? error.message : fallback)
 }

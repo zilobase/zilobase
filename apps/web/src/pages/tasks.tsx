@@ -69,6 +69,8 @@ import { usePageNavigation } from "@zilobase/features/pages"
 import {
   defaultUserSettings,
   normalizeSidebarConfig,
+  resolveSidebarWorkspaceLayout,
+  withSidebarWorkspaceLayout,
   useUpdateUserSettings,
   useUserSettings,
 } from "@zilobase/features/user-settings"
@@ -110,7 +112,11 @@ export default function TasksPage() {
     () => normalizeSidebarConfig(userSettings.sidebarConfig),
     [userSettings.sidebarConfig]
   )
-  const selectedDatabaseIds = sidebarConfig.taskDatabaseIds
+  const sidebarLayout = useMemo(
+    () => resolveSidebarWorkspaceLayout(sidebarConfig, workspaceId),
+    [sidebarConfig, workspaceId]
+  )
+  const selectedDatabaseIds = sidebarLayout.taskDatabaseIds
   const databaseQueries = useQueries({
     queries: selectedDatabaseIds.map((databaseId) =>
       databaseQueryOptions(apiFetch, databaseId)
@@ -133,8 +139,12 @@ export default function TasksPage() {
   const [configurationOpen, setConfigurationOpen] = useState(false)
 
   const saveTaskDatabaseIds = async (taskDatabaseIds: string[]) => {
+    if (!workspaceId) return
     await updateUserSettings.mutateAsync({
-      sidebarConfig: { ...sidebarConfig, taskDatabaseIds },
+      sidebarConfig: withSidebarWorkspaceLayout(sidebarConfig, workspaceId, {
+        ...sidebarLayout,
+        taskDatabaseIds,
+      }),
     })
   }
 

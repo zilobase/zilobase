@@ -26,6 +26,7 @@ const ReiconIconPicker = React.lazy(() =>
 )
 
 type IconEmojiPickerProps = {
+  allowUpload?: boolean
   className?: string
   iconPosition?: PageIconPosition
   onEmojiSelect: (emoji: string) => void
@@ -34,6 +35,7 @@ type IconEmojiPickerProps = {
 }
 
 export function IconEmojiPicker({
+  allowUpload = true,
   className,
   iconPosition,
   onEmojiSelect,
@@ -48,7 +50,7 @@ export function IconEmojiPicker({
         <TabsList className="mx-2 mt-2 w-[calc(100%-1rem)]">
           <TabsTrigger value="emoji">Emoji</TabsTrigger>
           <TabsTrigger value="icon">Icon</TabsTrigger>
-          <TabsTrigger value="upload">Upload</TabsTrigger>
+          {allowUpload ? <TabsTrigger value="upload">Upload</TabsTrigger> : null}
         </TabsList>
         <TabsContent className="mt-0" value="emoji">
           <EmojiPicker
@@ -77,9 +79,7 @@ export function IconEmojiPicker({
             </React.Suspense>
           ) : null}
         </TabsContent>
-        <TabsContent className="mt-0" value="upload">
-          <IconUploadPicker onIconSelect={onIconSelect} />
-        </TabsContent>
+        {allowUpload ? <TabsContent className="mt-0" value="upload"><IconUploadPicker onIconSelect={onIconSelect} /></TabsContent> : null}
       </Tabs>
       {iconPosition && onIconPositionChange ? (
         <div className="border-t p-2">

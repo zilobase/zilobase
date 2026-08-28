@@ -43,7 +43,8 @@ import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-st
 import { SidebarSectionMenu } from "@/components/sidebar-section-menu"
 import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
 import { SidebarLibraryLink } from "@/components/sidebar-library-link"
-import type { SidebarConfig } from "@zilobase/features/user-settings"
+import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
+import type { LegacySidebarConfig } from "@zilobase/features/user-settings"
 
 export function NavFavorites({
   favorites,
@@ -52,16 +53,19 @@ export function NavFavorites({
   onCustomizeSidebar,
   onSidebarConfigChange,
   sidebarConfig,
+  sectionStorageKey,
   workspaceId,
 }: {
   favorites: SidebarNavItem[]
   onRemoveDatabaseFavorite: (databaseId: string) => void
   onRemoveFavorite: (pageId: string) => void
   onCustomizeSidebar?: () => void
-  onSidebarConfigChange?: (config: SidebarConfig) => void
-  sidebarConfig?: SidebarConfig
+  onSidebarConfigChange?: (config: LegacySidebarConfig) => void
+  sidebarConfig?: LegacySidebarConfig
+  sectionStorageKey?: string
   workspaceId: string | null
 }) {
+  const [open, setOpen] = useSidebarSectionOpen(sectionStorageKey ?? `zilobase:sidebar-section:favorites:${workspaceId ?? "default"}`)
   const location = useLocation()
   const activePageId = getActivePageId(location.pathname)
   const activeDatabaseId = getActiveDatabaseId(location.pathname)
@@ -75,13 +79,13 @@ export function NavFavorites({
     : favorites
 
   return (
-    <Collapsible asChild defaultOpen>
-      <SidebarGroup>
+    <Collapsible asChild onOpenChange={setOpen} open={open}>
+      <SidebarGroup className="group/collapsible">
         <div className="group/section-header relative">
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel
               asChild
-              className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground"
+              className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-data-[state=open]/collapsible:bg-accent group-data-[state=open]/collapsible:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground"
             >
               <button
                 className="group/section-label w-full cursor-pointer"
