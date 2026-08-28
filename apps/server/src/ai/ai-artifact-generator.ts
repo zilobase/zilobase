@@ -23,50 +23,94 @@ export type GeneratedAiArtifact = {
   extension: string;
 };
 
-const MAX_ARTIFACT_BYTES = 8 * 1024 * 1024;
-
-export function generateAiArtifact(input: {
+export type AiArtifactRenderInput = {
   content?: string;
   entries?: Array<{ content: string; filename: string }>;
   format: AiArtifactFormat;
   table?: AiArtifactTable;
   title: string;
-}): GeneratedAiArtifact {
-  let generated: GeneratedAiArtifact;
-  switch (input.format) {
-    case "csv":
-      generated = textArtifact(toCsv(input.table ?? contentTable(input.content)), "text/csv; charset=utf-8", "csv");
-      break;
-    case "json":
-      generated = textArtifact(toJson(input), "application/json", "json");
-      break;
-    case "md":
-      generated = textArtifact(input.content ?? tableToMarkdown(input.table), "text/markdown; charset=utf-8", "md");
-      break;
-    case "pdf":
-      generated = { bytes: createPdf(input.title, input.content ?? tableToPlainText(input.table)), contentType: "application/pdf", extension: "pdf" };
-      break;
-    case "docx":
-      generated = { bytes: createDocx(input.title, input.content ?? tableToPlainText(input.table)), contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", extension: "docx" };
-      break;
-    case "pptx":
-      generated = { bytes: createPptx(input.title, input.content ?? tableToPlainText(input.table)), contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", extension: "pptx" };
-      break;
-    case "xlsx":
-      generated = { bytes: createXlsx(input.table ?? contentTable(input.content)), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", extension: "xlsx" };
-      break;
-    case "zip":
-      generated = { bytes: createZip(input), contentType: "application/zip", extension: "zip" };
-      break;
-    default:
-      input.format satisfies never;
-      throw new Error("Unsupported artifact format.");
+};
+
+export interface ArtifactRenderer {
+  readonly format: AiArtifactFormat;
+  render(input: AiArtifactRenderInput): GeneratedAiArtifact;
+}
+
+export class ArtifactRendererRegistry {
+  private readonly renderers = new Map<AiArtifactFormat, ArtifactRenderer>();
+
+  constructor(renderers: ArtifactRenderer[]) {
+    for (const renderer of renderers) {
+      if (this.renderers.has(renderer.format)) {
+        throw new Error(`Duplicate artifact renderer for ${renderer.format}.`);
+      }
+      this.renderers.set(renderer.format, renderer);
+    }
   }
+
+  render(input: AiArtifactRenderInput) {
+    const renderer = this.renderers.get(input.format);
+    if (!renderer) throw new Error(`No artifact renderer is registered for ${input.format}.`);
+    const generated = renderer.render(input);
+    validateGeneratedArtifact(input.format, generated);
+    return generated;
+  }
+}
+
+const MAX_ARTIFACT_BYTES = 8 * 1024 * 1024;
+
+export function generateAiArtifact(input: AiArtifactRenderInput): GeneratedAiArtifact {
+  const generated = DEFAULT_ARTIFACT_RENDERERS.render(input);
 
   if (generated.bytes.byteLength > MAX_ARTIFACT_BYTES) {
     throw new Error("Generated artifact exceeds the 8 MB limit.");
   }
   return generated;
+}
+
+const DEFAULT_ARTIFACT_RENDERERS = new ArtifactRendererRegistry(
+  AI_ARTIFACT_FORMATS.map((format): ArtifactRenderer => ({
+    format,
+    render(input) {
+      switch (format) {
+    case "csv":
+      return textArtifact(toCsv(input.table ?? contentTable(input.content)), "text/csv; charset=utf-8", "csv");
+    case "json":
+      return textArtifact(toJson(input), "application/json", "json");
+    case "md":
+      return textArtifact(input.content ?? tableToMarkdown(input.table), "text/markdown; charset=utf-8", "md");
+    case "pdf":
+      return { bytes: createPdf(input.title, input.content ?? tableToPlainText(input.table)), contentType: "application/pdf", extension: "pdf" };
+    case "docx":
+      return { bytes: createDocx(input.title, input.content ?? tableToPlainText(input.table)), contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", extension: "docx" };
+    case "pptx":
+      return { bytes: createPptx(input.title, input.content ?? tableToPlainText(input.table)), contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", extension: "pptx" };
+    case "xlsx":
+      return { bytes: createXlsx(input.table ?? contentTable(input.content)), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", extension: "xlsx" };
+    case "zip":
+      return { bytes: createZip(input), contentType: "application/zip", extension: "zip" };
+    default:
+      format satisfies never;
+      throw new Error("Unsupported artifact format.");
+      }
+    }
+  })),
+);
+
+function validateGeneratedArtifact(
+  format: AiArtifactFormat,
+  generated: GeneratedAiArtifact,
+) {
+  if (generated.bytes.byteLength === 0) throw new Error("Artifact renderer returned an empty file.");
+  if (format === "pdf" && new TextDecoder().decode(generated.bytes.slice(0, 5)) !== "%PDF-") {
+    throw new Error("PDF renderer validation failed.");
+  }
+  if (["docx", "pptx", "xlsx", "zip"].includes(format)) {
+    const bytes = generated.bytes;
+    if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
+      throw new Error(`${format.toUpperCase()} renderer validation failed.`);
+    }
+  }
 }
 
 function textArtifact(content: string, contentType: string, extension: string) {
