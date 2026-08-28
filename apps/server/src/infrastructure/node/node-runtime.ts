@@ -26,6 +26,8 @@ import { createNodeRealtimeBus } from "./realtime-bus";
 import { createNodeCollaborationExtensions } from "./collaboration-redis";
 import { setRealtimeReadinessProbe } from "../../realtime-readiness";
 import { cleanupExpiredAiAgentData } from "../../ai/agent-operations";
+import { AI_JOB_HANDLERS } from "../../ai/ai-job-handlers";
+import { runAiJobBatch } from "../../ai/ai-jobs";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -90,6 +92,7 @@ export function createNodeRuntime({
       databaseRealtime.publishMutation(event),
   };
   let stopMaintenanceDrainer: (() => void) | null = null;
+  let stopAiJobWorker: (() => void) | null = null;
 
   setRuntimeAdapter(effectiveRuntimeAdapter);
   assertSelfHostedProductionConfiguration(env);
@@ -118,6 +121,9 @@ export function createNodeRuntime({
       if (!stopMaintenanceDrainer) {
         stopMaintenanceDrainer = startMaintenanceDrainer(env);
       }
+      if (!stopAiJobWorker) {
+        stopAiJobWorker = startAiJobWorker(env);
+      }
 
       await new Promise<void>((resolve, reject) => {
         server.once("error", reject);
@@ -134,6 +140,8 @@ export function createNodeRuntime({
     async close() {
       stopMaintenanceDrainer?.();
       stopMaintenanceDrainer = null;
+      stopAiJobWorker?.();
+      stopAiJobWorker = null;
       await databaseRealtime.destroy();
       await meetingAudio.destroy();
       await collaboration.destroy();
@@ -148,6 +156,38 @@ export function createNodeRuntime({
         server.close((error) => (error ? reject(error) : resolve()));
       });
     },
+  };
+}
+
+function startAiJobWorker(env: Record<string, unknown>) {
+  const workerId = `node:${process.pid}:${crypto.randomUUID()}`;
+  let running = false;
+  const drain = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await runWithDbEnv(env, () => runAiJobBatch({
+        env,
+        handlers: AI_JOB_HANDLERS,
+        limit: 5,
+        workerId,
+      }));
+    } catch (error) {
+      console.error(JSON.stringify({
+        event: "ai_job_worker_failed",
+        message: error instanceof Error ? error.message : String(error),
+      }));
+    } finally {
+      running = false;
+    }
+  };
+  const startupTimer = setTimeout(() => void drain(), 0);
+  const interval = setInterval(() => void drain(), 1_000);
+  startupTimer.unref();
+  interval.unref();
+  return () => {
+    clearTimeout(startupTimer);
+    clearInterval(interval);
   };
 }
 

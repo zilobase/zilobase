@@ -14,6 +14,16 @@ export type OutboundEmailMessage = {
 };
 
 export type ServerRuntimeAdapter = {
+  enqueueAiJob?(input: {
+    env: RuntimeEnv;
+    jobId: string;
+  }): Promise<void>;
+  scanAiFile?(input: {
+    bytes: Uint8Array;
+    contentType: string;
+    filename: string;
+    workspaceId: string;
+  }): Promise<{ clean: boolean; scanner: string }>;
   applyPageContentUpdate?(input: {
     content: unknown;
     env: RuntimeEnv;

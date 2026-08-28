@@ -20,6 +20,8 @@ export {
   touchAiChatThreadActivity,
 } from "./ai/chat-persistence";
 export { createAuth } from "./auth";
+export { AI_JOB_HANDLERS } from "./ai/ai-job-handlers";
+export { runAiJobBatch, type AiJobHandler } from "./ai/ai-jobs";
 export {
   appendMeetingTranscriptSegment,
   heartbeatMeetingRecorder,
