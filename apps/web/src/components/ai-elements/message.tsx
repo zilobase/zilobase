@@ -12,10 +12,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { cjk } from "@streamdown/cjk";
-import { code } from "@streamdown/code";
-import { math } from "@streamdown/math";
-import { mermaid } from "@streamdown/mermaid";
 import type { UIMessage } from "ai";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes } from "react";
@@ -23,14 +19,15 @@ import {
   Children,
   createContext,
   isValidElement,
+  lazy,
   memo,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from "react";
-import { Streamdown } from "streamdown";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -319,20 +316,25 @@ export const MessageBranchPage = ({
   );
 };
 
-type MessageResponseProps = ComponentProps<typeof Streamdown>;
+type MessageResponseProps = {
+  children?: string;
+  className?: string;
+  isAnimating?: boolean;
+};
 
-const streamdownPlugins = { cjk, code, math, mermaid };
+const LazyMessageMarkdown = lazy(() => import("./message-markdown"));
 
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
-    <Streamdown
-      className={cn(
-        "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-        className
+    <Suspense
+      fallback={(
+        <div className={cn("whitespace-pre-wrap", className)}>
+          {props.children}
+        </div>
       )}
-      plugins={streamdownPlugins}
-      {...props}
-    />
+    >
+      <LazyMessageMarkdown className={className} {...props} />
+    </Suspense>
   ),
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
