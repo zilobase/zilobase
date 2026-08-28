@@ -56,15 +56,29 @@ export function SelectionBubbleMenu({
       })
     }
 
+    // The editor can move while page/side-pane width transitions settle without
+    // causing a window resize. Keep the selection anchor live through reflow.
+    const resizeObserver = new ResizeObserver(updatePosition)
+    let layoutElement: HTMLElement | null = editor.view.dom
+
+    while (layoutElement && layoutElement !== document.body) {
+      resizeObserver.observe(layoutElement)
+      layoutElement = layoutElement.parentElement
+    }
+
+    editor.on("selectionUpdate", updatePosition)
     window.addEventListener("scroll", updatePosition, true)
     window.visualViewport?.addEventListener("scroll", updatePosition)
     window.visualViewport?.addEventListener("resize", updatePosition)
+    updatePosition()
 
     return () => {
       if (frame !== null) {
         window.cancelAnimationFrame(frame)
       }
 
+      resizeObserver.disconnect()
+      editor.off("selectionUpdate", updatePosition)
       window.removeEventListener("scroll", updatePosition, true)
       window.visualViewport?.removeEventListener("scroll", updatePosition)
       window.visualViewport?.removeEventListener("resize", updatePosition)
