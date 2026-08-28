@@ -362,6 +362,41 @@ export function updateDatabaseViewInPayload(
   return { ...payload, views };
 }
 
+export function updateDatabaseViewInNavigation(
+  navigation: PageNavigationPayload | undefined,
+  input: UpdateDatabaseViewInput & { updatedAt?: string },
+) {
+  if (!navigation) {
+    return navigation;
+  }
+
+  const updatedAt = input.updatedAt ?? new Date().toISOString();
+
+  return {
+    ...navigation,
+    databases: navigation.databases.map((database) =>
+      database.id === input.databaseId
+        ? {
+            ...database,
+            views: database.views.map((view) =>
+              view.id === input.databaseViewId
+                ? {
+                    ...view,
+                    ...(input.config !== undefined
+                      ? { config: input.config }
+                      : {}),
+                    ...(input.name !== undefined ? { name: input.name } : {}),
+                    ...(input.type !== undefined ? { type: input.type } : {}),
+                    updatedAt,
+                  }
+                : view,
+            ),
+          }
+        : database,
+    ),
+  };
+}
+
 export function updateDatabasePropertyInPayload(
   payload: DatabasePayload | null | undefined,
   input: UpdatePropertyInput,
@@ -730,19 +765,45 @@ export function useUpdateDatabaseView() {
       mutationSequenceRef.current = mutationSequence;
       latestMutationByViewRef.current.set(mutationKey, mutationSequence);
 
-      await queryClient.cancelQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
-      });
       const previous = queryClient.getQueryData<DatabasePayload | null>(
         databaseQueryKey(variables.databaseId),
       );
+      const navigationQueryKey = previous
+        ? pagesNavRootQueryKey(previous.database.workspaceId)
+        : null;
+
+      await Promise.all([
+        queryClient.cancelQueries({
+          queryKey: databasePayloadRootQueryKey(variables.databaseId),
+        }),
+        ...(navigationQueryKey
+          ? [queryClient.cancelQueries({ queryKey: navigationQueryKey })]
+          : []),
+      ]);
+      const previousNavQueries = navigationQueryKey
+        ? queryClient.getQueriesData<PageNavigationPayload>({
+            queryKey: navigationQueryKey,
+          })
+        : [];
 
       queryClient.setQueriesData<DatabasePayload | null>(
         { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
         (current) => updateDatabaseViewInPayload(current, variables),
       );
 
-      return { mutationKey, mutationSequence, previous };
+      if (navigationQueryKey) {
+        queryClient.setQueriesData<PageNavigationPayload | undefined>(
+          { queryKey: navigationQueryKey },
+          (current) => updateDatabaseViewInNavigation(current, variables),
+        );
+      }
+
+      return {
+        mutationKey,
+        mutationSequence,
+        previous,
+        previousNavQueries,
+      };
     },
     mutationFn: async ({
       databaseId,
@@ -770,6 +831,12 @@ export function useUpdateDatabaseView() {
           context.previous,
         );
       }
+
+      if (isLatestMutation) {
+        for (const [queryKey, data] of context?.previousNavQueries ?? []) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
     },
     onSuccess: async (response, variables, context) => {
       const isLatestMutation =
@@ -781,7 +848,31 @@ export function useUpdateDatabaseView() {
         return;
       }
 
-      await commitDatabaseMutation(queryClient, variables.databaseId, response);
+      const payload = await commitDatabaseMutation(
+        queryClient,
+        variables.databaseId,
+        response,
+      );
+      const updatedView = payload.views.find(
+        (view) => view.id === variables.databaseViewId,
+      );
+
+      if (updatedView) {
+        queryClient.setQueriesData<PageNavigationPayload | undefined>(
+          {
+            queryKey: pagesNavRootQueryKey(payload.database.workspaceId),
+          },
+          (current) =>
+            updateDatabaseViewInNavigation(current, {
+              config: updatedView.config,
+              databaseId: variables.databaseId,
+              databaseViewId: updatedView.id,
+              name: updatedView.name,
+              type: updatedView.type,
+              updatedAt: updatedView.updatedAt,
+            }),
+        );
+      }
     },
     onSettled: (_result, _error, _variables, context) => {
       if (
