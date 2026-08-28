@@ -40,6 +40,55 @@ export type AiFileExtraction = {
   truncated: boolean;
 };
 
+export type FileExtractor = {
+  kind: AiFileKind;
+  extract(bytes: Uint8Array): Omit<AiFileExtraction, "kind" | "truncated">;
+};
+
+export class FileExtractorRegistry {
+  private readonly extractors = new Map<AiFileKind, FileExtractor>();
+
+  constructor(extractors: FileExtractor[]) {
+    for (const extractor of extractors) {
+      if (this.extractors.has(extractor.kind)) {
+        throw new Error(`Duplicate file extractor for ${extractor.kind}.`);
+      }
+      this.extractors.set(extractor.kind, extractor);
+    }
+  }
+
+  extract(kind: AiFileKind, bytes: Uint8Array): AiFileExtraction {
+    const extractor = this.extractors.get(kind);
+    if (!extractor) throw new Error(`No file extractor is registered for ${kind}.`);
+    const extracted = extractor.extract(bytes);
+    const normalized = extracted.text === null
+      ? null
+      : normalizeExtractedText(extracted.text);
+    const truncated = (normalized?.length ?? 0) > AI_FILE_MAX_EXTRACTED_CHARS;
+    return {
+      ...extracted,
+      kind,
+      text: truncated
+        ? `${normalized!.slice(0, AI_FILE_MAX_EXTRACTED_CHARS)}\n\n[File extraction truncated]`
+        : normalized,
+      truncated,
+    };
+  }
+}
+
+const DEFAULT_FILE_EXTRACTORS = new FileExtractorRegistry([
+  providerFileExtractor("pdf"),
+  providerFileExtractor("image"),
+  textFileExtractor("csv", (bytes) => csvToReadableText(decodeUtf8(bytes))),
+  textFileExtractor("json", (bytes) => formatJson(decodeUtf8(bytes))),
+  textFileExtractor("text", decodeUtf8),
+  textFileExtractor("markdown", decodeUtf8),
+  textFileExtractor("docx", extractDocx),
+  textFileExtractor("pptx", extractPptx),
+  textFileExtractor("xlsx", extractXlsx),
+  textFileExtractor("zip", extractZip),
+]);
+
 export function extractAiFile(input: {
   bytes: Uint8Array;
   contentType: string;
@@ -55,54 +104,23 @@ export function extractAiFile(input: {
 
   const kind = detectAiFileKind(input);
 
-  if (kind === "pdf" || kind === "image") {
-    return {
-      kind,
-      mode: "provider_file",
-      text: null,
-      truncated: false,
-    };
-  }
+  return DEFAULT_FILE_EXTRACTORS.extract(kind, input.bytes);
+}
 
-  let text: string;
-  switch (kind) {
-    case "csv":
-      text = csvToReadableText(decodeUtf8(input.bytes));
-      break;
-    case "json":
-      text = formatJson(decodeUtf8(input.bytes));
-      break;
-    case "text":
-    case "markdown":
-      text = decodeUtf8(input.bytes);
-      break;
-    case "docx":
-      text = extractDocx(input.bytes);
-      break;
-    case "pptx":
-      text = extractPptx(input.bytes);
-      break;
-    case "xlsx":
-      text = extractXlsx(input.bytes);
-      break;
-    case "zip":
-      text = extractZip(input.bytes);
-      break;
-    default:
-      kind satisfies never;
-      throw new Error("Unsupported file type.");
-  }
-
-  const normalized = normalizeExtractedText(text);
-  const truncated = normalized.length > AI_FILE_MAX_EXTRACTED_CHARS;
-
+function providerFileExtractor(kind: "image" | "pdf"): FileExtractor {
   return {
     kind,
-    mode: "extracted_text",
-    text: truncated
-      ? `${normalized.slice(0, AI_FILE_MAX_EXTRACTED_CHARS)}\n\n[File extraction truncated]`
-      : normalized,
-    truncated,
+    extract: () => ({ mode: "provider_file", text: null }),
+  };
+}
+
+function textFileExtractor(
+  kind: Exclude<AiFileKind, "image" | "pdf">,
+  extract: (bytes: Uint8Array) => string,
+): FileExtractor {
+  return {
+    kind,
+    extract: (bytes) => ({ mode: "extracted_text", text: extract(bytes) }),
   };
 }
 

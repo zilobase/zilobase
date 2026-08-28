@@ -83,13 +83,26 @@ export async function uploadAiChatFile(input: {
     throw new Error(`${file.name} upload failed (${response.status}).`)
   }
 
-  const completed = await apiFetch<{ file: AiFileRecord }>(
+  let completed = await apiFetch<{
+    file: AiFileRecord
+    job?: { error: string | null; id: string; status: string }
+  }>(
     `/api/ai/files/${encodeURIComponent(reservation.id)}/complete`,
     {
       headers: { "x-zilobase-workspace-id": input.workspaceId },
       method: "POST",
     },
   )
+  if (completed.job) {
+    await waitForAiJob(completed.job.id, input.workspaceId)
+    completed = await apiFetch<{ file: AiFileRecord }>(
+      `/api/ai/files/${encodeURIComponent(reservation.id)}/complete`,
+      {
+        headers: { "x-zilobase-workspace-id": input.workspaceId },
+        method: "POST",
+      },
+    )
+  }
   const downloadUrl = completed.file.downloadUrl
   if (!downloadUrl) throw new Error(`${file.name} did not produce a download reference.`)
 
@@ -102,6 +115,23 @@ export async function uploadAiChatFile(input: {
       url: downloadUrl,
     },
   }
+}
+
+async function waitForAiJob(jobId: string, workspaceId: string) {
+  const deadline = Date.now() + 5 * 60 * 1_000
+  while (Date.now() < deadline) {
+    const { job } = await apiFetch<{
+      job: { error: string | null; status: string }
+    }>(`/api/ai/jobs/${encodeURIComponent(jobId)}`, {
+      headers: { "x-zilobase-workspace-id": workspaceId },
+    })
+    if (job.status === "succeeded") return
+    if (job.status === "failed" || job.status === "cancelled") {
+      throw new Error(job.error || "File processing failed.")
+    }
+    await new Promise((resolve) => setTimeout(resolve, 750))
+  }
+  throw new Error("File processing timed out. Try the upload again.")
 }
 
 async function toFile(part: FileUIPart) {

@@ -2,16 +2,9 @@ import { and, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import * as z from "zod";
 
-import {
-  AI_FILE_MAX_BYTES,
-  contentTypeForAiFileKind,
-  extractAiFile,
-} from "../../ai/ai-file-extraction";
-import {
-  readAiStoredObject,
-  sanitizeAiFilename,
-  sha256Hex,
-} from "../../ai/ai-file-storage";
+import { AI_FILE_MAX_BYTES } from "../../ai/ai-file-extraction";
+import { sanitizeAiFilename } from "../../ai/ai-file-storage";
+import { enqueueAiJob, getOwnedAiJob } from "../../ai/ai-jobs";
 import { getStringEnv } from "../../config";
 import { db } from "../../db";
 import { aiChatArtifact, aiChatUpload } from "../../db/schema";
@@ -154,64 +147,39 @@ aiFileRoutes.post("/files/:fileId/complete", async (c) => {
   const record = await readOwnedUpload(c.req.param("fileId"), auth);
   if (!record) return c.json({ error: "Upload not found" }, 404);
   if (record.status === "ready") return c.json({ file: toFileResponse(record) });
-  if (record.status !== "pending") return c.json({ error: "Upload cannot be completed" }, 409);
-
-  const storage = createImageStorage(c.env);
-  try {
-    const { bytes, metadata } = await readAiStoredObject(
-      storage,
-      record.objectKey,
-      AI_FILE_MAX_BYTES,
-    );
-    if (bytes.byteLength !== record.byteSize) {
-      throw new Error("Uploaded byte size does not match the reservation.");
-    }
-    if (
-      metadata.contentType &&
-      normalizeContentType(metadata.contentType) !== record.contentType
-    ) {
-      throw new Error("Uploaded content type does not match the reservation.");
-    }
-
-    const extraction = extractAiFile({
-      bytes,
-      contentType: record.contentType,
-      filename: record.filename,
-    });
-    const contentType = contentTypeForAiFileKind(
-      extraction.kind,
-      record.contentType,
-    );
-    const now = new Date();
-    const [ready] = await db
-      .update(aiChatUpload)
-      .set({
-        checksum: await sha256Hex(bytes),
-        contentType,
-        extractedText: extraction.text,
-        extraction: {
-          kind: extraction.kind,
-          mode: extraction.mode,
-          truncated: extraction.truncated,
-        },
-        status: "ready",
-        updatedAt: now,
-        uploadedAt: now,
-      })
-      .where(eq(aiChatUpload.id, record.id))
-      .returning();
-    return c.json({ file: toFileResponse(ready!) });
-  } catch (error) {
-    await storage.delete(record.objectKey).catch(() => undefined);
-    await db
-      .update(aiChatUpload)
-      .set({ status: "rejected", updatedAt: new Date() })
-      .where(eq(aiChatUpload.id, record.id));
-    return c.json(
-      { error: error instanceof Error ? error.message : "File validation failed" },
-      415,
-    );
+  if (record.status !== "pending" && record.status !== "processing") {
+    return c.json({ error: "Upload cannot be completed" }, 409);
   }
+  if (record.status === "pending") {
+    await db.update(aiChatUpload).set({
+      status: "processing",
+      updatedAt: new Date(),
+    }).where(and(eq(aiChatUpload.id, record.id), eq(aiChatUpload.status, "pending")));
+  }
+  const job = await enqueueAiJob({
+    dedupeKey: record.id,
+    env: c.env,
+    input: { uploadId: record.id },
+    type: "upload-extraction",
+    userId: auth.user.id,
+    workspaceId: auth.workspaceId,
+  });
+  return c.json({
+    file: { ...toFileResponse(record), status: "processing" },
+    job: toJobResponse(job),
+  }, 202);
+});
+
+aiFileRoutes.get("/jobs/:jobId", async (c) => {
+  const auth = await requireActiveWorkspace(c);
+  if ("response" in auth) return auth.response;
+  const job = await getOwnedAiJob({
+    id: c.req.param("jobId"),
+    userId: auth.user.id,
+    workspaceId: auth.workspaceId,
+  });
+  if (!job) return c.json({ error: "Job not found" }, 404);
+  return c.json({ job: toJobResponse(job) });
 });
 
 aiFileRoutes.get("/files/:fileId/download", async (c) => {
@@ -296,5 +264,15 @@ function toFileResponse(record: typeof aiChatUpload.$inferSelect) {
     filename: record.filename,
     id: record.id,
     status: record.status,
+  };
+}
+
+function toJobResponse(job: Awaited<ReturnType<typeof enqueueAiJob>>) {
+  return {
+    error: job.status === "failed" ? job.error : null,
+    id: job.id,
+    progress: job.progress,
+    status: job.status,
+    type: job.type,
   };
 }
