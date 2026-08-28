@@ -10,19 +10,23 @@ export type AppSearchResult = {
   type: "database" | "page"
 }
 
+export type AppSearchResultType = AppSearchResult["type"]
+
 export const appSearchQueryKey = (
   workspaceId: string | null | undefined,
   query: string,
-) => ["search", workspaceId ?? "none", query] as const
+  types?: AppSearchResultType[],
+) => ["search", workspaceId ?? "none", query, types?.join(",") ?? "all"] as const
 
 export const appSearchQueryOptions = (
   apiFetch: ApiFetcher,
   workspaceId: string | null | undefined,
   query: string,
   enabled = true,
+  types?: AppSearchResultType[],
 ) =>
   queryOptions({
-    queryKey: appSearchQueryKey(workspaceId, query),
+    queryKey: appSearchQueryKey(workspaceId, query, types),
     enabled: Boolean(workspaceId) && enabled,
     staleTime: 15_000,
     queryFn: async ({ signal }) => {
@@ -34,6 +38,7 @@ export const appSearchQueryOptions = (
         workspaceId,
         q: query,
       })
+      if (types?.length) params.set("types", types.join(","))
 
       try {
         const result = await apiFetch<{ results: AppSearchResult[] }>(

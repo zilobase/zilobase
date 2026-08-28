@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import {
   canAccessDatabaseInWorkspace,
@@ -6,7 +6,7 @@ import {
   getMembership,
 } from "../../access";
 import { db } from "../../db";
-import { searchDocument } from "../../db/schema";
+import { database, databaseView, searchDocument } from "../../db/schema";
 
 export type WorkspaceSearchResult = {
   emoji: string | null;
@@ -59,6 +59,20 @@ export async function searchWorkspaceItems(input: {
   const tsQuery = query
     ? sql`websearch_to_tsquery('simple', ${query})`
     : null;
+  const matchingViewDatabaseIds = tsQuery && requestedTypes.has("database")
+    ? (
+        await db
+          .selectDistinct({ databaseId: databaseView.databaseId })
+          .from(databaseView)
+          .innerJoin(database, eq(database.id, databaseView.databaseId))
+          .where(and(
+            eq(database.workspaceId, input.workspaceId),
+            isNull(database.deletedAt),
+            sql`to_tsvector('simple', ${databaseView.name}) @@ ${tsQuery}`,
+          ))
+          .limit(candidateLimit)
+      ).map((match) => match.databaseId)
+    : [];
   const excerpt = tsQuery
     ? sql<string | null>`nullif(ts_headline('simple', ${searchDocument.contentText}, ${tsQuery}, ${SEARCH_HEADLINE_OPTIONS}), '')`
     : sql<string | null>`nullif(left(${searchDocument.contentText}, ${MAX_SEARCH_EXCERPT_CHARS}), '')`;
@@ -80,7 +94,17 @@ export async function searchWorkspaceItems(input: {
     .where(and(
       eq(searchDocument.workspaceId, input.workspaceId),
       inArray(searchDocument.sourceType, types),
-      tsQuery ? sql`${searchDocument.searchVector} @@ ${tsQuery}` : undefined,
+      tsQuery
+        ? or(
+            sql`${searchDocument.searchVector} @@ ${tsQuery}`,
+            matchingViewDatabaseIds.length
+              ? and(
+                  eq(searchDocument.sourceType, "database"),
+                  inArray(searchDocument.sourceId, matchingViewDatabaseIds),
+                )
+              : undefined,
+          )
+        : undefined,
     ))
     .orderBy(...(
       rank

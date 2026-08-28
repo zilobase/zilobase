@@ -37,10 +37,17 @@ searchRoutes.get("/", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
+  const requestedTypes = (c.req.query("types") ?? "")
+    .split(",")
+    .filter((type): type is "database" | "page" =>
+      type === "database" || type === "page",
+    );
+
   const results = await searchWorkspaceItems({
     limit: maxSearchResults,
     membershipVerified: true,
     query: c.req.query("q") ?? "",
+    types: requestedTypes.length ? requestedTypes : undefined,
     userId: user.id,
     workspaceId,
   });
