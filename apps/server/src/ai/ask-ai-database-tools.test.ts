@@ -4,7 +4,29 @@ import { test } from "vitest";
 import {
   AGENT_CREATABLE_DATABASE_PROPERTY_TYPES,
   AGENT_DATABASE_VIEW_TYPES,
+  buildDatabaseConfigInstruction,
 } from "./ask-ai-database-tools";
+
+test("agent database instructions require inline page-owned databases", () => {
+  const instruction = buildDatabaseConfigInstruction({
+    allowedPageIds: [],
+    primaryPageId: null,
+  });
+
+  assert.match(
+    instruction,
+    /createDatabase always embeds the new live database block inline/i,
+  );
+  assert.doesNotMatch(instruction, /createDatabase does not embed/i);
+  assert.match(
+    instruction,
+    /rowPageId.*readWorkspacePage.*updateWorkspacePage/i,
+  );
+  assert.match(
+    instruction,
+    /never use setDatabaseCellValue for page body content/i,
+  );
+});
 
 test("agent database tools exclude forbidden advanced property creation", () => {
   assert.equal(AGENT_CREATABLE_DATABASE_PROPERTY_TYPES.includes("relation"), true);

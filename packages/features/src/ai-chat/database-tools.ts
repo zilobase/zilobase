@@ -1,3 +1,5 @@
+import type { AgentCitation } from "./agent-contract"
+
 export const DATABASE_CONFIG_TOOL_NAMES = [
   "createPage",
   "createDatabase",
@@ -16,6 +18,7 @@ export type DatabaseConfigToolName =
   (typeof DATABASE_CONFIG_TOOL_NAMES)[number]
 
 export type DatabaseConfigToolOutput = {
+  citations?: AgentCitation[]
   hints?: string[]
   ids: Record<string, string>
   ok: true

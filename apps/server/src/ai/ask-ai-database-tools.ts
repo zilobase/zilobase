@@ -1,4 +1,7 @@
-import type { AgentActionReceipt } from "@zilobase/features/ai-chat/agent-contract";
+import type {
+  AgentActionReceipt,
+  AgentCitation,
+} from "@zilobase/features/ai-chat/agent-contract";
 import { tool, type ToolCallOptions, type ToolSet } from "ai";
 import * as z from "zod";
 
@@ -93,6 +96,7 @@ type ToolContext = {
 };
 
 type ToolResult = {
+  citations?: AgentCitation[];
   hints?: string[];
   ids: Record<string, string>;
   ok: true;
@@ -119,6 +123,7 @@ function toToolResult(
   summary: string,
   ids: Record<string, string | undefined>,
   hints: string[] = [],
+  citations: AgentCitation[] = [],
 ): ToolResult {
   const filteredIds = Object.fromEntries(
     Object.entries(ids).filter((entry): entry is [string, string] =>
@@ -132,6 +137,7 @@ function toToolResult(
     summary,
     ids: filteredIds,
     hints,
+    ...(citations.length > 0 ? { citations } : {}),
   };
 }
 
@@ -195,13 +201,18 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
         return toToolResult(`Created page "${input.name}".`, {
           pageId: result.pageId,
-        });
+        }, [], [{
+          id: result.pageId,
+          source: "page",
+          title: input.name,
+          url: `/p/${encodeURIComponent(result.pageId)}`,
+        }]);
       }),
     }),
 
     createDatabase: tool({
       description:
-        "Create a database on a host page. Does NOT embed the database in page content. When the user asks to embed or add the database to the page/page, call embedDatabaseInPage immediately after this tool and before properties, rows, or cell values so they can preview the live database while setup continues.",
+        "Create a database on a host page and immediately embed its live database block inline in that page. A page-owned database is never created as navigation-only state.",
       inputSchema: z.object({
         name: z.string().trim().min(1).max(240).optional(),
         pageId: z.string().trim().optional(),
@@ -210,30 +221,42 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         const pageId = resolvePageId(context, input.pageId, "pageId");
 
         const result = await createDatabaseService({
-
           name: input.name,
           workspaceId: context.workspaceId,
           pageId,
           userId: context.userId,
         });
+        const embed = await embedDatabaseInPageService({
+          databaseId: result.databaseId,
+          env: context.env,
+          userId: context.userId,
+          pageId,
+        });
 
-        return toToolResult(`Created database "${result.name}".`, {
+        return toToolResult(`Created and embedded database "${result.name}".`, {
           databaseId: result.databaseId,
           dataSourceId: result.dataSourceId,
           defaultViewId: result.defaultViewId,
           pageId,
         }, [
           "Default Table view already exists as defaultViewId.",
-          "Do not embed unless the user asked to embed or add to the page.",
-        ]);
+          embed.alreadyEmbedded
+            ? "The live database block was already present in the host page."
+            : "The live database block is inline in the host page.",
+        ], [{
+          id: result.databaseId,
+          source: "database",
+          title: result.name,
+          url: `/d/${encodeURIComponent(result.databaseId)}`,
+        }]);
       }),
     }),
 
     embedDatabaseInPage: tool({
       description:
-        "Embed a database inline in page content using [Database (<uuid>)]. Only call when the user explicitly asks to embed or place the database in the page/page. Call immediately after createDatabase and before properties, rows, or cell values when embedding was requested.",
+        "Embed an existing database inline in page content using [Database (<uuid>)]. createDatabase already embeds new page-owned databases, so use this only to repair or place an existing database.",
       inputSchema: z.object({
-        dataSourceId: z.string().trim().min(1),
+        databaseId: z.string().trim().min(1),
         pageId: z.string().trim().optional(),
         afterHeading: z
           .string()
@@ -250,7 +273,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
         const result = await embedDatabaseInPageService({
           afterHeading: input.afterHeading,
-          databaseId: input.dataSourceId,
+          databaseId: input.databaseId,
           env: context.env,
           userId: context.userId,
           pageId,
@@ -468,7 +491,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
     createDatabaseRow: tool({
       description:
-        "Add a row to a database. Creates a sub-page for the row unless pageId is provided.",
+        "Add a row to a database. Creates a real editable sub-page for the row unless pageId is provided. Returns rowPageId and a page citation. To write the row page body, call readWorkspacePage and then updateWorkspacePage with rowPageId; never use setDatabaseCellValue for page body content.",
       inputSchema: z.object({
         dataSourceId: z.string().trim().min(1),
         title: z.string().trim().min(1).optional(),
@@ -487,6 +510,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
           title: input.title,
           userId: context.userId,
         });
+        context.allowedPageIds.add(result.rowPageId);
 
         return toToolResult(`Created row "${result.title}".`, {
           databaseId: result.databaseId,
@@ -495,7 +519,13 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
           rowPageId: result.rowPageId,
         }, [
           "Use rowId and pagePropertyId in setDatabaseCellValue.",
-        ]);
+          "Use rowPageId with readWorkspacePage and updateWorkspacePage for the page body.",
+        ], [{
+          id: result.rowPageId,
+          source: "page",
+          title: result.title,
+          url: `/p/${encodeURIComponent(result.rowPageId)}`,
+        }]);
       }),
     }),
 
@@ -544,10 +574,11 @@ export function buildDatabaseConfigInstruction(input: {
     "## Zilobase database and page configuration",
     "You can create and configure accessible Zilobase databases and pages using the database tools. Every successful mutation returns a durable action receipt.",
     "Call tools one at a time in dependency order. Never invent a batch tool.",
-    "Typical order: createPage (optional) -> createDatabase -> embed/link (only if user asked) -> createDatabaseProperty -> createDatabaseView/updateDatabaseView -> createDatabaseRow -> setDatabaseCellValue. Use the dataSourceId returned by createDatabase for property, row, and cell tools.",
-    "When the user asks to embed or add the database to the page/page, call embedDatabaseInPage immediately after createDatabase and before properties, rows, or cell values.",
-    "createDatabase does not embed the database. Call embedDatabaseInPage only when the user asks to embed or place it in page content. Call linkDatabaseInPage only when the user asks for sidebar/navigation links.",
+    "Typical order: createPage (optional) -> createDatabase -> createDatabaseProperty -> createDatabaseView/updateDatabaseView -> createDatabaseRow -> setDatabaseCellValue. Use the dataSourceId returned by createDatabase for property, row, and cell tools.",
+    "createDatabase always embeds the new live database block inline in its host page. Never create a page-owned database as navigation-only state.",
+    "Use embedDatabaseInPage only to repair or place an existing database. Call linkDatabaseInPage only when the user explicitly asks for an additional sidebar/navigation link.",
     "Inline embed format: [Database (<databaseId>)].",
+    "Every database row is also an editable page. createDatabaseRow returns rowPageId. When the user asks for content, notes, a description, or a body inside row pages, call readWorkspacePage(rowPageId) and then updateWorkspacePage for each row page. Never invent a pagePropertyId and never use setDatabaseCellValue for page body content; that tool only changes database property cells.",
     "For workflow/task columns (Status, Priority with states, etc.), prefer type status over select. Status auto-creates default options: Not started (gray, To-do), In progress (blue), Done (green). You can extend with more options and groups.",
     "For plain picklists use select or multi_select. Always create property options before setDatabaseCellValue. Option colors are assigned automatically; valid colors: gray, brown, orange, yellow, green, blue, purple, pink, red.",
     "Status cell values use option names (e.g. \"Not started\", \"In progress\", \"Done\"). Status supports kanban grouping via option group.",
