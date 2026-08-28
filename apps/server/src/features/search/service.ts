@@ -64,7 +64,7 @@ export async function searchWorkspaceItems(input: {
     : sql<string | null>`nullif(left(${searchDocument.contentText}, ${MAX_SEARCH_EXCERPT_CHARS}), '')`;
   const rank = tsQuery
     ? sql<number>`ts_rank_cd(${searchDocument.searchVector}, ${tsQuery})`
-    : sql<number>`0`;
+    : null;
   const candidates = await db
     .select({
       emoji: searchDocument.emoji,
@@ -82,7 +82,11 @@ export async function searchWorkspaceItems(input: {
       inArray(searchDocument.sourceType, types),
       tsQuery ? sql`${searchDocument.searchVector} @@ ${tsQuery}` : undefined,
     ))
-    .orderBy(desc(rank), searchDocument.title)
+    .orderBy(...(
+      rank
+        ? [desc(rank), searchDocument.title]
+        : [searchDocument.title]
+    ))
     .limit(candidateLimit);
 
   const permissionChecks = await Promise.all(candidates.map(async (candidate) => {
