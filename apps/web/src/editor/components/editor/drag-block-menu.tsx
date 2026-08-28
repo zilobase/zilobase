@@ -46,11 +46,7 @@ import {
   endBlockDrag,
   startBlockDrag,
 } from "./block-drag"
-import {
-  colorTokens,
-  colorWithAlpha,
-  getPaletteColor,
-} from "@/lib/color-tokens"
+import { colorWithAlpha, getPaletteColor } from "@/lib/color-tokens"
 import { setDatabasePageDragPayload } from "@/packages/editor/extensions/database/interactions/database-page-drop"
 import type { DragHandleTarget } from "./types"
 import type {
@@ -58,6 +54,7 @@ import type {
   StructuralBlockDeleteRequest,
 } from "../../types"
 import { toast } from "sonner"
+import { ColorPicker } from "./color-menu"
 
 type PendingStructuralBlockDelete = StructuralBlockDeleteRequest & {
   action: StructuralBlockDeleteAction
@@ -166,6 +163,54 @@ export function DragBlockMenu({
     [search]
   )
   const isPageBlock = target?.node.type.name === "pageBlock"
+  const targetColors = useMemo(() => {
+    if (!target) {
+      return { backgroundColor: null, textColor: null }
+    }
+
+    if (target.node.type.name === "pageBlock") {
+      return {
+        backgroundColor:
+          typeof target.node.attrs.backgroundColor === "string"
+            ? target.node.attrs.backgroundColor
+            : null,
+        textColor:
+          typeof target.node.attrs.textColor === "string"
+            ? target.node.attrs.textColor
+            : null,
+      }
+    }
+
+    const backgroundColors = new Set<string | null>()
+    const textColors = new Set<string | null>()
+
+    target.node.descendants((node) => {
+      if (!node.isText) {
+        return
+      }
+
+      const textStyle = node.marks.find(
+        (mark) => mark.type.name === "textStyle",
+      )
+      backgroundColors.add(
+        typeof textStyle?.attrs.backgroundColor === "string"
+          ? textStyle.attrs.backgroundColor
+          : null,
+      )
+      textColors.add(
+        typeof textStyle?.attrs.color === "string" ? textStyle.attrs.color : null,
+      )
+    })
+
+    return {
+      backgroundColor:
+        backgroundColors.size < 2
+          ? ([...backgroundColors][0] ?? null)
+          : undefined,
+      textColor:
+        textColors.size < 2 ? ([...textColors][0] ?? null) : undefined,
+    }
+  }, [target])
 
   useEffect(() => {
     onMenuStateChange?.(isOpen || actionsOpen || pendingDelete !== null)
@@ -717,7 +762,7 @@ export function DragBlockMenu({
                 <Type />
                 <span>Turn into</span>
               </DropDrawerSubTrigger>
-              <DropDrawerSubContent>
+              <DropDrawerSubContent className="w-64">
                 {filteredTurnIntoItems.length > 0 ? (
                   filteredTurnIntoItems.map((item) => {
                     const Icon = item.icon
@@ -743,34 +788,15 @@ export function DragBlockMenu({
               <Palette />
               <span>Color</span>
             </DropDrawerSubTrigger>
-            <DropDrawerSubContent>
-              <DropDrawerLabel>Text color</DropDrawerLabel>
-              {colorTokens.map((token) => (
-                <DropDrawerItem
-                  key={`text-${token.name}`}
-                  onSelect={() => applyColor(token.value, "text")}
-                >
-                  <span
-                    className={`size-4 rounded-sm border bg-card ${token.textClass}`}
-                  >
-                    A
-                  </span>
-                  <span>{token.name} text</span>
-                </DropDrawerItem>
-              ))}
-              <DropDrawerSeparator />
-              <DropDrawerLabel>Background color</DropDrawerLabel>
-              {colorTokens.map((token) => (
-                <DropDrawerItem
-                  key={`background-${token.name}`}
-                  onSelect={() => applyColor(token.value, "background")}
-                >
-                  <span
-                    className={`size-4 rounded-sm border ${token.backgroundClass}`}
-                  />
-                  <span>{token.name} background</span>
-                </DropDrawerItem>
-              ))}
+            <DropDrawerSubContent className="w-64 p-2">
+              <ColorPicker
+                backgroundColor={targetColors.backgroundColor}
+                onBackgroundColorSelect={(color) =>
+                  applyColor(color, "background")
+                }
+                onTextColorSelect={(color) => applyColor(color, "text")}
+                textColor={targetColors.textColor}
+              />
             </DropDrawerSubContent>
           </DropDrawerSub>
           <DropDrawerSeparator />
