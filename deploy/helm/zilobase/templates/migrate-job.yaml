@@ -29,7 +29,7 @@ spec:
         - name: migrate
           image: {{ include "zilobase.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["node", "dist/server/scripts/migrate.js"]
+          command: ["node", "dist/server/migrate.js"]
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: { drop: ["ALL"] }
