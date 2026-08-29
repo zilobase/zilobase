@@ -1,9 +1,11 @@
 export function register({ readSource, assert, test }) {
   test("block and dragged text selection use one transparent tint", async () => {
-    const [css, tokens] = await Promise.all([
-      readSource("/src/features/editor/styles.css"),
+    const [editorCss, databaseCss, tokens] = await Promise.all([
+      readSource("/src/features/editor/styles/editor.css"),
+      readSource("/src/features/databases/styles/database.css"),
       readSource("/src/shared/styles/design-tokens.css"),
     ])
+    const css = `${editorCss}\n${databaseCss}`
 
     assert.match(
       css,
@@ -32,7 +34,11 @@ export function register({ readSource, assert, test }) {
   })
 
   test("task list selection uses the shared overlay with even first-row geometry", async () => {
-    const css = await readSource("/src/features/editor/styles.css")
+    const [editorCss, databaseCss] = await Promise.all([
+      readSource("/src/features/editor/styles/editor.css"),
+      readSource("/src/features/databases/styles/database.css"),
+    ])
+    const css = `${editorCss}\n${databaseCss}`
 
     assert.match(
       css,
@@ -57,7 +63,11 @@ export function register({ readSource, assert, test }) {
   })
 
   test("database selection does not restyle any database content", async () => {
-    const css = await readSource("/src/features/editor/styles.css")
+    const [editorCss, databaseCss] = await Promise.all([
+      readSource("/src/features/editor/styles/editor.css"),
+      readSource("/src/features/databases/styles/database.css"),
+    ])
+    const css = `${editorCss}\n${databaseCss}`
 
     assert.match(
       css,
@@ -73,7 +83,7 @@ export function register({ readSource, assert, test }) {
 
   test("outer meeting selection uses one overlaid block with standard spacing", async () => {
     const [css, meetingExtension] = await Promise.all([
-      readSource("/src/features/editor/styles.css"),
+      readSource("/src/features/meetings/styles/meeting.css"),
       readSource("/src/features/editor/extensions/meeting/meeting-extension.tsx"),
     ])
 

@@ -18,7 +18,7 @@ import {
 import { AppProviders } from "@/app/providers/app-providers";
 import { initializeDesktopTranslucency } from "@/features/desktop/window/index";
 import "../shared/styles/global.css";
-import "@/packages/editor/styles.css";
+import "./styles.css";
 
 installDesktopDiagnostics();
 void bootstrap();

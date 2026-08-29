@@ -1,0 +1,314 @@
+@reference "../../../shared/styles/global.css";
+
+@layer components {
+.tiptap-editor {
+    @apply min-h-[520px] px-5 pt-4 pb-5 text-base leading-7 text-foreground outline-none sm:px-8 md:px-20 md:pt-4 md:pb-6 lg:px-24;
+  }
+
+  .collaboration-carets__caret {
+    @apply pointer-events-none relative -mx-px border-l-2;
+  }
+
+  .collaboration-carets__label {
+    @apply absolute -left-0.5 -top-6 rounded px-1.5 py-0.5 text-xs font-medium text-editor-color-foreground shadow-sm whitespace-nowrap;
+  }
+
+  .collaboration-carets__selection {
+    @apply pointer-events-none;
+  }
+
+  .tiptap-editor .is-editor-empty:first-child::before,
+  .tiptap-editor .is-empty::before {
+    @apply pointer-events-none float-left h-0 text-muted-foreground;
+    content: attr(data-placeholder);
+  }
+
+  /* Uniform gap between blocks — hierarchy lives in padding, not margin. */
+  .tiptap-editor > * + * {
+    @apply mt-1;
+  }
+
+  .tiptap-editor h1 {
+    @apply scroll-m-20 text-4xl font-semibold leading-tight tracking-normal text-balance;
+  }
+
+  .tiptap-editor h2 {
+    @apply scroll-m-20 text-3xl font-semibold leading-tight tracking-normal;
+  }
+
+  .tiptap-editor h3 {
+    @apply scroll-m-20 text-2xl font-medium leading-snug tracking-normal;
+  }
+
+  .tiptap-editor h4 {
+    @apply scroll-m-20 text-xl font-medium leading-snug tracking-normal;
+  }
+
+  .tiptap-editor h5 {
+    @apply scroll-m-20 text-lg font-medium leading-snug tracking-normal;
+  }
+
+  .tiptap-editor h6 {
+    @apply scroll-m-20 text-base font-medium leading-snug tracking-normal;
+  }
+
+  .tiptap-editor :is(h1, h2, h3, h4, h5, h6) :is(strong, b) {
+    font-weight: inherit;
+  }
+
+  .tiptap-editor p {
+    @apply leading-7 text-foreground;
+  }
+
+  /* Horizontal inset inside blocks so selection fills padded area, not just text. */
+  .tiptap-editor > :is(p, h1, h2, h3, h4, h5, h6) {
+    @apply px-3;
+  }
+
+  /* Spacing hierarchy via padding inside each block (included in selection). */
+  .tiptap-editor > :is(
+      p,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      blockquote,
+      pre,
+      .code-block-shiki,
+      .editor-details,
+      .tableWrapper,
+      .column-block
+    ) {
+    @apply pb-0.5;
+  }
+
+  .tiptap-editor > * + p {
+    @apply pt-2;
+  }
+
+  /* Heading padding applies to every heading, including the first block. */
+  .tiptap-editor > h1 {
+    @apply pt-8;
+  }
+
+  .tiptap-editor > h2 {
+    @apply pt-6;
+  }
+
+  .tiptap-editor > h3 {
+    @apply pt-4;
+  }
+
+  .tiptap-editor > h4 {
+    @apply pt-3;
+  }
+
+  .tiptap-editor > :is(h5, h6) {
+    @apply pt-2;
+  }
+
+  .tiptap-editor > * + :is(
+      pre,
+      .code-block-shiki,
+      .editor-details,
+      .tableWrapper
+    ) {
+    @apply pt-2;
+  }
+
+  .tiptap-editor > * + :is(ul, ol) {
+    @apply pt-1;
+  }
+
+  .tiptap-editor > * + :is(.column-block, blockquote, hr) {
+    @apply pt-4;
+  }
+
+  .tiptap-editor > * + :is(
+      .image-block,
+      .video-block,
+      .embed-block,
+      .file-block,
+      .bookmark-block,
+      .ask-ai-block,
+      .page-block
+    ) {
+    @apply pt-4;
+  }
+
+  .tiptap-editor > * + .node-databaseBlock .database-toolbar-section {
+    @apply pt-2;
+  }
+
+  /* Tighter spacing for stacked link-only paragraphs. */
+  .tiptap-editor > * + p:has(> .link-mention:only-child) {
+    @apply pt-1;
+  }
+
+  /* Match ordinary dragged text selection to the lighter block palette. */
+  .tiptap-editor ::selection,
+  .tiptap-editor *::selection {
+    background-color: var(--editor-selection-overlay);
+    color: inherit;
+  }
+
+  .tiptap-editor ::-moz-selection,
+  .tiptap-editor *::-moz-selection {
+    background-color: var(--editor-selection-overlay);
+    color: inherit;
+  }
+
+  /* Hide native text selection only during Ctrl/Cmd+A select-all. */
+  .tiptap-editor.ProseMirror-hideselection ::selection,
+  .tiptap-editor.ProseMirror-hideselection *::selection {
+    background: transparent !important;
+    color: inherit !important;
+  }
+
+  .tiptap-editor.ProseMirror-hideselection ::-moz-selection,
+  .tiptap-editor.ProseMirror-hideselection *::-moz-selection {
+    background: transparent !important;
+    color: inherit !important;
+  }
+
+  .tiptap-editor.dragging {
+    --editor-selection-overlay: transparent;
+    user-select: none;
+  }
+
+  .tiptap-editor.dragging *,
+  .tiptap-editor.dragging .ProseMirror-selectednode {
+    outline: none !important;
+    user-select: none !important;
+  }
+
+  .tiptap-editor.dragging ::selection,
+  .tiptap-editor.dragging *::selection {
+    background: transparent !important;
+    color: inherit !important;
+  }
+
+  .tiptap-editor.dragging ::-moz-selection,
+  .tiptap-editor.dragging *::-moz-selection {
+    background: transparent !important;
+    color: inherit !important;
+  }
+
+  /* One translucent layer over every selected block; content keeps its styling. */
+  .tiptap-editor :where(
+      .editor-block-selection,
+      .tableWrapper:has(> table.editor-block-selection),
+      .node-databaseBlock.editor-block-selection:has(
+          .database-inline-scroll-wrap[data-inline-scroll="true"]
+        )
+        .database-toolbar-section,
+      .node-databaseBlock.editor-block-selection
+        .database-inline-scroll-wrap[data-inline-scroll="true"]
+        .database-inline-scroll-content
+        :is(
+          .database-table,
+          .database-kanban-board,
+          .database-page-create-row:not(.database-table *)
+        )
+    ) {
+    box-sizing: border-box;
+    isolation: isolate;
+    position: relative;
+  }
+
+  .tiptap-editor :where(
+      .editor-block-selection:not(table),
+      .tableWrapper:has(> table.editor-block-selection),
+      .node-databaseBlock.editor-block-selection:has(
+          .database-inline-scroll-wrap[data-inline-scroll="true"]
+        )
+        .database-toolbar-section,
+      .node-databaseBlock.editor-block-selection
+        .database-inline-scroll-wrap[data-inline-scroll="true"]
+        .database-inline-scroll-content
+        :is(
+          .database-table,
+          .database-kanban-board,
+          .database-page-create-row:not(.database-table *)
+        )
+    )::after {
+    background-color: var(--editor-selection-overlay);
+    border-radius: var(--radius-sm);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1000;
+  }
+
+  /* Inline databases paint over their full scroll content, not just the viewport. */
+  .tiptap-editor
+    .node-databaseBlock.editor-block-selection:has(
+      .database-inline-scroll-wrap[data-inline-scroll="true"]
+    )::after {
+    display: none;
+  }
+
+  /* Select-all block geometry: full-width blocks with gaps between them. */
+  .tiptap-editor :is(
+      p,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      blockquote,
+      pre,
+      .code-block-shiki,
+      .image-block,
+      .video-block,
+      .embed-block,
+      .file-block,
+      .bookmark-block,
+      .page-block,
+      .ask-ai-block,
+      .editor-details,
+      .column-block,
+      table
+    ).editor-block-selection {
+    display: block;
+    width: 100%;
+  }
+
+  .tiptap-editor
+    :is(
+      p,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      blockquote,
+      .editor-details
+    ).editor-block-selection {
+    @apply px-3;
+  }
+
+  .tiptap-editor
+    :is(ul, ol):not([data-type="taskList"])
+    > li.editor-block-selection::after {
+    left: -1.5rem;
+  }
+
+  .tiptap-editor
+    > * + :is(ul, ol):not([data-type="taskList"])
+    > li.editor-block-selection:first-child::after {
+    top: -0.25rem;
+  }
+
+  .tiptap-editor
+    > * + ul[data-type="taskList"]
+    > :is(li, .node-taskItem).editor-block-selection:first-child::after {
+    top: -0.25rem;
+  }
+
+}

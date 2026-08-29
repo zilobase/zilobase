@@ -160,7 +160,7 @@ export function register({ appPath, assert, test }) {
       "utf8",
     )
     const editorStyles = await readFile(
-      join(appDir, "src/features/editor/styles.css"),
+      join(appDir, "src/features/databases/styles/database.css"),
       "utf8",
     )
 

@@ -1,0 +1,105 @@
+@reference "../../../shared/styles/global.css";
+
+.tiptap-editor .node-meetingBlock {
+  @apply min-w-0;
+}
+
+.tiptap-editor .node-meetingBlock.editor-block-selection {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+}
+
+.tiptap-editor
+  .node-meetingBlock
+  > [data-node-view-wrapper]
+  > .meeting-block-shell
+  > .meeting-block-header {
+  @apply box-border px-4 pt-4;
+}
+
+.tiptap-editor
+  .node-meetingBlock
+  > [data-node-view-wrapper]
+  > .meeting-block-shell {
+  @apply min-w-0 overflow-visible rounded-xl border border-border bg-transparent transition-[border-color,box-shadow];
+}
+
+.tiptap-editor
+  .node-meetingBlock
+  > [data-node-view-wrapper]
+  > .meeting-block-shell
+  > .meeting-block-header
+  > .database-toolbar {
+  @apply px-0;
+}
+
+.meeting-block-shell-full > .meeting-block-header > .database-toolbar {
+  @apply min-h-0 py-0 pr-0;
+}
+
+.meeting-block-shell-full > .meeting-block-header {
+  /* Match the normal page-properties section rhythm (`mt-6 ... py-2`). */
+  @apply mt-6 py-2;
+}
+
+.tiptap-editor .meeting-block-shell {
+  cursor: default;
+}
+
+.tiptap-editor .meeting-block-shell input,
+.tiptap-editor .meeting-block-shell button,
+.tiptap-editor .meeting-collaborative-editor {
+  cursor: auto;
+}
+
+.meeting-block-body {
+  @apply relative mt-1 min-w-0 overflow-visible pb-0;
+}
+
+.tiptap-editor
+  .node-meetingBlock
+  > [data-node-view-wrapper]
+  > .meeting-block-shell
+  > .meeting-block-body {
+  @apply mt-0 px-4 py-4;
+}
+
+.meeting-collaborative-editor .tiptap-editor {
+  min-height: 12rem;
+  padding-inline: 0;
+  padding-top: 0.25rem;
+  padding-bottom: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .meeting-collaborative-editor .tiptap-editor {
+    /* Keep the desktop add/drag controls inside the card, before note text. */
+    padding-left: 3.5rem;
+  }
+
+  .meeting-block-shell-full .meeting-collaborative-editor {
+    /* Give full-page meeting nodes a private handle gutter without indenting
+       their text relative to the page heading and tabs. */
+    margin-left: -3.5rem;
+    width: calc(100% + 3.5rem);
+  }
+}
+
+.meeting-collaborative-editor .tiptap {
+  min-height: 12rem;
+  outline: none;
+}
+
+.meeting-transcript-preview[data-kind="status"] {
+  @apply flex items-start gap-3 px-3 pt-2 pb-0.5 leading-7 text-foreground;
+  @apply text-sm text-muted-foreground;
+}
+
+.meeting-transcript-preview-indicator {
+  @apply mt-2.5 inline-flex size-2 shrink-0 animate-pulse rounded-full bg-status-success;
+}
+
+.meeting-transcript-preview-text {
+  @apply min-w-0 whitespace-pre-wrap;
+}

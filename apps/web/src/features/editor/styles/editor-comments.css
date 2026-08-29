@@ -1,0 +1,8 @@
+@reference "../../../shared/styles/global.css";
+
+.tiptap-editor .editor-comment-anchor {
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  border-radius: 0.125rem;
+  cursor: text;
+}
