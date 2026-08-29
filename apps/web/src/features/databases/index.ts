@@ -18,9 +18,9 @@ export { getDatabaseViewModel } from "./model/database-view-model"
 export {
   createSampleRowContent,
   DatabaseSetupCard,
-} from "./setup/database-setup-card"
-export type { DatabaseSetupSelection } from "./setup/database-setup-card"
-export { getDatabaseSetupTemplate } from "./setup/database-setup-templates"
+} from "./setup/view/database-setup-card"
+export type { DatabaseSetupSelection } from "./setup/view/database-setup-card"
+export { getDatabaseSetupTemplate } from "./setup/model/database-setup-templates"
 export { DatabaseViewIcon } from "./components/database-view-icon"
 export { PageMetadata } from "./components/page-metadata"
 export type { PageMetadataHandle } from "./components/page-metadata"

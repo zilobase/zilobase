@@ -50,7 +50,7 @@ import {
   type DatabaseSubItemsSettings,
 } from "../views/model/database-view-config";
 import type { DatabaseFilterUpdatePatch } from "../views/view/database-filter-menu";
-import { getRelationLimitTrimUpdates } from "../properties/database-relation-sync";
+import { getRelationLimitTrimUpdates } from "../properties/relations/model/database-relation-sync";
 import {
   defaultDatabaseChartSettings,
   getDatabaseChartSettings,

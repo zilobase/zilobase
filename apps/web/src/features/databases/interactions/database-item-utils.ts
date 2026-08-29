@@ -6,7 +6,7 @@ import {
   type DatabasePropertyValue,
 } from "../core/utils"
 import { isDateLikePropertyType } from "../core/database-property-types"
-import { getReadOnlyTimePropertyRawValue } from "../properties/read-only-time-property"
+import { getReadOnlyTimePropertyRawValue } from "../properties/model/read-only-time-property"
 import type {
   DatabaseFilterItemConfig,
   DatabasePropertyFilterConfig,

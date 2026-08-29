@@ -46,13 +46,13 @@ import {
 
 import { ImageSourcePicker } from "@/shared/components/image-source-picker"
 
-import { DatabasePropertyButton } from "../properties/database-property-button"
-import { DatabasePropertyDate } from "../properties/database-property-date"
-import { DatabasePropertyFiles } from "../properties/database-property-files"
-import { DatabasePropertyInput } from "../properties/database-property-input"
-import { DatabasePropertySelect } from "../properties/database-property-select"
-import { DatabaseRelationPropertyValue } from "../properties/database-property-value"
-import { formatDatabaseDateValue } from "../properties/database-date-config"
+import { DatabasePropertyButton } from "../properties/editors/database-property-button"
+import { DatabasePropertyDate } from "../properties/editors/database-property-date"
+import { DatabasePropertyFiles } from "../properties/editors/database-property-files"
+import { DatabasePropertyInput } from "../properties/editors/database-property-input"
+import { DatabasePropertySelect } from "../properties/editors/database-property-select"
+import { DatabaseRelationPropertyValue } from "../properties/editors/database-property-value"
+import { formatDatabaseDateValue } from "../properties/model/database-date-config"
 import {
   defaultStatusOptions,
   getDatabasePropertyType,

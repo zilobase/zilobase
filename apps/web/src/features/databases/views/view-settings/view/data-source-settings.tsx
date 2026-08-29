@@ -27,8 +27,8 @@ import { DEFAULT_DATABASE_ITEM_ICON } from "@/features/pages/index";
 import { getDatabaseIconNode, PageIconDisplay } from "@/features/pages/index";
 
 import { getDatabasePropertyType } from "../../../core/database-property-types";
-import { hasDatabasePropertyEditSettings } from "../../../properties/property-settings";
-import { DatabasePropertyEditSubmenu } from "../../../properties/database-property-menu";
+import { hasDatabasePropertyEditSettings } from "../../../properties/configuration";
+import { DatabasePropertyEditSubmenu } from "../../../properties/editors/database-property-menu";
 import {
   DatabaseSearchableMenuItems,
   type DatabaseSearchableMenuOption,

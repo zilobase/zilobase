@@ -76,7 +76,7 @@ import {
   getColorTokenDotClassName,
 } from "@/shared/lib/color-tokens"
 
-import { AddDatabasePropertyMenu } from "../../../properties/add-database-property-menu"
+import { AddDatabasePropertyMenu } from "../../../properties/editors/add-database-property-menu"
 import { DatabaseCellContent } from "../../view/database-cell-content"
 import {
   databaseColumnMinWidth,
@@ -85,14 +85,14 @@ import {
   setDatabasePageDragPayload,
 } from "../../../interactions/database-page-drop"
 import { DatabasePageLink } from "../../../interactions/database-page-link"
-import { DatabaseFormulaDialog } from "../../../properties/formula/database-formula-dialog"
+import { DatabaseFormulaDialog } from "../../../properties/formula/view/database-formula-dialog"
 import {
   DatabaseNamePropertyMenu,
   DatabasePropertyMenu,
-} from "../../../properties/database-property-menu"
-import { DatabasePropertyValue } from "../../../properties/database-property-value"
-import { DatabasePropertyDate } from "../../../properties/database-property-date"
-import { DatabasePropertySelect } from "../../../properties/database-property-select"
+} from "../../../properties/editors/database-property-menu"
+import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
+import { DatabasePropertyDate } from "../../../properties/editors/database-property-date"
+import { DatabasePropertySelect } from "../../../properties/editors/database-property-select"
 import {
   defaultStatusOption,
   defaultStatusOptions,

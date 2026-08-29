@@ -6,8 +6,8 @@ import {
   type ColorTokenId,
 } from "@/shared/lib/color-tokens"
 import type { DatabasePropertyValue } from "../../../core/utils"
-import { formatDatabaseDateValue } from "../../../properties/database-date-config"
-import { getReadOnlyTimePropertyRawValue } from "../../../properties/read-only-time-property"
+import { formatDatabaseDateValue } from "../../../properties/model/database-date-config"
+import { getReadOnlyTimePropertyRawValue } from "../../../properties/model/read-only-time-property"
 import { getSelectOptions } from "../../kanban/model/database-kanban-config"
 import type {
   DatabaseChartDateInterval,

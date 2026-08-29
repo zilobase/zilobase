@@ -29,8 +29,8 @@ import { toast } from "sonner"
 import {
   createSampleRowContent,
   type DatabaseSetupSelection,
-} from "../../setup/database-setup-card"
-import { getDatabaseSetupTemplate } from "../../setup/database-setup-templates"
+} from "../../setup/view/database-setup-card"
+import { getDatabaseSetupTemplate } from "../../setup/model/database-setup-templates"
 import { serializePropertyValue } from "../../core/utils"
 import {
   usePage,

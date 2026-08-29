@@ -36,11 +36,11 @@ import {
   getNextDatabaseOptionColor,
   getDatabasePropertyType,
 } from "../../../core/database-property-types"
-import { DatabasePropertyDate } from "../../../properties/database-property-date"
-import { DatabasePropertyInput } from "../../../properties/database-property-input"
+import { DatabasePropertyDate } from "../../../properties/editors/database-property-date"
+import { DatabasePropertyInput } from "../../../properties/editors/database-property-input"
 import { DatabasePageLink } from "../../../interactions/database-page-link"
-import { DatabasePropertyMenu } from "../../../properties/database-property-menu"
-import { DatabasePropertyValue } from "../../../properties/database-property-value"
+import { DatabasePropertyMenu } from "../../../properties/editors/database-property-menu"
+import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
 import { DatabaseCellContent } from "../../view/database-cell-content"
 import {
   firstScalarValue,

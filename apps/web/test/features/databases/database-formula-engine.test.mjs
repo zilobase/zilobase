@@ -1,7 +1,10 @@
 export function register({ assert, loadModule, test }) {
   test("database formulas evaluate Notion-style property expressions", async () => {
-    const { evaluateDatabaseFormula, formatFormulaValue } = await loadModule(
-      "/src/features/databases/properties/formula/formula-engine.ts"
+    const { evaluateDatabaseFormula } = await loadModule(
+      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
+    )
+    const { formatFormulaValue } = await loadModule(
+      "/src/features/databases/properties/formula/formatting/formula-formatters.ts"
     )
     const context = createFormulaContext()
 
@@ -35,7 +38,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database formulas can reference other formula properties", async () => {
     const { evaluateDatabaseFormula } = await loadModule(
-      "/src/features/databases/properties/formula/formula-engine.ts"
+      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
     )
     const context = createFormulaContext({
       extraProperties: [
@@ -58,8 +61,11 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("database formulas support variables and scoped list expressions", async () => {
-    const { evaluateDatabaseFormula, formatFormulaValue } = await loadModule(
-      "/src/features/databases/properties/formula/formula-engine.ts"
+    const { evaluateDatabaseFormula } = await loadModule(
+      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
+    )
+    const { formatFormulaValue } = await loadModule(
+      "/src/features/databases/properties/formula/formatting/formula-formatters.ts"
     )
     const context = createFormulaContext()
 
@@ -98,8 +104,11 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("database formulas support date, number, and list utility functions", async () => {
-    const { evaluateDatabaseFormula, formatFormulaValue } = await loadModule(
-      "/src/features/databases/properties/formula/formula-engine.ts"
+    const { evaluateDatabaseFormula } = await loadModule(
+      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
+    )
+    const { formatFormulaValue } = await loadModule(
+      "/src/features/databases/properties/formula/formatting/formula-formatters.ts"
     )
     const context = createFormulaContext()
 
@@ -135,6 +144,40 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(listResult, { ok: true, type: "text", value: "1-2-3" })
     assert.deepEqual(trimResult, { ok: true, type: "text", value: "NOTION" })
     assert.equal(formatFormulaValue(listResult.value), "1-2-3")
+  })
+
+  test("database formula parsing preserves precedence and rejects malformed tokens", async () => {
+    const { evaluateDatabaseFormula } = await loadModule(
+      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
+    )
+    const context = createFormulaContext()
+
+    assert.deepEqual(
+      evaluateDatabaseFormula({ ...context, expression: "1 + 2 * 3" }),
+      { ok: true, type: "number", value: 7 },
+    )
+    assert.deepEqual(
+      evaluateDatabaseFormula({ ...context, expression: "2 ^ 3 ^ 2" }),
+      { ok: true, type: "number", value: 512 },
+    )
+    assert.deepEqual(
+      evaluateDatabaseFormula({ ...context, expression: '"line\\nitem"' }),
+      { ok: true, type: "text", value: "line\nitem" },
+    )
+
+    const unterminated = evaluateDatabaseFormula({
+      ...context,
+      expression: '"unfinished',
+    })
+    const invalidToken = evaluateDatabaseFormula({
+      ...context,
+      expression: "1 @ 2",
+    })
+
+    assert.equal(unterminated.ok, false)
+    assert.match(unterminated.error, /closing quote/)
+    assert.equal(invalidToken.ok, false)
+    assert.match(invalidToken.error, /Unexpected character/)
   })
 }
 

@@ -66,7 +66,7 @@ export function register({ readSource, assert, loadModule, test }) {
       readSource("/src/features/databases/views/controller/use-database-view-controller.tsx"),
       readSource("/src/features/databases/model/database-controller-state.ts"),
       readSource("/src/features/databases/views/view/database-view.tsx"),
-      readSource("/src/features/databases/setup/database-setup-card.tsx"),
+      readSource("/src/features/databases/setup/view/database-setup-card.tsx"),
     ]);
 
     assert.match(

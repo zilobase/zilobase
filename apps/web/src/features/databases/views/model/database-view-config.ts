@@ -6,7 +6,7 @@ import {
 import type {
   DateFormatValue,
   TimeFormatValue,
-} from "../../properties/database-date-config";
+} from "../../properties/model/database-date-config";
 import type { DatabaseChartSettings } from "../chart/model/database-chart-config";
 import type { DatabaseFormHeaderSettings } from "../form/model/database-form-header-config";
 import type { DatabaseFormQuestionSettingsPatch } from "../form/model/database-form-question-config";

@@ -3,7 +3,7 @@ import {
   toStringArray,
   type DatabasePropertyValue as DatabaseCellValue,
 } from "../../../core/utils"
-import { formatDatabaseDateValue } from "../../../properties/database-date-config"
+import { formatDatabaseDateValue } from "../../../properties/model/database-date-config"
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
 import type { DatabasePropertyConfig } from "../../model/database-view-config"
 import type {

@@ -1,4 +1,4 @@
-import { DatabaseSetupCard } from "../../setup/database-setup-card"
+import { DatabaseSetupCard } from "../../setup/view/database-setup-card"
 import { DatabaseViewProvider } from "../model/database-view-context"
 import { DatabaseViewSkeleton } from "./database-view-skeleton"
 import { DatabaseViewToolbar } from "./database-view-toolbar"

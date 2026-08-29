@@ -3,7 +3,7 @@ import { GripVertical, Loader2, Plus } from "@/shared/components/icons"
 
 import { Checkbox } from "@/shared/ui/checkbox"
 import { DatabasePageLink } from "../../../interactions/database-page-link"
-import { DatabasePropertyValue } from "../../../properties/database-property-value"
+import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
 import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll"
 import { useDatabaseViewContext } from "../../model/database-view-context"
 import { useDatabaseListRowDrag } from "../controller/use-database-list-row-drag"

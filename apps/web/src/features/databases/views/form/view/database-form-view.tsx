@@ -47,8 +47,8 @@ import {
   getDatabasePropertyType,
   getNextDatabaseOptionColor,
 } from "../../../core/database-property-types"
-import { DatabasePropertyDate } from "../../../properties/database-property-date"
-import { formatDatabaseDateValue } from "../../../properties/database-date-config"
+import { DatabasePropertyDate } from "../../../properties/editors/database-property-date"
+import { formatDatabaseDateValue } from "../../../properties/model/database-date-config"
 import { getColorTokenDotClassName } from "@/shared/lib/color-tokens"
 import { cn } from "@/shared/lib/utils"
 import {

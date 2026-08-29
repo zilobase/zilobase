@@ -20,7 +20,7 @@ import { getDatabaseTableGroupSections } from "../../../interactions/database-ta
 import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll"
 import { canCreateRowInKanbanGroup } from "../../kanban/model/database-kanban-config"
 import { useDatabaseViewContext } from "../../model/database-view-context"
-import { DatabasePropertyValue } from "../../../properties/database-property-value"
+import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
 import { DatabaseCellContent } from "../../view/database-cell-content"
 import { useDatabaseGalleryCardDrag } from "../controller/use-database-gallery-card-drag"
 

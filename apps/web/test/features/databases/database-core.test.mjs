@@ -28,7 +28,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database setup prompts resolve to the existing template catalog", async () => {
     const templates = await loadModule(
-      "/src/features/databases/setup/database-setup-templates.ts"
+      "/src/features/databases/setup/model/database-setup-templates.ts"
     )
 
     assert.equal(templates.inferDatabaseSetupTemplateId("Sprint roadmap"), "projects")
