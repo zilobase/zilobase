@@ -6,7 +6,7 @@ import {
   AvatarImage,
 } from "@/shared/ui/avatar"
 import { cn } from "@/shared/lib/utils"
-import { getUserImageUrl } from "@/lib/image-upload"
+import { getUserImageUrl } from "@/features/desktop/network/image-upload"
 
 export type CollaborationPresenceUser = {
   avatar?: string | null

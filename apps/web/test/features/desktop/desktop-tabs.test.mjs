@@ -4,7 +4,7 @@ export function register({ readSource, assert, loadModule, test }) {
       closeDesktopTabState,
       setDesktopTabOrderState,
       useAppStore,
-    } = await loadModule("/src/app/state/app-store.ts")
+    } = await loadModule("/src/features/desktop/state/app-store.ts")
     const tabs = [
       { href: "/p/one", id: "one", title: "One" },
       { href: "/p/two", id: "two", title: "Two" },

@@ -6,7 +6,7 @@ import crossws from "crossws/adapters/node";
 import WebSocket from "ws";
 
 import type { RuntimeEnv } from "../../shared/config/config";
-import { runWithDbEnv } from "../database";
+import { runWithDbEnv } from "../../infrastructure/database";
 import {
   heartbeatMeetingRecorder,
   MEETING_RECORDER_LEASE_HEARTBEAT_MS,

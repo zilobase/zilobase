@@ -33,7 +33,7 @@ import {
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
 import { cn } from "@/shared/lib/utils"
 import { isOpenInNewTabShortcut } from "@/shared/shortcuts"
-import type { DesktopTab } from "@/app/state/app-store"
+import type { DesktopTab } from "@/features/desktop/state/app-store"
 import {
   Tooltip,
   TooltipContent,

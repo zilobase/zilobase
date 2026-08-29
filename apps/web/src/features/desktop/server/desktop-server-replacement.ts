@@ -1,4 +1,4 @@
-import { getApiRequestHeaders } from "@/lib/api";
+import { getApiRequestHeaders } from "@/features/desktop/network/api";
 import {
   forgetDesktopAuthCredentials,
   getDesktopAuthToken,
@@ -19,7 +19,7 @@ import type {
   DesktopServerReplacementDependencies,
   DesktopServerReplacementRequest,
 } from "./desktop-server-replacement-core";
-import { useAppStore } from "@/app/state/app-store";
+import { useAppStore } from "@/features/desktop/state/app-store";
 import { useAuthFlowStore } from "@/features/auth";
 
 export type { DesktopServerReplacementRequest };

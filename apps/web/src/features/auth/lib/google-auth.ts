@@ -1,4 +1,4 @@
-import { authFetch } from "@/lib/api"
+import { authFetch } from "@/features/desktop/network/api"
 
 const CLOUD_API_URL = "https://api.zilobase.com"
 

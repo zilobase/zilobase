@@ -2,8 +2,8 @@ import { useEffect, useState } from "react"
 import { Link, useParams, useRouteContext, useSearch } from "@tanstack/react-router"
 import { ArrowRight, ArrowUpRight, Maximize2 } from "@/shared/components/icons"
 
-import { AuthenticatedRouteError } from "@/app/errors/authenticated-route-error"
-import { FallbackErrorBoundary } from "@/app/errors/fallback-error-boundary"
+import { AuthenticatedRouteError } from "@/shared/components/authenticated-route-error"
+import { FallbackErrorBoundary } from "@/features/desktop/diagnostics/fallback-error-boundary"
 import {
   PageSidePaneLayout,
   PageSidePaneProvider,

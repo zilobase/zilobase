@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import type { MeetingAudioSource } from "./meeting-contracts";
 
 import type { RuntimeEnv } from "../../shared/config/config";
 
@@ -8,7 +9,7 @@ export const MEETING_AUDIO_PROTOCOL = "zilobase.meeting-audio.v2";
 export const MEETING_AUDIO_AUTH_PROTOCOL_PREFIX =
   "zilobase.meeting-audio.auth.";
 
-export type MeetingAudioSource = "microphone" | "system";
+export type { MeetingAudioSource } from "./meeting-contracts";
 
 export const MEETING_AUDIO_SOURCES = [
   "microphone",

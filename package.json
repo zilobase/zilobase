@@ -27,7 +27,7 @@
     "build:desktop": "npm run build --workspace @zilobase/desktop",
     "dev:server": "npm run dev --workspace @zilobase/server",
     "build:server": "npm run build --workspace @zilobase/server",
-    "quality:fallow": "fallow audit --gate new-only",
+    "quality:fallow": "fallow audit",
     "test:server": "npm run test:quality --workspace @zilobase/server",
     "db:migrate": "npm run db:migrate --workspace @zilobase/server",
     "selfhost:up": "node scripts/selfhost/manage.mjs up",

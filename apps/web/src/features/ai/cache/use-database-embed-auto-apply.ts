@@ -7,7 +7,7 @@ import { insertDatabaseBlockInContent } from "@zilobase/page-context"
 import {
   usePageEditorRegistry,
   usePageEditorRegistryVersion,
-} from "@/contexts/page-editor-registry"
+} from "@/features/editor/runtime/page-editor-registry"
 
 const EMBED_DATABASE_IN_PAGE_TOOL = "embedDatabaseInPage"
 

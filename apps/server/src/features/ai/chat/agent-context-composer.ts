@@ -1,5 +1,7 @@
 import type { ModelMessage } from "ai";
 
+import { lastMatchingIndex } from "./last-matching-index";
+
 const DEFAULT_RESERVED_TOKENS = 4_096;
 const MAX_RECENT_MESSAGES = 12;
 
@@ -23,7 +25,7 @@ export function composeBoundedAgentMessages(input: {
       }]
     : [];
   const summaryTokens = estimateMessagesTokens(summaryMessage);
-  const latestUserIndex = input.history.findLastIndex(
+  const latestUserIndex = lastMatchingIndex(input.history,
     (message) => message.role === "user",
   );
   const latest = latestUserIndex >= 0

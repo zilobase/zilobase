@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 
-import { getApiRequestHeaders, toApiUrl } from "@/lib/api";
+import { getApiRequestHeaders, toApiUrl } from "@/features/desktop/network/api";
 
 export function useAgentConversation(input: {
   id: string;

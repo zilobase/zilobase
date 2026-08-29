@@ -50,11 +50,21 @@ npm run test:selfhost
 
 ## Project Structure
 
-- `apps/web`: Vite React web client.
-- `apps/server`: Hono API, auth, database access, AI tools, integrations, and serverful runtime.
-- `apps/desktop`: Tauri desktop shell.
-- `packages/features`: shared client-side feature queries, hooks, and cache logic.
-- `packages/page-context`: editor/page context extraction and markdown helpers.
+- `apps/web/src/app`: web composition, routing, providers, shell, and global setup.
+- `apps/web/src/features`: web domain behavior and presentation.
+- `apps/web/src/shared`: domain-neutral design-system UI, components, hooks,
+  styles, types, and utilities.
+- `apps/server/src/app`: API and Node runtime composition.
+- `apps/server/src/features`: server routes, services, and models by domain.
+- `apps/server/src/infrastructure`: database, storage, email, realtime, and
+  runtime mechanisms.
+- `apps/server/src/public`: compatibility entrypoints published by
+  `@zilobase/server`.
+- `apps/desktop/src-tauri/src`: native app, auth, diagnostics, meeting, and
+  server-selection modules.
+- `packages/features`: published queries, mutations, cache behavior, and shared
+  domain contracts.
+- `packages/page-context`: canonical page/editor conversion and markdown helpers.
 - `packages/markdown-text-splitter`: standalone markdown splitting utilities.
 
 See `ARCHITECTURE.md` for a deeper walkthrough.
@@ -112,6 +122,39 @@ PR descriptions should explain:
 - Keep server state in TanStack Query patterns used by `packages/features`.
 - Keep UI changes consistent with the existing design system and component style.
 - Avoid unrelated refactors in feature or bug-fix PRs.
+
+### Where does this file belong?
+
+Before adding or moving a file, use this checklist:
+
+1. Which user or server domain owns the behavior? Put it in that feature.
+2. Is it only application composition, routing, provider setup, or shell layout?
+   Put it in `app`.
+3. Is it genuinely domain-neutral and app-local, with no feature or app import?
+   Put it in that app's `shared` layer.
+4. Is the same contract or behavior consumed by multiple apps or runtimes? Put
+   it in the existing workspace package that owns the contract; do not create a
+   package for hypothetical reuse.
+5. Is it a database, storage, email, transport, or runtime mechanism? Put it in
+   server `infrastructure`; put concrete feature composition in server `app`.
+6. Is it part of a published server/package API? Keep its external specifier and
+   symbol set stable, and expose it only through the package/public entrypoint.
+7. Does another feature need it? Prefer the owner's narrow `index.ts`; do not
+   create a broad barrel or a forwarding file for a private legacy path.
+
+Web features cannot import `app`, and web `shared` cannot import `features` or
+`app`. Server infrastructure cannot import feature implementations. Fallow
+enforces the current approved graph in `.fallowrc.json`.
+
+Run the architecture gate before submitting structural changes:
+
+```sh
+npm run quality:fallow -- --gate all --production
+```
+
+New and changed functions should remain within normal Fallow health targets. A
+suppression must name the exception and explain why it cannot be reduced in the
+same change; do not raise repository ceilings to accommodate one function.
 
 ## License
 

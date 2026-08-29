@@ -16,7 +16,7 @@ import { Input } from "@/shared/ui/input"
 import { Separator } from "@/shared/ui/separator"
 import { Spinner } from "@/shared/ui/spinner"
 import { Textarea } from "@/shared/ui/textarea"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
 import { useNotionImport } from "@/features/notion-import/index"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {

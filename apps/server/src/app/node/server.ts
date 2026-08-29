@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { createApp } from "../../app";
 import { createNodeRuntime } from "./node-runtime";
-import { CORE_MIGRATION_SET } from "./migrations";
+import { CORE_MIGRATION_SET } from "../../infrastructure/node/migrations";
 
 loadEnv({
   path: process.env.ZILOBASE_ENV_FILE ?? path.resolve("apps/server/.env"),

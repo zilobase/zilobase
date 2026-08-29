@@ -37,7 +37,7 @@ import {
 import { Separator } from "@/shared/ui/separator"
 import { Slider } from "@/shared/ui/slider"
 import { Spinner } from "@/shared/ui/spinner"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
@@ -66,7 +66,7 @@ import {
 } from "@/features/desktop/server/index"
 import { executeDesktopServerSwitch } from "@/features/desktop/server/index"
 import { queryClient } from "@/shared/lib/query-client"
-import { useAppStore } from "@/app/state/app-store"
+import { useAppStore } from "@/features/desktop/state/app-store"
 import { useOfflineManifest } from "@/features/offline/index"
 import { useSession } from "@zilobase/features/auth"
 import { useWorkspaces } from "@zilobase/features/workspaces"

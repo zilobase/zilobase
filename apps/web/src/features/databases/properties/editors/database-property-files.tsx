@@ -3,8 +3,8 @@ import { useRef, useState } from "react"
 
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
-import { getApiErrorMessage } from "@/lib/api"
-import { uploadPageImage } from "@/lib/image-upload"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
+import { uploadPageImage } from "@/features/desktop/network/image-upload"
 import {
   Popover,
   PopoverContent,

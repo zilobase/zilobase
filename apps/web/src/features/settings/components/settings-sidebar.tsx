@@ -24,7 +24,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/shared/ui/sidebar"
-import { getUserImageUrl } from "@/lib/image-upload"
+import { getUserImageUrl } from "@/features/desktop/network/image-upload"
 import { editionWebModule } from "@zilobase/edition-web"
 
 export type CoreSettingsSection =

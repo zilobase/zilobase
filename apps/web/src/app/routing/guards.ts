@@ -5,8 +5,8 @@ import { workspacesQueryOptions } from "@zilobase/features/workspaces";
 
 import { queryClient } from "@/shared/lib/query-client";
 import { webAuthClient } from "@/app/providers/features-provider";
-import { useAppStore } from "@/app/state/app-store";
-import { ApiError, NetworkUnavailableError, apiFetch } from "@/lib/api";
+import { useAppStore } from "@/features/desktop/state/app-store";
+import { ApiError, NetworkUnavailableError, apiFetch } from "@/features/desktop/network/api";
 import {
   resolveOfflineFallback,
   waitForSettledConnectivity,

@@ -3,7 +3,7 @@ import * as Y from "yjs"
 export function register({ assert, loadModule, test }) {
   test("realtime starts only after the page has painted", async () => {
     const { scheduleRealtimeAfterPagePaint } = await loadModule(
-      "/src/lib/deferred-realtime.ts",
+      "/src/shared/lib/deferred-realtime.ts",
     )
     const frames = new Map()
     const timeouts = new Map()
@@ -37,7 +37,7 @@ export function register({ assert, loadModule, test }) {
 
   test("cancelled realtime work never starts", async () => {
     const { scheduleRealtimeAfterPagePaint } = await loadModule(
-      "/src/lib/deferred-realtime.ts",
+      "/src/shared/lib/deferred-realtime.ts",
     )
     const frames = new Map()
     let starts = 0

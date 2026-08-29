@@ -44,7 +44,7 @@ import {
   PageCommentThread,
 } from "@/features/comments/index"
 
-import { ImageSourcePicker } from "@/shared/components/image-source-picker"
+import { ImageSourcePicker } from "@/features/pages/images/image-source-picker"
 
 import { DatabasePropertyButton } from "../properties/editors/database-property-button"
 import { DatabasePropertyDate } from "../properties/editors/database-property-date"
@@ -63,8 +63,8 @@ import {
   parsePropertyValue,
   serializePropertyValue,
 } from "../core/utils"
-import { CollaborationPresence } from "@/shared/components/collaboration-presence"
-import type { CollaborationPresenceUser } from "@/shared/components/collaboration-presence"
+import { CollaborationPresence } from "@/features/editor/collaboration/collaboration-presence"
+import type { CollaborationPresenceUser } from "@/features/editor/collaboration/collaboration-presence"
 
 export type PageMetadataHandle = {
   focusTitleEnd: () => boolean

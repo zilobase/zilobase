@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 
-import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
+import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry";
 import { buildPagePath } from "@/features/pages/index";
 import { useZilobaseFeatures } from "@zilobase/features";
 import {

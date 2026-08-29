@@ -71,7 +71,7 @@ import {
 } from "@zilobase/features/user-settings";
 import { useConnectivity, useOfflineManifest } from "@/features/offline/index";
 import { PageIconDisplay } from "@/features/pages/index";
-import { getApiErrorMessage } from "@/lib/api";
+import { getApiErrorMessage } from "@/features/desktop/network/api";
 import { useCreateTeamspace, useTeamspaces, type Teamspace, type TeamspaceAccessMode } from "@zilobase/features/teamspaces";
 
 type HomepageView = LibraryView;

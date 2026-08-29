@@ -100,8 +100,28 @@
         "patterns": ["apps/web/src/features/offline/**"]
       },
       {
+        "name": "web-root",
+        "patterns": ["apps/web/src/vite-env.d.ts"]
+      },
+      {
+        "name": "web-edition-contract",
+        "patterns": ["apps/web/src/edition/**"]
+      },
+      {
+        // AppBindings is the shared composition contract inferred from Better
+        // Auth and the canonical database type, not a feature implementation.
+        "name": "server-bindings",
+        "patterns": ["apps/server/src/shared/types.ts"]
+      },
+      {
         "name": "server-shared",
         "patterns": ["apps/server/src/shared/**"]
+      },
+      {
+        // Runtime adapter declarations may reference feature-owned wire types;
+        // concrete runtime implementations remain outside infrastructure.
+        "name": "server-runtime-contract",
+        "patterns": ["apps/server/src/infrastructure/runtime/**"]
       },
       {
         "name": "server-infrastructure",
@@ -114,6 +134,30 @@
       {
         "name": "server-public",
         "patterns": ["apps/server/src/public/**"]
+      },
+      {
+        "name": "server-features",
+        "patterns": ["apps/server/src/features/**"]
+      },
+      {
+        "name": "server-scripts",
+        "patterns": ["apps/server/src/scripts/**"]
+      },
+      {
+        "name": "package-features",
+        "patterns": ["packages/features/src/**"]
+      },
+      {
+        "name": "package-page-context",
+        "patterns": ["packages/page-context/src/**"]
+      },
+      {
+        "name": "package-markdown-splitter",
+        "patterns": ["packages/markdown-text-splitter/src/**"]
+      },
+      {
+        "name": "package-comment-extension",
+        "patterns": ["packages/tiptap-comment-extension/src/**"]
       }
     ],
     "rules": [
@@ -121,7 +165,9 @@
       {
         "from": "web-app",
         "allow": [
+          "package-features",
           "web-app",
+          "web-edition-contract",
           "web-shared",
           "web-sidebar",
           "web-auth",
@@ -143,10 +189,9 @@
         ]
       },
       {
-        // Temporary composition dependencies on app state/offline providers are
-        // removed in the workspace and desktop/offline passes.
         "from": "web-sidebar",
         "allow": [
+          "package-features",
           "web-app",
           "web-shared",
           "web-sidebar",
@@ -165,13 +210,18 @@
         // The published @zilobase/edition-web contract resolves to the
         // community edition implementation under app during local analysis.
         "from": "web-auth",
-        "allow": ["web-app", "web-auth", "web-desktop", "web-shared"]
+        "allow": [
+          "package-features",
+          "web-app",
+          "web-auth",
+          "web-desktop",
+          "web-shared"
+        ]
       },
       {
-        // Account cleanup still coordinates app persistence and offline state;
-        // the desktop/offline pass replaces these temporary app dependencies.
         "from": "web-settings",
         "allow": [
+          "package-features",
           "web-app",
           "web-desktop",
           "web-offline",
@@ -182,18 +232,35 @@
       },
       {
         "from": "web-workspaces",
-        "allow": ["web-notion-import", "web-settings", "web-shared", "web-workspaces"]
+        "allow": [
+          "package-features",
+          "web-desktop",
+          "web-notion-import",
+          "web-settings",
+          "web-shared",
+          "web-workspaces"
+        ]
       },
       {
         "from": "web-teamspaces",
-        "allow": ["web-pages", "web-settings", "web-shared", "web-teamspaces"]
+        "allow": [
+          "package-features",
+          "web-desktop",
+          "web-pages",
+          "web-settings",
+          "web-shared",
+          "web-teamspaces"
+        ]
       },
       {
         "from": "web-pages",
         "allow": [
+          "package-features",
+          "package-page-context",
           "web-app",
           "web-ai",
           "web-comments",
+          "web-desktop",
           "web-meetings",
           "web-offline",
           "web-pages",
@@ -204,14 +271,15 @@
         ]
       },
       {
-        // Route-level error rendering is still app-owned until final route
-        // composition is ratcheted in the architecture pass.
         "from": "web-databases",
         "allow": [
+          "package-features",
           "web-ai",
           "web-app",
           "web-comments",
           "web-databases",
+          "web-desktop",
+          "web-editor",
           "web-offline",
           "web-pages",
           "web-shared"
@@ -220,6 +288,8 @@
       {
         "from": "web-ai",
         "allow": [
+          "package-features",
+          "package-page-context",
           "web-ai",
           "web-desktop",
           "web-databases",
@@ -232,6 +302,7 @@
       {
         "from": "web-editor",
         "allow": [
+          "package-features",
           "web-ai",
           "web-comments",
           "web-databases",
@@ -244,7 +315,12 @@
       },
       {
         "from": "web-comments",
-        "allow": ["web-comments", "web-shared"]
+        "allow": [
+          "package-features",
+          "web-comments",
+          "web-desktop",
+          "web-shared"
+        ]
       },
       {
         "from": "web-canvas",
@@ -253,6 +329,8 @@
       {
         "from": "web-library",
         "allow": [
+          "package-features",
+          "web-desktop",
           "web-library",
           "web-offline",
           "web-databases",
@@ -266,8 +344,10 @@
       {
         "from": "web-meetings",
         "allow": [
+          "package-features",
           "web-app",
           "web-databases",
+          "web-desktop",
           "web-editor",
           "web-meetings",
           "web-pages",
@@ -284,10 +364,9 @@
         "allow": ["web-databases", "web-editor", "web-shared", "web-tasks"]
       },
       {
-        // Desktop state cleanup still coordinates the app stores; this edge is
-        // removed when final state ownership is ratcheted in the boundary pass.
         "from": "web-desktop",
         "allow": [
+          "package-features",
           "web-app",
           "web-auth",
           "web-desktop",
@@ -303,19 +382,55 @@
         "allow": ["web-desktop", "web-offline", "web-shared"]
       },
       {
+        "from": "web-root",
+        "allow": ["web-root"]
+      },
+      {
+        "from": "web-edition-contract",
+        "allow": ["web-edition-contract"]
+      },
+      {
+        "from": "server-bindings",
+        "allow": [
+          "server-bindings",
+          "server-features",
+          "server-infrastructure",
+          "server-shared"
+        ]
+      },
+      {
         "from": "server-shared",
-        "allow": ["server-shared"]
+        "allow": ["server-bindings", "server-shared"]
+      },
+      {
+        "from": "server-runtime-contract",
+        "allow": [
+          "server-bindings",
+          "server-features",
+          "server-infrastructure",
+          "server-runtime-contract",
+          "server-shared"
+        ]
       },
       {
         "from": "server-infrastructure",
-        "allow": ["server-infrastructure", "server-shared"]
+        "allow": [
+          "server-bindings",
+          "server-infrastructure",
+          "server-runtime-contract",
+          "server-shared"
+        ]
       },
       {
         "from": "server-app",
         "allow": [
+          "package-features",
           "server-app",
+          "server-bindings",
+          "server-features",
           "server-infrastructure",
           "server-public",
+          "server-runtime-contract",
           "server-shared"
         ]
       },
@@ -323,17 +438,66 @@
         "from": "server-public",
         "allow": [
           "server-app",
+          "server-bindings",
+          "server-features",
           "server-infrastructure",
           "server-public",
+          "server-runtime-contract",
           "server-shared"
         ]
+      },
+      {
+        "from": "server-features",
+        "allow": [
+          "server-bindings",
+          "server-features",
+          "server-infrastructure",
+          "package-features",
+          "package-page-context",
+          "server-runtime-contract",
+          "server-shared"
+        ]
+      },
+      {
+        "from": "server-scripts",
+        "allow": [
+          "server-app",
+          "server-bindings",
+          "server-features",
+          "server-infrastructure",
+          "server-public",
+          "server-runtime-contract",
+          "server-scripts",
+          "server-shared"
+        ]
+      },
+      {
+        "from": "package-features",
+        "allow": [
+          "package-comment-extension",
+          "package-features",
+          "package-markdown-splitter",
+          "package-page-context"
+        ]
+      },
+      {
+        "from": "package-page-context",
+        "allow": ["package-features", "package-page-context"]
+      },
+      {
+        "from": "package-markdown-splitter",
+        "allow": ["package-markdown-splitter"]
+      },
+      {
+        "from": "package-comment-extension",
+        "allow": ["package-comment-extension"]
       }
     ]
   },
   // The custom web test harness bundles these literal loadModule() paths.
   "dynamicallyLoaded": [
     "apps/web/src/features/comments/model/yjs-comments.ts",
-    "apps/web/src/components/database-view-navigation.ts",
+    "apps/web/src/features/sidebar/model/database-view-navigation.ts",
     "apps/web/src/features/databases/views/timeline/gantt/gantt-geometry.ts",
     "apps/web/src/features/databases/views/timeline/gantt/gantt-preview.ts",
     "apps/web/src/features/databases/views/timeline/gantt/index.tsx",
@@ -394,10 +558,10 @@
     "apps/web/src/features/editor/paste/paste.ts",
     "apps/web/src/features/editor/paste/protected-structural-blocks.ts",
     "apps/web/src/features/pages/hooks/use-title-draft.ts",
-    "apps/web/src/lib/api.ts",
+    "apps/web/src/features/desktop/network/api.ts",
     "apps/web/src/shared/lib/color-tokens.ts",
     "apps/web/src/features/offline/model/connectivity-probe.ts",
-    "apps/web/src/lib/deferred-realtime.ts",
+    "apps/web/src/shared/lib/deferred-realtime.ts",
     "apps/web/src/features/desktop/deep-links/desktop-deep-link.ts",
     "apps/web/src/features/desktop/diagnostics/desktop-diagnostics.ts",
     "apps/web/src/features/desktop/network/desktop-network.ts",
@@ -406,7 +570,7 @@
     "apps/web/src/features/desktop/window/desktop-translucency.ts",
     "apps/web/src/features/pages/icons/favicon.ts",
     "apps/web/src/features/auth/lib/google-auth.ts",
-    "apps/web/src/lib/image-upload.ts",
+    "apps/web/src/features/desktop/network/image-upload.ts",
     "apps/web/src/features/workspaces/lib/invitation-link.ts",
     "apps/web/src/features/meetings/model/meeting-navigation.ts",
     "apps/web/src/features/notion-import/lib/notion-html-blocks.ts",
@@ -428,7 +592,7 @@
     "apps/web/src/features/tasks/model/tasks-model.ts",
     "apps/web/src/shared/shortcuts/editor-history.ts",
     "apps/web/src/shared/shortcuts/shortcut-definitions.ts",
-    "apps/web/src/app/state/app-store.ts"
+    "apps/web/src/features/desktop/state/app-store.ts"
   ],
   // These workspace packages publish APIs consumed outside this repository.
   "publicPackages": [
@@ -547,9 +711,9 @@
     // Hide pair-only clones; focus on widespread copy-paste
     // worth refactoring. Lower to 2 to report every duplicate pair.
     "minOccurrences": 3,
-    // Adoption ceiling after consolidating schema timestamps, page paths, and
-    // date parsing (4.44%). PR audit blocks increases; ratchet this downward.
-    "threshold": 4.5
+    // Post-refactor production measurement is 0.776%. Keep a narrow margin for
+    // parser drift while blocking material duplication growth.
+    "threshold": 0.8
     // Common additions (uncomment to enable):
     // "ignore": [
     //   "**/lib/**",          // for repos that publish transpiled output to lib/
@@ -559,8 +723,9 @@
     // ]
   },
   "health": {
-    // Legacy adoption ceilings are one unit above the measured repo maxima.
-    // PR audit is a new-code gate; lower these as the large editor surfaces are split.
+    // Post-refactor ceilings are one unit above the measured repo maxima. The
+    // new-only audit blocks increases; named legacy hotspots are documented in
+    // ARCHITECTURE.md and must shrink when touched.
     "maxCyclomatic": 102,
     "maxCognitive": 171,
     "maxCrap": 10303,

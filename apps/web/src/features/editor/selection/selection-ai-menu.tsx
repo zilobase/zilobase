@@ -15,7 +15,7 @@ import {
   nextPaint,
   readStreamError,
 } from "@/packages/editor/commands/editor-ai-utils"
-import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
+import { getApiRequestHeaders, toApiUrl } from "@/features/desktop/network/api"
 import { desktopNetworkFetch } from "@/features/desktop/network/index"
 import { cn } from "@/shared/lib/utils"
 import type { SelectionAiDiffPreview } from "@/packages/editor/core/types"

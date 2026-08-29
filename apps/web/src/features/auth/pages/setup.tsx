@@ -16,7 +16,7 @@ import {
   FieldLabel,
 } from "@/shared/ui/field"
 import { Input } from "@/shared/ui/input"
-import { apiFetch, getApiErrorMessage } from "@/lib/api"
+import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
 
 export default function SetupPage() {
   const [error, setError] = useState<unknown>(null)

@@ -1,7 +1,7 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate"
 import * as Y from "yjs"
 
-import { apiFetch } from "@/lib/api"
+import { apiFetch } from "@/features/desktop/network/api"
 import {
   applyTicketState,
   connectLocalPageDocument,

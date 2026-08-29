@@ -1,3 +1,8 @@
+import type {
+  MeetingLifecycleAction,
+  MeetingStatus,
+} from "./meeting-contracts";
+
 export const MEETING_MAX_DURATION_MS = 3 * 60 * 60 * 1000;
 
 const meetingStatuses = [
@@ -7,9 +12,9 @@ const meetingStatuses = [
   "processing",
   "completed",
   "failed",
-] as const;
+] as const satisfies readonly MeetingStatus[];
 
-export type MeetingStatus = (typeof meetingStatuses)[number];
+export type { MeetingLifecycleAction, MeetingStatus } from "./meeting-contracts";
 
 export const meetingLifecycleActions = [
   "start",
@@ -18,9 +23,7 @@ export const meetingLifecycleActions = [
   "stop",
   "complete",
   "fail",
-] as const;
-
-export type MeetingLifecycleAction = (typeof meetingLifecycleActions)[number];
+] as const satisfies readonly MeetingLifecycleAction[];
 
 export type MeetingCalendarSnapshot = {
   attendees: Array<{ email?: string; name?: string }>;

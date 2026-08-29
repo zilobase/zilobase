@@ -12,7 +12,7 @@ import {
   FieldLabel,
 } from "@/shared/ui/field"
 import { Input } from "@/shared/ui/input"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
 import { cn } from "@/shared/lib/utils"
 import { useCreateWorkspace } from "@zilobase/features/workspaces"
 

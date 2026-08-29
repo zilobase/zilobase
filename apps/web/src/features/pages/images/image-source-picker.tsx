@@ -14,8 +14,8 @@ import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
-import { getApiErrorMessage } from "@/lib/api"
-import { uploadPageImage } from "@/lib/image-upload"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
+import { uploadPageImage } from "@/features/desktop/network/image-upload"
 
 const aiImageOptions = [
   { label: "Photo", icon: ImageIcon },

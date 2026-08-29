@@ -7,8 +7,8 @@ import {
 } from "@tanstack/react-router";
 import { ArrowRight, CopyIcon, Maximize2 } from "@/shared/components/icons";
 
-import { AuthenticatedRouteError } from "@/app/errors/authenticated-route-error";
-import { FallbackErrorBoundary } from "@/app/errors/fallback-error-boundary";
+import { AuthenticatedRouteError } from "@/shared/components/authenticated-route-error";
+import { FallbackErrorBoundary } from "@/features/desktop/diagnostics/fallback-error-boundary";
 import { PageWorkspaceGate } from "@/features/workspaces";
 import {
   PageSidePaneLayout,
@@ -58,7 +58,7 @@ import { EmbeddedPageDialog } from "../components/embedded-page-dialog";
 import { useOpenEmbeddedPage } from "../hooks/use-open-embedded-page";
 import { useSession } from "@zilobase/features/auth";
 import { useUserSettings } from "@zilobase/features/user-settings";
-import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
+import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry";
 import { createPageEditorHandle } from "@/features/ai/cache/index";
 import { Editor, type PageEditPreviewControls } from "@/packages/editor";
 import type {

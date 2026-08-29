@@ -7,7 +7,7 @@ import {
   initializeDesktopServer,
   listDesktopServerProfiles,
 } from "@/features/desktop/server/index";
-import { useAppStore } from "@/app/state/app-store";
+import { useAppStore } from "@/features/desktop/state/app-store";
 import { useAuthFlowStore } from "@/features/auth";
 import {
   installDesktopDiagnostics,

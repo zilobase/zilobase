@@ -4,7 +4,7 @@ import type { SessionUser } from "@zilobase/features/auth"
 import * as Y from "yjs"
 
 import { collaborationColor } from "@/packages/editor/collaboration/color"
-import { apiFetch } from "@/lib/api"
+import { apiFetch } from "@/features/desktop/network/api"
 import {
   applyTicketState,
   connectLocalPageDocument,

@@ -57,7 +57,7 @@ import {
 } from "@/shared/ui/emoji-picker"
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
 import { cn } from "@/shared/lib/utils"
-import { getUserImageUrl } from "@/lib/image-upload"
+import { getUserImageUrl } from "@/features/desktop/network/image-upload"
 
 import { Skeleton } from "@/shared/ui/skeleton"
 import { Textarea } from "@/shared/ui/textarea"

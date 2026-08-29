@@ -10,11 +10,11 @@ import {
   getAuthHeaders,
 } from "../../shared/security/auth-headers";
 import { createAuth } from "../../features/auth";
-import { runWithDbEnv } from "../database";
+import { runWithDbEnv } from "../../infrastructure/database";
 import { getDefaultCollaborationHocuspocus } from "../../features/collaboration/service";
 import type { RuntimeEnv } from "../../shared/config/config";
 import type { ZilobaseEditionExtension } from "../../shared/types";
-import type { NodeRealtimeBus } from "./realtime-bus";
+import type { NodeRealtimeBus } from "../../infrastructure/node/realtime-bus";
 
 export const NODE_COLLABORATION_MAX_PAYLOAD_BYTES = 1024 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;

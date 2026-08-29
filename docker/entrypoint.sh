@@ -24,6 +24,6 @@ require_env S3_ACCESS_KEY_ID
 require_env S3_SECRET_ACCESS_KEY
 
 echo "Starting Zilobase self-host runtime"
-node dist/server/scripts/migrate.js
+node dist/server/migrate.js
 
 exec "$@"

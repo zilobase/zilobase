@@ -2,7 +2,7 @@ import {
   apiFetch,
   getApiRequestHeaders,
   toApiUrl,
-} from "@/lib/api"
+} from "@/features/desktop/network/api"
 import { desktopNetworkFetch } from "@/features/desktop/network/index"
 
 type ImageAsset = {

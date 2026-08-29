@@ -4,7 +4,7 @@ import { CheckIcon, DownloadIcon, LoaderCircleIcon } from "@/shared/components/i
 import { toast } from "sonner"
 
 import { DropDrawerItem } from "@/shared/ui/dropdrawer"
-import { apiFetch } from "@/lib/api"
+import { apiFetch } from "@/features/desktop/network/api"
 import {
   applyTicketState,
   connectLocalPageDocument,

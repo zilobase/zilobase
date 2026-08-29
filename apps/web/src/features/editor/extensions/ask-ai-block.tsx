@@ -32,7 +32,7 @@ import {
   readStreamError,
   type GeneratedRange,
 } from "@/packages/editor/commands/editor-ai-utils"
-import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
+import { getApiRequestHeaders, toApiUrl } from "@/features/desktop/network/api"
 import { desktopNetworkFetch } from "@/features/desktop/network/index"
 
 type AskAiBlockOptions = {

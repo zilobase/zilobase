@@ -12,7 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/ui/popover"
-import { ImageSourcePicker } from "@/shared/components/image-source-picker"
+import { ImageSourcePicker } from "@/features/pages/images/image-source-picker"
 
 const minImageWidth = 160
 

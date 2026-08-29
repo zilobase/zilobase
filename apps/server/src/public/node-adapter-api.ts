@@ -8,4 +8,4 @@ export {
 export {
   createNodeRuntime,
   type NodeRuntimeOptions,
-} from "../infrastructure/node/node-runtime";
+} from "../app/node/node-runtime";

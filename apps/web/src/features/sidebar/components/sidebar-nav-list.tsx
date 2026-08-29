@@ -12,7 +12,7 @@ import {
 import { Link } from "@tanstack/react-router"
 import { ArrowUpRightIcon, ChevronRightIcon, HardDriveDownloadIcon } from "@/shared/components/icons"
 
-import { getSidebarDatabaseViewSearchId } from "@/components/database-view-navigation"
+import { getSidebarDatabaseViewSearchId } from "@/features/sidebar/model/database-view-navigation"
 import {
   readExpandedSidebarItems,
   setSidebarItemExpanded,

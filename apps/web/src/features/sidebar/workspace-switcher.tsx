@@ -36,7 +36,7 @@ import {
   useWorkspaces,
   useSetActiveWorkspace,
 } from "@zilobase/features/workspaces"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
 import { DesktopConnectServerDialog } from "@/features/desktop/components/index"
 import {
   getSelectedDesktopServer,

@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/ui/popover"
-import { apiFetch } from "@/lib/api"
+import { apiFetch } from "@/features/desktop/network/api"
 
 export type BookmarkMetadata = {
   description: string | null

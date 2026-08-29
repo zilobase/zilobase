@@ -15,6 +15,7 @@ import {
 
 import { db } from "../../../infrastructure/database";
 import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../../../infrastructure/database/schema";
+import { lastMatchingIndex } from "./last-matching-index";
 
 const DEFAULT_AI_CHAT_THREAD_TITLE = "New chat";
 const MAX_AI_CHAT_MESSAGES_PER_THREAD = 500;
@@ -457,7 +458,7 @@ export function selectCanonicalAssistantMessages(
   messages: readonly UIMessage[],
   userClientMessageId: string,
 ) {
-  const userIndex = messages.findLastIndex(
+  const userIndex = lastMatchingIndex(messages,
     (message) => message.role === "user" && message.id === userClientMessageId,
   );
 

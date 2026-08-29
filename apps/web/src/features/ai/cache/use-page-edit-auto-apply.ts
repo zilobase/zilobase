@@ -16,7 +16,7 @@ import {
 } from "@zilobase/features/ai-chat"
 import { prosemirrorToMarkdown } from "@zilobase/page-context"
 
-import { usePageEditorRegistry } from "@/contexts/page-editor-registry"
+import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry"
 import { usePageEditApplier } from "./use-page-edit-applier"
 import {
   logPageEdit,

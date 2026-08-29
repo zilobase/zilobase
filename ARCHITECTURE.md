@@ -17,6 +17,93 @@ self-hosted Docker path.
 - `packages/page-context`: editor/page context extraction, database markdown construction, and ProseMirror-to-markdown helpers.
 - `packages/markdown-text-splitter`: standalone markdown text splitting utilities.
 
+## Source Layout and Dependency Direction
+
+The web and server use feature-first ownership. A file has one canonical owner;
+private forwarding files are not used to preserve obsolete paths.
+
+```text
+apps/web/src/
+  app/                 entrypoint, routing, providers, shell, composition
+  features/<domain>/   domain model, UI, hooks, routes and adapters
+  shared/              domain-neutral UI, components, hooks, styles and utilities
+
+apps/server/src/
+  app/                 Hono and runtime composition
+  entrypoints/         executable entrypoints
+  public/              published adapter entrypoints
+  features/<domain>/   routes, services and domain models
+  infrastructure/      database, storage, email and runtime mechanisms
+  shared/              configuration, security, errors and common contracts
+  scripts/             operational entrypoints
+
+apps/desktop/src-tauri/src/
+  app/ auth/ diagnostics/ meetings/ server/
+  lib.rs               thin library composition root
+  main.rs              binary entrypoint
+
+packages/features/src/
+  shared/ <domain>/
+
+packages/page-context/src/
+  context/ database/ markdown/ shared/
+```
+
+Dependencies point inward toward contracts and mechanisms:
+
+- Web `shared` imports neither `features` nor `app`.
+- Web features may import `shared`, published `@zilobase/*` contracts, and the
+  feature dependencies explicitly allowed in `.fallowrc.json`; they do not
+  import `app`.
+- Web `app` composes features and does not own domain behavior.
+- Server features may import server `shared`, approved infrastructure
+  entrypoints, and published workspace contracts.
+- Server infrastructure imports `shared` and infrastructure. Concrete Node
+  runtime composition belongs to `app/node`, where feature implementations may
+  be assembled.
+- `public` preserves the published adapter surface and may expose approved app,
+  feature, infrastructure, and shared contracts without relocating their owner.
+- A workspace package is appropriate only when multiple applications or
+  runtimes consume the contract. Package-internal domain code stays within its
+  domain folder.
+
+Cross-feature imports should use the owning feature's narrow `index.ts` when an
+entrypoint exists. Add only the symbols required by another feature; do not add
+wildcard or implementation-detail barrels. Files inside a feature use local
+relative imports. A direct subpath is acceptable only for an established,
+documented subdomain contract where importing the feature root would create a
+cycle.
+
+Fallow enforces every production source zone, disallowed dependency directions,
+cycles, unresolved imports, and dead code. The post-refactor ceilings are
+recorded in `.fallowrc.json`: duplication is capped at 0.8%, and complexity
+ceilings are one unit above the measured legacy maxima. The named legacy
+hotspots are `PageMetadata` for cyclomatic/cognitive/CRAP and `page-routes.ts`
+for unit size. New functions should stay within Fallow's normal health targets;
+a hotspot exception requires a named inline suppression, a reason, and an issue
+to reduce or remove it. Touching an existing hotspot must not increase its
+metric.
+
+## Canonical Sources of Truth
+
+- Persisted sidebar contracts, defaults, normalization, and migrations live in
+  `@zilobase/features/user-settings`; web sidebar rendering lives in
+  `apps/web/src/features/sidebar`.
+- Database property identifiers and shared contracts live in
+  `@zilobase/features/databases`; web metadata and presentation live in the web
+  database feature.
+- Query keys, API contracts, cache updates, and shared mutations live in
+  `packages/features`.
+- `apps/server/src/infrastructure/database/schema.ts` is the only server schema
+  declaration.
+- Page and ProseMirror conversion lives in `packages/page-context`.
+- Web route declarations and guards are owned by `apps/web/src/app/routing`.
+- `apps/web/src/edition/community.ts` is the type-only compatibility contract
+  consumed by edition implementations; community runtime wiring remains under
+  `apps/web/src/app/edition`.
+- Public server specifiers and symbol sets are compatibility contracts:
+  `@zilobase/server`, `/adapter-api`, `/node-adapter-api`, and `/realtime-api`.
+
 ## Data Flow
 
 The web client calls the server API through shared feature hooks. The server validates sessions or API keys, reads and writes Postgres through Drizzle, and returns JSON payloads to clients. Client cache behavior should live in `packages/features` when it is shared across clients.
@@ -111,8 +198,13 @@ hosted deployment extensions are outside the public self-hosting path.
 
 ## Development Guidelines
 
-- Put shared client server-state behavior in `packages/features`.
-- Keep API validation and authorization in `apps/server`.
-- Keep editor/page conversion helpers in `packages/page-context` when they are useful outside a single component.
+- Put shared client server-state behavior in `packages/features`; keep
+  app-specific presentation in the owning web feature.
+- Keep API validation and authorization at server route/service trust
+  boundaries.
+- Keep editor/page conversion helpers in `packages/page-context` when they are
+  consumed outside one web feature.
+- Preserve published exports, HTTP routes, payloads, persisted keys, database
+  schemas, TipTap extension ordering, and Yjs authority during structural work.
 - Prefer adding focused tests next to the package or app behavior being changed.
 - Update `README.md`, `CONTRIBUTING.md`, or the external docs site when setup or public behavior changes.

@@ -15,7 +15,7 @@ import {
 } from "@/shared/ui/alert-dialog"
 import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
 import { PageIcon } from "@/features/pages/index"
 import { useZilobaseFeatures } from "@zilobase/features"
 import {

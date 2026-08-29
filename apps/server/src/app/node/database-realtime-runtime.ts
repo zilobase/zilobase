@@ -18,7 +18,7 @@ import {
   databaseRealtimeChannel,
   type NodeRealtimeBus,
   type RealtimeSubscription,
-} from "./realtime-bus";
+} from "../../infrastructure/node/realtime-bus";
 
 const NODE_DATABASE_REALTIME_MAX_MESSAGE_BYTES = 16 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;

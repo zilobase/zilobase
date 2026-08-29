@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("sidebar omits the default database view from the URL", async () => {
     const { getSidebarDatabaseViewSearchId } = await loadModule(
-      "/src/components/database-view-navigation.ts"
+      "/src/features/sidebar/model/database-view-navigation.ts"
     )
 
     assert.equal(
@@ -17,7 +17,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar includes a non-default database view in the URL", async () => {
     const { getSidebarDatabaseViewSearchId } = await loadModule(
-      "/src/components/database-view-navigation.ts"
+      "/src/features/sidebar/model/database-view-navigation.ts"
     )
 
     assert.equal(

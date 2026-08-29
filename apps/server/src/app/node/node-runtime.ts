@@ -9,22 +9,22 @@ import { attachNodeCollaborationRuntime } from "./collaboration-runtime";
 import { setCollaborationExtensionsFactory } from "../../features/collaboration/service";
 import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
 import { attachNodeMeetingAudioRuntime } from "./meeting-audio-runtime";
-import { createDbClientForUrl, runWithDbEnv } from "../database";
+import { createDbClientForUrl, runWithDbEnv } from "../../infrastructure/database";
 import { assertSelfHostedProductionConfiguration } from "../../features/instance/registration";
 import {
   getDatabaseUrl,
   setRuntimeAdapter,
   type ServerRuntimeAdapter,
-} from "../runtime/runtime-adapter";
+} from "../../infrastructure/runtime/runtime-adapter";
 import { drainDatabaseRealtimeOutbox } from "../../features/databases/realtime/outbox";
 import { expireTemporaryMemberships } from "../../features/memberships";
 import type { AppBindings } from "../../shared/types";
 import { getAppEditionExtension } from "../../shared/edition-extension-registry";
-import { isNodeApiPath } from "./api-routing";
-import { runMigrationSets, type MigrationSet } from "./migrations";
-import { createNodeRealtimeBus } from "./realtime-bus";
-import { createNodeCollaborationExtensions } from "./collaboration-redis";
-import { setRealtimeReadinessProbe } from "../realtime/readiness";
+import { isNodeApiPath } from "../../infrastructure/node/api-routing";
+import { runMigrationSets, type MigrationSet } from "../../infrastructure/node/migrations";
+import { createNodeRealtimeBus } from "../../infrastructure/node/realtime-bus";
+import { createNodeCollaborationExtensions } from "../../infrastructure/node/collaboration-redis";
+import { setRealtimeReadinessProbe } from "../../infrastructure/realtime/readiness";
 import { cleanupExpiredAiAgentData } from "../../features/ai/actions/agent-operations";
 import { AI_JOB_HANDLERS } from "../../features/ai/jobs/ai-job-handlers";
 import { runAiJobBatch } from "../../features/ai/jobs/ai-jobs";

@@ -16,13 +16,13 @@ import type {
   VerifyEmailOtpInput,
 } from "@zilobase/features/auth"
 
-import { apiFetch, authFetch, clearApiAuthToken } from "@/lib/api"
+import { apiFetch, authFetch, clearApiAuthToken } from "@/features/desktop/network/api"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
 } from "@/features/desktop/diagnostics/index"
 import { queryClient } from "@/shared/lib/query-client"
-import { useAppStore } from "@/app/state/app-store"
+import { useAppStore } from "@/features/desktop/state/app-store"
 import { isFeatureEnabled } from "@/shared/config/feature-flags"
 
 export const webAuthClient: ZilobaseAuthClient = {

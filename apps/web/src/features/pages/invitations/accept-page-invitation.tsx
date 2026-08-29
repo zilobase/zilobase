@@ -21,7 +21,7 @@ import {
   FieldGroup,
 } from "@/shared/ui/field"
 import { Spinner } from "@/shared/ui/spinner"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
 import { readSingleInvitationId } from "@/features/workspaces"
 import { useSession } from "@zilobase/features/auth"
 import {

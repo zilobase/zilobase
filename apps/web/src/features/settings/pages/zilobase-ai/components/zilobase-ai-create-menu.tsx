@@ -12,7 +12,7 @@ import {
 } from "@/shared/ui/dropdrawer";
 import { Input } from "@/shared/ui/input";
 
-import { getApiErrorMessage } from "@/lib/api";
+import { getApiErrorMessage } from "@/features/desktop/network/api";
 import { PageIcon } from "@/features/pages/index";
 import { buildPagePath } from "@/features/pages/index";
 import { useZilobaseFeatures } from "@zilobase/features";

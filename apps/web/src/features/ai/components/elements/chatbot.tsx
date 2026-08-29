@@ -33,7 +33,7 @@ import {
   type ContextAttachMenuEntry,
   type ContextAttachMenuHandle,
 } from "./context-attach-menu";
-import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
+import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry";
 import { useOptionalPageSidePane } from "@/features/pages/context/index";
 import { usePageAiContext } from "../../context/use-page-ai-context";
 import { useDatabaseEmbedAutoApply } from "../../cache/use-database-embed-auto-apply";
@@ -101,7 +101,7 @@ import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { usePageAccessLevel, usePageNavigation } from "@zilobase/features/pages";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { toApiUrl } from "@/lib/api";
+import { toApiUrl } from "@/features/desktop/network/api";
 import {
   type ChatStatus,
   type UIMessage,

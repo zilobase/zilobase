@@ -11,7 +11,7 @@ import {
   FieldGroup,
 } from "@/shared/ui/field"
 import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
 import { reloadDesktopAuthCredentials } from "./desktop-auth-token"
 import {
   describeDesktopError,

@@ -21,7 +21,7 @@ import {
   InputGroupInput,
 } from "@/shared/ui/input-group"
 import { Input } from "@/shared/ui/input"
-import { getApiErrorMessage } from "@/lib/api"
+import { getApiErrorMessage } from "@/features/desktop/network/api"
 import { getInvitationAuthSearch, signInWithGoogle } from "../lib/google-auth"
 import { cn } from "@/shared/lib/utils"
 import { useAuthFlowStore } from "../state/auth-flow-store"

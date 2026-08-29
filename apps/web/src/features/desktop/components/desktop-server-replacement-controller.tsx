@@ -14,7 +14,7 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
-import { getApiErrorMessage } from "@/lib/api";
+import { getApiErrorMessage } from "@/features/desktop/network/api";
 import {
   describeDesktopError,
   recordDesktopDiagnostic,

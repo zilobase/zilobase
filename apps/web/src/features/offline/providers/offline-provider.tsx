@@ -8,7 +8,7 @@ import {
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client"
 import { toast } from "sonner"
 
-import { toApiUrl } from "@/lib/api"
+import { toApiUrl } from "@/features/desktop/network/api"
 import { connectivityStateDuringProbe } from "../model/connectivity-probe"
 import { desktopNetworkFetch } from "@/features/desktop/network/index"
 import {

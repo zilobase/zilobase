@@ -2,10 +2,10 @@ import { useCallback } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import type { MutableRefObject } from "react"
 
-import { usePageEditorRegistry } from "@/contexts/page-editor-registry"
+import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry"
 import type { Content, Editor } from "@tiptap/core"
 
-import type { PageEditorHandle } from "@/contexts/page-editor-registry"
+import type { PageEditorHandle } from "@/features/editor/runtime/page-editor-registry"
 import { parseMarkdownContent } from "@/packages/editor/commands/editor-ai-utils"
 import type { PageEditPreviewControls } from "@/packages/editor/core/types"
 import { useZilobaseFeatures } from "@zilobase/features"

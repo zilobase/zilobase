@@ -1,6 +1,6 @@
 export function register({ assert, loadModule, test }) {
   test("image upload client uses S3 PUT without app credentials", async () => {
-    const { uploadPageImage } = await loadModule("/src/lib/image-upload.ts")
+    const { uploadPageImage } = await loadModule("/src/features/desktop/network/image-upload.ts")
     const calls = mockFetch([
       jsonResponse({
         asset: createAsset("asset-s3"),
@@ -34,7 +34,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("image upload client uses app auth headers for binding uploads", async () => {
-    const { uploadPageImage } = await loadModule("/src/lib/image-upload.ts")
+    const { uploadPageImage } = await loadModule("/src/features/desktop/network/image-upload.ts")
     const previousWindow = globalThis.window
     globalThis.window = {
       __ZILOBASE_MOBILE_AUTH_COOKIE__: "session=mobile",
@@ -77,7 +77,7 @@ export function register({ assert, loadModule, test }) {
 
   test("profile image uploads complete and resolve account image URLs", async () => {
     const { getUserImageUrl, uploadProfileImage } = await loadModule(
-      "/src/lib/image-upload.ts",
+      "/src/features/desktop/network/image-upload.ts",
     )
     const imagePath = "/user-settings/profile/images/user-1/image-1/avatar.png"
     const calls = mockFetch([
