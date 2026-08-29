@@ -19,7 +19,7 @@ export const sidebarTabIconIds = [
   "calendar", "sparkles", "database",
 ] as const
 export const sidebarSectionKinds = [
-  "favorites", "recents", "private", "shared", "meetings",
+  "favorites", "recents", "private", "shared", "teamspaces", "meetings",
   "aiChats", "tasks", "databaseView",
 ] as const
 
@@ -77,7 +77,7 @@ export type SidebarWorkspaceLayout = {
 export type SidebarConfig = {
   defaultLayout: SidebarWorkspaceLayout
   libraryView: LibraryView
-  version: 2
+  version: 3
   workspaceLayouts: Record<string, SidebarWorkspaceLayout>
 }
 
@@ -96,6 +96,7 @@ const defaultSections: SidebarSection[] = [
   { id: "default-favorites", kind: "favorites", limit: 10, sort: "lastEdited" },
   { id: "default-private", kind: "private", limit: 10, sort: "lastEdited" },
   { id: "default-shared", kind: "shared", limit: 10, sort: "lastEdited" },
+  { id: "default-teamspaces", kind: "teamspaces", limit: 10, sort: "lastEdited" },
 ]
 
 const defaultShortcuts: SidebarShortcut[] = [
@@ -120,13 +121,14 @@ export const defaultSidebarWorkspaceLayout: SidebarWorkspaceLayout = {
 export const defaultSidebarConfig: SidebarConfig = {
   defaultLayout: defaultSidebarWorkspaceLayout,
   libraryView: "recents",
-  version: 2,
+  version: 3,
   workspaceLayouts: {},
 }
 
 export function normalizeSidebarConfig(value: unknown): SidebarConfig {
   const config = isRecord(value) ? value : {}
-  if (config.version !== 2) return migrateLegacySidebarConfig(config)
+  if (config.version === 2) return migrateCombinedSidebarSections(config)
+  if (config.version !== 3) return migrateLegacySidebarConfig(config)
 
   const layouts = isRecord(config.workspaceLayouts) ? config.workspaceLayouts : {}
   return {
@@ -134,7 +136,7 @@ export function normalizeSidebarConfig(value: unknown): SidebarConfig {
     libraryView: isIncluded(config.libraryView, libraryViewIds)
       ? config.libraryView
       : defaultSidebarConfig.libraryView,
-    version: 2,
+    version: 3,
     workspaceLayouts: Object.fromEntries(
       Object.entries(layouts)
         .filter(([workspaceId]) => isSafeId(workspaceId))
@@ -291,13 +293,57 @@ function migrateLegacySidebarConfig(config: Record<string, unknown>): SidebarCon
 
   return {
     defaultLayout: normalizeSidebarWorkspaceLayout({
-      tabs: [{ icon: "home", id: "home", name: "Home", sections, shortcuts }],
+      tabs: [{ icon: "home", id: "home", name: "Home", sections: splitCombinedSections(sections), shortcuts }],
       taskDatabaseIds: uniqueStrings(config.taskDatabaseIds).slice(0, 10),
     }),
     libraryView: isIncluded(config.libraryView, libraryViewIds) ? config.libraryView : "recents",
-    version: 2,
+    version: 3,
     workspaceLayouts: {},
   }
+}
+
+function migrateCombinedSidebarSections(config: Record<string, unknown>): SidebarConfig {
+  const migrateLayout = (value: unknown) => {
+    const layout = normalizeSidebarWorkspaceLayout(value)
+    return {
+      ...layout,
+      tabs: layout.tabs.map((tab) => ({
+        ...tab,
+        sections: splitCombinedSections(tab.sections),
+      })),
+    }
+  }
+  const layouts = isRecord(config.workspaceLayouts) ? config.workspaceLayouts : {}
+  return {
+    defaultLayout: migrateLayout(config.defaultLayout),
+    libraryView: isIncluded(config.libraryView, libraryViewIds) ? config.libraryView : "recents",
+    version: 3,
+    workspaceLayouts: Object.fromEntries(
+      Object.entries(layouts)
+        .filter(([workspaceId]) => isSafeId(workspaceId))
+        .slice(0, 64)
+        .map(([workspaceId, layout]) => [workspaceId, migrateLayout(layout)]),
+    ),
+  }
+}
+
+function splitCombinedSections(sections: SidebarSection[]): SidebarSection[] {
+  if (sections.some((section) => section.kind === "teamspaces")) return sections
+  const shared = sections.find((section) => section.kind === "shared")
+  if (!shared || shared.kind === "databaseView") return sections
+  const sharedIndex = sections.indexOf(shared)
+  const ids = new Set(sections.map((section) => section.id))
+  let id = "migrated-teamspaces"
+  let suffix = 2
+  while (ids.has(id)) id = `migrated-teamspaces-${suffix++}`
+  const next = [...sections]
+  next.splice(sharedIndex + 1, 0, {
+    id,
+    kind: "teamspaces",
+    limit: shared.limit,
+    sort: shared.sort,
+  })
+  return next
 }
 
 function normalizeSidebarIcon(value: unknown): string | undefined {

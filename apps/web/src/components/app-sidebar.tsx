@@ -250,7 +250,7 @@ export function AppSidebar({
       : createSectionPresentationConfig(sidebarConfig, layout, section)
     const storageKey = `zilobase:sidebar-section:v2:${workspaceId ?? "default"}:${activeTab.id}:${section.id}`
     if (section.kind === "databaseView") {
-      return <SidebarDatabaseViewSection currentUserId={session?.user?.id} key={section.id} section={section} storageKey={storageKey} />
+      return <SidebarDatabaseViewSection activePageId={getActivePageId(pathname)} currentUserId={session?.user?.id} key={section.id} section={section} storageKey={storageKey} />
     }
     if (section.kind === "favorites") {
       return <NavFavorites favorites={favorites} key={section.id} onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite} onRemoveFavorite={handleRemoveFavorite} sectionStorageKey={storageKey} sidebarConfig={legacyConfig!} workspaceId={workspaceId} />
@@ -265,13 +265,17 @@ export function AppSidebar({
       return <SidebarTasksSection databaseIds={layout.taskDatabaseIds} key={section.id} limit={section.limit} storageKey={storageKey} />
     }
     if (section.kind === "shared") {
+      return pageSections.teamspacePages.length
+        ? <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={section.id} label={section.label || "Shared"} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pageSections.teamspacePages} sectionId="shared" sectionStorageKey={`${storageKey}:pages`} sidebarConfig={legacyConfig!} storageKey={`${storageKey}:pages:tree`} />
+        : null
+    }
+    if (section.kind === "teamspaces") {
       const sortedTeamspaces = [...teamspaces]
         .filter((teamspace) => teamspace.currentUserRole)
         .sort((left, right) => section.sort === "alphabetical" ? left.name.localeCompare(right.name) : Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
         .slice(0, section.limit)
       return (
         <React.Fragment key={section.id}>
-          {pageSections.teamspacePages.length ? <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} label={section.label || "Shared pages"} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pageSections.teamspacePages} sectionId="shared" sectionStorageKey={`${storageKey}:pages`} sidebarConfig={legacyConfig!} storageKey={`${storageKey}:pages:tree`} /> : null}
           {sortedTeamspaces.map((teamspace) => <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={`${section.id}:${teamspace.id}`} label={teamspace.name} onCreateDatabase={() => void handleCreateDatabase(teamspace.id)} onCreatePage={() => void handleCreatePage(teamspace.id)} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pageSections.teamspacePagesById[teamspace.id] ?? []} sectionId="shared" sectionStorageKey={`${storageKey}:${teamspace.id}`} showCreateAction sidebarConfig={legacyConfig!} storageKey={`${storageKey}:${teamspace.id}:tree`} teamspace={teamspace} workspaceCanManage={Boolean(teamspaceSettings?.canManage)} workspaceId={workspaceId} />)}
         </React.Fragment>
       )
@@ -286,7 +290,7 @@ export function AppSidebar({
         <div className="flex h-full items-center px-1.5"><ZilobaseLogo className="h-5 w-auto" /><span className="sr-only">Zilobase</span></div>
       </AppSidebarHeader>
       {customizing ? (
-        <SidebarCustomizePanel activeTabId={activeTab.id} databases={navigation?.databases ?? []} disabled={updateUserSettings.isPending} key={`${workspaceId}:${JSON.stringify(layout)}`} layout={layout} onActiveTabChange={selectTab} onCancel={() => setCustomizing(false)} onDone={saveLayout} onOpenSearch={openSearch} pages={navigation?.pages ?? []} workspaceId={workspaceId} />
+        <SidebarCustomizePanel activeTabId={activeTabId} databases={navigation?.databases ?? []} disabled={updateUserSettings.isPending} key={`${workspaceId}:${JSON.stringify(layout)}`} layout={layout} onActiveTabChange={selectTab} onCancel={() => setCustomizing(false)} onDone={saveLayout} onOpenSearch={openSearch} pages={navigation?.pages ?? []} workspaceId={workspaceId} />
       ) : (
         <SidebarContent>
           <div aria-hidden="true" className="h-3 shrink-0" />
@@ -300,7 +304,7 @@ export function AppSidebar({
       )}
       <SidebarFooter className="relative z-10 bg-sidebar p-0">
         {!customizing ? (
-          <SidebarMenu className="gap-3 px-4 pb-3 pt-2 group-data-[collapsible=icon]:px-1">
+          <SidebarMenu className="gap-2 p-2 group-data-[collapsible=icon]:px-1">
             <SidebarMenuItem><SidebarMenuButton onClick={() => setCustomizing(true)} tooltip="Customize sidebar" type="button"><SlidersHorizontalIcon /><span>Customize sidebar</span></SidebarMenuButton></SidebarMenuItem>
             {!isTauri() && desktopLinkServer ? <SidebarMenuItem><a className="flex w-full items-start gap-2.5 rounded-lg bg-accent p-3 text-foreground ring-1 ring-border transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2!" href={buildDesktopDeepLink(location.href, desktopLinkServer)}><MonitorUpIcon className="mt-0.5 size-4 shrink-0" /><span className="min-w-0 group-data-[collapsible=icon]:hidden"><span className="block text-sm font-medium">Open in desktop app</span><span className="mt-0.5 block text-xs leading-snug text-muted-foreground">Continue this page in the desktop experience.</span></span></a></SidebarMenuItem> : null}
           </SidebarMenu>
@@ -356,7 +360,7 @@ function ShortcutList({ databases, onCreateChat, onCreateDatabase, onCreatePage,
       else if (target.route === "settings") onOpenSettings?.()
       else void navigate({ to: target.route === "ai" ? "/ai" : target.route === "tasks" ? "/tasks" : "/trash" })
     }
-    return <SidebarMenuItem key={shortcut.id}><SidebarMenuButton isActive={isShortcutActive(shortcut, location.pathname, location.search, settingsOpen)} onClick={activate} type="button"><SidebarShortcutIcon shortcut={shortcut} /><span>{label}</span></SidebarMenuButton></SidebarMenuItem>
+    return <SidebarMenuItem key={shortcut.id}><SidebarMenuButton className="text-muted-foreground" isActive={isShortcutActive(shortcut, location.pathname, location.search, settingsOpen)} onClick={activate} type="button"><SidebarShortcutIcon shortcut={shortcut} /><span>{label}</span></SidebarMenuButton></SidebarMenuItem>
   })}</SidebarMenu></SidebarGroupContent></SidebarGroup>
 }
 
@@ -367,7 +371,7 @@ function AiChatsSection({ limit, storageKey }: { limit: number; storageKey: stri
 }
 
 function createSectionPresentationConfig(config: SidebarConfig, layout: ReturnType<typeof resolveSidebarWorkspaceLayout>, section: Exclude<SidebarSection, { kind: "databaseView" }>): LegacySidebarConfig {
-  const sectionId = section.kind === "favorites" ? "favorites" : section.kind === "shared" ? "shared" : section.kind === "private" ? "private" : "recents"
+  const sectionId = section.kind === "favorites" ? "favorites" : section.kind === "shared" || section.kind === "teamspaces" ? "shared" : section.kind === "private" ? "private" : "recents"
   return {
     hiddenItems: [],
     libraryView: config.libraryView,

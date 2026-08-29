@@ -18,7 +18,7 @@ export function register({ assert, loadModule, test }) {
       normalizeSidebarConfig({
         defaultLayout: { tabs: [], taskDatabaseIds: [] },
         libraryView: "meetings",
-        version: 2,
+        version: 3,
         workspaceLayouts: {},
       }).libraryView,
       "meetings",

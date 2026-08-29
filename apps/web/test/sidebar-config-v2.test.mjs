@@ -19,15 +19,15 @@ export function register({ assert, loadModule, test }) {
     const second = normalizeSidebarConfig(input)
 
     assert.deepEqual(first, second)
-    assert.equal(first.version, 2)
+    assert.equal(first.version, 3)
     assert.equal(first.libraryView, "shared")
     assert.deepEqual(first.defaultLayout.taskDatabaseIds, ["tasks-1"])
     assert.deepEqual(
       first.defaultLayout.tabs[0].sections.map((section) => section.kind),
-      ["shared", "favorites", "private"],
+      ["shared", "teamspaces", "favorites", "private"],
     )
-    assert.equal(first.defaultLayout.tabs[0].sections[1].limit, 15)
-    assert.equal(first.defaultLayout.tabs[0].sections[1].sort, "alphabetical")
+    assert.equal(first.defaultLayout.tabs[0].sections[2].limit, 15)
+    assert.equal(first.defaultLayout.tabs[0].sections[2].sort, "alphabetical")
   })
 
   test("v2 sidebar normalization enforces a locked Home tab and payload caps", async () => {
@@ -47,7 +47,7 @@ export function register({ assert, loadModule, test }) {
     const config = normalizeSidebarConfig({
       defaultLayout: { tabs, taskDatabaseIds: [] },
       libraryView: "recents",
-      version: 2,
+      version: 3,
       workspaceLayouts: {},
     })
 
@@ -56,6 +56,48 @@ export function register({ assert, loadModule, test }) {
     assert.equal(config.defaultLayout.tabs[0].name, "Home")
     assert.equal(config.defaultLayout.tabs[0].icon, "home")
     assert.equal(config.defaultLayout.tabs[0].sections.length, 24)
+  })
+
+  test("shared pages and teamspaces are independent sidebar sections", async () => {
+    const { defaultSidebarConfig, normalizeSidebarConfig, normalizeSidebarWorkspaceLayout } = await loadModule(configPath)
+    assert.deepEqual(
+      defaultSidebarConfig.defaultLayout.tabs[0].sections.slice(-2).map((section) => section.kind),
+      ["shared", "teamspaces"],
+    )
+    const layout = normalizeSidebarWorkspaceLayout({
+      tabs: [{
+        icon: "home",
+        id: "home",
+        name: "Home",
+        sections: [
+          { id: "shared", kind: "shared", limit: 10, sort: "lastEdited" },
+          { id: "teamspaces", kind: "teamspaces", limit: 10, sort: "lastEdited" },
+        ],
+        shortcuts: [],
+      }],
+      taskDatabaseIds: [],
+    })
+    assert.deepEqual(layout.tabs[0].sections.map((section) => section.kind), ["shared", "teamspaces"])
+
+    const migrated = normalizeSidebarConfig({
+      defaultLayout: {
+        tabs: [{
+          icon: "home",
+          id: "home",
+          name: "Home",
+          sections: [{ id: "old-shared", kind: "shared", limit: 15, sort: "alphabetical" }],
+          shortcuts: [],
+        }],
+        taskDatabaseIds: [],
+      },
+      libraryView: "shared",
+      version: 2,
+      workspaceLayouts: {},
+    })
+    assert.equal(migrated.version, 3)
+    assert.deepEqual(migrated.defaultLayout.tabs[0].sections.map((section) => section.kind), ["shared", "teamspaces"])
+    assert.equal(migrated.defaultLayout.tabs[0].sections[1].limit, 15)
+    assert.equal(migrated.defaultLayout.tabs[0].sections[1].sort, "alphabetical")
   })
 
   test("workspace layouts resolve independently and preserve the default fallback", async () => {

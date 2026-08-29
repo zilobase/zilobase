@@ -26,16 +26,21 @@ export function register({ assert, test }) {
       new URL("../src/components/sidebar-customize-panel.tsx", import.meta.url),
       "utf8",
     )
+    const sidebarDatabaseViewSource = await readFile(
+      new URL("../src/components/sidebar-database-view-section.tsx", import.meta.url),
+      "utf8",
+    )
 
     assert.match(sidebarSource, /<ZilobaseLogo className="h-5 w-auto" \/>/)
     assert.match(sidebarSource, /<span className="sr-only">Zilobase<\/span>/)
     assert.doesNotMatch(sidebarSource, /<NewMenu/)
     assert.match(sidebarSource, /<span>Customize sidebar<\/span>/)
+    assert.match(sidebarSource, /<SidebarMenuItem><SidebarMenuButton onClick=\{\(\) => setCustomizing\(true\)\}/)
     assert.match(
       sidebarSource,
       /onClick=\{\(\) => setCustomizing\(true\)\}/,
     )
-    assert.match(sidebarSource, /gap-3 px-4 pb-3 pt-2/)
+    assert.match(sidebarSource, /gap-2 p-2/)
     assert.match(sidebarTabsSource, /<SearchIcon className="size-4" \/>/)
     assert.match(sidebarTabsSource, /\{active \? <motion\.span/)
     assert.match(sidebarTabsSource, /tabLabelVariants/)
@@ -45,6 +50,8 @@ export function register({ assert, test }) {
     assert.match(sidebarTabsSource, /translate3d\(\$\{sortable\.transform\.x\}px, 0, 0\)/)
     assert.match(sidebarTabsSource, /activationConstraint: \{ distance: 4 \}/)
     assert.match(sidebarCustomizeSource, /activeTabSettings=/)
+    assert.match(sidebarSource, /<SidebarCustomizePanel activeTabId=\{activeTabId\}/)
+    assert.doesNotMatch(sidebarSource, /<SidebarCustomizePanel activeTabId=\{activeTab\.id\}/)
     assert.doesNotMatch(sidebarCustomizeSource, /autoFocus=\{newTabId/)
     assert.match(sidebarCustomizeSource, /<IconEmojiPicker allowUpload=\{false\}/)
     assert.match(sidebarCustomizeSource, /aria-label="Change shortcut icon"/)
@@ -131,6 +138,30 @@ export function register({ assert, test }) {
     )
     assert.doesNotMatch(sidebarSource, /useCreateAiChatThread/)
     assert.match(sidebarSource, /setActiveThreadId\(null\)/)
+    assert.match(
+      sidebarSource,
+      /<SidebarMenuButton className="text-muted-foreground" isActive=\{isShortcutActive/,
+    )
+    assert.match(
+      sidebarDatabaseViewSource,
+      /activeDataSourceId = database\.data\?\.activeDataSource\?\.id \?\? null/,
+    )
+    assert.match(
+      sidebarDatabaseViewSource,
+      /addRow\.mutate\(\s*\{ databaseId: activeDataSourceId, title: "Untitled" \}/,
+    )
+    assert.doesNotMatch(
+      sidebarDatabaseViewSource,
+      /addRow\.mutate\(\s*\{ databaseId: section\.databaseId/,
+    )
+    assert.match(
+      sidebarSource,
+      /<SidebarDatabaseViewSection activePageId=\{getActivePageId\(pathname\)\}/,
+    )
+    assert.match(
+      sidebarDatabaseViewSource,
+      /<SidebarMenuButton asChild isActive=\{row\.pageId === activePageId\}>/,
+    )
     assert.match(sidebarShellSource, /Light[\s\S]*Dark[\s\S]*System/)
     assert.match(sidebarSource, /<AppSidebarHeader[\s\S]*navigation=\{!customizing \? <SidebarLayoutTabs/)
     assert.match(workspaceSource, /<span>Settings<\/span>/)

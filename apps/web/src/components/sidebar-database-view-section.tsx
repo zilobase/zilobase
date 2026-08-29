@@ -23,10 +23,12 @@ import type { SidebarSection } from "@zilobase/features/user-settings"
 import { isDatabaseLocked, useAddDatabaseRow, useDatabase } from "@zilobase/features/databases"
 
 export function SidebarDatabaseViewSection({
+  activePageId,
   currentUserId,
   section,
   storageKey,
 }: {
+  activePageId: string | null
   currentUserId?: string
   section: Extract<SidebarSection, { kind: "databaseView" }>
   storageKey: string
@@ -46,6 +48,7 @@ export function SidebarDatabaseViewSection({
   )
   const rows = model.sortedItems.slice(0, section.limit)
   const title = section.label || database.data?.database.name || "Database view"
+  const activeDataSourceId = database.data?.activeDataSource?.id ?? null
 
   return (
     <Collapsible
@@ -66,14 +69,14 @@ export function SidebarDatabaseViewSection({
               </button>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          {database.data && database.data.database.accessLevel !== "view" && !isDatabaseLocked(database.data.database) ? (
+          {database.data && activeDataSourceId && database.data.database.accessLevel !== "view" && !isDatabaseLocked(database.data.database) ? (
             <SidebarGroupAction
               aria-label={`Add row to ${title}`}
               className="right-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               disabled={addRow.isPending}
               onClick={() => {
                 addRow.mutate(
-                  { databaseId: section.databaseId, title: "Untitled" },
+                  { databaseId: activeDataSourceId, title: "Untitled" },
                   { onError: (error) => toast.error(error instanceof Error ? error.message : "Could not add row.") },
                 )
               }}
@@ -101,7 +104,7 @@ export function SidebarDatabaseViewSection({
               <SidebarMenu aria-label={`${title} rows`}>
                 {rows.map((row) => (
                   <SidebarMenuItem key={row.id}>
-                    <SidebarMenuButton asChild>
+                    <SidebarMenuButton asChild isActive={row.pageId === activePageId}>
                       <Link params={{ pageId: row.pageId }} to="/p/$pageId">
                         {section.showPageIcon ? <FileIcon /> : null}
                         <span>{row.page.name.trim() || "Untitled"}</span>

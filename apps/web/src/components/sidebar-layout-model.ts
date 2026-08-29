@@ -14,7 +14,8 @@ export const sidebarSectionLabels: Record<SidebarSectionKind, string> = {
   meetings: "Meetings",
   private: "Private",
   recents: "Recents",
-  shared: "Shared & teamspaces",
+  shared: "Shared",
+  teamspaces: "Teamspaces",
   tasks: "Tasks",
 }
 

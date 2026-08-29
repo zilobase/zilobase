@@ -26,6 +26,7 @@ import {
   GripVerticalIcon,
   HistoryIcon,
   LibraryIcon,
+  Layers3Icon,
   ListChecksIcon,
   Loader2Icon,
   LockIcon,
@@ -114,6 +115,7 @@ const sectionIcons: Record<SidebarSectionKind, typeof StarIcon> = {
   private: LockIcon,
   recents: HistoryIcon,
   shared: UsersIcon,
+  teamspaces: Layers3Icon,
   tasks: ListChecksIcon,
 }
 
