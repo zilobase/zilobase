@@ -11,13 +11,15 @@ const sidebarConfigPath = fileURLToPath(
 export function register({ assert, loadModule, test }) {
   test("Library Teamspaces uses a dedicated teamspace directory", async () => {
     const source = await readFile(new URL("../src/pages/recents.tsx", import.meta.url), "utf8")
-    assert.match(source, /activeViewId === "teamspaces"[\s\S]*<TeamspacesLibraryTable rows=\{rows\} teamspaces=\{teamspaces\}/)
-    assert.match(source, /Name[\s\S]*Description[\s\S]*Access[\s\S]*Members/)
+    assert.match(source, /activeViewId === "teamspaces"[\s\S]*<TeamspacesLibraryTable[\s\S]*rows=\{rows\}[\s\S]*teamspaces=\{teamspaces\}/)
+    assert.match(source, /Name[\s\S]*Description[\s\S]*Type[\s\S]*Access[\s\S]*Members/)
     assert.match(source, /<Plus \/> New teamspace/)
     assert.match(source, /<CreateLibraryTeamspaceDialog/)
     assert.match(source, /aria-expanded=\{expanded\}/)
     assert.match(source, /buildTeamspaceLibraryRows\(rows, teamspace\.id\)/)
     assert.match(source, /aria-label=\{`\$\{teamspace\.name\} contents`\}/)
+    assert.match(source, /className="database-table"/)
+    assert.match(source, /<DatabasePageLink[\s\S]*onOpen=\{onOpenRow\}/)
   })
 
   test("Library keeps a full-page Library heading across tabs", async () => {

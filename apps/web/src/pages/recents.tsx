@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, ChevronRight, Database, FileText, Globe2Icon, Layers3Icon, Loader2, LockIcon, Plus, UsersIcon } from "@/components/icons";
 import { toast } from "sonner";
@@ -16,7 +16,7 @@ import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";
 import { PageEditorPane } from "@/pages/page";
 import { DatabaseMainPane } from "@/pages/database";
 import { buildHomepageHierarchy } from "@/pages/homepage-hierarchy";
-import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON, DEFAULT_PAGE_ITEM_ICON } from "@/lib/item-icons";
+import { DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +27,7 @@ import { DatabaseTableView } from "@/packages/editor/extensions/database/views/t
 import { DatabaseViewProvider } from "@/packages/editor/extensions/database/views/database-view-context";
 import { DatabaseViewToolbar } from "@/packages/editor/extensions/database/views/database-view-toolbar";
 import { DatabaseViewSkeleton } from "@/packages/editor/extensions/database/views/database-view-skeleton";
+import { DatabasePageLink } from "@/packages/editor/extensions/database/interactions/database-page-link";
 import { getDatabaseViewModel } from "@/packages/editor/extensions/database/views/database-view-model";
 import {
   getMergedDatabaseConfig,
@@ -630,7 +631,11 @@ export default function RecentsPage({
                     (activeViewId === "teamspaces" && teamspacesLoading) ? (
                       <DatabaseViewSkeleton viewType="table" />
                     ) : activeViewId === "teamspaces" ? (
-                      <TeamspacesLibraryTable rows={rows} teamspaces={teamspaces} />
+                      <TeamspacesLibraryTable
+                        onOpenRow={openHomepagePage}
+                        rows={rows}
+                        teamspaces={teamspaces}
+                      />
                     ) : (
                       <DatabaseTableView />
                     )}
@@ -677,65 +682,107 @@ export default function RecentsPage({
   );
 }
 
-function TeamspacesLibraryTable({ rows, teamspaces }: { rows: HomepageRow[]; teamspaces: Teamspace[] }) {
+function TeamspacesLibraryTable({
+  onOpenRow,
+  rows,
+  teamspaces,
+}: {
+  onOpenRow: (rowId: string) => void;
+  rows: HomepageRow[];
+  teamspaces: Teamspace[];
+}) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   if (teamspaces.length === 0) {
     return <div className="py-16 text-center text-sm text-muted-foreground">No teamspaces yet. Create one for a team or project.</div>;
   }
 
   return (
-    <div className="min-w-[48rem] text-sm">
-      <div className="grid grid-cols-[minmax(15rem,1.1fr)_minmax(18rem,1.4fr)_minmax(10rem,.6fr)_minmax(7rem,.4fr)] border-b text-muted-foreground">
-        <div className="px-3 py-2 font-medium">Name</div>
-        <div className="px-3 py-2 font-medium">Description</div>
-        <div className="px-3 py-2 font-medium">Access</div>
-        <div className="px-3 py-2 font-medium">Members</div>
-      </div>
+    <div className="database-table-wrap tiptap-editor min-w-[58rem]" data-vertical-lines="true">
+      <table className="database-table">
+        <colgroup>
+          <col className="w-[30%]" />
+          <col className="w-[28%]" />
+          <col className="w-[14%]" />
+          <col className="w-[17%]" />
+          <col className="w-[11%]" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th className="database-name-header"><div className="database-name-header-content">Name</div></th>
+            <th><div className="database-name-header-content">Description</div></th>
+            <th><div className="database-name-header-content">Type</div></th>
+            <th><div className="database-name-header-content">Access</div></th>
+            <th><div className="database-name-header-content">Members</div></th>
+          </tr>
+        </thead>
+        <tbody>
       {teamspaces.map((teamspace) => {
         const expanded = expandedIds.has(teamspace.id);
         const teamspaceRows = buildTeamspaceLibraryRows(rows, teamspace.id);
-        return <div key={teamspace.id}>
-          <button
-            aria-expanded={expanded}
-            className="grid w-full grid-cols-[minmax(15rem,1.1fr)_minmax(18rem,1.4fr)_minmax(10rem,.6fr)_minmax(7rem,.4fr)] border-b text-left hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            onClick={() => setExpandedIds((current) => {
+        return <Fragment key={teamspace.id}>
+          <tr className="group hover:bg-accent">
+            <td className="database-page-cell">
+              <button
+                aria-expanded={expanded}
+                className="flex h-8 w-full min-w-0 items-center gap-2 px-3 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                onClick={() => setExpandedIds((current) => {
               const next = new Set(current);
               if (next.has(teamspace.id)) next.delete(teamspace.id);
               else next.add(teamspace.id);
               return next;
             })}
-            type="button"
-          >
-            <span className="flex min-w-0 items-center gap-2 px-3 py-2.5 font-medium">
+                type="button"
+              >
               <ChevronRight className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`} />
               {typeof teamspace.icon === "string" && teamspace.icon
                 ? <PageIconDisplay size="sm" value={teamspace.icon} />
                 : <Layers3Icon className="size-4 shrink-0 text-muted-foreground" />}
-              <span className="truncate">{teamspace.name}</span>
-            </span>
-            <span className="truncate px-3 py-2.5 text-muted-foreground">{teamspace.description?.trim() || "—"}</span>
-            <span className="flex items-center gap-1.5 px-3 py-2.5 capitalize"><TeamspaceAccessIcon accessMode={teamspace.accessMode} />{teamspace.isDefault ? "Default" : teamspace.accessMode}</span>
-            <span className="flex items-center gap-1.5 px-3 py-2.5"><UsersIcon className="size-4 text-muted-foreground" />{teamspace.memberCount ?? 0}</span>
-          </button>
+                <span className="truncate font-semibold">{teamspace.name}</span>
+              </button>
+            </td>
+            <td className="truncate text-muted-foreground">{teamspace.description?.trim() || "—"}</td>
+            <td className="text-muted-foreground">Teamspace</td>
+            <td><span className="flex items-center gap-1.5 capitalize"><TeamspaceAccessIcon accessMode={teamspace.accessMode} />{teamspace.isDefault ? "Default" : teamspace.accessMode}</span></td>
+            <td><span className="flex items-center gap-1.5"><UsersIcon className="size-4 text-muted-foreground" />{teamspace.memberCount ?? 0}</span></td>
+          </tr>
           {expanded ? (
-            <div aria-label={`${teamspace.name} contents`}>
+            <Fragment>
               {teamspaceRows.length > 0 ? teamspaceRows.map(({ depth, row }) => (
-                <div className="grid grid-cols-[minmax(15rem,1.1fr)_minmax(18rem,1.4fr)_minmax(10rem,.6fr)_minmax(7rem,.4fr)] border-b text-muted-foreground" key={row.id}>
-                  <div className="flex min-w-0 items-center gap-2 py-2 pr-3" style={{ paddingLeft: `${36 + depth * 16}px` }}>
-                    <PageIconDisplay size="sm" value={getHomepageRowIcon(row)} />
-                    <span className="truncate text-foreground">{row.name}</span>
-                  </div>
-                  <div className="truncate px-3 py-2">{row.itemKind === "database" ? "Database" : row.itemKind === "meeting" ? "Meeting" : "Page"}</div>
-                  <div />
-                  <div />
-                </div>
-              )) : <div className="border-b py-3 pl-9 text-sm text-muted-foreground">No pages yet</div>}
-            </div>
+                <tr aria-label={`${teamspace.name} contents`} key={row.id}>
+                  <td className="database-page-cell">
+                    <div className="database-cell-content" style={{ paddingLeft: `${24 + depth * 16}px` }}>
+                      <DatabasePageLink
+                        onOpen={onOpenRow}
+                        pageId={row.id}
+                        pageSummary={{
+                          iconKind: row.iconKind,
+                          id: row.id,
+                          metadata: row.metadata,
+                          name: row.name,
+                        }}
+                      />
+                    </div>
+                  </td>
+                  <td className="text-muted-foreground">—</td>
+                  <td className="text-muted-foreground">{getHomepageRowType(row)}</td>
+                  <td />
+                  <td />
+                </tr>
+              )) : <tr aria-label={`${teamspace.name} contents`}><td className="text-muted-foreground" colSpan={5}>No pages yet</td></tr>}
+            </Fragment>
           ) : null}
-        </div>;
+        </Fragment>;
       })}
+        </tbody>
+      </table>
     </div>
   );
+}
+
+function getHomepageRowType(row: HomepageRow) {
+  if (row.itemKind === "database") return "Database";
+  if (row.itemKind === "meeting") return "Meeting";
+  return "Page";
 }
 
 function buildTeamspaceLibraryRows(rows: HomepageRow[], teamspaceId: string) {
@@ -758,11 +805,6 @@ function buildTeamspaceLibraryRows(rows: HomepageRow[], teamspaceId: string) {
   };
   visit(null, 0);
   return result;
-}
-
-function getHomepageRowIcon(row: HomepageRow) {
-  const emoji = row.metadata && typeof row.metadata.emoji === "string" ? row.metadata.emoji : null;
-  return emoji ?? (row.iconKind === "database" ? DEFAULT_DATABASE_ITEM_ICON : DEFAULT_PAGE_ITEM_ICON);
 }
 
 function TeamspaceAccessIcon({ accessMode }: { accessMode: TeamspaceAccessMode }) {
