@@ -94,7 +94,10 @@ pub fn record_renderer_diagnostic(
 
 #[tauri::command]
 pub fn get_diagnostics_info(app: AppHandle) -> Result<DiagnosticsInfo, String> {
-    let log_dir = app.path().app_log_dir().map_err(|_| "Log directory is unavailable")?;
+    let log_dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|_| "Log directory is unavailable")?;
     fs::create_dir_all(&log_dir).map_err(|_| "Could not create the log directory")?;
     Ok(DiagnosticsInfo {
         log_directory: log_dir.to_string_lossy().into_owned(),
@@ -103,7 +106,10 @@ pub fn get_diagnostics_info(app: AppHandle) -> Result<DiagnosticsInfo, String> {
 
 #[tauri::command]
 pub fn open_diagnostics_folder(app: AppHandle) -> Result<(), String> {
-    let log_dir = app.path().app_log_dir().map_err(|_| "Log directory is unavailable")?;
+    let log_dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|_| "Log directory is unavailable")?;
     fs::create_dir_all(&log_dir).map_err(|_| "Could not create the log directory")?;
     app.opener()
         .open_path(log_dir.to_string_lossy().into_owned(), None::<String>)
@@ -117,7 +123,10 @@ pub fn open_diagnostics_folder(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn export_diagnostics(app: AppHandle) -> Result<String, String> {
-    let log_dir = app.path().app_log_dir().map_err(|_| "Log directory is unavailable")?;
+    let log_dir = app
+        .path()
+        .app_log_dir()
+        .map_err(|_| "Log directory is unavailable")?;
     let output_dir = app
         .path()
         .download_dir()
@@ -173,8 +182,8 @@ fn export_archive(log_dir: &Path, output_dir: &Path) -> Result<PathBuf, String> 
         unix_seconds(),
         std::process::id()
     ));
-    let archive = File::create(&archive_path)
-        .map_err(|_| "Could not create the diagnostics archive")?;
+    let archive =
+        File::create(&archive_path).map_err(|_| "Could not create the diagnostics archive")?;
     let mut writer = ZipWriter::new(archive);
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
     let manifest_json = serde_json::to_vec_pretty(&manifest)
@@ -287,8 +296,11 @@ fn linux_distribution() -> Option<String> {
     }
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn os_release_value(contents: &str, key: &str) -> Option<String> {
-    let raw = contents.lines().find_map(|line| line.strip_prefix(&format!("{key}=")))?;
+    let raw = contents
+        .lines()
+        .find_map(|line| line.strip_prefix(&format!("{key}=")))?;
     let value = raw.trim_matches('"');
     (!value.is_empty()
         && value.len() <= 40
@@ -325,11 +337,15 @@ fn safe_renderer_field(key: &str, value: &Value) -> Option<String> {
     }
     if key == "status" {
         let value = value.as_str()?;
-        return SAFE_STATUS_VALUES.contains(&value).then(|| value.to_string());
+        return SAFE_STATUS_VALUES
+            .contains(&value)
+            .then(|| value.to_string());
     }
     if key == "platform" {
         let value = value.as_str()?;
-        return SAFE_PLATFORM_VALUES.contains(&value).then(|| value.to_string());
+        return SAFE_PLATFORM_VALUES
+            .contains(&value)
+            .then(|| value.to_string());
     }
     if key == "error_type" || key == "value_kind" {
         let value = value.as_str()?;
@@ -357,9 +373,9 @@ fn is_safe_identifier(value: &str) -> bool {
             .bytes()
             .next()
             .is_some_and(|character| character.is_ascii_alphabetic())
-        && value.bytes().all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, b'_' | b'-')
-        })
+        && value
+            .bytes()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, b'_' | b'-'))
 }
 
 fn build_commit() -> &'static str {
@@ -391,7 +407,10 @@ mod tests {
     #[test]
     fn recognizes_only_the_explicit_diagnostics_flag() {
         assert!(has_diagnostics_arg(["zilobase-client", "--diagnostics"]));
-        assert!(!has_diagnostics_arg(["zilobase-client", "--diagnostics-path"]));
+        assert!(!has_diagnostics_arg([
+            "zilobase-client",
+            "--diagnostics-path"
+        ]));
     }
 
     #[test]

@@ -284,7 +284,7 @@ pub(crate) fn remove_desktop_server_profile(
 ) -> Result<DesktopServer, DesktopServerError> {
     let directory = app_config_directory(&app)?;
     remove_profile_from_directory(&directory, &instance_id, &api_origin, |server| {
-        crate::delete_server_keyring_credentials(server)
+        crate::auth::keyring::delete_server_keyring_credentials(server)
     })
 }
 
@@ -727,7 +727,9 @@ fn parse_config(bytes: &[u8]) -> Result<(DesktopServerConfig, bool), DesktopServ
 
     if version == u64::from(LEGACY_CONFIG_VERSION) {
         let legacy: LegacyDesktopServerConfig = serde_json::from_value(value).map_err(|_| {
-            DesktopServerError::configuration("The saved desktop server configuration is malformed.")
+            DesktopServerError::configuration(
+                "The saved desktop server configuration is malformed.",
+            )
         })?;
         validate_persisted_server(&legacy.server)?;
         return Ok((single_profile_config(&legacy.server), true));
@@ -912,25 +914,29 @@ fn find_profile_index(
     instance_id: &str,
     api_origin: &str,
 ) -> Option<usize> {
-    config.profiles.iter().position(|profile| {
+    config
+        .profiles
+        .iter()
+        .position(|profile| {
             profile.server.instance_id == instance_id && profile.server.api_origin == api_origin
-    }).or_else(|| {
-        config.profiles.iter().position(|profile| {
-            servers_refer_to_same_instance(
-                &profile.server,
-                &DesktopServer {
-                    instance_id: instance_id.to_string(),
-                    display_name: profile.server.display_name.clone(),
-                    issuer: api_origin.to_string(),
-                    web_origin: profile.server.web_origin.clone(),
-                    api_origin: api_origin.to_string(),
-                    protocol_version: profile.server.protocol_version,
-                    server_version: profile.server.server_version.clone(),
-                    minimum_desktop_version: profile.server.minimum_desktop_version.clone(),
-                },
-            )
         })
-    })
+        .or_else(|| {
+            config.profiles.iter().position(|profile| {
+                servers_refer_to_same_instance(
+                    &profile.server,
+                    &DesktopServer {
+                        instance_id: instance_id.to_string(),
+                        display_name: profile.server.display_name.clone(),
+                        issuer: api_origin.to_string(),
+                        web_origin: profile.server.web_origin.clone(),
+                        api_origin: api_origin.to_string(),
+                        protocol_version: profile.server.protocol_version,
+                        server_version: profile.server.server_version.clone(),
+                        minimum_desktop_version: profile.server.minimum_desktop_version.clone(),
+                    },
+                )
+            })
+        })
 }
 
 fn upsert_and_activate(config: &mut DesktopServerConfig, server: &DesktopServer) {
@@ -984,7 +990,7 @@ fn profile_list_from_config(config: &DesktopServerConfig) -> DesktopServerProfil
 }
 
 fn server_has_credentials(server: &DesktopServer) -> bool {
-    crate::get_server_keyring_value(server, "session", "session_token")
+    crate::auth::keyring::get_server_keyring_value(server, "session", "session_token")
         .ok()
         .flatten()
         .is_some_and(|value| !value.is_empty())
@@ -1078,15 +1084,14 @@ fn config_path(directory: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::{
-        cloud_server, commit_candidate_to_directory, config_file_name, config_path,
-        default_server, development_server, find_profile_index, is_development_server,
-        load_or_initialize_config,
+        cloud_server, commit_candidate_to_directory, config_file_name, config_path, default_server,
+        development_server, find_profile_index, is_development_server, load_or_initialize_config,
         load_or_initialize_from_directory, parse_config, parse_server_origin,
         remove_profile_from_directory, save_to_directory, servers_refer_to_same_instance,
         validate_discovery_document, verify_desktop_server, write_config,
-        DesktopAuthorizationEndpoints, DesktopServerCandidate,
-        DesktopServerCandidateState, DesktopServerWorkspaceSnapshot, DEV_CONFIG_FILE_NAME,
-        DiscoveryDocument, SERVER_CANDIDATE_TTL,
+        DesktopAuthorizationEndpoints, DesktopServerCandidate, DesktopServerCandidateState,
+        DesktopServerWorkspaceSnapshot, DiscoveryDocument, DEV_CONFIG_FILE_NAME,
+        SERVER_CANDIDATE_TTL,
     };
     use std::time::Instant;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -1097,8 +1102,8 @@ mod tests {
         {
             let directory = tempfile::tempdir().expect("temporary directory");
             save_to_directory(directory.path(), &cloud_server()).expect("save cloud");
-            let loaded = load_or_initialize_from_directory(directory.path())
-                .expect("remap saved cloud");
+            let loaded =
+                load_or_initialize_from_directory(directory.path()).expect("remap saved cloud");
             assert_eq!(loaded, default_server());
         }
     }
@@ -1207,18 +1212,14 @@ mod tests {
         );
         let config = load_or_initialize_config(directory.path()).expect("profiles");
         assert_eq!(config.profiles.len(), 2);
-        assert!(
-            config
-                .profiles
-                .iter()
-                .any(|profile| profile.server == initial)
-        );
-        assert!(
-            config
-                .profiles
-                .iter()
-                .any(|profile| profile.server == replacement)
-        );
+        assert!(config
+            .profiles
+            .iter()
+            .any(|profile| profile.server == initial));
+        assert!(config
+            .profiles
+            .iter()
+            .any(|profile| profile.server == replacement));
     }
 
     #[test]

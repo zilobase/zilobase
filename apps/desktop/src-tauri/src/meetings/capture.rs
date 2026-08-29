@@ -5,23 +5,29 @@
 //! native channel, frames are mixed/resampled here, and a WAV checkpoint is kept
 //! for crash recovery and the native transcription transport.
 
+use super::{
+    audio::{downmix_to_mono, StreamingLinearResampler},
+    recovery::{
+        capture_base_directory, epoch_ms, validate_meeting_id, write_checkpoint, CheckpointWav,
+    },
+};
+
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, VecDeque},
-    fs::{self, File},
-    io::{BufWriter, ErrorKind, Seek, SeekFrom, Write},
+    fs,
+    io::ErrorKind,
     net::TcpStream,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         mpsc, Arc, Mutex,
     },
     thread,
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant},
 };
-use tauri::{AppHandle, Emitter, Manager, State};
-use tauri_plugin_opener::OpenerExt;
+use tauri::{AppHandle, Emitter, State};
 use tungstenite::{
     client::IntoClientRequest,
     http::{header::SEC_WEBSOCKET_PROTOCOL, HeaderValue},
@@ -30,7 +36,7 @@ use tungstenite::{
     WebSocket,
 };
 
-const TARGET_SAMPLE_RATE: u32 = 24_000;
+pub(super) const TARGET_SAMPLE_RATE: u32 = 24_000;
 const FRAME_SAMPLES: usize = 480;
 const TRANSPORT_BATCH_SAMPLES: usize = FRAME_SAMPLES * 5;
 const MAX_CAPTURE_MS: u64 = 3 * 60 * 60 * 1_000;
@@ -40,7 +46,6 @@ const TRANSPORT_REPLAY_CAPACITY: usize = 1_500;
 const MAX_TRANSCRIPTION_RECONNECT_ATTEMPTS: u8 = 6;
 const MEETING_TRANSCRIPTION_FATAL_CLOSE_CODE: u16 = 4_400;
 const TRANSCRIPTION_STABLE_CONNECTION: Duration = Duration::from_secs(30);
-const CAPTURE_DIRECTORY: &str = "meeting-recordings";
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -172,11 +177,11 @@ struct MeetingAudioServerEvent {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecoverableMeetingCapture {
-    meeting_id: String,
-    started_at_epoch_ms: u64,
-    elapsed_ms: u64,
-    sample_rate: u32,
-    audio_path: String,
+    pub(super) meeting_id: String,
+    pub(super) started_at_epoch_ms: u64,
+    pub(super) elapsed_ms: u64,
+    pub(super) sample_rate: u32,
+    pub(super) audio_path: String,
 }
 
 #[derive(Default)]
@@ -516,58 +521,6 @@ pub fn meeting_capture_state(
         .map(|status| status.clone())
 }
 
-#[tauri::command]
-pub fn meeting_capture_recoverable_sessions(
-    app: AppHandle,
-) -> Result<Vec<RecoverableMeetingCapture>, String> {
-    let base = capture_base_directory(&app)?;
-    if !base.exists() {
-        return Ok(Vec::new());
-    }
-    let mut sessions = Vec::new();
-    for entry in fs::read_dir(&base)
-        .map_err(|error| format!("Could not inspect meeting checkpoints: {error}"))?
-        .flatten()
-    {
-        let checkpoint = entry.path().join("checkpoint.json");
-        let Ok(bytes) = fs::read(checkpoint) else {
-            continue;
-        };
-        if let Ok(session) = serde_json::from_slice::<RecoverableMeetingCapture>(&bytes) {
-            if Path::new(&session.audio_path).exists() {
-                sessions.push(session);
-            }
-        }
-    }
-    sessions.sort_by_key(|session| std::cmp::Reverse(session.started_at_epoch_ms));
-    Ok(sessions)
-}
-
-#[tauri::command]
-pub fn meeting_capture_delete_local_file(app: AppHandle, meeting_id: String) -> Result<(), String> {
-    validate_meeting_id(&meeting_id)?;
-    let directory = capture_base_directory(&app)?.join(meeting_id);
-    if directory.exists() {
-        fs::remove_dir_all(directory)
-            .map_err(|error| format!("Could not delete the local meeting audio: {error}"))?;
-    }
-    Ok(())
-}
-
-#[tauri::command]
-pub fn meeting_capture_open_local_file(app: AppHandle, meeting_id: String) -> Result<(), String> {
-    validate_meeting_id(&meeting_id)?;
-    let audio_path = capture_base_directory(&app)?
-        .join(meeting_id)
-        .join("meeting-audio.wav");
-    if !audio_path.exists() {
-        return Err("No local audio checkpoint exists for this meeting".into());
-    }
-    app.opener()
-        .open_path(audio_path.to_string_lossy().into_owned(), None::<String>)
-        .map_err(|error| format!("Could not open the local meeting audio: {error}"))
-}
-
 fn control_capture<F>(
     manager: &State<'_, MeetingCaptureManager>,
     create_control: F,
@@ -784,18 +737,23 @@ fn run_capture(
             if let Some(worker) = transport_tx.as_ref() {
                 let sequence = elapsed_samples / FRAME_SAMPLES as u64;
                 let frames = [
-                    (AudioSource::Microphone, &microphone_frame, microphone_active),
+                    (
+                        AudioSource::Microphone,
+                        &microphone_frame,
+                        microphone_active,
+                    ),
                     (AudioSource::System, &system_frame, system_active),
                 ];
-                let result = frames.into_iter().filter(|(_, _, active)| *active).try_for_each(
-                    |(source, samples, _)| {
+                let result = frames
+                    .into_iter()
+                    .filter(|(_, _, active)| *active)
+                    .try_for_each(|(source, samples, _)| {
                         worker.commands.try_send(TransportCommand::Frame {
                             samples: samples.clone(),
                             sequence,
                             source,
                         })
-                    },
-                );
+                    });
                 if let Err(error) = result {
                     if !transport_lagging {
                         let _ = app.emit(
@@ -1068,70 +1026,6 @@ fn build_input_stream(
     Ok(stream)
 }
 
-fn downmix_to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
-    if channels <= 1 {
-        return samples.to_vec();
-    }
-    samples
-        .chunks(channels)
-        .map(|frame| frame.iter().sum::<f32>() / frame.len() as f32)
-        .collect()
-}
-
-#[cfg(test)]
-fn resample_linear(samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
-    if from_rate == to_rate || samples.is_empty() {
-        return samples.to_vec();
-    }
-    let ratio = from_rate as f64 / to_rate as f64;
-    let target_len = (samples.len() as f64 / ratio).floor() as usize;
-    (0..target_len)
-        .map(|index| {
-            let position = index as f64 * ratio;
-            let lower = position.floor() as usize;
-            let upper = (lower + 1).min(samples.len() - 1);
-            let fraction = (position - lower as f64) as f32;
-            samples[lower] + (samples[upper] - samples[lower]) * fraction
-        })
-        .collect()
-}
-
-#[derive(Default)]
-struct StreamingLinearResampler {
-    from_rate: u32,
-    input: VecDeque<f32>,
-    position: f64,
-}
-
-impl StreamingLinearResampler {
-    fn process(&mut self, samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
-        if from_rate == to_rate {
-            return samples.to_vec();
-        }
-        if self.from_rate != from_rate {
-            self.from_rate = from_rate;
-            self.input.clear();
-            self.position = 0.0;
-        }
-        self.input.extend(samples.iter().copied());
-        let ratio = from_rate as f64 / to_rate as f64;
-        let mut output = Vec::new();
-        while self.position + 1.0 < self.input.len() as f64 {
-            let lower = self.position.floor() as usize;
-            let upper = lower + 1;
-            let fraction = (self.position - lower as f64) as f32;
-            let left = self.input.get(lower).copied().unwrap_or_default();
-            let right = self.input.get(upper).copied().unwrap_or(left);
-            output.push(left + (right - left) * fraction);
-            self.position += ratio;
-        }
-        let consumed = self.position.floor() as usize;
-        self.input.drain(..consumed.min(self.input.len()));
-        self.position -= consumed as f64;
-        output
-    }
-}
-
 fn emit_level(app: &AppHandle, frame: &[f32]) {
     let rms = (frame.iter().map(|sample| sample * sample).sum::<f32>() / frame.len() as f32).sqrt();
     let peak = frame
@@ -1297,9 +1191,7 @@ impl MeetingAudioTransport {
         }
         let discontinuous = self.pending.get(&source).is_some_and(|pending| {
             pending.sequence.is_some_and(|start| {
-                start.saturating_add(
-                    (pending.samples.len() / FRAME_SAMPLES) as u64,
-                ) != sequence
+                start.saturating_add((pending.samples.len() / FRAME_SAMPLES) as u64) != sequence
             })
         });
         let mut events = if discontinuous {
@@ -1317,10 +1209,7 @@ impl MeetingAudioTransport {
         Ok(events)
     }
 
-    fn flush_frame(
-        &mut self,
-        source: AudioSource,
-    ) -> Result<Vec<MeetingAudioServerEvent>, String> {
+    fn flush_frame(&mut self, source: AudioSource) -> Result<Vec<MeetingAudioServerEvent>, String> {
         if self.disabled {
             self.pending.remove(&source);
             return Ok(Vec::new());
@@ -1839,18 +1728,6 @@ fn supports_native_loopback(device: &cpal::Device) -> bool {
     }
 }
 
-fn validate_meeting_id(meeting_id: &str) -> Result<(), String> {
-    if meeting_id.is_empty()
-        || meeting_id.len() > 128
-        || !meeting_id
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
-    {
-        return Err("Invalid meeting identifier".into());
-    }
-    Ok(())
-}
-
 fn is_loopback_device(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
     [
@@ -1865,163 +1742,18 @@ fn is_loopback_device(name: &str) -> bool {
     .any(|marker| name.contains(marker))
 }
 
-fn capture_base_directory(app: &AppHandle) -> Result<PathBuf, String> {
-    app.path()
-        .app_local_data_dir()
-        .map(|path| path.join(CAPTURE_DIRECTORY))
-        .map_err(|error| format!("Could not locate application storage: {error}"))
-}
-
-fn epoch_ms() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_millis() as u64
-}
-
-fn write_checkpoint(path: &Path, checkpoint: &RecoverableMeetingCapture) -> Result<(), String> {
-    let temporary = path.with_extension("json.tmp");
-    let bytes = serde_json::to_vec(checkpoint)
-        .map_err(|error| format!("Could not serialize meeting checkpoint: {error}"))?;
-    fs::write(&temporary, bytes)
-        .map_err(|error| format!("Could not write meeting checkpoint: {error}"))?;
-    fs::rename(temporary, path)
-        .map_err(|error| format!("Could not commit meeting checkpoint: {error}"))
-}
-
-struct CheckpointWav {
-    channels: u16,
-    writer: BufWriter<File>,
-    samples_written: u32,
-}
-
-impl CheckpointWav {
-    fn create(path: &Path, stereo: bool) -> Result<Self, String> {
-        let file = File::create(path)
-            .map_err(|error| format!("Could not create the meeting audio file: {error}"))?;
-        let mut result = Self {
-            channels: if stereo { 2 } else { 1 },
-            writer: BufWriter::new(file),
-            samples_written: 0,
-        };
-        result.write_header()?;
-        Ok(result)
-    }
-
-    fn write_sources(
-        &mut self,
-        microphone: &[f32],
-        system: &[f32],
-        microphone_active: bool,
-        system_active: bool,
-    ) -> Result<(), String> {
-        for index in 0..microphone.len().max(system.len()) {
-            if self.channels == 2 {
-                self.write_sample(*microphone.get(index).unwrap_or(&0.0))?;
-                self.write_sample(*system.get(index).unwrap_or(&0.0))?;
-            } else if microphone_active {
-                self.write_sample(*microphone.get(index).unwrap_or(&0.0))?;
-            } else if system_active {
-                self.write_sample(*system.get(index).unwrap_or(&0.0))?;
-            }
-        }
-        let frames = microphone.len().max(system.len()) as u32;
-        self.samples_written = self
-            .samples_written
-            .saturating_add(frames.saturating_mul(self.channels as u32));
-        Ok(())
-    }
-
-    fn write_sample(&mut self, sample: f32) -> Result<(), String> {
-        let pcm = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
-        self.writer
-            .write_all(&pcm.to_le_bytes())
-            .map_err(|error| format!("Could not checkpoint meeting audio: {error}"))
-    }
-
-    fn flush_checkpoint(&mut self) -> Result<(), String> {
-        self.update_lengths()?;
-        self.writer
-            .flush()
-            .map_err(|error| format!("Could not flush meeting audio: {error}"))
-    }
-
-    fn finalize(mut self) -> Result<(), String> {
-        self.flush_checkpoint()
-    }
-
-    fn write_header(&mut self) -> Result<(), String> {
-        self.writer
-            .write_all(b"RIFF\0\0\0\0WAVEfmt \x10\0\0\0\x01\0")
-            .and_then(|_| self.writer.write_all(&self.channels.to_le_bytes()))
-            .and_then(|_| self.writer.write_all(&TARGET_SAMPLE_RATE.to_le_bytes()))
-            .and_then(|_| {
-                self.writer
-                    .write_all(&(TARGET_SAMPLE_RATE * self.channels as u32 * 2).to_le_bytes())
-            })
-            .and_then(|_| self.writer.write_all(&(self.channels * 2).to_le_bytes()))
-            .and_then(|_| self.writer.write_all(&16_u16.to_le_bytes()))
-            .and_then(|_| self.writer.write_all(b"data\0\0\0\0"))
-            .map_err(|error| format!("Could not initialize the meeting WAV file: {error}"))
-    }
-
-    fn update_lengths(&mut self) -> Result<(), String> {
-        let data_bytes = self.samples_written.saturating_mul(2);
-        self.writer
-            .seek(SeekFrom::Start(4))
-            .and_then(|_| {
-                self.writer
-                    .write_all(&(36_u32.saturating_add(data_bytes)).to_le_bytes())
-            })
-            .and_then(|_| self.writer.seek(SeekFrom::Start(40)))
-            .and_then(|_| self.writer.write_all(&data_bytes.to_le_bytes()))
-            .and_then(|_| self.writer.seek(SeekFrom::End(0)))
-            .map(|_| ())
-            .map_err(|error| format!("Could not update the meeting WAV header: {error}"))
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
-        downmix_to_mono, is_loopback_device, meeting_audio_source_code, resample_linear,
-        trim_meeting_audio_packet, validate_meeting_id, AudioSource, MeetingAudioPacket,
-        MeetingAudioServerEvent, MeetingAudioTransport, StreamingLinearResampler, FRAME_SAMPLES,
+        is_loopback_device, meeting_audio_source_code, trim_meeting_audio_packet, AudioSource,
+        MeetingAudioPacket, MeetingAudioServerEvent, MeetingAudioTransport, FRAME_SAMPLES,
     };
-
-    #[test]
-    fn downmixes_interleaved_stereo_frames() {
-        assert_eq!(downmix_to_mono(&[1.0, -1.0, 0.5, 0.5], 2), vec![0.0, 0.5]);
-    }
-
-    #[test]
-    fn resamples_to_the_transcription_rate() {
-        let source = vec![0.25; 480];
-        let result = resample_linear(&source, 48_000, 24_000);
-        assert_eq!(result.len(), 240);
-        assert!(result.iter().all(|sample| *sample == 0.25));
-    }
-
-    #[test]
-    fn streaming_resampling_preserves_fractional_state_between_chunks() {
-        let mut resampler = StreamingLinearResampler::default();
-        let first = resampler.process(&vec![0.25; 241], 48_000, 24_000);
-        let second = resampler.process(&vec![0.25; 239], 48_000, 24_000);
-        assert_eq!(first.len() + second.len(), 240);
-        assert!(first.iter().chain(&second).all(|sample| *sample == 0.25));
-    }
 
     #[test]
     fn detects_common_system_audio_inputs() {
         assert!(is_loopback_device("BlackHole 2ch"));
         assert!(is_loopback_device("Monitor of Built-in Audio"));
         assert!(!is_loopback_device("MacBook Pro Speakers"));
-    }
-
-    #[test]
-    fn rejects_path_traversal_meeting_ids() {
-        assert!(validate_meeting_id("meeting-123").is_ok());
-        assert!(validate_meeting_id("../meeting").is_err());
     }
 
     #[test]

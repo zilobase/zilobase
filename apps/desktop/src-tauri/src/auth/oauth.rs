@@ -7,7 +7,6 @@ use std::{
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use subtle::ConstantTimeEq;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_opener::OpenerExt;
 use tokio::{
@@ -18,16 +17,18 @@ use tokio::{
 };
 use url::Url;
 
+use super::callback::{constant_time_eq, parse_callback, ParsedCallback, CALLBACK_PATH};
 use crate::{
-    desktop_server::{
+    auth::keyring::{
+        get_server_keyring_value, set_server_keyring_value, LEGACY_AUTH_ACCOUNT,
+        LEGACY_AUTH_OWNER_ACCOUNT,
+    },
+    server::{
         is_cloud_server, is_development_server, load_or_initialize_desktop_server, DesktopServer,
     },
-    get_server_keyring_value, set_server_keyring_value, LEGACY_AUTH_ACCOUNT,
-    LEGACY_AUTH_OWNER_ACCOUNT,
 };
 
 const DESKTOP_CLIENT_ID: &str = "zilobase-desktop";
-const CALLBACK_PATH: &str = "/oauth/callback";
 const CONNECTED_PATH: &str = "/desktop/connected";
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 const CALLBACK_READ_TIMEOUT: Duration = Duration::from_secs(5);
@@ -214,16 +215,6 @@ struct DesktopTokenUser {
 struct SessionCredentials {
     owner: String,
     token: String,
-}
-
-enum ParsedCallback {
-    Ignore,
-    Invalid,
-    IssuerMismatch,
-    ProviderDenied,
-    ProviderError,
-    StateMismatch,
-    Valid(String),
 }
 
 #[tauri::command]
@@ -478,68 +469,6 @@ async fn read_http_request(stream: &mut TcpStream) -> std::io::Result<Vec<u8>> {
     Ok(request)
 }
 
-fn parse_callback(request: &[u8], expected_state: &str, expected_issuer: &str) -> ParsedCallback {
-    let Ok(request) = std::str::from_utf8(request) else {
-        return ParsedCallback::Invalid;
-    };
-    let Some(request_line) = request.lines().next() else {
-        return ParsedCallback::Invalid;
-    };
-    let mut parts = request_line.split_whitespace();
-    let (Some(method), Some(target), Some(version)) = (parts.next(), parts.next(), parts.next())
-    else {
-        return ParsedCallback::Invalid;
-    };
-    if parts.next().is_some() || !version.starts_with("HTTP/1.") {
-        return ParsedCallback::Invalid;
-    }
-
-    let Ok(url) = Url::parse(&format!("http://127.0.0.1{target}")) else {
-        return ParsedCallback::Invalid;
-    };
-    if url.path() != CALLBACK_PATH {
-        return ParsedCallback::Ignore;
-    }
-    if method != "GET" {
-        return ParsedCallback::Invalid;
-    }
-
-    let state = single_query_parameter(&url, "state");
-    let Some(state) = state else {
-        return ParsedCallback::StateMismatch;
-    };
-    if !constant_time_eq(&state, expected_state) {
-        return ParsedCallback::StateMismatch;
-    }
-
-    let issuer = single_query_parameter(&url, "iss");
-    if issuer.as_deref() != Some(expected_issuer) {
-        return ParsedCallback::IssuerMismatch;
-    }
-
-    if let Some(error) = single_query_parameter(&url, "error") {
-        return if error == "access_denied" {
-            ParsedCallback::ProviderDenied
-        } else {
-            ParsedCallback::ProviderError
-        };
-    }
-
-    match single_query_parameter(&url, "code") {
-        Some(code) if !code.is_empty() && code.len() <= 512 => ParsedCallback::Valid(code),
-        _ => ParsedCallback::Invalid,
-    }
-}
-
-fn single_query_parameter(url: &Url, name: &str) -> Option<String> {
-    let mut values = url
-        .query_pairs()
-        .filter_map(|(key, value)| (key == name).then(|| value.into_owned()));
-    let value = values.next()?;
-
-    values.next().is_none().then_some(value)
-}
-
 async fn exchange_session_credentials(
     request: &OAuthRequest,
     code: &str,
@@ -764,10 +693,6 @@ fn random_urlsafe(byte_count: usize) -> Result<String, DesktopOAuthError> {
     Ok(URL_SAFE_NO_PAD.encode(bytes))
 }
 
-fn constant_time_eq(left: &str, right: &str) -> bool {
-    left.len() == right.len() && left.as_bytes().ct_eq(right.as_bytes()).into()
-}
-
 fn focus_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
@@ -782,7 +707,7 @@ mod tests {
         hosted_completion_url, parse_callback, validate_token_response, DesktopTokenResponse,
         DesktopTokenUser, ParsedCallback, CALLBACK_PATH, CONNECTED_PATH,
     };
-    use crate::desktop_server::DesktopServer;
+    use crate::server::DesktopServer;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     fn server(api_origin: &str) -> DesktopServer {
