@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import type { AppBindings } from "../../shared/types";
 import { mutationResponse } from "../../services/database-commit";
 import { getDatabasePayload } from "../../services/database-payload";

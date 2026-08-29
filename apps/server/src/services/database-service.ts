@@ -6,7 +6,7 @@ import {
   getEffectiveTeamspaceAccessInWorkspace,
   getMembership,
   hasAccess,
-} from "../access";
+} from "../features/access";
 import type { RuntimeEnv } from "../shared/config/config";
 import { db } from "../infrastructure/database";
 import {

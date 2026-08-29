@@ -1,12 +1,12 @@
 import { and, eq } from "drizzle-orm";
 
-import { db } from "../../infrastructure/database";
-import { workspaceAiProviderConfig } from "../../infrastructure/database/schema";
+import { db } from "../../../infrastructure/database";
+import { workspaceAiProviderConfig } from "../../../infrastructure/database/schema";
 import {
   aiProviderCatalog,
   getAiProviderCatalogItem,
   type AiProviderCatalogItem,
-} from "../../ai/ai-model-catalog";
+} from "../../../ai/ai-model-catalog";
 
 export const providerCatalog: AiProviderCatalogItem[] = aiProviderCatalog;
 

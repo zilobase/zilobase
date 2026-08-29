@@ -5,7 +5,7 @@ import {
   canAccessDatabaseInWorkspace,
   canAccessPage,
   getMembership,
-} from "../access";
+} from "../features/access";
 import { db } from "../infrastructure/database";
 import { database, page, pageCollaborationDocument } from "../infrastructure/database/schema";
 import {

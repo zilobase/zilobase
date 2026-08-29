@@ -5,7 +5,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { Schema, type MarkSpec, type NodeSpec } from "@tiptap/pm/model";
 import * as Y from "yjs";
 import { isPageBodyEmpty } from "@zilobase/features/pages/content-state";
-import { canAccessPageInWorkspace } from "../access";
+import { canAccessPageInWorkspace } from "../features/access";
 import { db, runWithDbEnv } from "../infrastructure/database";
 import {
   meeting,

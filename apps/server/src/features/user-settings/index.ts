@@ -1,0 +1,1 @@
+export { pageSettingsRoutes } from "./routes";

@@ -5,7 +5,7 @@ import type { Context } from "hono";
 import * as z from "zod";
 
 import { AiProviderConfigError, resolveWorkspaceAiModel } from "../../ai/ai-provider";
-import { canAccessPage, getMembership, getPageRecord } from "../../access";
+import { canAccessPage, getMembership, getPageRecord } from "../access";
 import { db, runWithDbEnv } from "../../infrastructure/database";
 import { getStringEnv } from "../../shared/config/config";
 import type { AppBindings } from "../../shared/types";

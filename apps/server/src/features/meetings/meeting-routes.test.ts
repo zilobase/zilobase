@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
 }));
 
-vi.mock("../../api-keys", () => ({
+vi.mock("../api-keys", () => ({
   rejectMismatchedApiKeyWorkspace: () => null,
 }));
 vi.mock("./meeting-service", () => ({

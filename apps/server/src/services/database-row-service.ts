@@ -1,6 +1,6 @@
 import { and, asc, eq, gte, isNull, sql } from "drizzle-orm";
 
-import { canAccessPage } from "../access";
+import { canAccessPage } from "../features/access";
 import { encodePageContentAsYjs } from "../collaboration/service";
 import type { RuntimeEnv } from "../shared/config/config";
 import { db } from "../infrastructure/database";

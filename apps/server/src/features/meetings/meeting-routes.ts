@@ -8,8 +8,8 @@ import {
   getEffectivePageAccessInWorkspace,
   getWorkspaceRealtimeAccessExpiration,
   hasAccess,
-} from "../../access";
-import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+} from "../access";
+import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import {
   createCollaborationTicket,
   documentNameForMeeting,

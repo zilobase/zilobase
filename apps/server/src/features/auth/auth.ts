@@ -14,10 +14,10 @@ import {
   memberAc,
 } from "better-auth/plugins/organization/access";
 import { eq } from "drizzle-orm";
-import { API_KEY_PREFIX } from "./api-keys";
-import { db, type Database } from "./infrastructure/database";
-import * as schema from "./infrastructure/database/schema";
-import { sendEmail } from "./infrastructure/email/email";
+import { API_KEY_PREFIX } from "../api-keys";
+import { db, type Database } from "../../infrastructure/database";
+import * as schema from "../../infrastructure/database/schema";
+import { sendEmail } from "../../infrastructure/email/email";
 import {
   getPrimaryClientOrigin,
   getRequiredStringEnv,
@@ -25,18 +25,18 @@ import {
   getTrustedOrigins,
   isLocalDevelopmentHost,
   resolvePublicRequestUrl,
-} from "./shared/config/config";
+} from "../../shared/config/config";
 import {
   evaluateSelfHostedRegistration,
   readInvitationIdFromCookieHeader,
-} from "./features/instance/registration";
-import { isSelfHostedRuntime } from "./infrastructure/runtime/runtime-adapter";
-import type { EditionExtensionOptions } from "./shared/types";
+} from "../instance/registration";
+import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
+import type { EditionExtensionOptions } from "../../shared/types";
 import {
   parseMembershipAccessExpiry,
   TemporaryMembershipValidationError,
-} from "./services/temporary-membership";
-import { TeamspaceService } from "./features/teamspaces/service";
+} from "../memberships";
+import { TeamspaceService } from "../teamspaces";
 
 type AuthEnv = Record<string, unknown>;
 

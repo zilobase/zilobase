@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("../../access", () => ({ getMembership: mocks.membership }));
+vi.mock("../access", () => ({ getMembership: mocks.membership }));
 vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
   isSelfHostedRuntime: mocks.selfHosted,
 }));

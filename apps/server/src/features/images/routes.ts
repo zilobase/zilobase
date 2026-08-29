@@ -4,8 +4,8 @@ import type { Context } from "hono";
 import {
   canAccessPageInWorkspace,
   getPageRecord,
-} from "../../access";
-import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+} from "../access";
+import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import { getStringEnv } from "../../shared/config/config";
 import { db } from "../../infrastructure/database";
 import { database, imageAsset } from "../../infrastructure/database/schema";

@@ -1,12 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
 
-import { normalizeAccessLevel } from "../access";
+import { normalizeAccessLevel } from "../features/access";
 import { db } from "../infrastructure/database";
 import { databaseAccess, member, team } from "../infrastructure/database/schema";
-import { activeMembershipCondition } from "./temporary-membership";
+import { activeMembershipCondition } from "../features/memberships";
 import { requireDatabaseAccess } from "./database-access";
 import { ServiceMutationError } from "./mutation-error";
-import { getDatabaseTeamspaceSecurityPolicy } from "../features/teamspaces/security";
+import { getDatabaseTeamspaceSecurityPolicy } from "../features/teamspaces";
 
 export async function listDatabaseAccessRulesService(input: {
   databaseId: string;

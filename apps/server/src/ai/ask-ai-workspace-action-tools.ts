@@ -8,7 +8,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { tool, type ToolCallOptions, type ToolSet } from "ai";
 import * as z from "zod";
 
-import { canAccessPageInWorkspace } from "../access";
+import { canAccessPageInWorkspace } from "../features/access";
 import { replacePageContent } from "../collaboration/service";
 import type { RuntimeEnv } from "../shared/config/config";
 import { db } from "../infrastructure/database";

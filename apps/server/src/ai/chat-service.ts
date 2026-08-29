@@ -8,7 +8,7 @@ import {
   type UIMessage,
 } from "ai";
 import { AGENT_TOOL_REGISTRY_VERSION } from "@zilobase/features/ai-chat/tool-registry";
-import { canAccessPageInWorkspace, getMembership } from "../access";
+import { canAccessPageInWorkspace, getMembership } from "../features/access";
 import type { AppBindings } from "../shared/types";
 import { buildDatabaseConfigInstruction } from "./ask-ai-database-tools";
 import { resolveWorkspaceAiModel } from "./ai-provider";

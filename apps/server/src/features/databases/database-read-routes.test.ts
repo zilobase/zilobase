@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   verifyTicket: vi.fn(),
 }));
 
-vi.mock("../../access", () => ({
+vi.mock("../access", () => ({
   canAccessDatabaseRecord: mocks.access,
   getEffectiveDatabaseAccessForRecord: mocks.accessLevel,
   getMembership: mocks.membership,

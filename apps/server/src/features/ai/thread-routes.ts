@@ -26,7 +26,7 @@ import {
   listAiAgentTurnsForWorkspace,
   readAiAgentLimits,
 } from "../../ai/agent-operations";
-import { getMembership, isPrivilegedOrgRole } from "../../access";
+import { getMembership, isPrivilegedOrgRole } from "../access";
 import type { AppBindings } from "../../shared/types";
 
 const createThreadSchema = z.object({

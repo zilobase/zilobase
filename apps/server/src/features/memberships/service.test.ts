@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import type { Database } from "../infrastructure/database";
-import { member, teamspace, teamspacePrincipal } from "../infrastructure/database/schema";
-import type { ZilobaseEditionExtension } from "../shared/types";
-import { MembershipService } from "./membership-service";
+import type { Database } from "../../infrastructure/database";
+import { member, teamspace, teamspacePrincipal } from "../../infrastructure/database/schema";
+import type { ZilobaseEditionExtension } from "../../shared/types";
+import { MembershipService } from "./service";
 
 test("membership grants run edition policy and audit inside the transaction", async () => {
   const events: string[] = [];

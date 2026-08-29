@@ -8,7 +8,7 @@ import {
   PageGuestServiceError,
   parseGuestAccessLevel,
   resolveGuestInviteSubmission,
-} from "./page-guest-service";
+} from "./service";
 
 test("page guest inputs normalize email and validate access levels", () => {
   assert.equal(normalizeGuestEmail(" Guest@Example.COM "), "guest@example.com");
@@ -72,7 +72,7 @@ test("page guest invitations require a pending, unexpired, matching email", () =
 
 test("page guest migration enforces explicit principals and invitation states", async () => {
   const migration = await readFile(
-    new URL("../../drizzle/0046_page_guests.sql", import.meta.url),
+    new URL("../../../drizzle/0046_page_guests.sql", import.meta.url),
     "utf8",
   );
 
@@ -84,7 +84,7 @@ test("page guest migration enforces explicit principals and invitation states", 
 
 test("guest access controls migration adds comment access and approval requests", async () => {
   const migration = await readFile(
-    new URL("../../drizzle/0047_guest_access_controls.sql", import.meta.url),
+    new URL("../../../drizzle/0047_guest_access_controls.sql", import.meta.url),
     "utf8",
   );
 

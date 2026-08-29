@@ -7,12 +7,12 @@ import {
   API_KEY_DEFAULT_EXPIRES_IN_SECONDS,
   API_KEY_PREFIX,
   readApiKeyWorkspaceId,
-} from "../api-keys";
+} from "./api-keys";
 import { createAuth } from "../auth";
 import { getMembership } from "../access";
-import { db } from "../infrastructure/database";
-import { apikey } from "../infrastructure/database/schema";
-import type { AppBindings } from "../shared/types";
+import { db } from "../../infrastructure/database";
+import { apikey } from "../../infrastructure/database/schema";
+import type { AppBindings } from "../../shared/types";
 
 export const apiKeyRoutes = new Hono<AppBindings>();
 

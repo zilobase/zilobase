@@ -1,7 +1,7 @@
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
-import { canAccessPageInWorkspace } from "../access";
+import { canAccessPageInWorkspace } from "../features/access";
 import { db } from "../infrastructure/database";
 import {
   aiAgentUserPreference,

@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
-import { db } from "./infrastructure/database";
-import type { AppBindings } from "./shared/types";
+import { db } from "../../infrastructure/database";
+import type { AppBindings } from "../../shared/types";
 import {
   database,
   databaseAccess,
@@ -15,13 +15,13 @@ import {
   teamspacePrincipal,
   workspace,
   workspaceGuest,
-} from "./infrastructure/database/schema";
-import { loadWorkspacePageGraph } from "./page-graph-loader";
-import { activeMembershipCondition } from "./services/temporary-membership";
+} from "../../infrastructure/database/schema";
+import { loadWorkspacePageGraph } from "../../page-graph-loader";
+import { activeMembershipCondition } from "../memberships";
 import {
   getDatabaseTeamspaceSecurityPolicy,
   getPageTeamspaceSecurityPolicy,
-} from "./features/teamspaces/security";
+} from "../teamspaces";
 
 export type AccessLevel = "none" | "view" | "comment" | "edit" | "full";
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { organizationRoles } from "./auth";
-import { getTrustedOrigins } from "./shared/config/config";
+import { getTrustedOrigins } from "../../shared/config/config";
 
 describe("browser authentication configuration", () => {
   test("trusts the canonical browser and exact desktop origins", () => {

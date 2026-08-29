@@ -12,7 +12,7 @@ import * as z from "zod";
 import {
   canAccessDatabaseRecord,
   canAccessPageInWorkspace,
-} from "../access";
+} from "../features/access";
 import { db } from "../infrastructure/database";
 import { page, pageCollaborationDocument } from "../infrastructure/database/schema";
 import { searchWorkspaceItems } from "../features/search/service";

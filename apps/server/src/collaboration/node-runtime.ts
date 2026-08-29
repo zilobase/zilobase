@@ -9,7 +9,7 @@ import {
   COLLABORATION_WEBSOCKET_PROTOCOL,
   getAuthHeaders,
 } from "../shared/security/auth-headers";
-import { createAuth } from "../auth";
+import { createAuth } from "../features/auth";
 import { runWithDbEnv } from "../infrastructure/database";
 import { getDefaultCollaborationHocuspocus } from "./service";
 import type { RuntimeEnv } from "../shared/config/config";

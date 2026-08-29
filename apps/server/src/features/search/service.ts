@@ -4,7 +4,7 @@ import {
   canAccessDatabaseInWorkspace,
   getAccessiblePageIds,
   getMembership,
-} from "../../access";
+} from "../access";
 import { db } from "../../infrastructure/database";
 import { database, databaseView, searchDocument } from "../../infrastructure/database/schema";
 

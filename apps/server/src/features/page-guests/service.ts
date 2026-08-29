@@ -7,8 +7,8 @@ import {
   normalizeAccessLevel,
   type AccessLevel,
 } from "../access";
-import { db } from "../infrastructure/database";
-import type { ZilobaseEditionExtension } from "../shared/types";
+import { db } from "../../infrastructure/database";
+import type { ZilobaseEditionExtension } from "../../shared/types";
 import {
   member,
   page,
@@ -18,9 +18,9 @@ import {
   user,
   workspace,
   workspaceGuest,
-} from "../infrastructure/database/schema";
-import { MembershipService } from "./membership-service";
-import { activeMembershipCondition } from "./temporary-membership";
+} from "../../infrastructure/database/schema";
+import { MembershipService } from "../memberships";
+import { activeMembershipCondition } from "../memberships";
 
 const PAGE_GUEST_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 

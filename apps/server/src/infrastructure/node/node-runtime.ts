@@ -17,7 +17,7 @@ import {
   type ServerRuntimeAdapter,
 } from "../runtime/runtime-adapter";
 import { drainDatabaseRealtimeOutbox } from "../../services/database-realtime";
-import { expireTemporaryMemberships } from "../../services/temporary-membership";
+import { expireTemporaryMemberships } from "../../features/memberships";
 import type { AppBindings } from "../../shared/types";
 import { getAppEditionExtension } from "../../shared/edition-extension-registry";
 import { isNodeApiPath } from "./api-routing";

@@ -17,7 +17,7 @@ import type {
   EditionExtensionOptions,
   ZilobaseEditionExtension,
 } from "../../shared/types";
-import { MembershipService } from "../../services/membership-service";
+import { MembershipService } from "../memberships";
 import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
 import {
   ensureInstanceSettings,

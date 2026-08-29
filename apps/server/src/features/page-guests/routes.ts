@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
 
-import { getMembership, isPrivilegedOrgRole } from "../../access";
-import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+import { getMembership, isPrivilegedOrgRole } from "../access";
+import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import { getPrimaryClientOrigin } from "../../shared/config/config";
 import { sendEmail } from "../../infrastructure/email/email";
 import {
@@ -23,9 +23,9 @@ import {
   revokeWorkspaceGuest,
   submitPageGuestInvitation,
   updateWorkspaceGuestInvitePolicy,
-} from "../../services/page-guest-service";
+} from "./service";
 import type { AppBindings } from "../../shared/types";
-import { getPageTeamspaceSecurityPolicy } from "../teamspaces/security";
+import { getPageTeamspaceSecurityPolicy } from "../teamspaces";
 
 export const pageGuestRoutes = new Hono<AppBindings>();
 

@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   teamspaceId: null as string | null,
 }));
 
-vi.mock("./infrastructure/database", () => ({
+vi.mock("../../infrastructure/database", () => ({
   db: {
     select() {
       mocks.selectCalls += 1;
@@ -29,7 +29,7 @@ vi.mock("./infrastructure/database", () => ({
     },
   },
 }));
-vi.mock("./page-graph-loader", () => ({
+vi.mock("../../page-graph-loader", () => ({
   async loadWorkspacePageGraph() {
     return {
       getAncestorIds: () => mocks.ancestorIds,
@@ -38,7 +38,7 @@ vi.mock("./page-graph-loader", () => ({
     };
   },
 }));
-vi.mock("./features/teamspaces/security", () => ({
+vi.mock("../teamspaces", () => ({
   getDatabaseTeamspaceSecurityPolicy: vi.fn(),
   getPageTeamspaceSecurityPolicy: mocks.pageSecurityPolicy,
 }));

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { desc, eq, like } from "drizzle-orm";
-import { createAuth } from "../auth";
+import { createAuth } from "../features/auth";
 import { createDbClientForUrl, runWithDb } from "../infrastructure/database";
 import { verification } from "../infrastructure/database/schema";
 

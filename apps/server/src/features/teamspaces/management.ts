@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
-import { getMembership } from "../../access";
+import { getMembership } from "../access";
 import { db, type Database } from "../../infrastructure/database";
 import {
   member,
@@ -12,7 +12,7 @@ import {
   workspace,
 } from "../../infrastructure/database/schema";
 import type { ZilobaseEditionExtension } from "../../shared/types";
-import { activeMembershipCondition } from "../../services/temporary-membership";
+import { activeMembershipCondition } from "../memberships";
 import {
   canCreateTeamspace,
   canDiscoverTeamspace,

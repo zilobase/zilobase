@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   inherit: vi.fn(),
 }));
 
-vi.mock("../access", () => ({ canAccessPage: mocks.canAccessPage }));
+vi.mock("../features/access", () => ({ canAccessPage: mocks.canAccessPage }));
 vi.mock("../collaboration/service", () => ({
   encodePageContentAsYjs: mocks.encode,
 }));

@@ -18,8 +18,8 @@ import {
   normalizeAccessLevel,
   rejectActiveWorkspaceMismatch,
   type AccessLevel,
-} from "../../access";
-import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+} from "../access";
+import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import { db } from "../../infrastructure/database";
 import {
   database,
@@ -43,7 +43,7 @@ import {
   workspaceGuest,
 } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
-import { activeMembershipCondition } from "../../services/temporary-membership";
+import { activeMembershipCondition } from "../memberships";
 import {
   buildNavigationPlacements,
   softDeletePageItemPlacement,
@@ -60,7 +60,7 @@ import {
   replacePageContent,
 } from "../../collaboration/service";
 import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
-import { getPageTeamspaceSecurityPolicy } from "../teamspaces/security";
+import { getPageTeamspaceSecurityPolicy } from "../teamspaces";
 import { TeamspaceManagementService } from "../teamspaces/management";
 import {
   commitDatabaseMutationBatch,

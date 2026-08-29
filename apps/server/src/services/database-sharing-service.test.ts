@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./database-access", () => ({
   requireDatabaseAccess: mocks.requireAccess,
 }));
-vi.mock("../features/teamspaces/security", () => ({
+vi.mock("../features/teamspaces", () => ({
   getDatabaseTeamspaceSecurityPolicy: mocks.securityPolicy,
 }));
 vi.mock("../infrastructure/database", () => ({

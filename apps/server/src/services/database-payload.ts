@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
-import { canAccessDatabaseRecord } from "../access";
+import { canAccessDatabaseRecord } from "../features/access";
 import { db } from "../infrastructure/database";
 import {
   dataSource,

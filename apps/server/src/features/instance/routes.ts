@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 
-import { getMembership } from "../../access";
+import { getMembership } from "../access";
 import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
 import type { AppBindings } from "../../shared/types";
 import {

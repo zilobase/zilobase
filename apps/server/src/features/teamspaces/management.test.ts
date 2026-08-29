@@ -5,7 +5,7 @@ const accessMocks = vi.hoisted(() => ({
   getMembership: vi.fn(),
 }));
 
-vi.mock("../../access", () => ({
+vi.mock("../access", () => ({
   getMembership: accessMocks.getMembership,
 }));
 

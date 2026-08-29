@@ -3,8 +3,8 @@ import type { Context } from "hono";
 
 import {
   getMembership,
-} from "../../access";
-import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
+} from "../access";
+import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import type { AppBindings } from "../../shared/types";
 import { searchWorkspaceItems } from "./service";
 

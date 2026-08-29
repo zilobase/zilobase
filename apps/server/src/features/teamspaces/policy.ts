@@ -1,4 +1,4 @@
-import type { AccessLevel } from "../../access";
+import type { AccessLevel } from "../access";
 
 const TEAMSPACE_ACCESS_MODES = ["open", "closed", "private"] as const;
 const TEAMSPACE_ROLES = ["owner", "member"] as const;

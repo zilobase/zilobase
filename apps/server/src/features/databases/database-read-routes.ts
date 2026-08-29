@@ -6,7 +6,7 @@ import {
   getMembership,
   getWorkspaceRealtimeAccessExpiration,
   isDatabasePublishedInWorkspace,
-} from "../../access";
+} from "../access";
 import {
   createDatabaseRealtimeTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,

@@ -44,7 +44,7 @@ vi.mock("../../infrastructure/database", () => ({
   runWithDbEnv: (_env: unknown, run: () => unknown) => run(),
 }));
 
-vi.mock("../../auth", () => ({
+vi.mock("../auth", () => ({
   createAuth: () => ({
     api: {
       async signOut() {

@@ -1,7 +1,7 @@
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 
-import { createAuth } from "../../auth";
+import { createAuth } from "../auth";
 import {
   getCanonicalApiOrigin,
   getCanonicalWebOrigin,

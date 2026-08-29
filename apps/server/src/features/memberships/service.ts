@@ -1,12 +1,12 @@
 import { and, eq } from "drizzle-orm";
 
-import { db, type Database } from "../infrastructure/database";
-import { member } from "../infrastructure/database/schema";
+import { db, type Database } from "../../infrastructure/database";
+import { member } from "../../infrastructure/database/schema";
 import type {
   MembershipGrantSource,
   ZilobaseEditionExtension,
-} from "../shared/types";
-import { ensureDefaultTeamspaceMembership } from "../features/teamspaces/service";
+} from "../../shared/types";
+import { ensureDefaultTeamspaceMembership } from "../teamspaces";
 
 export type GrantMembershipInput = {
   id?: string;

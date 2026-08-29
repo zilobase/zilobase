@@ -16,17 +16,17 @@ const mocks = vi.hoisted(() => ({
   selfHosted: vi.fn(),
 }));
 
-vi.mock("../access", () => ({
+vi.mock("../features/access", () => ({
   getMembership: mocks.membership,
   isPrivilegedOrgRole: mocks.privileged,
 }));
-vi.mock("../api-keys", () => ({
+vi.mock("../features/api-keys/api-keys", () => ({
   API_KEY_DEFAULT_EXPIRES_IN_SECONDS: 2_592_000,
   API_KEY_PREFIX: "zilo",
   readApiKeyWorkspaceId: (metadata: any) => metadata?.workspaceId ?? null,
   rejectMismatchedApiKeyWorkspace: () => null,
 }));
-vi.mock("../auth", () => ({ createAuth: vi.fn() }));
+vi.mock("../features/auth", () => ({ createAuth: vi.fn() }));
 vi.mock("../infrastructure/runtime/runtime-adapter", () => ({
   isSelfHostedRuntime: mocks.selfHosted,
 }));
@@ -59,11 +59,11 @@ vi.mock("../infrastructure/database", () => ({
   },
 }));
 
-import { apiKeyRoutes } from "./api-keys";
-import { sessionRoutes } from "./session";
-import { pageSettingsRoutes } from "./user-settings";
-import { profileImageRoutes } from "./profile-images";
-import { workspaceRoutes } from "./workspaces";
+import { apiKeyRoutes } from "../features/api-keys/routes";
+import { sessionRoutes } from "../features/auth/session-routes";
+import { pageSettingsRoutes } from "../features/user-settings";
+import { profileImageRoutes } from "../features/user-settings/profile-image-routes";
+import { workspaceRoutes } from "../features/workspaces/routes";
 
 const user = {
   email: "user@example.com",

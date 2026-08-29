@@ -5,7 +5,7 @@ import {
   canAccessPageInWorkspace,
   getAccessiblePageIds,
   getMembership,
-} from "../../access";
+} from "../access";
 import {
   appendMeetingTranscript,
 } from "../../collaboration/service";

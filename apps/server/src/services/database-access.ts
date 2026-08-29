@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import {
   canAccessDatabaseRecord,
   type AccessLevel,
-} from "../access";
+} from "../features/access";
 import { db, type Database } from "../infrastructure/database";
 import { database } from "../infrastructure/database/schema";
 import { ServiceMutationError } from "./mutation-error";

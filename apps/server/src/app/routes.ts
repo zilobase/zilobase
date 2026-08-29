@@ -1,12 +1,9 @@
 import type { Hono } from "hono";
 
 import { aiRoutes, aiThreadRoutes } from "../features/ai/routes";
-import {
-  apiKeyRoutes,
-  authRoutes,
-  pageSettingsRoutes,
-  sessionRoutes,
-} from "../features/auth/routes";
+import { apiKeyRoutes } from "../features/api-keys/routes";
+import { authRoutes } from "../features/auth/routes";
+import { sessionRoutes } from "../features/auth/session-routes";
 import { databaseRoutes } from "../features/databases/routes";
 import { desktopAuthRoutes } from "../features/desktop-auth/routes";
 import { healthRoutes } from "../features/health/routes";
@@ -18,12 +15,11 @@ import { pageRoutes } from "../features/pages/routes";
 import { pageGuestRoutes } from "../features/page-guests";
 import { pageLayoutRoutes } from "../features/page-layouts/routes";
 import { teamspaceRoutes } from "../features/teamspaces/routes";
-import { profileImageRoutes } from "../routes/profile-images";
+import { profileImageRoutes } from "../features/user-settings/profile-image-routes";
 import { searchRoutes } from "../features/search/routes";
-import {
-  workspaceRoutes,
-  workspaceSettingsRoutes,
-} from "../features/workspaces/routes";
+import { pageSettingsRoutes } from "../features/user-settings";
+import { workspaceRoutes } from "../features/workspaces/routes";
+import { workspaceSettingsRoutes } from "../features/workspaces/settings/routes";
 import type { AppBindings } from "../shared/types";
 
 export function registerRoutes(app: Hono<AppBindings>) {

@@ -10,7 +10,7 @@ import { db } from "../../infrastructure/database";
 import { aiChatArtifact, aiChatUpload } from "../../infrastructure/database/schema";
 import { createImageStorage, resolveImageStorageMode } from "../../infrastructure/storage/image-storage";
 import type { AppBindings } from "../../shared/types";
-import { requireActiveWorkspace } from "../../routes/workspace-settings/shared";
+import { requireActiveWorkspace } from "../workspaces";
 import { getAiChatThreadForUser } from "../../ai/chat-persistence";
 import {
   AiAgentOperationalLimitError,

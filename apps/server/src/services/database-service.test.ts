@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
 }));
 
-vi.mock("../access", () => ({
+vi.mock("../features/access", () => ({
   canAccessDatabaseRecord: mocks.canAccessDatabase,
   canAccessPage: mocks.canAccessPage,
   getMembership: mocks.getMembership,

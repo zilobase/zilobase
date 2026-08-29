@@ -1,7 +1,7 @@
 import { Hono, type ErrorHandler } from "hono";
 import { createCorsMiddleware } from "./cors";
 import { registerRoutes } from "./routes";
-import { authenticatedSessionMiddleware } from "./session";
+import { authenticatedSessionMiddleware } from "../features/auth/session-guard";
 import { serverTimingMiddleware } from "./timing";
 import {
   DATABASE_UNAVAILABLE_CODE,

@@ -1,7 +1,7 @@
 import type { BetterAuthPlugin } from "better-auth";
 import type { Hono } from "hono";
 
-import type { Auth } from "../auth";
+import type { Auth } from "../features/auth";
 // The public edition contract exposes the canonical Drizzle database type.
 // fallow-ignore-next-line boundary-violation
 import type { Database } from "../infrastructure/database";

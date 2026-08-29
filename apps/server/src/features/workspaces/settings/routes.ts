@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 
-import { db } from "../../infrastructure/database";
-import { workspaceAiProviderConfig } from "../../infrastructure/database/schema";
+import { db } from "../../../infrastructure/database";
+import { workspaceAiProviderConfig } from "../../../infrastructure/database/schema";
 import { isPrivilegedOrgRole } from "../../access";
-import { encryptAiProviderCredential } from "../../ai/ai-provider-credentials";
-import { AiProviderConfigError, validateAiProviderBaseUrl } from "../../ai/ai-provider";
-import { getStringEnv } from "../../shared/config/config";
-import type { AppBindings } from "../../shared/types";
+import { encryptAiProviderCredential } from "../../../ai/ai-provider-credentials";
+import { AiProviderConfigError, validateAiProviderBaseUrl } from "../../../ai/ai-provider";
+import { getStringEnv } from "../../../shared/config/config";
+import type { AppBindings } from "../../../shared/types";
 import {
   getAiProviderConfig,
   getCatalogItem,

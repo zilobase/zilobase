@@ -1,4 +1,4 @@
-export { getMembership, getWorkspaceMemberships } from "../access";
+export { getMembership, getWorkspaceMemberships } from "../features/access";
 export { createApp } from "../app";
 export type {
   EditionExtensionOptions,
@@ -19,7 +19,7 @@ export {
   syncAiChatThreadMessages,
   touchAiChatThreadActivity,
 } from "../ai/chat-persistence";
-export { createAuth } from "../auth";
+export { createAuth } from "../features/auth";
 export { AI_JOB_HANDLERS } from "../ai/ai-job-handlers";
 export { runAiJobBatch, type AiJobHandler } from "../ai/ai-jobs";
 export {
@@ -117,25 +117,25 @@ export {
   drainDatabaseRealtimeOutbox,
   type DatabaseRealtimeMutationEvent,
 } from "../services/database-realtime";
-export { expireTemporaryMemberships } from "../services/temporary-membership";
+export { expireTemporaryMemberships } from "../features/memberships";
 export {
   MembershipService,
   type GrantMembershipInput,
   type GrantMembershipResult,
-} from "../services/membership-service";
+} from "../features/memberships";
 export {
   TeamspaceService,
   ensureDefaultTeamspaceMembership,
   removeUserTeamspacePrincipals,
   type EnsureDefaultTeamspaceMembershipInput,
   type EnsureDefaultTeamspaceMembershipResult,
-} from "../features/teamspaces/service";
+} from "../features/teamspaces";
 export {
   inspectTeamspaceIntegrity,
   findTeamspaceIntegrityIssues,
   type TeamspaceIntegrityIssue,
   type TeamspaceIntegritySnapshot,
-} from "../features/teamspaces/integrity";
+} from "../features/teamspaces";
 export {
   appendMeetingTranscript,
   appendMeetingTranscriptInHocuspocus,
