@@ -6,7 +6,7 @@ import { useRouter, useRouterState } from "@tanstack/react-router"
 import { useShallow } from "zustand/react/shallow"
 
 import { cn } from "@/shared/lib/utils"
-import { isOpenInNewTabShortcut } from "@/app/shortcuts"
+import { isOpenInNewTabShortcut } from "@/shared/shortcuts"
 import { useAppStore, type DesktopTab } from "@/app/state/app-store"
 import { DesktopTabStrip } from "@/components/desktop-tab-strip"
 import { DesktopWindowTitlebar } from "@/components/desktop-window-titlebar"

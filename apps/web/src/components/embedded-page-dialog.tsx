@@ -11,7 +11,7 @@ import {
   PageScrollViewport,
   usePageSidePane,
 } from "@/contexts/page-side-pane"
-import { PageWorkspaceGate } from "@/components/page-workspace-gate"
+import { PageWorkspaceGate } from "@/features/workspaces"
 import { PagePaneHeader } from "@/components/page-pane-header"
 import { useOptionalPageLayoutSidebar } from "@/contexts/page-layout-sidebar"
 import type { OpenPageOptions } from "@/packages/editor/types"

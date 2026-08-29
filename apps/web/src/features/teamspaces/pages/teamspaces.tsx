@@ -3,7 +3,7 @@ import { Layers3Icon, MoreHorizontalIcon, PlusIcon, UsersIcon } from "@/shared/c
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 
-import { SettingsHeader } from "@/app/shell/settings/settings-header"
+import { SettingsHeader } from "@/features/settings"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
@@ -33,7 +33,7 @@ import { Textarea } from "@/shared/ui/textarea"
 import { Switch } from "@/shared/ui/switch"
 import { getApiErrorMessage } from "@/lib/api"
 import { PageIconDisplay } from "@/lib/page-icon"
-import { filterTeamspaces } from "./teamspace-filters"
+import { filterTeamspaces } from "../model/teamspace-filters"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
   useAddTeamspacePrincipal,

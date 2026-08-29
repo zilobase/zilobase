@@ -36,11 +36,15 @@ import {
   PagePaneHeader,
   useRoutePageId,
 } from "@/components/page-pane-header"
-import { SettingsDialog } from "@/app/shell/settings/settings-dialog"
 import {
+  ApiKeysSettingsPage,
   getSettingsSection,
+  PreferencesSettingsPage,
+  ProfileSettingsPage,
+  SettingsDialog,
   type SettingsSection,
-} from "@/app/shell/settings/settings-sidebar"
+  ZilobaseAiSettingsPage,
+} from "@/features/settings"
 import { Separator } from "@/shared/ui/separator"
 import { ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable"
 import {
@@ -81,13 +85,8 @@ import {
   useOptionalPageLayoutSidebar,
 } from "@/contexts/page-layout-sidebar"
 import { Button } from "@/shared/ui/button"
-import ApiKeysSettingsPage from "@/pages/settings/api-keys"
-import PreferencesSettingsPage from "@/pages/settings/preferences"
-import ProfileSettingsPage from "@/pages/settings/profile"
-import TeamSettingsPage from "@/pages/settings/team"
-import TeamspacesSettingsPage from "@/pages/settings/teamspaces"
-import WorkspaceSettingsPage from "@/pages/settings/workspace"
-import ZilobaseAiSettingsPage from "@/pages/settings/zilobase-ai"
+import { TeamSettingsPage, TeamspacesSettingsPage } from "@/features/teamspaces"
+import { WorkspaceSettingsPage } from "@/features/workspaces"
 import { editionWebModule } from "@zilobase/edition-web"
 
 const CHAT_PRESENTATION_MODE_STORAGE_KEY = "zilobase:ai-chat-presentation-mode"

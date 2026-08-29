@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { SettingsHeader } from "@/app/shell/settings/settings-header"
+import { SettingsHeader } from "../components/settings-header"
 import { Separator } from "@/shared/ui/separator"
 import { Button } from "@/shared/ui/button"
 import { Textarea } from "@/shared/ui/textarea"

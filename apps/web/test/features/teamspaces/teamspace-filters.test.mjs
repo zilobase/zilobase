@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("teamspace administration filters by text, access, and membership", async () => {
     const { filterTeamspaces } = await loadModule(
-      "/src/pages/settings/teamspace-filters.ts",
+      "/src/features/teamspaces/model/teamspace-filters.ts",
     )
     const teamspaces = [
       {

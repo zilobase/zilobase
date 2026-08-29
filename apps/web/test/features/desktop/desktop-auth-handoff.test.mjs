@@ -1,6 +1,6 @@
 export function register({ assert, readSource, readWorkspace, test }) {
   test("desktop browser auth is owned by the native PKCE coordinator", async () => {
-    const source = await readSource("/src/lib/google-auth.ts")
+    const source = await readSource("/src/features/auth/lib/google-auth.ts")
 
     assert.match(source, /invoke\("start_browser_authorization"\)/)
     assert.match(source, /invoke\("cancel_browser_authorization"\)/)
@@ -10,16 +10,17 @@ export function register({ assert, readSource, readWorkspace, test }) {
 
   test("desktop signed-out shell is browser-only", async () => {
     const [screen, login, signup, loginForm] = await Promise.all([
-      readSource("/src/components/desktop-browser-auth-screen.tsx"),
-      readSource("/src/pages/login.tsx"),
-      readSource("/src/pages/signup.tsx"),
-      readSource("/src/components/login-form.tsx"),
+      readSource("/src/features/auth/components/desktop-browser-auth-screen.tsx"),
+      readSource("/src/features/auth/pages/login.tsx"),
+      readSource("/src/features/auth/pages/signup.tsx"),
+      readSource("/src/features/auth/components/login-form.tsx"),
     ])
 
     assert.match(screen, /phase: "waiting_for_browser"/)
     assert.match(screen, /phase: "finalizing"/)
     assert.match(screen, /await reloadDesktopAuthCredentials\(\)/)
-    assert.match(screen, /sessionQueryOptions\(webAuthClient\)/)
+    assert.match(screen, /useZilobaseFeatures\(\)/)
+    assert.match(screen, /sessionQueryOptions\(auth\)/)
     assert.match(screen, /Waiting for browser sign-in\.\.\./)
     assert.match(screen, /Continue in Browser/)
     assert.match(screen, /Change server/)

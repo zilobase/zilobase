@@ -57,7 +57,6 @@ import { buildDesktopDeepLink } from "@/lib/desktop-deep-link"
 import { discoverRuntimeDesktopServer, getSelectedDesktopServer, type DesktopServer } from "@/lib/desktop-server"
 import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons"
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon"
-import { useAppStore } from "@/app/state/app-store"
 import { useSession } from "@zilobase/features/auth"
 import {
   useAddDatabaseRow,
@@ -80,7 +79,7 @@ import {
   withSidebarWorkspaceLayout,
   type SidebarSection,
 } from "@zilobase/features/user-settings"
-import { useWorkspaces } from "@zilobase/features/workspaces"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
   createSectionPresentationConfig,
   readActiveSidebarTab,
@@ -110,9 +109,8 @@ export function AppSidebar({
   const routerPathname = useRouterState({ select: (state) => state.location.pathname })
   const promotedFullPagePath = usePromotedFullPagePath()
   const pathname = promotedFullPagePath ?? routerPathname
-  const activeWorkspaceId = useAppStore((state) => state.activeWorkspaceId)
+  const workspaceId = useActiveWorkspaceId()
   const { data: session } = useSession()
-  const { data: rawWorkspaces = [] } = useWorkspaces()
   const { data: userSettings = defaultUserSettings } = useUserSettings()
   const updateUserSettings = useUpdateUserSettings()
   const runtimeSectionSensors = useSensors(
@@ -143,11 +141,6 @@ export function AppSidebar({
     () => normalizeSidebarConfig(userSettings.sidebarConfig),
     [userSettings.sidebarConfig],
   )
-  const workspaces = React.useMemo(() => rawWorkspaces.filter(Boolean), [rawWorkspaces])
-  const sessionWorkspaceId = session?.session?.activeWorkspaceId ?? null
-  const storedWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? null
-  const sessionWorkspace = workspaces.find((workspace) => workspace.id === sessionWorkspaceId) ?? null
-  const workspaceId = storedWorkspace?.id ?? sessionWorkspace?.id ?? workspaces[0]?.id ?? null
   const layout = React.useMemo(
     () => resolveSidebarWorkspaceLayout(sidebarConfig, workspaceId),
     [sidebarConfig, workspaceId],

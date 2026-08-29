@@ -26,7 +26,7 @@ import {
   useSignInWithOtp,
   useVerifyEmailOtp,
 } from "@zilobase/features/auth"
-import { useAuthFlowStore } from "@/app/state/auth-flow-store"
+import { useAuthFlowStore } from "../state/auth-flow-store"
 
 export function OtpForm({
   className,

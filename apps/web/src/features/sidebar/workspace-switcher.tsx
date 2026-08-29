@@ -32,6 +32,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { useSession } from "@zilobase/features/auth"
 import {
   useCreateWorkspace,
+  useActiveWorkspaceId,
   useWorkspaces,
   useSetActiveWorkspace,
 } from "@zilobase/features/workspaces"
@@ -44,7 +45,6 @@ import {
   type DesktopServerProfile,
 } from "@/lib/desktop-server"
 import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
-import { useAppStore } from "@/app/state/app-store"
 import {
   Building2Icon,
   CheckIcon,
@@ -69,7 +69,6 @@ export function WorkspaceSwitcher({
     return (
       <SingleWorkspaceLabel
         onOpenSettings={onOpenSettings}
-        sessionData={sessionData}
         settingsOpen={settingsOpen}
       />
     )
@@ -86,18 +85,14 @@ export function WorkspaceSwitcher({
 
 function SingleWorkspaceLabel({
   onOpenSettings,
-  sessionData,
   settingsOpen,
 }: {
   onOpenSettings?: () => void
-  sessionData: ReturnType<typeof useSession>["data"]
   settingsOpen: boolean
 }) {
   const { data: rawWorkspaces = [], isError, isLoading } = useWorkspaces()
   const workspaces = rawWorkspaces.filter(Boolean)
-  const storedActiveWorkspaceId = useAppStore((state) => state.activeWorkspaceId)
-  const activeWorkspaceId =
-    sessionData?.session?.activeWorkspaceId ?? storedActiveWorkspaceId
+  const activeWorkspaceId = useActiveWorkspaceId()
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
     workspaces[0]
@@ -166,26 +161,13 @@ function MultiWorkspaceSwitcher({
   const workspaces = rawWorkspaces.filter(Boolean)
   const createWorkspace = useCreateWorkspace()
   const setActiveWorkspace = useSetActiveWorkspace()
-  const storedActiveWorkspaceId = useAppStore((state) => state.activeWorkspaceId)
-
-  const activeWorkspaceId =
-    sessionData?.session?.activeWorkspaceId ?? storedActiveWorkspaceId
+  const activeWorkspaceId = useActiveWorkspaceId()
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
     workspaces[0]
   const currentServer = getSelectedDesktopServer()
   const otherProfiles = profiles.filter((profile) => !profile.active)
   const showServerCaption = isDesktop && profiles.length > 1
-
-  React.useEffect(() => {
-    if (
-      storedActiveWorkspaceId &&
-      workspaces.length > 0 &&
-      !workspaces.some((workspace) => workspace.id === storedActiveWorkspaceId)
-    ) {
-      useAppStore.getState().setActiveWorkspaceId(null)
-    }
-  }, [workspaces, storedActiveWorkspaceId])
 
   React.useEffect(() => {
     if (!isDesktop) return

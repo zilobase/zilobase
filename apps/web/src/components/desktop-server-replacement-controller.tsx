@@ -36,7 +36,7 @@ import {
   executeDesktopServerReplacement,
 } from "@/lib/desktop-server-replacement-core";
 import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch";
-import { cancelDesktopBrowserSignIn } from "@/lib/google-auth";
+import { cancelDesktopBrowserSignIn } from "@/features/auth";
 import {
   downloadRecoveryArchive,
   syncDirtyOfflinePages,

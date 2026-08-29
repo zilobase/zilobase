@@ -9,7 +9,7 @@ import { ArrowRight, CopyIcon, Maximize2 } from "@/shared/components/icons";
 
 import { AuthenticatedRouteError } from "@/app/errors/authenticated-route-error";
 import { FallbackErrorBoundary } from "@/app/errors/fallback-error-boundary";
-import { PageWorkspaceGate } from "@/components/page-workspace-gate";
+import { PageWorkspaceGate } from "@/features/workspaces";
 import {
   PageSidePaneLayout,
   PageSidePaneProvider,

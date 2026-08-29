@@ -34,19 +34,77 @@
       {
         "name": "web-sidebar",
         "patterns": ["apps/web/src/features/sidebar/**"]
+      },
+      {
+        "name": "web-auth",
+        "patterns": ["apps/web/src/features/auth/**"]
+      },
+      {
+        "name": "web-settings",
+        "patterns": ["apps/web/src/features/settings/**"]
+      },
+      {
+        "name": "web-workspaces",
+        "patterns": ["apps/web/src/features/workspaces/**"]
+      },
+      {
+        "name": "web-teamspaces",
+        "patterns": ["apps/web/src/features/teamspaces/**"]
+      },
+      {
+        "name": "web-pages",
+        "patterns": ["apps/web/src/features/pages/**"]
       }
     ],
     "rules": [
       { "from": "web-shared", "allow": ["web-shared"] },
       {
         "from": "web-app",
-        "allow": ["web-app", "web-shared", "web-sidebar"]
+        "allow": [
+          "web-app",
+          "web-shared",
+          "web-sidebar",
+          "web-auth",
+          "web-settings",
+          "web-workspaces",
+          "web-teamspaces",
+          "web-pages"
+        ]
       },
       {
         // Temporary composition dependencies on app state/offline providers are
         // removed in the workspace and desktop/offline passes.
         "from": "web-sidebar",
-        "allow": ["web-app", "web-shared", "web-sidebar"]
+        "allow": [
+          "web-app",
+          "web-shared",
+          "web-sidebar",
+          "web-teamspaces"
+        ]
+      },
+      {
+        // The published @zilobase/edition-web contract resolves to the
+        // community edition implementation under app during local analysis.
+        "from": "web-auth",
+        "allow": ["web-app", "web-auth", "web-shared"]
+      },
+      {
+        // Account cleanup still coordinates app persistence and offline state;
+        // the desktop/offline pass replaces these temporary app dependencies.
+        "from": "web-settings",
+        "allow": ["web-app", "web-settings", "web-shared"]
+      },
+      {
+        "from": "web-workspaces",
+        "allow": ["web-settings", "web-shared", "web-workspaces"]
+      },
+      {
+        "from": "web-teamspaces",
+        "allow": ["web-settings", "web-shared", "web-teamspaces"]
+      },
+      {
+        "from": "web-pages",
+        "allow": ["web-pages", "web-shared", "web-workspaces"]
       }
     ]
   },
@@ -63,8 +121,8 @@
     "apps/web/src/features/sidebar/model/sidebar-navigation-model.tsx",
     "apps/web/src/features/sidebar/model/sidebar-panel-sizing.ts",
     "apps/web/src/features/sidebar/model/sidebar-section-items.ts",
-    "apps/web/src/features/sidebar/model/teamspace-sidebar-permissions.ts",
-    "apps/web/src/app/config/feature-flags.ts",
+    "apps/web/src/features/teamspaces/model/teamspace-sidebar-permissions.ts",
+    "apps/web/src/shared/config/feature-flags.ts",
     "apps/web/src/contexts/page-side-pane.tsx",
     "apps/web/src/editor/components/editor/block-drag.ts",
     "apps/web/src/editor/components/editor/column-drag.ts",
@@ -126,9 +184,9 @@
     "apps/web/src/lib/desktop-server.ts",
     "apps/web/src/lib/desktop-translucency.ts",
     "apps/web/src/lib/favicon.ts",
-    "apps/web/src/lib/google-auth.ts",
+    "apps/web/src/features/auth/lib/google-auth.ts",
     "apps/web/src/lib/image-upload.ts",
-    "apps/web/src/lib/invitation-link.ts",
+    "apps/web/src/features/workspaces/lib/invitation-link.ts",
     "apps/web/src/lib/meeting-navigation.ts",
     "apps/web/src/lib/notion-html-blocks.ts",
     "apps/web/src/lib/notion-import.ts",
@@ -143,12 +201,12 @@
     "apps/web/src/shared/lib/themes.ts",
     "apps/web/src/pages/homepage-hierarchy.ts",
     "apps/web/src/pages/page-hierarchy-blocks.ts",
-    "apps/web/src/pages/settings/team-access.ts",
-    "apps/web/src/pages/settings/team-settings-tabs.ts",
-    "apps/web/src/pages/settings/teamspace-filters.ts",
+    "apps/web/src/features/teamspaces/model/team-access.ts",
+    "apps/web/src/features/teamspaces/model/team-settings-tabs.ts",
+    "apps/web/src/features/teamspaces/model/teamspace-filters.ts",
     "apps/web/src/pages/tasks-model.ts",
-    "apps/web/src/app/shortcuts/editor-history.ts",
-    "apps/web/src/app/shortcuts/shortcut-definitions.ts",
+    "apps/web/src/shared/shortcuts/editor-history.ts",
+    "apps/web/src/shared/shortcuts/shortcut-definitions.ts",
     "apps/web/src/app/state/app-store.ts"
   ],
   // These workspace packages publish APIs consumed outside this repository.

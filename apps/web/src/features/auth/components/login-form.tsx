@@ -20,13 +20,13 @@ import {
 } from "@/shared/ui/input-group"
 import { Input } from "@/shared/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
-import { getAuthReturnPath, signInWithGoogle } from "@/lib/google-auth"
+import { getAuthReturnPath, signInWithGoogle } from "../lib/google-auth"
 import { cn } from "@/shared/lib/utils"
 import {
   useRequestSignInOtp,
   useSignInWithPassword,
 } from "@zilobase/features/auth"
-import { useAuthFlowStore } from "@/app/state/auth-flow-store"
+import { useAuthFlowStore } from "../state/auth-flow-store"
 import { editionWebModule } from "@zilobase/edition-web"
 
 export function LoginForm({

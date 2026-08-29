@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router"
 import { CameraIcon, DownloadIcon, LogOutIcon, Trash2Icon } from "@/shared/components/icons"
 import { toast } from "sonner"
 
-import { SettingsHeader } from "@/app/shell/settings/settings-header"
+import { SettingsHeader } from "../components/settings-header"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Button } from "@/shared/ui/button"
 import {
@@ -42,7 +42,7 @@ import {
   syncDirtyOfflinePages,
 } from "@/lib/offline-recovery"
 import { clearApiAuthToken } from "@/lib/api"
-import { queryClient } from "@/app/providers/query-client"
+import { queryClient } from "@/shared/lib/query-client"
 import { useAppStore } from "@/app/state/app-store"
 import { useOfflineManifest } from "@/app/providers/offline-provider"
 import {

@@ -1,9 +1,9 @@
 import { isTauri } from "@tauri-apps/api/core"
 
-import { AuthScreen } from "@/components/auth-screen"
-import { DesktopBrowserAuthScreen } from "@/components/desktop-browser-auth-screen"
-import { SignupForm } from "@/components/signup-form"
-import { getInvitationAuthSearch } from "@/lib/google-auth"
+import { AuthScreen } from "../components/auth-screen"
+import { DesktopBrowserAuthScreen } from "../components/desktop-browser-auth-screen"
+import { SignupForm } from "../components/signup-form"
+import { getInvitationAuthSearch } from "../lib/google-auth"
 
 export default function SignupPage() {
   const invitationSearch = getInvitationAuthSearch()

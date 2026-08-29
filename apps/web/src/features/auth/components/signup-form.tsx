@@ -22,9 +22,9 @@ import {
 } from "@/shared/ui/input-group"
 import { Input } from "@/shared/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
-import { getInvitationAuthSearch, signInWithGoogle } from "@/lib/google-auth"
+import { getInvitationAuthSearch, signInWithGoogle } from "../lib/google-auth"
 import { cn } from "@/shared/lib/utils"
-import { useAuthFlowStore } from "@/app/state/auth-flow-store"
+import { useAuthFlowStore } from "../state/auth-flow-store"
 import {
   useRequestEmailVerificationOtp,
   useSignUp,

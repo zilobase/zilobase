@@ -61,7 +61,7 @@ import {
   UndoHistoryScope,
   useOptionalUndoHistory,
   useUndoHistory,
-} from "@/app/shortcuts"
+} from "@/shared/shortcuts"
 import { areSerializedPropertyValuesEqual } from "../interactions/database-item-utils"
 
 export type DatabaseActiveConditionalColor = Omit<

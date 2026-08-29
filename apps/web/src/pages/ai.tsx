@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 
-import { PageWorkspaceGate } from "@/components/page-workspace-gate";
+import { PageWorkspaceGate } from "@/features/workspaces";
 import { PageSidePaneLayout, usePageSidePane } from "@/contexts/page-side-pane";
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";

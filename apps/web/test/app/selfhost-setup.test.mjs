@@ -1,7 +1,7 @@
 export function register({ readSource, assert, test }) {
   test("self-host setup keeps its one-time token out of URLs and browser storage", async () => {
     const [page, router] = await Promise.all([
-      readSource("/src/pages/setup.tsx"),
+      readSource("/src/features/auth/pages/setup.tsx"),
       readSource("/src/app/routing/route-groups/public-routes.tsx"),
     ])
 

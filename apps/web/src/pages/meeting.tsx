@@ -1,7 +1,7 @@
 import { useParams } from "@tanstack/react-router"
 
 import { FallbackErrorBoundary } from "@/app/errors/fallback-error-boundary"
-import { PageWorkspaceGate } from "@/components/page-workspace-gate"
+import { PageWorkspaceGate } from "@/features/workspaces"
 import {
   PageSidePaneLayout,
   usePageSidePane,

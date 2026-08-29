@@ -19,13 +19,11 @@ import {
   CommandList,
   CommandShortcut,
 } from "@/shared/ui/command"
-import { useSession } from "@zilobase/features/auth"
-import { useWorkspaces } from "@zilobase/features/workspaces"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import { useAppSearchResults } from "@zilobase/features/search"
 import type { AppSearchResult } from "@zilobase/features/search"
 import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
-import { useAppStore } from "@/app/state/app-store"
-import { useAppShortcut } from "@/app/shortcuts"
+import { useAppShortcut } from "@/shared/shortcuts"
 
 type AppSearchContextValue = {
   openSearch: () => void
@@ -148,27 +146,6 @@ function useDebouncedValue<T>(value: T, delay: number) {
   }, [delay, value])
 
   return debouncedValue
-}
-
-function useActiveWorkspaceId() {
-  const activeWorkspaceId = useAppStore((state) => state.activeWorkspaceId)
-  const { data: session } = useSession()
-  const { data: rawWorkspaces = [] } = useWorkspaces()
-  const workspaces = rawWorkspaces.filter(Boolean)
-  const sessionWorkspaceId = session?.session?.activeWorkspaceId ?? null
-  const storedWorkspace =
-    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
-    null
-  const sessionWorkspace =
-    workspaces.find((workspace) => workspace.id === sessionWorkspaceId) ??
-    null
-
-  return (
-    storedWorkspace?.id ??
-    sessionWorkspace?.id ??
-    workspaces[0]?.id ??
-    null
-  )
 }
 
 function ResultIcon({ result }: { result: AppSearchResult }) {

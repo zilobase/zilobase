@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("open-in-new-tab accepts an unmodified primary click", async () => {
     const { isOpenInNewTabShortcut } = await loadModule(
-      "/src/app/shortcuts/shortcut-definitions.ts"
+      "/src/shared/shortcuts/shortcut-definitions.ts"
     )
     const event = (overrides = {}) => ({
       altKey: false,
@@ -20,7 +20,7 @@ export function register({ assert, loadModule, test }) {
 
   test("app shortcuts match Command or Control primary modifiers", async () => {
     const { matchesAppShortcut } = await loadModule(
-      "/src/app/shortcuts/shortcut-definitions.ts"
+      "/src/shared/shortcuts/shortcut-definitions.ts"
     )
     const event = (overrides = {}) => ({
       altKey: false,
@@ -44,7 +44,7 @@ export function register({ assert, loadModule, test }) {
 
   test("redo matches Command or Control Shift Z", async () => {
     const { matchesAppShortcut } = await loadModule(
-      "/src/app/shortcuts/shortcut-definitions.ts"
+      "/src/shared/shortcuts/shortcut-definitions.ts"
     )
     const baseEvent = {
       altKey: false,
@@ -77,7 +77,7 @@ export function register({ assert, loadModule, test }) {
 
   test("shortcuts reject alternate modifier chords", async () => {
     const { matchesAppShortcut } = await loadModule(
-      "/src/app/shortcuts/shortcut-definitions.ts"
+      "/src/shared/shortcuts/shortcut-definitions.ts"
     )
     const baseEvent = {
       altKey: false,

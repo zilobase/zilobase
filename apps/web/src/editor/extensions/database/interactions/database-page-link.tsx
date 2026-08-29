@@ -23,7 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/ui/popover"
-import { useOptionalUndoHistory } from "@/app/shortcuts"
+import { useOptionalUndoHistory } from "@/shared/shortcuts"
 
 type DatabasePageSummary = {
   iconKind?: "database" | "page"

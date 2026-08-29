@@ -29,9 +29,8 @@ import {
   DesktopOAuthError,
   getAuthReturnPath,
   signInWithDesktopBrowser,
-} from "@/lib/google-auth"
-import { queryClient } from "@/app/providers/query-client"
-import { webAuthClient } from "@/app/providers/features-provider"
+} from "../lib/google-auth"
+import { useZilobaseFeatures } from "@zilobase/features"
 import { sessionQueryOptions } from "@zilobase/features/auth"
 import { workspacesQueryOptions } from "@zilobase/features/workspaces"
 
@@ -42,6 +41,7 @@ type BrowserSignInState =
   | { phase: "error"; error: unknown; retry: "oauth" | "finalize" }
 
 export function DesktopBrowserAuthScreen() {
+  const { auth, queryClient } = useZilobaseFeatures()
   const server = getSelectedDesktopServer()
   const [browserState, setBrowserState] = useState<BrowserSignInState>({
     phase: "idle",
@@ -121,14 +121,14 @@ export function DesktopBrowserAuthScreen() {
     try {
       await reloadDesktopAuthCredentials()
       const session = await queryClient.fetchQuery({
-        ...sessionQueryOptions(webAuthClient),
+        ...sessionQueryOptions(auth),
         staleTime: 0,
       })
       if (!session.user || !session.session) {
         throw new Error("The desktop session could not be validated.")
       }
       const workspaces = await queryClient.fetchQuery({
-        ...workspacesQueryOptions(webAuthClient),
+        ...workspacesQueryOptions(auth),
         staleTime: 0,
       })
       if (operation !== browserOperation.current) return

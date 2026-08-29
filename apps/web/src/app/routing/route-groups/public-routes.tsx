@@ -1,15 +1,17 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 import { isTauri } from "@tauri-apps/api/core";
 
-import AcceptInvitationPage from "@/pages/accept-invitation";
-import AcceptPageInvitationPage from "@/pages/accept-page-invitation";
+import { AcceptWorkspaceInvitationPage } from "@/features/workspaces";
+import { AcceptPageInvitationPage } from "@/features/pages";
 import ConnectPage from "@/pages/connect";
-import LoginPage from "@/pages/login";
-import OnboardingPage from "@/pages/onboarding";
-import OtpPage from "@/pages/otp";
-import SetupPage from "@/pages/setup";
-import SignupPage from "@/pages/signup";
-import { getAuthReturnPath } from "@/lib/google-auth";
+import {
+  getAuthReturnPath,
+  LoginPage,
+  OnboardingPage,
+  OtpPage,
+  SetupPage,
+  SignupPage,
+} from "@/features/auth";
 import { getConnectivityState } from "@/lib/offline-store";
 import { getDefaultAppPath, getFreshSession, getWorkspaces } from "../guards";
 import { rootRoute } from "../route-roots";
@@ -121,7 +123,7 @@ export const publicRoutes = [
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/accept-invitation",
-    component: AcceptInvitationPage,
+    component: AcceptWorkspaceInvitationPage,
   }),
   createRoute({
     getParentRoute: () => rootRoute,

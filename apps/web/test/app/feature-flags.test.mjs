@@ -1,6 +1,6 @@
 export function register({ assert, loadModule, test }) {
   test("notion import is disabled unless config enables it", async () => {
-    const { isFeatureEnabled } = await loadModule("/src/app/config/feature-flags.ts")
+    const { isFeatureEnabled } = await loadModule("/src/shared/config/feature-flags.ts")
 
     assert.equal(isFeatureEnabled("notionImport"), false)
     assert.equal(isFeatureEnabled("teamspaces"), true)
@@ -8,7 +8,7 @@ export function register({ assert, loadModule, test }) {
 
   test("readBooleanFeatureFlag accepts common boolean config values", async () => {
     const { readBooleanFeatureFlag } = await loadModule(
-      "/src/app/config/feature-flags.ts",
+      "/src/shared/config/feature-flags.ts",
     )
 
     assert.equal(readBooleanFeatureFlag("true"), true)

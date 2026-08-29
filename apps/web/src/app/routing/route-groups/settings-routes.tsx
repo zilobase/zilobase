@@ -1,12 +1,13 @@
 import { createRoute, redirect } from "@tanstack/react-router";
 
-import ApiKeysSettingsPage from "@/pages/settings/api-keys";
-import PreferencesSettingsPage from "@/pages/settings/preferences";
-import ProfileSettingsPage from "@/pages/settings/profile";
-import TeamSettingsPage from "@/pages/settings/team";
-import TeamspacesSettingsPage from "@/pages/settings/teamspaces";
-import WorkspaceSettingsPage from "@/pages/settings/workspace";
-import ZilobaseAiSettingsPage from "@/pages/settings/zilobase-ai";
+import {
+  ApiKeysSettingsPage,
+  PreferencesSettingsPage,
+  ProfileSettingsPage,
+  ZilobaseAiSettingsPage,
+} from "@/features/settings";
+import { TeamSettingsPage, TeamspacesSettingsPage } from "@/features/teamspaces";
+import { WorkspaceSettingsPage } from "@/features/workspaces";
 import { EditionRouteHost } from "../edition-route-host";
 import { appRoute } from "../route-roots";
 import {

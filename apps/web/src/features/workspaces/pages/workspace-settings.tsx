@@ -2,8 +2,8 @@ import * as React from "react"
 import { UploadIcon } from "@/shared/components/icons"
 import { toast } from "sonner"
 
-import { SettingsHeader } from "@/app/shell/settings/settings-header"
-import { isFeatureEnabled } from "@/app/config/feature-flags"
+import { SettingsHeader } from "@/features/settings"
+import { isFeatureEnabled } from "@/shared/config/feature-flags"
 import { Button } from "@/shared/ui/button"
 import {
   Field,

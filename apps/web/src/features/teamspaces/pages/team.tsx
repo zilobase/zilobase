@@ -10,7 +10,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import { SettingsHeader } from "@/app/shell/settings/settings-header"
+import { SettingsHeader } from "@/features/settings"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import {
@@ -55,6 +55,7 @@ import {
 } from "@/shared/ui/tabs"
 import { useSession } from "@zilobase/features/auth"
 import {
+  useActiveWorkspaceId,
   useInviteWorkspaceMember,
   usePromoteWorkspaceGuest,
   useRemoveWorkspaceMember,
@@ -85,12 +86,11 @@ import {
   isoToLocalDateTime,
   localDateTimeToIso,
   normalizeWorkspaceRole,
-} from "@/pages/settings/team-access"
+} from "../model/team-access"
 import {
   getTeamSettingsTabCounts,
   normalizeTeamSettingsTab,
-} from "@/pages/settings/team-settings-tabs"
-import { useAppStore } from "@/app/state/app-store"
+} from "../model/team-settings-tabs"
 
 type RegistrationMode = "invite-only" | "open"
 
@@ -1108,15 +1108,6 @@ function RowsSkeleton() {
       ))}
     </ItemGroup>
   )
-}
-
-function useActiveWorkspaceId() {
-  const { data: sessionData } = useSession()
-  const storedActiveWorkspaceId = useAppStore(
-    (state) => state.activeWorkspaceId,
-  )
-
-  return sessionData?.session?.activeWorkspaceId ?? storedActiveWorkspaceId
 }
 
 function isValidEmail(value: string) {

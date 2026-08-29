@@ -3,7 +3,7 @@ import { pageQueryOptions, pagesQueryOptions } from "@zilobase/features/pages";
 import { sessionQueryOptions } from "@zilobase/features/auth";
 import { workspacesQueryOptions } from "@zilobase/features/workspaces";
 
-import { queryClient } from "@/app/providers/query-client";
+import { queryClient } from "@/shared/lib/query-client";
 import { webAuthClient } from "@/app/providers/features-provider";
 import { useAppStore } from "@/app/state/app-store";
 import { ApiError, NetworkUnavailableError, apiFetch } from "@/lib/api";

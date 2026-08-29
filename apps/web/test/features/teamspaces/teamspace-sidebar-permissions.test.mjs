@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("teamspace sidebar permissions follow role and invite policy", async () => {
     const { getTeamspaceSidebarPermissions } = await loadModule(
-      "/src/features/sidebar/model/teamspace-sidebar-permissions.ts",
+      "/src/features/teamspaces/model/teamspace-sidebar-permissions.ts",
     )
 
     assert.deepEqual(
@@ -53,7 +53,7 @@ export function register({ assert, loadModule, test }) {
 
   test("default teamspaces cannot be left or archived from the sidebar", async () => {
     const { getTeamspaceSidebarPermissions } = await loadModule(
-      "/src/features/sidebar/model/teamspace-sidebar-permissions.ts",
+      "/src/features/teamspaces/model/teamspace-sidebar-permissions.ts",
     )
     const permissions = getTeamspaceSidebarPermissions(
       {

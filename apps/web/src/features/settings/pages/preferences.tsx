@@ -13,7 +13,7 @@ import {
 } from "@/shared/components/icons"
 import { toast } from "sonner"
 
-import { SettingsHeader } from "@/app/shell/settings/settings-header"
+import { SettingsHeader } from "../components/settings-header"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,7 +61,7 @@ import {
   type DesktopServerProfile,
 } from "@/lib/desktop-server"
 import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
-import { queryClient } from "@/app/providers/query-client"
+import { queryClient } from "@/shared/lib/query-client"
 import { useAppStore } from "@/app/state/app-store"
 import { useOfflineManifest } from "@/app/providers/offline-provider"
 import { useSession } from "@zilobase/features/auth"
@@ -72,7 +72,7 @@ import {
   type AppearanceModeId,
   type ThemeFamilyId,
 } from "@/shared/lib/themes"
-import { useThemeFamily } from "@/app/providers/theme-family-provider"
+import { useThemeFamily } from "@/shared/providers/theme-family-provider"
 import {
   getDesktopTranslucency,
   MAX_DESKTOP_TRANSLUCENCY,

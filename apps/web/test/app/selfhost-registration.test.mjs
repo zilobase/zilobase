@@ -1,9 +1,9 @@
 export function register({ readSource, assert, test }) {
   test("invitation signup survives account creation and email verification", async () => {
     const [signup, otp, invitationPage, provider] = await Promise.all([
-      readSource("/src/components/signup-form.tsx"),
-      readSource("/src/components/otp-form.tsx"),
-      readSource("/src/pages/accept-invitation.tsx"),
+      readSource("/src/features/auth/components/signup-form.tsx"),
+      readSource("/src/features/auth/components/otp-form.tsx"),
+      readSource("/src/features/workspaces/pages/accept-invitation.tsx"),
       readSource("/src/app/providers/features-provider.tsx"),
     ])
 
@@ -17,7 +17,7 @@ export function register({ readSource, assert, test }) {
   })
 
   test("self-hosted registration settings are owner-facing", async () => {
-    const teamSettings = await readSource("/src/pages/settings/team.tsx")
+    const teamSettings = await readSource("/src/features/teamspaces/pages/team.tsx")
 
     assert.match(teamSettings, /member\.role === "owner"/)
     assert.match(teamSettings, /\/api\/instance\/settings/)
