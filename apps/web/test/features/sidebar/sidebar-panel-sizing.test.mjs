@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("sidebar panel sizing resolves percentage and fixed widths", async () => {
     const { resolveSidebarPanelPercentage } = await loadModule(
-      "/src/components/sidebar-panel-sizing.ts",
+      "/src/features/sidebar/model/sidebar-panel-sizing.ts",
     )
 
     assert.equal(resolveSidebarPanelPercentage("28%", 1000), 28)
@@ -15,7 +15,7 @@ export function register({ assert, loadModule, test }) {
       getRightSidebarDockMinSize,
       RIGHT_SIDEBAR_INNER_SPLIT_SIZE,
       RIGHT_SIDEBAR_SPLIT_DEFAULT_SIZE,
-    } = await loadModule("/src/components/sidebar-panel-sizing.ts")
+    } = await loadModule("/src/features/sidebar/model/sidebar-panel-sizing.ts")
 
     assert.equal(getRightSidebarEditorDefaultSize(2), "50%")
     assert.equal(RIGHT_SIDEBAR_INNER_SPLIT_SIZE, 50)
@@ -29,7 +29,7 @@ export function register({ assert, loadModule, test }) {
     const {
       APP_SIDEBAR_PANEL_WIDTH,
       getRightSidebarDockSizes,
-    } = await loadModule("/src/components/sidebar-panel-sizing.ts")
+    } = await loadModule("/src/features/sidebar/model/sidebar-panel-sizing.ts")
 
     assert.equal(APP_SIDEBAR_PANEL_WIDTH, "288px")
     assert.deepEqual(
@@ -60,7 +60,7 @@ export function register({ assert, loadModule, test }) {
 
   test("right sidebar resize gestures resolve directional intent", async () => {
     const { getSidebarResizeIntent } = await loadModule(
-      "/src/components/sidebar-panel-sizing.ts",
+      "/src/features/sidebar/model/sidebar-panel-sizing.ts",
     )
 
     assert.equal(getSidebarResizeIntent(-10), "increase")

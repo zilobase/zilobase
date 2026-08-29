@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/shared/ui/sidebar";
-import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action";
+import { SidebarNavItemAction } from "@/shared/ui/sidebar-nav-item-action";
 import { Input } from "@/shared/ui/input";
 import { cn } from "@/shared/lib/utils";
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";

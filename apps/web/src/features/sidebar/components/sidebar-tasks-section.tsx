@@ -27,7 +27,7 @@ import {
   databaseQueryOptions,
   type DatabasePayload,
 } from "@zilobase/features/databases"
-import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
+import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 
 export function SidebarTasksSection({
   databaseIds,

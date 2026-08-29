@@ -42,9 +42,9 @@ import {
 import * as React from "react"
 import { toast } from "sonner"
 
-import { SidebarLayoutTabs } from "@/components/sidebar-layout-tabs"
+import { SidebarLayoutTabs } from "./sidebar-layout-tabs"
 import { DatabaseViewIcon } from "@/components/database-view-icon"
-import { libraryViewIcons, SidebarShortcutIcon, SidebarTabIcon } from "@/components/sidebar-layout-icons"
+import { libraryViewIcons, SidebarShortcutIcon, SidebarTabIcon } from "./sidebar-layout-icons"
 import {
   getSectionLabel,
   getShortcutLabel,
@@ -54,7 +54,7 @@ import {
   moveLayoutEntry,
   sidebarSectionLabels,
   updateSidebarTab,
-} from "@/components/sidebar-layout-model"
+} from "../model/sidebar-layout-model"
 import { Button } from "@/shared/ui/button"
 import {
   AlertDialog,

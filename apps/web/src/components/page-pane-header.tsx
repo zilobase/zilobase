@@ -14,7 +14,7 @@ import {
 } from "@/shared/components/icons";
 import { toast } from "sonner";
 
-import { NavActions } from "@/components/nav-actions";
+import { NavActions } from "@/features/sidebar";
 import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
@@ -32,8 +32,8 @@ import {
   BreadcrumbSeparator,
 } from "@/shared/ui/breadcrumb";
 import { Separator } from "@/shared/ui/separator";
-import { libraryViewIcons } from "@/components/sidebar-layout-icons";
-import { libraryViewLabels } from "@/components/sidebar-layout-model";
+import { libraryViewIcons } from "@/features/sidebar";
+import { libraryViewLabels } from "@/features/sidebar";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { useDatabase } from "@zilobase/features/databases";
 import { useMeeting } from "@zilobase/features/meetings";

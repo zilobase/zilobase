@@ -30,11 +30,24 @@
       {
         "name": "web-app",
         "patterns": ["apps/web/src/app/**"]
+      },
+      {
+        "name": "web-sidebar",
+        "patterns": ["apps/web/src/features/sidebar/**"]
       }
     ],
     "rules": [
       { "from": "web-shared", "allow": ["web-shared"] },
-      { "from": "web-app", "allow": ["web-app", "web-shared"] }
+      {
+        "from": "web-app",
+        "allow": ["web-app", "web-shared", "web-sidebar"]
+      },
+      {
+        // Temporary composition dependencies on app state/offline providers are
+        // removed in the workspace and desktop/offline passes.
+        "from": "web-sidebar",
+        "allow": ["web-app", "web-shared", "web-sidebar"]
+      }
     ]
   },
   // The custom web test harness bundles these literal loadModule() paths.
@@ -45,12 +58,12 @@
     "apps/web/src/components/kibo-ui/gantt/gantt-geometry.ts",
     "apps/web/src/components/kibo-ui/gantt/gantt-preview.ts",
     "apps/web/src/components/kibo-ui/gantt/index.tsx",
-    "apps/web/src/components/sidebar-expansion-state.ts",
-    "apps/web/src/components/sidebar-nav-list.tsx",
-    "apps/web/src/components/sidebar-navigation-model.tsx",
-    "apps/web/src/components/sidebar-panel-sizing.ts",
-    "apps/web/src/components/sidebar-section-items.ts",
-    "apps/web/src/components/teamspace-sidebar-permissions.ts",
+    "apps/web/src/features/sidebar/model/sidebar-expansion-state.ts",
+    "apps/web/src/features/sidebar/components/sidebar-nav-list.tsx",
+    "apps/web/src/features/sidebar/model/sidebar-navigation-model.tsx",
+    "apps/web/src/features/sidebar/model/sidebar-panel-sizing.ts",
+    "apps/web/src/features/sidebar/model/sidebar-section-items.ts",
+    "apps/web/src/features/sidebar/model/teamspace-sidebar-permissions.ts",
     "apps/web/src/app/config/feature-flags.ts",
     "apps/web/src/contexts/page-side-pane.tsx",
     "apps/web/src/editor/components/editor/block-drag.ts",

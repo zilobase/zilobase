@@ -17,7 +17,7 @@ import {
   readExpandedSidebarItems,
   setSidebarItemExpanded,
   writeExpandedSidebarItems,
-} from "@/components/sidebar-expansion-state"
+} from "../model/sidebar-expansion-state"
 import {
   Collapsible,
   CollapsibleContent,
@@ -27,7 +27,7 @@ import { SidebarMenuButton, SidebarMenuItem } from "@/shared/ui/sidebar"
 import {
   SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
   SidebarNavItemAction,
-} from "@/components/sidebar-nav-item-action"
+} from "@/shared/ui/sidebar-nav-item-action"
 import { cn } from "@/shared/lib/utils"
 import { type ZilobaseAiMode } from "@zilobase/features/pages"
 import { useOfflineManifest } from "@/app/providers/offline-provider"

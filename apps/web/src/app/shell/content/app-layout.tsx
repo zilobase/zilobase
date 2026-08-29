@@ -3,8 +3,8 @@ import type { Dispatch, ReactNode, SetStateAction } from "react"
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
 import { ChevronsRightIcon, SidebarSimpleIcon } from "@/shared/components/icons"
 
-import { AppSidebar } from "@/components/app-sidebar"
-import { AppSearchProvider } from "@/components/app-search"
+import { AppSidebar } from "@/features/sidebar"
+import { AppSearchProvider } from "@/features/sidebar"
 import {
   DesktopTabs,
   getDesktopTabTitle,
@@ -29,7 +29,7 @@ import {
   APP_SIDEBAR_PANEL_WIDTH,
   getRightSidebarEditorDefaultSize,
   type SidebarResizeIntent,
-} from "@/components/sidebar-panel-sizing"
+} from "@/features/sidebar"
 
 import {
   getDatabaseId,

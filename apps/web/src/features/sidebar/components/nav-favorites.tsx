@@ -36,14 +36,14 @@ import {
   getActivePageId,
   SidebarNavList,
   type SidebarNavItem,
-} from "@/components/sidebar-nav-list"
-import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action"
+} from "./sidebar-nav-list"
+import { SidebarNavItemAction } from "@/shared/ui/sidebar-nav-item-action"
 import { useOpenInNewTab } from "@/components/desktop-tabs"
-import { getSidebarExpansionStorageKey } from "@/components/sidebar-expansion-state"
-import { SidebarSectionMenu } from "@/components/sidebar-section-menu"
-import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
-import { SidebarLibraryLink } from "@/components/sidebar-library-link"
-import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
+import { getSidebarExpansionStorageKey } from "../model/sidebar-expansion-state"
+import { SidebarSectionMenu } from "./sidebar-section-menu"
+import { getConfiguredSidebarItems } from "../model/sidebar-section-items"
+import { SidebarLibraryLink } from "./sidebar-library-link"
+import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 import type { LegacySidebarConfig } from "@zilobase/features/user-settings"
 
 export function NavFavorites({

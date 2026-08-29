@@ -7,7 +7,7 @@ import type {
 import type { MeetingListItem } from "@zilobase/features/meetings"
 import type { ReactNode } from "react"
 
-import type { SidebarNavItem } from "@/components/sidebar-nav-list"
+import type { SidebarNavItem } from "../components/sidebar-nav-list"
 
 export type SidebarPageSections = {
   privatePages: SidebarNavItem[]

@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("sidebar section configuration sorts and limits items", async () => {
     const { getConfiguredSidebarItems } = await loadModule(
-      "/src/components/sidebar-section-items.ts",
+      "/src/features/sidebar/model/sidebar-section-items.ts",
     )
     const items = [
       {

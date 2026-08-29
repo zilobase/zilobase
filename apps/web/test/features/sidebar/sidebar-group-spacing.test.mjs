@@ -1,9 +1,9 @@
 export function register({ assert, readSource, test }) {
   test("expanded sidebar sections reserve a compact gap below their final item", async () => {
     const sectionSources = [
-      "/src/components/app-sidebar.tsx",
-      "/src/components/nav-favorites.tsx",
-      "/src/components/nav-pages.tsx",
+      "/src/features/sidebar/components/ai-chats-section.tsx",
+      "/src/features/sidebar/components/nav-favorites.tsx",
+      "/src/features/sidebar/components/nav-pages.tsx",
     ]
 
     for (const path of sectionSources) {

@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("sidebar groups real teamspace pages separately from shared pages", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const privatePage = createPage("private", "Private", "2026-08-01T00:00:00.000Z")
     const sharedPage = {
@@ -30,7 +30,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar recents combine pages and databases by last visit", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const page = {
       ...createPage("page", "Page", "2026-08-01T00:00:00.000Z"),
@@ -67,7 +67,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar navigation hides meeting notes pages", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const host = createPage("host", "Host", "2026-08-01T00:00:00.000Z")
     const notes = {
@@ -87,7 +87,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar navigation represents meeting blocks beneath their host page", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const host = createPage("host", "Host", "2026-08-01T00:00:00.000Z")
     const notes = {
@@ -114,7 +114,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar navigation keeps meetings visible when their notes placement is missing", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const host = createPage("host", "Host", "2026-08-01T00:00:00.000Z")
     const meeting = createMeeting("meeting-1", host.id, null, "Planning")
@@ -134,7 +134,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar navigation orders placements and stops page cycles", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const pages = [
       createPage("root", "Root", "2025-12-31T00:00:00.000Z"),
@@ -166,7 +166,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar favorites keep parent hierarchy and explicit nested roots", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const parent = {
       ...createPage("parent", "Parent", "2026-01-01T00:00:00.000Z"),
@@ -205,7 +205,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar favorites keep a nested database as its own favorite", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const parent = {
       ...createPage("parent", "Parent", "2026-01-01T00:00:00.000Z"),
@@ -245,7 +245,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar favorites include pages represented only as database rows", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const parent = createPage(
       "parent",
@@ -293,7 +293,7 @@ export function register({ assert, loadModule, test }) {
 
   test("sidebar nests a moved data source inside another database", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const parentDatabase = createDatabase("projects", "Projects")
     const movedDatabase = createDatabase("tasks", "Tasks")
@@ -327,7 +327,7 @@ export function register({ assert, loadModule, test }) {
 
   test("detached database-row favorites keep linked database children", async () => {
     const { buildSidebarNavigation } = await loadModule(
-      "/src/components/sidebar-navigation-model.tsx"
+      "/src/features/sidebar/model/sidebar-navigation-model.tsx"
     )
     const parent = createPage(
       "parent",

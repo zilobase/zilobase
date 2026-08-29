@@ -21,7 +21,7 @@ import {
   resolveSidebarPanelPercentage,
   RIGHT_SIDEBAR_TRANSITION_MS,
   type SidebarResizeIntent,
-} from "@/components/sidebar-panel-sizing"
+} from "@/features/sidebar"
 import {
   ResizableHandle,
   ResizablePanel,

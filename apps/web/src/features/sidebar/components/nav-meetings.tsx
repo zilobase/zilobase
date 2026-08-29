@@ -6,7 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/shared/ui/collapsible"
-import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
+import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 
 import {
   SidebarGroup,

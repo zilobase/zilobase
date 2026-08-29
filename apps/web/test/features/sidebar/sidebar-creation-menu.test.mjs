@@ -1,14 +1,20 @@
 export function register({ readSource, assert, test }) {
   test("sidebar pins the Zilobase logo at the top and workspace switcher at the bottom", async () => {
-    const sidebarSource = await readSource("/src/components/app-sidebar.tsx")
-    const workspaceSource = await readSource("/src/components/workspace-switcher.tsx")
-    const sidebarShellSource = await readSource("/src/app/shell/navigation/app-sidebar-shell.tsx")
+    const sidebarSource = await readSource("/src/features/sidebar/app-sidebar.tsx")
+    const workspaceSource = await readSource("/src/features/sidebar/workspace-switcher.tsx")
+    const sidebarShellSource = await readSource("/src/features/sidebar/app-sidebar-shell.tsx")
     const sidebarPrimitiveSource = await readSource("/src/shared/ui/sidebar.tsx")
-    const sidebarTabsSource = await readSource("/src/components/sidebar-layout-tabs.tsx")
-    const sidebarCustomizeSource = await readSource("/src/components/sidebar-customize-panel.tsx")
-    const sidebarDatabaseViewSource = await readSource("/src/components/sidebar-database-view-section.tsx")
-    const navPagesSource = await readSource("/src/components/nav-pages.tsx")
-    const navListSource = await readSource("/src/components/sidebar-nav-list.tsx")
+    const sidebarTabsSource = await readSource("/src/features/sidebar/components/sidebar-layout-tabs.tsx")
+    const sidebarCustomizeSource = await readSource("/src/features/sidebar/components/sidebar-customize-panel.tsx")
+    const runtimeSectionDragSource = await readSource(
+      "/src/features/sidebar/components/runtime-section-drag-item.tsx",
+    )
+    const sidebarShortcutSource = await readSource(
+      "/src/features/sidebar/components/sidebar-shortcut-list.tsx",
+    )
+    const sidebarDatabaseViewSource = await readSource("/src/features/sidebar/components/sidebar-database-view-section.tsx")
+    const navPagesSource = await readSource("/src/features/sidebar/components/nav-pages.tsx")
+    const navListSource = await readSource("/src/features/sidebar/components/sidebar-nav-list.tsx")
     const defaultIconsSource = await readSource("/src/lib/item-icons.ts")
     const pageIconSource = await readSource("/src/lib/page-icon.tsx")
     const databasePageLinkSource = await readSource("/src/editor/extensions/database/interactions/database-page-link.tsx")
@@ -95,10 +101,10 @@ export function register({ readSource, assert, test }) {
     assert.match(sidebarCustomizeSource, /getDatabaseIconNode\(database\)/)
     assert.match(sidebarCustomizeSource, /<Collapsible onOpenChange=\{setOpen\} open=\{open\}>/)
     assert.match(sidebarCustomizeSource, /database\.views\.map\(\(view\) =>/)
-    assert.match(sidebarSource, /function RuntimeSectionDragItem/)
+    assert.match(runtimeSectionDragSource, /function RuntimeSectionDragItem/)
     assert.match(sidebarSource, /<SortableContext items=\{activeTab\.sections/)
-    assert.match(sidebarSource, /closest\('\[data-sidebar="group-label"\]'\)/)
-    assert.match(sidebarSource, /translate3d\(0, \$\{sortable\.transform\.y\}px, 0\)/)
+    assert.match(runtimeSectionDragSource, /closest\('\[data-sidebar="group-label"\]'\)/)
+    assert.match(runtimeSectionDragSource, /translate3d\(0, \$\{sortable\.transform\.y\}px, 0\)/)
     assert.match(sidebarPrimitiveSource, /<SidebarSimpleIcon className="size-4" \/>/)
     assert.match(sidebarPrimitiveSource, /variant="ghost"[\s\S]*size="icon"/)
     assert.doesNotMatch(sidebarShellSource, /<SidebarTrigger[^>]*\[&_svg\]:size-/)
@@ -141,8 +147,8 @@ export function register({ readSource, assert, test }) {
     assert.doesNotMatch(sidebarSource, /useCreateAiChatThread/)
     assert.match(sidebarSource, /setActiveThreadId\(null\)/)
     assert.match(
-      sidebarSource,
-      /<SidebarMenuButton isActive=\{isShortcutActive/,
+      sidebarShortcutSource,
+      /<SidebarMenuButton[\s\S]*isActive=\{isShortcutActive/,
     )
     assert.match(
       sidebarDatabaseViewSource,

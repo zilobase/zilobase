@@ -10,60 +10,46 @@ import {
 } from "@dnd-kit/core"
 import {
   SortableContext,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { isTauri } from "@tauri-apps/api/core"
 import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
-import {
-  ChevronRightIcon,
-  MonitorUpIcon,
-  SlidersHorizontalIcon,
-} from "@/shared/components/icons"
+import { MonitorUpIcon, SlidersHorizontalIcon } from "@/shared/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list"
-import { AppSidebarHeader, AppSidebarShell } from "@/app/shell/navigation/app-sidebar-shell"
-import { useAppSearch } from "@/components/app-search"
+import { AppSidebarHeader, AppSidebarShell } from "./app-sidebar-shell"
+import { useAppSearch } from "./app-search"
 import { DatabaseViewIcon } from "@/components/database-view-icon"
-import { NavFavorites } from "@/components/nav-favorites"
-import { NavMeetings } from "@/components/nav-meetings"
-import { NavPageSection } from "@/components/nav-pages"
-import { SidebarCustomizePanel } from "@/components/sidebar-customize-panel"
-import { SidebarDatabaseViewSection } from "@/components/sidebar-database-view-section"
-import { SidebarShortcutIcon } from "@/components/sidebar-layout-icons"
-import { getShortcutLabel, isShortcutActive } from "@/components/sidebar-layout-model"
-import { SidebarLayoutTabs } from "@/components/sidebar-layout-tabs"
-import { SidebarTasksSection } from "@/components/sidebar-tasks-section"
-import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
+import { AiChatsSection } from "./components/ai-chats-section"
+import { NavFavorites } from "./components/nav-favorites"
+import { NavMeetings } from "./components/nav-meetings"
+import { NavPageSection } from "./components/nav-pages"
+import { RuntimeSectionDragItem } from "./components/runtime-section-drag-item"
+import { SidebarCustomizePanel } from "./components/sidebar-customize-panel"
+import { SidebarDatabaseViewSection } from "./components/sidebar-database-view-section"
+import { SidebarLayoutTabs } from "./components/sidebar-layout-tabs"
+import { SidebarShortcutList } from "./components/sidebar-shortcut-list"
+import { SidebarTasksSection } from "./components/sidebar-tasks-section"
 import {
   buildSidebarNavigation,
   type SidebarNavigationIcons,
-} from "@/components/sidebar-navigation-model"
+} from "./model/sidebar-navigation-model"
 import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,
   getActiveMeetingId,
   getActivePageId,
-} from "@/components/sidebar-nav-list"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/shared/ui/collapsible"
+} from "./components/sidebar-nav-list"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/shared/ui/sidebar"
-import { WorkspaceSwitcher } from "@/components/workspace-switcher"
+import { WorkspaceSwitcher } from "./workspace-switcher"
 import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import { clearPromotedFullPagePath, usePromotedFullPagePath } from "@/contexts/page-side-pane"
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
@@ -71,7 +57,6 @@ import { buildDesktopDeepLink } from "@/lib/desktop-deep-link"
 import { discoverRuntimeDesktopServer, getSelectedDesktopServer, type DesktopServer } from "@/lib/desktop-server"
 import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons"
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon"
-import { cn } from "@/shared/lib/utils"
 import { useAppStore } from "@/app/state/app-store"
 import { useSession } from "@zilobase/features/auth"
 import {
@@ -93,12 +78,14 @@ import {
   useUpdateUserSettings,
   useUserSettings,
   withSidebarWorkspaceLayout,
-  type LegacySidebarConfig,
-  type SidebarConfig,
   type SidebarSection,
-  type SidebarShortcut,
 } from "@zilobase/features/user-settings"
 import { useWorkspaces } from "@zilobase/features/workspaces"
+import {
+  createSectionPresentationConfig,
+  readActiveSidebarTab,
+  writeActiveSidebarTab,
+} from "./model/sidebar-persistence"
 
 const sidebarNavigationIcons: SidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
@@ -167,13 +154,13 @@ export function AppSidebar({
   )
   const [activeTabId, setActiveTabId] = React.useState("home")
   React.useEffect(() => {
-    const stored = readActiveTab(workspaceId)
+    const stored = readActiveSidebarTab(workspaceId)
     const next = layout.tabs.some((tab) => tab.id === stored) ? stored : "home"
     setActiveTabId(next)
   }, [layout.tabs, workspaceId])
   const selectTab = React.useCallback((tabId: string) => {
     setActiveTabId(tabId)
-    writeActiveTab(workspaceId, tabId)
+    writeActiveSidebarTab(workspaceId, tabId)
   }, [workspaceId])
   const activeTab = layout.tabs.find((tab) => tab.id === activeTabId) ?? layout.tabs[0]!
   const needsMeetings = activeTab.sections.some((section) => section.kind === "meetings")
@@ -294,7 +281,7 @@ export function AppSidebar({
       ) : (
         <SidebarContent>
           <div aria-hidden="true" className="h-3 shrink-0" />
-          <ShortcutList databases={navigation?.databases ?? []} onCreateChat={handleCreateChat} onCreateDatabase={handleCreateDatabase} onCreatePage={handleCreatePage} onOpenSettings={onOpenSettings} pages={navigation?.pages ?? []} settingsOpen={settingsOpen} shortcuts={activeTab.shortcuts} />
+          <SidebarShortcutList databases={navigation?.databases ?? []} onCreateChat={handleCreateChat} onCreateDatabase={handleCreateDatabase} onCreatePage={handleCreatePage} onOpenSettings={onOpenSettings} pages={navigation?.pages ?? []} settingsOpen={settingsOpen} shortcuts={activeTab.shortcuts} />
           <DndContext collisionDetection={closestCenter} onDragEnd={handleRuntimeSectionDragEnd} sensors={runtimeSectionSensors}>
             <SortableContext items={activeTab.sections.map((section) => section.id)} strategy={verticalListSortingStrategy}>
               {activeTab.sections.map((section) => <RuntimeSectionDragItem id={section.id} key={section.id}>{renderSection(section)}</RuntimeSectionDragItem>)}
@@ -315,79 +302,6 @@ export function AppSidebar({
   )
 }
 
-function RuntimeSectionDragItem({ children, id }: { children: React.ReactNode; id: string }) {
-  const sortable = useSortable({
-    animateLayoutChanges: ({ isSorting }) => isSorting,
-    id,
-  })
-  return (
-    <div
-      className={cn((sortable.isDragging || sortable.isOver) && "relative z-20 bg-sidebar")}
-      onPointerDown={(event) => {
-        const target = event.target
-        if (!(target instanceof Element) || !target.closest('[data-sidebar="group-label"]')) return
-        sortable.listeners?.onPointerDown?.(event)
-      }}
-      ref={sortable.setNodeRef}
-      style={{
-        transform: sortable.transform ? `translate3d(0, ${sortable.transform.y}px, 0)` : undefined,
-        transition: sortable.transition,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
-function ShortcutList({ databases, onCreateChat, onCreateDatabase, onCreatePage, onOpenSettings, pages, settingsOpen, shortcuts }: { databases: Array<{ id: string; name: string; views: Array<{ id: string }> }>; onCreateChat: () => Promise<void>; onCreateDatabase: () => Promise<void>; onCreatePage: () => Promise<void>; onOpenSettings?: () => void; pages: Array<{ id: string; name: string }>; settingsOpen: boolean; shortcuts: SidebarShortcut[] }) {
-  const navigate = useNavigate()
-  const location = useLocation()
-  return <SidebarGroup className="pb-1"><SidebarGroupContent><SidebarMenu aria-label="Shortcuts">{shortcuts.map((shortcut) => {
-    const target = shortcut.target
-    const page = target.type === "page" ? pages.find((entry) => entry.id === target.pageId) : null
-    const database = target.type === "database" ? databases.find((entry) => entry.id === target.databaseId) : null
-    if ((target.type === "page" && !page) || (target.type === "database" && !database)) return null
-    const label = shortcut.label || page?.name || database?.name || getShortcutLabel(shortcut)
-    const activate = () => {
-      if (target.type === "action") {
-        if (target.action === "createPage") void onCreatePage()
-        else if (target.action === "createDatabase") void onCreateDatabase()
-        else void onCreateChat()
-      } else if (target.type === "page") void navigate({ params: { pageId: target.pageId }, to: "/p/$pageId" })
-      else if (target.type === "database") void navigate({ params: { databaseId: target.databaseId }, search: { view: target.viewId }, to: "/d/$databaseId" })
-      else if (target.type === "library") void navigate({ search: { view: target.view }, to: "/recents" })
-      else if (target.route === "meetings") void navigate({ search: { view: "meetings" }, to: "/recents" })
-      else if (target.route === "settings") onOpenSettings?.()
-      else void navigate({ to: target.route === "ai" ? "/ai" : target.route === "tasks" ? "/tasks" : "/trash" })
-    }
-    return <SidebarMenuItem key={shortcut.id}><SidebarMenuButton isActive={isShortcutActive(shortcut, location.pathname, location.search, settingsOpen)} onClick={activate} type="button"><SidebarShortcutIcon shortcut={shortcut} /><span>{label}</span></SidebarMenuButton></SidebarMenuItem>
-  })}</SidebarMenu></SidebarGroupContent></SidebarGroup>
-}
-
-function AiChatsSection({ limit, storageKey }: { limit: number; storageKey: string }) {
-  const { activeThreadId, setActiveThreadId } = useAiChatThreadState()
-  const [open, setOpen] = useSidebarSectionOpen(storageKey)
-  return <Collapsible asChild onOpenChange={setOpen} open={open}><SidebarGroup className="group/collapsible min-h-0"><CollapsibleTrigger asChild><SidebarGroupLabel asChild className="hover:bg-accent hover:text-accent-foreground"><button className="group/section-label w-full cursor-pointer" type="button"><span>AI chats</span><ChevronRightIcon className="ml-1 size-3 text-muted-foreground transition-transform group-data-[state=open]/section-label:rotate-90" /></button></SidebarGroupLabel></CollapsibleTrigger><CollapsibleContent className="pb-4 pt-0.5"><SidebarGroupContent><AiChatHistoryList activeThreadId={activeThreadId} className="px-0 py-0" limit={limit} onSelectThread={setActiveThreadId} /></SidebarGroupContent></CollapsibleContent></SidebarGroup></Collapsible>
-}
-
-function createSectionPresentationConfig(config: SidebarConfig, layout: ReturnType<typeof resolveSidebarWorkspaceLayout>, section: Exclude<SidebarSection, { kind: "databaseView" }>): LegacySidebarConfig {
-  const sectionId = section.kind === "favorites" ? "favorites" : section.kind === "shared" || section.kind === "teamspaces" ? "shared" : section.kind === "private" ? "private" : "recents"
-  return {
-    hiddenItems: [],
-    libraryView: config.libraryView,
-    sectionLimits: { favorites: 10, private: 10, recents: 10, shared: 10, [sectionId]: section.limit },
-    sectionOrder: [sectionId],
-    sectionSorts: { favorites: "lastEdited", private: "lastEdited", recents: "lastEdited", shared: "lastEdited", [sectionId]: section.sort },
-    taskDatabaseIds: layout.taskDatabaseIds,
-  }
-}
-
-function readActiveTab(workspaceId: string | null) {
-  try { return window.localStorage.getItem(`zilobase:sidebar-active-tab:v2:${workspaceId ?? "default"}`) ?? "home" } catch { return "home" }
-}
-function writeActiveTab(workspaceId: string | null, tabId: string) {
-  try { window.localStorage.setItem(`zilobase:sidebar-active-tab:v2:${workspaceId ?? "default"}`, tabId) } catch { /* Selection still works for this session. */ }
-}
 function showMutationError(fallback: string) {
   return (error: unknown) => toast.error(error instanceof Error ? error.message : fallback)
 }

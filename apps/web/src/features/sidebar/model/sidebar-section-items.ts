@@ -1,4 +1,4 @@
-import type { SidebarNavItem } from "@/components/sidebar-nav-list"
+import type { SidebarNavItem } from "../components/sidebar-nav-list"
 import type {
   LegacySidebarConfig,
   SidebarSectionId,

@@ -18,7 +18,7 @@ import {
   SidebarMenuItem,
 } from "@/shared/ui/sidebar"
 import { getDatabaseViewModel } from "@/editor/extensions/database/views/database-view-model"
-import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
+import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 import type { SidebarSection } from "@zilobase/features/user-settings"
 import { isDatabaseLocked, useAddDatabaseRow, useDatabase } from "@zilobase/features/databases"
 

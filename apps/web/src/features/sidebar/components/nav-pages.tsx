@@ -75,28 +75,28 @@ import {
   getActivePageId,
   SidebarNavList,
   type SidebarNavItem,
-} from "@/components/sidebar-nav-list"
+} from "./sidebar-nav-list"
 import {
   SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
   SidebarNavItemAction,
-} from "@/components/sidebar-nav-item-action"
+} from "@/shared/ui/sidebar-nav-item-action"
 import { useOpenInNewTab } from "@/components/desktop-tabs"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
 import { cn } from "@/shared/lib/utils"
 import { getApiErrorMessage } from "@/lib/api"
 import { PageIconDisplay } from "@/lib/page-icon"
-import { getTeamspaceSidebarPermissions } from "@/components/teamspace-sidebar-permissions"
+import { getTeamspaceSidebarPermissions } from "../model/teamspace-sidebar-permissions"
 import { OfflineAvailabilityAction } from "@/components/offline-availability-action"
-import { SidebarSectionMenu } from "@/components/sidebar-section-menu"
-import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
-import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
-import { SidebarLibraryLink } from "@/components/sidebar-library-link"
+import { SidebarSectionMenu } from "./sidebar-section-menu"
+import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
+import { getConfiguredSidebarItems } from "../model/sidebar-section-items"
+import { SidebarLibraryLink } from "./sidebar-library-link"
 import type {
   LegacySidebarConfig,
   SidebarSectionId,
 } from "@zilobase/features/user-settings"
 
-export type { SidebarNavItem } from "@/components/sidebar-nav-list"
+export type { SidebarNavItem } from "./sidebar-nav-list"
 
 type DatabaseDropInput = {
   databaseId: string

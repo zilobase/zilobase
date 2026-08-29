@@ -1,7 +1,7 @@
 export function register({ readSource, assert, loadModule, test }) {
   test("meeting navigation resolves full-page and inline meeting routes", async () => {
     const { getActiveMeetingId } = await loadModule(
-      "/src/components/sidebar-nav-list.tsx",
+      "/src/features/sidebar/components/sidebar-nav-list.tsx",
     )
 
     assert.equal(getActiveMeetingId("/m/meeting-1"), "meeting-1")
@@ -41,8 +41,8 @@ export function register({ readSource, assert, loadModule, test }) {
       meetingViewSource,
       routerSource,
     ] = await Promise.all([
-        readSource("/src/components/nav-meetings.tsx"),
-        readSource("/src/components/sidebar-nav-list.tsx"),
+        readSource("/src/features/sidebar/components/nav-meetings.tsx"),
+        readSource("/src/features/sidebar/components/sidebar-nav-list.tsx"),
         readSource("/src/pages/meeting.tsx"),
         readSource("/src/editor/extensions/meeting/meeting-view.tsx"),
         readSource("/src/app/routing/route-groups/content-routes.tsx"),

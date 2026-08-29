@@ -17,7 +17,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { PlusIcon, SearchIcon } from "@/shared/components/icons"
 import type * as React from "react"
 
-import { SidebarTabIcon } from "@/components/sidebar-layout-icons"
+import { SidebarTabIcon } from "./sidebar-layout-icons"
 import {
   Popover,
   PopoverContent,
