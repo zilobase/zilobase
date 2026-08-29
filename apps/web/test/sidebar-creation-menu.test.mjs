@@ -42,6 +42,17 @@ export function register({ assert, test }) {
       new URL("../src/lib/item-icons.ts", import.meta.url),
       "utf8",
     )
+    const pageIconSource = await readFile(
+      new URL("../src/lib/page-icon.tsx", import.meta.url),
+      "utf8",
+    )
+    const databasePageLinkSource = await readFile(
+      new URL(
+        "../src/editor/extensions/database/interactions/database-page-link.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    )
     const appIconProviderSource = await readFile(
       new URL("../src/providers/app-icon-provider.tsx", import.meta.url),
       "utf8",
@@ -75,6 +86,10 @@ export function register({ assert, test }) {
     assert.match(appIconProviderSource, /weight: "bold"/)
     assert.match(iconPickerSource, /useState<PhosphorPickerWeight>\("bold"\)/)
     assert.doesNotMatch(defaultIconsSource, /stroke-width=/)
+    assert.match(pageIconSource, /export function DefaultPageIcon/)
+    assert.match(pageIconSource, /getPageEmoji\(page\) \?\? DEFAULT_PAGE_ITEM_ICON/)
+    assert.match(databasePageLinkSource, /<DefaultPageIcon \/>/)
+    assert.doesNotMatch(databasePageLinkSource, /<FileText \/>/)
     assert.match(sidebarTabsSource, /<SearchIcon className="size-4" \/>/)
     assert.match(sidebarTabsSource, /\{active \? <motion\.span/)
     assert.match(sidebarTabsSource, /tabLabelVariants/)

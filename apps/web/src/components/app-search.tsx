@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { DatabaseIcon, FileIcon, FileTextIcon } from "@/components/icons"
+import { DatabaseIcon } from "@/components/icons"
 
 import {
   Command,
@@ -23,7 +23,7 @@ import { useSession } from "@zilobase/features/auth"
 import { useWorkspaces } from "@zilobase/features/workspaces"
 import { useAppSearchResults } from "@zilobase/features/search"
 import type { AppSearchResult } from "@zilobase/features/search"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 import { useAppStore } from "@/stores/app-store"
 import { useAppShortcut } from "@/shortcuts"
 
@@ -178,9 +178,7 @@ function ResultIcon({ result }: { result: AppSearchResult }) {
 
   return result.type === "database" ? (
     <DatabaseIcon className="size-4 text-muted-foreground" />
-  ) : result.path === result.title ? (
-    <FileIcon className="size-4 text-muted-foreground" />
   ) : (
-    <FileTextIcon className="size-4 text-muted-foreground" />
+    <DefaultPageIcon className="text-muted-foreground" />
   )
 }

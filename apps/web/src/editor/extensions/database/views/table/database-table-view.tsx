@@ -24,7 +24,6 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  FileText,
   GripVertical,
   Link2,
   List,
@@ -68,7 +67,7 @@ import {
   DropDrawerTrigger,
 } from "@/components/ui/dropdrawer"
 import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/lib/utils"
 import { useUndoHistory } from "@/shortcuts"
 import {
@@ -3899,7 +3898,7 @@ export function DatabaseTableView() {
               }}
             >
               <span className="database-row-drag-overlay-cell">
-                <FileText />
+                <DefaultPageIcon />
                 <span>{rowDragOverlay.overlay.title}</span>
               </span>
             </div>,

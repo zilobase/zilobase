@@ -1,4 +1,5 @@
-import { FileText, GripVertical } from "@/components/icons"
+import { GripVertical } from "@/components/icons"
+import { DefaultPageIcon } from "@/lib/page-icon"
 
 import type { SortableDatabaseItem } from "../../interactions/database-item-utils"
 import type { TimelineRowLayout } from "./database-timeline-layout"
@@ -30,7 +31,7 @@ export function TimelineRowDragLayer({
           }}
         >
           <span className="database-row-drag-overlay-cell">
-            <FileText />
+            <DefaultPageIcon />
             <span>{controller.overlay.title}</span>
           </span>
         </div>

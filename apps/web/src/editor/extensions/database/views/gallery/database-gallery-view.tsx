@@ -2,7 +2,6 @@ import { useMemo, useState } from "react"
 import {
   ChevronDown,
   ChevronRight,
-  FileText,
   Loader2,
   Plus,
 } from "@/components/icons"
@@ -12,7 +11,7 @@ import {
   type PageMetadata,
 } from "@zilobase/features/pages"
 
-import { PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 import {
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
@@ -182,7 +181,7 @@ export function DatabaseGalleryView() {
                 {emoji ? (
                   <PageIconDisplay size="sm" value={emoji} />
                 ) : (
-                  <FileText />
+                  <DefaultPageIcon />
                 )}
               </span>
             ) : null}

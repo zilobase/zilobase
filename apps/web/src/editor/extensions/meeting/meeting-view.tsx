@@ -6,7 +6,6 @@ import {
   CircleStop,
   Download,
   FileAudio,
-  FileText,
   FolderOpen,
   HardDrive,
   LoaderCircle,
@@ -71,7 +70,7 @@ import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/lib/utils"
 import type { OpenPageOptions } from "@/packages/editor/types"
 import { MeetingCollaborativeEditor } from "./meeting-collaborative-editor"
@@ -532,7 +531,7 @@ export function MeetingView({
                   {embeddedPage.emoji ? (
                     <PageIconDisplay size="sm" value={embeddedPage.emoji} />
                   ) : (
-                    <FileText className="size-3.5 shrink-0" />
+                    <DefaultPageIcon className="size-3.5" />
                   )}
                   <span className="truncate">{embeddedPage.name}</span>
                   <ArrowUpRightIcon className="size-3.5 shrink-0" />

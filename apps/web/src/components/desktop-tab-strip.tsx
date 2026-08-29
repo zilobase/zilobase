@@ -22,7 +22,6 @@ import {
 } from "framer-motion"
 import {
   DatabaseIcon,
-  FileTextIcon,
   HomeIcon,
   PlusIcon,
   Settings2Icon,
@@ -31,7 +30,7 @@ import {
   XIcon,
 } from "@/components/icons"
 
-import { PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/lib/utils"
 import { isOpenInNewTabShortcut } from "@/shortcuts"
 import type { DesktopTab } from "@/stores/app-store"
@@ -310,7 +309,7 @@ function DesktopTabIcon({ tab }: { tab: DesktopTab }) {
   const Icon = tab.href.startsWith("/d/")
     ? DatabaseIcon
     : tab.href.startsWith("/p/")
-      ? FileTextIcon
+      ? DefaultPageIcon
       : tab.href.startsWith("/settings")
         ? Settings2Icon
         : tab.href.startsWith("/ai")

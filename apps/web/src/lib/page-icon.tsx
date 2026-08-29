@@ -76,14 +76,27 @@ export function PageIconDisplay({
   )
 }
 
+export function getPageIconValue(page: Pick<Page, "metadata">) {
+  return getPageEmoji(page) ?? DEFAULT_PAGE_ITEM_ICON
+}
+
+export function DefaultPageIcon({
+  className,
+  size = "sm",
+}: {
+  className?: string
+  size?: keyof typeof iconSizeClasses
+}) {
+  return <PageIconDisplay className={className} size={size} value={DEFAULT_PAGE_ITEM_ICON} />
+}
+
 export function getPageIconNode(
   page: Pick<Page, "content" | "hasContent" | "metadata">,
 ) {
-  const icon = getPageEmoji(page)
   return (
     <PageIconDisplay
       size="sm"
-      value={icon ?? DEFAULT_PAGE_ITEM_ICON}
+      value={getPageIconValue(page)}
     />
   )
 }

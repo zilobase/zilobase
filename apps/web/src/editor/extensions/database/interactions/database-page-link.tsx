@@ -5,7 +5,6 @@ import {
 } from "react"
 import {
   DatabaseIcon,
-  FileText,
   SidebarSimpleIcon,
   SquareIcon,
   X,
@@ -18,7 +17,7 @@ import {
   useUpdatePage,
   type PageMetadata,
 } from "@zilobase/features/pages"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 import {
   Popover,
   PopoverContent,
@@ -73,7 +72,7 @@ export function DatabasePageLink({
     ) : pageSummary?.iconKind === "database" ? (
       <DatabaseIcon />
     ) : (
-      <FileText />
+      <DefaultPageIcon />
     )
   const actionLabel = isOpen ? "Close" : "Open"
   const canEditTitle = editable && Boolean(pageSummary)

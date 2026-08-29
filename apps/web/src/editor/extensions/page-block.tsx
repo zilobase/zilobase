@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react";
-import { FileText, LinkIcon, Loader2, Plus } from "@/components/icons";
+import { LinkIcon, Loader2, Plus } from "@/components/icons";
 import {
   useEffect,
   useRef,
@@ -27,6 +27,7 @@ import {
   type DatabasePayload,
 } from "@zilobase/features/databases";
 import { colorWithAlpha, getPaletteColor } from "@/lib/color-tokens";
+import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon";
 import {
   setDatabasePageDragPayload,
 } from "@/packages/editor/extensions/database/interactions/database-page-drop";
@@ -254,7 +255,7 @@ function PageBlockView({
           type="button"
         >
           <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
-            {emoji || <FileText />}
+            {emoji ? <PageIconDisplay size="sm" value={emoji} /> : <DefaultPageIcon />}
           </span>
           <span className="min-w-0 truncate font-medium">{title}</span>
         </button>
@@ -303,7 +304,7 @@ function PageBlockView({
                       type="button"
                     >
                       <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">
-                        {pageEmoji || <FileText />}
+                        {pageEmoji ? <PageIconDisplay size="sm" value={pageEmoji} /> : <DefaultPageIcon />}
                       </span>
                       <span className="min-w-0 truncate">{pageTitle}</span>
                     </button>

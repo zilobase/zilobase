@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import { Check, FileText } from "@/components/icons"
+import { Check } from "@/components/icons"
 
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -16,7 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 
 import {
   defaultStatusOption,
@@ -789,7 +789,7 @@ function RelationPageOptionIcon({
     metadata: page.metadata as PageMetadata | null | undefined,
   })
 
-  return emoji ? <PageIconDisplay size="sm" value={emoji} /> : <FileText />
+  return emoji ? <PageIconDisplay size="sm" value={emoji} /> : <DefaultPageIcon />
 }
 
 function getRelationPageSummary(
