@@ -1,12 +1,12 @@
 import type { Editor as TiptapEditor } from "@tiptap/react"
 import type { TableOfContentDataItem } from "@tiptap/extension-table-of-contents"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from "@/shared/lib/utils"
+import { Button } from "@/shared/ui/button"
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "@/components/ui/hover-card"
+} from "@/shared/ui/hover-card"
 
 type EditorTableOfContentsProps = {
   editor: TiptapEditor | null

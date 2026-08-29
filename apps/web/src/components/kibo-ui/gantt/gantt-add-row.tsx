@@ -1,4 +1,4 @@
-import { PlusIcon } from "@/components/icons"
+import { PlusIcon } from "@/shared/components/icons"
 import type {
   CSSProperties,
   MouseEvent,
@@ -6,7 +6,7 @@ import type {
 } from "react"
 import { useCallback, useRef } from "react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 import { useGanttContext } from "./gantt-context"
 import {

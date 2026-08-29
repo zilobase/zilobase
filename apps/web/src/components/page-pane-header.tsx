@@ -11,17 +11,17 @@ import {
   SidebarSimpleIcon,
   SquareIcon,
   UsersIcon,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { toast } from "sonner";
 
 import { NavActions } from "@/components/nav-actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/ui/dropdown-menu";
 import {
   Breadcrumb,
   BreadcrumbEllipsis,
@@ -30,8 +30,8 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
+} from "@/shared/ui/breadcrumb";
+import { Separator } from "@/shared/ui/separator";
 import { libraryViewIcons } from "@/components/sidebar-layout-icons";
 import { libraryViewLabels } from "@/components/sidebar-layout-model";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";

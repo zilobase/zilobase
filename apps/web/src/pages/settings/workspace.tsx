@@ -1,21 +1,21 @@
 import * as React from "react"
-import { UploadIcon } from "@/components/icons"
+import { UploadIcon } from "@/shared/components/icons"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
 import { isFeatureEnabled } from "@/config/feature-flags"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import { Spinner } from "@/components/ui/spinner"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/shared/ui/field"
+import { Input } from "@/shared/ui/input"
+import { Separator } from "@/shared/ui/separator"
+import { Spinner } from "@/shared/ui/spinner"
+import { Textarea } from "@/shared/ui/textarea"
 import { getApiErrorMessage } from "@/lib/api"
 import { useNotionImport } from "@/hooks/use-notion-import"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"

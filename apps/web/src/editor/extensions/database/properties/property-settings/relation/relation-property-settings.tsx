@@ -6,7 +6,7 @@ import {
   Hash,
   Plus,
   Search,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -19,20 +19,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from "@/shared/ui/alert-dialog";
+import { Button } from "@/shared/ui/button";
 import {
   DropDrawerItem,
   DropDrawerSeparator,
-} from "@/components/ui/dropdrawer";
-import { Input } from "@/components/ui/input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
+import { Switch } from "@/shared/ui/switch";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@/shared/ui/tooltip";
 import {
   useAddDatabaseProperty,
   useDatabase,

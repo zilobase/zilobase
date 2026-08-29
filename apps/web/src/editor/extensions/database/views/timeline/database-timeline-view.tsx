@@ -17,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/shared/ui/alert-dialog"
 
 import { getRawDatabaseGroupValue } from "../../interactions/database-group-values"
 import { getDatabaseTableGroupSections } from "../../interactions/database-table-group-sections"

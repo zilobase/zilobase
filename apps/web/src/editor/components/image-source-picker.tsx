@@ -6,14 +6,14 @@ import {
   Search,
   Sparkles,
   Upload,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { useRef, useState } from "react"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
+import { Input } from "@/shared/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 import { getApiErrorMessage } from "@/lib/api"
 import { uploadPageImage } from "@/lib/image-upload"
 

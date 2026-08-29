@@ -4,7 +4,7 @@ import {
   isThemeFamilyId,
   THEME_FAMILY_STORAGE_KEY,
   type ThemeFamilyId,
-} from "@/lib/themes"
+} from "@/shared/lib/themes"
 
 type ThemeFamilyContextValue = {
   themeFamily: ThemeFamilyId

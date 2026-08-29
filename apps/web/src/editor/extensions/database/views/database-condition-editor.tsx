@@ -1,24 +1,24 @@
-import { CalendarIcon, GripVertical, X } from "@/components/icons"
+import { CalendarIcon, GripVertical, X } from "@/shared/components/icons"
 import { Reorder, useDragControls } from "framer-motion"
 import { useState, type ReactNode } from "react"
 import type { DateRange } from "react-day-picker"
 
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/shared/ui/button"
+import { DateCalendar } from "@/shared/ui/calendar"
+import { Input } from "@/shared/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/select"
+import { cn } from "@/shared/lib/utils"
 
 import {
   getDatabaseFilterOperatorsForType,
@@ -266,7 +266,7 @@ function DatabaseDateConditionEditor({
         onCommit={commitDateInput}
         value={dateDraft ?? dateValue}
       />
-      <Calendar
+      <DateCalendar
         className="w-full bg-transparent p-1 [--cell-size:2rem]"
         classNames={dateFilterCalendarClassNames}
         mode="single"
@@ -344,7 +344,7 @@ function DatabaseDateBetweenConditionEditor({
           value={endDraft ?? endValue}
         />
       </div>
-      <Calendar
+      <DateCalendar
         className="w-full bg-transparent p-1 [--cell-size:2rem]"
         classNames={dateFilterCalendarClassNames}
         mode="range"

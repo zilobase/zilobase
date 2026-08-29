@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database icon config supports navigation and raw data source records", async () => {
     const { getDatabaseIconConfig } = await loadModule(
-      "/src/lib/page-icon-utils.ts",
+      "/src/shared/lib/page-icon-utils.ts",
     )
 
     assert.deepEqual(
@@ -26,7 +26,7 @@ export function register({ assert, loadModule, test }) {
 
   test("buildColoredIconSvg stores themed icon metadata", async () => {
     const { buildColoredIconSvg, isSvgIcon, sanitizeStoredSvg } = await loadModule(
-      "/src/lib/page-icon-utils.ts",
+      "/src/shared/lib/page-icon-utils.ts",
     )
 
     const svg = buildColoredIconSvg({
@@ -42,14 +42,14 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("isSvgIcon ignores emoji strings", async () => {
-    const { isSvgIcon } = await loadModule("/src/lib/page-icon-utils.ts")
+    const { isSvgIcon } = await loadModule("/src/shared/lib/page-icon-utils.ts")
 
     assert.equal(isSvgIcon("🚀"), false)
     assert.equal(isSvgIcon('<svg xmlns="http://www.w3.org/2000/svg"></svg>'), true)
   })
 
   test("sanitizeStoredSvg rejects unsafe markup", async () => {
-    const { sanitizeStoredSvg } = await loadModule("/src/lib/page-icon-utils.ts")
+    const { sanitizeStoredSvg } = await loadModule("/src/shared/lib/page-icon-utils.ts")
 
     assert.equal(
       sanitizeStoredSvg('<svg><script>alert(1)</script></svg>'),
@@ -58,7 +58,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("getStoredIconColor reads data-icon-color", async () => {
-    const { getStoredIconColor } = await loadModule("/src/lib/page-icon-utils.ts")
+    const { getStoredIconColor } = await loadModule("/src/shared/lib/page-icon-utils.ts")
 
     assert.equal(
       getStoredIconColor(
@@ -71,7 +71,7 @@ export function register({ assert, loadModule, test }) {
 
   test("filled rendered icons do not inherit outline strokes", async () => {
     const { buildStoredSvgFromRenderedSvg, normalizeStoredIconPresentation } =
-      await loadModule("/src/lib/page-icon-utils.ts")
+      await loadModule("/src/shared/lib/page-icon-utils.ts")
     const rendered =
       '<svg viewBox="0 0 24 24"><path d="M2 2" fill="currentColor"/></svg>'
     const stored = buildStoredSvgFromRenderedSvg({ color: "purple", svg: rendered })
@@ -90,7 +90,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("parseUploadedSvg extracts viewBox and strips fills", async () => {
-    const { parseUploadedSvg } = await loadModule("/src/lib/page-icon-utils.ts")
+    const { parseUploadedSvg } = await loadModule("/src/shared/lib/page-icon-utils.ts")
 
     const parsed = parseUploadedSvg(
       '<svg viewBox="0 0 32 32"><path fill="#000" d="M0 0"/></svg>',

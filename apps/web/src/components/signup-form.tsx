@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { EyeIcon, EyeOffIcon } from "@/components/icons"
+import { EyeIcon, EyeOffIcon } from "@/shared/components/icons"
 import { useNavigate } from "@tanstack/react-router"
 
-import { Button } from "@/components/ui/button"
-import { GoogleIcon } from "@/components/google-icon"
+import { Button } from "@/shared/ui/button"
+import { GoogleIcon } from "@/shared/components/google-icon"
 import {
   Field,
   FieldDescription,
@@ -13,17 +13,17 @@ import {
   FieldGroup,
   FieldLabel,
   FieldSeparator,
-} from "@/components/ui/field"
+} from "@/shared/ui/field"
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@/components/ui/input-group"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/input-group"
+import { Input } from "@/shared/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
 import { getInvitationAuthSearch, signInWithGoogle } from "@/lib/google-auth"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import { useAuthFlowStore } from "@/stores/auth-flow-store"
 import {
   useRequestEmailVerificationOtp,

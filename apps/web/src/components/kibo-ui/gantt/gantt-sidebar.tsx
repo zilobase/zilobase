@@ -5,7 +5,7 @@ import type {
   ReactNode,
 } from "react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 import { useGanttContext } from "./gantt-context"
 import type { GanttFeature } from "./gantt-types"

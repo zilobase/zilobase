@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router"
-import { ArrowUpRightIcon } from "@/components/icons"
+import { ArrowUpRightIcon } from "@/shared/components/icons"
 
-import { SidebarGroupAction } from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
+import { SidebarGroupAction } from "@/shared/ui/sidebar"
+import { cn } from "@/shared/lib/utils"
 import type {
   LibraryView,
   LegacySidebarConfig,
@@ -55,7 +55,7 @@ export function SidebarLibraryLink({
   )
 }
 
-export function getLibraryViewForSection(
+function getLibraryViewForSection(
   sectionId: SidebarSectionId,
 ): LibraryView {
   return sectionId === "favorites" ? "favourites" : sectionId

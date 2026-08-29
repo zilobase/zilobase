@@ -19,10 +19,10 @@ import {
   StarIcon,
   Trash2Icon,
   WifiOffIcon,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +32,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/shared/ui/alert-dialog";
 import {
   Command,
   CommandEmpty,
@@ -40,8 +40,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/components/ui/command";
-import { Input } from "@/components/ui/input";
+} from "@/shared/ui/command";
+import { Input } from "@/shared/ui/input";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -50,19 +50,19 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer";
+} from "@/shared/ui/dropdrawer";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/shared/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/shared/ui/select";
 import { useSession } from "@zilobase/features/auth";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import {
@@ -101,10 +101,10 @@ import {
   useUpdateUserSettings,
   useUserSettings,
 } from "@zilobase/features/user-settings";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
+import { cn } from "@/shared/lib/utils";
 import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/shared/ui/switch";
 import { useLayoutEditor } from "@/components/layout-editor";
 import { OfflineAvailabilityAction } from "@/components/offline-availability-action";
 import {
@@ -112,7 +112,7 @@ import {
   useOfflineManifest,
   useOfflineSessionLocked,
 } from "@/providers/offline-provider";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import {
   getPrimaryPageParentId,
   zilobaseAiModeLabels,

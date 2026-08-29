@@ -7,11 +7,11 @@ import {
   Loader2Icon,
   PlusIcon,
   Settings2Icon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Button } from "@/shared/ui/button"
+import { Checkbox } from "@/shared/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/shared/ui/dialog"
 import { DatabaseViewProvider } from "@/editor/extensions/database/views/database-view-context"
 import { DatabaseViewToolbar } from "@/editor/extensions/database/views/database-view-toolbar"
 import { DatabaseViewSkeleton } from "@/editor/extensions/database/views/database-view-skeleton"

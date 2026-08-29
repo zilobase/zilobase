@@ -6,14 +6,14 @@ import {
   useRef,
   useState,
 } from "react"
-import { Loader2, Plus } from "@/components/icons"
+import { Loader2, Plus } from "@/shared/components/icons"
 import { toast } from "sonner"
 import {
   colorWithAlpha,
   getColorToken,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
-} from "@/lib/color-tokens"
+} from "@/shared/lib/color-tokens"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +23,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/shared/ui/alert-dialog"
 
 import {
   Select,
@@ -31,7 +31,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/shared/ui/select"
 import {
   defaultStatusOption,
   getNextDatabaseOptionColor,

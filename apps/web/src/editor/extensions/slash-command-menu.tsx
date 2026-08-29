@@ -6,7 +6,7 @@ import {
   CommandGroup,
   CommandItem,
   CommandList,
-} from "@/components/ui/command"
+} from "@/shared/ui/command"
 
 import type { SlashCommandItem } from "./slash-command"
 

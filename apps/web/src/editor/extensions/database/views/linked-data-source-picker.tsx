@@ -10,18 +10,18 @@ import {
   Plus,
   Search,
   Table2,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import { usePageNavigation } from "@zilobase/features/pages"
 import type { PageLayoutLinkedTab } from "@zilobase/features/pages"
-import { Input } from "@/components/ui/input"
+import { Input } from "@/shared/ui/input"
 
 export function LinkedDataSourcePicker({
   children,

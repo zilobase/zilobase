@@ -10,17 +10,17 @@ import {
   type ReactNode,
   type Ref,
 } from "react"
-import { ImagePlus, MessageSquare, SmilePlus, X } from "@/components/icons"
+import { ImagePlus, MessageSquare, SmilePlus, X } from "@/shared/components/icons"
 
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker"
+import { Button } from "@/shared/ui/button"
+import { Checkbox } from "@/shared/ui/checkbox"
+import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker"
 import { PageIconDisplay } from "@/lib/page-icon"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 
 import { usePageEditorComments } from "@/components/page-editor-comments"
 import { useSession } from "@zilobase/features/auth"

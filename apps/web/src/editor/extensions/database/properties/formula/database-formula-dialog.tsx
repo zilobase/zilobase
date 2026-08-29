@@ -6,13 +6,13 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { Copy, HelpCircle, Sigma } from "@/components/icons"
+import { Copy, HelpCircle, Sigma } from "@/shared/components/icons"
 import type { ThemedToken } from "shiki"
 import { toast } from "sonner"
 
 import { highlightCode } from "@/components/ai-elements/code-block"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -20,19 +20,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
+} from "@/shared/ui/dialog"
+import { ScrollArea } from "@/shared/ui/scroll-area"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/select"
+import { Separator } from "@/shared/ui/separator"
+import { Switch } from "@/shared/ui/switch"
+import { Textarea } from "@/shared/ui/textarea"
+import { cn } from "@/shared/lib/utils"
 
 import { getDatabasePropertyType } from "../../core/database-property-types"
 import { useDatabaseViewContext } from "../../views/database-view-context"

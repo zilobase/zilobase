@@ -17,7 +17,7 @@ import {
   StarIcon,
   Trash2Icon,
   UsersIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
 import type { LibraryView, SidebarShortcut, SidebarTabIconId } from "@zilobase/features/user-settings"
 import { PageIconDisplay } from "@/lib/page-icon"
@@ -31,7 +31,7 @@ export const libraryViewIcons = {
   teamspaces: Layers3Icon,
 } satisfies Record<LibraryView, typeof HistoryIcon>
 
-export const sidebarTabIcons = {
+const sidebarTabIcons = {
   briefcase: BriefcaseIcon,
   calendar: CalendarDaysIcon,
   circle: CircleDashedIcon,

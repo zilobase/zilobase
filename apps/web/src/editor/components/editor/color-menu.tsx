@@ -1,18 +1,18 @@
-import { Palette } from "@/components/icons"
+import { Palette } from "@/shared/components/icons"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 
 import {
   colorTokens,
   colorWithAlpha,
   getPaletteColor,
   isPaletteColorActive,
-} from "@/lib/color-tokens"
+} from "@/shared/lib/color-tokens"
 import type { ColorToken, EditorControlProps } from "./types"
 
 function ColorSwatch({

@@ -1,15 +1,15 @@
 import type { Editor, Range } from "@tiptap/core"
-import { Loader2, Sparkles } from "@/components/icons"
+import { Loader2, Sparkles } from "@/shared/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/shared/ui/button"
+import { Input } from "@/shared/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import {
   normalizeSelectionReplacementMarkdown,
   nextPaint,
@@ -17,7 +17,7 @@ import {
 } from "@/packages/editor/editor-ai-utils"
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
 import { desktopNetworkFetch } from "@/lib/desktop-network"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import type { SelectionAiDiffPreview } from "@/packages/editor/types"
 import { useZilobaseAiPages } from "@zilobase/features/pages"
 

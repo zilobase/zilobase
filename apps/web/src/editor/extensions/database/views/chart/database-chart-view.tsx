@@ -27,8 +27,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from "@/components/ui/chart"
-import { getPaletteColor } from "@/lib/color-tokens"
+} from "@/shared/ui/chart"
+import { getPaletteColor } from "@/shared/lib/color-tokens"
 import { useDatabaseViewContext } from "../database-view-context"
 import {
   shouldSplitDatabaseChartSeries,

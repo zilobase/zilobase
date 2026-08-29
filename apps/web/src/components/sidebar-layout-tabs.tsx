@@ -14,7 +14,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable"
 import { AnimatePresence, motion } from "framer-motion"
-import { PlusIcon, SearchIcon } from "@/components/icons"
+import { PlusIcon, SearchIcon } from "@/shared/components/icons"
 import type * as React from "react"
 
 import { SidebarTabIcon } from "@/components/sidebar-layout-icons"
@@ -22,14 +22,14 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/tooltip"
+import { cn } from "@/shared/lib/utils"
 import type { SidebarTab } from "@zilobase/features/user-settings"
 
 export function SidebarLayoutTabs({

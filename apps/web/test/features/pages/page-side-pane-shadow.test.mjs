@@ -1,6 +1,6 @@
 export function register({ readSource, assert, test }) {
   test("light side panes cast one continuous shadow through the top bar", async () => {
-    const source = await readSource("/src/App.css")
+    const source = await readSource("/src/shared/styles/global.css")
 
     assert.match(
       source,
@@ -11,7 +11,7 @@ export function register({ readSource, assert, test }) {
 
   test("the docked AI chat sidebar uses the same light elevation", async () => {
     const [styles, rightSidebars] = await Promise.all([
-      readSource("/src/App.css"),
+      readSource("/src/shared/styles/global.css"),
       readSource("/src/components/right-sidebars.tsx"),
     ])
 

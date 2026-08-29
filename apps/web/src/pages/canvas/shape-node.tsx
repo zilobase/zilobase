@@ -7,10 +7,10 @@ import {
   type NodeProps,
   useReactFlow,
 } from "@xyflow/react"
-import { BanIcon, RotateCwIcon, Trash2Icon } from "@/components/icons"
+import { BanIcon, RotateCwIcon, Trash2Icon } from "@/shared/components/icons"
 import type { MouseEvent as ReactMouseEvent } from "react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 import {
   canvasShapeDimensions,

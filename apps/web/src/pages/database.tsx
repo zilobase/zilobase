@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link, useParams, useRouteContext, useSearch } from "@tanstack/react-router"
-import { ArrowRight, ArrowUpRight, Maximize2 } from "@/components/icons"
+import { ArrowRight, ArrowUpRight, Maximize2 } from "@/shared/components/icons"
 
 import { AuthenticatedRouteError } from "@/components/authenticated-route-error"
 import { FallbackErrorBoundary } from "@/components/fallback-error-boundary"
@@ -9,10 +9,10 @@ import {
   PageSidePaneProvider,
   usePageSidePane,
 } from "@/contexts/page-side-pane"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/shared/ui/skeleton"
+import { Button } from "@/shared/ui/button"
 import { TrashedItemBanner } from "@/components/trashed-item-banner"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import {
   getDatabaseCover,
   getDatabaseEmoji,

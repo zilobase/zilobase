@@ -32,7 +32,7 @@ import {
   MoreHorizontal,
   Plus,
   X,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { toast } from "sonner"
 import {
   useMoveDatabaseRow,
@@ -47,14 +47,14 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/alert-dialog"
+import { Checkbox } from "@/shared/ui/checkbox"
+import { Input } from "@/shared/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import {
   DropDrawer,
   DropDrawerContent,
@@ -65,16 +65,16 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
+} from "@/shared/ui/dropdrawer"
 import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
 import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import { useUndoHistory } from "@/shortcuts"
 import {
   getColorToken,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
-} from "@/lib/color-tokens"
+} from "@/shared/lib/color-tokens"
 
 import { AddDatabasePropertyMenu } from "../../properties/add-database-property-menu"
 import { DatabaseCellContent } from "../database-cell-content"

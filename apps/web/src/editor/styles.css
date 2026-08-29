@@ -1,4 +1,4 @@
-@reference "../App.css";
+@reference "../shared/styles/global.css";
 
 @layer components {
 .tiptap-editor {

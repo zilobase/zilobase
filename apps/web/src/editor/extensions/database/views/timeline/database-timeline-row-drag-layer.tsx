@@ -1,4 +1,4 @@
-import { GripVertical } from "@/components/icons"
+import { GripVertical } from "@/shared/components/icons"
 import { DefaultPageIcon } from "@/lib/page-icon"
 
 import type { SortableDatabaseItem } from "../../interactions/database-item-utils"

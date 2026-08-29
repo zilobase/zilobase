@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import { Check } from "@/components/icons"
+import { Check } from "@/shared/components/icons"
 
-import { Checkbox } from "@/components/ui/checkbox"
+import { Checkbox } from "@/shared/ui/checkbox"
 import {
   useDatabase,
   useUpdateDatabaseProperty,
@@ -15,7 +15,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 
 import {

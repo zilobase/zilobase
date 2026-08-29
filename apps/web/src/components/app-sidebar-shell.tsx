@@ -3,22 +3,22 @@
 import * as React from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { useTheme } from "next-themes"
-import { MonitorIcon, MoonIcon, SunIcon } from "@/components/icons"
+import { MonitorIcon, MoonIcon, SunIcon } from "@/shared/components/icons"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/shared/ui/dropdown-menu"
 import {
   Sidebar,
   SidebarHeader,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/sidebar"
+import { cn } from "@/shared/lib/utils"
 
 export function AppSidebarShell({
   children,

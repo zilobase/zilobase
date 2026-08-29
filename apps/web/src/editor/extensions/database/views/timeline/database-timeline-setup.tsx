@@ -1,12 +1,12 @@
-import { CalendarPlus } from "@/components/icons"
-import { Button } from "@/components/ui/button"
+import { CalendarPlus } from "@/shared/components/icons"
+import { Button } from "@/shared/ui/button"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/shared/ui/select"
 import { getDatabasePropertyType } from "../../core/database-property-types"
 import type { DatabasePropertyListItem } from "../kanban/database-kanban-config"
 

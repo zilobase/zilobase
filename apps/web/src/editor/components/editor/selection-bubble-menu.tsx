@@ -5,7 +5,7 @@ import { useEffect } from "react"
 import {
   ButtonGroup,
   ButtonGroupSeparator,
-} from "@/components/ui/button-group"
+} from "@/shared/ui/button-group"
 
 import { blockSelectionPluginKey } from "@/packages/editor/extensions/block-selection"
 

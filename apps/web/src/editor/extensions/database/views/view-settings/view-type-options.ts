@@ -6,7 +6,7 @@ import {
   Kanban,
   List,
   Table2,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 
 export const databaseViewTypeOptions = [
   { icon: Table2, label: "Table", type: "table" },

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { isTauri } from "@tauri-apps/api/core"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/shared/ui/dialog"
 import {
   DropDrawer,
   DropDrawerContent,
@@ -20,14 +20,14 @@ import {
   DropDrawerSeparator,
   DropDrawerShortcut,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
+} from "@/shared/ui/dropdrawer"
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/sidebar"
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/ui/field"
+import { Input } from "@/shared/ui/input"
 import { useNavigate } from "@tanstack/react-router"
 import { useSession } from "@zilobase/features/auth"
 import {
@@ -52,7 +52,7 @@ import {
   PlusIcon,
   ServerIcon,
   Settings2Icon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
 export function WorkspaceSwitcher({
   onOpenSettings,

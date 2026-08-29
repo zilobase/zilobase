@@ -28,7 +28,7 @@ import {
   Sparkles,
   Table2,
   Video,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { type ComponentType, type SVGProps } from "react"
 import { createRoot, type Root } from "react-dom/client"
 
@@ -38,7 +38,7 @@ import {
   EmojiPickerContent,
   EmojiPickerFooter,
   EmojiPickerSearch,
-} from "@/components/ui/emoji-picker"
+} from "@/shared/ui/emoji-picker"
 import { createDatabaseSetupBlockContent } from "@/packages/editor/extensions/database"
 import {
   ExcalidrawIcon,

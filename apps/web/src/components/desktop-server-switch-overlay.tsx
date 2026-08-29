@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { Spinner } from "@/components/ui/spinner"
+import { Spinner } from "@/shared/ui/spinner"
 import {
   subscribeDesktopServerSwitch,
   type DesktopServerSwitchProgress,

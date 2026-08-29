@@ -1,7 +1,7 @@
-import { ArrowLeftRight } from "@/components/icons";
+import { ArrowLeftRight } from "@/shared/components/icons";
 
-import { DropDrawerItem } from "@/components/ui/dropdrawer";
-import { Switch } from "@/components/ui/switch";
+import { DropDrawerItem } from "@/shared/ui/dropdrawer";
+import { Switch } from "@/shared/ui/switch";
 
 import type { DatabasePropertyConfig } from "../../../views/database-view-config";
 

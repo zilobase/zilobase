@@ -4,16 +4,16 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { Bookmark, CircleX, Globe2, Loader2 } from "@/components/icons"
+import { Bookmark, CircleX, Globe2, Loader2 } from "@/shared/components/icons"
 import { useState } from "react"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/shared/ui/button"
+import { Input } from "@/shared/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import { apiFetch } from "@/lib/api"
 
 export type BookmarkMetadata = {

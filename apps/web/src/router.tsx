@@ -10,8 +10,8 @@ import {
 import { useEffect, useRef, useState } from "react"
 
 import { AppLayout } from "@/components/app-layout"
-import { Button } from "@/components/ui/button"
-import { Spinner } from "@/components/ui/spinner"
+import { Button } from "@/shared/ui/button"
+import { Spinner } from "@/shared/ui/spinner"
 import AcceptInvitationPage from "@/pages/accept-invitation"
 import AcceptPageInvitationPage from "@/pages/accept-page-invitation"
 import AiPage from "@/pages/ai"

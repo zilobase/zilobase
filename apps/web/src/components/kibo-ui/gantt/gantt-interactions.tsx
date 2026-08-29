@@ -4,7 +4,7 @@ import {
   format,
   formatDate,
 } from "date-fns"
-import { PlusIcon, TrashIcon } from "@/components/icons"
+import { PlusIcon, TrashIcon } from "@/shared/components/icons"
 import type {
   PointerEvent as ReactPointerEvent,
   PointerEventHandler,
@@ -19,14 +19,14 @@ import {
   useState,
 } from "react"
 
-import { Card } from "@/components/ui/card"
+import { Card } from "@/shared/ui/card"
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/context-menu"
+import { cn } from "@/shared/lib/utils"
 
 import {
   useGanttContext,

@@ -1,16 +1,16 @@
 import * as React from "react"
 
 import { SettingsHeader } from "@/components/settings-header"
-import { Separator } from "@/components/ui/separator"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { Separator } from "@/shared/ui/separator"
+import { Button } from "@/shared/ui/button"
+import { Textarea } from "@/shared/ui/textarea"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/shared/ui/select"
 import {
   useAiAgentPreference,
   useUpdateAiAgentPreference,

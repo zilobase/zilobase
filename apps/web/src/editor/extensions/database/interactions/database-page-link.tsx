@@ -8,7 +8,7 @@ import {
   SidebarSimpleIcon,
   SquareIcon,
   X,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { toast } from "sonner"
 
 import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
@@ -22,7 +22,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import { useOptionalUndoHistory } from "@/shortcuts"
 
 type DatabasePageSummary = {

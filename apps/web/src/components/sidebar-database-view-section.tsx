@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { ChevronRightIcon, DatabaseIcon, FileIcon, PlusIcon } from "@/components/icons"
+import { ChevronRightIcon, DatabaseIcon, FileIcon, PlusIcon } from "@/shared/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -7,7 +7,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@/shared/ui/collapsible"
 import {
   SidebarGroup,
   SidebarGroupAction,
@@ -16,7 +16,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/shared/ui/sidebar"
 import { getDatabaseViewModel } from "@/editor/extensions/database/views/database-view-model"
 import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
 import type { SidebarSection } from "@zilobase/features/user-settings"

@@ -1,4 +1,4 @@
-import { ArrowDownUp, Check, Plus, X } from "@/components/icons";
+import { ArrowDownUp, Check, Plus, X } from "@/shared/components/icons";
 import { useState, type ReactNode } from "react";
 
 import {
@@ -10,19 +10,19 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer";
+} from "@/shared/ui/dropdrawer";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/shared/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/shared/ui/select";
 
 import { type DatabaseSortDirection } from "./database-view-config";
 import {

@@ -4,7 +4,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { useContext, useMemo } from "react"
 
 import {
@@ -13,14 +13,14 @@ import {
   useGanttScrollX,
   type Range,
 } from "@/components/kibo-ui/gantt"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/shared/ui/select"
 
 const rangeOptions: { label: string; value: Range }[] = [
   { label: "Day", value: "daily" },

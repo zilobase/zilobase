@@ -1,11 +1,11 @@
 import * as React from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { CameraIcon, DownloadIcon, LogOutIcon, Trash2Icon } from "@/components/icons"
+import { CameraIcon, DownloadIcon, LogOutIcon, Trash2Icon } from "@/shared/components/icons"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
+import { Button } from "@/shared/ui/button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +15,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/shared/ui/alert-dialog"
 
 import {
   Field,
@@ -23,10 +23,10 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import { Spinner } from "@/components/ui/spinner"
+} from "@/shared/ui/field"
+import { Input } from "@/shared/ui/input"
+import { Separator } from "@/shared/ui/separator"
+import { Spinner } from "@/shared/ui/spinner"
 import { getApiErrorMessage } from "@/lib/api"
 import {
   getUserImageUrl,

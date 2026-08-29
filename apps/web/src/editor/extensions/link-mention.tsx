@@ -4,14 +4,14 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { Globe2 } from "@/components/icons"
+import { Globe2 } from "@/shared/components/icons"
 import { useState } from "react"
 
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "@/components/ui/hover-card"
+} from "@/shared/ui/hover-card"
 
 function LinkMentionView({ node }: ReactNodeViewProps) {
   const [faviconFailed, setFaviconFailed] = useState(false)

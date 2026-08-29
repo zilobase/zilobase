@@ -7,7 +7,7 @@ import {
   Rows3,
   Settings2,
   Trash2,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { useEffect, useState } from "react";
 
 import {
@@ -17,7 +17,7 @@ import {
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
-} from "@/components/ui/dropdrawer";
+} from "@/shared/ui/dropdrawer";
 
 import type {
   DatabaseSubItemsDisplay,

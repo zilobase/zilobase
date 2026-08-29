@@ -2,7 +2,7 @@ export function register({ readSource, assert, test }) {
   test("block and dragged text selection use one transparent tint", async () => {
     const [css, tokens] = await Promise.all([
       readSource("/src/editor/styles.css"),
-      readSource("/src/styles/design-tokens.css"),
+      readSource("/src/shared/styles/design-tokens.css"),
     ])
 
     assert.match(

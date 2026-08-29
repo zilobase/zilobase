@@ -47,8 +47,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/alert-dialog"
+import { cn } from "@/shared/lib/utils"
 import { UndoHistoryScope } from "@/shortcuts"
 import { toast } from "sonner"
 

@@ -19,6 +19,19 @@
       "packages/tiptap-comment-extension"
     ]
   },
+  // Pass-by-pass architecture adoption starts with the domain-neutral web
+  // layer. Complete production coverage is enabled in the final pass.
+  "boundaries": {
+    "zones": [
+      {
+        "name": "web-shared",
+        "patterns": ["apps/web/src/shared/**"]
+      }
+    ],
+    "rules": [
+      { "from": "web-shared", "allow": ["web-shared"] }
+    ]
+  },
   // The custom web test harness bundles these literal loadModule() paths.
   "dynamicallyLoaded": [
     "apps/web/src/comments/yjs-comments.ts",
@@ -85,7 +98,7 @@
     "apps/web/src/editor/protected-structural-blocks.ts",
     "apps/web/src/hooks/use-title-draft.ts",
     "apps/web/src/lib/api.ts",
-    "apps/web/src/lib/color-tokens.ts",
+    "apps/web/src/shared/lib/color-tokens.ts",
     "apps/web/src/lib/connectivity-probe.ts",
     "apps/web/src/lib/deferred-realtime.ts",
     "apps/web/src/lib/desktop-deep-link.ts",
@@ -104,12 +117,12 @@
     "apps/web/src/lib/offline-documents.ts",
     "apps/web/src/lib/offline-recovery.ts",
     "apps/web/src/lib/offline-store.ts",
-    "apps/web/src/lib/page-icon-utils.ts",
+    "apps/web/src/shared/lib/page-icon-utils.ts",
     "apps/web/src/lib/published-page-preferences.ts",
     "apps/web/src/lib/published-share-access.ts",
     "apps/web/src/lib/recent-navigation.ts",
     "apps/web/src/lib/route-error.ts",
-    "apps/web/src/lib/themes.ts",
+    "apps/web/src/shared/lib/themes.ts",
     "apps/web/src/pages/homepage-hierarchy.ts",
     "apps/web/src/pages/page-hierarchy-blocks.ts",
     "apps/web/src/pages/settings/team-access.ts",
@@ -151,75 +164,75 @@
       "exports": ["usePromptInputController", "useProviderAttachments", "PromptInputProvider", "usePromptInputReferencedSources", "PromptInputActionAddAttachments", "PromptInputActionAddScreenshot", "PromptInputBody", "PromptInputHeader", "PromptInputActionMenu", "PromptInputActionMenuTrigger", "PromptInputActionMenuContent", "PromptInputActionMenuItem", "PromptInputSelect", "PromptInputSelectTrigger", "PromptInputSelectContent", "PromptInputSelectItem", "PromptInputSelectValue", "PromptInputHoverCard", "PromptInputHoverCardTrigger", "PromptInputHoverCardContent", "PromptInputTabsList", "PromptInputTab", "PromptInputTabLabel", "PromptInputTabBody", "PromptInputTabItem"]
     },
     {
-      "file": "apps/web/src/components/ui/alert-dialog.tsx",
+      "file": "apps/web/src/shared/ui/alert-dialog.tsx",
       "exports": ["AlertDialogOverlay", "AlertDialogPortal"]
     },
     {
-      "file": "apps/web/src/components/ui/avatar.tsx",
+      "file": "apps/web/src/shared/ui/avatar.tsx",
       "exports": ["AvatarBadge"]
     },
     {
-      "file": "apps/web/src/components/ui/button-group.tsx",
+      "file": "apps/web/src/shared/ui/button-group.tsx",
       "exports": ["buttonGroupVariants"]
     },
     {
-      "file": "apps/web/src/components/ui/card.tsx",
+      "file": "apps/web/src/shared/ui/card.tsx",
       "exports": ["CardFooter", "CardAction"]
     },
     {
-      "file": "apps/web/src/components/ui/chart.tsx",
+      "file": "apps/web/src/shared/ui/chart.tsx",
       "exports": ["ChartStyle"]
     },
     {
-      "file": "apps/web/src/components/ui/context-menu.tsx",
+      "file": "apps/web/src/shared/ui/context-menu.tsx",
       "exports": ["ContextMenuCheckboxItem", "ContextMenuRadioItem", "ContextMenuLabel", "ContextMenuSeparator", "ContextMenuShortcut", "ContextMenuGroup", "ContextMenuPortal", "ContextMenuSub", "ContextMenuSubContent", "ContextMenuSubTrigger", "ContextMenuRadioGroup"]
     },
     {
-      "file": "apps/web/src/components/ui/dialog.tsx",
+      "file": "apps/web/src/shared/ui/dialog.tsx",
       "exports": ["DialogClose", "DialogOverlay", "DialogPortal"]
     },
     {
-      "file": "apps/web/src/components/ui/dropdown-menu.tsx",
+      "file": "apps/web/src/shared/ui/dropdown-menu.tsx",
       "exports": ["DropdownMenuPortal", "DropdownMenuGroup"]
     },
     {
-      "file": "apps/web/src/components/ui/dropdrawer.tsx",
+      "file": "apps/web/src/shared/ui/dropdrawer.tsx",
       "exports": ["DropDrawerFooter", "DropDrawerGroup"]
     },
     {
-      "file": "apps/web/src/components/ui/emoji-picker.tsx",
+      "file": "apps/web/src/shared/ui/emoji-picker.tsx",
       "exports": ["Emoji"]
     },
     {
-      "file": "apps/web/src/components/ui/empty.tsx",
+      "file": "apps/web/src/shared/ui/empty.tsx",
       "exports": ["EmptyContent"]
     },
     {
-      "file": "apps/web/src/components/ui/field.tsx",
+      "file": "apps/web/src/shared/ui/field.tsx",
       "exports": ["FieldLegend", "FieldSet", "FieldContent", "FieldTitle"]
     },
     {
-      "file": "apps/web/src/components/ui/input-group.tsx",
+      "file": "apps/web/src/shared/ui/input-group.tsx",
       "exports": ["InputGroupText"]
     },
     {
-      "file": "apps/web/src/components/ui/item.tsx",
+      "file": "apps/web/src/shared/ui/item.tsx",
       "exports": ["ItemSeparator", "ItemHeader", "ItemFooter"]
     },
     {
-      "file": "apps/web/src/components/ui/popover.tsx",
+      "file": "apps/web/src/shared/ui/popover.tsx",
       "exports": ["PopoverDescription"]
     },
     {
-      "file": "apps/web/src/components/ui/select.tsx",
+      "file": "apps/web/src/shared/ui/select.tsx",
       "exports": ["SelectScrollDownButton", "SelectScrollUpButton", "SelectSeparator"]
     },
     {
-      "file": "apps/web/src/components/ui/sheet.tsx",
+      "file": "apps/web/src/shared/ui/sheet.tsx",
       "exports": ["SheetTrigger", "SheetClose", "SheetFooter"]
     },
     {
-      "file": "apps/web/src/components/ui/sidebar.tsx",
+      "file": "apps/web/src/shared/ui/sidebar.tsx",
       "exports": ["SidebarInput", "SidebarMenuSkeleton", "SidebarMenuSub", "SidebarMenuSubButton", "SidebarMenuSubItem", "SidebarRail", "SidebarSeparator"]
     },
     {

@@ -1,8 +1,8 @@
 export function register({ readSource, assert, test }) {
   test("interface typography is tokenized and limited to shared component boundaries", async () => {
     const [appStyles, designTokens] = await Promise.all([
-      readSource("/src/App.css"),
-      readSource("/src/styles/design-tokens.css"),
+      readSource("/src/shared/styles/global.css"),
+      readSource("/src/shared/styles/design-tokens.css"),
     ])
 
     for (const token of ["dropdown", "sidebar", "tabs", "database"]) {

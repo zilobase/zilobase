@@ -1,6 +1,6 @@
 export function register({ readSource, assert, test }) {
   test("radius tokens share one source of truth and one concentric step", async () => {
-    const css = await readSource("/src/styles/design-tokens.css")
+    const css = await readSource("/src/shared/styles/design-tokens.css")
 
     const radiusSources = [...css.matchAll(/^\s*--radius:\s*([^;]+);/gm)]
 
@@ -23,7 +23,7 @@ export function register({ readSource, assert, test }) {
   test("shared nested controls use adjacent concentric radius tokens", async () => {
     const [tabs, dropdown, contextMenu] = await Promise.all(
       ["tabs", "dropdown-menu", "context-menu"].map((component) =>
-        readSource(`/src/components/ui/${component}.tsx`),
+        readSource(`/src/shared/ui/${component}.tsx`),
       ),
     )
 
@@ -39,13 +39,13 @@ export function register({ readSource, assert, test }) {
     const [button, sidebar, sidebarAction, sectionMenu, tabs] =
       await Promise.all(
         [
-          "ui/button",
-          "ui/sidebar",
-          "sidebar-nav-item-action",
-          "sidebar-section-menu",
-          "ui/tabs",
-        ].map((component) =>
-          readSource(`/src/components/${component}.tsx`),
+          "shared/ui/button.tsx",
+          "shared/ui/sidebar.tsx",
+          "components/sidebar-nav-item-action.tsx",
+          "components/sidebar-section-menu.tsx",
+          "shared/ui/tabs.tsx",
+        ].map((path) =>
+          readSource(`/src/${path}`),
         ),
       )
 
@@ -62,7 +62,7 @@ export function register({ readSource, assert, test }) {
     const [badge, editorStyles, discussions, contextChips, toolbar] =
       await Promise.all(
         [
-          "components/ui/badge.tsx",
+          "shared/ui/badge.tsx",
           "editor/styles.css",
           "components/discussions-sidebar.tsx",
           "components/ai-elements/context-attach-chips.tsx",

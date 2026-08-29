@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react";
-import { LinkIcon, Loader2, Plus } from "@/components/icons";
+import { LinkIcon, Loader2, Plus } from "@/shared/components/icons";
 import {
   useEffect,
   useRef,
@@ -14,19 +14,19 @@ import {
   type KeyboardEvent,
 } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/shared/ui/popover";
 import { getPageEmoji, usePages, type Page } from "@zilobase/features/pages";
 import { useZilobaseFeatures } from "@zilobase/features";
 import {
   databaseRootQueryKey,
   type DatabasePayload,
 } from "@zilobase/features/databases";
-import { colorWithAlpha, getPaletteColor } from "@/lib/color-tokens";
+import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens";
 import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon";
 import {
   setDatabasePageDragPayload,

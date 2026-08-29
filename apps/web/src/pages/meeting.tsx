@@ -26,7 +26,7 @@ import {
 } from "@zilobase/features/pages"
 import { useUserSettings } from "@zilobase/features/user-settings"
 import { useSession } from "@zilobase/features/auth"
-import { LoaderCircle } from "@/components/icons"
+import { LoaderCircle } from "@/shared/components/icons"
 import type { OpenPageOptions } from "@/packages/editor/types"
 
 export default function MeetingPage() {

@@ -1,13 +1,13 @@
 import { useQueries } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { ChevronRightIcon, ListChecksIcon } from "@/components/icons"
+import { ChevronRightIcon, ListChecksIcon } from "@/shared/components/icons"
 import * as React from "react"
 
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@/shared/ui/collapsible"
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -15,7 +15,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/shared/ui/sidebar"
 import {
   buildTaskRows,
   filterMyTaskRows,

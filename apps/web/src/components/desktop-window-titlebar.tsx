@@ -4,9 +4,9 @@ import type { ReactNode } from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
-import { CopyIcon, MinusIcon, SquareIcon, XIcon } from "@/components/icons"
+import { CopyIcon, MinusIcon, SquareIcon, XIcon } from "@/shared/components/icons"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 export function isLinuxDesktopApp() {
   return isTauri() && navigator.userAgent.includes("Linux")

@@ -3,19 +3,19 @@ import {
   ChevronsLeftIcon,
   MessageSquareIcon,
   MessageSquarePlusIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
 import type { PageCommentController } from "@/comments/yjs-comments"
 import { usePageEditorComments } from "@/components/page-editor-comments"
 import { PageCommentThread } from "@/components/page-comments"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Popover,
   PopoverContent,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry"
 import { getCommentIdsInRange } from "@zilobase/tiptap-comment-extension"
 

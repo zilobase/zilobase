@@ -6,7 +6,7 @@ import {
   GripVertical,
   Image as ImageIcon,
   Settings2,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 
 import {
   DropDrawerItem,
@@ -15,9 +15,9 @@ import {
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
-} from "@/components/ui/dropdrawer";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/dropdrawer";
+import { Switch } from "@/shared/ui/switch";
+import { cn } from "@/shared/lib/utils";
 
 import { getDatabasePropertyType } from "../../core/database-property-types";
 import { NameColumnGlyph } from "../../interactions/name-column-glyph";

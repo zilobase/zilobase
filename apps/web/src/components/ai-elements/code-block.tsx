@@ -1,15 +1,15 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { CheckIcon, CopyIcon } from "@/components/icons";
+} from "@/shared/ui/select";
+import { cn } from "@/shared/lib/utils";
+import { CheckIcon, CopyIcon } from "@/shared/components/icons";
 import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
 import {
   createContext,

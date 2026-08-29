@@ -1,16 +1,16 @@
 import { useMemo, useState, type ReactNode } from "react"
-import { Check, ChevronRight, HelpCircle } from "@/components/icons"
+import { Check, ChevronRight, HelpCircle } from "@/shared/components/icons"
 import type { DateRange } from "react-day-picker"
 
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/shared/ui/button"
+import { DateCalendar } from "@/shared/ui/calendar"
+import { Input } from "@/shared/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { Switch } from "@/components/ui/switch"
+} from "@/shared/ui/popover"
+import { Switch } from "@/shared/ui/switch"
 import {
   dateFormatOptions,
   formatDatabaseDateValueWithFormats,
@@ -274,7 +274,7 @@ export function DatabasePropertyDate({
             Today
           </Button>
           {isRange ? (
-            <Calendar
+            <DateCalendar
               className="w-full py-1"
               classNames={{
                 root: "relative w-full",
@@ -291,7 +291,7 @@ export function DatabasePropertyDate({
               }}
             />
           ) : (
-            <Calendar
+            <DateCalendar
               className="w-full py-1"
               classNames={{
                 root: "relative w-full",

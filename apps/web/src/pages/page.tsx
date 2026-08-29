@@ -5,7 +5,7 @@ import {
   useRouteContext,
   useSearch,
 } from "@tanstack/react-router";
-import { ArrowRight, CopyIcon, Maximize2 } from "@/components/icons";
+import { ArrowRight, CopyIcon, Maximize2 } from "@/shared/components/icons";
 
 import { AuthenticatedRouteError } from "@/components/authenticated-route-error";
 import { FallbackErrorBoundary } from "@/components/fallback-error-boundary";
@@ -15,12 +15,12 @@ import {
   PageSidePaneProvider,
   usePageSidePane,
 } from "@/contexts/page-side-pane";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import { TrashedItemBanner } from "@/components/trashed-item-banner";
 import { isEmbeddedMobileViewer } from "@/lib/embedded-view";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 import { formatPageBreadcrumbLabel } from "@/lib/page-icon";
 import {

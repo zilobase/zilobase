@@ -6,7 +6,7 @@ import {
   Loader2Icon,
   PlusIcon,
   Trash2Icon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
@@ -19,9 +19,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+} from "@/shared/ui/alert-dialog"
+import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -30,20 +30,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@/shared/ui/dialog"
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@/components/ui/empty"
+} from "@/shared/ui/empty"
 import {
   Field,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/field"
+import { Input } from "@/shared/ui/input"
 import {
   Item,
   ItemActions,
@@ -52,16 +52,16 @@ import {
   ItemGroup,
   ItemMedia,
   ItemTitle,
-} from "@/components/ui/item"
+} from "@/shared/ui/item"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Spinner } from "@/components/ui/spinner"
+} from "@/shared/ui/select"
+import { Skeleton } from "@/shared/ui/skeleton"
+import { Spinner } from "@/shared/ui/spinner"
 import {
   useApiKeys,
   useCreateApiKey,

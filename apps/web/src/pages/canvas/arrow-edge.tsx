@@ -6,7 +6,7 @@ import {
   useInternalNode,
   useReactFlow,
 } from "@xyflow/react"
-import { Trash2Icon } from "@/components/icons"
+import { Trash2Icon } from "@/shared/components/icons"
 
 import {
   getCanvasColorOption,

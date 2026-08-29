@@ -1,6 +1,6 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   isStalePageEditResolveError,
   type PageEditSnapshotPart,
@@ -13,7 +13,7 @@ import {
   Loader2Icon,
   Undo2Icon,
   XIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { useState } from "react"
 
 export function PageEditCard({

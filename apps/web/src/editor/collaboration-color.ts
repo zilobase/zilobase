@@ -1,4 +1,4 @@
-import { collaboratorColorIds } from "@/lib/color-tokens"
+import { collaboratorColorIds } from "@/shared/lib/color-tokens"
 
 const collaboratorColorTokens = collaboratorColorIds.map(
   (id) => `--editor-${id}` as const,

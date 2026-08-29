@@ -17,7 +17,7 @@ import {
 } from "@/lib/desktop-diagnostics";
 import { AppProviders } from "@/providers/app-providers";
 import { initializeDesktopTranslucency } from "@/lib/desktop-translucency";
-import "./App.css";
+import "./shared/styles/global.css";
 import "@/packages/editor/styles.css";
 
 installDesktopDiagnostics();

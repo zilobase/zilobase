@@ -6,7 +6,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/shared/ui/dialog"
 
 export function SettingsDialog({
   activeSection,

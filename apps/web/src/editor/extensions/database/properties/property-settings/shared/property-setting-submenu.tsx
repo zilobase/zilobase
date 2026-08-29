@@ -1,4 +1,4 @@
-import { Check } from "@/components/icons";
+import { Check } from "@/shared/components/icons";
 import type { ReactNode } from "react";
 
 import {
@@ -6,7 +6,7 @@ import {
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
-} from "@/components/ui/dropdrawer";
+} from "@/shared/ui/dropdrawer";
 
 type PropertySettingOption<TValue> = {
   icon?: ReactNode;

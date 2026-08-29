@@ -1,4 +1,4 @@
-import { Calendar } from "@/components/icons";
+import { Calendar } from "@/shared/components/icons";
 
 import {
   dateFormatOptions,

@@ -1,8 +1,8 @@
 "use client"
 
 import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from "@/shared/ui/button"
+import { cn } from "@/shared/lib/utils"
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions"
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
 import {
@@ -13,7 +13,7 @@ import {
   PlusIcon,
   SparklesIcon,
   XIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { lazy, Suspense, useCallback, useState } from "react"
 
 const Chatbot = lazy(() => import("@/components/ai-elements/chatbot"))

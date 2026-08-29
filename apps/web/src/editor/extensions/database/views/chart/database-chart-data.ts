@@ -4,7 +4,7 @@ import {
   cyclingColorTokens,
   getPaletteColor,
   type ColorTokenId,
-} from "@/lib/color-tokens"
+} from "@/shared/lib/color-tokens"
 import type { DatabasePropertyValue } from "../../core/utils"
 import { formatDatabaseDateValue } from "../../properties/database-date-config"
 import { getReadOnlyTimePropertyRawValue } from "../../properties/read-only-time-property"

@@ -17,14 +17,14 @@ import {
   Type,
   X,
   Zap,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+} from "@/shared/ui/collapsible";
 import {
   DropDrawerItem,
   DropDrawerLabel,
@@ -32,22 +32,22 @@ import {
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
-} from "@/components/ui/dropdrawer";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
+import { Switch } from "@/shared/ui/switch";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/shared/ui/select";
 import {
   cyclingColorTokens,
   getColorToken,
   getPaletteColor,
-} from "@/lib/color-tokens";
-import { cn } from "@/lib/utils";
+} from "@/shared/lib/color-tokens";
+import { cn } from "@/shared/lib/utils";
 
 import { getDatabasePropertyType } from "../../core/database-property-types";
 import { NameColumnGlyph } from "../../interactions/name-column-glyph";

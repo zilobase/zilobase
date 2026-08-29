@@ -1,4 +1,4 @@
-import { Loader2, Plus, Search } from "@/components/icons"
+import { Loader2, Plus, Search } from "@/shared/components/icons"
 import { useEffect, useRef, useState } from "react"
 
 import {
@@ -7,7 +7,7 @@ import {
   DropDrawerItem,
   DropDrawerSeparator,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
+} from "@/shared/ui/dropdrawer"
 
 import { databasePropertyTypes } from "../core/database-property-types"
 

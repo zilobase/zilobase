@@ -2,7 +2,7 @@ import { addDays, format } from "date-fns"
 import type { FC, ReactNode } from "react"
 import { memo, useId } from "react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 
 import { useGanttContext } from "./gantt-context"
 import type { Range } from "./gantt-types"

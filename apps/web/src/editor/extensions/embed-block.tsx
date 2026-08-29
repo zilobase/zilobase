@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { CodeXml, FileWarning, Link, RefreshCw } from "@/components/icons"
+import { CodeXml, FileWarning, Link, RefreshCw } from "@/shared/components/icons"
 import {
   useEffect,
   useRef,
@@ -13,13 +13,13 @@ import {
   type SVGProps,
 } from "react"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/shared/ui/button"
+import { Input } from "@/shared/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 
 type SetEmbedAttrs = {
   src: string

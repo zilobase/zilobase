@@ -1,21 +1,21 @@
 import { useState } from "react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/shared/ui/card"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/field"
+import { Input } from "@/shared/ui/input"
 import { apiFetch, getApiErrorMessage } from "@/lib/api"
 
 export default function SetupPage() {

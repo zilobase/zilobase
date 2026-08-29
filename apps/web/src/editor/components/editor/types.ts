@@ -1,6 +1,6 @@
 import type { Editor } from "@tiptap/react"
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
-import type { Icon } from "@/components/icons"
+import type { Icon } from "@/shared/components/icons"
 
 export type ToolbarAction =
   | "toggleBold"
@@ -32,7 +32,7 @@ export type ToolbarItem = {
   attrs?: ToolbarAttrs
 }
 
-export type { ColorToken } from "@/lib/color-tokens"
+export type { ColorToken } from "@/shared/lib/color-tokens"
 
 export type DragHandleTarget = {
   node: ProseMirrorNode

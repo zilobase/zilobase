@@ -1,6 +1,6 @@
-import { CheckIcon, Loader2Icon, XIcon } from "@/components/icons"
+import { CheckIcon, Loader2Icon, XIcon } from "@/shared/components/icons"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 
 export function SelectionAiDiffDock({
   isStreaming,

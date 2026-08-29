@@ -1,5 +1,5 @@
 import * as React from "react"
-import { BookOpenIcon, WandSparklesIcon } from "@/components/icons"
+import { BookOpenIcon, WandSparklesIcon } from "@/shared/components/icons"
 
 import {
   Empty,
@@ -7,9 +7,9 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@/components/ui/empty"
-import { Skeleton } from "@/components/ui/skeleton"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/empty"
+import { Skeleton } from "@/shared/ui/skeleton"
+import { cn } from "@/shared/lib/utils"
 import type {
   ZilobaseAiMode,
   ZilobaseAiPageSummary,

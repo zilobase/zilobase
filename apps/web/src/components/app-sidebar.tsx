@@ -19,7 +19,7 @@ import {
   ChevronRightIcon,
   MonitorUpIcon,
   SlidersHorizontalIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
 
@@ -51,7 +51,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@/shared/ui/collapsible"
 import {
   Sidebar,
   SidebarContent,
@@ -62,16 +62,16 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/shared/ui/sidebar"
 import { WorkspaceSwitcher } from "@/components/workspace-switcher"
-import { ZilobaseLogo } from "@/components/zilobase-logo"
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import { clearPromotedFullPagePath, usePromotedFullPagePath } from "@/contexts/page-side-pane"
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
 import { buildDesktopDeepLink } from "@/lib/desktop-deep-link"
 import { discoverRuntimeDesktopServer, getSelectedDesktopServer, type DesktopServer } from "@/lib/desktop-server"
 import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons"
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import { useAppStore } from "@/stores/app-store"
 import { useSession } from "@zilobase/features/auth"
 import {

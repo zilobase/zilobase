@@ -4,7 +4,7 @@ import {
   ChevronRight,
   Loader2,
   Plus,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import {
   getPageCover,
   getPageEmoji,
@@ -15,7 +15,7 @@ import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 import {
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
-} from "@/lib/color-tokens"
+} from "@/shared/lib/color-tokens"
 import { getDatabaseTableGroupSections } from "../../interactions/database-table-group-sections"
 import { useDatabaseRowsScroll } from "../../interactions/use-database-rows-scroll"
 import { canCreateRowInKanbanGroup } from "../kanban/database-kanban-config"

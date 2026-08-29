@@ -6,12 +6,12 @@ import {
   Link2,
   Share2,
   UserRoundCheck,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
 import {
   DropDrawer,
   DropDrawerContent,
@@ -20,10 +20,10 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/dropdrawer"
+import { Input } from "@/shared/ui/input"
+import { Switch } from "@/shared/ui/switch"
+import { cn } from "@/shared/lib/utils"
 
 import { useDatabaseViewContext } from "../database-view-context"
 import {

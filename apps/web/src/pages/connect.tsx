@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldSeparator,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { ZilobaseLogo } from "@/components/zilobase-logo"
+} from "@/shared/ui/field"
+import { Input } from "@/shared/ui/input"
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import {
   desktopCloudConnectUrl,
   getSelectedDesktopServer,

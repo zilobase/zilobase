@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react"
-import { Layers3Icon, MoreHorizontalIcon, PlusIcon, UsersIcon } from "@/components/icons"
+import { Layers3Icon, MoreHorizontalIcon, PlusIcon, UsersIcon } from "@/shared/components/icons"
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
+import { Checkbox } from "@/shared/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -14,23 +14,23 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker"
-import { Label } from "@/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+} from "@/shared/ui/dialog"
+import { Input } from "@/shared/ui/input"
+import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker"
+import { Label } from "@/shared/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Spinner } from "@/components/ui/spinner"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
+} from "@/shared/ui/select"
+import { Separator } from "@/shared/ui/separator"
+import { Spinner } from "@/shared/ui/spinner"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+import { Textarea } from "@/shared/ui/textarea"
+import { Switch } from "@/shared/ui/switch"
 import { getApiErrorMessage } from "@/lib/api"
 import { PageIconDisplay } from "@/lib/page-icon"
 import { filterTeamspaces } from "./teamspace-filters"

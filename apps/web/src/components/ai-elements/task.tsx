@@ -4,9 +4,9 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
-import { ChevronDownIcon, SearchIcon } from "@/components/icons";
+} from "@/shared/ui/collapsible";
+import { cn } from "@/shared/lib/utils";
+import { ChevronDownIcon, SearchIcon } from "@/shared/components/icons";
 import type { ComponentProps } from "react";
 
 export type TaskItemProps = ComponentProps<"div">;

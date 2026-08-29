@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { DatabaseIcon, FileTextIcon, UserIcon } from "@/components/icons";
+import { DatabaseIcon, FileTextIcon, UserIcon } from "@/shared/components/icons";
 
 import {
   PromptInputCommand,

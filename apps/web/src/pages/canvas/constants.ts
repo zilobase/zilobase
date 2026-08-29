@@ -1,12 +1,12 @@
-import type { Icon } from "@/components/icons"
+import type { Icon } from "@/shared/components/icons"
 import {
   ArrowRightIcon,
   CircleIcon,
   DiamondIcon,
   SquareIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
-import { getPaletteColor } from "@/lib/color-tokens"
+import { getPaletteColor } from "@/shared/lib/color-tokens"
 
 import type {
   CanvasNodeColorId,

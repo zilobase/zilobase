@@ -10,7 +10,7 @@ import {
   Palette,
   SlidersHorizontalIcon,
   X,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { useState } from "react";
 
 import {
@@ -22,15 +22,15 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer";
-import { Input } from "@/components/ui/input";
-import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker";
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
+import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
 import { PageIconDisplay } from "@/lib/page-icon";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/shared/ui/popover";
 
 import { getDatabasePropertyType } from "../../core/database-property-types";
 import {

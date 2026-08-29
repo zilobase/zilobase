@@ -20,7 +20,7 @@ import {
   Search,
   Sparkles,
   X,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { toast } from "sonner";
 
 import {
@@ -30,12 +30,12 @@ import {
   PromptInputTextarea,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { getIconSolidClassName } from "@/lib/color-tokens";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { getIconSolidClassName } from "@/shared/lib/color-tokens";
 import { DEFAULT_DATABASE_ITEM_ICON } from "@/lib/item-icons";
 import { getDatabaseIconNode, PageIconDisplay } from "@/lib/page-icon";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import {
   useApplyDatabaseTemplate,
   useDatabase,

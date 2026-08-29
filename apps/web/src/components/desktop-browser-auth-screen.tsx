@@ -3,14 +3,14 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "@tanstack/react-router"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
-} from "@/components/ui/field"
-import { ZilobaseLogo } from "@/components/zilobase-logo"
+} from "@/shared/ui/field"
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import { getApiErrorMessage } from "@/lib/api"
 import { reloadDesktopAuthCredentials } from "@/lib/desktop-auth-token"
 import {

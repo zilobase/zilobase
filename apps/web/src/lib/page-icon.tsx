@@ -3,16 +3,16 @@ import {
   type Page,
 } from "@zilobase/features/pages"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
-import { getIconTextClassName } from "@/lib/color-tokens"
+import { getIconTextClassName } from "@/shared/lib/color-tokens"
 import { DEFAULT_PAGE_ITEM_ICON } from "@/lib/item-icons"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import {
   getDatabaseIconConfig,
   getStoredIconColor,
   isSvgIcon,
   normalizeStoredIconPresentation,
   sanitizeStoredSvg,
-} from "@/lib/page-icon-utils"
+} from "@/shared/lib/page-icon-utils"
 
 const iconSizeClasses = {
   sm: "size-4 text-base [&_svg]:size-4",
@@ -76,7 +76,7 @@ export function PageIconDisplay({
   )
 }
 
-export function getPageIconValue(page: Pick<Page, "metadata">) {
+function getPageIconValue(page: Pick<Page, "metadata">) {
   return getPageEmoji(page) ?? DEFAULT_PAGE_ITEM_ICON
 }
 

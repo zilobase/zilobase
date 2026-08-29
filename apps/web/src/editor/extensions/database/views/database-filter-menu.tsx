@@ -1,8 +1,8 @@
-import { Filter, Plus, X } from "@/components/icons"
+import { Filter, Plus, X } from "@/shared/components/icons"
 import { Reorder } from "framer-motion"
 import { useState, type ReactNode } from "react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   DropDrawer,
   DropDrawerContent,
@@ -10,12 +10,12 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
+} from "@/shared/ui/dropdrawer"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 
 import {
   DatabaseConditionEditor,

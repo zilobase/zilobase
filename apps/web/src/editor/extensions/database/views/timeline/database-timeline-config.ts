@@ -2,7 +2,7 @@ import { addDays } from "date-fns"
 
 import type { GanttFeature, GanttStatus } from "@/components/kibo-ui/gantt"
 
-import { getPaletteColor } from "@/lib/color-tokens"
+import { getPaletteColor } from "@/shared/lib/color-tokens"
 import { parseLocalDateMatch } from "../../properties/database-date-value"
 
 import { defaultStatusOptions } from "../../core/database-property-types"

@@ -6,7 +6,7 @@ import {
   type NodeViewProps,
 } from "@tiptap/react"
 
-import { Checkbox } from "@/components/ui/checkbox"
+import { Checkbox } from "@/shared/ui/checkbox"
 import { getSelectedTaskItemPositions } from "./block-selection"
 
 type ShadcnTaskItemOptions = {

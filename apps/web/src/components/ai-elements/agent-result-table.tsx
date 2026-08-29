@@ -1,10 +1,10 @@
 import type { AgentResultTable as AgentResultTableData } from "@zilobase/features/ai-chat/agent-contract"
-import { ArrowUpDownIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, SearchIcon } from "@/components/icons"
+import { ArrowUpDownIcon, CopyIcon, DownloadIcon, ExternalLinkIcon, SearchIcon } from "@/shared/components/icons"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/shared/ui/button"
+import { Input } from "@/shared/ui/input"
 
 export function AgentResultTable({ table }: { table: AgentResultTableData }) {
   const [filter, setFilter] = useState("")

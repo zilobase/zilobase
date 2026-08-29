@@ -4,23 +4,23 @@ import {
   CheckCircle2Icon,
   FileCheck2Icon,
   SendIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/shared/ui/card"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
-} from "@/components/ui/field"
-import { Spinner } from "@/components/ui/spinner"
+} from "@/shared/ui/field"
+import { Spinner } from "@/shared/ui/spinner"
 import { getApiErrorMessage } from "@/lib/api"
 import { readSingleInvitationId } from "@/lib/invitation-link"
 import { useSession } from "@zilobase/features/auth"

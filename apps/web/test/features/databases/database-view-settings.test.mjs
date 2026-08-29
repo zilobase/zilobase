@@ -149,8 +149,8 @@ export function register({ readSource, assert, loadModule, test }) {
   test("view settings use full-panel navigation with only More settings nested", async () => {
     const [dropdrawer, dropdrawerContent, menu, settings, subItems, toolbar] =
       await Promise.all([
-        readSource("/src/components/ui/dropdown-menu.tsx"),
-        readSource("/src/components/ui/dropdrawer.tsx"),
+        readSource("/src/shared/ui/dropdown-menu.tsx"),
+        readSource("/src/shared/ui/dropdrawer.tsx"),
         readSource("/src/editor/extensions/database/views/view-settings/index.tsx"),
         readSource("/src/editor/extensions/database/views/view-settings/data-source-settings.tsx"),
         readSource("/src/editor/extensions/database/views/view-settings/sub-items-settings.tsx"),

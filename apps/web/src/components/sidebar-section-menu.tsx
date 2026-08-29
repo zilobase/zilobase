@@ -6,7 +6,7 @@ import {
   HashIcon,
   MoreHorizontalIcon,
   SlidersHorizontalIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
 import {
   DropdownMenu,
@@ -19,9 +19,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { SidebarGroupAction } from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/dropdown-menu"
+import { SidebarGroupAction } from "@/shared/ui/sidebar"
+import { cn } from "@/shared/lib/utils"
 import type {
   LegacySidebarConfig,
   SidebarSectionId,

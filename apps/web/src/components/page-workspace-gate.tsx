@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { Building2Icon } from "@/components/icons"
+import { Building2Icon } from "@/shared/components/icons"
 
 import {
   AlertDialog,
@@ -12,8 +12,8 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
+} from "@/shared/ui/alert-dialog"
+import { Button } from "@/shared/ui/button"
 import { getApiErrorMessage } from "@/lib/api"
 import { useZilobaseFeatures } from "@zilobase/features"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"

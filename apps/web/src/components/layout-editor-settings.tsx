@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 
-import { Switch } from "@/components/ui/switch"
-import { cn } from "@/lib/utils"
+import { Switch } from "@/shared/ui/switch"
+import { cn } from "@/shared/lib/utils"
 import type { PageLayoutConfig } from "@zilobase/features/pages"
 
 type LayoutEditorSettingsProps = {

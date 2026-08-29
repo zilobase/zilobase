@@ -3,8 +3,8 @@ import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react"
 import {
   DropDrawerItem,
   DropDrawerSeparator,
-} from "@/components/ui/dropdrawer"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/dropdrawer"
+import { Input } from "@/shared/ui/input"
 
 export type DatabaseSearchableMenuOption = {
   icon?: ReactNode

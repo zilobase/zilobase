@@ -3,7 +3,7 @@ export function register({ readSource, assert, test }) {
     const sidebarSource = await readSource("/src/components/app-sidebar.tsx")
     const workspaceSource = await readSource("/src/components/workspace-switcher.tsx")
     const sidebarShellSource = await readSource("/src/components/app-sidebar-shell.tsx")
-    const sidebarPrimitiveSource = await readSource("/src/components/ui/sidebar.tsx")
+    const sidebarPrimitiveSource = await readSource("/src/shared/ui/sidebar.tsx")
     const sidebarTabsSource = await readSource("/src/components/sidebar-layout-tabs.tsx")
     const sidebarCustomizeSource = await readSource("/src/components/sidebar-customize-panel.tsx")
     const sidebarDatabaseViewSource = await readSource("/src/components/sidebar-database-view-section.tsx")
@@ -13,7 +13,7 @@ export function register({ readSource, assert, test }) {
     const pageIconSource = await readSource("/src/lib/page-icon.tsx")
     const databasePageLinkSource = await readSource("/src/editor/extensions/database/interactions/database-page-link.tsx")
     const appIconProviderSource = await readSource("/src/providers/app-icon-provider.tsx")
-    const iconPickerSource = await readSource("/src/components/ui/icon-emoji-picker.tsx")
+    const iconPickerSource = await readSource("/src/shared/ui/icon-emoji-picker.tsx")
 
     assert.match(sidebarSource, /<ZilobaseLogo className="h-5 w-auto" \/>/)
     assert.match(sidebarSource, /<span className="sr-only">Zilobase<\/span>/)

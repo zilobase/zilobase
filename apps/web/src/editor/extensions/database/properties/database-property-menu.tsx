@@ -19,7 +19,7 @@ import {
   TextWrap,
   Trash2,
   X,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { useState, type ButtonHTMLAttributes } from "react";
 
 import {
@@ -31,8 +31,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from "@/shared/ui/alert-dialog";
+import { Button } from "@/shared/ui/button";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -42,16 +42,16 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer";
-import { Input } from "@/components/ui/input";
-import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker";
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
+import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
 import { PageIconDisplay } from "@/lib/page-icon";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+} from "@/shared/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -59,7 +59,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/shared/ui/dialog";
 import {
   useDatabase,
   useDeleteDatabaseProperty,
@@ -67,9 +67,9 @@ import {
   useUpdateDatabase,
   useUpdateDatabaseProperty,
 } from "@zilobase/features/databases";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/shared/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { Textarea } from "@/shared/ui/textarea";
 
 import {
   databasePropertyTypes,

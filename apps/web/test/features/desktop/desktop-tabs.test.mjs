@@ -68,7 +68,7 @@ export function register({ readSource, assert, loadModule, test }) {
     const titlebarSource = await readSource("/src/components/desktop-window-titlebar.tsx")
     const sidebarSource = await readSource("/src/components/app-sidebar-shell.tsx")
     const appSource = await readSource("/src/App.tsx")
-    const stylesSource = await readSource("/src/App.css")
+    const stylesSource = await readSource("/src/shared/styles/global.css")
 
     assert.match(tabsSource, /DesktopTabStrip/)
     assert.match(tabStripSource, /data-desktop-tab-strip/)

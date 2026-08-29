@@ -31,7 +31,7 @@ import {
   Trash2Icon,
   UploadIcon,
   UserPlusIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { toast } from "sonner"
 
 import {
@@ -43,12 +43,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/shared/ui/alert-dialog"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@/shared/ui/collapsible"
 
 import {
   DropDrawer,
@@ -59,7 +59,7 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
+} from "@/shared/ui/dropdrawer"
 import {
   SidebarGroup,
   SidebarGroupAction,
@@ -69,7 +69,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/shared/ui/sidebar"
 import {
   getActiveDatabaseId,
   getActivePageId,
@@ -82,7 +82,7 @@ import {
 } from "@/components/sidebar-nav-item-action"
 import { useOpenInNewTab } from "@/components/desktop-tabs"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import { getApiErrorMessage } from "@/lib/api"
 import { PageIconDisplay } from "@/lib/page-icon"
 import { getTeamspaceSidebarPermissions } from "@/components/teamspace-sidebar-permissions"

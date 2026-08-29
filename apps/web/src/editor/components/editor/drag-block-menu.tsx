@@ -8,7 +8,7 @@ import {
   Plus,
   Trash2,
   Type,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
 import {
   DropDrawer,
@@ -21,8 +21,8 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/dropdrawer"
+import { Input } from "@/shared/ui/input"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +32,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@/shared/ui/alert-dialog"
 import {
   slashCommandItems,
   type SlashCommandItem,
@@ -46,7 +46,7 @@ import {
   endBlockDrag,
   startBlockDrag,
 } from "./block-drag"
-import { colorWithAlpha, getPaletteColor } from "@/lib/color-tokens"
+import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens"
 import { setDatabasePageDragPayload } from "@/packages/editor/extensions/database/interactions/database-page-drop"
 import type { DragHandleTarget } from "./types"
 import type {

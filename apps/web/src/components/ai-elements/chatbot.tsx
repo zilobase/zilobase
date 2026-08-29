@@ -68,8 +68,8 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import type { ToolPart } from "@/components/ai-elements/tool";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 import {
   aiChatThreadMessagesQueryKey,
   aiChatThreadMessagesQueryOptions,
@@ -125,7 +125,7 @@ import {
   SparklesIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AgentResultTable } from "@/components/ai-elements/agent-result-table";

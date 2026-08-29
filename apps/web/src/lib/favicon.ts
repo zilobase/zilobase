@@ -3,7 +3,7 @@ import {
   isSvgIcon,
   normalizeStoredIconPresentation,
   sanitizeStoredSvg,
-} from "@/lib/page-icon-utils"
+} from "@/shared/lib/page-icon-utils"
 
 export const DEFAULT_DOCUMENT_TITLE = "Zilobase"
 

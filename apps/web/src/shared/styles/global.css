@@ -1,0 +1,315 @@
+@import "tailwindcss";
+@source "../lib/color-tokens.ts";
+
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+@import "./design-tokens.css";
+
+@custom-variant dark (&:where(.dark *));
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+    scrollbar-color: var(--scrollbar-thumb-firefox) transparent;
+    scrollbar-width: thin;
+    }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+    }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+    }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: var(--radius-round);
+    }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+    }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+    }
+  body {
+    @apply bg-background text-foreground;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    }
+  html {
+    @apply font-sans;
+    }
+}
+
+[data-panel][data-sidebar-transitioning] {
+  transition: flex-grow 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: flex-grow;
+}
+
+[data-desktop-tabs] {
+  background-image: linear-gradient(
+    to bottom,
+    transparent calc(100% - 1px),
+    var(--border) calc(100% - 1px)
+  );
+}
+
+[data-desktop-tab-strip] {
+  --desktop-tab-slot-width: 15.25rem;
+  --desktop-tab-trailing-width: 2.5rem;
+  flex: 0 1 auto;
+  width: calc(
+    var(--desktop-tab-count) * var(--desktop-tab-slot-width) +
+      var(--desktop-tab-trailing-width)
+  );
+}
+
+[data-desktop-linux-shell]:has([data-desktop-tabs])
+  > [data-desktop-fallback-titlebar] {
+  display: none;
+}
+
+[data-desktop-linux-shell]:has([data-desktop-tabs])
+  > [data-desktop-app-content] {
+  padding-top: 0;
+}
+
+/* Page side panes cover the main surface. While one is open, the main page's
+   usable canvas ends at the divider so its content and table of contents never
+   render underneath the pane. Breadcrumbs stay anchored; only header actions
+   move out of the pane's way. */
+[data-page-side-pane-avoid] {
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+[data-page-side-pane-main-content] {
+  min-width: 0;
+  transition: width 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+  will-change: width;
+}
+
+[data-page-side-pane-panel],
+[data-page-side-pane-side-header] {
+  transition-duration: 200ms;
+  transition-property: transform, width;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, width;
+}
+
+/* In light mode, keep the side pane visually above the main canvas. Applying
+   the same left-facing shadow to its header and body makes one continuous
+   divider through the top bar. */
+@media (min-width: 768px) {
+  .light
+    [data-page-side-pane-open="true"]
+    :is([data-page-side-pane-panel], [data-page-side-pane-side-header]) {
+    box-shadow: -6px 0 16px -12px var(--side-pane-shadow-color);
+  }
+
+  .light [data-ai-chat-sidebar-panel][aria-hidden="false"] {
+    box-shadow: -6px 0 16px -12px var(--side-pane-shadow-color);
+  }
+}
+
+[data-page-side-pane-promoted="true"]
+  [data-page-side-pane-side-header]
+  [data-page-side-pane-promoted-hide],
+[data-page-side-pane-promoted="true"]
+  [data-page-side-pane-resize-handle] {
+  display: none;
+}
+
+[data-page-side-pane-open="true"]
+  [data-page-side-pane-main-header]
+  [data-page-side-pane-avoid] {
+  transform: translate3d(
+    calc(var(--page-side-pane-width, 50%) * -1),
+    0,
+    0
+  );
+}
+
+[data-page-side-pane-open="true"]
+  [data-page-side-pane-main-content] {
+  width: calc(100% - var(--page-side-pane-width, 50%));
+}
+
+[data-page-side-pane-resizing="true"]
+  :is(
+    [data-page-side-pane-avoid],
+    [data-page-side-pane-main-content],
+    [data-page-side-pane-panel],
+    [data-page-side-pane-side-header]
+  ) {
+  transition: none;
+}
+
+.desktop-tab-active::before,
+.desktop-tab-active::after {
+  position: absolute;
+  bottom: 0;
+  width: 9px;
+  height: 8px;
+  pointer-events: none;
+  content: "";
+}
+
+.desktop-tab-active::before {
+  left: -8px;
+  background: radial-gradient(
+    circle at 0 0,
+    transparent 7px,
+    var(--border) 7px 8px,
+    var(--background) 8px
+  );
+}
+
+.desktop-tab-active::after {
+  right: -8px;
+  background: radial-gradient(
+    circle at 100% 0,
+    transparent 7px,
+    var(--border) 7px 8px,
+    var(--background) 8px
+  );
+}
+
+/* Typography belongs to the shared component boundary so every import inherits
+   the same token-driven default, including portalled dropdown content. */
+:where(
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dropdown-menu-sub-content"],
+  [data-slot="drop-drawer-content"],
+  [data-slot="select-content"]
+),
+:where(
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dropdown-menu-sub-content"],
+  [data-slot="drop-drawer-content"],
+  [data-slot="select-content"]
+) * {
+  font-weight: var(--font-weight-dropdown) !important;
+}
+
+:where([data-slot="sidebar"], [data-slot="sidebar"] *) {
+  font-weight: var(--font-weight-sidebar) !important;
+}
+
+:where([data-slot="tabs"], [data-slot="tabs"] *) {
+  font-weight: var(--font-weight-tabs) !important;
+}
+
+:where(.database-block-shell, .database-block-shell *) {
+  font-weight: var(--font-weight-database) !important;
+}
+
+/* Inline structural titles follow editor Heading 2, not database chrome. */
+:where(.database-block-shell, .meeting-block-shell)
+  [data-structural-block-title] {
+  font-weight: var(--font-weight-semibold) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-panel][data-sidebar-transitioning] {
+    transition: none;
+  }
+  [data-page-side-pane-avoid],
+  [data-page-side-pane-main-content],
+  [data-page-side-pane-panel],
+  [data-page-side-pane-side-header] {
+    transition: none;
+  }
+}
+
+/*
+ * Keep cursor feedback consistent across native controls and headless UI
+ * primitives. These rules intentionally live outside Tailwind's layers so a
+ * primitive's generated `cursor-default` utility cannot hide its interaction.
+ */
+:where(
+  a[href],
+  area[href],
+  button,
+  summary,
+  select,
+  label[for],
+  input:is(
+    [type="button"],
+    [type="checkbox"],
+    [type="color"],
+    [type="file"],
+    [type="radio"],
+    [type="range"],
+    [type="reset"],
+    [type="submit"]
+  ),
+  [role="button"],
+  [role="checkbox"],
+  [role="link"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="radio"],
+  [role="switch"],
+  [role="tab"],
+  [data-slot$="-trigger"]
+):not(:disabled):not([aria-disabled="true"]):not([data-disabled]) {
+  cursor: pointer;
+}
+
+:where(
+  button,
+  select,
+  input,
+  [role="button"],
+  [role="checkbox"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="radio"],
+  [role="switch"],
+  [role="tab"]
+):is(:disabled, [aria-disabled="true"], [data-disabled]) {
+  cursor: not-allowed;
+}
+
+:where(
+  [draggable="true"],
+  [aria-grabbed="true"],
+  [data-slot="slider-thumb"],
+  [data-slot="scroll-area-thumb"],
+  [data-tauri-drag-region],
+  .react-flow__node.draggable,
+  .react-flow__pane.draggable
+) {
+  cursor: grab;
+}
+
+:where(
+  [draggable="true"],
+  [aria-grabbed="true"],
+  [data-slot="slider-thumb"],
+  [data-slot="scroll-area-thumb"],
+  [data-tauri-drag-region],
+  .react-flow__node.draggable,
+  .react-flow__pane.draggable
+):active,
+:where([data-dragging="true"], [aria-grabbed="true"]) {
+  cursor: grabbing;
+}
+
+[data-slot="resizable-handle"][aria-orientation="vertical"] {
+  cursor: col-resize;
+}
+
+[data-slot="resizable-handle"][aria-orientation="horizontal"] {
+  cursor: row-resize;
+}

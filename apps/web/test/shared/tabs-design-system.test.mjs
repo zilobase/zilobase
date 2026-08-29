@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 export function register({ readSource, assert, test }) {
   test("all shared tabs use the canonical control, text, spacing, and icon sizes", async () => {
-    const tabsSource = await readSource("/src/components/ui/tabs.tsx");
+    const tabsSource = await readSource("/src/shared/ui/tabs.tsx");
 
     assert.match(
       tabsSource,

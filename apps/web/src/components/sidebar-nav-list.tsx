@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react"
 import { Link } from "@tanstack/react-router"
-import { ArrowUpRightIcon, ChevronRightIcon, HardDriveDownloadIcon } from "@/components/icons"
+import { ArrowUpRightIcon, ChevronRightIcon, HardDriveDownloadIcon } from "@/shared/components/icons"
 
 import { getSidebarDatabaseViewSearchId } from "@/components/database-view-navigation"
 import {
@@ -22,13 +22,13 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
+} from "@/shared/ui/collapsible"
+import { SidebarMenuButton, SidebarMenuItem } from "@/shared/ui/sidebar"
 import {
   SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
   SidebarNavItemAction,
 } from "@/components/sidebar-nav-item-action"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import { type ZilobaseAiMode } from "@zilobase/features/pages"
 import { useOfflineManifest } from "@/providers/offline-provider"
 

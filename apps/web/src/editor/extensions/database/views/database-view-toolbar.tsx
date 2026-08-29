@@ -36,10 +36,10 @@ import {
   Table2,
   Trash2,
   X,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,16 +49,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/shared/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { IconEmojiPicker } from "@/components/ui/icon-emoji-picker";
+} from "@/shared/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
 import { PageIconDisplay } from "@/lib/page-icon";
 import {
   DropDrawer,
@@ -69,13 +69,13 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer";
+} from "@/shared/ui/dropdrawer";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+} from "@/shared/ui/popover";
+import { cn } from "@/shared/lib/utils";
 import { getDatabaseEmoji } from "@zilobase/features/databases";
 
 import { DatabaseSearchableMenuItems } from "./database-searchable-menu-items";

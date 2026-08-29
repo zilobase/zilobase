@@ -1,7 +1,7 @@
 import type { ComponentProps, CSSProperties } from "react"
 
-import { SidebarMenuAction } from "@/components/ui/sidebar"
-import { cn } from "@/lib/utils"
+import { SidebarMenuAction } from "@/shared/ui/sidebar"
+import { cn } from "@/shared/lib/utils"
 
 const SIDEBAR_NAV_ACTION_EDGE_INSET = 6
 

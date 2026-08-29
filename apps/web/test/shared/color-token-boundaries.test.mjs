@@ -45,11 +45,11 @@ const numberedSemanticColor =
 const systemColorUtility =
   /\b(?:bg|border|decoration|fill|outline|ring|stroke|text)-\[(?:Canvas|CanvasText|Highlight|HighlightText)\]\b/g
 const brandSvgFiles = new Set([
-  "src/components/google-icon.tsx",
+  "src/shared/components/google-icon.tsx",
   "src/editor/extensions/embed-block.tsx",
 ])
 const tokenDerivedColorFiles = new Set([
-  "src/lib/color-tokens.ts",
+  "src/shared/lib/color-tokens.ts",
   "src/editor/extensions/database/views/chart/database-chart-data.ts",
 ])
 
@@ -60,7 +60,7 @@ export function register({ appPath, assert, test }) {
     const violations = []
 
     for (const file of files) {
-      if (relative(appDir, file) === "src/styles/design-tokens.css") continue
+      if (relative(appDir, file) === "src/shared/styles/design-tokens.css") continue
 
       const source = await readFile(file, "utf8")
       const lines = source.split("\n")
@@ -105,7 +105,7 @@ export function register({ appPath, assert, test }) {
   test("the token vocabulary stays semantic and compact", async () => {
     const appDir = appPath(".")
     const source = await readFile(
-      join(appDir, "src/styles/design-tokens.css"),
+      join(appDir, "src/shared/styles/design-tokens.css"),
       "utf8",
     )
     const forbiddenToken =
@@ -121,7 +121,7 @@ export function register({ appPath, assert, test }) {
   test("duplicate role colors are aliases, not extra values", async () => {
     const appDir = appPath(".")
     const source = await readFile(
-      join(appDir, "src/styles/design-tokens.css"),
+      join(appDir, "src/shared/styles/design-tokens.css"),
       "utf8",
     )
     const themeSource = source.slice(0, source.indexOf("@theme inline"))
@@ -156,7 +156,7 @@ export function register({ appPath, assert, test }) {
   test("focus and database selection derive from the primary action color", async () => {
     const appDir = appPath(".")
     const tokens = await readFile(
-      join(appDir, "src/styles/design-tokens.css"),
+      join(appDir, "src/shared/styles/design-tokens.css"),
       "utf8",
     )
     const editorStyles = await readFile(

@@ -6,7 +6,7 @@ import {
   UserIcon,
   UsersIcon,
   Layers3Icon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import type { ComponentType } from "react"
 import { useSession } from "@zilobase/features/auth"
 
@@ -14,7 +14,7 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@/components/ui/avatar"
+} from "@/shared/ui/avatar"
 import {
   SidebarContent,
   SidebarGroup,
@@ -23,7 +23,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/shared/ui/sidebar"
 import { getUserImageUrl } from "@/lib/image-upload"
 import { editionWebModule } from "@zilobase/edition-web"
 

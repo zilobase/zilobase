@@ -2,18 +2,18 @@
 
 import { useNavigate } from "@tanstack/react-router"
 
-import { Button } from "@/components/ui/button"
-import { ZilobaseLogo } from "@/components/zilobase-logo"
+import { Button } from "@/shared/ui/button"
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/field"
+import { Input } from "@/shared/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import { useCreateWorkspace } from "@zilobase/features/workspaces"
 
 export function OnboardingForm({

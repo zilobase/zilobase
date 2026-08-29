@@ -18,7 +18,7 @@ import {
   Strikethrough,
   Table2,
   Underline,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
 import type { ToolbarItem } from "./types"
 

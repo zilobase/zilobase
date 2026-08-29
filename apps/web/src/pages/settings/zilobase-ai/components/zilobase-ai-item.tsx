@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { Loader2Icon, XIcon } from "@/components/icons"
+import { Loader2Icon, XIcon } from "@/shared/components/icons"
 import { toast } from "sonner"
 
 import {
@@ -12,9 +12,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/alert-dialog"
+import { Button } from "@/shared/ui/button"
+import { cn } from "@/shared/lib/utils"
 import { getApiErrorMessage } from "@/lib/api"
 import { PageIcon } from "@/lib/page-icon"
 import { useZilobaseFeatures } from "@zilobase/features"

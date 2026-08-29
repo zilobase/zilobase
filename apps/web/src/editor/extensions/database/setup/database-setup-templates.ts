@@ -1,4 +1,4 @@
-import type { ColorTokenId } from "@/lib/color-tokens"
+import type { ColorTokenId } from "@/shared/lib/color-tokens"
 
 import {
   defaultStatusOption,

@@ -20,13 +20,13 @@ import {
   Type,
   Users,
   type Icon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import {
   isReadOnlyPropertyType as isCanonicalReadOnlyPropertyType,
   isSelectLikePropertyType as isCanonicalSelectLikePropertyType,
   type DatabasePropertyType as DatabasePropertyTypeId,
 } from "@zilobase/features/databases/property-types"
-import { cyclingColorTokens } from "@/lib/color-tokens"
+import { cyclingColorTokens } from "@/shared/lib/color-tokens"
 
 export const defaultStatusOption = {
   color: "gray",

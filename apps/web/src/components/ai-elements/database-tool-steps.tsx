@@ -13,7 +13,7 @@ import {
   isDatabaseConfigToolName,
 } from "@zilobase/features/ai-chat";
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
-import type { Icon } from "@/components/icons";
+import type { Icon } from "@/shared/components/icons";
 import {
   Columns3Icon,
   DatabaseIcon,
@@ -24,7 +24,7 @@ import {
   Rows3Icon,
   Settings2Icon,
   TablePropertiesIcon,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 
 type DatabaseToolStepConfig = {
   activeLabel: string;

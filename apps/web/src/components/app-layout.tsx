@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, ReactNode, SetStateAction } from "react"
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
-import { ChevronsRightIcon, SidebarSimpleIcon } from "@/components/icons"
+import { ChevronsRightIcon, SidebarSimpleIcon } from "@/shared/components/icons"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { AppSearchProvider } from "@/components/app-search"
@@ -41,21 +41,21 @@ import {
   getSettingsSection,
   type SettingsSection,
 } from "@/components/settings-sidebar"
-import { Separator } from "@/components/ui/separator"
-import { ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
+import { Separator } from "@/shared/ui/separator"
+import { ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable"
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from "@/components/ui/sheet"
+} from "@/shared/ui/sheet"
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/shared/ui/sidebar"
 import { isEmbeddedMobileViewer } from "@/lib/embedded-view"
 import {
   getDatabaseEmoji,
@@ -80,7 +80,7 @@ import {
   PageLayoutSidebarProvider,
   useOptionalPageLayoutSidebar,
 } from "@/contexts/page-layout-sidebar"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import ApiKeysSettingsPage from "@/pages/settings/api-keys"
 import PreferencesSettingsPage from "@/pages/settings/preferences"
 import ProfileSettingsPage from "@/pages/settings/profile"

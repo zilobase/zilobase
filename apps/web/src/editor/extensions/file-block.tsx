@@ -4,17 +4,17 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { File as FileIcon, Link } from "@/components/icons"
+import { File as FileIcon, Link } from "@/shared/components/icons"
 import { useRef, useState } from "react"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/shared/ui/button"
+import { Input } from "@/shared/ui/input"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+} from "@/shared/ui/popover"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 
 function FileBlockView({ node, updateAttributes }: ReactNodeViewProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null)

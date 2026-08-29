@@ -28,17 +28,17 @@ import {
   SparklesIcon,
   Trash2Icon,
   XIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
 import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import { isOpenInNewTabShortcut } from "@/shortcuts"
 import type { DesktopTab } from "@/stores/app-store"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/shared/ui/tooltip"
 import { hasEditorBlockDragData } from "@/packages/editor/components/editor/block-drag-session"
 
 type DesktopTabStripProps = {

@@ -1,16 +1,16 @@
 import * as React from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2Icon, PlusIcon, SearchIcon } from "@/components/icons";
+import { Loader2Icon, PlusIcon, SearchIcon } from "@/shared/components/icons";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer";
-import { Input } from "@/components/ui/input";
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
 
 import { getApiErrorMessage } from "@/lib/api";
 import { PageIcon } from "@/lib/page-icon";

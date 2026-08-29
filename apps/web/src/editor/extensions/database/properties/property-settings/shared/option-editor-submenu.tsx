@@ -1,4 +1,4 @@
-import { Check, Flag, GripVertical, Trash2 } from "@/components/icons";
+import { Check, Flag, GripVertical, Trash2 } from "@/shared/components/icons";
 import { Reorder, useDragControls } from "framer-motion";
 
 import {
@@ -9,14 +9,14 @@ import {
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
-} from "@/components/ui/dropdrawer";
-import { Input } from "@/components/ui/input";
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
 import {
   colorTokens,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
   getColorTokenValue,
-} from "@/lib/color-tokens";
+} from "@/shared/lib/color-tokens";
 
 import type { DatabaseSelectOption } from "../../../views/database-view-config";
 

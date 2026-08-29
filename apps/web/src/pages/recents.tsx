@@ -1,15 +1,15 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, ChevronRight, Database, FileText, Globe2Icon, Layers3Icon, Loader2, LockIcon, Plus, UsersIcon } from "@/components/icons";
+import { ChevronDown, ChevronRight, Database, FileText, Globe2Icon, Layers3Icon, Loader2, LockIcon, Plus, UsersIcon } from "@/shared/components/icons";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/shared/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Spinner } from "@/shared/ui/spinner";
+import { Textarea } from "@/shared/ui/textarea";
 import { libraryViewIcons } from "@/components/sidebar-layout-icons";
 import { libraryViewLabels } from "@/components/sidebar-layout-model";
 import { PageSidePaneLayout, usePageSidePane } from "@/contexts/page-side-pane";
@@ -23,7 +23,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/shared/ui/dropdown-menu";
 import { DatabaseTableView } from "@/packages/editor/extensions/database/views/table/database-table-view";
 import { DatabaseViewProvider } from "@/packages/editor/extensions/database/views/database-view-context";
 import { DatabaseViewToolbar } from "@/packages/editor/extensions/database/views/database-view-toolbar";

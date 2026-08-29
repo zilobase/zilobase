@@ -25,8 +25,8 @@ import {
 import {
   ResizableHandle,
   ResizablePanel,
-} from "@/components/ui/resizable"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/resizable"
+import { cn } from "@/shared/lib/utils"
 
 const noOp = () => {}
 const hiddenGridTrack = "minmax(0, 0fr)"

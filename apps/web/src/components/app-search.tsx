@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { DatabaseIcon } from "@/components/icons"
+import { DatabaseIcon } from "@/shared/components/icons"
 
 import {
   Command,
@@ -18,7 +18,7 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-} from "@/components/ui/command"
+} from "@/shared/ui/command"
 import { useSession } from "@zilobase/features/auth"
 import { useWorkspaces } from "@zilobase/features/workspaces"
 import { useAppSearchResults } from "@zilobase/features/search"

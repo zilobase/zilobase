@@ -1,8 +1,8 @@
 import type { ReactNode } from "react"
 import { Link } from "@tanstack/react-router"
 
-import { FieldDescription } from "@/components/ui/field"
-import { ZilobaseLogo } from "@/components/zilobase-logo"
+import { FieldDescription } from "@/shared/ui/field"
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 
 export function AuthScreen({
   children,

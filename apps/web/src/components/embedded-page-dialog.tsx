@@ -1,12 +1,12 @@
 import type { ReactNode } from "react"
-import { XIcon } from "@/components/icons"
+import { XIcon } from "@/shared/components/icons"
 
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+} from "@/shared/ui/dialog"
+import { Button } from "@/shared/ui/button"
 import {
   PageScrollViewport,
   usePageSidePane,

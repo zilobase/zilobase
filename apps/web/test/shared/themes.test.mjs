@@ -6,7 +6,7 @@ export function register({ readSource, assert, loadModule, test }) {
       isThemeFamilyId,
       selectableThemeIds,
       themeFamilies,
-    } = await loadModule("/src/lib/themes.ts")
+    } = await loadModule("/src/shared/lib/themes.ts")
 
     assert.deepEqual(
       appearanceModes.map((mode) => mode.value),
@@ -38,8 +38,8 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("every custom theme family supplies light and dark palettes", async () => {
-    const { themeFamilies } = await loadModule("/src/lib/themes.ts")
-    const css = await readSource("/src/styles/design-tokens.css")
+    const { themeFamilies } = await loadModule("/src/shared/lib/themes.ts")
+    const css = await readSource("/src/shared/styles/design-tokens.css")
 
     for (const family of themeFamilies) {
       if (family.value === "default") continue

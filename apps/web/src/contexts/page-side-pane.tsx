@@ -15,8 +15,8 @@ import {
 } from "react"
 import { useLocation, useRouter } from "@tanstack/react-router"
 
-import { cn } from "@/lib/utils"
-import { isMobileViewport, useIsMobile } from "@/hooks/use-mobile"
+import { cn } from "@/shared/lib/utils"
+import { isMobileViewport, useIsMobile } from "@/shared/hooks/use-mobile"
 import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 
 export type OpenPageSidePaneOptions = {

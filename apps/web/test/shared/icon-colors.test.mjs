@@ -12,7 +12,7 @@ const paletteIds = [
 
 export function register({ readSource, assert, loadModule, test }) {
   test("getPaletteColor resolves palette ids only", async () => {
-    const { getPaletteColor } = await loadModule("/src/lib/color-tokens.ts")
+    const { getPaletteColor } = await loadModule("/src/shared/lib/color-tokens.ts")
 
     assert.equal(getPaletteColor(null), null)
     assert.equal(
@@ -25,7 +25,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("isPaletteColorActive matches token ids and palette CSS", async () => {
     const { getPaletteColor, isPaletteColorActive } =
-      await loadModule("/src/lib/color-tokens.ts")
+      await loadModule("/src/shared/lib/color-tokens.ts")
 
     assert.equal(isPaletteColorActive(null, null), true)
     assert.equal(isPaletteColorActive("pink", "pink"), true)
@@ -34,7 +34,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("yellow consumes semantic editor tokens", async () => {
-    const { colorTokens } = await loadModule("/src/lib/color-tokens.ts")
+    const { colorTokens } = await loadModule("/src/shared/lib/color-tokens.ts")
     const yellowToken = colorTokens.find((token) => token.value === "yellow")
 
     assert.equal(yellowToken?.textClass, "text-editor-yellow")
@@ -47,7 +47,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("collaborator colors reuse the editor palette", async () => {
-    const { collaboratorColorIds } = await loadModule("/src/lib/color-tokens.ts")
+    const { collaboratorColorIds } = await loadModule("/src/shared/lib/color-tokens.ts")
 
     assert.deepEqual([...collaboratorColorIds], [
       "blue",
@@ -63,7 +63,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("icons use palette accents or contrast-safe palette surfaces", async () => {
     const { getIconSolidClassName, getIconTextClassName } = await loadModule(
-      "/src/lib/color-tokens.ts",
+      "/src/shared/lib/color-tokens.ts",
     )
 
     assert.equal(getIconTextClassName("blue"), "text-editor-blue")
@@ -74,7 +74,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("colorWithAlpha tints palette colors", async () => {
-    const { colorWithAlpha } = await loadModule("/src/lib/color-tokens.ts")
+    const { colorWithAlpha } = await loadModule("/src/shared/lib/color-tokens.ts")
 
     assert.equal(
       colorWithAlpha("pink", 0.18),
@@ -84,7 +84,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("getColorTokenBadgeClassName uses contrast foreground on pills", async () => {
-    const { getColorTokenBadgeClassName } = await loadModule("/src/lib/color-tokens.ts")
+    const { getColorTokenBadgeClassName } = await loadModule("/src/shared/lib/color-tokens.ts")
 
     assert.equal(
       getColorTokenBadgeClassName("blue"),
@@ -97,7 +97,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("Notion-style tag pairs meet WCAG text contrast targets", async () => {
-    const css = await readSource("/src/styles/design-tokens.css")
+    const css = await readSource("/src/shared/styles/design-tokens.css")
     const themes = [
       readRule(css, ".light"),
       readRule(css, ".dark"),

@@ -1,15 +1,15 @@
-import { Check, GripVertical } from "@/components/icons"
+import { Check, GripVertical } from "@/shared/components/icons"
 import { useState, type ReactNode } from "react"
 
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/shared/ui/popover"
 import {
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
-} from "@/lib/color-tokens"
+} from "@/shared/lib/color-tokens"
 import { getNextDatabaseOptionColor } from "../core/database-property-types"
 import type { DatabaseSelectOption } from "../views/database-view-config"
 import { toStringArray } from "../core/utils"

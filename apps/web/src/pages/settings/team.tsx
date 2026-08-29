@@ -6,28 +6,28 @@ import {
   SendIcon,
   Trash2Icon,
   UsersIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge } from "@/shared/ui/badge"
+import { Button } from "@/shared/ui/button"
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@/components/ui/empty"
+} from "@/shared/ui/empty"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/field"
+import { Input } from "@/shared/ui/input"
 import {
   Item,
   ItemActions,
@@ -36,23 +36,23 @@ import {
   ItemGroup,
   ItemMedia,
   ItemTitle,
-} from "@/components/ui/item"
+} from "@/shared/ui/item"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Separator } from "@/components/ui/separator"
-import { Spinner } from "@/components/ui/spinner"
+} from "@/shared/ui/select"
+import { Skeleton } from "@/shared/ui/skeleton"
+import { Separator } from "@/shared/ui/separator"
+import { Spinner } from "@/shared/ui/spinner"
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/components/ui/tabs"
+} from "@/shared/ui/tabs"
 import { useSession } from "@zilobase/features/auth"
 import {
   useInviteWorkspaceMember,

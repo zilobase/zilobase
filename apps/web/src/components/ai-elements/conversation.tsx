@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 import type { UIMessage } from "ai";
-import { ArrowDownIcon, DownloadIcon } from "@/components/icons";
+import { ArrowDownIcon, DownloadIcon } from "@/shared/components/icons";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";

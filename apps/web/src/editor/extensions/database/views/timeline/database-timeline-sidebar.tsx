@@ -1,10 +1,10 @@
 import { memo, type CSSProperties } from "react"
-import { ChevronDown, ChevronRight, Plus } from "@/components/icons"
+import { ChevronDown, ChevronRight, Plus } from "@/shared/components/icons"
 
 import {
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
-} from "@/lib/color-tokens"
+} from "@/shared/lib/color-tokens"
 
 import { databaseNameColumnDefaultWidth } from "../../core/database-contracts"
 import { DatabasePageLink } from "../../interactions/database-page-link"

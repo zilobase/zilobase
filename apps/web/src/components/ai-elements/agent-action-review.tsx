@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { isToolUIPart, type UIMessage } from "ai";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/shared/ui/button";
 import { apiFetch } from "@/lib/api";
 
 type Approval = {

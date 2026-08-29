@@ -1,5 +1,5 @@
 import * as React from "react";
-import { DownloadIcon, RefreshCwIcon, Trash2Icon } from "@/components/icons";
+import { DownloadIcon, RefreshCwIcon, Trash2Icon } from "@/shared/components/icons";
 import { toast } from "sonner";
 
 import {
@@ -11,9 +11,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+} from "@/shared/ui/alert-dialog";
+import { Button } from "@/shared/ui/button";
+import { Spinner } from "@/shared/ui/spinner";
 import { getApiErrorMessage } from "@/lib/api";
 import {
   describeDesktopError,

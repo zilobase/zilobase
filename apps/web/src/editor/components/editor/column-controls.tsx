@@ -8,7 +8,7 @@ import {
   MoreHorizontal,
   SidebarSimpleIcon,
   Trash2,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import {
   columnHandleGap,
   columnHandleHeight,

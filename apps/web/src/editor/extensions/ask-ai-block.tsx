@@ -5,7 +5,7 @@ import {
   type ReactNodeViewProps,
 } from "@tiptap/react"
 import type { Editor, Range } from "@tiptap/core"
-import { Loader2, Send, Sparkles, X } from "@/components/icons"
+import { Loader2, Send, Sparkles, X } from "@/shared/components/icons"
 import { useEffect, useRef, useState } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { toast } from "sonner"
@@ -19,13 +19,13 @@ import {
   PromptInputTools,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
-} from "@/components/ui/popover"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/shared/ui/popover"
+import { Textarea } from "@/shared/ui/textarea"
 import {
   nextPaint,
   parseMarkdownContent,

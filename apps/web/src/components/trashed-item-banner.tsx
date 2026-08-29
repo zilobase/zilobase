@@ -9,8 +9,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
+} from "@/shared/ui/alert-dialog"
+import { Button } from "@/shared/ui/button"
 
 type TrashedItemBannerProps = {
   itemLabel: "database" | "page"

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { isTauri } from "@tauri-apps/api/core"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/shared/ui/dialog"
 import {
   Field,
   FieldDescription,
@@ -17,8 +17,8 @@ import {
   FieldGroup,
   FieldLabel,
   FieldSeparator,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/shared/ui/field"
+import { Input } from "@/shared/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
 import {
   desktopCloudConnectUrl,

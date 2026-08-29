@@ -7,20 +7,20 @@ import {
   LinkIcon,
   MoreHorizontalIcon,
   StarOffIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@/shared/ui/collapsible"
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerSeparator,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer"
+} from "@/shared/ui/dropdrawer"
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -28,7 +28,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/shared/ui/sidebar"
 import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,

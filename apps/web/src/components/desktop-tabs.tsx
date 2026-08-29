@@ -5,12 +5,12 @@ import { isTauri } from "@tauri-apps/api/core"
 import { useRouter, useRouterState } from "@tanstack/react-router"
 import { useShallow } from "zustand/react/shallow"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/shared/lib/utils"
 import { isOpenInNewTabShortcut } from "@/shortcuts"
 import { useAppStore, type DesktopTab } from "@/stores/app-store"
 import { DesktopTabStrip } from "@/components/desktop-tab-strip"
 import { DesktopWindowTitlebar } from "@/components/desktop-window-titlebar"
-import { useSidebar } from "@/components/ui/sidebar"
+import { useSidebar } from "@/shared/ui/sidebar"
 
 export function DesktopTabs({
   icon,

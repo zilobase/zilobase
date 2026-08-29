@@ -1,24 +1,24 @@
 "use client"
 
 import * as React from "react"
-import { ArrowLeftIcon, RotateCcwIcon } from "@/components/icons"
+import { ArrowLeftIcon, RotateCcwIcon } from "@/shared/components/icons"
 import { Link, useNavigate } from "@tanstack/react-router"
 
-import { Button } from "@/components/ui/button"
-import { ZilobaseLogo } from "@/components/zilobase-logo"
+import { Button } from "@/shared/ui/button"
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
-} from "@/components/ui/field"
+} from "@/shared/ui/field"
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSeparator,
   InputOTPSlot,
-} from "@/components/ui/input-otp"
-import { cn } from "@/lib/utils"
+} from "@/shared/ui/input-otp"
+import { cn } from "@/shared/lib/utils"
 import { getApiErrorMessage } from "@/lib/api"
 import {
   useRequestEmailVerificationOtp,

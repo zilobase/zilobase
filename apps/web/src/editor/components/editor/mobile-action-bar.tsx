@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
-import { ArrowDown, ArrowUp } from "@/components/icons"
+import { ArrowDown, ArrowUp } from "@/shared/components/icons"
 
-import { Button } from "@/components/ui/button"
-import { ButtonGroup } from "@/components/ui/button-group"
+import { Button } from "@/shared/ui/button"
+import { ButtonGroup } from "@/shared/ui/button-group"
 
 type MobileActionBarProps = {
   canMoveDown: boolean

@@ -1,7 +1,7 @@
 import { useMemo } from "react"
-import { GripVertical, Loader2, Plus } from "@/components/icons"
+import { GripVertical, Loader2, Plus } from "@/shared/components/icons"
 
-import { Checkbox } from "@/components/ui/checkbox"
+import { Checkbox } from "@/shared/ui/checkbox"
 import { DatabasePageLink } from "../../interactions/database-page-link"
 import { DatabasePropertyValue } from "../../properties/database-property-value"
 import { useDatabaseRowsScroll } from "../../interactions/use-database-rows-scroll"

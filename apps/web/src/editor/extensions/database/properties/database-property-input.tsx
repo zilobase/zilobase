@@ -11,8 +11,8 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
-import { getColorToken } from "@/lib/color-tokens"
+} from "@/shared/ui/popover"
+import { getColorToken } from "@/shared/lib/color-tokens"
 
 import {
   getNumberDecimalPlaces,

@@ -6,17 +6,17 @@ import {
   DropDrawerItem,
   DropDrawerSeparator,
   DropDrawerTrigger,
-} from "@/components/ui/dropdrawer";
+} from "@/shared/ui/dropdrawer";
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
+} from "@/shared/ui/sidebar";
 import { SidebarNavItemAction } from "@/components/sidebar-nav-item-action";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Input } from "@/shared/ui/input";
+import { cn } from "@/shared/lib/utils";
 import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import type { AiChatThread } from "@zilobase/features/ai-chat";
 import {
   ArchiveIcon,
@@ -25,7 +25,7 @@ import {
   PinOffIcon,
   SearchIcon,
   Trash2Icon,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { Fragment, useMemo, useState } from "react";
 
 function formatRelativeTime(value: string) {

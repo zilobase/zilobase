@@ -5,7 +5,7 @@ import {
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
-} from "@/components/ui/dropdrawer";
+} from "@/shared/ui/dropdrawer";
 
 import {
   hasDatabasePropertyTypeEditSettings,

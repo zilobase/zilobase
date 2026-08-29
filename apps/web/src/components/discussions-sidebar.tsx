@@ -4,18 +4,18 @@ import {
   ChevronsRightIcon,
   FilterIcon,
   MessageSquarePlusIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { useEffect, useMemo, useState } from "react"
 
 import { PageCommentThread } from "@/components/page-comments"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+} from "@/shared/ui/dropdown-menu"
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 import { usePageCommentController, usePageCommentsSnapshot } from "@/contexts/page-comments-registry"
 import type { CommentThreadSnapshot } from "@/comments/yjs-comments"
 

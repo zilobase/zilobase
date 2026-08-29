@@ -1,11 +1,11 @@
-import { Plus } from "@/components/icons";
+import { Plus } from "@/shared/components/icons";
 import { Reorder } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
 import {
   DropDrawerLabel,
   DropDrawerSeparator,
-} from "@/components/ui/dropdrawer";
+} from "@/shared/ui/dropdrawer";
 
 import {
   defaultStatusOptions,

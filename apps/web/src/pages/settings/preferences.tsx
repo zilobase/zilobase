@@ -10,7 +10,7 @@ import {
   ServerIcon,
   Trash2Icon,
   UploadIcon,
-} from "@/components/icons"
+} from "@/shared/components/icons"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "@/components/settings-header"
@@ -23,8 +23,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
+} from "@/shared/ui/alert-dialog"
+import { Button } from "@/shared/ui/button"
 import {
   Select,
   SelectContent,
@@ -33,10 +33,10 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Slider } from "@/components/ui/slider"
-import { Spinner } from "@/components/ui/spinner"
+} from "@/shared/ui/select"
+import { Separator } from "@/shared/ui/separator"
+import { Slider } from "@/shared/ui/slider"
+import { Spinner } from "@/shared/ui/spinner"
 import { getApiErrorMessage } from "@/lib/api"
 import {
   describeDesktopError,
@@ -71,7 +71,7 @@ import {
   themeFamilies,
   type AppearanceModeId,
   type ThemeFamilyId,
-} from "@/lib/themes"
+} from "@/shared/lib/themes"
 import { useThemeFamily } from "@/providers/theme-family-provider"
 import {
   getDesktopTranslucency,

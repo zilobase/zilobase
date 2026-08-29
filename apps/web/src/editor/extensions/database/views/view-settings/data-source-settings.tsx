@@ -9,7 +9,7 @@ import {
   Search,
   Settings2,
   Sparkles,
-} from "@/components/icons";
+} from "@/shared/components/icons";
 import { useEffect, useState } from "react";
 
 import {
@@ -19,8 +19,8 @@ import {
   DropDrawerSub,
   DropDrawerSubContent,
   DropDrawerSubTrigger,
-} from "@/components/ui/dropdrawer";
-import { Input } from "@/components/ui/input";
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
 import { useDatabase } from "@zilobase/features/databases";
 import { usePageNavigation, type PageDatabase } from "@zilobase/features/pages";
 import { DEFAULT_DATABASE_ITEM_ICON } from "@/lib/item-icons";
