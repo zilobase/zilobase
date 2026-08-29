@@ -223,7 +223,7 @@ export function NavPageSection({
     return {
       className:
         databaseDropTargetId === item.id
-          ? "bg-accent text-accent-foreground ring-1 ring-ring"
+          ? "bg-action-neutral-hover text-action-on-neutral ring-1 ring-action-focus-ring"
           : undefined,
       draggable: !item.isDatabase && !item.isDatabaseView && !item.isMeeting,
       onDragEnter: handleDatabaseDragOver,
@@ -239,7 +239,7 @@ export function NavPageSection({
       typeof teamspace.icon === "string" && teamspace.icon ? (
         <PageIconDisplay size="sm" value={teamspace.icon} />
       ) : (
-        <Layers3Icon className="size-4 text-muted-foreground" />
+        <Layers3Icon className="size-4 text-content-secondary" />
       )
 
     return (
@@ -294,11 +294,11 @@ export function NavPageSection({
                   </DropDrawerTrigger>
                   <DropDrawerContent align="end" className="w-44 rounded-lg">
                     <DropDrawerItem onSelect={() => onCreatePage?.()}>
-                      <FileIcon className="text-muted-foreground" />
+                      <FileIcon className="text-content-secondary" />
                       <span>Page</span>
                     </DropDrawerItem>
                     <DropDrawerItem onSelect={() => onCreateDatabase?.()}>
-                      <DatabaseIcon className="text-muted-foreground" />
+                      <DatabaseIcon className="text-content-secondary" />
                       <span>Database</span>
                     </DropDrawerItem>
                   </DropDrawerContent>
@@ -350,7 +350,7 @@ export function NavPageSection({
             <SidebarGroupLabel
               asChild
               className={cn(
-                "group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground",
+                "group-hover/section-header:bg-action-neutral-hover group-hover/section-header:text-action-on-neutral group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-action-neutral-hover group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-action-on-neutral",
                 showCreateAction
                   ? showSectionMenu
                     ? "pr-24"
@@ -410,7 +410,7 @@ export function NavPageSection({
                     onCreatePage?.()
                   }}
                 >
-                  <FileIcon className="text-muted-foreground" />
+                  <FileIcon className="text-content-secondary" />
                   <span>Page</span>
                 </DropDrawerItem>
                 <DropDrawerItem
@@ -418,7 +418,7 @@ export function NavPageSection({
                     onCreateDatabase?.()
                   }}
                 >
-                  <DatabaseIcon className="text-muted-foreground" />
+                  <DatabaseIcon className="text-content-secondary" />
                   <span>Database</span>
                 </DropDrawerItem>
                 {onImportNotion ? (
@@ -427,7 +427,7 @@ export function NavPageSection({
                       onImportNotion()
                     }}
                   >
-                    <UploadIcon className="text-muted-foreground" />
+                    <UploadIcon className="text-content-secondary" />
                     <span>Import Notion</span>
                   </DropDrawerItem>
                 ) : null}
@@ -663,7 +663,7 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
               )
             }}
           >
-            <LinkIcon className="text-muted-foreground" />
+            <LinkIcon className="text-content-secondary" />
             <span>Copy Link</span>
           </DropDrawerItem>
           <DropDrawerSeparator />
@@ -672,7 +672,7 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
               openInNewTab({ href: linkPath, title: displayName })
             }}
           >
-            <ArrowUpRightIcon className="text-muted-foreground" />
+            <ArrowUpRightIcon className="text-content-secondary" />
             <span>Open in New Tab</span>
           </DropDrawerItem>
           <OfflineAvailabilityAction
@@ -684,7 +684,7 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
           {!item.isDatabase && !item.isDatabaseView && item.pageId ? (
             <DropDrawerSub>
               <DropDrawerSubTrigger>
-                <FolderInputIcon className="text-muted-foreground" />
+                <FolderInputIcon className="text-content-secondary" />
                 <span>Move to</span>
               </DropDrawerSubTrigger>
               <DropDrawerSubContent>
@@ -749,12 +749,12 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
           ) : null}
           <DropDrawerSeparator />
           <DropDrawerItem
-            className="text-destructive focus:text-destructive"
+            className="text-action-danger-text focus:text-action-danger-text"
             onSelect={() => {
               setConfirmOpen(true)
             }}
           >
-            <Trash2Icon className="text-destructive" />
+            <Trash2Icon className="text-action-danger-text" />
             <span>Delete</span>
           </DropDrawerItem>
         </DropDrawerContent>

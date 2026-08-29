@@ -22,13 +22,14 @@ export function register({ readSource, assert, test }) {
 
   test("shared nested controls use adjacent concentric radius tokens", async () => {
     const [tabs, dropdown, contextMenu] = await Promise.all(
-      ["tabs", "dropdown-menu", "context-menu"].map((component) =>
+      ["app-tabs", "dropdown-menu", "context-menu"].map((component) =>
         readSource(`/src/shared/ui/${component}.tsx`),
       ),
     )
 
-    assert.match(tabs, /rounded-lg bg-muted p-1/)
-    assert.match(tabs, /rounded-md bg-background/)
+    assert.match(tabs, /rounded-lg p-1/)
+    assert.match(tabs, /rounded-md[^"\n]*data-active:bg-action-neutral-hover/)
+    assert.doesNotMatch(tabs, /TabsPrimitive\.Indicator/)
     for (const menu of [dropdown, contextMenu]) {
       assert.match(menu, /rounded-lg[^"\n]*p-1/)
       assert.match(menu, /data-slot="[^"]+-item"[\s\S]*?rounded-md/)
@@ -43,7 +44,7 @@ export function register({ readSource, assert, test }) {
           "shared/ui/sidebar.tsx",
           "shared/ui/sidebar-nav-item-action.tsx",
           "features/sidebar/components/sidebar-section-menu.tsx",
-          "shared/ui/tabs.tsx",
+          "shared/ui/app-tabs.tsx",
         ].map((path) =>
           readSource(`/src/${path}`),
         ),

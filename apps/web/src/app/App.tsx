@@ -25,7 +25,7 @@ export default function App() {
 
   return (
     <div
-      className="relative h-svh overflow-hidden bg-background text-foreground"
+      className="relative h-svh overflow-hidden bg-surface-canvas text-content-primary"
       data-desktop-linux-shell
     >
       <DesktopWindowTitlebar variant="fallback">

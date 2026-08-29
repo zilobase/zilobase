@@ -18,7 +18,7 @@ export function RuntimeSectionDragItem({
     <div
       className={cn(
         (sortable.isDragging || sortable.isOver) &&
-          "relative z-20 bg-sidebar",
+          "relative z-20 bg-surface-navigation",
       )}
       onPointerDown={(event) => {
         const target = event.target;

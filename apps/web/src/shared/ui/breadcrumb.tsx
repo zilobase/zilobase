@@ -20,7 +20,7 @@ export function BreadcrumbList({
   return (
     <ol
       className={cn(
-        "wrap-break-word flex flex-wrap items-center gap-1.5 text-muted-foreground text-sm font-medium sm:gap-2.5",
+        "wrap-break-word flex flex-wrap items-center gap-1.5 text-content-secondary text-sm font-medium sm:gap-2.5",
         className,
       )}
       data-slot="breadcrumb-list"
@@ -48,7 +48,7 @@ export function BreadcrumbLink({
   ...props
 }: useRender.ComponentProps<"a">): React.ReactElement {
   const defaultProps = {
-    className: cn("transition-colors hover:text-foreground", className),
+    className: cn("transition-colors hover:text-content-primary", className),
     "data-slot": "breadcrumb-link",
   }
 
@@ -66,7 +66,7 @@ export function BreadcrumbPage({
   return (
     <span
       aria-current="page"
-      className={cn("font-medium text-foreground", className)}
+      className={cn("font-medium text-content-primary", className)}
       data-slot="breadcrumb-page"
       {...props}
     />

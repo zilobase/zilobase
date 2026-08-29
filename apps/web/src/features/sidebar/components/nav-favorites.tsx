@@ -85,7 +85,7 @@ export function NavFavorites({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel
               asChild
-              className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-accent group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-accent-foreground"
+              className="pr-16 group-hover/section-header:bg-action-neutral-hover group-hover/section-header:text-action-on-neutral group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-action-neutral-hover group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-action-on-neutral"
             >
               <button
                 className="group/section-label w-full cursor-pointer"
@@ -195,7 +195,7 @@ function FavoriteItemMenu({
         {item.isFavorite ? (
           <>
             <DropDrawerItem onSelect={removeFavorite}>
-              <StarOffIcon className="text-muted-foreground" />
+              <StarOffIcon className="text-content-secondary" />
               <span>Remove from Favorites</span>
             </DropDrawerItem>
             <DropDrawerSeparator />
@@ -208,7 +208,7 @@ function FavoriteItemMenu({
             )
           }}
         >
-          <LinkIcon className="text-muted-foreground" />
+          <LinkIcon className="text-content-secondary" />
           <span>Copy Link</span>
         </DropDrawerItem>
         <DropDrawerItem
@@ -219,7 +219,7 @@ function FavoriteItemMenu({
             })
           }}
         >
-          <ArrowUpRightIcon className="text-muted-foreground" />
+          <ArrowUpRightIcon className="text-content-secondary" />
           <span>Open in New Tab</span>
         </DropDrawerItem>
       </DropDrawerContent>

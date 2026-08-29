@@ -61,18 +61,18 @@ export function SidebarDatabaseViewSection({
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel
               asChild
-              className="pr-16 group-hover/section-header:bg-accent group-hover/section-header:text-accent-foreground"
+              className="pr-16 group-hover/section-header:bg-action-neutral-hover group-hover/section-header:text-action-on-neutral"
             >
               <button className="group/section-label w-full cursor-pointer" type="button">
                 <span className="truncate">{title}</span>
-                <ChevronRightIcon className="ml-1 size-3 text-muted-foreground transition-transform group-data-[state=open]/section-label:rotate-90" />
+                <ChevronRightIcon className="ml-1 size-3 text-content-secondary transition-transform group-data-[state=open]/section-label:rotate-90" />
               </button>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
           {database.data && activeDataSourceId && database.data.database.accessLevel !== "view" && !isDatabaseLocked(database.data.database) ? (
             <SidebarGroupAction
               aria-label={`Add row to ${title}`}
-              className="right-9 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              className="right-9 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
               disabled={addRow.isPending}
               onClick={() => {
                 addRow.mutate(
@@ -85,7 +85,7 @@ export function SidebarDatabaseViewSection({
               <PlusIcon />
             </SidebarGroupAction>
           ) : null}
-          <SidebarGroupAction asChild className="right-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground" title="View all">
+          <SidebarGroupAction asChild className="right-2 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral" title="View all">
             <Link params={{ databaseId: section.databaseId }} search={{ view: section.viewId }} to="/d/$databaseId">
               <DatabaseIcon />
               <span className="sr-only">View all</span>
@@ -95,11 +95,11 @@ export function SidebarDatabaseViewSection({
         <CollapsibleContent className="pb-4 pt-0.5">
           <SidebarGroupContent>
             {database.isLoading ? (
-              <p className="px-2 py-1.5 text-xs text-muted-foreground">Loading…</p>
+              <p className="px-2 py-1.5 text-xs text-content-secondary">Loading…</p>
             ) : database.isError || !database.data ? (
-              <p className="rounded-md bg-muted px-2 py-2 text-xs text-muted-foreground">Source unavailable</p>
+              <p className="rounded-md bg-surface-muted px-2 py-2 text-xs text-content-secondary">Source unavailable</p>
             ) : rows.length === 0 ? (
-              <p className="px-2 py-1.5 text-xs text-muted-foreground">No matching rows</p>
+              <p className="px-2 py-1.5 text-xs text-content-secondary">No matching rows</p>
             ) : (
               <SidebarMenu aria-label={`${title} rows`}>
                 {rows.map((row) => (

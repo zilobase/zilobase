@@ -112,7 +112,7 @@ import {
   useOfflineManifest,
   useOfflineSessionLocked,
 } from "@/features/offline/index";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import {
   getPrimaryPageParentId,
   zilobaseAiModeLabels,
@@ -489,13 +489,13 @@ export function NavActions({
           />
           <span
             aria-hidden="true"
-            className="hidden text-xs text-muted-foreground md:inline"
+            className="hidden text-xs text-content-secondary md:inline"
           >
             ·
           </span>
         </>
       ) : null}
-      <div className="hidden text-sm font-medium text-muted-foreground md:inline-block">
+      <div className="hidden text-sm font-medium text-content-secondary md:inline-block">
         Edited recently
       </div>
       {hasPageActions ? (
@@ -506,7 +506,7 @@ export function NavActions({
               aria-pressed={discussionsOpen}
               className={cn(
                 "h-7 gap-1.5 px-2",
-                discussionsOpen && "bg-active text-active-foreground",
+                discussionsOpen && "bg-action-neutral-pressed text-action-on-neutral",
               )}
               onClick={onToggleDiscussions}
               size="sm"
@@ -525,7 +525,7 @@ export function NavActions({
               }
               className={cn(
                 "h-7 w-7",
-                pageSidebarOpen && "bg-active text-active-foreground",
+                pageSidebarOpen && "bg-action-neutral-pressed text-action-on-neutral",
               )}
               onClick={onTogglePageSidebar}
               size="icon"
@@ -552,7 +552,7 @@ export function NavActions({
             aria-label={
               isFavorite ? "Remove from favorites" : "Add to favorites"
             }
-            className={cn("h-7 w-7", isFavorite && "text-status-favorite")}
+            className={cn("h-7 w-7", isFavorite && "text-feedback-favorite")}
             disabled={
               databaseId
                 ? !databasePayload || setDatabaseFavorite.isPending
@@ -571,7 +571,7 @@ export function NavActions({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 data-[state=open]:bg-accent"
+                className="h-7 w-7 data-[state=open]:bg-action-neutral-hover"
               >
                 <MoreHorizontalIcon />
               </Button>
@@ -632,7 +632,7 @@ export function NavActions({
                 <DropDrawerItem
                   className={
                     label === "Move to Trash"
-                      ? "text-destructive focus:text-destructive"
+                      ? "text-action-danger-text focus:text-action-danger-text"
                       : undefined
                   }
                   key={label}
@@ -696,34 +696,34 @@ function OfflineHeaderStatus({
 }) {
   const status = sessionLocked
     ? {
-        className: "text-destructive",
+        className: "text-action-danger-text",
         icon: WifiOffIcon,
         label: "Session expired",
         title: "Offline session expired — reconnect and sign in",
       }
     : blocked
       ? {
-          className: "text-destructive",
+          className: "text-action-danger-text",
           icon: CircleAlertIcon,
           label: "Sync blocked",
           title: "Sync blocked — page access may have changed",
         }
       : connectivity === "offline" || connectivity === "service-unavailable"
         ? {
-            className: "text-muted-foreground",
+            className: "text-content-secondary",
             icon: WifiOffIcon,
             label: "Offline",
             title: "Offline — this item is stored on this Mac",
           }
         : connectivity === "checking" || dirty
           ? {
-              className: "text-muted-foreground",
+              className: "text-content-secondary",
               icon: LoaderCircleIcon,
               label: "Syncing",
               title: "Syncing offline changes",
             }
           : {
-              className: "text-muted-foreground",
+              className: "text-content-secondary",
               icon: CloudCheckIcon,
               label: "Synced",
               title: "Available offline and synced",
@@ -766,7 +766,7 @@ function ZilobaseAiSubmenu({
       <DropDrawerSubTrigger disabled={disabled}>
         <SparklesIcon />
         <span className="flex-1">Zilobase AI</span>
-        {mode ? <span className="text-muted-foreground">{mode}</span> : null}
+        {mode ? <span className="text-content-secondary">{mode}</span> : null}
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-64">
         {zilobaseAiModes.map((value) => (
@@ -834,7 +834,7 @@ function ItemShareDropdown({
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>
         <Button
-          className="h-7 gap-2 data-[state=open]:bg-accent"
+          className="h-7 gap-2 data-[state=open]:bg-action-neutral-hover"
           size="sm"
           variant="outline"
         >
@@ -1085,7 +1085,7 @@ function ItemShareDropdownContent({
         <div className="font-semibold leading-none tracking-tight">
           Share {isDatabase ? "database" : "page"}
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-content-secondary">
           Access applies to this{" "}
           {isDatabase ? "database" : "page and nested pages"}.
         </div>
@@ -1141,7 +1141,7 @@ function ItemShareDropdownContent({
                               <div className="truncate font-medium">
                                 {label}
                               </div>
-                              <div className="truncate text-xs text-muted-foreground">
+                              <div className="truncate text-xs text-content-secondary">
                                 {member.email}
                               </div>
                             </div>
@@ -1191,7 +1191,7 @@ function ItemShareDropdownContent({
             <div className="grid gap-2 rounded-md border p-3">
               <div>
                 <div className="text-sm font-medium">Invite a page guest</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-content-secondary">
                   Guests can access this page and its nested pages, but not the
                   workspace.
                 </div>
@@ -1238,7 +1238,7 @@ function ItemShareDropdownContent({
               </div>
               {pendingGuestInvitations.length > 0 ? (
                 <div className="grid gap-1 border-t pt-2">
-                  <div className="text-xs font-medium text-muted-foreground">
+                  <div className="text-xs font-medium text-content-secondary">
                     Pending guest invitations
                   </div>
                   {pendingGuestInvitations.map((invitation) => (
@@ -1249,7 +1249,7 @@ function ItemShareDropdownContent({
                       <span className="min-w-0 flex-1 truncate">
                         {invitation.email}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-content-secondary">
                         {invitation.accessLevel}
                       </span>
                       <Button
@@ -1280,13 +1280,13 @@ function ItemShareDropdownContent({
               ) : null}
               {pendingGuestRequests.length > 0 ? (
                 <div className="grid gap-1 border-t pt-2">
-                  <div className="text-xs font-medium text-muted-foreground">
+                  <div className="text-xs font-medium text-content-secondary">
                     Pending owner approval
                   </div>
                   {pendingGuestRequests.map((request) => (
                     <div className="flex items-center gap-2 text-sm" key={request.id}>
                       <span className="min-w-0 flex-1 truncate">{request.email}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-content-secondary">
                         {request.accessLevel}
                       </span>
                     </div>
@@ -1357,7 +1357,7 @@ function ItemShareDropdownContent({
           </div>
 
           {!canManage ? (
-            <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <div className="rounded-md bg-surface-muted px-3 py-2 text-xs text-content-secondary">
               You need full access to manage sharing for this{" "}
               {isDatabase ? "database" : "page"}.
             </div>
@@ -1374,12 +1374,12 @@ function ItemShareDropdownContent({
 
         <TabsContent className="grid gap-4 pt-2" value="publish">
           <div className="flex items-start gap-3 rounded-md border px-3 py-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-muted">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-muted">
               <Globe2Icon className="size-4" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium">Publish to web</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-content-secondary">
                 Anyone with the link can view this{" "}
                 {isDatabase ? "database" : "page and nested pages"}. Published
                 content is read-only.
@@ -1397,7 +1397,7 @@ function ItemShareDropdownContent({
           </div>
 
           {!canManage ? (
-            <div className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <div className="rounded-md bg-surface-muted px-3 py-2 text-xs text-content-secondary">
               You need full access to manage publishing for this{" "}
               {isDatabase ? "database" : "page"}.
             </div>
@@ -1438,11 +1438,11 @@ function RuleRow({
         <div className="truncate text-sm font-medium">
           {target?.label ?? "Unknown target"}
         </div>
-        <div className="truncate text-xs text-muted-foreground">
+        <div className="truncate text-xs text-content-secondary">
           {target?.detail ?? rule.targetType}
         </div>
       </div>
-      <span className="text-xs text-muted-foreground">
+      <span className="text-xs text-content-secondary">
         {accessLabels[rule.accessLevel]}
       </span>
       {canManage ? (
@@ -1477,12 +1477,12 @@ function AccessRow({
         <div className="truncate text-sm font-medium">
           {label}{" "}
           {suffix ? (
-            <span className="text-muted-foreground">({suffix})</span>
+            <span className="text-content-secondary">({suffix})</span>
           ) : null}
         </div>
-        <div className="truncate text-xs text-muted-foreground">{detail}</div>
+        <div className="truncate text-xs text-content-secondary">{detail}</div>
       </div>
-      <span className="text-xs text-muted-foreground">
+      <span className="text-xs text-content-secondary">
         {accessLabels[level]}
       </span>
     </div>

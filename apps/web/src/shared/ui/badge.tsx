@@ -5,20 +5,20 @@ import { Slot } from "radix-ui"
 import { cn } from "@/shared/lib/utils"
 
 const badgeVariants = cva(
-  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-[0.625rem] font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive dark:aria-invalid:ring-destructive [&>svg]:pointer-events-none [&>svg]:size-2.5!",
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border border-transparent px-2 py-0.5 text-[0.625rem] font-medium whitespace-nowrap transition-all focus-visible:border-action-focus-ring focus-visible:ring-[3px] focus-visible:ring-action-focus-ring has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-action-danger-border aria-invalid:ring-action-danger-border dark:aria-invalid:ring-action-danger-border [&>svg]:pointer-events-none [&>svg]:size-2.5!",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary-subtle",
+        default: "bg-action-selected text-action-on-selected [a]:hover:bg-action-selected-subtle",
         secondary:
-          "bg-secondary text-secondary-foreground [a]:hover:bg-secondary",
+          "bg-action-secondary text-action-on-secondary [a]:hover:bg-action-secondary",
         destructive:
-          "bg-status-danger-diff-surface text-destructive focus-visible:ring-destructive dark:bg-status-danger-diff-surface dark:focus-visible:ring-destructive [a]:hover:bg-status-danger-diff-surface",
+          "bg-feedback-error-subtle text-action-danger-text focus-visible:ring-action-danger-border dark:bg-feedback-error-subtle dark:focus-visible:ring-action-danger-border [a]:hover:bg-feedback-error-subtle",
         outline:
-          "border-border bg-input text-foreground dark:bg-input [a]:hover:bg-accent [a]:hover:text-muted-foreground",
+          "border-stroke-default bg-control-background text-content-primary dark:bg-control-background [a]:hover:bg-action-neutral-hover [a]:hover:text-content-secondary",
         ghost:
-          "hover:bg-accent hover:text-muted-foreground dark:hover:bg-accent",
-        link: "text-primary underline-offset-4 hover:underline",
+          "hover:bg-action-neutral-hover hover:text-content-secondary dark:hover:bg-action-neutral-hover",
+        link: "text-action-link underline-offset-4 hover:underline",
       },
     },
     defaultVariants: {

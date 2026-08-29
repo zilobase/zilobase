@@ -49,11 +49,11 @@ export function RouteErrorPage({ error }: ErrorComponentProps) {
   }, [copy.showChangeServer]);
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background p-6">
+    <main className="flex min-h-svh items-center justify-center bg-surface-canvas p-6">
       <div className="flex max-w-sm flex-col items-center gap-4 text-center">
         <div>
           <h1 className="text-lg font-semibold">{copy.title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-sm text-content-secondary">
             {copy.description}
           </p>
         </div>

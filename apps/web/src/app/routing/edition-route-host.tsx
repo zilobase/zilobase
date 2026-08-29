@@ -13,7 +13,7 @@ export function EditionRouteHost() {
   if (!route) {
     return (
       <main className="flex min-h-full items-center justify-center p-6">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-content-secondary">
           Enterprise page not found.
         </p>
       </main>

@@ -307,18 +307,18 @@ function ItemIndicators({ item }: { item: SidebarNavItem }) {
       {availableOffline ? (
         <HardDriveDownloadIcon
           aria-label="Available offline"
-          className="size-3.5 text-muted-foreground"
+          className="size-3.5 text-content-secondary"
         />
       ) : null}
       {showAiMode ? (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-content-secondary">
           {item.zilobaseai}
         </span>
       ) : null}
       {item.isLinked ? (
         <ArrowUpRightIcon
           aria-label="Linked from another parent"
-          className="size-3 text-muted-foreground"
+          className="size-3 text-content-secondary"
         />
       ) : null}
     </span>

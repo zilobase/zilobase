@@ -61,7 +61,7 @@ export function IconUploadPicker({
   return (
     <div
       className={cn(
-        "isolate flex h-[342px] w-72 flex-col bg-popover text-popover-foreground",
+        "isolate flex h-[342px] w-72 flex-col bg-surface-overlay text-content-primary",
         className,
       )}
     >
@@ -82,8 +82,8 @@ export function IconUploadPicker({
             className={cn(
               "mx-2 mt-2 flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed px-4 py-6 text-center transition-colors",
               dragActive
-                ? "border-ring bg-subtle-surface"
-                : "border-border bg-subtle-surface hover:bg-accent",
+                ? "border-action-focus-ring bg-surface-subtle"
+                : "border-stroke-default bg-surface-subtle hover:bg-action-neutral-hover",
             )}
             onClick={() => inputRef.current?.click()}
             onDragEnter={(event) => {
@@ -105,22 +105,22 @@ export function IconUploadPicker({
             }}
             type="button"
           >
-            <span className="flex size-10 items-center justify-center rounded-full bg-muted">
-              <Upload className="size-5 text-muted-foreground" />
+            <span className="flex size-10 items-center justify-center rounded-full bg-surface-muted">
+              <Upload className="size-5 text-content-secondary" />
             </span>
             <span className="space-y-1">
               <span className="block text-sm font-medium">
                 Drop an SVG here
               </span>
-              <span className="block text-xs text-muted-foreground">
+              <span className="block text-xs text-content-secondary">
                 or click to upload
               </span>
             </span>
           </button>
           {error ? (
-            <p className="px-3 pb-2 text-xs text-destructive">{error}</p>
+            <p className="px-3 pb-2 text-xs text-action-danger-text">{error}</p>
           ) : (
-            <div className="flex h-10 items-center border-t px-3 text-xs text-muted-foreground">
+            <div className="flex h-10 items-center border-t px-3 text-xs text-content-secondary">
               Upload a custom icon
             </div>
           )}
@@ -130,7 +130,7 @@ export function IconUploadPicker({
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-medium">Choose a color</p>
             <button
-              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              className="text-xs text-content-secondary transition-colors hover:text-content-primary"
               onClick={() => {
                 setUploadedIcon(null)
                 setError(null)
@@ -141,7 +141,7 @@ export function IconUploadPicker({
             </button>
           </div>
           <div className="mt-4 flex justify-center">
-            <span className="flex size-16 items-center justify-center rounded-lg bg-subtle-surface text-muted-foreground">
+            <span className="flex size-16 items-center justify-center rounded-lg bg-surface-subtle text-content-secondary">
               <IconSvgPreview
                 content={uploadedIcon.content}
                 size={40}

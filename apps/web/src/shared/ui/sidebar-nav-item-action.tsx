@@ -6,7 +6,7 @@ import { cn } from "@/shared/lib/utils"
 const SIDEBAR_NAV_ACTION_EDGE_INSET = 6
 
 export const SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME =
-  "group-hover/nav-row:bg-accent group-hover/nav-row:text-accent-foreground group-hover/nav-row:data-active:bg-active group-hover/nav-row:data-active:text-active-foreground group-active/nav-row:bg-active group-active/nav-row:text-active-foreground group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:bg-accent group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:text-accent-foreground group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:bg-active group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:text-active-foreground group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:bg-accent group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:text-accent-foreground group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:bg-active group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:text-active-foreground"
+  "group-hover/nav-row:bg-action-neutral-hover group-hover/nav-row:text-action-on-neutral group-hover/nav-row:data-active:bg-action-neutral-pressed group-hover/nav-row:data-active:text-action-on-neutral group-active/nav-row:bg-action-neutral-pressed group-active/nav-row:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:bg-action-neutral-hover group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:bg-action-neutral-pressed group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:bg-action-neutral-hover group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:bg-action-neutral-pressed group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:text-action-on-neutral"
 
 type SidebarNavItemActionProps = ComponentProps<typeof SidebarMenuAction> & {
   depth?: number
@@ -32,10 +32,10 @@ export function SidebarNavItemAction({
   return (
     <SidebarMenuAction
       className={cn(
-        "rounded-md opacity-0 text-muted-foreground! group-hover/nav-row:opacity-100 hover:bg-sidebar-control-hover active:bg-sidebar-control-hover! focus-visible:bg-sidebar-control-hover focus-visible:opacity-100",
+        "rounded-md opacity-0 text-content-secondary! group-hover/nav-row:opacity-100 hover:bg-action-neutral-hover active:bg-action-neutral-pressed! focus-visible:bg-action-neutral-hover focus-visible:opacity-100",
         variant === "disclosure" && "data-[state=open]:rotate-90",
         variant === "menu" &&
-          "aria-expanded:bg-sidebar-control-hover aria-expanded:opacity-100 aria-expanded:text-muted-foreground data-[state=open]:bg-sidebar-control-hover data-[state=open]:opacity-100 data-[state=open]:text-muted-foreground",
+          "aria-expanded:bg-action-neutral-hover aria-expanded:opacity-100 aria-expanded:text-content-secondary data-[state=open]:bg-action-neutral-hover data-[state=open]:opacity-100 data-[state=open]:text-content-secondary",
         className,
       )}
       data-nav-menu-action={variant}

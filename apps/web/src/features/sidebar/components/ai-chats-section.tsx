@@ -19,10 +19,10 @@ export function AiChatsSection({
     <Collapsible asChild onOpenChange={setOpen} open={open}>
       <SidebarGroup className="group/collapsible min-h-0">
         <CollapsibleTrigger asChild>
-          <SidebarGroupLabel asChild className="hover:bg-accent hover:text-accent-foreground">
+          <SidebarGroupLabel asChild className="hover:bg-action-neutral-hover hover:text-action-on-neutral">
             <button className="group/section-label w-full cursor-pointer" type="button">
               <span>AI chats</span>
-              <ChevronRightIcon className="ml-1 size-3 text-muted-foreground transition-transform group-data-[state=open]/section-label:rotate-90" />
+              <ChevronRightIcon className="ml-1 size-3 text-content-secondary transition-transform group-data-[state=open]/section-label:rotate-90" />
             </button>
           </SidebarGroupLabel>
         </CollapsibleTrigger>

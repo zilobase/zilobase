@@ -2,7 +2,6 @@ export function register({ readSource, assert, test }) {
   test("sidebar pins the Zilobase logo at the top and workspace switcher at the bottom", async () => {
     const sidebarSource = await readSource("/src/features/sidebar/app-sidebar.tsx")
     const workspaceSource = await readSource("/src/features/sidebar/workspace-switcher.tsx")
-    const sidebarShellSource = await readSource("/src/features/sidebar/app-sidebar-shell.tsx")
     const sidebarPrimitiveSource = await readSource("/src/shared/ui/sidebar.tsx")
     const sidebarTabsSource = await readSource("/src/features/sidebar/components/sidebar-layout-tabs.tsx")
     const sidebarCustomizeSource = await readSource("/src/features/sidebar/components/sidebar-customize-panel.tsx")
@@ -32,8 +31,8 @@ export function register({ readSource, assert, test }) {
     )
     assert.match(sidebarSource, /gap-2 p-2/)
     assert.doesNotMatch(navPagesSource, /<span>More<\/span>/)
-    assert.match(sidebarPrimitiveSource, /default: "h-7 text-sm"/)
-    assert.match(sidebarPrimitiveSource, /font-medium data-active:font-medium text-sidebar-item-foreground ring-ring/)
+    assert.match(sidebarPrimitiveSource, /flex h-8 w-full items-center/)
+    assert.match(sidebarPrimitiveSource, /text-sm font-medium text-content-secondary ring-action-focus-ring/)
     assert.doesNotMatch(navListSource, /data-\[active=false\]:opacity-80/)
     assert.match(navListSource, /flex min-w-0 flex-col gap-px/)
     assert.match(defaultIconsSource, /data-icon-color="gray"/)
@@ -69,7 +68,7 @@ export function register({ readSource, assert, test }) {
     assert.match(sidebarCustomizeSource, /data-\[state=open\]:opacity-100/)
     assert.match(
       sidebarCustomizeSource,
-      /data-\[state=open\]:bg-accent data-\[state=open\]:text-accent-foreground/,
+      /data-\[state=open\]:bg-action-neutral-hover data-\[state=open\]:text-action-on-neutral/,
     )
     assert.match(sidebarCustomizeSource, /data-sidebar-customize-action/)
     assert.doesNotMatch(sidebarCustomizeSource, />Move left</)
@@ -95,7 +94,7 @@ export function register({ readSource, assert, test }) {
     assert.match(addShortcutMenu, /<DatabasePicker/)
     assert.doesNotMatch(addShortcutMenu, /<SearchablePicker/)
     assert.match(sidebarCustomizeSource, /useAppSearchResults\(/)
-    assert.match(sidebarCustomizeSource, /sticky top-0 z-10 shrink-0 bg-popover/)
+    assert.match(sidebarCustomizeSource, /sticky top-0 z-10 shrink-0 bg-surface-overlay/)
     assert.match(sidebarCustomizeSource, /overflow-y-auto overscroll-contain/)
     assert.match(sidebarCustomizeSource, /getPageIconNode\(page\)/)
     assert.match(sidebarCustomizeSource, /getDatabaseIconNode\(database\)/)
@@ -107,14 +106,14 @@ export function register({ readSource, assert, test }) {
     assert.match(runtimeSectionDragSource, /translate3d\(0, \$\{sortable\.transform\.y\}px, 0\)/)
     assert.match(sidebarPrimitiveSource, /<SidebarSimpleIcon className="size-4" \/>/)
     assert.match(sidebarPrimitiveSource, /variant="ghost"[\s\S]*size="icon"/)
-    assert.doesNotMatch(sidebarShellSource, /<SidebarTrigger[^>]*\[&_svg\]:size-/)
-    assert.doesNotMatch(sidebarShellSource, /<SidebarTrigger[^>]*(size-7|hover:bg-accent)/)
+    assert.doesNotMatch(sidebarSource, /<SidebarTrigger[^>]*\[&_svg\]:size-/)
+    assert.doesNotMatch(sidebarSource, /<SidebarTrigger[^>]*(size-7|hover:bg-action-neutral-hover)/)
     assert.doesNotMatch(
-      sidebarShellSource,
-      /group\/workspace-row|hover:bg-accent focus-within:bg-accent/,
+      sidebarSource,
+      /group\/workspace-row|hover:bg-action-neutral-hover focus-within:bg-action-neutral-hover/,
     )
-    assert.match(sidebarShellSource, /navigation \? <div className="-mx-2">/)
-    const headerStart = sidebarSource.indexOf("<AppSidebarHeader")
+    assert.match(sidebarPrimitiveSource, /navigation \? <div className="-mx-2">/)
+    const headerStart = sidebarSource.indexOf("<SidebarHeader")
     const contentStart = sidebarSource.indexOf("<SidebarContent>")
     const footerStart = sidebarSource.indexOf("<SidebarFooter")
     const logoPosition = sidebarSource.indexOf("<ZilobaseLogo", headerStart)
@@ -170,8 +169,8 @@ export function register({ readSource, assert, test }) {
       sidebarDatabaseViewSource,
       /<SidebarMenuButton asChild isActive=\{row\.pageId === activePageId\}>/,
     )
-    assert.match(sidebarShellSource, /Light[\s\S]*Dark[\s\S]*System/)
-    assert.match(sidebarSource, /<AppSidebarHeader[\s\S]*navigation=\{!customizing \? <SidebarLayoutTabs/)
+    assert.match(sidebarSource, /Light[\s\S]*Dark[\s\S]*System/)
+    assert.match(sidebarSource, /<SidebarHeader[\s\S]*navigation=\{!customizing \? <SidebarLayoutTabs/)
     assert.match(workspaceSource, /<span>Settings<\/span>/)
     assert.match(workspaceSource, /Add workspace[\s\S]*WorkspaceSettingsItem/)
   })

@@ -61,7 +61,7 @@ export function SidebarLayoutTabs({
 
   return (
     <TooltipProvider>
-      <nav aria-label="Sidebar tabs" className="relative z-10 bg-sidebar px-2 py-2">
+      <nav aria-label="Sidebar tabs" className="relative z-10 bg-surface-navigation px-2 py-2">
         <div className="flex min-w-0 items-center gap-1">
           <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd} sensors={sensors}>
             <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -82,7 +82,7 @@ export function SidebarLayoutTabs({
                   <TooltipTrigger asChild>
                     <button
                       aria-label="Add tab"
-                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring active:bg-active"
+                      className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-content-secondary outline-none transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed"
                       onClick={onAddTab}
                       type="button"
                     >
@@ -98,7 +98,7 @@ export function SidebarLayoutTabs({
             <TooltipTrigger asChild>
               <button
                 aria-label="Search"
-                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring active:bg-active"
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-content-secondary outline-none transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed"
                 onClick={onOpenSearch}
                 type="button"
               >
@@ -128,10 +128,10 @@ function SidebarLayoutTab({ active, activeTabSettings, editing, onSelectTab, tab
       aria-current={active ? "page" : undefined}
       aria-label={tab.name}
       className={cn(
-        "relative inline-flex h-8 min-w-8 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-transparent py-0.5 text-xs font-medium text-muted-foreground outline-none transition-[color,background-color,box-shadow] hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-muted-foreground",
-        active && "bg-accent text-accent-foreground",
+        "relative inline-flex h-8 min-w-8 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-transparent py-0.5 text-xs font-medium text-content-secondary outline-none transition-[color,background-color,box-shadow] hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:border-action-focus-ring focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed active:text-content-secondary",
+        active && "bg-action-neutral-hover text-action-on-neutral",
         canDrag && "cursor-grab touch-none active:cursor-grabbing",
-        (sortable.isDragging || sortable.isOver) && "z-20 bg-accent",
+        (sortable.isDragging || sortable.isOver) && "z-20 bg-action-neutral-hover",
       )}
       custom={active}
       initial={false}

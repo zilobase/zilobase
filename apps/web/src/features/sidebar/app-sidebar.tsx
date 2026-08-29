@@ -13,12 +13,18 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { isDesktopApp } from "@/features/desktop/index"
+import { useTheme } from "next-themes"
 import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
-import { MonitorUpIcon, SlidersHorizontalIcon } from "@/shared/components/icons"
+import {
+  MonitorIcon,
+  MonitorUpIcon,
+  MoonIcon,
+  SlidersHorizontalIcon,
+  SunIcon,
+} from "@/shared/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
 
-import { AppSidebarHeader, AppSidebarShell } from "./app-sidebar-shell"
 import { useAppSearch } from "./app-search"
 import { DatabaseViewIcon } from "@/features/databases"
 import { AiChatsSection } from "./components/ai-chats-section"
@@ -45,10 +51,20 @@ import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/shared/ui/sidebar"
+import { Button } from "@/shared/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu"
 import { WorkspaceSwitcher } from "./workspace-switcher"
 import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import { clearPromotedFullPagePath, usePromotedFullPagePath } from "@/features/pages/context/index"
@@ -268,11 +284,25 @@ export function AppSidebar({
     return <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={section.id} label={section.label || (section.kind === "recents" ? "Recents" : "Private")} onCreateDatabase={section.kind === "private" ? handleCreateDatabase : undefined} onCreatePage={section.kind === "private" ? handleCreatePage : undefined} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pages} sectionId={section.kind} sectionStorageKey={storageKey} showCreateAction={section.kind === "private"} sidebarConfig={legacyConfig!} storageKey={`${storageKey}:tree`} />
   }
 
+  const hasOverlayTitleBar =
+    isDesktopApp() &&
+    (navigator.userAgent.includes("Mac") || navigator.userAgent.includes("Linux"))
+
   return (
-    <AppSidebarShell {...props}>
-      <AppSidebarHeader navigation={!customizing ? <SidebarLayoutTabs activeTabId={activeTab.id} onOpenSearch={openSearch} onSelectTab={selectTab} tabs={layout.tabs} /> : null}>
+    <Sidebar aria-label="Application sidebar" {...props}>
+      <SidebarHeader
+        actions={
+          <>
+            <ThemeSwitcher />
+            <SidebarTrigger className="mr-0.5 shrink-0" />
+          </>
+        }
+        className={hasOverlayTitleBar ? "pt-9" : undefined}
+        data-tauri-drag-region={hasOverlayTitleBar ? "deep" : undefined}
+        navigation={!customizing ? <SidebarLayoutTabs activeTabId={activeTab.id} onOpenSearch={openSearch} onSelectTab={selectTab} tabs={layout.tabs} /> : null}
+      >
         <div className="flex h-full items-center px-1.5"><ZilobaseLogo className="h-5 w-auto" /><span className="sr-only">Zilobase</span></div>
-      </AppSidebarHeader>
+      </SidebarHeader>
       {customizing ? (
         <SidebarCustomizePanel activeTabId={activeTabId} databases={navigation?.databases ?? []} disabled={updateUserSettings.isPending} key={`${workspaceId}:${JSON.stringify(layout)}`} layout={layout} onActiveTabChange={selectTab} onCancel={() => setCustomizing(false)} onDone={saveLayout} onOpenSearch={openSearch} pages={navigation?.pages ?? []} workspaceId={workspaceId} />
       ) : (
@@ -286,16 +316,55 @@ export function AppSidebar({
           </DndContext>
         </SidebarContent>
       )}
-      <SidebarFooter className="relative z-10 bg-sidebar p-0">
+      <SidebarFooter className="relative z-10 bg-surface-navigation p-0">
         {!customizing ? (
-          <SidebarMenu className="gap-2 p-2 group-data-[collapsible=icon]:px-1">
-            <SidebarMenuItem><SidebarMenuButton onClick={() => setCustomizing(true)} tooltip="Customize sidebar" type="button"><SlidersHorizontalIcon /><span>Customize sidebar</span></SidebarMenuButton></SidebarMenuItem>
-            {!isDesktopApp() && desktopLinkServer ? <SidebarMenuItem><a className="flex w-full items-start gap-2.5 rounded-lg bg-accent p-3 text-foreground ring-1 ring-border transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2!" href={buildDesktopDeepLink(location.href, desktopLinkServer)}><MonitorUpIcon className="mt-0.5 size-4 shrink-0" /><span className="min-w-0 group-data-[collapsible=icon]:hidden"><span className="block text-sm font-medium">Open in desktop app</span><span className="mt-0.5 block text-xs leading-snug text-muted-foreground">Continue this page in the desktop experience.</span></span></a></SidebarMenuItem> : null}
+          <SidebarMenu className="gap-2 p-2">
+            <SidebarMenuItem><SidebarMenuButton onClick={() => setCustomizing(true)} title="Customize sidebar" type="button"><SlidersHorizontalIcon /><span>Customize sidebar</span></SidebarMenuButton></SidebarMenuItem>
+            {!isDesktopApp() && desktopLinkServer ? <SidebarMenuItem><a className="flex w-full items-start gap-2.5 rounded-lg bg-action-neutral-hover p-3 text-content-primary ring-1 ring-stroke-default transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none" href={buildDesktopDeepLink(location.href, desktopLinkServer)}><MonitorUpIcon className="mt-0.5 size-4 shrink-0" /><span className="min-w-0"><span className="block text-sm font-medium">Open in desktop app</span><span className="mt-0.5 block text-xs leading-snug text-content-secondary">Continue this page in the desktop experience.</span></span></a></SidebarMenuItem> : null}
           </SidebarMenu>
         ) : null}
-        <div className="border-t border-border px-2 py-2"><WorkspaceSwitcher onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} /></div>
+        <div className="border-t border-stroke-default px-2 py-2"><WorkspaceSwitcher onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} /></div>
       </SidebarFooter>
-    </AppSidebarShell>
+    </Sidebar>
+  )
+}
+
+function ThemeSwitcher() {
+  const { setTheme, theme = "system" } = useTheme()
+  const ThemeIcon =
+    theme === "light" ? SunIcon : theme === "dark" ? MoonIcon : MonitorIcon
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          aria-label="Change theme"
+          className="size-7 text-content-secondary [&_svg]:size-4!"
+          size="icon-lg"
+          title="Theme"
+          type="button"
+          variant="ghost"
+        >
+          <ThemeIcon />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-36" side="bottom">
+        <DropdownMenuRadioGroup onValueChange={setTheme} value={theme}>
+          <DropdownMenuRadioItem value="light">
+            <SunIcon />
+            <span>Light</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="dark">
+            <MoonIcon />
+            <span>Dark</span>
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="system">
+            <MonitorIcon />
+            <span>System</span>
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

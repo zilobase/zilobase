@@ -106,7 +106,7 @@ function SingleWorkspaceLabel({
               className="h-8 w-full max-w-full px-1.5"
               disabled={isLoading}
             >
-              <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-action-selected text-action-on-selected">
                 {activeWorkspace ? (
                   <span className="text-[10px] font-semibold">
                     {getWorkspaceInitials(activeWorkspace.name)}
@@ -226,7 +226,7 @@ function MultiWorkspaceSwitcher({
                 className="h-8 w-full max-w-full px-1.5 py-0"
                 disabled={isLoading}
               >
-                <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-action-selected text-action-on-selected">
                   {activeWorkspace ? (
                     <span className="text-[10px] font-semibold">
                       {getWorkspaceInitials(activeWorkspace.name)}
@@ -244,7 +244,7 @@ function MultiWorkspaceSwitcher({
                     })}
                   </span>
                   {showServerCaption ? (
-                    <span className="block truncate text-[11px] font-normal text-muted-foreground">
+                    <span className="block truncate text-[11px] font-normal text-content-secondary">
                       {serverSectionLabel(currentServer?.displayName, currentServer?.apiOrigin)}
                     </span>
                   ) : null}
@@ -259,11 +259,11 @@ function MultiWorkspaceSwitcher({
               sideOffset={4}
             >
               {isDesktop ? (
-                <DropDrawerLabel className="text-xs text-muted-foreground">
+                <DropDrawerLabel className="text-xs text-content-secondary">
                   {serverSectionLabel(currentServer?.displayName, currentServer?.apiOrigin)}
                 </DropDrawerLabel>
               ) : (
-                <DropDrawerLabel className="text-xs text-muted-foreground">
+                <DropDrawerLabel className="text-xs text-content-secondary">
                   Workspaces
                 </DropDrawerLabel>
               )}
@@ -300,10 +300,10 @@ function MultiWorkspaceSwitcher({
                     className="gap-2 p-2"
                     onSelect={() => setIsCreateDialogOpen(true)}
                   >
-                    <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+                    <div className="flex size-6 items-center justify-center rounded-md border bg-surface-canvas">
                       <PlusIcon className="size-4" />
                     </div>
-                    <div className="font-medium text-muted-foreground">
+                    <div className="font-medium text-content-secondary">
                       Add workspace
                     </div>
                   </DropDrawerItem>
@@ -334,10 +334,10 @@ function MultiWorkspaceSwitcher({
                     className="gap-2 p-2"
                     onSelect={() => setIsConnectDialogOpen(true)}
                   >
-                    <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+                    <div className="flex size-6 items-center justify-center rounded-md border bg-surface-canvas">
                       <ServerIcon className="size-4" />
                     </div>
-                    <div className="font-medium text-muted-foreground">
+                    <div className="font-medium text-content-secondary">
                       Connect another server
                     </div>
                   </DropDrawerItem>
@@ -430,7 +430,7 @@ function OtherServerSection({
   return (
     <>
       <DropDrawerSeparator />
-      <DropDrawerLabel className="text-xs text-muted-foreground">
+      <DropDrawerLabel className="text-xs text-content-secondary">
         {label}
       </DropDrawerLabel>
       {workspaces.length > 0 ? (
@@ -447,13 +447,13 @@ function OtherServerSection({
             </div>
             <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
             {signInHint ? (
-              <span className="text-[11px] text-muted-foreground">Sign in</span>
+              <span className="text-[11px] text-content-secondary">Sign in</span>
             ) : null}
           </DropDrawerItem>
         ))
       ) : (
         <DropDrawerItem className="gap-2 p-2" onClick={() => onSwitch(null)}>
-          <div className="flex size-6 items-center justify-center rounded-md border bg-background">
+          <div className="flex size-6 items-center justify-center rounded-md border bg-surface-canvas">
             <ServerIcon className="size-4" />
           </div>
           <span className="min-w-0 flex-1 truncate">
@@ -474,7 +474,7 @@ function WorkspaceSettingsItem({
 }) {
   return (
     <DropDrawerItem
-      className={settingsOpen ? "bg-accent text-accent-foreground" : undefined}
+      className={settingsOpen ? "bg-action-neutral-hover text-action-on-neutral" : undefined}
       onSelect={onOpenSettings}
     >
       <Settings2Icon />

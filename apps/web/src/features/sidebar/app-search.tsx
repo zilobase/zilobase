@@ -90,7 +90,7 @@ export function AppSearchProvider({ children }: { children: ReactNode }) {
           />
           <CommandList className="max-h-[28rem]">
             {isFetching && results.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
+              <div className="py-6 text-center text-sm text-content-secondary">
                 Searching...
               </div>
             ) : results.length === 0 ? (
@@ -106,11 +106,11 @@ export function AppSearchProvider({ children }: { children: ReactNode }) {
                     <ResultIcon result={result} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{result.title}</div>
-                      <div className="truncate text-xs text-muted-foreground">
+                      <div className="truncate text-xs text-content-secondary">
                         {result.path}
                       </div>
                     </div>
-                    <CommandShortcut className="ml-3 shrink-0 rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-medium uppercase leading-4 tracking-normal text-muted-foreground">
+                    <CommandShortcut className="ml-3 shrink-0 rounded-sm bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium uppercase leading-4 tracking-normal text-content-secondary">
                       {result.type === "database" ? "Database" : "Page"}
                     </CommandShortcut>
                   </CommandItem>
@@ -154,8 +154,8 @@ function ResultIcon({ result }: { result: AppSearchResult }) {
   }
 
   return result.type === "database" ? (
-    <DatabaseIcon className="size-4 text-muted-foreground" />
+    <DatabaseIcon className="size-4 text-content-secondary" />
   ) : (
-    <DefaultPageIcon className="text-muted-foreground" />
+    <DefaultPageIcon className="text-content-secondary" />
   )
 }

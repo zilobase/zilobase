@@ -30,7 +30,7 @@ import type {
 } from "@zilobase/features/user-settings"
 
 const sectionActionClassName =
-  "rounded-md text-muted-foreground transition-opacity hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground md:opacity-0 md:group-hover/section-header:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
+  "rounded-md text-content-secondary transition-opacity hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:bg-action-neutral-hover focus-visible:text-action-on-neutral data-[state=open]:bg-action-neutral-hover data-[state=open]:text-action-on-neutral md:opacity-0 md:group-hover/section-header:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
 
 export function SidebarSectionMenu({
   className,
@@ -94,7 +94,7 @@ export function SidebarSectionMenu({
             <ArrowUpDownIcon />
             <span className="flex min-w-0 flex-1 items-center gap-2">
               <span>Sort</span>
-              <span className="ml-auto text-right text-xs text-muted-foreground">
+              <span className="ml-auto text-right text-xs text-content-secondary">
                 {config.sectionSorts[sectionId] === "alphabetical"
                   ? "A–Z"
                   : sectionId === "recents"
@@ -122,7 +122,7 @@ export function SidebarSectionMenu({
             <HashIcon />
             <span className="flex min-w-0 flex-1 items-center gap-2">
               <span>Show</span>
-              <span className="ml-auto text-right text-xs text-muted-foreground">
+              <span className="ml-auto text-right text-xs text-content-secondary">
                 {config.sectionLimits[sectionId]}
               </span>
             </span>

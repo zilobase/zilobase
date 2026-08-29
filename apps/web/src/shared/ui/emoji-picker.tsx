@@ -17,7 +17,7 @@ function EmojiPicker({
   return (
     <FrimousseEmojiPicker.Root
       className={cn(
-        "isolate flex h-[342px] w-72 flex-col bg-popover text-popover-foreground",
+        "isolate flex h-[342px] w-72 flex-col bg-surface-overlay text-content-primary",
         className
       )}
       columns={columns}
@@ -33,7 +33,7 @@ function EmojiPickerSearch({
   return (
     <FrimousseEmojiPicker.Search
       className={cn(
-        "mx-2 mt-2 h-8 rounded-md border border-input bg-input px-2.5 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring dark:bg-input",
+        "mx-2 mt-2 h-8 rounded-md border border-control-border bg-control-background px-2.5 text-sm outline-none placeholder:text-content-secondary focus-visible:border-action-focus-ring focus-visible:ring-2 focus-visible:ring-action-focus-ring dark:bg-control-background",
         className
       )}
       {...props}
@@ -50,10 +50,10 @@ function EmojiPickerContent({
       className={cn("relative flex-1 outline-none", className)}
       {...props}
     >
-      <FrimousseEmojiPicker.Loading className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+      <FrimousseEmojiPicker.Loading className="absolute inset-0 flex items-center justify-center text-sm text-content-secondary">
         Loading...
       </FrimousseEmojiPicker.Loading>
-      <FrimousseEmojiPicker.Empty className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+      <FrimousseEmojiPicker.Empty className="absolute inset-0 flex items-center justify-center text-sm text-content-secondary">
         No emoji found.
       </FrimousseEmojiPicker.Empty>
       <FrimousseEmojiPicker.List
@@ -72,7 +72,7 @@ function EmojiPickerFooter({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex h-10 items-center gap-2 border-t px-2 text-xs text-muted-foreground",
+        "flex h-10 items-center gap-2 border-t px-2 text-xs text-content-secondary",
         className
       )}
     >
@@ -88,7 +88,7 @@ function EmojiPickerFooter({ className }: { className?: string }) {
           )
         }
       </FrimousseEmojiPicker.ActiveEmoji>
-      <FrimousseEmojiPicker.SkinToneSelector className="ml-auto flex size-7 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active" />
+      <FrimousseEmojiPicker.SkinToneSelector className="ml-auto flex size-7 items-center justify-center rounded-md hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:bg-action-neutral-pressed" />
     </div>
   )
 }
@@ -101,7 +101,7 @@ function EmojiPickerCategoryHeader({
   return (
     <div
       className={cn(
-        "bg-popover px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur",
+        "bg-surface-overlay px-3 py-1.5 text-xs font-medium text-content-secondary backdrop-blur",
         className
       )}
       {...props}
@@ -119,7 +119,7 @@ function EmojiPickerEmoji({
   return (
     <button
       className={cn(
-        "flex aspect-square size-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-accent data-[active]:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active",
+        "flex aspect-square size-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-action-neutral-hover data-[active]:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:bg-action-neutral-pressed",
         className
       )}
       type="button"

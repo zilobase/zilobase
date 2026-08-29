@@ -107,11 +107,10 @@ export function AppLayout({
   return (
     <SidebarProvider
       className="h-[var(--app-viewport-height,100svh)] min-h-0 overflow-hidden"
+      width={APP_SIDEBAR_PANEL_WIDTH}
       style={
         {
-          "--app-sidebar-panel-width": APP_SIDEBAR_PANEL_WIDTH,
           "--right-sidebar-panel-width": "24rem",
-          "--sidebar-width": "var(--app-sidebar-panel-width)",
         } as React.CSSProperties
       }
     >
@@ -474,7 +473,7 @@ function AppLayoutContent({
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
         <SidebarSimpleIcon
-          className="size-4 text-muted-foreground"
+          className="size-4 text-content-secondary"
           mirrored
         />
         <h2 className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -557,7 +556,7 @@ function AppLayoutContent({
             <PageSidePaneShell
               body={
                 isSettingsPage ? (
-                  <div className="h-full bg-background" />
+                  <div className="h-full bg-surface-canvas" />
                 ) : (
                   children ?? <Outlet />
                 )
@@ -624,7 +623,7 @@ function AppLayoutContent({
       {chatSidebarOpen && !isMobile && chatPresentationMode === "floating" ? (
         <aside
           aria-label="Floating Ask AI chat"
-          className="fixed bottom-16 right-4 z-50 flex h-[min(44rem,calc(var(--app-viewport-height,100svh)-6rem))] w-[min(28rem,calc(100vw-2rem))] min-h-0 flex-col overflow-hidden rounded-xl border bg-background text-foreground shadow-2xl"
+          className="fixed bottom-16 right-4 z-50 flex h-[min(44rem,calc(var(--app-viewport-height,100svh)-6rem))] w-[min(28rem,calc(100vw-2rem))] min-h-0 flex-col overflow-hidden rounded-xl border bg-surface-canvas text-content-primary shadow-2xl"
         >
           {chatPanel}
         </aside>
@@ -814,6 +813,7 @@ function AppHeader({
             }
             pathname={sidePanePathname}
             rowNavigationDatabaseId={rowNavigationDatabaseId}
+            showBreadcrumb={false}
           />
         </PageSidePaneHeaderCell>
       ) : null}

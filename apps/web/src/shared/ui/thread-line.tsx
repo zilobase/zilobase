@@ -110,7 +110,7 @@ export const ThreadLine = React.forwardRef<HTMLDivElement, ThreadLineProps>(
           else if (ref) (ref as any).current = node
           lineRef.current = node
         }}
-        className={cn("absolute left-3 z-0 w-px bg-muted-indicator pointer-events-none", className)}
+        className={cn("absolute left-3 z-0 w-px bg-indicator-muted pointer-events-none", className)}
       />
     )
   }

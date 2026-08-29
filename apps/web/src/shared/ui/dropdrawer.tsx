@@ -223,7 +223,7 @@ function MobileDropDrawerContent({
       <DrawerContent
         data-slot="drop-drawer-content"
         className={cn(
-          "max-h-[85vh] bg-popover px-1 pb-2 text-popover-foreground",
+          "max-h-[85vh] bg-surface-overlay px-1 pb-2 text-content-primary",
           className,
         )}
         {...drawerContentProps}
@@ -237,7 +237,7 @@ function MobileDropDrawerContent({
               <div className="flex items-center gap-2">
                 <button
                   onClick={goBack}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
+                  className="rounded-md p-1 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
                 >
                   <ChevronLeftIcon className="size-4" />
                 </button>
@@ -247,7 +247,7 @@ function MobileDropDrawerContent({
                 <DrawerClose asChild>
                   <Button
                     aria-label={`Close ${submenuTitle || "submenu"}`}
-                    className="ml-auto text-muted-foreground"
+                    className="ml-auto text-content-secondary"
                     size="icon-sm"
                     type="button"
                     variant="ghost"
@@ -408,7 +408,7 @@ function InlineDropDrawerContent({
                 <div className="flex h-11 shrink-0 items-center gap-2 border-b px-2">
                   <Button
                     aria-label={`Back from ${entry.title || "submenu"}`}
-                    className="text-muted-foreground"
+                    className="text-content-secondary"
                     onClick={goBack}
                     size="icon-sm"
                     type="button"
@@ -508,12 +508,12 @@ function DropDrawerItem({
         data-inset={inset}
         data-disabled={disabled}
         className={cn(
-          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-popover-foreground outline-hidden select-none hover:bg-accent active:bg-active [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-content-primary outline-hidden select-none hover:bg-action-neutral-hover active:bg-action-neutral-pressed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-content-secondary",
           inset && "pl-8",
           variant === "destructive" &&
-            "text-destructive hover:bg-status-danger-diff-surface hover:text-destructive [&_svg]:text-destructive",
+            "text-action-danger-text hover:bg-feedback-error-subtle hover:text-action-danger-text [&_svg]:text-action-danger-text",
           disabled &&
-            "pointer-events-none text-muted-foreground opacity-60 hover:bg-transparent",
+            "pointer-events-none text-content-secondary opacity-60 hover:bg-transparent",
           className,
         )}
         onClick={handleClick}
@@ -521,7 +521,7 @@ function DropDrawerItem({
         {...props}
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
-        {icon && <div className="shrink-0 text-muted-foreground">{icon}</div>}
+        {icon && <div className="shrink-0 text-content-secondary">{icon}</div>}
       </div>
     );
 
@@ -563,7 +563,7 @@ function DropDrawerSeparator({
     return (
       <div
         aria-hidden="true"
-        className={cn("-mx-1 my-1 h-px bg-border", className)}
+        className={cn("-mx-1 my-1 h-px bg-stroke-default", className)}
         data-slot="drop-drawer-separator"
         {...props}
       />
@@ -614,7 +614,7 @@ function DropDrawerLabel({
         <DrawerTitle
           data-slot="drop-drawer-label"
           className={cn(
-            "px-2 py-1.5 text-xs font-medium text-muted-foreground",
+            "px-2 py-1.5 text-xs font-medium text-content-secondary",
             className,
           )}
           {...props}
@@ -629,7 +629,7 @@ function DropDrawerLabel({
     return (
       <div
         className={cn(
-          "px-2 py-1.5 text-xs font-medium text-muted-foreground",
+          "px-2 py-1.5 text-xs font-medium text-content-secondary",
           className,
         )}
         data-slot="drop-drawer-label"
@@ -722,7 +722,7 @@ function DropDrawerGroup({
         child,
         <div
           key={`separator-${index}`}
-          className="bg-border h-px"
+          className="bg-stroke-default h-px"
           aria-hidden="true"
         />,
       ];
@@ -885,7 +885,7 @@ function DropDrawerSubTrigger({
         data-slot="drop-drawer-sub-trigger"
         data-inset={inset}
         className={cn(
-          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-popover-foreground outline-hidden select-none hover:bg-accent active:bg-active [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground",
+          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-content-primary outline-hidden select-none hover:bg-action-neutral-hover active:bg-action-neutral-pressed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-content-secondary",
           inset && "pl-8",
           className,
         )}
@@ -893,7 +893,7 @@ function DropDrawerSubTrigger({
         {...restProps}
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">{children}</div>
-        <ChevronRightIcon className="size-4 text-muted-foreground" />
+        <ChevronRightIcon className="size-4 text-content-secondary" />
       </div>
     );
   }

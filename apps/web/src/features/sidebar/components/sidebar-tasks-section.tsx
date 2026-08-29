@@ -58,10 +58,10 @@ export function SidebarTasksSection({
     <Collapsible asChild onOpenChange={setOpen} open={open}>
       <SidebarGroup className="group/collapsible">
         <CollapsibleTrigger asChild>
-          <SidebarGroupLabel asChild className="hover:bg-accent hover:text-accent-foreground">
+          <SidebarGroupLabel asChild className="hover:bg-action-neutral-hover hover:text-action-on-neutral">
             <button className="group/section-label w-full cursor-pointer" type="button">
               <span>Tasks</span>
-              <ChevronRightIcon className="ml-1 size-3 text-muted-foreground transition-transform group-data-[state=open]/section-label:rotate-90" />
+              <ChevronRightIcon className="ml-1 size-3 text-content-secondary transition-transform group-data-[state=open]/section-label:rotate-90" />
             </button>
           </SidebarGroupLabel>
         </CollapsibleTrigger>
@@ -75,7 +75,7 @@ export function SidebarTasksSection({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ) : rows.length === 0 ? (
-                <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                <p className="px-2 py-1.5 text-xs text-content-secondary">
                   {queries.some((query) => query.isLoading) ? "Loading tasks…" : "No tasks assigned to you"}
                 </p>
               ) : rows.map((row) => (

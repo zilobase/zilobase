@@ -15,7 +15,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
 import type { PhosphorPickerWeight } from "@/shared/ui/phosphor-icon-picker"
 import { cn } from "@/shared/lib/utils"
 import type { PageIconPosition } from "@zilobase/features/pages"
@@ -73,7 +73,7 @@ export function IconEmojiPicker({
           {activeTab === "icon" ? (
             <React.Suspense
               fallback={
-                <div className="flex h-[342px] w-72 items-center justify-center text-sm text-muted-foreground">
+                <div className="flex h-[342px] w-72 items-center justify-center text-sm text-content-secondary">
                   Loading icons...
                 </div>
               }
@@ -97,15 +97,15 @@ export function IconEmojiPicker({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent focus-visible:bg-accent"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-action-neutral-hover focus-visible:bg-action-neutral-hover"
                   type="button"
                 >
                   <Bold className="size-4" weight={iconWeight} />
                   <span>Icon weight</span>
-                  <span className="ml-auto text-muted-foreground">
+                  <span className="ml-auto text-content-secondary">
                     {iconWeight === "fill" ? "Filled" : "Bold"}
                   </span>
-                  <ChevronRight className="size-4 text-muted-foreground" />
+                  <ChevronRight className="size-4 text-content-secondary" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -136,15 +136,15 @@ export function IconEmojiPicker({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent focus-visible:bg-accent"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-action-neutral-hover focus-visible:bg-action-neutral-hover"
                   type="button"
                 >
                   <PanelTop className="size-4" />
                   <span>Icon position</span>
-                  <span className="ml-auto text-muted-foreground">
+                  <span className="ml-auto text-content-secondary">
                     {iconPosition === "inline" ? "Inline" : "Top"}
                   </span>
-                  <ChevronRight className="size-4 text-muted-foreground" />
+                  <ChevronRight className="size-4 text-content-secondary" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent

@@ -26,7 +26,7 @@ export function IconColorGrid({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {label ? (
-        <p className="px-0.5 text-xs text-muted-foreground">Choose a color</p>
+        <p className="px-0.5 text-xs text-content-secondary">Choose a color</p>
       ) : null}
       <div
         className="grid gap-1"
@@ -37,7 +37,7 @@ export function IconColorGrid({
             aria-label={
               label ? `${label} in ${color.name}` : `Icon in ${color.name}`
             }
-            className="flex aspect-square size-8 items-center justify-center rounded-md border border-transparent transition-colors hover:border-border hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active"
+            className="flex aspect-square size-8 items-center justify-center rounded-md border border-transparent transition-colors hover:border-stroke-default hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:bg-action-neutral-pressed"
             key={color.value}
             onClick={(event) => {
               const svgElement = event.currentTarget.querySelector("svg")

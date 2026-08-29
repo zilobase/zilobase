@@ -38,7 +38,7 @@ function RightSidebarSurface({
   return (
     <aside
       className={cn(
-        "flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background text-foreground",
+        "flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-surface-canvas text-content-primary",
         className,
       )}
       {...props}
@@ -291,7 +291,7 @@ function OverlayRightSidebarPanel({
       aria-label={ariaLabel}
       id={panelId}
       className={cn(
-        "fixed inset-y-0 right-0 h-svh w-[min(100vw,var(--right-sidebar-panel-width))] border-l border-border transition-[transform,opacity] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+        "fixed inset-y-0 right-0 h-svh w-[min(100vw,var(--right-sidebar-panel-width))] border-l border-stroke-default transition-[transform,opacity] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
         zIndexClassName,
         open
           ? rightOffset
@@ -510,7 +510,7 @@ export function RightSidebars({
           aria-label="Chat sidebar"
           className={cn(
             "min-h-0 min-w-0 overflow-hidden",
-            splitDock && "border-l border-border",
+            splitDock && "border-l border-stroke-default",
           )}
           data-ai-chat-sidebar-panel
           inert={chatOpen ? undefined : true}

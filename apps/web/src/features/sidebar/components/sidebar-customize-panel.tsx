@@ -270,7 +270,7 @@ export function SidebarCustomizePanel({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-sidebar">
+    <div className="flex min-h-0 flex-1 flex-col bg-surface-navigation">
       <SidebarLayoutTabs
         activeTabId={activeTab.id}
         activeTabSettings={(
@@ -295,7 +295,7 @@ export function SidebarCustomizePanel({
             <div className="space-y-0.5 py-1">
               {activeTab.shortcuts.map((shortcut, index) => (
               <EditableRow id={`shortcuts:${shortcut.id}`} key={shortcut.id}>
-                <span className="text-muted-foreground"><SidebarShortcutIcon shortcut={shortcut} /></span>
+                <span className="text-content-secondary"><SidebarShortcutIcon shortcut={shortcut} /></span>
                 <span className="min-w-0 flex-1 truncate">{resolveShortcutLabel(shortcut, pages, databases)}</span>
                 <EntryMenu
                   index={index}
@@ -325,7 +325,7 @@ export function SidebarCustomizePanel({
             </div>
           </SortableContext>
 
-          <div className="my-2 h-px bg-border" />
+          <div className="my-2 h-px bg-stroke-default" />
           <AddSectionMenu databases={databases} onAdd={addSection} onAddDatabase={addDatabaseSection} workspaceId={workspaceId} />
           <SortableContext items={activeTab.sections.map((section) => `sections:${section.id}`)} strategy={verticalListSortingStrategy}>
             <div className="space-y-0.5 py-1">
@@ -333,7 +333,7 @@ export function SidebarCustomizePanel({
               const Icon = sectionIcons[section.kind]
               return (
                 <EditableRow id={`sections:${section.id}`} key={section.id}>
-                  <Icon className="size-4 text-muted-foreground" />
+                  <Icon className="size-4 text-content-secondary" />
                   <span className="min-w-0 flex-1 truncate">{getSectionLabel(section)}</span>
                   <SectionSettings
                     databases={databases}
@@ -350,7 +350,7 @@ export function SidebarCustomizePanel({
           </SortableContext>
         </DndContext>
       </div>
-      <div className="border-t border-border bg-sidebar p-3">
+      <div className="border-t border-stroke-default bg-surface-navigation p-3">
         <Button className="w-full" disabled={disabled} onClick={() => void onDone(draft).catch((error) => toast.error(error instanceof Error ? error.message : "Could not save sidebar preferences."))}>
           {disabled ? "Saving…" : "Done"}
         </Button>
@@ -409,10 +409,10 @@ function EditableRow({ children, id }: { children: React.ReactNode; id: string }
       }}
     >
       <div className={cn(
-        "flex h-8 w-full items-center gap-2 rounded-md p-2 pr-8 text-left text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-        (sortable.isDragging || sortable.isOver || menuOpen) && "bg-accent text-accent-foreground",
+        "flex h-8 w-full items-center gap-2 rounded-md p-2 pr-8 text-left text-sm font-medium transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral",
+        (sortable.isDragging || sortable.isOver || menuOpen) && "bg-action-neutral-hover text-action-on-neutral",
       )}>
-        <span aria-hidden="true" className="inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4!">
+        <span aria-hidden="true" className="inline-flex size-4 shrink-0 items-center justify-center text-content-secondary [&_svg]:size-4!">
           <GripVerticalIcon />
         </span>
         <EditableRowMenuContext.Provider value={setMenuOpen}>{children}</EditableRowMenuContext.Provider>
@@ -424,10 +424,10 @@ function EditableRow({ children, id }: { children: React.ReactNode; id: string }
 const EditableRowMenuContext = React.createContext<(open: boolean) => void>(() => undefined)
 
 const sidebarEditorButtonClassName =
-  "flex h-8 w-full items-center gap-2 rounded-md p-2 text-left text-sm font-medium text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
+  "flex h-8 w-full items-center gap-2 rounded-md p-2 text-left text-sm font-medium text-content-secondary outline-none transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed active:text-action-on-neutral data-[state=open]:bg-action-neutral-hover data-[state=open]:text-action-on-neutral"
 
 const sidebarEditorActionClassName =
-  "absolute right-1 top-1.5 inline-flex size-5 shrink-0 cursor-default items-center justify-center rounded-md text-muted-foreground opacity-0 outline-none transition-colors group-hover/editor-row:opacity-100 hover:bg-sidebar-control-hover focus-visible:bg-sidebar-control-hover focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-sidebar-control-hover data-[state=open]:opacity-100 [&_svg]:size-4!"
+  "absolute right-1 top-1.5 inline-flex size-5 shrink-0 cursor-default items-center justify-center rounded-md text-content-secondary opacity-0 outline-none transition-colors group-hover/editor-row:opacity-100 hover:bg-action-neutral-hover focus-visible:bg-action-neutral-hover focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-action-focus-ring data-[state=open]:bg-action-neutral-hover data-[state=open]:opacity-100 [&_svg]:size-4!"
 
 function AddShortcutMenu({ databases, onAdd, pages, workspaceId }: { databases: PageDatabase[]; onAdd: (target: SidebarShortcut["target"], label?: string) => void; pages: Page[]; workspaceId: string | null }) {
   return (
@@ -473,7 +473,7 @@ function EntryMenu({ index, itemId, itemType, label, layout, onChange, onIconCha
     <DropDrawer defaultSubDisplayMode="inline" onOpenChange={setRowMenuOpen}>
       <DropDrawerTrigger asChild><button aria-label="Item options" className={sidebarEditorActionClassName} data-sidebar-customize-action onPointerDown={(event) => event.stopPropagation()} type="button"><MoreHorizontalIcon /></button></DropDrawerTrigger>
       <DropDrawerContent align="start" className="w-56" side="right">
-        {onRename && onIconChange && shortcut ? <div className="flex items-center gap-2 p-2"><Popover onOpenChange={setIconPickerOpen} open={iconPickerOpen}><PopoverTrigger asChild><button aria-label="Change shortcut icon" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none" type="button"><SidebarShortcutIcon shortcut={shortcut} /></button></PopoverTrigger><PopoverContent align="start" className="w-auto gap-0 overflow-hidden p-0" side="right" sideOffset={6}><IconEmojiPicker allowUpload={false} onEmojiSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} onIconSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} /></PopoverContent></Popover><Input aria-label="Shortcut name" className="h-8 min-w-0 flex-1" maxLength={40} onChange={(event) => onRename(event.target.value)} placeholder={placeholder} value={label ?? ""} /></div> : null}
+        {onRename && onIconChange && shortcut ? <div className="flex items-center gap-2 p-2"><Popover onOpenChange={setIconPickerOpen} open={iconPickerOpen}><PopoverTrigger asChild><button aria-label="Change shortcut icon" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-stroke-default bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none" type="button"><SidebarShortcutIcon shortcut={shortcut} /></button></PopoverTrigger><PopoverContent align="start" className="w-auto gap-0 overflow-hidden p-0" side="right" sideOffset={6}><IconEmojiPicker allowUpload={false} onEmojiSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} onIconSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} /></PopoverContent></Popover><Input aria-label="Shortcut name" className="h-8 min-w-0 flex-1" maxLength={40} onChange={(event) => onRename(event.target.value)} placeholder={placeholder} value={label ?? ""} /></div> : null}
         <DropDrawerItem disabled={index === 0} onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => itemType === "sections" ? { ...entry, sections: moveArrayItem(entry.sections, index, -1) } : { ...entry, shortcuts: moveArrayItem(entry.shortcuts, index, -1) }))}><ArrowUpIcon />Move up</DropDrawerItem>
         <DropDrawerItem disabled={index === tab[itemType].length - 1} onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => itemType === "sections" ? { ...entry, sections: moveArrayItem(entry.sections, index, 1) } : { ...entry, shortcuts: moveArrayItem(entry.shortcuts, index, 1) }))}><ArrowDownIcon />Move down</DropDrawerItem>
         <DropDrawerSub title="Move to tab"><DropDrawerSubTrigger><ArrowRightIcon />Move to tab</DropDrawerSubTrigger><DropDrawerSubContent className="w-48">{layout.tabs.filter((entry) => entry.id !== sourceTabId).map((entry) => <DropDrawerItem key={entry.id} onSelect={() => onChange((current) => moveLayoutEntry(current, sourceTabId, entry.id, itemType, itemId))}>{entry.name}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub>
@@ -494,9 +494,9 @@ function SectionSettings({ databases, index, layout, onChange, section, sourceTa
       <DropDrawerContent align="start" className="w-64" side="right">
         <div className="p-2"><Input aria-label="Section name" className="h-8" maxLength={40} onChange={(event) => patchSection({ label: event.target.value })} placeholder={sidebarSectionLabels[section.kind]} value={section.label ?? ""} /></div>
         {section.kind === "databaseView" ? <DatabaseSourceMenu databases={databases} onChange={patchSection} section={section} /> : null}
-        {section.kind !== "databaseView" ? <DropDrawerSub title="Sort"><DropDrawerSubTrigger><HistoryIcon />Sort<span className="ml-auto text-xs text-muted-foreground">{section.sort === "alphabetical" ? "A–Z" : "Recent"}</span></DropDrawerSubTrigger><DropDrawerSubContent className="w-44">{sidebarSectionSorts.map((sort) => <DropDrawerItem key={sort} onSelect={() => patchSection({ sort })}>{section.sort === sort ? <CheckIcon /> : null}{sort === "alphabetical" ? "Alphabetical" : "Last edited"}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub> : null}
-        <DropDrawerSub title="Show"><DropDrawerSubTrigger><ListChecksIcon />Show<span className="ml-auto text-xs text-muted-foreground">{section.limit}</span></DropDrawerSubTrigger><DropDrawerSubContent className="w-36">{sidebarSectionLimits.map((limit) => <DropDrawerItem key={limit} onSelect={() => patchSection({ limit })}>{section.limit === limit ? <CheckIcon /> : null}{limit} items</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub>
-        {section.kind === "databaseView" ? <div className="flex min-h-9 items-center gap-2 px-2 text-sm"><FileIcon className="size-4 text-muted-foreground" /><span className="flex-1">Show page icon</span><Switch checked={section.showPageIcon} onCheckedChange={(showPageIcon) => patchSection({ showPageIcon })} /></div> : null}
+        {section.kind !== "databaseView" ? <DropDrawerSub title="Sort"><DropDrawerSubTrigger><HistoryIcon />Sort<span className="ml-auto text-xs text-content-secondary">{section.sort === "alphabetical" ? "A–Z" : "Recent"}</span></DropDrawerSubTrigger><DropDrawerSubContent className="w-44">{sidebarSectionSorts.map((sort) => <DropDrawerItem key={sort} onSelect={() => patchSection({ sort })}>{section.sort === sort ? <CheckIcon /> : null}{sort === "alphabetical" ? "Alphabetical" : "Last edited"}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub> : null}
+        <DropDrawerSub title="Show"><DropDrawerSubTrigger><ListChecksIcon />Show<span className="ml-auto text-xs text-content-secondary">{section.limit}</span></DropDrawerSubTrigger><DropDrawerSubContent className="w-36">{sidebarSectionLimits.map((limit) => <DropDrawerItem key={limit} onSelect={() => patchSection({ limit })}>{section.limit === limit ? <CheckIcon /> : null}{limit} items</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub>
+        {section.kind === "databaseView" ? <div className="flex min-h-9 items-center gap-2 px-2 text-sm"><FileIcon className="size-4 text-content-secondary" /><span className="flex-1">Show page icon</span><Switch checked={section.showPageIcon} onCheckedChange={(showPageIcon) => patchSection({ showPageIcon })} /></div> : null}
         <DropDrawerSeparator />
         <DropDrawerItem disabled={index === 0} onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => ({ ...entry, sections: moveArrayItem(entry.sections, index, -1) })))}><ArrowUpIcon />Move up</DropDrawerItem>
         <DropDrawerItem disabled={index === tab.sections.length - 1} onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => ({ ...entry, sections: moveArrayItem(entry.sections, index, 1) })))}><ArrowDownIcon />Move down</DropDrawerItem>
@@ -510,13 +510,13 @@ function SectionSettings({ databases, index, layout, onChange, section, sourceTa
 
 function DatabaseSourceMenu({ databases, onChange, section }: { databases: PageDatabase[]; onChange: (patch: Partial<SidebarSection>) => void; section: Extract<SidebarSection, { kind: "databaseView" }> }) {
   const database = databases.find((entry) => entry.id === section.databaseId)
-  return <><DropDrawerSub title="Source"><DropDrawerSubTrigger><DatabaseIcon />Source<span className="ml-auto max-w-24 truncate text-xs text-muted-foreground">{database?.name ?? "Unavailable"}</span></DropDrawerSubTrigger><DropDrawerSubContent className="w-64">{databases.map((entry) => <DropDrawerItem key={entry.id} onSelect={() => onChange({ databaseId: entry.id, viewId: entry.views[0]?.id })}>{entry.id === section.databaseId ? <CheckIcon /> : null}{entry.name || "Untitled database"}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub>{database ? <DropDrawerSub title="View"><DropDrawerSubTrigger><ListChecksIcon />View<span className="ml-auto max-w-24 truncate text-xs text-muted-foreground">{database.views.find((view) => view.id === section.viewId)?.name ?? "Default"}</span></DropDrawerSubTrigger><DropDrawerSubContent className="w-64">{database.views.map((view) => <DropDrawerItem key={view.id} onSelect={() => onChange({ viewId: view.id })}>{view.id === section.viewId ? <CheckIcon /> : null}{view.name || "Untitled view"}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub> : null}</>
+  return <><DropDrawerSub title="Source"><DropDrawerSubTrigger><DatabaseIcon />Source<span className="ml-auto max-w-24 truncate text-xs text-content-secondary">{database?.name ?? "Unavailable"}</span></DropDrawerSubTrigger><DropDrawerSubContent className="w-64">{databases.map((entry) => <DropDrawerItem key={entry.id} onSelect={() => onChange({ databaseId: entry.id, viewId: entry.views[0]?.id })}>{entry.id === section.databaseId ? <CheckIcon /> : null}{entry.name || "Untitled database"}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub>{database ? <DropDrawerSub title="View"><DropDrawerSubTrigger><ListChecksIcon />View<span className="ml-auto max-w-24 truncate text-xs text-content-secondary">{database.views.find((view) => view.id === section.viewId)?.name ?? "Default"}</span></DropDrawerSubTrigger><DropDrawerSubContent className="w-64">{database.views.map((view) => <DropDrawerItem key={view.id} onSelect={() => onChange({ viewId: view.id })}>{view.id === section.viewId ? <CheckIcon /> : null}{view.name || "Untitled view"}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub> : null}</>
 }
 
 function TabSettingsEditor({ onDelete, onIconChange, onNameChange, tab }: { onDelete: () => void; onIconChange: (icon: string) => void; onNameChange: (name: string) => void; tab: SidebarTab }) {
   const editable = tab.id !== "home"
   const [iconPickerOpen, setIconPickerOpen] = React.useState(false)
-  return <div className="bg-popover text-popover-foreground"><div className="flex items-center gap-2 p-2"><Popover onOpenChange={setIconPickerOpen} open={iconPickerOpen}><PopoverTrigger asChild><button aria-label="Change tab icon" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50" disabled={!editable} type="button"><SidebarTabIcon value={tab.icon} /></button></PopoverTrigger><PopoverContent align="start" className="w-auto gap-0 overflow-hidden p-0" side="right" sideOffset={6}><IconEmojiPicker allowUpload={false} onEmojiSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} onIconSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} /></PopoverContent></Popover><Input aria-label="Tab name" className="h-8 min-w-0 flex-1 text-sm font-medium" disabled={!editable} maxLength={40} onChange={(event) => onNameChange(event.target.value)} placeholder="Untitled tab" value={tab.name} /></div>{editable ? <div className="border-t border-border p-1"><button className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-destructive hover:bg-status-danger-diff-surface" onClick={onDelete} type="button"><Trash2Icon className="size-4" />Delete tab</button></div> : <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">Home is the fixed default tab.</p>}</div>
+  return <div className="bg-surface-overlay text-content-primary"><div className="flex items-center gap-2 p-2"><Popover onOpenChange={setIconPickerOpen} open={iconPickerOpen}><PopoverTrigger asChild><button aria-label="Change tab icon" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-stroke-default bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50" disabled={!editable} type="button"><SidebarTabIcon value={tab.icon} /></button></PopoverTrigger><PopoverContent align="start" className="w-auto gap-0 overflow-hidden p-0" side="right" sideOffset={6}><IconEmojiPicker allowUpload={false} onEmojiSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} onIconSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} /></PopoverContent></Popover><Input aria-label="Tab name" className="h-8 min-w-0 flex-1 text-sm font-medium" disabled={!editable} maxLength={40} onChange={(event) => onNameChange(event.target.value)} placeholder="Untitled tab" value={tab.name} /></div>{editable ? <div className="border-t border-stroke-default p-1"><button className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-action-danger-text hover:bg-feedback-error-subtle" onClick={onDelete} type="button"><Trash2Icon className="size-4" />Delete tab</button></div> : <p className="border-t border-stroke-default px-3 py-2 text-xs text-content-secondary">Home is the fixed default tab.</p>}</div>
 }
 
 function resolveShortcutLabel(shortcut: SidebarShortcut, pages: Page[], databases: PageDatabase[]) {
@@ -567,7 +567,7 @@ function PageShortcutPicker({ onSelect, pages, workspaceId }: { onSelect: (pageI
               ? getPageIconNode(page)
               : result?.emoji
                 ? <PageIconDisplay size="sm" value={result.emoji} />
-                : <FileIcon className="text-muted-foreground" />}
+                : <FileIcon className="text-content-secondary" />}
             <span className="truncate">{label}</span>
           </DropDrawerItem>
         )
@@ -624,14 +624,14 @@ function DatabasePickerRow({ database, defaultOpen, onSelect }: { database: Page
     <Collapsible onOpenChange={setOpen} open={open}>
       <div className="group/database-picker-row relative">
         <DropDrawerItem className={hasViews ? "pl-8" : undefined} onSelect={() => onSelect(database)}>
-          {getDatabaseIconNode(database) ?? <DatabaseIcon className="text-muted-foreground" />}
+          {getDatabaseIconNode(database) ?? <DatabaseIcon className="text-content-secondary" />}
           <span className="truncate">{label}</span>
         </DropDrawerItem>
         {hasViews ? (
           <CollapsibleTrigger asChild>
             <button
               aria-label={`${open ? "Collapse" : "Expand"} ${label}`}
-              className="absolute left-1 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring [&_svg]:size-3.5"
+              className="absolute left-1 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-content-secondary outline-none hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring [&_svg]:size-3.5"
               onClick={(event) => event.stopPropagation()}
               onPointerDown={(event) => event.stopPropagation()}
               type="button"
@@ -656,21 +656,21 @@ function DatabasePickerRow({ database, defaultOpen, onSelect }: { database: Page
 }
 
 function DatabaseViewPickerIcon({ view }: { view: PageDatabaseView }) {
-  return <DatabaseViewIcon className="text-muted-foreground" view={view} />
+  return <DatabaseViewIcon className="text-content-secondary" view={view} />
 }
 
 function PickerPanel({ ariaLabel, children, emptyLabel, isSearching, onQueryChange, query }: { ariaLabel: string; children: React.ReactNode; emptyLabel: string; isSearching: boolean; onQueryChange: (query: string) => void; query: string }) {
   const hasChildren = React.Children.count(children) > 0
   return (
     <div className="flex min-h-0 flex-col">
-      <div className="sticky top-0 z-10 shrink-0 bg-popover p-2">
+      <div className="sticky top-0 z-10 shrink-0 bg-surface-overlay p-2">
         <div className="relative">
           <Input aria-label={ariaLabel} className="h-8 pr-8" onChange={(event) => onQueryChange(event.target.value)} onKeyDown={(event) => event.stopPropagation()} placeholder="Search…" value={query} />
-          {isSearching ? <Loader2Icon className="absolute right-2 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" /> : null}
+          {isSearching ? <Loader2Icon className="absolute right-2 top-1/2 size-4 -translate-y-1/2 animate-spin text-content-secondary" /> : null}
         </div>
       </div>
       <div className="max-h-[min(28rem,calc(100vh-8rem))] min-h-0 overflow-y-auto overscroll-contain px-1 pb-1">
-        {hasChildren ? children : <p className="px-2 py-3 text-xs text-muted-foreground">{isSearching ? "Searching…" : emptyLabel}</p>}
+        {hasChildren ? children : <p className="px-2 py-3 text-xs text-content-secondary">{isSearching ? "Searching…" : emptyLabel}</p>}
       </div>
     </div>
   )

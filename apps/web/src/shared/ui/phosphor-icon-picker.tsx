@@ -87,15 +87,15 @@ export function PhosphorIconPicker({
   return (
     <div
       className={cn(
-        "isolate flex h-[342px] w-72 flex-col bg-popover text-popover-foreground",
+        "isolate flex h-[342px] w-72 flex-col bg-surface-overlay text-content-primary",
         className,
       )}
     >
       <div className="relative mx-2 mt-2">
-        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-content-secondary" />
         <input
           autoFocus
-          className="h-8 w-full rounded-md border border-input bg-input pr-2.5 pl-8 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring dark:bg-input"
+          className="h-8 w-full rounded-md border border-control-border bg-control-background pr-2.5 pl-8 text-sm outline-none placeholder:text-content-secondary focus-visible:border-action-focus-ring focus-visible:ring-2 focus-visible:ring-action-focus-ring dark:bg-control-background"
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search Phosphor icons..."
           type="search"
@@ -118,7 +118,7 @@ export function PhosphorIconPicker({
         }}
       >
         {filteredIcons.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-content-secondary">
             No icons found.
           </div>
         ) : (
@@ -134,7 +134,7 @@ export function PhosphorIconPicker({
           </div>
         )}
       </div>
-      <div className="flex h-10 items-center border-t px-3 text-xs text-muted-foreground">
+      <div className="flex h-10 items-center border-t px-3 text-xs text-content-secondary">
         Select a Phosphor icon
       </div>
     </div>
@@ -157,7 +157,7 @@ function PhosphorIconOption({
       <DropdownMenuTrigger asChild>
         <button
           aria-label={icon.label}
-          className="flex aspect-square size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active data-[state=open]:bg-accent"
+          className="flex aspect-square size-8 items-center justify-center rounded-md text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:bg-action-neutral-pressed data-[state=open]:bg-action-neutral-hover"
           title={icon.label}
           type="button"
         >
