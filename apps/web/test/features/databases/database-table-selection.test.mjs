@@ -4,7 +4,7 @@ export function register({ assert, loadModule, test }) {
       DATABASE_SELECTION_PRIMARY_PROPERTY_LIMIT,
       splitDatabaseSelectionProperties,
     } = await loadModule(
-      "/src/editor/extensions/database/views/table/database-table-selection.ts"
+      "/src/features/editor/extensions/database/views/table/database-table-selection.ts"
     )
     const properties = ["status", "assignee", "date", "priority", "type", "effort"]
     const groups = splitDatabaseSelectionProperties(properties)
@@ -16,7 +16,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database table selection reports shared and mixed property values", async () => {
     const { getSharedDatabaseSelectionValue } = await loadModule(
-      "/src/editor/extensions/database/views/table/database-table-selection.ts"
+      "/src/features/editor/extensions/database/views/table/database-table-selection.ts"
     )
     const areEqual = (left, right) => JSON.stringify(left) === JSON.stringify(right)
 

@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("block drag insert pos picks before or after block midpoint", async () => {
     const { resolveBlockInsertPos } = await loadModule(
-      "/src/editor/components/editor/block-drag.ts"
+      "/src/features/editor/components/editor/block-drag.ts"
     )
 
     assert.equal(resolveBlockInsertPos(10, 4, 100, 40, 110), 10)
@@ -11,7 +11,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database block drag image keeps the block anchored when dragging from the handle", async () => {
     const { getDatabaseBlockDragImagePlacement } = await loadModule(
-      "/src/editor/components/editor/block-drag.ts"
+      "/src/features/editor/components/editor/block-drag.ts"
     )
 
     assert.deepEqual(getDatabaseBlockDragImagePlacement(700, 120, 744, 100), {
@@ -23,7 +23,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database block drag image tracks the pointer inside the block", async () => {
     const { getDatabaseBlockDragImagePlacement } = await loadModule(
-      "/src/editor/components/editor/block-drag.ts"
+      "/src/features/editor/components/editor/block-drag.ts"
     )
 
     assert.deepEqual(getDatabaseBlockDragImagePlacement(760, 148, 744, 100), {
@@ -37,7 +37,7 @@ export function register({ assert, loadModule, test }) {
     const {
       EDITOR_BLOCK_DRAG_MIME,
       getDraggedEditorBlockPayload,
-    } = await loadModule("/src/editor/components/editor/block-drag.ts")
+    } = await loadModule("/src/features/editor/components/editor/block-drag.ts")
 
     const dataTransfer = {
       getData: (type) =>
@@ -59,7 +59,7 @@ export function register({ assert, loadModule, test }) {
     const {
       EDITOR_BLOCK_DRAG_MIME,
       getDraggedEditorBlockPayload,
-    } = await loadModule("/src/editor/components/editor/block-drag.ts")
+    } = await loadModule("/src/features/editor/components/editor/block-drag.ts")
     const payload = {
       editorId: "editor-1",
       node: { type: "paragraph" },
@@ -81,7 +81,7 @@ export function register({ assert, loadModule, test }) {
       getBlockDragDatabaseId,
       getDraggedEditorBlockPayload,
       isMultiBlockDragPayload,
-    } = await loadModule("/src/editor/components/editor/block-drag.ts")
+    } = await loadModule("/src/features/editor/components/editor/block-drag.ts")
     const payload = {
       blockCount: 3,
       editorId: "editor-1",
@@ -113,7 +113,7 @@ export function register({ assert, loadModule, test }) {
       armBlockDrag,
       endBlockDrag,
       getDraggedEditorBlockPayload,
-    } = await loadModule("/src/editor/components/editor/block-drag.ts")
+    } = await loadModule("/src/features/editor/components/editor/block-drag.ts")
     const target = {
       node: {
         textContent: "Hello",
@@ -139,7 +139,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database block drags expose their source database id", async () => {
     const { canMoveDatabaseBlockToPage, getBlockDragDatabaseId } =
-      await loadModule("/src/editor/components/editor/block-drag.ts")
+      await loadModule("/src/features/editor/components/editor/block-drag.ts")
     const payload = {
       editorId: "editor-1",
       node: {
@@ -176,7 +176,7 @@ export function register({ assert, loadModule, test }) {
 
   test("cross-editor database drops copy or move the source block", async () => {
     const { dropCrossEditorBlock, registerBlockDragSource } = await loadModule(
-      "/src/editor/components/editor/block-drag.ts"
+      "/src/features/editor/components/editor/block-drag.ts"
     )
     const payload = {
       editorId: "source-editor",
@@ -216,7 +216,7 @@ export function register({ assert, loadModule, test }) {
     const { Schema } = await import("@tiptap/pm/model")
     const { EditorState } = await import("@tiptap/pm/state")
     const { dropCrossEditorBlock, registerBlockDragSource } = await loadModule(
-      "/src/editor/components/editor/block-drag.ts"
+      "/src/features/editor/components/editor/block-drag.ts"
     )
     const schema = new Schema({
       nodes: {

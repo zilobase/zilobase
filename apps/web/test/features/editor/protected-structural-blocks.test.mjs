@@ -3,7 +3,7 @@ export function register({ assert, loadModule, test }) {
     const { Schema } = await import("@tiptap/pm/model")
     const { EditorState, TextSelection } = await import("@tiptap/pm/state")
     const { getProtectedStructuralBlockForDelete } = await loadModule(
-      "/src/editor/protected-structural-blocks.ts",
+      "/src/features/editor/paste/protected-structural-blocks.ts",
     )
     const schema = createSchema(Schema)
     const doc = schema.node("doc", null, [
@@ -25,7 +25,7 @@ export function register({ assert, loadModule, test }) {
     const { Schema } = await import("@tiptap/pm/model")
     const { EditorState, NodeSelection } = await import("@tiptap/pm/state")
     const { getProtectedStructuralBlockForDelete } = await loadModule(
-      "/src/editor/protected-structural-blocks.ts",
+      "/src/features/editor/paste/protected-structural-blocks.ts",
     )
     const schema = createSchema(Schema)
     const doc = schema.node("doc", null, [
@@ -44,7 +44,7 @@ export function register({ assert, loadModule, test }) {
     const { Schema } = await import("@tiptap/pm/model")
     const { EditorState, TextSelection } = await import("@tiptap/pm/state")
     const { getProtectedStructuralBlockForDelete } = await loadModule(
-      "/src/editor/protected-structural-blocks.ts",
+      "/src/features/editor/paste/protected-structural-blocks.ts",
     )
     const schema = createSchema(Schema)
     const doc = schema.node("doc", null, [
@@ -63,7 +63,7 @@ export function register({ assert, loadModule, test }) {
     const { Schema } = await import("@tiptap/pm/model")
     const { AllSelection, EditorState } = await import("@tiptap/pm/state")
     const { handleProtectedStructuralBlockDeleteKey } = await loadModule(
-      "/src/editor/protected-structural-blocks.ts",
+      "/src/features/editor/paste/protected-structural-blocks.ts",
     )
     const schema = createSchema(Schema)
     const doc = schema.node("doc", null, [

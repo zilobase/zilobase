@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database cell fill resolves vertical targets in either direction", async () => {
     const { getDatabaseCellFillRowIds } = await loadModule(
-      "/src/editor/extensions/database/interactions/database-cell-fill.ts"
+      "/src/features/editor/extensions/database/interactions/database-cell-fill.ts"
     )
     const rowIds = ["first", "second", "third", "fourth"]
 
@@ -21,7 +21,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database cell fill is limited to safely writable property kinds", async () => {
     const { isDatabasePropertyFillable } = await loadModule(
-      "/src/editor/extensions/database/interactions/database-cell-fill.ts"
+      "/src/features/editor/extensions/database/interactions/database-cell-fill.ts"
     )
 
     assert.equal(isDatabasePropertyFillable("status"), true)
@@ -34,7 +34,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database cell fill undo preserves values edited after filling", async () => {
     const { getUndoableDatabaseCellFillChanges } = await loadModule(
-      "/src/editor/extensions/database/interactions/database-cell-fill.ts"
+      "/src/features/editor/extensions/database/interactions/database-cell-fill.ts"
     )
     const changes = [
       {
@@ -66,7 +66,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database cell fill redo preserves values edited after undo", async () => {
     const { getRedoableDatabaseCellFillChanges } = await loadModule(
-      "/src/editor/extensions/database/interactions/database-cell-fill.ts"
+      "/src/features/editor/extensions/database/interactions/database-cell-fill.ts"
     )
     const changes = [
       {

@@ -6,8 +6,8 @@ import { usePageEditorRegistry } from "@/contexts/page-editor-registry"
 import type { Content, Editor } from "@tiptap/core"
 
 import type { PageEditorHandle } from "@/contexts/page-editor-registry"
-import { parseMarkdownContent } from "@/editor/editor-ai-utils"
-import type { PageEditPreviewControls } from "@/editor/types"
+import { parseMarkdownContent } from "@/packages/editor/commands/editor-ai-utils"
+import type { PageEditPreviewControls } from "@/packages/editor/core/types"
 import { useZilobaseFeatures } from "@zilobase/features"
 import { pageQueryKey, type PageDetail } from "@zilobase/features/pages"
 import {

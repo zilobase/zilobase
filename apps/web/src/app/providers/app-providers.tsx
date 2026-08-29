@@ -13,7 +13,7 @@ import { ShortcutProvider } from "@/shared/shortcuts"
 import { OfflineQueryProvider } from "@/features/offline/index"
 import { getThemeColorScheme, selectableThemeIds } from "@/shared/lib/themes"
 import { ThemeFamilyProvider } from "@/shared/providers/theme-family-provider"
-import { AppIconProvider } from "@/app/providers/app-icon-provider"
+import { AppIconProvider } from "@/shared/components/app-icon-provider"
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (

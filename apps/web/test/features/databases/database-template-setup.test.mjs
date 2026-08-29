@@ -1,6 +1,6 @@
 export function register({ assert, readSource, readWorkspace, test }) {
   test("database setup applies templates to the active data source", async () => {
-    const source = await readSource("/src/editor/extensions/database/setup/database-setup-card.tsx")
+    const source = await readSource("/src/features/editor/extensions/database/setup/database-setup-card.tsx")
 
     assert.match(
       source,

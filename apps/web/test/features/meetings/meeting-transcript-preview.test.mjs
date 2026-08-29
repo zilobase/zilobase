@@ -6,7 +6,7 @@ export function register({ assert, loadModule, test }) {
       createMeetingTranscriptPreviewElement,
       formatMeetingTranscriptPreviewText,
     } = await loadModule(
-      "/src/editor/extensions/meeting-transcript-preview.ts",
+      "/src/features/editor/extensions/meeting-transcript-preview.ts",
     )
 
     assert.equal(
@@ -51,7 +51,7 @@ export function register({ assert, loadModule, test }) {
 
   test("microphone and system drafts render as one speaker-labeled timeline", async () => {
     const { combineMeetingTranscriptDrafts } = await loadModule(
-      "/src/editor/extensions/meeting-transcript-preview.ts",
+      "/src/features/editor/extensions/meeting-transcript-preview.ts",
     )
 
     assert.deepEqual(
@@ -101,7 +101,7 @@ export function register({ assert, loadModule, test }) {
 
   test("summary-ready meetings do not keep a finishing transcript footer", async () => {
     const { resolveMeetingTranscriptPreview } = await loadModule(
-      "/src/editor/extensions/meeting-transcript-preview.ts",
+      "/src/features/editor/extensions/meeting-transcript-preview.ts",
     )
 
     assert.equal(
@@ -150,7 +150,7 @@ export function register({ assert, loadModule, test }) {
 
     try {
       const { isNearScrollEnd } = await loadModule(
-        "/src/editor/extensions/meeting-transcript-scroll.ts",
+        "/src/features/editor/extensions/meeting-transcript-scroll.ts",
       )
 
       assert.equal(isNearScrollEnd(editor), true)

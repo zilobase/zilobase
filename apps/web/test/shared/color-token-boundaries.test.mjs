@@ -46,11 +46,11 @@ const systemColorUtility =
   /\b(?:bg|border|decoration|fill|outline|ring|stroke|text)-\[(?:Canvas|CanvasText|Highlight|HighlightText)\]\b/g
 const brandSvgFiles = new Set([
   "src/shared/components/google-icon.tsx",
-  "src/editor/extensions/embed-block.tsx",
+  "src/features/editor/extensions/embed-block.tsx",
 ])
 const tokenDerivedColorFiles = new Set([
   "src/shared/lib/color-tokens.ts",
-  "src/editor/extensions/database/views/chart/database-chart-data.ts",
+  "src/features/editor/extensions/database/views/chart/database-chart-data.ts",
 ])
 
 export function register({ appPath, assert, test }) {
@@ -160,7 +160,7 @@ export function register({ appPath, assert, test }) {
       "utf8",
     )
     const editorStyles = await readFile(
-      join(appDir, "src/editor/styles.css"),
+      join(appDir, "src/features/editor/styles.css"),
       "utf8",
     )
 

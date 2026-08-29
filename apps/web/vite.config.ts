@@ -5,7 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 const host = process.env.TAURI_DEV_HOST;
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
-const editorDir = fileURLToPath(new URL("./src/editor", import.meta.url));
+const editorDir = fileURLToPath(new URL("./src/features/editor", import.meta.url));
 const featuresDir = fileURLToPath(
   new URL("../../packages/features/src", import.meta.url),
 );

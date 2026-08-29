@@ -1,7 +1,7 @@
 export function register({ readSource, assert, test }) {
   test("block and dragged text selection use one transparent tint", async () => {
     const [css, tokens] = await Promise.all([
-      readSource("/src/editor/styles.css"),
+      readSource("/src/features/editor/styles.css"),
       readSource("/src/shared/styles/design-tokens.css"),
     ])
 
@@ -32,7 +32,7 @@ export function register({ readSource, assert, test }) {
   })
 
   test("task list selection uses the shared overlay with even first-row geometry", async () => {
-    const css = await readSource("/src/editor/styles.css")
+    const css = await readSource("/src/features/editor/styles.css")
 
     assert.match(
       css,
@@ -57,7 +57,7 @@ export function register({ readSource, assert, test }) {
   })
 
   test("database selection does not restyle any database content", async () => {
-    const css = await readSource("/src/editor/styles.css")
+    const css = await readSource("/src/features/editor/styles.css")
 
     assert.match(
       css,
@@ -73,8 +73,8 @@ export function register({ readSource, assert, test }) {
 
   test("outer meeting selection uses one overlaid block with standard spacing", async () => {
     const [css, meetingExtension] = await Promise.all([
-      readSource("/src/editor/styles.css"),
-      readSource("/src/editor/extensions/meeting/meeting-extension.tsx"),
+      readSource("/src/features/editor/styles.css"),
+      readSource("/src/features/editor/extensions/meeting/meeting-extension.tsx"),
     ])
 
     assert.match(

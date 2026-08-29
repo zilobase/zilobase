@@ -5,7 +5,7 @@ export function register({ assert, loadModule, test }) {
       hasDatabasePageDragPayload,
       setDatabasePageDragPayload,
     } = await loadModule(
-      "/src/editor/extensions/database/interactions/database-page-drop.ts"
+      "/src/features/editor/extensions/database/interactions/database-page-drop.ts"
     )
     const values = new Map()
     const dataTransfer = {
@@ -33,7 +33,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database page drag rejects malformed payloads", async () => {
     const { getDatabasePageDragPayload } = await loadModule(
-      "/src/editor/extensions/database/interactions/database-page-drop.ts"
+      "/src/features/editor/extensions/database/interactions/database-page-drop.ts"
     )
     const dataTransfer = {
       getData: () => JSON.stringify({ pageId: 42 }),
@@ -44,7 +44,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database page drops target row midpoints", async () => {
     const { getDatabasePageDropPosition } = await loadModule(
-      "/src/editor/database-page-drop-target.ts",
+      "/src/features/editor/drag-drop/database-page-drop-target.ts",
     )
     const rows = [
       {
@@ -65,7 +65,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database page drops target the start of an empty table", async () => {
     const { getDatabasePageDropPosition } = await loadModule(
-      "/src/editor/database-page-drop-target.ts",
+      "/src/features/editor/drag-drop/database-page-drop-target.ts",
     )
     const databaseElement = { querySelectorAll: () => [] }
 

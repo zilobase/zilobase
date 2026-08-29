@@ -17,8 +17,8 @@
 "paths": {
       "@zilobase/edition-web": ["./src/app/edition/community.tsx"],
       "@/*": ["./src/*"],
-      "@/packages/editor": ["./src/editor/index.ts"],
-      "@/packages/editor/*": ["./src/editor/*"],
+      "@/packages/editor": ["./src/features/editor/index.ts"],
+      "@/packages/editor/*": ["./src/features/editor/*"],
       "@zilobase/features/databases/property-types": [
         "./../../packages/features/src/databases/property-types.ts"
       ],

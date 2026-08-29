@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import { listen } from "@tauri-apps/api/event"
 
-import { BrowserMeetingCapture } from "@/editor/extensions/meeting/browser-meeting-capture"
+import { BrowserMeetingCapture } from "@/features/meetings/capture/index"
 import type {
   MeetingAudioDevice,
   MeetingCaptureController,
@@ -10,7 +10,7 @@ import type {
   MeetingCaptureStatus,
   MeetingTranscriptDraft,
   RecoverableMeetingCapture,
-} from "@/editor/extensions/meeting/meeting-capture-types"
+} from "@/features/meetings/capture/index"
 
 const browserCapture = new BrowserMeetingCapture()
 

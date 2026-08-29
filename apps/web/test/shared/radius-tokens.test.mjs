@@ -63,10 +63,10 @@ export function register({ readSource, assert, test }) {
       await Promise.all(
         [
           "shared/ui/badge.tsx",
-          "editor/styles.css",
+          "features/editor/styles.css",
           "features/comments/components/discussions-sidebar.tsx",
           "features/ai/components/elements/context-attach-chips.tsx",
-          "editor/extensions/database/views/database-view-toolbar.tsx",
+          "features/editor/extensions/database/views/database-view-toolbar.tsx",
         ].map((path) =>
           readSource(`/src/${path}`),
         ),

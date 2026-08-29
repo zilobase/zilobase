@@ -16,7 +16,7 @@ function installDomParser() {
 export function register({ assert, loadModule, test }) {
   test("normalizePastedEditorHTML converts single-row tables into column blocks", async () => {
     installDomParser()
-    const { normalizePastedEditorHTML } = await loadModule("/src/editor/paste.ts")
+    const { normalizePastedEditorHTML } = await loadModule("/src/features/editor/paste/paste.ts")
 
     const html = `
       <table>
@@ -39,7 +39,7 @@ export function register({ assert, loadModule, test }) {
 
   test("normalizePastedEditorHTML leaves multi-row data tables unchanged", async () => {
     installDomParser()
-    const { normalizePastedEditorHTML } = await loadModule("/src/editor/paste.ts")
+    const { normalizePastedEditorHTML } = await loadModule("/src/features/editor/paste/paste.ts")
 
     const html = `
       <table>

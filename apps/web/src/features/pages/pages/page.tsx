@@ -65,8 +65,8 @@ import type {
   OpenPageOptions,
   PageLayoutPanelMode,
   StructuralBlockDeleteRequest,
-} from "@/packages/editor/types";
-import { usePageCollaboration } from "@/packages/editor/use-page-collaboration";
+} from "@/packages/editor/core/types";
+import { usePageCollaboration } from "@/packages/editor/collaboration/use-page-collaboration";
 import { canEditOnlineDatabase } from "@/packages/editor/database-editability";
 import {
   useConnectivity,

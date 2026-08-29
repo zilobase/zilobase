@@ -1,7 +1,7 @@
 export function register({ readSource, assert, loadModule, test }) {
   test("database cards do not start dragging from interactive content", async () => {
     const { isInteractiveDatabaseCardTarget } = await loadModule(
-      "/src/editor/extensions/database/interactions/database-card-drag-target.ts",
+      "/src/features/editor/extensions/database/interactions/database-card-drag-target.ts",
     )
     const target = (match) => ({
       closest: (selector) => (selector.includes(match) ? {} : null),
@@ -39,8 +39,8 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("gallery and kanban use whole-card dragging in every database mode", async () => {
     const [gallerySource, kanbanSource] = await Promise.all([
-      readSource("/src/editor/extensions/database/views/gallery/database-gallery-view.tsx"),
-      readSource("/src/editor/extensions/database/views/kanban/database-kanban-view.tsx"),
+      readSource("/src/features/editor/extensions/database/views/gallery/database-gallery-view.tsx"),
+      readSource("/src/features/editor/extensions/database/views/kanban/database-kanban-view.tsx"),
     ])
 
     for (const source of [gallerySource, kanbanSource]) {

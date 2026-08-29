@@ -9,13 +9,13 @@ export function register({ readSource, assert, test }) {
       editorExtensionHookSource,
       meetingCollaborationSource,
     ] = await Promise.all([
-        readSource("/src/editor/extensions/meeting/meeting-collaborative-editor.tsx"),
-        readSource("/src/editor/extensions/meeting/meeting-view.tsx"),
+        readSource("/src/features/editor/extensions/meeting/meeting-collaborative-editor.tsx"),
+        readSource("/src/features/editor/extensions/meeting/meeting-view.tsx"),
         readSource("/src/features/meetings/pages/meeting.tsx"),
-        readSource("/src/editor/styles.css"),
-        readSource("/src/editor/create-base-extensions.ts"),
-        readSource("/src/editor/use-editor-extensions.ts"),
-        readSource("/src/editor/extensions/meeting/use-meeting-collaboration.ts"),
+        readSource("/src/features/editor/styles.css"),
+        readSource("/src/features/editor/runtime/create-base-extensions.ts"),
+        readSource("/src/features/editor/runtime/use-editor-extensions.ts"),
+        readSource("/src/features/editor/extensions/meeting/use-meeting-collaboration.ts"),
       ])
 
     assert.match(summaryEditorSource, /import \{ Editor \}/)

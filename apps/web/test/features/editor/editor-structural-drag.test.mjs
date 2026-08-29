@@ -5,7 +5,7 @@ function axisRect(index, left, top, width, height) {
 export function register({ assert, loadModule, test }) {
   test("column drag targets columns by their midpoint", async () => {
     const { getColumnDragTargetIndex } = await loadModule(
-      "/src/editor/components/editor/column-drag.ts",
+      "/src/features/editor/components/editor/column-drag.ts",
     )
     const rect = {
       columns: [
@@ -22,7 +22,7 @@ export function register({ assert, loadModule, test }) {
 
   test("column drag distinguishes reorder and block extraction zones", async () => {
     const { getColumnExtractionDropPosition } = await loadModule(
-      "/src/editor/components/editor/column-drag.ts",
+      "/src/features/editor/components/editor/column-drag.ts",
     )
     const rect = { height: 200, left: 100, top: 50, width: 300 }
 
@@ -33,7 +33,7 @@ export function register({ assert, loadModule, test }) {
 
   test("table drag targets the segment under the pointer", async () => {
     const { getTableDragTargetIndex } = await loadModule(
-      "/src/editor/components/editor/table-drag.ts",
+      "/src/features/editor/components/editor/table-drag.ts",
     )
     const rect = {
       columns: [
@@ -53,7 +53,7 @@ export function register({ assert, loadModule, test }) {
 
   test("table drag line follows the destination edge", async () => {
     const { getTableDropLinePosition } = await loadModule(
-      "/src/editor/components/editor/table-drag.ts",
+      "/src/features/editor/components/editor/table-drag.ts",
     )
     const rect = {
       columns: [

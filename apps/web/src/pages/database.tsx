@@ -41,7 +41,7 @@ import {
   PageEditorPane,
 } from "@/features/pages/pages/index"
 import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
-import type { OpenPageOptions } from "@/packages/editor/types"
+import type { OpenPageOptions } from "@/packages/editor/core/types"
 import { useTitleDraft } from "@/features/pages/hooks/index"
 import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
 

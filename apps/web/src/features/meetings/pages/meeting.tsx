@@ -27,7 +27,7 @@ import {
 import { useUserSettings } from "@zilobase/features/user-settings"
 import { useSession } from "@zilobase/features/auth"
 import { LoaderCircle } from "@/shared/components/icons"
-import type { OpenPageOptions } from "@/packages/editor/types"
+import type { OpenPageOptions } from "@/packages/editor/core/types"
 
 export default function MeetingPage() {
   const { meetingId } = useParams({ from: "/m/$meetingId" })

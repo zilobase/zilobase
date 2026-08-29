@@ -5,7 +5,7 @@ export function register({ assert, loadModule, test }) {
       getTimelineContentRows,
       getTimelineViewRowHeight,
     } = await loadModule(
-      "/src/editor/extensions/database/views/timeline/database-timeline-rows.ts"
+      "/src/features/editor/extensions/database/views/timeline/database-timeline-rows.ts"
     )
     const statusProperty = createProperty("status", "status")
     const firstItem = createItem("row-1")
@@ -47,7 +47,7 @@ export function register({ assert, loadModule, test }) {
 
   test("timeline view rows omit New page for collapsed groups", async () => {
     const { buildTimelineViewRows } = await loadModule(
-      "/src/editor/extensions/database/views/timeline/database-timeline-rows.ts"
+      "/src/features/editor/extensions/database/views/timeline/database-timeline-rows.ts"
     )
     const statusProperty = createProperty("status", "status")
     const item = createItem("row-1")

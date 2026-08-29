@@ -127,7 +127,11 @@ function aliasPlugin() {
       }))
       build.onResolve({ filter: /^@\/packages\/editor\/?/ }, async (args) => ({
         path: await resolveAliasPath(
-          join(srcDir, "editor", args.path.replace(/^@\/packages\/editor\/?/, ""))
+          join(
+            srcDir,
+            "features/editor",
+            args.path.replace(/^@\/packages\/editor\/?/, ""),
+          )
         ),
       }))
       build.onResolve(
