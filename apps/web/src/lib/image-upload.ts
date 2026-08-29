@@ -3,7 +3,7 @@ import {
   getApiRequestHeaders,
   toApiUrl,
 } from "@/lib/api"
-import { desktopNetworkFetch } from "@/lib/desktop-network"
+import { desktopNetworkFetch } from "@/features/desktop/network/index"
 
 type ImageAsset = {
   byteSize: number

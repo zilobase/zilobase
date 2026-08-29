@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
-import { desktopPersistOptions } from "@/lib/desktop-persist-storage"
+import { desktopPersistOptions } from "@/features/desktop/persistence/index"
 
 type AuthFlowPurpose = "email-verification" | "sign-in"
 

@@ -72,7 +72,7 @@ import {
   useConnectivity,
   useOfflineManifest,
   useOfflineSessionLocked,
-} from "@/app/providers/offline-provider";
+} from "@/features/offline/index";
 import { createPageCommentController } from "@/comments/yjs-comments";
 import { usePageCommentsRegistry } from "@/contexts/page-comments-registry";
 import { useTitleDraft } from "@/hooks/use-title-draft";

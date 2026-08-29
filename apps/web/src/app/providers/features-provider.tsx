@@ -20,7 +20,7 @@ import { apiFetch, authFetch, clearApiAuthToken } from "@/lib/api"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
-} from "@/lib/desktop-diagnostics"
+} from "@/features/desktop/diagnostics/index"
 import { queryClient } from "@/shared/lib/query-client"
 import { useAppStore } from "@/app/state/app-store"
 import { isFeatureEnabled } from "@/shared/config/feature-flags"

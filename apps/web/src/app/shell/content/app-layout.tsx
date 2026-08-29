@@ -8,7 +8,7 @@ import { AppSearchProvider } from "@/features/sidebar"
 import {
   DesktopTabs,
   getDesktopTabTitle,
-} from "@/components/desktop-tabs"
+} from "@/features/desktop/components/index"
 import {
   ChatSidebarPanel,
   ChatSidebarTrigger,

@@ -25,7 +25,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("replacement stops old traffic and deletes local state before commit", async () => {
     const { executeDesktopServerReplacement } = await loadModule(
-      "/src/lib/desktop-server-replacement-core.ts",
+      "/src/features/desktop/server/desktop-server-replacement-core.ts",
     );
     const order = [];
     await executeDesktopServerReplacement(
@@ -69,7 +69,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("failed best-effort revocation does not block secure local deletion", async () => {
     const { executeDesktopServerReplacement } = await loadModule(
-      "/src/lib/desktop-server-replacement-core.ts",
+      "/src/features/desktop/server/desktop-server-replacement-core.ts",
     );
     const order = [];
     await executeDesktopServerReplacement(prepared, currentServer, undefined, {
@@ -91,7 +91,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("instance binding rejects a server substituted behind an open link", async () => {
     const { assertPreparedServerMatchesRequest } = await loadModule(
-      "/src/lib/desktop-server-replacement-core.ts",
+      "/src/features/desktop/server/desktop-server-replacement-core.ts",
     );
     assert.throws(() =>
       assertPreparedServerMatchesRequest(prepared, {
@@ -106,7 +106,7 @@ export function register({ readSource, assert, loadModule, test }) {
       beginDesktopServerNetworkShutdown,
       desktopNetworkFetch,
       resetDesktopServerNetworkForTests,
-    } = await loadModule("/src/lib/desktop-network.ts");
+    } = await loadModule("/src/features/desktop/network/desktop-network.ts");
     const originalFetch = globalThis.fetch;
     let calls = 0;
     globalThis.fetch = (_input, init) => {
@@ -137,9 +137,9 @@ export function register({ readSource, assert, loadModule, test }) {
   });
 
   test("replacement clears every server-scoped store and supports both deep-link launch modes", async () => {
-    const replacement = await readSource("/src/lib/desktop-server-replacement.ts");
-    const controller = await readSource("/src/components/desktop-server-replacement-controller.tsx");
-    const handler = await readSource("/src/components/desktop-deep-link-handler.tsx");
+    const replacement = await readSource("/src/features/desktop/server/desktop-server-replacement.ts");
+    const controller = await readSource("/src/features/desktop/components/desktop-server-replacement-controller.tsx");
+    const handler = await readSource("/src/features/desktop/components/desktop-deep-link-handler.tsx");
 
     assert.match(replacement, /queryClient\.clear\(\)/);
     assert.match(replacement, /resetAccountState\(\)/);

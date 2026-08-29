@@ -36,15 +36,15 @@ import {
 import {
   clearAllOfflineData,
   getConnectivityState,
-} from "@/lib/offline-store"
+} from "@/features/offline/index"
 import {
   downloadRecoveryArchive,
   syncDirtyOfflinePages,
-} from "@/lib/offline-recovery"
+} from "@/features/offline/index"
 import { clearApiAuthToken } from "@/lib/api"
 import { queryClient } from "@/shared/lib/query-client"
 import { useAppStore } from "@/app/state/app-store"
-import { useOfflineManifest } from "@/app/providers/offline-provider"
+import { useOfflineManifest } from "@/features/offline/index"
 import {
   sessionQueryKey,
   type SessionResponse,

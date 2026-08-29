@@ -1,9 +1,9 @@
 import { createRoute, redirect } from "@tanstack/react-router";
-import { isTauri } from "@tauri-apps/api/core";
+import { isDesktopApp } from "@/features/desktop/index";
 
 import { AcceptWorkspaceInvitationPage } from "@/features/workspaces";
 import { AcceptPageInvitationPage } from "@/features/pages";
-import ConnectPage from "@/pages/connect";
+import { ConnectPage } from "@/features/desktop/pages/index";
 import {
   getAuthReturnPath,
   LoginPage,
@@ -12,7 +12,7 @@ import {
   SetupPage,
   SignupPage,
 } from "@/features/auth";
-import { getConnectivityState } from "@/lib/offline-store";
+import { getConnectivityState } from "@/features/offline/index";
 import { getDefaultAppPath, getFreshSession, getWorkspaces } from "../guards";
 import { rootRoute } from "../route-roots";
 import { validateLoginSearch, validateSignupSearch } from "../search-validators";
@@ -57,7 +57,7 @@ const connectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/connect",
   beforeLoad: async () => {
-    if (!isTauri()) throw redirect({ to: "/login" });
+    if (!isDesktopApp()) throw redirect({ to: "/login" });
 
     const session = await getFreshSession({ optional: true });
     if (!session.user || getConnectivityState() !== "online") return;
@@ -108,7 +108,7 @@ const otpRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/otp",
   beforeLoad: async () => {
-    if (isTauri()) throw redirect({ to: "/login" });
+    if (isDesktopApp()) throw redirect({ to: "/login" });
   },
   component: OtpPage,
 });

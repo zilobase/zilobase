@@ -1,24 +1,24 @@
 import { type ErrorComponentProps } from "@tanstack/react-router";
-import { isTauri } from "@tauri-apps/api/core";
+import { isDesktopApp } from "@/features/desktop/index";
 import { useEffect, useState } from "react";
 
 import { describeRouteError } from "./route-error";
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
-} from "@/lib/desktop-diagnostics";
+} from "@/features/desktop/diagnostics/index";
 import {
   getSelectedDesktopServer,
   listDesktopServerProfiles,
   type DesktopServerProfile,
-} from "@/lib/desktop-server";
-import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch";
+} from "@/features/desktop/server/index";
+import { executeDesktopServerSwitch } from "@/features/desktop/server/index";
 import { Button } from "@/shared/ui/button";
 
 export function RouteErrorPage({ error }: ErrorComponentProps) {
   const selectedServer = getSelectedDesktopServer();
   const copy = describeRouteError(error, {
-    isDesktop: isTauri() || Boolean(selectedServer),
+    isDesktop: isDesktopApp() || Boolean(selectedServer),
     selectedServer,
   });
   const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>([]);

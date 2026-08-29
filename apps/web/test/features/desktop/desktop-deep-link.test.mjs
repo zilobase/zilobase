@@ -16,7 +16,7 @@ export function register({ assert, loadModule, test }) {
       buildDesktopDeepLink,
       parseDesktopDeepLink,
       resolveDesktopDeepLinkAction,
-    } = await loadModule("/src/lib/desktop-deep-link.ts");
+    } = await loadModule("/src/features/desktop/deep-links/desktop-deep-link.ts");
     const path = "/p/page-1?view=board#comments";
     const openLink = buildDesktopDeepLink(path, server);
     const connectLink = buildDesktopConnectLink(server.apiOrigin);
@@ -40,7 +40,7 @@ export function register({ assert, loadModule, test }) {
 
   test("an open link for another instance requires verified replacement", async () => {
     const { buildDesktopDeepLink, resolveDesktopDeepLinkAction } =
-      await loadModule("/src/lib/desktop-deep-link.ts");
+      await loadModule("/src/features/desktop/deep-links/desktop-deep-link.ts");
     const other = { ...server, instanceId: "instance-2" };
 
     assert.deepEqual(
@@ -59,7 +59,7 @@ export function register({ assert, loadModule, test }) {
 
   test("malformed, duplicated, insecure, and malicious links are rejected", async () => {
     const { parseDesktopDeepLink } = await loadModule(
-      "/src/lib/desktop-deep-link.ts",
+      "/src/features/desktop/deep-links/desktop-deep-link.ts",
     );
     for (const value of [
       "zilobase://open?path=https://evil.test",

@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("switch path prefers login when the target has no credentials", async () => {
     const { resolveDesktopServerSwitchPath } = await loadModule(
-      "/src/lib/desktop-server.ts",
+      "/src/features/desktop/server/desktop-server.ts",
     )
 
     assert.equal(
@@ -19,7 +19,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("desktop persist keys stay unscoped without a selected server", async () => {
-    const { desktopPersistKey } = await loadModule("/src/lib/desktop-server.ts")
+    const { desktopPersistKey } = await loadModule("/src/features/desktop/server/desktop-server.ts")
     assert.equal(desktopPersistKey("zilobase-app"), "zilobase-app")
     assert.equal(
       desktopPersistKey("zilobase-app", {
@@ -38,7 +38,7 @@ export function register({ assert, loadModule, test }) {
 
   test("an active profile snapshot restores the last workspace", async () => {
     const { applyActiveDesktopProfileWorkspace } = await loadModule(
-      "/src/lib/desktop-server.ts",
+      "/src/features/desktop/server/desktop-server.ts",
     )
     let workspaceId = null
     applyActiveDesktopProfileWorkspace(

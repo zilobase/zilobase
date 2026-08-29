@@ -5,7 +5,7 @@ export function register({ readSource, assert, loadModule, test }) {
       resolveRuntimeWebSocketUrl,
       validateDesktopServer,
     } =
-      await loadModule("/src/lib/desktop-server.ts")
+      await loadModule("/src/features/desktop/server/desktop-server.ts")
     const server = validateDesktopServer({
       apiOrigin: "https://notes.example.com",
       displayName: "Team Notes",
@@ -54,7 +54,7 @@ export function register({ readSource, assert, loadModule, test }) {
       desktopDevelopmentApiOrigin,
       desktopServersReferToSameInstance,
       isCloudDesktopServer,
-    } = await loadModule("/src/lib/desktop-server.ts")
+    } = await loadModule("/src/features/desktop/server/desktop-server.ts")
     assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER, false), true)
     assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER, true), false)
     assert.equal(
@@ -121,7 +121,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("connect another server omits Cloud when it is already saved", async () => {
-    const source = await readSource("/src/components/desktop-connect-server-dialog.tsx")
+    const source = await readSource("/src/features/desktop/components/desktop-connect-server-dialog.tsx")
 
     assert.match(source, /cloudAlreadySaved \? null/)
     assert.doesNotMatch(source, /Switch to Zilobase Cloud/)
@@ -129,8 +129,8 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("desktop auth picks a server before continuing in the browser", async () => {
     const [connect, screen, login, signup, router] = await Promise.all([
-      readSource("/src/pages/connect.tsx"),
-      readSource("/src/features/auth/components/desktop-browser-auth-screen.tsx"),
+      readSource("/src/features/desktop/pages/connect.tsx"),
+      readSource("/src/features/desktop/auth/desktop-browser-auth-screen.tsx"),
       readSource("/src/features/auth/pages/login.tsx"),
       readSource("/src/features/auth/pages/signup.tsx"),
       readSource("/src/app/routing/route-groups/public-routes.tsx"),

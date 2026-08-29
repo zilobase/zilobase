@@ -17,10 +17,10 @@ import {
   recordConfirmedDocument,
   shouldMarkOfflineDocumentDirty,
   type CollaborationTicket,
-} from "@/lib/offline-documents"
+} from "@/features/offline/index"
 import { collaborationColor } from "./collaboration-color"
-import { patchOfflineItem } from "@/lib/offline-store"
-import { useConnectivity, useOfflineManifest } from "@/app/providers/offline-provider"
+import { patchOfflineItem } from "@/features/offline/index"
+import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
 
 export type CollaborationUser = {
   avatar?: string | null

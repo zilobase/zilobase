@@ -38,7 +38,7 @@ import {
   type SidebarNavItem,
 } from "./sidebar-nav-list"
 import { SidebarNavItemAction } from "@/shared/ui/sidebar-nav-item-action"
-import { useOpenInNewTab } from "@/components/desktop-tabs"
+import { useOpenInNewTab } from "@/features/desktop/components/index"
 import { getSidebarExpansionStorageKey } from "../model/sidebar-expansion-state"
 import { SidebarSectionMenu } from "./sidebar-section-menu"
 import { getConfiguredSidebarItems } from "../model/sidebar-section-items"

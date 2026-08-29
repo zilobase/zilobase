@@ -62,7 +62,7 @@ export function register({ assert, loadModule, test }) {
 
   test("page collaboration providers can mount before opening a socket", async () => {
     const { connectLocalPageDocument } = await loadModule(
-      "/src/lib/offline-documents.ts",
+      "/src/features/offline/documents/offline-documents.ts",
     )
     const document = new Y.Doc()
     const provider = connectLocalPageDocument({

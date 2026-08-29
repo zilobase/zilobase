@@ -4,7 +4,7 @@ export function register({ assert, loadModule, test }) {
       DEFAULT_DESKTOP_TRANSLUCENCY,
       MAX_DESKTOP_TRANSLUCENCY,
       normalizeDesktopTranslucency,
-    } = await loadModule("/src/lib/desktop-translucency.ts")
+    } = await loadModule("/src/features/desktop/window/desktop-translucency.ts")
 
     assert.equal(normalizeDesktopTranslucency(-10), 0)
     assert.equal(normalizeDesktopTranslucency(18.6), 19)

@@ -2,19 +2,19 @@ import {
   clearDesktopAuthToken,
   getDesktopAuthToken,
   setDesktopAuthToken,
-} from "@/lib/desktop-auth-token"
+} from "@/features/desktop/auth/desktop-auth-token"
 import {
   isDesktopOfflineSupported,
   isOfflineMode,
   setConnectivityState,
-} from "@/lib/offline-store"
+} from "@/features/offline/model/index"
 import {
   getSelectedDesktopServer,
   resolveRuntimeApiOrigin,
   resolveRuntimeWebSocketUrl,
   type DesktopServer,
-} from "@/lib/desktop-server"
-import { desktopNetworkFetch } from "@/lib/desktop-network"
+} from "@/features/desktop/server/desktop-server"
+import { desktopNetworkFetch } from "@/features/desktop/network/index"
 
 declare global {
   interface Window {

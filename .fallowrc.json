@@ -54,6 +54,14 @@
       {
         "name": "web-pages",
         "patterns": ["apps/web/src/features/pages/**"]
+      },
+      {
+        "name": "web-desktop",
+        "patterns": ["apps/web/src/features/desktop/**"]
+      },
+      {
+        "name": "web-offline",
+        "patterns": ["apps/web/src/features/offline/**"]
       }
     ],
     "rules": [
@@ -68,7 +76,9 @@
           "web-settings",
           "web-workspaces",
           "web-teamspaces",
-          "web-pages"
+          "web-pages",
+          "web-desktop",
+          "web-offline"
         ]
       },
       {
@@ -79,20 +89,28 @@
           "web-app",
           "web-shared",
           "web-sidebar",
-          "web-teamspaces"
+          "web-teamspaces",
+          "web-desktop",
+          "web-offline"
         ]
       },
       {
         // The published @zilobase/edition-web contract resolves to the
         // community edition implementation under app during local analysis.
         "from": "web-auth",
-        "allow": ["web-app", "web-auth", "web-shared"]
+        "allow": ["web-app", "web-auth", "web-desktop", "web-shared"]
       },
       {
         // Account cleanup still coordinates app persistence and offline state;
         // the desktop/offline pass replaces these temporary app dependencies.
         "from": "web-settings",
-        "allow": ["web-app", "web-settings", "web-shared"]
+        "allow": [
+          "web-app",
+          "web-desktop",
+          "web-offline",
+          "web-settings",
+          "web-shared"
+        ]
       },
       {
         "from": "web-workspaces",
@@ -105,6 +123,22 @@
       {
         "from": "web-pages",
         "allow": ["web-pages", "web-shared", "web-workspaces"]
+      },
+      {
+        // Desktop state cleanup still coordinates the app stores; this edge is
+        // removed when final state ownership is ratcheted in the boundary pass.
+        "from": "web-desktop",
+        "allow": [
+          "web-app",
+          "web-auth",
+          "web-desktop",
+          "web-offline",
+          "web-shared"
+        ]
+      },
+      {
+        "from": "web-offline",
+        "allow": ["web-desktop", "web-offline", "web-shared"]
       }
     ]
   },
@@ -169,20 +203,20 @@
     "apps/web/src/editor/extensions/meeting/browser-meeting-capture.ts",
     "apps/web/src/editor/extensions/meeting/browser-meeting-recovery.ts",
     "apps/web/src/editor/extensions/meeting/meeting-transcript-text.ts",
-    "apps/web/src/editor/offline-structure-guard.ts",
+    "apps/web/src/features/offline/documents/offline-structure-guard.ts",
     "apps/web/src/editor/paste.ts",
     "apps/web/src/editor/protected-structural-blocks.ts",
     "apps/web/src/hooks/use-title-draft.ts",
     "apps/web/src/lib/api.ts",
     "apps/web/src/shared/lib/color-tokens.ts",
-    "apps/web/src/lib/connectivity-probe.ts",
+    "apps/web/src/features/offline/model/connectivity-probe.ts",
     "apps/web/src/lib/deferred-realtime.ts",
-    "apps/web/src/lib/desktop-deep-link.ts",
-    "apps/web/src/lib/desktop-diagnostics.ts",
-    "apps/web/src/lib/desktop-network.ts",
-    "apps/web/src/lib/desktop-server-replacement-core.ts",
-    "apps/web/src/lib/desktop-server.ts",
-    "apps/web/src/lib/desktop-translucency.ts",
+    "apps/web/src/features/desktop/deep-links/desktop-deep-link.ts",
+    "apps/web/src/features/desktop/diagnostics/desktop-diagnostics.ts",
+    "apps/web/src/features/desktop/network/desktop-network.ts",
+    "apps/web/src/features/desktop/server/desktop-server-replacement-core.ts",
+    "apps/web/src/features/desktop/server/desktop-server.ts",
+    "apps/web/src/features/desktop/window/desktop-translucency.ts",
     "apps/web/src/lib/favicon.ts",
     "apps/web/src/features/auth/lib/google-auth.ts",
     "apps/web/src/lib/image-upload.ts",
@@ -190,9 +224,9 @@
     "apps/web/src/lib/meeting-navigation.ts",
     "apps/web/src/lib/notion-html-blocks.ts",
     "apps/web/src/lib/notion-import.ts",
-    "apps/web/src/lib/offline-documents.ts",
-    "apps/web/src/lib/offline-recovery.ts",
-    "apps/web/src/lib/offline-store.ts",
+    "apps/web/src/features/offline/documents/offline-documents.ts",
+    "apps/web/src/features/offline/documents/offline-recovery.ts",
+    "apps/web/src/features/offline/model/offline-store.ts",
     "apps/web/src/shared/lib/page-icon-utils.ts",
     "apps/web/src/lib/published-page-preferences.ts",
     "apps/web/src/lib/published-share-access.ts",

@@ -12,7 +12,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
-import { isTauri } from "@tauri-apps/api/core"
+import { isDesktopApp } from "@/features/desktop/index"
 import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
 import { MonitorUpIcon, SlidersHorizontalIcon } from "@/shared/components/icons"
 import * as React from "react"
@@ -53,8 +53,12 @@ import { WorkspaceSwitcher } from "./workspace-switcher"
 import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import { clearPromotedFullPagePath, usePromotedFullPagePath } from "@/contexts/page-side-pane"
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
-import { buildDesktopDeepLink } from "@/lib/desktop-deep-link"
-import { discoverRuntimeDesktopServer, getSelectedDesktopServer, type DesktopServer } from "@/lib/desktop-server"
+import { buildDesktopDeepLink } from "@/features/desktop/deep-links/index"
+import {
+  discoverRuntimeDesktopServer,
+  getSelectedDesktopServer,
+  type DesktopServer,
+} from "@/features/desktop/server/index"
 import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons"
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon"
 import { useSession } from "@zilobase/features/auth"
@@ -129,7 +133,7 @@ export function AppSidebar({
     if (promotedFullPagePath && window.location.pathname !== promotedFullPagePath) clearPromotedFullPagePath()
   }, [promotedFullPagePath, routerPathname])
   React.useEffect(() => {
-    if (desktopLinkServer || isTauri()) return
+    if (desktopLinkServer || isDesktopApp()) return
     let disposed = false
     void discoverRuntimeDesktopServer().then((server) => {
       if (!disposed) setDesktopLinkServer(server)
@@ -286,7 +290,7 @@ export function AppSidebar({
         {!customizing ? (
           <SidebarMenu className="gap-2 p-2 group-data-[collapsible=icon]:px-1">
             <SidebarMenuItem><SidebarMenuButton onClick={() => setCustomizing(true)} tooltip="Customize sidebar" type="button"><SlidersHorizontalIcon /><span>Customize sidebar</span></SidebarMenuButton></SidebarMenuItem>
-            {!isTauri() && desktopLinkServer ? <SidebarMenuItem><a className="flex w-full items-start gap-2.5 rounded-lg bg-accent p-3 text-foreground ring-1 ring-border transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2!" href={buildDesktopDeepLink(location.href, desktopLinkServer)}><MonitorUpIcon className="mt-0.5 size-4 shrink-0" /><span className="min-w-0 group-data-[collapsible=icon]:hidden"><span className="block text-sm font-medium">Open in desktop app</span><span className="mt-0.5 block text-xs leading-snug text-muted-foreground">Continue this page in the desktop experience.</span></span></a></SidebarMenuItem> : null}
+            {!isDesktopApp() && desktopLinkServer ? <SidebarMenuItem><a className="flex w-full items-start gap-2.5 rounded-lg bg-accent p-3 text-foreground ring-1 ring-border transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-data-[collapsible=icon]:size-10! group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2!" href={buildDesktopDeepLink(location.href, desktopLinkServer)}><MonitorUpIcon className="mt-0.5 size-4 shrink-0" /><span className="min-w-0 group-data-[collapsible=icon]:hidden"><span className="block text-sm font-medium">Open in desktop app</span><span className="mt-0.5 block text-xs leading-snug text-muted-foreground">Continue this page in the desktop experience.</span></span></a></SidebarMenuItem> : null}
           </SidebarMenu>
         ) : null}
         <div className="border-t border-border px-2 py-2"><WorkspaceSwitcher onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} /></div>

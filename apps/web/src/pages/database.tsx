@@ -43,7 +43,7 @@ import {
 import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
 import type { OpenPageOptions } from "@/packages/editor/types"
 import { useTitleDraft } from "@/hooks/use-title-draft"
-import { useConnectivity, useOfflineManifest } from "@/app/providers/offline-provider"
+import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
 
 export default function DatabasePage() {
   const { databaseId } = useParams({ from: "/d/$databaseId" })

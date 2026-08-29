@@ -80,13 +80,13 @@ import {
   SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
   SidebarNavItemAction,
 } from "@/shared/ui/sidebar-nav-item-action"
-import { useOpenInNewTab } from "@/components/desktop-tabs"
+import { useOpenInNewTab } from "@/features/desktop/components/index"
 import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
 import { cn } from "@/shared/lib/utils"
 import { getApiErrorMessage } from "@/lib/api"
 import { PageIconDisplay } from "@/lib/page-icon"
 import { getTeamspaceSidebarPermissions } from "@/features/teamspaces"
-import { OfflineAvailabilityAction } from "@/components/offline-availability-action"
+import { OfflineAvailabilityAction } from "@/features/offline/index"
 import { SidebarSectionMenu } from "./sidebar-section-menu"
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 import { getConfiguredSidebarItems } from "../model/sidebar-section-items"

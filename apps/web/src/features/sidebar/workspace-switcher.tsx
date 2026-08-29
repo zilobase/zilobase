@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { isTauri } from "@tauri-apps/api/core"
+import { isDesktopApp } from "@/features/desktop/index"
 
 import { Button } from "@/shared/ui/button"
 import {
@@ -37,14 +37,14 @@ import {
   useSetActiveWorkspace,
 } from "@zilobase/features/workspaces"
 import { getApiErrorMessage } from "@/lib/api"
-import { DesktopConnectServerDialog } from "@/components/desktop-connect-server-dialog"
+import { DesktopConnectServerDialog } from "@/features/desktop/components/index"
 import {
   getSelectedDesktopServer,
   listDesktopServerProfiles,
   updateDesktopServerProfileSnapshot,
   type DesktopServerProfile,
-} from "@/lib/desktop-server"
-import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
+} from "@/features/desktop/server/index"
+import { executeDesktopServerSwitch } from "@/features/desktop/server/index"
 import {
   Building2Icon,
   CheckIcon,
@@ -63,7 +63,7 @@ export function WorkspaceSwitcher({
 }) {
   const { data: sessionData } = useSession()
   const isWorkspacePinned = sessionData?.workspacePinned !== false
-  const isDesktop = isTauri()
+  const isDesktop = isDesktopApp()
 
   if (isWorkspacePinned && !isDesktop) {
     return (
@@ -152,7 +152,7 @@ function MultiWorkspaceSwitcher({
   settingsOpen: boolean
 }) {
   const navigate = useNavigate()
-  const isDesktop = isTauri()
+  const isDesktop = isDesktopApp()
   const isWorkspacePinned = sessionData?.workspacePinned !== false
   const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
   const [isConnectDialogOpen, setIsConnectDialogOpen] = React.useState(false)

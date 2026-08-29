@@ -52,7 +52,7 @@ import type { OpenPageOptions } from "./types"
 import {
   OfflineStructureGuard,
   shouldEnableOfflineStructureGuard,
-} from "./offline-structure-guard"
+} from "@/features/offline/index"
 
 export type BaseExtensionsOptions = {
   collaboration?: import("./types").EditorCollaboration

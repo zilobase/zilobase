@@ -1,6 +1,8 @@
 export function register({ assert, readSource, readWorkspace, test }) {
   test("desktop browser auth is owned by the native PKCE coordinator", async () => {
-    const source = await readSource("/src/features/auth/lib/google-auth.ts")
+    const source = await readSource(
+      "/src/features/desktop/auth/browser-authorization.ts",
+    )
 
     assert.match(source, /invoke\("start_browser_authorization"\)/)
     assert.match(source, /invoke\("cancel_browser_authorization"\)/)
@@ -10,7 +12,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
 
   test("desktop signed-out shell is browser-only", async () => {
     const [screen, login, signup, loginForm] = await Promise.all([
-      readSource("/src/features/auth/components/desktop-browser-auth-screen.tsx"),
+      readSource("/src/features/desktop/auth/desktop-browser-auth-screen.tsx"),
       readSource("/src/features/auth/pages/login.tsx"),
       readSource("/src/features/auth/pages/signup.tsx"),
       readSource("/src/features/auth/components/login-form.tsx"),
@@ -32,8 +34,8 @@ export function register({ assert, readSource, readWorkspace, test }) {
 
     assert.match(login, /DesktopBrowserAuthScreen/)
     assert.match(signup, /DesktopBrowserAuthScreen/)
-    assert.match(login, /isTauri\(\)/)
-    assert.match(signup, /isTauri\(\)/)
+    assert.match(login, /isDesktopApp\(\)/)
+    assert.match(signup, /isDesktopApp\(\)/)
 
     assert.doesNotMatch(loginForm, /isTauri/)
     assert.doesNotMatch(loginForm, /signInWithDesktopBrowser/)
@@ -46,7 +48,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
   test("desktop and browser sign-out stay on their own session", async () => {
     const [provider, token, routes] = await Promise.all([
       readSource("/src/app/providers/features-provider.tsx"),
-      readSource("/src/lib/desktop-auth-token.ts"),
+      readSource("/src/features/desktop/auth/desktop-auth-token.ts"),
       readWorkspace("/apps/server/src/features/desktop-auth/routes.ts"),
     ])
 

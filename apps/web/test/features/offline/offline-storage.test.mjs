@@ -5,7 +5,7 @@ import * as Y from "yjs"
 export function register({ assert, loadModule, test }) {
   test("only local Yjs transactions mark an offline page dirty", async () => {
     const { shouldMarkOfflineDocumentDirty } = await loadModule(
-      "/src/lib/offline-documents.ts",
+      "/src/features/offline/documents/offline-documents.ts",
     )
     const local = new Y.Doc()
     const remote = new Y.Doc()
@@ -29,7 +29,7 @@ export function register({ assert, loadModule, test }) {
       enableOfflineWorkspace,
       getOfflineManifest,
       setOfflineItem,
-    } = await loadModule("/src/lib/offline-store.ts")
+    } = await loadModule("/src/features/offline/model/offline-store.ts")
     await clearAllOfflineData()
 
     await enableOfflineWorkspace({
@@ -71,7 +71,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("offline session fallback requires a matching owner, token, and unexpired session", async () => {
-    const { isOfflineSessionAllowed } = await loadModule("/src/lib/offline-store.ts")
+    const { isOfflineSessionAllowed } = await loadModule("/src/features/offline/model/offline-store.ts")
     const base = {
       accountId: "account-1",
       expiresAt: "2030-01-01T00:00:00.000Z",
@@ -87,7 +87,7 @@ export function register({ assert, loadModule, test }) {
 
   test("offline cache keys are scoped to a desktop instance", async () => {
     const { offlineManifestKey, offlineQueryCacheKey } = await loadModule(
-      "/src/lib/offline-store.ts",
+      "/src/features/offline/model/offline-store.ts",
     )
     assert.equal(offlineManifestKey(), "zilobase-offline-manifest-v1")
     assert.equal(
@@ -119,7 +119,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("query persistence only includes enabled and explicitly downloaded content", async () => {
-    const { shouldPersistOfflineQueryForManifest } = await loadModule("/src/lib/offline-store.ts")
+    const { shouldPersistOfflineQueryForManifest } = await loadModule("/src/features/offline/model/offline-store.ts")
     const manifest = {
       accountId: "account-1",
       apiOrigin: "https://api.zilobase.test",
@@ -163,7 +163,7 @@ export function register({ assert, loadModule, test }) {
   test("server replacement deletes stale instance-scoped Yjs databases", async () => {
     globalThis.window ??= globalThis
     const { clearDesktopServerIndexedData } = await loadModule(
-      "/src/lib/offline-store.ts",
+      "/src/features/offline/model/offline-store.ts",
     )
     const name = `zilobase:v1:stale:${crypto.randomUUID()}`
     const database = await openDatabase(name)

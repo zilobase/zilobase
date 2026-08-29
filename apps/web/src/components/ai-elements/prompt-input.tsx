@@ -62,7 +62,7 @@ import type {
   ReactNode,
   RefObject,
 } from "react";
-import { desktopNetworkFetch } from "@/lib/desktop-network";
+import { desktopNetworkFetch } from "@/features/desktop/network/index";
 import {
   Children,
   createContext,

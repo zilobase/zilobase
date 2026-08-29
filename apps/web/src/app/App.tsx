@@ -1,12 +1,12 @@
 import { RouterProvider } from "@tanstack/react-router"
 
-import { DesktopDeepLinkHandler } from "@/components/desktop-deep-link-handler"
-import { DesktopServerReplacementController } from "@/components/desktop-server-replacement-controller"
-import { DesktopServerSwitchOverlay } from "@/components/desktop-server-switch-overlay"
+import { DesktopDeepLinkHandler } from "@/features/desktop/components/index"
+import { DesktopServerReplacementController } from "@/features/desktop/components/index"
+import { DesktopServerSwitchOverlay } from "@/features/desktop/components/index"
 import {
   DesktopWindowTitlebar,
   isLinuxDesktopApp,
-} from "@/components/desktop-window-titlebar"
+} from "@/features/desktop/components/index"
 import { router } from "@/app/routing/router"
 
 export default function App() {

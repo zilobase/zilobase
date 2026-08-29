@@ -33,7 +33,7 @@ import {
   type GeneratedRange,
 } from "@/packages/editor/editor-ai-utils"
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
-import { desktopNetworkFetch } from "@/lib/desktop-network"
+import { desktopNetworkFetch } from "@/features/desktop/network/index"
 
 type AskAiBlockOptions = {
   workspaceId?: string | null

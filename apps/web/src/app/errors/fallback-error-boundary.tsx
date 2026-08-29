@@ -3,7 +3,7 @@ import { Component, type ReactNode } from "react"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
-} from "@/lib/desktop-diagnostics"
+} from "@/features/desktop/diagnostics/index"
 
 type FallbackErrorBoundaryProps = {
   children: ReactNode

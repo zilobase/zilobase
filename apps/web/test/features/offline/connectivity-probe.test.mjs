@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("background probes preserve a confirmed online connection", async () => {
     const { connectivityStateDuringProbe } = await loadModule(
-      "/src/lib/connectivity-probe.ts",
+      "/src/features/offline/model/connectivity-probe.ts",
     )
 
     assert.equal(connectivityStateDuringProbe("online"), "online")
@@ -15,7 +15,7 @@ export function register({ assert, loadModule, test }) {
 
   test("startup waits for the first connectivity probe, then uses cache or fails closed", async () => {
     const { resolveOfflineFallback, waitForSettledConnectivity } =
-      await loadModule("/src/lib/connectivity-probe.ts")
+      await loadModule("/src/features/offline/model/connectivity-probe.ts")
 
     assert.equal(
       await waitForSettledConnectivity({

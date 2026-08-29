@@ -1,14 +1,14 @@
-import { isTauri } from "@tauri-apps/api/core"
+import { isDesktopApp } from "@/features/desktop/index"
 
 import { AuthScreen } from "../components/auth-screen"
-import { DesktopBrowserAuthScreen } from "../components/desktop-browser-auth-screen"
+import { DesktopBrowserAuthScreen } from "@/features/desktop/auth/index"
 import { LoginForm } from "../components/login-form"
 import { getInvitationAuthSearch } from "../lib/google-auth"
 
 export default function LoginPage() {
   const signupSearch = getInvitationAuthSearch()
 
-  if (isTauri()) {
+  if (isDesktopApp()) {
     return <DesktopBrowserAuthScreen />
   }
 

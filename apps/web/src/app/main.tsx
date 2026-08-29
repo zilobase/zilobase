@@ -1,12 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import { initializeDesktopAuthToken } from "@/lib/desktop-auth-token";
+import { initializeDesktopAuthToken } from "@/features/desktop/auth/index";
 import {
   applyActiveDesktopProfileWorkspace,
   initializeDesktopServer,
   listDesktopServerProfiles,
-} from "@/lib/desktop-server";
+} from "@/features/desktop/server/index";
 import { useAppStore } from "@/app/state/app-store";
 import { useAuthFlowStore } from "@/features/auth";
 import {
@@ -14,9 +14,9 @@ import {
   markDesktopAppReady,
   markDesktopRootMounted,
   recordDesktopDiagnostic,
-} from "@/lib/desktop-diagnostics";
+} from "@/features/desktop/diagnostics/index";
 import { AppProviders } from "@/app/providers/app-providers";
-import { initializeDesktopTranslucency } from "@/lib/desktop-translucency";
+import { initializeDesktopTranslucency } from "@/features/desktop/window/index";
 import "../shared/styles/global.css";
 import "@/packages/editor/styles.css";
 

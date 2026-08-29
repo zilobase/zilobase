@@ -1,0 +1,1 @@
+export { isDesktopApp } from "./platform"

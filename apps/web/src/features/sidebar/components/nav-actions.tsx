@@ -106,12 +106,12 @@ import { cn } from "@/shared/lib/utils";
 import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry";
 import { Switch } from "@/shared/ui/switch";
 import { useLayoutEditor } from "@/components/layout-editor";
-import { OfflineAvailabilityAction } from "@/components/offline-availability-action";
+import { OfflineAvailabilityAction } from "@/features/offline/index";
 import {
   useConnectivity,
   useOfflineManifest,
   useOfflineSessionLocked,
-} from "@/app/providers/offline-provider";
+} from "@/features/offline/index";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import {
   getPrimaryPageParentId,

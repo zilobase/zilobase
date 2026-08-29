@@ -1,5 +1,5 @@
 import * as React from "react"
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { isDesktopApp } from "@/features/desktop/index"
 import { useTheme } from "next-themes"
 import {
   BugIcon,
@@ -41,7 +41,11 @@ import { getApiErrorMessage } from "@/lib/api"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
-} from "@/lib/desktop-diagnostics"
+} from "@/features/desktop/diagnostics/index"
+import {
+  exportDesktopDiagnostics,
+  openDesktopDiagnosticsFolder,
+} from "@/features/desktop/diagnostics/index"
 import {
   clearAllOfflineData,
   clearDesktopServerIndexedData,
@@ -50,20 +54,20 @@ import {
   getConnectivityState,
   hasUnsyncedOfflineItems,
   isDesktopOfflineSupported,
-} from "@/lib/offline-store"
-import { importRecoveryArchive } from "@/lib/offline-recovery"
-import { DesktopConnectServerDialog } from "@/components/desktop-connect-server-dialog"
-import { clearDesktopPersistKeys } from "@/lib/desktop-persist-storage"
+} from "@/features/offline/index"
+import { importRecoveryArchive } from "@/features/offline/index"
+import { DesktopConnectServerDialog } from "@/features/desktop/components/index"
+import { clearDesktopPersistKeys } from "@/features/desktop/persistence/index"
 import {
   getSelectedDesktopServer,
   listDesktopServerProfiles,
   removeDesktopServerProfile,
   type DesktopServerProfile,
-} from "@/lib/desktop-server"
-import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
+} from "@/features/desktop/server/index"
+import { executeDesktopServerSwitch } from "@/features/desktop/server/index"
 import { queryClient } from "@/shared/lib/query-client"
 import { useAppStore } from "@/app/state/app-store"
-import { useOfflineManifest } from "@/app/providers/offline-provider"
+import { useOfflineManifest } from "@/features/offline/index"
 import { useSession } from "@zilobase/features/auth"
 import { useWorkspaces } from "@zilobase/features/workspaces"
 import {
@@ -77,7 +81,7 @@ import {
   getDesktopTranslucency,
   MAX_DESKTOP_TRANSLUCENCY,
   setDesktopTranslucency,
-} from "@/lib/desktop-translucency"
+} from "@/features/desktop/window/index"
 
 export default function PreferencesSettingsPage() {
   return (
@@ -95,7 +99,7 @@ export default function PreferencesSettingsPage() {
             <OfflineAccessSection />
           </>
         ) : null}
-        {isTauri() ? (
+        {isDesktopApp() ? (
           <>
             <Separator />
             <DesktopServerSection />
@@ -281,7 +285,7 @@ function DiagnosticsSection() {
   const openLogs = async () => {
     setBusyAction("open")
     try {
-      await invoke("open_diagnostics_folder")
+      await openDesktopDiagnosticsFolder()
     } catch (error) {
       recordDesktopDiagnostic(
         "diagnostics.log_folder_opened",
@@ -297,7 +301,7 @@ function DiagnosticsSection() {
   const exportDiagnostics = async () => {
     setBusyAction("export")
     try {
-      const archivePath = await invoke<string>("export_diagnostics")
+      const archivePath = await exportDesktopDiagnostics()
       toast.success("Diagnostics archive created.", {
         description: archivePath,
       })
@@ -432,7 +436,7 @@ function AppearanceSection() {
           </Select>
         </div>
 
-        {isTauri() ? (
+        {isDesktopApp() ? (
           <div className="grid max-w-md gap-2">
             <div className="flex items-center justify-between gap-4">
               <label

@@ -9,7 +9,7 @@ import {
   applyTicketState,
   connectLocalPageDocument,
   type CollaborationTicket,
-} from "@/lib/offline-documents"
+} from "@/features/offline/index"
 
 function getMeetingTicket(meetingId: string, signal?: AbortSignal) {
   return apiFetch<CollaborationTicket>(

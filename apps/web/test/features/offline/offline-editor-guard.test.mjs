@@ -7,7 +7,7 @@ export function register({ assert, loadModule, test }) {
       allowsOfflineTransaction,
       shouldEnableOfflineStructureGuard,
     } = await loadModule(
-      "/src/editor/offline-structure-guard.ts",
+      "/src/features/offline/documents/offline-structure-guard.ts",
     )
 
     assert.equal(

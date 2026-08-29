@@ -1,7 +1,7 @@
 export function register({ readSource, assert, test }) {
   test("desktop workspace switcher groups current and other servers", async () => {
     const source = await readSource("/src/features/sidebar/workspace-switcher.tsx")
-    assert.match(source, /isTauri\(\)/)
+    assert.match(source, /isDesktopApp\(\)/)
     assert.match(source, /Connect another server/)
     assert.match(source, /OtherServerSection/)
     assert.match(source, /listDesktopServerProfiles/)

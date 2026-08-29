@@ -10,13 +10,13 @@ import { ApiError, NetworkUnavailableError, apiFetch } from "@/lib/api";
 import {
   resolveOfflineFallback,
   waitForSettledConnectivity,
-} from "@/lib/connectivity-probe";
+} from "@/features/offline/index";
 import {
   getConnectivityState,
   getOfflineManifest,
   getValidOfflineSession,
   subscribeConnectivity,
-} from "@/lib/offline-store";
+} from "@/features/offline/index";
 import { getMostRecentItemPath } from "@/lib/recent-navigation";
 import { decidePublishedShareAccess } from "@/lib/published-share-access";
 

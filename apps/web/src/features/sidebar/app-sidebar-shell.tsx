@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { isTauri } from "@tauri-apps/api/core"
+import { isDesktopApp } from "@/features/desktop/index"
 import { useTheme } from "next-themes"
 import { MonitorIcon, MoonIcon, SunIcon } from "@/shared/components/icons"
 
@@ -48,7 +48,7 @@ export function AppSidebarHeader({
   navigation?: React.ReactNode
 }) {
   const hasOverlayTitleBar =
-    isTauri() &&
+    isDesktopApp() &&
     (navigator.userAgent.includes("Mac") ||
       navigator.userAgent.includes("Linux"))
 

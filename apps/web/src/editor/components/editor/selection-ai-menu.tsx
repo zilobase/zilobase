@@ -16,7 +16,7 @@ import {
   readStreamError,
 } from "@/packages/editor/editor-ai-utils"
 import { getApiRequestHeaders, toApiUrl } from "@/lib/api"
-import { desktopNetworkFetch } from "@/lib/desktop-network"
+import { desktopNetworkFetch } from "@/features/desktop/network/index"
 import { cn } from "@/shared/lib/utils"
 import type { SelectionAiDiffPreview } from "@/packages/editor/types"
 import { useZilobaseAiPages } from "@zilobase/features/pages"

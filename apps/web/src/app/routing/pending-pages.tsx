@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { recordDesktopDiagnostic } from "@/lib/desktop-diagnostics";
+import { recordDesktopDiagnostic } from "@/features/desktop/diagnostics/index";
 import { Spinner } from "@/shared/ui/spinner";
 
 export function AppContentPendingPage() {
