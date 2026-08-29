@@ -72,7 +72,7 @@ export function register({ assert, loadModule, test }) {
       "utf8",
     )
 
-    assert.match(librarySource, /id: "meetings", label: "Meetings"/)
+    assert.match(librarySource, /id: "meetings", label: libraryViewLabels\.meetings/)
     assert.match(librarySource, /useWorkspaceMeetings\(/)
     assert.match(librarySource, /fallbackIcon: view\.icon/)
     assert.match(toolbarSource, /view\.fallbackIcon \?\? \(view\.type/)

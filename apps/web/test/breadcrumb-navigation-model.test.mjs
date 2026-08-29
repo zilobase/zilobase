@@ -11,6 +11,17 @@ export function register({ assert, loadModule, test }) {
     assert.doesNotMatch(viewportSource, /top-0[^\n]*bg-gradient-to-b|bg-gradient-to-b[^\n]*top-0/)
   })
 
+  test("Library breadcrumbs reflect the active view label and icon", async () => {
+    const source = await readFile(
+      new URL("../src/components/page-pane-header.tsx", import.meta.url),
+      "utf8",
+    )
+
+    assert.match(source, /libraryViewIds\.includes\(requestedView/)
+    assert.match(source, /libraryViewIcons\[libraryView\]/)
+    assert.match(source, /libraryViewLabels\[libraryView\]/)
+  })
+
   test("breadcrumbs follow page, database, and database-row ancestry", async () => {
     const { buildCanonicalBreadcrumbTrail } = await loadModule(
       "/src/components/breadcrumb-navigation-model.ts",

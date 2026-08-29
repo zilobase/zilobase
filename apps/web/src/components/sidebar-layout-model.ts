@@ -20,7 +20,7 @@ export const sidebarSectionLabels: Record<SidebarSectionKind, string> = {
 }
 
 export const libraryViewLabels: Record<LibraryView, string> = {
-  favourites: "Favorites",
+  favourites: "Favourites",
   meetings: "Meetings",
   private: "Private",
   recents: "Recents",

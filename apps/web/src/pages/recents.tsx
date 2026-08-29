@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { libraryViewIcons } from "@/components/sidebar-layout-icons";
+import { libraryViewLabels } from "@/components/sidebar-layout-model";
 import { PageSidePaneLayout, usePageSidePane } from "@/contexts/page-side-pane";
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";
 import { PageEditorPane } from "@/pages/page";
@@ -113,12 +114,12 @@ const homepageViews: Array<{
   id: HomepageView;
   label: string;
 }> = [
-  { icon: libraryViewIcons.recents, id: "recents", label: "Recents" },
-  { icon: libraryViewIcons.favourites, id: "favourites", label: "Favourites" },
-  { icon: libraryViewIcons.meetings, id: "meetings", label: "Meetings" },
-  { icon: libraryViewIcons.shared, id: "shared", label: "Shared" },
-  { icon: libraryViewIcons.teamspaces, id: "teamspaces", label: "Teamspaces" },
-  { icon: libraryViewIcons.private, id: "private", label: "Private" },
+  { icon: libraryViewIcons.recents, id: "recents", label: libraryViewLabels.recents },
+  { icon: libraryViewIcons.favourites, id: "favourites", label: libraryViewLabels.favourites },
+  { icon: libraryViewIcons.meetings, id: "meetings", label: libraryViewLabels.meetings },
+  { icon: libraryViewIcons.shared, id: "shared", label: libraryViewLabels.shared },
+  { icon: libraryViewIcons.teamspaces, id: "teamspaces", label: libraryViewLabels.teamspaces },
+  { icon: libraryViewIcons.private, id: "private", label: libraryViewLabels.private },
 ];
 
 const homepagePropertyDefinitions = [

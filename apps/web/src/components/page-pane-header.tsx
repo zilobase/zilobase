@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
   CheckIcon,
   ChevronDown,
@@ -32,14 +32,18 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
+import { libraryViewIcons } from "@/components/sidebar-layout-icons";
+import { libraryViewLabels } from "@/components/sidebar-layout-model";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { useDatabase } from "@zilobase/features/databases";
 import { useMeeting } from "@zilobase/features/meetings";
 import { useTeamspaces } from "@zilobase/features/teamspaces";
 import {
   defaultUserSettings,
+  libraryViewIds,
   useUpdateUserSettings,
   useUserSettings,
+  type LibraryView,
 } from "@zilobase/features/user-settings";
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon";
 import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons";
@@ -346,6 +350,7 @@ function OpenPageAsDropdown({
 }
 
 function AppBreadcrumbs({ pathname }: { pathname: string }) {
+  const location = useLocation();
   const pageId = getPageId(pathname);
   const databaseId = getDatabaseId(pathname);
   const meetingId = getMeetingId(pathname);
@@ -401,6 +406,12 @@ function AppBreadcrumbs({ pathname }: { pathname: string }) {
   }
 
   if (pathname === "/recents") {
+    const requestedView = location.search.view;
+    const libraryView = libraryViewIds.includes(requestedView as LibraryView)
+      ? requestedView as LibraryView
+      : "recents";
+    const LibraryViewIcon = libraryViewIcons[libraryView];
+
     return (
       <Breadcrumb>
         <BreadcrumbList>
@@ -411,7 +422,10 @@ function AppBreadcrumbs({ pathname }: { pathname: string }) {
           </BreadcrumbItem>
           <BreadcrumbSlash />
           <BreadcrumbItem>
-            <BreadcrumbPage className="line-clamp-1">Recents</BreadcrumbPage>
+            <BreadcrumbPage className="line-clamp-1 gap-1.5">
+              <LibraryViewIcon aria-hidden="true" className="size-4 shrink-0" />
+              {libraryViewLabels[libraryView]}
+            </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
