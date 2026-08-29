@@ -5,7 +5,7 @@ import {
   updateDatabasePropertyInPayload,
   updateDatabaseViewInNavigation,
   updateDatabaseViewInPayload,
-} from "./hooks"
+} from "./mutation-hooks"
 import { createTestDatabasePayload } from "./test-helpers"
 
 test("updateDatabaseViewInPayload optimistically updates view visibility config", () => {

@@ -1,4 +1,4 @@
-import type { DatabaseContextPayload } from "./types"
+import type { DatabaseContextPayload } from "../shared/types"
 
 type DatabaseRowLike = {
   id: string

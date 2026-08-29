@@ -1,5 +1,6 @@
 export * from "./apply-delta"
-export * from "./hooks"
+export * from "./mutation-hooks"
+export * from "./query-hooks"
 export * from "./queries"
 export * from "./row-page-properties"
 export * from "./mutation-types"

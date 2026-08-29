@@ -7,7 +7,7 @@ import type {
   SignInWithPasswordInput,
   SignUpInput,
   VerifyEmailOtpInput,
-} from "./auth/queries"
+} from "../auth/queries"
 
 export type ApiFetcher = <T>(path: string, init?: RequestInit) => Promise<T>
 

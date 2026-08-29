@@ -6,7 +6,7 @@ import {
   useSyncExternalStore,
 } from "react"
 
-import { useZilobaseFeatures, type ApiFetcher } from "../context"
+import { useZilobaseFeatures, type ApiFetcher } from "../shared/context"
 import {
   applyDatabaseMutationToPageProperties,
   recoverPagePropertiesIfBehind,

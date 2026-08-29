@@ -1,4 +1,4 @@
 export * from "./ai-chat"
-export * from "./context"
+export * from "./shared/context"
 export * from "./meetings"
-export * from "./query-client"
+export * from "./shared/query-client"

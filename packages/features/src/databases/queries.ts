@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query"
 
-import type { ApiFetcher } from "../context"
+import type { ApiFetcher } from "../shared/context"
 
 export type DatabaseRecord = {
   id: string

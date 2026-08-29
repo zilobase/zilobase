@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query"
 
-import type { ZilobaseAuthClient } from "../context"
+import type { ZilobaseAuthClient } from "../shared/context"
 
 export type SessionUser = {
   id: string

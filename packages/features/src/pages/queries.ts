@@ -3,8 +3,8 @@ import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import {
   ACTIVE_ORGANIZATION_MISMATCH_CODE,
   ActiveWorkspaceMismatchError,
-} from "../api-errors";
-import type { ApiFetcher } from "../context";
+} from "../shared/api-errors";
+import type { ApiFetcher } from "../shared/context";
 import type { EmbeddedItemsOpenAs, PageMetadata } from "./item-relationships";
 
 export type {

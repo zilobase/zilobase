@@ -4,8 +4,8 @@ import type { ApiFetcher } from "./context";
 import {
   databasePayloadRootQueryKey,
   databaseQueryKey,
-} from "./databases/queries";
-import { applyPageFavoriteToNav } from "./pages/nav-delta";
+} from "../databases/queries";
+import { applyPageFavoriteToNav } from "../pages/nav-delta";
 import {
   zilobaseAiPagesQueryKey,
   pagesNavRootQueryKey,
@@ -15,7 +15,7 @@ import {
   type Page,
   type PageDetail,
   type PageNavigationPayload,
-} from "./pages/queries";
+} from "../pages/queries";
 
 export type DeletedItemIds = {
   deletedDatabaseIds: string[];

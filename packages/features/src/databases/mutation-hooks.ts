@@ -1,11 +1,11 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback, useRef } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useRef } from "react";
 
-import { useZilobaseFeatures } from "../context";
+import { useZilobaseFeatures } from "../shared/context";
 import {
   invalidateDeletedItems,
   invalidateRestoredItems,
-} from "../item-action-cache";
+} from "../shared/item-action-cache";
 
 import {
   applyMutationToCache,
@@ -22,10 +22,8 @@ import {
 import { applyDatabaseDelta } from "./apply-delta";
 import {
   databaseAccessQueryKey,
-  databaseAccessQueryOptions,
   databasePayloadRootQueryKey,
   databaseQueryKey,
-  databaseQueryOptions,
   type DatabasePayload,
 } from "./queries";
 import {
@@ -477,36 +475,6 @@ function formatDatePropertyValueAsText(value: unknown) {
   const endText = typeof end === "string" ? end.trim() : "";
 
   return startText && endText ? `${startText} - ${endText}` : startText || null;
-}
-
-export function useDatabase(
-  databaseId: string | null | undefined,
-  options?: {
-    dataSourceId?: string;
-    includeDeleted?: boolean;
-    schemaOnly?: boolean;
-    viewId?: string;
-  },
-) {
-  const { apiFetch } = useZilobaseFeatures();
-  const query = useQuery(databaseQueryOptions(apiFetch, databaseId, options));
-  const hasNextPage = false;
-
-  const fetchNextPage = useCallback(async () => {
-    return;
-  }, []);
-
-  return {
-    ...query,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage: false,
-  };
-}
-
-export function useDatabaseAccess(databaseId: string | null | undefined) {
-  const { apiFetch } = useZilobaseFeatures();
-  return useQuery(databaseAccessQueryOptions(apiFetch, databaseId));
 }
 
 type DatabaseAccessInput = {

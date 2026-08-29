@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 
-import { useZilobaseFeatures } from "../context"
+import { useZilobaseFeatures } from "../shared/context"
 import { pagesQueryKey } from "../pages/queries"
 import {
   archivedTeamspacesQueryKey,

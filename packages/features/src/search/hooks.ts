@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { useZilobaseFeatures } from "../context"
+import { useZilobaseFeatures } from "../shared/context"
 import { appSearchQueryOptions } from "./queries"
 import type { AppSearchResultType } from "./queries"
 

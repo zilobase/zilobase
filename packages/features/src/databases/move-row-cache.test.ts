@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { moveDatabaseRow } from "./hooks"
+import { moveDatabaseRow } from "./mutation-hooks"
 import { createTestDatabasePayload } from "./test-helpers"
 
 test("moveDatabaseRow reorders rows and updates an existing group value", () => {

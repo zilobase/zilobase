@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query"
 import { useSyncExternalStore } from "react"
 
-import { useZilobaseFeatures } from "../context"
+import { useZilobaseFeatures } from "../shared/context"
 
 import { findDatabaseIdForRowPage } from "./row-page-properties"
 

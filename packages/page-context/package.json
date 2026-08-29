@@ -9,12 +9,12 @@
       "default": "./src/index.ts"
     },
     "./format-property-value": {
-      "types": "./src/format-property-value.ts",
-      "default": "./src/format-property-value.ts"
+      "types": "./src/database/format-property-value.ts",
+      "default": "./src/database/format-property-value.ts"
     },
     "./prosemirror-to-markdown": {
-      "types": "./src/prosemirror-to-markdown.ts",
-      "default": "./src/prosemirror-to-markdown.ts"
+      "types": "./src/markdown/prosemirror-to-markdown.ts",
+      "default": "./src/markdown/prosemirror-to-markdown.ts"
     }
   }
 }

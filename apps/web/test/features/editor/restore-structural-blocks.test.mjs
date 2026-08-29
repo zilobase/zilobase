@@ -1,5 +1,5 @@
-const restoreModulePath = "/packages/page-context/src/restore-structural-blocks-from-markdown.ts"
-const markdownModulePath = "/packages/page-context/src/prosemirror-to-markdown.ts"
+const restoreModulePath = "/packages/page-context/src/markdown/restore-structural-blocks-from-markdown.ts"
+const markdownModulePath = "/packages/page-context/src/markdown/prosemirror-to-markdown.ts"
 
 const DATABASE_ID = "bf51b30e-1234-5678-9abc-def012345678"
 const MEETING_ID = "a8ddbb95-1288-4f6f-a0f1-8cd02702d321"

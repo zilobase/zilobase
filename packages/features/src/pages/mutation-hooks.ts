@@ -1,18 +1,12 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMutation } from "@tanstack/react-query";
 
-import { useZilobaseFeatures } from "../context";
+import { useZilobaseFeatures } from "../shared/context";
 import {
   invalidateDeletedItems,
   invalidateRestoredItems,
   setPageDetailCache,
-} from "../item-action-cache";
-import {
-  buildPagePropertiesPayloadFromDatabase,
-  patchDatabaseCachePage,
-} from "../databases/row-page-properties";
-import { useDatabase } from "../databases/hooks";
-import { useDatabaseIdForRowPage } from "../databases/use-database-id-for-row-page";
+} from "../shared/item-action-cache";
+import { patchDatabaseCachePage } from "../databases/row-page-properties";
 import { applyDatabaseRealtimeMutation } from "../databases/realtime";
 import type { DatabaseMutationResponse } from "../databases/mutation-types";
 import {
@@ -24,30 +18,19 @@ import type { NavItemKind } from "./item-relationships";
 import { hasPageBodyContent } from "./content-state";
 import {
   pageQueryKey,
-  pageQueryOptions,
   getPageFromDetail,
   pageAccessQueryKey,
-  pageAccessQueryOptions,
-  pageAccessTargetsQueryOptions,
-  pagePersonAccessTargetsQueryOptions,
   pagePersonAccessTargetsQueryKey,
   pageGuestInvitationQueryKey,
-  pageGuestInvitationQueryOptions,
   pageGuestInvitationsQueryKey,
-  pageGuestInvitationsQueryOptions,
   pageGuestRequestsQueryKey,
-  pageGuestRequestsQueryOptions,
-  pagePropertiesQueryOptions,
   zilobaseAiPagesQueryKey,
-  zilobaseAiPagesQueryOptions,
   pagesNavRootQueryKey,
   pagesQueryKey,
-  pagesQueryOptions,
   pagesRootQueryKey,
   type PageDetail,
   type AccessLevel,
   type AccessTargetType,
-  type PagesDeletedFilter,
   type Page,
   type PageNavigationPayload,
   type PageMetadata,
@@ -121,124 +104,6 @@ type RecordItemVisitInput = {
   itemKind: "database" | "page";
   workspaceId: string;
 };
-
-export function usePages(
-  workspaceId: string | null | undefined,
-  options?: { deleted?: PagesDeletedFilter; enabled?: boolean },
-) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery({
-    ...pagesQueryOptions(apiFetch, workspaceId, {
-      deleted: options?.deleted,
-    }),
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-    select: (navigation) => navigation.pages,
-  });
-}
-export function usePageNavigation(
-  workspaceId: string | null | undefined,
-  options?: { deleted?: PagesDeletedFilter; enabled?: boolean },
-) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery({
-    ...pagesQueryOptions(apiFetch, workspaceId, {
-      deleted: options?.deleted,
-    }),
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-  });
-}
-
-export function useZilobaseAiPages(workspaceId: string | null | undefined) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery(zilobaseAiPagesQueryOptions(apiFetch, workspaceId));
-}
-
-type PageQueryHookOptions = {
-  refetchOnMount?: boolean;
-};
-
-export function usePage(
-  pageId: string | null | undefined,
-  options?: PageQueryHookOptions,
-) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery({
-    ...pageQueryOptions(apiFetch, pageId),
-    refetchOnMount: options?.refetchOnMount,
-    select: (detail) => getPageFromDetail(detail),
-  });
-}
-
-export function usePageAccessLevel(
-  pageId: string | null | undefined,
-  options?: PageQueryHookOptions,
-) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery({
-    ...pageQueryOptions(apiFetch, pageId),
-    refetchOnMount: options?.refetchOnMount,
-    select: (detail) => detail?.accessLevel ?? null,
-  });
-}
-
-export function usePageDatabaseIds(
-  pageId: string | null | undefined,
-  options?: PageQueryHookOptions,
-) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery({
-    ...pageQueryOptions(apiFetch, pageId),
-    refetchOnMount: options?.refetchOnMount,
-    select: (detail) => detail?.databaseIds ?? [],
-  });
-}
-
-export function usePageAccess(pageId: string | null | undefined) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery(pageAccessQueryOptions(apiFetch, pageId));
-}
-
-export function usePageAccessTargets(workspaceId: string | null | undefined) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery(pageAccessTargetsQueryOptions(apiFetch, workspaceId));
-}
-
-export function usePagePersonAccessTargets(
-  pageId: string | null | undefined,
-  options?: { enabled?: boolean },
-) {
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useQuery({
-    ...pagePersonAccessTargetsQueryOptions(apiFetch, pageId),
-    enabled: Boolean(pageId) && (options?.enabled ?? true),
-  });
-}
-
-export function usePageGuestInvitations(pageId: string | null | undefined) {
-  const { apiFetch } = useZilobaseFeatures();
-  return useQuery(pageGuestInvitationsQueryOptions(apiFetch, pageId));
-}
-
-export function usePageGuestRequests(pageId: string | null | undefined) {
-  const { apiFetch } = useZilobaseFeatures();
-  return useQuery(pageGuestRequestsQueryOptions(apiFetch, pageId));
-}
-
-export function usePageGuestInvitation(
-  invitationId: string | null | undefined,
-) {
-  const { apiFetch } = useZilobaseFeatures();
-  return useQuery(pageGuestInvitationQueryOptions(apiFetch, invitationId));
-}
 
 export function useInvitePageGuest() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
@@ -328,36 +193,6 @@ export function useRevokePageGuest() {
       ]);
     },
   });
-}
-
-type PagePropertiesOptions = {
-  databaseId?: string | null;
-};
-
-export function usePageProperties(
-  pageId: string | null | undefined,
-  options?: PagePropertiesOptions,
-) {
-  const { apiFetch } = useZilobaseFeatures();
-  const resolvedDatabaseId = useDatabaseIdForRowPage(
-    pageId,
-    options?.databaseId,
-  );
-  const databaseQuery = useDatabase(resolvedDatabaseId);
-  const apiQuery = useQuery({
-    ...pagePropertiesQueryOptions(apiFetch, pageId),
-    enabled: Boolean(pageId) && !resolvedDatabaseId,
-  });
-  const derivedPayload = useMemo(() => {
-    if (!resolvedDatabaseId || !databaseQuery.data) return undefined;
-
-    return buildPagePropertiesPayloadFromDatabase(databaseQuery.data, pageId) ??
-      undefined;
-  }, [databaseQuery.data, pageId, resolvedDatabaseId]);
-
-  return resolvedDatabaseId
-    ? { ...databaseQuery, data: derivedPayload }
-    : apiQuery;
 }
 
 function applyPageFavoriteToList(

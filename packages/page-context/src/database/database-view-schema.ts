@@ -1,4 +1,4 @@
-import type { DatabaseContextPayload, DatabasePropertySchema } from "./types";
+import type { DatabaseContextPayload, DatabasePropertySchema } from "../shared/types";
 
 export type DatabaseSortConfig = {
   column: string;

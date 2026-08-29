@@ -9,7 +9,9 @@ export function register({ assert, readSource, readWorkspace, test }) {
   })
 
   test("applying a database template refreshes sidebar navigation", async () => {
-    const source = await readWorkspace("/packages/features/src/databases/hooks.ts")
+    const source = await readWorkspace(
+      "/packages/features/src/databases/mutation-hooks.ts",
+    )
     const hookSource = source.slice(
       source.indexOf("export function useApplyDatabaseTemplate()"),
       source.indexOf("export function useUpdateDatabaseProperty()")

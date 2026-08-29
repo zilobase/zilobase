@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query"
 
-import type { ApiFetcher, ZilobaseAuthClient } from "../context"
+import type { ApiFetcher, ZilobaseAuthClient } from "../shared/context"
 
 export type Workspace = {
   id: string

@@ -1,12 +1,12 @@
-import { buildDatabaseMarkdown } from "./build-database-markdown"
-import { prosemirrorToMarkdown } from "./prosemirror-to-markdown"
+import { buildDatabaseMarkdown } from "../database/build-database-markdown"
+import { prosemirrorToMarkdown } from "../markdown/prosemirror-to-markdown"
 import type {
   BuildContextInput,
   BuildContextResult,
   ContextSection,
   DatabaseContextSection,
   PageContextSection,
-} from "./types"
+} from "../shared/types"
 
 const DEFAULT_MAX_CHARS = 16_000
 

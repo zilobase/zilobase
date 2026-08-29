@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 
-import { useZilobaseFeatures } from "../context"
+import { useZilobaseFeatures } from "../shared/context"
 import { useSession } from "../auth/hooks"
 import { sessionQueryKey, sessionQueryOptions } from "../auth/queries"
 import {
