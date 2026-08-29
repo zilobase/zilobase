@@ -1255,8 +1255,12 @@
   }
 
   .database-table-sticky-header {
-    @apply sticky top-0 z-50 bg-transparent;
+    @apply sticky top-0 z-50 bg-background;
     scrollbar-width: none;
+  }
+
+  [data-page-side-pane-panel] .database-table-sticky-header {
+    @apply dark:bg-sidebar;
   }
 
   .database-table-sticky-header::-webkit-scrollbar {

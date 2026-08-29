@@ -127,6 +127,9 @@ export function DatabaseViewToolbar() {
   const navigate = useNavigate();
   const databaseTitleInputRef = useRef<HTMLInputElement | null>(null);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const viewNavigationRef = useRef<HTMLDivElement | null>(null);
+  const viewTabMeasurementsRef = useRef<HTMLDivElement | null>(null);
+  const overflowTriggerMeasurementRef = useRef<HTMLSpanElement | null>(null);
   const pendingViewScrollRef = useRef<DatabaseViewScrollSnapshot | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [viewIconPickerOpenId, setViewIconPickerOpenId] = useState<
@@ -137,6 +140,10 @@ export function DatabaseViewToolbar() {
   const [pendingDeleteView, setPendingDeleteView] =
     useState<DatabaseViewTab | null>(null);
   const [addViewMenuOpen, setAddViewMenuOpen] = useState(false);
+  const [viewSwitcherOpen, setViewSwitcherOpen] = useState(false);
+  const [visibleViewCount, setVisibleViewCount] = useState(
+    Number.MAX_SAFE_INTEGER,
+  );
   const [localViewSettingsOpen, setLocalViewSettingsOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [formPreviewOpen, setFormPreviewOpen] = useState(false);
@@ -261,6 +268,24 @@ export function DatabaseViewToolbar() {
     }
   };
   const activeViewTab = viewTabs.find((view) => view.id === activeViewTabId);
+  const clampedVisibleViewCount = Math.min(visibleViewCount, viewTabs.length);
+  const visibleViewIds = new Set(
+    viewTabs.slice(0, clampedVisibleViewCount).map((view) => view.id),
+  );
+
+  if (
+    activeViewTab &&
+    clampedVisibleViewCount > 0 &&
+    !visibleViewIds.has(activeViewTab.id)
+  ) {
+    visibleViewIds.delete(viewTabs[clampedVisibleViewCount - 1]!.id);
+    visibleViewIds.add(activeViewTab.id);
+  }
+
+  const visibleViewTabs = viewTabs.filter((view) => visibleViewIds.has(view.id));
+  const overflowViewTabs = viewTabs.filter(
+    (view) => !visibleViewIds.has(view.id),
+  );
   const isExternalDataSourceView = (view?: DatabaseViewTab | null) =>
     Boolean(
       view?.sourceParentDatabaseId &&
@@ -320,6 +345,80 @@ export function DatabaseViewToolbar() {
     restoreDatabaseViewScroll(scrollSnapshot);
     pendingViewScrollRef.current = null;
   }, [activeViewTabId]);
+
+  useLayoutEffect(() => {
+    const navigation = viewNavigationRef.current;
+    const measurements = viewTabMeasurementsRef.current;
+    const overflowTrigger = overflowTriggerMeasurementRef.current;
+
+    if (
+      !navigation ||
+      !measurements ||
+      !overflowTrigger ||
+      typeof ResizeObserver === "undefined"
+    ) {
+      return;
+    }
+
+    const measure = () => {
+      const tabWidths = Array.from(
+        measurements.querySelectorAll<HTMLElement>("[data-view-tab-measurement]"),
+        (tab) => tab.offsetWidth,
+      );
+      const addViewSpace = canRenderAddView ? 40 : 0;
+      const tabsWidth = (indexes: number[]) =>
+        8 +
+        indexes.reduce((total, index) => total + (tabWidths[index] ?? 0), 0) +
+        Math.max(0, indexes.length - 1) * 2;
+      const allIndexes = viewTabs.map((_, index) => index);
+
+      if (
+        tabsWidth(allIndexes) + addViewSpace <=
+        navigation.clientWidth
+      ) {
+        setVisibleViewCount(viewTabs.length);
+        return;
+      }
+
+      const activeIndex = viewTabs.findIndex(
+        (view) => view.id === activeViewTabId,
+      );
+      const overflowSpace = overflowTrigger.offsetWidth + 8;
+      let nextVisibleCount = Math.min(1, viewTabs.length);
+
+      for (let count = 1; count < viewTabs.length; count += 1) {
+        const indexes = Array.from({ length: count }, (_, index) => index);
+
+        if (activeIndex >= count && indexes.length > 0) {
+          indexes[indexes.length - 1] = activeIndex;
+        }
+
+        if (
+          tabsWidth(indexes) + overflowSpace + addViewSpace <=
+          navigation.clientWidth
+        ) {
+          nextVisibleCount = count;
+        } else {
+          break;
+        }
+      }
+
+      setVisibleViewCount(nextVisibleCount);
+    };
+    const observer = new ResizeObserver(measure);
+
+    observer.observe(navigation);
+    observer.observe(measurements);
+    measure();
+
+    return () => observer.disconnect();
+  }, [activeViewTabId, canRenderAddView, draftViewTitle, viewTabs]);
+
+  useLayoutEffect(() => {
+    if (overflowViewTabs.length === 0) {
+      setViewSwitcherOpen(false);
+    }
+  }, [overflowViewTabs.length]);
 
   const hostDisplayTitle = isExternalDataSourceView(activeViewTab)
     ? hostDatabaseName || "Untitled"
@@ -500,8 +599,12 @@ export function DatabaseViewToolbar() {
       ) : null}
       <div className="flex min-w-0 items-center gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
+          <div
+            className="relative flex min-w-0 items-center gap-2 overflow-hidden"
+            ref={viewNavigationRef}
+          >
             <Tabs
+              className="min-w-0 shrink-0"
               onValueChange={(value) => {
                 if (value == null) {
                   return;
@@ -514,9 +617,9 @@ export function DatabaseViewToolbar() {
             >
               <TabsList
                 variant="tab"
-                className="min-w-0 w-full justify-start overflow-x-auto"
+                className="w-max min-w-0 justify-start"
               >
-                {viewTabs.map((view) => {
+                {visibleViewTabs.map((view) => {
                   const isActiveView = view.id === activeViewTabId;
                   const ViewIcon =
                     view.fallbackIcon ?? (view.type === "kanban"
@@ -916,6 +1019,79 @@ export function DatabaseViewToolbar() {
                 })}
               </TabsList>
             </Tabs>
+            {overflowViewTabs.length > 0 ? (
+              <DropDrawer
+                onOpenChange={setViewSwitcherOpen}
+                open={viewSwitcherOpen}
+              >
+                <DropDrawerTrigger asChild>
+                  <Button
+                    aria-label={`${overflowViewTabs.length} more database views`}
+                    className="h-8 shrink-0 px-3 text-muted-foreground"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {overflowViewTabs.length} more…
+                  </Button>
+                </DropDrawerTrigger>
+                <DropDrawerContent
+                  align="start"
+                  className="w-72 max-w-[calc(100vw-1rem)]"
+                >
+                  <DatabaseSearchableMenuItems
+                    inputAriaLabel="Search database views"
+                    inputPlaceholder="Search for a view..."
+                    open={viewSwitcherOpen}
+                    options={viewTabs.map((view) => ({
+                      label:
+                        view.id === activeViewTabId
+                          ? draftViewTitle
+                          : view.name,
+                      value: view.id,
+                    }))}
+                    renderOption={(option) => {
+                      const view = viewTabs.find(
+                        (item) => item.id === option.value,
+                      )!;
+                      const ViewIcon =
+                        view.fallbackIcon ??
+                        (view.type === "kanban"
+                          ? Kanban
+                          : view.type === "timeline"
+                            ? CalendarRange
+                            : view.type === "chart"
+                              ? ChartPie
+                              : view.type === "gallery"
+                                ? GalleryThumbnails
+                                : view.type === "form"
+                                  ? FilePenLine
+                                  : view.type === "list"
+                                    ? List
+                                    : Table2);
+
+                      return (
+                        <DropDrawerItem
+                          onSelect={() => {
+                            selectActiveView(view.id);
+                            setViewSwitcherOpen(false);
+                          }}
+                        >
+                          {view.icon ? (
+                            <PageIconDisplay size="sm" value={view.icon} />
+                          ) : (
+                            <ViewIcon />
+                          )}
+                          <span className="truncate">{option.label}</span>
+                          {view.id === activeViewTabId ? (
+                            <Check className="ml-auto" />
+                          ) : null}
+                        </DropDrawerItem>
+                      );
+                    }}
+                  />
+                </DropDrawerContent>
+              </DropDrawer>
+            ) : null}
             {canRenderAddView ? (
               <DropDrawer
                 onOpenChange={setAddViewMenuOpen}
@@ -944,6 +1120,34 @@ export function DatabaseViewToolbar() {
                 </DropDrawerContent>
               </DropDrawer>
             ) : null}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none invisible absolute left-0 top-0 flex w-max items-center gap-0.5 p-1"
+              ref={viewTabMeasurementsRef}
+            >
+              {viewTabs.map((view) => (
+                <span
+                  className="inline-flex h-8 items-center gap-2 px-3 text-sm font-medium"
+                  data-view-tab-measurement
+                  key={view.id}
+                >
+                  <span className="size-4 shrink-0" />
+                  <span>
+                    {view.id === activeViewTabId ? draftViewTitle : view.name}
+                  </span>
+                  {isExternalDataSourceView(view) ? (
+                    <span className="size-3 shrink-0" />
+                  ) : null}
+                </span>
+              ))}
+            </div>
+            <span
+              aria-hidden="true"
+              className="pointer-events-none invisible absolute left-0 top-0 inline-flex h-8 items-center px-3 text-sm font-medium"
+              ref={overflowTriggerMeasurementRef}
+            >
+              {viewTabs.length} more…
+            </span>
           </div>
           {(activeDatabaseFilters.length > 0 && showFilterPill) ||
           (activeDatabaseSorts.length > 0 && showSortPill) ? (
