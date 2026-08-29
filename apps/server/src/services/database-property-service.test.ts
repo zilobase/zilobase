@@ -21,7 +21,7 @@ vi.mock("./database-commit", () => ({
 vi.mock("./database-delta", () => ({
   fetchDatabasePropertyDelta: mocks.fetchDelta,
 }));
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     select() {
       const rows = mocks.selectResults.shift() ?? [];

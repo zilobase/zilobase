@@ -5,11 +5,11 @@ import {
   getCanonicalWebOrigin,
   getStringEnv,
   type RuntimeEnv,
-} from "../../config";
-import { db, runWithDbEnv } from "../../db";
-import { instanceSettings as instanceSettingsTable } from "../../db/schema";
-import { SERVER_VERSION } from "../../version";
-import type { EditionExtensionOptions } from "../../edition-extension";
+} from "../../shared/config/config";
+import { db, runWithDbEnv } from "../../infrastructure/database";
+import { instanceSettings as instanceSettingsTable } from "../../infrastructure/database/schema";
+import { SERVER_VERSION } from "../../shared/version";
+import type { EditionExtensionOptions } from "../../shared/types";
 
 export const DESKTOP_PROTOCOL_VERSION = 1 as const;
 export const INSTANCE_SETTINGS_ROW_ID = "primary";

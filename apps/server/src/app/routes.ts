@@ -24,7 +24,7 @@ import {
   workspaceRoutes,
   workspaceSettingsRoutes,
 } from "../features/workspaces/routes";
-import type { AppBindings } from "../types";
+import type { AppBindings } from "../shared/types";
 
 export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/api/ai", aiRoutes);

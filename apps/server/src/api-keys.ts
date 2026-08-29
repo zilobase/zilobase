@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 
-import type { AppBindings } from "./types";
+import type { AppBindings } from "./shared/types";
 
 export const API_KEY_PREFIX = "nl_";
 export const API_KEY_DEFAULT_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 90;

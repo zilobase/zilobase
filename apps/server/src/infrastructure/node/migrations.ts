@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { fileURLToPath } from "node:url";
 
-import type { Database } from "../../db";
+import type { Database } from "../database";
 
 export type MigrationSet = {
   id: string;

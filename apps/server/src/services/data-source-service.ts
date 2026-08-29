@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
-import type { RuntimeEnv } from "../config";
-import { dataSource } from "../db/schema";
+import type { RuntimeEnv } from "../shared/config/config";
+import { dataSource } from "../infrastructure/database/schema";
 import { commitDataSourceMutation } from "./database-commit";
 import { requireDataSourceEditAccess } from "./data-source-access";
 

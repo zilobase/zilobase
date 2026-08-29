@@ -1,9 +1,9 @@
-import { getRequiredStringEnv, getStringEnv, type RuntimeEnv } from "./config";
-import type { ImageStorage } from "./image-storage";
-import type { DatabaseRealtimeMutationEvent } from "./services/database-delta";
+import { getRequiredStringEnv, getStringEnv, type RuntimeEnv } from "../../shared/config/config";
+import type { ImageStorage } from "../storage/image-storage";
+import type { DatabaseRealtimeMutationEvent } from "../../services/database-delta";
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { MeetingLifecycleAction, MeetingStatus } from "./features/meetings/meeting-types";
-import type { MeetingAudioSource } from "./features/meetings/meeting-audio-ticket";
+import type { MeetingLifecycleAction, MeetingStatus } from "../../features/meetings/meeting-types";
+import type { MeetingAudioSource } from "../../features/meetings/meeting-audio-ticket";
 
 export type OutboundEmailMessage = {
   from: string;

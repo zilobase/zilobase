@@ -5,10 +5,10 @@ import type {
 import { tool, type ToolCallOptions, type ToolSet } from "ai";
 import * as z from "zod";
 
-import type { RuntimeEnv } from "../config";
-import { db } from "../db";
-import { aiChatArtifact } from "../db/schema";
-import { createImageStorage } from "../image-storage";
+import type { RuntimeEnv } from "../shared/config/config";
+import { db } from "../infrastructure/database";
+import { aiChatArtifact } from "../infrastructure/database/schema";
+import { createImageStorage } from "../infrastructure/storage/image-storage";
 import { runIdempotentAgentAction } from "./agent-action-receipts";
 import {
   AI_ARTIFACT_FORMATS,

@@ -6,8 +6,8 @@ import {
   canAccessPage,
   getMembership,
 } from "../access";
-import { db } from "../db";
-import { database, page, pageCollaborationDocument } from "../db/schema";
+import { db } from "../infrastructure/database";
+import { database, page, pageCollaborationDocument } from "../infrastructure/database/schema";
 import {
   encodePageContentAsYjs,
   getOrCreateCollaborationDocumentState,
@@ -15,7 +15,7 @@ import {
   materializePageContentFromYjs,
   replacePageContent,
 } from "../collaboration/service";
-import type { RuntimeEnv } from "../config";
+import type { RuntimeEnv } from "../shared/config/config";
 import { upsertPageItemPlacement } from "../page-item-placements";
 import { insertDatabaseBlockInContent } from "./insert-database-block";
 import { ServiceMutationError } from "./mutation-error";

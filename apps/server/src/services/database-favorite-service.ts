@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
-import { db } from "../db";
-import { favorite } from "../db/schema";
+import { db } from "../infrastructure/database";
+import { favorite } from "../infrastructure/database/schema";
 import { requireDatabaseAccess } from "./database-access";
 import { getDatabasePayload } from "./database-payload";
 

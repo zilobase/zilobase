@@ -8,12 +8,12 @@ import type { WebSocketLike } from "@hocuspocus/server";
 import {
   COLLABORATION_WEBSOCKET_PROTOCOL,
   getAuthHeaders,
-} from "../auth-headers";
+} from "../shared/security/auth-headers";
 import { createAuth } from "../auth";
-import { runWithDbEnv } from "../db";
+import { runWithDbEnv } from "../infrastructure/database";
 import { getDefaultCollaborationHocuspocus } from "./service";
-import type { RuntimeEnv } from "../config";
-import type { ZilobaseEditionExtension } from "../edition-extension";
+import type { RuntimeEnv } from "../shared/config/config";
+import type { ZilobaseEditionExtension } from "../shared/types";
 import type { NodeRealtimeBus } from "../infrastructure/node/realtime-bus";
 
 export const NODE_COLLABORATION_MAX_PAYLOAD_BYTES = 1024 * 1024;

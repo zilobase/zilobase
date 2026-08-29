@@ -5,21 +5,21 @@ import { Readable } from "node:stream";
 import path from "node:path";
 import type { Hono } from "hono";
 
-import { getAppEditionExtension } from "../../app";
 import { attachNodeCollaborationRuntime } from "../../collaboration/node-runtime";
 import { setCollaborationExtensionsFactory } from "../../collaboration/service";
 import { attachNodeDatabaseRealtimeRuntime } from "../../database-realtime/node-runtime";
 import { attachNodeMeetingAudioRuntime } from "../../features/meetings/meeting-audio-node-runtime";
-import { createDbClientForUrl, runWithDbEnv } from "../../db";
+import { createDbClientForUrl, runWithDbEnv } from "../database";
 import { assertSelfHostedProductionConfiguration } from "../../features/instance/registration";
 import {
   getDatabaseUrl,
   setRuntimeAdapter,
   type ServerRuntimeAdapter,
-} from "../../runtime-adapter";
+} from "../runtime/runtime-adapter";
 import { drainDatabaseRealtimeOutbox } from "../../services/database-realtime";
 import { expireTemporaryMemberships } from "../../services/temporary-membership";
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
+import { getAppEditionExtension } from "../../shared/edition-extension-registry";
 import { isNodeApiPath } from "./api-routing";
 import { runMigrationSets, type MigrationSet } from "./migrations";
 import { createNodeRealtimeBus } from "./realtime-bus";

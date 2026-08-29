@@ -42,7 +42,7 @@ vi.mock("../soft-delete-nav-items", () => ({
 vi.mock("./database-payload", () => ({
   getDatabasePayload: mocks.payload,
 }));
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     select() {
       mocks.select();

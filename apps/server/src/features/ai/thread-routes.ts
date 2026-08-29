@@ -27,7 +27,7 @@ import {
   readAiAgentLimits,
 } from "../../ai/agent-operations";
 import { getMembership, isPrivilegedOrgRole } from "../../access";
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 
 const createThreadSchema = z.object({
   title: z.string().trim().max(120).optional(),

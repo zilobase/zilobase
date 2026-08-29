@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 
-import { db } from "../../db";
-import { database, page, teamspace } from "../../db/schema";
+import { db } from "../../infrastructure/database";
+import { database, page, teamspace } from "../../infrastructure/database/schema";
 
 export type TeamspaceSecurityPolicy = {
   exportEnabled: boolean;

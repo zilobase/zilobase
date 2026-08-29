@@ -1,4 +1,4 @@
-import { getStringEnv, type RuntimeEnv } from "../config";
+import { getStringEnv, type RuntimeEnv } from "../shared/config/config";
 
 const CREDENTIAL_KEY_VERSION = "v1";
 const AES_GCM_IV_BYTES = 12;

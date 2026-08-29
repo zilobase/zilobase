@@ -5,7 +5,7 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
-import { isLoopbackHost } from "../../config";
+import { isLoopbackHost } from "../../shared/config/config";
 
 export const DESKTOP_AUTH_CLIENT_ID = "zilobase-desktop";
 export const DESKTOP_AUTH_CODE_TTL_MS = 5 * 60 * 1000;

@@ -1,12 +1,12 @@
 import { and, eq, gte, isNull, sql } from "drizzle-orm";
 
-import type { RuntimeEnv } from "../config";
+import type { RuntimeEnv } from "../shared/config/config";
 import {
   databaseProperty,
   databaseRow,
   pageProperty,
   pagePropertyValue,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 import { requireDataSourceEditAccess } from "./data-source-access";
 import { commitDataSourceMutation } from "./database-commit";
 import { fetchDatabasePropertyDelta } from "./database-delta";

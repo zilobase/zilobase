@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 
-import type { RuntimeEnv } from "./config";
+import type { RuntimeEnv } from "../config/config";
 
 const TICKET_TTL_MS = 30 * 60 * 1000;
 

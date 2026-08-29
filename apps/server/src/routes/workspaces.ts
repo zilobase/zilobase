@@ -4,7 +4,7 @@ import type { Context } from "hono";
 import { z } from "zod";
 import { getMembership, isPrivilegedOrgRole } from "../access";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
-import { db } from "../db";
+import { db } from "../infrastructure/database";
 import {
   invitation,
   member,
@@ -15,16 +15,16 @@ import {
   teamspace,
   teamspacePrincipal,
   user,
-} from "../db/schema";
-import type { AppBindings } from "../types";
+} from "../infrastructure/database/schema";
+import type { AppBindings } from "../shared/types";
 import {
   activeMembershipCondition,
   expireTemporaryMemberships,
   parseMembershipAccessExpiry,
   TemporaryMembershipValidationError,
 } from "../services/temporary-membership";
-import { sendEmail } from "../email";
-import { getPrimaryClientOrigin } from "../config";
+import { sendEmail } from "../infrastructure/email/email";
+import { getPrimaryClientOrigin } from "../shared/config/config";
 
 export const workspaceRoutes = new Hono<AppBindings>();
 

@@ -2,8 +2,8 @@ import type { AgentToolResult } from "@zilobase/features/ai-chat/agent-contract"
 import type { AgentToolDescriptor } from "@zilobase/features/ai-chat/tool-registry";
 import { and, eq, gt } from "drizzle-orm";
 
-import { db } from "../db";
-import { aiAgentPendingAction } from "../db/schema";
+import { db } from "../infrastructure/database";
+import { aiAgentPendingAction } from "../infrastructure/database/schema";
 import { hashAgentToolInput } from "./agent-action-receipts";
 
 const APPROVAL_TTL_MS = 15 * 60 * 1_000;

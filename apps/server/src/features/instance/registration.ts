@@ -3,8 +3,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { hashPassword } from "better-auth/crypto";
 
-import { getStringEnv, type RuntimeEnv } from "../../config";
-import { db, runWithDbEnv, type Database } from "../../db";
+import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
+import { db, runWithDbEnv, type Database } from "../../infrastructure/database";
 import {
   account,
   instanceSettings,
@@ -12,13 +12,13 @@ import {
   pageGuestInvitation,
   user,
   workspace,
-} from "../../db/schema";
+} from "../../infrastructure/database/schema";
 import type {
   EditionExtensionOptions,
   ZilobaseEditionExtension,
-} from "../../edition-extension";
+} from "../../shared/types";
 import { MembershipService } from "../../services/membership-service";
-import { isSelfHostedRuntime } from "../../runtime-adapter";
+import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
 import {
   ensureInstanceSettings,
   INSTANCE_SETTINGS_ROW_ID,

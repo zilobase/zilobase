@@ -5,25 +5,25 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./src/adapter-api.ts",
-      "default": "./src/adapter-api.ts"
+      "types": "./src/public/adapter-api.ts",
+      "default": "./src/public/adapter-api.ts"
     },
     "./adapter-api": {
-      "types": "./src/adapter-api.ts",
-      "default": "./src/adapter-api.ts"
+      "types": "./src/public/adapter-api.ts",
+      "default": "./src/public/adapter-api.ts"
     },
     "./node-adapter-api": {
-      "types": "./src/node-adapter-api.ts",
-      "default": "./src/node-adapter-api.ts"
+      "types": "./src/public/node-adapter-api.ts",
+      "default": "./src/public/node-adapter-api.ts"
     },
     "./realtime-api": {
-      "types": "./src/realtime-api.ts",
-      "default": "./src/realtime-api.ts"
+      "types": "./src/public/realtime-api.ts",
+      "default": "./src/public/realtime-api.ts"
     }
   },
   "scripts": {
-    "dev": "ZILOBASE_ENV_FILE=../../.env.development tsx src/serverful.ts",
-    "dev:node": "ZILOBASE_ENV_FILE=../../.env.development tsx src/serverful.ts",
+    "dev": "ZILOBASE_ENV_FILE=../../.env.development tsx src/entrypoints/serverful.ts",
+    "dev:node": "ZILOBASE_ENV_FILE=../../.env.development tsx src/entrypoints/serverful.ts",
     "build": "tsc --noEmit",
     "build:node": "tsc --noEmit",
     "test:insert-database-block": "vitest run src/services/insert-database-block.test.ts",

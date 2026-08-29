@@ -4,8 +4,8 @@ import { z } from "zod";
 
 import { getMembership, isPrivilegedOrgRole } from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
-import { getPrimaryClientOrigin } from "../../config";
-import { sendEmail } from "../../email";
+import { getPrimaryClientOrigin } from "../../shared/config/config";
+import { sendEmail } from "../../infrastructure/email/email";
 import {
   acceptPageGuestInvitation,
   approvePageGuestRequest,
@@ -24,7 +24,7 @@ import {
   submitPageGuestInvitation,
   updateWorkspaceGuestInvitePolicy,
 } from "../../services/page-guest-service";
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 import { getPageTeamspaceSecurityPolicy } from "../teamspaces/security";
 
 export const pageGuestRoutes = new Hono<AppBindings>();

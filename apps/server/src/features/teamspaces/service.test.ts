@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import type { Database } from "../../db";
-import { teamspace, teamspacePrincipal } from "../../db/schema";
-import type { ZilobaseEditionExtension } from "../../edition-extension";
+import type { Database } from "../../infrastructure/database";
+import { teamspace, teamspacePrincipal } from "../../infrastructure/database/schema";
+import type { ZilobaseEditionExtension } from "../../shared/types";
 import { TeamspaceService } from "./service";
 
 test("first default membership creates a General teamspace and owner", async () => {

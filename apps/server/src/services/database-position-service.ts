@@ -4,7 +4,7 @@ import {
   databaseProperty,
   databaseRow,
   pageItemPlacement,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 import type { SqlExecutor } from "./database-commit";
 
 export const hasDuplicateValues = (values: string[]) =>

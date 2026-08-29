@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 
-import type { Database } from "../db";
-import { pagePropertyValue } from "../db/schema";
+import type { Database } from "../infrastructure/database";
+import { pagePropertyValue } from "../infrastructure/database/schema";
 
 type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 type PropertyValueInsert = typeof pagePropertyValue.$inferInsert;

@@ -98,6 +98,22 @@
       {
         "name": "web-offline",
         "patterns": ["apps/web/src/features/offline/**"]
+      },
+      {
+        "name": "server-shared",
+        "patterns": ["apps/server/src/shared/**"]
+      },
+      {
+        "name": "server-infrastructure",
+        "patterns": ["apps/server/src/infrastructure/**"]
+      },
+      {
+        "name": "server-app",
+        "patterns": ["apps/server/src/app/**", "apps/server/src/entrypoints/**"]
+      },
+      {
+        "name": "server-public",
+        "patterns": ["apps/server/src/public/**"]
       }
     ],
     "rules": [
@@ -285,6 +301,32 @@
       {
         "from": "web-offline",
         "allow": ["web-desktop", "web-offline", "web-shared"]
+      },
+      {
+        "from": "server-shared",
+        "allow": ["server-shared"]
+      },
+      {
+        "from": "server-infrastructure",
+        "allow": ["server-infrastructure", "server-shared"]
+      },
+      {
+        "from": "server-app",
+        "allow": [
+          "server-app",
+          "server-infrastructure",
+          "server-public",
+          "server-shared"
+        ]
+      },
+      {
+        "from": "server-public",
+        "allow": [
+          "server-app",
+          "server-infrastructure",
+          "server-public",
+          "server-shared"
+        ]
       }
     ]
   },

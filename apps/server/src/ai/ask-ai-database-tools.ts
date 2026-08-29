@@ -5,7 +5,7 @@ import type {
 import { tool, type ToolCallOptions, type ToolSet } from "ai";
 import * as z from "zod";
 
-import type { RuntimeEnv } from "../config";
+import type { RuntimeEnv } from "../shared/config/config";
 import {
   createDatabasePropertyService,
   createDatabaseRowService,

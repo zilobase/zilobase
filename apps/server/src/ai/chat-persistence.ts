@@ -13,8 +13,8 @@ import {
   sql,
 } from "drizzle-orm";
 
-import { db } from "../db";
-import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../db/schema";
+import { db } from "../infrastructure/database";
+import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../infrastructure/database/schema";
 
 const DEFAULT_AI_CHAT_THREAD_TITLE = "New chat";
 const MAX_AI_CHAT_MESSAGES_PER_THREAD = 500;

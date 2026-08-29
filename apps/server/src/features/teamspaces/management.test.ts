@@ -9,7 +9,7 @@ vi.mock("../../access", () => ({
   getMembership: accessMocks.getMembership,
 }));
 
-import type { Database } from "../../db";
+import type { Database } from "../../infrastructure/database";
 import { TeamspaceManagementService } from "./management";
 
 type Row = Record<string, unknown>;

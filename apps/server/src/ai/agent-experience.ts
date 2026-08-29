@@ -2,7 +2,7 @@ import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-mar
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { canAccessPageInWorkspace } from "../access";
-import { db } from "../db";
+import { db } from "../infrastructure/database";
 import {
   aiAgentUserPreference,
   aiChatFeedback,
@@ -11,7 +11,7 @@ import {
   member,
   page,
   user,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 
 export const AI_AGENT_INSTRUCTIONS_MAX_CHARS = 4_000;
 export const AI_CHAT_FEEDBACK_REASON_MAX_CHARS = 500;

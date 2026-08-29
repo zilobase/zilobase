@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 
 const mocks = vi.hoisted(() => ({
   cell: vi.fn(),

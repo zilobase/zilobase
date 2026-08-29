@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 
 const mocks = vi.hoisted(() => {
   class BootstrapAlreadyCompletedError extends Error {}
@@ -23,7 +23,7 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("../../access", () => ({ getMembership: mocks.membership }));
-vi.mock("../../runtime-adapter", () => ({
+vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
   isSelfHostedRuntime: mocks.selfHosted,
 }));
 vi.mock("./service", () => ({

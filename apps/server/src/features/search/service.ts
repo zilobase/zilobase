@@ -5,8 +5,8 @@ import {
   getAccessiblePageIds,
   getMembership,
 } from "../../access";
-import { db } from "../../db";
-import { database, databaseView, searchDocument } from "../../db/schema";
+import { db } from "../../infrastructure/database";
+import { database, databaseView, searchDocument } from "../../infrastructure/database/schema";
 
 export type WorkspaceSearchResult = {
   emoji: string | null;

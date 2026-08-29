@@ -6,7 +6,7 @@ import {
   DATABASE_UNAVAILABLE_MESSAGE,
   getDatabaseErrorCode,
   isDatabaseUnavailableError,
-} from "./errors";
+} from "./database-errors";
 
 test("recognizes PostgreSQL and nested Hyperdrive availability failures", () => {
   const postgresError = Object.assign(new Error("too many connections"), {

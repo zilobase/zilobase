@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
-import { db } from "../../db";
-import { workspaceAiProviderConfig } from "../../db/schema";
+import { db } from "../../infrastructure/database";
+import { workspaceAiProviderConfig } from "../../infrastructure/database/schema";
 import {
   aiProviderCatalog,
   getAiProviderCatalogItem,

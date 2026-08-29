@@ -3,8 +3,8 @@ import { desc, eq } from "drizzle-orm";
 
 import { createApp } from "../app";
 import { createAuth } from "../auth";
-import { createDbClientForUrl, runWithDb } from "../db";
-import { verification } from "../db/schema";
+import { createDbClientForUrl, runWithDb } from "../infrastructure/database";
+import { verification } from "../infrastructure/database/schema";
 
 const apiBase = getRequiredEnv("BETTER_AUTH_URL");
 const clientUrl = getRequiredEnv("CLIENT_URL");

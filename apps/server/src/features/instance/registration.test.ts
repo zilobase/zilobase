@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "vitest";
 
-import { runWithRuntimeAdapter } from "../../runtime-adapter";
+import { runWithRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter";
 import {
   assertBootstrapToken,
   assertSelfHostedProductionConfiguration,

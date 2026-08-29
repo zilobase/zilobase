@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import type { Database } from "../db";
-import { member, teamspace, teamspacePrincipal } from "../db/schema";
-import type { ZilobaseEditionExtension } from "../edition-extension";
+import type { Database } from "../infrastructure/database";
+import { member, teamspace, teamspacePrincipal } from "../infrastructure/database/schema";
+import type { ZilobaseEditionExtension } from "../shared/types";
 import { MembershipService } from "./membership-service";
 
 test("membership grants run edition policy and audit inside the transaction", async () => {

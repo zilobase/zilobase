@@ -10,9 +10,9 @@ import * as z from "zod";
 
 import { canAccessPageInWorkspace } from "../access";
 import { replacePageContent } from "../collaboration/service";
-import type { RuntimeEnv } from "../config";
-import { db } from "../db";
-import { page } from "../db/schema";
+import type { RuntimeEnv } from "../shared/config/config";
+import { db } from "../infrastructure/database";
+import { page } from "../infrastructure/database/schema";
 import { runIdempotentAgentAction } from "./agent-action-receipts";
 import { markdownToPageContent } from "./markdown-to-page-content";
 import { isPageContentVersionCurrent } from "./page-content-version";

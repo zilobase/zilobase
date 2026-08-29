@@ -6,17 +6,17 @@ import { Schema, type MarkSpec, type NodeSpec } from "@tiptap/pm/model";
 import * as Y from "yjs";
 import { isPageBodyEmpty } from "@zilobase/features/pages/content-state";
 import { canAccessPageInWorkspace } from "../access";
-import { db, runWithDbEnv } from "../db";
+import { db, runWithDbEnv } from "../infrastructure/database";
 import {
   meeting,
   meetingCollaborationDocument,
   meetingTranscriptSegment,
   page,
   pageCollaborationDocument,
-} from "../db/schema";
-import { getRuntimeAdapter } from "../runtime-adapter";
-import type { MeetingTranscriptYjsSegment } from "../runtime-adapter";
-import type { RuntimeEnv } from "../config";
+} from "../infrastructure/database/schema";
+import { getRuntimeAdapter } from "../infrastructure/runtime/runtime-adapter";
+import type { MeetingTranscriptYjsSegment } from "../infrastructure/runtime/runtime-adapter";
+import type { RuntimeEnv } from "../shared/config/config";
 
 const DOCUMENT_PREFIX = "page:";
 const MEETING_DOCUMENT_PREFIX = "meeting:";

@@ -49,7 +49,7 @@ vi.mock("./database-position-service", () => ({
 vi.mock("./database-row-import-service", () => ({
   inheritDatabaseRowProperties: mocks.inherit,
 }));
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     select() {
       const rows = mocks.selectResults.shift() ?? [];

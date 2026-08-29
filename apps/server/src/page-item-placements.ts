@@ -1,5 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { pageItemPlacement } from "./db/schema";
+import { pageItemPlacement } from "./infrastructure/database/schema";
 export type NavItemKind = "page" | "database";
 
 export type ItemRef = {

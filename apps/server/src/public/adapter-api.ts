@@ -1,16 +1,16 @@
-export { getMembership, getWorkspaceMemberships } from "./access";
-export { createApp } from "./app";
+export { getMembership, getWorkspaceMemberships } from "../access";
+export { createApp } from "../app";
 export type {
   EditionExtensionOptions,
   MembershipGrantInput,
   MembershipGrantSource,
   SecurityEvent,
   ZilobaseEditionExtension,
-} from "./edition-extension";
+} from "../shared/types";
 export {
   coerceAiChatRequestBody,
   runAiChatTurn,
-} from "./ai/chat-service";
+} from "../ai/chat-service";
 export {
   getAiChatThreadForUser,
   loadAiChatThreadMessages,
@@ -18,10 +18,10 @@ export {
   parseAiChatAgentInstanceName,
   syncAiChatThreadMessages,
   touchAiChatThreadActivity,
-} from "./ai/chat-persistence";
-export { createAuth } from "./auth";
-export { AI_JOB_HANDLERS } from "./ai/ai-job-handlers";
-export { runAiJobBatch, type AiJobHandler } from "./ai/ai-jobs";
+} from "../ai/chat-persistence";
+export { createAuth } from "../auth";
+export { AI_JOB_HANDLERS } from "../ai/ai-job-handlers";
+export { runAiJobBatch, type AiJobHandler } from "../ai/ai-jobs";
 export {
   appendMeetingTranscriptSegment,
   heartbeatMeetingRecorder,
@@ -29,7 +29,7 @@ export {
   persistMeetingTranscriptSession,
   validateMeetingRecorderLease,
   type MeetingTranscriptSessionSegment,
-} from "./features/meetings/meeting-service";
+} from "../features/meetings/meeting-service";
 export {
   createMeetingRealtimeTranscriptSink,
   getMeetingOpenAiSafetyIdentifier,
@@ -43,13 +43,13 @@ export {
   type MeetingRealtimeTranscriberCallbacks,
   type RealtimeTranscriptionSocket,
   type RealtimeTranscriptionTurn,
-} from "./features/meetings/meeting-realtime-transcription";
+} from "../features/meetings/meeting-realtime-transcription";
 export {
   COLLABORATION_WEBSOCKET_PROTOCOL,
   getAuthHeaders,
   readWebSocketSessionToken,
   SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX,
-} from "./auth-headers";
+} from "../shared/security/auth-headers";
 export {
   getCanonicalApiOrigin,
   getCanonicalHttpOrigin,
@@ -58,22 +58,22 @@ export {
   isLocalDevelopmentHost,
   isLoopbackHost,
   type RuntimeEnv,
-} from "./config";
-export { createDbClient, runWithDbClient, runWithDbEnv } from "./db";
-export type { Database, DatabaseClient } from "./db";
+} from "../shared/config/config";
+export { createDbClient, runWithDbClient, runWithDbEnv } from "../infrastructure/database";
+export type { Database, DatabaseClient } from "../infrastructure/database";
 export {
   DATABASE_UNAVAILABLE_CODE,
   DATABASE_UNAVAILABLE_MESSAGE,
   getDatabaseErrorCode,
   isDatabaseUnavailableError,
-} from "./db/errors";
+} from "../shared/errors/database-errors";
 export {
   DESKTOP_PROTOCOL_VERSION,
   getZilobaseDiscoveryDocument,
   isDesktopVersionCompatible,
   type DesktopServer,
   type ZilobaseDiscoveryDocument,
-} from "./features/instance/service";
+} from "../features/instance/service";
 export {
   createImageStorage,
   createS3ImageStorage,
@@ -83,7 +83,7 @@ export {
   type ImageUploadTarget,
   type PutObjectOptions,
   type StoredImageMetadata,
-} from "./image-storage";
+} from "../infrastructure/storage/image-storage";
 export {
   getCollaborationWebSocketUrl,
   getConfiguredImageStorageMode,
@@ -98,44 +98,44 @@ export {
   type MeetingRecorderRuntimeInput,
   type MeetingRecorderRuntimeState,
   type ServerRuntimeAdapter,
-} from "./runtime-adapter";
+} from "../infrastructure/runtime/runtime-adapter";
 export {
   createDatabaseRealtimeTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
-} from "./database-realtime-ticket";
+} from "../shared/security/database-realtime-ticket";
 export {
   createMeetingAudioTicket,
   MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
   MEETING_AUDIO_PROTOCOL,
   verifyMeetingAudioTicket,
   type MeetingAudioTicketClaims,
-} from "./features/meetings/meeting-audio-ticket";
+} from "../features/meetings/meeting-audio-ticket";
 export {
   drainDatabaseRealtimeOutbox,
   type DatabaseRealtimeMutationEvent,
-} from "./services/database-realtime";
-export { expireTemporaryMemberships } from "./services/temporary-membership";
+} from "../services/database-realtime";
+export { expireTemporaryMemberships } from "../services/temporary-membership";
 export {
   MembershipService,
   type GrantMembershipInput,
   type GrantMembershipResult,
-} from "./services/membership-service";
+} from "../services/membership-service";
 export {
   TeamspaceService,
   ensureDefaultTeamspaceMembership,
   removeUserTeamspacePrincipals,
   type EnsureDefaultTeamspaceMembershipInput,
   type EnsureDefaultTeamspaceMembershipResult,
-} from "./features/teamspaces/service";
+} from "../features/teamspaces/service";
 export {
   inspectTeamspaceIntegrity,
   findTeamspaceIntegrityIssues,
   type TeamspaceIntegrityIssue,
   type TeamspaceIntegritySnapshot,
-} from "./features/teamspaces/integrity";
+} from "../features/teamspaces/integrity";
 export {
   appendMeetingTranscript,
   appendMeetingTranscriptInHocuspocus,
@@ -160,6 +160,6 @@ export {
   type CollaborationTicketClaims,
   type MeetingCollaborationTicketClaims,
   type PageCollaborationTicketClaims,
-} from "./collaboration/service";
-export type { MeetingTranscriptYjsSegment } from "./runtime-adapter";
-export type { AppBindings } from "./types";
+} from "../collaboration/service";
+export type { MeetingTranscriptYjsSegment } from "../infrastructure/runtime/runtime-adapter";
+export type { AppBindings } from "../shared/types";

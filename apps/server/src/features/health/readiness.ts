@@ -1,8 +1,8 @@
 import { sql } from "drizzle-orm";
 
-import type { RuntimeEnv } from "../../config";
-import { db, runWithDbEnv } from "../../db";
-import { createImageStorage } from "../../image-storage";
+import type { RuntimeEnv } from "../../shared/config/config";
+import { db, runWithDbEnv } from "../../infrastructure/database";
+import { createImageStorage } from "../../infrastructure/storage/image-storage";
 import { isRealtimeReady } from "../../realtime-readiness";
 
 export type ReadinessResult = {

@@ -6,7 +6,7 @@ import {
   normalizeSidebarConfig,
 } from "@zilobase/features/user-settings/sidebar-config";
 
-import type { AppBindings } from "../types";
+import type { AppBindings } from "../shared/types";
 
 const mocks = vi.hoisted(() => ({
   insertResults: [] as unknown[][],
@@ -27,10 +27,10 @@ vi.mock("../api-keys", () => ({
   rejectMismatchedApiKeyWorkspace: () => null,
 }));
 vi.mock("../auth", () => ({ createAuth: vi.fn() }));
-vi.mock("../runtime-adapter", () => ({
+vi.mock("../infrastructure/runtime/runtime-adapter", () => ({
   isSelfHostedRuntime: mocks.selfHosted,
 }));
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     select() {
       const rows = mocks.selectResults.shift() ?? [];

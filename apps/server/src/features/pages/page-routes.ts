@@ -20,7 +20,7 @@ import {
   type AccessLevel,
 } from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
-import { db } from "../../db";
+import { db } from "../../infrastructure/database";
 import {
   database,
   dataSource,
@@ -41,8 +41,8 @@ import {
   pagePropertyValue,
   pageSettings,
   workspaceGuest,
-} from "../../db/schema";
-import type { AppBindings } from "../../types";
+} from "../../infrastructure/database/schema";
+import type { AppBindings } from "../../shared/types";
 import { activeMembershipCondition } from "../../services/temporary-membership";
 import {
   buildNavigationPlacements,
@@ -59,7 +59,7 @@ import {
   getOrCreateCollaborationDocumentState,
   replacePageContent,
 } from "../../collaboration/service";
-import { getCollaborationWebSocketUrl } from "../../runtime-adapter";
+import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { getPageTeamspaceSecurityPolicy } from "../teamspaces/security";
 import { TeamspaceManagementService } from "../teamspaces/management";
 import {

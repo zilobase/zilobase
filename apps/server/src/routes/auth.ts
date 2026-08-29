@@ -1,14 +1,14 @@
 import { Hono } from "hono";
-import { getAuthHeaders } from "../auth-headers";
+import { getAuthHeaders } from "../shared/security/auth-headers";
 import { createAuth } from "../auth";
-import { runWithDbEnv } from "../db";
+import { runWithDbEnv } from "../infrastructure/database";
 import {
   getInstanceAdministrationSettings,
   SELF_HOSTED_INVITATION_COOKIE,
   validateSelfHostedInvitationCandidate,
 } from "../features/instance/registration";
-import { isSelfHostedRuntime } from "../runtime-adapter";
-import type { AppBindings } from "../types";
+import { isSelfHostedRuntime } from "../infrastructure/runtime/runtime-adapter";
+import type { AppBindings } from "../shared/types";
 import { expireTemporaryMemberships } from "../services/temporary-membership";
 
 export const authRoutes = new Hono<AppBindings>();

@@ -9,7 +9,7 @@ const { sessionMiddleware } = vi.hoisted(() => ({
 vi.mock("../middleware/session", () => ({ sessionMiddleware }));
 
 import { authenticatedSessionMiddleware } from "./session";
-import type { AppBindings } from "../types";
+import type { AppBindings } from "../shared/types";
 
 beforeEach(() => {
   sessionMiddleware.mockClear();

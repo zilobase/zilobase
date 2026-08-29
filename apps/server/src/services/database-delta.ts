@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-import { db } from "../db";
-import type { Database } from "../db";
+import { db } from "../infrastructure/database";
+import type { Database } from "../infrastructure/database";
 import {
   databaseProperty,
   databaseRow,
@@ -9,7 +9,7 @@ import {
   page,
   pageProperty,
   pagePropertyValue,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 
 type DatabaseReader = Pick<Database, "select">;
 

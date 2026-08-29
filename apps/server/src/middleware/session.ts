@@ -4,13 +4,13 @@ import {
   readApiKeyFromHeaders,
   readApiKeyWorkspaceId,
 } from "../api-keys";
-import { getAuthHeaders } from "../auth-headers";
+import { getAuthHeaders } from "../shared/security/auth-headers";
 import { createAuth } from "../auth";
 import { getMembership } from "../access";
-import { runWithDbEnv } from "../db";
-import { db } from "../db";
-import { user as userTable } from "../db/schema";
-import type { AppBindings } from "../types";
+import { runWithDbEnv } from "../infrastructure/database";
+import { db } from "../infrastructure/database";
+import { user as userTable } from "../infrastructure/database/schema";
+import type { AppBindings } from "../shared/types";
 import { expireTemporaryMemberships } from "../services/temporary-membership";
 
 function normalizeAuthSession<TSession extends Record<string, unknown>>(

@@ -1,14 +1,14 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { and, eq, isNotNull } from "drizzle-orm";
-import { db } from "../db";
-import { account, member, session as authSession } from "../db/schema";
+import { db } from "../infrastructure/database";
+import { account, member, session as authSession } from "../infrastructure/database/schema";
 import {
   getInstanceAdministrationSettings,
   shouldCreateOpenRegistrationMembership,
 } from "../features/instance/registration";
-import { isSelfHostedRuntime } from "../runtime-adapter";
-import type { AppBindings } from "../types";
+import { isSelfHostedRuntime } from "../infrastructure/runtime/runtime-adapter";
+import type { AppBindings } from "../shared/types";
 import { MembershipService } from "../services/membership-service";
 import { activeMembershipCondition } from "../services/temporary-membership";
 

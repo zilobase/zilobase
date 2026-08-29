@@ -17,15 +17,15 @@ import {
   isPagePublishedInWorkspace,
   isPrivilegedOrgRole,
 } from "../../access"
-import { db } from "../../db"
+import { db } from "../../infrastructure/database"
 import {
   dataSource,
   database,
   databaseRow,
   page,
   pageLayout,
-} from "../../db/schema"
-import type { AppBindings } from "../../types"
+} from "../../infrastructure/database/schema"
+import type { AppBindings } from "../../shared/types"
 
 export const pageLayoutRoutes = new Hono<AppBindings>()
 

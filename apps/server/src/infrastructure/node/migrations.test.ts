@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import type { Database } from "../../db";
+import type { Database } from "../database";
 import {
   CORE_MIGRATION_SET,
   assertMigrationSets,

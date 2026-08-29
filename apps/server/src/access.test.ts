@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   teamspaceId: null as string | null,
 }));
 
-vi.mock("./db", () => ({
+vi.mock("./infrastructure/database", () => ({
   db: {
     select() {
       mocks.selectCalls += 1;

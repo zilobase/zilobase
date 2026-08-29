@@ -9,18 +9,18 @@ import {
 import {
   appendMeetingTranscript,
 } from "../../collaboration/service";
-import type { RuntimeEnv } from "../../config";
-import { db } from "../../db";
+import type { RuntimeEnv } from "../../shared/config/config";
+import { db } from "../../infrastructure/database";
 import {
   meeting,
   meetingCollaborationDocument,
   meetingConsentEvent,
   meetingTranscriptSegment,
   page,
-} from "../../db/schema";
+} from "../../infrastructure/database/schema";
 import { upsertPageItemPlacement } from "../../page-item-placements";
 import { ServiceMutationError } from "../../services/mutation-error";
-import { getRuntimeAdapter } from "../../runtime-adapter";
+import { getRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter";
 import {
   clampMeetingDuration,
   getNextMeetingStatus,

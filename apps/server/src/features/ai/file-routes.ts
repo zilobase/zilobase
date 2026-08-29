@@ -5,11 +5,11 @@ import * as z from "zod";
 import { AI_FILE_MAX_BYTES } from "../../ai/ai-file-extraction";
 import { sanitizeAiFilename } from "../../ai/ai-file-storage";
 import { enqueueAiJob, getOwnedAiJob } from "../../ai/ai-jobs";
-import { getStringEnv } from "../../config";
-import { db } from "../../db";
-import { aiChatArtifact, aiChatUpload } from "../../db/schema";
-import { createImageStorage, resolveImageStorageMode } from "../../image-storage";
-import type { AppBindings } from "../../types";
+import { getStringEnv } from "../../shared/config/config";
+import { db } from "../../infrastructure/database";
+import { aiChatArtifact, aiChatUpload } from "../../infrastructure/database/schema";
+import { createImageStorage, resolveImageStorageMode } from "../../infrastructure/storage/image-storage";
+import type { AppBindings } from "../../shared/types";
 import { requireActiveWorkspace } from "../../routes/workspace-settings/shared";
 import { getAiChatThreadForUser } from "../../ai/chat-persistence";
 import {

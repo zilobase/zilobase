@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 
-import type { RuntimeEnv } from "../config";
-import { databaseProperty, pageProperty } from "../db/schema";
+import type { RuntimeEnv } from "../shared/config/config";
+import { databaseProperty, pageProperty } from "../infrastructure/database/schema";
 import { requireDataSourceEditAccess } from "./data-source-access";
 import { commitDataSourceMutation } from "./database-commit";
 import { propertyPositionDelta } from "./database-delta";

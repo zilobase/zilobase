@@ -1,5 +1,5 @@
-import type { RuntimeEnv } from "../../config";
-import { runWithDbEnv } from "../../db";
+import type { RuntimeEnv } from "../../shared/config/config";
+import { runWithDbEnv } from "../../infrastructure/database";
 import type { MeetingAudioTicketClaims } from "./meeting-audio-ticket";
 import {
   meetingTranscriptSequence,

@@ -1,11 +1,11 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
-import type { Database } from "../db";
+import type { Database } from "../infrastructure/database";
 import {
   databaseProperty,
   pageProperty,
   pagePropertyValue,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 import {
   getPropertyNameKey,
   mergeSelectOptionsForValue,

@@ -6,9 +6,9 @@ import * as z from "zod";
 
 import { AiProviderConfigError, resolveWorkspaceAiModel } from "../../ai/ai-provider";
 import { canAccessPage, getMembership, getPageRecord } from "../../access";
-import { db, runWithDbEnv } from "../../db";
-import { getStringEnv } from "../../config";
-import type { AppBindings } from "../../types";
+import { db, runWithDbEnv } from "../../infrastructure/database";
+import { getStringEnv } from "../../shared/config/config";
+import type { AppBindings } from "../../shared/types";
 import {
   coerceAiChatRequestBody,
   runAiChatTurn,

@@ -12,14 +12,14 @@ import {
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
   verifyDatabaseRealtimeTicket,
-} from "../../database-realtime-ticket";
-import { getDatabaseRealtimeWebSocketUrl } from "../../runtime-adapter";
+} from "../../shared/security/database-realtime-ticket";
+import { getDatabaseRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { getDatabaseRecord } from "../../services/database-access";
 import {
   getDatabasePayload,
   getDatabaseSchemaPayload,
 } from "../../services/database-payload";
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 
 export const databaseReadRoutes = new Hono<AppBindings>();
 

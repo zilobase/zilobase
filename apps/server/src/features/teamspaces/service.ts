@@ -1,8 +1,8 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-import { db, type Database } from "../../db";
-import { teamspace, teamspacePrincipal } from "../../db/schema";
-import type { ZilobaseEditionExtension } from "../../edition-extension";
+import { db, type Database } from "../../infrastructure/database";
+import { teamspace, teamspacePrincipal } from "../../infrastructure/database/schema";
+import type { ZilobaseEditionExtension } from "../../shared/types";
 
 const INITIAL_TEAMSPACE_NAME = "General";
 

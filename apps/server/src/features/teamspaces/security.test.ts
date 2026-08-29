@@ -3,7 +3,7 @@ import { beforeEach, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ rows: [] as unknown[][] }));
 
-vi.mock("../../db", () => ({
+vi.mock("../../infrastructure/database", () => ({
   db: {
     select() {
       const rows = mocks.rows.shift() ?? [];

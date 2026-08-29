@@ -1,15 +1,15 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 
-import { getStringEnv } from "../config";
-import { db } from "../db";
-import { user } from "../db/schema";
+import { getStringEnv } from "../shared/config/config";
+import { db } from "../infrastructure/database";
+import { user } from "../infrastructure/database/schema";
 import {
   createImageStorage,
   resolveImageStorageMode,
   type ImageStorage,
-} from "../image-storage";
-import type { AppBindings } from "../types";
+} from "../infrastructure/storage/image-storage";
+import type { AppBindings } from "../shared/types";
 
 export const profileImageRoutes = new Hono<AppBindings>();
 

@@ -36,7 +36,7 @@ import {
   resolveImageStorageMode,
   type ImageStorage,
 } from "./image-storage";
-import { runWithRuntimeAdapter } from "./runtime-adapter";
+import { runWithRuntimeAdapter } from "../runtime/runtime-adapter";
 
 const s3Env = {
   S3_ACCESS_KEY_ID: "access-key",

@@ -1,4 +1,4 @@
-import { db, type Database } from "../../db";
+import { db, type Database } from "../../infrastructure/database";
 import {
   member,
   page,
@@ -7,7 +7,7 @@ import {
   teamspace,
   teamspacePrincipal,
   workspace,
-} from "../../db/schema";
+} from "../../infrastructure/database/schema";
 
 export type TeamspaceIntegrityIssue = {
   code:

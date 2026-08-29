@@ -11,7 +11,7 @@ vi.mock("nodemailer", () => ({
 }));
 
 import { sendEmail } from "./email";
-import { setRuntimeAdapter, type OutboundEmailMessage } from "./runtime-adapter";
+import { setRuntimeAdapter, type OutboundEmailMessage } from "../runtime/runtime-adapter";
 
 const message = {
   subject: "Welcome",

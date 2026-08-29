@@ -25,7 +25,7 @@ vi.mock("./database-delta", () => ({
 vi.mock("./database-payload", () => ({
   getDatabasePayload: mocks.getPayload,
 }));
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     select() {
       const rows = mocks.selectResults.shift() ?? [];

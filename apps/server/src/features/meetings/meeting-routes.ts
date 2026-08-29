@@ -14,10 +14,10 @@ import {
   createCollaborationTicket,
   documentNameForMeeting,
 } from "../../collaboration/service";
-import { getMeetingCollaborationWebSocketUrl } from "../../runtime-adapter";
-import { getMeetingAudioWebSocketUrl } from "../../runtime-adapter";
+import { getMeetingCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
+import { getMeetingAudioWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { ServiceMutationError } from "../../services/mutation-error";
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 import {
   claimMeetingRecorder,
   createMeeting,

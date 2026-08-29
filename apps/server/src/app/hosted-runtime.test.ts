@@ -6,12 +6,12 @@ const { checkReadiness, getZilobaseDiscoveryDocument } = vi.hoisted(() => ({
   getZilobaseDiscoveryDocument: vi.fn(),
 }));
 
-vi.mock("./features/health/readiness", () => ({ checkReadiness }));
-vi.mock("./features/instance/service", () => ({
+vi.mock("../features/health/readiness", () => ({ checkReadiness }));
+vi.mock("../features/instance/service", () => ({
   getZilobaseDiscoveryDocument,
 }));
 
-import { createApp } from "./app";
+import { createApp } from ".";
 
 const env = {
   BETTER_AUTH_URL: "https://api.example.com",

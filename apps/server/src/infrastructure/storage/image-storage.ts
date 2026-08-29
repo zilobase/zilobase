@@ -8,11 +8,11 @@ import {
   type HeadObjectCommandOutput,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { getStringEnv, type RuntimeEnv } from "./config";
+import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
 import {
   getConfiguredImageStorageMode,
   getRuntimeAdapter,
-} from "./runtime-adapter";
+} from "../runtime/runtime-adapter";
 
 export type ImageStorageMode = "s3" | "binding";
 

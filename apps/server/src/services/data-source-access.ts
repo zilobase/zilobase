@@ -1,8 +1,8 @@
 import { and, eq, isNull } from "drizzle-orm";
 
 import { canAccessDatabaseRecord, type AccessLevel } from "../access";
-import { db, type Database } from "../db";
-import { dataSource, database } from "../db/schema";
+import { db, type Database } from "../infrastructure/database";
+import { dataSource, database } from "../infrastructure/database/schema";
 import { ServiceMutationError } from "./mutation-error";
 
 type DataSourceReader = Pick<Database, "select">;

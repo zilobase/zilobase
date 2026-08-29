@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import { Hono } from "hono";
 
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 
 const mocks = vi.hoisted(() => ({
   createdSessionUserIds: [] as string[],
@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   updateResults: [] as unknown[][],
 }));
 
-vi.mock("../../db", () => ({
+vi.mock("../../infrastructure/database", () => ({
   db: {
     insert() {
       return {

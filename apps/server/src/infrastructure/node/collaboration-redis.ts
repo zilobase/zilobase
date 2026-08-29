@@ -1,7 +1,7 @@
 import { Redis as RedisExtension } from "@hocuspocus/extension-redis";
 import type { Extension } from "@hocuspocus/server";
 
-import { getStringEnv, type RuntimeEnv } from "../../config";
+import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
 
 export function createNodeCollaborationExtensions(env: RuntimeEnv): Extension[] {
   const value = getStringEnv(env, "REALTIME_REDIS_URL");

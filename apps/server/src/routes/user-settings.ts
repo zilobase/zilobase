@@ -5,9 +5,9 @@ import {
   normalizeSidebarConfig,
   type SidebarConfig,
 } from "@zilobase/features/user-settings/sidebar-config";
-import { db } from "../db";
-import { account, user, pageSettings } from "../db/schema";
-import type { AppBindings } from "../types";
+import { db } from "../infrastructure/database";
+import { account, user, pageSettings } from "../infrastructure/database/schema";
+import type { AppBindings } from "../shared/types";
 
 export const pageSettingsRoutes = new Hono<AppBindings>();
 

@@ -1,9 +1,9 @@
 import { asc, eq, inArray, lte, sql } from "drizzle-orm";
 
-import type { RuntimeEnv } from "../config";
-import { db } from "../db";
-import { databaseRealtimeOutbox } from "../db/schema";
-import { getRuntimeAdapter } from "../runtime-adapter";
+import type { RuntimeEnv } from "../shared/config/config";
+import { db } from "../infrastructure/database";
+import { databaseRealtimeOutbox } from "../infrastructure/database/schema";
+import { getRuntimeAdapter } from "../infrastructure/runtime/runtime-adapter";
 import type {
   DatabaseChangedArea,
   DatabaseDelta,

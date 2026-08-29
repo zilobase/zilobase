@@ -1,14 +1,14 @@
 import { eq, sql, type SQL } from "drizzle-orm";
 
-import type { RuntimeEnv } from "../config";
-import { db } from "../db";
-import type { Database } from "../db";
+import type { RuntimeEnv } from "../shared/config/config";
+import { db } from "../infrastructure/database";
+import type { Database } from "../infrastructure/database";
 import {
   dataSource,
   database,
   databaseDataSource,
   databaseRealtimeOutbox,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 import {
   type DatabaseChangedArea,
   type DatabaseDelta,

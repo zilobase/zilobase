@@ -1,12 +1,12 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 
-import type { RuntimeEnv } from "../config";
-import { db } from "../db";
+import type { RuntimeEnv } from "../shared/config/config";
+import { db } from "../infrastructure/database";
 import {
   dataSource,
   databaseDataSource,
   databaseView,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 import { requireDatabaseEditAccess } from "./database-access";
 import { commitDatabaseMutation } from "./database-commit";
 import { requireDataSourceAccess } from "./data-source-access";

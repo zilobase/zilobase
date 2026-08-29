@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { createDbClientForUrl } from "../db";
+import { createDbClientForUrl } from "../infrastructure/database";
 import {
   CORE_MIGRATION_SET,
   runMigrationSets,

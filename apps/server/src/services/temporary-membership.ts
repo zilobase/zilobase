@@ -1,6 +1,6 @@
 import { and, eq, inArray, lte, ne, or, sql } from "drizzle-orm";
 
-import { db, type Database } from "../db";
+import { db, type Database } from "../infrastructure/database";
 import {
   member,
   session,
@@ -8,7 +8,7 @@ import {
   teamMember,
   teamspace,
   teamspacePrincipal,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 
 const WORKSPACE_ROLES = [
   "owner",

@@ -2,8 +2,8 @@ import { Hono, type Context } from "hono";
 import { z } from "zod";
 
 import { getMembership } from "../../access";
-import { isSelfHostedRuntime } from "../../runtime-adapter";
-import type { AppBindings } from "../../types";
+import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
+import type { AppBindings } from "../../shared/types";
 import {
   BootstrapAlreadyCompletedError,
   BootstrapStateConflictError,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { SERVER_VERSION } from "../../version";
+import { SERVER_VERSION } from "../../shared/version";
 import {
   getOrCreateInstanceSettings,
   getZilobaseDiscoveryDocument,

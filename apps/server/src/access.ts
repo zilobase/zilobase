@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
-import { db } from "./db";
-import type { AppBindings } from "./types";
+import { db } from "./infrastructure/database";
+import type { AppBindings } from "./shared/types";
 import {
   database,
   databaseAccess,
@@ -15,7 +15,7 @@ import {
   teamspacePrincipal,
   workspace,
   workspaceGuest,
-} from "./db/schema";
+} from "./infrastructure/database/schema";
 import { loadWorkspacePageGraph } from "./page-graph-loader";
 import { activeMembershipCondition } from "./services/temporary-membership";
 import {

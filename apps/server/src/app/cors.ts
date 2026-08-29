@@ -1,8 +1,8 @@
 import type { MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 
-import { isAllowedClientOrigin, isLocalDevelopmentHost } from "../config";
-import type { AppBindings } from "../types";
+import { isAllowedClientOrigin, isLocalDevelopmentHost } from "../shared/config/config";
+import type { AppBindings } from "../shared/types";
 
 export function createCorsMiddleware(): MiddlewareHandler<AppBindings> {
   return cors({

@@ -10,11 +10,12 @@ RUN npm ci
 ARG VITE_FEATURE_DATABASE_REALTIME=true
 ENV VITE_FEATURE_DATABASE_REALTIME=${VITE_FEATURE_DATABASE_REALTIME}
 RUN npm run build:web
-RUN ./apps/web/node_modules/.bin/esbuild apps/server/src/serverful.ts apps/server/src/scripts/migrate.ts \
+RUN ./apps/web/node_modules/.bin/esbuild apps/server/src/entrypoints/serverful.ts apps/server/src/scripts/migrate.ts \
   --bundle \
   --platform=node \
   --target=node22 \
   --format=cjs \
+  '--entry-names=[name]' \
   --define:import.meta.url='"file:///app/dist/server/serverful.js"' \
   --outdir=dist/server
 

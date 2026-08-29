@@ -27,7 +27,7 @@ vi.mock("./database-delta", () => ({
 vi.mock("./page-property-value-upsert", () => ({
   upsertPagePropertyValues: mocks.upsertValues,
 }));
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     select() {
       const rows = mocks.selectResults.shift() ?? [];

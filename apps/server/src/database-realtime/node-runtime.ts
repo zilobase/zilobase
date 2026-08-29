@@ -6,13 +6,13 @@ import type { Duplex } from "node:stream";
 import type { Message, Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 
-import type { RuntimeEnv } from "../config";
+import type { RuntimeEnv } from "../shared/config/config";
 import {
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
-} from "../database-realtime-ticket";
+} from "../shared/security/database-realtime-ticket";
 import type { DatabaseRealtimeMutationEvent } from "../services/database-realtime";
 import {
   databaseRealtimeChannel,

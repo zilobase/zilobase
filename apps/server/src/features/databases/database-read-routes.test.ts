@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 
 const mocks = vi.hoisted(() => ({
   access: vi.fn(),
@@ -24,13 +24,13 @@ vi.mock("../../access", () => ({
   getWorkspaceRealtimeAccessExpiration: mocks.realtimeExpiration,
   isDatabasePublishedInWorkspace: mocks.published,
 }));
-vi.mock("../../database-realtime-ticket", () => ({
+vi.mock("../../shared/security/database-realtime-ticket", () => ({
   createDatabaseRealtimeTicket: mocks.createTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX: "zilobase-auth.",
   DATABASE_REALTIME_PROTOCOL: "zilobase-realtime-v1",
   verifyDatabaseRealtimeTicket: mocks.verifyTicket,
 }));
-vi.mock("../../runtime-adapter", () => ({
+vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
   getDatabaseRealtimeWebSocketUrl: () => "ws://localhost/realtime",
 }));
 vi.mock("../../services/database-access", () => ({

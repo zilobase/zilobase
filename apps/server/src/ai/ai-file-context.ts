@@ -1,10 +1,10 @@
 import type { ModelMessage, UIMessage } from "ai";
 import { and, eq, gt, inArray } from "drizzle-orm";
 
-import type { RuntimeEnv } from "../config";
-import { db } from "../db";
-import { aiChatUpload } from "../db/schema";
-import { createImageStorage } from "../image-storage";
+import type { RuntimeEnv } from "../shared/config/config";
+import { db } from "../infrastructure/database";
+import { aiChatUpload } from "../infrastructure/database/schema";
+import { createImageStorage } from "../infrastructure/storage/image-storage";
 import { AI_FILE_MAX_BYTES } from "./ai-file-extraction";
 import { readAiStoredObject } from "./ai-file-storage";
 

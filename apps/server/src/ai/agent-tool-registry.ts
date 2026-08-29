@@ -4,7 +4,7 @@ import {
 } from "@zilobase/features/ai-chat/tool-registry";
 import type { ToolSet } from "ai";
 
-import type { RuntimeEnv } from "../config";
+import type { RuntimeEnv } from "../shared/config/config";
 import { buildAnalysisTools } from "./ask-ai-analysis-tools";
 import { buildArtifactTools } from "./ask-ai-artifact-tools";
 import { buildDatabaseConfigTools } from "./ask-ai-database-tools";

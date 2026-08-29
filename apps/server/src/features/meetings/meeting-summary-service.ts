@@ -4,11 +4,11 @@ import { z } from "zod";
 
 import { resolveWorkspaceAiModel, type ResolvedAiModel } from "../../ai/ai-provider";
 import { replaceMeetingSummary } from "../../collaboration/service";
-import { getRuntimeAdapter } from "../../runtime-adapter";
-import { db } from "../../db";
-import { meeting, meetingTranscriptSegment } from "../../db/schema";
+import { getRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter";
+import { db } from "../../infrastructure/database";
+import { meeting, meetingTranscriptSegment } from "../../infrastructure/database/schema";
 import { ServiceMutationError } from "../../services/mutation-error";
-import type { RuntimeEnv } from "../../config";
+import type { RuntimeEnv } from "../../shared/config/config";
 import { getMeetingForUser } from "./meeting-service";
 
 const MAX_TRANSCRIPT_CHUNK_CHARS = 60_000;

@@ -4,8 +4,8 @@ export {
   assertMigrationSets,
   runMigrationSets,
   type MigrationSet,
-} from "./infrastructure/node/migrations";
+} from "../infrastructure/node/migrations";
 export {
   createNodeRuntime,
   type NodeRuntimeOptions,
-} from "./infrastructure/node/node-runtime";
+} from "../infrastructure/node/node-runtime";

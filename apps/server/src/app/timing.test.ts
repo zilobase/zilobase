@@ -3,7 +3,7 @@ import { test } from "vitest";
 import { Hono } from "hono";
 
 import { serverTimingMiddleware } from "./timing";
-import type { AppBindings } from "../types";
+import type { AppBindings } from "../shared/types";
 
 test("server timing preserves request IDs and emits collected timings", async () => {
   const app = new Hono<AppBindings>();

@@ -6,14 +6,14 @@ import {
   getPageRecord,
 } from "../../access";
 import { rejectMismatchedApiKeyWorkspace } from "../../api-keys";
-import { getStringEnv } from "../../config";
-import { db } from "../../db";
-import { database, imageAsset } from "../../db/schema";
+import { getStringEnv } from "../../shared/config/config";
+import { db } from "../../infrastructure/database";
+import { database, imageAsset } from "../../infrastructure/database/schema";
 import {
   createImageStorage,
   resolveImageStorageMode,
-} from "../../image-storage";
-import type { AppBindings } from "../../types";
+} from "../../infrastructure/storage/image-storage";
+import type { AppBindings } from "../../shared/types";
 
 export const imageRoutes = new Hono<AppBindings>();
 

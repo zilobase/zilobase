@@ -7,11 +7,11 @@ import {
   getCanonicalWebOrigin,
   getRequiredStringEnv,
   resolvePublicRequestUrl,
-} from "../../config";
-import { db, runWithDb, runWithDbEnv, type Database } from "../../db";
-import { desktopAuthorizationCode } from "../../db/schema";
+} from "../../shared/config/config";
+import { db, runWithDb, runWithDbEnv, type Database } from "../../infrastructure/database";
+import { desktopAuthorizationCode } from "../../infrastructure/database/schema";
 import { getZilobaseDiscoveryDocument } from "../instance/service";
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 import {
   buildDesktopCallbackUrl,
   consumeDesktopAuthorizationCode,

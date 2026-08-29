@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 
-import type { AppBindings } from "../../types";
+import type { AppBindings } from "../../shared/types";
 import {
   TeamspaceManagementError,
   TeamspaceManagementService,

@@ -1,4 +1,4 @@
-import { createDbClient, runWithDbClient } from "../db";
+import { createDbClient, runWithDbClient } from "../infrastructure/database";
 import { inspectTeamspaceIntegrity } from "../features/teamspaces/integrity";
 
 const databaseClient = createDbClient(process.env);

@@ -1,13 +1,13 @@
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 
-import { db } from "./db";
+import { db } from "./infrastructure/database";
 import {
   dataSource,
   database,
   databaseRow,
   page,
   pageItemPlacement,
-} from "./db/schema";
+} from "./infrastructure/database/schema";
 import {
   PageGraph,
   type PageGraphDatabase,

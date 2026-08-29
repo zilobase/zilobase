@@ -7,8 +7,8 @@ import {
   normalizeAccessLevel,
   type AccessLevel,
 } from "../access";
-import { db } from "../db";
-import type { ZilobaseEditionExtension } from "../edition-extension";
+import { db } from "../infrastructure/database";
+import type { ZilobaseEditionExtension } from "../shared/types";
 import {
   member,
   page,
@@ -18,7 +18,7 @@ import {
   user,
   workspace,
   workspaceGuest,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 import { MembershipService } from "./membership-service";
 import { activeMembershipCondition } from "./temporary-membership";
 

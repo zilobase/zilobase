@@ -19,7 +19,7 @@ vi.mock("./database-access", () => ({
 vi.mock("../features/teamspaces/security", () => ({
   getDatabaseTeamspaceSecurityPolicy: mocks.securityPolicy,
 }));
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     delete() {
       return {

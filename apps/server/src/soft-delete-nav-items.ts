@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-import { db } from "./db";
-import { dataSource, database, databaseRow, page } from "./db/schema";
+import { db } from "./infrastructure/database";
+import { dataSource, database, databaseRow, page } from "./infrastructure/database/schema";
 import { loadWorkspacePageGraph } from "./page-graph-loader";
 
 type SoftDeleteResult = {

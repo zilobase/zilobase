@@ -2,8 +2,8 @@ import { and, asc, eq, gte, isNull, sql } from "drizzle-orm";
 
 import { canAccessPage } from "../access";
 import { encodePageContentAsYjs } from "../collaboration/service";
-import type { RuntimeEnv } from "../config";
-import { db } from "../db";
+import type { RuntimeEnv } from "../shared/config/config";
+import { db } from "../infrastructure/database";
 import {
   databaseProperty,
   databaseRow,
@@ -12,7 +12,7 @@ import {
   pageCollaborationDocument,
   pageProperty,
   pagePropertyValue,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 import { upsertPageItemPlacement } from "../page-item-placements";
 import {
   requireDataSourceAccess,

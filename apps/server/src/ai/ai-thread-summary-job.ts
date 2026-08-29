@@ -1,8 +1,8 @@
 import { generateText } from "ai";
 import { and, asc, eq, gt, lte } from "drizzle-orm";
 
-import { db } from "../db";
-import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../db/schema";
+import { db } from "../infrastructure/database";
+import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../infrastructure/database/schema";
 import { resolveWorkspaceAiModel } from "./ai-provider";
 import { PermanentAiJobError, type AiJobHandler } from "./ai-jobs";
 

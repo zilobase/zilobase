@@ -7,7 +7,7 @@ import {
   createDatabaseRealtimeTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
-} from "../database-realtime-ticket";
+} from "../shared/security/database-realtime-ticket";
 import { attachNodeDatabaseRealtimeRuntime } from "./node-runtime";
 import type { NodeRealtimeBus } from "../infrastructure/node/realtime-bus";
 

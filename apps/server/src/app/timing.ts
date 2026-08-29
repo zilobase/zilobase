@@ -1,6 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 
-import type { AppBindings } from "../types";
+import type { AppBindings } from "../shared/types";
 
 export const serverTimingMiddleware: MiddlewareHandler<AppBindings> = async (
   c,

@@ -13,8 +13,8 @@ import {
   canAccessDatabaseRecord,
   canAccessPageInWorkspace,
 } from "../access";
-import { db } from "../db";
-import { page, pageCollaborationDocument } from "../db/schema";
+import { db } from "../infrastructure/database";
+import { page, pageCollaborationDocument } from "../infrastructure/database/schema";
 import { searchWorkspaceItems } from "../features/search/service";
 import { getDatabaseRecord } from "../services/database-access";
 import { getDatabasePayload } from "../services/database-payload";

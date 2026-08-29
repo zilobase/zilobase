@@ -1,25 +1,21 @@
 import { Hono, type ErrorHandler } from "hono";
-import { createCorsMiddleware } from "./app/cors";
-import { registerRoutes } from "./app/routes";
-import { authenticatedSessionMiddleware } from "./app/session";
-import { serverTimingMiddleware } from "./app/timing";
+import { createCorsMiddleware } from "./cors";
+import { registerRoutes } from "./routes";
+import { authenticatedSessionMiddleware } from "./session";
+import { serverTimingMiddleware } from "./timing";
 import {
   DATABASE_UNAVAILABLE_CODE,
   DATABASE_UNAVAILABLE_MESSAGE,
   getDatabaseErrorCode,
   isDatabaseUnavailableError,
-} from "./db/errors";
-import type { AppBindings } from "./types";
-import type { EditionExtensionOptions } from "./edition-extension";
-
-const appEditionExtensions = new WeakMap<
-  object,
-  EditionExtensionOptions["editionExtension"]
->();
+} from "../shared/errors/database-errors";
+import { registerAppEditionExtension } from "../shared/edition-extension-registry";
+import type { AppBindings } from "../shared/types";
+import type { EditionExtensionOptions } from "../shared/types";
 
 export function createApp(options: EditionExtensionOptions = {}) {
   const app = new Hono<AppBindings>();
-  appEditionExtensions.set(app, options.editionExtension);
+  registerAppEditionExtension(app, options.editionExtension);
 
   app.use("*", async (c, next) => {
     c.set("editionExtension", options.editionExtension ?? null);
@@ -33,10 +29,6 @@ export function createApp(options: EditionExtensionOptions = {}) {
   app.onError(appErrorHandler);
 
   return app;
-}
-
-export function getAppEditionExtension(app: object) {
-  return appEditionExtensions.get(app);
 }
 
 export const appErrorHandler: ErrorHandler<AppBindings> = (error, c) => {

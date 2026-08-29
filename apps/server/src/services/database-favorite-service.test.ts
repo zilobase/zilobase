@@ -15,7 +15,7 @@ vi.mock("./database-access", () => ({
 vi.mock("./database-payload", () => ({
   getDatabasePayload: mocks.payload,
 }));
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     delete() {
       return {

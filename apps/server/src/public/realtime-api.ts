@@ -4,11 +4,11 @@ export {
   DATABASE_REALTIME_PROTOCOL,
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
-} from "./database-realtime-ticket";
-export type { DatabaseRealtimeMutationEvent } from "./services/database-delta";
+} from "../shared/security/database-realtime-ticket";
+export type { DatabaseRealtimeMutationEvent } from "../services/database-delta";
 export type {
   MeetingLifecycleAction,
-} from "./features/meetings/meeting-types";
+} from "../features/meetings/meeting-types";
 export type { MeetingStatus };
 export {
   createMeetingAudioTicket,
@@ -21,6 +21,6 @@ export {
   verifyMeetingAudioTicket,
   type MeetingAudioSource,
   type MeetingAudioTicketClaims,
-} from "./features/meetings/meeting-audio-ticket";
+} from "../features/meetings/meeting-audio-ticket";
 
-import type { MeetingStatus } from "./features/meetings/meeting-types";
+import type { MeetingStatus } from "../features/meetings/meeting-types";

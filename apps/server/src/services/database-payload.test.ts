@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   selectResults: [] as unknown[][],
 }));
 
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     select() {
       mocks.selectCalls += 1;
@@ -26,7 +26,7 @@ vi.mock("../db", () => ({
   },
 }));
 
-import { database } from "../db/schema";
+import { database } from "../infrastructure/database/schema";
 import {
   getDatabasePayload,
   getDatabaseSchemaPayload,

@@ -3,8 +3,8 @@ import { and, eq, isNull } from "drizzle-orm";
 
 import { canAccessDatabaseRecord, canAccessPageInWorkspace } from "../access";
 import { materializePageContentFromYjs } from "../collaboration/service";
-import { db } from "../db";
-import { page, pageCollaborationDocument } from "../db/schema";
+import { db } from "../infrastructure/database";
+import { page, pageCollaborationDocument } from "../infrastructure/database/schema";
 import { getDatabaseRecord } from "../services/database-access";
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
 

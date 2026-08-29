@@ -3,7 +3,7 @@ import { test } from "vitest";
 import { Hono } from "hono";
 
 import { createCorsMiddleware } from "./cors";
-import type { AppBindings } from "../types";
+import type { AppBindings } from "../shared/types";
 
 function corsApp() {
   const app = new Hono<AppBindings>();

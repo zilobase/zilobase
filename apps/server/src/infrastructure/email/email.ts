@@ -1,9 +1,9 @@
 import nodemailer from "nodemailer";
-import { getStringEnv, type RuntimeEnv } from "./config";
+import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
 import {
   getRuntimeAdapter,
   type OutboundEmailMessage,
-} from "./runtime-adapter";
+} from "../runtime/runtime-adapter";
 
 type EmailMessage = {
   to: string;

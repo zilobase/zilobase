@@ -4,8 +4,8 @@ import {
   canAccessDatabaseRecord,
   type AccessLevel,
 } from "../access";
-import { db, type Database } from "../db";
-import { database } from "../db/schema";
+import { db, type Database } from "../infrastructure/database";
+import { database } from "../infrastructure/database/schema";
 import { ServiceMutationError } from "./mutation-error";
 
 type DatabaseReader = Pick<Database, "select">;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
-import { runWithRuntimeAdapter } from "../runtime-adapter";
+import { runWithRuntimeAdapter } from "../infrastructure/runtime/runtime-adapter";
 import type { DatabaseRealtimeMutationEvent } from "./database-delta";
 import {
   drainDatabaseRealtimeOutbox,

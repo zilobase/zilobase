@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { Hono } from "hono";
 
-import { appErrorHandler, createApp } from "./app";
-import type { AppBindings } from "./types";
-import type { ZilobaseEditionExtension } from "./edition-extension";
+import { appErrorHandler, createApp } from "./";
+import type { AppBindings } from "../shared/types";
+import type { ZilobaseEditionExtension } from "../shared/types";
 
 test("createApp registers every public feature route group", () => {
   const routes = createApp().routes.map(({ method, path }) => `${method} ${path}`);

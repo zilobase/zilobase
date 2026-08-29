@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 import { canAccessDatabaseRecord } from "../access";
-import { db } from "../db";
+import { db } from "../infrastructure/database";
 import {
   dataSource,
   database,
@@ -13,7 +13,7 @@ import {
   page,
   pageProperty,
   pagePropertyValue,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 import { getDatabaseRecord } from "./database-access";
 
 type DatabaseRecord = typeof database.$inferSelect;

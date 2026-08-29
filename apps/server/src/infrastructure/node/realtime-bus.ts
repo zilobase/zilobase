@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import Redis from "ioredis";
 
-import { getStringEnv, type RuntimeEnv } from "../../config";
+import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
 
 const RATE_LIMIT_SCRIPT = `
   local count = redis.call("INCR", KEYS[1])

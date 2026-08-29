@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   selectCalls: 0,
 }));
 
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: {
     delete() {
       return {

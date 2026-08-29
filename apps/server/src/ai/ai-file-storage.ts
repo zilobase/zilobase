@@ -1,9 +1,9 @@
-import type { RuntimeEnv } from "../config";
+import type { RuntimeEnv } from "../shared/config/config";
 import {
   createImageStorage,
   type ImageStorage,
   type StoredImageObject,
-} from "../image-storage";
+} from "../infrastructure/storage/image-storage";
 
 export async function readAiStoredObject(
   storage: ImageStorage,

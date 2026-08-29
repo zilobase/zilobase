@@ -7,8 +7,8 @@ import {
   getMembership,
   hasAccess,
 } from "../access";
-import type { RuntimeEnv } from "../config";
-import { db } from "../db";
+import type { RuntimeEnv } from "../shared/config/config";
+import { db } from "../infrastructure/database";
 import {
   database,
   databaseDataSource,
@@ -18,7 +18,7 @@ import {
   favorite,
   page,
   pageItemPlacement,
-} from "../db/schema";
+} from "../infrastructure/database/schema";
 import { upsertPageItemPlacement } from "../page-item-placements";
 import { softDeleteDatabaseTree } from "../soft-delete-nav-items";
 import {

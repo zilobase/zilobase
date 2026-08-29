@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
 }));
 
-vi.mock("../db", () => ({
+vi.mock("../infrastructure/database", () => ({
   db: { transaction: mocks.transaction },
 }));
 vi.mock("./database-realtime", () => ({
