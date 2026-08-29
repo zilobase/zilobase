@@ -17,7 +17,7 @@ import {
   PromptInputCommandGroup,
   PromptInputCommandItem,
   PromptInputCommandList,
-} from "@/components/ai-elements/prompt-input";
+} from "./prompt-input";
 import { PageIconDisplay, PageIcon } from "@/features/pages/index";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import type { AppSearchResult } from "@zilobase/features/search";

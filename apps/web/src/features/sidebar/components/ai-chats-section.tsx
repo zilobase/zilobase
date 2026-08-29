@@ -1,8 +1,8 @@
 import { ChevronRightIcon } from "@/shared/components/icons";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel } from "@/shared/ui/sidebar";
-import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list";
-import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
+import { AiChatHistoryList } from "@/features/ai/components/elements/index";
+import { useAiChatThreadState } from "@/features/ai/index";
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state";
 
 export function AiChatsSection({

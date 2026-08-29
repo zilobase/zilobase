@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("resolves native agent tool presentation from local data", async () => {
     const { resolveAgentToolPresentation } = await loadModule(
-      "/src/components/ai-elements/agent-tool-presentation.ts",
+      "/src/features/ai/components/elements/agent-tool-presentation.ts",
     );
 
     assert.deepEqual(

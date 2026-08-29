@@ -17,7 +17,7 @@ import {
 import { prosemirrorToMarkdown } from "@zilobase/page-context"
 
 import { usePageEditorRegistry } from "@/contexts/page-editor-registry"
-import { usePageEditApplier } from "@/hooks/use-page-edit-applier"
+import { usePageEditApplier } from "./use-page-edit-applier"
 import {
   logPageEdit,
   warnPageEdit,

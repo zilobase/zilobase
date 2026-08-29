@@ -1,6 +1,6 @@
 import { createRoute } from "@tanstack/react-router";
 
-import AiPage from "@/pages/ai";
+import { AiPage } from "@/features/ai/pages/index";
 import { CanvasPage } from "@/features/canvas/index";
 import { RecentsPage } from "@/features/library/index";
 import { TasksPage } from "@/features/tasks/index";

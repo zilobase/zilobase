@@ -18,7 +18,7 @@ import {
   PromptInputTextarea,
   PromptInputTools,
   type PromptInputMessage,
-} from "@/components/ai-elements/prompt-input"
+} from "@/features/ai/components/elements/index"
 import { Button } from "@/shared/ui/button"
 import {
   Popover,

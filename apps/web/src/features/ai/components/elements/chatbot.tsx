@@ -3,14 +3,14 @@
 import {
   Conversation,
   ConversationContent,
-} from "@/components/ai-elements/conversation";
+} from "./conversation";
 import {
   Message,
   MessageAction,
   MessageActions,
   MessageContent,
   MessageResponse,
-} from "@/components/ai-elements/message";
+} from "./message";
 import {
   ModelSelector,
   ModelSelectorContent,
@@ -23,8 +23,8 @@ import {
   ModelSelectorLogoGroup,
   ModelSelectorName,
   ModelSelectorTrigger,
-} from "@/components/ai-elements/model-selector";
-import { ContextAttachChips } from "@/components/ai-elements/context-attach-chips";
+} from "./model-selector";
+import { ContextAttachChips } from "./context-attach-chips";
 import {
   buildPrimaryAttachment,
   ContextAttachMenu,
@@ -32,26 +32,26 @@ import {
   parseMentionState,
   type ContextAttachMenuEntry,
   type ContextAttachMenuHandle,
-} from "@/components/ai-elements/context-attach-menu";
+} from "./context-attach-menu";
 import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
 import { useOptionalPageSidePane } from "@/features/pages/context/index";
-import { usePageAiContext } from "@/hooks/use-page-ai-context";
-import { useDatabaseEmbedAutoApply } from "@/hooks/use-database-embed-auto-apply";
-import { useDatabaseToolCacheSync } from "@/hooks/use-database-tool-cache-sync";
-import { useAgentConversation } from "@/hooks/use-agent-conversation";
+import { usePageAiContext } from "../../context/use-page-ai-context";
+import { useDatabaseEmbedAutoApply } from "../../cache/use-database-embed-auto-apply";
+import { useDatabaseToolCacheSync } from "../../cache/use-database-tool-cache-sync";
+import { useAgentConversation } from "../../conversation/use-agent-conversation";
 import {
   updatePageEditSnapshotStatus,
   usePageEditAutoApply,
-} from "@/hooks/use-page-edit-auto-apply";
-import { usePageEditApplier } from "@/hooks/use-page-edit-applier";
-import { DatabaseToolStepsGroup } from "@/components/ai-elements/database-tool-steps";
+} from "../../cache/use-page-edit-auto-apply";
+import { usePageEditApplier } from "../../cache/use-page-edit-applier";
+import { DatabaseToolStepsGroup } from "./database-tool-steps";
 import {
   AgentToolTaskGroup,
   buildMessagePartGroups,
-} from "@/components/ai-elements/agent-tool-task";
-import { resolveAgentToolPresentation } from "@/components/ai-elements/agent-tool-presentation";
-import { AgentActionReviews } from "@/components/ai-elements/agent-action-review";
-import { PageEditCard } from "@/components/ai-elements/page-edit-card";
+} from "./agent-tool-task";
+import { resolveAgentToolPresentation } from "./agent-tool-presentation";
+import { AgentActionReviews } from "./agent-action-review";
+import { PageEditCard } from "./page-edit-card";
 import {
   PromptInput,
   PromptInputActionAddAttachments,
@@ -65,9 +65,9 @@ import {
   PromptInputTextarea,
   PromptInputTools,
   type PromptInputMessage,
-} from "@/components/ai-elements/prompt-input";
-import { Shimmer } from "@/components/ai-elements/shimmer";
-import type { ToolPart } from "@/components/ai-elements/tool";
+} from "./prompt-input";
+import { Shimmer } from "./shimmer";
+import type { ToolPart } from "./tool";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import {
@@ -128,137 +128,23 @@ import {
 } from "@/shared/components/icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AgentResultTable } from "@/components/ai-elements/agent-result-table";
-import { getAgentCitationSidePaneTarget } from "@/components/ai-elements/agent-citation-navigation";
+import { AgentResultTable } from "./agent-result-table";
+import { getAgentCitationSidePaneTarget } from "./agent-citation-navigation";
 import {
   AI_FILE_ACCEPT,
   MAX_AI_FILE_BYTES,
   MAX_AI_FILES,
   uploadAiChatFile,
-} from "@/lib/ai-file-upload";
-
-const fallbackModels: WorkspaceAiChatModel[] = [
-  {
-    chef: "Zilobase",
-    chefSlug: "openai",
-    description: "Automatically uses the workspace default model.",
-    gatewayId: "auto",
-    id: "auto",
-    name: "Auto",
-    providers: ["openai"],
-  },
-  {
-    chef: "OpenAI",
-    chefSlug: "openai",
-    gatewayId: "gpt-4o-mini",
-    id: "gpt-4o-mini",
-    name: "GPT-4o Mini",
-    providers: ["openai"],
-  },
-  {
-    chef: "OpenAI",
-    chefSlug: "openai",
-    gatewayId: "gpt-4o",
-    id: "gpt-4o",
-    name: "GPT-4o",
-    providers: ["openai"],
-  },
-];
-
-function areMessagesEquivalent(
-  leftMessages: UIMessage[],
-  rightMessages: UIMessage[],
-) {
-  if (leftMessages === rightMessages) {
-    return true;
-  }
-
-  if (leftMessages.length !== rightMessages.length) {
-    return false;
-  }
-
-  return leftMessages.every((leftMessage, index) => {
-    const rightMessage = rightMessages[index];
-
-    if (
-      leftMessage === rightMessage ||
-      (leftMessage.id === rightMessage.id &&
-        leftMessage.role === rightMessage.role &&
-        leftMessage.parts === rightMessage.parts)
-    ) {
-      return true;
-    }
-
-    return JSON.stringify(leftMessage) === JSON.stringify(rightMessage);
-  });
-}
-
-const emptyAgentChatMessages: UIMessage[] = [];
-
-function getErrorDetails(error: unknown) {
-  if (error instanceof Error) {
-    return {
-      cause: error.cause,
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-    };
-  }
-
-  return {
-    message: String(error),
-    name: typeof error,
-  };
-}
-
-function summarizeMessagesForDebug(messages: UIMessage[]) {
-  const lastMessage = messages.at(-1);
-
-  return {
-    count: messages.length,
-    lastMessage: lastMessage
-      ? {
-          id: lastMessage.id,
-          partTypes: lastMessage.parts.map((part) => part.type),
-          role: lastMessage.role,
-        }
-      : null,
-    roles: messages.map((message) => message.role),
-  };
-}
-
-function logAiChatError(
-  source: string,
-  error: unknown,
-  context: Record<string, unknown>,
-) {
-  const errorDetails = getErrorDetails(error);
-
-  console.groupCollapsed(
-    `[zilobase ai chat] ${source}: ${errorDetails.message}`,
-  );
-  console.error(error);
-  console.info("error details", errorDetails);
-  console.info("context", context);
-  console.groupEnd();
-}
-
-const pendingPhrases = [
-  "Thinking through your question",
-  "Analyzing page context",
-  "Searching your workspace",
-  "Preparing tool calls",
-];
-
-const providerLogoSlugs: Record<string, string> = {
-  fireworks: "fireworks-ai",
-  "google-ai-studio": "google",
-  together: "togetherai",
-};
-
-function getProviderLogoSlug(provider: string) {
-  return providerLogoSlugs[provider] ?? provider;
-}
+} from "../../lib/ai-file-upload";
+import {
+  areMessagesEquivalent,
+  emptyAgentChatMessages,
+  fallbackModels,
+  getProviderLogoSlug,
+  logAiChatError,
+  pendingPhrases,
+  summarizeMessagesForDebug,
+} from "../../model/chat-runtime-model";
 
 const ShellScrollButton = ({
   targetRef,

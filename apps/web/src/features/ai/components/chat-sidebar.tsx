@@ -1,10 +1,10 @@
 "use client"
 
-import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list"
+import { AiChatHistoryList } from "./elements/ai-chat-history-list"
 import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
-import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions"
-import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
+import { useAiChatThreadActions } from "../conversation/use-ai-chat-thread-actions"
+import { useAiChatThreadState } from "../conversation/use-ai-chat-thread-state"
 import {
   ChevronsRightIcon,
   HistoryIcon,
@@ -16,7 +16,7 @@ import {
 } from "@/shared/components/icons"
 import { lazy, Suspense, useCallback, useState } from "react"
 
-const Chatbot = lazy(() => import("@/components/ai-elements/chatbot"))
+const Chatbot = lazy(() => import("./elements/chatbot"))
 
 type ChatSidebarView = "chat" | "history"
 export type ChatPresentationMode = "floating" | "sidebar"

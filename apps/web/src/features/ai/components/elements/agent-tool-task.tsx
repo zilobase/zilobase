@@ -5,14 +5,14 @@ import {
   TaskContent,
   TaskItem,
   TaskTrigger,
-} from "@/components/ai-elements/task";
-import { Shimmer } from "@/components/ai-elements/shimmer";
-import type { ToolPart } from "@/components/ai-elements/tool";
+} from "./task";
+import { Shimmer } from "./shimmer";
+import type { ToolPart } from "./tool";
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import { isProposePageContentUpdateToolName } from "@zilobase/features/ai-chat";
-import { isDatabaseConfigToolPart } from "@/components/ai-elements/database-tool-steps";
+import { isDatabaseConfigToolPart } from "./database-tool-steps";
 import { useEffect, useState } from "react";
-import type { AgentToolPresentation } from "@/components/ai-elements/agent-tool-presentation";
+import type { AgentToolPresentation } from "./agent-tool-presentation";
 
 type AgentToolTaskGroupProps = {
   getToolPresentation: (

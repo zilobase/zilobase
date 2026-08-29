@@ -1,7 +1,7 @@
 export function register({ readSource, assert, test }) {
   test("form surfaces use the same accent color as sidebar hover states", async () => {
     const textareaSource = await readSource("/src/shared/ui/textarea.tsx")
-    const promptInputSource = await readSource("/src/components/ai-elements/prompt-input.tsx")
+    const promptInputSource = await readSource("/src/features/ai/components/elements/prompt-input.tsx")
     const selectSource = await readSource("/src/shared/ui/select.tsx")
 
     assert.match(textareaSource, /border-input bg-accent/)

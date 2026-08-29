@@ -29,7 +29,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   type PromptInputMessage,
-} from "@/components/ai-elements/prompt-input";
+} from "@/features/ai/components/elements/index";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { getIconSolidClassName } from "@/shared/lib/color-tokens";

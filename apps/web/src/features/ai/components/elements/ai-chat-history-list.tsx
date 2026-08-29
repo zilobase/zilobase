@@ -15,7 +15,7 @@ import {
 import { SidebarNavItemAction } from "@/shared/ui/sidebar-nav-item-action";
 import { Input } from "@/shared/ui/input";
 import { cn } from "@/shared/lib/utils";
-import { useAiChatThreadActions } from "@/hooks/use-ai-chat-thread-actions";
+import { useAiChatThreadActions } from "../../conversation/use-ai-chat-thread-actions";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import type { AiChatThread } from "@zilobase/features/ai-chat";
 import {

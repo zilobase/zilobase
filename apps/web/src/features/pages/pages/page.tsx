@@ -59,7 +59,7 @@ import { useOpenEmbeddedPage } from "../hooks/use-open-embedded-page";
 import { useSession } from "@zilobase/features/auth";
 import { useUserSettings } from "@zilobase/features/user-settings";
 import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
-import { createPageEditorHandle } from "@/hooks/use-page-edit-applier";
+import { createPageEditorHandle } from "@/features/ai/cache/index";
 import { Editor, type PageEditPreviewControls } from "@/packages/editor";
 import type {
   OpenPageOptions,

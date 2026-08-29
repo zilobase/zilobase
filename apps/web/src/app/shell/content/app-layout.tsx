@@ -13,7 +13,7 @@ import {
   ChatSidebarPanel,
   ChatSidebarTrigger,
   type ChatPresentationMode,
-} from "@/components/chat-sidebar"
+} from "@/features/ai/components/index"
 import {
   usePageSidePaneState,
   PageSidePaneContext,

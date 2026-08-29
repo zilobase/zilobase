@@ -5,8 +5,8 @@ import {
   ChainOfThoughtContent,
   ChainOfThoughtHeader,
   ChainOfThoughtStep,
-} from "@/components/ai-elements/chain-of-thought";
-import type { ToolPart } from "@/components/ai-elements/tool";
+} from "./chain-of-thought";
+import type { ToolPart } from "./tool";
 import {
   type DatabaseConfigToolName,
   type DatabaseConfigToolOutput,

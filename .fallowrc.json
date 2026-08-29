@@ -56,6 +56,10 @@
         "patterns": ["apps/web/src/features/pages/**"]
       },
       {
+        "name": "web-ai",
+        "patterns": ["apps/web/src/features/ai/**"]
+      },
+      {
         "name": "web-comments",
         "patterns": ["apps/web/src/features/comments/**"]
       },
@@ -101,6 +105,7 @@
           "web-workspaces",
           "web-teamspaces",
           "web-pages",
+          "web-ai",
           "web-comments",
           "web-canvas",
           "web-library",
@@ -120,6 +125,7 @@
           "web-shared",
           "web-sidebar",
           "web-teamspaces",
+          "web-ai",
           "web-pages",
           "web-comments",
           "web-tasks",
@@ -158,12 +164,23 @@
         "from": "web-pages",
         "allow": [
           "web-app",
+          "web-ai",
           "web-comments",
           "web-meetings",
           "web-offline",
           "web-pages",
           "web-shared",
           "web-sidebar",
+          "web-workspaces"
+        ]
+      },
+      {
+        "from": "web-ai",
+        "allow": [
+          "web-ai",
+          "web-desktop",
+          "web-pages",
+          "web-shared",
           "web-workspaces"
         ]
       },
@@ -226,7 +243,6 @@
   // The custom web test harness bundles these literal loadModule() paths.
   "dynamicallyLoaded": [
     "apps/web/src/features/comments/model/yjs-comments.ts",
-    "apps/web/src/components/ai-elements/integration-tool-presentation.ts",
     "apps/web/src/components/database-view-navigation.ts",
     "apps/web/src/components/kibo-ui/gantt/gantt-geometry.ts",
     "apps/web/src/components/kibo-ui/gantt/gantt-preview.ts",
@@ -335,23 +351,23 @@
   // Retain complete composable component APIs and namespaced public query types.
   "ignoreExports": [
     {
-      "file": "apps/web/src/components/ai-elements/code-block.tsx",
+      "file": "apps/web/src/features/ai/components/elements/code-block.tsx",
       "exports": ["CodeBlockHeader", "CodeBlockTitle", "CodeBlockFilename", "CodeBlockActions", "CodeBlock", "CodeBlockCopyButton", "CodeBlockLanguageSelector", "CodeBlockLanguageSelectorTrigger", "CodeBlockLanguageSelectorValue", "CodeBlockLanguageSelectorContent", "CodeBlockLanguageSelectorItem"]
     },
     {
-      "file": "apps/web/src/components/ai-elements/conversation.tsx",
+      "file": "apps/web/src/features/ai/components/elements/conversation.tsx",
       "exports": ["ConversationEmptyState", "ConversationScrollButton", "ConversationDownload"]
     },
     {
-      "file": "apps/web/src/components/ai-elements/message.tsx",
+      "file": "apps/web/src/features/ai/components/elements/message.tsx",
       "exports": ["MessageActions", "MessageAction", "MessageBranch", "MessageBranchContent", "MessageBranchSelector", "MessageBranchPrevious", "MessageBranchNext", "MessageBranchPage", "MessageToolbar"]
     },
     {
-      "file": "apps/web/src/components/ai-elements/model-selector.tsx",
+      "file": "apps/web/src/features/ai/components/elements/model-selector.tsx",
       "exports": ["ModelSelectorDialog", "ModelSelectorShortcut", "ModelSelectorSeparator"]
     },
     {
-      "file": "apps/web/src/components/ai-elements/prompt-input.tsx",
+      "file": "apps/web/src/features/ai/components/elements/prompt-input.tsx",
       "exports": ["usePromptInputController", "useProviderAttachments", "PromptInputProvider", "usePromptInputReferencedSources", "PromptInputActionAddAttachments", "PromptInputActionAddScreenshot", "PromptInputBody", "PromptInputHeader", "PromptInputActionMenu", "PromptInputActionMenuTrigger", "PromptInputActionMenuContent", "PromptInputActionMenuItem", "PromptInputSelect", "PromptInputSelectTrigger", "PromptInputSelectContent", "PromptInputSelectItem", "PromptInputSelectValue", "PromptInputHoverCard", "PromptInputHoverCardTrigger", "PromptInputHoverCardContent", "PromptInputTabsList", "PromptInputTab", "PromptInputTabLabel", "PromptInputTabBody", "PromptInputTabItem"]
     },
     {

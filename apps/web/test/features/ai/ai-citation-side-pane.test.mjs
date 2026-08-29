@@ -1,7 +1,7 @@
 export function register({ readSource, assert, loadModule, test }) {
   test("AI page citations resolve only local page and database routes", async () => {
     const { getAgentCitationSidePaneTarget } = await loadModule(
-      "/src/components/ai-elements/agent-citation-navigation.ts"
+      "/src/features/ai/components/elements/agent-citation-navigation.ts"
     )
 
     assert.deepEqual(
@@ -36,8 +36,8 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("AI citation pills use the shared side-pane controller and renderers", async () => {
-    const chatbotSource = await readSource("/src/components/ai-elements/chatbot.tsx")
-    const aiPageSource = await readSource("/src/pages/ai.tsx")
+    const chatbotSource = await readSource("/src/features/ai/components/elements/chatbot.tsx")
+    const aiPageSource = await readSource("/src/features/ai/pages/ai.tsx")
 
     assert.match(chatbotSource, /sidePane\.openSidePane\(sidePaneTarget\.id\)/)
     assert.match(

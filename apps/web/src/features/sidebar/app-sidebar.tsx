@@ -52,7 +52,7 @@ import {
 import { WorkspaceSwitcher } from "./workspace-switcher"
 import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import { clearPromotedFullPagePath, usePromotedFullPagePath } from "@/features/pages/context/index"
-import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
+import { useAiChatThreadState } from "@/features/ai/index"
 import { buildDesktopDeepLink } from "@/features/desktop/deep-links/index"
 import {
   discoverRuntimeDesktopServer,

@@ -1,7 +1,7 @@
 export function register({ readSource, assert, test }) {
   test("Ask AI supports persistent docked and floating desktop modes", async () => {
     const layoutSource = await readSource("/src/app/shell/content/app-layout.tsx")
-    const sidebarSource = await readSource("/src/components/chat-sidebar.tsx")
+    const sidebarSource = await readSource("/src/features/ai/components/chat-sidebar.tsx")
 
     assert.match(
       layoutSource,
@@ -25,7 +25,7 @@ export function register({ readSource, assert, test }) {
 
   test("mobile Ask AI hides desktop-only floating and pin controls", async () => {
     const layoutSource = await readSource("/src/app/shell/content/app-layout.tsx")
-    const historySource = await readSource("/src/components/ai-elements/ai-chat-history-list.tsx")
+    const historySource = await readSource("/src/features/ai/components/elements/ai-chat-history-list.tsx")
 
     assert.match(
       layoutSource,
