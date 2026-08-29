@@ -10,7 +10,7 @@ const releaseFiles = [
   "package-lock.json",
   "apps/web/package.json",
   "apps/server/package.json",
-  "apps/server/src/version.ts",
+  "apps/server/src/shared/version.ts",
   "apps/desktop/package.json",
   "apps/desktop/src-tauri/Cargo.toml",
   "apps/desktop/src-tauri/Cargo.lock",

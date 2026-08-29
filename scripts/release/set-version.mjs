@@ -30,7 +30,7 @@ for (const file of ["apps/desktop/src-tauri/Cargo.toml", "apps/desktop/src-tauri
   writeFileSync(file, text)
 }
 
-const serverVersionFile = "apps/server/src/version.ts"
+const serverVersionFile = "apps/server/src/shared/version.ts"
 const serverVersion = readFileSync(serverVersionFile, "utf8").replace(
   /export const SERVER_VERSION = ".*?";/,
   `export const SERVER_VERSION = "${version}";`,
