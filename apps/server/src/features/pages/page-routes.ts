@@ -49,9 +49,9 @@ import {
   softDeletePageItemPlacement,
   upsertPageItemPlacement,
   type ItemRef,
-} from "../../page-item-placements";
-import { softDeletePageTree } from "../../soft-delete-nav-items";
-import { loadWorkspacePageGraph } from "../../page-graph-loader";
+} from "./placements/page-item-placements";
+import { softDeletePageTree } from "./mutations/soft-delete-nav-items";
+import { loadWorkspacePageGraph } from "./graph/loader";
 import {
   createCollaborationTicket,
   documentNameForPage,
@@ -65,7 +65,7 @@ import { TeamspaceManagementService } from "../teamspaces/management";
 import {
   commitDatabaseMutationBatch,
   mutationResponse,
-} from "../../services/database-commit";
+} from "../databases/core";
 export const pageRoutes = new Hono<AppBindings>();
 
 const ZILOBASE_AI_MODES = new Set(["instruction", "skill"] as const);

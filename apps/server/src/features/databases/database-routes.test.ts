@@ -16,24 +16,24 @@ const mocks = vi.hoisted(() => ({
   updateDatabase: vi.fn(),
 }));
 
-vi.mock("../../services/database-cell-service", () => ({
+vi.mock("./properties/cell-service", () => ({
   setDatabaseCellValueService: mocks.cell,
 }));
-vi.mock("../../services/database-property-service", () => ({
+vi.mock("./properties/service", () => ({
   createDatabasePropertyService: mocks.createProperty,
   updateDatabasePropertyService: vi.fn(),
 }));
-vi.mock("../../services/database-property-duplication-service", () => ({
+vi.mock("./properties/duplication-service", () => ({
   duplicateDatabasePropertyService: mocks.duplicateProperty,
 }));
-vi.mock("../../services/database-template-service", () => ({
+vi.mock("./templates/service", () => ({
   applyDatabaseTemplateService: mocks.template,
 }));
-vi.mock("../../services/database-payload", () => ({
+vi.mock("./core/payload", () => ({
   getDatabasePayload: mocks.databasePayload,
   getDatabaseSchemaPayload: vi.fn(),
 }));
-vi.mock("../../services/database-service", () => ({
+vi.mock("./core/service", () => ({
   createDatabaseService: mocks.createDatabase,
   deleteDatabaseService: mocks.deleteDatabase,
   restoreDatabaseService: mocks.restoreDatabase,
@@ -41,7 +41,7 @@ vi.mock("../../services/database-service", () => ({
 }));
 
 import { databaseRoutes } from "./database-routes";
-import { ServiceMutationError } from "../../services/mutation-error";
+import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
 
 const user = {
   email: "user@example.com",

@@ -16,7 +16,7 @@ import {
 } from "../../collaboration/service";
 import { getMeetingCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { getMeetingAudioWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
-import { ServiceMutationError } from "../../services/mutation-error";
+import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
 import type { AppBindings } from "../../shared/types";
 import {
   claimMeetingRecorder,

@@ -7,7 +7,7 @@ import { replaceMeetingSummary } from "../../collaboration/service";
 import { getRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter";
 import { db } from "../../infrastructure/database";
 import { meeting, meetingTranscriptSegment } from "../../infrastructure/database/schema";
-import { ServiceMutationError } from "../../services/mutation-error";
+import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
 import type { RuntimeEnv } from "../../shared/config/config";
 import { getMeetingForUser } from "./meeting-service";
 

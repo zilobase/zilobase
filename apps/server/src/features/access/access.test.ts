@@ -29,7 +29,7 @@ vi.mock("../../infrastructure/database", () => ({
     },
   },
 }));
-vi.mock("../../page-graph-loader", () => ({
+vi.mock("../pages/graph", () => ({
   async loadWorkspacePageGraph() {
     return {
       getAncestorIds: () => mocks.ancestorIds,

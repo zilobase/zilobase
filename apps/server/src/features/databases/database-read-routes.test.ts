@@ -33,10 +33,10 @@ vi.mock("../../shared/security/database-realtime-ticket", () => ({
 vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
   getDatabaseRealtimeWebSocketUrl: () => "ws://localhost/realtime",
 }));
-vi.mock("../../services/database-access", () => ({
+vi.mock("./access/database-access", () => ({
   getDatabaseRecord: mocks.getRecord,
 }));
-vi.mock("../../services/database-payload", () => ({
+vi.mock("./core/payload", () => ({
   getDatabasePayload: mocks.payload,
   getDatabaseSchemaPayload: mocks.schemaPayload,
 }));

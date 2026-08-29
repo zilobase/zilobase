@@ -14,20 +14,20 @@ import {
   setDatabaseCellValueService,
   updateDatabasePropertyService,
   updateDatabaseViewService,
-} from "../services/database-mutations";
-import { updateDataSourceService } from "../services/data-source-service";
+} from "../features/databases/core";
+import { updateDataSourceService } from "../features/databases/data-sources";
 import {
   defaultStatusOptions,
   selectOptionColors,
-} from "../services/database-property-config";
-import { ServiceMutationError } from "../services/mutation-error";
+} from "../features/databases/properties";
+import { ServiceMutationError } from "../shared/errors/service-mutation-error";
 import { runIdempotentAgentAction } from "./agent-action-receipts";
 import { markdownToPageContent } from "./markdown-to-page-content";
 import {
   createPageService,
   embedDatabaseInPageService,
   linkDatabaseInPageService,
-} from "../services/page-mutations";
+} from "../features/pages/mutations";
 
 export const AGENT_CREATABLE_DATABASE_PROPERTY_TYPES = [
   "text",

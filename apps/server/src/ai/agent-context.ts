@@ -5,7 +5,7 @@ import { canAccessDatabaseRecord, canAccessPageInWorkspace } from "../features/a
 import { materializePageContentFromYjs } from "../collaboration/service";
 import { db } from "../infrastructure/database";
 import { page, pageCollaborationDocument } from "../infrastructure/database/schema";
-import { getDatabaseRecord } from "../services/database-access";
+import { getDatabaseRecord } from "../features/databases/access";
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
 
 export type AgentContextRef = {

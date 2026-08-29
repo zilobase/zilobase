@@ -116,7 +116,7 @@ export {
 export {
   drainDatabaseRealtimeOutbox,
   type DatabaseRealtimeMutationEvent,
-} from "../services/database-realtime";
+} from "../features/databases/realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";
 export {
   MembershipService,

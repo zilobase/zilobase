@@ -3,7 +3,7 @@ import { extractAiUploadJob } from "./ai-file-jobs";
 import { generateMeetingSummary } from "../features/meetings/meeting-summary-service";
 import { PermanentAiJobError } from "./ai-jobs";
 import { compactAiThreadJob } from "./ai-thread-summary-job";
-import { ServiceMutationError } from "../services/mutation-error";
+import { ServiceMutationError } from "../shared/errors/service-mutation-error";
 
 const meetingSummaryJob: AiJobHandler = async ({ env, job, reportProgress }) => {
   if (!job.userId) throw new PermanentAiJobError("Meeting summary job has no owner.");

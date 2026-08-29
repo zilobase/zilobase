@@ -2,52 +2,52 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import type { AppBindings } from "../../shared/types";
-import { mutationResponse } from "../../services/database-commit";
-import { getDatabasePayload } from "../../services/database-payload";
-import { updateDataSourceService } from "../../services/data-source-service";
+import { mutationResponse } from "./core/commit";
+import { getDatabasePayload } from "./core/payload";
+import { updateDataSourceService } from "./data-sources/data-source-service";
 import {
   createDatabaseDataSourceService,
   linkDatabaseDataSourceService,
   replaceDatabaseViewDataSourceService,
   unlinkDatabaseDataSourceService,
-} from "../../services/database-data-source-service";
-import { hasDuplicateValues } from "../../services/database-position-service";
-import { updateDatabaseFavoriteService } from "../../services/database-favorite-service";
+} from "./data-sources/database-data-source-service";
+import { hasDuplicateValues } from "./core/position-service";
+import { updateDatabaseFavoriteService } from "./core/favorite-service";
 import {
   createDatabasePropertyService,
   updateDatabasePropertyService,
-} from "../../services/database-property-service";
+} from "./properties/service";
 import {
   deleteDatabasePropertyService,
   reorderDatabasePropertiesService,
-} from "../../services/database-property-structure-service";
-import { duplicateDatabasePropertyService } from "../../services/database-property-duplication-service";
-import { createDatabaseRowService } from "../../services/database-row-service";
-import { setDatabaseCellValueService } from "../../services/database-cell-service";
-import { applyDatabaseTemplateService } from "../../services/database-template-service";
+} from "./properties/structure-service";
+import { duplicateDatabasePropertyService } from "./properties/duplication-service";
+import { createDatabaseRowService } from "./rows/service";
+import { setDatabaseCellValueService } from "./properties/cell-service";
+import { applyDatabaseTemplateService } from "./templates/service";
 import {
   moveDatabaseRowService,
   reorderDatabaseRowsService,
-} from "../../services/database-row-position-service";
-import { ServiceMutationError } from "../../services/mutation-error";
+} from "./rows/position-service";
+import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
 import {
   deleteDatabaseAccessRuleService,
   deletePublicDatabaseAccessService,
   listDatabaseAccessRulesService,
   upsertDatabaseAccessRuleService,
-} from "../../services/database-sharing-service";
+} from "./sharing/service";
 import {
   createDatabaseService,
   deleteDatabaseService,
   restoreDatabaseService,
   updateDatabaseService,
-} from "../../services/database-service";
+} from "./core/service";
 import {
   createDatabaseViewService,
   deleteDatabaseViewService,
   updateDatabaseViewService,
-} from "../../services/database-view-service";
-import { normalizeDatabasePropertyType } from "../../services/database-property-types";
+} from "./views/service";
+import { normalizeDatabasePropertyType } from "./properties/types";
 import { databaseReadRoutes } from "./database-read-routes";
 
 export const databaseRoutes = new Hono<AppBindings>();

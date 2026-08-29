@@ -16,8 +16,8 @@ import {
 import { db } from "../infrastructure/database";
 import { page, pageCollaborationDocument } from "../infrastructure/database/schema";
 import { searchWorkspaceItems } from "../features/search/service";
-import { getDatabaseRecord } from "../services/database-access";
-import { getDatabasePayload } from "../services/database-payload";
+import { getDatabaseRecord } from "../features/databases/access";
+import { getDatabasePayload } from "../features/databases/core";
 import { hashPageContentMarkdown } from "./page-content-version";
 
 const MAX_PAGE_MARKDOWN_CHARS = 48_000;

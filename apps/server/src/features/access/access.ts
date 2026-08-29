@@ -16,7 +16,7 @@ import {
   workspace,
   workspaceGuest,
 } from "../../infrastructure/database/schema";
-import { loadWorkspacePageGraph } from "../../page-graph-loader";
+import { loadWorkspacePageGraph } from "../pages/graph";
 import { activeMembershipCondition } from "../memberships";
 import {
   getDatabaseTeamspaceSecurityPolicy,

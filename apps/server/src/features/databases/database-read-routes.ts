@@ -14,11 +14,11 @@ import {
   verifyDatabaseRealtimeTicket,
 } from "../../shared/security/database-realtime-ticket";
 import { getDatabaseRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
-import { getDatabaseRecord } from "../../services/database-access";
+import { getDatabaseRecord } from "./access/database-access";
 import {
   getDatabasePayload,
   getDatabaseSchemaPayload,
-} from "../../services/database-payload";
+} from "./core/payload";
 import type { AppBindings } from "../../shared/types";
 
 export const databaseReadRoutes = new Hono<AppBindings>();

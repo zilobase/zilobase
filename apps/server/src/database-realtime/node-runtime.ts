@@ -13,7 +13,7 @@ import {
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
 } from "../shared/security/database-realtime-ticket";
-import type { DatabaseRealtimeMutationEvent } from "../services/database-realtime";
+import type { DatabaseRealtimeMutationEvent } from "../features/databases/realtime/outbox";
 import {
   databaseRealtimeChannel,
   type NodeRealtimeBus,

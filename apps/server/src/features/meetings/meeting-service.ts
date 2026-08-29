@@ -18,8 +18,8 @@ import {
   meetingTranscriptSegment,
   page,
 } from "../../infrastructure/database/schema";
-import { upsertPageItemPlacement } from "../../page-item-placements";
-import { ServiceMutationError } from "../../services/mutation-error";
+import { upsertPageItemPlacement } from "../pages/placements";
+import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
 import { getRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter";
 import {
   clampMeetingDuration,
