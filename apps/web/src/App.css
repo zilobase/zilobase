@@ -35,6 +35,7 @@
     }
   body {
     @apply bg-background text-foreground;
+    font-weight: var(--font-weight-interface);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -42,6 +43,12 @@
     }
   html {
     @apply font-sans;
+    }
+
+  /* Typography weight is a single application-level design decision. This
+     also reaches portalled menus, dialogs, and editor/database descendants. */
+  :where(body, body *) {
+    font-weight: var(--font-weight-interface) !important;
     }
 }
 
@@ -163,12 +170,6 @@
     var(--border) 7px 8px,
     var(--background) 8px
   );
-}
-
-/* Keep secondary navigation legible while preserving the active-state emphasis. */
-[data-sidebar="menu-button"][data-active="false"],
-.database-toolbar [data-slot="tabs-tab"]:not([data-active]) {
-  font-weight: 450;
 }
 
 @media (prefers-reduced-motion: reduce) {

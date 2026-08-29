@@ -19,10 +19,11 @@
     serif;
   --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
     "Liberation Mono", "Courier New", monospace;
-  --font-weight-regular: 400;
+  --font-weight-interface: 500;
+  --font-weight-regular: var(--font-weight-interface);
   --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
+  --font-weight-semibold: var(--font-weight-interface);
+  --font-weight-bold: var(--font-weight-interface);
 
   /* Light theme */
   --background: oklch(1 0 0);
@@ -685,6 +686,10 @@
   --font-heading: var(--font-family-sans);
   --font-mono: var(--font-family-mono);
   --font-serif: var(--font-family-serif);
+  --font-weight-normal: var(--font-weight-interface);
+  --font-weight-medium: var(--font-weight-interface);
+  --font-weight-semibold: var(--font-weight-interface);
+  --font-weight-bold: var(--font-weight-interface);
   --radius-2xs: max(0px, calc(var(--radius) - (2.5 * var(--spacing))));
   --radius-xs: max(0px, calc(var(--radius) - (2.25 * var(--spacing))));
   --radius-sm: max(0px, calc(var(--radius) - (2 * var(--spacing))));
