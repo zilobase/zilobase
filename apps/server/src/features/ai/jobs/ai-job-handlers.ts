@@ -1,9 +1,9 @@
 import type { AiJobHandler } from "./ai-jobs";
-import { extractAiUploadJob } from "./ai-file-jobs";
-import { generateMeetingSummary } from "../features/meetings/meeting-summary-service";
+import { extractAiUploadJob } from "../files/ai-file-jobs";
+import { generateMeetingSummary } from "../../meetings/meeting-summary-service";
 import { PermanentAiJobError } from "./ai-jobs";
-import { compactAiThreadJob } from "./ai-thread-summary-job";
-import { ServiceMutationError } from "../shared/errors/service-mutation-error";
+import { compactAiThreadJob } from "../chat/ai-thread-summary-job";
+import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 const meetingSummaryJob: AiJobHandler = async ({ env, job, reportProgress }) => {
   if (!job.userId) throw new PermanentAiJobError("Meeting summary job has no owner.");

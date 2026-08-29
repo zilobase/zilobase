@@ -1,9 +1,9 @@
 import { and, asc, eq, isNull, lt, lte, or } from "drizzle-orm";
 
-import type { RuntimeEnv } from "../shared/config/config";
-import { db } from "../infrastructure/database";
-import { aiJob } from "../infrastructure/database/schema";
-import { getRuntimeAdapter } from "../infrastructure/runtime/runtime-adapter";
+import type { RuntimeEnv } from "../../../shared/config/config";
+import { db } from "../../../infrastructure/database";
+import { aiJob } from "../../../infrastructure/database/schema";
+import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
 
 const DEFAULT_LEASE_MS = 60_000;
 

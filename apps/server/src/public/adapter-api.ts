@@ -10,7 +10,7 @@ export type {
 export {
   coerceAiChatRequestBody,
   runAiChatTurn,
-} from "../ai/chat-service";
+} from "../features/ai/chat/chat-service";
 export {
   getAiChatThreadForUser,
   loadAiChatThreadMessages,
@@ -18,10 +18,10 @@ export {
   parseAiChatAgentInstanceName,
   syncAiChatThreadMessages,
   touchAiChatThreadActivity,
-} from "../ai/chat-persistence";
+} from "../features/ai/chat/chat-persistence";
 export { createAuth } from "../features/auth";
-export { AI_JOB_HANDLERS } from "../ai/ai-job-handlers";
-export { runAiJobBatch, type AiJobHandler } from "../ai/ai-jobs";
+export { AI_JOB_HANDLERS } from "../features/ai/jobs/ai-job-handlers";
+export { runAiJobBatch, type AiJobHandler } from "../features/ai/jobs/ai-jobs";
 export {
   appendMeetingTranscriptSegment,
   heartbeatMeetingRecorder,

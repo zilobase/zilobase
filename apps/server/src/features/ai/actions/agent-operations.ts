@@ -14,16 +14,16 @@ import {
   sql,
 } from "drizzle-orm";
 
-import { getStringEnv, type RuntimeEnv } from "../shared/config/config";
-import { db } from "../infrastructure/database";
+import { getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
+import { db } from "../../../infrastructure/database";
 import {
   aiAgentActionReceipt,
   aiAgentToolExecution,
   aiAgentTurn,
   aiChatArtifact,
   aiChatUpload,
-} from "../infrastructure/database/schema";
-import { createImageStorage } from "../infrastructure/storage/image-storage";
+} from "../../../infrastructure/database/schema";
+import { createImageStorage } from "../../../infrastructure/storage/image-storage";
 
 const DAY_MS = 24 * 60 * 60 * 1_000;
 

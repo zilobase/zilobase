@@ -12,13 +12,13 @@ import * as z from "zod";
 import {
   canAccessDatabaseRecord,
   canAccessPageInWorkspace,
-} from "../features/access";
-import { db } from "../infrastructure/database";
-import { page, pageCollaborationDocument } from "../infrastructure/database/schema";
-import { searchWorkspaceItems } from "../features/search/service";
-import { getDatabaseRecord } from "../features/databases/access";
-import { getDatabasePayload } from "../features/databases/core";
-import { hashPageContentMarkdown } from "./page-content-version";
+} from "../../access";
+import { db } from "../../../infrastructure/database";
+import { page, pageCollaborationDocument } from "../../../infrastructure/database/schema";
+import { searchWorkspaceItems } from "../../search/service";
+import { getDatabaseRecord } from "../../databases/access";
+import { getDatabasePayload } from "../../databases/core";
+import { hashPageContentMarkdown } from "../conversion/page-content-version";
 
 const MAX_PAGE_MARKDOWN_CHARS = 48_000;
 const MAX_COMMENT_BODY_CHARS = 4_000;

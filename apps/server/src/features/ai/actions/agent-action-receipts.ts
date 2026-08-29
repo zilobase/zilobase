@@ -1,8 +1,8 @@
 import type { AgentActionReceipt } from "@zilobase/features/ai-chat/agent-contract";
 import { and, eq } from "drizzle-orm";
 
-import { db } from "../infrastructure/database";
-import { aiAgentActionReceipt } from "../infrastructure/database/schema";
+import { db } from "../../../infrastructure/database";
+import { aiAgentActionReceipt } from "../../../infrastructure/database/schema";
 
 type ReceiptContext = {
   threadId: string;

@@ -73,7 +73,7 @@ test("tool effects and failures normalize to finite audit labels", () => {
 
 test("operations migration stores metadata without prompt or tool payload columns", async () => {
   const migration = await readFile(
-    new URL("../../drizzle/0054_ai_agent_operations.sql", import.meta.url),
+    new URL("../../../../drizzle/0054_ai_agent_operations.sql", import.meta.url),
     "utf8",
   );
 

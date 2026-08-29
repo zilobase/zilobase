@@ -1,10 +1,10 @@
 import { generateText } from "ai";
 import { and, asc, eq, gt, lte } from "drizzle-orm";
 
-import { db } from "../infrastructure/database";
-import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../infrastructure/database/schema";
-import { resolveWorkspaceAiModel } from "./ai-provider";
-import { PermanentAiJobError, type AiJobHandler } from "./ai-jobs";
+import { db } from "../../../infrastructure/database";
+import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../../../infrastructure/database/schema";
+import { resolveWorkspaceAiModel } from "../providers/ai-provider";
+import { PermanentAiJobError, type AiJobHandler } from "../jobs/ai-jobs";
 
 const RETAIN_RECENT_MESSAGES = 12;
 

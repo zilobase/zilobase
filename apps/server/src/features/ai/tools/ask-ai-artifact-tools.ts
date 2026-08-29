@@ -5,21 +5,21 @@ import type {
 import { tool, type ToolCallOptions, type ToolSet } from "ai";
 import * as z from "zod";
 
-import type { RuntimeEnv } from "../shared/config/config";
-import { db } from "../infrastructure/database";
-import { aiChatArtifact } from "../infrastructure/database/schema";
-import { createImageStorage } from "../infrastructure/storage/image-storage";
-import { runIdempotentAgentAction } from "./agent-action-receipts";
+import type { RuntimeEnv } from "../../../shared/config/config";
+import { db } from "../../../infrastructure/database";
+import { aiChatArtifact } from "../../../infrastructure/database/schema";
+import { createImageStorage } from "../../../infrastructure/storage/image-storage";
+import { runIdempotentAgentAction } from "../actions/agent-action-receipts";
 import {
   AI_ARTIFACT_FORMATS,
   generateAiArtifact,
-} from "./ai-artifact-generator";
+} from "../artifacts/ai-artifact-generator";
 import {
   putAiStoredObject,
   sanitizeAiFilename,
   sha256Hex,
-} from "./ai-file-storage";
-import { assertAiAgentArtifactQuota } from "./agent-operations";
+} from "../files/ai-file-storage";
+import { assertAiAgentArtifactQuota } from "../actions/agent-operations";
 
 const ARTIFACT_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 

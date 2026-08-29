@@ -1,9 +1,9 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { and, eq } from "drizzle-orm";
 
-import { getStringEnv, type RuntimeEnv } from "../shared/config/config";
-import { db } from "../infrastructure/database";
-import { workspaceAiProviderConfig } from "../infrastructure/database/schema";
+import { getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
+import { db } from "../../../infrastructure/database";
+import { workspaceAiProviderConfig } from "../../../infrastructure/database/schema";
 import {
   defaultAiModelForWorkload,
   getAiModelCatalogItem,

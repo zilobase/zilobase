@@ -31,7 +31,7 @@ vi.mock("./meeting-service", () => ({
   transitionMeeting: mocks.transition,
   updateMeeting: mocks.update,
 }));
-vi.mock("../../ai/ai-jobs", () => ({
+vi.mock("../ai/jobs/ai-jobs", () => ({
   enqueueAiJob: mocks.enqueueJob,
 }));
 

@@ -6,7 +6,7 @@ import {
   aiProviderCatalog,
   getAiProviderCatalogItem,
   type AiProviderCatalogItem,
-} from "../../../ai/ai-model-catalog";
+} from "../../ai/providers/ai-model-catalog";
 
 export const providerCatalog: AiProviderCatalogItem[] = aiProviderCatalog;
 

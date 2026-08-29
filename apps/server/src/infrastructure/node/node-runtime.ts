@@ -25,9 +25,9 @@ import { runMigrationSets, type MigrationSet } from "./migrations";
 import { createNodeRealtimeBus } from "./realtime-bus";
 import { createNodeCollaborationExtensions } from "./collaboration-redis";
 import { setRealtimeReadinessProbe } from "../../realtime-readiness";
-import { cleanupExpiredAiAgentData } from "../../ai/agent-operations";
-import { AI_JOB_HANDLERS } from "../../ai/ai-job-handlers";
-import { runAiJobBatch } from "../../ai/ai-jobs";
+import { cleanupExpiredAiAgentData } from "../../features/ai/actions/agent-operations";
+import { AI_JOB_HANDLERS } from "../../features/ai/jobs/ai-job-handlers";
+import { runAiJobBatch } from "../../features/ai/jobs/ai-jobs";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;

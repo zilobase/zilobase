@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
-import { AiProviderConfigError } from "../../ai/ai-provider";
-import { enqueueAiJob } from "../../ai/ai-jobs";
+import { AiProviderConfigError } from "../ai/providers/ai-provider";
+import { enqueueAiJob } from "../ai/jobs/ai-jobs";
 
 import {
   getEffectivePageAccessInWorkspace,

@@ -2,20 +2,20 @@ import { and, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 import * as z from "zod";
 
-import { AI_FILE_MAX_BYTES } from "../../ai/ai-file-extraction";
-import { sanitizeAiFilename } from "../../ai/ai-file-storage";
-import { enqueueAiJob, getOwnedAiJob } from "../../ai/ai-jobs";
+import { AI_FILE_MAX_BYTES } from "./files/ai-file-extraction";
+import { sanitizeAiFilename } from "./files/ai-file-storage";
+import { enqueueAiJob, getOwnedAiJob } from "./jobs/ai-jobs";
 import { getStringEnv } from "../../shared/config/config";
 import { db } from "../../infrastructure/database";
 import { aiChatArtifact, aiChatUpload } from "../../infrastructure/database/schema";
 import { createImageStorage, resolveImageStorageMode } from "../../infrastructure/storage/image-storage";
 import type { AppBindings } from "../../shared/types";
 import { requireActiveWorkspace } from "../workspaces";
-import { getAiChatThreadForUser } from "../../ai/chat-persistence";
+import { getAiChatThreadForUser } from "./chat/chat-persistence";
 import {
   AiAgentOperationalLimitError,
   assertAiAgentUploadQuota,
-} from "../../ai/agent-operations";
+} from "./actions/agent-operations";
 
 const uploadInputSchema = z.object({
   byteSize: z.number().int().positive().max(AI_FILE_MAX_BYTES),

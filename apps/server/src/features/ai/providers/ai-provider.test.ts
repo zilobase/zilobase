@@ -11,7 +11,7 @@ vi.mock("@ai-sdk/openai", () => ({
   createOpenAI: mocks.createOpenAI,
 }));
 
-vi.mock("../infrastructure/database", () => ({
+vi.mock("../../../infrastructure/database", () => ({
   db: {
     select() {
       const builder = {

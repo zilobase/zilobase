@@ -8,14 +8,14 @@ import {
   type UIMessage,
 } from "ai";
 import { AGENT_TOOL_REGISTRY_VERSION } from "@zilobase/features/ai-chat/tool-registry";
-import { canAccessPageInWorkspace, getMembership } from "../features/access";
-import type { AppBindings } from "../shared/types";
-import { buildDatabaseConfigInstruction } from "./ask-ai-database-tools";
-import { resolveWorkspaceAiModel } from "./ai-provider";
+import { canAccessPageInWorkspace, getMembership } from "../../access";
+import type { AppBindings } from "../../../shared/types";
+import { buildDatabaseConfigInstruction } from "../tools/ask-ai-database-tools";
+import { resolveWorkspaceAiModel } from "../providers/ai-provider";
 import {
   buildAgentPolicyInstruction,
   resolveAgentCapabilityPolicy,
-} from "./agent-capabilities";
+} from "../actions/agent-capabilities";
 import {
   getAiChatThreadForUser,
   getAiChatThreadSummary,
@@ -24,7 +24,7 @@ import {
   syncAiChatThreadMessages,
   touchAiChatThreadActivity,
 } from "./chat-persistence";
-import { resolveAiFileContext, withoutAiFileParts } from "./ai-file-context";
+import { resolveAiFileContext, withoutAiFileParts } from "../files/ai-file-context";
 import {
   loadAiAgentContextInstruction,
   loadMentionedPeopleInstruction,
@@ -36,14 +36,14 @@ import {
   reserveAiAgentTurn,
   startAiAgentToolExecution,
   summarizeAiAgentTurnInput,
-} from "./agent-operations";
+} from "../actions/agent-operations";
 import {
   resolveAgentContextMessages,
   type AgentContextRef,
 } from "./agent-context";
 import { composeBoundedAgentMessages } from "./agent-context-composer";
-import { buildRegisteredAgentTools } from "./agent-tool-registry";
-import { enqueueAiJob } from "./ai-jobs";
+import { buildRegisteredAgentTools } from "../actions/agent-tool-registry";
+import { enqueueAiJob } from "../jobs/ai-jobs";
 
 export type AiChatRequestBody = {
   attachmentIds: string[];

@@ -37,7 +37,7 @@ test("chat history search is normalized and bounded", () => {
 
 test("teammate experience migration enforces durable ownership constraints", async () => {
   const migration = await readFile(
-    new URL("../../drizzle/0053_ai_teammate_experience.sql", import.meta.url),
+    new URL("../../../../drizzle/0053_ai_teammate_experience.sql", import.meta.url),
     "utf8",
   );
 

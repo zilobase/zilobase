@@ -4,13 +4,13 @@ import {
 } from "@zilobase/features/ai-chat/tool-registry";
 import type { ToolSet } from "ai";
 
-import type { RuntimeEnv } from "../shared/config/config";
-import { buildAnalysisTools } from "./ask-ai-analysis-tools";
-import { buildArtifactTools } from "./ask-ai-artifact-tools";
-import { buildDatabaseConfigTools } from "./ask-ai-database-tools";
-import { buildPageEditTools } from "./ask-ai-page-tools";
-import { buildWorkspaceActionTools } from "./ask-ai-workspace-action-tools";
-import { buildWorkspaceReadTools } from "./ask-ai-workspace-tools";
+import type { RuntimeEnv } from "../../../shared/config/config";
+import { buildAnalysisTools } from "../tools/ask-ai-analysis-tools";
+import { buildArtifactTools } from "../tools/ask-ai-artifact-tools";
+import { buildDatabaseConfigTools } from "../tools/ask-ai-database-tools";
+import { buildPageEditTools } from "../tools/ask-ai-page-tools";
+import { buildWorkspaceActionTools } from "../tools/ask-ai-workspace-action-tools";
+import { buildWorkspaceReadTools } from "../tools/ask-ai-workspace-tools";
 import { requestAgentActionApproval } from "./agent-approvals";
 
 export type AgentToolRegistryContext = {

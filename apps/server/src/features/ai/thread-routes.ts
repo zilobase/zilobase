@@ -12,7 +12,7 @@ import {
   loadAiChatThreadMessages,
   renameAiChatThread,
   setAiChatThreadPinned,
-} from "../../ai/chat-persistence";
+} from "./chat/chat-persistence";
 import {
   AI_AGENT_INSTRUCTIONS_MAX_CHARS,
   AI_CHAT_FEEDBACK_REASON_MAX_CHARS,
@@ -20,12 +20,12 @@ import {
   listAiChatFeedback,
   saveAiAgentPreference,
   saveAiChatFeedback,
-} from "../../ai/agent-experience";
+} from "./chat/agent-experience";
 import {
   listAiAgentToolExecutions,
   listAiAgentTurnsForWorkspace,
   readAiAgentLimits,
-} from "../../ai/agent-operations";
+} from "./actions/agent-operations";
 import { getMembership, isPrivilegedOrgRole } from "../access";
 import type { AppBindings } from "../../shared/types";
 

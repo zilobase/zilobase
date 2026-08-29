@@ -5,11 +5,11 @@ import {
   extractAiFile,
 } from "./ai-file-extraction";
 import { readAiStoredObject, sha256Hex } from "./ai-file-storage";
-import { db } from "../infrastructure/database";
-import { aiChatUpload } from "../infrastructure/database/schema";
-import { createImageStorage } from "../infrastructure/storage/image-storage";
-import { getRuntimeAdapter } from "../infrastructure/runtime/runtime-adapter";
-import { PermanentAiJobError, type AiJobHandler } from "./ai-jobs";
+import { db } from "../../../infrastructure/database";
+import { aiChatUpload } from "../../../infrastructure/database/schema";
+import { createImageStorage } from "../../../infrastructure/storage/image-storage";
+import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { PermanentAiJobError, type AiJobHandler } from "../jobs/ai-jobs";
 
 export const extractAiUploadJob: AiJobHandler = async ({ env, job, reportProgress }) => {
   const uploadId = readStringField(job.input, "uploadId");

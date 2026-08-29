@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import * as z from "zod";
 
-import { AiProviderConfigError, resolveWorkspaceAiModel } from "../../ai/ai-provider";
+import { AiProviderConfigError, resolveWorkspaceAiModel } from "./providers/ai-provider";
 import { canAccessPage, getMembership, getPageRecord } from "../access";
 import { db, runWithDbEnv } from "../../infrastructure/database";
 import { getStringEnv } from "../../shared/config/config";
@@ -12,22 +12,22 @@ import type { AppBindings } from "../../shared/types";
 import {
   coerceAiChatRequestBody,
   runAiChatTurn,
-} from "../../ai/chat-service";
+} from "./chat/chat-service";
 import {
   appendCanonicalUserMessage,
   getAiChatThreadForUser,
   loadAiChatThreadMessages,
-} from "../../ai/chat-persistence";
-import { getAiAgentTurnByClientId } from "../../ai/agent-operations";
+} from "./chat/chat-persistence";
+import { getAiAgentTurnByClientId } from "./actions/agent-operations";
 import {
   expirePendingAgentAction,
   finishPendingAgentAction,
   getOwnedPendingAgentAction,
   markPendingAgentActionExecuting,
   rejectPendingAgentAction,
-} from "../../ai/agent-approvals";
-import { hashAgentToolInput } from "../../ai/agent-action-receipts";
-import { buildRegisteredAgentTools } from "../../ai/agent-tool-registry";
+} from "./actions/agent-approvals";
+import { hashAgentToolInput } from "./actions/agent-action-receipts";
+import { buildRegisteredAgentTools } from "./actions/agent-tool-registry";
 import { aiFileRoutes } from "./file-routes";
 
 const editorAiRequestSchema = z.object({

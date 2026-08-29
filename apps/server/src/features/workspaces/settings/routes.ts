@@ -4,8 +4,8 @@ import { eq } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
 import { workspaceAiProviderConfig } from "../../../infrastructure/database/schema";
 import { isPrivilegedOrgRole } from "../../access";
-import { encryptAiProviderCredential } from "../../../ai/ai-provider-credentials";
-import { AiProviderConfigError, validateAiProviderBaseUrl } from "../../../ai/ai-provider";
+import { encryptAiProviderCredential } from "../../ai/providers/ai-provider-credentials";
+import { AiProviderConfigError, validateAiProviderBaseUrl } from "../../ai/providers/ai-provider";
 import { getStringEnv } from "../../../shared/config/config";
 import type { AppBindings } from "../../../shared/types";
 import {

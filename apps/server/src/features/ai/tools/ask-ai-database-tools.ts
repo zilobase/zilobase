@@ -5,7 +5,7 @@ import type {
 import { tool, type ToolCallOptions, type ToolSet } from "ai";
 import * as z from "zod";
 
-import type { RuntimeEnv } from "../shared/config/config";
+import type { RuntimeEnv } from "../../../shared/config/config";
 import {
   createDatabasePropertyService,
   createDatabaseRowService,
@@ -14,20 +14,20 @@ import {
   setDatabaseCellValueService,
   updateDatabasePropertyService,
   updateDatabaseViewService,
-} from "../features/databases/core";
-import { updateDataSourceService } from "../features/databases/data-sources";
+} from "../../databases/core";
+import { updateDataSourceService } from "../../databases/data-sources";
 import {
   defaultStatusOptions,
   selectOptionColors,
-} from "../features/databases/properties";
-import { ServiceMutationError } from "../shared/errors/service-mutation-error";
-import { runIdempotentAgentAction } from "./agent-action-receipts";
-import { markdownToPageContent } from "./markdown-to-page-content";
+} from "../../databases/properties";
+import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
+import { runIdempotentAgentAction } from "../actions/agent-action-receipts";
+import { markdownToPageContent } from "../conversion/markdown-to-page-content";
 import {
   createPageService,
   embedDatabaseInPageService,
   linkDatabaseInPageService,
-} from "../features/pages/mutations";
+} from "../../pages/mutations";
 
 export const AGENT_CREATABLE_DATABASE_PROPERTY_TYPES = [
   "text",

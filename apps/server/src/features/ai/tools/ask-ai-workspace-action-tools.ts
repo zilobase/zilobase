@@ -8,14 +8,14 @@ import { and, eq, isNull } from "drizzle-orm";
 import { tool, type ToolCallOptions, type ToolSet } from "ai";
 import * as z from "zod";
 
-import { canAccessPageInWorkspace } from "../features/access";
-import { replacePageContent } from "../collaboration/service";
-import type { RuntimeEnv } from "../shared/config/config";
-import { db } from "../infrastructure/database";
-import { page } from "../infrastructure/database/schema";
-import { runIdempotentAgentAction } from "./agent-action-receipts";
-import { markdownToPageContent } from "./markdown-to-page-content";
-import { isPageContentVersionCurrent } from "./page-content-version";
+import { canAccessPageInWorkspace } from "../../access";
+import { replacePageContent } from "../../../collaboration/service";
+import type { RuntimeEnv } from "../../../shared/config/config";
+import { db } from "../../../infrastructure/database";
+import { page } from "../../../infrastructure/database/schema";
+import { runIdempotentAgentAction } from "../actions/agent-action-receipts";
+import { markdownToPageContent } from "../conversion/markdown-to-page-content";
+import { isPageContentVersionCurrent } from "../conversion/page-content-version";
 
 const MAX_PAGE_MARKDOWN_CHARS = 64_000;
 
