@@ -3,7 +3,7 @@ export function register({ readSource, assert, test }) {
     const source = (
       await Promise.all([
         "router",
-        "pending-pages",
+        "pending-page",
         "route-error-page",
         "guards",
         "route-roots",
@@ -16,7 +16,9 @@ export function register({ readSource, assert, test }) {
     ).join("\n")
     const errorSource = await readSource("/src/app/routing/route-error.ts")
 
-    assert.match(source, /defaultPendingComponent: RoutePendingPage/)
+    assert.match(source, /export function PendingPage\(\)/)
+    assert.match(source, /defaultPendingComponent: PendingPage/)
+    assert.doesNotMatch(source, /RoutePendingPage|AppContentPendingPage/)
     assert.match(source, /defaultErrorComponent: RouteErrorPage/)
     assert.match(source, /Connecting to Zilobase\.\.\./)
     assert.match(errorSource, /Your desktop session is still saved/)
@@ -61,7 +63,7 @@ export function register({ readSource, assert, test }) {
     assert.match(routerSource, /component: RootRouteShell/)
     assert.match(routerSource, /<AppLayout>\s*<Outlet \/>\s*<\/AppLayout>/)
     assert.match(routerSource, /authenticatedMeeting/)
-    assert.match(routerSource, /component: Outlet,\s*pendingComponent: AppContentPendingPage/)
+    assert.match(routerSource, /component: Outlet,\s*pendingComponent: PendingPage/)
     assert.doesNotMatch(routerSource, /staleTime: 0/)
     assert.doesNotMatch(pageSource, /import \{ AppLayout \}/)
     assert.doesNotMatch(databaseSource, /import \{ AppLayout \}/)

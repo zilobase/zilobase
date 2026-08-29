@@ -1,7 +1,7 @@
 import { createRouter } from "@tanstack/react-router";
 
 import { RouteErrorPage } from "./route-error-page";
-import { RoutePendingPage } from "./pending-pages";
+import { PendingPage } from "./pending-page";
 import { appRoutes } from "./route-groups/app-routes";
 import { contentRoutes } from "./route-groups/content-routes";
 import { publicRoutes } from "./route-groups/public-routes";
@@ -17,7 +17,7 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
   routeTree,
   defaultErrorComponent: RouteErrorPage,
-  defaultPendingComponent: RoutePendingPage,
+  defaultPendingComponent: PendingPage,
   defaultPendingMinMs: 300,
   defaultPendingMs: 250,
   defaultPreload: "intent",

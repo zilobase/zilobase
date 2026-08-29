@@ -3,15 +3,7 @@ import { useEffect } from "react";
 import { recordDesktopDiagnostic } from "@/features/desktop/diagnostics/index";
 import { Spinner } from "@/shared/ui/spinner";
 
-export function AppContentPendingPage() {
-  return (
-    <main className="flex min-h-full flex-1 items-center justify-center p-6">
-      <Spinner className="size-5" />
-    </main>
-  );
-}
-
-export function RoutePendingPage() {
+export function PendingPage() {
   useEffect(() => {
     recordDesktopDiagnostic("router.pending", { status: "started" });
   }, []);

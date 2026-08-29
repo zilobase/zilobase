@@ -1,7 +1,7 @@
 import { createRootRoute, createRoute, Outlet, redirect } from "@tanstack/react-router";
 
 import { getFreshSession, getWorkspaces } from "./guards";
-import { AppContentPendingPage } from "./pending-pages";
+import { PendingPage } from "./pending-page";
 import { RootRouteShell } from "./route-shell";
 
 export const rootRoute = createRootRoute({ component: RootRouteShell });
@@ -17,5 +17,5 @@ export const appRoute = createRoute({
     if (workspaces.length === 0) throw redirect({ to: "/onboarding" });
   },
   component: Outlet,
-  pendingComponent: AppContentPendingPage,
+  pendingComponent: PendingPage,
 });

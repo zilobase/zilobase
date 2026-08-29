@@ -8,7 +8,7 @@ import {
   applyPageShareAccess,
   getFreshSession,
 } from "../guards";
-import { AppContentPendingPage } from "../pending-pages";
+import { PendingPage } from "../pending-page";
 import { rootRoute } from "../route-roots";
 import { validateDatabaseSearch, validateMeetingSearch } from "../search-validators";
 
@@ -21,7 +21,7 @@ export const contentRoutes = [
       publishedShare: await applyPageShareAccess(params.pageId),
     }),
     component: Page,
-    pendingComponent: AppContentPendingPage,
+    pendingComponent: PendingPage,
   }),
   createRoute({
     getParentRoute: () => rootRoute,
@@ -32,7 +32,7 @@ export const contentRoutes = [
       ),
     }),
     component: MeetingPage,
-    pendingComponent: AppContentPendingPage,
+    pendingComponent: PendingPage,
   }),
   createRoute({
     getParentRoute: () => rootRoute,
@@ -42,6 +42,6 @@ export const contentRoutes = [
       publishedShare: await applyDatabaseShareAccess(params.databaseId),
     }),
     component: DatabasePage,
-    pendingComponent: AppContentPendingPage,
+    pendingComponent: PendingPage,
   }),
 ];
