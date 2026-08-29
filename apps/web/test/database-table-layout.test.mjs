@@ -1,4 +1,40 @@
+import { readFile } from "node:fs/promises"
+
 export function register({ assert, loadModule, test }) {
+  test("database table columns use fixed defaults and a flexible trailing filler", async () => {
+    const {
+      databaseAddPropertyColumnDefaultWidth,
+      databaseColumnDefaultWidth,
+      databaseNameColumnDefaultWidth,
+    } = await loadModule(
+      "/src/editor/extensions/database/core/database-contracts.ts"
+    )
+    const tableSource = await readFile(
+      new URL(
+        "../src/editor/extensions/database/views/table/database-table-view.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+
+    assert.equal(databaseColumnDefaultWidth, 200)
+    assert.equal(databaseNameColumnDefaultWidth, databaseColumnDefaultWidth * 1.25)
+    assert.equal(databaseAddPropertyColumnDefaultWidth, databaseColumnDefaultWidth)
+    assert.match(tableSource, /key === ADD_PROPERTY_COLUMN_ID\s*\? undefined\s*:\s*\{ width: getColumnWidth/)
+  })
+
+  test("add-property menu opens below the property insertion point", async () => {
+    const menuSource = await readFile(
+      new URL(
+        "../src/editor/extensions/database/properties/add-database-property-menu.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+
+    assert.match(menuSource, /<DropDrawerContent\s+align="start"/)
+  })
+
   test("database table drop targeting uses row midpoints", async () => {
     const { getDatabaseRowDropTargetIndex } = await loadModule(
       "/src/editor/extensions/database/interactions/database-table-layout.ts"

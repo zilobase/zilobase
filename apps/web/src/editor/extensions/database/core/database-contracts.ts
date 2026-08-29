@@ -1,7 +1,8 @@
 export const DATABASE_PAGE_DRAG_MIME = "application/x-zilobase-database-page"
 export const databaseColumnMinWidth = 180
-export const databaseNameColumnDefaultWidth = 220
-export const databaseAddPropertyColumnDefaultWidth = 180
+export const databaseColumnDefaultWidth = 200
+export const databaseNameColumnDefaultWidth = databaseColumnDefaultWidth * 1.25
+export const databaseAddPropertyColumnDefaultWidth = databaseColumnDefaultWidth
 
 export type DatabaseBlockEditorRuntime = {
   getEditable: () => boolean

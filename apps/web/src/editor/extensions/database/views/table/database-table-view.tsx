@@ -81,6 +81,7 @@ import { AddDatabasePropertyMenu } from "../../properties/add-database-property-
 import { DatabaseCellContent } from "../database-cell-content"
 import {
   databaseAddPropertyColumnDefaultWidth,
+  databaseColumnDefaultWidth,
   databaseColumnMinWidth,
   databaseNameColumnDefaultWidth,
 } from "../../core/database-contracts"
@@ -370,7 +371,7 @@ function getColumnWidth(columnWidths: Record<string, number>, key: string) {
         ? databaseAddPropertyColumnDefaultWidth
         : key.startsWith(`${INSERT_PROPERTY_COLUMN_PREFIX}-`)
           ? databaseAddPropertyColumnDefaultWidth
-          : databaseColumnMinWidth)
+          : databaseColumnDefaultWidth)
   )
 }
 
@@ -872,7 +873,9 @@ function DatabaseTable({
           <col
             data-column-id={key}
             key={key}
-            style={{ width: getColumnWidth(columnWidths, key) }}
+            style={key === ADD_PROPERTY_COLUMN_ID
+              ? undefined
+              : { width: getColumnWidth(columnWidths, key) }}
           />
         ))}
       </colgroup>

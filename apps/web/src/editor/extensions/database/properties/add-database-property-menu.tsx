@@ -100,6 +100,7 @@ export function AddDatabasePropertyMenu({
         )}
       </DropDrawerTrigger>
       <DropDrawerContent
+        align="start"
         className="w-100"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
