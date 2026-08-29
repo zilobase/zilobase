@@ -35,7 +35,6 @@
     }
   body {
     @apply bg-background text-foreground;
-    font-weight: var(--font-weight-interface);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -43,12 +42,6 @@
     }
   html {
     @apply font-sans;
-    }
-
-  /* Typography weight is a single application-level design decision. This
-     also reaches portalled menus, dialogs, and editor/database descendants. */
-  :where(body, body *) {
-    font-weight: var(--font-weight-interface) !important;
     }
 }
 
@@ -170,6 +163,35 @@
     var(--border) 7px 8px,
     var(--background) 8px
   );
+}
+
+/* Typography belongs to the shared component boundary so every import inherits
+   the same token-driven default, including portalled dropdown content. */
+:where(
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dropdown-menu-sub-content"],
+  [data-slot="drop-drawer-content"],
+  [data-slot="select-content"]
+),
+:where(
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dropdown-menu-sub-content"],
+  [data-slot="drop-drawer-content"],
+  [data-slot="select-content"]
+) * {
+  font-weight: var(--font-weight-dropdown) !important;
+}
+
+:where([data-slot="sidebar"], [data-slot="sidebar"] *) {
+  font-weight: var(--font-weight-sidebar) !important;
+}
+
+:where([data-slot="tabs"], [data-slot="tabs"] *) {
+  font-weight: var(--font-weight-tabs) !important;
+}
+
+:where(.database-block-shell, .database-block-shell *) {
+  font-weight: var(--font-weight-database) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
