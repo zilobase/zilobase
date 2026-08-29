@@ -4,6 +4,12 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.53
+
+### Fixed
+
+- Release container builds now include the color-token synchronization script required by the web production build.
+
 ## 0.0.52
 
 ### Changed

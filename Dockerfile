@@ -5,6 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps ./apps
 COPY packages ./packages
+COPY scripts ./scripts
 
 RUN npm ci
 ARG VITE_FEATURE_DATABASE_REALTIME=true
