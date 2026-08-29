@@ -232,7 +232,7 @@ const TimelineGridRowCell = memo(function TimelineGridRowCell({
           onClick={() => onSelectItem(viewRow.item.id)}
           type="button"
         >
-          <span className="truncate text-xs text-muted-foreground">
+          <span className="truncate text-xs text-content-secondary">
             {timelineItem.name}
           </span>
         </button>

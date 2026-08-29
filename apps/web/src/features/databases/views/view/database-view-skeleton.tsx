@@ -3,7 +3,7 @@ import { Skeleton } from "@/shared/ui/skeleton"
 function DatabaseTableSkeleton() {
   return (
     <div className="overflow-hidden border-y">
-      <div className="grid grid-cols-[minmax(180px,1.6fr)_repeat(3,minmax(120px,1fr))] border-b bg-subtle-surface">
+      <div className="grid grid-cols-[minmax(180px,1.6fr)_repeat(3,minmax(120px,1fr))] border-b bg-surface-subtle">
         {Array.from({ length: 4 }).map((_, index) => (
           <div className="border-r p-3 last:border-r-0" key={index}>
             <Skeleton className={index === 0 ? "h-4 w-28" : "h-4 w-20"} />
@@ -76,7 +76,7 @@ function DatabaseTimelineSkeleton() {
           <div className="flex h-full w-56 shrink-0 items-center border-r px-3">
             <Skeleton className={index % 2 === 0 ? "h-4 w-32" : "h-4 w-24"} />
           </div>
-          <div className="relative h-full flex-1 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px)] bg-[size:25%_100%]">
+          <div className="relative h-full flex-1 bg-[linear-gradient(to_right,var(--zb-color-border-stroke-default)_1px,transparent_1px)] bg-[size:25%_100%]">
             <Skeleton
               className={`absolute top-2 h-6 rounded ${index % 2 === 0 ? "left-[8%] w-[28%]" : "left-[38%] w-[22%]"}`}
             />

@@ -138,7 +138,7 @@ export function GanttAddFeatureRow({
         className="gantt-add-preview pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center rounded-md border border-dashed"
         data-timeline-add-indicator
       >
-        <PlusIcon className="select-none text-muted-foreground" size={16} />
+        <PlusIcon className="select-none text-content-secondary" size={16} />
       </span>
     </button>
   )

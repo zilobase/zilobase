@@ -35,7 +35,7 @@ export default function MeetingPage() {
 
   if (!session?.user) {
     return (
-      <main className="flex min-h-svh items-center justify-center px-4 text-sm text-muted-foreground">
+      <main className="flex min-h-svh items-center justify-center px-4 text-sm text-content-secondary">
         Sign in to open this meeting.
       </main>
     )
@@ -44,7 +44,7 @@ export default function MeetingPage() {
   return (
     <FallbackErrorBoundary
       fallback={
-        <main className="flex min-h-svh items-center justify-center px-4 text-sm text-muted-foreground">
+        <main className="flex min-h-svh items-center justify-center px-4 text-sm text-content-secondary">
           This meeting is unavailable.
         </main>
       }
@@ -75,14 +75,14 @@ function AuthenticatedMeetingPage() {
   if (isLoading) {
     return (
       <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center">
-        <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+        <LoaderCircle className="size-5 animate-spin text-content-secondary" />
       </main>
     )
   }
 
   if (!data?.meeting) {
     return (
-      <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center px-4 text-sm text-muted-foreground">
+      <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center px-4 text-sm text-content-secondary">
         Meeting not found.
       </main>
     )
@@ -205,7 +205,7 @@ function MeetingMainPane({
     </section>
   ) : (
     <section className="flex min-h-[calc(100svh-3rem)] items-center justify-center">
-      <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+      <LoaderCircle className="size-5 animate-spin text-content-secondary" />
     </section>
   )
 

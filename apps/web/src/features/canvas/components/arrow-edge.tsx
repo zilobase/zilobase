@@ -271,7 +271,7 @@ export function ArrowEdge({
             className="nopan"
             cx={positions.source.x}
             cy={positions.source.y}
-            fill="var(--color-background)"
+            fill="var(--zb-color-surface-background-canvas)"
             onMouseDown={(event) => {
               event.preventDefault()
               event.stopPropagation()
@@ -286,7 +286,7 @@ export function ArrowEdge({
             className="nopan"
             cx={positions.target.x}
             cy={positions.target.y}
-            fill="var(--color-background)"
+            fill="var(--zb-color-surface-background-canvas)"
             onMouseDown={(event) => {
               event.preventDefault()
               event.stopPropagation()
@@ -302,7 +302,7 @@ export function ArrowEdge({
       <EdgeToolbar edgeId={id} isVisible={selected} x={labelPosition.x} y={labelPosition.y}>
         <button
           aria-label="Delete arrow"
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-stroke-default bg-surface-canvas text-content-primary shadow-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral"
           onClick={() => void deleteElements({ edges: [{ id }] })}
           type="button"
         >

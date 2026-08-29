@@ -62,8 +62,8 @@ export function DesktopWindowTitlebar({
   return (
     <header
       className={cn(
-        "absolute inset-x-0 top-0 z-30 flex h-9 shrink-0 items-center bg-sidebar px-1",
-        variant === "fallback" && "border-b border-border",
+        "absolute inset-x-0 top-0 z-30 flex h-9 shrink-0 items-center bg-surface-navigation px-1",
+        variant === "fallback" && "border-b border-stroke-default",
         className,
       )}
       data-desktop-fallback-titlebar={
@@ -89,12 +89,12 @@ export function DesktopWindowTitlebar({
       {linuxDesktopApp ? (
         <div
           aria-label="Window controls"
-          className="relative z-50 flex h-full shrink-0 items-stretch text-foreground"
+          className="relative z-50 flex h-full shrink-0 items-stretch text-content-primary"
           role="group"
         >
           <button
             aria-label="Minimize window"
-            className="flex h-full w-10 items-center justify-center text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            className="flex h-full w-10 items-center justify-center text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
             onClick={() => void appWindow.minimize()}
             title="Minimize"
             type="button"
@@ -103,7 +103,7 @@ export function DesktopWindowTitlebar({
           </button>
           <button
             aria-label={maximizeLabel}
-            className="flex h-full w-10 items-center justify-center text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            className="flex h-full w-10 items-center justify-center text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
             onClick={() => void toggleMaximize()}
             title={maximized ? "Restore" : "Maximize"}
             type="button"
@@ -116,7 +116,7 @@ export function DesktopWindowTitlebar({
           </button>
           <button
             aria-label="Close window"
-            className="flex h-full w-10 items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+            className="flex h-full w-10 items-center justify-center text-content-secondary hover:bg-action-danger hover:text-action-on-danger"
             onClick={() => void appWindow.close()}
             title="Close"
             type="button"

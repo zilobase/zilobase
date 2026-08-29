@@ -139,7 +139,7 @@ export function DatabaseViewSettingsMenu({
   const settingsContent = (
     <>
       <div className="flex items-center px-2 py-1.5">
-        <div className="text-sm font-semibold text-foreground">
+        <div className="text-sm font-semibold text-content-primary">
           View settings
         </div>
       </div>
@@ -149,7 +149,7 @@ export function DatabaseViewSettingsMenu({
             <PopoverTrigger asChild>
               <button
                 aria-label="Change view icon"
-                className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="flex size-8 items-center justify-center rounded-md border bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none"
                 disabled={!editable}
                 type="button"
               >
@@ -163,7 +163,7 @@ export function DatabaseViewSettingsMenu({
             {viewIcon ? (
               <button
                 aria-label="Reset view icon"
-                className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground group-focus-within/view-settings-icon:flex group-hover/view-settings-icon:flex [&_svg]:size-2.5"
+                className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-surface-canvas text-content-secondary shadow-sm hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral group-focus-within/view-settings-icon:flex group-hover/view-settings-icon:flex [&_svg]:size-2.5"
                 disabled={!editable}
                 onClick={() => onSaveDatabaseViewIcon("")}
                 type="button"
@@ -252,7 +252,7 @@ export function DatabaseViewSettingsMenu({
           <DropDrawerItem disabled>
             <NameColumnGlyph />
             <span>{titlePropertyLabel}</span>
-            <Eye className="ml-auto text-muted-foreground" />
+            <Eye className="ml-auto text-content-secondary" />
           </DropDrawerItem>
           {properties.map((property) => {
             const PropertyIcon = getDatabasePropertyType(
@@ -276,9 +276,9 @@ export function DatabaseViewSettingsMenu({
                 <PropertyIcon />
                 <span>{property.property.name}</span>
                 {visible ? (
-                  <Eye className="ml-auto text-muted-foreground" />
+                  <Eye className="ml-auto text-content-secondary" />
                 ) : (
-                  <EyeOff className="ml-auto text-muted-foreground" />
+                  <EyeOff className="ml-auto text-content-secondary" />
                 )}
               </DropDrawerItem>
             );
@@ -344,7 +344,7 @@ export function DatabaseViewSettingsMenu({
             <IntersectSquareIcon />
             <span>No grouping</span>
             {groupPropertyId === null ? (
-              <Check className="ml-auto text-foreground" />
+              <Check className="ml-auto text-content-primary" />
             ) : null}
           </DropDrawerItem>
           {groupProperties.length > 0 ? (
@@ -362,7 +362,7 @@ export function DatabaseViewSettingsMenu({
                   <PropertyIcon />
                   <span>{property.property.name}</span>
                   {isSelected ? (
-                    <Check className="ml-auto text-foreground" />
+                    <Check className="ml-auto text-content-primary" />
                   ) : null}
                 </DropDrawerItem>
               );

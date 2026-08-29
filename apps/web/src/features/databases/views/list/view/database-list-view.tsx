@@ -162,7 +162,7 @@ export function DatabaseListView() {
         ))}
         {hasNextPage || isFetchingNextPage ? (
           <div
-            className="flex h-10 items-center justify-center gap-2 text-sm text-muted-foreground"
+            className="flex h-10 items-center justify-center gap-2 text-sm text-content-secondary"
             ref={sentinelRef}
           >
             {isFetchingNextPage ? (

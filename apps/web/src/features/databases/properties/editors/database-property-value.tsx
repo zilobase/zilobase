@@ -202,7 +202,7 @@ export function DatabasePropertyValue({
         row,
         pageProperty.config,
         pageProperty.type
-      ) || <span className="text-muted-foreground">Empty</span>}
+      ) || <span className="text-content-secondary">Empty</span>}
     </span>
   ) : cellKind === "checkbox" ? (
     <div className="database-checkbox-cell">
@@ -443,7 +443,7 @@ function DatabaseRollupPropertyValue({
   const value =
     result.kind === "number" && typeof result.value === "number"
       ? getNumberDisplayValue(String(result.value), numberDisplayConfig)
-      : result.displayValue || <span className="text-muted-foreground">Empty</span>
+      : result.displayValue || <span className="text-content-secondary">Empty</span>
   const shouldShowRelationLinks =
     config.targetPropertyId === "name" &&
     (!config.calculation || config.calculation === "show_original")
@@ -464,7 +464,7 @@ function DatabaseRollupPropertyValue({
     pageLinks && pageLinks.length > 0 ? (
       pageLinks
     ) : result.kind === "empty" && result.displayValue ? (
-      <span className="text-muted-foreground">{result.displayValue}</span>
+      <span className="text-content-secondary">{result.displayValue}</span>
     ) : (
       value
     )
@@ -557,6 +557,7 @@ function getRollupPageLinks({
 
 export function DatabaseRelationPropertyValue({
   editable,
+  emptyLabel,
   label,
   onOpenChange,
   onOpen,
@@ -568,6 +569,7 @@ export function DatabaseRelationPropertyValue({
   wrapContent,
 }: {
   editable: boolean
+  emptyLabel?: string
   label: string
   onOpenChange?: (open: boolean) => void
   onOpen?: (pageId: string) => void
@@ -690,6 +692,10 @@ export function DatabaseRelationPropertyValue({
       <span className="database-relation-cell-trigger gap-1">
         {selectedLinks}
       </span>
+    ) : emptyLabel ? (
+      <span className="database-select-cell-trigger text-content-secondary">
+        {emptyLabel}
+      </span>
     ) : null
   }
 
@@ -715,7 +721,7 @@ export function DatabaseRelationPropertyValue({
           {selectedLinks.length > 0 ? (
             selectedLinks
           ) : (
-            <span className="text-muted-foreground">Empty</span>
+            <span className="text-content-secondary">{emptyLabel ?? "Empty"}</span>
           )}
         </div>
       </PopoverTrigger>
@@ -742,11 +748,11 @@ export function DatabaseRelationPropertyValue({
         </div>
         <div className="database-select-options">
           {!relatedDatabaseId ? (
-            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+            <div className="px-2 py-1.5 text-sm text-content-secondary">
               Configure a relation database first.
             </div>
           ) : isLoading ? (
-            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+            <div className="px-2 py-1.5 text-sm text-content-secondary">
               Loading pages...
             </div>
           ) : filteredPageOptions.length > 0 ? (
@@ -770,7 +776,7 @@ export function DatabaseRelationPropertyValue({
               )
             })
           ) : (
-            <div className="px-2 py-1.5 text-sm text-muted-foreground">
+            <div className="px-2 py-1.5 text-sm text-content-secondary">
               No pages found.
             </div>
           )}

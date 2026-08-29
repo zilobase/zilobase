@@ -250,7 +250,7 @@ function AskAiPopover({
       >
         <PromptInput
           className="w-full"
-          inputGroupClassName="h-auto items-stretch overflow-visible border-0 focus-within:border-input focus-within:ring-0 has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+          inputGroupClassName="h-auto items-stretch overflow-visible border-0 focus-within:border-control-border focus-within:ring-0 has-[[data-slot=input-group-control]:focus-visible]:border-control-border has-[[data-slot=input-group-control]:focus-visible]:ring-0"
           onSubmit={submitPrompt}
         >
           <div className="relative w-full min-w-0 flex-1 self-stretch">
@@ -266,11 +266,11 @@ function AskAiPopover({
           <PromptInputFooter>
             <PromptInputTools>
               {isStreaming ? (
-                <span className="px-1 text-xs text-muted-foreground">
+                <span className="px-1 text-xs text-content-secondary">
                   Writing...
                 </span>
               ) : error ? (
-                <span className="px-1 text-xs text-destructive">
+                <span className="px-1 text-xs text-action-danger-text">
                   {error}
                 </span>
               ) : null}
@@ -521,10 +521,10 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
 
   return (
     <NodeViewWrapper className="ask-ai-block w-full" contentEditable={false}>
-      <div className="flex min-h-12 w-full items-end gap-2 rounded-md border bg-background px-3 py-2 shadow-sm transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring">
+      <div className="flex min-h-12 w-full items-end gap-2 rounded-md border bg-surface-canvas px-3 py-2 shadow-sm transition-colors focus-within:border-action-focus-ring focus-within:ring-2 focus-within:ring-action-focus-ring">
         <Sparkles
           aria-hidden="true"
-          className="mt-2 size-4 shrink-0 text-muted-foreground"
+          className="mt-2 size-4 shrink-0 text-content-secondary"
         />
         <Textarea
           autoFocus
@@ -572,12 +572,12 @@ function AskAiBlockView({ editor, getPos, node }: ReactNodeViewProps) {
         )}
       </div>
       {isStreaming ? (
-        <div className="mt-2 flex items-center gap-2 px-1 text-xs text-muted-foreground [&_svg]:size-3.5">
+        <div className="mt-2 flex items-center gap-2 px-1 text-xs text-content-secondary [&_svg]:size-3.5">
           <Loader2 className="animate-spin" />
           <span>Writing...</span>
         </div>
       ) : error ? (
-        <div className="mt-2 flex items-center gap-2 px-1 text-xs text-destructive">
+        <div className="mt-2 flex items-center gap-2 px-1 text-xs text-action-danger-text">
           {error}
         </div>
       ) : null}

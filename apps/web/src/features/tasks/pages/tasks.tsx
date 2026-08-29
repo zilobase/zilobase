@@ -169,7 +169,7 @@ export default function TasksPage() {
     })
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto bg-background">
+    <main className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas">
       <section className="animate-in fade-in-0 duration-300">
         <TasksPageHeader />
         <div className="tiptap-editor px-5 pb-10 sm:px-8 md:px-20 lg:px-24">
@@ -216,7 +216,7 @@ function TasksPageHeader() {
     <div className="relative px-5 pb-0 pt-1 sm:px-8 md:px-20 lg:px-24">
       <div className="relative mb-1 min-h-8" />
       <div className="flex items-start gap-3">
-        <h1 className="min-h-10 min-w-0 flex-1 px-3 py-0 text-4xl font-semibold leading-tight tracking-normal text-balance text-foreground">
+        <h1 className="min-h-10 min-w-0 flex-1 px-3 py-0 text-4xl font-semibold leading-tight tracking-normal text-balance text-content-primary">
           My Tasks
         </h1>
       </div>
@@ -951,8 +951,8 @@ function TasksEmptyState({
 }) {
   return (
     <div className="mt-6 rounded-2xl border border-dashed px-6 py-16 text-center">
-      <CheckCircle2Icon className="mx-auto size-10 text-muted-foreground" />
-      <p className="mx-auto mt-4 max-w-lg text-sm text-muted-foreground">
+      <CheckCircle2Icon className="mx-auto size-10 text-content-secondary" />
+      <p className="mx-auto mt-4 max-w-lg text-sm text-content-secondary">
         Connect an existing database with Status, Assignee, and Due date
         properties, or create one that is ready to use.
       </p>
@@ -985,7 +985,7 @@ function DatabaseWarnings({ payloads }: { payloads: DatabasePayload[] }) {
     <div className="mb-4 space-y-2">
       {warnings.map(({ missing, payload }) => (
         <div
-          className="flex flex-wrap items-center gap-2 rounded-lg border bg-status-warning-surface px-3 py-2 text-sm text-status-warning-surface-foreground"
+          className="flex flex-wrap items-center gap-2 rounded-lg border bg-feedback-warning-subtle px-3 py-2 text-sm text-feedback-warning-text"
           key={payload.database.id}
         >
           <span className="font-medium">{payload.database.name}</span>
@@ -1037,7 +1037,7 @@ function ConfigureTaskDatabasesDialog({
         </DialogHeader>
         <div className="max-h-80 space-y-1 overflow-y-auto py-1">
           {databases.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="py-8 text-center text-sm text-content-secondary">
               No databases are available in this workspace.
             </p>
           ) : (
@@ -1045,7 +1045,7 @@ function ConfigureTaskDatabasesDialog({
               const checked = draft.includes(database.id)
               return (
                 <label
-                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-accent has-disabled:cursor-not-allowed has-disabled:opacity-60"
+                  className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-action-neutral-hover has-disabled:cursor-not-allowed has-disabled:opacity-60"
                   key={database.id}
                 >
                   <Checkbox
@@ -1059,7 +1059,7 @@ function ConfigureTaskDatabasesDialog({
                       )
                     }
                   />
-                  <DatabaseIcon className="size-4 text-muted-foreground" />
+                  <DatabaseIcon className="size-4 text-content-secondary" />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">
                     {database.name || "Untitled database"}
                   </span>
@@ -1069,7 +1069,7 @@ function ConfigureTaskDatabasesDialog({
           )}
         </div>
         <DialogFooter className="items-center sm:justify-between">
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-content-secondary">
             {draft.length} of 10 connected
           </span>
           <div className="flex gap-2">

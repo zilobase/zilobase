@@ -132,9 +132,9 @@ function AiChatThreadMoreMenu({
             }}
           >
             {thread.pinned ? (
-              <PinOffIcon className="text-muted-foreground" />
+              <PinOffIcon className="text-content-secondary" />
             ) : (
-              <PinIcon className="text-muted-foreground" />
+              <PinIcon className="text-content-secondary" />
             )}
             <span>
               {thread.pinned ? "Unpin conversation" : "Pin conversation"}
@@ -146,7 +146,7 @@ function AiChatThreadMoreMenu({
             void onArchive(thread.id);
           }}
         >
-          <ArchiveIcon className="text-muted-foreground" />
+          <ArchiveIcon className="text-content-secondary" />
           <span>Archive conversation</span>
         </DropDrawerItem>
         <DropDrawerSeparator />
@@ -200,7 +200,7 @@ export function AiChatHistoryList({
     >
       <div className="sticky top-0 z-10 pb-2 pt-1">
         <div className="relative">
-          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-content-secondary" />
           <Input
             aria-label="Search chat history"
             className="h-8 pl-8 text-xs"
@@ -212,9 +212,9 @@ export function AiChatHistoryList({
         </div>
       </div>
       {threadsQuery.isLoading ? (
-        <p className="px-2 py-3 text-muted-foreground">Loading chats...</p>
+        <p className="px-2 py-3 text-content-secondary">Loading chats...</p>
       ) : threads.length === 0 ? (
-        <p className="px-2 py-3 text-muted-foreground">
+        <p className="px-2 py-3 text-content-secondary">
           {search.trim()
             ? "No chats match your search."
             : "Start a new chat to ask about your page."}
@@ -227,14 +227,14 @@ export function AiChatHistoryList({
             return (
               <Fragment key={thread.id}>
                 {showLabel ? (
-                  <li className="flex h-8 shrink-0 items-center px-2 text-muted-foreground">
+                  <li className="flex h-8 shrink-0 items-center px-2 text-content-secondary">
                     {label}
                   </li>
                 ) : null}
                 <SidebarMenuItem>
                   <div className="group/nav-row relative">
                     <SidebarMenuButton
-                      className="data-[active=false]:text-muted-foreground"
+                      className="data-[active=false]:text-content-secondary"
                       isActive={isActive}
                       onClick={() => onSelectThread(thread.id)}
                       title={`${thread.title} · ${formatRelativeTime(thread.lastActivityAt)}`}

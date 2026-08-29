@@ -93,6 +93,14 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(setupCard, /Create a new view/);
     assert.match(setupCard, /ViewTypeOptionGrid/);
     assert.match(setupCard, /viewConfig: viewItem\.config/);
+    assert.match(
+      setupCard,
+      /inputGroupClassName="[^"]*border-stroke-default[^"]*focus-within:border-stroke-default[^"]*focus-visible\]:border-stroke-default/,
+    );
+    assert.doesNotMatch(
+      setupCard,
+      /inputGroupClassName="[^"]*border-control-border/,
+    );
   });
 
   test("deleting a final source view keeps it recoverable", async () => {

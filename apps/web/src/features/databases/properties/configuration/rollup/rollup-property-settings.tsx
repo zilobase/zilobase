@@ -288,7 +288,7 @@ function RollupSelect<TValue extends string>({
 }) {
   return (
     <label className="grid gap-1.5 px-1.5 py-1 text-sm">
-      <span className="flex items-center gap-2 text-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0">
+      <span className="flex items-center gap-2 text-content-secondary [&_svg]:size-4 [&_svg]:shrink-0">
         {icon}
         {label}
       </span>
@@ -313,7 +313,7 @@ function RollupSelect<TValue extends string>({
 
 function RollupPopoverMessage({ children }: { children: ReactNode }) {
   return (
-    <div className="px-1.5 py-1 text-sm text-muted-foreground">{children}</div>
+    <div className="px-1.5 py-1 text-sm text-content-secondary">{children}</div>
   );
 }
 
@@ -330,7 +330,7 @@ function RollupCalculationSelect({
 
   return (
     <label className="grid gap-1.5 px-1.5 py-1 text-sm">
-      <span className="flex items-center gap-2 text-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0">
+      <span className="flex items-center gap-2 text-content-secondary [&_svg]:size-4 [&_svg]:shrink-0">
         <Sigma />
         Calculate
       </span>
@@ -383,7 +383,7 @@ function RollupCalculationSubmenu({
       <DropDrawerSubTrigger>
         <Sigma />
         <span className="flex-1">Calculate</span>
-        <span className="text-muted-foreground">{selectedOption?.label}</span>
+        <span className="text-content-secondary">{selectedOption?.label}</span>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-64">
         {optionGroups.ungrouped.map((option) => (

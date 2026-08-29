@@ -19,7 +19,7 @@
   }
 
   .tiptap-editor a {
-    @apply cursor-pointer text-primary underline underline-offset-2;
+    @apply cursor-pointer text-action-link underline underline-offset-2;
   }
 
   .tiptap-editor span[style*="background-color"] {
@@ -68,7 +68,7 @@
 
   .tiptap-editor ul[data-type="taskList"] li[data-checked="true"] > div,
   .tiptap-editor .task-item[data-checked="true"] .task-item-content {
-    @apply text-muted-foreground line-through;
+    @apply text-content-secondary line-through;
   }
 
   .tiptap-editor ol {
@@ -100,7 +100,7 @@
   }
 
   .tiptap-editor .editor-details > button {
-    @apply absolute left-0 top-1.5 flex size-5 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active active:text-active-foreground;
+    @apply absolute left-0 top-1.5 flex size-5 items-center justify-center rounded-sm text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:bg-action-neutral-pressed active:text-action-on-neutral;
   }
 
   .tiptap-editor .editor-details > button::before {
@@ -129,11 +129,11 @@
   }
 
   .tiptap-editor code {
-    @apply relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
+    @apply relative rounded bg-surface-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold;
   }
 
   .tiptap-editor pre {
-    @apply overflow-x-auto rounded-md bg-muted p-4;
+    @apply overflow-x-auto rounded-md bg-surface-muted p-4;
   }
 
   .tiptap-editor pre code {
@@ -164,7 +164,7 @@
   }
 
   .tiptap-editor hr {
-    @apply border-border;
+    @apply border-stroke-default;
   }
 
   .tiptap-editor > :is(
@@ -211,7 +211,7 @@
   }
 
   .database-block-shell {
-    @apply w-full overflow-visible bg-background;
+    @apply w-full overflow-visible bg-surface-canvas;
   }
 
   [data-page-side-pane-panel] .database-block-shell-full {
@@ -231,11 +231,11 @@
   }
 
   .database-setup-card {
-    @apply relative mx-auto w-full max-w-3xl overflow-hidden rounded-xl border bg-card text-card-foreground shadow-lg;
+    @apply relative mx-auto w-full max-w-3xl overflow-hidden rounded-xl border bg-surface-card text-content-primary shadow-lg;
   }
 
   .database-setup-close {
-    @apply absolute top-2 right-2 z-10 text-muted-foreground hover:text-foreground;
+    @apply absolute top-2 right-2 z-10 text-content-secondary hover:text-content-primary;
   }
 
   .database-setup-columns {
@@ -255,7 +255,7 @@
   }
 
   .database-setup-prompt-label {
-    @apply mb-2.5 flex items-center gap-2 font-medium text-muted-foreground text-xs tracking-wide;
+    @apply mb-2.5 flex items-center gap-2 font-medium text-content-secondary text-xs tracking-wide;
   }
 
   .database-setup-prompt-form {
@@ -271,7 +271,7 @@
   }
 
   .database-setup-section-label {
-    @apply px-4 pt-4 pr-10 pb-2 font-medium text-muted-foreground text-xs tracking-wide;
+    @apply px-4 pt-4 pr-10 pb-2 font-medium text-content-secondary text-xs tracking-wide;
   }
 
   .database-setup-suggested-list {
@@ -283,15 +283,15 @@
   }
 
   .database-setup-option {
-    @apply flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] text-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:pointer-events-none disabled:opacity-50;
+    @apply flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-[13px] text-content-primary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral disabled:pointer-events-none disabled:opacity-50;
   }
 
   .database-setup-option-subtle {
-    @apply text-muted-foreground;
+    @apply text-content-secondary;
   }
 
   .database-setup-option-icon {
-    @apply flex size-7 shrink-0 items-center justify-center rounded-md border bg-subtle-surface text-muted-foreground;
+    @apply flex size-7 shrink-0 items-center justify-center rounded-md border bg-surface-subtle text-content-secondary;
   }
 
   .tiptap-editor .node-databaseBlock {
@@ -311,7 +311,7 @@
   }
 
   .database-title-input {
-    @apply h-auto min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-3xl font-medium leading-tight tracking-normal text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0;
+    @apply h-auto min-w-0 flex-1 border-0 bg-transparent px-0 py-0 text-3xl font-medium leading-tight tracking-normal text-content-primary shadow-none placeholder:text-content-secondary focus-visible:ring-0;
   }
 
   .database-new-button {
@@ -332,7 +332,7 @@
   }
 
   .database-selection-toolbar {
-    @apply absolute flex min-w-0 items-center overflow-x-auto rounded-md border bg-background shadow-lg;
+    @apply absolute flex min-w-0 items-center overflow-x-auto rounded-md border bg-surface-canvas shadow-lg;
     left: 0;
     top: 0;
     transform: translateY(calc(-100% - 0.5rem));
@@ -348,11 +348,11 @@
   .database-selection-count,
   .database-selection-property-action,
   .database-selection-more {
-    @apply flex h-9 shrink-0 items-center gap-2 border-r px-3 text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground disabled:cursor-not-allowed disabled:opacity-45;
+    @apply flex h-9 shrink-0 items-center gap-2 border-r px-3 text-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed active:text-action-on-neutral disabled:cursor-not-allowed disabled:opacity-45;
   }
 
   .database-selection-count {
-    @apply font-medium text-primary;
+    @apply font-medium text-action-selected-text;
   }
 
   .database-selection-property-group {
@@ -380,11 +380,11 @@
   }
 
   .database-selection-value-option {
-    @apply flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground;
+    @apply flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed active:text-action-on-neutral;
   }
 
   .database-selection-apply {
-    @apply shrink-0 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply shrink-0 rounded-md bg-action-primary px-3 text-sm font-medium text-action-on-primary transition-colors hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus-ring;
   }
 
   .database-list-view {
@@ -398,7 +398,7 @@
   }
 
   .database-list-row {
-    @apply relative flex min-h-8 min-w-full items-center rounded-md text-left text-sm transition-colors hover:bg-accent;
+    @apply relative flex min-h-8 min-w-full items-center rounded-md text-left text-sm transition-colors hover:bg-action-neutral-hover;
   }
 
   .database-list-row[data-dragging="true"] {
@@ -407,19 +407,24 @@
 
   .database-list-row[data-drop-before="true"]::before,
   .database-list-row[data-drop-after="true"]::after {
-    @apply pointer-events-none absolute left-0 right-0 z-20 h-0.5 rounded-full bg-primary content-[''];
+    @apply pointer-events-none absolute left-0 right-0 z-20 content-[''];
+    background-color: var(--zb-color-selection-background-editor);
+    border-radius: var(--radius-sm);
+    height: var(--spacing);
   }
 
   .database-list-row[data-drop-before="true"]::before {
     @apply top-0;
+    transform: translateY(-50%);
   }
 
   .database-list-row[data-drop-after="true"]::after {
     @apply bottom-0;
+    transform: translateY(50%);
   }
 
   .database-list-drag-handle {
-    @apply absolute left-[-2rem] top-1/2 flex size-7 -translate-y-1/2 cursor-grab items-center justify-center text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-default disabled:opacity-0;
+    @apply absolute left-[-2rem] top-1/2 flex size-7 -translate-y-1/2 cursor-grab items-center justify-center text-content-secondary opacity-0 outline-none transition-opacity hover:text-content-primary focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-action-focus-ring active:cursor-grabbing disabled:cursor-default disabled:opacity-0;
   }
 
   .database-list-row:hover .database-list-drag-handle {
@@ -469,7 +474,7 @@
   }
 
   .database-list-new-row {
-    @apply flex h-8 min-w-full items-center gap-2 rounded-md px-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-70;
+    @apply flex h-8 min-w-full items-center gap-2 rounded-md px-1.5 text-left text-sm text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral disabled:opacity-70;
   }
 
   .database-gallery-view {
@@ -498,7 +503,7 @@
 
   .database-gallery-card,
   .database-gallery-new-card {
-    @apply flex h-auto min-h-[240px] min-w-0 flex-col overflow-hidden rounded-md border bg-card text-left text-sm transition-colors;
+    @apply flex h-auto min-h-[240px] min-w-0 flex-col overflow-hidden rounded-md border bg-surface-card text-left text-sm transition-colors;
   }
 
   .database-gallery-view[data-card-size="small"]
@@ -512,7 +517,7 @@
   }
 
   .database-gallery-card {
-    @apply relative shadow-none hover:border-border hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply relative shadow-none hover:border-stroke-default hover:bg-action-neutral-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus-ring;
   }
 
   .database-gallery-card[data-dragging="true"] {
@@ -521,19 +526,24 @@
 
   .database-gallery-card[data-drop-before="true"]::before,
   .database-gallery-card[data-drop-after="true"]::after {
-    @apply pointer-events-none absolute inset-x-0 z-40 h-0.5 rounded-full bg-primary content-[''];
+    @apply pointer-events-none absolute inset-x-0 z-40 content-[''];
+    background-color: var(--zb-color-selection-background-editor);
+    border-radius: var(--radius-sm);
+    height: var(--spacing);
   }
 
   .database-gallery-card[data-drop-before="true"]::before {
     @apply top-0;
+    transform: translateY(-50%);
   }
 
   .database-gallery-card[data-drop-after="true"]::after {
     @apply bottom-0;
+    transform: translateY(50%);
   }
 
   .database-gallery-preview {
-    @apply h-36 shrink-0 overflow-hidden bg-subtle-surface outline-none;
+    @apply h-36 shrink-0 overflow-hidden bg-surface-subtle outline-none;
   }
 
   .database-gallery-preview-image {
@@ -554,11 +564,11 @@
   }
 
   .database-gallery-card-content {
-    @apply flex min-h-0 flex-1 flex-col border-t bg-backdrop;
+    @apply flex min-h-0 flex-1 flex-col border-t bg-effect-backdrop;
   }
 
   .database-gallery-card-title {
-    @apply flex h-10 shrink-0 items-center gap-2 px-3 font-medium text-foreground;
+    @apply flex h-10 shrink-0 items-center gap-2 px-3 font-medium text-content-primary;
   }
 
   .database-gallery-card-title > span:last-child {
@@ -651,7 +661,7 @@
   }
 
   .database-gallery-card-icon {
-    @apply flex size-5 shrink-0 items-center justify-center text-muted-foreground;
+    @apply flex size-5 shrink-0 items-center justify-center text-content-secondary;
   }
 
   .database-gallery-card-icon svg {
@@ -659,7 +669,7 @@
   }
 
   .database-gallery-new-card {
-    @apply items-center justify-center gap-2 border-dashed bg-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-70;
+    @apply items-center justify-center gap-2 border-dashed bg-transparent text-content-secondary hover:border-stroke-default hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral disabled:opacity-70;
   }
 
   .database-table-wrap[data-vertical-lines="false"] .database-table tbody td {
@@ -690,7 +700,7 @@
   }
 
   .database-timeline-view .database-timeline-gantt .gantt-content-header {
-    @apply z-20 bg-background;
+    @apply z-20 bg-surface-canvas;
   }
 
   .database-timeline-view
@@ -698,7 +708,7 @@
     .gantt-content-header
     > .grid
     > div {
-    @apply text-sm font-medium text-muted-foreground;
+    @apply text-sm font-medium text-content-secondary;
   }
 
   .database-timeline-view .database-timeline-gantt .gantt-columns {
@@ -720,16 +730,16 @@
   }
 
   .database-timeline-view .database-timeline-toolbar-chrome {
-    @apply relative z-50 flex h-10 shrink-0 bg-background;
+    @apply relative z-50 flex h-10 shrink-0 bg-surface-canvas;
   }
 
   .database-timeline-view .database-timeline-toolbar-sidebar-spacer {
-    @apply flex shrink-0 items-center justify-end border-r border-border bg-background pr-0.5;
+    @apply flex shrink-0 items-center justify-end border-r border-stroke-default bg-surface-canvas pr-0.5;
     width: var(--database-table-min-width, 220px);
   }
 
   .database-timeline-view .database-timeline-toolbar {
-    @apply flex min-h-10 min-w-0 flex-1 items-center justify-between gap-3 border-b border-border bg-background px-3;
+    @apply flex min-h-10 min-w-0 flex-1 items-center justify-between gap-3 border-b border-stroke-default bg-surface-canvas px-3;
   }
 
   .database-timeline-view .database-timeline-toolbar-title-group {
@@ -737,7 +747,7 @@
   }
 
   .database-timeline-view .database-timeline-toolbar-title {
-    @apply truncate text-sm font-medium text-foreground;
+    @apply truncate text-sm font-medium text-content-primary;
   }
 
   .database-timeline-view .database-timeline-toolbar-controls {
@@ -753,7 +763,7 @@
   }
 
   .database-timeline-view .database-timeline-sidebar-cell {
-    @apply sticky left-0 z-50 min-h-0 min-w-0 border-r border-border bg-background;
+    @apply sticky left-0 z-50 min-h-0 min-w-0 border-r border-stroke-default bg-surface-canvas;
     width: var(--database-table-min-width, 220px);
     max-width: var(--database-table-min-width, 220px);
   }
@@ -772,7 +782,7 @@
   }
 
   .database-timeline-view .database-timeline-header-spacer {
-    @apply border-b border-border;
+    @apply border-b border-stroke-default;
   }
 
   .database-timeline-view .database-timeline-gantt-header-cell {
@@ -811,7 +821,7 @@
   }
 
   .database-timeline-view .database-timeline-sidebar-row {
-    @apply flex h-8 min-h-8 items-center border-b border-border;
+    @apply flex h-8 min-h-8 items-center border-b border-stroke-default;
   }
 
   .database-timeline-view .database-timeline-sidebar-row .database-page-link {
@@ -833,16 +843,16 @@
   }
 
   .database-timeline-view .database-timeline-sidebar-thead {
-    @apply sticky top-0 z-[60] bg-background;
+    @apply sticky top-0 z-[60] bg-surface-canvas;
   }
 
   .database-timeline-view .database-timeline-sidebar-thead th,
   .database-timeline-view .database-timeline-sidebar-name-header {
-    @apply bg-background;
+    @apply bg-surface-canvas;
   }
 
   .database-timeline-view .database-timeline-sidebar-name-header {
-    @apply flex h-8 shrink-0 items-center border-0 border-b border-t-0 border-border text-sm font-medium text-muted-foreground;
+    @apply flex h-8 shrink-0 items-center border-0 border-b border-t-0 border-stroke-default text-sm font-medium text-content-secondary;
   }
 
   .database-timeline-view[data-sidebar-collapsed="true"] {
@@ -861,8 +871,8 @@
   }
 
   .database-timeline-view [data-roadmap-ui="gantt-sidebar"] {
-    @apply border-0 bg-background backdrop-blur-none;
-    background-color: var(--background) !important;
+    @apply border-0 bg-surface-canvas backdrop-blur-none;
+    background-color: var(--zb-color-surface-background-canvas) !important;
   }
 
   .database-timeline-view .database-timeline-sidebar-cell .database-page-create-row {
@@ -875,15 +885,15 @@
     margin-top: 0;
   }
 
-  .database-timeline-view .database-timeline-gantt .border-border {
-    border-color: var(--timeline-grid-border);
+  .database-timeline-view .database-timeline-gantt .border-stroke-default {
+    border-color: var(--zb-color-data-border-timeline-grid);
   }
 
   .database-timeline-view .database-timeline-bar [data-slot="card"] {
     @apply h-full min-h-0 gap-0 rounded-md border-0 p-0 shadow-none outline-none ring-0;
-    background-color: var(--timeline-bar-background) !important;
+    background-color: var(--zb-color-data-background-bar) !important;
     box-shadow: none !important;
-    color: var(--timeline-bar-foreground);
+    color: var(--zb-color-data-text-on-bar);
     --tw-ring-width: 0 !important;
     --tw-ring-shadow: 0 0 transparent !important;
     --tw-ring-offset-width: 0 !important;
@@ -945,12 +955,12 @@
   }
 
   .database-table-sticky-header {
-    @apply sticky top-0 z-50 bg-background;
+    @apply sticky top-0 z-50 bg-surface-canvas;
     scrollbar-width: none;
   }
 
   [data-page-side-pane-panel] .database-table-sticky-header {
-    @apply dark:bg-sidebar;
+    @apply dark:bg-surface-navigation;
   }
 
   .database-table-sticky-header::-webkit-scrollbar {
@@ -966,11 +976,11 @@
   }
 
   .database-table-group[data-drag-over="true"] {
-    @apply bg-subtle-surface;
+    @apply bg-surface-subtle;
   }
 
   .database-table-group-toggle {
-    @apply mb-2 flex min-h-8 items-center gap-2 rounded-sm px-1 py-1 text-left text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active active:text-active-foreground;
+    @apply mb-2 flex min-h-8 items-center gap-2 rounded-sm px-1 py-1 text-left text-content-primary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:bg-action-neutral-pressed active:text-action-on-neutral;
   }
 
   .database-table-wrap[data-inline-scroll="true"] .database-table-group-toggle {
@@ -981,7 +991,7 @@
   }
 
   .database-table-group-count {
-    @apply inline-flex min-w-5 justify-center rounded-sm bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground;
+    @apply inline-flex min-w-5 justify-center rounded-sm bg-surface-muted px-1.5 py-0.5 text-xs font-medium text-content-secondary;
   }
 
   .database-kanban-board {
@@ -994,7 +1004,7 @@
   }
 
   .database-kanban-column {
-    @apply flex w-72 shrink-0 flex-col rounded-md bg-subtle-surface transition-colors;
+    @apply flex w-72 shrink-0 flex-col rounded-md bg-surface-subtle transition-colors;
   }
 
   .database-kanban-column[data-color-token] {
@@ -1002,7 +1012,7 @@
   }
 
   .database-kanban-new-column {
-    @apply border border-dashed border-border bg-transparent;
+    @apply border border-dashed border-stroke-default bg-transparent;
   }
 
   .database-kanban-column-header {
@@ -1014,7 +1024,7 @@
   }
 
   .database-kanban-new-group-input {
-    @apply flex min-w-0 flex-1 cursor-text items-center gap-2 text-muted-foreground;
+    @apply flex min-w-0 flex-1 cursor-text items-center gap-2 text-content-secondary;
   }
 
   .database-kanban-new-group-input svg {
@@ -1023,7 +1033,7 @@
 
   .database-kanban-new-group-input
     :is(.database-input-cell-trigger, .database-date-cell-trigger) {
-    @apply min-h-7 flex-1 rounded-sm px-0 py-0 text-muted-foreground hover:text-foreground;
+    @apply min-h-7 flex-1 rounded-sm px-0 py-0 text-content-secondary hover:text-content-primary;
   }
 
   .database-kanban-new-group-input
@@ -1032,7 +1042,7 @@
   }
 
   .database-kanban-count {
-    @apply ml-auto inline-flex min-w-5 justify-center rounded-sm bg-background px-1.5 py-0.5 text-xs font-medium text-muted-foreground;
+    @apply ml-auto inline-flex min-w-5 justify-center rounded-sm bg-surface-canvas px-1.5 py-0.5 text-xs font-medium text-content-secondary;
   }
 
   .database-kanban-column[data-color-token] .database-kanban-count {
@@ -1044,11 +1054,7 @@
   }
 
   .database-kanban-card {
-    @apply relative overflow-hidden rounded-md bg-background shadow-none transition-opacity;
-  }
-
-  .database-kanban-column[data-color-token] .database-kanban-card {
-    background-color: var(--database-kanban-tint);
+    @apply relative overflow-hidden rounded-md border border-stroke-default bg-surface-card shadow-sm transition-[border-color,box-shadow,opacity];
   }
 
   .database-kanban-card[data-dragging="true"] {
@@ -1056,11 +1062,19 @@
   }
 
   .database-kanban-card[data-drop-before="true"]::before {
-    @apply absolute inset-x-0 top-0 z-40 content-[''];
+    @apply pointer-events-none absolute inset-x-0 top-0 z-40 content-[''];
+    background-color: var(--zb-color-selection-background-editor);
+    border-radius: var(--radius-sm);
+    height: var(--spacing);
+    transform: translateY(-50%);
   }
 
-  .database-kanban-card-drop-line {
+  .drag-drop-line.database-kanban-card-drop-line[data-orientation="horizontal"] {
     @apply shrink-0;
+    background-color: var(--zb-color-selection-background-editor);
+    border-radius: var(--radius-sm);
+    height: var(--spacing);
+    transform: translateY(-50%);
   }
 
   .database-kanban-card-title {
@@ -1092,7 +1106,7 @@
   }
 
   .database-kanban-property-icon {
-    @apply flex h-7 w-4 items-center justify-center text-muted-foreground;
+    @apply flex h-7 w-4 items-center justify-center text-content-secondary;
   }
 
   .database-kanban-property-icon svg {
@@ -1100,7 +1114,7 @@
   }
 
   .database-kanban-property-label {
-    @apply min-w-0 text-xs font-medium text-muted-foreground;
+    @apply min-w-0 text-xs font-medium text-content-secondary;
   }
 
   .database-kanban-property-label-content {
@@ -1108,7 +1122,7 @@
   }
 
   .database-kanban-property-label > button {
-    @apply h-auto w-fit max-w-full items-center gap-1.5 px-0 py-0 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:text-foreground;
+    @apply h-auto w-fit max-w-full items-center gap-1.5 px-0 py-0 text-xs font-medium text-content-secondary hover:text-content-primary focus-visible:text-content-primary;
   }
 
   .database-kanban-property-value {
@@ -1162,21 +1176,10 @@
   }
 
   .database-kanban-new-card {
-    @apply flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-70;
+    @apply flex h-9 w-full items-center gap-2 rounded-md border border-stroke-default bg-surface-card px-2 text-left text-sm text-content-secondary shadow-xs transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral disabled:opacity-70;
   }
 
   .database-kanban-column[data-color-token] .database-kanban-new-card {
-    border: 1px solid var(--database-kanban-tint);
-    color: var(--database-kanban-accent);
-  }
-
-  .database-kanban-column[data-color-token] .database-kanban-new-card:hover {
-    background-color: var(--database-kanban-tint);
-    color: var(--database-kanban-accent);
-  }
-
-  .database-kanban-column[data-color-token] .database-kanban-new-card:active {
-    background-color: var(--database-kanban-tint);
     color: var(--database-kanban-accent);
   }
 
@@ -1186,13 +1189,13 @@
 
   .database-table {
     @apply w-full table-fixed border-collapse overflow-hidden;
-    --database-selection-color: var(--action-primary);
+    --database-selection-color: var(--zb-color-action-background-selected);
     min-width: max(100%, var(--database-table-min-width, 100%));
   }
 
   .tiptap-editor .database-table th,
   .tiptap-editor .database-table td {
-    @apply h-8 border-0 border-border px-3 py-1 text-left align-middle;
+    @apply h-8 border-0 border-stroke-default px-3 py-1 text-left align-middle;
   }
 
   .tiptap-editor .database-table tbody td {
@@ -1204,7 +1207,7 @@
   }
 
   .tiptap-editor .database-table tbody tr[data-row-selected="true"] > td {
-    background-color: var(--database-selection-row);
+    background-color: var(--zb-color-selection-background-row);
   }
 
   .tiptap-editor
@@ -1213,8 +1216,8 @@
     tr[data-side-pane-open="true"]
     > td {
     box-shadow:
-      inset 0 2px var(--database-selection-color, var(--selection)),
-      inset 0 -2px var(--database-selection-color, var(--selection));
+      inset 0 2px var(--database-selection-color, var(--zb-color-action-border-selected)),
+      inset 0 -2px var(--database-selection-color, var(--zb-color-action-border-selected));
   }
 
   .tiptap-editor
@@ -1223,9 +1226,9 @@
     tr[data-side-pane-open="true"]
     > td:first-child {
     box-shadow:
-      inset 2px 0 var(--database-selection-color, var(--selection)),
-      inset 0 2px var(--database-selection-color, var(--selection)),
-      inset 0 -2px var(--database-selection-color, var(--selection));
+      inset 2px 0 var(--database-selection-color, var(--zb-color-action-border-selected)),
+      inset 0 2px var(--database-selection-color, var(--zb-color-action-border-selected)),
+      inset 0 -2px var(--database-selection-color, var(--zb-color-action-border-selected));
   }
 
   .tiptap-editor
@@ -1234,9 +1237,9 @@
     tr[data-side-pane-open="true"]
     > td:last-child {
     box-shadow:
-      inset -2px 0 var(--database-selection-color, var(--selection)),
-      inset 0 2px var(--database-selection-color, var(--selection)),
-      inset 0 -2px var(--database-selection-color, var(--selection));
+      inset -2px 0 var(--database-selection-color, var(--zb-color-action-border-selected)),
+      inset 0 2px var(--database-selection-color, var(--zb-color-action-border-selected)),
+      inset 0 -2px var(--database-selection-color, var(--zb-color-action-border-selected));
   }
 
   .tiptap-editor .database-table tbody td.database-virtual-spacer {
@@ -1278,22 +1281,22 @@
     tbody
     td:is(.database-page-cell, .database-value-cell)[data-selected="true"] {
     @apply z-30;
-    box-shadow: inset 0 0 0 2px var(--database-selection-color, var(--selection));
+    box-shadow: inset 0 0 0 2px var(--database-selection-color, var(--zb-color-action-border-selected));
   }
 
   .tiptap-editor
     .database-table
     tbody
     td.database-value-cell[data-fill-target="true"] {
-    @apply bg-database-selection-row;
+    @apply bg-selection-row;
     box-shadow:
-      inset 2px 0 var(--database-selection-color, var(--selection)),
-      inset -2px 0 var(--database-selection-color, var(--selection));
+      inset 2px 0 var(--database-selection-color, var(--zb-color-action-border-selected)),
+      inset -2px 0 var(--database-selection-color, var(--zb-color-action-border-selected));
   }
 
   .database-cell-fill-handle {
-    @apply absolute -bottom-1.5 -right-1.5 z-40 size-3 cursor-crosshair rounded-full border-2 border-background outline-none;
-    background: var(--database-selection-color, var(--selection));
+    @apply absolute -bottom-1.5 -right-1.5 z-40 size-3 cursor-crosshair rounded-full border-2 border-surface-canvas outline-none;
+    background: var(--database-selection-color, var(--zb-color-action-border-selected));
     touch-action: none;
   }
 
@@ -1303,7 +1306,7 @@
   }
 
   .database-cell-fill-handle:focus-visible {
-    @apply ring-2 ring-selection-focus-ring ring-offset-1;
+    @apply ring-2 ring-action-focus-ring ring-offset-1;
   }
 
   .database-cell-presence {
@@ -1320,7 +1323,7 @@
   }
 
   .database-cell-presence-dot {
-    @apply -ml-1 size-2.5 rounded-full border border-background;
+    @apply -ml-1 size-2.5 rounded-full border border-surface-canvas;
     background-color: var(--database-presence-color);
   }
 
@@ -1416,7 +1419,7 @@
   }
 
   .tiptap-editor .database-table th {
-    @apply relative border-b bg-transparent text-sm font-medium text-muted-foreground;
+    @apply relative border-b bg-transparent text-sm font-medium text-content-secondary;
   }
 
   .tiptap-editor .database-table {
@@ -1434,7 +1437,7 @@
   .tiptap-editor .database-table th.database-name-header:has(button:hover),
   .tiptap-editor .database-table th.database-name-header:has(button:focus-visible),
   .tiptap-editor .database-table th.database-name-header:has(button[data-state="open"]) {
-    @apply bg-subtle-surface text-foreground;
+    @apply bg-surface-subtle text-content-primary;
   }
 
   .database-name-header-content {
@@ -1454,13 +1457,13 @@
   }
 
   .tiptap-editor .database-table th.database-reorderable-header[data-column-dragging="true"] {
-    @apply z-10 bg-popover text-foreground shadow-lg ring-1 ring-ring;
+    @apply z-10 bg-surface-overlay text-content-primary shadow-lg ring-1 ring-action-focus-ring;
   }
 
   .tiptap-editor .database-table th.database-property-header:has(button:hover),
   .tiptap-editor .database-table th.database-property-header:has(button:focus-visible),
   .tiptap-editor .database-table th.database-property-header:has(button[data-state="open"]) {
-    @apply bg-subtle-surface text-foreground;
+    @apply bg-surface-subtle text-content-primary;
   }
 
   .database-add-property-cell {
@@ -1468,20 +1471,20 @@
   }
 
   .database-insert-property-cell {
-    @apply bg-subtle-surface;
+    @apply bg-surface-subtle;
   }
 
   .tiptap-editor .database-table tbody td.database-insert-property-placeholder {
-    @apply bg-subtle-surface p-0;
+    @apply bg-surface-subtle p-0;
   }
 
   .database-insert-property-placeholder::before {
-    @apply mx-2 block h-full min-h-8 rounded-sm border border-dashed border-border;
+    @apply mx-2 block h-full min-h-8 rounded-sm border border-dashed border-stroke-default;
     content: "";
   }
 
   .database-add-property {
-    @apply flex h-8 w-full items-center gap-2 rounded-sm px-3 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    @apply flex h-8 w-full items-center gap-2 rounded-sm px-3 py-1 text-sm text-content-secondary transition-colors hover:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none;
   }
 
   .database-name-header-content span + span {
@@ -1493,15 +1496,15 @@
   }
 
   .database-add-property-input {
-    @apply min-w-0 flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground;
+    @apply min-w-0 flex-1 bg-transparent text-content-primary outline-none placeholder:text-content-secondary;
   }
 
   .database-input-cell {
-    @apply block h-8 min-h-8 w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-1 text-sm leading-6 shadow-none outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-0;
+    @apply block h-8 min-h-8 w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-1 text-sm leading-6 shadow-none outline-none transition-colors placeholder:text-content-secondary focus-visible:ring-0;
   }
 
   .database-input-cell-link {
-    @apply inline-flex h-8 max-w-full items-center truncate px-3 py-1 text-sm leading-6 text-primary underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-ring;
+    @apply inline-flex h-8 max-w-full items-center truncate px-3 py-1 text-sm leading-6 text-action-link underline underline-offset-2 focus-visible:ring-2 focus-visible:ring-action-focus-ring;
   }
 
   .database-input-cell-trigger {
@@ -1521,7 +1524,7 @@
   }
 
   .database-value-cell[data-active="true"] .database-input-cell-wrap {
-    @apply fixed z-50 h-auto min-h-14 w-72 max-w-[calc(100vw-3rem)] overflow-hidden rounded-md border border-border bg-muted text-foreground shadow-sm;
+    @apply fixed z-50 h-auto min-h-14 w-72 max-w-[calc(100vw-3rem)] overflow-hidden rounded-md border border-stroke-default bg-surface-muted text-content-primary shadow-sm;
     max-height: min(18rem, calc(100vh - var(--database-input-cell-top, 0px) - 1rem));
     top: var(--database-input-cell-top, 0px);
     left: var(--database-input-cell-left, 0px);
@@ -1549,11 +1552,11 @@
   }
 
   .database-input-cell[aria-invalid="true"] {
-    @apply text-destructive;
+    @apply text-action-danger-text;
   }
 
   .database-input-cell-error {
-    @apply hidden border-t border-destructive px-3 pb-2 pt-1 text-xs leading-4 text-destructive;
+    @apply hidden border-t border-action-danger-border px-3 pb-2 pt-1 text-xs leading-4 text-action-danger-text;
   }
 
   .database-value-cell[data-active="true"] .database-input-cell-error,
@@ -1563,7 +1566,7 @@
   }
 
   .database-input-cell-trigger {
-    @apply flex min-h-8 w-full min-w-0 items-center px-3 py-1 text-left text-sm leading-6 text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring;
+    @apply flex min-h-8 w-full min-w-0 items-center px-3 py-1 text-left text-sm leading-6 text-content-primary outline-none transition-colors focus-visible:ring-2 focus-visible:ring-action-focus-ring;
   }
 
   .database-input-cell-drawer {
@@ -1575,15 +1578,15 @@
   }
 
   .database-input-cell-drawer .database-input-cell {
-    @apply min-h-40 rounded-md bg-transparent px-2 py-2 text-sm leading-6 text-popover-foreground;
+    @apply min-h-40 rounded-md bg-transparent px-2 py-2 text-sm leading-6 text-content-primary;
   }
 
   .database-select-cell-trigger {
-    @apply flex min-h-8 w-full min-w-0 flex-wrap items-center gap-1 px-3 py-1 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring;
+    @apply flex min-h-8 w-full min-w-0 flex-wrap items-center gap-1 px-3 py-1 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-action-focus-ring;
   }
 
   .database-relation-cell-trigger {
-    @apply flex min-h-8 w-full min-w-0 flex-wrap items-center text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring;
+    @apply flex min-h-8 w-full min-w-0 flex-wrap items-center text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-action-focus-ring;
   }
 
   .database-select-badge {
@@ -1595,15 +1598,15 @@
   }
 
   .database-select-search {
-    @apply h-8 w-full border-0 bg-transparent px-1.5 py-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0;
+    @apply h-8 w-full border-0 bg-transparent px-1.5 py-1 text-sm outline-none placeholder:text-content-secondary focus-visible:ring-0;
   }
 
   .database-select-popover-label {
-    @apply -mx-1 border-t border-border px-2.5 py-1 text-xs font-medium text-muted-foreground;
+    @apply -mx-1 border-t border-stroke-default px-2.5 py-1 text-xs font-medium text-content-secondary;
   }
 
   .database-date-cell-trigger {
-    @apply flex min-h-8 w-full min-w-0 items-center truncate px-3 py-1 text-left text-sm leading-6 text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring;
+    @apply flex min-h-8 w-full min-w-0 items-center truncate px-3 py-1 text-left text-sm leading-6 text-content-primary outline-none transition-colors focus-visible:ring-2 focus-visible:ring-action-focus-ring;
   }
 
   .database-select-options {
@@ -1613,19 +1616,19 @@
 
   .database-select-option,
   .database-select-create {
-    @apply flex min-h-7 min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground active:bg-active active:text-active-foreground;
+    @apply flex min-h-7 min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm text-content-primary outline-none transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:bg-action-neutral-hover focus-visible:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral;
   }
 
   .database-select-option svg {
-    @apply size-4 shrink-0 text-muted-foreground;
+    @apply size-4 shrink-0 text-content-secondary;
   }
 
   .database-select-option .database-select-option-check {
-    @apply ml-auto text-foreground;
+    @apply ml-auto text-content-primary;
   }
 
   .database-select-option[data-selected="true"] .database-select-option-check {
-    @apply text-foreground;
+    @apply text-content-primary;
   }
 
   .database-page-link,
@@ -1634,7 +1637,7 @@
   }
 
   .database-page-link {
-    @apply relative text-foreground;
+    @apply relative text-content-primary;
   }
 
   .database-sub-item-name {
@@ -1657,7 +1660,7 @@
   }
 
   .database-sub-item-toggle {
-    @apply absolute inset-y-0 z-20 flex w-6 cursor-pointer select-none items-center justify-center text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground;
+    @apply absolute inset-y-0 z-20 flex w-6 cursor-pointer select-none items-center justify-center text-content-secondary outline-none hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed active:text-action-on-neutral;
     left: calc(var(--database-sub-item-depth, 0) * 1.25rem);
   }
 
@@ -1675,7 +1678,7 @@
 
   .database-sub-item-create,
   .database-table-create {
-    @apply flex h-8 w-full items-center gap-2 px-3 text-left text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-60;
+    @apply flex h-8 w-full items-center gap-2 px-3 text-left text-sm text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral disabled:opacity-60;
   }
 
   .database-sub-item-create {
@@ -1688,7 +1691,7 @@
   }
 
   .database-page-create {
-    @apply text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:opacity-70;
+    @apply text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral disabled:opacity-70;
   }
 
   .database-page-create-row {
@@ -1733,15 +1736,15 @@
   }
 
   .database-row-drag-handle {
-    @apply relative z-10 flex size-7 shrink-0 cursor-grab items-center justify-center bg-transparent text-muted-foreground outline-none transition-colors hover:text-foreground active:cursor-grabbing focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-30 disabled:hover:text-muted-foreground;
+    @apply relative z-10 flex size-7 shrink-0 cursor-grab items-center justify-center bg-transparent text-content-secondary outline-none transition-colors hover:text-content-primary active:cursor-grabbing focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-action-focus-ring disabled:cursor-default disabled:opacity-30 disabled:hover:text-content-secondary;
   }
 
   .database-row-checkbox {
-    @apply relative z-10 border-border bg-background;
+    @apply relative z-10 border-stroke-default bg-surface-canvas;
   }
 
   .database-row-drag-handle[data-dragging="true"] {
-    @apply text-foreground;
+    @apply text-content-primary;
     transition: none;
   }
 
@@ -1754,6 +1757,13 @@
     left: calc(var(--database-row-drop-depth, 0) * 1.25rem);
   }
 
+  .drag-drop-line.database-row-drop-line[data-orientation="horizontal"] {
+    background-color: var(--zb-color-selection-background-editor);
+    border-radius: var(--radius-sm);
+    height: var(--spacing);
+    transform: translateY(-50%);
+  }
+
   .database-table-wrap[data-inline-scroll="true"] .database-row-drop-line {
     left: calc(
       var(--database-inline-scroll-offset, 0px) +
@@ -1764,7 +1774,7 @@
   }
 
   .database-row-drag-overlay {
-    @apply pointer-events-none fixed z-50 overflow-hidden rounded-md border bg-subtle-surface text-sm text-foreground opacity-90 shadow-lg;
+    @apply pointer-events-none fixed z-50 overflow-hidden rounded-md border bg-surface-subtle text-sm text-content-primary opacity-90 shadow-lg;
   }
 
   .database-row-drag-overlay-cell {
@@ -1772,7 +1782,7 @@
   }
 
   .database-row-drag-overlay-cell svg {
-    @apply size-4 shrink-0 text-muted-foreground;
+    @apply size-4 shrink-0 text-content-secondary;
   }
 
   .database-row-drag-overlay-cell span {
@@ -1784,7 +1794,7 @@
   }
 
   .database-page-icon {
-    @apply flex size-5 shrink-0 items-center justify-center text-muted-foreground;
+    @apply flex size-5 shrink-0 items-center justify-center text-content-secondary;
   }
 
   .database-page-title {
@@ -1792,15 +1802,15 @@
   }
 
   .database-page-title-button {
-    @apply block max-w-full cursor-text rounded-sm bg-transparent p-0 text-left text-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring;
+    @apply block max-w-full cursor-text rounded-sm bg-transparent p-0 text-left text-content-primary outline-none hover:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring;
   }
 
   .database-page-title-link {
-    @apply block max-w-full bg-transparent p-0 text-left text-primary underline underline-offset-2 outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring;
+    @apply block max-w-full bg-transparent p-0 text-left text-action-link underline underline-offset-2 outline-none hover:text-action-link focus-visible:ring-2 focus-visible:ring-action-focus-ring;
   }
 
   .database-page-open {
-    @apply invisible absolute right-2 top-1/2 z-20 flex h-6 -translate-y-1/2 items-center gap-1.5 rounded-md border bg-accent px-2 text-xs font-semibold uppercase tracking-wide text-accent-foreground opacity-0 shadow-sm transition-[opacity,background-color,color] duration-75 hover:bg-active hover:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:bg-active active:text-active-foreground;
+    @apply invisible absolute right-2 top-1/2 z-20 flex h-6 -translate-y-1/2 items-center gap-1.5 rounded-md border bg-action-neutral-hover px-2 text-xs font-semibold uppercase tracking-wide text-action-on-neutral opacity-0 shadow-sm transition-[opacity,background-color,color] duration-75 hover:bg-action-neutral-pressed hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:bg-action-neutral-pressed active:text-action-on-neutral;
   }
 
   .database-page-link:hover .database-page-open,
@@ -1823,7 +1833,7 @@
 
   .database-column-resize-handle:hover,
   .database-column-resize-handle:active {
-    @apply bg-primary;
+    @apply bg-action-selected;
   }
 
   [data-editor-surface]:has(

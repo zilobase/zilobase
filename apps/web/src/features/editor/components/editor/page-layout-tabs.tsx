@@ -11,7 +11,7 @@ import {
 } from "@/shared/components/icons"
 
 import { Button } from "@/shared/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
 import { LinkedDataSourcePicker } from "@/features/databases"
 import type {
   PageLayoutConfig,
@@ -53,7 +53,6 @@ export function PageLayoutTabs({
         <Tabs className="min-w-0" onValueChange={onValueChange} value={value}>
           <TabsList
             className="min-w-0 justify-start overflow-x-auto"
-            variant="tab"
           >
             <TabsTrigger className="h-8 shrink-0 grow-0 gap-2 px-3" value="content">
               <FileText />
@@ -81,7 +80,7 @@ export function PageLayoutTabs({
                 >
                   <ViewIcon />
                   <span className="truncate">{tab.viewName}</span>
-                  <ArrowUpRight className="size-3 text-muted-foreground" />
+                  <ArrowUpRight className="size-3 text-content-secondary" />
                 </TabsTrigger>
               )
             })}

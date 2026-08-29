@@ -29,7 +29,7 @@ import type {
 } from "../model/types"
 
 const toolbarButtonClassName =
-  "flex h-8 w-8 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+  "flex h-8 w-8 items-center justify-center rounded-lg text-content-primary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral"
 
 export function ShapeNode({
   data,
@@ -134,17 +134,17 @@ export function ShapeNode({
         offset={40}
         position={Position.Top}
       >
-        <div className="flex items-center gap-1 rounded-2xl border border-border bg-backdrop p-1.5 shadow-lg backdrop-blur">
+        <div className="flex items-center gap-1 rounded-2xl border border-stroke-default bg-effect-backdrop p-1.5 shadow-lg backdrop-blur">
           <button
             aria-label="Use default shape color"
             className={cn(
               toolbarButtonClassName,
-              data.color === "default" && "bg-accent",
+              data.color === "default" && "bg-action-neutral-hover",
             )}
             onClick={() => updateNode({ color: "default" })}
             type="button"
           >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-foreground">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-content-primary">
               <BanIcon className="size-4" />
             </span>
           </button>
@@ -155,7 +155,7 @@ export function ShapeNode({
                 aria-label={`Use ${option.label.toLowerCase()} shape color`}
                 className={cn(
                   toolbarButtonClassName,
-                  data.color === option.id && "bg-accent",
+                  data.color === option.id && "bg-action-neutral-hover",
                 )}
                 key={option.id}
                 onClick={() => updateNode({ color: option.id })}
@@ -170,31 +170,31 @@ export function ShapeNode({
                 />
               </button>
             ))}
-          <div className="mx-1 h-6 w-px bg-border" />
+          <div className="mx-1 h-6 w-px bg-stroke-default" />
           {canvasStrokeWidthOptions.map((option) => (
             <button
               aria-label={`Use ${option.label.toLowerCase()} stroke`}
               className={cn(
                 toolbarButtonClassName,
-                data.strokeWidth === option.value && "bg-accent",
+                data.strokeWidth === option.value && "bg-action-neutral-hover",
               )}
               key={option.value}
               onClick={() => updateNode({ strokeWidth: option.value })}
               type="button"
             >
               <span
-                className="block w-4 rounded-full bg-foreground"
+                className="block w-4 rounded-full bg-content-primary"
                 style={{ height: Math.max(2, option.value - 1) }}
               />
             </button>
           ))}
-          <div className="mx-1 h-6 w-px bg-border" />
+          <div className="mx-1 h-6 w-px bg-stroke-default" />
           {canvasStrokeStyleOptions.map((option) => (
             <button
               aria-label={`Use ${option.label.toLowerCase()} stroke style`}
               className={cn(
                 toolbarButtonClassName,
-                data.strokeStyle === option.value && "bg-accent",
+                data.strokeStyle === option.value && "bg-action-neutral-hover",
               )}
               key={option.value}
               onClick={() => updateNode({ strokeStyle: option.value })}
@@ -203,7 +203,7 @@ export function ShapeNode({
               <StrokeStyleIcon style={option.value} />
             </button>
           ))}
-          <div className="mx-1 h-6 w-px bg-border" />
+          <div className="mx-1 h-6 w-px bg-stroke-default" />
           <button
             aria-label="Delete shape"
             className={toolbarButtonClassName}
@@ -236,17 +236,17 @@ export function ShapeNode({
             type="source"
           />
           <NodeResizer
-            color="var(--color-foreground)"
+            color="var(--zb-color-content-text-primary)"
             handleStyle={{
-              background: "var(--color-background)",
-              border: "2px solid var(--color-foreground)",
+              background: "var(--zb-color-surface-background-canvas)",
+              border: "2px solid var(--zb-color-content-text-primary)",
               borderRadius: 0,
               height: 12,
               width: 12,
             }}
             isVisible={selected}
             lineStyle={{
-              borderColor: "var(--color-foreground)",
+              borderColor: "var(--zb-color-content-text-primary)",
               borderWidth: 1,
             }}
             minHeight={Math.max(52, Math.round(canvasShapeDimensions[data.shape].height * 0.6))}
@@ -255,7 +255,7 @@ export function ShapeNode({
           {selected ? (
             <button
               aria-label="Rotate shape"
-              className="nodrag absolute bottom-0 left-1/2 z-20 flex h-7 w-7 -translate-x-1/2 translate-y-[calc(100%+0.5rem)] cursor-grab items-center justify-center rounded-full border border-border bg-background text-foreground shadow-sm"
+              className="nodrag absolute bottom-0 left-1/2 z-20 flex h-7 w-7 -translate-x-1/2 translate-y-[calc(100%+0.5rem)] cursor-grab items-center justify-center rounded-full border border-stroke-default bg-surface-canvas text-content-primary shadow-sm"
               onMouseDown={startRotating}
               type="button"
             >

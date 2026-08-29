@@ -43,10 +43,10 @@ export function AgentResultTable({ table }: { table: AgentResultTableData }) {
   }
 
   return (
-    <section className="not-prose my-3 overflow-hidden rounded-lg border bg-background" aria-label="AI table result">
+    <section className="not-prose my-3 overflow-hidden rounded-lg border bg-surface-canvas" aria-label="AI table result">
       <div className="flex flex-wrap items-center gap-2 border-b p-2">
         <div className="relative min-w-40 flex-1">
-          <SearchIcon className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <SearchIcon className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-content-secondary" />
           <Input aria-label="Filter table" className="h-8 pl-7 text-xs" onChange={(event) => setFilter(event.target.value)} placeholder="Filter rows" value={filter} />
         </div>
         <Button aria-label="Copy table" onClick={() => void copy()} size="icon-sm" variant="ghost"><CopyIcon className="size-3.5" /></Button>
@@ -54,10 +54,10 @@ export function AgentResultTable({ table }: { table: AgentResultTableData }) {
       </div>
       <div className="max-h-80 overflow-auto">
         <table className="w-full min-w-max text-left text-xs">
-          <thead className="sticky top-0 bg-muted"><tr>
+          <thead className="sticky top-0 bg-surface-muted"><tr>
             {table.columns.map((column) => (
               <th className="border-b px-3 py-2 font-medium" key={column.id}>
-                <button className="inline-flex items-center gap-1 hover:text-foreground" onClick={() => setSort((current) => current?.columnId === column.id ? { columnId: column.id, direction: current.direction === "asc" ? "desc" : "asc" } : { columnId: column.id, direction: "asc" })} type="button">
+                <button className="inline-flex items-center gap-1 hover:text-content-primary" onClick={() => setSort((current) => current?.columnId === column.id ? { columnId: column.id, direction: current.direction === "asc" ? "desc" : "asc" } : { columnId: column.id, direction: "asc" })} type="button">
                   {column.label}<ArrowUpDownIcon className="size-3" />
                 </button>
               </th>
@@ -67,12 +67,12 @@ export function AgentResultTable({ table }: { table: AgentResultTableData }) {
           <tbody>{rows.map((row) => (
             <tr className="border-b last:border-b-0" key={row.id}>
               {table.columns.map((column) => <td className="max-w-72 truncate px-3 py-2" key={column.id} title={row.cells[column.id] ?? ""}>{row.cells[column.id] ?? ""}</td>)}
-              <td className="px-2">{row.pageId ? <a aria-label="Open row" className="text-muted-foreground hover:text-foreground" href={`/p/${encodeURIComponent(row.pageId)}`}><ExternalLinkIcon className="size-3.5" /></a> : null}</td>
+              <td className="px-2">{row.pageId ? <a aria-label="Open row" className="text-content-secondary hover:text-content-primary" href={`/p/${encodeURIComponent(row.pageId)}`}><ExternalLinkIcon className="size-3.5" /></a> : null}</td>
             </tr>
           ))}</tbody>
         </table>
       </div>
-      <div className="border-t px-3 py-1.5 text-muted-foreground text-xs">{rows.length} rows</div>
+      <div className="border-t px-3 py-1.5 text-content-secondary text-xs">{rows.length} rows</div>
     </section>
   )
 }

@@ -193,7 +193,7 @@ export function StatusPropertySettings({
               <span>{group.name}</span>
               <button
                 aria-label={`Add ${group.name} status`}
-                className="-my-1 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                className="-my-1 flex size-6 items-center justify-center rounded-md text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
                 onClick={() => setCreatingGroupName(group.name)}
                 type="button"
               >

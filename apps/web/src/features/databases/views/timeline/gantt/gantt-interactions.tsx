@@ -82,12 +82,12 @@ export function GanttFeatureDragHelper({
     >
       <div
         className={cn(
-          "-translate-y-1/2 absolute top-1/2 h-[80%] w-1 rounded-sm bg-muted-foreground opacity-0 transition-opacity group-hover:opacity-100",
+          "-translate-y-1/2 absolute top-1/2 h-[80%] w-1 rounded-sm bg-content-secondary opacity-0 transition-opacity group-hover:opacity-100",
           direction === "left" ? "left-2.5" : "right-2.5",
         )}
       />
       {date ? (
-        <div className="-translate-x-1/2 absolute top-10 hidden whitespace-nowrap rounded-lg border border-border bg-backdrop px-2 py-1 text-foreground text-xs backdrop-blur-lg group-hover:block">
+        <div className="-translate-x-1/2 absolute top-10 hidden whitespace-nowrap rounded-lg border border-stroke-default bg-effect-backdrop px-2 py-1 text-content-primary text-xs backdrop-blur-lg group-hover:block">
           {format(date, "MMM dd, yyyy")}
         </div>
       ) : null}
@@ -105,7 +105,7 @@ export function GanttFeatureItemCard({
 }: GanttFeatureItemCardProps) {
   return (
     <Card
-      className="h-full w-full rounded-md bg-background p-2 text-xs shadow-sm"
+      className="h-full w-full rounded-md bg-surface-canvas p-2 text-xs shadow-sm"
       data-feature-id={id}
     >
       <div className="flex h-full w-full items-center justify-between gap-2 text-left">
@@ -409,7 +409,7 @@ function TimelineMarker({
       style={{ transform: `translateX(${left}px)`, width: 0 }}
     >
       {children}
-      <div className={cn("h-full w-px bg-card", className)} />
+      <div className={cn("h-full w-px bg-surface-card", className)} />
     </div>
   )
 }
@@ -430,7 +430,7 @@ export const GanttMarker = memo(function GanttMarker({
         <ContextMenuTrigger asChild>
           <div
             className={cn(
-              "group pointer-events-auto sticky top-0 flex select-auto flex-col flex-nowrap items-center justify-center whitespace-nowrap rounded-b-md bg-card px-2 py-1 text-foreground text-xs",
+              "group pointer-events-auto sticky top-0 flex select-auto flex-col flex-nowrap items-center justify-center whitespace-nowrap rounded-b-md bg-surface-card px-2 py-1 text-content-primary text-xs",
               className,
             )}
           >
@@ -443,7 +443,7 @@ export const GanttMarker = memo(function GanttMarker({
         <ContextMenuContent>
           {onRemove ? (
             <ContextMenuItem
-              className="flex items-center gap-2 text-destructive"
+              className="flex items-center gap-2 text-action-danger-text"
               onClick={() => onRemove(id)}
             >
               <TrashIcon size={16} />
@@ -500,16 +500,16 @@ export function GanttCreateMarkerTrigger({
     >
       <div className="gantt-marker-preview pointer-events-none sticky top-6 z-20 flex w-4 -translate-x-1/2 flex-col items-center justify-center gap-1 overflow-visible opacity-0">
         <button
-          className="pointer-events-auto z-50 inline-flex h-4 w-4 items-center justify-center rounded-full bg-card"
+          className="pointer-events-auto z-50 inline-flex h-4 w-4 items-center justify-center rounded-full bg-surface-card"
           onClick={() => {
             if (dateRef.current) onCreateMarker(dateRef.current)
           }}
           type="button"
         >
-          <PlusIcon className="text-muted-foreground" size={12} />
+          <PlusIcon className="text-content-secondary" size={12} />
         </button>
         <div
-          className="whitespace-nowrap rounded-md border border-border bg-backdrop px-2 py-1 text-foreground text-xs backdrop-blur-lg"
+          className="whitespace-nowrap rounded-md border border-stroke-default bg-effect-backdrop px-2 py-1 text-content-primary text-xs backdrop-blur-lg"
           data-gantt-marker-date
         />
       </div>
@@ -544,7 +544,7 @@ export function GanttToday({ className }: GanttTodayProps) {
     <TimelineMarker className={className} date={date}>
       <div
         className={cn(
-          "group pointer-events-auto sticky top-0 flex select-auto flex-col flex-nowrap items-center justify-center whitespace-nowrap rounded-b-md bg-card px-2 py-1 text-foreground text-xs",
+          "group pointer-events-auto sticky top-0 flex select-auto flex-col flex-nowrap items-center justify-center whitespace-nowrap rounded-b-md bg-surface-card px-2 py-1 text-content-primary text-xs",
           className,
         )}
       >

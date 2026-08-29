@@ -114,7 +114,7 @@ function openSlashEmojiPicker({
   root.render(
     <AppIconProvider>
       <div
-        className="overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-border"
+        className="overflow-hidden rounded-lg bg-surface-overlay text-content-primary shadow-md ring-1 ring-stroke-default"
         onMouseDown={(event) => event.stopPropagation()}
         onPointerDown={(event) => event.stopPropagation()}
       >
@@ -587,7 +587,7 @@ function SlashCommandPopover({
 
   return (
     <div
-      className="fixed z-50 w-72 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-md"
+      className="fixed z-50 w-72 overflow-hidden rounded-xl border bg-surface-overlay text-content-primary shadow-md"
       onMouseDown={(event) => event.preventDefault()}
       style={position}
     >

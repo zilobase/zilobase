@@ -436,7 +436,7 @@ export default function RecentsPage({
       <main className="flex min-h-[calc(100svh-3rem)] flex-1 items-center justify-center px-6">
         <div className="max-w-md space-y-2 text-center">
           <h1 className="font-heading text-xl font-medium">No offline items yet</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-content-secondary">
             Reconnect, then use a page or database menu to make it available offline.
           </p>
         </div>
@@ -448,7 +448,7 @@ export default function RecentsPage({
     <>
     <PageSidePaneLayout
       main={
-        <main className="min-h-0 flex-1 bg-background">
+        <main className="min-h-0 flex-1 bg-surface-canvas">
           <section className="animate-in fade-in-0 duration-300">
             <div className="tiptap-editor px-5 pb-10 pt-8 sm:px-8 md:px-20 lg:px-24">
               <DatabaseViewProvider
@@ -573,7 +573,7 @@ export default function RecentsPage({
               >
                 <div className="database-block-shell database-block-shell-full">
                   <div className="database-toolbar-section">
-                    <h1 className="min-h-10 py-0 text-4xl font-semibold leading-tight tracking-normal text-foreground">
+                    <h1 className="min-h-10 py-0 text-4xl font-semibold leading-tight tracking-normal text-content-primary">
                       {pageTitle}
                     </h1>
                     <div className="flex min-w-0 items-start gap-3">
@@ -694,7 +694,7 @@ function TeamspacesLibraryTable({
 }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   if (teamspaces.length === 0) {
-    return <div className="py-16 text-center text-sm text-muted-foreground">No teamspaces yet. Create one for a team or project.</div>;
+    return <div className="py-16 text-center text-sm text-content-secondary">No teamspaces yet. Create one for a team or project.</div>;
   }
 
   return (
@@ -721,11 +721,11 @@ function TeamspacesLibraryTable({
         const expanded = expandedIds.has(teamspace.id);
         const teamspaceRows = buildTeamspaceLibraryRows(rows, teamspace.id);
         return <Fragment key={teamspace.id}>
-          <tr className="group hover:bg-accent">
+          <tr className="group hover:bg-action-neutral-hover">
             <td className="database-page-cell">
               <button
                 aria-expanded={expanded}
-                className="flex h-8 w-full min-w-0 items-center gap-2 px-3 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                className="flex h-8 w-full min-w-0 items-center gap-2 px-3 text-left focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none"
                 onClick={() => setExpandedIds((current) => {
               const next = new Set(current);
               if (next.has(teamspace.id)) next.delete(teamspace.id);
@@ -734,17 +734,17 @@ function TeamspacesLibraryTable({
             })}
                 type="button"
               >
-              <ChevronRight className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`} />
+              <ChevronRight className={`size-3.5 shrink-0 text-content-secondary transition-transform ${expanded ? "rotate-90" : ""}`} />
               {typeof teamspace.icon === "string" && teamspace.icon
                 ? <PageIconDisplay size="sm" value={teamspace.icon} />
-                : <Layers3Icon className="size-4 shrink-0 text-muted-foreground" />}
+                : <Layers3Icon className="size-4 shrink-0 text-content-secondary" />}
                 <span className="truncate font-semibold">{teamspace.name}</span>
               </button>
             </td>
-            <td className="truncate text-muted-foreground">{teamspace.description?.trim() || "—"}</td>
-            <td className="text-muted-foreground">Teamspace</td>
+            <td className="truncate text-content-secondary">{teamspace.description?.trim() || "—"}</td>
+            <td className="text-content-secondary">Teamspace</td>
             <td><span className="flex items-center gap-1.5 capitalize"><TeamspaceAccessIcon accessMode={teamspace.accessMode} />{teamspace.isDefault ? "Default" : teamspace.accessMode}</span></td>
-            <td><span className="flex items-center gap-1.5"><UsersIcon className="size-4 text-muted-foreground" />{teamspace.memberCount ?? 0}</span></td>
+            <td><span className="flex items-center gap-1.5"><UsersIcon className="size-4 text-content-secondary" />{teamspace.memberCount ?? 0}</span></td>
           </tr>
           {expanded ? (
             <Fragment>
@@ -764,12 +764,12 @@ function TeamspacesLibraryTable({
                       />
                     </div>
                   </td>
-                  <td className="text-muted-foreground">—</td>
-                  <td className="text-muted-foreground">{getHomepageRowType(row)}</td>
+                  <td className="text-content-secondary">—</td>
+                  <td className="text-content-secondary">{getHomepageRowType(row)}</td>
                   <td />
                   <td />
                 </tr>
-              )) : <tr aria-label={`${teamspace.name} contents`}><td className="h-8 text-muted-foreground" colSpan={5}>No pages yet</td></tr>}
+              )) : <tr aria-label={`${teamspace.name} contents`}><td className="h-8 text-content-secondary" colSpan={5}>No pages yet</td></tr>}
             </Fragment>
           ) : null}
         </Fragment>;
@@ -809,9 +809,9 @@ function buildTeamspaceLibraryRows(rows: HomepageRow[], teamspaceId: string) {
 }
 
 function TeamspaceAccessIcon({ accessMode }: { accessMode: TeamspaceAccessMode }) {
-  if (accessMode === "open") return <Globe2Icon className="size-4 text-muted-foreground" />;
-  if (accessMode === "private") return <LockIcon className="size-4 text-muted-foreground" />;
-  return <UsersIcon className="size-4 text-muted-foreground" />;
+  if (accessMode === "open") return <Globe2Icon className="size-4 text-content-secondary" />;
+  if (accessMode === "private") return <LockIcon className="size-4 text-content-secondary" />;
+  return <UsersIcon className="size-4 text-content-secondary" />;
 }
 
 function CreateLibraryTeamspaceDialog({ open, onOpenChange, workspaceId }: { open: boolean; onOpenChange: (open: boolean) => void; workspaceId: string | null | undefined }) {

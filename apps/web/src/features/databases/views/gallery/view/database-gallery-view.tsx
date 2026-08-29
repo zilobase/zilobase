@@ -336,7 +336,7 @@ export function DatabaseGalleryView() {
       )}
       {hasNextPage || isFetchingNextPage ? (
         <div
-          className="flex h-12 items-center justify-center gap-2 text-sm text-muted-foreground"
+          className="flex h-12 items-center justify-center gap-2 text-sm text-content-secondary"
           ref={sentinelRef}
         >
           {isFetchingNextPage ? (

@@ -81,7 +81,7 @@ function DatabaseSortMenuContent({
             className="flex items-center gap-2"
             key={`${sort.column}:${index}`}
           >
-            <ArrowDownUp className="size-4 text-muted-foreground" />
+            <ArrowDownUp className="size-4 text-content-secondary" />
             <Select
               onValueChange={(field) =>
                 onUpdateDatabaseSort(index, { column: field })
@@ -117,7 +117,7 @@ function DatabaseSortMenuContent({
             </Select>
             <button
               aria-label={`Remove ${sort.label} sort`}
-              className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
+              className="inline-flex size-8 items-center justify-center rounded-md text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
               onClick={() => onRemoveDatabaseSort(index)}
               type="button"
             >
@@ -133,7 +133,7 @@ function DatabaseSortMenuContent({
         >
           <DropDrawerTrigger asChild>
             <button
-              className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
+              className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
               type="button"
             >
               <Plus className="size-4" />
@@ -157,7 +157,7 @@ function DatabaseSortMenuContent({
         </DropDrawer>
       ) : null}
       <button
-        className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground disabled:pointer-events-none disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral disabled:pointer-events-none disabled:opacity-50"
         disabled={activeDatabaseSorts.length === 0}
         onClick={onClearDatabaseSort}
         type="button"
@@ -200,7 +200,7 @@ function DatabaseSortNestedMenuContent({
               <DropDrawerSubTrigger>
                 <ArrowDownUp />
                 <span className="truncate">{sort.label}</span>
-                <span className="ml-auto shrink-0 text-muted-foreground">
+                <span className="ml-auto shrink-0 text-content-secondary">
                   {getSortDirectionLabel(sort.direction)}
                 </span>
               </DropDrawerSubTrigger>
@@ -219,7 +219,7 @@ function DatabaseSortNestedMenuContent({
                       {option.icon}
                       <span>{option.label}</span>
                       {option.value === sort.column ? (
-                        <Check className="ml-auto text-foreground" />
+                        <Check className="ml-auto text-content-primary" />
                       ) : null}
                     </DropDrawerItem>
                   )}
@@ -232,7 +232,7 @@ function DatabaseSortNestedMenuContent({
                   >
                     <span>{getSortDirectionLabel(direction)}</span>
                     {sort.direction === direction ? (
-                      <Check className="ml-auto text-foreground" />
+                      <Check className="ml-auto text-content-primary" />
                     ) : null}
                   </DropDrawerItem>
                 ))}

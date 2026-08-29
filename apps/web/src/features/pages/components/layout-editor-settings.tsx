@@ -22,7 +22,7 @@ function SettingsSection({
 }) {
   return (
     <section className="mt-6">
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-content-secondary">
         {title}
       </h3>
       {children}
@@ -63,7 +63,7 @@ export function LayoutEditorSettings({
   onFullWidthChange,
 }: LayoutEditorSettingsProps) {
   return (
-    <aside className="w-[min(22rem,100vw)] shrink-0 overflow-y-auto border-r bg-background p-5">
+    <aside className="w-[min(22rem,100vw)] shrink-0 overflow-y-auto border-r bg-surface-canvas p-5">
       <h2 className="text-lg font-semibold">Page settings</h2>
 
       <SettingsSection title="Structure">
@@ -73,13 +73,13 @@ export function LayoutEditorSettings({
               className={cn(
                 "rounded-lg border p-3 text-left capitalize",
                 draft.structure === structure &&
-                  "border-primary bg-primary-subtle ring-1 ring-primary",
+                  "border-action-selected-border bg-action-selected-subtle ring-1 ring-action-selected-border",
               )}
               key={structure}
               onClick={() => onChange({ ...draft, structure })}
               type="button"
             >
-              <div className="mb-2 h-12 rounded border bg-subtle-surface" />
+              <div className="mb-2 h-12 rounded border bg-surface-subtle" />
               <span className="text-sm font-medium">{structure}</span>
             </button>
           ))}

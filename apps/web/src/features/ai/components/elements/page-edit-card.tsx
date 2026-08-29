@@ -86,50 +86,50 @@ export function PageEditCard({
               : "Page updated"
 
   return (
-    <div className="not-prose mb-3 space-y-3 rounded-xl border bg-card p-3">
+    <div className="not-prose mb-3 space-y-3 rounded-xl border bg-surface-card p-3">
       <div className="flex items-start gap-2">
-        <FilePenLineIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <FilePenLineIcon className="mt-0.5 size-4 shrink-0 text-content-secondary" />
         <div className="min-w-0 flex-1 space-y-1">
           <p className="font-medium text-sm">{title}</p>
-          <p className="text-muted-foreground text-sm">{summary}</p>
+          <p className="text-content-secondary text-sm">{summary}</p>
           {isPreview ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-content-secondary text-xs">
               Apply the update or use Show changes to preview it in the editor.
             </p>
           ) : null}
           {pageChangedSinceSuggestion ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-content-secondary text-xs">
               The page has changed since this suggestion was created.
             </p>
           ) : null}
           {pageChangedSinceApplied ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-content-secondary text-xs">
               The page has changed since this update was applied.
             </p>
           ) : null}
           {pageChangedSinceUndo ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-content-secondary text-xs">
               The page has changed since this update was undone.
             </p>
           ) : null}
           {toolError ? (
-            <p className="text-destructive text-sm">{toolError}</p>
+            <p className="text-action-danger-text text-sm">{toolError}</p>
           ) : null}
           {snapshot?.status === "failed" && snapshotErrorMessage ? (
-            <p className="text-destructive text-sm">{snapshotErrorMessage}</p>
+            <p className="text-action-danger-text text-sm">{snapshotErrorMessage}</p>
           ) : null}
           {isDeclined && isBaselineCurrent ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-content-secondary text-xs">
               This suggested change was not applied.
             </p>
           ) : null}
           {isUndone && isReviewAvailable ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-content-secondary text-xs">
               This change was undone. Apply it again or use Show changes to preview.
             </p>
           ) : null}
           {isUndone && !isReviewAvailable ? (
-            <p className="text-muted-foreground text-xs">This change was undone.</p>
+            <p className="text-content-secondary text-xs">This change was undone.</p>
           ) : null}
         </div>
       </div>
@@ -214,7 +214,7 @@ export function PageEditCard({
           </Button>
         ) : null}
         {isApplying ? (
-          <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
+          <span className="inline-flex items-center gap-1 text-content-secondary text-xs">
             <Loader2Icon className="size-3.5 animate-spin" />
             Preparing update...
           </span>

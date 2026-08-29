@@ -299,15 +299,15 @@ export const PromptInputAttachments = ({
     <div className={cn("flex flex-wrap gap-1.5 px-2 pt-2", className)}>
       {attachments.files.map((file) => (
         <div
-          className="flex max-w-56 items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-xs"
+          className="flex max-w-56 items-center gap-1.5 rounded-md border bg-surface-canvas px-2 py-1 text-xs"
           key={file.id}
           title={file.filename}
         >
-          <FileIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <FileIcon className="size-3.5 shrink-0 text-content-secondary" />
           <span className="truncate">{file.filename ?? "Attachment"}</span>
           <button
             aria-label={`Remove ${file.filename ?? "attachment"}`}
-            className="ml-0.5 rounded-sm text-muted-foreground hover:text-foreground"
+            className="ml-0.5 rounded-sm text-content-secondary hover:text-content-primary"
             onClick={() => attachments.remove(file.id)}
             type="button"
           >
@@ -858,7 +858,7 @@ export const PromptInput = ({
         ref={formRef}
         {...props}
       >
-        <InputGroup className={cn("overflow-hidden bg-accent dark:bg-accent", inputGroupClassName)}>
+        <InputGroup className={cn("overflow-hidden bg-control-background", inputGroupClassName)}>
           {children}
         </InputGroup>
       </form>
@@ -1098,7 +1098,7 @@ export const PromptInputButton = ({
       <TooltipContent side={side}>
         {tooltipContent}
         {shortcut && (
-          <span className="ml-2 text-muted-foreground">{shortcut}</span>
+          <span className="ml-2 text-content-secondary">{shortcut}</span>
         )}
       </TooltipContent>
     </Tooltip>
@@ -1217,8 +1217,8 @@ export const PromptInputSelectTrigger = ({
 }: PromptInputSelectTriggerProps) => (
   <SelectTrigger
     className={cn(
-      "border-none bg-transparent font-medium text-muted-foreground shadow-none transition-colors",
-      "hover:bg-accent hover:text-foreground aria-expanded:bg-accent aria-expanded:text-foreground",
+      "border-none bg-transparent font-medium text-content-secondary shadow-none transition-colors",
+      "hover:bg-action-neutral-hover hover:text-content-primary aria-expanded:bg-action-neutral-hover aria-expanded:text-content-primary",
       className
     )}
     {...props}
@@ -1307,7 +1307,7 @@ export const PromptInputTabLabel = ({
   // oxlint-disable-next-line eslint-plugin-jsx-a11y(heading-has-content)
   <h3
     className={cn(
-      "mb-2 px-3 font-medium text-muted-foreground text-xs",
+      "mb-2 px-3 font-medium text-content-secondary text-xs",
       className
     )}
     {...props}
@@ -1331,7 +1331,7 @@ export const PromptInputTabItem = ({
 }: PromptInputTabItemProps) => (
   <div
     className={cn(
-      "flex items-center gap-2 px-3 py-2 text-xs hover:bg-accent",
+      "flex items-center gap-2 px-3 py-2 text-xs hover:bg-action-neutral-hover",
       className
     )}
     {...props}

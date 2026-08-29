@@ -30,7 +30,7 @@ function canvasColorOption(
       id,
       label,
       fill: "transparent",
-      stroke: "var(--color-foreground)",
+      stroke: "var(--zb-color-content-text-primary)",
     }
   }
 
@@ -38,7 +38,7 @@ function canvasColorOption(
     id,
     label,
     fill: getPaletteColor(id) ?? "transparent",
-    stroke: getPaletteColor(id) ?? "var(--color-foreground)",
+    stroke: getPaletteColor(id) ?? "var(--zb-color-content-text-primary)",
   }
 }
 

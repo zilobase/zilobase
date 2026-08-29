@@ -4,6 +4,20 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.52
+
+### Changed
+
+- Application colors now come from one generated semantic token contract shared by the web client, hosted authentication pages, and desktop authentication surfaces.
+- Shared controls, navigation, tabs, database views, editor surfaces, and Ask AI now use consistent semantic surface, content, border, action, status, and palette roles.
+- Theme selection now keeps appearance mode independent from the Default and Notion families, and previously stored retired theme families safely normalize to Default.
+- Sidebar and tab primitives now expose a smaller application-specific API with consistent sizing, spacing, focus, active, and hover states.
+
+### Fixed
+
+- Literal color exceptions are explicitly documented and validated, preventing accidental reintroduction of legacy color utilities and variables.
+- Hosted and desktop authentication pages stay synchronized with the canonical light and dark token palettes during builds and releases.
+
 ## 0.0.51
 
 ### Added

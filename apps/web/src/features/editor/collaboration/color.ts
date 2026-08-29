@@ -1,7 +1,7 @@
 import { collaboratorColorIds } from "@/shared/lib/color-tokens"
 
 const collaboratorColorTokens = collaboratorColorIds.map(
-  (id) => `--editor-${id}` as const,
+  (id) => `--zb-color-palette-text-${id}` as const,
 )
 
 export function collaborationColor(userId: string) {

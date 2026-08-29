@@ -160,7 +160,7 @@ function DesktopServerSection() {
           <ServerIcon className="size-4" />
           Desktop servers
         </h3>
-        <p className="max-w-2xl text-sm text-muted-foreground">
+        <p className="max-w-2xl text-sm text-content-secondary">
           Switch between saved servers without signing out of the others.
           Removing a server from this device deletes only that instance&apos;s
           credentials, cached data, offline documents, and tabs.
@@ -184,7 +184,7 @@ function DesktopServerSection() {
             : []
         ).map((profile) => (
           <div
-            className="flex items-center justify-between gap-3 rounded-lg border bg-subtle-surface p-3 text-sm"
+            className="flex items-center justify-between gap-3 rounded-lg border bg-surface-subtle p-3 text-sm"
             key={`${profile.server.instanceId}:${profile.server.apiOrigin}`}
           >
             <div className="min-w-0">
@@ -192,7 +192,7 @@ function DesktopServerSection() {
                 {profile.server.displayName}
                 {profile.active ? " · Active" : ""}
               </p>
-              <p className="truncate text-xs/relaxed text-muted-foreground">
+              <p className="truncate text-xs/relaxed text-content-secondary">
                 {profile.server.apiOrigin}
               </p>
             </div>
@@ -325,7 +325,7 @@ function DiagnosticsSection() {
             <BugIcon className="size-4" />
             Desktop diagnostics
           </h3>
-          <p className="max-w-2xl text-sm text-muted-foreground">
+          <p className="max-w-2xl text-sm text-content-secondary">
             View local startup logs or create an archive to share when the desktop
             app does not start correctly. Authentication tokens, keyring values,
             account details, and document content are excluded.
@@ -352,7 +352,7 @@ function DiagnosticsSection() {
           </Button>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-content-secondary">
         If the window is blank, run <code>zilobase-client --diagnostics</code> in
         a terminal. The archive is written to the current directory.
       </p>
@@ -379,7 +379,7 @@ function AppearanceSection() {
     <section className="grid gap-3">
       <div className="space-y-1">
         <h3 className="font-heading text-base font-medium">Appearance</h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-content-secondary">
           Choose how Zilobase looks on this device.
         </p>
       </div>
@@ -395,7 +395,7 @@ function AppearanceSection() {
             return (
               <button
                 aria-pressed={selected}
-                className="group relative grid w-40 gap-1.5 rounded-lg p-1 text-left text-sm font-medium outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-accent"
+                className="group relative grid w-40 gap-1.5 rounded-lg p-1 text-left text-sm font-medium outline-none transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring aria-pressed:bg-action-neutral-hover"
                 key={option.value}
                 onClick={() => setTheme(option.value as AppearanceModeId)}
                 type="button"
@@ -407,7 +407,7 @@ function AppearanceSection() {
                 />
                 <span className="flex items-center justify-between px-0.5">
                   {option.label}
-                  {selected ? <CheckIcon className="size-4 text-primary" /> : null}
+                  {selected ? <CheckIcon className="size-4 text-action-selected-text" /> : null}
                 </span>
               </button>
             )
@@ -415,7 +415,7 @@ function AppearanceSection() {
         </div>
 
         <div className="grid gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Theme</span>
+          <span className="text-xs font-medium text-content-secondary">Theme</span>
           <Select
             value={themeFamily}
             onValueChange={(value) => setThemeFamily(value as ThemeFamilyId)}
@@ -440,12 +440,12 @@ function AppearanceSection() {
           <div className="grid max-w-md gap-2">
             <div className="flex items-center justify-between gap-4">
               <label
-                className="text-xs font-medium text-muted-foreground"
+                className="text-xs font-medium text-content-secondary"
                 htmlFor="desktop-translucency"
               >
                 Translucency
               </label>
-              <span className="text-xs tabular-nums text-muted-foreground">
+              <span className="text-xs tabular-nums text-content-secondary">
                 {translucency}%
               </span>
             </div>
@@ -457,7 +457,7 @@ function AppearanceSection() {
               step={1}
               value={[translucency]}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-content-secondary">
               Let a little of the desktop show through the entire Zilobase
               window.
             </p>
@@ -482,8 +482,8 @@ function ThemePreview({
       aria-hidden="true"
       className={`relative aspect-[8/5] w-full overflow-hidden rounded-lg border-2 transition-colors ${
         selected
-          ? "border-primary ring-2 ring-ring"
-          : "border-border group-hover:border-ring"
+          ? "border-action-selected-border ring-2 ring-action-focus-ring"
+          : "border-stroke-default group-hover:border-action-focus-ring"
       }`}
     >
       {mode === "system" ? (
@@ -526,20 +526,20 @@ function ThemePreviewPane({
 }) {
   return (
     <div
-      className={`${scheme} overflow-hidden bg-background ${className}`}
-      data-theme={themeFamily}
+      className={`${scheme} overflow-hidden bg-surface-canvas ${className}`}
+      data-theme-family={themeFamily}
     >
       <div className={`absolute inset-y-0 ${sceneClassName}`}>
-        <div className="absolute inset-y-0 left-0 w-[27%] border-r border-border bg-sidebar" />
+        <div className="absolute inset-y-0 left-0 w-[27%] border-r border-stroke-default bg-surface-navigation" />
         <div className="absolute left-[13%] top-[13%] flex -translate-x-1/2 gap-1">
-          <span className="size-1.5 rounded-full bg-muted-foreground" />
-          <span className="size-1.5 rounded-full bg-muted-foreground" />
-          <span className="size-1.5 rounded-full bg-muted-foreground" />
+          <span className="size-1.5 rounded-full bg-content-secondary" />
+          <span className="size-1.5 rounded-full bg-content-secondary" />
+          <span className="size-1.5 rounded-full bg-content-secondary" />
         </div>
         <div className="absolute left-[35%] top-[34%] grid w-[51%] gap-2">
-          <span className="h-2 rounded-full bg-muted-foreground" />
-          <span className="h-2 w-4/5 rounded-full bg-muted-foreground" />
-          <span className="h-2 w-3/5 rounded-full bg-muted-foreground" />
+          <span className="h-2 rounded-full bg-content-secondary" />
+          <span className="h-2 w-4/5 rounded-full bg-content-secondary" />
+          <span className="h-2 w-3/5 rounded-full bg-content-secondary" />
         </div>
       </div>
     </div>
@@ -626,7 +626,7 @@ function OfflineAccessSection() {
             <HardDriveIcon className="size-4" />
             Offline access on this Mac
           </h3>
-          <p className="max-w-2xl text-sm text-muted-foreground">
+          <p className="max-w-2xl text-sm text-content-secondary">
             Choose workspaces that may store downloaded pages and databases locally.
             Content is not application-encrypted; protection relies on your macOS
             account and FileVault.
@@ -688,7 +688,7 @@ function OfflineAccessSection() {
             <div className="flex items-center justify-between gap-3 p-3" key={workspace.id}>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{workspace.name}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-content-secondary">
                   {items.length} downloaded · {items.filter((item) => item.dirty || item.blocked).length} unsynced
                   {lastSync ? ` · Last sync ${new Date(lastSync).toLocaleString()}` : ""}
                 </p>
@@ -706,7 +706,7 @@ function OfflineAccessSection() {
           )
         })}
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-content-secondary">
         Offline access ends when the cached session expires. Drafts stay stored but
         locked until you reconnect and sign in.
       </p>

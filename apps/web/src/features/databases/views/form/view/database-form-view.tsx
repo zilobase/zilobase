@@ -198,7 +198,7 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
               footer={
                 canEditQuestions && property && isOptionProperty(property) ? (
                   <Button
-                    className="relative z-10 h-8 gap-2 px-1 text-muted-foreground"
+                    className="relative z-10 h-8 gap-2 px-1 text-content-secondary"
                     onClick={(event) => {
                       event.stopPropagation()
                       void addFormPropertyOption(
@@ -377,8 +377,8 @@ function FormQuestion({
         className={cn(
           "group/question relative space-y-4",
           !interactive &&
-            "cursor-pointer rounded-xl border border-primary bg-card p-5 transition-colors hover:border-primary sm:p-6",
-          open && "border-primary ring-1 ring-primary",
+            "cursor-pointer rounded-xl border border-action-selected-border bg-surface-card p-5 transition-colors hover:border-action-selected-border sm:p-6",
+          open && "border-action-selected-border ring-1 ring-action-selected-border",
         )}
         onClick={() => editable && onOpenChange(true)}
       >
@@ -403,7 +403,7 @@ function FormQuestion({
               <h3 className="text-lg font-semibold tracking-tight">
                 {settings.label}
                 {settings.required ? (
-                  <span className="ml-1 text-destructive" aria-hidden>
+                  <span className="ml-1 text-action-danger-text" aria-hidden>
                     *
                   </span>
                 ) : null}
@@ -413,7 +413,7 @@ function FormQuestion({
               editable ? (
                 <Input
                   aria-label={`${settings.label} description`}
-                  className="relative z-10 h-auto border-0 bg-transparent p-0 text-sm text-muted-foreground shadow-none focus-visible:ring-0"
+                  className="relative z-10 h-auto border-0 bg-transparent p-0 text-sm text-content-secondary shadow-none focus-visible:ring-0"
                   defaultValue={settings.description}
                   key={settings.description}
                   onBlur={(event) =>
@@ -423,13 +423,13 @@ function FormQuestion({
                   placeholder="Description (optional)"
                 />
               ) : settings.description ? (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-content-secondary">
                   {settings.description}
                 </p>
               ) : null
             ) : null}
             {defaultDescription ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-content-secondary">
                 {defaultDescription}
               </p>
             ) : null}
@@ -439,8 +439,8 @@ function FormQuestion({
               <Button
                 aria-label={`${settings.label} question options`}
                 className={cn(
-                  "relative z-10 text-muted-foreground opacity-0 group-focus-within/question:opacity-100 group-hover/question:opacity-100",
-                  open && "bg-accent opacity-100",
+                  "relative z-10 text-content-secondary opacity-0 group-focus-within/question:opacity-100 group-hover/question:opacity-100",
+                  open && "bg-action-neutral-hover opacity-100",
                 )}
                 onClick={(event) => event.stopPropagation()}
                 size="icon-sm"
@@ -509,7 +509,7 @@ function QuestionOptions({
       onCloseAutoFocus={(event) => event.preventDefault()}
       side="left"
     >
-      <DropDrawerLabel className="py-2 text-sm font-semibold text-foreground">
+      <DropDrawerLabel className="py-2 text-sm font-semibold text-content-primary">
         Question options
       </DropDrawerLabel>
       {acceptsAnswers ? (
@@ -550,7 +550,7 @@ function QuestionOptions({
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
           <div className="flex items-center gap-2 p-1.5">
-            <PropertyIcon className="size-4 shrink-0 text-muted-foreground" />
+            <PropertyIcon className="size-4 shrink-0 text-content-secondary" />
             <Input
               aria-label="Linked property name"
               className="h-8"
@@ -732,11 +732,11 @@ function DatabaseFormPropertyControl({
             type="button"
             variant="outline"
           >
-            <span className={cn(!displayValue && "text-muted-foreground")}>
+            <span className={cn(!displayValue && "text-content-secondary")}>
               {displayValue ||
                 (interactive ? "Your answer" : "Respondent's answer")}
             </span>
-            <CalendarIcon className="text-muted-foreground" />
+            <CalendarIcon className="text-content-secondary" />
           </Button>
         }
         value={dateValue}
@@ -747,7 +747,7 @@ function DatabaseFormPropertyControl({
   if (cellKind === "select") {
     if (options.length === 0) {
       return (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-content-secondary">
           No options configured for this property.
         </p>
       )
@@ -898,7 +898,7 @@ function FormOptionLabel({ option }: { option: FormOption }) {
       ) : null}
       <span>{option.name}</span>
       {option.suffix ? (
-        <span className="text-muted-foreground">{option.suffix}</span>
+        <span className="text-content-secondary">{option.suffix}</span>
       ) : null}
     </span>
   )

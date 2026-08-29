@@ -14,7 +14,7 @@ import { ViewTypeOptionGrid } from "./view-type-option-grid";
 
 export function DataSourceSectionLabel({ children }: { children: ReactNode }) {
   return (
-    <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+    <div className="px-2 py-1 text-xs font-medium text-content-secondary">
       {children}
     </div>
   );
@@ -22,7 +22,7 @@ export function DataSourceSectionLabel({ children }: { children: ReactNode }) {
 
 export function DataSourceAddGlyph() {
   return (
-    <span className="inline-flex size-4 items-center justify-center text-base leading-none text-muted-foreground">
+    <span className="inline-flex size-4 items-center justify-center text-base leading-none text-content-secondary">
       +
     </span>
   );
@@ -44,12 +44,12 @@ export function DataSourceMenuItem({
     <DropDrawerSub title={item.name}>
       <DropDrawerSubTrigger>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          {icon ?? <Database className="text-muted-foreground" />}
+          {icon ?? <Database className="text-content-secondary" />}
           <span className="truncate">{item.name}</span>
-          <span className="ml-auto shrink-0 text-muted-foreground">
+          <span className="ml-auto shrink-0 text-content-secondary">
             {viewLabel}
           </span>
-          <MoreHorizontal className="text-muted-foreground" />
+          <MoreHorizontal className="text-content-secondary" />
         </div>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-56">
@@ -102,10 +102,10 @@ export function LinkedDataSourceMenuItem({
       disabled={!onUnlink}
       onSelect={() => onUnlink?.(item.id)}
     >
-      {icon ?? <Database className="text-muted-foreground" />}
+      {icon ?? <Database className="text-content-secondary" />}
       <span className="min-w-0 flex-1 truncate">{item.name}</span>
-      <span className="shrink-0 text-muted-foreground">{viewLabel}</span>
-      <X aria-label={`Remove ${item.name}`} className="text-muted-foreground" />
+      <span className="shrink-0 text-content-secondary">{viewLabel}</span>
+      <X aria-label={`Remove ${item.name}`} className="text-content-secondary" />
     </DropDrawerItem>
   );
 }

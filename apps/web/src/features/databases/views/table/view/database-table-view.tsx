@@ -597,7 +597,7 @@ function DatabaseTableSelectionToolbar({
               </>
             ) : null}
             {!showEditProperty && !showCopyLinks && !showClearSelection ? (
-              <div className="px-2 py-2 text-sm text-muted-foreground">
+              <div className="px-2 py-2 text-sm text-content-secondary">
                 No actions found.
               </div>
             ) : null}
@@ -3027,7 +3027,7 @@ export function DatabaseTableView() {
                             />
                           </span>
                         ) : PropertyIcon ? (
-                          <PropertyIcon className="size-4 shrink-0 text-muted-foreground" />
+                          <PropertyIcon className="size-4 shrink-0 text-content-secondary" />
                         ) : null}
                         <span className="truncate">
                           {property.property.name}
@@ -3689,7 +3689,7 @@ export function DatabaseTableView() {
             {hasNextPage || isFetchingNextPage ? (
               <div
                 aria-hidden={!isFetchingNextPage}
-                className="database-rows-pagination-status flex items-center justify-center gap-2 px-4 py-3 text-sm text-muted-foreground"
+                className="database-rows-pagination-status flex items-center justify-center gap-2 px-4 py-3 text-sm text-content-secondary"
                 ref={rowsScrollSentinelRef}
                 style={getTableMinWidthStyle(tableMinWidth)}
               >

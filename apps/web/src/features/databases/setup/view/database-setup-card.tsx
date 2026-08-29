@@ -703,7 +703,7 @@ export function DatabaseSetupCard({
           </div>
           <PromptInput
             className="database-setup-prompt-form"
-            inputGroupClassName="h-auto items-stretch overflow-visible focus-within:border-input focus-within:ring-0 has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+            inputGroupClassName="h-auto items-stretch overflow-visible border-stroke-default focus-within:border-stroke-default focus-within:ring-0 has-[[data-slot=input-group-control]:focus-visible]:border-stroke-default has-[[data-slot=input-group-control]:focus-visible]:ring-0"
             onSubmit={handlePromptSubmit}
           >
             <div className="relative w-full min-w-0 flex-1 self-stretch">
@@ -820,7 +820,7 @@ export function DatabaseSetupCard({
         return (
           <div className="space-y-3 px-3 py-3 pr-12">
             <SetupOptionButton
-              icon={<ChevronLeft className="size-4 text-muted-foreground" />}
+              icon={<ChevronLeft className="size-4 text-content-secondary" />}
               onClick={() => {
                 setCreatingLinkView(false);
                 setLinkViewName("");
@@ -859,7 +859,7 @@ export function DatabaseSetupCard({
       return (
         <div className="flex max-h-[min(32rem,calc(100vh-5rem))] min-h-0 flex-col px-1 pb-1">
           <SetupOptionButton
-            icon={<ChevronLeft className="size-4 text-muted-foreground" />}
+            icon={<ChevronLeft className="size-4 text-content-secondary" />}
             onClick={() => {
               setSelectedLinkDatabaseId(null);
               setCreatingLinkView(false);
@@ -880,16 +880,16 @@ export function DatabaseSetupCard({
             >
               Create a new view
             </SetupOptionButton>
-            <div className="px-2 pt-3 text-muted-foreground text-xs">
+            <div className="px-2 pt-3 text-content-secondary text-xs">
               Views on {databaseName}
             </div>
             {isLoadingLinkViews ? (
-              <div className="flex items-center justify-center gap-2 px-2 py-8 text-muted-foreground text-sm">
+              <div className="flex items-center justify-center gap-2 px-2 py-8 text-content-secondary text-sm">
                 <Loader2 className="size-4 animate-spin" />
                 Loading views...
               </div>
             ) : views.length === 0 ? (
-              <div className="px-2 py-8 text-center text-muted-foreground text-sm">
+              <div className="px-2 py-8 text-center text-content-secondary text-sm">
                 No existing views.
               </div>
             ) : (
@@ -932,9 +932,9 @@ export function DatabaseSetupCard({
 
     return (
       <div className="flex max-h-[min(32rem,calc(100vh-5rem))] min-h-0 flex-col overflow-hidden px-1 pb-1">
-        <div className="shrink-0 space-y-2 bg-card">
+        <div className="shrink-0 space-y-2 bg-surface-card">
           <SetupOptionButton
-            icon={<ChevronLeft className="size-4 text-muted-foreground" />}
+            icon={<ChevronLeft className="size-4 text-content-secondary" />}
             onClick={() => {
               setView("main");
               setSelectedLinkDatabaseId(null);
@@ -946,7 +946,7 @@ export function DatabaseSetupCard({
             Back
           </SetupOptionButton>
           <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-content-secondary" />
             <Input
               className="h-9 pl-8"
               onChange={(event) => setLinkSearch(event.currentTarget.value)}
@@ -957,12 +957,12 @@ export function DatabaseSetupCard({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-2">
           {isLoadingPages ? (
-            <div className="flex items-center justify-center gap-2 px-2 py-8 text-muted-foreground text-sm">
+            <div className="flex items-center justify-center gap-2 px-2 py-8 text-content-secondary text-sm">
               <Loader2 className="size-4 animate-spin" />
               Loading databases...
             </div>
           ) : filteredLinkableDatabases.length === 0 ? (
-            <div className="px-2 py-8 text-center text-muted-foreground text-sm">
+            <div className="px-2 py-8 text-center text-content-secondary text-sm">
               No databases available.
             </div>
           ) : (
@@ -982,7 +982,7 @@ export function DatabaseSetupCard({
               >
                 <span className="flex min-w-0 flex-col">
                   <span className="truncate">{database.name}</span>
-                  <span className="truncate text-muted-foreground text-xs">
+                  <span className="truncate text-content-secondary text-xs">
                     {pageName}
                   </span>
                 </span>
@@ -1045,8 +1045,8 @@ export function DatabaseSetupCard({
         </Button>
         {view === "main" ? renderMainContent() : renderLinkPicker()}
         {isSubmitting ? (
-          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-backdrop backdrop-blur-[1px]">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-effect-backdrop backdrop-blur-[1px]">
+            <Loader2 className="size-5 animate-spin text-content-secondary" />
           </div>
         ) : null}
       </div>

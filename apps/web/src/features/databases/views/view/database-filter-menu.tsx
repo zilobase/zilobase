@@ -63,7 +63,7 @@ function DatabaseFilterMenuContent({
     <div className="w-80 max-w-[calc(100vw-2rem)] p-1">
       {showTitle ? (
         <div className="mb-2 flex items-center gap-2 px-1 py-1">
-          <Filter className="size-4 shrink-0 text-muted-foreground" />
+          <Filter className="size-4 shrink-0 text-content-secondary" />
           <div className="min-w-0 flex-1 text-sm font-semibold">Filter</div>
         </div>
       ) : null}
@@ -111,7 +111,7 @@ function DatabaseFilterMenuContent({
       ) : null}
       {activeDatabaseFilters.length === 0 && !addFilterPickerOpen ? (
         <div className="mb-2 px-1">
-          <div className="rounded-md bg-subtle-surface px-3 py-2 text-xs text-muted-foreground">
+          <div className="rounded-md bg-surface-subtle px-3 py-2 text-xs text-content-secondary">
             No filters yet
           </div>
         </div>

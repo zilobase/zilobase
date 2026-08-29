@@ -99,11 +99,11 @@ export function OfflineAvailabilityAction(props: Props) {
       }}
     >
       {pending ? (
-        <LoaderCircleIcon className="animate-spin text-muted-foreground" />
+        <LoaderCircleIcon className="animate-spin text-content-secondary" />
       ) : item ? (
-        <CheckIcon className="text-muted-foreground" />
+        <CheckIcon className="text-content-secondary" />
       ) : (
-        <DownloadIcon className="text-muted-foreground" />
+        <DownloadIcon className="text-content-secondary" />
       )}
       <span>
         {pending

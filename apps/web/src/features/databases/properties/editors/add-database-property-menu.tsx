@@ -107,7 +107,7 @@ export function AddDatabasePropertyMenu({
         <div className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm">
           <Search className="size-4" />
           <input
-            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-content-secondary"
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => event.stopPropagation()}
             placeholder="Select type"

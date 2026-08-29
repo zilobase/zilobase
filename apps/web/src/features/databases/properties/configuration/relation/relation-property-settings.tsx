@@ -237,7 +237,7 @@ export function RelationPropertySettings({
           <TooltipTrigger asChild>
             <div>
               <DropDrawerItem
-                className="text-muted-foreground"
+                className="text-content-secondary"
                 onSelect={() =>
                   void navigate({
                     params: { databaseId: selectedDatabase.value },
@@ -248,7 +248,7 @@ export function RelationPropertySettings({
               >
                 <Database />
                 <span>Related to</span>
-                <span className="ml-auto max-w-36 truncate text-muted-foreground">
+                <span className="ml-auto max-w-36 truncate text-content-secondary">
                   {selectedDatabase.label}
                 </span>
               </DropDrawerItem>
@@ -271,7 +271,7 @@ export function RelationPropertySettings({
         >
           <Hash />
           <span>Limit</span>
-          <span className="ml-auto text-muted-foreground">
+          <span className="ml-auto text-content-secondary">
             {limit === "one_page" ? "1 page" : "No limit"}
           </span>
         </DropDrawerItem>
@@ -380,25 +380,25 @@ export function RelationPropertySettings({
               }
               value={repairPrimarySource}
             >
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent">
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover">
                 <RadioGroupItem className="mt-0.5" value="source" />
                 <span className="grid gap-1">
                   <span className="text-sm font-medium">
                     Use this database as primary
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-content-secondary">
                     Mirror {sourceDatabaseName || "this database"} links into{" "}
                     {selectedDatabase.label}.
                   </span>
                 </span>
               </label>
-              <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent">
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover">
                 <RadioGroupItem className="mt-0.5" value="related" />
                 <span className="grid gap-1">
                   <span className="text-sm font-medium">
                     Use related database as primary
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-content-secondary">
                     Mirror {selectedDatabase.label} links into{" "}
                     {sourceDatabaseName || "this database"}.
                   </span>
@@ -443,7 +443,7 @@ export function RelationPropertySettings({
             <Database />
             <div className="min-w-0 flex-1">
               <div className="truncate">{databaseOption.label}</div>
-              <div className="truncate text-xs text-muted-foreground">
+              <div className="truncate text-xs text-content-secondary">
                 {databaseOption.pageName}
               </div>
             </div>

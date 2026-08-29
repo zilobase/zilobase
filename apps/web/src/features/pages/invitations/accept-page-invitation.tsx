@@ -49,10 +49,10 @@ export default function AcceptPageInvitationPage() {
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background p-6">
+    <main className="flex min-h-svh items-center justify-center bg-surface-canvas p-6">
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center">
-          <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-muted text-foreground">
+          <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-surface-muted text-content-primary">
             {hasAccepted ? (
               <CheckCircle2Icon className="size-5" />
             ) : !invitationId || invitationQuery.isError || isUnavailable ? (

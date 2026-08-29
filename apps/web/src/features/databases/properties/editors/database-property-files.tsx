@@ -10,12 +10,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/ui/popover"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
 
 type FilesLimitValue = "one_file" | "no_limit"
 
 export function DatabasePropertyFiles({
   editable = true,
+  emptyLabel,
   label,
   onOpenChange,
   onSelect,
@@ -27,6 +28,7 @@ export function DatabasePropertyFiles({
 }: {
   databaseId?: string | null
   editable?: boolean
+  emptyLabel?: string
   label: string
   onOpenChange?: (open: boolean) => void
   onSelect: (value: string | string[]) => void
@@ -122,7 +124,7 @@ export function DatabasePropertyFiles({
   const triggerContent = files.length > 0 ? (
     files.map((file) => (
       <span
-        className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-xs font-medium leading-4 text-foreground"
+        className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-surface-canvas px-2 py-0.5 text-xs font-medium leading-4 text-content-primary"
         key={file}
       >
         <FileIcon className="size-3.5 shrink-0" />
@@ -130,12 +132,16 @@ export function DatabasePropertyFiles({
       </span>
     ))
   ) : isOpen ? (
-    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+    <span className="inline-flex items-center gap-1.5 text-content-secondary">
       <Plus className="size-4 shrink-0" />
       <span>Add a file or image</span>
     </span>
   ) : (
-    <span aria-hidden="true" className="block min-h-5 w-full" />
+    emptyLabel ? (
+      <span className="text-content-secondary">{emptyLabel}</span>
+    ) : (
+      <span aria-hidden="true" className="block min-h-5 w-full" />
+    )
   )
 
   if (!editable) {
@@ -146,7 +152,7 @@ export function DatabasePropertyFiles({
 
           return (
             <a
-              className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-background px-2 py-0.5 text-xs font-medium leading-4 text-foreground no-underline transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-surface-canvas px-2 py-0.5 text-xs font-medium leading-4 text-content-primary no-underline transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring"
               href={href}
               key={file}
               onClick={(event) => event.stopPropagation()}
@@ -161,7 +167,11 @@ export function DatabasePropertyFiles({
       </div>
     ) : (
       <span className="database-select-cell-trigger">
-        <span aria-hidden="true" className="block min-h-5 w-full" />
+        {emptyLabel ? (
+          <span className="text-content-secondary">{emptyLabel}</span>
+        ) : (
+          <span aria-hidden="true" className="block min-h-5 w-full" />
+        )}
       </span>
     )
   }
@@ -199,8 +209,8 @@ export function DatabasePropertyFiles({
           </TabsList>
           <TabsContent className="space-y-3 p-3" value="upload">
             <div className="space-y-1">
-              <div className="text-sm font-medium text-foreground">Upload</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-sm font-medium text-content-primary">Upload</div>
+              <div className="text-xs text-content-secondary">
                 Choose a file or image for this cell.
               </div>
             </div>
@@ -214,7 +224,7 @@ export function DatabasePropertyFiles({
               {isUploading ? "Uploading" : "Choose a file"}
             </Button>
             {uploadError ? (
-              <div className="text-sm text-destructive">{uploadError}</div>
+              <div className="text-sm text-action-danger-text">{uploadError}</div>
             ) : null}
             <input
               className="sr-only"
@@ -228,13 +238,13 @@ export function DatabasePropertyFiles({
           </TabsContent>
           <TabsContent className="space-y-3 p-3" value="link">
             <div className="space-y-1">
-              <div className="text-sm font-medium text-foreground">Link</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-sm font-medium text-content-primary">Link</div>
+              <div className="text-xs text-content-secondary">
                 Paste a public file URL.
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <LinkIcon className="size-4 shrink-0 text-muted-foreground" />
+              <LinkIcon className="size-4 shrink-0 text-content-secondary" />
               <Input
                 autoComplete="off"
                 onChange={(event) => setLinkUrl(event.target.value)}
@@ -260,21 +270,21 @@ export function DatabasePropertyFiles({
 
               return (
                 <div
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-action-neutral-hover"
                   key={file}
                 >
                   <a
-                    className="flex min-w-0 flex-1 items-center gap-2 text-sm text-foreground no-underline"
+                    className="flex min-w-0 flex-1 items-center gap-2 text-sm text-content-primary no-underline"
                     href={href}
                     rel="noreferrer"
                     target="_blank"
                   >
-                    <FileIcon className="size-4 shrink-0 text-muted-foreground" />
+                    <FileIcon className="size-4 shrink-0 text-content-secondary" />
                     <span className="truncate">{getFileLabel(file)}</span>
                   </a>
                   <button
                     aria-label={`Remove ${getFileLabel(file)}`}
-                    className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="inline-flex size-8 items-center justify-center rounded-md text-content-secondary transition-colors hover:bg-surface-canvas hover:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none"
                     onClick={() => removeFile(file)}
                     type="button"
                   >

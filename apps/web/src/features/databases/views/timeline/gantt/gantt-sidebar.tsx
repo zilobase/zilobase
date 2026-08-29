@@ -46,7 +46,7 @@ export function GanttSidebarItem({
   return (
     <div
       className={cn(
-        "relative flex items-center gap-2.5 p-2.5 text-xs hover:bg-secondary",
+        "relative flex items-center gap-2.5 p-2.5 text-xs hover:bg-action-secondary",
         className,
       )}
       onClick={handleClick}
@@ -62,7 +62,7 @@ export function GanttSidebarItem({
       <p className="pointer-events-none flex-1 truncate text-left font-medium">
         {feature.name}
       </p>
-      <p className="pointer-events-none text-muted-foreground">{duration}</p>
+      <p className="pointer-events-none text-content-secondary">{duration}</p>
     </div>
   )
 }
@@ -70,7 +70,7 @@ export function GanttSidebarItem({
 export function GanttSidebarHeader() {
   return (
     <div
-      className="sticky top-0 z-10 flex shrink-0 items-end justify-between gap-2.5 border-border border-b bg-backdrop p-2.5 font-medium text-muted-foreground text-xs backdrop-blur-sm"
+      className="sticky top-0 z-10 flex shrink-0 items-end justify-between gap-2.5 border-stroke-default border-b bg-effect-backdrop p-2.5 font-medium text-content-secondary text-xs backdrop-blur-sm"
       style={{ height: "var(--gantt-header-height)" }}
     >
       <p className="flex-1 truncate text-left">Issues</p>
@@ -93,12 +93,12 @@ export function GanttSidebarGroup({
   return (
     <div className={className}>
       <p
-        className="w-full truncate p-2.5 text-left font-medium text-muted-foreground text-xs"
+        className="w-full truncate p-2.5 text-left font-medium text-content-secondary text-xs"
         style={{ height: "var(--gantt-row-height)" }}
       >
         {name}
       </p>
-      <div className="divide-y divide-border/50">{children}</div>
+      <div className="divide-y divide-data-grid">{children}</div>
     </div>
   )
 }
@@ -112,7 +112,7 @@ export function GanttSidebar({ children, className }: GanttSidebarProps) {
   return (
     <div
       className={cn(
-        "sticky left-0 z-30 h-max min-h-full overflow-clip border-border border-r bg-backdrop backdrop-blur-md",
+        "sticky left-0 z-30 h-max min-h-full overflow-clip border-stroke-default border-r bg-effect-backdrop backdrop-blur-md",
         className,
       )}
       data-roadmap-ui="gantt-sidebar"

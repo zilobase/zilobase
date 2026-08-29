@@ -84,25 +84,25 @@ function getConditionalColorLabel(value: string) {
 function ConditionalColorPreview() {
   return (
     <div className="overflow-hidden rounded-md border">
-      <div className="grid grid-cols-3 border-b text-[11px] text-muted-foreground">
+      <div className="grid grid-cols-3 border-b text-[11px] text-content-secondary">
         <div className="px-2 py-1.5">Aa Name</div>
         <div className="border-l px-2 py-1.5">Office</div>
         <div className="border-l px-2 py-1.5 text-right"># Units</div>
       </div>
       {[
-        ["Keesha", "Miami", "160", "bg-status-success-surface"],
+        ["Keesha", "Miami", "160", "bg-feedback-success-subtle"],
         ["Rahul", "Orlando", "120", ""],
-        ["Jackson", "Tampa", "140", "bg-status-success-surface"],
-        ["Marcus", "Tampa", "100", "bg-status-warning-surface"],
-        ["John", "Miami", "100", "bg-status-danger-diff-surface"],
+        ["Jackson", "Tampa", "140", "bg-feedback-success-subtle"],
+        ["Marcus", "Tampa", "100", "bg-feedback-warning-subtle"],
+        ["John", "Miami", "100", "bg-feedback-error-subtle"],
       ].map(([name, office, units, colorClass]) => (
         <div
-          className={cn("grid grid-cols-3 text-xs text-foreground", colorClass)}
+          className={cn("grid grid-cols-3 text-xs text-content-primary", colorClass)}
           key={name}
         >
           <div className="px-2 py-1.5">{name}</div>
-          <div className="border-l border-border px-2 py-1.5">{office}</div>
-          <div className="border-l border-border px-2 py-1.5 text-right">
+          <div className="border-l border-stroke-default px-2 py-1.5">{office}</div>
+          <div className="border-l border-stroke-default px-2 py-1.5 text-right">
             {units}
           </div>
         </div>
@@ -134,11 +134,11 @@ function ConditionalColorPropertyPicker({
   return (
     <div>
       <div className="flex h-8 items-center gap-2 px-2 text-sm">
-        <Search className="size-4 shrink-0 text-muted-foreground" />
+        <Search className="size-4 shrink-0 text-content-secondary" />
         <input
           aria-label="Search for a property"
           autoFocus
-          className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+          className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-content-secondary"
           onChange={(event) => setPropertySearch(event.target.value)}
           placeholder="Search for a property..."
           value={propertySearch}
@@ -149,7 +149,7 @@ function ConditionalColorPropertyPicker({
         {filteredOptions.length > 0 ? (
           filteredOptions.map((option) => (
             <button
-              className="flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
+              className="flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:bg-action-neutral-hover focus-visible:text-action-on-neutral focus-visible:outline-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-content-secondary"
               key={option.value}
               onClick={() => onSelect(option.value)}
               type="button"
@@ -159,7 +159,7 @@ function ConditionalColorPropertyPicker({
             </button>
           ))
         ) : (
-          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+          <div className="px-2 py-1.5 text-sm text-content-secondary">
             No properties found
           </div>
         )}
@@ -262,7 +262,7 @@ function ConditionalColorRuleItem({
               </SelectContent>
             </Select>
           </div>
-          <div className="mt-1.5 pl-6 text-[11px] text-muted-foreground">
+          <div className="mt-1.5 pl-6 text-[11px] text-content-secondary">
             {getConditionalColorLabel(setting.color)} - {applyTarget.label}
           </div>
         </>

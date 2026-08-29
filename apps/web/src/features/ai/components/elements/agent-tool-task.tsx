@@ -84,7 +84,7 @@ const AgentToolTaskItem = ({
 
   return (
     <TaskItem className="flex items-start gap-2">
-      <span className="mt-2 size-2 shrink-0 rounded-full bg-muted-indicator" />
+      <span className="mt-2 size-2 shrink-0 rounded-full bg-indicator-muted" />
       <span className="min-w-0 flex-1">
         {isRunning ? (
           <Shimmer
@@ -99,8 +99,8 @@ const AgentToolTaskItem = ({
           <span
             className={
               part.errorText
-                ? "text-destructive text-sm"
-                : "text-muted-foreground text-sm"
+                ? "text-action-danger-text text-sm"
+                : "text-content-secondary text-sm"
             }
           >
             {statusText}

@@ -23,13 +23,13 @@ export function GanttContentHeader({
 
   return (
     <div
-      className="gantt-content-header sticky top-0 z-20 flex w-full shrink-0 flex-col border-border border-b bg-background"
+      className="gantt-content-header sticky top-0 z-20 flex w-full shrink-0 flex-col border-stroke-default border-b bg-surface-canvas"
       style={{ height: "var(--gantt-header-height)" }}
     >
       {!gantt.hideHeaderTitle ? (
         <div className="gantt-content-header-title shrink-0">
           <div
-            className="sticky inline-flex whitespace-nowrap px-3 py-2 text-muted-foreground text-xs"
+            className="sticky inline-flex whitespace-nowrap px-3 py-2 text-content-secondary text-xs"
             style={{ left: "var(--gantt-sidebar-width)" }}
           >
             <p>{title}</p>
@@ -44,7 +44,7 @@ export function GanttContentHeader({
       >
         {Array.from({ length: columns }, (_, index) => (
           <div
-            className="flex h-full shrink-0 items-center justify-center border-border border-r py-0 text-center text-xs last:border-r-0"
+            className="flex h-full shrink-0 items-center justify-center border-stroke-default border-r py-0 text-center text-xs last:border-r-0"
             key={`${id}-${index}`}
           >
             {renderHeaderItem(index)}
@@ -68,7 +68,7 @@ export const GanttColumn = memo(function GanttColumn({
     <div
       className={cn(
         "group relative h-full overflow-hidden",
-        isColumnSecondary?.(index) && "bg-secondary",
+        isColumnSecondary?.(index) && "bg-action-secondary",
       )}
     />
   )
@@ -87,7 +87,7 @@ export function GanttColumns({
 
   return (
     <div
-      className="gantt-columns grid min-h-0 w-full flex-1 divide-x divide-border/50"
+      className="gantt-columns grid min-h-0 w-full flex-1 divide-x divide-data-grid"
       style={{
         gridTemplateColumns: `repeat(${columns}, var(--gantt-column-width))`,
       }}
@@ -148,7 +148,7 @@ const DailyHeader: FC<RangeHeaderProps> = ({ variant }) => {
                 return (
                   <div className="flex items-center justify-center gap-1">
                     <p>{format(date, "d")}</p>
-                    <p className="text-muted-foreground">
+                    <p className="text-content-secondary">
                       {format(date, "EEEEE")}
                     </p>
                   </div>
@@ -241,7 +241,7 @@ export function GanttHeader({
   return (
     <div
       className={cn(
-        "-space-x-px flex w-max divide-x divide-border/50",
+        "-space-x-px flex w-max divide-x divide-data-grid",
         variant === "dates"
           ? "h-[var(--gantt-header-height)] shrink-0"
           : "h-full",

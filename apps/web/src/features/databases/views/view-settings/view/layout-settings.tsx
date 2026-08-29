@@ -222,7 +222,7 @@ export function LayoutSettingsSection({
                 <GripVertical />
                 <span>No grouping</span>
                 {groupPropertyId === null ? (
-                  <Check className="ml-auto text-foreground" />
+                  <Check className="ml-auto text-content-primary" />
                 ) : null}
               </DropDrawerItem>
               {groupProperties.map((property) => {
@@ -240,7 +240,7 @@ export function LayoutSettingsSection({
                     <PropertyIcon />
                     <span>{property.property.name}</span>
                     {property.property.id === groupPropertyId ? (
-                      <Check className="ml-auto text-foreground" />
+                      <Check className="ml-auto text-content-primary" />
                     ) : null}
                   </DropDrawerItem>
                 );
@@ -291,7 +291,7 @@ export function LayoutSettingsSection({
                       <PropertyIcon />
                       <span>{property.property.name}</span>
                       {property.property.id === datePropertyId ? (
-                        <Check className="ml-auto text-foreground" />
+                        <Check className="ml-auto text-content-primary" />
                       ) : null}
                     </DropDrawerItem>
                   );
@@ -327,7 +327,7 @@ export function LayoutSettingsSection({
                   <ImageIcon />
                   <span>Page cover</span>
                   {layoutSettings.cardPreview === "page-cover" ? (
-                    <Check className="ml-auto text-foreground" />
+                    <Check className="ml-auto text-content-primary" />
                   ) : null}
                 </DropDrawerItem>
                 <DropDrawerItem
@@ -340,20 +340,20 @@ export function LayoutSettingsSection({
                   <EyeOff />
                   <span>None</span>
                   {layoutSettings.cardPreview === "none" ? (
-                    <Check className="ml-auto text-foreground" />
+                    <Check className="ml-auto text-content-primary" />
                   ) : null}
                 </DropDrawerItem>
               </DropDrawerSubContent>
             </DropDrawerSub>
             <div className="flex min-h-8 items-center gap-2 px-2 py-1 text-sm">
               <span>Card size</span>
-              <div className="ml-auto flex rounded-md bg-muted p-0.5">
+              <div className="ml-auto flex rounded-md bg-surface-muted p-0.5">
                 {(["small", "medium", "large"] as const).map((size) => (
                   <button
                     className={cn(
-                      "rounded px-2 py-1 text-xs capitalize text-muted-foreground",
+                      "rounded px-2 py-1 text-xs capitalize text-content-secondary",
                       layoutSettings.cardSize === size &&
-                        "bg-background text-foreground shadow-sm",
+                        "bg-surface-canvas text-content-primary shadow-sm",
                     )}
                     key={size}
                     onClick={() =>
@@ -366,17 +366,17 @@ export function LayoutSettingsSection({
                 ))}
               </div>
             </div>
-            <div className="mt-1 rounded-md bg-subtle-surface p-2">
-              <div className="mb-2 px-1 text-xs font-medium text-muted-foreground">
+            <div className="mt-1 rounded-md bg-surface-subtle p-2">
+              <div className="mb-2 px-1 text-xs font-medium text-content-secondary">
                 Card layout
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {(["compact", "list"] as const).map((cardLayout) => (
                   <button
                     className={cn(
-                      "rounded-md border p-1.5 text-xs font-medium capitalize text-muted-foreground",
+                      "rounded-md border p-1.5 text-xs font-medium capitalize text-content-secondary",
                       layoutSettings.cardLayout === cardLayout &&
-                        "border-primary text-primary ring-1 ring-primary",
+                        "border-action-selected-border text-action-selected-text ring-1 ring-action-selected-border",
                     )}
                     key={cardLayout}
                     onClick={() =>
@@ -384,7 +384,7 @@ export function LayoutSettingsSection({
                     }
                     type="button"
                   >
-                    <span className="mb-1.5 block h-12 rounded bg-background p-2">
+                    <span className="mb-1.5 block h-12 rounded bg-surface-canvas p-2">
                       <span className="mb-2 block size-3 rounded-full bg-current opacity-60" />
                       {cardLayout === "compact" ? (
                         <span className="flex flex-wrap gap-1">
@@ -413,19 +413,19 @@ export function LayoutSettingsSection({
                 </DropDrawerSubTrigger>
                 <DropDrawerSubContent className="w-72">
                   <div className="px-2 pb-2 pt-1">
-                    <div className="rounded-md bg-subtle-surface p-3">
-                      <div className="rounded-md border bg-background p-3">
-                        <div className="mb-3 h-2.5 w-24 rounded bg-muted-indicator" />
+                    <div className="rounded-md bg-surface-subtle p-3">
+                      <div className="rounded-md border bg-surface-canvas p-3">
+                        <div className="mb-3 h-2.5 w-24 rounded bg-indicator-muted" />
                         <div className="flex flex-wrap items-center gap-1.5">
-                          <span className="size-3 rounded-full bg-muted-indicator" />
-                          <span className="h-2 w-14 rounded bg-muted-indicator" />
-                          <span className="h-2 w-9 rounded bg-muted-indicator" />
-                          <span className="h-3 w-3 rounded-sm bg-muted-indicator" />
-                          <span className="h-2 w-12 rounded bg-muted-indicator" />
+                          <span className="size-3 rounded-full bg-indicator-muted" />
+                          <span className="h-2 w-14 rounded bg-indicator-muted" />
+                          <span className="h-2 w-9 rounded bg-indicator-muted" />
+                          <span className="h-3 w-3 rounded-sm bg-indicator-muted" />
+                          <span className="h-2 w-12 rounded bg-indicator-muted" />
                         </div>
                       </div>
                     </div>
-                    <p className="px-1 pt-2 text-xs leading-5 text-muted-foreground">
+                    <p className="px-1 pt-2 text-xs leading-5 text-content-secondary">
                       Enabled properties appear on their own line instead of
                       wrapping with other properties.
                     </p>
@@ -499,7 +499,7 @@ export function LayoutSettingsSection({
                       <DropDrawerItem disabled>
                         <NameColumnGlyph />
                         <span>{titlePropertyLabel}</span>
-                        <Eye className="ml-auto text-muted-foreground" />
+                        <Eye className="ml-auto text-content-secondary" />
                       </DropDrawerItem>
                       {properties.map((property) => {
                         const PropertyIcon = getDatabasePropertyType(
@@ -521,9 +521,9 @@ export function LayoutSettingsSection({
                             <PropertyIcon />
                             <span>{property.property.name}</span>
                             {visible ? (
-                              <Eye className="ml-auto text-muted-foreground" />
+                              <Eye className="ml-auto text-content-secondary" />
                             ) : (
-                              <EyeOff className="ml-auto text-muted-foreground" />
+                              <EyeOff className="ml-auto text-content-secondary" />
                             )}
                           </DropDrawerItem>
                         );

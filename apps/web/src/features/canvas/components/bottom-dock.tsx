@@ -23,16 +23,16 @@ export function BottomDock({
     <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
       <div className="pointer-events-auto relative flex items-center gap-3">
         {open ? (
-          <div className="absolute bottom-full left-1/2 mb-2 flex -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-border bg-backdrop p-1.5 shadow-lg backdrop-blur">
+          <div className="absolute bottom-full left-1/2 mb-2 flex -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-stroke-default bg-effect-backdrop p-1.5 shadow-lg backdrop-blur">
             {canvasToolOptions.map((option) => {
               const Icon = option.icon
 
               return (
                 <button
                   className={cn(
-                    "flex min-w-24 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                    "flex min-w-24 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral",
                     activeTool === option.tool &&
-                      "bg-accent text-accent-foreground",
+                      "bg-action-neutral-hover text-action-on-neutral",
                   )}
                   key={option.tool}
                   onClick={() => onSelectTool(option.tool)}
@@ -45,11 +45,11 @@ export function BottomDock({
             })}
           </div>
         ) : null}
-        <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-backdrop p-1.5 shadow-lg backdrop-blur">
+        <div className="flex items-center gap-1.5 rounded-2xl border border-stroke-default bg-effect-backdrop p-1.5 shadow-lg backdrop-blur">
           <Button
             className={cn(
               "h-8 rounded-xl px-3 text-sm",
-              open && "bg-accent text-accent-foreground",
+              open && "bg-action-neutral-hover text-action-on-neutral",
             )}
             onClick={toggleOpen}
             type="button"
@@ -65,7 +65,7 @@ export function BottomDock({
               )}
             />
           </Button>
-          <div className="h-6 w-px bg-border" />
+          <div className="h-6 w-px bg-stroke-default" />
           <Button
             className="h-8 w-8 rounded-xl"
             onClick={onReset}

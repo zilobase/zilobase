@@ -99,7 +99,7 @@ export function ZilobaseAiItem({
     <>
       <div
         className={cn(
-          "flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-accent hover:text-accent-foreground",
+          "flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-action-neutral-hover hover:text-action-on-neutral",
           isFirst && "rounded-t-none",
           isLast && "rounded-b-none",
         )}
@@ -128,7 +128,7 @@ export function ZilobaseAiItem({
         </span>
         <Button
           aria-label={`Remove as ${modeLabels[mode]}`}
-          className="shrink-0 text-muted-foreground hover:text-foreground"
+          className="shrink-0 text-content-secondary hover:text-content-primary"
           disabled={isRemoving}
           onClick={(event) => {
             event.stopPropagation()

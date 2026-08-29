@@ -74,7 +74,7 @@ function MeetingBlockView({ editor, extension, getPos, node }: ReactNodeViewProp
       {meetingId ? (
         <MeetingView editable={isEditable} meetingId={meetingId} />
       ) : (
-        <div className="rounded-xl border p-4 text-sm text-muted-foreground">
+        <div className="rounded-xl border p-4 text-sm text-content-secondary">
           Meeting setup is incomplete.
         </div>
       )}

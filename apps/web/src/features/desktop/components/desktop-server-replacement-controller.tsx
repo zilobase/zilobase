@@ -322,7 +322,7 @@ export function DesktopServerReplacementController({
         ) : null}
 
         {busy ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-content-secondary">
             <Spinner />
             {state.phase === "verifying"
               ? "Checking discovery metadata, TLS, and compatibility..."

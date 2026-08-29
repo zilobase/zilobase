@@ -205,9 +205,9 @@ export function ZilobaseAiCreateMenu({
       </DropDrawerTrigger>
       <DropDrawerContent align="end" className="w-80 overflow-hidden p-0">
         <div className="flex flex-col">
-          <div className="shrink-0 border-b bg-popover pt-3">
+          <div className="shrink-0 border-b bg-surface-overlay pt-3">
             <div className="flex items-center gap-1.5 px-3 pb-2.5">
-              <SearchIcon className="size-4 shrink-0 text-muted-foreground" />
+              <SearchIcon className="size-4 shrink-0 text-content-secondary" />
               <Input
                 aria-label="Search pages"
                 autoFocus
@@ -223,7 +223,7 @@ export function ZilobaseAiCreateMenu({
             {isLoadingPages ? (
               <DropDrawerItem disabled>Loading pages...</DropDrawerItem>
             ) : !normalizedQuery ? (
-              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+              <div className="px-3 py-6 text-center text-sm text-content-secondary">
                 Type to search pages
               </div>
             ) : filteredPageOptions.length === 0 ? (
@@ -244,7 +244,7 @@ export function ZilobaseAiCreateMenu({
                     <div className="min-w-0">
                       <div className="truncate">{pageOption.label}</div>
                       {pageOption.path !== pageOption.label ? (
-                        <div className="truncate text-xs text-muted-foreground">
+                        <div className="truncate text-xs text-content-secondary">
                           {pageOption.path}
                         </div>
                       ) : null}
@@ -255,7 +255,7 @@ export function ZilobaseAiCreateMenu({
             )}
           </div>
 
-          <div className="shrink-0 border-t bg-popover pb-3">
+          <div className="shrink-0 border-t bg-surface-overlay pb-3">
             <div className="px-3 pt-2.5">
               <DropDrawerItem
                 onSelect={(event) => {

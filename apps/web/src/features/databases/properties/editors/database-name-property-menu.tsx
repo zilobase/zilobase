@@ -131,11 +131,11 @@ export function DatabaseNamePropertyMenu({
       <DropDrawerTrigger asChild>
         <button
           aria-label="Name column options"
-          className="database-name-menu-trigger group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
+          className="database-name-menu-trigger group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-content-secondary transition-colors hover:text-content-primary focus-visible:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none data-[state=open]:text-content-primary [&_svg]:size-4 [&_svg]:shrink-0"
           type="button"
           {...triggerDragProps}
         >
-          <span className="self-center text-muted-foreground">
+          <span className="self-center text-content-secondary">
             {renderNameColumnIcon()}
           </span>
           <span className="flex min-w-0 items-center truncate">{label}</span>
@@ -153,7 +153,7 @@ export function DatabaseNamePropertyMenu({
               <PopoverTrigger asChild>
                 <button
                   aria-label="Change name column icon"
-                  className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  className="flex size-8 items-center justify-center rounded-md border bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none"
                   type="button"
                 >
                   {renderNameColumnIcon()}
@@ -162,7 +162,7 @@ export function DatabaseNamePropertyMenu({
               {customIcon ? (
                 <button
                   aria-label="Reset name column icon"
-                  className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground group-focus-within/name-column-icon:flex group-hover/name-column-icon:flex [&_svg]:size-2.5"
+                  className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-surface-canvas text-content-secondary shadow-sm hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral group-focus-within/name-column-icon:flex group-hover/name-column-icon:flex [&_svg]:size-2.5"
                   onClick={() => updateNameColumnConfig({ icon: "" })}
                   type="button"
                 >

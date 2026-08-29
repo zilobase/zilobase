@@ -87,7 +87,7 @@ export default function ZilobaseAiSettingsPage() {
             <h3 className="font-heading text-base leading-snug font-medium">
               Personal instructions
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-content-secondary">
               Applied to every new response in this workspace. Instructions
               cannot grant permissions or enable unavailable tools.
             </p>

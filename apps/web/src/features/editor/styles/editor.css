@@ -2,7 +2,7 @@
 
 @layer components {
 .tiptap-editor {
-    @apply min-h-[520px] px-5 pt-4 pb-5 text-base leading-7 text-foreground outline-none sm:px-8 md:px-20 md:pt-4 md:pb-6 lg:px-24;
+    @apply min-h-[520px] px-5 pt-4 pb-5 text-base leading-7 text-content-primary outline-none sm:px-8 md:px-20 md:pt-4 md:pb-6 lg:px-24;
   }
 
   .collaboration-carets__caret {
@@ -10,7 +10,7 @@
   }
 
   .collaboration-carets__label {
-    @apply absolute -left-0.5 -top-6 rounded px-1.5 py-0.5 text-xs font-medium text-editor-color-foreground shadow-sm whitespace-nowrap;
+    @apply absolute -left-0.5 -top-6 rounded px-1.5 py-0.5 text-xs font-medium text-palette-on-subtle shadow-sm whitespace-nowrap;
   }
 
   .collaboration-carets__selection {
@@ -19,13 +19,13 @@
 
   .tiptap-editor .is-editor-empty:first-child::before,
   .tiptap-editor .is-empty::before {
-    @apply pointer-events-none float-left h-0 text-muted-foreground;
+    @apply pointer-events-none float-left h-0 text-content-secondary;
     content: attr(data-placeholder);
   }
 
   /* Uniform gap between blocks — hierarchy lives in padding, not margin. */
   .tiptap-editor > * + * {
-    @apply mt-1;
+    margin-top: var(--spacing);
   }
 
   .tiptap-editor h1 {
@@ -57,7 +57,7 @@
   }
 
   .tiptap-editor p {
-    @apply leading-7 text-foreground;
+    @apply leading-7 text-content-primary;
   }
 
   /* Horizontal inset inside blocks so selection fills padded area, not just text. */
@@ -150,13 +150,13 @@
   /* Match ordinary dragged text selection to the lighter block palette. */
   .tiptap-editor ::selection,
   .tiptap-editor *::selection {
-    background-color: var(--editor-selection-overlay);
+    background-color: var(--zb-color-selection-background-editor);
     color: inherit;
   }
 
   .tiptap-editor ::-moz-selection,
   .tiptap-editor *::-moz-selection {
-    background-color: var(--editor-selection-overlay);
+    background-color: var(--zb-color-selection-background-editor);
     color: inherit;
   }
 
@@ -174,7 +174,6 @@
   }
 
   .tiptap-editor.dragging {
-    --editor-selection-overlay: transparent;
     user-select: none;
   }
 
@@ -234,7 +233,7 @@
           .database-page-create-row:not(.database-table *)
         )
     )::after {
-    background-color: var(--editor-selection-overlay);
+    background-color: var(--zb-color-selection-background-editor);
     border-radius: var(--radius-sm);
     content: "";
     inset: 0;

@@ -17,7 +17,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.equal(getPaletteColor(null), null)
     assert.equal(
       getPaletteColor("pink"),
-      "var(--editor-pink)",
+      "var(--zb-color-palette-text-pink)",
     )
     assert.equal(getPaletteColor("var(--event-pink)"), null)
     assert.equal(getPaletteColor("#ff00ff"), null)
@@ -37,12 +37,12 @@ export function register({ readSource, assert, loadModule, test }) {
     const { colorTokens } = await loadModule("/src/shared/lib/color-tokens.ts")
     const yellowToken = colorTokens.find((token) => token.value === "yellow")
 
-    assert.equal(yellowToken?.textClass, "text-editor-yellow")
-    assert.equal(yellowToken?.backgroundClass, "bg-editor-yellow-surface")
-    assert.equal(yellowToken?.swatchClass, "bg-editor-yellow")
+    assert.equal(yellowToken?.textClass, "text-palette-yellow")
+    assert.equal(yellowToken?.backgroundClass, "bg-palette-yellow-subtle")
+    assert.equal(yellowToken?.swatchClass, "bg-palette-yellow")
     assert.equal(
       yellowToken?.solidClass,
-      "bg-editor-yellow-surface text-editor-color-foreground",
+      "bg-palette-yellow-subtle text-palette-on-subtle",
     )
   })
 
@@ -66,10 +66,10 @@ export function register({ readSource, assert, loadModule, test }) {
       "/src/shared/lib/color-tokens.ts",
     )
 
-    assert.equal(getIconTextClassName("blue"), "text-editor-blue")
+    assert.equal(getIconTextClassName("blue"), "text-palette-blue")
     assert.equal(
       getIconSolidClassName("blue"),
-      "bg-editor-blue-surface text-editor-color-foreground",
+      "bg-palette-blue-subtle text-palette-on-subtle",
     )
   })
 
@@ -78,7 +78,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
     assert.equal(
       colorWithAlpha("pink", 0.18),
-      "color-mix(in oklab, var(--editor-pink) 18%, transparent)",
+      "var(--zb-color-palette-background-pink-subtle)",
     )
     assert.equal(colorWithAlpha("var(--event-pink)", 0.18), null)
   })
@@ -88,27 +88,36 @@ export function register({ readSource, assert, loadModule, test }) {
 
     assert.equal(
       getColorTokenBadgeClassName("blue"),
-      "database-select-badge text-editor-color-foreground bg-editor-blue-surface",
+      "database-select-badge text-palette-on-subtle bg-palette-blue-subtle",
     )
     assert.equal(
       getColorTokenBadgeClassName("default"),
-      "database-select-badge text-foreground bg-background",
+      "database-select-badge text-content-primary bg-surface-canvas",
     )
   })
 
   test("Notion-style tag pairs meet WCAG text contrast targets", async () => {
-    const css = await readSource("/src/shared/styles/design-tokens.css")
+    const css = await readSource("/src/shared/styles/color-tokens.css")
     const themes = [
       readRule(css, ".light"),
       readRule(css, ".dark"),
     ]
 
     for (const rule of themes) {
-      const foreground = readHexToken(rule, "editor-color-foreground")
+      const foreground = readHexToken(rule, "zb-color-palette-text-on-subtle")
+      const canvas = readHexToken(rule, "zb-color-surface-background-canvas")
 
       for (const id of paletteIds) {
-        const surface = readHexToken(rule, `editor-${id}-surface`)
+        const strong = readHexToken(rule, `zb-color-palette-text-${id}`)
+        const surface = readHexToken(
+          rule,
+          `zb-color-palette-background-${id}-subtle`,
+        )
 
+        assert.ok(
+          contrast(hexToRgb(strong), hexToRgb(canvas)) >= 4.5,
+          `${id} strong text must reach 4.5:1 on canvas`,
+        )
         assert.ok(
           contrast(hexToRgb(foreground), hexToRgb(surface)) >= 4.5,
           `${id} tag text must reach 4.5:1`,

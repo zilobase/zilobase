@@ -147,8 +147,8 @@ export function DatabaseChartSettingsSection({
     settings.color === "auto" ? null : getColorToken(settings.color);
   const colorLabel = selectedColorToken?.name ?? "Auto";
   const colorSwatch = selectedColorToken
-    ? (getPaletteColor(selectedColorToken.value) ?? "var(--primary)")
-    : "linear-gradient(90deg, var(--editor-blue), var(--editor-purple), var(--editor-pink), var(--editor-orange))";
+    ? (getPaletteColor(selectedColorToken.value) ?? "var(--zb-color-action-background-selected)")
+    : "linear-gradient(90deg, var(--zb-color-palette-text-blue), var(--zb-color-palette-text-purple), var(--zb-color-palette-text-pink), var(--zb-color-palette-text-orange))";
   const updateReferenceLine = (
     id: string,
     patch: Partial<DatabaseChartReferenceLine>,
@@ -162,7 +162,7 @@ export function DatabaseChartSettingsSection({
   return (
     <>
       <DropDrawerSeparator />
-      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-content-secondary">
         Chart type
       </DropDrawerLabel>
       <div className="grid grid-cols-7 gap-1.5 px-2 pb-2">
@@ -171,8 +171,8 @@ export function DatabaseChartSettingsSection({
             aria-label={option.label}
             aria-pressed={settings.type === option.value}
             className={cn(
-              "flex h-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-              settings.type === option.value && "border-primary text-primary",
+              "flex h-8 items-center justify-center rounded-md border text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-content-primary",
+              settings.type === option.value && "border-action-selected-border text-action-selected-text",
             )}
             key={option.value}
             onClick={(event) => {
@@ -187,7 +187,7 @@ export function DatabaseChartSettingsSection({
         ))}
       </div>
 
-      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-content-secondary">
         X axis
       </DropDrawerLabel>
       <DropDrawerSub title="What to show">
@@ -210,7 +210,7 @@ export function DatabaseChartSettingsSection({
             <NameColumnGlyph />
             <span>{titlePropertyLabel}</span>
             {axisPropertyId === "name" ? (
-              <Check className="ml-auto text-foreground" />
+              <Check className="ml-auto text-content-primary" />
             ) : null}
           </DropDrawerItem>
           {properties.map((property) => {
@@ -232,7 +232,7 @@ export function DatabaseChartSettingsSection({
                 <PropertyIcon />
                 <span>{property.property.name}</span>
                 {selected ? (
-                  <Check className="ml-auto text-foreground" />
+                  <Check className="ml-auto text-content-primary" />
                 ) : null}
               </DropDrawerItem>
             );
@@ -255,17 +255,17 @@ export function DatabaseChartSettingsSection({
             >
               <span>{option.label}</span>
               {sort === option.value ? (
-                <Check className="ml-auto text-foreground" />
+                <Check className="ml-auto text-content-primary" />
               ) : null}
             </DropDrawerItem>
           ))}
           {axisGroups.length > 0 ? (
             <>
               <DropDrawerSeparator />
-              <div className="flex items-center justify-between px-2 py-1 text-xs font-medium text-muted-foreground">
+              <div className="flex items-center justify-between px-2 py-1 text-xs font-medium text-content-secondary">
                 <span>Groups</span>
                 <button
-                  className="text-primary hover:underline"
+                  className="text-action-link hover:underline"
                   onClick={(event) => {
                     event.preventDefault();
                     onChange({
@@ -304,7 +304,7 @@ export function DatabaseChartSettingsSection({
                       style={{
                         backgroundColor:
                           getPaletteColor(group.color) ??
-                          "var(--muted-foreground)",
+                          "var(--zb-color-content-text-secondary)",
                       }}
                     />
                     <span>{group.name}</span>
@@ -337,7 +337,7 @@ export function DatabaseChartSettingsSection({
         />
       </DropDrawerItem>
 
-      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-content-secondary">
         Y axis
       </DropDrawerLabel>
       <DropDrawerSub title="What to show">
@@ -355,7 +355,7 @@ export function DatabaseChartSettingsSection({
             <ChartLine />
             <span>Task count</span>
             {measurePropertyId === "count" ? (
-              <Check className="ml-auto text-foreground" />
+              <Check className="ml-auto text-content-primary" />
             ) : null}
           </DropDrawerItem>
           {properties.map((property) => {
@@ -374,7 +374,7 @@ export function DatabaseChartSettingsSection({
                 <PropertyIcon />
                 <span>{property.property.name}</span>
                 {selected ? (
-                  <Check className="ml-auto text-foreground" />
+                  <Check className="ml-auto text-content-primary" />
                 ) : null}
               </DropDrawerItem>
             );
@@ -402,7 +402,7 @@ export function DatabaseChartSettingsSection({
             <X />
             <span>None</span>
             {!settings.splitByPropertyId ? (
-              <Check className="ml-auto text-foreground" />
+              <Check className="ml-auto text-content-primary" />
             ) : null}
           </DropDrawerItem>
           {properties.map((property) => {
@@ -419,7 +419,7 @@ export function DatabaseChartSettingsSection({
                     <PropertyIcon />
                     <span>{property.property.name}</span>
                     {selected ? (
-                      <Check className="ml-auto text-foreground" />
+                      <Check className="ml-auto text-content-primary" />
                     ) : null}
                   </DropDrawerSubTrigger>
                   <DropDrawerSubContent className="w-56">
@@ -435,7 +435,7 @@ export function DatabaseChartSettingsSection({
                       >
                         <span>{option.label}</span>
                         {selected && splitDateInterval === option.value ? (
-                          <Check className="ml-auto text-foreground" />
+                          <Check className="ml-auto text-content-primary" />
                         ) : null}
                       </DropDrawerItem>
                     ))}
@@ -457,7 +457,7 @@ export function DatabaseChartSettingsSection({
                 <PropertyIcon />
                 <span>{property.property.name}</span>
                 {selected ? (
-                  <Check className="ml-auto text-foreground" />
+                  <Check className="ml-auto text-content-primary" />
                 ) : null}
               </DropDrawerItem>
             );
@@ -476,7 +476,7 @@ export function DatabaseChartSettingsSection({
               />
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-72 p-3">
-              <div className="mb-2 text-xs font-medium text-muted-foreground">
+              <div className="mb-2 text-xs font-medium text-content-secondary">
                 Set custom range
               </div>
               <div className="flex items-center gap-2">
@@ -492,7 +492,7 @@ export function DatabaseChartSettingsSection({
                   placeholder="Min"
                   type="number"
                 />
-                <span className="text-muted-foreground">–</span>
+                <span className="text-content-secondary">–</span>
                 <Input
                   aria-label="Maximum chart value"
                   defaultValue={settings.rangeMax ?? ""}
@@ -512,12 +512,12 @@ export function DatabaseChartSettingsSection({
           <Collapsible>
             <CollapsibleTrigger asChild>
               <button
-                className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-popover-foreground outline-none hover:bg-accent [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground"
+                className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-content-primary outline-none hover:bg-action-neutral-hover [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-content-secondary"
                 type="button"
               >
                 <MoreHorizontal />
                 <span>Reference line</span>
-                <span className="ml-auto text-muted-foreground">
+                <span className="ml-auto text-content-secondary">
                   {referenceLines.length === 1
                     ? "1 line"
                     : `${referenceLines.length} lines`}
@@ -525,14 +525,14 @@ export function DatabaseChartSettingsSection({
                 <ChevronDown className="transition-transform group-data-[state=open]:rotate-180" />
               </button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mx-2 space-y-2 rounded-lg border bg-subtle-surface p-2">
+            <CollapsibleContent className="mx-2 space-y-2 rounded-lg border bg-surface-subtle p-2">
               {referenceLines.map((line) => (
                 <div
-                  className="space-y-2 rounded-md bg-subtle-surface p-2"
+                  className="space-y-2 rounded-md bg-surface-subtle p-2"
                   key={line.id}
                 >
                   <div className="flex items-end gap-2">
-                    <label className="grid flex-1 gap-1 text-xs font-medium text-muted-foreground">
+                    <label className="grid flex-1 gap-1 text-xs font-medium text-content-secondary">
                       Value
                       <Input
                         defaultValue={line.value}
@@ -564,7 +564,7 @@ export function DatabaseChartSettingsSection({
                       <Trash2 />
                     </Button>
                   </div>
-                  <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                  <label className="grid gap-1 text-xs font-medium text-content-secondary">
                     Label
                     <Input
                       defaultValue={line.label}
@@ -578,7 +578,7 @@ export function DatabaseChartSettingsSection({
                     />
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                    <label className="grid gap-1 text-xs font-medium text-content-secondary">
                       Style
                       <Select
                         onValueChange={(value) =>
@@ -600,7 +600,7 @@ export function DatabaseChartSettingsSection({
                         </SelectContent>
                       </Select>
                     </label>
-                    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                    <label className="grid gap-1 text-xs font-medium text-content-secondary">
                       Color
                       <Select
                         onValueChange={(value) =>
@@ -653,7 +653,7 @@ export function DatabaseChartSettingsSection({
         </>
       ) : null}
 
-      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-content-secondary">
         Style
       </DropDrawerLabel>
       <DropDrawerSub title="Color">
@@ -672,7 +672,7 @@ export function DatabaseChartSettingsSection({
             />
             <span>Auto</span>
             {settings.color === "auto" ? (
-              <Check className="ml-auto text-foreground" />
+              <Check className="ml-auto text-content-primary" />
             ) : null}
           </DropDrawerItem>
           {cyclingColorTokens.map((color) => (
@@ -690,7 +690,7 @@ export function DatabaseChartSettingsSection({
               />
               <span>{color.name}</span>
               {settings.color === color.value ? (
-                <Check className="ml-auto text-foreground" />
+                <Check className="ml-auto text-content-primary" />
               ) : null}
             </DropDrawerItem>
           ))}

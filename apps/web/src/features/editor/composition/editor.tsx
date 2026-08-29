@@ -495,7 +495,7 @@ export function Editor({
           {layoutPreview ? (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-background via-backdrop to-transparent"
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-surface-canvas via-effect-backdrop to-transparent"
             />
           ) : null}
         </div>
@@ -555,7 +555,7 @@ export function Editor({
 
   const editorBody = (
     <div className={cn(
-      "flex w-full flex-col text-foreground",
+      "flex w-full flex-col text-content-primary",
       layoutPreview
         ? "h-full min-h-0"
         : hideMetadata
@@ -652,7 +652,7 @@ export function Editor({
                   {layoutPreview ? (
                     <div
                       aria-hidden
-                      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-background via-backdrop to-transparent"
+                      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-surface-canvas via-effect-backdrop to-transparent"
                     />
                   ) : null}
                 </div>

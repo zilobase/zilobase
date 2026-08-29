@@ -38,14 +38,14 @@ function AttachmentChip({
   onRemove: () => void
 }) {
   return (
-    <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border bg-background px-2 text-foreground text-xs">
+    <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border bg-surface-canvas px-2 text-content-primary text-xs">
       <AttachmentIcon attachment={attachment} />
       <span className="truncate">
         {attachment.mode === "skill" ? `Skill: ${attachment.title}` : attachment.title}
       </span>
       <button
         aria-label={`Remove ${attachment.title}`}
-        className="-mr-1 inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active"
+        className="-mr-1 inline-flex size-4 items-center justify-center rounded-full text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed"
         onClick={onRemove}
         type="button"
       >

@@ -122,9 +122,9 @@ function AgentActionReview({
   };
 
   return (
-    <div className="not-prose mb-3 rounded-lg border bg-muted p-3">
+    <div className="not-prose mb-3 rounded-lg border bg-surface-muted p-3">
       <div className="text-sm font-medium">Review: {approval.title}</div>
-      <div className="mt-1 text-xs text-muted-foreground">
+      <div className="mt-1 text-xs text-content-secondary">
         {statusDescription}
       </div>
       {status === "pending" && !expired ? (

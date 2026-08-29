@@ -154,7 +154,7 @@ export function DatabaseChartView() {
   )
   if (displayChartData.length === 0) {
     return (
-      <div className="flex min-h-52 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
+      <div className="flex min-h-52 items-center justify-center rounded-md border border-dashed text-sm text-content-secondary">
         No rows to chart
       </div>
     )
@@ -219,10 +219,10 @@ export function DatabaseChartView() {
     return (
       <div className="flex min-h-[260px] w-full items-center justify-center py-4">
         <div className="text-center">
-          <div className="text-6xl font-semibold tabular-nums tracking-normal text-foreground">
+          <div className="text-6xl font-semibold tabular-nums tracking-normal text-content-primary">
             {metricValue.toLocaleString()}
           </div>
-          <div className="mt-2 text-sm text-muted-foreground">
+          <div className="mt-2 text-sm text-content-secondary">
             {metricLabel}
           </div>
         </div>
@@ -400,7 +400,7 @@ export function DatabaseChartView() {
               <Cell fill={getDisplayColor(item, index)} key={item.name} />
             ))}
             <LabelList
-              className="fill-foreground text-xs"
+              className="fill-content-primary text-xs"
               dataKey="name"
               stroke="none"
             />
@@ -495,7 +495,7 @@ export function DatabaseChartView() {
           />
           <RadialBar background dataKey="count" name={metricLabel}>
             <LabelList
-              className="fill-data-label-foreground text-[11px] capitalize mix-blend-luminosity"
+              className="fill-data-label text-[11px] capitalize mix-blend-luminosity"
               dataKey="name"
               position="insideStart"
               stroke="none"
@@ -578,8 +578,8 @@ export function DatabaseChartView() {
 
 function getReferenceLineColor(line: DatabaseChartReferenceLine) {
   return line.color === "black"
-    ? "var(--foreground)"
-    : getPaletteColor(line.color) ?? "var(--foreground)"
+    ? "var(--zb-color-content-text-primary)"
+    : getPaletteColor(line.color) ?? "var(--zb-color-content-text-primary)"
 }
 
 function getReferenceLineDash(style: DatabaseChartReferenceLine["style"]) {

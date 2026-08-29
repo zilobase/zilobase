@@ -14,11 +14,11 @@
 
   .tiptap-editor th,
   .tiptap-editor td {
-    @apply border border-border px-3 py-1 text-left align-top;
+    @apply border border-stroke-default px-3 py-1 text-left align-top;
   }
 
   .tiptap-editor th {
-    @apply bg-subtle-surface font-semibold;
+    @apply bg-surface-subtle font-semibold;
   }
 
   .tiptap-editor .selectedCell::after {
@@ -30,7 +30,7 @@
   }
 
   .table-selection-line {
-    @apply pointer-events-none fixed z-30 bg-primary;
+    @apply pointer-events-none fixed z-30 bg-action-selected;
   }
 
   .table-selection-line-vertical {
@@ -44,7 +44,7 @@
   }
 
   .tiptap-editor .column-resize-handle {
-    @apply pointer-events-none absolute bottom-0 right-[-2px] top-0 w-1 bg-primary;
+    @apply pointer-events-none absolute bottom-0 right-[-2px] top-0 w-1 bg-action-selected;
   }
 
   .tiptap-editor.resize-cursor {
@@ -52,7 +52,7 @@
   }
 
   .table-add-control {
-    @apply fixed z-40 flex items-center justify-center border-0 bg-subtle-surface text-muted-foreground transition-colors hover:bg-primary-subtle hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    @apply fixed z-40 flex items-center justify-center border-0 bg-surface-subtle text-content-secondary transition-colors hover:bg-action-selected-subtle hover:text-action-selected-text focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none;
   }
 
   .table-add-control svg {
@@ -68,7 +68,7 @@
   }
 
   .table-reorder-control {
-    @apply fixed z-40 flex items-center justify-center border-0 bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:cursor-grabbing;
+    @apply fixed z-40 flex items-center justify-center border-0 bg-surface-muted text-content-secondary shadow-sm transition-colors hover:bg-action-selected hover:text-action-on-selected focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:cursor-grabbing;
     touch-action: none;
     user-select: none;
   }
@@ -86,11 +86,11 @@
   }
 
   .table-reorder-control[data-dragging="true"] {
-    @apply bg-primary text-primary-foreground;
+    @apply bg-action-selected text-action-on-selected;
   }
 
   .table-drag-source-outline {
-    @apply pointer-events-none fixed z-30 border border-primary;
+    @apply pointer-events-none fixed z-30 border border-action-selected-border;
   }
 
   .table-drag-drop-line {
@@ -98,7 +98,7 @@
   }
 
   .column-reorder-control {
-    @apply fixed z-40 flex cursor-grab items-center justify-center rounded-sm border border-border bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:cursor-grabbing;
+    @apply fixed z-40 flex cursor-grab items-center justify-center rounded-sm border border-stroke-default bg-surface-muted text-content-secondary shadow-sm transition-colors hover:bg-action-selected hover:text-action-on-selected focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:cursor-grabbing;
     touch-action: none;
     user-select: none;
   }
@@ -108,15 +108,15 @@
   }
 
   .column-reorder-control[data-dragging="true"] {
-    @apply bg-primary text-primary-foreground;
+    @apply bg-action-selected text-action-on-selected;
   }
 
   .column-actions-menu {
-    @apply fixed z-50 w-56 rounded-lg bg-popover p-2 text-popover-foreground shadow-md ring-1 ring-border;
+    @apply fixed z-50 w-56 rounded-lg bg-surface-overlay p-2 text-content-primary shadow-md ring-1 ring-stroke-default;
   }
 
   .column-actions-menu-item {
-    @apply flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent active:bg-active active:text-active-foreground;
+    @apply flex h-8 w-full items-center gap-2 rounded-md px-1.5 text-left text-sm outline-none hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:bg-action-neutral-hover active:bg-action-neutral-pressed active:text-action-on-neutral;
   }
 
   .column-actions-menu-item svg {
@@ -130,12 +130,12 @@
   }
 
   .column-resize-control::after {
-    @apply absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 rounded-full bg-border transition-colors content-[''];
+    @apply absolute left-1/2 top-0 h-full w-0.5 -translate-x-1/2 rounded-full bg-stroke-default transition-colors content-[''];
   }
 
   .column-resize-control:hover::after,
   .column-resize-control:active::after {
-    @apply bg-primary;
+    @apply bg-action-selected;
   }
 
   .column-drag-drop-line {
@@ -146,13 +146,11 @@
     @apply fixed z-10;
   }
 
-  .drag-drop-line,
-  .database-kanban-card[data-drop-before="true"]::before {
-    @apply pointer-events-none rounded-full bg-primary;
+  .drag-drop-line {
+    @apply pointer-events-none rounded-full bg-action-selected;
   }
 
-  .drag-drop-line[data-orientation="horizontal"],
-  .database-kanban-card[data-drop-before="true"]::before {
+  .drag-drop-line[data-orientation="horizontal"] {
     @apply h-0.5;
     transform: translateY(-1px);
   }
@@ -162,8 +160,16 @@
     transform: translateX(-1px);
   }
 
+  /* Block insertion fills the same gap and uses the same tint as block selection. */
+  .block-drag-drop-line[data-orientation="horizontal"] {
+    background-color: var(--zb-color-selection-background-editor);
+    border-radius: var(--radius-sm);
+    height: var(--spacing);
+    transform: translateY(-50%);
+  }
+
   .drag-handle {
-    @apply pointer-events-none fixed z-10 hidden h-7 w-16 items-center justify-between bg-transparent pr-2 text-muted-foreground opacity-100 md:flex;
+    @apply pointer-events-none fixed z-10 hidden h-7 w-16 items-center justify-between bg-transparent pr-2 text-content-secondary opacity-100 md:flex;
     transform: translate3d(0, 0, 0);
   }
 
@@ -181,11 +187,11 @@
   }
 
   .drag-handle-plus {
-    @apply cursor-pointer text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none;
+    @apply cursor-pointer text-content-secondary hover:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none;
   }
 
   .drag-handle-grip {
-    @apply cursor-grab hover:text-foreground active:cursor-grabbing;
+    @apply cursor-grab hover:text-content-primary active:cursor-grabbing;
   }
 
   .drag-handle svg,
@@ -195,7 +201,7 @@
   }
 
   .block-comment-handle {
-    @apply pointer-events-auto fixed z-10 hidden h-7 w-7 items-center justify-center text-muted-foreground md:flex;
+    @apply pointer-events-auto fixed z-10 hidden h-7 w-7 items-center justify-center text-content-secondary md:flex;
     transform: translate3d(0, 0, 0);
   }
 
@@ -206,7 +212,7 @@
   }
 
   .block-comment-button {
-    @apply relative z-10 size-7 bg-backdrop text-muted-foreground shadow-sm ring-1 ring-border backdrop-blur-sm hover:text-foreground;
+    @apply relative z-10 size-7 bg-effect-backdrop text-content-secondary shadow-sm ring-1 ring-stroke-default backdrop-blur-sm hover:text-content-primary;
   }
 
   .block-comment-button svg {
@@ -214,7 +220,7 @@
   }
 
   .block-comment-count {
-    @apply absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-md bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground;
+    @apply absolute -right-1.5 -top-1.5 flex min-w-4 items-center justify-center rounded-md bg-action-selected px-1 text-[10px] font-semibold leading-4 text-action-on-selected;
   }
 
   .plus-block-menu {
@@ -226,7 +232,7 @@
   }
 
   .selection-toolbar {
-    @apply flex items-center gap-1 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg;
+    @apply flex items-center gap-1 rounded-md border bg-surface-overlay p-1 text-content-primary shadow-lg;
   }
 
   .selection-ai-menu {
@@ -238,11 +244,11 @@
   }
 
   .selection-ai-skill {
-    @apply flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-muted-foreground outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground active:bg-active active:text-active-foreground;
+    @apply flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm text-content-secondary outline-none hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:bg-action-neutral-hover focus-visible:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral;
   }
 
   .selection-ai-skill-active {
-    @apply bg-accent text-accent-foreground;
+    @apply bg-action-neutral-hover text-action-on-neutral;
   }
 
   .selection-ai-skill-emoji {
@@ -250,7 +256,7 @@
   }
 
   .selection-ai-empty {
-    @apply px-2 py-1 text-xs text-muted-foreground;
+    @apply px-2 py-1 text-xs text-content-secondary;
   }
 
   .selection-ai-form {
@@ -258,11 +264,11 @@
   }
 
   .selection-ai-preview-diff-deleted {
-    @apply rounded-sm bg-status-danger-diff-surface text-status-danger-diff-foreground line-through decoration-status-danger-diff-foreground decoration-2 ;
+    @apply rounded-sm bg-feedback-error-subtle text-feedback-error-text line-through decoration-feedback-error-text decoration-2;
   }
 
   .selection-ai-preview-diff-inserted {
-    @apply whitespace-pre-wrap rounded-sm bg-status-success-surface px-0.5 text-status-success-foreground ;
+    @apply whitespace-pre-wrap rounded-sm bg-feedback-success-subtle px-0.5 text-feedback-success-text;
   }
 
   .selection-ai-preview-diff-inserted[data-streaming="true"] {
@@ -274,11 +280,11 @@
   }
 
   .selection-ai-diff-dock-inner {
-    @apply pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-border bg-backdrop p-1.5 shadow-lg backdrop-blur;
+    @apply pointer-events-auto flex items-center gap-1.5 rounded-2xl border border-stroke-default bg-effect-backdrop p-1.5 shadow-lg backdrop-blur;
   }
 
   .suggestion {
-    @apply rounded bg-muted px-1;
+    @apply rounded bg-surface-muted px-1;
   }
 
 }

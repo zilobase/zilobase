@@ -69,7 +69,7 @@ function WorkspaceImportSection({
           <h3 className="font-heading text-base leading-snug font-medium">
             Import
           </h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-content-secondary">
             Bring pages into this workspace from a Notion HTML zip export.
           </p>
         </div>
@@ -182,7 +182,7 @@ function WorkspaceDetailsSection({
           <h3 className="font-heading text-base leading-snug font-medium">
             Page details
           </h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-content-secondary">
             Update the fields used to identify this workspace across Zilobase.
           </p>
         </div>

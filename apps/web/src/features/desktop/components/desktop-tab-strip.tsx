@@ -172,8 +172,8 @@ const DesktopTabItem = memo(function DesktopTabItem({
       className={cn(
         "group/tab relative flex h-8 min-w-12 max-w-60 flex-[1_1_15rem] cursor-grab items-center px-1 text-sm active:cursor-grabbing",
         active
-          ? "desktop-tab-active z-10 rounded-t-lg rounded-b-none border-x border-t border-border bg-background text-foreground"
-          : "rounded-md text-muted-foreground hover:bg-backdrop hover:text-foreground",
+          ? "desktop-tab-active z-10 rounded-t-lg rounded-b-none border-x border-t border-stroke-default bg-surface-canvas text-content-primary"
+          : "rounded-md text-content-secondary hover:bg-effect-backdrop hover:text-content-primary",
       )}
       dragMomentum={false}
       onDragEnter={(event) => {
@@ -195,7 +195,7 @@ const DesktopTabItem = memo(function DesktopTabItem({
       <button
         aria-label={`Close ${tab.title}`}
         className={cn(
-          "shrink-0 rounded-sm p-1 hover:bg-accent hover:text-accent-foreground focus-visible:opacity-100 active:bg-active active:text-active-foreground",
+          "shrink-0 rounded-sm p-1 hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:opacity-100 active:bg-action-neutral-pressed active:text-action-on-neutral",
           active ? "opacity-100" : "opacity-0 group-hover/tab:opacity-100",
         )}
         onClick={() => onRemove(tab.id)}
@@ -221,7 +221,7 @@ function DesktopNewTabButton({
   return (
     <motion.button
       aria-label="New tab"
-      className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-backdrop hover:text-foreground"
+      className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-md text-content-secondary hover:bg-effect-backdrop hover:text-content-primary"
       layout="position"
       onClick={onCreate}
       onPointerDown={stopReorderPointerDown}

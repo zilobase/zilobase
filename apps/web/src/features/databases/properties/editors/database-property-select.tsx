@@ -80,6 +80,7 @@ function getSelectConfigWithOptions(
 export function DatabasePropertySelect({
   allowCreate = true,
   editable = true,
+  emptyLabel,
   propertyConfig,
   defaultOptions = [],
   label,
@@ -96,6 +97,7 @@ export function DatabasePropertySelect({
   allowCreate?: boolean
   defaultOptions?: DatabasePropertySelectOption[]
   editable?: boolean
+  emptyLabel?: string
   label: string
   multiple?: boolean
   open?: boolean
@@ -140,24 +142,29 @@ export function DatabasePropertySelect({
     query.trim().length > 0 &&
     !matchingSelectOption
   const isOpen = controlledOpen ?? uncontrolledOpen
+  const selectedContent = selectedValues.length > 0 ? (
+    selectedValues.map((selectedValue) => {
+      const selectedOption = getSelectedOption(selectedValue)
+
+      return (
+        <DatabaseSelectBadge
+          color={getOptionColor(selectedValue)}
+          key={selectedValue}
+          showDot={showStatusDot}
+          suffix={selectedOption?.suffix}
+        >
+          {selectedOption?.name ?? selectedValue}
+        </DatabaseSelectBadge>
+      )
+    })
+  ) : emptyLabel ? (
+    <span className="text-content-secondary">{emptyLabel}</span>
+  ) : null
 
   if (!editable) {
     return (
       <span className="database-select-cell-trigger">
-        {selectedValues.map((selectedValue) => {
-          const selectedOption = getSelectedOption(selectedValue)
-
-          return (
-            <DatabaseSelectBadge
-              color={getOptionColor(selectedValue)}
-              key={selectedValue}
-              showDot={showStatusDot}
-              suffix={selectedOption?.suffix}
-            >
-              {selectedOption?.name ?? selectedValue}
-            </DatabaseSelectBadge>
-          )
-        })}
+        {selectedContent}
       </span>
     )
   }
@@ -238,20 +245,7 @@ export function DatabasePropertySelect({
       className="database-select-cell-trigger"
       type="button"
     >
-      {selectedValues.map((selectedValue) => {
-        const selectedOption = getSelectedOption(selectedValue)
-
-        return (
-          <DatabaseSelectBadge
-            color={getOptionColor(selectedValue)}
-            key={selectedValue}
-            showDot={showStatusDot}
-            suffix={selectedOption?.suffix}
-          >
-            {selectedOption?.name ?? selectedValue}
-          </DatabaseSelectBadge>
-        )
-      })}
+      {selectedContent}
     </button>
   )
   const panel = (

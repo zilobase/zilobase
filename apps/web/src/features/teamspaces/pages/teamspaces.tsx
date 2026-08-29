@@ -28,7 +28,7 @@ import {
 } from "@/shared/ui/select"
 import { Separator } from "@/shared/ui/separator"
 import { Spinner } from "@/shared/ui/spinner"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
 import { Textarea } from "@/shared/ui/textarea"
 import { Switch } from "@/shared/ui/switch"
 import { getApiErrorMessage } from "@/features/desktop/network/api"
@@ -162,7 +162,7 @@ export default function TeamspacesSettingsPage() {
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
             <div className="space-y-1">
               <h3 className="font-heading text-base font-medium">Creation</h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-content-secondary">
                 Choose who can create teamspaces in this workspace.
               </p>
             </div>
@@ -196,7 +196,7 @@ export default function TeamspacesSettingsPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <h3 className="font-heading text-base font-medium">Teamspaces</h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-content-secondary">
                 Open spaces are discoverable and joinable; closed spaces require an invite.
               </p>
             </div>
@@ -226,11 +226,11 @@ export default function TeamspacesSettingsPage() {
           {isPending ? (
             <div className="flex justify-center py-10"><Spinner /></div>
           ) : teamspaces.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-content-secondary">
               No teamspaces yet. Create one for a team or project.
             </div>
           ) : filteredTeamspaces.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-content-secondary">
               No teamspaces match these filters.
             </div>
           ) : (
@@ -251,7 +251,7 @@ export default function TeamspacesSettingsPage() {
                         })}
                       />
                     ) : null}
-                    <div className="flex size-9 items-center justify-center rounded-md bg-muted">
+                    <div className="flex size-9 items-center justify-center rounded-md bg-surface-muted">
                       {typeof teamspace.icon === "string" && teamspace.icon ? (
                         <PageIconDisplay size="md" value={teamspace.icon} />
                       ) : (
@@ -264,7 +264,7 @@ export default function TeamspacesSettingsPage() {
                         {teamspace.isDefault ? <Badge variant="secondary">Default</Badge> : null}
                         <Badge variant="outline">{teamspace.accessMode}</Badge>
                       </div>
-                      <p className="truncate text-sm text-muted-foreground">
+                      <p className="truncate text-sm text-content-secondary">
                         {teamspace.memberCount ?? 0} members{teamspace.description ? ` · ${teamspace.description}` : ""}
                       </p>
                     </div>
@@ -320,7 +320,7 @@ export default function TeamspacesSettingsPage() {
           <>
             <Separator />
             <section className="grid gap-3">
-              <div><h3 className="font-heading text-base font-medium">Archived</h3><p className="text-sm text-muted-foreground">Restore a teamspace and its pages.</p></div>
+              <div><h3 className="font-heading text-base font-medium">Archived</h3><p className="text-sm text-content-secondary">Restore a teamspace and its pages.</p></div>
               <div className="divide-y rounded-lg border">
                 {archivedTeamspaces.map((teamspace) => (
                   <div className="flex items-center gap-3 p-4" key={teamspace.id}>
@@ -519,9 +519,9 @@ function ManageTeamspaceDialog({
               <Select disabled={!canInvite} onValueChange={setCandidateId} value={candidateId}><SelectTrigger aria-label="Workspace member or sharing group" className="flex-1"><SelectValue placeholder="Select a workspace member or group" /></SelectTrigger><SelectContent>{candidates.map((candidate) => <SelectItem key={`${candidate.type}:${candidate.id}`} value={`${candidate.type}:${candidate.id}`}>{candidate.label}</SelectItem>)}</SelectContent></Select>
               <Button disabled={!canInvite || !candidateId || add.isPending} onClick={() => { const [principalType, principalId] = candidateId.split(":") as ["user" | "team", string]; add.mutate({ principalType, role: "member", teamspaceId: teamspace.id, userId: principalId, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)), onSuccess: () => setCandidateId("") }) }}><UsersIcon />Add</Button>
             </div>
-            <div className="divide-y rounded-md border">{principals.map((principal) => <div className="flex flex-wrap items-center gap-3 p-3" key={principal.id}><div className="min-w-48 flex-1"><div className="truncate text-sm font-medium">{principal.name || principal.email || principal.principalId}</div><div className="truncate text-xs text-muted-foreground">{principal.principalType === "team" ? "Sharing group" : principal.email}</div></div><Select disabled={!canManage} onValueChange={(accessLevelOverride) => updatePrincipal.mutate({ accessLevelOverride: accessLevelOverride === "default" ? null : accessLevelOverride as "view" | "comment" | "edit" | "full", principalId: principal.id, role: principal.role, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} value={principal.accessLevelOverride ?? "default"}><SelectTrigger aria-label={`Content access for ${principal.name || principal.principalId}`} className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">Default</SelectItem><SelectItem value="view">View</SelectItem><SelectItem value="comment">Comment</SelectItem><SelectItem value="edit">Edit</SelectItem><SelectItem value="full">Full</SelectItem></SelectContent></Select><Select disabled={!canManage} onValueChange={(role) => updatePrincipal.mutate({ principalId: principal.id, role: role as "owner" | "member", teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} value={principal.role}><SelectTrigger aria-label={`Teamspace role for ${principal.name || principal.principalId}`} className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="member">Member</SelectItem><SelectItem value="owner">Owner</SelectItem></SelectContent></Select><Button aria-label={`Remove ${principal.name || "member or group"}`} disabled={!canManage} onClick={() => remove.mutate({ principalId: principal.id, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} size="sm" variant="ghost">Remove</Button></div>)}</div>
+            <div className="divide-y rounded-md border">{principals.map((principal) => <div className="flex flex-wrap items-center gap-3 p-3" key={principal.id}><div className="min-w-48 flex-1"><div className="truncate text-sm font-medium">{principal.name || principal.email || principal.principalId}</div><div className="truncate text-xs text-content-secondary">{principal.principalType === "team" ? "Sharing group" : principal.email}</div></div><Select disabled={!canManage} onValueChange={(accessLevelOverride) => updatePrincipal.mutate({ accessLevelOverride: accessLevelOverride === "default" ? null : accessLevelOverride as "view" | "comment" | "edit" | "full", principalId: principal.id, role: principal.role, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} value={principal.accessLevelOverride ?? "default"}><SelectTrigger aria-label={`Content access for ${principal.name || principal.principalId}`} className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="default">Default</SelectItem><SelectItem value="view">View</SelectItem><SelectItem value="comment">Comment</SelectItem><SelectItem value="edit">Edit</SelectItem><SelectItem value="full">Full</SelectItem></SelectContent></Select><Select disabled={!canManage} onValueChange={(role) => updatePrincipal.mutate({ principalId: principal.id, role: role as "owner" | "member", teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} value={principal.role}><SelectTrigger aria-label={`Teamspace role for ${principal.name || principal.principalId}`} className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="member">Member</SelectItem><SelectItem value="owner">Owner</SelectItem></SelectContent></Select><Button aria-label={`Remove ${principal.name || "member or group"}`} disabled={!canManage} onClick={() => remove.mutate({ principalId: principal.id, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)) })} size="sm" variant="ghost">Remove</Button></div>)}</div>
             <div className="flex items-center justify-between gap-4 rounded-md border p-3">
-              <div><div className="text-sm font-medium">Invite link</div><div className="text-xs text-muted-foreground">Anyone in this workspace with the link can join.</div></div>
+              <div><div className="text-sm font-medium">Invite link</div><div className="text-xs text-content-secondary">Anyone in this workspace with the link can join.</div></div>
               <Button disabled={!canManage || inviteLink.isPending} onClick={() => inviteLink.mutate({ enabled: !teamspace.inviteLinkEnabled, teamspaceId: teamspace.id, workspaceId }, { onError: (error) => toast.error(getApiErrorMessage(error)), onSuccess: (result) => { if (result.token) { const url = `${window.location.origin}/settings/teamspaces?workspace=${encodeURIComponent(workspaceId)}&invite=${encodeURIComponent(result.token)}`; void navigator.clipboard?.writeText(url); toast.success("Invite link copied.") } else { toast.success("Invite link disabled.") } } })} variant="outline">{teamspace.inviteLinkEnabled ? "Disable" : "Enable and copy"}</Button>
             </div>
           </TabsContent>
@@ -550,5 +550,5 @@ function PolicySelect({ label, value, onChange }: { label: string; value: "owner
 }
 
 function SecurityToggle({ checked, label, onChange }: { checked: boolean; label: string; onChange: (checked: boolean) => void }) {
-  return <div className="flex items-center justify-between gap-4"><div><Label>{label}</Label><p className="text-xs text-muted-foreground">This is a ceiling for every page and database in the teamspace.</p></div><Switch aria-label={label} checked={checked} onCheckedChange={onChange} /></div>
+  return <div className="flex items-center justify-between gap-4"><div><Label>{label}</Label><p className="text-xs text-content-secondary">This is a ceiling for every page and database in the teamspace.</p></div><Switch aria-label={label} checked={checked} onCheckedChange={onChange} /></div>
 }

@@ -819,7 +819,7 @@ export function DragBlockMenu({
       </DropDrawer>
       {isOpen && target ? (
         <div
-          className="plus-block-menu w-72 overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-md"
+          className="plus-block-menu w-72 overflow-hidden rounded-xl border bg-surface-overlay text-content-primary shadow-md"
           onMouseDown={(event) => {
             event.preventDefault()
             event.stopPropagation()

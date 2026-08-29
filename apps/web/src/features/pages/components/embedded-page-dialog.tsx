@@ -66,14 +66,14 @@ export function EmbeddedPageDialog({
         </DialogDescription>
         <div
           aria-hidden
-          className="mx-auto mt-3 h-1 w-[100px] shrink-0 rounded-full bg-muted sm:hidden"
+          className="mx-auto mt-3 h-1 w-[100px] shrink-0 rounded-full bg-surface-muted sm:hidden"
         />
         <PagePaneHeader
           leadingControl={
             <Button
               aria-label="Close"
               onClick={closeDialog}
-              size="icon-sm"
+              size="icon"
               type="button"
               variant="ghost"
             >
@@ -88,6 +88,7 @@ export function EmbeddedPageDialog({
           pageSidebarOpen={pageLayoutSidebar?.overlayPageId === dialogPageId}
           pathname={dialogPathname}
           rowNavigationDatabaseId={dialogDatabaseId}
+          showBreadcrumb={false}
           showPaneControls
         />
         <PageScrollViewport

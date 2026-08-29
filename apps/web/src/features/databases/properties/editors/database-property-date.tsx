@@ -28,6 +28,7 @@ import { firstScalarValue } from "../../core/utils"
 
 type DatabasePropertyDateProps = {
   editable?: boolean
+  emptyLabel?: string
   label: string
   onOpenChange?: (open: boolean) => void
   open?: boolean
@@ -40,6 +41,7 @@ type DatabasePropertyDateProps = {
 
 export function DatabasePropertyDate({
   editable = true,
+  emptyLabel,
   label,
   onOpenChange,
   open: controlledOpen,
@@ -67,6 +69,10 @@ export function DatabasePropertyDate({
     dateFormat,
     timeFormat
   )
+  const displayContent = displayValue ||
+    (emptyLabel ? (
+      <span className="text-content-secondary">{emptyLabel}</span>
+    ) : null)
   const dateFormatLabel = getDateFormatLabel(dateFormat)
   const timeFormatLabel = getTimeFormatLabel(timeFormat)
   const hasTime = timeFormat !== "hidden"
@@ -159,7 +165,7 @@ export function DatabasePropertyDate({
   }
 
   if (!editable) {
-    return <span className="database-date-cell-trigger">{displayValue}</span>
+    return <span className="database-date-cell-trigger">{displayContent}</span>
   }
 
   return (
@@ -171,7 +177,7 @@ export function DatabasePropertyDate({
             className="database-date-cell-trigger"
             type="button"
           >
-            {displayValue}
+            {displayContent}
           </button>
         )}
       </PopoverTrigger>
@@ -353,7 +359,7 @@ export function DatabasePropertyDate({
         >
           Clear
         </Button>
-        <div className="flex items-center gap-1.5 rounded-md border-t px-2 py-1 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5 rounded-md border-t px-2 py-1 text-sm text-content-secondary">
           <HelpCircle className="size-4 shrink-0" />
           <span>Learn about reminders</span>
         </div>
@@ -391,7 +397,7 @@ function DateInput({
   value: string
 }) {
   return (
-    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+    <label className="grid gap-1 text-xs font-medium text-content-secondary">
       <span className="px-1">{fieldLabel}</span>
       <span className="relative">
         <Input
@@ -429,7 +435,7 @@ function TimeInput({
   value: string
 }) {
   return (
-    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+    <label className="grid gap-1 text-xs font-medium text-content-secondary">
       <span className="px-1">{fieldLabel}</span>
       <Input
         aria-label={label}
@@ -461,7 +467,7 @@ function DatabaseDateRangeOption({
   return (
     <button
       aria-pressed={checked}
-      className="flex w-full cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+      className="flex w-full cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-hidden select-none hover:bg-action-neutral-hover hover:text-action-on-neutral"
       onClick={() => onCheckedChange(!checked)}
       type="button"
     >
@@ -496,11 +502,11 @@ function DatabaseDateFormatOption<TValue extends string>({
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="flex w-full cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+          className="flex w-full cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm outline-hidden select-none hover:bg-action-neutral-hover hover:text-action-on-neutral"
           type="button"
         >
           <span>{label}</span>
-          <span className="ml-auto inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+          <span className="ml-auto inline-flex min-w-0 items-center gap-1.5 text-content-secondary">
             {value}
             <ChevronRight className="size-4 shrink-0" />
           </span>
@@ -514,7 +520,7 @@ function DatabaseDateFormatOption<TValue extends string>({
       >
         {options.map((option) => (
           <button
-            className="flex w-full cursor-default items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground"
+            className="flex w-full cursor-default items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm outline-hidden select-none hover:bg-action-neutral-hover hover:text-action-on-neutral"
             key={option.value}
             onClick={() => onSelect(option.value)}
             type="button"
@@ -543,7 +549,7 @@ function DatabaseDateOption({
     <div className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm">
       <span>{label}</span>
       {children ?? (
-        <span className="ml-auto inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+        <span className="ml-auto inline-flex min-w-0 items-center gap-1.5 text-content-secondary">
           {value}
           <ChevronRight className="size-4 shrink-0" />
         </span>

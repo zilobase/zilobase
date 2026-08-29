@@ -50,7 +50,7 @@ export function MobileActionBar({
 
   return (
     <ButtonGroup
-      className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center rounded-md border bg-popover p-0.5 text-popover-foreground shadow-lg ring-1 ring-border md:hidden"
+      className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center rounded-md border bg-surface-overlay p-0.5 text-content-primary shadow-lg ring-1 ring-stroke-default md:hidden"
       data-mobile-action-bar
       style={{
         bottom: `calc(${bottom}px + env(safe-area-inset-bottom))`,

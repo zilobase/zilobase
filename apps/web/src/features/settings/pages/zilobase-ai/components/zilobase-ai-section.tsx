@@ -72,7 +72,7 @@ export function ZilobaseAiSection({
           <h3 className="font-heading text-base leading-snug font-medium">
             {config.title}
           </h3>
-          <p className="text-sm text-muted-foreground">{config.description}</p>
+          <p className="text-sm text-content-secondary">{config.description}</p>
         </div>
         {!isLoading ? (
           <ZilobaseAiCreateMenu

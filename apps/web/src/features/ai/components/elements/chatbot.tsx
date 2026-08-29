@@ -198,7 +198,7 @@ const ShellScrollButton = ({
 
   return (
     <Button
-      className="absolute top-3 left-1/2 z-20 size-8 -translate-x-1/2 -translate-y-full rounded-full bg-background shadow-sm"
+      className="absolute top-3 left-1/2 z-20 size-8 -translate-x-1/2 -translate-y-full rounded-full bg-surface-canvas shadow-sm"
       onClick={handleClick}
       size="icon"
       type="button"
@@ -265,7 +265,7 @@ const PendingAssistantStatus = () => {
   return (
     <Message from="assistant">
       <MessageContent>
-        <div className="not-prose flex w-fit max-w-full items-center gap-2 text-muted-foreground">
+        <div className="not-prose flex w-fit max-w-full items-center gap-2 text-content-secondary">
           <SparklesIcon aria-hidden="true" className="size-4 shrink-0" />
           <Shimmer
             as="span"
@@ -460,7 +460,7 @@ const AgentCitations = ({
 
         return (
           <a
-            className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-surface-canvas px-2 py-1 text-content-secondary text-xs transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral"
             href={href}
             key={`${citation.source}:${citation.id}`}
             onClick={(event) => {
@@ -696,13 +696,13 @@ const ChatMessage = ({
           if (part.type === "file") {
             return (
               <a
-                className="not-prose flex w-fit max-w-full items-center gap-2 rounded-md border bg-background px-2.5 py-2 text-xs hover:bg-accent"
+                className="not-prose flex w-fit max-w-full items-center gap-2 rounded-md border bg-surface-canvas px-2.5 py-2 text-xs hover:bg-action-neutral-hover"
                 href={toApiUrl(part.url)}
                 key={`${message.id}-${index}`}
                 rel="noreferrer"
                 target="_blank"
               >
-                <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />
+                <FileTextIcon className="size-4 shrink-0 text-content-secondary" />
                 <span className="truncate">{part.filename ?? "Attached file"}</span>
               </a>
             );
@@ -780,12 +780,12 @@ const EmptyState = ({
   onSuggestion: (value: string) => void;
 }) => (
   <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-5 px-4 pb-6 text-center">
-    <div className="flex size-12 items-center justify-center rounded-md border bg-background shadow-sm">
-      <InboxIcon className="size-6 text-muted-foreground" />
+    <div className="flex size-12 items-center justify-center rounded-md border bg-surface-canvas shadow-sm">
+      <InboxIcon className="size-6 text-content-secondary" />
     </div>
     <div className="space-y-2">
       <h2 className="font-semibold text-xl">Ask AI about your page</h2>
-      <p className="mx-auto max-w-xl text-muted-foreground text-sm">
+      <p className="mx-auto max-w-xl text-content-secondary text-sm">
         Search accessible Zilobase pages and databases, use attached context,
         analyze uploaded files, create downloads, and complete supported actions.
       </p>
@@ -887,7 +887,7 @@ const Chatbot = (props: ChatbotProps) => {
     seededInitialMessages.key !== initialMessagesKey
   ) {
     return (
-      <div className="flex min-h-40 items-center justify-center text-muted-foreground text-sm">
+      <div className="flex min-h-40 items-center justify-center text-content-secondary text-sm">
         Loading chat...
       </div>
     );
@@ -1945,14 +1945,14 @@ const ChatbotInner = ({
       <div
         className={
           hasMessages || isSidebar
-            ? "sticky bottom-0 z-10 -mx-4 mt-auto grid shrink-0 gap-3 bg-gradient-to-t from-background via-backdrop to-transparent px-4 pb-4 pt-16 md:mx-0 md:px-4 md:pb-6 md:pt-20"
+            ? "sticky bottom-0 z-10 -mx-4 mt-auto grid shrink-0 gap-3 bg-gradient-to-t from-surface-canvas via-effect-backdrop to-transparent px-4 pb-4 pt-16 md:mx-0 md:px-4 md:pb-6 md:pt-20"
             : "z-10 -mx-4 grid shrink-0 gap-3 px-4 pb-4 md:mx-0 md:px-4"
         }
       >
         <ShellScrollButton targetRef={rootRef} />
         <div className="mx-auto w-full max-w-3xl">
           {isSidebar ? (
-            <div className="mb-2 px-1 text-xs text-muted-foreground">
+            <div className="mb-2 px-1 text-xs text-content-secondary">
               {isContextLoading
                 ? "Loading page context..."
                 : contextError
@@ -1965,7 +1965,7 @@ const ChatbotInner = ({
           <PromptInput
             accept={AI_FILE_ACCEPT}
             globalDrop
-            inputGroupClassName="h-auto items-stretch overflow-visible focus-within:border-input focus-within:ring-0 has-[[data-slot=input-group-control]:focus-visible]:border-input has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+            inputGroupClassName="h-auto items-stretch overflow-visible focus-within:border-control-border focus-within:ring-0 has-[[data-slot=input-group-control]:focus-visible]:border-control-border has-[[data-slot=input-group-control]:focus-visible]:ring-0"
             maxFileSize={MAX_AI_FILE_BYTES}
             maxFiles={MAX_AI_FILES}
             multiple

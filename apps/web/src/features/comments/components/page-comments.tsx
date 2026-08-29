@@ -188,7 +188,7 @@ function CommentItemComponent({
         >
           <span
             className={cn(
-              "truncate text-foreground",
+              "truncate text-content-primary",
               compact ? "font-medium" : "font-semibold",
             )}
           >
@@ -196,7 +196,7 @@ function CommentItemComponent({
           </span>
           <span
             className={cn(
-              "shrink-0 text-muted-foreground",
+              "shrink-0 text-content-secondary",
               compact ? "text-[11px] font-normal" : "text-xs font-medium",
             )}
           >
@@ -205,7 +205,7 @@ function CommentItemComponent({
           {comment.editedAt ? (
             <span
               className={cn(
-                "shrink-0 text-muted-foreground",
+                "shrink-0 text-content-secondary",
                 compact ? "text-[11px] font-normal" : "text-xs font-medium",
               )}
             >
@@ -214,7 +214,7 @@ function CommentItemComponent({
           ) : null}
           {(canReact || canEdit || (showResolveUnresolve && (canResolve || onUnresolve))) && !isEditing ? (
             <AlertDialog>
-              <span className="absolute right-0 top-0 flex shrink-0 items-center gap-1 rounded-xl border bg-background p-1 opacity-0 shadow-sm transition-opacity group-hover/comment:opacity-100 group-focus-within/comment:opacity-100">
+              <span className="absolute right-0 top-0 flex shrink-0 items-center gap-1 rounded-xl border bg-surface-canvas p-1 opacity-0 shadow-sm transition-opacity group-hover/comment:opacity-100 group-focus-within/comment:opacity-100">
                 {canReact ? (
                   <CommentReactionPicker
                     align="end"
@@ -223,7 +223,7 @@ function CommentItemComponent({
                   >
                     <Button
                       aria-label="Add reaction"
-                      className="text-muted-foreground"
+                      className="text-content-secondary"
                       disabled={isMutating}
                       size="icon-sm"
                       type="button"
@@ -236,7 +236,7 @@ function CommentItemComponent({
                 {canResolve ? (
                   <Button
                     aria-label="Resolve thread"
-                    className="text-muted-foreground"
+                    className="text-content-secondary"
                     disabled={isMutating}
                     onClick={onResolve}
                     size="icon-sm"
@@ -250,7 +250,7 @@ function CommentItemComponent({
                 {onUnresolve ? (
                   <Button
                     aria-label="Unresolve thread"
-                    className="text-muted-foreground"
+                    className="text-content-secondary"
                     disabled={isMutating}
                     onClick={onUnresolve}
                     size="icon-sm"
@@ -266,7 +266,7 @@ function CommentItemComponent({
                     <DropdownMenuTrigger asChild>
                       <Button
                         aria-label="More comment actions"
-                        className="text-muted-foreground"
+                        className="text-content-secondary"
                         disabled={isMutating}
                         size="icon-sm"
                         type="button"
@@ -349,10 +349,10 @@ function CommentItemComponent({
               }}
               value={editingBody}
             />
-            <div className="flex shrink-0 items-center gap-1 pb-1 text-muted-foreground">
+            <div className="flex shrink-0 items-center gap-1 pb-1 text-content-secondary">
               <Button
                 aria-label="Cancel edit"
-                className="text-muted-foreground"
+                className="text-content-secondary"
                 disabled={isMutating}
                 onClick={onCancelEdit}
                 size="icon-sm"
@@ -378,7 +378,7 @@ function CommentItemComponent({
           <>
             <p
               className={cn(
-                "whitespace-pre-wrap break-words text-foreground",
+                "whitespace-pre-wrap break-words text-content-primary",
                 compact
                   ? "mt-0.5 text-[13px] font-normal leading-5"
                   : "mt-1 text-sm font-medium leading-6",
@@ -393,8 +393,8 @@ function CommentItemComponent({
                     aria-label={`${reaction.emoji} reaction, ${reaction.count}`}
                     className={
                       reaction.reactedByMe
-                        ? "h-7 gap-1 rounded-md border-transparent bg-primary-subtle px-2 text-primary hover:bg-primary-subtle dark:bg-primary-subtle dark:hover:bg-primary-subtle"
-                        : "h-7 gap-1 rounded-md bg-muted px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
+                        ? "h-7 gap-1 rounded-md border-transparent bg-action-selected-subtle px-2 text-action-selected-text hover:bg-action-selected-subtle dark:bg-action-selected-subtle dark:hover:bg-action-selected-subtle"
+                        : "h-7 gap-1 rounded-md bg-surface-muted px-2 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
                     }
                     disabled={isMutating}
                     key={reaction.emoji}
@@ -422,7 +422,7 @@ function CommentItemComponent({
                   >
                     <Button
                       aria-label="Add another reaction"
-                      className="h-7 rounded-md bg-muted px-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
+                      className="h-7 rounded-md bg-surface-muted px-2 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
                       disabled={isMutating}
                       size="sm"
                       type="button"
@@ -514,7 +514,7 @@ function CommentMentionMenu({
   }, [selectedIndex])
 
   return (
-    <div className="absolute left-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-4rem))] overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-border">
+    <div className="absolute left-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-4rem))] overflow-hidden rounded-lg bg-surface-overlay text-content-primary shadow-md ring-1 ring-stroke-default">
       <Command
         shouldFilter={false}
         value={selectedMember?.id ?? ""}
@@ -536,7 +536,7 @@ function CommentMentionMenu({
                 <CommandItem
                   aria-selected={index === selectedIndex}
                   className={
-                    index === selectedIndex ? "bg-muted text-foreground" : ""
+                    index === selectedIndex ? "bg-surface-muted text-content-primary" : ""
                   }
                   key={member.id}
                   onMouseDown={(event) => {
@@ -550,7 +550,7 @@ function CommentMentionMenu({
                   <CommentAvatar author={member} small />
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{label}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
+                    <span className="block truncate text-xs text-content-secondary">
                       {member.email}
                     </span>
                   </span>
@@ -573,7 +573,7 @@ function CommentMentionText({
     <>
       {parts.map((part, index) =>
         part.isMention ? (
-          <span className="text-muted-foreground" key={`${part.text}-${index}`}>
+          <span className="text-content-secondary" key={`${part.text}-${index}`}>
             {part.text}
           </span>
         ) : (
@@ -785,8 +785,8 @@ export function PageCommentThread({
   const hasComments = comments.length > 0
   const threadLineClassName =
     pageId && !threadResolved
-      ? "bg-muted-indicator"
-      : "bg-muted-indicator"
+      ? "bg-indicator-muted"
+      : "bg-indicator-muted"
 
   const createComment = () => {
     const body = newCommentBody.trim()
@@ -947,7 +947,7 @@ export function PageCommentThread({
   return (
     <div className={className}>
       {label ? (
-        <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-content-secondary">
           {label}
         </div>
       ) : null}
@@ -969,7 +969,7 @@ export function PageCommentThread({
                     <div className="pb-1 pl-8">
                       <Button
                         className={cn(
-                          "px-2 text-muted-foreground",
+                          "px-2 text-content-secondary",
                           compact && "h-6 text-xs",
                         )}
                         onClick={() => setThreadExpanded(true)}
@@ -1013,7 +1013,7 @@ export function PageCommentThread({
                     <div
                       aria-hidden
                       className={cn(
-                        "pointer-events-none absolute inset-0 overflow-hidden whitespace-pre text-foreground",
+                        "pointer-events-none absolute inset-0 overflow-hidden whitespace-pre text-content-primary",
                         compact ? "text-[13px]" : "text-sm",
                       )}
                     >
@@ -1022,11 +1022,11 @@ export function PageCommentThread({
                   ) : null}
                   <input
                     className={cn(
-                      "relative w-full bg-transparent placeholder:text-muted-foreground focus:outline-none",
+                      "relative w-full bg-transparent placeholder:text-content-secondary focus:outline-none",
                       compact ? "text-[13px]" : "text-sm",
                       showMentionHighlight && !mentionMenuOpen
-                        ? "text-transparent caret-foreground"
-                        : "text-foreground",
+                        ? "text-transparent caret-content-primary"
+                        : "text-content-primary",
                     )}
                     disabled={isMutating}
                     onChange={(event) => {
@@ -1107,10 +1107,10 @@ export function PageCommentThread({
                     />
                   ) : null}
                 </div>
-                <div className="flex shrink-0 items-center gap-0.5 text-muted-foreground">
+                <div className="flex shrink-0 items-center gap-0.5 text-content-secondary">
                   <Button
                     aria-label="Attach file"
-                    className="text-muted-foreground"
+                    className="text-content-secondary"
                     disabled={isMutating}
                     size={compact ? "icon-xs" : "icon-sm"}
                     type="button"
@@ -1120,7 +1120,7 @@ export function PageCommentThread({
                   </Button>
                   <Button
                     aria-label="Mention person"
-                    className="text-muted-foreground"
+                    className="text-content-secondary"
                     disabled={isMutating}
                     onClick={openMentionPicker}
                     size={compact ? "icon-xs" : "icon-sm"}
@@ -1132,7 +1132,7 @@ export function PageCommentThread({
                   <Button
                     aria-label="Send reply"
                     className={cn(
-                      "rounded-full bg-primary text-primary-foreground hover:bg-primary",
+                      "rounded-full bg-action-primary text-action-on-primary hover:bg-action-primary-hover",
                       !compact && "h-7 w-7",
                     )}
                     disabled={isMutating || !newCommentBody.trim()}

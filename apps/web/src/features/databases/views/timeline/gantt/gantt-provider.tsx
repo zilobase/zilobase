@@ -225,7 +225,7 @@ export function GanttProvider({
     <GanttContext.Provider value={contextValue}>
       <div
         className={cn(
-          "gantt flex h-full w-full min-h-0 flex-col rounded-sm bg-secondary",
+          "gantt flex h-full w-full min-h-0 flex-col rounded-sm bg-action-secondary",
           range,
           className,
         )}

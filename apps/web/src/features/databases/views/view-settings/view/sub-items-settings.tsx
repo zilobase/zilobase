@@ -99,12 +99,12 @@ export function SubItemsSettingsSection({
 function EnableSubItemsSettings({ onEnable }: { onEnable: () => void }) {
   return (
     <div className="grid gap-3 p-2">
-      <div className="text-xs text-muted-foreground">
+      <div className="text-xs text-content-secondary">
         Break down items in toggles
       </div>
       <SubItemsPreview />
       <DropDrawerItem
-        className="justify-center bg-primary font-medium text-primary-foreground focus:bg-primary-subtle focus:text-primary-foreground"
+        className="justify-center bg-action-primary font-medium text-action-on-primary focus:bg-action-primary-hover focus:text-action-on-primary"
         onSelect={(event) => {
           event.preventDefault();
           onEnable();
@@ -146,7 +146,7 @@ function EnabledSubItemsSettings({
         selected={settings.filter}
         onSelect={(filter) => onSettingsChange({ filter })}
       />
-      <p className="px-2 py-2 text-xs leading-5 text-muted-foreground">
+      <p className="px-2 py-2 text-xs leading-5 text-content-secondary">
         {getFilterDescription(settings.filter)}
       </p>
       <DropDrawerSeparator />
@@ -174,7 +174,7 @@ function EnabledSubItemsSettings({
         </DropDrawerSubContent>
       </DropDrawerSub>
       <DropDrawerItem
-        className="text-destructive focus:text-destructive"
+        className="text-action-danger-text focus:text-action-danger-text"
         onSelect={() => onSettingsChange({ enabled: false })}
       >
         <Trash2 />
@@ -222,12 +222,12 @@ function SettingsSelect<Value extends string>({
 
 function SubItemsPreview() {
   return (
-    <div className="rounded-md border bg-subtle-surface p-3 text-sm">
+    <div className="rounded-md border bg-surface-subtle p-3 text-sm">
       <div className="flex items-center gap-2 font-medium">
-        <ChevronDown className="size-4 text-muted-foreground" />
+        <ChevronDown className="size-4 text-content-secondary" />
         <span>Parent item</span>
       </div>
-      <div className="ml-6 mt-2 grid gap-2 text-muted-foreground">
+      <div className="ml-6 mt-2 grid gap-2 text-content-secondary">
         <div className="flex items-center gap-2">
           <ChevronRight className="size-3.5" />
           <span>Sub-item</span>

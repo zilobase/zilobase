@@ -266,7 +266,7 @@ function LinkExistingDataSourcePicker({
             {databaseOption.icon}
             <div className="min-w-0 flex-1">
               <div className="truncate">{databaseOption.label}</div>
-              <div className="truncate text-xs text-muted-foreground">
+              <div className="truncate text-xs text-content-secondary">
                 {databaseOption.pageName}
               </div>
             </div>
@@ -387,7 +387,7 @@ export function DataSourceSettingsSection({
                 {databaseOption.icon}
                 <div className="min-w-0">
                   <div className="truncate">{databaseOption.label}</div>
-                  <div className="truncate text-xs text-muted-foreground">
+                  <div className="truncate text-xs text-content-secondary">
                     {databaseOption.pageName}
                   </div>
                 </div>
@@ -400,7 +400,7 @@ export function DataSourceSettingsSection({
 
   return (
     <>
-      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+      <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-content-secondary">
         Data source settings
       </DropDrawerLabel>
       <DropDrawerSub

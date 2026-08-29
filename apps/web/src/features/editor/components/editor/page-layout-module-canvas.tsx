@@ -106,7 +106,7 @@ function DropSlot({
     >
       <div
         className={cn(
-          "absolute inset-x-0 h-0.5 rounded-full bg-primary opacity-0",
+          "absolute inset-x-0 h-0.5 rounded-full bg-action-selected opacity-0",
           fill ? "top-0" : "top-1/2 -translate-y-1/2",
           isOver && "opacity-100",
         )}
@@ -127,12 +127,12 @@ function ModuleSection({
   module: PageLayoutModule
 }) {
   return (
-    <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-background transition-colors group-hover/layout-module:border-primary">
-      <header className="flex h-9 items-center gap-2 rounded-t-lg border-b bg-subtle-surface px-2 text-xs font-medium text-muted-foreground">
+    <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-stroke-default bg-surface-canvas transition-colors group-hover/layout-module:border-action-selected-border">
+      <header className="flex h-9 items-center gap-2 rounded-t-lg border-b bg-surface-subtle px-2 text-xs font-medium text-content-secondary">
         {handle}
         <span>{formatModuleLabel(module)}</span>
         {fixed ? (
-          <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
+          <span className="ml-auto rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
             Fixed
           </span>
         ) : null}
@@ -198,7 +198,7 @@ function DraggableModule({
     >
       <ModuleSection
         handle={
-          <span className="flex size-6 items-center justify-center text-muted-foreground">
+          <span className="flex size-6 items-center justify-center text-content-secondary">
             <GripVertical className="size-4" />
           </span>
         }
@@ -223,7 +223,7 @@ function LayoutRegion({
     <div
       className={cn(
         "relative h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain",
-        region === "panel" && "border-l bg-background",
+        region === "panel" && "border-l bg-surface-canvas",
       )}
     >
       <div
@@ -384,7 +384,7 @@ export function PageLayoutModuleCanvas({
             ))}
           </div>
           {inlinePanelVisible ? (
-            <aside className="min-w-0 border-l bg-subtle-surface">
+            <aside className="min-w-0 border-l bg-surface-subtle">
               {panelModules.map((module) => (
                 <Fragment key={module.id}>{renderModule(module)}</Fragment>
               ))}
@@ -479,8 +479,8 @@ export function PageLayoutModuleCanvas({
       </div>
       <DragOverlay dropAnimation={null}>
         {activeModule ? (
-          <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-medium shadow-lg">
-            <GripVertical className="size-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 rounded-md border bg-surface-canvas px-3 py-2 text-sm font-medium shadow-lg">
+            <GripVertical className="size-4 text-content-secondary" />
             {formatModuleLabel(activeModule)}
           </div>
         ) : null}

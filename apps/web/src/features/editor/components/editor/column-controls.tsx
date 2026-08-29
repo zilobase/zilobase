@@ -825,7 +825,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
             top: menu.top,
           }}
         >
-          <div className="px-1.5 py-1 text-xs font-medium text-muted-foreground">
+          <div className="px-1.5 py-1 text-xs font-medium text-content-secondary">
             Column
           </div>
           <button
@@ -868,9 +868,9 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
             <Eraser />
             <span>Clear contents</span>
           </button>
-          <div className="-mx-1 my-1 h-px bg-border" />
+          <div className="-mx-1 my-1 h-px bg-stroke-default" />
           <button
-            className="column-actions-menu-item text-destructive hover:bg-status-danger-diff-surface focus-visible:bg-status-danger-diff-surface"
+            className="column-actions-menu-item text-action-danger-text hover:bg-feedback-error-subtle focus-visible:bg-feedback-error-subtle"
             onClick={() =>
               runColumnCommand(() => deleteColumn(editor, rect, menu.index))
             }

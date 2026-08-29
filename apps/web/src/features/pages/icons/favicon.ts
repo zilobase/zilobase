@@ -51,9 +51,11 @@ export function getFaviconColor(
 
   const color = getStoredIconColor(icon)
   const paletteColor =
-    color === "default" ? "" : getCssVariable(`--editor-${color}`).trim()
+    color === "default"
+      ? ""
+      : getCssVariable(`--zb-color-palette-text-${color}`).trim()
 
-  return paletteColor || getCssVariable("--foreground").trim()
+  return paletteColor || getCssVariable("--zb-color-content-text-primary").trim()
 }
 
 function isItemRoute(pathname: string) {

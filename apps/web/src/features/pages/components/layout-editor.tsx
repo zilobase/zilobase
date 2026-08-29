@@ -115,7 +115,7 @@ function PreviewPageDropdown({
           <span className="min-w-0 truncate text-sm font-medium">
             {previewName}
           </span>
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+          <ChevronDown className="size-4 shrink-0 text-content-secondary" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="z-[110] w-72">
@@ -280,17 +280,17 @@ function LayoutEditor({
 
   if (isLoading || !draft || !resolved) {
     return (
-      <div className="fixed inset-0 z-[100] grid place-items-center bg-background text-sm text-muted-foreground">
+      <div className="fixed inset-0 z-[100] grid place-items-center bg-surface-canvas text-sm text-content-secondary">
         Loading layout…
       </div>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex h-svh flex-col bg-background text-foreground">
+    <div className="fixed inset-0 z-[100] flex h-svh flex-col bg-surface-canvas text-content-primary">
       <header className="flex h-14 shrink-0 items-center border-b px-4">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <SidebarSimpleIcon className="size-4 text-muted-foreground" />
+          <SidebarSimpleIcon className="size-4 text-content-secondary" />
           <PreviewPageDropdown
             currentPageId={effectivePreviewPageId}
             loading={
@@ -316,7 +316,7 @@ function LayoutEditor({
             <DropdownMenuTrigger asChild>
               <Button
                 aria-label="Choose apply scope"
-                className="rounded-l-none border-l border-primary-foreground px-2"
+                className="rounded-l-none border-l border-action-on-selected px-2"
                 disabled={layoutMutationPending}
               >
                 <ChevronDown />
@@ -360,7 +360,7 @@ function LayoutEditor({
           onFullWidthChange={setFullWidth}
         />
 
-        <main className="min-w-0 flex-1 overflow-hidden bg-subtle-surface">
+        <main className="min-w-0 flex-1 overflow-hidden bg-surface-subtle">
           <div className="h-full w-full">
             <Editor
               content={page?.content ?? ""}

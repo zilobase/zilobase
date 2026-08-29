@@ -516,7 +516,7 @@ export function DatabaseKanbanView() {
                     style={
                       colorToken.value
                         ? ({
-                            "--database-kanban-accent": `var(--editor-${colorToken.value})`,
+                            "--database-kanban-accent": `var(--zb-color-palette-text-${colorToken.value})`,
                             "--database-kanban-tint": colorWithAlpha(
                               colorToken.value,
                               0.18
@@ -672,7 +672,7 @@ export function DatabaseKanbanView() {
             {hasNextPage || isFetchingNextPage ? (
               <div
                 aria-hidden={!isFetchingNextPage}
-                className="database-rows-pagination-status flex items-center justify-center gap-2 px-4 py-3 text-sm text-muted-foreground"
+                className="database-rows-pagination-status flex items-center justify-center gap-2 px-4 py-3 text-sm text-content-secondary"
                 ref={rowsScrollSentinelRef}
               >
                 {isFetchingNextPage ? (
@@ -686,7 +686,7 @@ export function DatabaseKanbanView() {
           </div>
         </div>
       ) : (
-        <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-sm text-muted-foreground">
+        <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-sm text-content-secondary">
           <span>Group this Kanban view by</span>
           <Select onValueChange={setViewGroupProperty}>
             <SelectTrigger className="min-w-56">
@@ -705,7 +705,7 @@ export function DatabaseKanbanView() {
                     value={property.property.id}
                   >
                     {PropertyIcon ? (
-                      <PropertyIcon className="size-4 shrink-0 text-muted-foreground" />
+                      <PropertyIcon className="size-4 shrink-0 text-content-secondary" />
                     ) : (
                       <NameColumnGlyph />
                     )}

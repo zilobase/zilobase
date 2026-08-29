@@ -124,8 +124,8 @@ export function setMultiBlockDragImage(
   dragImage.className =
     "tiptap-editor editor-multi-block-drag-image shadow-xl"
   Object.assign(dragImage.style, {
-    background: "var(--background)",
-    border: "1px solid var(--border)",
+    background: "var(--zb-color-surface-background-canvas)",
+    border: "1px solid var(--zb-color-border-stroke-default)",
     borderRadius: "10px",
     display: "flex",
     flexDirection: "column",

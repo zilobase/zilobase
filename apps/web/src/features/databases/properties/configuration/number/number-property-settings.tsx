@@ -70,8 +70,8 @@ export function NumberPropertySettings({
               aria-pressed={isSelected}
               className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
                 isSelected
-                  ? "border-primary bg-accent text-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "border-action-selected-border bg-action-neutral-hover text-content-primary"
+                  : "border-stroke-default bg-surface-canvas text-content-secondary hover:bg-action-neutral-hover hover:text-content-primary"
               }`}
               key={option.value}
               onClick={() =>
@@ -86,12 +86,12 @@ export function NumberPropertySettings({
         })}
       </div>
       {showVisualOptions ? (
-        <div className="space-y-3 rounded-md border border-border bg-subtle-surface px-3 py-3">
+        <div className="space-y-3 rounded-md border border-stroke-default bg-surface-subtle px-3 py-3">
           <PropertySettingSubmenu
             icon={
               <span
                 aria-hidden="true"
-                className={`size-4 rounded-sm border border-border ${getColorSwatchClassName(config.numberDisplayColor)}`}
+                className={`size-4 rounded-sm border border-stroke-default ${getColorSwatchClassName(config.numberDisplayColor)}`}
               />
             }
             label="Color"
@@ -102,7 +102,7 @@ export function NumberPropertySettings({
             selectedValue={getColorTokenValue(config.numberDisplayColor)}
           />
           <div className="space-y-1">
-            <label className="text-sm font-medium text-foreground">
+            <label className="text-sm font-medium text-content-primary">
               Divide by
             </label>
             <Input
@@ -179,7 +179,7 @@ function NumberFormatSettingSubmenu({
       <DropDrawerSubTrigger>
         <Hash />
         <span className="flex-1">Number format</span>
-        <span className="text-muted-foreground">{selectedOption?.label}</span>
+        <span className="text-content-secondary">{selectedOption?.label}</span>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-72">
         <div className="px-1.5 py-1">
@@ -262,7 +262,7 @@ const numberColorOptions = colorTokens.map((color) => ({
   icon: (
     <span
       aria-hidden="true"
-      className={`size-4 rounded-sm border border-border ${color.swatchClass}`}
+      className={`size-4 rounded-sm border border-stroke-default ${color.swatchClass}`}
     />
   ),
   label: color.name,
@@ -281,21 +281,21 @@ const numberDisplayStyleOptions = [
 
 function NumberDisplayPreview() {
   return (
-    <span className="text-2xl font-semibold leading-none text-primary">42</span>
+    <span className="text-2xl font-semibold leading-none text-action-selected-text">42</span>
   );
 }
 
 function BarDisplayPreview() {
   return (
-    <span className="flex h-3 w-16 items-center rounded-full bg-muted">
-      <span className="h-2 w-9 rounded-full bg-primary" />
+    <span className="flex h-3 w-16 items-center rounded-full bg-surface-muted">
+      <span className="h-2 w-9 rounded-full bg-action-selected" />
     </span>
   );
 }
 
 function RingDisplayPreview() {
   return (
-    <svg aria-hidden="true" className="size-8 text-primary" viewBox="0 0 24 24">
+    <svg aria-hidden="true" className="size-8 text-action-selected-text" viewBox="0 0 24 24">
       <circle
         cx="12"
         cy="12"
@@ -328,6 +328,6 @@ function getColorSwatchClassName(color?: string | null) {
     colorTokens.find((token) => (token.value ?? "default") === resolvedColor)
       ?.swatchClass ??
     colorTokens[0]?.swatchClass ??
-    "bg-background"
+    "bg-surface-canvas"
   );
 }

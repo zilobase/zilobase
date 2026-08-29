@@ -212,7 +212,7 @@ function PublicPageContent({
   return (
     <>
       <PageSidePaneLayout
-        className="bg-background"
+        className="bg-surface-canvas"
         standalone
         viewportHeightClass="h-svh"
         main={
@@ -239,7 +239,7 @@ function PublicPageContent({
                   <Button
                     aria-label="Close side pane"
                     onClick={closeSidePane}
-                    size="icon-sm"
+                    size="icon"
                     type="button"
                     variant="ghost"
                   >
@@ -248,7 +248,7 @@ function PublicPageContent({
                   <Button
                     aria-label="Open as main page"
                     asChild
-                    size="icon-sm"
+                    size="icon"
                     variant="ghost"
                   >
                     <Link
@@ -259,7 +259,6 @@ function PublicPageContent({
                     </Link>
                   </Button>
                 </div>
-                <PublicPageBreadcrumb pageId={renderedSidePanePageId} />
               </div>
               {sidePaneContentReady ? (
                 <PageEditorPane
@@ -331,7 +330,7 @@ export function PublicPageBreadcrumb({ pageId }: { pageId: string | null }) {
 
   return (
     <nav className="min-w-0 flex-1 text-sm" aria-label="Breadcrumb">
-      <ol className="flex min-w-0 items-center gap-1 text-muted-foreground">
+      <ol className="flex min-w-0 items-center gap-1 text-content-secondary">
         <PublicPageBreadcrumbAncestors pageId={pageId} />
       </ol>
     </nav>
@@ -352,7 +351,7 @@ function PublicPageBreadcrumbAncestors({ pageId }: { pageId: string }) {
       ) : null}
       <li className="min-w-0">
         <Link
-          className="block max-w-48 truncate text-foreground hover:underline sm:max-w-72"
+          className="block max-w-48 truncate text-content-primary hover:underline sm:max-w-72"
           params={{ pageId }}
           to="/p/$pageId"
         >
@@ -975,7 +974,7 @@ export function PageEditorPane({
       )
     ) {
       return (
-        <section className={`${className ?? ""} flex items-center justify-center px-4 text-sm text-muted-foreground`}>
+        <section className={`${className ?? ""} flex items-center justify-center px-4 text-sm text-content-secondary`}>
           Not available offline.
         </section>
       );
@@ -990,7 +989,7 @@ export function PageEditorPane({
   if (!page) {
     return (
       <section
-        className={`${className ?? ""} flex items-center justify-center px-4 text-sm text-muted-foreground`}
+        className={`${className ?? ""} flex items-center justify-center px-4 text-sm text-content-secondary`}
       >
         Page not found.
       </section>

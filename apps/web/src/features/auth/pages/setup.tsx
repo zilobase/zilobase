@@ -54,7 +54,7 @@ export default function SetupPage() {
   }
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-background p-6 md:p-10">
+    <main className="flex min-h-svh items-center justify-center bg-surface-canvas p-6 md:p-10">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Set up your Zilobase server</CardTitle>

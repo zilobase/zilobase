@@ -31,7 +31,7 @@ function LinkMentionView({ node }: ReactNodeViewProps) {
         src={favicon}
       />
     ) : (
-      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground [&_svg]:size-3">
+      <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-surface-canvas text-content-secondary [&_svg]:size-3">
         <Globe2 />
       </span>
     )
@@ -45,7 +45,7 @@ function LinkMentionView({ node }: ReactNodeViewProps) {
       <HoverCard closeDelay={100} openDelay={250}>
         <HoverCardTrigger asChild>
           <a
-            className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-muted px-1.5 py-0.5 text-sm font-medium text-foreground no-underline transition-colors hover:bg-accent"
+            className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-surface-muted px-1.5 py-0.5 text-sm font-medium text-content-primary no-underline transition-colors hover:bg-action-neutral-hover"
             href={href}
             rel="noreferrer"
             target="_blank"
@@ -61,20 +61,20 @@ function LinkMentionView({ node }: ReactNodeViewProps) {
           sideOffset={6}
         >
           {image ? (
-            <span className="block h-36 overflow-hidden bg-muted">
+            <span className="block h-36 overflow-hidden bg-surface-muted">
               <img alt="" className="size-full object-cover" src={image} />
             </span>
           ) : null}
           <span className="flex flex-col gap-2.5 p-4">
-            <span className="line-clamp-2 text-base font-semibold leading-snug text-foreground">
+            <span className="line-clamp-2 text-base font-semibold leading-snug text-content-primary">
               {title}
             </span>
             {description ? (
-              <span className="line-clamp-3 text-sm leading-snug text-muted-foreground">
+              <span className="line-clamp-3 text-sm leading-snug text-content-secondary">
                 {description}
               </span>
             ) : null}
-            <span className="mt-1 flex min-w-0 items-center gap-2 text-sm font-medium text-muted-foreground [&>span:last-child]:truncate">
+            <span className="mt-1 flex min-w-0 items-center gap-2 text-sm font-medium text-content-secondary [&>span:last-child]:truncate">
               {renderFavicon()}
               <span>{host}</span>
             </span>

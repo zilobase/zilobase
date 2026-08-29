@@ -72,10 +72,10 @@ export function SettingsSidebar({
   const profileImage = sessionData?.user?.image
 
   return (
-    <aside className="min-w-0 border-b border-border bg-sidebar text-foreground sm:h-full sm:w-64 sm:border-r sm:border-b-0">
-      <SidebarContent className="overflow-visible sm:overflow-auto">
+    <aside className="min-w-0 border-b border-stroke-default bg-surface-navigation text-content-primary sm:h-full sm:w-64 sm:border-r sm:border-b-0">
+      <SidebarContent className="gap-0 overflow-visible pt-0 pb-0 sm:overflow-auto">
         <SidebarGroup className="p-2 sm:py-0">
-          <SidebarGroupLabel className="hidden h-8 rounded-md px-2 text-xs text-muted-foreground sm:flex">
+          <SidebarGroupLabel className="hidden h-8 rounded-md px-2 text-xs text-content-secondary sm:flex">
             Settings
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -89,7 +89,7 @@ export function SettingsSidebar({
                     <SidebarMenuItem className="shrink-0" key={item.section}>
                       <SidebarMenuButton
                         aria-current={active ? "page" : undefined}
-                        className="w-auto sm:w-full"
+                        className="h-7 w-auto p-1.5 sm:w-full"
                         isActive={active}
                         onClick={() => onSectionChange(item.section)}
                         type="button"

@@ -436,7 +436,7 @@ export function buildPrimaryAttachment({
 
 function AttachMenuItemIcon({ item }: { item: AttachMenuItem }) {
   if (item.result.type === "person") {
-    return <UserIcon className="size-4 shrink-0 text-muted-foreground" />;
+    return <UserIcon className="size-4 shrink-0 text-content-secondary" />;
   }
 
   if (item.result.type === "database") {
@@ -444,11 +444,11 @@ function AttachMenuItemIcon({ item }: { item: AttachMenuItem }) {
       return <PageIconDisplay size="sm" value={item.result.emoji} />;
     }
 
-    return <DatabaseIcon className="size-4 shrink-0 text-muted-foreground" />;
+    return <DatabaseIcon className="size-4 shrink-0 text-content-secondary" />;
   }
 
   if (item.category === "skills") {
-    return <FileTextIcon className="size-4 shrink-0 text-muted-foreground" />;
+    return <FileTextIcon className="size-4 shrink-0 text-content-secondary" />;
   }
 
   const page = {
@@ -512,7 +512,7 @@ function AttachMenuGroup({
           <PromptInputCommandItem
             aria-selected={entryIndex === selectedIndex}
             className={
-              entryIndex === selectedIndex ? "bg-muted text-foreground" : ""
+              entryIndex === selectedIndex ? "bg-surface-muted text-content-primary" : ""
             }
             key={item.key}
             onMouseDown={(event) => {
@@ -539,7 +539,7 @@ function AttachMenuGroup({
             <div className="min-w-0">
               <div className="truncate">{item.result.title}</div>
               {item.result.path ? (
-                <div className="truncate text-xs text-muted-foreground">
+                <div className="truncate text-xs text-content-secondary">
                   {item.result.path}
                 </div>
               ) : null}
@@ -558,8 +558,8 @@ function AttachMenuGroup({
                 aria-selected={entryIndex === selectedIndex}
                 className={
                   entryIndex === selectedIndex
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground"
+                    ? "bg-surface-muted text-content-primary"
+                    : "text-content-secondary"
                 }
                 key={expandKey}
                 onMouseDown={(event) => {
@@ -733,7 +733,7 @@ export const ContextAttachMenu = forwardRef<
   }
 
   return (
-    <div className="absolute bottom-full left-0 z-50 mb-2 w-full max-w-md overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-border">
+    <div className="absolute bottom-full left-0 z-50 mb-2 w-full max-w-md overflow-hidden rounded-lg bg-surface-overlay text-content-primary shadow-md ring-1 ring-stroke-default">
       <PromptInputCommand
         onValueChange={(value) => {
           const nextIndex = menuEntries.findIndex(
@@ -749,7 +749,7 @@ export const ContextAttachMenu = forwardRef<
       >
         <PromptInputCommandList className="max-h-60">
           {isLoadingResults ? (
-            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+            <div className="px-3 py-6 text-center text-sm text-content-secondary">
               Loading workspace context...
             </div>
           ) : items.length === 0 ? (

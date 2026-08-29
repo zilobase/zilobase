@@ -298,7 +298,7 @@ function ProfileDetailsCard({
           <h3 className="font-heading text-base leading-snug font-medium">
             Personal details
           </h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-content-secondary">
             Update the photo, name and email tied to your account.
           </p>
         </div>
@@ -368,7 +368,7 @@ function ProfileDetailsCard({
                 </Button>
               ) : null}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-content-secondary">
               JPG, PNG, GIF, WebP or AVIF. Maximum 5 MB.
             </p>
           </div>
@@ -500,7 +500,7 @@ function PasswordCard({
           <h3 className="font-heading text-base leading-snug font-medium">
             Password
           </h3>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-content-secondary">
             {hasPassword
               ? "Change the password associated with your account."
               : "Set a password for signing in to your account."}

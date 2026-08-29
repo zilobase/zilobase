@@ -104,7 +104,7 @@ export function PageWorkspaceGate({
               </Button>
             </AlertDialogFooter>
             {setActiveWorkspace.error ? (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-action-danger-text">
                 {getApiErrorMessage(setActiveWorkspace.error)}
               </p>
             ) : null}

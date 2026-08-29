@@ -27,7 +27,7 @@ export function DatabaseFormulaValue({
 
   if (!expression.trim()) {
     return (
-      <span className="database-input-cell-trigger text-muted-foreground">
+      <span className="database-input-cell-trigger text-content-secondary">
         Configure formula
       </span>
     )
@@ -45,7 +45,7 @@ export function DatabaseFormulaValue({
   if (!result.ok) {
     return (
       <span
-        className="database-input-cell-trigger text-destructive"
+        className="database-input-cell-trigger text-action-danger-text"
         title={result.error}
       >
         Formula error
@@ -57,7 +57,7 @@ export function DatabaseFormulaValue({
 
   return (
     <span className="database-input-cell-trigger">
-      {value || <span className="text-muted-foreground">Empty</span>}
+      {value || <span className="text-content-secondary">Empty</span>}
     </span>
   )
 }

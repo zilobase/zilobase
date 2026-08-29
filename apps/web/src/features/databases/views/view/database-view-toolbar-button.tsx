@@ -16,7 +16,7 @@ export function DatabaseViewToolbarButton({
   return (
     <Button
       {...props}
-      className={cn("text-muted-foreground", className)}
+      className={cn("text-content-secondary", className)}
       size="icon"
       type="button"
       variant="ghost"

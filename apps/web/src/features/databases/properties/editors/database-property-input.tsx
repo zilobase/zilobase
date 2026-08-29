@@ -25,6 +25,7 @@ import {
 
 function DatabaseInputCell({
   editable = true,
+  emptyLabel,
   label,
   onActivate = () => {},
   onChange,
@@ -36,6 +37,7 @@ function DatabaseInputCell({
   value,
 }: {
   editable?: boolean
+  emptyLabel?: string
   label: string
   onActivate?: (element: HTMLTextAreaElement) => void
   onChange: (value: string) => void
@@ -57,6 +59,11 @@ function DatabaseInputCell({
   const actionHref = getActionHref(type, value)
   const actionLinkProps = getActionLinkProps(type)
   const displayValue = getDisplayValue(type, value, propertyConfig)
+  const displayContent = value.trim() ? (
+    displayValue
+  ) : emptyLabel ? (
+    <span className="text-content-secondary">{emptyLabel}</span>
+  ) : null
 
   useLayoutEffect(() => {
     const element = textareaRef.current
@@ -76,11 +83,11 @@ function DatabaseInputCell({
         onClick={(event) => event.stopPropagation()}
         {...actionLinkProps}
       >
-        {displayValue}
+        {displayContent}
       </a>
     ) : (
       <span className="database-input-cell-trigger">
-        {displayValue}
+        {displayContent}
       </span>
     )
   }
@@ -127,10 +134,10 @@ function DatabaseInputCell({
               onClick={(event) => event.stopPropagation()}
               {...actionLinkProps}
             >
-              {displayValue}
+              {displayContent}
             </a>
           ) : (
-            displayValue
+            displayContent
           )}
         </button>
       </PopoverTrigger>
@@ -322,7 +329,7 @@ export function getNumberDisplayValue(value: string, config: unknown): ReactNode
         ) : (
           <span className="flex-1" />
         )}
-        <span className="h-2 w-22 shrink-0 overflow-hidden rounded-full bg-muted">
+        <span className="h-2 w-22 shrink-0 overflow-hidden rounded-full bg-surface-muted">
           <span
             className={`block h-full rounded-full bg-current ${colorToken.textClass}`}
             style={{ width: `${ratio * 100}%` }}

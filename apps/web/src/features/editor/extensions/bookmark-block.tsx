@@ -77,7 +77,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
       <Popover onOpenChange={setOpen} open={open}>
         <PopoverTrigger asChild>
           <button
-            className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
+            className="flex h-10 w-full items-center gap-2 rounded-md bg-surface-subtle px-3 text-left text-sm font-medium text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none disabled:hidden [&_svg]:size-4 [&_svg]:shrink-0"
             contentEditable={false}
             disabled={Boolean(href)}
             type="button"
@@ -116,7 +116,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
             {url ? (
               <button
                 aria-label="Clear URL"
-                className="absolute right-2 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-4"
+                className="absolute right-2 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-full text-content-secondary hover:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none [&_svg]:size-4"
                 onClick={() => setUrl("")}
                 type="button"
               >
@@ -134,14 +134,14 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
               "Create bookmark"
             )}
           </Button>
-          <p className="text-center text-xs text-muted-foreground">
+          <p className="text-center text-xs text-content-secondary">
             Create a visual bookmark from a link.
           </p>
         </PopoverContent>
       </Popover>
       {href ? (
         <a
-          className="grid overflow-hidden rounded-md bg-subtle-surface text-card-foreground no-underline transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[image=true]:grid-cols-[minmax(0,1fr)_minmax(12rem,35%)] data-[image=true]:grid-rows-[10rem]"
+          className="grid overflow-hidden rounded-md bg-surface-subtle text-content-primary no-underline transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none data-[image=true]:grid-cols-[minmax(0,1fr)_minmax(12rem,35%)] data-[image=true]:grid-rows-[10rem]"
           contentEditable={false}
           data-image={image ? "true" : "false"}
           href={href}
@@ -153,11 +153,11 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
               {title}
             </span>
             {description ? (
-              <span className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+              <span className="line-clamp-2 text-sm leading-snug text-content-secondary">
                 {description}
               </span>
             ) : null}
-            <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground [&>span:last-child]:truncate">
+            <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-content-primary [&>span:last-child]:truncate">
               {favicon && !faviconFailed ? (
                 <img
                   alt=""
@@ -166,7 +166,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
                   src={favicon}
                 />
               ) : (
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground [&_svg]:size-3.5">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-muted text-content-secondary [&_svg]:size-3.5">
                   <Globe2 />
                 </span>
               )}
@@ -174,7 +174,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
             </span>
           </span>
           {image ? (
-            <span className="flex h-full items-center justify-center overflow-hidden bg-muted">
+            <span className="flex h-full items-center justify-center overflow-hidden bg-surface-muted">
               <img alt="" className="size-full object-cover" src={image} />
             </span>
           ) : null}

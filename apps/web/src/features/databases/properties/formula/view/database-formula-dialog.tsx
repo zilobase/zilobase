@@ -225,11 +225,11 @@ export function DatabaseFormulaDialog({
         <div className="flex max-h-[74vh] min-h-[28rem] flex-col overflow-hidden">
           <DialogHeader className="px-5 py-3 pr-14">
             <DialogTitle className="flex items-center gap-2">
-              <Sigma className="size-5 text-muted-foreground" />
+              <Sigma className="size-5 text-content-secondary" />
               <span>Edit formula</span>
               <a
                 aria-label="Formula syntax"
-                className="text-muted-foreground transition-colors hover:text-foreground"
+                className="text-content-secondary transition-colors hover:text-content-primary"
                 href="https://www.notion.com/help/formula-syntax"
                 rel="noreferrer"
                 target="_blank"
@@ -268,7 +268,7 @@ export function DatabaseFormulaDialog({
 
           <section className="grid gap-2.5 px-5 py-2.5 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
             <div className="grid min-w-0 gap-2">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-content-secondary">
                 <span>Preview with</span>
                 <Select
                   disabled={items.length === 0}
@@ -291,8 +291,8 @@ export function DatabaseFormulaDialog({
                 className={cn(
                   "min-h-6 text-sm",
                   previewResult && !previewResult.ok
-                    ? "text-destructive"
-                    : "text-muted-foreground"
+                    ? "text-action-danger-text"
+                    : "text-content-secondary"
                 )}
               >
                 {!previewRow ? (
@@ -306,7 +306,7 @@ export function DatabaseFormulaDialog({
             </div>
 
             <div className="flex flex-wrap items-center gap-3 md:justify-end">
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <label className="flex items-center gap-2 text-sm text-content-secondary">
                 <Switch
                   checked={debugMode}
                   onCheckedChange={setDebugMode}
@@ -323,7 +323,7 @@ export function DatabaseFormulaDialog({
           {debugMode ? (
             <>
               <Separator />
-              <pre className="max-h-28 overflow-auto bg-subtle-surface px-5 py-2.5 text-xs text-muted-foreground">
+              <pre className="max-h-28 overflow-auto bg-surface-subtle px-5 py-2.5 text-xs text-content-secondary">
                 {JSON.stringify(
                   {
                     formula: draftFormula,
@@ -370,7 +370,7 @@ export function DatabaseFormulaDialog({
                   onInsertSnippet={insertSnippet}
                 />
               ) : (
-                <div className="p-6 text-sm text-muted-foreground">
+                <div className="p-6 text-sm text-content-secondary">
                   Select a property or built-in to see formula examples.
                 </div>
               )}
@@ -450,7 +450,7 @@ function FormulaEditor({
     <div className="relative">
       <pre
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 m-0 overflow-auto rounded-lg border border-input px-2.5 py-2 font-mono text-sm leading-6 whitespace-pre-wrap break-words"
+        className="pointer-events-none absolute inset-0 m-0 overflow-auto rounded-lg border border-control-border px-2.5 py-2 font-mono text-sm leading-6 whitespace-pre-wrap break-words"
         ref={highlightOverlayRef}
         style={{
           backgroundColor: activeHighlightedCode.bg,
@@ -491,14 +491,14 @@ function FormulaEditor({
               </span>
             ))
           ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
+            <span className="text-content-secondary">{placeholder}</span>
           )}
         </code>
       </pre>
 
       <Textarea
         aria-label="Formula"
-        className="relative z-10 min-h-24 resize-none border-transparent bg-transparent font-mono text-sm leading-6 text-transparent caret-foreground selection:bg-primary-subtle focus-visible:border-ring"
+        className="relative z-10 min-h-24 resize-none border-transparent bg-transparent font-mono text-sm leading-6 text-transparent caret-content-primary selection:bg-action-selected-subtle focus-visible:border-action-focus-ring"
         id={id}
         onChange={(event) => {
           onChange(event.target.value)
@@ -548,7 +548,7 @@ function FormulaSidebarSection({
 }) {
   return (
     <section>
-      <div className="border-b px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="border-b px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-content-secondary">
         <span>{title}</span>
       </div>
       <div className="divide-y">{children}</div>
@@ -576,7 +576,7 @@ function FormulaReferenceButton({
       type="button"
       variant={selected ? "secondary" : "ghost"}
     >
-      <ReferenceIcon className="size-4 shrink-0 text-muted-foreground" />
+      <ReferenceIcon className="size-4 shrink-0 text-content-secondary" />
       <span className="truncate">{item.label}</span>
     </Button>
   )
@@ -597,10 +597,10 @@ function FormulaReferenceDetails({
     <div className="grid gap-4 p-5">
       <div className="grid gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <ReferenceIcon className="size-4 shrink-0 text-muted-foreground" />
+          <ReferenceIcon className="size-4 shrink-0 text-content-secondary" />
           <h3 className="truncate text-base font-semibold">{item.label}</h3>
         </div>
-        <p className="text-sm text-muted-foreground">{item.description}</p>
+        <p className="text-sm text-content-secondary">{item.description}</p>
         <Badge className="w-fit" variant="secondary">
           {item.type}
         </Badge>

@@ -299,11 +299,11 @@ export function FlowCanvas() {
 
   return (
     <div
-      className="relative h-full min-h-[calc(100svh-3rem)] w-full bg-background"
+      className="relative h-full min-h-[calc(100svh-3rem)] w-full bg-surface-canvas"
       ref={containerRef}
     >
       <ReactFlow
-        className="bg-background"
+        className="bg-surface-canvas"
         connectionMode={ConnectionMode.Loose}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         edgeTypes={edgeTypes}
@@ -331,7 +331,7 @@ export function FlowCanvas() {
         <Background gap={20} size={1} variant={BackgroundVariant.Dots} />
         <Controls />
         <MiniMap
-          className="rounded-xl border border-border bg-background"
+          className="rounded-xl border border-stroke-default bg-surface-canvas"
           nodeColor={(node) =>
             node.type === "shape"
               ? getCanvasColorOption(

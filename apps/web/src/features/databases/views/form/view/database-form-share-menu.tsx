@@ -138,7 +138,7 @@ export function DatabaseFormShareMenu() {
 
         <div
           aria-checked={settings.anonymousResponses}
-          className="my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-popover-foreground outline-hidden select-none hover:bg-accent focus-visible:bg-accent [&_svg]:shrink-0"
+          className="my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-content-primary outline-hidden select-none hover:bg-action-neutral-hover focus-visible:bg-action-neutral-hover [&_svg]:shrink-0"
           onClick={() =>
             updateSettings({
               anonymousResponses: !settings.anonymousResponses,
@@ -155,7 +155,7 @@ export function DatabaseFormShareMenu() {
           role="menuitemcheckbox"
           tabIndex={0}
         >
-          <UserRoundCheck className="size-4 shrink-0 text-muted-foreground" />
+          <UserRoundCheck className="size-4 shrink-0 text-content-secondary" />
           <span className="min-w-0 flex-1">Anonymous responses</span>
           <Switch
             aria-label="Allow anonymous responses"
@@ -171,7 +171,7 @@ export function DatabaseFormShareMenu() {
           <DropDrawerItem disabled>
             <FileLock2 />
             <span className="min-w-0 flex-1">Access to submission</span>
-            <span className="truncate text-muted-foreground">
+            <span className="truncate text-content-secondary">
               {submissionAccessLabels[settings.submissionAccess]}
             </span>
             <ChevronRight />
@@ -195,7 +195,7 @@ export function DatabaseFormShareMenu() {
                     {submissionAccessLabels[submissionAccess]}
                   </span>
                   {settings.submissionAccess === submissionAccess ? (
-                    <Check className="text-foreground" />
+                    <Check className="text-content-primary" />
                   ) : null}
                 </DropDrawerItem>
               ))}
@@ -203,7 +203,7 @@ export function DatabaseFormShareMenu() {
           </DropDrawerSub>
         )}
 
-        <div className="mt-2 flex min-w-0 items-center rounded-md border bg-background">
+        <div className="mt-2 flex min-w-0 items-center rounded-md border bg-surface-canvas">
           <Input
             aria-label="Form link"
             className="min-w-0 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0"
@@ -238,7 +238,7 @@ function ShareMenuRow({
     <div className="flex min-w-0 flex-1 items-center gap-2">
       {icon}
       <span className="shrink-0">{label}</span>
-      <span className="ml-auto max-w-60 truncate text-muted-foreground">
+      <span className="ml-auto max-w-60 truncate text-content-secondary">
         {value}
       </span>
     </div>
@@ -266,15 +266,15 @@ function FillAccessItem({
           className={cn(
             "font-normal",
             value === "public"
-              ? "bg-status-warning-surface text-status-warning-surface-foreground"
-              : "bg-muted text-muted-foreground",
+              ? "bg-feedback-warning-subtle text-feedback-warning-text"
+              : "bg-surface-muted text-content-secondary",
           )}
           variant="secondary"
         >
           {badge}
         </Badge>
       ) : null}
-      {activeValue === value ? <Check className="text-foreground" /> : null}
+      {activeValue === value ? <Check className="text-content-primary" /> : null}
     </DropDrawerItem>
   )
 }

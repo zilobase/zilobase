@@ -208,7 +208,7 @@ function DateConditionInput({
 }) {
   return (
     <div className="relative min-w-0 overflow-hidden rounded-md border bg-transparent">
-      <CalendarIcon className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+      <CalendarIcon className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-content-secondary" />
       <Input
         aria-label={label}
         className="h-8 w-full min-w-0 border-0 bg-transparent pl-7 pr-2 text-xs shadow-none focus-visible:border-transparent focus-visible:ring-0"
@@ -406,7 +406,7 @@ function DatabaseRelativeDateConditionEditor({
           </SelectContent>
         </Select>
       </div>
-      <div className="mt-2 border-t pt-2 text-xs text-muted-foreground">
+      <div className="mt-2 border-t pt-2 text-xs text-content-secondary">
         Filter will update with the current date
       </div>
     </div>
@@ -437,10 +437,10 @@ function DatabaseDateConditionValueControl({
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className="inline-flex h-8 w-full items-center gap-1.5 rounded-lg border border-input px-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+          className="inline-flex h-8 w-full items-center gap-1.5 rounded-lg border border-control-border px-2 text-left text-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral"
           type="button"
         >
-          <CalendarIcon className="size-4 shrink-0 text-muted-foreground" />
+          <CalendarIcon className="size-4 shrink-0 text-content-secondary" />
           <span className="min-w-0 flex-1 truncate">
             {isBetweenCondition
               ? getDateBetweenFilterValueLabel(condition.values)
@@ -495,7 +495,7 @@ function DatabaseConditionValueControl({
 
   if (!conditionOperatorNeedsValue(condition.operator)) {
     return (
-      <span className="inline-flex h-8 w-full items-center rounded-lg border border-transparent px-2 text-sm text-muted-foreground">
+      <span className="inline-flex h-8 w-full items-center rounded-lg border border-transparent px-2 text-sm text-content-secondary">
         No value
       </span>
     )
@@ -657,10 +657,10 @@ export function DatabaseConditionEditor({
     <button
       aria-label={removeLabel ?? `Remove ${condition.label} condition`}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        "inline-flex shrink-0 items-center justify-center text-content-secondary transition-colors hover:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none",
         isStacked
-          ? "mt-1 size-7 rounded-full hover:bg-background"
-          : "size-8 rounded-md hover:bg-accent"
+          ? "mt-1 size-7 rounded-full hover:bg-surface-canvas"
+          : "size-8 rounded-md hover:bg-action-neutral-hover"
       )}
       onClick={onRemove}
       type="button"
@@ -675,7 +675,7 @@ export function DatabaseConditionEditor({
         {drag ? (
           <button
             aria-label={drag.ariaLabel}
-            className="mt-2 inline-flex size-5 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground active:cursor-grabbing"
+            className="mt-2 inline-flex size-5 shrink-0 cursor-grab touch-none items-center justify-center text-content-secondary active:cursor-grabbing"
             onPointerDown={(event) => {
               event.preventDefault()
               event.stopPropagation()
@@ -687,7 +687,7 @@ export function DatabaseConditionEditor({
           </button>
         ) : null}
         {leadingIcon ? (
-          <span className="mt-2 inline-flex size-5 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">
+          <span className="mt-2 inline-flex size-5 shrink-0 items-center justify-center text-content-secondary [&_svg]:size-4">
             {leadingIcon}
           </span>
         ) : null}
@@ -698,7 +698,7 @@ export function DatabaseConditionEditor({
     </>
   ) : (
     <div className="grid max-w-full grid-cols-[1rem_10rem_12rem_16rem_2rem] items-start gap-2">
-      <span className="mt-2 inline-flex size-4 text-muted-foreground [&_svg]:size-4">
+      <span className="mt-2 inline-flex size-4 text-content-secondary [&_svg]:size-4">
         {leadingIcon}
       </span>
       {conditionControls}
@@ -715,8 +715,8 @@ export function DatabaseConditionEditor({
     <Reorder.Item
       as="div"
       className={cn(
-        "rounded-md bg-subtle-surface p-2 transition-colors",
-        drag.isDragging && "relative z-10 bg-popover shadow-lg ring-1 ring-ring"
+        "rounded-md bg-surface-subtle p-2 transition-colors",
+        drag.isDragging && "relative z-10 bg-surface-overlay shadow-lg ring-1 ring-action-focus-ring"
       )}
       dragControls={dragControls}
       dragListener={false}

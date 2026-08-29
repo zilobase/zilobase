@@ -4,14 +4,14 @@ export function register({ assert, loadModule, test }) {
       "/src/features/databases/views/chart/model/database-chart-data.ts",
     );
 
-    assert.equal(DEFAULT_CHART_COLOR, "var(--editor-blue)");
+    assert.equal(DEFAULT_CHART_COLOR, "var(--zb-color-palette-text-blue)");
     assert.equal(
-      getColorVariant("var(--editor-blue)", 0),
-      "var(--editor-blue)",
+      getColorVariant("var(--zb-color-palette-text-blue)", 0),
+      "var(--zb-color-palette-text-blue)",
     );
     assert.equal(
-      getColorVariant("var(--editor-blue)", 1),
-      "color-mix(in oklab, var(--editor-blue) 82%, var(--background))",
+      getColorVariant("var(--zb-color-palette-text-blue)", 1),
+      "var(--zb-color-palette-background-blue-variant-82)",
     );
   });
 
@@ -307,14 +307,14 @@ export function register({ assert, loadModule, test }) {
     assert.equal(firstColor, secondColor);
     assert.equal(
       firstColor,
-      `var(--editor-${getAutomaticChartColor(status, "Backlog")})`,
+      `var(--zb-color-palette-text-${getAutomaticChartColor(status, "Backlog")})`,
     );
     assert.equal(
       createChartData({
         ...input,
         valueColors: { "status:Backlog": "purple" },
       })[0].color,
-      "var(--editor-purple)",
+      "var(--zb-color-palette-text-purple)",
     );
   });
 }

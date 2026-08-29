@@ -64,7 +64,7 @@ export function DatabaseSearchableMenuItems({
     <>
       <div className="flex items-center gap-1.5 px-1.5 py-1">
         {inputIcon ? (
-          <span className="size-4 shrink-0 text-muted-foreground">
+          <span className="size-4 shrink-0 text-content-secondary">
             {inputIcon}
           </span>
         ) : null}
@@ -100,7 +100,7 @@ export function DatabaseSearchableMenuItems({
   if (pinSearch) {
     return (
       <div className="flex h-[min(32rem,calc(100vh-5rem))] max-h-full min-h-0 flex-col overflow-hidden">
-        <div className="shrink-0 bg-popover">{search}</div>
+        <div className="shrink-0 bg-surface-overlay">{search}</div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {results}
         </div>

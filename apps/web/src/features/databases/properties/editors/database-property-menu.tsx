@@ -68,7 +68,7 @@ import {
   useUpdateDatabaseProperty,
 } from "@zilobase/features/databases";
 import { Separator } from "@/shared/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import { Textarea } from "@/shared/ui/textarea";
 
 import {
@@ -253,7 +253,7 @@ export function DatabasePropertyMenu({
     customIcon ? (
       <PageIconDisplay size="sm" value={customIcon} />
     ) : (
-      <PropertyIcon className="size-4 shrink-0 text-muted-foreground" />
+      <PropertyIcon className="size-4 shrink-0 text-content-secondary" />
     );
 
   return (
@@ -262,7 +262,7 @@ export function DatabasePropertyMenu({
         <DropDrawerTrigger asChild>
           <button
             aria-label={`${name} property options`}
-            className="database-property-menu-trigger group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
+            className="database-property-menu-trigger group flex h-8 w-full min-w-0 items-stretch gap-2 px-3 py-1 text-left text-sm font-medium text-content-secondary transition-colors hover:text-content-primary focus-visible:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none data-[state=open]:text-content-primary [&_svg]:size-4 [&_svg]:shrink-0"
             type="button"
             {...triggerDragProps}
           >
@@ -282,7 +282,7 @@ export function DatabasePropertyMenu({
                 <PopoverTrigger asChild>
                   <button
                     aria-label="Change property icon"
-                    className="flex size-8 items-center justify-center rounded-md border bg-background transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="flex size-8 items-center justify-center rounded-md border bg-surface-canvas transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none"
                     type="button"
                   >
                     {renderPropertyIcon()}
@@ -291,7 +291,7 @@ export function DatabasePropertyMenu({
                 {customIcon ? (
                   <button
                     aria-label="Reset property icon"
-                    className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground group-focus-within/property-icon:flex group-hover/property-icon:flex [&_svg]:size-2.5"
+                    className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-surface-canvas text-content-secondary shadow-sm hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral group-focus-within/property-icon:flex group-hover/property-icon:flex [&_svg]:size-2.5"
                     onClick={() => updatePropertyConfig({ icon: "" })}
                     type="button"
                   >
@@ -545,18 +545,18 @@ export function DatabasePropertyMenu({
             }
             value={relationDeleteMode}
           >
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover">
               <RadioGroupItem className="mt-0.5" value="this" />
               <span className="grid gap-1">
                 <span className="text-sm font-medium">
                   Delete this property only
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-content-secondary">
                   Keep the related property in the connected database.
                 </span>
               </span>
             </label>
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-accent has-[[data-disabled]]:cursor-not-allowed has-[[data-disabled]]:opacity-50">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover has-[[data-disabled]]:cursor-not-allowed has-[[data-disabled]]:opacity-50">
               <RadioGroupItem
                 className="mt-0.5"
                 disabled={!relatedDatabaseProperty}
@@ -566,7 +566,7 @@ export function DatabasePropertyMenu({
                 <span className="text-sm font-medium">
                   Also delete related property
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-content-secondary">
                   Remove the matching relation property from the connected
                   database too.
                 </span>
@@ -644,19 +644,19 @@ function ButtonAutomationDialog({ propertyName }: { propertyName: string }) {
       </DialogHeader>
       <div className="grid gap-6">
         <section className="grid gap-2">
-          <div className="text-sm font-medium text-muted-foreground">When</div>
+          <div className="text-sm font-medium text-content-secondary">When</div>
           <Button className="w-full" type="button" variant="outline">
-            <Sparkles className="size-5 shrink-0 text-muted-foreground" />
-            <span className="font-medium text-foreground">
+            <Sparkles className="size-5 shrink-0 text-content-secondary" />
+            <span className="font-medium text-content-primary">
               Button is clicked
             </span>
           </Button>
         </section>
         <div className="flex justify-center">
-          <div className="h-10 w-px bg-border" />
+          <div className="h-10 w-px bg-stroke-default" />
         </div>
         <section className="grid gap-2">
-          <div className="text-sm font-medium text-muted-foreground">Do</div>
+          <div className="text-sm font-medium text-content-secondary">Do</div>
           <Button className="w-full" type="button" variant="outline">
             <Plus className="size-5 shrink-0" />
             <span>New action</span>
@@ -676,7 +676,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
       <div className="grid min-h-[28rem] gap-4 md:grid-cols-[minmax(0,1fr)_1px_minmax(18rem,0.95fr)] md:grid-rows-[auto_minmax(0,1fr)]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="size-5 text-muted-foreground" />
+            <Sparkles className="size-5 text-content-secondary" />
             <span>Autofill {propertyName}</span>
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -689,7 +689,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
           orientation="vertical"
         />
 
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm font-medium text-content-secondary">
           <span>Preview with</span>
           <Button className="min-w-0" size="sm" type="button" variant="ghost">
             <FileText className="size-4" />
@@ -711,7 +711,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
             </TabsList>
             <TabsContent className="grid gap-5" value="basic">
               <div className="grid gap-2">
-                <div className="text-sm font-medium text-muted-foreground">
+                <div className="text-sm font-medium text-content-secondary">
                   Suggested
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -727,7 +727,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
               </div>
 
               <label className="grid gap-2">
-                <span className="text-sm font-medium text-muted-foreground">
+                <span className="text-sm font-medium text-content-secondary">
                   Instructions
                 </span>
                 <Textarea
@@ -737,11 +737,11 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
               </label>
 
               <div className="grid gap-3">
-                <div className="text-sm font-medium text-muted-foreground">
+                <div className="text-sm font-medium text-content-secondary">
                   Triggers
                 </div>
                 <button
-                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
                   type="button"
                 >
                   <span>On page creation</span>
@@ -751,7 +751,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
                   </span>
                 </button>
                 <button
-                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground"
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
                   type="button"
                 >
                   <span>On page update</span>
@@ -767,7 +767,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
         </section>
 
         <section className="flex min-h-0 flex-col border-t md:border-t-0">
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 py-10 text-center text-muted-foreground">
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 py-10 text-center text-content-secondary">
             <Eye className="size-8" />
             <div className="text-sm font-medium">Preview with real data</div>
             <Button disabled type="button" variant="outline">

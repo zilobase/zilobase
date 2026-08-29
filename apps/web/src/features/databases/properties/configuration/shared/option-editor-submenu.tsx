@@ -127,7 +127,7 @@ export function OptionEditorSubmenu({
           >
             <span
               aria-hidden="true"
-              className={`size-4 rounded-sm border border-border ${color.swatchClass}`}
+              className={`size-4 rounded-sm border border-stroke-default ${color.swatchClass}`}
             />
             <span>{color.name}</span>
             {getColorTokenValue(option.color) === (color.value ?? "default") ? (

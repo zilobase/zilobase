@@ -13,7 +13,7 @@ import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
 import { getApiErrorMessage } from "@/features/desktop/network/api"
 import { uploadPageImage } from "@/features/desktop/network/image-upload"
 
@@ -128,10 +128,10 @@ export function ImageSourcePicker({
         >
           {isUploading ? <Loader2 className="animate-spin" /> : <ImageIcon />}
           <span>{isUploading ? "Uploading image" : "Upload image"}</span>
-          <span className="text-muted-foreground">Or drag and drop here</span>
+          <span className="text-content-secondary">Or drag and drop here</span>
         </Button>
         {uploadError ? (
-          <div className="text-sm text-destructive">{uploadError}</div>
+          <div className="text-sm text-action-danger-text">{uploadError}</div>
         ) : null}
         <input
           accept="image/*"
@@ -160,7 +160,7 @@ export function ImageSourcePicker({
               ))}
             </div>
             <div className="flex items-center gap-2 rounded-md border p-2">
-              <Sparkles className="size-4 text-muted-foreground" />
+              <Sparkles className="size-4 text-content-secondary" />
               <Input
                 className="border-0 bg-transparent focus-visible:ring-0"
                 placeholder="Or describe your idea..."
@@ -173,7 +173,7 @@ export function ImageSourcePicker({
 
       <TabsContent className="space-y-3" value="link">
         <div className="flex items-center gap-2">
-          <Link className="size-4 text-muted-foreground" />
+          <Link className="size-4 text-content-secondary" />
           <Input
             autoComplete="off"
             onChange={(event) => setLinkUrl(event.target.value)}
@@ -194,7 +194,7 @@ export function ImageSourcePicker({
 
       <TabsContent className="space-y-3" value="unsplash">
         <div className="flex items-center gap-2">
-          <Search className="size-4 text-muted-foreground" />
+          <Search className="size-4 text-content-secondary" />
           <Input
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search Unsplash..."
@@ -202,7 +202,7 @@ export function ImageSourcePicker({
           />
         </div>
         <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
+          <CardContent className="py-8 text-center text-content-secondary">
             Unsplash search is ready for an API key.
           </CardContent>
         </Card>
@@ -210,7 +210,7 @@ export function ImageSourcePicker({
 
       <TabsContent className="space-y-3" value="giphy">
         <div className="flex items-center gap-2">
-          <Search className="size-4 text-muted-foreground" />
+          <Search className="size-4 text-content-secondary" />
           <Input
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search GIPHY..."
@@ -218,7 +218,7 @@ export function ImageSourcePicker({
           />
         </div>
         <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
+          <CardContent className="py-8 text-center text-content-secondary">
             GIPHY search is ready for an API key.
           </CardContent>
         </Card>

@@ -633,7 +633,7 @@ export function PageMetadata({
         <PopoverTrigger asChild>
           <button
               aria-label={`Change ${metadataSubjectLowercase} icon`}
-            className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex items-center justify-center rounded-md transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}
+            className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex items-center justify-center rounded-md transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none`}
             disabled={!editable}
             type="button"
           >
@@ -666,7 +666,7 @@ export function PageMetadata({
       </Popover>
       <button
           aria-label={`Remove ${metadataSubjectLowercase} icon`}
-        className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:flex focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/metadata:flex group-hover/icon:flex group-hover/metadata:flex [&_svg]:size-3"
+        className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-surface-canvas text-content-secondary shadow-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral focus-visible:flex focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none group-focus-within/metadata:flex group-hover/icon:flex group-hover/metadata:flex [&_svg]:size-3"
         onClick={() => {
           updateIcon("")
           setIconOpen(false)
@@ -681,7 +681,7 @@ export function PageMetadata({
     <Popover open={iconOpen} onOpenChange={setIconOpen}>
       <PopoverTrigger asChild>
         <Button
-          className="text-muted-foreground"
+          className="text-content-secondary"
           disabled={!editable}
           size="sm"
           type="button"
@@ -753,12 +753,12 @@ export function PageMetadata({
         />
       ))}
       {showHeading && cover ? (
-        <div className="relative h-40 w-full overflow-hidden bg-muted">
+        <div className="relative h-40 w-full overflow-hidden bg-surface-muted">
           <img alt="Cover" className="size-full object-cover" src={cover} />
           {editable ? (
             <Button
               aria-label={`Remove ${metadataSubjectLowercase} cover`}
-              className="absolute right-3 top-3 bg-backdrop opacity-0 shadow-sm backdrop-blur transition-opacity group-focus-within/metadata:opacity-100 group-hover/metadata:opacity-100 focus-visible:opacity-100"
+              className="absolute right-3 top-3 bg-effect-backdrop opacity-0 shadow-sm backdrop-blur transition-opacity group-focus-within/metadata:opacity-100 group-hover/metadata:opacity-100 focus-visible:opacity-100"
               disabled={!editable}
               onClick={() => updateCover("")}
               size="icon-sm"
@@ -809,7 +809,7 @@ export function PageMetadata({
               <Popover onOpenChange={setCoverOpen} open={coverOpen}>
                 <PopoverTrigger asChild>
                   <Button
-                    className="text-muted-foreground"
+                    className="text-content-secondary"
                     disabled={!editable}
                     size="sm"
                     type="button"
@@ -844,7 +844,7 @@ export function PageMetadata({
             !showCommentsSection &&
             (editable || totalCommentCount > 0) ? (
               <Button
-                className="text-muted-foreground"
+                className="text-content-secondary"
                 onClick={() => {
                   setCommentsOpen((open) => !open)
                   if (totalCommentCount === 0) {
@@ -867,13 +867,13 @@ export function PageMetadata({
           <div className="flex items-start gap-3" ref={titleRowRef}>
             {iconPosition === "inline" ? pageIcon : null}
             {titlePrefix ? (
-              <span className="flex min-h-10 shrink-0 items-center text-muted-foreground">
+              <span className="flex min-h-10 shrink-0 items-center text-content-secondary">
                 {titlePrefix}
               </span>
             ) : null}
             <textarea
               aria-label={headingLabel ? `${headingLabel} title` : "Page title"}
-            className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
+            className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-content-primary shadow-none outline-none placeholder:text-content-secondary focus-visible:ring-0 dark:bg-transparent"
             onChange={(event) => updateTitle(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -902,7 +902,7 @@ export function PageMetadata({
                   ? `${headingLabel} description`
                   : "Page description"
               }
-              className="min-h-6 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-base leading-relaxed text-muted-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0 dark:bg-transparent"
+              className="min-h-6 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-base leading-relaxed text-content-secondary shadow-none outline-none placeholder:text-content-secondary focus-visible:ring-0 dark:bg-transparent"
               onChange={(event) => updateDescription(event.target.value)}
               placeholder={descriptionPlaceholder}
               readOnly={!editable}
@@ -924,14 +924,14 @@ export function PageMetadata({
               const PropertyIcon = getDatabasePropertyType(property.type).icon
               return [
                 <span
-                  className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-surface-muted px-2 py-1 text-xs text-content-secondary"
                   key={property.id}
                 >
                   {layoutConfig.propertyIcons ? (
                     <PropertyIcon className="size-3.5" />
                   ) : null}
                   <span>{property.name}</span>
-                  <span className="text-foreground">
+                  <span className="text-content-primary">
                     {Array.isArray(value)
                       ? value.join(", ")
                       : String(value || "Empty")}
@@ -948,7 +948,7 @@ export function PageMetadata({
               unresolvedThreads.map((thread, index) => (
                 <div
                   className={
-                    index > 0 ? "mt-5 border-t border-border pt-4" : ""
+                    index > 0 ? "mt-5 border-t border-stroke-default pt-4" : ""
                   }
                   key={thread.id}
                 >
@@ -965,7 +965,7 @@ export function PageMetadata({
                 pageId={pageId}
               />
             )}
-            <div className="mt-5 border-t border-border" />
+            <div className="mt-5 border-t border-stroke-default" />
           </div>
         ) : null}
 
@@ -1009,7 +1009,7 @@ export function PageMetadata({
                   className="grid min-h-8 grid-cols-[9rem_minmax(0,1fr)] items-center gap-3 text-sm"
                   key={property.id}
                 >
-                  <span className="flex min-w-0 items-center gap-2 text-muted-foreground [&_svg]:size-4 [&_svg]:shrink-0">
+                  <span className="flex min-w-0 items-center gap-2 text-content-secondary [&_svg]:size-4 [&_svg]:shrink-0">
                     {layoutConfig?.propertyIcons === false ? null : (
                       <PropertyIcon />
                     )}
@@ -1029,7 +1029,7 @@ export function PageMetadata({
                     {isReadOnlyTimeProperty ? (
                       <span className="database-date-cell-trigger">
                         {formatDatabaseDateValue(value, property.config) || (
-                          <span className="text-muted-foreground">Empty</span>
+                          <span className="text-content-secondary">Empty</span>
                         )}
                       </span>
                     ) : isCheckboxProperty ? (
@@ -1066,6 +1066,7 @@ export function PageMetadata({
                               : undefined
                         }
                         editable={editable}
+                        emptyLabel="Empty"
                         label={property.name}
                         multiple={isMultiSelectProperty}
                         onOpenChange={(open) =>
@@ -1086,6 +1087,7 @@ export function PageMetadata({
                     ) : isDateProperty ? (
                       <DatabasePropertyDate
                         editable={editable}
+                        emptyLabel="Empty"
                         label={property.name}
                         onOpenChange={(open) =>
                           setPropertyActive(property.id, open)
@@ -1103,6 +1105,7 @@ export function PageMetadata({
                     ) : isFilesProperty ? (
                       <DatabasePropertyFiles
                         editable={editable}
+                        emptyLabel="Empty"
                         label={property.name}
                         onOpenChange={(open) =>
                           setPropertyActive(property.id, open)
@@ -1120,6 +1123,7 @@ export function PageMetadata({
                     ) : isRelationProperty && pageId ? (
                       <DatabaseRelationPropertyValue
                         editable={editable}
+                        emptyLabel="Empty"
                         label={property.name}
                         onOpen={onOpenPage}
                         onOpenChange={(open) =>
@@ -1148,6 +1152,7 @@ export function PageMetadata({
                     ) : (
                       <DatabasePropertyInput
                         editable={editable}
+                        emptyLabel="Empty"
                         label={property.name}
                         onActivate={() => setPropertyActive(property.id, true)}
                         onChange={(nextValue) =>

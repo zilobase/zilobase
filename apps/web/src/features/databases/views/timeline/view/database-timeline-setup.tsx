@@ -27,9 +27,9 @@ export function DatabaseTimelineSetup({
 }) {
   if (dateProperties.length === 0) {
     return (
-      <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-center text-sm text-muted-foreground">
+      <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-center text-sm text-content-secondary">
         <div className="flex flex-col gap-1">
-          <span className="font-medium text-foreground">
+          <span className="font-medium text-content-primary">
             Timeline needs a date property
           </span>
           <span>Create one to schedule items on this timeline.</span>
@@ -52,7 +52,7 @@ export function DatabaseTimelineSetup({
     )
   }
   return (
-    <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-sm text-muted-foreground">
+    <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-sm text-content-secondary">
       <span>Schedule this timeline view by</span>
       <Select
         onValueChange={onSelectDateProperty}
@@ -69,7 +69,7 @@ export function DatabaseTimelineSetup({
 
             return (
               <SelectItem key={property.id} value={property.property.id}>
-                <PropertyIcon className="size-4 shrink-0 text-muted-foreground" />
+                <PropertyIcon className="size-4 shrink-0 text-content-secondary" />
                 <span>{property.property.name}</span>
               </SelectItem>
             )

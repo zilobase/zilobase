@@ -60,10 +60,10 @@ export function SlashCommandMenu({
                 ref={index === selectedIndex ? selectedItemRef : undefined}
                 value={item.title}
               >
-                <Icon className="size-4 text-muted-foreground" />
+                <Icon className="size-4 text-content-secondary" />
                 <span className="grid min-w-0 flex-1">
                   <span className="truncate font-medium">{item.title}</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-xs text-content-secondary">
                     {item.description}
                   </span>
                 </span>

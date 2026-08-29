@@ -85,7 +85,7 @@ const LINE_NUMBER_CLASSES = cn(
   "before:w-8",
   "before:mr-4",
   "before:text-right",
-  "before:text-muted-foreground",
+  "before:text-content-secondary",
   "before:font-mono",
   "before:select-none"
 );
@@ -311,7 +311,7 @@ const CodeBlockContainer = ({
 }: HTMLAttributes<HTMLDivElement> & { language: string }) => (
   <div
     className={cn(
-      "group relative w-full overflow-hidden rounded-md border bg-background text-foreground",
+      "group relative w-full overflow-hidden rounded-md border bg-surface-canvas text-content-primary",
       className
     )}
     data-language={language}
@@ -331,7 +331,7 @@ export const CodeBlockHeader = ({
 }: HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex items-center justify-between border-b bg-subtle-surface px-3 py-2 text-muted-foreground text-xs",
+      "flex items-center justify-between border-b bg-surface-subtle px-3 py-2 text-content-secondary text-xs",
       className
     )}
     {...props}

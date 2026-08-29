@@ -544,7 +544,7 @@ function EmbedBlockView({ editor, node, updateAttributes }: ReactNodeViewProps) 
         {!src ? (
           <PopoverTrigger asChild>
             <button
-              className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-4 [&_svg]:shrink-0"
+              className="flex h-10 w-full items-center gap-2 rounded-md bg-surface-subtle px-3 text-left text-sm font-medium text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none [&_svg]:size-4 [&_svg]:shrink-0"
               contentEditable={false}
               type="button"
             >
@@ -595,7 +595,7 @@ function EmbedBlockView({ editor, node, updateAttributes }: ReactNodeViewProps) 
             ) : isMiro ? (
               <MiroIcon className="size-4 shrink-0" />
             ) : (
-              <Link className="size-4 text-muted-foreground" />
+              <Link className="size-4 text-content-secondary" />
             )}
             <Input
               autoComplete="off"
@@ -627,19 +627,19 @@ function EmbedBlockView({ editor, node, updateAttributes }: ReactNodeViewProps) 
             </Button>
           </div>
           {error ? (
-            <p className="mt-2 text-xs text-destructive">{error}</p>
+            <p className="mt-2 text-xs text-action-danger-text">{error}</p>
           ) : null}
         </PopoverContent>
         {src ? (
           <div
-            className="group/embed-preview relative mx-auto max-w-full overflow-hidden rounded-md border bg-muted [&_iframe]:block [&_iframe]:aspect-video [&_iframe]:w-full [&_iframe]:bg-background"
+            className="group/embed-preview relative mx-auto max-w-full overflow-hidden rounded-md border bg-surface-muted [&_iframe]:block [&_iframe]:aspect-video [&_iframe]:w-full [&_iframe]:bg-surface-canvas"
             contentEditable={false}
             data-embed-block-preview
             style={width ? { width: `${width}px` } : undefined}
           >
             <span
               aria-hidden="true"
-              className="absolute left-1 top-1/2 z-10 hidden h-14 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center touch-none before:block before:h-10 before:w-0.5 before:rounded-full before:bg-primary-subtle before:content-[''] group-focus-within/embed-preview:flex group-hover/embed-preview:flex"
+              className="absolute left-1 top-1/2 z-10 hidden h-14 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center touch-none before:block before:h-10 before:w-0.5 before:rounded-full before:bg-action-selected-subtle before:content-[''] group-focus-within/embed-preview:flex group-hover/embed-preview:flex"
               onPointerDown={(event) => startResize(event, "left")}
               onPointerMove={updateResize}
               onPointerUp={stopResize}
@@ -659,9 +659,9 @@ function EmbedBlockView({ editor, node, updateAttributes }: ReactNodeViewProps) 
                 title={title}
               />
             ) : (
-              <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 bg-subtle-surface px-6 text-center text-muted-foreground [&_a]:text-xs [&_a]:font-medium [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline [&_svg]:size-8 [&_svg]:opacity-70">
+              <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 bg-surface-subtle px-6 text-center text-content-secondary [&_a]:text-xs [&_a]:font-medium [&_a]:text-action-link [&_a]:underline-offset-4 hover:[&_a]:underline [&_svg]:size-8 [&_svg]:opacity-70">
                 <FileWarning />
-                <span className="text-sm font-medium text-foreground">
+                <span className="text-sm font-medium text-content-primary">
                   Failed to load embed
                 </span>
                 <span className="max-w-md text-xs">
@@ -675,7 +675,7 @@ function EmbedBlockView({ editor, node, updateAttributes }: ReactNodeViewProps) 
             )}
             <span
               aria-hidden="true"
-              className="absolute right-1 top-1/2 z-10 hidden h-14 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center touch-none before:block before:h-10 before:w-0.5 before:rounded-full before:bg-primary-subtle before:content-[''] group-focus-within/embed-preview:flex group-hover/embed-preview:flex"
+              className="absolute right-1 top-1/2 z-10 hidden h-14 w-4 -translate-y-1/2 cursor-ew-resize items-center justify-center touch-none before:block before:h-10 before:w-0.5 before:rounded-full before:bg-action-selected-subtle before:content-[''] group-focus-within/embed-preview:flex group-hover/embed-preview:flex"
               onPointerDown={(event) => startResize(event, "right")}
               onPointerMove={updateResize}
               onPointerUp={stopResize}

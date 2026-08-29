@@ -197,12 +197,12 @@ export function getPageSidePaneHeaderCellClassName({
 }) {
   return cn(
     "flex h-12 min-h-0 min-w-0 items-center overflow-hidden",
-    side === "main" && "h-full w-full bg-background",
+    side === "main" && "h-full w-full bg-surface-canvas",
     side === "side" && [
-      "absolute inset-y-0 right-0 z-30 w-[var(--page-side-pane-width)] bg-background shadow-none dark:bg-sidebar",
+      "absolute inset-y-0 right-0 z-30 w-[var(--page-side-pane-width)] bg-surface-canvas shadow-none dark:bg-surface-navigation",
       "transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
       splitActive
-        ? "border-l border-border [transform:translate3d(0,0,0)]"
+        ? "border-l border-stroke-default [transform:translate3d(0,0,0)]"
         : "pointer-events-none [transform:translate3d(100%,0,0)]",
     ],
     className,
@@ -285,7 +285,7 @@ export function PageScrollViewport({
       <div
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 z-20 h-5 bg-gradient-to-t from-background to-transparent",
+          "pointer-events-none absolute inset-x-0 bottom-0 z-20 h-5 bg-gradient-to-t from-surface-canvas to-transparent",
           edgeFadeClassName,
         )}
       />
@@ -474,7 +474,7 @@ export function PageSidePaneSideCell({
     <aside
       aria-hidden={!open}
       className={cn(
-        "absolute inset-y-0 right-0 z-30 flex min-h-0 w-[var(--page-side-pane-width)] min-w-0 flex-col overflow-hidden border-l border-border bg-background shadow-none dark:bg-sidebar",
+        "absolute inset-y-0 right-0 z-30 flex min-h-0 w-[var(--page-side-pane-width)] min-w-0 flex-col overflow-hidden border-l border-stroke-default bg-surface-canvas shadow-none dark:bg-surface-navigation",
         getPageSidePaneMobilePanelClassName(open),
         className,
       )}
@@ -492,11 +492,11 @@ export function PageSidePaneSideCell({
         role="separator"
         tabIndex={open ? 0 : -1}
       >
-        <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-focus-visible:bg-ring group-hover:bg-border" />
+        <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-focus-visible:bg-action-focus-ring group-hover:bg-stroke-default" />
       </div>
       <PageScrollViewport
         className="h-full w-full"
-        edgeFadeClassName="dark:from-sidebar"
+        edgeFadeClassName="dark:from-surface-navigation"
       >
         {children}
       </PageScrollViewport>

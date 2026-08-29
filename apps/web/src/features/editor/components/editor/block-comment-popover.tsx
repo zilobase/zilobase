@@ -88,13 +88,13 @@ export function BlockCommentPopover({
         <PopoverHeader className="flex-row items-start justify-between gap-2">
           <div className="min-w-0">
             <PopoverTitle>Comment</PopoverTitle>
-            <p className="line-clamp-2 text-xs text-muted-foreground">
+            <p className="line-clamp-2 text-xs text-content-secondary">
               {target.node.textContent.trim()}
             </p>
           </div>
           <Button
             aria-label="Expand in discussions sidebar"
-            className="shrink-0 text-muted-foreground"
+            className="shrink-0 text-content-secondary"
             onClick={() => {
               if (activeThread) {
                 commentController.activateThread(activeThread.id, {

@@ -103,7 +103,7 @@ export default function ApiKeysSettingsPage() {
               <h3 className="font-heading text-base leading-snug font-medium">
                 Keys for {workspaceName}
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-content-secondary">
                 {activeWorkspace
                   ? `These keys are scoped to your current workspace, ${workspaceName}, and inherit your permissions there.`
                   : "These keys are scoped to your current workspace and inherit your permissions there."}
@@ -260,7 +260,7 @@ function CreatedKeyPanel({ apiKey }: { apiKey: CreatedApiKeyRecord }) {
 
   return (
     <div className="grid gap-4">
-      <div className="rounded-md border bg-subtle-surface p-3">
+      <div className="rounded-md border bg-surface-subtle p-3">
         <div className="break-all font-mono text-sm">{apiKey.key}</div>
       </div>
       <Button className="w-fit" onClick={copyKey} type="button">
@@ -358,7 +358,7 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
   return (
     <>
       <Item variant="outline">
-        <ItemMedia className="size-10 rounded-lg border bg-background">
+        <ItemMedia className="size-10 rounded-lg border bg-surface-canvas">
           <KeyRoundIcon className="size-5" />
         </ItemMedia>
         <ItemContent className="min-w-0">

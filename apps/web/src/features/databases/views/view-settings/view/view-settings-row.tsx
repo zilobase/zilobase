@@ -16,7 +16,7 @@ export function ViewSettingsRow({
       {icon}
       <span className="truncate">{label}</span>
       {right ? (
-        <span className="ml-auto shrink-0 text-muted-foreground">{right}</span>
+        <span className="ml-auto shrink-0 text-content-secondary">{right}</span>
       ) : null}
     </div>
   );

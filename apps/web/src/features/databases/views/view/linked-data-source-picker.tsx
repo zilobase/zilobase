@@ -76,11 +76,11 @@ export function LinkedDataSourcePicker({
       >
         {!showPicker ? (
           <button
-            className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-accent"
+            className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-action-neutral-hover"
             onClick={() => setShowPicker(true)}
             type="button"
           >
-            <Table2 className="size-4 text-muted-foreground" />
+            <Table2 className="size-4 text-content-secondary" />
             <span>Link existing data source</span>
           </button>
         ) : (
@@ -97,7 +97,7 @@ export function LinkedDataSourcePicker({
               <ArrowLeft />
             </Button>
           ) : null}
-          <Search className="size-4 text-muted-foreground" />
+          <Search className="size-4 text-content-secondary" />
           <Input
             aria-label={selectedDatabase ? "Search database views" : "Search databases"}
             autoFocus
@@ -124,7 +124,7 @@ export function LinkedDataSourcePicker({
                           : Table2
               return (
                 <button
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-action-neutral-hover"
                   key={option.id}
                   onClick={() => {
                     onSelect({
@@ -139,27 +139,27 @@ export function LinkedDataSourcePicker({
                   }}
                   type="button"
                 >
-                  <ViewIcon className="size-4 text-muted-foreground" />
+                  <ViewIcon className="size-4 text-content-secondary" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{option.name || "Untitled view"}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{selectedDatabase.name}</span>
+                    <span className="block truncate text-xs text-content-secondary">{selectedDatabase.name}</span>
                   </span>
                 </button>
               )
-            }) : <div className="px-3 py-8 text-center text-sm text-muted-foreground">No views available.</div>
+            }) : <div className="px-3 py-8 text-center text-sm text-content-secondary">No views available.</div>
           ) : databaseOptions.length ? databaseOptions.map((option) => (
               <button
-                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-action-neutral-hover"
                 key={option.id}
                 onClick={() => { setDatabaseId(option.id); setSearch("") }}
                 type="button"
               >
-                <Database className="size-4 text-muted-foreground" />
+                <Database className="size-4 text-content-secondary" />
                 <span className="min-w-0 flex-1 truncate">{option.name || "Untitled database"}</span>
-                <span className="text-xs text-muted-foreground">{option.views.length} views</span>
+                <span className="text-xs text-content-secondary">{option.views.length} views</span>
               </button>
           )) : (
-            <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+            <div className="px-3 py-8 text-center text-sm text-content-secondary">
               No databases available.
             </div>
           )}

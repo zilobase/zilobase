@@ -68,7 +68,7 @@ import {
 } from "@/shared/ui/dropdown-menu"
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker"
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
-import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
 import { useOpenEmbeddedPage } from "@/features/pages/hooks/index"
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
 import { cn } from "@/shared/lib/utils"
@@ -324,14 +324,14 @@ export function MeetingView({
   if (meetingQuery.isLoading) {
     return (
       <div className="flex min-h-40 items-center justify-center">
-        <LoaderCircle className="size-5 animate-spin text-muted-foreground" />
+        <LoaderCircle className="size-5 animate-spin text-content-secondary" />
       </div>
     )
   }
 
   if (!meeting) {
     return (
-      <div className="rounded-xl border border-destructive bg-status-danger-diff-surface p-4 text-sm text-destructive">
+      <div className="rounded-xl border border-action-danger-border bg-feedback-error-subtle p-4 text-sm text-action-danger-text">
         {meetingQuery.error instanceof Error
           ? meetingQuery.error.message
           : "This meeting is unavailable."}
@@ -387,7 +387,7 @@ export function MeetingView({
           <PopoverTrigger asChild>
             <button
               aria-label="Change meeting icon"
-              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none"
               type="button"
             >
               <PageIconDisplay size="lg" value={notesEmoji} />
@@ -405,7 +405,7 @@ export function MeetingView({
         </Popover>
         <button
           aria-label="Remove meeting icon"
-          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
+          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-surface-canvas text-content-secondary shadow-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
           onClick={() => saveMeetingEmoji("")}
           type="button"
         >
@@ -438,7 +438,7 @@ export function MeetingView({
           <input
             aria-label="Meeting title"
             className={cn(
-              "h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 font-semibold leading-tight tracking-normal text-foreground shadow-none outline-none [field-sizing:content] placeholder:text-muted-foreground focus-visible:ring-0",
+              "h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 font-semibold leading-tight tracking-normal text-content-primary shadow-none outline-none [field-sizing:content] placeholder:text-content-secondary focus-visible:ring-0",
               fullPage ? "text-2xl md:text-2xl" : "text-3xl",
             )}
             disabled={!editable || activeRecording}
@@ -457,7 +457,7 @@ export function MeetingView({
             <DropDrawerTrigger asChild>
               <Button
                 aria-label="Open meeting title actions"
-                className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within/title:opacity-100 group-hover/title:opacity-100 data-[state=open]:opacity-100"
+                className="shrink-0 text-content-secondary opacity-0 transition-opacity group-focus-within/title:opacity-100 group-hover/title:opacity-100 data-[state=open]:opacity-100"
                 size="icon-xs"
                 type="button"
                 variant="ghost"
@@ -505,7 +505,7 @@ export function MeetingView({
             }}
             value={activeTab}
           >
-            <TabsList className="min-w-0 w-full justify-start overflow-x-auto" variant="tab">
+            <TabsList className="min-w-0 w-full justify-start overflow-x-auto">
               {tabs.map((tab) => (
                 <TabsTrigger
                   className="h-8 shrink-0 grow-0 gap-2 px-3 capitalize"
@@ -525,7 +525,7 @@ export function MeetingView({
               {embeddedPage ? (
                 <Link
                   aria-label={`Open ${embeddedPage.name}`}
-                  className="relative inline-flex h-8 max-w-52 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent px-3 py-0.5 text-xs font-medium text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring active:bg-active active:text-active-foreground"
+                  className="relative inline-flex h-8 max-w-52 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent px-3 py-0.5 text-xs font-medium text-content-secondary outline-none transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:border-action-focus-ring focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed active:text-action-on-neutral"
                   params={{ pageId: embeddedPage.id }}
                   search={{ meeting: meetingId }}
                   title={`Open ${embeddedPage.name}`}
@@ -544,32 +544,32 @@ export function MeetingView({
           </Tabs>
           <div className="min-w-0 flex-1" />
           {ownsRecorder && activeRecording ? (
-            <span className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
+            <span className="h-1.5 w-14 overflow-hidden rounded-full bg-surface-muted">
               <span
-                className="block h-full origin-left rounded-full bg-status-success transition-transform"
+                className="block h-full origin-left rounded-full bg-feedback-success transition-transform"
                 style={{ transform: `scaleX(${meetingCapture.level})` }}
               />
             </span>
           ) : null}
           {activeRecording && !ownsRecorder ? (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-content-secondary">
               {recorderName} is {effectiveMeetingStatus === "paused" ? "paused" : "recording"}
             </span>
           ) : null}
           {ownsRecorder && meetingCapture.status?.warnings?.length ? (
-            <span className="max-w-56 truncate text-xs text-status-warning-foreground" title={meetingCapture.status.warnings.at(-1)}>
+            <span className="max-w-56 truncate text-xs text-feedback-warning-text" title={meetingCapture.status.warnings.at(-1)}>
               {meetingCapture.status.warnings.at(-1)}
             </span>
           ) : null}
           {summaryIsStale ? (
-            <span className="text-xs text-status-warning-foreground">Summary out of date</span>
+            <span className="text-xs text-feedback-warning-text">Summary out of date</span>
           ) : null}
           {editable ? (
           <DropDrawer open={settingsOpen} onOpenChange={setSettingsOpen}>
             <DropDrawerTrigger asChild>
               <Button
                 aria-label="Meeting settings"
-                className="shrink-0 text-muted-foreground"
+                className="shrink-0 text-content-secondary"
                 size="icon"
                 type="button"
                 variant="ghost"
@@ -774,7 +774,7 @@ export function MeetingView({
             ) : null}
           </>
         ) : (
-          <div className="min-h-28 text-sm text-muted-foreground">
+          <div className="min-h-28 text-sm text-content-secondary">
             {collaboration.error ?? "Connecting meeting content…"}
           </div>
         )}

@@ -26,7 +26,7 @@ function ColorSwatch({
 
   return (
     <span
-      className={`flex size-6 shrink-0 items-center justify-center rounded-md border ${variant === "text" ? "bg-card" : token.backgroundClass}`}
+      className={`flex size-6 shrink-0 items-center justify-center rounded-md border ${variant === "text" ? "bg-surface-card" : token.backgroundClass}`}
     >
       {variant === "text" ? (
         <span className={`text-base font-semibold ${textClass}`}>A</span>
@@ -74,13 +74,13 @@ export function ColorPicker({
 }: ColorPickerProps) {
   return (
     <>
-      <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+      <div className="px-2 py-1 text-xs font-medium text-content-secondary">
         Text color
       </div>
       <div className="grid gap-1">
         {colorTokens.map((token) => (
           <button
-            className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+            className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:bg-action-neutral-hover focus-visible:text-action-on-neutral"
             key={`text-${token.name}`}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => onTextColorSelect(token.value)}
@@ -89,21 +89,21 @@ export function ColorPicker({
             <ColorSwatch token={token} variant="text" />
             <span>{token.name} text</span>
             {isTextColorActive(textColor, token.value) ? (
-              <span className="ml-auto text-xs text-muted-foreground">
+              <span className="ml-auto text-xs text-content-secondary">
                 Selected
               </span>
             ) : null}
           </button>
         ))}
       </div>
-      <div className="my-1 h-px bg-border" />
-      <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+      <div className="my-1 h-px bg-stroke-default" />
+      <div className="px-2 py-1 text-xs font-medium text-content-secondary">
         Background color
       </div>
       <div className="grid gap-1">
         {colorTokens.map((token) => (
           <button
-            className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground"
+            className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:bg-action-neutral-hover focus-visible:text-action-on-neutral"
             key={`background-${token.name}`}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => onBackgroundColorSelect(token.value)}
@@ -112,7 +112,7 @@ export function ColorPicker({
             <ColorSwatch token={token} variant="background" />
             <span>{token.name} background</span>
             {isBackgroundColorActive(backgroundColor, token.value) ? (
-              <span className="ml-auto text-xs text-muted-foreground">
+              <span className="ml-auto text-xs text-content-secondary">
                 Selected
               </span>
             ) : null}

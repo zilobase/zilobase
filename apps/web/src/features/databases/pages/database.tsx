@@ -101,7 +101,7 @@ function AuthenticatedDatabasePage() {
       )
     ) {
       return (
-        <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center px-4 text-sm text-muted-foreground">
+        <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center px-4 text-sm text-content-secondary">
           Not available offline.
         </main>
       )
@@ -115,7 +115,7 @@ function AuthenticatedDatabasePage() {
 
   if (!payload) {
     return (
-      <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center px-4 text-sm text-muted-foreground">
+      <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center px-4 text-sm text-content-secondary">
         Database not found.
       </main>
     )
@@ -185,7 +185,7 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
 
   if (isLoading) {
     return (
-      <main className="min-h-svh animate-in fade-in duration-200 bg-background">
+      <main className="min-h-svh animate-in fade-in duration-200 bg-surface-canvas">
         <DatabasePageSkeleton />
       </main>
     )
@@ -193,7 +193,7 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
 
   if (!payload) {
     return (
-      <main className="flex min-h-svh items-center justify-center bg-background px-4 text-sm text-muted-foreground">
+      <main className="flex min-h-svh items-center justify-center bg-surface-canvas px-4 text-sm text-content-secondary">
         Database not found.
       </main>
     )
@@ -202,7 +202,7 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
   return (
     <>
       <PageSidePaneLayout
-        className="bg-background animate-in fade-in-0 duration-300"
+        className="bg-surface-canvas animate-in fade-in-0 duration-300"
         standalone
         viewportHeightClass="h-svh"
         main={
@@ -554,7 +554,7 @@ function DatabasePagePreview({
 }) {
   return (
     <div
-      className={cn("flex h-full min-h-0 flex-col bg-background", className)}
+      className={cn("flex h-full min-h-0 flex-col bg-surface-canvas", className)}
     >
       <div
         className={cn(
@@ -592,7 +592,7 @@ function DatabasePagePreview({
           />
         </div>
         <div className="overflow-hidden rounded-md border">
-          <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] border-b bg-subtle-surface">
+          <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr] border-b bg-surface-subtle">
             {Array.from({ length: 4 }).map((_, index) => (
               <div
                 className={cn(

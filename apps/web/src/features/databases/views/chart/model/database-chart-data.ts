@@ -47,7 +47,7 @@ export type DatabaseChartRow = {
   updatedAt: string
 }
 
-export const DEFAULT_CHART_COLOR = "var(--editor-blue)"
+export const DEFAULT_CHART_COLOR = "var(--zb-color-palette-text-blue)"
 
 function getChartColor(color?: string | null) {
   return getPaletteColor(color) ?? DEFAULT_CHART_COLOR
@@ -326,8 +326,12 @@ export function getColorVariant(color: string, index: number) {
     return color
   }
 
-  return color.startsWith("var(--editor-")
-    ? `color-mix(in oklab, ${color} ${colorPercentage}%, var(--background))`
+  const paletteId = color.match(
+    /^var\(--zb-color-palette-text-(gray|brown|orange|yellow|green|blue|purple|pink|red)\)$/,
+  )?.[1]
+
+  return paletteId
+    ? `var(--zb-color-palette-background-${paletteId}-variant-${colorPercentage})`
     : color
 }
 

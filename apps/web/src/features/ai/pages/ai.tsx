@@ -35,13 +35,13 @@ export default function AiPage() {
           <main className="box-border flex h-full min-h-0 overflow-hidden px-4 py-4 md:py-6">
             <section className="mx-auto h-full min-h-0 w-full max-w-6xl overflow-hidden">
               {isBootstrapping ? (
-                <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+                <div className="flex h-full items-center justify-center text-content-secondary text-sm">
                   Loading chat...
                 </div>
               ) : (
                 <Suspense
                   fallback={
-                    <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+                    <div className="flex h-full items-center justify-center text-content-secondary text-sm">
                       Loading chat...
                     </div>
                   }

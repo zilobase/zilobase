@@ -28,7 +28,7 @@ export function SelectionAiDiffDock({
           )}
           Accept
         </Button>
-        <div className="h-6 w-px bg-border" />
+        <div className="h-6 w-px bg-stroke-default" />
         <Button
           className="h-8 rounded-xl px-3 text-sm"
           onClick={onDecline}

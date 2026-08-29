@@ -57,7 +57,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
 import { PageIconDisplay } from "@/features/pages/index";
 import {
@@ -115,7 +115,7 @@ function ToolbarMenuRow({
       {icon}
       <span className="truncate">{label}</span>
       {right ? (
-        <span className="ml-auto flex min-w-0 shrink-0 items-center gap-1 text-muted-foreground">
+        <span className="ml-auto flex min-w-0 shrink-0 items-center gap-1 text-content-secondary">
           {right}
         </span>
       ) : null}
@@ -476,7 +476,7 @@ export function DatabaseViewToolbar() {
           <PopoverTrigger asChild>
             <button
               aria-label="Change database icon"
-              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="flex size-9 items-center justify-center rounded-md text-2xl leading-none transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none"
               type="button"
             >
               <PageIconDisplay size="lg" value={databaseEmoji} />
@@ -486,7 +486,7 @@ export function DatabaseViewToolbar() {
         </Popover>
         <button
           aria-label="Remove database icon"
-          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
+          className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-surface-canvas text-content-secondary shadow-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none group-focus-within/icon:flex group-hover/icon:flex [&_svg]:size-3"
           onClick={() => {
             saveDatabaseEmoji("");
             setEmojiPickerOpen(false);
@@ -514,13 +514,13 @@ export function DatabaseViewToolbar() {
           {isExternalDataSourceView(activeViewTab) ? (
             <ArrowUpRightIcon
               aria-label={`Linked from ${activeViewTab?.dataSourceName ?? "another database"}`}
-              className="size-5 shrink-0 text-muted-foreground"
+              className="size-5 shrink-0 text-content-secondary"
             />
           ) : null}
           <input
             aria-label="Database title"
             className={cn(
-              "h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 font-semibold leading-tight tracking-normal text-foreground shadow-none outline-none [field-sizing:content] placeholder:text-muted-foreground focus-visible:ring-0",
+              "h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 font-semibold leading-tight tracking-normal text-content-primary shadow-none outline-none [field-sizing:content] placeholder:text-content-secondary focus-visible:ring-0",
               fullPage ? "text-2xl md:text-2xl" : "text-3xl",
             )}
             disabled={!databaseId}
@@ -620,7 +620,6 @@ export function DatabaseViewToolbar() {
               value={activeViewTabId}
             >
               <TabsList
-                variant="tab"
                 className="w-max min-w-0 justify-start"
               >
                 {visibleViewTabs.map((view) => {
@@ -730,7 +729,7 @@ export function DatabaseViewToolbar() {
                             {isExternalDataSourceView(view) ? (
                               <ArrowUpRightIcon
                                 aria-label={`Linked from ${view.dataSourceName ?? "another database"}`}
-                                className="size-3 shrink-0 text-muted-foreground"
+                                className="size-3 shrink-0 text-content-secondary"
                               />
                             ) : null}
                           </TabsTrigger>
@@ -752,7 +751,7 @@ export function DatabaseViewToolbar() {
                               <PopoverTrigger asChild>
                                 <button
                                   aria-label="Change view icon"
-                                  className="flex size-8 items-center justify-center rounded-md border bg-background text-muted-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                  className="flex size-8 items-center justify-center rounded-md border bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none"
                                   disabled={!editable || !databaseId}
                                   type="button"
                                 >
@@ -769,7 +768,7 @@ export function DatabaseViewToolbar() {
                               {view.icon ? (
                                 <button
                                   aria-label="Reset view icon"
-                                  className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground group-focus-within/view-icon:flex group-hover/view-icon:flex [&_svg]:size-2.5"
+                                  className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full border bg-surface-canvas text-content-secondary shadow-sm hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral group-focus-within/view-icon:flex group-hover/view-icon:flex [&_svg]:size-2.5"
                                   disabled={!editable || !databaseId}
                                   onClick={() => saveDatabaseViewIcon(view, "")}
                                   type="button"
@@ -846,7 +845,7 @@ export function DatabaseViewToolbar() {
                               <Table2 />
                               <span>Table</span>
                               {view.type === "table" ? (
-                                <Check className="ml-auto text-foreground" />
+                                <Check className="ml-auto text-content-primary" />
                               ) : null}
                             </DropDrawerItem>
                             <DropDrawerItem
@@ -859,7 +858,7 @@ export function DatabaseViewToolbar() {
                               <Kanban />
                               <span>Board</span>
                               {view.type === "kanban" ? (
-                                <Check className="ml-auto text-foreground" />
+                                <Check className="ml-auto text-content-primary" />
                               ) : null}
                             </DropDrawerItem>
                             <DropDrawerItem
@@ -872,7 +871,7 @@ export function DatabaseViewToolbar() {
                               <GalleryThumbnails />
                               <span>Gallery</span>
                               {view.type === "gallery" ? (
-                                <Check className="ml-auto text-foreground" />
+                                <Check className="ml-auto text-content-primary" />
                               ) : null}
                             </DropDrawerItem>
                             <DropDrawerItem
@@ -885,7 +884,7 @@ export function DatabaseViewToolbar() {
                               <List />
                               <span>List</span>
                               {view.type === "list" ? (
-                                <Check className="ml-auto text-foreground" />
+                                <Check className="ml-auto text-content-primary" />
                               ) : null}
                             </DropDrawerItem>
                             <DropDrawerItem
@@ -898,7 +897,7 @@ export function DatabaseViewToolbar() {
                               <ChartPie />
                               <span>Chart</span>
                               {view.type === "chart" ? (
-                                <Check className="ml-auto text-foreground" />
+                                <Check className="ml-auto text-content-primary" />
                               ) : null}
                             </DropDrawerItem>
                             <DropDrawerItem
@@ -911,7 +910,7 @@ export function DatabaseViewToolbar() {
                               <CalendarRange />
                               <span>Timeline</span>
                               {view.type === "timeline" ? (
-                                <Check className="ml-auto text-foreground" />
+                                <Check className="ml-auto text-content-primary" />
                               ) : null}
                             </DropDrawerItem>
                             <DropDrawerItem
@@ -924,7 +923,7 @@ export function DatabaseViewToolbar() {
                               <FilePenLine />
                               <span>Form</span>
                               {view.type === "form" ? (
-                                <Check className="ml-auto text-foreground" />
+                                <Check className="ml-auto text-content-primary" />
                               ) : null}
                             </DropDrawerItem>
                           </DropDrawerSubContent>
@@ -1031,7 +1030,7 @@ export function DatabaseViewToolbar() {
                 <DropDrawerTrigger asChild>
                   <Button
                     aria-label={`${overflowViewTabs.length} more database views`}
-                    className="h-8 shrink-0 px-3 text-muted-foreground"
+                    className="h-8 shrink-0 px-3 text-content-secondary"
                     type="button"
                     variant="ghost"
                   >
@@ -1227,7 +1226,7 @@ export function DatabaseViewToolbar() {
                   <DropDrawerTrigger asChild>
                     <Button
                       aria-label="Add filter"
-                      className="text-muted-foreground"
+                      className="text-content-secondary"
                       size="icon"
                       type="button"
                       variant="ghost"
@@ -1256,7 +1255,7 @@ export function DatabaseViewToolbar() {
                     showFilterPill ? "Hide filter pill" : "Show filter pill"
                   }
                   className={
-                    showFilterPill ? "text-foreground" : "text-muted-foreground"
+                    showFilterPill ? "text-content-primary" : "text-content-secondary"
                   }
                   onClick={toggleFilterPillVisibility}
                   size="icon"
@@ -1274,7 +1273,7 @@ export function DatabaseViewToolbar() {
                   <DropDrawerTrigger asChild>
                     <Button
                       aria-label="Add sort"
-                      className="text-muted-foreground"
+                      className="text-content-secondary"
                       size="icon"
                       type="button"
                       variant="ghost"
@@ -1303,7 +1302,7 @@ export function DatabaseViewToolbar() {
                     showSortPill ? "Hide sort pill" : "Show sort pill"
                   }
                   className={
-                    showSortPill ? "text-foreground" : "text-muted-foreground"
+                    showSortPill ? "text-content-primary" : "text-content-secondary"
                   }
                   onClick={toggleSortPillVisibility}
                   size="icon"
@@ -1506,7 +1505,7 @@ export function DatabaseViewToolbar() {
           <DialogHeader className="items-center gap-3 text-center">
             <div
               aria-hidden
-              className="flex items-center justify-center gap-3 text-muted-foreground"
+              className="flex items-center justify-center gap-3 text-content-secondary"
             >
               <Table2 className="size-7" />
               <ArrowRight className="size-5" />
@@ -1535,7 +1534,7 @@ export function DatabaseViewToolbar() {
               {formQuestionCount === 1 ? "question" : "questions"}
             </Button>
             <Button
-              className="w-full text-muted-foreground"
+              className="w-full text-content-secondary"
               disabled={isAddingDatabaseView}
               onClick={() => {
                 setFormDialogOpen(false);

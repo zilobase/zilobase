@@ -46,12 +46,12 @@ export function EditorTableOfContents({
                 <span
                   aria-hidden="true"
                   className={cn(
-                    "block h-0.5 rounded-full bg-muted-indicator",
+                    "block h-0.5 rounded-full bg-indicator-muted",
                     item.originalLevel === 1 && "w-8",
                     item.originalLevel === 2 && "w-6",
                     item.originalLevel === 3 && "w-4",
                     item.originalLevel > 3 && "w-3",
-                    item.isActive && "bg-foreground"
+                    item.isActive && "bg-content-primary"
                   )}
                   key={item.id}
                 />
@@ -70,10 +70,10 @@ export function EditorTableOfContents({
               {visibleItems.map((item) => (
                 <button
                   className={cn(
-                    "flex h-9 w-full items-center rounded-md px-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none",
+                    "flex h-9 w-full items-center rounded-md px-2 text-left text-sm transition-colors hover:bg-action-neutral-hover focus-visible:bg-action-neutral-hover focus-visible:outline-none",
                     item.level === 2 && "pl-5",
                     item.level >= 3 && "pl-8",
-                    item.isActive && "bg-active text-active-foreground"
+                    item.isActive && "bg-action-neutral-pressed text-action-on-neutral"
                   )}
                   key={item.id}
                   onClick={() => jumpToItem(item)}

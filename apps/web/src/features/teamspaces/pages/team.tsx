@@ -52,7 +52,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/shared/ui/tabs"
+} from "@/shared/ui/app-tabs"
 import { useSession } from "@zilobase/features/auth"
 import {
   useActiveWorkspaceId,
@@ -174,7 +174,6 @@ export default function TeamSettingsPage() {
         <TabsList
           aria-label="Team settings sections"
           className="min-w-0 w-full justify-start overflow-x-auto"
-          variant="tab"
         >
           <TabsTrigger className="h-8 shrink-0 grow-0 gap-2 px-3" value="team">
             Team
@@ -208,7 +207,7 @@ export default function TeamSettingsPage() {
               <h3 className="font-heading text-base leading-snug font-medium">
                 Members
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-content-secondary">
                 People with access to this workspace.
               </p>
             </div>
@@ -229,7 +228,7 @@ export default function TeamSettingsPage() {
               <h3 className="font-heading text-base leading-snug font-medium">
                 Pending invitations
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-content-secondary">
                 Invitations waiting to be accepted.
               </p>
             </div>
@@ -259,7 +258,7 @@ export default function TeamSettingsPage() {
                 <h3 className="font-heading text-base leading-snug font-medium">
                   Page guests
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-content-secondary">
                   External people invited to individual pages. Guests do not
                   receive workspace membership.
                 </p>
@@ -329,7 +328,7 @@ function GuestList({
     <ItemGroup className="gap-2">
       {guests.map((guest) => (
         <Item key={guest.userId} variant="outline">
-          <ItemMedia className="size-8 rounded-lg bg-muted text-xs font-medium uppercase">
+          <ItemMedia className="size-8 rounded-lg bg-surface-muted text-xs font-medium uppercase">
             {getInitials(guest.name || guest.email)}
           </ItemMedia>
           <ItemContent className="min-w-0">
@@ -434,7 +433,7 @@ function GuestPolicySection({
         <h3 className="font-heading text-base leading-snug font-medium">
           Guest invitations
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-content-secondary">
           Choose whether members can invite page guests directly or need owner
           approval.
         </p>
@@ -475,7 +474,7 @@ function GuestPolicySection({
         {isLoadingRequests ? (
           <RowsSkeleton />
         ) : requests.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No pending requests.</p>
+          <p className="text-sm text-content-secondary">No pending requests.</p>
         ) : (
           <ItemGroup className="gap-2">
             {requests.map((request) => (
@@ -588,7 +587,7 @@ function RegistrationSettingsSection() {
         <h3 className="font-heading text-base leading-snug font-medium">
           Server registration
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-content-secondary">
           Choose who can create an account on this self-hosted server.
         </p>
       </div>
@@ -688,7 +687,7 @@ function InviteMemberSection({
         <h3 className="font-heading text-base leading-snug font-medium">
           Invite member
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-content-secondary">
           Invite a permanent teammate or grant time-limited workspace access.
         </p>
       </div>
@@ -950,7 +949,7 @@ function MemberRow({
 
   return (
     <Item className="min-h-12" variant="outline">
-      <ItemMedia className="size-8 rounded-lg bg-muted text-xs font-medium uppercase">
+      <ItemMedia className="size-8 rounded-lg bg-surface-muted text-xs font-medium uppercase">
         {getInitials(member.name || member.email)}
       </ItemMedia>
       <ItemContent className="min-w-0">
@@ -1062,7 +1061,7 @@ function InvitationRow({
 }) {
   return (
     <Item className="min-h-12" variant="outline">
-      <ItemMedia className="size-8 rounded-lg bg-muted text-muted-foreground">
+      <ItemMedia className="size-8 rounded-lg bg-surface-muted text-content-secondary">
         <MailPlusIcon className="size-4" />
       </ItemMedia>
       <ItemContent className="min-w-0">

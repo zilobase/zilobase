@@ -86,6 +86,7 @@ export function PagePaneHeader({
   rowNavigationDatabaseId,
   showPaneControls = Boolean(onClose),
   showActions = true,
+  showBreadcrumb = true,
 }: {
   className?: string;
   discussionsOpen?: boolean;
@@ -98,6 +99,7 @@ export function PagePaneHeader({
   rowNavigationDatabaseId?: string | null;
   showPaneControls?: boolean;
   showActions?: boolean;
+  showBreadcrumb?: boolean;
 }) {
   const pageId = useRoutePageId(pathname);
   const databaseId = getDatabaseId(pathname);
@@ -120,7 +122,7 @@ export function PagePaneHeader({
     >
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
         {leadingControls}
-        <AppBreadcrumbs pathname={pathname} />
+        {showBreadcrumb ? <AppBreadcrumbs pathname={pathname} /> : null}
       </div>
       {showActions ? (
         <div className="ml-auto px-3" data-page-side-pane-avoid>
@@ -237,7 +239,7 @@ function PagePaneControls({
           aria-label="Close"
           data-page-side-pane-promoted-hide
           onClick={onClose}
-          size="icon-sm"
+          size="icon"
           type="button"
           variant="ghost"
         >
@@ -250,7 +252,7 @@ function PagePaneControls({
         aria-label="Open as full page"
         asChild
         data-page-side-pane-promoted-hide
-        size="icon-sm"
+        size="icon"
         variant="ghost"
       >
         <Link to={pathname}>
@@ -274,7 +276,7 @@ function PagePaneControls({
             aria-label="Open previous row"
             disabled={!previousRowPageId}
             onClick={() => openRowPage(previousRowPageId)}
-            size="icon-sm"
+            size="icon"
             type="button"
             variant="ghost"
           >
@@ -284,7 +286,7 @@ function PagePaneControls({
             aria-label="Open next row"
             disabled={!nextRowPageId}
             onClick={() => openRowPage(nextRowPageId)}
-            size="icon-sm"
+            size="icon"
             type="button"
             variant="ghost"
           >
@@ -314,7 +316,7 @@ function OpenPageAsDropdown({
         <Button
           aria-label="Open pages as"
           disabled={disabled}
-          size="icon-sm"
+          size="icon"
           title={`Open pages as ${embeddedItemsOpenAsLabels[mode]}`}
           type="button"
           variant="ghost"
@@ -539,7 +541,7 @@ function CollapsedBreadcrumbTrail({
                 <DropdownMenuTrigger asChild>
                   <Button
                     aria-label="More pages"
-                    className="-m-1.5 text-muted-foreground"
+                    className="-m-1.5 text-content-secondary"
                     size="icon-sm"
                     variant="ghost"
                   >

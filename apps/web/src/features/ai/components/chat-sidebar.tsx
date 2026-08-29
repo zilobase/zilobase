@@ -32,7 +32,7 @@ export function ChatSidebarTrigger({
     <Button
       aria-label="Open chat sidebar"
       className={cn(
-        "fixed bottom-4 z-40 h-10 rounded-md border-border bg-sidebar px-3 text-foreground shadow-lg ring-1 ring-border transition-[right,background-color,color,transform] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-accent hover:text-accent-foreground motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        "fixed bottom-4 z-40 h-10 rounded-md border-stroke-default bg-surface-navigation px-3 text-content-primary shadow-lg ring-1 ring-stroke-default transition-[right,background-color,color,transform] duration-320 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:bg-action-neutral-hover hover:text-action-on-neutral motion-reduce:transition-none motion-reduce:hover:translate-y-0",
         adjacentSidebarOpen
           ? "right-[calc(var(--right-sidebar-adjacent-panel-width,var(--right-sidebar-panel-width))+1rem)] max-md:right-4"
           : "right-4",
@@ -158,6 +158,7 @@ export function ChatSidebarPanel({
       {view === "history" ? (
         <AiChatHistoryList
           activeThreadId={activeThreadId}
+          className="[&_[data-sidebar=menu-button]]:h-7 [&_[data-sidebar=menu-button]]:p-1.5 [&_[data-sidebar=menu]]:gap-px"
           onSelectThread={handleSelectThread}
         />
       ) : (
@@ -166,13 +167,13 @@ export function ChatSidebarPanel({
           data-ai-scroll-shell
         >
           {!open || isBootstrapping ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+            <div className="flex h-full items-center justify-center text-content-secondary text-sm">
               Loading chat...
             </div>
           ) : (
             <Suspense
               fallback={
-                <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
+                <div className="flex h-full items-center justify-center text-content-secondary text-sm">
                   Loading chat...
                 </div>
               }

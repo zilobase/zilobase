@@ -244,7 +244,7 @@ function PageBlockView({
     >
       {pageId ? (
         <button
-          className="flex h-10 w-full items-center gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm text-foreground transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-4"
+          className="flex h-10 w-full items-center gap-2 rounded-md bg-surface-subtle px-3 text-left text-sm text-content-primary transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none [&_svg]:size-4"
           contentEditable={false}
           data-open-in-new-tab-href={`/p/${encodeURIComponent(pageId)}`}
           data-open-in-new-tab-title={title}
@@ -254,7 +254,7 @@ function PageBlockView({
           style={cardStyle}
           type="button"
         >
-          <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
+          <span className="flex size-5 shrink-0 items-center justify-center text-content-secondary">
             {emoji ? <PageIconDisplay size="sm" value={emoji} /> : <DefaultPageIcon />}
           </span>
           <span className="min-w-0 truncate font-medium">{title}</span>
@@ -263,7 +263,7 @@ function PageBlockView({
         <Popover open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
-              className="flex h-10 w-full justify-start gap-2 rounded-md bg-subtle-surface px-3 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:bg-active active:text-active-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&_svg]:size-4"
+              className="flex h-10 w-full justify-start gap-2 rounded-md bg-surface-subtle px-3 text-left text-sm font-medium text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none [&_svg]:size-4"
               contentEditable={false}
               style={cardStyle}
               type="button"
@@ -282,7 +282,7 @@ function PageBlockView({
             side="bottom"
             sideOffset={6}
           >
-            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+            <div className="px-2 py-1 text-xs font-medium text-content-secondary">
               Pages
             </div>
             <div className="grid gap-1">
@@ -293,7 +293,7 @@ function PageBlockView({
 
                   return (
                     <button
-                      className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+                      className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-left text-xs outline-none hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:bg-action-neutral-hover focus-visible:text-action-on-neutral data-[selected=true]:bg-action-neutral-hover data-[selected=true]:text-action-on-neutral"
                       data-selected={selectedIndex === index ? true : undefined}
                       key={page.id}
                       onClick={() => linkPage(page.id)}
@@ -303,7 +303,7 @@ function PageBlockView({
                       }}
                       type="button"
                     >
-                      <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">
+                      <span className="flex size-5 shrink-0 items-center justify-center text-content-secondary [&_svg]:size-4">
                         {pageEmoji ? <PageIconDisplay size="sm" value={pageEmoji} /> : <DefaultPageIcon />}
                       </span>
                       <span className="min-w-0 truncate">{pageTitle}</span>
@@ -311,16 +311,16 @@ function PageBlockView({
                   );
                 })
               ) : (
-                <div className="px-2 py-2 text-xs text-muted-foreground">
+                <div className="px-2 py-2 text-xs text-content-secondary">
                   No other pages yet.
                 </div>
               )}
             </div>
             {options.onCreatePage ? (
               <>
-                <div className="my-1 h-px bg-border" />
+                <div className="my-1 h-px bg-stroke-default" />
                 <Button
-                  className="mt-1 flex h-8 w-full justify-start gap-2 px-2 text-xs data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg]:size-4"
+                  className="mt-1 flex h-8 w-full justify-start gap-2 px-2 text-xs data-[selected=true]:bg-action-neutral-hover data-[selected=true]:text-action-on-neutral [&_svg]:size-4"
                   data-selected={
                     selectedIndex === linkablePages.length ? true : undefined
                   }

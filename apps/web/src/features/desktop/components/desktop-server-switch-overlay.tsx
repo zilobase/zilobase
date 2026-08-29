@@ -17,7 +17,7 @@ export function DesktopServerSwitchOverlay() {
   return (
     <div
       aria-live="polite"
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-backdrop backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-effect-backdrop backdrop-blur-sm"
       role="status"
     >
       <div className="flex max-w-sm flex-col items-center gap-3 px-6 text-center">
@@ -29,7 +29,7 @@ export function DesktopServerSwitchOverlay() {
               ? progress.workspaceName
               : progress.server.displayName}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-xs text-content-secondary">
             {progress.server.displayName}
             {progress.server.apiOrigin
               ? ` — ${progress.server.apiOrigin}`
