@@ -77,7 +77,7 @@ type SidebarNavListProps = {
 }
 
 const rowClassName = cn(
-  "peer/menu-button pr-8 data-[active=false]:text-muted-foreground",
+  "peer/menu-button pr-8",
   SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
 )
 
@@ -264,7 +264,7 @@ function SidebarNavRow({
         </div>
         {hasChildren ? (
           <CollapsibleContent className="pt-0.5">
-            <ul className="flex min-w-0 flex-col gap-0.5">
+            <ul className="flex min-w-0 flex-col gap-px">
               {item.pages.map((child) => (
                 <SidebarNavRow
                   activeDatabaseId={activeDatabaseId}

@@ -114,7 +114,7 @@ export function SidebarDatabaseViewSection({
                 ))}
                 {model.sortedItems.length > rows.length ? (
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild className="text-muted-foreground">
+                    <SidebarMenuButton asChild>
                       <Link params={{ databaseId: section.databaseId }} search={{ view: section.viewId }} to="/d/$databaseId">View all</Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

@@ -141,7 +141,7 @@ export function NavFavorites({
             />
             {displayedFavorites.length === 0 ? (
               <SidebarMenuItem>
-                <SidebarMenuButton className="text-muted-foreground">
+                <SidebarMenuButton>
                   <span>No favorites</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -1,5 +1,5 @@
 import { useState, type DragEvent } from "react"
-import { Link, useLocation, useNavigate } from "@tanstack/react-router"
+import { useLocation, useNavigate } from "@tanstack/react-router"
 import { useDeleteDatabase } from "@zilobase/features/databases"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
@@ -90,10 +90,7 @@ import { OfflineAvailabilityAction } from "@/components/offline-availability-act
 import { SidebarSectionMenu } from "@/components/sidebar-section-menu"
 import { useSidebarSectionOpen } from "@/components/sidebar-section-open-state"
 import { getConfiguredSidebarItems } from "@/components/sidebar-section-items"
-import {
-  getLibraryViewForSection,
-  SidebarLibraryLink,
-} from "@/components/sidebar-library-link"
+import { SidebarLibraryLink } from "@/components/sidebar-library-link"
 import type {
   LegacySidebarConfig,
   SidebarSectionId,
@@ -258,7 +255,7 @@ export function NavPageSection({
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton
                     className={cn(
-                      "peer/menu-button pr-20 text-muted-foreground",
+                      "peer/menu-button pr-20",
                       SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
                     )}
                     title={teamspace.name}
@@ -331,7 +328,7 @@ export function NavPageSection({
                   />
                   {displayedPages.length === 0 ? (
                     <SidebarMenuItem>
-                      <SidebarMenuButton className="text-muted-foreground">
+                      <SidebarMenuButton>
                         <span>No pages</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -457,39 +454,8 @@ export function NavPageSection({
               />
               {displayedPages.length === 0 ? (
                 <SidebarMenuItem>
-                  <SidebarMenuButton className="text-muted-foreground">
+                  <SidebarMenuButton>
                     <span>No pages</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ) : null}
-              {displayedPages.length > 0 ? (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    className="text-muted-foreground"
-                  >
-                    <Link
-                      onClick={() => {
-                        const view = getLibraryViewForSection(sectionId)
-                        if (
-                          sidebarConfig &&
-                          onSidebarConfigChange &&
-                          sidebarConfig.libraryView !== view
-                        ) {
-                          onSidebarConfigChange({
-                            ...sidebarConfig,
-                            libraryView: view,
-                          })
-                        }
-                      }}
-                      search={{
-                        view: getLibraryViewForSection(sectionId),
-                      }}
-                      to="/recents"
-                    >
-                      <MoreHorizontalIcon />
-                      <span>More</span>
-                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ) : null}

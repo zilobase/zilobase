@@ -360,7 +360,7 @@ function ShortcutList({ databases, onCreateChat, onCreateDatabase, onCreatePage,
       else if (target.route === "settings") onOpenSettings?.()
       else void navigate({ to: target.route === "ai" ? "/ai" : target.route === "tasks" ? "/tasks" : "/trash" })
     }
-    return <SidebarMenuItem key={shortcut.id}><SidebarMenuButton className="text-muted-foreground" isActive={isShortcutActive(shortcut, location.pathname, location.search, settingsOpen)} onClick={activate} type="button"><SidebarShortcutIcon shortcut={shortcut} /><span>{label}</span></SidebarMenuButton></SidebarMenuItem>
+    return <SidebarMenuItem key={shortcut.id}><SidebarMenuButton isActive={isShortcutActive(shortcut, location.pathname, location.search, settingsOpen)} onClick={activate} type="button"><SidebarShortcutIcon shortcut={shortcut} /><span>{label}</span></SidebarMenuButton></SidebarMenuItem>
   })}</SidebarMenu></SidebarGroupContent></SidebarGroup>
 }
 

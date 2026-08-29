@@ -30,6 +30,26 @@ export function register({ assert, test }) {
       new URL("../src/components/sidebar-database-view-section.tsx", import.meta.url),
       "utf8",
     )
+    const navPagesSource = await readFile(
+      new URL("../src/components/nav-pages.tsx", import.meta.url),
+      "utf8",
+    )
+    const navListSource = await readFile(
+      new URL("../src/components/sidebar-nav-list.tsx", import.meta.url),
+      "utf8",
+    )
+    const defaultIconsSource = await readFile(
+      new URL("../src/lib/item-icons.ts", import.meta.url),
+      "utf8",
+    )
+    const appIconProviderSource = await readFile(
+      new URL("../src/providers/app-icon-provider.tsx", import.meta.url),
+      "utf8",
+    )
+    const iconPickerSource = await readFile(
+      new URL("../src/components/ui/icon-emoji-picker.tsx", import.meta.url),
+      "utf8",
+    )
 
     assert.match(sidebarSource, /<ZilobaseLogo className="h-5 w-auto" \/>/)
     assert.match(sidebarSource, /<span className="sr-only">Zilobase<\/span>/)
@@ -41,6 +61,18 @@ export function register({ assert, test }) {
       /onClick=\{\(\) => setCustomizing\(true\)\}/,
     )
     assert.match(sidebarSource, /gap-2 p-2/)
+    assert.doesNotMatch(navPagesSource, /<span>More<\/span>/)
+    assert.match(sidebarPrimitiveSource, /default: "h-7 text-sm"/)
+    assert.match(sidebarPrimitiveSource, /font-medium data-active:font-medium text-sidebar-item-foreground ring-ring/)
+    assert.doesNotMatch(navListSource, /data-\[active=false\]:opacity-80/)
+    assert.match(navListSource, /flex min-w-0 flex-col gap-px/)
+    assert.equal(defaultIconsSource.match(/data-icon-color="gray"/g)?.length, 3)
+    assert.doesNotMatch(defaultIconsSource, /data-icon-color="default"/)
+    assert.match(appIconProviderSource, /weight: "bold"/)
+    assert.match(iconPickerSource, /useState<PhosphorPickerWeight>\("bold"\)/)
+    assert.doesNotMatch(defaultIconsSource, /stroke-width="(?:1\.5|2)"/)
+    assert.match(defaultIconsSource, /stroke-width="1\.875"/)
+    assert.match(defaultIconsSource, /stroke-width="2\.5"/)
     assert.match(sidebarTabsSource, /<SearchIcon className="size-4" \/>/)
     assert.match(sidebarTabsSource, /\{active \? <motion\.span/)
     assert.match(sidebarTabsSource, /tabLabelVariants/)
@@ -140,7 +172,7 @@ export function register({ assert, test }) {
     assert.match(sidebarSource, /setActiveThreadId\(null\)/)
     assert.match(
       sidebarSource,
-      /<SidebarMenuButton className="text-muted-foreground" isActive=\{isShortcutActive/,
+      /<SidebarMenuButton isActive=\{isShortcutActive/,
     )
     assert.match(
       sidebarDatabaseViewSource,

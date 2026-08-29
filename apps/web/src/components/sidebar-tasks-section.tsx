@@ -89,7 +89,7 @@ export function SidebarTasksSection({
                 </SidebarMenuItem>
               ))}
               {rows.length === limit ? (
-                <SidebarMenuItem><SidebarMenuButton asChild className="text-muted-foreground"><Link to="/tasks">View all</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild><Link to="/tasks">View all</Link></SidebarMenuButton></SidebarMenuItem>
               ) : null}
             </SidebarMenu>
           </SidebarGroupContent>

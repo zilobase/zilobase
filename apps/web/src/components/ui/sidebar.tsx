@@ -453,7 +453,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium ring-ring outline-hidden transition-[width,height,padding,background-color,color] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 active:bg-active active:text-active-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-accent data-open:hover:text-accent-foreground data-active:bg-accent data-active:text-accent-foreground data-active:hover:bg-active data-active:hover:text-active-foreground data-active:group-hover/nav-row:bg-active data-active:group-hover/nav-row:text-active-foreground data-active:active:bg-active data-active:active:text-active-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate",
+  "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-1.5 text-left text-sm font-medium data-active:font-medium text-sidebar-item-foreground ring-ring outline-hidden transition-[width,height,padding,background-color,color] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 active:bg-active active:text-active-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-open:hover:bg-accent data-open:hover:text-accent-foreground data-active:bg-accent data-active:text-accent-foreground data-active:hover:bg-active data-active:hover:text-active-foreground data-active:group-hover/nav-row:bg-active data-active:group-hover/nav-row:text-active-foreground data-active:active:bg-active data-active:active:text-active-foreground [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate",
   {
     variants: {
       variant: {
@@ -462,7 +462,7 @@ const sidebarMenuButtonVariants = cva(
           "bg-background shadow-[0_0_0_1px_var(--border)] hover:bg-accent hover:text-accent-foreground hover:shadow-[0_0_0_1px_var(--accent)]",
       },
       size: {
-        default: "h-8 text-sm",
+        default: "h-7 text-sm",
         sm: "h-7 text-sm",
         lg: "h-12 text-sm group-data-[collapsible=icon]:p-0!",
       },
