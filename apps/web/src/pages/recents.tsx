@@ -697,7 +697,7 @@ function TeamspacesLibraryTable({
   }
 
   return (
-    <div className="database-table-wrap tiptap-editor min-w-[58rem]" data-vertical-lines="true">
+    <div className="database-table-wrap min-w-[58rem] text-sm leading-5" data-vertical-lines="true">
       <table className="database-table">
         <colgroup>
           <col className="w-[30%]" />
@@ -768,7 +768,7 @@ function TeamspacesLibraryTable({
                   <td />
                   <td />
                 </tr>
-              )) : <tr aria-label={`${teamspace.name} contents`}><td className="text-muted-foreground" colSpan={5}>No pages yet</td></tr>}
+              )) : <tr aria-label={`${teamspace.name} contents`}><td className="h-8 text-muted-foreground" colSpan={5}>No pages yet</td></tr>}
             </Fragment>
           ) : null}
         </Fragment>;

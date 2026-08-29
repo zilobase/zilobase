@@ -19,6 +19,8 @@ export function register({ assert, loadModule, test }) {
     assert.match(source, /buildTeamspaceLibraryRows\(rows, teamspace\.id\)/)
     assert.match(source, /aria-label=\{`\$\{teamspace\.name\} contents`\}/)
     assert.match(source, /className="database-table"/)
+    assert.match(source, /className="database-table-wrap min-w-\[58rem\] text-sm leading-5"/)
+    assert.doesNotMatch(source, /className="database-table-wrap tiptap-editor/)
     assert.match(source, /<DatabasePageLink[\s\S]*onOpen=\{onOpenRow\}/)
   })
 
