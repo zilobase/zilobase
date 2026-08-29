@@ -24,7 +24,7 @@ import { Input } from "@/shared/ui/input"
 import { getApiErrorMessage } from "@/lib/api"
 import { getInvitationAuthSearch, signInWithGoogle } from "@/lib/google-auth"
 import { cn } from "@/shared/lib/utils"
-import { useAuthFlowStore } from "@/stores/auth-flow-store"
+import { useAuthFlowStore } from "@/app/state/auth-flow-store"
 import {
   useRequestEmailVerificationOtp,
   useSignUp,

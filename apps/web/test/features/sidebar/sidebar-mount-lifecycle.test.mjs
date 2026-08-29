@@ -1,6 +1,6 @@
 export function register({ readSource, assert, test }) {
   test("page navigation keeps the application sidebar mounted", async () => {
-    const source = await readSource("/src/components/app-layout.tsx")
+    const source = await readSource("/src/app/shell/content/app-layout.tsx")
 
     const sidebarPosition = source.indexOf("<AppSidebar")
     const pageProviderPosition = source.indexOf("<PageLayoutSidebarProvider")

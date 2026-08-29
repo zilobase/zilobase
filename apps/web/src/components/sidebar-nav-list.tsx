@@ -30,7 +30,7 @@ import {
 } from "@/components/sidebar-nav-item-action"
 import { cn } from "@/shared/lib/utils"
 import { type ZilobaseAiMode } from "@zilobase/features/pages"
-import { useOfflineManifest } from "@/providers/offline-provider"
+import { useOfflineManifest } from "@/app/providers/offline-provider"
 
 export type SidebarNavItem = {
   databaseId?: string | null

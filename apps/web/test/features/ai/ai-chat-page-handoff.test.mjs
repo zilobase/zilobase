@@ -1,7 +1,7 @@
 export function register({ readSource, assert, test }) {
   test("opening the main Ask AI page hands off the sidebar's current chat", async () => {
     const [layoutSource, pageSource, stateSource] = await Promise.all([
-      readSource("/src/components/app-layout.tsx"),
+      readSource("/src/app/shell/content/app-layout.tsx"),
       readSource("/src/pages/ai.tsx"),
       readSource("/src/hooks/use-ai-chat-thread-state.ts"),
     ])

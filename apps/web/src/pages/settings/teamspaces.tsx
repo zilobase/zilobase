@@ -3,7 +3,7 @@ import { Layers3Icon, MoreHorizontalIcon, PlusIcon, UsersIcon } from "@/shared/c
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
 
-import { SettingsHeader } from "@/components/settings-header"
+import { SettingsHeader } from "@/app/shell/settings/settings-header"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"

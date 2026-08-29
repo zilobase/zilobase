@@ -30,8 +30,8 @@ import {
   getAuthReturnPath,
   signInWithDesktopBrowser,
 } from "@/lib/google-auth"
-import { queryClient } from "@/lib/query-client"
-import { webAuthClient } from "@/providers/features-provider"
+import { queryClient } from "@/app/providers/query-client"
+import { webAuthClient } from "@/app/providers/features-provider"
 import { sessionQueryOptions } from "@zilobase/features/auth"
 import { workspacesQueryOptions } from "@zilobase/features/workspaces"
 

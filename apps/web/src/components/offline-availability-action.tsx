@@ -23,7 +23,7 @@ import {
   removeOfflineItem,
   setOfflineItem,
 } from "@/lib/offline-store"
-import { useOfflineManifest } from "@/providers/offline-provider"
+import { useOfflineManifest } from "@/app/providers/offline-provider"
 import * as Y from "yjs"
 
 type Props = {

@@ -21,9 +21,9 @@ import {
   describeDesktopError,
   recordDesktopDiagnostic,
 } from "@/lib/desktop-diagnostics"
-import { queryClient } from "@/lib/query-client"
-import { useAppStore } from "@/stores/app-store"
-import { isFeatureEnabled } from "@/config/feature-flags"
+import { queryClient } from "@/app/providers/query-client"
+import { useAppStore } from "@/app/state/app-store"
+import { isFeatureEnabled } from "@/app/config/feature-flags"
 
 export const webAuthClient: ZilobaseAuthClient = {
   getSession: async () => {

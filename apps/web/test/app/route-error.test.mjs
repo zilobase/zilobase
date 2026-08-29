@@ -1,6 +1,6 @@
 export function register({ assert, loadModule, test }) {
   test("route errors keep desktop reconnect copy off the web", async () => {
-    const { describeRouteError } = await loadModule("/src/lib/route-error.ts")
+    const { describeRouteError } = await loadModule("/src/app/routing/route-error.ts")
     const networkError = Object.assign(new Error("Zilobase is offline."), {
       name: "NetworkUnavailableError",
     })

@@ -26,10 +26,15 @@
       {
         "name": "web-shared",
         "patterns": ["apps/web/src/shared/**"]
+      },
+      {
+        "name": "web-app",
+        "patterns": ["apps/web/src/app/**"]
       }
     ],
     "rules": [
-      { "from": "web-shared", "allow": ["web-shared"] }
+      { "from": "web-shared", "allow": ["web-shared"] },
+      { "from": "web-app", "allow": ["web-app", "web-shared"] }
     ]
   },
   // The custom web test harness bundles these literal loadModule() paths.
@@ -46,7 +51,7 @@
     "apps/web/src/components/sidebar-panel-sizing.ts",
     "apps/web/src/components/sidebar-section-items.ts",
     "apps/web/src/components/teamspace-sidebar-permissions.ts",
-    "apps/web/src/config/feature-flags.ts",
+    "apps/web/src/app/config/feature-flags.ts",
     "apps/web/src/contexts/page-side-pane.tsx",
     "apps/web/src/editor/components/editor/block-drag.ts",
     "apps/web/src/editor/components/editor/column-drag.ts",
@@ -121,7 +126,7 @@
     "apps/web/src/lib/published-page-preferences.ts",
     "apps/web/src/lib/published-share-access.ts",
     "apps/web/src/lib/recent-navigation.ts",
-    "apps/web/src/lib/route-error.ts",
+    "apps/web/src/app/routing/route-error.ts",
     "apps/web/src/shared/lib/themes.ts",
     "apps/web/src/pages/homepage-hierarchy.ts",
     "apps/web/src/pages/page-hierarchy-blocks.ts",
@@ -129,9 +134,9 @@
     "apps/web/src/pages/settings/team-settings-tabs.ts",
     "apps/web/src/pages/settings/teamspace-filters.ts",
     "apps/web/src/pages/tasks-model.ts",
-    "apps/web/src/shortcuts/editor-history.ts",
-    "apps/web/src/shortcuts/shortcut-definitions.ts",
-    "apps/web/src/stores/app-store.ts"
+    "apps/web/src/app/shortcuts/editor-history.ts",
+    "apps/web/src/app/shortcuts/shortcut-definitions.ts",
+    "apps/web/src/app/state/app-store.ts"
   ],
   // These workspace packages publish APIs consumed outside this repository.
   "publicPackages": [

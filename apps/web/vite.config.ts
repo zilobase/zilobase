@@ -68,7 +68,7 @@ export default defineConfig(async () => ({
     alias: [
       {
         find: "@zilobase/edition-web",
-        replacement: `${srcDir}/edition/community.tsx`,
+        replacement: `${srcDir}/app/edition/community.tsx`,
       },
       { find: "@/packages/editor", replacement: editorDir },
       { find: "@", replacement: srcDir },

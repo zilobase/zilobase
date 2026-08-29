@@ -49,7 +49,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog"
 import { cn } from "@/shared/lib/utils"
-import { UndoHistoryScope } from "@/shortcuts"
+import { UndoHistoryScope } from "@/app/shortcuts"
 import { toast } from "sonner"
 
 type PendingDatabaseBlockDrop = {

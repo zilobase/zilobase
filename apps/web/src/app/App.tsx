@@ -7,7 +7,7 @@ import {
   DesktopWindowTitlebar,
   isLinuxDesktopApp,
 } from "@/components/desktop-window-titlebar"
-import { router } from "@/router"
+import { router } from "@/app/routing/router"
 
 export default function App() {
   const app = (

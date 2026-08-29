@@ -4,7 +4,7 @@ export function register({ readSource, assert, loadModule, test }) {
       closeDesktopTabState,
       setDesktopTabOrderState,
       useAppStore,
-    } = await loadModule("/src/stores/app-store.ts")
+    } = await loadModule("/src/app/state/app-store.ts")
     const tabs = [
       { href: "/p/one", id: "one", title: "One" },
       { href: "/p/two", id: "two", title: "Two" },
@@ -66,8 +66,8 @@ export function register({ readSource, assert, loadModule, test }) {
     const tabsSource = await readSource("/src/components/desktop-tabs.tsx")
     const tabStripSource = await readSource("/src/components/desktop-tab-strip.tsx")
     const titlebarSource = await readSource("/src/components/desktop-window-titlebar.tsx")
-    const sidebarSource = await readSource("/src/components/app-sidebar-shell.tsx")
-    const appSource = await readSource("/src/App.tsx")
+    const sidebarSource = await readSource("/src/app/shell/navigation/app-sidebar-shell.tsx")
+    const appSource = await readSource("/src/app/App.tsx")
     const stylesSource = await readSource("/src/shared/styles/global.css")
 
     assert.match(tabsSource, /DesktopTabStrip/)

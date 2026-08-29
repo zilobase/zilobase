@@ -26,7 +26,7 @@ import {
   useRequestSignInOtp,
   useSignInWithPassword,
 } from "@zilobase/features/auth"
-import { useAuthFlowStore } from "@/stores/auth-flow-store"
+import { useAuthFlowStore } from "@/app/state/auth-flow-store"
 import { editionWebModule } from "@zilobase/edition-web"
 
 export function LoginForm({

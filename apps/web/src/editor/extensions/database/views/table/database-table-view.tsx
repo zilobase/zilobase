@@ -69,7 +69,7 @@ import {
 import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
 import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/shared/lib/utils"
-import { useUndoHistory } from "@/shortcuts"
+import { useUndoHistory } from "@/app/shortcuts"
 import {
   getColorToken,
   getColorTokenBadgeClassName,

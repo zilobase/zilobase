@@ -7,8 +7,8 @@ import {
 } from "@tanstack/react-router";
 import { ArrowRight, CopyIcon, Maximize2 } from "@/shared/components/icons";
 
-import { AuthenticatedRouteError } from "@/components/authenticated-route-error";
-import { FallbackErrorBoundary } from "@/components/fallback-error-boundary";
+import { AuthenticatedRouteError } from "@/app/errors/authenticated-route-error";
+import { FallbackErrorBoundary } from "@/app/errors/fallback-error-boundary";
 import { PageWorkspaceGate } from "@/components/page-workspace-gate";
 import {
   PageSidePaneLayout,
@@ -72,7 +72,7 @@ import {
   useConnectivity,
   useOfflineManifest,
   useOfflineSessionLocked,
-} from "@/providers/offline-provider";
+} from "@/app/providers/offline-provider";
 import { createPageCommentController } from "@/comments/yjs-comments";
 import { usePageCommentsRegistry } from "@/contexts/page-comments-registry";
 import { useTitleDraft } from "@/hooks/use-title-draft";

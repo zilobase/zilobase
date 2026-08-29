@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { toast } from "sonner"
 
-import { AppIconProvider } from "@/providers/app-icon-provider"
+import { AppIconProvider } from "@/app/providers/app-icon-provider"
 import {
   PromptInput,
   PromptInputFooter,

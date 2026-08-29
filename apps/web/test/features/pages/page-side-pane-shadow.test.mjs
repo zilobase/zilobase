@@ -12,7 +12,7 @@ export function register({ readSource, assert, test }) {
   test("the docked AI chat sidebar uses the same light elevation", async () => {
     const [styles, rightSidebars] = await Promise.all([
       readSource("/src/shared/styles/global.css"),
-      readSource("/src/components/right-sidebars.tsx"),
+      readSource("/src/app/shell/side-panel/right-sidebars.tsx"),
     ])
 
     assert.match(rightSidebars, /data-ai-chat-sidebar-panel/)

@@ -20,7 +20,7 @@ import {
 } from "@/lib/offline-documents"
 import { collaborationColor } from "./collaboration-color"
 import { patchOfflineItem } from "@/lib/offline-store"
-import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider"
+import { useConnectivity, useOfflineManifest } from "@/app/providers/offline-provider"
 
 export type CollaborationUser = {
   avatar?: string | null

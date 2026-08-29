@@ -32,7 +32,7 @@ import {
 import { type ComponentType, type SVGProps } from "react"
 import { createRoot, type Root } from "react-dom/client"
 
-import { AppIconProvider } from "@/providers/app-icon-provider"
+import { AppIconProvider } from "@/app/providers/app-icon-provider"
 import {
   EmojiPicker,
   EmojiPickerContent,

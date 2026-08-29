@@ -7,7 +7,7 @@ import {
   type DesktopServer,
 } from "@/lib/desktop-server"
 import { destroyDesktopOfflineConnections } from "@/lib/offline-documents"
-import { queryClient } from "@/lib/query-client"
+import { queryClient } from "@/app/providers/query-client"
 
 export type DesktopServerSwitchRequest = {
   candidateId?: string

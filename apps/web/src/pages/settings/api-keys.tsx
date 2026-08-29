@@ -9,7 +9,7 @@ import {
 } from "@/shared/components/icons"
 import { toast } from "sonner"
 
-import { SettingsHeader } from "@/components/settings-header"
+import { SettingsHeader } from "@/app/shell/settings/settings-header"
 import {
   AlertDialog,
   AlertDialogAction,

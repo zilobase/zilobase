@@ -133,7 +133,7 @@ export function register({ readSource, assert, loadModule, test }) {
       readSource("/src/components/desktop-browser-auth-screen.tsx"),
       readSource("/src/pages/login.tsx"),
       readSource("/src/pages/signup.tsx"),
-      readSource("/src/router.tsx"),
+      readSource("/src/app/routing/route-groups/public-routes.tsx"),
     ])
 
     assert.match(connect, /Choose a server/)

@@ -4,7 +4,7 @@ export function register({ readSource, assert, test }) {
       readSource("/src/components/signup-form.tsx"),
       readSource("/src/components/otp-form.tsx"),
       readSource("/src/pages/accept-invitation.tsx"),
-      readSource("/src/providers/features-provider.tsx"),
+      readSource("/src/app/providers/features-provider.tsx"),
     ])
 
     assert.match(signup, /getInvitationAuthSearch\(\)/)

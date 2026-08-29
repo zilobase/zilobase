@@ -2,8 +2,8 @@ import { useEffect, useState } from "react"
 import { Link, useParams, useRouteContext, useSearch } from "@tanstack/react-router"
 import { ArrowRight, ArrowUpRight, Maximize2 } from "@/shared/components/icons"
 
-import { AuthenticatedRouteError } from "@/components/authenticated-route-error"
-import { FallbackErrorBoundary } from "@/components/fallback-error-boundary"
+import { AuthenticatedRouteError } from "@/app/errors/authenticated-route-error"
+import { FallbackErrorBoundary } from "@/app/errors/fallback-error-boundary"
 import {
   PageSidePaneLayout,
   PageSidePaneProvider,
@@ -43,7 +43,7 @@ import {
 import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
 import type { OpenPageOptions } from "@/packages/editor/types"
 import { useTitleDraft } from "@/hooks/use-title-draft"
-import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider"
+import { useConnectivity, useOfflineManifest } from "@/app/providers/offline-provider"
 
 export default function DatabasePage() {
   const { databaseId } = useParams({ from: "/d/$databaseId" })

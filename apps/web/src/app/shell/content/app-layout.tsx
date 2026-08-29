@@ -24,7 +24,7 @@ import { DiscussionsSidebarPanel } from "@/components/discussions-sidebar"
 import {
   RightSidebarMobilePanels,
   RightSidebars,
-} from "@/components/right-sidebars"
+} from "@/app/shell/side-panel/right-sidebars"
 import {
   APP_SIDEBAR_PANEL_WIDTH,
   getRightSidebarEditorDefaultSize,
@@ -36,11 +36,11 @@ import {
   PagePaneHeader,
   useRoutePageId,
 } from "@/components/page-pane-header"
-import { SettingsDialog } from "@/components/settings-dialog"
+import { SettingsDialog } from "@/app/shell/settings/settings-dialog"
 import {
   getSettingsSection,
   type SettingsSection,
-} from "@/components/settings-sidebar"
+} from "@/app/shell/settings/settings-sidebar"
 import { Separator } from "@/shared/ui/separator"
 import { ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable"
 import {

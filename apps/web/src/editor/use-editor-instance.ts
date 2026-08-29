@@ -43,7 +43,7 @@ import {
   recordActiveUndoHistoryEditorTransition,
   registerEditorHistoryBoundary,
   type EditorHistoryDepths,
-} from "@/shortcuts";
+} from "@/app/shortcuts";
 import {
   handleProtectedStructuralBlockClipboardMutation,
   handleProtectedStructuralBlockDeleteKey,

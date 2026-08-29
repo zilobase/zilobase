@@ -45,7 +45,7 @@ export function register({ readSource, assert, loadModule, test }) {
         readSource("/src/components/sidebar-nav-list.tsx"),
         readSource("/src/pages/meeting.tsx"),
         readSource("/src/editor/extensions/meeting/meeting-view.tsx"),
-        readSource("/src/router.tsx"),
+        readSource("/src/app/routing/route-groups/content-routes.tsx"),
       ])
 
     assert.match(navigationSource, /to="\/m\/\$meetingId"/)

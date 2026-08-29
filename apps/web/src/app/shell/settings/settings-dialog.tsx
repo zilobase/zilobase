@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-import { SettingsSidebar, type SettingsSection } from "@/components/settings-sidebar"
+import { SettingsSidebar, type SettingsSection } from "@/app/shell/settings/settings-sidebar"
 import {
   Dialog,
   DialogContent,

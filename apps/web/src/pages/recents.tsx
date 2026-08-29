@@ -69,7 +69,7 @@ import {
   useUserSettings,
   type LibraryView,
 } from "@zilobase/features/user-settings";
-import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider";
+import { useConnectivity, useOfflineManifest } from "@/app/providers/offline-provider";
 import { PageIconDisplay } from "@/lib/page-icon";
 import { getApiErrorMessage } from "@/lib/api";
 import { useCreateTeamspace, useTeamspaces, type Teamspace, type TeamspaceAccessMode } from "@zilobase/features/teamspaces";

@@ -24,7 +24,7 @@ import * as React from "react"
 import { toast } from "sonner"
 
 import { AiChatHistoryList } from "@/components/ai-elements/ai-chat-history-list"
-import { AppSidebarHeader, AppSidebarShell } from "@/components/app-sidebar-shell"
+import { AppSidebarHeader, AppSidebarShell } from "@/app/shell/navigation/app-sidebar-shell"
 import { useAppSearch } from "@/components/app-search"
 import { DatabaseViewIcon } from "@/components/database-view-icon"
 import { NavFavorites } from "@/components/nav-favorites"
@@ -72,7 +72,7 @@ import { discoverRuntimeDesktopServer, getSelectedDesktopServer, type DesktopSer
 import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons"
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon"
 import { cn } from "@/shared/lib/utils"
-import { useAppStore } from "@/stores/app-store"
+import { useAppStore } from "@/app/state/app-store"
 import { useSession } from "@zilobase/features/auth"
 import {
   useAddDatabaseRow,

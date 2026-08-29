@@ -24,8 +24,8 @@ import { useWorkspaces } from "@zilobase/features/workspaces"
 import { useAppSearchResults } from "@zilobase/features/search"
 import type { AppSearchResult } from "@zilobase/features/search"
 import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
-import { useAppStore } from "@/stores/app-store"
-import { useAppShortcut } from "@/shortcuts"
+import { useAppStore } from "@/app/state/app-store"
+import { useAppShortcut } from "@/app/shortcuts"
 
 type AppSearchContextValue = {
   openSearch: () => void

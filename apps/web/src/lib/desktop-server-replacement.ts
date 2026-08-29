@@ -9,7 +9,7 @@ import {
   desktopNetworkFetch,
 } from "@/lib/desktop-network";
 import { clearDesktopServerIndexedData } from "@/lib/offline-store";
-import { queryClient } from "@/lib/query-client";
+import { queryClient } from "@/app/providers/query-client";
 import {
   commitDesktopServerCandidate,
   getSelectedDesktopServer,
@@ -19,8 +19,8 @@ import type {
   DesktopServerReplacementDependencies,
   DesktopServerReplacementRequest,
 } from "@/lib/desktop-server-replacement-core";
-import { useAppStore } from "@/stores/app-store";
-import { useAuthFlowStore } from "@/stores/auth-flow-store";
+import { useAppStore } from "@/app/state/app-store";
+import { useAuthFlowStore } from "@/app/state/auth-flow-store";
 
 export type { DesktopServerReplacementRequest };
 

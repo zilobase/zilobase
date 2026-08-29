@@ -44,7 +44,7 @@ import {
   type DesktopServerProfile,
 } from "@/lib/desktop-server"
 import { executeDesktopServerSwitch } from "@/lib/desktop-server-switch"
-import { useAppStore } from "@/stores/app-store"
+import { useAppStore } from "@/app/state/app-store"
 import {
   Building2Icon,
   CheckIcon,

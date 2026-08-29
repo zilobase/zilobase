@@ -10,7 +10,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import { SettingsHeader } from "@/components/settings-header"
+import { SettingsHeader } from "@/app/shell/settings/settings-header"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
 import {
@@ -90,7 +90,7 @@ import {
   getTeamSettingsTabCounts,
   normalizeTeamSettingsTab,
 } from "@/pages/settings/team-settings-tabs"
-import { useAppStore } from "@/stores/app-store"
+import { useAppStore } from "@/app/state/app-store"
 
 type RegistrationMode = "invite-only" | "open"
 

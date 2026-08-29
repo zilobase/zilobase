@@ -1,7 +1,20 @@
 export function register({ readSource, assert, test }) {
   test("route authentication never leaves a blank screen", async () => {
-    const source = await readSource("/src/router.tsx")
-    const errorSource = await readSource("/src/lib/route-error.ts")
+    const source = (
+      await Promise.all([
+        "router",
+        "pending-pages",
+        "route-error-page",
+        "guards",
+        "route-roots",
+        "route-groups/app-routes",
+        "route-groups/public-routes",
+        "route-groups/content-routes",
+      ].map((path) => readSource(`/src/app/routing/${path}.tsx`).catch(() =>
+        readSource(`/src/app/routing/${path}.ts`),
+      )))
+    ).join("\n")
+    const errorSource = await readSource("/src/app/routing/route-error.ts")
 
     assert.match(source, /defaultPendingComponent: RoutePendingPage/)
     assert.match(source, /defaultErrorComponent: RouteErrorPage/)
@@ -25,7 +38,14 @@ export function register({ readSource, assert, test }) {
   })
 
   test("published routes keep the authenticated shell after route authorization", async () => {
-    const routerSource = await readSource("/src/router.tsx")
+    const routerSource = (
+      await Promise.all([
+        "router.tsx",
+        "route-roots.tsx",
+        "route-shell.tsx",
+        "route-groups/content-routes.tsx",
+      ].map((path) => readSource(`/src/app/routing/${path}`)))
+    ).join("\n")
     const pageSource = await readSource("/src/pages/page.tsx")
     const databaseSource = await readSource("/src/pages/database.tsx")
     const meetingSource = await readSource("/src/pages/meeting.tsx")

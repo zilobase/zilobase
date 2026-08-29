@@ -111,7 +111,7 @@ import {
   useConnectivity,
   useOfflineManifest,
   useOfflineSessionLocked,
-} from "@/providers/offline-provider";
+} from "@/app/providers/offline-provider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import {
   getPrimaryPageParentId,

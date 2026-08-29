@@ -44,7 +44,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
 
   test("desktop and browser sign-out stay on their own session", async () => {
     const [provider, token, routes] = await Promise.all([
-      readSource("/src/providers/features-provider.tsx"),
+      readSource("/src/app/providers/features-provider.tsx"),
       readSource("/src/lib/desktop-auth-token.ts"),
       readWorkspace("/apps/server/src/features/desktop-auth/routes.ts"),
     ])
@@ -58,7 +58,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
   })
 
   test("desktop server metadata initializes before credentials and providers", async () => {
-    const source = await readSource("/src/main.tsx")
+    const source = await readSource("/src/app/main.tsx")
     const server = source.indexOf("await initializeDesktopServer()")
     const credentials = source.indexOf("await initializeDesktopAuthToken()")
     const providers = source.indexOf("<AppProviders>")

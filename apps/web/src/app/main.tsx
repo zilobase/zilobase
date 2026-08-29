@@ -7,17 +7,17 @@ import {
   initializeDesktopServer,
   listDesktopServerProfiles,
 } from "@/lib/desktop-server";
-import { useAppStore } from "@/stores/app-store";
-import { useAuthFlowStore } from "@/stores/auth-flow-store";
+import { useAppStore } from "@/app/state/app-store";
+import { useAuthFlowStore } from "@/app/state/auth-flow-store";
 import {
   installDesktopDiagnostics,
   markDesktopAppReady,
   markDesktopRootMounted,
   recordDesktopDiagnostic,
 } from "@/lib/desktop-diagnostics";
-import { AppProviders } from "@/providers/app-providers";
+import { AppProviders } from "@/app/providers/app-providers";
 import { initializeDesktopTranslucency } from "@/lib/desktop-translucency";
-import "./shared/styles/global.css";
+import "../shared/styles/global.css";
 import "@/packages/editor/styles.css";
 
 installDesktopDiagnostics();
