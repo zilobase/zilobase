@@ -49,5 +49,7 @@ export function register({ assert, test }) {
       /onPresentationModeChange=\{isMobile \? undefined : setChatPresentationMode\}/,
     )
     assert.match(historySource, /canPin=\{!isMobile\}/)
+    assert.match(historySource, /className="sticky top-0 z-10 pb-2 pt-1"/)
+    assert.doesNotMatch(historySource, /sticky top-0 z-10 bg-sidebar px-1/)
   })
 }

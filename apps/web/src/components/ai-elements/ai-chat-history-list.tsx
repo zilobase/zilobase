@@ -198,7 +198,7 @@ export function AiChatHistoryList({
       className={cn("min-h-0 flex-1 overflow-y-auto px-2 py-1 text-xs", className)}
       data-ai-history-scroll-shell
     >
-      <div className="sticky top-0 z-10 bg-sidebar px-1 pb-2 pt-1">
+      <div className="sticky top-0 z-10 pb-2 pt-1">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
