@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, Database, FileText, Loader2, Plus } from "@/components/icons";
+import { ChevronDown, ChevronRight, Database, FileText, Globe2Icon, Layers3Icon, Loader2, LockIcon, Plus, UsersIcon } from "@/components/icons";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import { libraryViewIcons } from "@/components/sidebar-layout-icons";
 import { PageSidePaneLayout, usePageSidePane } from "@/contexts/page-side-pane";
 import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";
 import { PageEditorPane } from "@/pages/page";
 import { DatabaseMainPane } from "@/pages/database";
 import { buildHomepageHierarchy } from "@/pages/homepage-hierarchy";
-import { DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons";
+import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON, DEFAULT_PAGE_ITEM_ICON } from "@/lib/item-icons";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +68,9 @@ import {
   type LibraryView,
 } from "@zilobase/features/user-settings";
 import { useConnectivity, useOfflineManifest } from "@/providers/offline-provider";
+import { PageIconDisplay } from "@/lib/page-icon";
+import { getApiErrorMessage } from "@/lib/api";
+import { useCreateTeamspace, useTeamspaces, type Teamspace, type TeamspaceAccessMode } from "@zilobase/features/teamspaces";
 
 type HomepageView = LibraryView;
 
@@ -157,6 +166,8 @@ export default function RecentsPage({
   });
   const { data: meetingsPayload, isLoading: meetingsLoading } =
     useWorkspaceMeetings(mode === "home" ? workspaceId : null);
+  const { data: teamspaces = [], isLoading: teamspacesLoading } =
+    useTeamspaces(mode === "home" ? workspaceId : null);
   const {
     openDatabaseSidePane,
     renderedSidePaneDatabaseId,
@@ -173,6 +184,7 @@ export default function RecentsPage({
   const createPageMutation = useCreatePage();
   const createDatabase = useCreateDatabase();
   const [activeViewId, setActiveViewId] = useState<string | null>("recents");
+  const [createTeamspaceOpen, setCreateTeamspaceOpen] = useState(false);
   const [databaseConfig, setDatabaseConfig] = useState<unknown>({
     nameColumn: {
       label: "Page name",
@@ -230,7 +242,7 @@ export default function RecentsPage({
     },
     [downloadedItems, meetingsPayload?.meetings, navigation, mode, offlineMode],
   );
-  const pageTitle = mode === "trash" ? "Trash" : "Recents";
+  const pageTitle = mode === "trash" ? "Trash" : "Library";
 
   useEffect(() => {
     if (mode !== "home" || location.pathname !== "/recents") return;
@@ -431,11 +443,12 @@ export default function RecentsPage({
   }
 
   return (
+    <>
     <PageSidePaneLayout
       main={
         <main className="min-h-0 flex-1 bg-background">
           <section className="animate-in fade-in-0 duration-300">
-            <div className="tiptap-editor px-5 pb-10 pt-12 sm:px-8 md:px-20 lg:px-24">
+            <div className="tiptap-editor px-5 pb-10 pt-8 sm:px-8 md:px-20 lg:px-24">
               <DatabaseViewProvider
                 value={{
                   ...viewModel,
@@ -520,7 +533,7 @@ export default function RecentsPage({
                   showExpandButton: false,
                   showFilterPill: false,
                   showSortPill: false,
-                  showTitle: true,
+                  showTitle: false,
                   sortPickerOpen: false,
                   toggleFilterPillVisibility: () => {},
                   togglePropertyVisibility: (propertyId) => {
@@ -558,11 +571,23 @@ export default function RecentsPage({
               >
                 <div className="database-block-shell database-block-shell-full">
                   <div className="database-toolbar-section">
+                    <h1 className="min-h-10 py-0 text-4xl font-semibold leading-tight tracking-normal text-foreground">
+                      {pageTitle}
+                    </h1>
                     <div className="flex min-w-0 items-start gap-3">
                       <div className="min-w-0 flex-1">
                         <DatabaseViewToolbar />
                       </div>
-                      {mode === "home" ? (
+                      {mode === "home" && activeViewId === "teamspaces" ? (
+                        <Button
+                          className="mt-2 shrink-0"
+                          disabled={offlineMode || !workspaceId}
+                          onClick={() => setCreateTeamspaceOpen(true)}
+                          type="button"
+                        >
+                          <Plus /> New teamspace
+                        </Button>
+                      ) : mode === "home" ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -601,8 +626,11 @@ export default function RecentsPage({
                   </div>
                   <div className="database-scroll-section">
                     {isLoading ||
-                    (activeViewId === "meetings" && meetingsLoading) ? (
+                    (activeViewId === "meetings" && meetingsLoading) ||
+                    (activeViewId === "teamspaces" && teamspacesLoading) ? (
                       <DatabaseViewSkeleton viewType="table" />
+                    ) : activeViewId === "teamspaces" ? (
+                      <TeamspacesLibraryTable rows={rows} teamspaces={teamspaces} />
                     ) : (
                       <DatabaseTableView />
                     )}
@@ -640,7 +668,131 @@ export default function RecentsPage({
         renderedSidePanePageId || renderedSidePaneDatabaseId,
       )}
     />
+    <CreateLibraryTeamspaceDialog
+      onOpenChange={setCreateTeamspaceOpen}
+      open={createTeamspaceOpen}
+      workspaceId={workspaceId}
+    />
+    </>
   );
+}
+
+function TeamspacesLibraryTable({ rows, teamspaces }: { rows: HomepageRow[]; teamspaces: Teamspace[] }) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  if (teamspaces.length === 0) {
+    return <div className="py-16 text-center text-sm text-muted-foreground">No teamspaces yet. Create one for a team or project.</div>;
+  }
+
+  return (
+    <div className="min-w-[48rem] text-sm">
+      <div className="grid grid-cols-[minmax(15rem,1.1fr)_minmax(18rem,1.4fr)_minmax(10rem,.6fr)_minmax(7rem,.4fr)] border-b text-muted-foreground">
+        <div className="px-3 py-2 font-medium">Name</div>
+        <div className="px-3 py-2 font-medium">Description</div>
+        <div className="px-3 py-2 font-medium">Access</div>
+        <div className="px-3 py-2 font-medium">Members</div>
+      </div>
+      {teamspaces.map((teamspace) => {
+        const expanded = expandedIds.has(teamspace.id);
+        const teamspaceRows = buildTeamspaceLibraryRows(rows, teamspace.id);
+        return <div key={teamspace.id}>
+          <button
+            aria-expanded={expanded}
+            className="grid w-full grid-cols-[minmax(15rem,1.1fr)_minmax(18rem,1.4fr)_minmax(10rem,.6fr)_minmax(7rem,.4fr)] border-b text-left hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            onClick={() => setExpandedIds((current) => {
+              const next = new Set(current);
+              if (next.has(teamspace.id)) next.delete(teamspace.id);
+              else next.add(teamspace.id);
+              return next;
+            })}
+            type="button"
+          >
+            <span className="flex min-w-0 items-center gap-2 px-3 py-2.5 font-medium">
+              <ChevronRight className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${expanded ? "rotate-90" : ""}`} />
+              {typeof teamspace.icon === "string" && teamspace.icon
+                ? <PageIconDisplay size="sm" value={teamspace.icon} />
+                : <Layers3Icon className="size-4 shrink-0 text-muted-foreground" />}
+              <span className="truncate">{teamspace.name}</span>
+            </span>
+            <span className="truncate px-3 py-2.5 text-muted-foreground">{teamspace.description?.trim() || "—"}</span>
+            <span className="flex items-center gap-1.5 px-3 py-2.5 capitalize"><TeamspaceAccessIcon accessMode={teamspace.accessMode} />{teamspace.isDefault ? "Default" : teamspace.accessMode}</span>
+            <span className="flex items-center gap-1.5 px-3 py-2.5"><UsersIcon className="size-4 text-muted-foreground" />{teamspace.memberCount ?? 0}</span>
+          </button>
+          {expanded ? (
+            <div aria-label={`${teamspace.name} contents`}>
+              {teamspaceRows.length > 0 ? teamspaceRows.map(({ depth, row }) => (
+                <div className="grid grid-cols-[minmax(15rem,1.1fr)_minmax(18rem,1.4fr)_minmax(10rem,.6fr)_minmax(7rem,.4fr)] border-b text-muted-foreground" key={row.id}>
+                  <div className="flex min-w-0 items-center gap-2 py-2 pr-3" style={{ paddingLeft: `${36 + depth * 16}px` }}>
+                    <PageIconDisplay size="sm" value={getHomepageRowIcon(row)} />
+                    <span className="truncate text-foreground">{row.name}</span>
+                  </div>
+                  <div className="truncate px-3 py-2">{row.itemKind === "database" ? "Database" : row.itemKind === "meeting" ? "Meeting" : "Page"}</div>
+                  <div />
+                  <div />
+                </div>
+              )) : <div className="border-b py-3 pl-9 text-sm text-muted-foreground">No pages yet</div>}
+            </div>
+          ) : null}
+        </div>;
+      })}
+    </div>
+  );
+}
+
+function buildTeamspaceLibraryRows(rows: HomepageRow[], teamspaceId: string) {
+  const matchingRows = rows.filter((row) => row.teamspaceId === teamspaceId);
+  const matchingIds = new Set(matchingRows.map((row) => row.id));
+  const childrenByParent = new Map<string | null, HomepageRow[]>();
+  for (const row of matchingRows) {
+    const parentId = row.parentRowId && matchingIds.has(row.parentRowId) ? row.parentRowId : null;
+    const siblings = childrenByParent.get(parentId) ?? [];
+    siblings.push(row);
+    childrenByParent.set(parentId, siblings);
+  }
+  for (const siblings of childrenByParent.values()) siblings.sort((left, right) => left.position - right.position || left.name.localeCompare(right.name));
+  const result: Array<{ depth: number; row: HomepageRow }> = [];
+  const visit = (parentId: string | null, depth: number) => {
+    for (const row of childrenByParent.get(parentId) ?? []) {
+      result.push({ depth, row });
+      visit(row.id, depth + 1);
+    }
+  };
+  visit(null, 0);
+  return result;
+}
+
+function getHomepageRowIcon(row: HomepageRow) {
+  const emoji = row.metadata && typeof row.metadata.emoji === "string" ? row.metadata.emoji : null;
+  return emoji ?? (row.iconKind === "database" ? DEFAULT_DATABASE_ITEM_ICON : DEFAULT_PAGE_ITEM_ICON);
+}
+
+function TeamspaceAccessIcon({ accessMode }: { accessMode: TeamspaceAccessMode }) {
+  if (accessMode === "open") return <Globe2Icon className="size-4 text-muted-foreground" />;
+  if (accessMode === "private") return <LockIcon className="size-4 text-muted-foreground" />;
+  return <UsersIcon className="size-4 text-muted-foreground" />;
+}
+
+function CreateLibraryTeamspaceDialog({ open, onOpenChange, workspaceId }: { open: boolean; onOpenChange: (open: boolean) => void; workspaceId: string | null | undefined }) {
+  const create = useCreateTeamspace();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [accessMode, setAccessMode] = useState<TeamspaceAccessMode>("closed");
+  const submit = () => {
+    if (!workspaceId || !name.trim()) return;
+    create.mutate(
+      { accessMode, description: description.trim() || null, name: name.trim(), workspaceId },
+      {
+        onError: (error) => toast.error(getApiErrorMessage(error)),
+        onSuccess: () => {
+          toast.success("Teamspace created.");
+          setName("");
+          setDescription("");
+          onOpenChange(false);
+        },
+      },
+    );
+  };
+
+  return <Dialog onOpenChange={onOpenChange} open={open}><DialogContent><DialogHeader><DialogTitle>New teamspace</DialogTitle><DialogDescription>Create a dedicated home for a team or project.</DialogDescription></DialogHeader><div className="grid gap-4"><div className="grid gap-2"><Label htmlFor="library-teamspace-name">Name</Label><Input id="library-teamspace-name" maxLength={120} onChange={(event) => setName(event.target.value)} value={name} /></div><div className="grid gap-2"><Label htmlFor="library-teamspace-description">Description</Label><Textarea id="library-teamspace-description" onChange={(event) => setDescription(event.target.value)} value={description} /></div><div className="grid gap-2"><Label>Access</Label><Select onValueChange={(value) => setAccessMode(value as TeamspaceAccessMode)} value={accessMode}><SelectTrigger aria-label="Teamspace access"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="open">Open — anyone can join</SelectItem><SelectItem value="closed">Closed — members join by invite</SelectItem><SelectItem value="private">Private — visible only to members</SelectItem></SelectContent></Select></div></div><DialogFooter><Button onClick={() => onOpenChange(false)} variant="outline">Cancel</Button><Button disabled={!name.trim() || create.isPending} onClick={submit}>{create.isPending ? <Spinner /> : null}Create</Button></DialogFooter></DialogContent></Dialog>;
 }
 
 function buildHomepagePayload({
