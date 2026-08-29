@@ -5,9 +5,12 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsRight,
+  Layers3Icon,
+  LockIcon,
   Maximize2,
   SidebarSimpleIcon,
   SquareIcon,
+  UsersIcon,
 } from "@/components/icons";
 import { toast } from "sonner";
 
@@ -32,23 +35,27 @@ import { Separator } from "@/components/ui/separator";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { useDatabase } from "@zilobase/features/databases";
 import { useMeeting } from "@zilobase/features/meetings";
+import { useTeamspaces } from "@zilobase/features/teamspaces";
 import {
   defaultUserSettings,
   useUpdateUserSettings,
   useUserSettings,
 } from "@zilobase/features/user-settings";
-import { formatPageBreadcrumbLabel } from "@/lib/page-icon";
+import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon";
+import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons";
 import {
   embeddedItemsOpenAsLabels,
   embeddedItemsOpenAsModes,
-  getPrimaryPageParentId,
   resolveEmbeddedItemsOpenAs,
   usePage,
   usePageNavigation,
   type EmbeddedItemsOpenAs,
-  type Page,
-  type PageItemPlacement,
 } from "@zilobase/features/pages";
+import {
+  buildCanonicalBreadcrumbTrail,
+  getBreadcrumbNavigationSection,
+  type BreadcrumbNavigationItem,
+} from "@/components/breadcrumb-navigation-model";
 import { useOptionalPageSidePane } from "@/contexts/page-side-pane";
 import {
   isPublishedFallbackPage,
@@ -64,7 +71,6 @@ export function useRoutePageId(pathname: string) {
 }
 
 export function PagePaneHeader({
-  bordered = true,
   className,
   discussionsOpen = false,
   leadingControl,
@@ -77,7 +83,6 @@ export function PagePaneHeader({
   showPaneControls = Boolean(onClose),
   showActions = true,
 }: {
-  bordered?: boolean;
   className?: string;
   discussionsOpen?: boolean;
   leadingControl?: ReactNode | null;
@@ -107,7 +112,7 @@ export function PagePaneHeader({
 
   return (
     <header
-      className={`flex h-12 shrink-0 items-center gap-2 ${bordered ? "border-b" : ""} ${className ?? ""}`}
+      className={`flex h-12 shrink-0 items-center gap-2 ${className ?? ""}`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
         {leadingControls}
@@ -427,25 +432,16 @@ function AppBreadcrumbs({ pathname }: { pathname: string }) {
 function PageBreadcrumb({ pageId }: { pageId: string }) {
   const workspaceId = useActiveWorkspaceId();
   const { data: navigation } = usePageNavigation(workspaceId);
-  const pages = navigation?.pages ?? [];
-  const page = pages.find((item) => item.id === pageId);
-  const breadcrumbs = page
-    ? buildPageBreadcrumbs(page, pages, navigation?.placements ?? [])
+  const { data: teamspaces = [] } = useTeamspaces(workspaceId);
+  const trail = navigation
+    ? buildCanonicalBreadcrumbTrail(
+        { id: pageId, kind: "page" },
+        navigation.pages,
+        navigation.databases,
+        navigation.placements,
+      )
     : [];
-  const entries: AppBreadcrumbEntry[] = [
-    getLibrarySectionBreadcrumbEntry(breadcrumbs[0] ?? page),
-    ...(breadcrumbs.length > 0
-      ? breadcrumbs.map((item, index) => ({
-          current: index === breadcrumbs.length - 1,
-          id: item.id,
-          label: getPageBreadcrumbLabel(item),
-          target:
-            index === breadcrumbs.length - 1
-              ? undefined
-              : ({ pageId: item.id, type: "page" } as const),
-        }))
-      : [{ current: true, id: "page", label: "Page" }]),
-  ];
+  const entries = buildBreadcrumbEntries(trail, teamspaces, pageId);
 
   return <CollapsedBreadcrumbTrail entries={entries} />;
 }
@@ -457,12 +453,12 @@ function MeetingBreadcrumb({ meetingId }: { meetingId: string }) {
     <Breadcrumb className="min-w-0">
       <BreadcrumbList className="flex-nowrap">
         <BreadcrumbItem className="hidden sm:inline-flex">
-          <BreadcrumbPage>Meetings</BreadcrumbPage>
+          <BreadcrumbPage className="inline-flex items-center gap-1.5"><PageIconDisplay size="sm" value={DEFAULT_MEETING_ITEM_ICON} />Meetings</BreadcrumbPage>
         </BreadcrumbItem>
         <BreadcrumbSlash className="hidden sm:inline-flex" />
         <BreadcrumbItem className="min-w-0">
           <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
-            {data?.meeting.title.trim() || "Meeting"}
+            <span className="inline-flex items-center gap-1.5"><PageIconDisplay size="sm" value={DEFAULT_MEETING_ITEM_ICON} />{data?.meeting.title.trim() || "Meeting"}</span>
           </BreadcrumbPage>
         </BreadcrumbItem>
       </BreadcrumbList>
@@ -475,28 +471,20 @@ function DatabaseBreadcrumb({ databaseId }: { databaseId: string }) {
   const { data: payload } = useDatabase(databaseId, {
     includeDeleted: true,
   });
-  const databasePageId = payload?.database.pageId;
   const { data: navigation } = usePageNavigation(workspaceId);
-  const pages = navigation?.pages ?? [];
-  const page = databasePageId
-    ? pages.find((item) => item.id === databasePageId)
-    : undefined;
-  const breadcrumbs = page
-    ? buildPageBreadcrumbs(page, pages, navigation?.placements ?? [])
+  const { data: teamspaces = [] } = useTeamspaces(workspaceId);
+  const trail = navigation
+    ? buildCanonicalBreadcrumbTrail(
+        { id: databaseId, kind: "database" },
+        navigation.pages,
+        navigation.databases,
+        navigation.placements,
+      )
     : [];
-  const entries: AppBreadcrumbEntry[] = [
-    getLibrarySectionBreadcrumbEntry(breadcrumbs[0] ?? page),
-    ...breadcrumbs.map((item) => ({
-      id: item.id,
-      label: getPageBreadcrumbLabel(item),
-      target: { pageId: item.id, type: "page" } as const,
-    })),
-    {
-      current: true,
-      id: `database-${databaseId}`,
-      label: payload?.database.name.trim() || "Database",
-    },
-  ];
+  const fallbackTrail = trail.length === 0 && payload?.database
+    ? [{ database: { ...payload.database, views: payload.views }, id: databaseId, kind: "database" as const }]
+    : trail;
+  const entries = buildBreadcrumbEntries(fallbackTrail, teamspaces, databaseId);
 
   return <CollapsedBreadcrumbTrail entries={entries} />;
 }
@@ -504,34 +492,16 @@ function DatabaseBreadcrumb({ databaseId }: { databaseId: string }) {
 type AppBreadcrumbTarget =
   | { type: "library"; view: "private" | "shared" }
   | { type: "recents" }
+  | { databaseId: string; type: "database" }
   | { pageId: string; type: "page" };
 
 type AppBreadcrumbEntry = {
   current?: boolean;
   id: string;
+  icon?: ReactNode;
   label: string;
   target?: AppBreadcrumbTarget;
 };
-
-function getLibrarySectionBreadcrumbEntry(
-  rootPage: Page | undefined,
-): AppBreadcrumbEntry {
-  if (!rootPage) {
-    return {
-      id: "library",
-      label: "Library",
-      target: { type: "recents" },
-    };
-  }
-
-  const view = rootPage.isShared ? "shared" : "private";
-
-  return {
-    id: `library-${view}`,
-    label: view === "shared" ? "Shared" : "Private",
-    target: { type: "library", view },
-  };
-}
 
 function CollapsedBreadcrumbTrail({
   entries,
@@ -596,7 +566,7 @@ function BreadcrumbTrailEntry({ entry }: { entry: AppBreadcrumbEntry }) {
     <BreadcrumbItem className="min-w-0">
       {entry.current || !entry.target ? (
         <BreadcrumbPage className="block max-w-64 truncate sm:max-w-80 md:max-w-96 lg:max-w-[42rem]">
-          {entry.label}
+          <BreadcrumbEntryContent entry={entry} />
         </BreadcrumbPage>
       ) : (
         <BreadcrumbEntryLink entry={entry} />
@@ -617,7 +587,7 @@ function BreadcrumbEntryLink({ entry }: { entry: AppBreadcrumbEntry }) {
           />
         }
       >
-        {entry.label}
+        <BreadcrumbEntryContent entry={entry} />
       </BreadcrumbLink>
     );
   }
@@ -633,7 +603,15 @@ function BreadcrumbEntryLink({ entry }: { entry: AppBreadcrumbEntry }) {
           />
         }
       >
-        {entry.label}
+        <BreadcrumbEntryContent entry={entry} />
+      </BreadcrumbLink>
+    );
+  }
+
+  if (entry.target?.type === "database") {
+    return (
+      <BreadcrumbLink className="flex max-w-32 items-center gap-1.5 truncate sm:max-w-48" render={<Link params={{ databaseId: entry.target.databaseId }} search={{ view: undefined }} to="/d/$databaseId" />}>
+        <BreadcrumbEntryContent entry={entry} />
       </BreadcrumbLink>
     );
   }
@@ -643,7 +621,7 @@ function BreadcrumbEntryLink({ entry }: { entry: AppBreadcrumbEntry }) {
       className="block max-w-32 truncate sm:max-w-48"
       render={<Link to="/recents" />}
     >
-      {entry.label}
+      <BreadcrumbEntryContent entry={entry} />
     </BreadcrumbLink>
   );
 }
@@ -657,7 +635,7 @@ function CollapsedBreadcrumbMenuItem({
     return (
       <DropdownMenuItem asChild>
         <Link params={{ pageId: entry.target.pageId }} to="/p/$pageId">
-          {entry.label}
+          <BreadcrumbEntryContent entry={entry} />
         </Link>
       </DropdownMenuItem>
     );
@@ -670,15 +648,19 @@ function CollapsedBreadcrumbMenuItem({
           search={{ view: entry.target.view } as never}
           to="/recents"
         >
-          {entry.label}
+          <BreadcrumbEntryContent entry={entry} />
         </Link>
       </DropdownMenuItem>
     );
   }
 
+  if (entry.target?.type === "database") {
+    return <DropdownMenuItem asChild><Link params={{ databaseId: entry.target.databaseId }} search={{ view: undefined }} to="/d/$databaseId"><BreadcrumbEntryContent entry={entry} /></Link></DropdownMenuItem>;
+  }
+
   return (
     <DropdownMenuItem asChild>
-      <Link to="/recents">{entry.label}</Link>
+      <Link to="/recents"><BreadcrumbEntryContent entry={entry} /></Link>
     </DropdownMenuItem>
   );
 }
@@ -687,30 +669,24 @@ function BreadcrumbSlash({ className }: { className?: string }) {
   return <BreadcrumbSeparator className={className}>/</BreadcrumbSeparator>;
 }
 
-function buildPageBreadcrumbs(
-  page: Page,
-  pages: Page[],
-  placements: PageItemPlacement[],
-) {
-  const pagesById = new Map([...pages, page].map((item) => [item.id, item]));
-  const breadcrumbs: Page[] = [];
-  const visited = new Set<string>();
-  let current: Page | undefined = page;
-
-  while (current && !visited.has(current.id)) {
-    breadcrumbs.unshift(current);
-    visited.add(current.id);
-
-    const parentItemId = getPrimaryPageParentId(placements, current.id);
-
-    current = parentItemId ? pagesById.get(parentItemId) : undefined;
-  }
-
-  return breadcrumbs;
+function BreadcrumbEntryContent({ entry }: { entry: AppBreadcrumbEntry }) {
+  return <span className="inline-flex min-w-0 items-center gap-1.5">{entry.icon}<span className="truncate">{entry.label}</span></span>;
 }
 
-function getPageBreadcrumbLabel(page: Page) {
-  return formatPageBreadcrumbLabel(page);
+function buildBreadcrumbEntries(
+  trail: BreadcrumbNavigationItem[],
+  teamspaces: { id: string; name: string }[],
+  currentId: string,
+): AppBreadcrumbEntry[] {
+  if (trail.length === 0) return [{ current: true, id: currentId, label: "Page" }];
+  const section = getBreadcrumbNavigationSection(trail, new Map(teamspaces.map((teamspace) => [teamspace.id, teamspace.name])));
+  const sectionEntry: AppBreadcrumbEntry = section.kind === "teamspace"
+    ? { icon: <Layers3Icon className="size-4" />, id: `teamspace-${section.teamspaceId}`, label: section.label }
+    : { icon: section.kind === "shared" ? <UsersIcon className="size-4" /> : <LockIcon className="size-4" />, id: `library-${section.kind}`, label: section.label, target: { type: "library", view: section.kind } };
+
+  return [sectionEntry, ...trail.map((item, index): AppBreadcrumbEntry => item.kind === "page"
+    ? { current: index === trail.length - 1, icon: getPageIconNode(item.page), id: `page-${item.id}`, label: item.page.name.trim() || "Untitled", target: index === trail.length - 1 ? undefined : { pageId: item.id, type: "page" } }
+    : { current: index === trail.length - 1, icon: getDatabaseIconNode(item.database) ?? <PageIconDisplay size="sm" value={DEFAULT_DATABASE_ITEM_ICON} />, id: `database-${item.id}`, label: item.database.name.trim() || "Database", target: index === trail.length - 1 ? undefined : { databaseId: item.id, type: "database" } })];
 }
 
 function getSettingsPageTitle(pathname: string) {

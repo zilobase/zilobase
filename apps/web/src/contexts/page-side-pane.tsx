@@ -285,13 +285,6 @@ export function PageScrollViewport({
       <div
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 z-20 h-3 bg-gradient-to-b from-background to-transparent",
-          edgeFadeClassName,
-        )}
-      />
-      <div
-        aria-hidden="true"
-        className={cn(
           "pointer-events-none absolute inset-x-0 bottom-0 z-20 h-5 bg-gradient-to-t from-background to-transparent",
           edgeFadeClassName,
         )}

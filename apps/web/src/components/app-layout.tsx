@@ -779,7 +779,6 @@ function AppHeader({
         splitActive={splitActive}
       >
         <PagePaneHeader
-          bordered={false}
           className="min-w-0 flex-1"
           leadingControl={
             <MainPaneHeaderLeadingControl />
@@ -798,7 +797,6 @@ function AppHeader({
           splitActive={splitActive}
         >
           <PagePaneHeader
-            bordered={false}
             className="min-w-0 flex-1"
             onClose={onCloseSidePane}
             onTogglePageSidebar={
