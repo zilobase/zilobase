@@ -12,7 +12,7 @@ on:
       - "package-lock.json"
       - "package.json"
       - "packages/**"
-      - "scripts/test-community-helm.mjs"
+      - "scripts/selfhost/test-community-helm.mjs"
   push:
     branches: [main]
     paths:
@@ -25,7 +25,7 @@ on:
       - "package-lock.json"
       - "package.json"
       - "packages/**"
-      - "scripts/test-community-helm.mjs"
+      - "scripts/selfhost/test-community-helm.mjs"
 
 permissions:
   contents: read
@@ -173,7 +173,7 @@ jobs:
             --set trustedCa.configMapName=zilobase-test-ca \
             --timeout 5m --wait
           pod=$(kubectl -n community get pod -l app.kubernetes.io/instance=community -o jsonpath='{.items[0].metadata.name}')
-          kubectl -n community cp scripts/test-community-helm.mjs "$pod:/tmp/test-community-helm.mjs"
+          kubectl -n community cp scripts/selfhost/test-community-helm.mjs "$pod:/tmp/test-community-helm.mjs"
           kubectl -n community get secret zilobase -o json | kubectl -n community exec -i "$pod" -- \
             node --input-type=module -e 'let s="";for await(const c of process.stdin)s+=c;const j=JSON.parse(s);process.env.ZILOBASE_BOOTSTRAP_TOKEN=Buffer.from(j.data.ZILOBASE_BOOTSTRAP_TOKEN,"base64").toString();process.argv[2]="seed";await import("file:///tmp/test-community-helm.mjs")'
           kubectl -n community cp "$pod:/tmp/zilobase-community-helm-state.json" "$RUNNER_TEMP/zilobase-community-helm-state.json"
@@ -229,7 +229,7 @@ jobs:
             --set "networkPolicy.s3CIDR=$restored_minio_ip/32" \
             --timeout 5m --wait
           pod=$(kubectl -n community get pod -l app.kubernetes.io/instance=community -o jsonpath='{.items[0].metadata.name}')
-          kubectl -n community cp scripts/test-community-helm.mjs "$pod:/tmp/test-community-helm.mjs"
+          kubectl -n community cp scripts/selfhost/test-community-helm.mjs "$pod:/tmp/test-community-helm.mjs"
           kubectl -n community cp "$RUNNER_TEMP/zilobase-community-helm-state.json" "$pod:/tmp/zilobase-community-helm-state.json"
           kubectl -n community exec "$pod" -- node /tmp/test-community-helm.mjs verify
       - name: Diagnostics

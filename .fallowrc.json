@@ -7,8 +7,8 @@
     // The web test runner discovers these modules with fs.readdir().
     "apps/web/test/*.test.mjs",
     // Runtime and developer entry points invoked outside package scripts.
-    "scripts/run-signed-macos-debug.mjs",
-    "scripts/test-selfhost.mjs"
+    "scripts/desktop/run-signed-macos-debug.mjs",
+    "scripts/selfhost/test.mjs"
   ],
   "workspaces": {
     "patterns": [

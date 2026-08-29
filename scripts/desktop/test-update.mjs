@@ -15,7 +15,7 @@ import { execFileSync, spawn } from "node:child_process"
 import { once } from "node:events"
 import { fileURLToPath } from "node:url"
 
-const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
+const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..")
 const desktopDir = join(rootDir, "apps", "desktop")
 const tauriDir = join(desktopDir, "src-tauri")
 const outputDir = join(tauriDir, "target", "local-update-test")

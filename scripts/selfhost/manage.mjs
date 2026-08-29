@@ -9,7 +9,7 @@ import path from "node:path"
 import process from "node:process"
 import { spawn } from "node:child_process"
 
-const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..")
 const defaultEnvFile = path.join(repositoryRoot, ".env.selfhost.development")
 const envFile = path.resolve(
   process.env.ZILOBASE_SELFHOST_ENV_FILE || defaultEnvFile,
@@ -19,11 +19,11 @@ const command = process.argv[2]
 const commandArgs = new Set(process.argv.slice(3))
 
 if (!new Set(["up", "logs", "down", "reset", "test"]).has(command)) {
-  fail("Usage: node scripts/selfhost.mjs <up|logs|down|reset|test> [--yes]")
+  fail("Usage: node scripts/selfhost/manage.mjs <up|logs|down|reset|test> [--yes]")
 }
 
 if (command === "test") {
-  await run(process.execPath, ["scripts/test-selfhost.mjs", ...process.argv.slice(3)], {
+  await run(process.execPath, ["scripts/selfhost/test.mjs", ...process.argv.slice(3)], {
     cwd: repositoryRoot,
   })
   process.exit(0)

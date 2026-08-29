@@ -32,8 +32,8 @@ of the installation, with independent expiry metadata and scheduled cleanup.
 Apply migrations before rollout, review the effective quotas, verify member and
 admin authorization paths, and monitor only sanitized audit metadata. The full
 environment-variable table and rollout checks are in
-[Ask AI operations](./ask-ai-operations.md); the exact supported and restricted
-capabilities are in the [parity audit](./ask-ai-parity-audit.md).
+[Ask AI operations](../ai/ask-ai-operations.md); the exact supported and restricted
+capabilities are in the [parity audit](../ai/ask-ai-parity-audit.md).
 
 For Helm, run `helm lint`, render the proposed values, and use
 `helm upgrade --install --wait`. Keep `replicaCount: 1` unless

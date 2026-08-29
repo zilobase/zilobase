@@ -15,6 +15,7 @@ import WebSocket from "ws"
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
+  "..",
 )
 const projectName =
   process.env.ZILOBASE_SELFHOST_PROJECT_NAME ||
@@ -491,7 +492,7 @@ try {
 }
 
 async function selfhost(...args) {
-  return run(process.execPath, ["scripts/selfhost.mjs", ...args], {
+  return run(process.execPath, ["scripts/selfhost/manage.mjs", ...args], {
     env: {
       ...process.env,
       ZILOBASE_SELFHOST_ENV_FILE: envFile,

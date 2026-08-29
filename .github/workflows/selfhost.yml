@@ -138,7 +138,7 @@ jobs:
       - name: Build production image and start Compose
         run: |
           docker build --tag "$ZILOBASE_SELFHOST_IMAGE" .
-          node scripts/selfhost.mjs up --no-build
+          node scripts/selfhost/manage.mjs up --no-build
 
       - name: Build packaged Debian desktop
         env:

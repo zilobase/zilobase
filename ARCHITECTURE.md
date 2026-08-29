@@ -42,9 +42,9 @@ The client cannot grant page access or add a tool, and the agent has no
 unrestricted code, network, filesystem, permission,
 comment-mutation, or workspace-administration capability. The complete
 capability, safety, and verification contract is documented in the
-[`Ask AI plan`](./docs/ask-ai-agent-plan.md), with the final result in the
-[`parity audit`](./docs/ask-ai-parity-audit.md) and deployment controls in
-[`Ask AI operations`](./docs/ask-ai-operations.md).
+[`Ask AI plan`](./docs/ai/ask-ai-agent-plan.md), with the final result in the
+[`parity audit`](./docs/ai/ask-ai-parity-audit.md) and deployment controls in
+[`Ask AI operations`](./docs/ai/ask-ai-operations.md).
 
 ## Auth and Access
 

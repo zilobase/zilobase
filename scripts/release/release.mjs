@@ -51,7 +51,7 @@ if (!changelog.includes(`## ${version}`)) {
   fail(`CHANGELOG.md must contain a "## ${version}" section before releasing.`)
 }
 
-run("node", ["scripts/set-version.mjs", version], { stdio: "inherit" })
+run("node", ["scripts/release/set-version.mjs", version], { stdio: "inherit" })
 run("git", ["add", ...releaseFiles], { stdio: "inherit" })
 
 const staged = run("git", ["diff", "--cached", "--name-only"]).trim()

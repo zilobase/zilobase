@@ -85,9 +85,9 @@ docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.
 
 Read the self-hosting guide:
 
-- [Self-hosting overview](./docs/self-hosting.md)
-- [Domains and TLS](./docs/self-hosting-domain.md)
-- [Operations guide](./docs/self-hosting-operations.md)
+- [Self-hosting overview](./docs/self-hosting/overview.md)
+- [Domains and TLS](./docs/self-hosting/domain.md)
+- [Operations guide](./docs/self-hosting/operations.md)
 
 ## Ask AI
 
@@ -97,9 +97,9 @@ file uploads, and create expiring downloadable artifacts. The same conversation
 works in full-page chat and in a persisted docked or floating desktop panel.
 
 Permissions and tool availability are resolved on the server. See the
-[implementation plan](./docs/ask-ai-agent-plan.md),
-[capability parity audit](./docs/ask-ai-parity-audit.md), and
-[operations guide](./docs/ask-ai-operations.md).
+[implementation plan](./docs/ai/ask-ai-agent-plan.md),
+[capability parity audit](./docs/ai/ask-ai-parity-audit.md), and
+[operations guide](./docs/ai/ask-ai-operations.md).
 
 ## Development
 

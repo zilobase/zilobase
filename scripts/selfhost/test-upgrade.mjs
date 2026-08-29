@@ -37,6 +37,7 @@ const currentImage = required("ZILOBASE_CURRENT_IMAGE")
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
+  "..",
 )
 const projectName =
   process.env.ZILOBASE_SELFHOST_PROJECT_NAME ||

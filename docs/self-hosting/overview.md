@@ -6,7 +6,7 @@ development; use a clean public Ubuntu host or isolated Kubernetes cluster for
 release staging and production-like validation.
 
 Release candidates must complete the provider-neutral
-[self-hosted release gate](./selfhost-release-checklist.md) on a clean Ubuntu
+[self-hosted release gate](./release-checklist.md) on a clean Ubuntu
 24.04 staging VM before promotion.
 
 ## Local developer stack
@@ -59,8 +59,8 @@ Visit `/setup` once to create the initial owner and workspace. Keep the
 bootstrap token in the environment after setup so restarts pass startup
 validation; the database permanently prevents a second bootstrap.
 
-See [Domains and TLS](./self-hosting-domain.md) before exposing the stack and
-[Operations](./self-hosting-operations.md) before storing production data.
+See [Domains and TLS](./domain.md) before exposing the stack and
+[Operations](./operations.md) before storing production data.
 
 ## Kubernetes with Helm
 

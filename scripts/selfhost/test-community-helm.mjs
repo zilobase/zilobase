@@ -27,7 +27,7 @@ class CookieJar {
 
 if (mode === "seed") await seed()
 else if (mode === "verify") await verify()
-else throw new Error("Usage: node scripts/test-community-helm.mjs <seed|verify>")
+else throw new Error("Usage: node scripts/selfhost/test-community-helm.mjs <seed|verify>")
 
 async function seed() {
   const bootstrapToken = required("ZILOBASE_BOOTSTRAP_TOKEN")

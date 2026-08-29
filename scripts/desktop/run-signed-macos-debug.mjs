@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url"
 
 const DEBUG_BINARY_NAME = "zilobase-client"
 const DEBUG_IDENTIFIER = "com.zilobase.debug"
-const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..")
 const targetRoot = resolve(repositoryRoot, "apps/desktop/src-tauri/target")
 
 const arguments_ = process.argv.slice(2)
