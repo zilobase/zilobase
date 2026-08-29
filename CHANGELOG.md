@@ -15,11 +15,17 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 - Sidebars, tabs, database surfaces, and dropdowns now own their typography weight through scoped design tokens instead of a global override.
 - Page breadcrumbs and top bars, sidebar sections and active states, database columns, and fallback item icons use a more consistent application layout and visual language.
+- Empty pages use one canonical document icon across navigation, database views, search, tabs, relations, embedded links, and drag previews.
+- Textareas, select controls, and the Ask AI composer now share the sidebar accent surface in every theme.
+- Inline database and meeting titles match the editor Heading 2 typography, and icon color previews match the main icon picker scale.
 
 ### Fixed
 
 - Database sticky headers keep an opaque surface while scrolling in full-page and side-pane layouts.
 - Ask AI history, shared and teamspace navigation, and database view controls retain the correct surface and active-state styling.
+- Teamspace Library rows now match the height, typography, spacing, and empty-state sizing of other database tabs.
+- Light-mode page and Ask AI sidebars use a continuous, subtle elevation shadow through their top bars.
+- Opening the full Ask AI page closes the sidebar and carries its active workspace chat into the main view.
 
 ## 0.0.50
 
