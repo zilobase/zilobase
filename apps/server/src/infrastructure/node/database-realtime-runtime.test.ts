@@ -7,9 +7,9 @@ import {
   createDatabaseRealtimeTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
-} from "../shared/security/database-realtime-ticket";
-import { attachNodeDatabaseRealtimeRuntime } from "./node-runtime";
-import type { NodeRealtimeBus } from "../infrastructure/node/realtime-bus";
+} from "../../shared/security/database-realtime-ticket";
+import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
+import type { NodeRealtimeBus } from "./realtime-bus";
 
 const env = { BETTER_AUTH_SECRET: "database-realtime-test-secret" };
 

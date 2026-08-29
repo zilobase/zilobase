@@ -8,7 +8,7 @@ import {
 } from "../access";
 import {
   appendMeetingTranscript,
-} from "../../collaboration/service";
+} from "../collaboration/service";
 import type { RuntimeEnv } from "../../shared/config/config";
 import { db } from "../../infrastructure/database";
 import {

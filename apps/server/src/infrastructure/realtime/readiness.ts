@@ -1,4 +1,4 @@
-import { getStringEnv, type RuntimeEnv } from "./shared/config/config";
+import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
 
 let readinessProbe: (() => boolean) | null = null;
 

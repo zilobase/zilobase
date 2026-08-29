@@ -6,13 +6,13 @@ import crossws from "crossws/adapters/node";
 import WebSocket from "ws";
 
 import type { RuntimeEnv } from "../../shared/config/config";
-import { runWithDbEnv } from "../../infrastructure/database";
+import { runWithDbEnv } from "../database";
 import {
   heartbeatMeetingRecorder,
   MEETING_RECORDER_LEASE_HEARTBEAT_MS,
   transitionMeeting,
   validateMeetingRecorderLease,
-} from "./meeting-service";
+} from "../../features/meetings/meeting-service";
 import {
   MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
   MEETING_AUDIO_PROTOCOL,
@@ -22,7 +22,7 @@ import {
   verifyMeetingAudioTicket,
   type MeetingAudioSource,
   type MeetingAudioTicketClaims,
-} from "./meeting-audio-ticket";
+} from "../../features/meetings/meeting-audio-ticket";
 import {
   createMeetingRealtimeTranscriptSink,
   getMeetingOpenAiSafetyIdentifier,
@@ -33,7 +33,7 @@ import {
   trimAcceptedMeetingAudio,
   type MeetingRealtimeTranscriberCallbacks,
   type RealtimeTranscriptionSocket,
-} from "./meeting-realtime-transcription";
+} from "../../features/meetings/meeting-realtime-transcription";
 
 const PCM_FRAME_BYTES = 480 * 2;
 const AUDIO_PACKET_HEADER_BYTES = 9;

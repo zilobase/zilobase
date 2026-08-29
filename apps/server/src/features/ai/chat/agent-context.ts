@@ -2,7 +2,7 @@ import type { ModelMessage } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { canAccessDatabaseRecord, canAccessPageInWorkspace } from "../../access";
-import { materializePageContentFromYjs } from "../../../collaboration/service";
+import { materializePageContentFromYjs } from "../../collaboration/service";
 import { db } from "../../../infrastructure/database";
 import { page, pageCollaborationDocument } from "../../../infrastructure/database/schema";
 import { getDatabaseRecord } from "../../databases/access";

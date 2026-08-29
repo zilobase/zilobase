@@ -15,7 +15,7 @@ import {
   meetingIdFromDocumentName,
   verifyCollaborationTicket,
 } from "./service";
-import { getCollaborationWebSocketUrl } from "../infrastructure/runtime/runtime-adapter";
+import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 
 const env = { BETTER_AUTH_SECRET: "test-collaboration-secret" };
 

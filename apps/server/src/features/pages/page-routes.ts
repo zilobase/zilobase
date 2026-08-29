@@ -58,7 +58,7 @@ import {
   encodePageContentAsYjs,
   getOrCreateCollaborationDocumentState,
   replacePageContent,
-} from "../../collaboration/service";
+} from "../collaboration/service";
 import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { getPageTeamspaceSecurityPolicy } from "../teamspaces";
 import { TeamspaceManagementService } from "../teamspaces/management";

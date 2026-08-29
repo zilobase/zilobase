@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import type { RuntimeEnv } from "../../shared/config/config";
 import { db, runWithDbEnv } from "../../infrastructure/database";
 import { createImageStorage } from "../../infrastructure/storage/image-storage";
-import { isRealtimeReady } from "../../realtime-readiness";
+import { isRealtimeReady } from "../../infrastructure/realtime/readiness";
 
 export type ReadinessResult = {
   checks: {

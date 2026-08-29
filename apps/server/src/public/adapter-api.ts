@@ -160,6 +160,6 @@ export {
   type CollaborationTicketClaims,
   type MeetingCollaborationTicketClaims,
   type PageCollaborationTicketClaims,
-} from "../collaboration/service";
+} from "../features/collaboration/service";
 export type { MeetingTranscriptYjsSegment } from "../infrastructure/runtime/runtime-adapter";
 export type { AppBindings } from "../shared/types";

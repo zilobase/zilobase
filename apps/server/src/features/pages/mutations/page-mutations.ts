@@ -14,7 +14,7 @@ import {
   isEmptyPageContent,
   materializePageContentFromYjs,
   replacePageContent,
-} from "../../../collaboration/service";
+} from "../../collaboration/service";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { upsertPageItemPlacement } from "../placements/page-item-placements";
 import { insertDatabaseBlockInContent } from "../../databases/setup/insert-database-block";

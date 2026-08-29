@@ -5,8 +5,8 @@ import { test } from "vitest";
 import {
   attachNodeCollaborationRuntime,
   NODE_COLLABORATION_MAX_PAYLOAD_BYTES,
-} from "./node-runtime";
-import { COLLABORATION_WEBSOCKET_PROTOCOL } from "../shared/security/auth-headers";
+} from "./collaboration-runtime";
+import { COLLABORATION_WEBSOCKET_PROTOCOL } from "../../shared/security/auth-headers";
 
 test("serverful collaboration rejects unauthenticated upgrades", async () => {
   const fixture = await startFixture(async () => null);

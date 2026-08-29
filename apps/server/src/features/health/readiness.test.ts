@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 
 import { checkReadiness } from "./readiness";
-import { setRealtimeReadinessProbe } from "../../realtime-readiness";
+import { setRealtimeReadinessProbe } from "../../infrastructure/realtime/readiness";
 
 test("readiness requires both Postgres and object storage", async () => {
   const ready = await checkReadiness({}, {

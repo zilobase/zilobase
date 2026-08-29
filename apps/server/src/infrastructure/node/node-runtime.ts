@@ -5,10 +5,10 @@ import { Readable } from "node:stream";
 import path from "node:path";
 import type { Hono } from "hono";
 
-import { attachNodeCollaborationRuntime } from "../../collaboration/node-runtime";
-import { setCollaborationExtensionsFactory } from "../../collaboration/service";
-import { attachNodeDatabaseRealtimeRuntime } from "../../database-realtime/node-runtime";
-import { attachNodeMeetingAudioRuntime } from "../../features/meetings/meeting-audio-node-runtime";
+import { attachNodeCollaborationRuntime } from "./collaboration-runtime";
+import { setCollaborationExtensionsFactory } from "../../features/collaboration/service";
+import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
+import { attachNodeMeetingAudioRuntime } from "./meeting-audio-runtime";
 import { createDbClientForUrl, runWithDbEnv } from "../database";
 import { assertSelfHostedProductionConfiguration } from "../../features/instance/registration";
 import {
@@ -24,7 +24,7 @@ import { isNodeApiPath } from "./api-routing";
 import { runMigrationSets, type MigrationSet } from "./migrations";
 import { createNodeRealtimeBus } from "./realtime-bus";
 import { createNodeCollaborationExtensions } from "./collaboration-redis";
-import { setRealtimeReadinessProbe } from "../../realtime-readiness";
+import { setRealtimeReadinessProbe } from "../realtime/readiness";
 import { cleanupExpiredAiAgentData } from "../../features/ai/actions/agent-operations";
 import { AI_JOB_HANDLERS } from "../../features/ai/jobs/ai-job-handlers";
 import { runAiJobBatch } from "../../features/ai/jobs/ai-jobs";

@@ -6,19 +6,19 @@ import type { Duplex } from "node:stream";
 import type { Message, Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 
-import type { RuntimeEnv } from "../shared/config/config";
+import type { RuntimeEnv } from "../../shared/config/config";
 import {
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
-} from "../shared/security/database-realtime-ticket";
-import type { DatabaseRealtimeMutationEvent } from "../features/databases/realtime/outbox";
+} from "../../shared/security/database-realtime-ticket";
+import type { DatabaseRealtimeMutationEvent } from "../../features/databases/realtime/outbox";
 import {
   databaseRealtimeChannel,
   type NodeRealtimeBus,
   type RealtimeSubscription,
-} from "../infrastructure/node/realtime-bus";
+} from "./realtime-bus";
 
 const NODE_DATABASE_REALTIME_MAX_MESSAGE_BYTES = 16 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;

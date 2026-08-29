@@ -13,7 +13,7 @@ import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import {
   createCollaborationTicket,
   documentNameForMeeting,
-} from "../../collaboration/service";
+} from "../collaboration/service";
 import { getMeetingCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { getMeetingAudioWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { ServiceMutationError } from "../../shared/errors/service-mutation-error";

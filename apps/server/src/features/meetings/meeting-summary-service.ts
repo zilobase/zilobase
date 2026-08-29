@@ -3,7 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { resolveWorkspaceAiModel, type ResolvedAiModel } from "../ai/providers/ai-provider";
-import { replaceMeetingSummary } from "../../collaboration/service";
+import { replaceMeetingSummary } from "../collaboration/service";
 import { getRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter";
 import { db } from "../../infrastructure/database";
 import { meeting, meetingTranscriptSegment } from "../../infrastructure/database/schema";

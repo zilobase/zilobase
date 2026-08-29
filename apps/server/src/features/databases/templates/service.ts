@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
 
-import { encodePageContentAsYjs } from "../../../collaboration/service";
+import { encodePageContentAsYjs } from "../../collaboration/service";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import {
