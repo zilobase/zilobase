@@ -49,17 +49,17 @@ export function IconColorGrid({
             title={color.name}
             type="button"
           >
-            <span className={cn("flex size-6 items-center justify-center", color.textClass)}>
+            <span className={cn("flex size-7 items-center justify-center", color.textClass)}>
               {preview ? (
                 React.cloneElement(preview, {
                   className: cn(
-                    "size-5 shrink-0 text-current",
+                    "size-6 shrink-0 text-current",
                   ),
                 })
               ) : content ? (
                 <IconSvgPreview
                   content={content}
-                  size={Math.min(previewSize, 20)}
+                  size={Math.min(previewSize, 24)}
                   viewBox={viewBox}
                 />
               ) : null}

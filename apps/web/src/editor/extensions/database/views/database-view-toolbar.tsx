@@ -189,6 +189,7 @@ export function DatabaseViewToolbar() {
     editable,
     filterFieldOptions,
     filterPickerOpen,
+    fullPage,
     filterValueOptionsByField,
     groupProperty,
     groupableProperties,
@@ -518,7 +519,10 @@ export function DatabaseViewToolbar() {
           ) : null}
           <input
             aria-label="Database title"
-            className="h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 text-2xl font-semibold leading-tight text-foreground shadow-none outline-none [field-sizing:content] placeholder:text-muted-foreground focus-visible:ring-0 md:text-2xl"
+            className={cn(
+              "h-auto min-w-[1ch] max-w-[44ch] shrink-0 truncate border-0 bg-transparent px-0 py-0 font-semibold leading-tight tracking-normal text-foreground shadow-none outline-none [field-sizing:content] placeholder:text-muted-foreground focus-visible:ring-0",
+              fullPage ? "text-2xl md:text-2xl" : "text-3xl",
+            )}
             disabled={!databaseId}
             data-structural-block-title
             onBlur={(event) => saveDatabaseTitle(event.target.value)}

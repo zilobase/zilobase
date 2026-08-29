@@ -194,6 +194,12 @@
   font-weight: var(--font-weight-database) !important;
 }
 
+/* Inline structural titles follow editor Heading 2, not database chrome. */
+:where(.database-block-shell, .meeting-block-shell)
+  [data-structural-block-title] {
+  font-weight: var(--font-weight-semibold) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-panel][data-sidebar-transitioning] {
     transition: none;
