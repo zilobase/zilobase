@@ -1,7 +1,7 @@
 import type { PageDatabaseView } from "@zilobase/features/pages"
 
-import { getDatabaseViewIcon } from "../views/database-view-config"
-import { getDatabaseViewTypePresentation } from "../views/view-settings/view-type-options"
+import { getDatabaseViewIcon } from "../views/model/database-view-config"
+import { getDatabaseViewTypePresentation } from "../views/view-settings/model/view-type-options"
 import { PageIconDisplay } from "@/features/pages/index"
 import { cn } from "@/shared/lib/utils"
 

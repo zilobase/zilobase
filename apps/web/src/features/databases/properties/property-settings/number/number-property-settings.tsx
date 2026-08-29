@@ -23,7 +23,7 @@ import {
   type DatabaseNumberDisplayStyle,
   type DatabasePropertyConfig,
   type NumberDecimalPlacesValue,
-} from "../../../views/database-view-config";
+} from "../../../views/model/database-view-config";
 import { PropertySettingSubmenu } from "../shared";
 
 type NumberPropertyConfig = {

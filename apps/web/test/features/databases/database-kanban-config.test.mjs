@@ -5,7 +5,7 @@ export function register({ assert, loadModule, test }) {
       canMoveRowsAcrossKanbanGroups,
       canUpdateKanbanGroupProperty,
     } = await loadModule(
-      "/src/features/databases/views/kanban/database-kanban-config.ts"
+      "/src/features/databases/views/kanban/model/database-kanban-config.ts"
     )
 
     assert.equal(canCreateKanbanGroup(createProperty("name", "text")), true)
@@ -49,7 +49,7 @@ export function register({ assert, loadModule, test }) {
       getKanbanCardDropTargetIndex,
       getKanbanExternalDropPosition,
     } = await loadModule(
-      "/src/features/databases/views/kanban/database-kanban-card-drag.ts"
+      "/src/features/databases/views/kanban/model/database-kanban-card-drag.ts"
     )
     const cards = [
       { getBoundingClientRect: () => ({ height: 40, top: 100 }) },

@@ -57,7 +57,7 @@ import {
   defaultStatusOptions,
   getDatabasePropertyType,
 } from "../core/database-property-types"
-import { getPersonLimit } from "../views/database-view-config"
+import { getPersonLimit } from "../views/model/database-view-config"
 import {
   type DatabasePropertyValue,
   parsePropertyValue,

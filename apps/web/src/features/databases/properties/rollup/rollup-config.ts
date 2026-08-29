@@ -2,7 +2,7 @@ import type {
   DatabaseNumberDisplayStyle,
   DatabaseRollupCalculation,
   NumberDecimalPlacesValue,
-} from "../../views/database-view-config"
+} from "../../views/model/database-view-config"
 
 export type DatabaseRollupConfig = {
   calculation?: DatabaseRollupCalculation

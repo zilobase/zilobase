@@ -19,7 +19,7 @@ import {
 } from "@/shared/ui/select";
 import { useDatabase } from "@zilobase/features/databases";
 
-import type { DatabasePropertyConfig } from "../../../views/database-view-config";
+import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
 import {
   getRollupCalculationsForType,
   getRollupConfig,

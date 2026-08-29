@@ -46,14 +46,14 @@ import {
   getReadOnlyTimePropertyRawValue,
 } from "./read-only-time-property"
 import { DatabaseRollupPropertySettings } from "./property-settings";
-import { useDatabaseViewContext } from "../views/database-view-context"
+import { useDatabaseViewContext } from "../views/model/database-view-context"
 import {
   useDatabaseCellDraft,
   useSetActiveDatabaseCell,
   useUpdateDatabaseCellDraft,
-} from "../views/database-cell-state"
-import { getPersonLimit, getPropertyWrapContent } from "../views/database-view-config"
-import { type DatabasePropertyListItem } from "../views/kanban/database-kanban-config"
+} from "../views/model/database-cell-state"
+import { getPersonLimit, getPropertyWrapContent } from "../views/model/database-view-config"
+import { type DatabasePropertyListItem } from "../views/kanban/model/database-kanban-config"
 import {
   evaluateDatabaseRollup,
   getRollupRelationProperty,

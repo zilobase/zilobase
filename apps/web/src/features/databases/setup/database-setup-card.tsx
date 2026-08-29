@@ -56,13 +56,13 @@ import {
   getDatabaseSetupDismissed,
   getDatabaseViewIcon,
   getMergedDatabaseConfig,
-} from "../views/database-view-config";
-import type { DatabaseSourceViewSelection } from "../views/database-view-context";
-import { ViewTypeOptionGrid } from "../views/view-settings/view-type-option-grid";
+} from "../views/model/database-view-config";
+import type { DatabaseSourceViewSelection } from "../views/model/database-view-context";
+import { ViewTypeOptionGrid } from "../views/view-settings/view/view-type-option-grid";
 import {
   getDatabaseViewTypePresentation,
   type DatabaseViewType,
-} from "../views/view-settings/view-type-options";
+} from "../views/view-settings/model/view-type-options";
 import { serializePropertyValue } from "../core/utils";
 
 type SetupView = "main" | "link";

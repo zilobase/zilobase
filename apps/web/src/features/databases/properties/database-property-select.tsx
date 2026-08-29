@@ -11,7 +11,7 @@ import {
   getColorTokenDotClassName,
 } from "@/shared/lib/color-tokens"
 import { getNextDatabaseOptionColor } from "../core/database-property-types"
-import type { DatabaseSelectOption } from "../views/database-view-config"
+import type { DatabaseSelectOption } from "../views/model/database-view-config"
 import { toStringArray } from "../core/utils"
 
 type DatabasePropertySelectOption = DatabaseSelectOption & {

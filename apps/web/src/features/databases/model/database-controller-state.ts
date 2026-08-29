@@ -1,6 +1,6 @@
 import type { DatabasePayload } from "@zilobase/features/databases"
 
-import { getDatabaseViewIcon } from "../views/database-view-config"
+import { getDatabaseViewIcon } from "../views/model/database-view-config"
 
 export function getDatabaseDataSourceSummaries(
   payload: DatabasePayload | null | undefined,

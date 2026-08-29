@@ -1,6 +1,6 @@
 import { defaultStatusOptions } from "../core/database-property-types"
 import { getRawDatabaseGroupValue } from "./database-group-values"
-import type { DatabasePropertyListItem } from "../views/kanban/database-kanban-config"
+import type { DatabasePropertyListItem } from "../views/kanban/model/database-kanban-config"
 
 export type DatabaseTableGroupSection<T> = {
   color?: string

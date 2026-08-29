@@ -12,7 +12,7 @@ import {
   getReadOnlyTimePropertyRawValue,
   isReadOnlyTimeProperty,
 } from "../read-only-time-property"
-import type { DatabaseRollupCalculation } from "../../views/database-view-config"
+import type { DatabaseRollupCalculation } from "../../views/model/database-view-config"
 import {
   getRollupConfig,
   getValidRollupCalculation,

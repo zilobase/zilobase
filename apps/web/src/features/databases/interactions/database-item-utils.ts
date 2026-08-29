@@ -12,11 +12,11 @@ import type {
   DatabasePropertyFilterConfig,
   DatabaseSortConfig,
   DatabaseSortDirection,
-} from "../views/database-view-config"
+} from "../views/model/database-view-config"
 import {
   isDatabaseFilterGroup,
   type DatabasePropertyFilterOperator,
-} from "../views/database-view-config"
+} from "../views/model/database-view-config"
 
 export type SortableDatabaseItem = {
   createdAt: string

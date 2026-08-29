@@ -1,5 +1,5 @@
 export { DATABASE_PAGE_DRAG_MIME } from "./core/database-contracts"
-export { DatabaseView } from "./views/database-view"
+export { DatabaseView } from "./views/view/database-view"
 export { DatabaseBlock } from "./core/database-extension"
 export type { DatabaseBlockEditorRuntime } from "./core/database-contracts"
 export {
@@ -24,21 +24,21 @@ export { getDatabaseSetupTemplate } from "./setup/database-setup-templates"
 export { DatabaseViewIcon } from "./components/database-view-icon"
 export { PageMetadata } from "./components/page-metadata"
 export type { PageMetadataHandle } from "./components/page-metadata"
-export { DatabaseViewProvider } from "./views/database-view-context"
-export { DatabaseViewToolbar } from "./views/database-view-toolbar"
-export { DatabaseViewSkeleton } from "./views/database-view-skeleton"
-export { DatabaseListView } from "./views/list/database-list-view"
-export { DatabaseTableView } from "./views/table/database-table-view"
-export { LinkedDataSourcePicker } from "./views/linked-data-source-picker"
-export type { DatabaseFilterUpdatePatch } from "./views/database-filter-menu"
-export type { DatabaseSortUpdatePatch } from "./views/database-sort-menu"
+export { DatabaseViewProvider } from "./views/model/database-view-context"
+export { DatabaseViewToolbar } from "./views/view/database-view-toolbar"
+export { DatabaseViewSkeleton } from "./views/view/database-view-skeleton"
+export { DatabaseListView } from "./views/list/view/database-list-view"
+export { DatabaseTableView } from "./views/table/view/database-table-view"
+export { LinkedDataSourcePicker } from "./views/view/linked-data-source-picker"
+export type { DatabaseFilterUpdatePatch } from "./views/view/database-filter-menu"
+export type { DatabaseSortUpdatePatch } from "./views/view/database-sort-menu"
 export {
   getDatabaseFilterOperatorsForType,
   getMergedDatabaseConfig,
   getMergedNameColumnConfig,
   getMergedPropertyConfig,
   getValidDatabaseFilterOperator,
-} from "./views/database-view-config"
+} from "./views/model/database-view-config"
 export type {
   DatabaseConditionalColorConfig,
   DatabaseFilterItemConfig,
@@ -46,4 +46,4 @@ export type {
   DatabaseSortConfig,
   DatabaseSubItemsSettings,
   DatabaseNameColumnConfig,
-} from "./views/database-view-config"
+} from "./views/model/database-view-config"

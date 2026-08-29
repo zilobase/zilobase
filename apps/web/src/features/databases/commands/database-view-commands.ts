@@ -12,11 +12,11 @@ import { defaultStatusOption } from "../core/database-property-types";
 import {
   getKanbanGroupPropertyId,
   type DatabasePropertyListItem,
-} from "../views/kanban/database-kanban-config";
+} from "../views/kanban/model/database-kanban-config";
 import {
   ganttMoveToDateValue,
   getTimelineDateProperty,
-} from "../views/timeline/database-timeline-config";
+} from "../views/timeline/model/database-timeline-config";
 import {
   getDefaultDatabasePropertyConfig,
   isSelectLikePropertyType,
@@ -48,26 +48,26 @@ import {
   type DatabaseNameColumnConfig,
   type DatabaseSortConfig,
   type DatabaseSubItemsSettings,
-} from "../views/database-view-config";
-import type { DatabaseFilterUpdatePatch } from "../views/database-filter-menu";
+} from "../views/model/database-view-config";
+import type { DatabaseFilterUpdatePatch } from "../views/view/database-filter-menu";
 import { getRelationLimitTrimUpdates } from "../properties/database-relation-sync";
 import {
   defaultDatabaseChartSettings,
   getDatabaseChartSettings,
   type DatabaseChartSettings,
-} from "../views/chart/database-chart-config";
+} from "../views/chart/model/database-chart-config";
 import {
   getDatabaseFormHeaderSettings,
   type DatabaseFormHeaderSettings,
-} from "../views/form/database-form-header-config";
+} from "../views/form/model/database-form-header-config";
 import {
   getDatabaseFormQuestionSettingsById,
   type DatabaseFormQuestionSettingsPatch,
-} from "../views/form/database-form-question-config";
+} from "../views/form/model/database-form-question-config";
 import {
   getDatabaseFormShareSettings,
   type DatabaseFormShareSettings,
-} from "../views/form/database-form-share-config";
+} from "../views/form/model/database-form-share-config";
 
 import {
   findAddedDatabaseRow,

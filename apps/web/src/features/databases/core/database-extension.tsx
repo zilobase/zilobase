@@ -7,7 +7,7 @@ import {
 import { useSyncExternalStore } from "react"
 
 import { hasDatabasePageDragPayload } from "../interactions/database-page-drop"
-import { DatabaseView } from "../views/database-view"
+import { DatabaseView } from "../views/view/database-view"
 import type { DatabaseBlockOptions } from "./database-contracts"
 
 const databasePageDragEvents = new Set([

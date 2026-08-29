@@ -3,7 +3,7 @@ import { ArrowLeftRight } from "@/shared/components/icons";
 import { DropDrawerItem } from "@/shared/ui/dropdrawer";
 import { Switch } from "@/shared/ui/switch";
 
-import type { DatabasePropertyConfig } from "../../../views/database-view-config";
+import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
 
 export function UrlPropertySettings({
   onUpdateConfig,

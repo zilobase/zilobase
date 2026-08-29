@@ -84,9 +84,9 @@ import {
   upsertDatabaseSort,
   type DatabasePropertyConfig,
   type DatabaseSortDirection,
-} from "../views/database-view-config";
+} from "../views/model/database-view-config";
 import { DatabasePropertyEditSubmenu } from "./property-settings";
-import { useClearDatabasePropertyDrafts } from "../views/database-cell-state";
+import { useClearDatabasePropertyDrafts } from "../views/model/database-cell-state";
 
 export { DatabaseNamePropertyMenu } from "./database-name-property-menu";
 export { DatabasePropertyEditSubmenu } from "./property-settings";

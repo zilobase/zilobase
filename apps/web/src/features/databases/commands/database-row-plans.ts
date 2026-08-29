@@ -10,7 +10,7 @@ import { serializePropertyValue } from "../core/utils"
 import {
   canUpdateKanbanGroupProperty,
   type DatabasePropertyListItem,
-} from "../views/kanban/database-kanban-config"
+} from "../views/kanban/model/database-kanban-config"
 
 export type NewRowPropertyValue = {
   propertyId: string

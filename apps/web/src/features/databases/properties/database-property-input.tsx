@@ -21,7 +21,7 @@ import {
   getNumberDisplayShowNumber,
   getNumberDisplayStyle,
   getNumberFormat,
-} from "../views/database-view-config"
+} from "../views/model/database-view-config"
 
 function DatabaseInputCell({
   editable = true,

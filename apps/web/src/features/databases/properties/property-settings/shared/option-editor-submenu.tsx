@@ -18,7 +18,7 @@ import {
   getColorTokenValue,
 } from "@/shared/lib/color-tokens";
 
-import type { DatabaseSelectOption } from "../../../views/database-view-config";
+import type { DatabaseSelectOption } from "../../../views/model/database-view-config";
 
 export function OptionEditorSubmenu({
   defaultOptionId,

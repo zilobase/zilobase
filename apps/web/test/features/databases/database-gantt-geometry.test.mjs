@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("gantt daily geometry snaps previews to exact columns", async () => {
     const { getGanttSelection } = await loadModule(
-      "/src/components/kibo-ui/gantt/gantt-geometry.ts"
+      "/src/features/databases/views/timeline/gantt/gantt-geometry.ts"
     )
     const geometry = {
       columnWidth: 50,
@@ -27,7 +27,7 @@ export function register({ assert, loadModule, test }) {
 
   test("gantt preview stays inside the final timeline column", async () => {
     const { getGanttSelection } = await loadModule(
-      "/src/components/kibo-ui/gantt/gantt-geometry.ts"
+      "/src/features/databases/views/timeline/gantt/gantt-geometry.ts"
     )
     const geometry = {
       columnWidth: 50,
@@ -44,7 +44,7 @@ export function register({ assert, loadModule, test }) {
 
   test("gantt date and pixel conversion share one coordinate model", async () => {
     const { dateToTimelineX, timelineXToDate } = await loadModule(
-      "/src/components/kibo-ui/gantt/gantt-geometry.ts"
+      "/src/features/databases/views/timeline/gantt/gantt-geometry.ts"
     )
     const geometry = {
       columnWidth: 50,
@@ -59,7 +59,7 @@ export function register({ assert, loadModule, test }) {
 
   test("gantt single-date items retain one full daily column", async () => {
     const { getTimelineItemWidth } = await loadModule(
-      "/src/components/kibo-ui/gantt/gantt-geometry.ts"
+      "/src/features/databases/views/timeline/gantt/gantt-geometry.ts"
     )
     const date = new Date(2026, 0, 3)
 
@@ -79,7 +79,7 @@ export function register({ assert, loadModule, test }) {
       shouldPositionGanttPreviewOnFocus,
       showGanttPreview,
     } = await loadModule(
-      "/src/components/kibo-ui/gantt/gantt-preview.ts"
+      "/src/features/databases/views/timeline/gantt/gantt-preview.ts"
     )
     const properties = new Map()
     const element = {

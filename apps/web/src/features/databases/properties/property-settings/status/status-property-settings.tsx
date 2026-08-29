@@ -14,7 +14,7 @@ import {
 import type {
   DatabasePropertyConfig,
   DatabaseSelectOption,
-} from "../../../views/database-view-config";
+} from "../../../views/model/database-view-config";
 import {
   areSameOrderedIds,
   haveSameIds,

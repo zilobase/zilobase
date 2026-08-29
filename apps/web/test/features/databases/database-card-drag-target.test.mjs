@@ -39,8 +39,8 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("gallery and kanban use whole-card dragging in every database mode", async () => {
     const [gallerySource, kanbanSource] = await Promise.all([
-      readSource("/src/features/databases/views/gallery/database-gallery-view.tsx"),
-      readSource("/src/features/databases/views/kanban/database-kanban-view.tsx"),
+      readSource("/src/features/databases/views/gallery/view/database-gallery-view.tsx"),
+      readSource("/src/features/databases/views/kanban/view/database-kanban-view.tsx"),
     ])
 
     for (const source of [gallerySource, kanbanSource]) {

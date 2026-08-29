@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("timeline add rows span every rendered date column", async () => {
     const { getTimelineColumnCount } = await loadModule(
-      "/src/components/kibo-ui/gantt/index.tsx"
+      "/src/features/databases/views/timeline/gantt/index.tsx"
     )
     const timelineData = [
       {

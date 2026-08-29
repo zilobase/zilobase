@@ -1,6 +1,6 @@
 import { Hash } from "@/shared/components/icons";
 
-import type { DatabasePropertyConfig } from "../../../views/database-view-config";
+import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
 import { PropertySettingSubmenu } from "../shared";
 
 type FilesLimitValue = "one_file" | "no_limit";

@@ -1,7 +1,7 @@
 import {
   getMergedPropertyConfig,
   type DatabasePropertyConfig,
-} from "../../views/database-view-config"
+} from "../../views/model/database-view-config"
 
 type DatabaseFormulaConfig = DatabasePropertyConfig & {
   formula?: string

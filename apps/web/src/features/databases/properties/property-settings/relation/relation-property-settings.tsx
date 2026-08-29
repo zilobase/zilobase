@@ -44,8 +44,8 @@ import { usePageNavigation } from "@zilobase/features/pages";
 import {
   DatabaseSearchableMenuItems,
   type DatabaseSearchableMenuOption,
-} from "../../../views/database-searchable-menu-items";
-import type { DatabasePropertyConfig } from "../../../views/database-view-config";
+} from "../../../views/view/database-searchable-menu-items";
+import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
 import {
   getRelationNeedsRepair,
   getRelationRepairMutationPlan,

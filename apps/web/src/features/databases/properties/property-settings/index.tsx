@@ -21,8 +21,8 @@ import {
   getShowFullUrl,
   getStatusDefaultOptionId,
   type DatabasePropertyConfig,
-} from "../../views/database-view-config";
-import { useDatabaseViewContext } from "../../views/database-view-context";
+} from "../../views/model/database-view-config";
+import { useDatabaseViewContext } from "../../views/model/database-view-context";
 import { DatePropertySettings } from "./date";
 import { FilesPropertySettings, getFilesPropertyConfig } from "./files";
 import { getPersonPropertyConfig, PersonPropertySettings } from "./person";

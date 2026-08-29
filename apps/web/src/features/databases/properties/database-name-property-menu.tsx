@@ -46,7 +46,7 @@ import {
   upsertDatabaseSort,
   type DatabaseNameColumnConfig,
   type DatabaseSortDirection,
-} from "../views/database-view-config";
+} from "../views/model/database-view-config";
 import { NameColumnGlyph } from "../interactions/name-column-glyph";
 
 export function DatabaseNamePropertyMenu({

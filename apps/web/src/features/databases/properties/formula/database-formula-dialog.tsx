@@ -35,7 +35,7 @@ import { Textarea } from "@/shared/ui/textarea"
 import { cn } from "@/shared/lib/utils"
 
 import { getDatabasePropertyType } from "../../core/database-property-types"
-import { useDatabaseViewContext } from "../../views/database-view-context"
+import { useDatabaseViewContext } from "../../views/model/database-view-context"
 import {
   escapeFormulaString,
   getFormulaExpression,

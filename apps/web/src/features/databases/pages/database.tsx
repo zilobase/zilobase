@@ -33,7 +33,7 @@ import {
 import { EmbeddedPageDialog } from "@/features/pages/components/index"
 import { useOpenEmbeddedPage } from "@/features/pages/hooks/index"
 import { PageMetadata as PageMetadataView } from "../components/page-metadata"
-import { DatabaseView } from "../views/database-view"
+import { DatabaseView } from "../views/view/database-view"
 import { toast } from "sonner"
 import {
   PublicPaneTopbar,
