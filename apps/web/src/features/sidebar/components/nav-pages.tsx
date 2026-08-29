@@ -81,7 +81,7 @@ import {
   SidebarNavItemAction,
 } from "@/shared/ui/sidebar-nav-item-action"
 import { useOpenInNewTab } from "@/features/desktop/components/index"
-import { DATABASE_PAGE_DRAG_MIME } from "@/packages/editor/extensions/database"
+import { DATABASE_PAGE_DRAG_MIME } from "@/features/databases"
 import { cn } from "@/shared/lib/utils"
 import { getApiErrorMessage } from "@/lib/api"
 import { PageIconDisplay } from "@/features/pages/index"

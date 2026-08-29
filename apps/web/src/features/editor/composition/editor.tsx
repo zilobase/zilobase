@@ -6,7 +6,7 @@ import { MobileActionBar } from "@/packages/editor/components/editor/mobile-acti
 import {
   PageMetadata,
   type PageMetadataHandle,
-} from "@/packages/editor/components/editor/page-metadata"
+} from "@/features/databases"
 import { PageLayoutModuleCanvas } from "@/packages/editor/components/editor/page-layout-module-canvas"
 import { PageLayoutTabs } from "@/packages/editor/components/editor/page-layout-tabs"
 import { starterContent } from "../core/constants"
@@ -31,7 +31,7 @@ import { useEditorInstance } from "../runtime/use-editor-instance"
 import { useEditorMenuEffects } from "../runtime/use-editor-menu-effects"
 import { useEditorRuntime } from "../runtime/use-editor-runtime"
 import { useMobileNodeActions } from "../commands/use-mobile-node-actions"
-import { DatabaseView } from "@/packages/editor/extensions/database/views/database-view"
+import { DatabaseView } from "@/features/databases"
 import {
   canMoveDatabaseBlockToPage,
   dropCrossEditorBlock,

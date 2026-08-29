@@ -62,10 +62,10 @@ import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
 import { createPageEditorHandle } from "@/features/ai/cache/index";
 import { Editor, type PageEditPreviewControls } from "@/packages/editor";
 import type {
-  OpenPageOptions,
   PageLayoutPanelMode,
   StructuralBlockDeleteRequest,
 } from "@/packages/editor/core/types";
+import type { OpenPageOptions } from "../navigation/open-page-options";
 import { usePageCollaboration } from "@/packages/editor/collaboration/use-page-collaboration";
 import { canEditOnlineDatabase } from "@/packages/editor/database-editability";
 import {

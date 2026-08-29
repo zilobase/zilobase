@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react"
-import type { DatabaseBlockEditorRuntime } from "@/packages/editor/extensions/database"
+import type { DatabaseBlockEditorRuntime } from "@/features/databases"
 
 export const useEditorRuntime = (editable: boolean) => {
   const editorRuntimeRef = useRef({

@@ -18,6 +18,7 @@ export {
   getRouteFaviconIcon,
 } from "./icons/favicon";
 export { buildPagePath } from "./navigation/page-path";
+export type { OpenPageOptions } from "./navigation/open-page-options";
 export {
   decidePublishedShareAccess,
 } from "./publication/published-share-access";

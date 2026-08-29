@@ -7,14 +7,19 @@ import {
 } from "@/shared/ui/avatar"
 import { cn } from "@/shared/lib/utils"
 import { getUserImageUrl } from "@/lib/image-upload"
-import type { CollaborationUser } from "./use-page-collaboration"
+
+export type CollaborationPresenceUser = {
+  avatar?: string | null
+  id: string
+  name: string
+}
 
 export function CollaborationPresence({
   className,
   users,
 }: {
   className?: string
-  users: CollaborationUser[]
+  users: CollaborationPresenceUser[]
 }) {
   const visibleUsers = users.slice(0, 4)
   const hiddenCount = Math.max(0, users.length - visibleUsers.length)

@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("timeline drop targeting reuses measured row centers", async () => {
     const { getTimelineRowDropTargetIndex } = await loadModule(
-      "/src/features/editor/extensions/database/views/timeline/database-timeline-layout.ts"
+      "/src/features/databases/views/timeline/database-timeline-layout.ts"
     )
     const rowIds = ["row-1", "row-2", "row-3"]
     const centers = { "row-1": 48, "row-2": 80, "row-3": 132 }
@@ -15,7 +15,7 @@ export function register({ assert, loadModule, test }) {
 
   test("timeline row layout equality detects meaningful geometry changes", async () => {
     const { timelineRowLayoutsMatch } = await loadModule(
-      "/src/features/editor/extensions/database/views/timeline/database-timeline-layout.ts"
+      "/src/features/databases/views/timeline/database-timeline-layout.ts"
     )
     const layout = {
       centers: { "row-1": 48, "row-2": 80 },

@@ -10,12 +10,12 @@ import {
   getGroupOptions,
   getKanbanGroupProperty,
   getKanbanOptions,
-} from "./kanban/database-kanban-config"
+} from "../views/kanban/database-kanban-config"
 import {
   getTimelineDateProperties,
   getTimelineDateProperty,
-} from "./timeline/database-timeline-config"
-import { getDatabaseChartSettings } from "./chart/database-chart-config"
+} from "../views/timeline/database-timeline-config"
+import { getDatabaseChartSettings } from "../views/chart/database-chart-config"
 import { getDatabasePropertyType } from "../core/database-property-types"
 import { getPropertyValue, type DatabasePropertyValue } from "../core/utils"
 import {
@@ -37,11 +37,11 @@ import {
   type DatabasePropertyConfig,
   type DatabasePropertyFilterConfig,
   type DatabaseConditionalColorConfig,
-} from "./database-view-config"
-import { getDatabaseSubItemsView } from "./database-sub-items"
-import type { DatabaseSearchableMenuOption } from "./database-searchable-menu-items"
-import type { DatabaseActiveFilter } from "./database-filter-menu"
-import type { DatabaseActiveSort } from "./database-sort-menu"
+} from "../views/database-view-config"
+import { getDatabaseSubItemsView } from "../views/database-sub-items"
+import type { DatabaseSearchableMenuOption } from "../views/database-searchable-menu-items"
+import type { DatabaseActiveFilter } from "../views/database-filter-menu"
+import type { DatabaseActiveSort } from "../views/database-sort-menu"
 import { NameColumnGlyph } from "../interactions/name-column-glyph"
 import {
   getFilteredDatabaseItems,

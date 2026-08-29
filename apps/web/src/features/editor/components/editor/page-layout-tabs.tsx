@@ -12,7 +12,7 @@ import {
 
 import { Button } from "@/shared/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs"
-import { LinkedDataSourcePicker } from "@/packages/editor/extensions/database/views/linked-data-source-picker"
+import { LinkedDataSourcePicker } from "@/features/databases"
 import type {
   PageLayoutConfig,
   PageLayoutLinkedTab,

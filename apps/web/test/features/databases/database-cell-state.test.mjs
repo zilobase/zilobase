@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database cell drafts update only the addressed key", async () => {
     const { getUpdatedDatabaseCellDrafts } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-cell-state.tsx"
+      "/src/features/databases/views/database-cell-state.tsx"
     )
     const drafts = { "page-1:title": "First", "page-2:title": "Second" }
     const nextDrafts = getUpdatedDatabaseCellDrafts(
@@ -22,7 +22,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database cell draft cleanup preserves unrelated drafts", async () => {
     const { getUpdatedDatabaseCellDrafts } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-cell-state.tsx"
+      "/src/features/databases/views/database-cell-state.tsx"
     )
 
     assert.deepEqual(
@@ -37,7 +37,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database property draft cleanup clears every row for the property", async () => {
     const { getDatabaseCellDraftsWithoutProperty } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-cell-state.tsx"
+      "/src/features/databases/views/database-cell-state.tsx"
     )
 
     assert.deepEqual(

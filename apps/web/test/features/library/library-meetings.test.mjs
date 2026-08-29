@@ -47,7 +47,7 @@ export function register({ readSource, assert, loadModule, test }) {
     )
     const customizeSource = await readSource("/src/features/sidebar/components/sidebar-customize-panel.tsx")
     const iconSource = await readSource("/src/features/sidebar/components/sidebar-layout-icons.tsx")
-    const toolbarSource = await readSource("/src/features/editor/extensions/database/views/database-view-toolbar.tsx")
+    const toolbarSource = await readSource("/src/features/databases/views/database-view-toolbar.tsx")
 
     assert.match(librarySource, /id: "meetings", label: libraryViewLabels\.meetings/)
     assert.match(librarySource, /useWorkspaceMeetings\(/)

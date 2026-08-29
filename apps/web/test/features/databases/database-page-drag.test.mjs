@@ -5,7 +5,7 @@ export function register({ assert, loadModule, test }) {
       hasDatabasePageDragPayload,
       setDatabasePageDragPayload,
     } = await loadModule(
-      "/src/features/editor/extensions/database/interactions/database-page-drop.ts"
+      "/src/features/databases/interactions/database-page-drop.ts"
     )
     const values = new Map()
     const dataTransfer = {
@@ -33,7 +33,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database page drag rejects malformed payloads", async () => {
     const { getDatabasePageDragPayload } = await loadModule(
-      "/src/features/editor/extensions/database/interactions/database-page-drop.ts"
+      "/src/features/databases/interactions/database-page-drop.ts"
     )
     const dataTransfer = {
       getData: () => JSON.stringify({ pageId: 42 }),

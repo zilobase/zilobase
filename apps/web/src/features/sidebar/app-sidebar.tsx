@@ -20,7 +20,7 @@ import { toast } from "sonner"
 
 import { AppSidebarHeader, AppSidebarShell } from "./app-sidebar-shell"
 import { useAppSearch } from "./app-search"
-import { DatabaseViewIcon } from "@/components/database-view-icon"
+import { DatabaseViewIcon } from "@/features/databases"
 import { AiChatsSection } from "./components/ai-chats-section"
 import { NavFavorites } from "./components/nav-favorites"
 import { NavMeetings } from "./components/nav-meetings"

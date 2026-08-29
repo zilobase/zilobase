@@ -10,7 +10,7 @@ import {
   hasDragType,
   readDragPayload,
   writeDragPayload,
-} from "@/packages/editor/drag-drop/drag-drop"
+} from "@/shared/lib/drag-drop"
 import { getSelectedBlockRangesForTarget } from "../../extensions/block-selection"
 import {
   setDatabaseBlockDragImage,

@@ -47,7 +47,7 @@ import {
   startBlockDrag,
 } from "./block-drag"
 import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens"
-import { setDatabasePageDragPayload } from "@/packages/editor/extensions/database/interactions/database-page-drop"
+import { setDatabasePageDragPayload } from "@/features/databases"
 import type { DragHandleTarget } from "./types"
 import type {
   StructuralBlockDeleteAction,

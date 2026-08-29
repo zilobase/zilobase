@@ -3,7 +3,7 @@ import {
   hasDragType,
   readDragPayload,
   writeDragPayload,
-} from "@/packages/editor/drag-drop/drag-drop"
+} from "@/shared/lib/drag-drop"
 
 export type DatabasePageDragPayload = {
   databaseId?: string

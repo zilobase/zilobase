@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 export function register({ readSource, assert, loadModule, test }) {
   test("link existing data source owns its nested picker state", async () => {
-    const settings = await readSource("/src/features/editor/extensions/database/views/view-settings/data-source-settings.tsx");
+    const settings = await readSource("/src/features/databases/views/view-settings/data-source-settings.tsx");
 
     assert.match(settings, /function LinkExistingDataSourcePicker/);
     assert.match(
@@ -15,7 +15,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("manage data sources uses explicit ownership and hides stale links", async () => {
     const { partitionManagedDataSources } = await loadModule(
-      "/src/features/editor/extensions/database/views/view-settings/data-source-model.ts",
+      "/src/features/databases/views/view-settings/data-source-model.ts",
     );
     const { linked, owned } = partitionManagedDataSources(
       [
@@ -62,10 +62,11 @@ export function register({ readSource, assert, loadModule, test }) {
   });
 
   test("adding a data source opens the shared database setup chooser", async () => {
-    const [controller, databaseView, setupCard] = await Promise.all([
-      readSource("/src/features/editor/extensions/database/views/use-database-view-controller.tsx"),
-      readSource("/src/features/editor/extensions/database/views/database-view.tsx"),
-      readSource("/src/features/editor/extensions/database/setup/database-setup-card.tsx"),
+    const [controller, controllerModel, databaseView, setupCard] = await Promise.all([
+      readSource("/src/features/databases/views/use-database-view-controller.tsx"),
+      readSource("/src/features/databases/model/database-controller-state.ts"),
+      readSource("/src/features/databases/views/database-view.tsx"),
+      readSource("/src/features/databases/setup/database-setup-card.tsx"),
     ]);
 
     assert.match(
@@ -73,7 +74,7 @@ export function register({ readSource, assert, loadModule, test }) {
       /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/,
     );
     assert.match(controller, /useCreateDatabaseDataSource/);
-    assert.match(controller, /parentDatabaseId: source\.parentDatabaseId/);
+    assert.match(controllerModel, /parentDatabaseId: source\.parentDatabaseId/);
     assert.match(
       controller,
       /createDataSource\.mutateAsync\(\{[\s\S]*?databaseId,[\s\S]*?name: databaseName/,
@@ -96,8 +97,8 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("deleting a final source view keeps it recoverable", async () => {
     const [controller, sourceItems] = await Promise.all([
-      readSource("/src/features/editor/extensions/database/views/use-database-view-controller.tsx"),
-      readSource("/src/features/editor/extensions/database/views/view-settings/data-source-items.tsx"),
+      readSource("/src/features/databases/views/use-database-view-controller.tsx"),
+      readSource("/src/features/databases/views/view-settings/data-source-items.tsx"),
     ]);
 
     assert.match(
@@ -122,8 +123,8 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("deleting a view never deletes its linked data source", async () => {
     const [controller, toolbar] = await Promise.all([
-      readSource("/src/features/editor/extensions/database/views/use-database-view-controller.tsx"),
-      readSource("/src/features/editor/extensions/database/views/database-view-toolbar.tsx"),
+      readSource("/src/features/databases/views/use-database-view-controller.tsx"),
+      readSource("/src/features/databases/views/database-view-toolbar.tsx"),
     ]);
 
     assert.match(controller, /deleteDatabaseView\.mutate/);
@@ -133,7 +134,7 @@ export function register({ readSource, assert, loadModule, test }) {
   });
 
   test("embedded database expand links use the host database id", async () => {
-    const toolbar = await readSource("/src/features/editor/extensions/database/views/database-view-toolbar.tsx");
+    const toolbar = await readSource("/src/features/databases/views/database-view-toolbar.tsx");
 
     assert.match(toolbar, /const expandDatabaseId = hostDatabaseId \?\? databaseId/);
     assert.match(
@@ -151,10 +152,10 @@ export function register({ readSource, assert, loadModule, test }) {
       await Promise.all([
         readSource("/src/shared/ui/dropdown-menu.tsx"),
         readSource("/src/shared/ui/dropdrawer.tsx"),
-        readSource("/src/features/editor/extensions/database/views/view-settings/index.tsx"),
-        readSource("/src/features/editor/extensions/database/views/view-settings/data-source-settings.tsx"),
-        readSource("/src/features/editor/extensions/database/views/view-settings/sub-items-settings.tsx"),
-        readSource("/src/features/editor/extensions/database/views/database-view-toolbar.tsx"),
+        readSource("/src/features/databases/views/view-settings/index.tsx"),
+        readSource("/src/features/databases/views/view-settings/data-source-settings.tsx"),
+        readSource("/src/features/databases/views/view-settings/sub-items-settings.tsx"),
+        readSource("/src/features/databases/views/database-view-toolbar.tsx"),
       ]);
 
     assert.match(toolbar, /activeDataSourceId=/);
@@ -213,7 +214,7 @@ export function register({ readSource, assert, loadModule, test }) {
       getNameColumnIcon,
       getDatabaseViewIcon,
     } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-view-config.ts",
+      "/src/features/databases/views/database-view-config.ts",
     );
 
     assert.equal(getDatabasePropertyIcon({ icon: "🌐" }), "🌐");
@@ -241,7 +242,7 @@ export function register({ readSource, assert, loadModule, test }) {
   test("database view settings expose one canonical layout catalog", async () => {
     const { databaseViewTypeOptions, getDatabaseViewTypePresentation } =
       await loadModule(
-        "/src/features/editor/extensions/database/views/view-settings/view-type-options.ts",
+        "/src/features/databases/views/view-settings/view-type-options.ts",
       );
 
     assert.deepEqual(
@@ -268,7 +269,7 @@ export function register({ readSource, assert, loadModule, test }) {
       getChartSortOptions,
       parseOptionalChartNumber,
     } = await loadModule(
-      "/src/features/editor/extensions/database/views/view-settings/chart-settings-model.ts",
+      "/src/features/databases/views/view-settings/chart-settings-model.ts",
     );
 
     assert.equal(getChartRangeLabel({}), "Auto");
@@ -305,7 +306,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("database form headers normalize editable page metadata", async () => {
     const { getDatabaseFormHeaderSettings } = await loadModule(
-      "/src/features/editor/extensions/database/views/form/database-form-header-config.ts",
+      "/src/features/databases/views/form/database-form-header-config.ts",
     );
 
     assert.deepEqual(getDatabaseFormHeaderSettings(undefined), {
@@ -338,7 +339,7 @@ export function register({ readSource, assert, loadModule, test }) {
   test("database form questions normalize options and move in view order", async () => {
     const { getDatabaseFormQuestionSettings, moveDatabaseFormQuestion } =
       await loadModule(
-        "/src/features/editor/extensions/database/views/form/database-form-question-config.ts",
+        "/src/features/databases/views/form/database-form-question-config.ts",
       );
 
     assert.deepEqual(
@@ -389,10 +390,10 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("database sub-item settings normalize and build nested rows", async () => {
     const { getDatabaseSubItemsSettings } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-view-config.ts",
+      "/src/features/databases/views/database-view-config.ts",
     );
     const { getDatabaseSubItemsView } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-sub-items.ts",
+      "/src/features/databases/views/database-sub-items.ts",
     );
     const rows = [
       createSubItemRow("parent", null, 0),
@@ -440,7 +441,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("database parent-only filters keep matching parents with descendants", async () => {
     const { getDatabaseSubItemsView } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-sub-items.ts",
+      "/src/features/databases/views/database-sub-items.ts",
     );
     const parent = createSubItemRow("parent", null, 0);
     const child = createSubItemRow("child", "parent", 1);
@@ -474,10 +475,10 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("database sub-items use only the first parent relation value", async () => {
     const { getDatabaseSubItemsSettings } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-view-config.ts",
+      "/src/features/databases/views/database-view-config.ts",
     );
     const { getDatabaseSubItemsView } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-sub-items.ts",
+      "/src/features/databases/views/database-sub-items.ts",
     );
     const rows = [
       { id: "parent-a", pageId: "page-a", position: 0 },
@@ -521,7 +522,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("database sub-item create rows follow the existing child rows", async () => {
     const { getSubItemCreateRowsAfterRow } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-sub-items.ts",
+      "/src/features/databases/views/database-sub-items.ts",
     );
     const rows = [
       createSubItemRow("parent", null, 0),
@@ -545,7 +546,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("database nested create rows close from the deepest branch outward", async () => {
     const { getSubItemCreateRowsAfterRow } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-sub-items.ts",
+      "/src/features/databases/views/database-sub-items.ts",
     );
     const rows = [
       createSubItemRow("parent", null, 0),
@@ -568,7 +569,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("database sub-item drop lines resolve their hierarchy level", async () => {
     const { getDatabaseSubItemLineParentRowId } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-sub-items.ts",
+      "/src/features/databases/views/database-sub-items.ts",
     );
     const rows = [
       { id: "parent-a" },
@@ -610,7 +611,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("database sub-item line moves sync parent and inverse relation arrays", async () => {
     const { getDatabaseSubItemRelationChanges } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-sub-items.ts",
+      "/src/features/databases/views/database-sub-items.ts",
     );
     const rows = [
       { id: "parent-a", pageId: "page-a", position: 0 },

@@ -50,7 +50,7 @@ const brandSvgFiles = new Set([
 ])
 const tokenDerivedColorFiles = new Set([
   "src/shared/lib/color-tokens.ts",
-  "src/features/editor/extensions/database/views/chart/database-chart-data.ts",
+  "src/features/databases/views/chart/database-chart-data.ts",
 ])
 
 export function register({ appPath, assert, test }) {

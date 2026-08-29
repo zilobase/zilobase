@@ -44,25 +44,27 @@ import {
   PageCommentThread,
 } from "@/features/comments/index"
 
-import { ImageSourcePicker } from "@/packages/editor/components/image-source-picker"
+import { ImageSourcePicker } from "@/shared/components/image-source-picker"
 
-import { DatabasePropertyDate } from "../../extensions/database/properties/database-property-date"
-import { DatabasePropertyButton } from "../../extensions/database/properties/database-property-button"
-import { DatabasePropertyFiles } from "../../extensions/database/properties/database-property-files"
-import { DatabasePropertyInput } from "../../extensions/database/properties/database-property-input"
-import { DatabaseRelationPropertyValue } from "../../extensions/database/properties/database-property-value"
-import { DatabasePropertySelect } from "../../extensions/database/properties/database-property-select"
-import { getDatabasePropertyType } from "../../extensions/database/core/database-property-types"
-import { defaultStatusOptions } from "../../extensions/database/core/database-property-types"
-import { formatDatabaseDateValue } from "../../extensions/database/properties/database-date-config"
-import { getPersonLimit } from "../../extensions/database/views/database-view-config"
+import { DatabasePropertyButton } from "../properties/database-property-button"
+import { DatabasePropertyDate } from "../properties/database-property-date"
+import { DatabasePropertyFiles } from "../properties/database-property-files"
+import { DatabasePropertyInput } from "../properties/database-property-input"
+import { DatabasePropertySelect } from "../properties/database-property-select"
+import { DatabaseRelationPropertyValue } from "../properties/database-property-value"
+import { formatDatabaseDateValue } from "../properties/database-date-config"
+import {
+  defaultStatusOptions,
+  getDatabasePropertyType,
+} from "../core/database-property-types"
+import { getPersonLimit } from "../views/database-view-config"
 import {
   type DatabasePropertyValue,
   parsePropertyValue,
   serializePropertyValue,
-} from "../../extensions/database/core/utils"
-import { CollaborationPresence } from "../../collaboration/presence"
-import type { CollaborationUser } from "../../collaboration/use-page-collaboration"
+} from "../core/utils"
+import { CollaborationPresence } from "@/shared/components/collaboration-presence"
+import type { CollaborationPresenceUser } from "@/shared/components/collaboration-presence"
 
 export type PageMetadataHandle = {
   focusTitleEnd: () => boolean
@@ -73,7 +75,7 @@ type PageMetadataProps = {
   compact?: boolean
   compactSpacing?: "default" | "comfortable"
   contentClassName?: string
-  collaborationUsers?: CollaborationUser[]
+  collaborationUsers?: CollaborationPresenceUser[]
   cover?: string
   databaseId?: string | null
   description?: string

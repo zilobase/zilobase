@@ -39,7 +39,7 @@ import {
   EmojiPickerFooter,
   EmojiPickerSearch,
 } from "@/shared/ui/emoji-picker"
-import { createDatabaseSetupBlockContent } from "@/packages/editor/extensions/database"
+import { createDatabaseSetupBlockContent } from "@/features/databases"
 import {
   ExcalidrawIcon,
   FigmaIcon,

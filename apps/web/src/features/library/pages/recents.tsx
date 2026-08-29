@@ -15,7 +15,21 @@ import { libraryViewLabels } from "@/features/sidebar";
 import { PageSidePaneLayout, usePageSidePane } from "@/features/pages/context/index";
 import { useOpenEmbeddedPage } from "@/features/pages/hooks/index";
 import { PageEditorPane } from "@/features/pages/pages/index";
-import { DatabaseMainPane } from "@/pages/database";
+import {
+  DatabasePageLink,
+  DatabaseTableView,
+  DatabaseViewProvider,
+  DatabaseViewSkeleton,
+  DatabaseViewToolbar,
+  getDatabaseViewModel,
+  getMergedDatabaseConfig,
+  getMergedNameColumnConfig,
+  getMergedPropertyConfig,
+  type DatabaseNameColumnConfig,
+  type DatabasePropertyConfig,
+  type DatabaseSortConfig,
+} from "@/features/databases";
+import { DatabaseMainPane } from "@/features/databases/pages/index";
 import { buildHomepageHierarchy } from "@/features/library/model/homepage-hierarchy";
 import { DEFAULT_MEETING_ITEM_ICON } from "@/features/pages/index";
 import {
@@ -24,20 +38,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { DatabaseTableView } from "@/packages/editor/extensions/database/views/table/database-table-view";
-import { DatabaseViewProvider } from "@/packages/editor/extensions/database/views/database-view-context";
-import { DatabaseViewToolbar } from "@/packages/editor/extensions/database/views/database-view-toolbar";
-import { DatabaseViewSkeleton } from "@/packages/editor/extensions/database/views/database-view-skeleton";
-import { DatabasePageLink } from "@/packages/editor/extensions/database/interactions/database-page-link";
-import { getDatabaseViewModel } from "@/packages/editor/extensions/database/views/database-view-model";
-import {
-  getMergedDatabaseConfig,
-  getMergedNameColumnConfig,
-  getMergedPropertyConfig,
-  type DatabaseNameColumnConfig,
-  type DatabasePropertyConfig,
-  type DatabaseSortConfig,
-} from "@/packages/editor/extensions/database/views/database-view-config";
 import {
   getDatabaseEmoji,
   useCreateDatabase,

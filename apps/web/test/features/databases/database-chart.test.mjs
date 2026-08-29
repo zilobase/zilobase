@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database charts use the semantic palette for defaults and variants", async () => {
     const { DEFAULT_CHART_COLOR, getColorVariant } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-data.ts",
+      "/src/features/databases/views/chart/database-chart-data.ts",
     );
 
     assert.equal(DEFAULT_CHART_COLOR, "var(--editor-blue)");
@@ -17,7 +17,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database chart config normalizes persisted settings", async () => {
     const { getDatabaseChartSettings } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-config.ts",
+      "/src/features/databases/views/chart/database-chart-config.ts",
     );
 
     assert.deepEqual(
@@ -49,7 +49,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database chart config preserves radial charts", async () => {
     const { getDatabaseChartSettings } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-config.ts",
+      "/src/features/databases/views/chart/database-chart-config.ts",
     );
 
     assert.equal(
@@ -60,7 +60,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database chart config preserves radar charts", async () => {
     const { getDatabaseChartSettings } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-config.ts",
+      "/src/features/databases/views/chart/database-chart-config.ts",
     );
 
     assert.equal(
@@ -71,7 +71,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database charts do not split a series by its own axis", async () => {
     const { shouldSplitDatabaseChartSeries } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-config.ts",
+      "/src/features/databases/views/chart/database-chart-config.ts",
     );
 
     assert.equal(
@@ -94,7 +94,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database chart config normalizes advanced chart controls", async () => {
     const { getDatabaseChartSettings } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-config.ts",
+      "/src/features/databases/views/chart/database-chart-config.ts",
     );
     const settings = getDatabaseChartSettings({
       chart: {
@@ -134,7 +134,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database chart sorting supports labels, values, and manual order", async () => {
     const { sortDatabaseChartData } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-data.ts",
+      "/src/features/databases/views/chart/database-chart-data.ts",
     );
     const data = [
       { color: "red", count: 2, name: "Beta" },
@@ -158,7 +158,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database chart data groups rows and sums numeric measures", async () => {
     const { createChartData } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-data.ts",
+      "/src/features/databases/views/chart/database-chart-data.ts",
     );
     const status = createProperty("status", "Status", "status", {
       options: [
@@ -197,7 +197,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database chart data omits empty and zero-valued groups", async () => {
     const { createChartData } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-data.ts",
+      "/src/features/databases/views/chart/database-chart-data.ts",
     );
     const status = createProperty("status", "Status", "status");
     const points = createProperty("points", "Points", "number");
@@ -231,7 +231,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database chart data creates stacked series from view grouping", async () => {
     const { createSplitChartData } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-data.ts",
+      "/src/features/databases/views/chart/database-chart-data.ts",
     );
     const quarter = createProperty("quarter", "Quarter", "select");
     const status = createProperty("status", "Status", "status", {
@@ -285,7 +285,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database chart automatic colors are stable without persisting view settings", async () => {
     const { createChartData, getAutomaticChartColor } = await loadModule(
-      "/src/features/editor/extensions/database/views/chart/database-chart-data.ts",
+      "/src/features/databases/views/chart/database-chart-data.ts",
     );
     const status = createProperty("status", "Status", "status", {
       options: [{ id: "backlog", name: "Backlog", color: "default" }],

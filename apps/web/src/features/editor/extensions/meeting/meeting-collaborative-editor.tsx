@@ -15,7 +15,7 @@ import {
   setMeetingTranscriptPreview,
   type MeetingTranscriptPreviewState,
 } from "@/packages/editor/extensions/meeting-transcript-preview"
-import type { OpenPageOptions } from "@/packages/editor/core/types"
+import type { OpenPageOptions } from "@/features/pages"
 
 export function MeetingCollaborativeEditor({
   document,

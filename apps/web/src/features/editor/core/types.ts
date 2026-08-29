@@ -10,6 +10,7 @@ import type { HocuspocusProvider } from "@hocuspocus/provider"
 import type { CollaborationUser } from "../collaboration/use-page-collaboration"
 import type { PageLayoutConfig } from "@zilobase/features/pages"
 import type { PageIconPosition } from "@zilobase/features/pages"
+import type { OpenPageOptions } from "@/features/pages"
 import type { PageCommentController } from "@/features/comments/index"
 import type * as Y from "yjs"
 
@@ -61,10 +62,6 @@ export type PageEditPreviewControls = {
   isActive: () => boolean
   show: (request: PageEditPreviewRequest) => boolean
   toolCallId: () => string | null
-}
-
-export type OpenPageOptions = {
-  databaseId?: string | null
 }
 
 export type PageLayoutPanelMode = "auto" | "overlay"
@@ -131,7 +128,7 @@ export type UseEditorExtensionsOptions = {
   collaborationField?: string
   createEditorDatabase: () => Promise<string | null>
   createEditorMeeting: () => Promise<string | null>
-  databaseEditorRuntime: import("@/packages/editor/extensions/database").DatabaseBlockEditorRuntime
+  databaseEditorRuntime: import("@/features/databases").DatabaseBlockEditorRuntime
   editable: boolean
   structuralEditingEnabled: boolean
   onCreatePage?: () => Promise<CreatedPage>

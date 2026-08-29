@@ -1,6 +1,6 @@
 import { createRoute } from "@tanstack/react-router";
 
-import DatabasePage from "@/pages/database";
+import { DatabasePage } from "@/features/databases/pages/index";
 import { MeetingPage } from "@/features/meetings/pages/index";
 import { Page } from "@/features/pages/pages/index";
 import {

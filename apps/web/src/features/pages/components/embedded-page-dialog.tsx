@@ -14,7 +14,7 @@ import {
 import { PageWorkspaceGate } from "@/features/workspaces"
 import { PagePaneHeader } from "./page-pane-header"
 import { useOptionalPageLayoutSidebar } from "../context/page-layout-sidebar"
-import type { OpenPageOptions } from "@/packages/editor/core/types"
+import type { OpenPageOptions } from "@/features/pages"
 
 export function EmbeddedPageDialog({
   onOpenPage,

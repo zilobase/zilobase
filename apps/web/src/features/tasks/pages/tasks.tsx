@@ -20,36 +20,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog"
-import { DatabaseViewProvider } from "@/packages/editor/extensions/database/views/database-view-context"
-import { DatabaseViewToolbar } from "@/packages/editor/extensions/database/views/database-view-toolbar"
-import { DatabaseViewSkeleton } from "@/packages/editor/extensions/database/views/database-view-skeleton"
-import { DatabaseListView } from "@/packages/editor/extensions/database/views/list/database-list-view"
 import {
   createSampleRowContent,
+  DatabaseListView,
   DatabaseSetupCard,
-  type DatabaseSetupSelection,
-} from "@/packages/editor/extensions/database/setup/database-setup-card"
-import { getDatabaseSetupTemplate } from "@/packages/editor/extensions/database/setup/database-setup-templates"
-import { getDatabaseViewModel } from "@/packages/editor/extensions/database/views/database-view-model"
-import {
+  DatabaseViewProvider,
+  DatabaseViewSkeleton,
+  DatabaseViewToolbar,
+  defaultStatusOptions,
   getDatabaseFilterOperatorsForType,
+  getDatabaseSetupTemplate,
+  getDatabaseViewModel,
   getMergedDatabaseConfig,
   getMergedNameColumnConfig,
   getMergedPropertyConfig,
   getValidDatabaseFilterOperator,
+  serializePropertyValue,
   type DatabaseConditionalColorConfig,
   type DatabaseFilterItemConfig,
-  type DatabasePropertyConfig,
-  type DatabaseSortConfig,
-  type DatabaseSubItemsSettings,
-} from "@/packages/editor/extensions/database/views/database-view-config"
-import type { DatabaseFilterUpdatePatch } from "@/packages/editor/extensions/database/views/database-filter-menu"
-import type { DatabaseSortUpdatePatch } from "@/packages/editor/extensions/database/views/database-sort-menu"
-import {
-  serializePropertyValue,
+  type DatabaseFilterUpdatePatch,
   type DatabasePropertyValue,
-} from "@/packages/editor/extensions/database/core/utils"
-import { defaultStatusOptions } from "@/packages/editor/extensions/database/core/database-property-types"
+  type DatabasePropertyConfig,
+  type DatabaseSetupSelection,
+  type DatabaseSortConfig,
+  type DatabaseSortUpdatePatch,
+  type DatabaseSubItemsSettings,
+} from "@/features/databases"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 import {
   databaseQueryOptions,

@@ -17,7 +17,7 @@ export function register({ readSource, assert, test }) {
     const navListSource = await readSource("/src/features/sidebar/components/sidebar-nav-list.tsx")
     const defaultIconsSource = await readSource("/src/features/pages/icons/item-icons.ts")
     const pageIconSource = await readSource("/src/features/pages/icons/page-icon.tsx")
-    const databasePageLinkSource = await readSource("/src/features/editor/extensions/database/interactions/database-page-link.tsx")
+    const databasePageLinkSource = await readSource("/src/features/databases/interactions/database-page-link.tsx")
     const appIconProviderSource = await readSource("/src/shared/components/app-icon-provider.tsx")
     const iconPickerSource = await readSource("/src/shared/ui/icon-emoji-picker.tsx")
 

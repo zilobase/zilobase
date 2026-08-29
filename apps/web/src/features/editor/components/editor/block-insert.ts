@@ -2,7 +2,7 @@ import type { Content } from "@tiptap/core"
 import type { Editor } from "@tiptap/react"
 
 import type { SlashCommandItem } from "@/packages/editor/extensions/slash-command"
-import { createDatabaseSetupBlockContent } from "@/packages/editor/extensions/database"
+import { createDatabaseSetupBlockContent } from "@/features/databases"
 
 import type { DragHandleTarget } from "./types"
 

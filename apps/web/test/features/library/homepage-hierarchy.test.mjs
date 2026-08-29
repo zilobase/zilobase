@@ -51,7 +51,7 @@ export function register({ readSource, assert, loadModule, test }) {
   test("synthetic homepage databases do not request realtime tickets", async () => {
     const [homepage, context] = await Promise.all([
       readSource("/src/features/library/pages/recents.tsx"),
-      readSource("/src/features/editor/extensions/database/views/database-view-context.tsx"),
+      readSource("/src/features/databases/views/database-view-context.tsx"),
     ])
 
     assert.match(homepage, /realtimeEnabled: false/)
@@ -60,8 +60,8 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("database realtime tickets use the host database id", async () => {
     const [context, controller] = await Promise.all([
-      readSource("/src/features/editor/extensions/database/views/database-view-context.tsx"),
-      readSource("/src/features/editor/extensions/database/views/use-database-view-controller.tsx"),
+      readSource("/src/features/databases/views/database-view-context.tsx"),
+      readSource("/src/features/databases/views/use-database-view-controller.tsx"),
     ])
 
     assert.match(

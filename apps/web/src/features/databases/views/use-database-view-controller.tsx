@@ -46,11 +46,20 @@ import type {
   DatabaseSourceViewSelection,
   DatabaseViewContextValue,
 } from "./database-view-context"
-import { getDatabaseViewCommands } from "./database-view-commands"
-import { getDatabaseViewModel } from "./database-view-model"
+import { getDatabaseViewCommands } from "../commands/database-view-commands"
+import { getDatabaseViewModel } from "../model/database-view-model"
+import {
+  readLatestViewConfig,
+  writeLatestViewConfig,
+} from "../model/view-config-cache"
+import {
+  getDatabaseDataSourceSummaries,
+  getDatabaseViewTabs,
+  resolveRequestedDatabaseViewId,
+  shouldUseDatabaseSetupMode,
+} from "../model/database-controller-state"
 import {
   getDatabaseSetupDismissed,
-  getDatabaseViewIcon,
   getMergedDatabaseConfig,
 } from "./database-view-config"
 import {
@@ -139,59 +148,27 @@ export function useDatabaseViewController({
   const [dataSourceSetupOpen, setDataSourceSetupOpen] = useState(false)
   const latestViewConfigRef = useRef(new Map<string, unknown>())
   const isControlledActiveView = Boolean(onActiveViewIdChange)
-  const dataSources = useMemo(() => {
-    return (payload?.dataSources ?? []).map((source) => ({
-      config: source.config,
-      hiddenViewCount: 0,
-      id: source.id,
-      name: source.name || "Untitled data source",
-      parentDatabaseId: source.parentDatabaseId,
-      position: source.position,
-      viewCount:
-        payload?.views.filter((view) => view.dataSourceId === source.id).length ??
-        0,
-    }))
-  }, [payload?.dataSources, payload?.views])
-  const baseViewTabs = useMemo(
-    () =>
-      (payload?.views ?? []).map((view) => ({
-        icon: getDatabaseViewIcon(view.config),
-        id: view.id,
-        name: view.name,
-        dataSourceId: view.dataSourceId,
-        dataSourceName: payload?.dataSources.find(
-          (source) => source.id === view.dataSourceId,
-        )?.name,
-        sourceParentDatabaseId: payload?.dataSources.find(
-          (source) => source.id === view.dataSourceId,
-        )?.parentDatabaseId,
-        type: view.type,
-      })),
-    [payload?.dataSources, payload?.views],
+  const dataSources = useMemo(
+    () => getDatabaseDataSourceSummaries(payload),
+    [payload],
   )
-  const requestedViewId =
-    requestedActiveViewId &&
-    baseViewTabs.some((view) => view.id === requestedActiveViewId)
-      ? requestedActiveViewId
-      : null
+  const baseViewTabs = useMemo(() => getDatabaseViewTabs(payload), [payload])
+  const requestedViewId = resolveRequestedDatabaseViewId({
+    requestedViewId: requestedActiveViewId,
+    viewTabs: baseViewTabs,
+  })
   const resolvedActiveViewId = isControlledActiveView
     ? (requestedViewId ?? baseViewTabs[0]?.id ?? null)
     : activeViewId
   const setupDismissed = getDatabaseSetupDismissed(
     payload?.activeDataSource?.config,
   )
-  const hasDatabaseSetupContent = Boolean(
-    payload &&
-    (payload.properties.length > 0 ||
-      (payload.rowCount ?? payload.rows.length) > 0 ||
-      payload.dataSources.length > 1),
-  )
-  const effectiveSetupMode = Boolean(
-    editable &&
-    payload &&
-    !setupDismissed &&
-    (setupMode || !hasDatabaseSetupContent),
-  )
+  const effectiveSetupMode = shouldUseDatabaseSetupMode({
+    editable,
+    payload,
+    setupDismissed,
+    setupMode,
+  })
   const {
     data: selectedSourcePayload,
     fetchNextPage: fetchNextSourcePage,
@@ -395,26 +372,25 @@ export function useDatabaseViewController({
       databaseViewId: string,
       fallbackConfig: unknown,
     ) => {
-      const configKey = `${nextDatabaseId}:${databaseViewId}`
-
-      if (latestViewConfigRef.current.has(configKey)) {
-        return latestViewConfigRef.current.get(configKey)
-      }
-
-      return (
-        activePayload?.views.find((view) => view.id === databaseViewId)
-          ?.config ?? fallbackConfig
-      )
+      return readLatestViewConfig({
+        cache: latestViewConfigRef.current,
+        databaseId: nextDatabaseId,
+        databaseViewId,
+        fallbackConfig,
+        views: activePayload?.views,
+      })
     },
     [activePayload?.views],
   )
 
   const setLatestViewConfig = useCallback(
     (nextDatabaseId: string, databaseViewId: string, config: unknown) => {
-      latestViewConfigRef.current.set(
-        `${nextDatabaseId}:${databaseViewId}`,
+      writeLatestViewConfig({
+        cache: latestViewConfigRef.current,
         config,
-      )
+        databaseId: nextDatabaseId,
+        databaseViewId,
+      })
     },
     [],
   )

@@ -32,16 +32,16 @@ import {
 } from "@zilobase/features/databases"
 import { EmbeddedPageDialog } from "@/features/pages/components/index"
 import { useOpenEmbeddedPage } from "@/features/pages/hooks/index"
-import { PageMetadata as PageMetadataView } from "@/packages/editor/components/editor/page-metadata"
-import { DatabaseView } from "@/packages/editor/extensions/database"
+import { PageMetadata as PageMetadataView } from "../components/page-metadata"
+import { DatabaseView } from "../views/database-view"
 import { toast } from "sonner"
 import {
   PublicPaneTopbar,
   PublicPageBreadcrumb,
   PageEditorPane,
 } from "@/features/pages/pages/index"
-import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
-import type { OpenPageOptions } from "@/packages/editor/core/types"
+import { useDatabaseViewNavigation } from "../hooks/use-database-view-navigation"
+import type { OpenPageOptions } from "@/features/pages"
 import { useTitleDraft } from "@/features/pages/hooks/index"
 import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
 

@@ -6,33 +6,23 @@ import type {
   DatabaseProperty,
   DatabaseRow,
   DatabaseView,
-  useAddDatabaseProperty,
-  useAddDatabaseRow,
-  useAddDatabaseView,
-  useUpdateDataSource,
-  useUpdateDatabaseProperty,
-  useUpdateDatabasePropertyValue,
-  useUpdateDatabaseView,
 } from "@zilobase/features/databases";
-import type { useUpdatePage } from "@zilobase/features/pages";
 
 import { defaultStatusOption } from "../core/database-property-types";
 import {
-  canUpdateKanbanGroupProperty,
   getKanbanGroupPropertyId,
   type DatabasePropertyListItem,
-} from "./kanban/database-kanban-config";
+} from "../views/kanban/database-kanban-config";
 import {
   ganttMoveToDateValue,
   getTimelineDateProperty,
-} from "./timeline/database-timeline-config";
+} from "../views/timeline/database-timeline-config";
 import {
   getDefaultDatabasePropertyConfig,
   isSelectLikePropertyType,
 } from "../core/database-property-types";
 import {
   serializePropertyValue,
-  toStringArray,
   type DatabasePropertyValue,
 } from "../core/utils";
 import {
@@ -58,52 +48,37 @@ import {
   type DatabaseNameColumnConfig,
   type DatabaseSortConfig,
   type DatabaseSubItemsSettings,
-} from "./database-view-config";
-import type { DatabaseFilterUpdatePatch } from "./database-filter-menu";
+} from "../views/database-view-config";
+import type { DatabaseFilterUpdatePatch } from "../views/database-filter-menu";
 import { getRelationLimitTrimUpdates } from "../properties/database-relation-sync";
 import {
   defaultDatabaseChartSettings,
   getDatabaseChartSettings,
   type DatabaseChartSettings,
-} from "./chart/database-chart-config";
+} from "../views/chart/database-chart-config";
 import {
   getDatabaseFormHeaderSettings,
   type DatabaseFormHeaderSettings,
-} from "./form/database-form-header-config";
+} from "../views/form/database-form-header-config";
 import {
   getDatabaseFormQuestionSettingsById,
   type DatabaseFormQuestionSettingsPatch,
-} from "./form/database-form-question-config";
+} from "../views/form/database-form-question-config";
 import {
   getDatabaseFormShareSettings,
   type DatabaseFormShareSettings,
-} from "./form/database-form-share-config";
+} from "../views/form/database-form-share-config";
 
-type DatabaseMutations = {
-  addDatabaseView: ReturnType<typeof useAddDatabaseView>;
-  addProperty: ReturnType<typeof useAddDatabaseProperty>;
-  addRow: ReturnType<typeof useAddDatabaseRow>;
-  updateDatabase: ReturnType<typeof useUpdateDataSource>;
-  updateDatabaseView: ReturnType<typeof useUpdateDatabaseView>;
-  updatePage: ReturnType<typeof useUpdatePage>;
-  updateProperty: ReturnType<typeof useUpdateDatabaseProperty>;
-  updateValue: ReturnType<typeof useUpdateDatabasePropertyValue>;
-};
-
-type NewRowPropertyValue = {
-  propertyId: string;
-  value: unknown;
-};
-
-type NewRowSetup = {
-  parentRelation?: {
-    parentPropertyId: string;
-    parentRow: DatabaseRow;
-    subItemPropertyId: string;
-  };
-  propertyValues: NewRowPropertyValue[];
-  title: string;
-};
+import {
+  findAddedDatabaseRow,
+  getDraggedRowGroupSetup,
+  getNewRowGroupSetup,
+  getTimelineGroupPropertyId,
+} from "./database-row-plans";
+import {
+  createAddDatabaseRowMutation,
+  type DatabaseMutations,
+} from "./database-mutation-adapters";
 
 export type DatabaseViewCommands = ReturnType<typeof getDatabaseViewCommands>;
 
@@ -181,74 +156,14 @@ export function getDatabaseViewCommands({
     timelineDateProperty,
   });
 
-  const addRowWithValues = ({
-    parentRelation,
-    propertyValues,
-    title,
-  }: NewRowSetup) => {
-    if (!editable || !databaseId || addRow.isPending) {
-      return;
-    }
-
-    const existingItemIds = new Set(items.map((row) => row.id));
-    const uniquePropertyValues = new Map(
-      propertyValues.map((propertyValue) => [
-        propertyValue.propertyId,
-        propertyValue,
-      ]),
-    );
-
-    addRow.mutate(
-      {
-        databaseId,
-        ...(uniquePropertyValues.size > 0
-          ? { optimisticValues: [...uniquePropertyValues.values()] }
-          : {}),
-        title,
-      },
-      {
-        onSuccess: (nextPayload) => {
-          const addedItem = findAddedDatabaseRow(
-            nextPayload.rows,
-            existingItemIds,
-          );
-          if (!addedItem) {
-            return;
-          }
-
-          for (const propertyValue of uniquePropertyValues.values()) {
-            updateValue.mutate({
-              databaseId,
-              propertyId: propertyValue.propertyId,
-              rowId: addedItem.id,
-              value: propertyValue.value,
-            });
-          }
-
-          if (parentRelation) {
-            const currentValue = payload?.values.find(
-              (value) =>
-                value.pageId === parentRelation.parentRow.pageId &&
-                value.propertyId === parentRelation.subItemPropertyId,
-            )?.value;
-            const nextSubItemPageIds = [
-              ...new Set([
-                ...toStringArray(currentValue as DatabasePropertyValue),
-                addedItem.pageId,
-              ]),
-            ];
-
-            updateValue.mutate({
-              databaseId,
-              propertyId: parentRelation.subItemPropertyId,
-              rowId: parentRelation.parentRow.id,
-              value: nextSubItemPageIds,
-            });
-          }
-        },
-      },
-    );
-  };
+  const addRowWithValues = createAddDatabaseRowMutation({
+    addRow,
+    databaseId,
+    editable,
+    items,
+    payload,
+    updateValue,
+  });
 
   const saveDatabaseSorts = (nextSorts: DatabaseSortConfig[]) => {
     if (!databaseId || !activeView?.id) {
@@ -1371,85 +1286,6 @@ export function getDatabaseViewCommands({
       );
     },
   };
-}
-
-function getNewRowGroupSetup(
-  groupValue?: string | null,
-  groupProperty?: DatabasePropertyListItem | null,
-): NewRowSetup {
-  if (!groupValue || !groupProperty) {
-    return { propertyValues: [], title: "Untitled" };
-  }
-
-  if (groupProperty.id === "name") {
-    return { propertyValues: [], title: groupValue };
-  }
-
-  if (!canUpdateKanbanGroupProperty(groupProperty)) {
-    return { propertyValues: [], title: "Untitled" };
-  }
-
-  return {
-    propertyValues: [
-      {
-        propertyId: groupProperty.property.id,
-        value: serializePropertyValue(groupProperty.property.type, groupValue),
-      },
-    ],
-    title: "Untitled",
-  };
-}
-
-function getDraggedRowGroupSetup(
-  groupValue?: string,
-  groupProperty?: DatabasePropertyListItem | null,
-): NewRowSetup & { pageTitle?: string } {
-  if (groupValue === undefined || !groupProperty) {
-    return { propertyValues: [], title: "Untitled" };
-  }
-
-  if (groupProperty.id === "name") {
-    return {
-      pageTitle: groupValue,
-      propertyValues: [],
-      title: groupValue,
-    };
-  }
-
-  if (!canUpdateKanbanGroupProperty(groupProperty)) {
-    return { propertyValues: [], title: "Untitled" };
-  }
-
-  return {
-    propertyValues: [
-      {
-        propertyId: groupProperty.property.id,
-        value: serializePropertyValue(groupProperty.property.type, groupValue),
-      },
-    ],
-    title: "Untitled",
-  };
-}
-
-function findAddedDatabaseRow(
-  rows: DatabaseRow[],
-  existingRowIds: Set<string>,
-) {
-  return rows.find((row) => !existingRowIds.has(row.id)) ?? rows.at(-1);
-}
-
-function getTimelineGroupPropertyId(currentProperties: DatabaseProperty[]) {
-  const groupProperty =
-    currentProperties.find((property) => property.property.type === "status") ??
-    currentProperties.find(
-      (property) =>
-        property.property.type !== "status" &&
-        isSelectLikePropertyType(property.property.type),
-    ) ??
-    currentProperties[0] ??
-    null;
-
-  return groupProperty?.property.id;
 }
 
 function getDatabaseViewCommandsContext({

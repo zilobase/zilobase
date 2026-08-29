@@ -72,7 +72,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 import { useOpenEmbeddedPage } from "@/features/pages/hooks/index"
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
 import { cn } from "@/shared/lib/utils"
-import type { OpenPageOptions } from "@/packages/editor/core/types"
+import type { OpenPageOptions } from "@/features/pages"
 import { MeetingCollaborativeEditor } from "./meeting-collaborative-editor"
 import {
   combineMeetingTranscriptDrafts,

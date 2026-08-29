@@ -31,7 +31,7 @@ import { ColumnsExtension } from "@/packages/editor/extensions/columns"
 import {
   DatabaseBlock,
   type DatabaseBlockEditorRuntime,
-} from "@/packages/editor/extensions/database"
+} from "@/features/databases"
 import { EmbedBlock } from "@/packages/editor/extensions/embed-block"
 import { EmojiExtension } from "@/packages/editor/extensions/emoji"
 import { FileBlock } from "@/packages/editor/extensions/file-block"
@@ -48,7 +48,7 @@ import { ShadcnTaskItem } from "@/packages/editor/extensions/shadcn-task-item"
 import { SelectionAiPreview } from "@/packages/editor/extensions/selection-ai-preview"
 import { SlashCommand } from "@/packages/editor/extensions/slash-command"
 import { VideoBlock } from "@/packages/editor/extensions/video-block"
-import type { OpenPageOptions } from "../core/types"
+import type { OpenPageOptions } from "@/features/pages"
 import {
   OfflineStructureGuard,
   shouldEnableOfflineStructureGuard,

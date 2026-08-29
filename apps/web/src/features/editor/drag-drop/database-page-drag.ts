@@ -9,7 +9,7 @@ import {
 import {
   getDatabasePageDragPayload as getNativeDatabasePageDragPayload,
   hasDatabasePageDragPayload,
-} from "@/packages/editor/extensions/database/interactions/database-page-drop";
+} from "@/features/databases";
 import {
   getDatabasePageDropPosition,
   getDropDatabaseElement,

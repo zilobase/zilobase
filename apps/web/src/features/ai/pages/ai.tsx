@@ -4,7 +4,7 @@ import { PageWorkspaceGate } from "@/features/workspaces";
 import { PageSidePaneLayout, usePageSidePane } from "@/features/pages/context/index";
 import { useAiChatThreadState } from "../conversation/use-ai-chat-thread-state";
 import { useOpenEmbeddedPage } from "@/features/pages/hooks/index";
-import { DatabaseMainPane } from "@/pages/database";
+import { DatabaseMainPane } from "@/features/databases/pages/index";
 import { PageEditorPane } from "@/features/pages/pages/index";
 
 const Chatbot = lazy(() => import("../components/elements/chatbot"));

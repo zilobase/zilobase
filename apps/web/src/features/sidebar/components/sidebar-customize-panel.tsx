@@ -43,7 +43,7 @@ import * as React from "react"
 import { toast } from "sonner"
 
 import { SidebarLayoutTabs } from "./sidebar-layout-tabs"
-import { DatabaseViewIcon } from "@/components/database-view-icon"
+import { DatabaseViewIcon } from "@/features/databases"
 import { libraryViewIcons, SidebarShortcutIcon, SidebarTabIcon } from "./sidebar-layout-icons"
 import {
   getSectionLabel,

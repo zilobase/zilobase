@@ -1,6 +1,6 @@
 export function register({ assert, loadModule, test }) {
   test("drag payload helpers support DOMStringList-like transfer types", async () => {
-    const { hasDragType } = await loadModule("/src/features/editor/drag-drop/drag-drop.ts")
+    const { hasDragType } = await loadModule("/src/shared/lib/drag-drop.ts")
     const types = {
       0: "text/plain",
       1: "application/x-zilobase-test",
@@ -17,7 +17,7 @@ export function register({ assert, loadModule, test }) {
 
   test("drag payload helpers round trip validated JSON", async () => {
     const { readDragPayload, writeDragPayload } = await loadModule(
-      "/src/features/editor/drag-drop/drag-drop.ts",
+      "/src/shared/lib/drag-drop.ts",
     )
     const values = new Map()
     const transfer = {
@@ -43,7 +43,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("drag payload helpers use fallback only when transfer data is absent", async () => {
-    const { readDragPayload } = await loadModule("/src/features/editor/drag-drop/drag-drop.ts")
+    const { readDragPayload } = await loadModule("/src/shared/lib/drag-drop.ts")
     const fallback = { id: "active-row" }
     const isPayload = (value) =>
       typeof value === "object" &&

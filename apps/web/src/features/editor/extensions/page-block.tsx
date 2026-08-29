@@ -30,7 +30,7 @@ import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens";
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
 import {
   setDatabasePageDragPayload,
-} from "@/packages/editor/extensions/database/interactions/database-page-drop";
+} from "@/features/databases";
 
 export type CreatedPage = {
   id: string;

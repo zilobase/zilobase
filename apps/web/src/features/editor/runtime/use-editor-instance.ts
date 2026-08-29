@@ -15,7 +15,7 @@ import {
 } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { toast } from "sonner";
-import type { DatabaseBlockEditorRuntime } from "@/packages/editor/extensions/database";
+import type { DatabaseBlockEditorRuntime } from "@/features/databases";
 import {
   createEditorDragDrop,
   registerBlockDragSource,
@@ -33,7 +33,8 @@ import {
   normalizePastedEditorHTML,
 } from "../paste/paste";
 import { updateExtensionOptions } from "./update-extension-options";
-import type { BlockDropLine, OpenPageOptions, PasteChoiceState } from "../core/types";
+import type { BlockDropLine, PasteChoiceState } from "../core/types";
+import type { OpenPageOptions } from "@/features/pages";
 import { useLatestRef } from "./use-latest-ref";
 import {
   closeEditorHistory,

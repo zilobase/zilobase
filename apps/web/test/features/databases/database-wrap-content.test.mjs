@@ -4,7 +4,7 @@ export function register({ assert, loadModule, test }) {
       getNameColumnWrapContent,
       getPropertyWrapContent,
     } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-view-config.ts"
+      "/src/features/databases/views/database-view-config.ts"
     )
 
     assert.equal(getPropertyWrapContent(undefined), false)
@@ -22,7 +22,7 @@ export function register({ assert, loadModule, test }) {
       getMergedNameColumnConfig,
       getMergedPropertyConfig,
     } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-view-config.ts"
+      "/src/features/databases/views/database-view-config.ts"
     )
 
     assert.deepEqual(

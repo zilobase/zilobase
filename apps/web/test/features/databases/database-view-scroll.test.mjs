@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database view switching ignores horizontal-only scroll containers", async () => {
     const { isVerticalScrollContainer } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-view-scroll.ts",
+      "/src/features/databases/views/database-view-scroll.ts",
     )
 
     assert.equal(
@@ -20,7 +20,7 @@ export function register({ assert, loadModule, test }) {
       isVerticalScrollContainer,
       restoreDatabaseViewScroll,
     } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-view-scroll.ts",
+      "/src/features/databases/views/database-view-scroll.ts",
     )
 
     assert.equal(
@@ -75,7 +75,7 @@ export function register({ assert, loadModule, test }) {
 
   test("table rows stay mounted until page virtualization is ready", async () => {
     const { shouldRenderVirtualizedDatabaseRows } = await loadModule(
-      "/src/features/editor/extensions/database/views/database-view-scroll.ts",
+      "/src/features/databases/views/database-view-scroll.ts",
     )
 
     assert.equal(

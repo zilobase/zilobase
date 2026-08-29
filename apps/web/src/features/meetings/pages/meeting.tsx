@@ -8,7 +8,7 @@ import {
 } from "@/features/pages/context/index"
 import { useOpenEmbeddedPage } from "@/features/pages/hooks/index"
 import { useTitleDraft } from "@/features/pages/hooks/index"
-import { PageMetadata as PageMetadataHeader } from "@/packages/editor/components/editor/page-metadata"
+import { PageMetadata as PageMetadataHeader } from "@/features/databases"
 import { MeetingView } from "@/packages/editor/extensions/meeting"
 import { PageEditorPane } from "@/features/pages/pages/index"
 import { useMeeting, useUpdateMeeting } from "@zilobase/features/meetings"
@@ -27,7 +27,7 @@ import {
 import { useUserSettings } from "@zilobase/features/user-settings"
 import { useSession } from "@zilobase/features/auth"
 import { LoaderCircle } from "@/shared/components/icons"
-import type { OpenPageOptions } from "@/packages/editor/core/types"
+import type { OpenPageOptions } from "@/features/pages"
 
 export default function MeetingPage() {
   const { meetingId } = useParams({ from: "/m/$meetingId" })

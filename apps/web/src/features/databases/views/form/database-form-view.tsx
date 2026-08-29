@@ -15,7 +15,7 @@ import {
 } from "@/shared/components/icons"
 import { useState, type ReactNode } from "react"
 
-import { PageMetadata } from "@/packages/editor/components/editor/page-metadata"
+import { PageMetadata } from "../../components/page-metadata"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
 import {
