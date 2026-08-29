@@ -1,0 +1,11 @@
+export function register({ readSource, assert, test }) {
+  test("selection toolbar follows the editor while its pane settles", async () => {
+    const source = await readSource("/src/editor/components/editor/selection-bubble-menu.tsx")
+
+    assert.match(source, /editor\.on\("selectionUpdate", updatePosition\)/)
+    assert.match(source, /new ResizeObserver\(updatePosition\)/)
+    assert.match(source, /resizeObserver\.observe\(layoutElement\)/)
+    assert.match(source, /resizeObserver\.disconnect\(\)/)
+    assert.match(source, /editor\.off\("selectionUpdate", updatePosition\)/)
+  })
+}

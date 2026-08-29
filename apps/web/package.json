@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "test": "node test/run-tests.mjs",
+    "test": "node test/support/run-tests.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

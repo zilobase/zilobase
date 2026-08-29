@@ -5,7 +5,7 @@
     "src/index.{js,jsx,mjs}",
     "src/main.{js,jsx,mjs}",
     // The web test runner discovers these modules with fs.readdir().
-    "apps/web/test/*.test.mjs",
+    "apps/web/test/**/*.test.mjs",
     // Runtime and developer entry points invoked outside package scripts.
     "scripts/desktop/run-signed-macos-debug.mjs",
     "scripts/selfhost/test.mjs"
