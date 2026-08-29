@@ -13,8 +13,8 @@ import {
 import { Input } from "@/shared/ui/input";
 
 import { getApiErrorMessage } from "@/lib/api";
-import { PageIcon } from "@/lib/page-icon";
-import { buildPagePath } from "@/lib/page-path";
+import { PageIcon } from "@/features/pages/index";
+import { buildPagePath } from "@/features/pages/index";
 import { useZilobaseFeatures } from "@zilobase/features";
 import {
   useCreatePage,

@@ -5,9 +5,9 @@ import {
   MessageSquarePlusIcon,
 } from "@/shared/components/icons"
 
-import type { PageCommentController } from "@/comments/yjs-comments"
-import { usePageEditorComments } from "@/components/page-editor-comments"
-import { PageCommentThread } from "@/components/page-comments"
+import type { PageCommentController } from "@/features/comments/index"
+import { usePageEditorComments } from "@/features/comments/index"
+import { PageCommentThread } from "@/features/comments/index"
 import { Button } from "@/shared/ui/button"
 import {
   Popover,
@@ -16,7 +16,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/shared/ui/popover"
-import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry"
+import { usePageCommentsSnapshot } from "@/features/comments/index"
 import { getCommentIdsInRange } from "@zilobase/tiptap-comment-extension"
 
 import type { DragHandleTarget } from "./types"

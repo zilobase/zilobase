@@ -11,7 +11,7 @@ import {
   type PageMetadata,
 } from "@zilobase/features/pages"
 
-import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
 import {
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,

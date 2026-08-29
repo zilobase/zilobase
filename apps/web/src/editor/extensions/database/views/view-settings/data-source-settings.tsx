@@ -23,8 +23,8 @@ import {
 import { Input } from "@/shared/ui/input";
 import { useDatabase } from "@zilobase/features/databases";
 import { usePageNavigation, type PageDatabase } from "@zilobase/features/pages";
-import { DEFAULT_DATABASE_ITEM_ICON } from "@/lib/item-icons";
-import { getDatabaseIconNode, PageIconDisplay } from "@/lib/page-icon";
+import { DEFAULT_DATABASE_ITEM_ICON } from "@/features/pages/index";
+import { getDatabaseIconNode, PageIconDisplay } from "@/features/pages/index";
 
 import { getDatabasePropertyType } from "../../core/database-property-types";
 import { hasDatabasePropertyEditSettings } from "../../properties/property-settings";

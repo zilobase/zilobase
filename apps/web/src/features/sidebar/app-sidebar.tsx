@@ -51,7 +51,7 @@ import {
 } from "@/shared/ui/sidebar"
 import { WorkspaceSwitcher } from "./workspace-switcher"
 import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
-import { clearPromotedFullPagePath, usePromotedFullPagePath } from "@/contexts/page-side-pane"
+import { clearPromotedFullPagePath, usePromotedFullPagePath } from "@/features/pages/context/index"
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state"
 import { buildDesktopDeepLink } from "@/features/desktop/deep-links/index"
 import {
@@ -59,8 +59,8 @@ import {
   getSelectedDesktopServer,
   type DesktopServer,
 } from "@/features/desktop/server/index"
-import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/lib/item-icons"
-import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon"
+import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "@/features/pages/index"
+import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/features/pages/index"
 import { useSession } from "@zilobase/features/auth"
 import {
   useAddDatabaseRow,

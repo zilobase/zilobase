@@ -20,7 +20,7 @@ import {
 } from "@/shared/components/icons"
 
 import type { LibraryView, SidebarShortcut, SidebarTabIconId } from "@zilobase/features/user-settings"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { PageIconDisplay } from "@/features/pages/index"
 
 export const libraryViewIcons = {
   favourites: StarIcon,

@@ -91,7 +91,7 @@ import {
 } from "@/shared/ui/popover"
 import { Switch } from "@/shared/ui/switch"
 import { cn } from "@/shared/lib/utils"
-import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/lib/page-icon"
+import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/features/pages/index"
 import { useAppSearchResults, type AppSearchResult } from "@zilobase/features/search"
 import type { Page, PageDatabase, PageDatabaseView } from "@zilobase/features/pages"
 import {

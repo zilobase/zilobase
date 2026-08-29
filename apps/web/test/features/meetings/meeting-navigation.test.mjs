@@ -17,7 +17,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("meeting block lookup matches the exact rendered meeting", async () => {
     const { findMeetingBlock, scrollToMeetingBlock } = await loadModule(
-      "/src/lib/meeting-navigation.ts",
+      "/src/features/meetings/model/meeting-navigation.ts",
     )
     const first = { dataset: { meetingId: "meeting-1" } }
     const calls = []
@@ -43,7 +43,7 @@ export function register({ readSource, assert, loadModule, test }) {
     ] = await Promise.all([
         readSource("/src/features/sidebar/components/nav-meetings.tsx"),
         readSource("/src/features/sidebar/components/sidebar-nav-list.tsx"),
-        readSource("/src/pages/meeting.tsx"),
+        readSource("/src/features/meetings/pages/meeting.tsx"),
         readSource("/src/editor/extensions/meeting/meeting-view.tsx"),
         readSource("/src/app/routing/route-groups/content-routes.tsx"),
       ])

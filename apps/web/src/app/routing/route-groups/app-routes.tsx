@@ -1,9 +1,9 @@
 import { createRoute } from "@tanstack/react-router";
 
 import AiPage from "@/pages/ai";
-import CanvasPage from "@/pages/canvas";
-import RecentsPage from "@/pages/recents";
-import TasksPage from "@/pages/tasks";
+import { CanvasPage } from "@/features/canvas/index";
+import { RecentsPage } from "@/features/library/index";
+import { TasksPage } from "@/features/tasks/index";
 import { appRoute } from "../route-roots";
 import { validateAiSearch, validateLibrarySearch } from "../search-validators";
 

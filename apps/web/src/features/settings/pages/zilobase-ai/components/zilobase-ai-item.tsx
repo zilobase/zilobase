@@ -16,7 +16,7 @@ import {
 import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
 import { getApiErrorMessage } from "@/lib/api"
-import { PageIcon } from "@/lib/page-icon"
+import { PageIcon } from "@/features/pages/index"
 import { useZilobaseFeatures } from "@zilobase/features"
 import {
   useUpdatePage,

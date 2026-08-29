@@ -3,7 +3,7 @@ const sidebarConfigPath = "/packages/features/src/user-settings/sidebar-config.t
 
 export function register({ readSource, assert, loadModule, test }) {
   test("Library Teamspaces uses a dedicated teamspace directory", async () => {
-    const source = await readSource("/src/pages/recents.tsx")
+    const source = await readSource("/src/features/library/pages/recents.tsx")
     assert.match(source, /activeViewId === "teamspaces"[\s\S]*<TeamspacesLibraryTable[\s\S]*rows=\{rows\}[\s\S]*teamspaces=\{teamspaces\}/)
     assert.match(source, /Name[\s\S]*Description[\s\S]*Type[\s\S]*Access[\s\S]*Members/)
     assert.match(source, /<Plus \/> New teamspace/)
@@ -18,7 +18,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("Library keeps a full-page Library heading across tabs", async () => {
-    const source = await readSource("/src/pages/recents.tsx")
+    const source = await readSource("/src/features/library/pages/recents.tsx")
     assert.match(source, /mode === "trash" \? "Trash" : "Library"/)
     assert.match(source, /<h1 className="min-h-10 py-0 text-4xl font-semibold/)
     assert.match(source, /showTitle: false/)
@@ -41,7 +41,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("Library lists meetings and its sidebar shortcut opens that tab", async () => {
-    const librarySource = await readSource("/src/pages/recents.tsx")
+    const librarySource = await readSource("/src/features/library/pages/recents.tsx")
     const sidebarSource = await readSource(
       "/src/features/sidebar/components/sidebar-shortcut-list.tsx",
     )

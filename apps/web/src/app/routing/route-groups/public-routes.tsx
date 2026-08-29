@@ -2,7 +2,7 @@ import { createRoute, redirect } from "@tanstack/react-router";
 import { isDesktopApp } from "@/features/desktop/index";
 
 import { AcceptWorkspaceInvitationPage } from "@/features/workspaces";
-import { AcceptPageInvitationPage } from "@/features/pages";
+import { AcceptPageInvitationPage } from "@/features/pages/invitations/index";
 import { ConnectPage } from "@/features/desktop/pages/index";
 import {
   getAuthReturnPath,

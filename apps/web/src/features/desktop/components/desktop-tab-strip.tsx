@@ -30,7 +30,7 @@ import {
   XIcon,
 } from "@/shared/components/icons"
 
-import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
 import { cn } from "@/shared/lib/utils"
 import { isOpenInNewTabShortcut } from "@/shared/shortcuts"
 import type { DesktopTab } from "@/app/state/app-store"

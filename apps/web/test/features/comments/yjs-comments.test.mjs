@@ -6,7 +6,7 @@ export function register({ assert, loadModule, test }) {
       createPageCommentController,
       encodeCommentState,
     } = await loadModule(
-      "/src/comments/yjs-comments.ts",
+      "/src/features/comments/model/yjs-comments.ts",
     )
     const firstDocument = createCommentDocument()
     const secondDocument = createCommentDocument()
@@ -42,7 +42,7 @@ export function register({ assert, loadModule, test }) {
 
   test("Yjs comment reactions aggregate and readonly controllers reject writes", async () => {
     const { createCommentDocument, createPageCommentController } = await loadModule(
-      "/src/comments/yjs-comments.ts",
+      "/src/features/comments/model/yjs-comments.ts",
     )
     const document = createCommentDocument()
     const writable = createPageCommentController({
@@ -73,7 +73,7 @@ export function register({ assert, loadModule, test }) {
 
   test("deleting a thread's first comment deletes the entire thread", async () => {
     const { createCommentDocument, createPageCommentController } = await loadModule(
-      "/src/comments/yjs-comments.ts",
+      "/src/features/comments/model/yjs-comments.ts",
     )
     const controller = createPageCommentController({
       canEdit: true,
@@ -101,7 +101,7 @@ export function register({ assert, loadModule, test }) {
     const { Schema } = await import("@tiptap/pm/model")
     const { EditorState } = await import("@tiptap/pm/state")
     const { createCommentDocument, createPageCommentController } = await loadModule(
-      "/src/comments/yjs-comments.ts",
+      "/src/features/comments/model/yjs-comments.ts",
     )
     const schema = new Schema({
       nodes: {

@@ -17,7 +17,7 @@ export function register({ readSource, assert, loadModule, test }) {
       readSource("/src/features/pages/invitations/accept-page-invitation.tsx"),
       readSource("/src/features/sidebar/components/nav-actions.tsx"),
       readSource("/src/features/teamspaces/pages/team.tsx"),
-      readSource("/src/pages/page.tsx"),
+      readSource("/src/features/pages/pages/page.tsx"),
     ]);
 
     assert.match(acceptance, /useAcceptPageGuestInvitation/);

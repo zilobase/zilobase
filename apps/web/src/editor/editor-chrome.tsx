@@ -1,6 +1,6 @@
 import type { Editor as TiptapEditor } from "@tiptap/react"
 import type { TableOfContentDataItem } from "@tiptap/extension-table-of-contents"
-import type { PageCommentController } from "@/comments/yjs-comments"
+import type { PageCommentController } from "@/features/comments/index"
 import { getBlockCommentHandleRect } from "@/packages/editor/components/editor/block-drag"
 import { BlockCommentPopover } from "@/packages/editor/components/editor/block-comment-popover"
 import { ColumnControls } from "@/packages/editor/components/editor/column-controls"

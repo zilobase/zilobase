@@ -1,5 +1,5 @@
 import { GripVertical } from "@/shared/components/icons"
-import { DefaultPageIcon } from "@/lib/page-icon"
+import { DefaultPageIcon } from "@/features/pages/index"
 
 import type { SortableDatabaseItem } from "../../interactions/database-item-utils"
 import type { TimelineRowLayout } from "./database-timeline-layout"

@@ -64,7 +64,7 @@ export function register({ readSource, assert, test }) {
         [
           "shared/ui/badge.tsx",
           "editor/styles.css",
-          "components/discussions-sidebar.tsx",
+          "features/comments/components/discussions-sidebar.tsx",
           "components/ai-elements/context-attach-chips.tsx",
           "editor/extensions/database/views/database-view-toolbar.tsx",
         ].map((path) =>

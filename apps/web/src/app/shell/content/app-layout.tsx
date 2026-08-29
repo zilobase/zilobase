@@ -19,8 +19,8 @@ import {
   PageSidePaneContext,
   PageSidePaneHeaderCell,
   PageSidePaneShell,
-} from "@/contexts/page-side-pane"
-import { DiscussionsSidebarPanel } from "@/components/discussions-sidebar"
+} from "@/features/pages/context/index"
+import { DiscussionsSidebarPanel } from "@/features/comments/index"
 import {
   RightSidebarMobilePanels,
   RightSidebars,
@@ -35,7 +35,7 @@ import {
   getDatabaseId,
   PagePaneHeader,
   useRoutePageId,
-} from "@/components/page-pane-header"
+} from "@/features/pages/components/index"
 import {
   ApiKeysSettingsPage,
   getSettingsSection,
@@ -60,7 +60,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/shared/ui/sidebar"
-import { isEmbeddedMobileViewer } from "@/lib/embedded-view"
+import { isEmbeddedMobileViewer } from "@/features/pages/model/embedded-view"
 import {
   getDatabaseEmoji,
   useDatabase,
@@ -74,16 +74,16 @@ import {
   defaultUserSettings,
   useUserSettings,
 } from "@zilobase/features/user-settings"
-import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
-import { PageEditorPane } from "@/pages/page"
-import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
-import { LayoutEditorProvider } from "@/components/layout-editor"
-import { usePageEditorComments } from "@/components/page-editor-comments"
-import { usePageCommentController } from "@/contexts/page-comments-registry"
+import { EmbeddedPageDialog } from "@/features/pages/components/index"
+import { PageEditorPane } from "@/features/pages/pages/index"
+import { useOpenEmbeddedPage } from "@/features/pages/hooks/index"
+import { LayoutEditorProvider } from "@/features/pages/layout/index"
+import { usePageEditorComments } from "@/features/comments/index"
+import { usePageCommentController } from "@/features/comments/index"
 import {
   PageLayoutSidebarProvider,
   useOptionalPageLayoutSidebar,
-} from "@/contexts/page-layout-sidebar"
+} from "@/features/pages/context/index"
 import { Button } from "@/shared/ui/button"
 import { TeamSettingsPage, TeamspacesSettingsPage } from "@/features/teamspaces"
 import { WorkspaceSettingsPage } from "@/features/workspaces"

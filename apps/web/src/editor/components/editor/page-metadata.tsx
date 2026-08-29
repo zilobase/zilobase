@@ -15,14 +15,14 @@ import { ImagePlus, MessageSquare, SmilePlus, X } from "@/shared/components/icon
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { PageIconDisplay } from "@/features/pages/index"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/ui/popover"
 
-import { usePageEditorComments } from "@/components/page-editor-comments"
+import { usePageEditorComments } from "@/features/comments/index"
 import { useSession } from "@zilobase/features/auth"
 import {
   useDatabaseRealtime,
@@ -33,7 +33,7 @@ import {
   usePagePersonAccessTargets,
   usePageProperties,
 } from "@zilobase/features/pages"
-import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry"
+import { usePageCommentsSnapshot } from "@/features/comments/index"
 import type {
   PageIconPosition,
   PageLayoutConfig,
@@ -42,7 +42,7 @@ import type {
 import {
   formatCommentButtonLabel,
   PageCommentThread,
-} from "@/components/page-comments"
+} from "@/features/comments/index"
 
 import { ImageSourcePicker } from "@/packages/editor/components/image-source-picker"
 

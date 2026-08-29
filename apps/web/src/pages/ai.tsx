@@ -1,11 +1,11 @@
 import { lazy, Suspense } from "react";
 
 import { PageWorkspaceGate } from "@/features/workspaces";
-import { PageSidePaneLayout, usePageSidePane } from "@/contexts/page-side-pane";
+import { PageSidePaneLayout, usePageSidePane } from "@/features/pages/context/index";
 import { useAiChatThreadState } from "@/hooks/use-ai-chat-thread-state";
-import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page";
+import { useOpenEmbeddedPage } from "@/features/pages/hooks/index";
 import { DatabaseMainPane } from "@/pages/database";
-import { PageEditorPane } from "@/pages/page";
+import { PageEditorPane } from "@/features/pages/pages/index";
 
 const Chatbot = lazy(() => import("@/components/ai-elements/chatbot"));
 

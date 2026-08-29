@@ -22,7 +22,7 @@ import {
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import { useAppSearchResults } from "@zilobase/features/search"
 import type { AppSearchResult } from "@zilobase/features/search"
-import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
 import { useAppShortcut } from "@/shared/shortcuts"
 
 type AppSearchContextValue = {

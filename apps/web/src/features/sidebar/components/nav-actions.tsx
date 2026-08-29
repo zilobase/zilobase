@@ -103,9 +103,9 @@ import {
 } from "@zilobase/features/user-settings";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
-import { usePageCommentsSnapshot } from "@/contexts/page-comments-registry";
+import { usePageCommentsSnapshot } from "@/features/comments/index";
 import { Switch } from "@/shared/ui/switch";
-import { useLayoutEditor } from "@/components/layout-editor";
+import { useLayoutEditor } from "@/features/pages/layout/index";
 import { OfflineAvailabilityAction } from "@/features/offline/index";
 import {
   useConnectivity,

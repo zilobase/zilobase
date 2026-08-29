@@ -1,6 +1,6 @@
 export function register({ assert, loadModule, test }) {
   test("only item routes use their active item icon", async () => {
-    const { getRouteFaviconIcon } = await loadModule("/src/lib/favicon.ts")
+    const { getRouteFaviconIcon } = await loadModule("/src/features/pages/icons/favicon.ts")
 
     assert.equal(
       getRouteFaviconIcon({ pathname: "/p/page-1", itemIcon: "🚀" }),
@@ -18,7 +18,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("item route titles include the Zilobase brand", async () => {
-    const { getRouteDocumentTitle } = await loadModule("/src/lib/favicon.ts")
+    const { getRouteDocumentTitle } = await loadModule("/src/features/pages/icons/favicon.ts")
 
     assert.equal(
       getRouteDocumentTitle({
@@ -34,7 +34,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("emoji favicons are encoded SVG data URLs", async () => {
-    const { createFaviconHref } = await loadModule("/src/lib/favicon.ts")
+    const { createFaviconHref } = await loadModule("/src/features/pages/icons/favicon.ts")
     const href = createFaviconHref("🚀")
 
     assert.match(href, /^data:image\/svg\+xml,/)
@@ -42,7 +42,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("stored SVG favicons receive an explicit theme color", async () => {
-    const { createFaviconHref } = await loadModule("/src/lib/favicon.ts")
+    const { createFaviconHref } = await loadModule("/src/features/pages/icons/favicon.ts")
     const href = createFaviconHref(
       '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor"><path d="M0 0h24v24H0z"/></svg>',
       { color: "#abcdef" },

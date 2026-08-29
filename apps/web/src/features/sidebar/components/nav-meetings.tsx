@@ -16,7 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/shared/ui/sidebar"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { PageIconDisplay } from "@/features/pages/index"
 import type { MeetingListItem } from "@zilobase/features/meetings"
 
 export function NavMeetings({

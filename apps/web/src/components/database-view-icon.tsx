@@ -2,7 +2,7 @@ import type { PageDatabaseView } from "@zilobase/features/pages"
 
 import { getDatabaseViewIcon } from "@/editor/extensions/database/views/database-view-config"
 import { getDatabaseViewTypePresentation } from "@/editor/extensions/database/views/view-settings/view-type-options"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { PageIconDisplay } from "@/features/pages/index"
 import { cn } from "@/shared/lib/utils"
 
 export function DatabaseViewIcon({

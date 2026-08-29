@@ -32,7 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 import { Textarea } from "@/shared/ui/textarea"
 import { Switch } from "@/shared/ui/switch"
 import { getApiErrorMessage } from "@/lib/api"
-import { PageIconDisplay } from "@/lib/page-icon"
+import { PageIconDisplay } from "@/features/pages/index"
 import { filterTeamspaces } from "../model/teamspace-filters"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {

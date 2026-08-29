@@ -1,8 +1,8 @@
 import { createRoute } from "@tanstack/react-router";
 
 import DatabasePage from "@/pages/database";
-import MeetingPage from "@/pages/meeting";
-import Page from "@/pages/page";
+import { MeetingPage } from "@/features/meetings/pages/index";
+import { Page } from "@/features/pages/pages/index";
 import {
   applyDatabaseShareAccess,
   applyPageShareAccess,

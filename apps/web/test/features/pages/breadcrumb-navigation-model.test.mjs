@@ -1,8 +1,8 @@
 export function register({ readSource, assert, loadModule, test }) {
   test("page topbars have no border or fading shadow", async () => {
     const [headerSource, viewportSource] = await Promise.all([
-      readSource("/src/components/page-pane-header.tsx"),
-      readSource("/src/contexts/page-side-pane.tsx"),
+      readSource("/src/features/pages/components/page-pane-header.tsx"),
+      readSource("/src/features/pages/context/page-side-pane.tsx"),
     ])
 
     assert.doesNotMatch(headerSource, /bordered|border-b/)
@@ -10,7 +10,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("Library breadcrumbs reflect the active view label and icon", async () => {
-    const source = await readSource("/src/components/page-pane-header.tsx")
+    const source = await readSource("/src/features/pages/components/page-pane-header.tsx")
 
     assert.match(source, /libraryViewIds\.includes\(requestedView/)
     assert.match(source, /libraryViewIcons\[libraryView\]/)
@@ -19,7 +19,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("breadcrumbs follow page, database, and database-row ancestry", async () => {
     const { buildCanonicalBreadcrumbTrail } = await loadModule(
-      "/src/components/breadcrumb-navigation-model.ts",
+      "/src/features/pages/model/breadcrumb-navigation-model.ts",
     )
     const pages = [
       page("meeting", "Meeting", { isShared: false }),
@@ -44,7 +44,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("linked databases resolve breadcrumbs from their original placement", async () => {
     const { buildCanonicalBreadcrumbTrail } = await loadModule(
-      "/src/components/breadcrumb-navigation-model.ts",
+      "/src/features/pages/model/breadcrumb-navigation-model.ts",
     )
     const pages = [page("original", "Original"), page("link-host", "Link host")]
     const databases = [database("tasks", "Tasks", "original")]
@@ -66,7 +66,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("breadcrumb roots distinguish private, shared, and named teamspaces", async () => {
     const { getBreadcrumbNavigationSection } = await loadModule(
-      "/src/components/breadcrumb-navigation-model.ts",
+      "/src/features/pages/model/breadcrumb-navigation-model.ts",
     )
     const trail = (value) => [{ id: value.id, kind: "page", page: value }]
 

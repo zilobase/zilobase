@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("startup opens the most recently visited active item", async () => {
     const { getMostRecentItemPath } = await loadModule(
-      "/src/lib/recent-navigation.ts",
+      "/src/features/library/model/recent-navigation.ts",
     )
     const navigation = {
       pages: [

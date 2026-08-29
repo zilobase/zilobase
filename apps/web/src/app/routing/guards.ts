@@ -17,8 +17,8 @@ import {
   getValidOfflineSession,
   subscribeConnectivity,
 } from "@/features/offline/index";
-import { getMostRecentItemPath } from "@/lib/recent-navigation";
-import { decidePublishedShareAccess } from "@/lib/published-share-access";
+import { getMostRecentItemPath } from "@/features/library/index";
+import { decidePublishedShareAccess } from "@/features/pages/index";
 
 const NAVIGATION_AUTH_STALE_TIME = 30_000;
 

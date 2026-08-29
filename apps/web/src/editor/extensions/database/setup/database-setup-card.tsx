@@ -33,8 +33,8 @@ import {
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { getIconSolidClassName } from "@/shared/lib/color-tokens";
-import { DEFAULT_DATABASE_ITEM_ICON } from "@/lib/item-icons";
-import { getDatabaseIconNode, PageIconDisplay } from "@/lib/page-icon";
+import { DEFAULT_DATABASE_ITEM_ICON } from "@/features/pages/index";
+import { getDatabaseIconNode, PageIconDisplay } from "@/features/pages/index";
 import { cn } from "@/shared/lib/utils";
 import {
   useApplyDatabaseTemplate,

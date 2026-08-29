@@ -59,7 +59,7 @@ import {
 } from "@/shared/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
-import { PageIconDisplay } from "@/lib/page-icon";
+import { PageIconDisplay } from "@/features/pages/index";
 import {
   DropDrawer,
   DropDrawerContent,

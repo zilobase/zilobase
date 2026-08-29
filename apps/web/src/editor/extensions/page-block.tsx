@@ -27,7 +27,7 @@ import {
   type DatabasePayload,
 } from "@zilobase/features/databases";
 import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens";
-import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon";
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
 import {
   setDatabasePageDragPayload,
 } from "@/packages/editor/extensions/database/interactions/database-page-drop";

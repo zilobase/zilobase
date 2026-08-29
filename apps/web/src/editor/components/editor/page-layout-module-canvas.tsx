@@ -23,7 +23,7 @@ import { GripVertical, Plus } from "@/shared/components/icons"
 
 import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
-import { useOptionalPageLayoutSidebar } from "@/contexts/page-layout-sidebar"
+import { useOptionalPageLayoutSidebar } from "@/features/pages/context/index"
 import type { PageLayoutPanelMode } from "@/packages/editor/types"
 import {
   canMovePageLayoutModuleToRegion,

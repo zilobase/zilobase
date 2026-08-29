@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("every database in a page hierarchy is restored into the page body", async () => {
     const { getMissingPlacedDatabaseIds } = await loadModule(
-      "/src/pages/page-hierarchy-blocks.ts",
+      "/src/features/pages/model/page-hierarchy-blocks.ts",
     )
     const firstId = "11111111-1111-4111-8111-111111111111"
     const secondId = "22222222-2222-4222-8222-222222222222"
@@ -30,7 +30,7 @@ export function register({ assert, loadModule, test }) {
       extractMeetingBlockIds,
       getMissingHostedMeetingIds,
       insertMeetingBlockInContent,
-    } = await loadModule("/src/pages/page-hierarchy-blocks.ts")
+    } = await loadModule("/src/features/pages/model/page-hierarchy-blocks.ts")
     const content = {
       type: "doc",
       content: [

@@ -25,7 +25,7 @@ import {
 } from "@/shared/ui/dropdrawer";
 import { Input } from "@/shared/ui/input";
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
-import { PageIconDisplay } from "@/lib/page-icon";
+import { PageIconDisplay } from "@/features/pages/index";
 import {
   Popover,
   PopoverContent,

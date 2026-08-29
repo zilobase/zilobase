@@ -22,7 +22,7 @@ export function register({ assert, loadModule, test }) {
     const {
       readPublishedEmbeddedItemsOpenAs,
       writePublishedEmbeddedItemsOpenAs,
-    } = await loadModule("/src/lib/published-page-preferences.ts")
+    } = await loadModule("/src/features/pages/publication/published-page-preferences.ts")
     const blockedStorage = {
       getItem() {
         throw new Error("blocked")
@@ -40,7 +40,7 @@ export function register({ assert, loadModule, test }) {
 
   test("published page mode restores a stored dialog preference", async () => {
     const { readPublishedEmbeddedItemsOpenAs } = await loadModule(
-      "/src/lib/published-page-preferences.ts"
+      "/src/features/pages/publication/published-page-preferences.ts"
     )
 
     withWindow(

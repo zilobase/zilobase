@@ -46,9 +46,9 @@ export function register({ readSource, assert, test }) {
         "route-groups/content-routes.tsx",
       ].map((path) => readSource(`/src/app/routing/${path}`)))
     ).join("\n")
-    const pageSource = await readSource("/src/pages/page.tsx")
+    const pageSource = await readSource("/src/features/pages/pages/page.tsx")
     const databaseSource = await readSource("/src/pages/database.tsx")
-    const meetingSource = await readSource("/src/pages/meeting.tsx")
+    const meetingSource = await readSource("/src/features/meetings/pages/meeting.tsx")
 
     for (const source of [pageSource, databaseSource]) {
       assert.match(source, /if \(publishedShare === "public"\)/)

@@ -32,7 +32,7 @@ function notionPage({ body, title = "Test Page", emoji = "✅" }) {
 export function register({ assert, loadModule, test }) {
   test("normalizeNotionHtmlBlocks converts basic and advanced Notion blocks", async () => {
     installDomParser()
-    const { normalizeNotionHtmlBlocks } = await loadModule("/src/lib/notion-html-blocks.ts")
+    const { normalizeNotionHtmlBlocks } = await loadModule("/src/features/notion-import/lib/notion-html-blocks.ts")
 
     const result = normalizeNotionHtmlBlocks(
       notionPage({
@@ -71,7 +71,7 @@ export function register({ assert, loadModule, test }) {
 
   test("normalizeNotionHtmlBlocks rewrites internal Notion links", async () => {
     installDomParser()
-    const { normalizeNotionHtmlBlocks } = await loadModule("/src/lib/notion-html-blocks.ts")
+    const { normalizeNotionHtmlBlocks } = await loadModule("/src/features/notion-import/lib/notion-html-blocks.ts")
     const pagePathMap = new Map([["Root/Child.html", "page-child"]])
 
     const result = normalizeNotionHtmlBlocks(
@@ -87,7 +87,7 @@ export function register({ assert, loadModule, test }) {
 
   test("normalizeNotionHtmlBlocks drops exported spacer blocks", async () => {
     installDomParser()
-    const { normalizeNotionHtmlBlocks } = await loadModule("/src/lib/notion-html-blocks.ts")
+    const { normalizeNotionHtmlBlocks } = await loadModule("/src/features/notion-import/lib/notion-html-blocks.ts")
 
     const result = normalizeNotionHtmlBlocks(
       notionPage({
@@ -110,7 +110,7 @@ export function register({ assert, loadModule, test }) {
   test("importNotionZipFile creates nested pages then updates content", async () => {
     installDomParser()
     const { strToU8, zipSync } = await import("fflate")
-    const { importNotionZipFile } = await loadModule("/src/lib/notion-import.ts")
+    const { importNotionZipFile } = await loadModule("/src/features/notion-import/lib/notion-import.ts")
     const zip = zipSync({
       "Root.html": strToU8(notionPage({
         body: `<p>Root <a href="Root/Child.html">Child</a></p>`,
@@ -153,7 +153,7 @@ export function register({ assert, loadModule, test }) {
   test("importNotionZipFile rejects Notion markdown exports", async () => {
     installDomParser()
     const { strToU8, zipSync } = await import("fflate")
-    const { importNotionZipFile, NotionImportError } = await loadModule("/src/lib/notion-import.ts")
+    const { importNotionZipFile, NotionImportError } = await loadModule("/src/features/notion-import/lib/notion-import.ts")
     const file = new File([zipSync({ "Page.md": strToU8("# Page") })], "notion.zip")
 
     await assert.rejects(

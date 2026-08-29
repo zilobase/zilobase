@@ -1,4 +1,4 @@
-const mentionHelpersPath = "/src/components/page-comment-mentions.ts"
+const mentionHelpersPath = "/src/features/comments/components/page-comment-mentions.ts"
 
 export function register({ assert, loadModule, test }) {
   test("comment mention trigger detects @ tokens at the cursor", async () => {

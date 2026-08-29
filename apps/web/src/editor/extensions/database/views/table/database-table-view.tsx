@@ -66,8 +66,8 @@ import {
   DropDrawerSubTrigger,
   DropDrawerTrigger,
 } from "@/shared/ui/dropdrawer"
-import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
-import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
+import { useOptionalPageSidePane } from "@/features/pages/context/index"
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
 import { cn } from "@/shared/lib/utils"
 import { useUndoHistory } from "@/shared/shortcuts"
 import {

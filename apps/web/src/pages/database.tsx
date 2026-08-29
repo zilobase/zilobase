@@ -8,10 +8,10 @@ import {
   PageSidePaneLayout,
   PageSidePaneProvider,
   usePageSidePane,
-} from "@/contexts/page-side-pane"
+} from "@/features/pages/context/index"
 import { Skeleton } from "@/shared/ui/skeleton"
 import { Button } from "@/shared/ui/button"
-import { TrashedItemBanner } from "@/components/trashed-item-banner"
+import { TrashedItemBanner } from "@/features/pages/components/index"
 import { cn } from "@/shared/lib/utils"
 import {
   getDatabaseCover,
@@ -30,8 +30,8 @@ import {
   useUpdateDatabase,
   useUpdateDataSource,
 } from "@zilobase/features/databases"
-import { EmbeddedPageDialog } from "@/components/embedded-page-dialog"
-import { useOpenEmbeddedPage } from "@/hooks/use-open-embedded-page"
+import { EmbeddedPageDialog } from "@/features/pages/components/index"
+import { useOpenEmbeddedPage } from "@/features/pages/hooks/index"
 import { PageMetadata as PageMetadataView } from "@/packages/editor/components/editor/page-metadata"
 import { DatabaseView } from "@/packages/editor/extensions/database"
 import { toast } from "sonner"
@@ -39,10 +39,10 @@ import {
   PublicPaneTopbar,
   PublicPageBreadcrumb,
   PageEditorPane,
-} from "@/pages/page"
+} from "@/features/pages/pages/index"
 import { useDatabaseViewNavigation } from "@/pages/use-database-view-navigation"
 import type { OpenPageOptions } from "@/packages/editor/types"
-import { useTitleDraft } from "@/hooks/use-title-draft"
+import { useTitleDraft } from "@/features/pages/hooks/index"
 import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
 
 export default function DatabasePage() {

@@ -1,7 +1,7 @@
 export function register({ readSource, assert, loadModule, test }) {
   test("homepage hierarchy follows canonical page and database placements", async () => {
     const { buildHomepageHierarchy } = await loadModule(
-      "/src/pages/homepage-hierarchy.ts",
+      "/src/features/library/model/homepage-hierarchy.ts",
     )
     const hierarchy = buildHomepageHierarchy([
       createPlacement({
@@ -50,7 +50,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("synthetic homepage databases do not request realtime tickets", async () => {
     const [homepage, context] = await Promise.all([
-      readSource("/src/pages/recents.tsx"),
+      readSource("/src/features/library/pages/recents.tsx"),
       readSource("/src/editor/extensions/database/views/database-view-context.tsx"),
     ])
 

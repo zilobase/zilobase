@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("published share routes stay public when auth is missing or broken", async () => {
     const { decidePublishedShareAccess } = await loadModule(
-      "/src/lib/published-share-access.ts",
+      "/src/features/pages/publication/published-share-access.ts",
     )
 
     assert.deepEqual(
@@ -52,7 +52,7 @@ export function register({ assert, loadModule, test }) {
 
   test("signed-in published share routes fall back to public when workspaces fail", async () => {
     const { decidePublishedShareAccess } = await loadModule(
-      "/src/lib/published-share-access.ts",
+      "/src/features/pages/publication/published-share-access.ts",
     )
 
     assert.deepEqual(

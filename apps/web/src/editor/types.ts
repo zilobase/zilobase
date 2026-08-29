@@ -10,7 +10,7 @@ import type { HocuspocusProvider } from "@hocuspocus/provider"
 import type { CollaborationUser } from "./use-page-collaboration"
 import type { PageLayoutConfig } from "@zilobase/features/pages"
 import type { PageIconPosition } from "@zilobase/features/pages"
-import type { PageCommentController } from "@/comments/yjs-comments"
+import type { PageCommentController } from "@/features/comments/index"
 import type * as Y from "yjs"
 
 export type EditorCollaboration = {

@@ -56,6 +56,30 @@
         "patterns": ["apps/web/src/features/pages/**"]
       },
       {
+        "name": "web-comments",
+        "patterns": ["apps/web/src/features/comments/**"]
+      },
+      {
+        "name": "web-canvas",
+        "patterns": ["apps/web/src/features/canvas/**"]
+      },
+      {
+        "name": "web-library",
+        "patterns": ["apps/web/src/features/library/**"]
+      },
+      {
+        "name": "web-meetings",
+        "patterns": ["apps/web/src/features/meetings/**"]
+      },
+      {
+        "name": "web-notion-import",
+        "patterns": ["apps/web/src/features/notion-import/**"]
+      },
+      {
+        "name": "web-tasks",
+        "patterns": ["apps/web/src/features/tasks/**"]
+      },
+      {
         "name": "web-desktop",
         "patterns": ["apps/web/src/features/desktop/**"]
       },
@@ -77,6 +101,12 @@
           "web-workspaces",
           "web-teamspaces",
           "web-pages",
+          "web-comments",
+          "web-canvas",
+          "web-library",
+          "web-meetings",
+          "web-notion-import",
+          "web-tasks",
           "web-desktop",
           "web-offline"
         ]
@@ -90,6 +120,9 @@
           "web-shared",
           "web-sidebar",
           "web-teamspaces",
+          "web-pages",
+          "web-comments",
+          "web-tasks",
           "web-desktop",
           "web-offline"
         ]
@@ -109,20 +142,67 @@
           "web-desktop",
           "web-offline",
           "web-settings",
+          "web-pages",
           "web-shared"
         ]
       },
       {
         "from": "web-workspaces",
-        "allow": ["web-settings", "web-shared", "web-workspaces"]
+        "allow": ["web-notion-import", "web-settings", "web-shared", "web-workspaces"]
       },
       {
         "from": "web-teamspaces",
-        "allow": ["web-settings", "web-shared", "web-teamspaces"]
+        "allow": ["web-pages", "web-settings", "web-shared", "web-teamspaces"]
       },
       {
         "from": "web-pages",
-        "allow": ["web-pages", "web-shared", "web-workspaces"]
+        "allow": [
+          "web-app",
+          "web-comments",
+          "web-meetings",
+          "web-offline",
+          "web-pages",
+          "web-shared",
+          "web-sidebar",
+          "web-workspaces"
+        ]
+      },
+      {
+        "from": "web-comments",
+        "allow": ["web-comments", "web-shared"]
+      },
+      {
+        "from": "web-canvas",
+        "allow": ["web-canvas", "web-shared"]
+      },
+      {
+        "from": "web-library",
+        "allow": [
+          "web-library",
+          "web-offline",
+          "web-pages",
+          "web-shared",
+          "web-sidebar",
+          "web-teamspaces"
+        ]
+      },
+      {
+        "from": "web-meetings",
+        "allow": [
+          "web-app",
+          "web-meetings",
+          "web-pages",
+          "web-shared",
+          "web-workspaces"
+        ]
+      },
+      {
+        "from": "web-notion-import",
+        "allow": ["web-notion-import", "web-shared"]
+      },
+      {
+        "from": "web-tasks",
+        "allow": ["web-shared", "web-tasks"]
       },
       {
         // Desktop state cleanup still coordinates the app stores; this edge is
@@ -133,6 +213,7 @@
           "web-auth",
           "web-desktop",
           "web-offline",
+          "web-pages",
           "web-shared"
         ]
       },
@@ -144,7 +225,7 @@
   },
   // The custom web test harness bundles these literal loadModule() paths.
   "dynamicallyLoaded": [
-    "apps/web/src/comments/yjs-comments.ts",
+    "apps/web/src/features/comments/model/yjs-comments.ts",
     "apps/web/src/components/ai-elements/integration-tool-presentation.ts",
     "apps/web/src/components/database-view-navigation.ts",
     "apps/web/src/components/kibo-ui/gantt/gantt-geometry.ts",
@@ -157,7 +238,7 @@
     "apps/web/src/features/sidebar/model/sidebar-section-items.ts",
     "apps/web/src/features/teamspaces/model/teamspace-sidebar-permissions.ts",
     "apps/web/src/shared/config/feature-flags.ts",
-    "apps/web/src/contexts/page-side-pane.tsx",
+    "apps/web/src/features/pages/context/page-side-pane.tsx",
     "apps/web/src/editor/components/editor/block-drag.ts",
     "apps/web/src/editor/components/editor/column-drag.ts",
     "apps/web/src/editor/components/editor/table-drag.ts",
@@ -206,7 +287,7 @@
     "apps/web/src/features/offline/documents/offline-structure-guard.ts",
     "apps/web/src/editor/paste.ts",
     "apps/web/src/editor/protected-structural-blocks.ts",
-    "apps/web/src/hooks/use-title-draft.ts",
+    "apps/web/src/features/pages/hooks/use-title-draft.ts",
     "apps/web/src/lib/api.ts",
     "apps/web/src/shared/lib/color-tokens.ts",
     "apps/web/src/features/offline/model/connectivity-probe.ts",
@@ -217,28 +298,28 @@
     "apps/web/src/features/desktop/server/desktop-server-replacement-core.ts",
     "apps/web/src/features/desktop/server/desktop-server.ts",
     "apps/web/src/features/desktop/window/desktop-translucency.ts",
-    "apps/web/src/lib/favicon.ts",
+    "apps/web/src/features/pages/icons/favicon.ts",
     "apps/web/src/features/auth/lib/google-auth.ts",
     "apps/web/src/lib/image-upload.ts",
     "apps/web/src/features/workspaces/lib/invitation-link.ts",
-    "apps/web/src/lib/meeting-navigation.ts",
-    "apps/web/src/lib/notion-html-blocks.ts",
-    "apps/web/src/lib/notion-import.ts",
+    "apps/web/src/features/meetings/model/meeting-navigation.ts",
+    "apps/web/src/features/notion-import/lib/notion-html-blocks.ts",
+    "apps/web/src/features/notion-import/lib/notion-import.ts",
     "apps/web/src/features/offline/documents/offline-documents.ts",
     "apps/web/src/features/offline/documents/offline-recovery.ts",
     "apps/web/src/features/offline/model/offline-store.ts",
     "apps/web/src/shared/lib/page-icon-utils.ts",
-    "apps/web/src/lib/published-page-preferences.ts",
-    "apps/web/src/lib/published-share-access.ts",
-    "apps/web/src/lib/recent-navigation.ts",
+    "apps/web/src/features/pages/publication/published-page-preferences.ts",
+    "apps/web/src/features/pages/publication/published-share-access.ts",
+    "apps/web/src/features/library/model/recent-navigation.ts",
     "apps/web/src/app/routing/route-error.ts",
     "apps/web/src/shared/lib/themes.ts",
-    "apps/web/src/pages/homepage-hierarchy.ts",
-    "apps/web/src/pages/page-hierarchy-blocks.ts",
+    "apps/web/src/features/library/model/homepage-hierarchy.ts",
+    "apps/web/src/features/pages/model/page-hierarchy-blocks.ts",
     "apps/web/src/features/teamspaces/model/team-access.ts",
     "apps/web/src/features/teamspaces/model/team-settings-tabs.ts",
     "apps/web/src/features/teamspaces/model/teamspace-filters.ts",
-    "apps/web/src/pages/tasks-model.ts",
+    "apps/web/src/features/tasks/model/tasks-model.ts",
     "apps/web/src/shared/shortcuts/editor-history.ts",
     "apps/web/src/shared/shortcuts/shortcut-definitions.ts",
     "apps/web/src/app/state/app-store.ts"

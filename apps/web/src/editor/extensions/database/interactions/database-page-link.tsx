@@ -11,13 +11,13 @@ import {
 } from "@/shared/components/icons"
 import { toast } from "sonner"
 
-import { useOptionalPageSidePane } from "@/contexts/page-side-pane"
+import { useOptionalPageSidePane } from "@/features/pages/context/index"
 import {
   getPageEmoji,
   useUpdatePage,
   type PageMetadata,
 } from "@zilobase/features/pages"
-import { DefaultPageIcon, PageIconDisplay } from "@/lib/page-icon"
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
 import {
   Popover,
   PopoverContent,

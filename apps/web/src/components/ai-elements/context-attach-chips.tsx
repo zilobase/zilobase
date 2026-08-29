@@ -1,6 +1,6 @@
 import { DatabaseIcon, UserIcon, WandSparklesIcon, XIcon } from "@/shared/components/icons"
 
-import { PageIconDisplay, PageIcon } from "@/lib/page-icon"
+import { PageIconDisplay, PageIcon } from "@/features/pages/index"
 import type { ContextAttachment } from "@zilobase/page-context"
 
 function AttachmentIcon({ attachment }: { attachment: ContextAttachment }) {

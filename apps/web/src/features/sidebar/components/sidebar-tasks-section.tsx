@@ -20,7 +20,7 @@ import {
   buildTaskRows,
   filterMyTaskRows,
   getTaskDatabaseSchema,
-} from "@/pages/tasks-model"
+} from "@/features/tasks/index"
 import { useZilobaseFeatures } from "@zilobase/features"
 import { useSession } from "@zilobase/features/auth"
 import {

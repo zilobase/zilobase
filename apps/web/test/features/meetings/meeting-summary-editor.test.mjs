@@ -11,7 +11,7 @@ export function register({ readSource, assert, test }) {
     ] = await Promise.all([
         readSource("/src/editor/extensions/meeting/meeting-collaborative-editor.tsx"),
         readSource("/src/editor/extensions/meeting/meeting-view.tsx"),
-        readSource("/src/pages/meeting.tsx"),
+        readSource("/src/features/meetings/pages/meeting.tsx"),
         readSource("/src/editor/styles.css"),
         readSource("/src/editor/create-base-extensions.ts"),
         readSource("/src/editor/use-editor-extensions.ts"),

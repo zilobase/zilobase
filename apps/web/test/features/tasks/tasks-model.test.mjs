@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 export function register({ readSource, assert, loadModule, test }) {
   test("Tasks uses the shared database list view", async () => {
     const [source, listView, dataSourceSettings, styles] = await Promise.all([
-      readSource("/src/pages/tasks.tsx"),
+      readSource("/src/features/tasks/pages/tasks.tsx"),
       readSource("/src/editor/extensions/database/views/list/database-list-view.tsx"),
       readSource("/src/editor/extensions/database/views/view-settings/data-source-settings.tsx"),
       readSource("/src/editor/styles.css"),
@@ -48,7 +48,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("task databases require status, assignee, and due date properties", async () => {
     const { getTaskDatabaseSchema } = await loadModule(
-      "/src/pages/tasks-model.ts",
+      "/src/features/tasks/model/tasks-model.ts",
     );
     const payload = createPayload({
       properties: [
@@ -62,7 +62,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("task rows aggregate typed values and sort undated work last", async () => {
     const { buildTaskRows, sortTaskRows } = await loadModule(
-      "/src/pages/tasks-model.ts",
+      "/src/features/tasks/model/tasks-model.ts",
     );
     const first = createPayload({
       databaseId: "product",
@@ -89,7 +89,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("task completion follows status groups and restores the default status", async () => {
     const { buildTaskRows, filterMyTaskRows, getTaskStatusForCompletion } =
-      await loadModule("/src/pages/tasks-model.ts");
+      await loadModule("/src/features/tasks/model/tasks-model.ts");
     const payload = createPayload({
       properties: [
         createProperty("state", "Status", "status", {

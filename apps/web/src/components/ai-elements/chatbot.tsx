@@ -34,7 +34,7 @@ import {
   type ContextAttachMenuHandle,
 } from "@/components/ai-elements/context-attach-menu";
 import { usePageEditorRegistry } from "@/contexts/page-editor-registry";
-import { useOptionalPageSidePane } from "@/contexts/page-side-pane";
+import { useOptionalPageSidePane } from "@/features/pages/context/index";
 import { usePageAiContext } from "@/hooks/use-page-ai-context";
 import { useDatabaseEmbedAutoApply } from "@/hooks/use-database-embed-auto-apply";
 import { useDatabaseToolCacheSync } from "@/hooks/use-database-tool-cache-sync";
