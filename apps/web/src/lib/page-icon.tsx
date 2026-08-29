@@ -82,7 +82,6 @@ export function getPageIconNode(
   const icon = getPageEmoji(page)
   return (
     <PageIconDisplay
-      className={icon ? undefined : "text-muted-foreground"}
       size="sm"
       value={icon ?? DEFAULT_PAGE_ITEM_ICON}
     />
