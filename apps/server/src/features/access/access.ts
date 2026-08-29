@@ -22,32 +22,15 @@ import {
   getDatabaseTeamspaceSecurityPolicy,
   getPageTeamspaceSecurityPolicy,
 } from "../teamspaces";
+import {
+  accessRank,
+  hasAccess,
+  maxAccess,
+  normalizeAccessLevel,
+  type AccessLevel,
+} from "./access-level";
 
-export type AccessLevel = "none" | "view" | "comment" | "edit" | "full";
-
-const accessRank: Record<AccessLevel, number> = {
-  none: 0,
-  view: 1,
-  comment: 2,
-  edit: 3,
-  full: 4,
-};
-
-export function hasAccess(
-  actual: AccessLevel,
-  required: Exclude<AccessLevel, "none">,
-) {
-  return accessRank[actual] >= accessRank[required];
-}
-
-export function normalizeAccessLevel(value: unknown): AccessLevel | null {
-  return value === "view" ||
-    value === "comment" ||
-    value === "edit" ||
-    value === "full"
-    ? value
-    : null;
-}
+export { hasAccess, normalizeAccessLevel, type AccessLevel } from "./access-level";
 
 export async function getMembership(workspaceId: string, userId: string) {
   const [record] = await db
@@ -742,10 +725,6 @@ async function resolveTeamspaceAccess(
           "none";
     return maxAccess(best, next);
   }, "none");
-}
-
-function maxAccess(first: AccessLevel, second: AccessLevel): AccessLevel {
-  return accessRank[first] >= accessRank[second] ? first : second;
 }
 
 export async function getEffectivePageAccessForUsers(

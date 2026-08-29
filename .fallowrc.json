@@ -564,7 +564,7 @@
     "maxCyclomatic": 102,
     "maxCognitive": 171,
     "maxCrap": 10303,
-    "maxUnitSize": 2678
+    "maxUnitSize": 2663
   },
   "rules": {
     "unused-dependencies": "warn"

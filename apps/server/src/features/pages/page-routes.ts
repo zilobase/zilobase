@@ -66,78 +66,12 @@ import {
   commitDatabaseMutationBatch,
   mutationResponse,
 } from "../databases/core";
+import {
+  parseZilobaseAiModes,
+  readZilobaseAiMode,
+  toZilobaseAiPageSummary,
+} from "./page-ai-metadata";
 export const pageRoutes = new Hono<AppBindings>();
-
-const ZILOBASE_AI_MODES = new Set(["instruction", "skill"] as const);
-type ZilobaseAiMode = "instruction" | "skill";
-
-const parseZilobaseAiModes = (
-  value: string | undefined,
-): ZilobaseAiMode[] | null => {
-  if (!value) {
-    return null;
-  }
-
-  const modes = value
-    .split(",")
-    .map((mode) => mode.trim())
-    .filter((mode): mode is ZilobaseAiMode =>
-      ZILOBASE_AI_MODES.has(mode as ZilobaseAiMode),
-    );
-
-  if (modes.length === 0) {
-    return null;
-  }
-
-  return [...new Set(modes)];
-};
-
-const readZilobaseAiMode = (metadata: unknown): ZilobaseAiMode | null => {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return null;
-  }
-
-  const mode = (metadata as { zilobaseai?: unknown }).zilobaseai;
-
-  return typeof mode === "string" && ZILOBASE_AI_MODES.has(mode as ZilobaseAiMode)
-    ? (mode as ZilobaseAiMode)
-    : null;
-};
-
-const readPageEmoji = (metadata: unknown) => {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return null;
-  }
-
-  const emoji = (metadata as { emoji?: unknown }).emoji;
-
-  return typeof emoji === "string" ? emoji : null;
-};
-
-type PageListRecord = {
-  id: string;
-  metadata: unknown;
-  name: string;
-  workspaceId: string;
-  updatedAt: Date;
-  url: string;
-};
-
-const toZilobaseAiPageSummary = (record: PageListRecord) => {
-  const zilobaseai = readZilobaseAiMode(record.metadata);
-
-  return {
-    id: record.id,
-    name: record.name,
-    workspaceId: record.workspaceId,
-    updatedAt: record.updatedAt,
-    url: record.url,
-    metadata: {
-      emoji: readPageEmoji(record.metadata),
-      zilobaseai,
-    },
-  };
-};
 
 const getPage = getPageRecord;
 

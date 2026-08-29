@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import type { Context } from "hono";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import type { AppBindings } from "../../shared/types";
 import { mutationResponse } from "./core/commit";
@@ -49,25 +48,12 @@ import {
 } from "./views/service";
 import { normalizeDatabasePropertyType } from "./properties/types";
 import { databaseReadRoutes } from "./database-read-routes";
+import {
+  requireDatabaseRouteUser as requireUser,
+  serviceMutationErrorResponse,
+} from "./route-support";
 
 export const databaseRoutes = new Hono<AppBindings>();
-
-const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
-
-const serviceMutationErrorResponse = (
-  c: Context<AppBindings>,
-  error: ServiceMutationError,
-) =>
-  c.json(
-    { error: error.message },
-    error.status === 403
-      ? 403
-      : error.status === 404
-        ? 404
-        : error.status === 409
-          ? 409
-          : 400,
-  );
 
 databaseRoutes.post("/", async (c) => {
   const user = requireUser(c);
