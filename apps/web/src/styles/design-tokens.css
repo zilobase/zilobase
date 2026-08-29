@@ -131,6 +131,11 @@
     var(--foreground) 10%,
     transparent
   );
+  --side-pane-shadow-color: color-mix(
+    in oklab,
+    var(--foreground) 22%,
+    transparent
+  );
   --muted-indicator: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
   --primary-subtle: color-mix(in oklab, var(--primary) 15%, transparent);
   /*

@@ -363,6 +363,12 @@ function AppLayoutContent({
   }, [appSidebarOpen, closeSidePane])
 
   useEffect(() => {
+    if (pathname === "/ai" && chatSidebarOpen) {
+      setChatSidebarOpen(false)
+    }
+  }, [chatSidebarOpen, pathname])
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(
         CHAT_PRESENTATION_MODE_STORAGE_KEY,

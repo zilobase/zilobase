@@ -512,6 +512,7 @@ export function RightSidebars({
             "min-h-0 min-w-0 overflow-hidden",
             splitDock && "border-l border-border",
           )}
+          data-ai-chat-sidebar-panel
           inert={chatOpen ? undefined : true}
         >
           {chatPanel}

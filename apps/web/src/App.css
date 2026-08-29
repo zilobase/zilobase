@@ -102,6 +102,21 @@
   will-change: transform, width;
 }
 
+/* In light mode, keep the side pane visually above the main canvas. Applying
+   the same left-facing shadow to its header and body makes one continuous
+   divider through the top bar. */
+@media (min-width: 768px) {
+  .light
+    [data-page-side-pane-open="true"]
+    :is([data-page-side-pane-panel], [data-page-side-pane-side-header]) {
+    box-shadow: -6px 0 16px -12px var(--side-pane-shadow-color);
+  }
+
+  .light [data-ai-chat-sidebar-panel][aria-hidden="false"] {
+    box-shadow: -6px 0 16px -12px var(--side-pane-shadow-color);
+  }
+}
+
 [data-page-side-pane-promoted="true"]
   [data-page-side-pane-side-header]
   [data-page-side-pane-promoted-hide],
