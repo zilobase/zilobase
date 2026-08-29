@@ -4,6 +4,23 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.51
+
+### Added
+
+- Library teamspaces now use the shared database table layout and expose nested pages and databases as direct links.
+- Database view tabs now collapse into a searchable overflow menu when panes become too narrow to show every view.
+
+### Changed
+
+- Sidebars, tabs, database surfaces, and dropdowns now own their typography weight through scoped design tokens instead of a global override.
+- Page breadcrumbs and top bars, sidebar sections and active states, database columns, and fallback item icons use a more consistent application layout and visual language.
+
+### Fixed
+
+- Database sticky headers keep an opaque surface while scrolling in full-page and side-pane layouts.
+- Ask AI history, shared and teamspace navigation, and database view controls retain the correct surface and active-state styling.
+
 ## 0.0.50
 
 ### Added
