@@ -127,6 +127,13 @@ export const defaultSidebarConfig: SidebarConfig = {
 
 export function normalizeSidebarConfig(value: unknown): SidebarConfig {
   const config = isRecord(value) ? value : {}
+  if (Object.keys(config).length === 0) {
+    return {
+      ...defaultSidebarConfig,
+      defaultLayout: cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout),
+      workspaceLayouts: {},
+    }
+  }
   if (config.version === 2) return migrateCombinedSidebarSections(config)
   if (config.version !== 3) return migrateLegacySidebarConfig(config)
 

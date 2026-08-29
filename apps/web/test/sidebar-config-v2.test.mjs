@@ -5,6 +5,19 @@ const configPath = fileURLToPath(
 )
 
 export function register({ assert, loadModule, test }) {
+  test("empty sidebar settings resolve to an isolated canonical default", async () => {
+    const { defaultSidebarConfig, normalizeSidebarConfig } = await loadModule(configPath)
+    const normalized = normalizeSidebarConfig({})
+
+    assert.deepEqual(normalized, defaultSidebarConfig)
+    assert.notEqual(normalized, defaultSidebarConfig)
+    assert.notEqual(normalized.defaultLayout, defaultSidebarConfig.defaultLayout)
+    assert.equal(
+      normalized.defaultLayout.tabs[0].sections.at(-1).id,
+      "default-teamspaces",
+    )
+  })
+
   test("legacy sidebar settings migrate deterministically into Home", async () => {
     const { normalizeSidebarConfig } = await loadModule(configPath)
     const input = {
