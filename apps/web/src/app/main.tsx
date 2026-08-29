@@ -82,12 +82,12 @@ function renderStartupFailure(error: unknown) {
       ? error.message
       : "The saved desktop server configuration could not be loaded.";
   ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-    <main className="flex min-h-svh items-center justify-center bg-background p-6">
-      <div className="max-w-md space-y-4 rounded-lg border bg-card p-6 text-card-foreground">
+    <main className="flex min-h-svh items-center justify-center bg-surface-canvas p-6">
+      <div className="max-w-md space-y-4 rounded-lg border bg-surface-card p-6 text-content-primary">
         <h1 className="text-lg font-semibold">Zilobase could not start</h1>
-        <p className="text-sm text-muted-foreground">{message}</p>
+        <p className="text-sm text-content-secondary">{message}</p>
         <button
-          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+          className="rounded-md bg-action-primary px-4 py-2 text-sm text-action-on-primary hover:bg-action-primary-hover"
           onClick={() => window.location.reload()}
           type="button"
         >

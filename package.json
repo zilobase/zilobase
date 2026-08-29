@@ -22,6 +22,8 @@
     "test:web": "npm run test --workspace @zilobase/web",
     "test:update-local": "node scripts/desktop/test-update.mjs",
     "test:desktop:selfhost": "node apps/desktop/e2e/selfhost.mjs",
+    "tokens:sync": "node scripts/colors/sync-color-tokens.mjs",
+    "tokens:check": "node scripts/colors/sync-color-tokens.mjs --check",
     "dev:desktop": "node scripts/desktop/dev.mjs",
     "dev:desktop:app": "npm run dev --workspace @zilobase/desktop",
     "build:desktop": "npm run build --workspace @zilobase/desktop",
@@ -36,11 +38,12 @@
     "selfhost:reset": "node scripts/selfhost/manage.mjs reset",
     "test:selfhost": "node scripts/selfhost/manage.mjs test",
     "test:selfhost:upgrade": "node scripts/selfhost/test-upgrade.mjs",
-    "release": "node scripts/release/release.mjs",
+    "release": "npm run tokens:check && node scripts/release/release.mjs",
     "version:set": "node scripts/release/set-version.mjs"
   },
   "devDependencies": {
     "fallow": "3.19.0",
+    "postcss": "^8.5.26",
     "webdriverio": "^9.30.1",
     "ws": "^8.21.0"
   }

@@ -22,18 +22,14 @@ function readStoredThemeFamily(): ThemeFamilyId {
     const storedFamily = window.localStorage.getItem(THEME_FAMILY_STORAGE_KEY)
     if (isThemeFamilyId(storedFamily)) return storedFamily
 
-    // Migrate the previous model where custom palettes were stored as modes.
-    const legacyTheme = window.localStorage.getItem("theme")
-    return isThemeFamilyId(legacyTheme) && legacyTheme !== "default"
-      ? legacyTheme
-      : "default"
+    return "default"
   } catch {
     return "default"
   }
 }
 
 function applyThemeFamily(themeFamily: ThemeFamilyId) {
-  document.documentElement.dataset.theme = themeFamily
+  document.documentElement.dataset.themeFamily = themeFamily
   try {
     window.localStorage.setItem(THEME_FAMILY_STORAGE_KEY, themeFamily)
   } catch {

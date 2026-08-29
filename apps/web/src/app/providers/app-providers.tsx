@@ -12,7 +12,10 @@ import { queryClient } from "@/shared/lib/query-client"
 import { ShortcutProvider } from "@/shared/shortcuts"
 import { OfflineQueryProvider } from "@/features/offline/index"
 import { getThemeColorScheme, selectableThemeIds } from "@/shared/lib/themes"
-import { ThemeFamilyProvider } from "@/shared/providers/theme-family-provider"
+import {
+  ThemeFamilyProvider,
+  useThemeFamily,
+} from "@/shared/providers/theme-family-provider"
 import { AppIconProvider } from "@/shared/components/app-icon-provider"
 
 export function AppProviders({ children }: React.PropsWithChildren) {
@@ -52,6 +55,7 @@ export function AppProviders({ children }: React.PropsWithChildren) {
 
 function ThemeDocumentSync() {
   const { resolvedTheme } = useTheme()
+  const { themeFamily } = useThemeFamily()
 
   React.useEffect(() => {
     const colorScheme = getThemeColorScheme(resolvedTheme)
@@ -59,9 +63,10 @@ function ThemeDocumentSync() {
 
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
 
+    document.documentElement.dataset.themeFamily = themeFamily
     document.documentElement.style.colorScheme = colorScheme
     meta?.setAttribute("content", getComputedStyle(document.body).backgroundColor)
-  }, [resolvedTheme])
+  }, [resolvedTheme, themeFamily])
 
   return null
 }

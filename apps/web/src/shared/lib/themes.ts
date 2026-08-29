@@ -6,14 +6,6 @@ export const appearanceModes = [
 
 export const themeFamilies = [
   { label: "Default", value: "default" },
-  { label: "Warm", value: "warm" },
-  { label: "Midnight", value: "midnight" },
-  { label: "Rose", value: "rose" },
-  { label: "Forest", value: "forest" },
-  { label: "Ocean", value: "ocean" },
-  { label: "Lilac", value: "lilac" },
-  { label: "Dusk", value: "dusk" },
-  { label: "Ember", value: "ember" },
   { label: "Notion", value: "notion" },
 ] as const
 

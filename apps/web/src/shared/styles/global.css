@@ -1,17 +1,18 @@
 @import "tailwindcss";
-@source "../lib/color-tokens.ts";
-
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "./color-tokens.css";
 @import "./design-tokens.css";
+
+@source "../lib/color-tokens.ts";
 
 @custom-variant dark (&:where(.dark *));
 
 @layer base {
   * {
-    @apply border-border outline-ring;
-    scrollbar-color: var(--scrollbar-thumb-firefox) transparent;
+    @apply border-stroke-default outline-action-focus-ring;
+    scrollbar-color: var(--zb-color-effect-scrollbar-firefox) transparent;
     scrollbar-width: thin;
     }
   *::-webkit-scrollbar {
@@ -22,19 +23,19 @@
     background: transparent;
     }
   *::-webkit-scrollbar-thumb {
-    background-color: var(--scrollbar-thumb);
+    background-color: var(--zb-color-effect-scrollbar-default);
     background-clip: padding-box;
     border: 3px solid transparent;
     border-radius: var(--radius-round);
     }
   *::-webkit-scrollbar-thumb:hover {
-    background-color: var(--scrollbar-thumb-hover);
+    background-color: var(--zb-color-effect-scrollbar-hover);
     }
   *::-webkit-scrollbar-corner {
     background: transparent;
     }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-surface-canvas text-content-primary;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -54,7 +55,7 @@
   background-image: linear-gradient(
     to bottom,
     transparent calc(100% - 1px),
-    var(--border) calc(100% - 1px)
+    var(--zb-color-border-stroke-default) calc(100% - 1px)
   );
 }
 
@@ -109,11 +110,11 @@
   .light
     [data-page-side-pane-open="true"]
     :is([data-page-side-pane-panel], [data-page-side-pane-side-header]) {
-    box-shadow: -6px 0 16px -12px var(--side-pane-shadow-color);
+    box-shadow: -6px 0 16px -12px var(--zb-color-effect-shadow-pane);
   }
 
   .light [data-ai-chat-sidebar-panel][aria-hidden="false"] {
-    box-shadow: -6px 0 16px -12px var(--side-pane-shadow-color);
+    box-shadow: -6px 0 16px -12px var(--zb-color-effect-shadow-pane);
   }
 }
 
@@ -165,8 +166,8 @@
   background: radial-gradient(
     circle at 0 0,
     transparent 7px,
-    var(--border) 7px 8px,
-    var(--background) 8px
+    var(--zb-color-border-stroke-default) 7px 8px,
+    var(--zb-color-surface-background-canvas) 8px
   );
 }
 
@@ -175,8 +176,8 @@
   background: radial-gradient(
     circle at 100% 0,
     transparent 7px,
-    var(--border) 7px 8px,
-    var(--background) 8px
+    var(--zb-color-border-stroke-default) 7px 8px,
+    var(--zb-color-surface-background-canvas) 8px
   );
 }
 

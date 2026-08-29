@@ -1,0 +1,37 @@
+[
+  {
+    "path": "apps/web/src/shared/components/google-icon.tsx",
+    "owner": "Authentication",
+    "reason": "Official Google logo artwork must retain its published brand colors."
+  },
+  {
+    "path": "apps/web/src/features/editor/extensions/embed-block.tsx",
+    "owner": "Editor integrations",
+    "reason": "Official Figma, Excalidraw, YouTube, and Miro marks retain fixed brand artwork colors."
+  },
+  {
+    "path": "apps/web/src/shared/styles/typeset.css",
+    "owner": "Design system",
+    "reason": "Vendored shadcn/typeset stylesheet remains byte-for-byte identical to upstream, including its fallback color functions."
+  },
+  {
+    "path": "apps/web/public",
+    "owner": "Brand",
+    "reason": "Static Zilobase, Tauri, and Vite artwork is not runtime-themed UI."
+  },
+  {
+    "path": "apps/desktop/src-tauri/icons",
+    "owner": "Desktop",
+    "reason": "Packaged operating-system app icons are fixed Zilobase artwork."
+  },
+  {
+    "path": "apps/server/src/features/desktop-auth/routes.ts#COLOR_TOKENS",
+    "owner": "Authentication",
+    "reason": "Generated default light/dark fragment; edit color-tokens.css and run tokens:sync."
+  },
+  {
+    "path": "apps/desktop/src-tauri/src/auth/oauth.rs#COLOR_TOKENS",
+    "owner": "Desktop",
+    "reason": "Generated default light/dark fragment; edit color-tokens.css and run tokens:sync."
+  }
+]

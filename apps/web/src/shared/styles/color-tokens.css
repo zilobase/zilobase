@@ -1,0 +1,353 @@
+/*
+ * Zilobase color contract.
+ *
+ * This is the only human-edited source of application UI color. Add or change
+ * values here, then run `npm run tokens:sync` from the repository root.
+ */
+
+:root,
+.light {
+  color-scheme: light;
+
+  /* Surfaces */
+  --zb-color-surface-background-canvas: #ffffff;
+  --zb-color-surface-background-card: #ffffff;
+  --zb-color-surface-background-overlay: #ffffff;
+  --zb-color-surface-background-navigation: #f7f7f8;
+  --zb-color-surface-background-subtle: #fafafa;
+  --zb-color-surface-background-muted: #f4f4f5;
+
+  /* Content */
+  --zb-color-content-text-primary: #18181b;
+  --zb-color-content-text-secondary: #5f5f68;
+  --zb-color-content-text-inverse: var(--zb-color-surface-background-canvas);
+
+  /* Borders and controls */
+  --zb-color-border-stroke-default: #e4e4e7;
+  --zb-color-control-background-default: #ffffff;
+  --zb-color-control-border-default: var(--zb-color-border-stroke-default);
+
+  /* Shared actions */
+  --zb-color-action-background-primary: #2563eb;
+  --zb-color-action-background-primary-hover: #1d4ed8;
+  --zb-color-action-text-on-primary: #ffffff;
+  --zb-color-action-text-link: #1d4ed8;
+  --zb-color-action-background-secondary: var(--zb-color-surface-background-muted);
+  --zb-color-action-background-secondary-hover: var(--zb-color-action-background-neutral-pressed);
+  --zb-color-action-text-on-secondary: var(--zb-color-content-text-primary);
+  --zb-color-action-background-neutral-hover: #f0f0f2;
+  --zb-color-action-background-neutral-pressed: #e4e4e7;
+  --zb-color-action-text-on-neutral: var(--zb-color-content-text-primary);
+  --zb-color-action-background-selected: #2563eb;
+  --zb-color-action-background-selected-subtle: #eaf2ff;
+  --zb-color-action-text-selected: #1d4ed8;
+  --zb-color-action-text-on-selected: #ffffff;
+  --zb-color-action-border-selected: #2563eb;
+  --zb-color-action-ring-focus: #2563eb;
+  --zb-color-action-background-danger: #dc2626;
+  --zb-color-action-background-danger-hover: #b91c1c;
+  --zb-color-action-text-on-danger: #ffffff;
+  --zb-color-action-text-danger: #991b1b;
+  --zb-color-action-border-danger: #dc2626;
+
+  /* Feedback */
+  --zb-color-feedback-text-success: #166534;
+  --zb-color-feedback-background-success: #15803d;
+  --zb-color-feedback-background-success-subtle: #dcfce7;
+  --zb-color-feedback-text-warning: #92400e;
+  --zb-color-feedback-background-warning: #d97706;
+  --zb-color-feedback-background-warning-subtle: #fef3c7;
+  --zb-color-feedback-text-error: #991b1b;
+  --zb-color-feedback-background-error: #dc2626;
+  --zb-color-feedback-background-error-subtle: #fee2e2;
+  --zb-color-feedback-text-favorite: #d97706;
+
+  /* Persisted content palette. The IDs are part of stored application data. */
+  --zb-color-palette-text-gray: #6b6b6b;
+  --zb-color-palette-background-gray-subtle: #eeeeec;
+  --zb-color-palette-text-brown: #8b5e4a;
+  --zb-color-palette-background-brown-subtle: #f3e7e1;
+  --zb-color-palette-text-orange: #a84b08;
+  --zb-color-palette-background-orange-subtle: #fde6d3;
+  --zb-color-palette-text-yellow: #8a5a00;
+  --zb-color-palette-background-yellow-subtle: #fff1c7;
+  --zb-color-palette-text-green: #2f7d4b;
+  --zb-color-palette-background-green-subtle: #e0f1e5;
+  --zb-color-palette-text-blue: #2563a6;
+  --zb-color-palette-background-blue-subtle: #deebf5;
+  --zb-color-palette-text-purple: #71429f;
+  --zb-color-palette-background-purple-subtle: #ece3f4;
+  --zb-color-palette-text-pink: #a93670;
+  --zb-color-palette-background-pink-subtle: #f7e1ec;
+  --zb-color-palette-text-red: #b93434;
+  --zb-color-palette-background-red-subtle: #f9e1df;
+  --zb-color-palette-text-on-subtle: #37352f;
+
+  /* Chart shades derived from the shared persisted palette. */
+  --zb-color-palette-background-gray-variant-82: color-mix(in srgb, var(--zb-color-palette-text-gray) 82%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-gray-variant-68: color-mix(in srgb, var(--zb-color-palette-text-gray) 68%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-gray-variant-54: color-mix(in srgb, var(--zb-color-palette-text-gray) 54%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-gray-variant-88: color-mix(in srgb, var(--zb-color-palette-text-gray) 88%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-gray-variant-74: color-mix(in srgb, var(--zb-color-palette-text-gray) 74%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-gray-variant-60: color-mix(in srgb, var(--zb-color-palette-text-gray) 60%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-gray-variant-46: color-mix(in srgb, var(--zb-color-palette-text-gray) 46%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-brown-variant-82: color-mix(in srgb, var(--zb-color-palette-text-brown) 82%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-brown-variant-68: color-mix(in srgb, var(--zb-color-palette-text-brown) 68%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-brown-variant-54: color-mix(in srgb, var(--zb-color-palette-text-brown) 54%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-brown-variant-88: color-mix(in srgb, var(--zb-color-palette-text-brown) 88%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-brown-variant-74: color-mix(in srgb, var(--zb-color-palette-text-brown) 74%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-brown-variant-60: color-mix(in srgb, var(--zb-color-palette-text-brown) 60%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-brown-variant-46: color-mix(in srgb, var(--zb-color-palette-text-brown) 46%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-orange-variant-82: color-mix(in srgb, var(--zb-color-palette-text-orange) 82%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-orange-variant-68: color-mix(in srgb, var(--zb-color-palette-text-orange) 68%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-orange-variant-54: color-mix(in srgb, var(--zb-color-palette-text-orange) 54%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-orange-variant-88: color-mix(in srgb, var(--zb-color-palette-text-orange) 88%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-orange-variant-74: color-mix(in srgb, var(--zb-color-palette-text-orange) 74%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-orange-variant-60: color-mix(in srgb, var(--zb-color-palette-text-orange) 60%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-orange-variant-46: color-mix(in srgb, var(--zb-color-palette-text-orange) 46%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-yellow-variant-82: color-mix(in srgb, var(--zb-color-palette-text-yellow) 82%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-yellow-variant-68: color-mix(in srgb, var(--zb-color-palette-text-yellow) 68%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-yellow-variant-54: color-mix(in srgb, var(--zb-color-palette-text-yellow) 54%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-yellow-variant-88: color-mix(in srgb, var(--zb-color-palette-text-yellow) 88%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-yellow-variant-74: color-mix(in srgb, var(--zb-color-palette-text-yellow) 74%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-yellow-variant-60: color-mix(in srgb, var(--zb-color-palette-text-yellow) 60%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-yellow-variant-46: color-mix(in srgb, var(--zb-color-palette-text-yellow) 46%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-green-variant-82: color-mix(in srgb, var(--zb-color-palette-text-green) 82%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-green-variant-68: color-mix(in srgb, var(--zb-color-palette-text-green) 68%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-green-variant-54: color-mix(in srgb, var(--zb-color-palette-text-green) 54%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-green-variant-88: color-mix(in srgb, var(--zb-color-palette-text-green) 88%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-green-variant-74: color-mix(in srgb, var(--zb-color-palette-text-green) 74%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-green-variant-60: color-mix(in srgb, var(--zb-color-palette-text-green) 60%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-green-variant-46: color-mix(in srgb, var(--zb-color-palette-text-green) 46%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-blue-variant-82: color-mix(in srgb, var(--zb-color-palette-text-blue) 82%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-blue-variant-68: color-mix(in srgb, var(--zb-color-palette-text-blue) 68%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-blue-variant-54: color-mix(in srgb, var(--zb-color-palette-text-blue) 54%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-blue-variant-88: color-mix(in srgb, var(--zb-color-palette-text-blue) 88%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-blue-variant-74: color-mix(in srgb, var(--zb-color-palette-text-blue) 74%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-blue-variant-60: color-mix(in srgb, var(--zb-color-palette-text-blue) 60%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-blue-variant-46: color-mix(in srgb, var(--zb-color-palette-text-blue) 46%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-purple-variant-82: color-mix(in srgb, var(--zb-color-palette-text-purple) 82%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-purple-variant-68: color-mix(in srgb, var(--zb-color-palette-text-purple) 68%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-purple-variant-54: color-mix(in srgb, var(--zb-color-palette-text-purple) 54%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-purple-variant-88: color-mix(in srgb, var(--zb-color-palette-text-purple) 88%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-purple-variant-74: color-mix(in srgb, var(--zb-color-palette-text-purple) 74%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-purple-variant-60: color-mix(in srgb, var(--zb-color-palette-text-purple) 60%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-purple-variant-46: color-mix(in srgb, var(--zb-color-palette-text-purple) 46%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-pink-variant-82: color-mix(in srgb, var(--zb-color-palette-text-pink) 82%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-pink-variant-68: color-mix(in srgb, var(--zb-color-palette-text-pink) 68%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-pink-variant-54: color-mix(in srgb, var(--zb-color-palette-text-pink) 54%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-pink-variant-88: color-mix(in srgb, var(--zb-color-palette-text-pink) 88%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-pink-variant-74: color-mix(in srgb, var(--zb-color-palette-text-pink) 74%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-pink-variant-60: color-mix(in srgb, var(--zb-color-palette-text-pink) 60%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-pink-variant-46: color-mix(in srgb, var(--zb-color-palette-text-pink) 46%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-red-variant-82: color-mix(in srgb, var(--zb-color-palette-text-red) 82%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-red-variant-68: color-mix(in srgb, var(--zb-color-palette-text-red) 68%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-red-variant-54: color-mix(in srgb, var(--zb-color-palette-text-red) 54%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-red-variant-88: color-mix(in srgb, var(--zb-color-palette-text-red) 88%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-red-variant-74: color-mix(in srgb, var(--zb-color-palette-text-red) 74%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-red-variant-60: color-mix(in srgb, var(--zb-color-palette-text-red) 60%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-red-variant-46: color-mix(in srgb, var(--zb-color-palette-text-red) 46%, var(--zb-color-surface-background-canvas));
+
+  /* Fixed semantic black and white */
+  --zb-color-data-background-media: #000000;
+  --zb-color-data-text-label: #ffffff;
+  --zb-color-effect-shadow-base: #000000;
+
+  /* Derived application roles */
+  --zb-color-effect-background-backdrop: color-mix(in srgb, var(--zb-color-surface-background-canvas) 90%, transparent);
+  --zb-color-effect-background-scrim: color-mix(in srgb, var(--zb-color-effect-shadow-base) 50%, transparent);
+  --zb-color-effect-scrollbar-default: color-mix(in srgb, var(--zb-color-content-text-secondary) 22%, transparent);
+  --zb-color-effect-scrollbar-firefox: color-mix(in srgb, var(--zb-color-content-text-secondary) 24%, transparent);
+  --zb-color-effect-scrollbar-hover: color-mix(in srgb, var(--zb-color-content-text-secondary) 32%, transparent);
+  --zb-color-indicator-background-muted: color-mix(in srgb, var(--zb-color-content-text-secondary) 40%, transparent);
+  --zb-color-selection-background-editor: color-mix(in srgb, var(--zb-color-action-ring-focus) 14%, transparent);
+  --zb-color-selection-background-row: color-mix(in srgb, var(--zb-color-action-background-selected) 10%, var(--zb-color-surface-background-canvas));
+  --zb-color-data-border-timeline-grid: color-mix(in srgb, var(--zb-color-border-stroke-default) 72%, transparent);
+  --zb-color-data-background-bar: var(--zb-color-action-background-selected);
+  --zb-color-data-text-on-bar: var(--zb-color-action-text-on-selected);
+  --zb-color-effect-shadow-pane: color-mix(in srgb, var(--zb-color-effect-shadow-base) 22%, transparent);
+  --zb-color-effect-shadow-2xs: color-mix(in srgb, var(--zb-color-effect-shadow-base) 5%, transparent);
+  --zb-color-effect-shadow-xs: color-mix(in srgb, var(--zb-color-effect-shadow-base) 5%, transparent);
+  --zb-color-effect-shadow-sm: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
+  --zb-color-effect-shadow-default: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
+  --zb-color-effect-shadow-md: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
+  --zb-color-effect-shadow-lg: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
+  --zb-color-effect-shadow-xl: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
+  --zb-color-effect-shadow-2xl: color-mix(in srgb, var(--zb-color-effect-shadow-base) 25%, transparent);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --zb-color-surface-background-canvas: #111113;
+  --zb-color-surface-background-card: #18181b;
+  --zb-color-surface-background-overlay: #202024;
+  --zb-color-surface-background-navigation: #0c0c0e;
+  --zb-color-surface-background-subtle: #151517;
+  --zb-color-surface-background-muted: #1f1f23;
+  --zb-color-content-text-primary: #f4f4f5;
+  --zb-color-content-text-secondary: #a1a1aa;
+  --zb-color-border-stroke-default: #2c2c31;
+  --zb-color-control-background-default: #1f1f23;
+  --zb-color-action-background-primary: #2563eb;
+  --zb-color-action-background-primary-hover: #1d4ed8;
+  --zb-color-action-text-link: #60a5fa;
+  --zb-color-action-background-neutral-hover: #25252a;
+  --zb-color-action-background-neutral-pressed: #303036;
+  --zb-color-action-background-selected: #2563eb;
+  --zb-color-action-background-selected-subtle: #172554;
+  --zb-color-action-text-selected: #93c5fd;
+  --zb-color-action-border-selected: #60a5fa;
+  --zb-color-action-ring-focus: #60a5fa;
+  --zb-color-action-background-danger: #ef4444;
+  --zb-color-action-background-danger-hover: #dc2626;
+  --zb-color-action-text-danger: #fca5a5;
+  --zb-color-action-border-danger: #ef4444;
+  --zb-color-feedback-text-success: #86efac;
+  --zb-color-feedback-background-success: #22c55e;
+  --zb-color-feedback-background-success-subtle: #143322;
+  --zb-color-feedback-text-warning: #fcd34d;
+  --zb-color-feedback-background-warning: #f59e0b;
+  --zb-color-feedback-background-warning-subtle: #3a2b10;
+  --zb-color-feedback-text-error: #fca5a5;
+  --zb-color-feedback-background-error: #ef4444;
+  --zb-color-feedback-background-error-subtle: #3b1719;
+  --zb-color-feedback-text-favorite: #facc15;
+  --zb-color-palette-text-gray: #a7a7a3;
+  --zb-color-palette-background-gray-subtle: #454545;
+  --zb-color-palette-text-brown: #c18a73;
+  --zb-color-palette-background-brown-subtle: #52372e;
+  --zb-color-palette-text-orange: #d98b50;
+  --zb-color-palette-background-orange-subtle: #633b20;
+  --zb-color-palette-text-yellow: #d1a64a;
+  --zb-color-palette-background-yellow-subtle: #5a4720;
+  --zb-color-palette-text-green: #61ad7d;
+  --zb-color-palette-background-green-subtle: #254a34;
+  --zb-color-palette-text-blue: #65a8d1;
+  --zb-color-palette-background-blue-subtle: #233f5b;
+  --zb-color-palette-text-purple: #aa82d5;
+  --zb-color-palette-background-purple-subtle: #3e2d52;
+  --zb-color-palette-text-pink: #df70ab;
+  --zb-color-palette-background-pink-subtle: #542c43;
+  --zb-color-palette-text-red: #e26661;
+  --zb-color-palette-background-red-subtle: #5a2d2b;
+  --zb-color-palette-text-on-subtle: #ffffff;
+  --zb-color-effect-background-backdrop: color-mix(in srgb, var(--zb-color-surface-background-canvas) 90%, transparent);
+  --zb-color-effect-background-scrim: color-mix(in srgb, var(--zb-color-effect-shadow-base) 72%, transparent);
+  --zb-color-selection-background-editor: color-mix(in srgb, var(--zb-color-action-ring-focus) 22%, transparent);
+  --zb-color-effect-shadow-2xs: color-mix(in srgb, var(--zb-color-effect-shadow-base) 30%, transparent);
+  --zb-color-effect-shadow-xs: color-mix(in srgb, var(--zb-color-effect-shadow-base) 35%, transparent);
+  --zb-color-effect-shadow-sm: color-mix(in srgb, var(--zb-color-effect-shadow-base) 40%, transparent);
+  --zb-color-effect-shadow-default: color-mix(in srgb, var(--zb-color-effect-shadow-base) 45%, transparent);
+  --zb-color-effect-shadow-md: color-mix(in srgb, var(--zb-color-effect-shadow-base) 45%, transparent);
+  --zb-color-effect-shadow-lg: color-mix(in srgb, var(--zb-color-effect-shadow-base) 50%, transparent);
+  --zb-color-effect-shadow-xl: color-mix(in srgb, var(--zb-color-effect-shadow-base) 50%, transparent);
+  --zb-color-effect-shadow-2xl: color-mix(in srgb, var(--zb-color-effect-shadow-base) 55%, transparent);
+}
+
+:root[data-theme-family="notion"],
+.light[data-theme-family="notion"] {
+  --zb-color-surface-background-canvas: #ffffff;
+  --zb-color-surface-background-card: #ffffff;
+  --zb-color-surface-background-overlay: #ffffff;
+  --zb-color-surface-background-navigation: #f9f8f7;
+  --zb-color-surface-background-subtle: #f4f3f3;
+  --zb-color-surface-background-muted: #f0efed;
+  --zb-color-content-text-primary: #2c2c2b;
+  --zb-color-content-text-secondary: #5f5e59;
+  --zb-color-border-stroke-default: #e6e5e3;
+  --zb-color-control-background-default: #ffffff;
+  --zb-color-action-background-neutral-hover: #efefee;
+  --zb-color-action-background-neutral-pressed: #dfdfde;
+}
+
+:root.dark[data-theme-family="notion"],
+.dark[data-theme-family="notion"] {
+  --zb-color-surface-background-canvas: #191919;
+  --zb-color-surface-background-card: #202020;
+  --zb-color-surface-background-overlay: #202020;
+  --zb-color-surface-background-navigation: #202020;
+  --zb-color-surface-background-subtle: #262626;
+  --zb-color-surface-background-muted: #383836;
+  --zb-color-content-text-primary: #f0efed;
+  --zb-color-content-text-secondary: #bcbab6;
+  --zb-color-border-stroke-default: #383836;
+  --zb-color-control-background-default: #202020;
+  --zb-color-action-background-neutral-hover: #2c2c2c;
+  --zb-color-action-background-neutral-pressed: #252525;
+}
+
+@theme inline {
+  --color-surface-canvas: var(--zb-color-surface-background-canvas);
+  --color-surface-card: var(--zb-color-surface-background-card);
+  --color-surface-overlay: var(--zb-color-surface-background-overlay);
+  --color-surface-navigation: var(--zb-color-surface-background-navigation);
+  --color-surface-subtle: var(--zb-color-surface-background-subtle);
+  --color-surface-muted: var(--zb-color-surface-background-muted);
+  --color-content-primary: var(--zb-color-content-text-primary);
+  --color-content-secondary: var(--zb-color-content-text-secondary);
+  --color-content-inverse: var(--zb-color-content-text-inverse);
+  --color-stroke-default: var(--zb-color-border-stroke-default);
+  --color-control-background: var(--zb-color-control-background-default);
+  --color-control-border: var(--zb-color-control-border-default);
+  --color-action-primary: var(--zb-color-action-background-primary);
+  --color-action-primary-hover: var(--zb-color-action-background-primary-hover);
+  --color-action-on-primary: var(--zb-color-action-text-on-primary);
+  --color-action-link: var(--zb-color-action-text-link);
+  --color-action-secondary: var(--zb-color-action-background-secondary);
+  --color-action-secondary-hover: var(--zb-color-action-background-secondary-hover);
+  --color-action-on-secondary: var(--zb-color-action-text-on-secondary);
+  --color-action-neutral-hover: var(--zb-color-action-background-neutral-hover);
+  --color-action-neutral-pressed: var(--zb-color-action-background-neutral-pressed);
+  --color-action-on-neutral: var(--zb-color-action-text-on-neutral);
+  --color-action-selected: var(--zb-color-action-background-selected);
+  --color-action-selected-subtle: var(--zb-color-action-background-selected-subtle);
+  --color-action-selected-text: var(--zb-color-action-text-selected);
+  --color-action-on-selected: var(--zb-color-action-text-on-selected);
+  --color-action-selected-border: var(--zb-color-action-border-selected);
+  --color-action-focus-ring: var(--zb-color-action-ring-focus);
+  --color-action-danger: var(--zb-color-action-background-danger);
+  --color-action-danger-hover: var(--zb-color-action-background-danger-hover);
+  --color-action-on-danger: var(--zb-color-action-text-on-danger);
+  --color-action-danger-text: var(--zb-color-action-text-danger);
+  --color-action-danger-border: var(--zb-color-action-border-danger);
+  --color-feedback-success: var(--zb-color-feedback-background-success);
+  --color-feedback-success-text: var(--zb-color-feedback-text-success);
+  --color-feedback-success-subtle: var(--zb-color-feedback-background-success-subtle);
+  --color-feedback-warning: var(--zb-color-feedback-background-warning);
+  --color-feedback-warning-text: var(--zb-color-feedback-text-warning);
+  --color-feedback-warning-subtle: var(--zb-color-feedback-background-warning-subtle);
+  --color-feedback-error: var(--zb-color-feedback-background-error);
+  --color-feedback-error-text: var(--zb-color-feedback-text-error);
+  --color-feedback-error-subtle: var(--zb-color-feedback-background-error-subtle);
+  --color-feedback-favorite: var(--zb-color-feedback-text-favorite);
+  --color-effect-backdrop: var(--zb-color-effect-background-backdrop);
+  --color-effect-scrim: var(--zb-color-effect-background-scrim);
+  --color-indicator-muted: var(--zb-color-indicator-background-muted);
+  --color-selection-editor: var(--zb-color-selection-background-editor);
+  --color-selection-row: var(--zb-color-selection-background-row);
+  --color-data-grid: var(--zb-color-data-border-timeline-grid);
+  --color-data-bar: var(--zb-color-data-background-bar);
+  --color-data-bar-text: var(--zb-color-data-text-on-bar);
+  --color-data-media: var(--zb-color-data-background-media);
+  --color-data-label: var(--zb-color-data-text-label);
+  --color-palette-gray: var(--zb-color-palette-text-gray);
+  --color-palette-gray-subtle: var(--zb-color-palette-background-gray-subtle);
+  --color-palette-brown: var(--zb-color-palette-text-brown);
+  --color-palette-brown-subtle: var(--zb-color-palette-background-brown-subtle);
+  --color-palette-orange: var(--zb-color-palette-text-orange);
+  --color-palette-orange-subtle: var(--zb-color-palette-background-orange-subtle);
+  --color-palette-yellow: var(--zb-color-palette-text-yellow);
+  --color-palette-yellow-subtle: var(--zb-color-palette-background-yellow-subtle);
+  --color-palette-green: var(--zb-color-palette-text-green);
+  --color-palette-green-subtle: var(--zb-color-palette-background-green-subtle);
+  --color-palette-blue: var(--zb-color-palette-text-blue);
+  --color-palette-blue-subtle: var(--zb-color-palette-background-blue-subtle);
+  --color-palette-purple: var(--zb-color-palette-text-purple);
+  --color-palette-purple-subtle: var(--zb-color-palette-background-purple-subtle);
+  --color-palette-pink: var(--zb-color-palette-text-pink);
+  --color-palette-pink-subtle: var(--zb-color-palette-background-pink-subtle);
+  --color-palette-red: var(--zb-color-palette-text-red);
+  --color-palette-red-subtle: var(--zb-color-palette-background-red-subtle);
+  --color-palette-on-subtle: var(--zb-color-palette-text-on-subtle);
+}

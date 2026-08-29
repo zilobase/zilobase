@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "test": "node test/support/run-tests.mjs",
+    "build": "node ../../scripts/colors/sync-color-tokens.mjs --check && tsc && vite build",
+    "test": "node ../../scripts/colors/sync-color-tokens.mjs --check && node test/support/run-tests.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -14,7 +14,8 @@
     "@base-ui/react": "^1.5.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
-    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@hocuspocus/provider": "^4.3.0",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
