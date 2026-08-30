@@ -175,6 +175,19 @@ export function AppSidebar({
     setActiveTabId(tabId)
     writeActiveSidebarTab(workspaceId, tabId)
   }, [workspaceId])
+  const selectNavigationTab = React.useCallback((tabId: string) => {
+    selectTab(tabId)
+    if (tabId === "mail") {
+      void navigate({ search: { view: "inbox" }, to: "/mail" })
+    } else if (pathname === "/mail") {
+      void navigate({ search: { view: "recents" }, to: "/recents" })
+    }
+  }, [navigate, pathname, selectTab])
+  React.useEffect(() => {
+    if (pathname === "/mail" && layout.tabs.some((tab) => tab.id === "mail")) {
+      selectTab("mail")
+    }
+  }, [layout.tabs, pathname, selectTab])
   const activeTab = layout.tabs.find((tab) => tab.id === activeTabId) ?? layout.tabs[0]!
   const needsMeetings = activeTab.sections.some((section) => section.kind === "meetings")
   const { data: navigation } = usePageNavigation(workspaceId)
@@ -299,7 +312,7 @@ export function AppSidebar({
         }
         className={hasOverlayTitleBar ? "pt-9" : undefined}
         data-tauri-drag-region={hasOverlayTitleBar ? "deep" : undefined}
-        navigation={!customizing ? <SidebarLayoutTabs activeTabId={activeTab.id} onOpenSearch={openSearch} onSelectTab={selectTab} tabs={layout.tabs} /> : null}
+        navigation={!customizing ? <SidebarLayoutTabs activeTabId={activeTab.id} onOpenSearch={openSearch} onSelectTab={selectNavigationTab} tabs={layout.tabs} /> : null}
       >
         <div className="flex h-full items-center px-1.5"><ZilobaseLogo className="h-5 w-auto" /><span className="sr-only">Zilobase</span></div>
       </SidebarHeader>

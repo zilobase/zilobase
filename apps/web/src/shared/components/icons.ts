@@ -108,6 +108,7 @@ export {
   Download as Download,
   Download as DownloadIcon,
   EnvelopeSimple as MailCheckIcon,
+  EnvelopeSimple as MailIcon,
   EnvelopeSimple as MailPlusIcon,
   Eraser as Eraser,
   Eye as Eye,

@@ -1,4 +1,4 @@
-import { libraryViewIds } from "@zilobase/features/user-settings";
+import { libraryViewIds, mailViewIds } from "@zilobase/features/user-settings";
 
 import { normalizeTeamSettingsTab } from "@/features/teamspaces";
 
@@ -24,6 +24,22 @@ export function validateLibrarySearch(search: Record<string, unknown>): {
     libraryViewIds.includes(search.view as (typeof libraryViewIds)[number])
     ? { view: search.view as (typeof libraryViewIds)[number] }
     : {};
+}
+
+export function validateMailSearch(search: Record<string, unknown>): {
+  compose?: boolean;
+  view: (typeof mailViewIds)[number];
+} {
+  return {
+    ...(search.compose === true || search.compose === "true"
+      ? { compose: true }
+      : {}),
+    view:
+      typeof search.view === "string" &&
+      mailViewIds.includes(search.view as (typeof mailViewIds)[number])
+        ? (search.view as (typeof mailViewIds)[number])
+        : "inbox",
+  };
 }
 
 export function validateAiSearch(search: Record<string, unknown>) {
