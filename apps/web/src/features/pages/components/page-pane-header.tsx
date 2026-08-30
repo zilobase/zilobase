@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
-  CheckIcon,
   ChevronDown,
   ChevronUp,
   ChevronsRight,
@@ -9,8 +8,6 @@ import {
   LockIcon,
   MailIcon,
   Maximize2,
-  SidebarSimpleIcon,
-  SquareIcon,
   UsersIcon,
 } from "@/shared/components/icons";
 import { toast } from "sonner";
@@ -51,13 +48,12 @@ import {
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "../icons/page-icon";
 import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "../icons/item-icons";
 import {
-  embeddedItemsOpenAsLabels,
-  embeddedItemsOpenAsModes,
   resolveEmbeddedItemsOpenAs,
   usePage,
   usePageNavigation,
   type EmbeddedItemsOpenAs,
 } from "@zilobase/features/pages";
+import { EmbeddedItemPresentationDropdown } from "./embedded-item-presentation-dropdown";
 import {
   buildCanonicalBreadcrumbTrail,
   getBreadcrumbNavigationSection,
@@ -263,8 +259,9 @@ function PagePaneControls({
         </Link>
       </Button>
       {pageId ? (
-        <OpenPageAsDropdown
+        <EmbeddedItemPresentationDropdown
           disabled={!isPublishedFallback && updateUserSettings.isPending}
+          itemLabel="pages"
           mode={mode}
           onSelect={handleModeSelect}
         />
@@ -298,59 +295,6 @@ function PagePaneControls({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function OpenPageAsDropdown({
-  disabled,
-  mode,
-  onSelect,
-}: {
-  disabled?: boolean;
-  mode: EmbeddedItemsOpenAs;
-  onSelect: (mode: EmbeddedItemsOpenAs) => void;
-}) {
-  const ModeIcon = mode === "sidepanel" ? SidebarSimpleIcon : SquareIcon;
-  const [open, setOpen] = useState(false);
-
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          aria-label="Open pages as"
-          disabled={disabled}
-          size="icon"
-          title={`Open pages as ${embeddedItemsOpenAsLabels[mode]}`}
-          type="button"
-          variant="ghost"
-        >
-          <ModeIcon mirrored={mode === "sidepanel"} />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="w-52"
-      >
-        {embeddedItemsOpenAsModes.map((value) => {
-          const OptionIcon = value === "sidepanel" ? SidebarSimpleIcon : SquareIcon;
-
-          return (
-            <DropdownMenuItem
-              key={value}
-              onSelect={(event) => {
-                event.preventDefault();
-                onSelect(value);
-                setOpen(false);
-              }}
-            >
-              <OptionIcon mirrored={value === "sidepanel"} />
-              <span>{embeddedItemsOpenAsLabels[value]}</span>
-              {mode === value ? <CheckIcon className="ml-auto" /> : null}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 

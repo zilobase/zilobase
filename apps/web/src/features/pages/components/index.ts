@@ -1,4 +1,5 @@
 export { EmbeddedPageDialog } from "./embedded-page-dialog";
+export { EmbeddedItemPresentationDropdown } from "./embedded-item-presentation-dropdown";
 export {
   PagePaneHeader,
   getDatabaseId,
