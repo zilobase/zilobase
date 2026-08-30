@@ -15,15 +15,18 @@ export function register({ assert, loadModule, readSource, readWorkspace, test }
   })
 
   test("disconnect, logout, and desktop replacement all close mail caches before deletion", async () => {
-    const [mailPage, offlineStore, mailDatabase] = await Promise.all([
+    const [mailPage, offlineStore, mailDatabase, mailController] = await Promise.all([
       readSource("/src/features/mail/pages/mail.tsx"),
       readSource("/src/features/offline/model/offline-store.ts"),
       readSource("/src/features/mail/cache/mail-database.ts"),
+      readSource("/src/features/mail/model/mail-sync-controller.ts"),
     ])
     assert.match(mailPage, /method: "DELETE"/)
     assert.match(mailPage, /destroyMailDatabase/)
     assert.match(offlineStore, /clearAllOfflineData[^]*deleteIndexedDatabasesForPrefix/)
     assert.match(offlineStore, /prepareMailDatabasesForDeletion/)
     assert.match(mailDatabase, /BroadcastChannel/)
+    assert.doesNotMatch(mailController, /closeMailDatabase/)
+    assert.match(mailController, /cleanup only cancels this React consumer/)
   })
 }

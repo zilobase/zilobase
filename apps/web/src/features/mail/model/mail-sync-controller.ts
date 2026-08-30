@@ -21,11 +21,9 @@ import { getConnectivityState, subscribeConnectivity } from "@/features/offline/
 import {
   applyMailSyncResponse,
   clearMailReconciliation,
-  closeMailDatabase,
   deleteMailLabelFromCache,
   deleteMailMessageFromCache,
   deleteMailThreadFromCache,
-  mailDatabaseName,
   openMailDatabase,
   optimisticallyModifyMessage,
   optimisticallyModifyThread,
@@ -64,15 +62,18 @@ export function useMailController(input: {
     }
     let active = true
     void openMailDatabase(identity).then((next) => {
-      if (active) setDatabase(next)
-      else closeMailDatabase(mailDatabaseName(identity))
+      if (!active) return
+      setError(null)
+      setDatabase(next)
     }).catch((cacheError) => {
+      if (!active) return
       recordDesktopDiagnostic("mail.cache_failure", describeDesktopError(cacheError), "error")
       setError(cacheError)
     })
     return () => {
+      // This cleanup only cancels this React consumer. Explicit lifecycle events
+      // such as disconnect, logout, and server replacement own cache closure.
       active = false
-      closeMailDatabase(mailDatabaseName(identity))
     }
   }, [input.connection.connectionId, input.userId])
 
