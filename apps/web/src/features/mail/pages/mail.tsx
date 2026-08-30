@@ -18,8 +18,15 @@ import {
   Trash2Icon,
   XIcon,
 } from "@/shared/components/icons"
-import { EmbeddedItemPresentationDropdown } from "@/features/pages/components"
-import { PageSidePaneLayout } from "@/features/pages/context"
+import {
+  EmbeddedItemPresentationDropdown,
+  PagePaneHeader,
+} from "@/features/pages/components"
+import {
+  PageSidePaneHeaderCell,
+  PageSidePaneLayout,
+  PageSidePaneShell,
+} from "@/features/pages/context"
 import { Button } from "@/shared/ui/button"
 import {
   Dialog,
@@ -117,36 +124,37 @@ export default function MailPage() {
   }
 
   const closeMessage = () => setSelection(null)
-  const messageViewer = selectedMessage ? (
-    <MailMessageViewer
-      message={selectedMessage}
-      mode={messagePresentation}
-      nextDisabled={!nextMessageId}
-      onArchive={() => {
+  const messageViewerProps = selectedMessage ? {
+    message: selectedMessage,
+    mode: messagePresentation,
+    nextDisabled: !nextMessageId,
+    onArchive: () => {
         updateMessage(selectedMessage.id, (current) => ({ ...current, folder: "archive", unread: false }))
         closeMessage()
         toast.success("Message archived.")
-      }}
-      onClose={closeMessage}
-      onModeChange={setMessagePresentation}
-      onNext={() => openAdjacentMessage(nextMessageId)}
-      onPrevious={() => openAdjacentMessage(previousMessageId)}
-      onStar={() => updateMessage(selectedMessage.id, (current) => ({ ...current, starred: !current.starred }))}
-      onTrash={() => {
+      },
+    onClose: closeMessage,
+    onModeChange: setMessagePresentation,
+    onNext: () => openAdjacentMessage(nextMessageId),
+    onPrevious: () => openAdjacentMessage(previousMessageId),
+    onStar: () => updateMessage(selectedMessage.id, (current) => ({ ...current, starred: !current.starred })),
+    onTrash: () => {
         updateMessage(selectedMessage.id, (current) => ({ ...current, folder: "trash", unread: false }))
         closeMessage()
         toast.success("Message moved to trash.")
-      }}
-      previousDisabled={!previousMessageId}
-    />
-  ) : null
+      },
+    previousDisabled: !previousMessageId,
+  } satisfies MailMessageViewerProps : null
+  const messageViewer = messageViewerProps ? <MailMessageViewer {...messageViewerProps} /> : null
+  const sidePaneOpen = Boolean(selectedMessage && messagePresentation === "sidepanel")
 
   return (
     <>
-      <PageSidePaneLayout
-        className="bg-surface-canvas"
-        main={(
-          <main className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas">
+      <PageSidePaneShell
+        body={(
+          <PageSidePaneLayout
+            main={(
+              <main className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas">
             <section className="animate-in fade-in-0 duration-300">
               <div className="px-4 pb-8 pt-5 sm:px-6 md:px-10 lg:px-12">
                 <div className="mx-auto w-full max-w-[96rem]">
@@ -228,13 +236,28 @@ export default function MailPage() {
                 </div>
               </div>
             </section>
-          </main>
+              </main>
+            )}
+            sidePane={sidePaneOpen && selectedMessage ? <MailMessageContent message={selectedMessage} /> : null}
+            sidePaneOpen={sidePaneOpen}
+            sidePaneVisible={sidePaneOpen}
+          />
         )}
-        sidePane={messagePresentation === "sidepanel" ? messageViewer : null}
-        sidePaneOpen={Boolean(selectedMessage && messagePresentation === "sidepanel")}
-        sidePaneVisible={Boolean(selectedMessage && messagePresentation === "sidepanel")}
-        standalone
-        viewportHeightClass="h-full"
+        className="h-full bg-surface-canvas"
+        header={(
+          <>
+            <PageSidePaneHeaderCell className="z-10" side="main" splitActive={sidePaneOpen}>
+              <PagePaneHeader className="min-w-0 flex-1" pathname="/mail" showActions={false} />
+            </PageSidePaneHeaderCell>
+            {sidePaneOpen && messageViewerProps ? (
+              <PageSidePaneHeaderCell side="side" splitActive={sidePaneOpen}>
+                <MailMessageToolbar {...messageViewerProps} />
+              </PageSidePaneHeaderCell>
+            ) : null}
+          </>
+        )}
+        open={sidePaneOpen}
+        visible={sidePaneOpen}
       />
       <MailMessageDialog
         onOpenChange={(open) => {
@@ -257,19 +280,7 @@ export default function MailPage() {
   )
 }
 
-function MailMessageViewer({
-  message,
-  mode,
-  nextDisabled,
-  onArchive,
-  onClose,
-  onModeChange,
-  onNext,
-  onPrevious,
-  onStar,
-  onTrash,
-  previousDisabled,
-}: {
+type MailMessageViewerProps = {
   message: MailMessage
   mode: EmbeddedItemsOpenAs
   nextDisabled: boolean
@@ -281,12 +292,36 @@ function MailMessageViewer({
   onStar: () => void
   onTrash: () => void
   previousDisabled: boolean
-}) {
+}
+
+function MailMessageViewer(props: MailMessageViewerProps) {
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-surface-canvas dark:bg-surface-navigation">
+      <header className="flex h-12 shrink-0">
+        <MailMessageToolbar {...props} />
+      </header>
+      <MailMessageContent message={props.message} />
+    </div>
+  )
+}
+
+function MailMessageToolbar({
+  message,
+  mode,
+  nextDisabled,
+  onArchive,
+  onClose,
+  onModeChange,
+  onNext,
+  onPrevious,
+  onStar,
+  onTrash,
+  previousDisabled,
+}: MailMessageViewerProps) {
   const CloseIcon = mode === "sidepanel" ? ChevronsRightIcon : XIcon
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-canvas dark:bg-surface-navigation">
-      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-stroke-default px-2">
+      <div className="flex h-full min-w-0 flex-1 items-center gap-1 px-2">
         <Button aria-label="Close message" onClick={onClose} size="icon" title="Close" type="button" variant="ghost">
           <CloseIcon />
         </Button>
@@ -325,7 +360,13 @@ function MailMessageViewer({
             </Button>
           ) : null}
         </div>
-      </header>
+      </div>
+  )
+}
+
+function MailMessageContent({ message }: { message: MailMessage }) {
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-surface-canvas dark:bg-surface-navigation">
       <div className="min-h-0 flex-1 overflow-y-auto">
         <article className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-7">
           <div className="flex min-w-0 items-start justify-between gap-4">

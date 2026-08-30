@@ -219,6 +219,7 @@ function AppLayoutContent({
     setOpen: setAppSidebarOpen,
   } = useSidebar()
   const isAiPage = pathname === "/ai"
+  const isMailPage = pathname === "/mail"
   const pageId = useRoutePageId(pathname)
   const databaseId = getDatabaseId(pathname)
   const { data: databasePayload } = useDatabase(databaseId, {
@@ -562,7 +563,7 @@ function AppLayoutContent({
                 )
               }
               header={
-                embeddedMobileViewer ? undefined : (
+                embeddedMobileViewer || isMailPage ? undefined : (
                   <AppHeader
                     discussionsOpen={discussionsSidebarOpen}
                     isSettingsPage={isSettingsPage || isAiPage}
