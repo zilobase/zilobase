@@ -202,6 +202,32 @@ export const gmailOauthAttempt = pgTable(
   ],
 );
 
+export const gmailSendOperation = pgTable(
+  "gmail_send_operation",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    connectionId: text("connection_id")
+      .notNull()
+      .references(() => gmailConnection.id, { onDelete: "cascade" }),
+    rfcMessageId: text("rfc_message_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    gmailMessageId: text("gmail_message_id"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ...timestampColumns(),
+  },
+  (table) => [
+    index("gmail_send_operation_connection_idx").on(table.connectionId),
+    index("gmail_send_operation_expiry_idx").on(table.expiresAt),
+    check(
+      "gmail_send_operation_status_check",
+      sql`${table.status} in ('pending', 'ambiguous', 'sent', 'failed')`,
+    ),
+  ],
+);
+
 export const verification = pgTable(
   "verification",
   {

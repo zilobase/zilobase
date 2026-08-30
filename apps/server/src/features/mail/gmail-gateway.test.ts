@@ -108,6 +108,39 @@ test("unsafe Gmail writes are never retried", async () => {
   assert.equal(calls, 1)
 })
 
+test("Gmail compose APIs use draft, send, and Sent-mail search endpoints", async () => {
+  const requests: Array<{ body: unknown; method: string; path: string; query: string }> = []
+  const gateway = new GmailGateway("token", async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString())
+    requests.push({
+      body: init?.body ? JSON.parse(String(init.body)) : null,
+      method: init?.method ?? "GET",
+      path: url.pathname,
+      query: url.search,
+    })
+    if (init?.method === "DELETE") return new Response(null, { status: 204 })
+    if (url.pathname.endsWith("/messages")) return Response.json({ messages: [{ id: "sent-1" }] })
+    return Response.json({ id: "draft-1", message: { id: "message-1" } })
+  })
+
+  await gateway.createDraft({ message: { raw: "encoded", threadId: "thread-1" } })
+  await gateway.updateDraft("draft-1", { message: { raw: "updated" } })
+  await gateway.deleteDraft("draft-1")
+  await gateway.sendDraft("draft-1")
+  await gateway.sendMessage({ raw: "encoded" })
+  await gateway.listMessages({ query: "in:sent rfc822msgid:<stable@example.com>" })
+
+  assert.deepEqual(requests.map(({ method, path }) => ({ method, path })), [
+    { method: "POST", path: "/gmail/v1/users/me/drafts" },
+    { method: "PUT", path: "/gmail/v1/users/me/drafts/draft-1" },
+    { method: "DELETE", path: "/gmail/v1/users/me/drafts/draft-1" },
+    { method: "POST", path: "/gmail/v1/users/me/drafts/send" },
+    { method: "POST", path: "/gmail/v1/users/me/messages/send" },
+    { method: "GET", path: "/gmail/v1/users/me/messages" },
+  ])
+  assert.match(requests.at(-1)?.query ?? "", /rfc822msgid/)
+})
+
 test("attachment responses remain streaming responses and are not decoded or retained", async () => {
   const encoded = Buffer.from("attachment-bytes").toString("base64url")
   const body = new ReadableStream({

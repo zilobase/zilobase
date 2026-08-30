@@ -35,6 +35,10 @@ export type GmailThread = {
   messages?: GmailMessage[]
   snippet?: string
 }
+export type GmailDraft = {
+  id?: string
+  message?: GmailMessage
+}
 export type GmailHistory = {
   id?: string
   labelsAdded?: Array<{ labelIds?: string[]; message?: GmailMessage }>
@@ -44,7 +48,7 @@ export type GmailHistory = {
   messagesDeleted?: Array<{ message?: GmailMessage }>
 }
 
-type GmailConnectionRow = typeof gmailConnection.$inferSelect
+export type GmailConnectionRow = typeof gmailConnection.$inferSelect
 
 export class GmailApiError extends Error {
   constructor(
@@ -148,6 +152,44 @@ export class GmailGateway {
       for (const header of MAIL_METADATA_HEADERS) params.append("metadataHeaders", header)
     }
     return this.json<GmailMessage>(`/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}?${params}`)
+  }
+
+  listMessages(input: { maxResults?: number; query: string }) {
+    const params = new URLSearchParams({
+      maxResults: String(input.maxResults ?? 10),
+      q: input.query,
+    })
+    return this.json<{ messages?: GmailMessage[]; resultSizeEstimate?: number }>(
+      `/gmail/v1/users/me/messages?${params}`,
+    )
+  }
+
+  getDraft(draftId: string) {
+    return this.json<GmailDraft>(`/gmail/v1/users/me/drafts/${encodeURIComponent(draftId)}?format=full`)
+  }
+
+  createDraft(input: { message: { raw: string; threadId?: string } }) {
+    return this.writeJson<GmailDraft>("/gmail/v1/users/me/drafts", input)
+  }
+
+  updateDraft(draftId: string, input: { message: { raw: string; threadId?: string } }) {
+    return this.writeJson<GmailDraft>(
+      `/gmail/v1/users/me/drafts/${encodeURIComponent(draftId)}`,
+      input,
+      "PUT",
+    )
+  }
+
+  deleteDraft(draftId: string) {
+    return this.writeJson(`/gmail/v1/users/me/drafts/${encodeURIComponent(draftId)}`, undefined, "DELETE")
+  }
+
+  sendDraft(draftId: string) {
+    return this.writeJson<GmailMessage>("/gmail/v1/users/me/drafts/send", { id: draftId })
+  }
+
+  sendMessage(input: { raw: string; threadId?: string }) {
+    return this.writeJson<GmailMessage>("/gmail/v1/users/me/messages/send", input)
   }
 
   getProfile() {
@@ -254,7 +296,7 @@ export class GmailGateway {
   private async writeJson<T = unknown>(
     path: string,
     body: unknown,
-    method: "DELETE" | "PATCH" | "POST" = "POST",
+    method: "DELETE" | "PATCH" | "POST" | "PUT" = "POST",
   ) {
     let response: Response
     try {

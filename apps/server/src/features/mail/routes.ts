@@ -29,6 +29,8 @@ import {
   MAIL_REALTIME_AUTH_PROTOCOL_PREFIX,
   MAIL_REALTIME_PROTOCOL,
 } from "./mail-realtime-ticket"
+import { createGmailDraft, sendGmailComposition, updateGmailDraft } from "./mail-compose"
+import { MailComposeError, parseMailComposeRequest } from "./mail-mime"
 import { getMailRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter"
 import { normalizeGmailLabels, normalizeGmailMessage, normalizeGmailThread } from "./mail-normalize"
 import { synchronizeMailbox } from "./mail-sync"
@@ -329,6 +331,77 @@ mailRoutes.post("/messages/:messageId/action", async (c) => {
   })
 })
 
+mailRoutes.post("/drafts", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const compose = parseCompose(c, await c.req.json().catch(() => null), false)
+  if (compose instanceof Response) return compose
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
+    c.json(await createGmailDraft(gateway, owned.connection, compose), 201),
+  )
+})
+
+mailRoutes.put("/drafts/:draftId", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const draftId = safeGmailId(c.req.param("draftId"))
+  const compose = parseCompose(c, await c.req.json().catch(() => null), false)
+  if (!draftId || compose instanceof Response) {
+    return compose instanceof Response ? compose : c.json({ message: "A valid Gmail draft ID is required." }, 400)
+  }
+  if (compose.draftId && compose.draftId !== draftId) return c.json({ message: "The Gmail draft ID does not match." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
+    c.json(await updateGmailDraft(gateway, owned.connection, draftId, compose)),
+  )
+})
+
+mailRoutes.delete("/drafts/:draftId", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const draftId = safeGmailId(c.req.param("draftId"))
+  if (!draftId) return c.json({ message: "A valid Gmail draft ID is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    await gateway.deleteDraft(draftId)
+    return c.body(null, 204)
+  })
+})
+
+mailRoutes.post("/drafts/:draftId/send", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const draftId = safeGmailId(c.req.param("draftId"))
+  const compose = parseCompose(c, await c.req.json().catch(() => null), true)
+  if (!draftId || compose instanceof Response) {
+    return compose instanceof Response ? compose : c.json({ message: "A valid Gmail draft ID is required." }, 400)
+  }
+  if (compose.draftId && compose.draftId !== draftId) return c.json({ message: "The Gmail draft ID does not match." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    await updateGmailDraft(gateway, owned.connection, draftId, compose)
+    return c.json(await sendGmailComposition({
+      compose,
+      connection: owned.connection,
+      draftId,
+      gateway,
+      userId: owned.userId,
+    }))
+  })
+})
+
+mailRoutes.post("/send", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const compose = parseCompose(c, await c.req.json().catch(() => null), true)
+  if (compose instanceof Response) return compose
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
+    c.json(await sendGmailComposition({
+      compose,
+      connection: owned.connection,
+      gateway,
+      userId: owned.userId,
+    })),
+  )
+})
+
 mailRoutes.post("/realtime-ticket", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
@@ -405,6 +478,14 @@ function statusCode(status: number): 400 | 401 | 404 | 409 | 429 | 500 | 502 | 5
 
 function safeGmailId(value: string) {
   return /^[A-Za-z0-9_-]{1,512}$/.test(value) ? value : null
+}
+
+function parseCompose(c: Context<AppBindings>, value: unknown, requireRecipient: boolean) {
+  try {
+    return parseMailComposeRequest(value, { requireRecipient })
+  } catch (error) {
+    return c.json({ message: error instanceof MailComposeError ? error.message : "A valid mail composition is required." }, 400)
+  }
 }
 
 function optionalCursor(value: unknown) {

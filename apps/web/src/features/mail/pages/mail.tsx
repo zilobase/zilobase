@@ -10,6 +10,7 @@ import type {
   MailLabelWriteRequest,
   MailMessageRecord,
   MailModifyRequest,
+  MailSendResponse,
   MailThreadSummary,
 } from "@zilobase/features/mail"
 import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
@@ -63,6 +64,8 @@ import {
 import { mailViewIcons, mailViewLabels } from "@/features/sidebar"
 
 import { sanitizeMailHtml } from "../model/mail-html"
+import { MailComposer } from "../components/mail-composer"
+import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
 
@@ -101,6 +104,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const [selection, setSelection] = useState<string | null>(null)
   const [batchSelection, setBatchSelection] = useState<Set<string>>(() => new Set())
   const [presentation, setPresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
+  const [composerSeed, setComposerSeed] = useState<MailComposeSeed | null>(() => compose ? {} : null)
   const controller = useMailController({
     connection,
     query,
@@ -136,7 +140,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
 
   useEffect(() => {
     if (!compose) return
-    toast.info("Compose is available after Gmail drafts finish loading.")
+    setComposerSeed({})
     void navigate({ replace: true, search: { compose: undefined, view }, to: "/mail" })
   }, [compose, navigate, view])
 
@@ -158,11 +162,13 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     onClose: () => setSelection(null),
     onDownload: controller.downloadAttachment,
     onModeChange: setPresentation,
+    onCompose: setComposerSeed,
     onModifyMessage: controller.modifyMessage,
     onModifyThread: controller.modifyThread,
     onNext: () => nextId && setSelection(nextId),
     onPrevious: () => previousId && setSelection(previousId),
     online: controller.online,
+    ownEmail: connection.email!,
     previousDisabled: !previousId,
     thread: selectedThread,
   } satisfies ConversationProps : null
@@ -186,6 +192,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                           {!controller.online ? <WifiOffIcon className="size-4 text-content-secondary" aria-label="Offline" /> : null}
                         </div>
                         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 max-sm:basis-full">
+                          <Button disabled={!controller.online} onClick={() => setComposerSeed({})} size="sm" type="button">Compose</Button>
                           <div className="relative min-w-0 flex-1 sm:max-w-72">
                             <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-content-secondary" />
                             <Input
@@ -303,6 +310,14 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
           {viewerProps ? <ConversationViewer {...viewerProps} /> : null}
         </DialogContent>
       </Dialog>
+      {composerSeed ? (
+        <MailComposer
+          onClose={() => setComposerSeed(null)}
+          onSent={async (_response: MailSendResponse) => { await controller.refresh() }}
+          online={controller.online}
+          seed={composerSeed}
+        />
+      ) : null}
     </>
   )
 }
@@ -375,11 +390,13 @@ type ConversationProps = {
   onClose: () => void
   onDownload: (messageId: string, attachmentId: string, filename: string) => Promise<void>
   onModeChange: (mode: EmbeddedItemsOpenAs) => void
+  onCompose: (seed: MailComposeSeed) => void
   onModifyMessage: (messageId: string, modification: MailModifyRequest) => Promise<void>
   onModifyThread: (threadId: string, modification: MailModifyRequest) => Promise<void>
   onNext: () => void
   onPrevious: () => void
   online: boolean
+  ownEmail: string
   previousDisabled: boolean
   thread: MailThreadSummary
 }
@@ -413,7 +430,7 @@ function ConversationToolbar({ labels, mode, mutating, nextDisabled, onActOnThre
   )
 }
 
-function ConversationBody({ labels, messages, mutating, onActOnMessage, onDownload, onModifyMessage, online, thread }: ConversationProps) {
+function ConversationBody({ labels, messages, mutating, onActOnMessage, onCompose, onDownload, onModifyMessage, online, ownEmail, thread }: ConversationProps) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas dark:bg-surface-navigation">
       <article className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-7">
@@ -431,6 +448,11 @@ function ConversationBody({ labels, messages, mutating, onActOnMessage, onDownlo
               </div>
             </div>
             <MailMessageBody message={message} />
+            <div className="mt-4 flex gap-2">
+              <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail))} size="sm" type="button" variant="outline">Reply</Button>
+              <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail, true))} size="sm" type="button" variant="outline">Reply all</Button>
+              <Button disabled={!online} onClick={() => onCompose(forwardSeed(message))} size="sm" type="button" variant="outline">Forward</Button>
+            </div>
             {message.attachments.length ? (
               <div className="mt-4 flex flex-wrap gap-2">
                 {message.attachments.map((attachment) => (

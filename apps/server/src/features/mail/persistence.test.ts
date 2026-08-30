@@ -19,3 +19,15 @@ test("Gmail persistence stores credentials and control metadata only", async () 
     /message_body|body_html|body_text|message_subject|message_sender|message_recipient/,
   )
 })
+
+test("Gmail send receipts contain deduplication metadata but no mail content", async () => {
+  const migration = await readFile(
+    new URL("../../../drizzle/0063_gmail_send_operations.sql", import.meta.url),
+    "utf8",
+  )
+  assert.match(migration, /CREATE TABLE "gmail_send_operation"/)
+  assert.match(migration, /rfc_message_id/)
+  assert.match(migration, /gmail_message_id/)
+  assert.match(migration, /expires_at/)
+  assert.doesNotMatch(migration, /body|subject|sender|recipient|attachment/)
+})
