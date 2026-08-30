@@ -1,14 +1,12 @@
 const removedThemeIds = [
   "rose",
-  "forest",
-  "ocean",
   "lilac",
   "dusk",
   "ember",
 ]
 
 export function register({ readSource, assert, loadModule, test }) {
-  test("appearance modes are independent from Default and Notion", async () => {
+  test("appearance modes are independent from theme families", async () => {
     const {
       appearanceModes,
       getThemeColorScheme,
@@ -21,7 +19,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.deepEqual(selectableThemeIds, ["light", "dark"])
     assert.deepEqual(
       themeFamilies.map((theme) => theme.value),
-      ["default", "warm", "midnight", "notion"],
+      ["default", "warm", "midnight", "forest", "ocean", "notion"],
     )
     assert.equal(getThemeColorScheme("light"), "light")
     assert.equal(getThemeColorScheme("dark"), "dark")
@@ -38,7 +36,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(provider, /if \(isThemeFamilyId\(storedFamily\)\) return storedFamily\s+return "default"/)
     assert.match(provider, /dataset\.themeFamily = themeFamily/)
     assert.match(provider, /localStorage\.setItem\(THEME_FAMILY_STORAGE_KEY, themeFamily\)/)
-    assert.match(document, /const families = \["default", "warm", "midnight", "notion"\]/)
+    assert.match(document, /const families = \["default", "warm", "midnight", "forest", "ocean", "notion"\]/)
     assert.match(document, /dataset\.themeFamily = resolvedFamily/)
     for (const id of removedThemeIds) assert.doesNotMatch(document, new RegExp(`"${id}"`))
   })
@@ -70,6 +68,22 @@ export function register({ readSource, assert, loadModule, test }) {
     const midnightDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="midnight"]')),
+    )
+    const forestLight = merge(
+      defaultLight,
+      declarations(readRule(css, '.light[data-theme-family="forest"]')),
+    )
+    const forestDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="forest"]')),
+    )
+    const oceanLight = merge(
+      defaultLight,
+      declarations(readRule(css, '.light[data-theme-family="ocean"]')),
+    )
+    const oceanDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="ocean"]')),
     )
 
     assertTokens(defaultLight, {
@@ -168,6 +182,42 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-content-text-secondary": "#8390ad",
       "--zb-color-action-background-primary": "#dbe7ff",
     })
+    assertTokens(forestLight, {
+      "--zb-color-surface-background-canvas": "#f5faf6",
+      "--zb-color-surface-background-card": "#fbfefc",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "#ebf5ed",
+      "--zb-color-content-text-primary": "#1d3326",
+      "--zb-color-content-text-secondary": "#566f5f",
+      "--zb-color-action-background-primary": "#356849",
+    })
+    assertTokens(forestDark, {
+      "--zb-color-surface-background-canvas": "#0b1511",
+      "--zb-color-surface-background-card": "#101c17",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "var(--zb-color-surface-background-card)",
+      "--zb-color-content-text-primary": "#e6f1ea",
+      "--zb-color-content-text-secondary": "#7f9b8b",
+      "--zb-color-action-background-primary": "#b8dfc5",
+    })
+    assertTokens(oceanLight, {
+      "--zb-color-surface-background-canvas": "#f3fafb",
+      "--zb-color-surface-background-card": "#fbfefe",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "#e8f4f6",
+      "--zb-color-content-text-primary": "#16343b",
+      "--zb-color-content-text-secondary": "#526f75",
+      "--zb-color-action-background-primary": "#287382",
+    })
+    assertTokens(oceanDark, {
+      "--zb-color-surface-background-canvas": "#07171d",
+      "--zb-color-surface-background-card": "#0b1e25",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "var(--zb-color-surface-background-card)",
+      "--zb-color-content-text-primary": "#e3f4f7",
+      "--zb-color-content-text-secondary": "#789ba2",
+      "--zb-color-action-background-primary": "#a7e3ec",
+    })
   })
 
   test("dark themes keep raised chrome and overlays on one surface tier", async () => {
@@ -186,11 +236,21 @@ export function register({ readSource, assert, loadModule, test }) {
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="midnight"]')),
     )
+    const forestDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="forest"]')),
+    )
+    const oceanDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="ocean"]')),
+    )
 
     for (const [name, palette] of Object.entries({
       defaultDark,
       warmDark,
       midnightDark,
+      forestDark,
+      oceanDark,
       notionDark,
     })) {
       const card = resolve(palette, "--zb-color-surface-background-card")
@@ -216,7 +276,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(source, /\[resolvedTheme, themeFamily\]/)
   })
 
-  test("all four palettes provide accessible content and action pairs", async () => {
+  test("all theme palettes provide accessible content and action pairs", async () => {
     const css = await readSource("/src/shared/styles/color-tokens.css")
     const defaultLight = declarations(readRule(css, ".light"))
     const defaultDark = merge(defaultLight, declarations(readRule(css, ".dark")))
@@ -244,6 +304,22 @@ export function register({ readSource, assert, loadModule, test }) {
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="midnight"]')),
     )
+    const forestLight = merge(
+      defaultLight,
+      declarations(readRule(css, '.light[data-theme-family="forest"]')),
+    )
+    const forestDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="forest"]')),
+    )
+    const oceanLight = merge(
+      defaultLight,
+      declarations(readRule(css, '.light[data-theme-family="ocean"]')),
+    )
+    const oceanDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="ocean"]')),
+    )
 
     for (const [name, palette] of Object.entries({
       defaultLight,
@@ -252,6 +328,10 @@ export function register({ readSource, assert, loadModule, test }) {
       warmDark,
       midnightLight,
       midnightDark,
+      forestLight,
+      forestDark,
+      oceanLight,
+      oceanDark,
       notionLight,
       notionDark,
     })) {

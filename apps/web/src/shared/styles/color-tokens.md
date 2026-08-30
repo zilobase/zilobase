@@ -2,7 +2,7 @@
 
 `color-tokens.css` is the only human-edited source of application UI color. Change a semantic value there; do not add a literal color to a component. Run `npm run tokens:sync` after changes and commit the generated authorization fragments.
 
-Canonical names use `--zb-color-{concept}-{property}-{variant}-{state}`. Tailwind aliases are intentionally shorter and map one-to-one to canonical tokens. Default values apply to `:root` and `.light`; `.dark` changes appearance; `[data-theme-family="notion"]` changes the neutral family. Action, feedback, and content-palette hues are shared by Default and Notion.
+Canonical names use `--zb-color-{concept}-{property}-{variant}-{state}`. Tailwind aliases are intentionally shorter and map one-to-one to canonical tokens. Default values apply to `:root` and `.light`; `.dark` changes appearance; `[data-theme-family]` selects Default, Warm, Midnight, Forest, Ocean, or Notion. Feedback and persisted content-palette hues remain shared, while each family may tune its surfaces, content, controls, and actions.
 
 ## Core roles
 

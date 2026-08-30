@@ -8,6 +8,8 @@ export const themeFamilies = [
   { label: "Default", value: "default" },
   { label: "Warm", value: "warm" },
   { label: "Midnight", value: "midnight" },
+  { label: "Forest", value: "forest" },
+  { label: "Ocean", value: "ocean" },
   { label: "Notion", value: "notion" },
 ] as const
 
