@@ -64,6 +64,8 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(mailSource, /<PageSidePaneHeaderCell[\s\S]*side="main"[\s\S]*<PagePaneHeader[\s\S]*showActions=\{false\}/)
     assert.match(mailSource, /<PageSidePaneHeaderCell side="side"[\s\S]*<MailMessageToolbar/)
     assert.match(mailSource, /onOpen=\{\(\) => openMessage\(message\.id\)\}/)
+    assert.match(mailSource, /selected=\{selection\?\.id === message\.id\}/)
+    assert.match(mailSource, /data-selected=\{selected \? "true" : undefined\}[\s\S]*selected && "bg-action-neutral-hover text-action-on-neutral"/)
     assert.match(mailSource, /aria-label="Open previous message"[\s\S]*aria-label="Open next message"/)
     assert.match(mailSource, /<EmbeddedItemPresentationDropdown[\s\S]*itemLabel="mail"/)
     assert.match(mailSource, /<MailMessageDialog[\s\S]*messagePresentation === "dialog"/)

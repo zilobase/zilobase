@@ -223,6 +223,7 @@ export default function MailPage() {
                             updateMessage(message.id, (current) => ({ ...current, folder: "trash", unread: false }))
                             toast.success("Message moved to trash.")
                           }}
+                          selected={selection?.id === message.id}
                           view={view}
                         />
                       ))}
@@ -422,12 +423,13 @@ function MailMessageDialog({ children, onOpenChange, open }: {
   )
 }
 
-function MailRow({ message, onArchive, onOpen, onStar, onTrash, view }: {
+function MailRow({ message, onArchive, onOpen, onStar, onTrash, selected, view }: {
   message: MailMessage
   onArchive: (event: MouseEvent<HTMLButtonElement>) => void
   onOpen: () => void
   onStar: (event: MouseEvent<HTMLButtonElement>) => void
   onTrash: (event: MouseEvent<HTMLButtonElement>) => void
+  selected: boolean
   view: MailView
 }) {
   const displayName = view === "sent" || view === "drafts"
@@ -436,9 +438,11 @@ function MailRow({ message, onArchive, onOpen, onStar, onTrash, view }: {
 
   return (
     <article
+      data-selected={selected ? "true" : undefined}
       className={cn(
         "group/mail-row grid h-9 cursor-pointer grid-cols-[1rem_minmax(7rem,13rem)_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 outline-none transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-action-focus-ring max-md:h-auto max-md:min-h-12 max-md:grid-cols-[1rem_minmax(0,1fr)_auto] max-md:py-1",
         message.unread && "bg-surface-raised",
+        selected && "bg-action-neutral-hover text-action-on-neutral",
       )}
       onClick={onOpen}
       onKeyDown={(event) => {
