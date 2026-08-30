@@ -73,8 +73,8 @@ export function register({ readSource, assert, loadModule, test }) {
     assertTokens(defaultDark, {
       "--zb-color-surface-background-canvas": "#111113",
       "--zb-color-surface-background-card": "#18181b",
-      "--zb-color-surface-background-overlay": "#202024",
-      "--zb-color-surface-background-navigation": "#0c0c0e",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "var(--zb-color-surface-background-card)",
       "--zb-color-surface-background-subtle": "#151517",
       "--zb-color-surface-background-muted": "#1f1f23",
       "--zb-color-content-text-primary": "#f4f4f5",
@@ -103,8 +103,8 @@ export function register({ readSource, assert, loadModule, test }) {
     assertTokens(notionDark, {
       "--zb-color-surface-background-canvas": "#191919",
       "--zb-color-surface-background-card": "#202020",
-      "--zb-color-surface-background-overlay": "#202020",
-      "--zb-color-surface-background-navigation": "#202020",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "var(--zb-color-surface-background-card)",
       "--zb-color-surface-background-subtle": "#262626",
       "--zb-color-surface-background-muted": "#383836",
       "--zb-color-content-text-primary": "#f0efed",
@@ -115,6 +115,30 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-action-background-neutral-hover": "#2c2c2c",
       "--zb-color-action-background-neutral-pressed": "#252525",
     })
+  })
+
+  test("dark themes keep raised chrome and overlays on one surface tier", async () => {
+    const css = await readSource("/src/shared/styles/color-tokens.css")
+    const defaultLight = declarations(readRule(css, ".light"))
+    const defaultDark = merge(defaultLight, declarations(readRule(css, ".dark")))
+    const notionDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="notion"]')),
+    )
+
+    for (const [name, palette] of Object.entries({ defaultDark, notionDark })) {
+      const card = resolve(palette, "--zb-color-surface-background-card")
+      assert.equal(
+        resolve(palette, "--zb-color-surface-background-overlay"),
+        card,
+        `${name} overlays should match cards`,
+      )
+      assert.equal(
+        resolve(palette, "--zb-color-surface-background-navigation"),
+        card,
+        `${name} navigation should match cards`,
+      )
+    }
   })
 
   test("theme-color synchronization reacts to appearance and family", async () => {

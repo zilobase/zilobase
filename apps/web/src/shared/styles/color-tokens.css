@@ -181,8 +181,8 @@
 
   --zb-color-surface-background-canvas: #111113;
   --zb-color-surface-background-card: #18181b;
-  --zb-color-surface-background-overlay: #202024;
-  --zb-color-surface-background-navigation: #0c0c0e;
+  --zb-color-surface-background-overlay: var(--zb-color-surface-background-card);
+  --zb-color-surface-background-navigation: var(--zb-color-surface-background-card);
   --zb-color-surface-background-subtle: #151517;
   --zb-color-surface-background-muted: #1f1f23;
   --zb-color-content-text-primary: #f4f4f5;
@@ -265,8 +265,8 @@
 .dark[data-theme-family="notion"] {
   --zb-color-surface-background-canvas: #191919;
   --zb-color-surface-background-card: #202020;
-  --zb-color-surface-background-overlay: #202020;
-  --zb-color-surface-background-navigation: #202020;
+  --zb-color-surface-background-overlay: var(--zb-color-surface-background-card);
+  --zb-color-surface-background-navigation: var(--zb-color-surface-background-card);
   --zb-color-surface-background-subtle: #262626;
   --zb-color-surface-background-muted: #383836;
   --zb-color-content-text-primary: #f0efed;
