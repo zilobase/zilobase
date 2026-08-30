@@ -55,7 +55,11 @@ import {
 } from "@/shared/ui/dropdown-menu"
 import { Input } from "@/shared/ui/input"
 import { Separator } from "@/shared/ui/separator"
-import { EmbeddedItemPresentationDropdown, PagePaneHeader } from "@/features/pages/components"
+import {
+  EmbeddedItemPresentationDropdown,
+  MainPaneHeaderLeadingControl,
+  PagePaneHeader,
+} from "@/features/pages/components"
 import {
   PageSidePaneHeaderCell,
   PageSidePaneLayout,
@@ -64,6 +68,7 @@ import {
 import { mailViewIcons, mailViewLabels } from "@/features/sidebar"
 
 import { sanitizeMailHtml } from "../model/mail-html"
+import { applyMailDocumentTheme } from "../model/mail-document-theme"
 import { MailComposer } from "../components/mail-composer"
 import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
@@ -358,7 +363,12 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
         header={(
           <>
             <PageSidePaneHeaderCell className="z-10" side="main" splitActive={sidePaneOpen}>
-              <PagePaneHeader className="min-w-0 flex-1" pathname="/mail" showActions={false} />
+              <PagePaneHeader
+                className="min-w-0 flex-1"
+                leadingControl={<MainPaneHeaderLeadingControl />}
+                pathname="/mail"
+                showActions={false}
+              />
             </PageSidePaneHeaderCell>
             {sidePaneOpen && viewerProps ? (
               <PageSidePaneHeaderCell side="side" splitActive={sidePaneOpen}>
@@ -780,9 +790,10 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
             const document = frame.contentDocument
             if (!document) return
             const frameStyle = window.getComputedStyle(frame)
-            document.documentElement.style.setProperty("background-color", frameStyle.backgroundColor, "important")
-            document.body.style.setProperty("background-color", frameStyle.backgroundColor, "important")
-            document.body.style.setProperty("color", frameStyle.color, "important")
+            applyMailDocumentTheme(document, {
+              backgroundColor: frameStyle.backgroundColor,
+              textColor: frameStyle.color,
+            })
             const resize = () => {
               frame.style.height = "1px"
               const height = `${Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1)}px`
@@ -859,7 +870,7 @@ function MailCenteredState({ children }: { children: React.ReactNode }) {
     <PageSidePaneShell
       body={<main className="grid min-h-0 flex-1 place-items-center bg-surface-canvas px-6"><section className="flex max-w-md flex-col items-center gap-5 py-12">{children}</section></main>}
       className="h-full bg-surface-canvas"
-      header={<PageSidePaneHeaderCell className="z-10" side="main" splitActive={false}><PagePaneHeader className="min-w-0 flex-1" pathname="/mail" showActions={false} /></PageSidePaneHeaderCell>}
+      header={<PageSidePaneHeaderCell className="z-10" side="main" splitActive={false}><PagePaneHeader className="min-w-0 flex-1" leadingControl={<MainPaneHeaderLeadingControl />} pathname="/mail" showActions={false} /></PageSidePaneHeaderCell>}
       open={false}
       visible={false}
     />

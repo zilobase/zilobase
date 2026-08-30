@@ -30,6 +30,7 @@ import {
   BreadcrumbSeparator,
 } from "@/shared/ui/breadcrumb";
 import { Separator } from "@/shared/ui/separator";
+import { SidebarTrigger, useSidebar } from "@/shared/ui/sidebar";
 import { libraryViewIcons, mailViewIcons } from "@/features/sidebar";
 import { libraryViewLabels, mailViewLabels } from "@/features/sidebar";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
@@ -137,6 +138,25 @@ export function PagePaneHeader({
         </div>
       ) : null}
     </header>
+  );
+}
+
+export function MainPaneHeaderLeadingControl() {
+  const { isMobile, open, openMobile } = useSidebar();
+  const isCollapsed = isMobile ? !openMobile : !open;
+
+  if (!isCollapsed) {
+    return null;
+  }
+
+  return (
+    <>
+      <SidebarTrigger className="shrink-0" />
+      <Separator
+        orientation="vertical"
+        className="data-[orientation=vertical]:h-4"
+      />
+    </>
   );
 }
 

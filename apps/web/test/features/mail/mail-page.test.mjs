@@ -71,7 +71,7 @@ export function register({ assert, loadModule, readSource, test }) {
     ])
 
     assert.match(mailSource, /<PageSidePaneShell[\s\S]*<PageSidePaneLayout/)
-    assert.match(mailSource, /<PageSidePaneHeaderCell[\s\S]*side="main"[\s\S]*<PagePaneHeader[\s\S]*showActions=\{false\}/)
+    assert.match(mailSource, /<PageSidePaneHeaderCell[\s\S]*side="main"[\s\S]*<PagePaneHeader[\s\S]*leadingControl=\{<MainPaneHeaderLeadingControl \/>\}[\s\S]*showActions=\{false\}/)
     assert.match(mailSource, /<PageSidePaneHeaderCell side="side"[\s\S]*<ConversationToolbar/)
     assert.match(mailSource, /onOpen=\{\(\) => setSelection\(thread\.id\)\}/)
     assert.match(mailSource, /onPrefetch=\{\(\) => void controller\.prefetchThread\(thread\.id\)\}/)
@@ -105,7 +105,7 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(controllerSource, /URL\.createObjectURL[\s\S]*URL\.revokeObjectURL/)
     assert.match(mailSource, /sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"/)
     assert.match(mailSource, /loadExternalImages: true[\s\S]*frame\.style\.height = "1px"[\s\S]*ResizeObserver[\s\S]*scrolling="no"/)
-    assert.match(mailSource, /getComputedStyle\(frame\)[\s\S]*background-color/)
+    assert.match(mailSource, /getComputedStyle\(frame\)[\s\S]*applyMailDocumentTheme/)
     assert.doesNotMatch(mailSource, />Load external images</)
     const conversationBody = mailSource.slice(mailSource.indexOf("function ConversationBody"), mailSource.indexOf("function MailMessageActions"))
     assert.doesNotMatch(conversationBody, /overflow-y-auto/)
