@@ -206,7 +206,6 @@ export function useMailController(input: {
     } catch (mutationError) {
       if (snapshot && isDefiniteMailMutationFailure(mutationError)) await restoreMailMutation(database, snapshot)
       await queueMailReconciliation(database, { threadIds: [threadId] })
-      setError(mutationError)
       throw mutationError
     } finally {
       setMutating(false)
@@ -232,7 +231,6 @@ export function useMailController(input: {
         for (const snapshot of snapshots) await restoreMailMutation(database, snapshot)
       }
       await queueMailReconciliation(database, { threadIds })
-      setError(mutationError)
       throw mutationError
     } finally {
       setMutating(false)
@@ -256,7 +254,6 @@ export function useMailController(input: {
     } catch (mutationError) {
       if (snapshot && isDefiniteMailMutationFailure(mutationError)) await restoreMailMutation(database, snapshot)
       await queueMailReconciliation(database, { threadIds: [threadId] })
-      setError(mutationError)
       throw mutationError
     } finally {
       setMutating(false)
@@ -277,7 +274,6 @@ export function useMailController(input: {
     } catch (mutationError) {
       if (snapshot && isDefiniteMailMutationFailure(mutationError)) await restoreMailMutation(database, snapshot)
       await queueMailReconciliation(database, { messageIds: [messageId] })
-      setError(mutationError)
       throw mutationError
     } finally {
       setMutating(false)
@@ -301,7 +297,6 @@ export function useMailController(input: {
     } catch (mutationError) {
       if (snapshot && isDefiniteMailMutationFailure(mutationError)) await restoreMailMutation(database, snapshot)
       await queueMailReconciliation(database, { messageIds: [messageId] })
-      setError(mutationError)
       throw mutationError
     } finally {
       setMutating(false)

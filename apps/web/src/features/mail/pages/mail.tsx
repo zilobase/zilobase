@@ -118,6 +118,10 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
     enabled: controller.online && Boolean(controller.database),
     onSynchronize: controller.refresh,
   })
+  useEffect(() => {
+    if (!controller.error) return
+    toast.error(getApiErrorMessage(controller.error), { id: "mail-background-error" })
+  }, [controller.error])
   const selectedThread = controller.threads.find((thread) => thread.id === selection) ?? null
   const selectedMessages = useLiveQuery(
     () => controller.database && selection
@@ -298,9 +302,6 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
                           ) : null}
                         </div>
                       ) : <MailEmptyState offline={!controller.online} query={query} />}
-                      {controller.error ? (
-                        <p className="mt-4 text-sm text-feedback-danger-text">{getApiErrorMessage(controller.error)}</p>
-                      ) : null}
                     </div>
                   </div>
                 </section>

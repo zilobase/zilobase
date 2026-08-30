@@ -104,6 +104,13 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(htmlSource, /default-src 'none'/)
   })
 
+  test("background mail failures use a deduplicated toast instead of mailbox text", async () => {
+    const mailSource = await readSource("/src/features/mail/pages/mail.tsx")
+
+    assert.match(mailSource, /controller\.error[\s\S]*toast\.error\(getApiErrorMessage\(controller\.error\), \{ id: "mail-background-error" \}\)/)
+    assert.doesNotMatch(mailSource, /controller\.error \? \(/)
+  })
+
   test("mail organization controls are online-only and available at thread, message, and batch scope", async () => {
     const [mailSource, controllerSource] = await Promise.all([
       readSource("/src/features/mail/pages/mail.tsx"),
