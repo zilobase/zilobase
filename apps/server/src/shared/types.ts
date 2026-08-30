@@ -71,6 +71,9 @@ export type AppBindings = {
     EMAIL_FROM?: string;
     GOOGLE_CLIENT_ID?: string;
     GOOGLE_CLIENT_SECRET?: string;
+    GMAIL_GOOGLE_CLIENT_ID?: string;
+    GMAIL_GOOGLE_CLIENT_SECRET?: string;
+    GMAIL_TOKEN_ENCRYPTION_KEY?: string;
     AI_AGENT_AUDIT_RETENTION_DAYS?: string;
     AI_AGENT_CLEANUP_BATCH_SIZE?: string;
     AI_AGENT_MAX_ARTIFACT_BYTES_PER_USER_PER_DAY?: string;
