@@ -16,6 +16,7 @@ import type {
 
 import { ApiError, apiFetch, getApiRequestHeaders, toApiUrl } from "@/features/desktop/network/api"
 import { desktopNetworkFetch } from "@/features/desktop/network"
+import { describeDesktopError, recordDesktopDiagnostic } from "@/features/desktop/diagnostics/index"
 import { getConnectivityState, subscribeConnectivity } from "@/features/offline/model"
 import {
   applyMailSyncResponse,
@@ -34,6 +35,7 @@ import {
   upsertFullMailThread,
   type MailDatabase,
 } from "../cache/mail-database"
+import { safeMailDownloadFilename } from "./mail-attachment"
 
 export function useMailController(input: {
   connection: MailConnection
@@ -64,7 +66,10 @@ export function useMailController(input: {
     void openMailDatabase(identity).then((next) => {
       if (active) setDatabase(next)
       else closeMailDatabase(mailDatabaseName(identity))
-    }).catch(setError)
+    }).catch((cacheError) => {
+      recordDesktopDiagnostic("mail.cache_failure", describeDesktopError(cacheError), "error")
+      setError(cacheError)
+    })
     return () => {
       active = false
       closeMailDatabase(mailDatabaseName(identity))
@@ -181,7 +186,7 @@ export function useMailController(input: {
     const url = URL.createObjectURL(await response.blob())
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = filename
+    anchor.download = safeMailDownloadFilename(filename)
     anchor.click()
     window.setTimeout(() => URL.revokeObjectURL(url), 0)
   }, [online])

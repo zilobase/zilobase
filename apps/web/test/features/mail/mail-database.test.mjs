@@ -121,6 +121,58 @@ export function register({ assert, loadModule, test }) {
     await destroyMailDatabase(database.name)
   })
 
+  test("mail account replacement destroys the prior connection cache", async () => {
+    const { destroyMailDatabase, openMailDatabase } = await loadModule(
+      "/src/features/mail/cache/mail-database.ts",
+    )
+    const first = await openMailDatabase({
+      apiOrigin: "https://replacement.example.com",
+      connectionId: "gmail-old",
+      userId: "user-replacement",
+    })
+    const oldName = first.name
+    await first.labels.put({
+      color: null,
+      id: "Label_old",
+      labelListVisibility: null,
+      messageListVisibility: null,
+      messagesTotal: null,
+      messagesUnread: null,
+      name: "Old account data",
+      threadsTotal: null,
+      threadsUnread: null,
+      type: "user",
+    })
+    const next = await openMailDatabase({
+      apiOrigin: "https://replacement.example.com",
+      connectionId: "gmail-new",
+      userId: "user-replacement",
+    })
+    const databases = await indexedDB.databases()
+    assert.equal(databases.some((database) => database.name === oldName), false)
+    assert.equal(await next.labels.get("Label_old"), undefined)
+    await destroyMailDatabase(next.name)
+  })
+
+  test("incompatible mail cache identity is rebuilt without retaining message data", async () => {
+    const { closeMailDatabase, destroyMailDatabase, openMailDatabase } = await loadModule(
+      "/src/features/mail/cache/mail-database.ts",
+    )
+    const identity = {
+      apiOrigin: "https://corrupt.example.com",
+      connectionId: "gmail-corrupt",
+      userId: "user-corrupt",
+    }
+    const first = await openMailDatabase(identity)
+    await first.syncState.update("primary", { schemaVersion: -1 })
+    await first.messages.put(mutationFixture().messages[0])
+    closeMailDatabase(first.name)
+    const rebuilt = await openMailDatabase(identity)
+    assert.equal((await rebuilt.syncState.get("primary")).schemaVersion, 2)
+    assert.equal(await rebuilt.messages.count(), 0)
+    await destroyMailDatabase(rebuilt.name)
+  })
+
   test("mail optimistic label changes update message and thread state and can roll back", async () => {
     const {
       applyMailSyncResponse,

@@ -31,12 +31,24 @@ import {
 } from "./mail-realtime-ticket"
 import { createGmailDraft, sendGmailComposition, updateGmailDraft } from "./mail-compose"
 import { MailComposeError, parseMailComposeRequest } from "./mail-mime"
+import { recordMailMetric } from "./mail-metrics"
 import { getMailRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter"
 import { normalizeGmailLabels, normalizeGmailMessage, normalizeGmailThread } from "./mail-normalize"
 import { synchronizeMailbox } from "./mail-sync"
 import { MailConcurrencyError, withMailUserConcurrency } from "./user-concurrency"
 
 export const mailRoutes = new Hono<AppBindings>()
+
+mailRoutes.use("*", async (c, next) => {
+  try {
+    await next()
+  } finally {
+    c.header("Cache-Control", "private, no-store, max-age=0")
+    c.header("Pragma", "no-cache")
+    c.header("Referrer-Policy", "no-referrer")
+    c.header("X-Content-Type-Options", "nosniff")
+  }
+})
 
 mailRoutes.get("/connection", async (c) => {
   const user = c.get("user")
@@ -68,25 +80,31 @@ mailRoutes.post("/oauth/start", async (c) => {
     return c.json({ message: "A valid Gmail client is required." }, 400)
   }
   try {
+    const authorizationUrl = await beginGmailOauth(c.env, {
+      clientKind: body.client,
+      userId: user.id,
+    })
+    await recordMailMetric("oauth_outcome", { outcome: "success" })
     return c.json({
-      authorizationUrl: await beginGmailOauth(c.env, {
-        clientKind: body.client,
-        userId: user.id,
-      }),
+      authorizationUrl,
     })
   } catch (error) {
+    await recordMailMetric("oauth_outcome", { outcome: "failure" })
     return oauthError(c, error)
   }
 })
 
 mailRoutes.get("/oauth/google/callback", async (c) => {
+  c.header("Content-Security-Policy", "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; navigate-to 'self' zilobase:")
   const state = c.req.query("state")
   const code = c.req.query("code")
   if (!state || !code || c.req.query("error")) {
+    await recordMailMetric("oauth_outcome", { outcome: "failure" })
     return c.html(renderOauthResult("Gmail connection was cancelled."), 400)
   }
   try {
     const result = await completeGmailOauth(c.env, { code, state })
+    await recordMailMetric("oauth_outcome", { connectionId: result.connectionId, outcome: "success" })
     const [connected] = await db
       .select()
       .from(gmailConnection)
@@ -111,6 +129,7 @@ mailRoutes.get("/oauth/google/callback", async (c) => {
     const target = new URL("/mail?connection=success", getCanonicalWebOrigin(c.env))
     return c.redirect(target.toString())
   } catch (error) {
+    await recordMailMetric("oauth_outcome", { outcome: "failure" })
     return c.html(
       renderOauthResult(error instanceof Error ? error.message : "Gmail could not be connected."),
       error instanceof GmailOauthError ? (error.status as 400) : 500,
@@ -140,6 +159,7 @@ mailRoutes.post("/google/pubsub", async (c) => {
     return c.body(null, 204)
   } catch (error) {
     const status = error instanceof GmailPushError ? error.status : 500
+    await recordMailMetric("webhook_rejection", { status })
     return c.json(
       { message: error instanceof GmailPushError ? error.message : "Gmail push could not be processed." },
       status === 400 ? 400
@@ -169,7 +189,17 @@ mailRoutes.post("/sync", async (c) => {
     return c.json({ message: "The mail synchronization cursor is invalid." }, 400)
   }
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
-    c.json(await synchronizeMailbox(gateway, body as MailSyncRequest, owned.connection.mailboxRevision)),
+    {
+      const startedAt = performance.now()
+      const response = await synchronizeMailbox(gateway, body as MailSyncRequest, owned.connection.mailboxRevision)
+      await recordMailMetric(response.mode === "recovery" ? "cursor_reset" : "sync", {
+        connectionId: owned.connection.id,
+        durationMs: performance.now() - startedAt,
+        mode: response.mode,
+        outcome: "success",
+      })
+      return c.json(response)
+    },
   )
 })
 
@@ -205,7 +235,10 @@ mailRoutes.get("/messages/:messageId/attachments/:attachmentId", async (c) => {
     return new Response(upstream.body, {
       headers: {
         "cache-control": "private, no-store",
+        "content-disposition": "attachment",
         "content-type": upstream.headers.get("content-type") ?? "application/octet-stream",
+        "referrer-policy": "no-referrer",
+        "x-content-type-options": "nosniff",
       },
       status: upstream.status,
     })
@@ -454,6 +487,9 @@ async function runMailOperation(
       return operation(gateway)
     })
   } catch (error) {
+    if (error instanceof GmailApiError && error.code === "quota_exceeded") {
+      await recordMailMetric("quota_failure", { connectionId: connection.id, code: error.code, status: error.status })
+    }
     if (error instanceof GmailApiError && error.code === "authorization_revoked") {
       await db
         .update(gmailConnection)

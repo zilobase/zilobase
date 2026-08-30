@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 
 import { apiFetch } from "@/features/desktop/network/api"
+import { recordDesktopDiagnostic } from "@/features/desktop/diagnostics/index"
 
 type MailRealtimeTicket = {
   expiresAt: string
@@ -71,6 +72,7 @@ export function useMailRealtime(input: {
     }
     const connect = async () => {
       if (stopped || navigator.onLine === false || socket) return
+      recordDesktopDiagnostic("mail.socket_state", { status: "started" })
       try {
         const ticket = await apiFetch<MailRealtimeTicket>("/mail/realtime-ticket", {
           body: "{}",
@@ -82,6 +84,7 @@ export function useMailRealtime(input: {
         nextSocket.addEventListener("open", () => {
           if (socket !== nextSocket) return
           reconnectAttempt = 0
+          recordDesktopDiagnostic("mail.socket_state", { status: "success" })
           heartbeatTimer = setInterval(() => {
             if (nextSocket.readyState === WebSocket.OPEN) {
               nextSocket.send(JSON.stringify({ type: "mail.ping" }))
@@ -103,11 +106,13 @@ export function useMailRealtime(input: {
           if (socket !== nextSocket) return
           socket = null
           stopSocketTimers()
+          recordDesktopDiagnostic("mail.socket_state", { status: "error" }, "warn")
           scheduleReconnect()
         })
         nextSocket.addEventListener("error", () => nextSocket.close())
       } catch {
         socket = null
+        recordDesktopDiagnostic("mail.socket_state", { status: "error" }, "warn")
         scheduleReconnect()
       }
     }

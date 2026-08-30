@@ -10,6 +10,8 @@ import type {
 
 const MAIL_DATABASE_VERSION = 2
 const openDatabases = new Map<string, MailDatabase>()
+const MAIL_LIFECYCLE_CHANNEL = "zilobase:mail-cache-lifecycle:v1"
+let lifecycleChannel: BroadcastChannel | null = null
 
 export type MailSyncStateRecord = {
   connectionId: string
@@ -63,46 +65,49 @@ export async function openMailDatabase(input: {
   apiOrigin: string
   connectionId: string
   userId: string
-}) {
+}, recoveryAttempt = false): Promise<MailDatabase> {
   const name = mailDatabaseName(input)
-  let database = openDatabases.get(name)
-  if (!database) {
-    database = new MailDatabase(name, {
-      connectionId: input.connectionId,
-      userId: input.userId,
-    })
-    openDatabases.set(name, database)
-  }
+  try {
+    initializeLifecycleChannel()
+    let database = openDatabases.get(name)
+    if (!database) {
+      database = new MailDatabase(name, {
+        connectionId: input.connectionId,
+        userId: input.userId,
+      })
+      openDatabases.set(name, database)
+    }
 
-  await database.open()
-  const state = await database.syncState.get("primary")
-  if (
-    state &&
-    (state.schemaVersion !== MAIL_DATABASE_VERSION ||
-      state.connectionId !== input.connectionId ||
-      state.userId !== input.userId)
-  ) {
-    database.close()
-    openDatabases.delete(name)
-    await Dexie.delete(name)
-    return openMailDatabase(input)
-  }
+    await database.open()
+    const state = await database.syncState.get("primary")
+    if (
+      state &&
+      (state.schemaVersion !== MAIL_DATABASE_VERSION ||
+        state.connectionId !== input.connectionId ||
+        state.userId !== input.userId)
+    ) throw new MailCacheError("The mail cache schema is incompatible.", "schema_incompatible")
 
-  if (!state) {
-    await database.syncState.put({
-      connectionId: input.connectionId,
-      historyId: null,
-      key: "primary",
-      lastSyncedAt: null,
-      loadedViews: {},
-      mailboxRevision: 0,
-      pageTokens: {},
-      schemaVersion: MAIL_DATABASE_VERSION,
-      userId: input.userId,
-    })
+    if (!state) {
+      await database.syncState.put({
+        connectionId: input.connectionId,
+        historyId: null,
+        key: "primary",
+        lastSyncedAt: null,
+        loadedViews: {},
+        mailboxRevision: 0,
+        pageTokens: {},
+        schemaVersion: MAIL_DATABASE_VERSION,
+        userId: input.userId,
+      })
+    }
+    await destroyOtherConnectionDatabases(input, name)
+    return database
+  } catch (error) {
+    closeMailDatabase(name)
+    if (recoveryAttempt || !isRecoverableMailCacheError(error)) throw error
+    await destroyMailDatabase(name)
+    return openMailDatabase(input, true)
   }
-
-  return database
 }
 
 export async function applyMailSyncResponse(
@@ -348,15 +353,84 @@ export function closeMailDatabase(name: string) {
 }
 
 export async function destroyMailDatabase(name: string) {
-  closeMailDatabase(name)
-  await Dexie.delete(name)
+  await prepareMailDatabasesForDeletion(name)
+  await deleteMailDatabaseWithTimeout(name)
 }
 
 export async function destroyMailDatabasesForPrefix(prefix: string) {
+  await prepareMailDatabasesForDeletion(prefix)
   const names = await Dexie.getDatabaseNames()
   await Promise.all(
     names.filter((name) => name.startsWith(prefix)).map(destroyMailDatabase),
   )
+}
+
+export async function prepareMailDatabasesForDeletion(prefix: string) {
+  closeMailDatabasesForPrefix(prefix)
+  const channel = initializeLifecycleChannel()
+  channel?.postMessage({ prefix, type: "close" })
+  if (channel) await new Promise((resolve) => globalThis.setTimeout(resolve, 75))
+}
+
+export function mailDatabasePrefix(input: { apiOrigin: string; userId?: string }) {
+  const origin = encodeURIComponent(new URL(input.apiOrigin).origin)
+  return `zilobase:v1:${origin}:${input.userId ? `${encodeURIComponent(requireIdentifier(input.userId, "user"))}:mail:` : ""}`
+}
+
+export class MailCacheError extends Error {
+  constructor(message: string, readonly code: "delete_blocked" | "schema_incompatible") {
+    super(message)
+    this.name = "MailCacheError"
+  }
+}
+
+function closeMailDatabasesForPrefix(prefix: string) {
+  for (const [name, database] of openDatabases) {
+    if (!name.startsWith(prefix)) continue
+    database.close()
+    openDatabases.delete(name)
+  }
+}
+
+function initializeLifecycleChannel() {
+  if (lifecycleChannel || typeof window === "undefined" || typeof BroadcastChannel === "undefined") return lifecycleChannel
+  lifecycleChannel = new BroadcastChannel(MAIL_LIFECYCLE_CHANNEL)
+  const nodeChannel = lifecycleChannel as BroadcastChannel & { unref?: () => void }
+  nodeChannel.unref?.()
+  lifecycleChannel.addEventListener("message", (event: MessageEvent<unknown>) => {
+    const value = event.data as { prefix?: unknown; type?: unknown } | null
+    if (value?.type === "close" && typeof value.prefix === "string") closeMailDatabasesForPrefix(value.prefix)
+  })
+  return lifecycleChannel
+}
+
+async function deleteMailDatabaseWithTimeout(name: string) {
+  closeMailDatabase(name)
+  let timeout = 0
+  try {
+    await Promise.race([
+      Dexie.delete(name),
+      new Promise<never>((_, reject) => {
+        timeout = globalThis.setTimeout(() => reject(new MailCacheError("Local mail storage is still in use.", "delete_blocked")), 3_000) as unknown as number
+      }),
+    ])
+  } finally {
+    globalThis.clearTimeout(timeout)
+  }
+}
+
+async function destroyOtherConnectionDatabases(
+  input: { apiOrigin: string; connectionId: string; userId: string },
+  currentName: string,
+) {
+  const prefix = mailDatabasePrefix(input)
+  const names = await Dexie.getDatabaseNames()
+  await Promise.all(names.filter((name) => name.startsWith(prefix) && name !== currentName).map(destroyMailDatabase))
+}
+
+function isRecoverableMailCacheError(error: unknown) {
+  if (error instanceof MailCacheError) return error.code === "schema_incompatible"
+  return error instanceof Error && ["DatabaseClosedError", "InvalidStateError", "UnknownError", "VersionError"].includes(error.name)
 }
 
 function requireIdentifier(value: string, kind: string) {

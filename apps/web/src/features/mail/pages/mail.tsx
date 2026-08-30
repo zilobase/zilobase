@@ -16,7 +16,7 @@ import type {
 import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 import { toast } from "sonner"
 
-import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
+import { apiFetch, getApiErrorMessage, toApiUrl } from "@/features/desktop/network/api"
 import { isDesktopApp } from "@/features/desktop/platform"
 import {
   ArchiveIcon,
@@ -68,6 +68,7 @@ import { MailComposer } from "../components/mail-composer"
 import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
+import { destroyMailDatabase, mailDatabaseName } from "../cache/mail-database"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
 
@@ -88,16 +89,16 @@ export default function MailPage() {
       />
     )
   }
-  return <ConnectedMailbox connection={connectionQuery.data} />
+  return <ConnectedMailbox connection={connectionQuery.data} onDisconnected={() => void connectionQuery.refetch()} />
 }
 
-function ConnectedMailbox({ connection }: { connection: MailConnection }) {
+function ConnectedMailbox({ connection, onDisconnected }: { connection: MailConnection; onDisconnected: () => void }) {
   const { data: session } = useSession()
   if (!session?.user?.id) return <MailCenteredState><MailboxLoading /></MailCenteredState>
-  return <MailboxContent connection={connection} userId={session.user.id} />
+  return <MailboxContent connection={connection} onDisconnected={onDisconnected} userId={session.user.id} />
 }
 
-function MailboxContent({ connection, userId }: { connection: MailConnection; userId: string }) {
+function MailboxContent({ connection, onDisconnected, userId }: { connection: MailConnection; onDisconnected: () => void; userId: string }) {
   const { compose, view } = useSearch({ from: "/app/mail" })
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
@@ -105,6 +106,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const [batchSelection, setBatchSelection] = useState<Set<string>>(() => new Set())
   const [presentation, setPresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
   const [composerSeed, setComposerSeed] = useState<MailComposeSeed | null>(() => compose ? {} : null)
+  const [disconnecting, setDisconnecting] = useState(false)
   const controller = useMailController({
     connection,
     query,
@@ -150,6 +152,24 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const runBatch = (modification: MailModifyRequest) => controller
     .batchModifyThreads([...batchSelection], modification)
     .then(() => setBatchSelection(new Set()))
+  const disconnect = async () => {
+    if (!window.confirm(`Disconnect ${connection.email ?? "this Gmail account"} and remove its downloaded mail?`)) return
+    setDisconnecting(true)
+    try {
+      await apiFetch("/mail/connection", { method: "DELETE" })
+      await destroyMailDatabase(mailDatabaseName({
+        apiOrigin: new URL(toApiUrl("/"), window.location.origin).origin,
+        connectionId: connection.connectionId!,
+        userId,
+      }))
+      setSelection(null)
+      setComposerSeed(null)
+      onDisconnected()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+      setDisconnecting(false)
+    }
+  }
   const sidePaneOpen = Boolean(selectedThread && presentation === "sidepanel")
   const viewerProps = selectedThread ? {
     labels: controller.labels,
@@ -222,6 +242,9 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                             onUpdate={controller.updateLabel}
                             online={controller.online}
                           />
+                          <Button disabled={!controller.online || disconnecting} onClick={() => void disconnect()} size="sm" type="button" variant="ghost">
+                            {disconnecting ? "Disconnecting…" : "Disconnect"}
+                          </Button>
                         </div>
                       </div>
 

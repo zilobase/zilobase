@@ -9,6 +9,7 @@ const GMAIL_API_ORIGIN = "https://gmail.googleapis.com"
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 const REQUEST_TIMEOUT_MS = 15_000
 const SAFE_READ_RETRIES = 2
+const MAX_ATTACHMENT_DOWNLOAD_BYTES = 30 * 1024 * 1024
 
 export type GmailHeader = { name?: string; value?: string }
 export type GmailPart = {
@@ -341,12 +342,13 @@ export class GmailGateway {
   }
 }
 
-export function decodeGmailAttachmentResponse(response: Response) {
+export function decodeGmailAttachmentResponse(response: Response, maxBytes = MAX_ATTACHMENT_DOWNLOAD_BYTES) {
   if (!response.body) throw new GmailApiError("Gmail returned an empty attachment.", 502, "provider_error")
   const decoder = new TextDecoder()
   let buffer = ""
   let foundData = false
   let finished = false
+  let decodedBytes = 0
   const decoded = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
     flush(controller) {
       if (!finished) controller.error(new Error("Gmail returned an invalid attachment payload."))
@@ -370,12 +372,22 @@ export function decodeGmailAttachmentResponse(response: Response) {
         return
       }
       const emitLength = end >= 0 ? encoded.length : encoded.length - (encoded.length % 4)
-      if (emitLength > 0) controller.enqueue(base64UrlToBytes(encoded.slice(0, emitLength)))
+      if (emitLength > 0 && !enqueueAttachmentBytes(controller, base64UrlToBytes(encoded.slice(0, emitLength)))) return
       buffer = encoded.slice(emitLength)
       if (end >= 0) {
-        if (buffer) controller.enqueue(base64UrlToBytes(buffer))
+        if (buffer && !enqueueAttachmentBytes(controller, base64UrlToBytes(buffer))) return
         buffer = ""
         finished = true
+      }
+
+      function enqueueAttachmentBytes(target: TransformStreamDefaultController<Uint8Array>, bytes: Uint8Array) {
+        decodedBytes += bytes.byteLength
+        if (decodedBytes > maxBytes) {
+          target.error(new GmailApiError("The Gmail attachment is too large to download.", 413, "provider_error"))
+          return false
+        }
+        target.enqueue(bytes)
+        return true
       }
     },
   }))

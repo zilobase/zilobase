@@ -12,6 +12,7 @@ import {
   type MailRealtimeTicketClaims,
 } from "../../features/mail/mail-realtime-ticket"
 import type { RuntimeEnv } from "../../shared/config/config"
+import { recordMailMetric } from "../../features/mail/mail-metrics"
 
 type Room = {
   peers: Set<Peer>
@@ -45,6 +46,7 @@ export function attachNodeMailRealtimeRuntime(
         const room = rooms.get(claims.connectionId) ?? { peers: new Set<Peer>() }
         rooms.set(claims.connectionId, room)
         room.peers.add(peer)
+        void recordMailMetric("socket_state", { connectionId: claims.connectionId, code: "open", outcome: "success" })
         if (bus && !room.unsubscribe) {
           room.unsubscribe = await bus.subscribe(mailRealtimeChannel(claims.connectionId), (payload) => {
             if (isNotification(payload, claims.connectionId)) broadcast(room, payload, attachments)
@@ -58,8 +60,14 @@ export function attachNodeMailRealtimeRuntime(
           peer.send(JSON.stringify({ type: "mail.pong" }))
         }
       },
-      close(peer) { void removePeer(peer, attachments, rooms) },
+      close(peer) {
+        const claims = attachments.get(peer)
+        if (claims) void recordMailMetric("socket_state", { connectionId: claims.connectionId, code: "closed", outcome: "success" })
+        void removePeer(peer, attachments, rooms)
+      },
       error(peer) {
+        const claims = attachments.get(peer)
+        if (claims) void recordMailMetric("socket_state", { connectionId: claims.connectionId, code: "error", outcome: "failure" })
         void removePeer(peer, attachments, rooms)
         peer.close(1011, "Mail realtime error")
       },

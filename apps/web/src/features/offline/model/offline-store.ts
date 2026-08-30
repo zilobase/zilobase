@@ -11,6 +11,7 @@ import type {
 import type { Query } from "@tanstack/react-query"
 import { del, get, set } from "idb-keyval"
 import { getDesktopAuthOwner, getDesktopAuthToken } from "@/features/desktop/auth/desktop-auth-token"
+import { prepareMailDatabasesForDeletion } from "@/features/mail/cache/mail-database"
 
 export const OFFLINE_SCHEMA_VERSION = 1
 export const OFFLINE_CACHE_BUSTER = `zilobase-offline-v${OFFLINE_SCHEMA_VERSION}`
@@ -309,6 +310,9 @@ export async function clearAllOfflineData() {
 
   await Promise.all(pageDatabaseNames.map(deleteIndexedDatabase))
   await Promise.all([del(offlineManifestKey()), del(offlineQueryCacheKey())])
+  await deleteIndexedDatabasesForPrefix(
+    `zilobase:v1:${encodeURIComponent(new URL(getOfflineApiOrigin()).origin)}:`,
+  )
   manifest = emptyManifest()
   emit(manifestListeners)
 }
@@ -322,16 +326,10 @@ export async function clearDesktopServerIndexedData(server?: DesktopServer | nul
       del(offlineQueryCacheKey(server)),
     ])
   }
-  if (typeof indexedDB.databases !== "function") return
-
-  const databases = await indexedDB.databases()
   const originPrefix = server
-    ? `zilobase:v1:${encodeURIComponent(server.apiOrigin)}:`
+    ? `zilobase:v1:${encodeURIComponent(new URL(server.apiOrigin).origin)}:`
     : "zilobase:v1:"
-  const names = databases.flatMap((database) =>
-    database.name?.startsWith(originPrefix) ? [database.name] : [],
-  )
-  await Promise.all(names.map(deleteIndexedDatabaseStrict))
+  await deleteIndexedDatabasesForPrefix(originPrefix)
 }
 
 export function offlineDocumentName(workspaceId: string, pageId: string) {
@@ -518,7 +516,21 @@ function deleteIndexedDatabaseStrict(name: string) {
       window.clearTimeout(timeout)
       reject(request.error ?? new Error("Local document storage could not be deleted."))
     })
+    request.addEventListener("blocked", () => {
+      window.clearTimeout(timeout)
+      reject(new Error("Local document storage is still in use."))
+    })
   })
+}
+
+async function deleteIndexedDatabasesForPrefix(prefix: string) {
+  await prepareMailDatabasesForDeletion(prefix)
+  if (typeof indexedDB.databases !== "function") return
+  const databases = await indexedDB.databases()
+  const names = databases.flatMap((database) =>
+    database.name?.startsWith(prefix) ? [database.name] : [],
+  )
+  await Promise.all(names.map(deleteIndexedDatabaseStrict))
 }
 
 function emit(listeners: Set<() => void>) {

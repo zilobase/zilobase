@@ -163,3 +163,11 @@ test("attachment decoder rejects malformed provider envelopes", async () => {
   const response = decodeGmailAttachmentResponse(Response.json({ size: 12 }))
   await assert.rejects(response.arrayBuffer(), /invalid attachment payload/)
 })
+
+test("attachment decoder stops oversized streams without retaining their bytes", async () => {
+  const response = decodeGmailAttachmentResponse(
+    Response.json({ data: Buffer.from("too-large").toString("base64url") }),
+    4,
+  )
+  await assert.rejects(response.arrayBuffer(), /too large/)
+})

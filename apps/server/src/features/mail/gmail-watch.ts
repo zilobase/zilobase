@@ -4,6 +4,7 @@ import { db } from "../../infrastructure/database"
 import { gmailConnection } from "../../infrastructure/database/schema"
 import { getStringEnv, type RuntimeEnv } from "../../shared/config/config"
 import { createGmailGateway, GmailApiError } from "./gmail-gateway"
+import { recordMailMetric } from "./mail-metrics"
 
 const RENEW_BEFORE_MS = 24 * 60 * 60 * 1_000
 const RENEW_LOCK_MS = 10 * 60 * 1_000
@@ -29,6 +30,7 @@ export async function initializeGmailWatch(
       watchExpiresAt: expiration,
     })
     .where(eq(gmailConnection.id, connection.id))
+  await recordMailMetric("watch_health", { connectionId: connection.id, outcome: "success" })
   return { expiration, historyId: result.historyId }
 }
 
@@ -63,6 +65,11 @@ export async function renewGmailWatches(env: RuntimeEnv, limit = 25) {
       renewed += 1
     } catch (error) {
       failed += 1
+      await recordMailMetric("watch_health", {
+        code: error instanceof GmailApiError ? error.code : "watch_failed",
+        connectionId: candidate.id,
+        outcome: "failure",
+      })
       await db
         .update(gmailConnection)
         .set({
