@@ -457,48 +457,116 @@ function ConversationToolbar({ labels, mode, mutating, nextDisabled, onActOnThre
 }
 
 function ConversationBody({ labels, messages, mutating, onActOnMessage, onCompose, onDownload, onLoadInlineAttachment, onModifyMessage, online, ownEmail, thread }: ConversationProps) {
+  const latestMessageId = messages.at(-1)?.id ?? null
+  const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(() => latestMessageId ? new Set([latestMessageId]) : new Set())
+
+  useEffect(() => {
+    setExpandedMessageIds(latestMessageId ? new Set([latestMessageId]) : new Set())
+  }, [latestMessageId, thread.id])
+
+  const toggleMessage = (messageId: string) => {
+    setExpandedMessageIds((current) => {
+      const next = new Set(current)
+      if (next.has(messageId)) next.delete(messageId)
+      else next.add(messageId)
+      return next
+    })
+  }
+
   return (
     <div className="w-full bg-surface-canvas dark:bg-surface-navigation">
       <article className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-7">
         <h2 className="text-xl font-semibold leading-7 text-content-primary">{thread.subject}</h2>
         {!messages.length ? <MailboxLoading /> : messages.map((message) => (
-          <section className="mt-5 border-t border-stroke-default pt-5 first:border-0" key={message.id}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-medium text-content-primary">{message.from?.name || message.from?.address || "Unknown sender"}</p>
-                <p className="text-xs text-content-secondary">to {message.to.map((address) => address.name || address.address).join(", ") || "me"}</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <time className="text-xs text-content-secondary">{formatMessageDate(message.internalDate)}</time>
-                <MailMessageActions labels={labels} message={message} mutating={mutating} onAction={onActOnMessage} onModify={onModifyMessage} online={online} />
-              </div>
-            </div>
-            <MailMessageBody message={message} onLoadInlineAttachment={onLoadInlineAttachment} online={online} />
-            <div className="mt-4 flex gap-2">
-              <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail))} size="sm" type="button" variant="outline">Reply</Button>
-              <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail, true))} size="sm" type="button" variant="outline">Reply all</Button>
-              <Button disabled={!online} onClick={() => onCompose(forwardSeed(message))} size="sm" type="button" variant="outline">Forward</Button>
-            </div>
-            {message.attachments.length ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {message.attachments.map((attachment) => (
-                  <Button
-                    disabled={!online}
-                    key={attachment.attachmentId}
-                    onClick={() => void onDownload(message.id, attachment.attachmentId, attachment.filename).catch((error) => toast.error(getApiErrorMessage(error)))}
-                    size="sm"
-                    type="button"
-                    variant="outline"
-                  >
-                    <DownloadIcon /> {attachment.filename} <span className="text-content-secondary">{formatBytes(attachment.size)}</span>
-                  </Button>
-                ))}
-              </div>
-            ) : null}
-          </section>
+          <MailThreadMessage
+            expanded={expandedMessageIds.has(message.id)}
+            key={message.id}
+            labels={labels}
+            message={message}
+            mutating={mutating}
+            onActOnMessage={onActOnMessage}
+            onCompose={onCompose}
+            onDownload={onDownload}
+            onLoadInlineAttachment={onLoadInlineAttachment}
+            onModifyMessage={onModifyMessage}
+            onToggle={() => toggleMessage(message.id)}
+            online={online}
+            ownEmail={ownEmail}
+          />
         ))}
       </article>
     </div>
+  )
+}
+
+function MailThreadMessage({ expanded, labels, message, mutating, onActOnMessage, onCompose, onDownload, onLoadInlineAttachment, onModifyMessage, onToggle, online, ownEmail }: {
+  expanded: boolean
+  labels: MailLabelRecord[]
+  message: MailMessageRecord
+  mutating: boolean
+  onActOnMessage: ConversationProps["onActOnMessage"]
+  onCompose: ConversationProps["onCompose"]
+  onDownload: ConversationProps["onDownload"]
+  onLoadInlineAttachment: ConversationProps["onLoadInlineAttachment"]
+  onModifyMessage: ConversationProps["onModifyMessage"]
+  onToggle: () => void
+  online: boolean
+  ownEmail: string
+}) {
+  const sender = message.from?.name || message.from?.address || "Unknown sender"
+  const recipients = message.to.map((address) => address.name || address.address).join(", ") || "me"
+  return (
+    <section className="mt-3 rounded-xl border border-stroke-default bg-surface-canvas px-4 py-3 first:mt-5 dark:bg-surface-navigation" data-mail-message-expanded={expanded ? "true" : "false"}>
+      <div className="flex min-w-0 items-start gap-2">
+        <button
+          aria-expanded={expanded}
+          aria-label={`${expanded ? "Collapse" : "Expand"} message from ${sender}`}
+          className="flex min-w-0 flex-1 items-start gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus-ring"
+          onClick={onToggle}
+          type="button"
+        >
+          <ChevronDown className={`mt-0.5 size-4 shrink-0 text-content-secondary transition-transform ${expanded ? "rotate-180" : ""}`} />
+          <span className="min-w-0 flex-1">
+            <span className="flex min-w-0 items-baseline gap-3">
+              <span className="max-w-40 shrink-0 truncate text-sm font-medium text-content-primary">{sender}</span>
+              {!expanded ? <span className="min-w-0 flex-1 truncate text-sm text-content-secondary">{message.snippet || "No message preview"}</span> : null}
+              {!expanded && message.attachments.length ? <Paperclip className="size-3.5 shrink-0 text-content-secondary" /> : null}
+            </span>
+            {expanded ? <span className="block truncate text-xs text-content-secondary">to {recipients}</span> : null}
+          </span>
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <time className="whitespace-nowrap text-xs text-content-secondary">{formatMessageDate(message.internalDate)}</time>
+          <MailMessageActions labels={labels} message={message} mutating={mutating} onAction={onActOnMessage} onModify={onModifyMessage} online={online} />
+        </div>
+      </div>
+      {expanded ? (
+        <div>
+          <MailMessageBody message={message} onLoadInlineAttachment={onLoadInlineAttachment} online={online} />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail))} size="sm" type="button" variant="outline">Reply</Button>
+            <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail, true))} size="sm" type="button" variant="outline">Reply all</Button>
+            <Button disabled={!online} onClick={() => onCompose(forwardSeed(message))} size="sm" type="button" variant="outline">Forward</Button>
+          </div>
+          {message.attachments.length ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {message.attachments.map((attachment) => (
+                <Button
+                  disabled={!online}
+                  key={attachment.attachmentId}
+                  onClick={() => void onDownload(message.id, attachment.attachmentId, attachment.filename).catch((error) => toast.error(getApiErrorMessage(error)))}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <DownloadIcon /> {attachment.filename} <span className="text-content-secondary">{formatBytes(attachment.size)}</span>
+                </Button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -677,7 +745,7 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
           </div>
         ) : null}
         <iframe
-          className="min-h-64 w-full overflow-hidden border-0"
+          className="block min-h-24 w-full overflow-hidden border-0"
           onLoad={(event) => {
             frameObserver.current?.disconnect()
             const frame = event.currentTarget
