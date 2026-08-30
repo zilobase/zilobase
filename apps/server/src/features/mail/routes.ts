@@ -9,7 +9,7 @@ import type {
   MailView,
 } from "@zilobase/features/mail"
 
-import { db } from "../../infrastructure/database"
+import { db, runWithDbEnv } from "../../infrastructure/database"
 import { gmailConnection } from "../../infrastructure/database/schema"
 import { getCanonicalWebOrigin } from "../../shared/config/config"
 import type { AppBindings } from "../../shared/types"
@@ -103,24 +103,27 @@ mailRoutes.get("/oauth/google/callback", async (c) => {
     return c.html(renderOauthResult("Gmail connection was cancelled."), 400)
   }
   try {
-    const result = await completeGmailOauth(c.env, { code, state })
-    await recordMailMetric("oauth_outcome", { connectionId: result.connectionId, outcome: "success" })
-    const [connected] = await db
-      .select()
-      .from(gmailConnection)
-      .where(eq(gmailConnection.id, result.connectionId))
-      .limit(1)
-    if (connected) {
-      await initializeGmailWatch(c.env, connected).catch(async (error) => {
-        await db
-          .update(gmailConnection)
-          .set({
-            lastErrorCode: error instanceof GmailApiError ? error.code : "watch_failed",
-            updatedAt: new Date(),
-          })
-          .where(eq(gmailConnection.id, connected.id))
-      })
-    }
+    const result = await runWithDbEnv(c.env, async () => {
+      const completed = await completeGmailOauth(c.env, { code, state })
+      await recordMailMetric("oauth_outcome", { connectionId: completed.connectionId, outcome: "success" })
+      const [connected] = await db
+        .select()
+        .from(gmailConnection)
+        .where(eq(gmailConnection.id, completed.connectionId))
+        .limit(1)
+      if (connected) {
+        await initializeGmailWatch(c.env, connected).catch(async (error) => {
+          await db
+            .update(gmailConnection)
+            .set({
+              lastErrorCode: error instanceof GmailApiError ? error.code : "watch_failed",
+              updatedAt: new Date(),
+            })
+            .where(eq(gmailConnection.id, connected.id))
+        })
+      }
+      return completed
+    })
     if (result.clientKind === "desktop") {
       const discovery = await getZilobaseDiscoveryDocument(c.env)
       const deepLink = buildDesktopMailReturnUrl(discovery)

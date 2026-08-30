@@ -58,6 +58,14 @@ test("public Gmail OAuth completion establishes its own database context", async
   assert.match(source, /return runWithDbEnv\(env, \(\) => completeGmailOauthWithDatabase\(env, input, fetcher\)\)/)
 })
 
+test("successful public Gmail callbacks keep watch setup in database context", async () => {
+  const source = await readFile(new URL("./routes.ts", import.meta.url), "utf8")
+  const callback = source.slice(source.indexOf('mailRoutes.get("/oauth/google/callback"'), source.indexOf('mailRoutes.delete("/connection"'))
+
+  assert.match(callback, /runWithDbEnv\(c\.env, async \(\) =>/)
+  assert.match(callback, /completeGmailOauth[\s\S]*db[\s\S]*initializeGmailWatch/)
+})
+
 test("Gmail OAuth accepts Google's canonical email scope alias", () => {
   assert.equal(hasRequiredGmailScopes(new Set([
     "openid",
