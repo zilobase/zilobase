@@ -267,6 +267,31 @@ pub(crate) fn cancel_browser_authorization(
     Ok(())
 }
 
+#[tauri::command]
+pub(crate) fn open_mail_authorization_url(
+    app: AppHandle,
+    authorization_url: String,
+) -> Result<(), DesktopOAuthError> {
+    let url = validate_mail_authorization_url(&authorization_url)?;
+    app.opener()
+        .open_url(url.as_str(), None::<&str>)
+        .map_err(|_| DesktopOAuthError::browser_open_failed())
+}
+
+fn validate_mail_authorization_url(authorization_url: &str) -> Result<Url, DesktopOAuthError> {
+    let url =
+        Url::parse(authorization_url).map_err(|_| DesktopOAuthError::configuration_failed())?;
+    if url.scheme() != "https"
+        || url.host_str() != Some("accounts.google.com")
+        || url.path() != "/o/oauth2/v2/auth"
+        || !url.username().is_empty()
+        || url.password().is_some()
+    {
+        return Err(DesktopOAuthError::configuration_failed());
+    }
+    Ok(url)
+}
+
 async fn run_browser_authorization(
     app: &AppHandle,
     mut cancel: watch::Receiver<bool>,
@@ -703,8 +728,9 @@ fn focus_main_window(app: &AppHandle) {
 mod tests {
     use super::{
         bind_loopback, build_oauth_request, constant_time_eq, exchange_session_credentials,
-        hosted_completion_url, parse_callback, validate_token_response, DesktopTokenResponse,
-        DesktopTokenUser, ParsedCallback, CALLBACK_PATH, CONNECTED_PATH,
+        hosted_completion_url, parse_callback, validate_mail_authorization_url,
+        validate_token_response, DesktopTokenResponse, DesktopTokenUser, ParsedCallback,
+        CALLBACK_PATH, CONNECTED_PATH,
     };
     use crate::server::DesktopServer;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -733,6 +759,25 @@ mod tests {
         );
         assert!(!completion.contains("code="));
         assert!(!completion.contains("oauth/complete"));
+    }
+
+    #[test]
+    fn mail_authorization_only_allows_the_exact_google_endpoint() {
+        assert!(validate_mail_authorization_url(
+            "https://accounts.google.com/o/oauth2/v2/auth?client_id=gmail"
+        )
+        .is_ok());
+        assert!(validate_mail_authorization_url(
+            "https://accounts.google.com.evil.example/o/oauth2/v2/auth"
+        )
+        .is_err());
+        assert!(validate_mail_authorization_url(
+            "https://accounts.google.com/o/oauth2/v2/auth/extra"
+        )
+        .is_err());
+        assert!(
+            validate_mail_authorization_url("http://accounts.google.com/o/oauth2/v2/auth").is_err()
+        );
     }
 
     #[test]

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from "react"
 import { useNavigate, useSearch } from "@tanstack/react-router"
+import { useQuery } from "@tanstack/react-query"
+import { invoke } from "@tauri-apps/api/core"
 import { toast } from "sonner"
 
 import {
@@ -40,7 +42,11 @@ import { Input } from "@/shared/ui/input"
 import { Separator } from "@/shared/ui/separator"
 import { Textarea } from "@/shared/ui/textarea"
 import { cn } from "@/shared/lib/utils"
+import { GoogleIcon } from "@/shared/components/google-icon"
+import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
+import { isDesktopApp } from "@/features/desktop/platform"
 import { mailViewIcons, mailViewLabels } from "@/features/sidebar"
+import type { MailConnection } from "@zilobase/features/mail"
 import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 import type { MailView } from "@zilobase/features/user-settings"
 
@@ -63,6 +69,11 @@ export default function MailPage() {
   const [messagePresentation, setMessagePresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
   const [selection, setSelection] = useState<MailSelection | null>(null)
   const ActiveViewIcon = mailViewIcons[view]
+  const connectionQuery = useQuery({
+    queryKey: ["mail", "connection"],
+    queryFn: ({ signal }) => apiFetch<MailConnection>("/mail/connection", { signal }),
+    staleTime: 15_000,
+  })
 
   useEffect(() => {
     if (!compose) return
@@ -148,6 +159,22 @@ export default function MailPage() {
   const messageViewer = messageViewerProps ? <MailMessageViewer {...messageViewerProps} /> : null
   const sidePaneOpen = Boolean(selectedMessage && messagePresentation === "sidepanel")
 
+  if (!connectionQuery.data || connectionQuery.data.status !== "connected") {
+    return (
+      <MailConnectionState
+        connection={connectionQuery.data ?? null}
+        error={connectionQuery.error}
+        loading={connectionQuery.isLoading}
+        onConnected={() => void connectionQuery.refetch()}
+      />
+    )
+  }
+
+  if (!connectionQuery.data.mailboxReady) {
+    return <MailPreparationState connection={connectionQuery.data} />
+  }
+
+  /* The existing presentation is replaced by the Dexie-backed sync controller in Pass 5. */
   return (
     <>
       <PageSidePaneShell
@@ -278,6 +305,121 @@ export default function MailPage() {
         open={composeOpen}
       />
     </>
+  )
+}
+
+function MailConnectionState({
+  connection,
+  error,
+  loading,
+  onConnected,
+}: {
+  connection: MailConnection | null
+  error: unknown
+  loading: boolean
+  onConnected: () => void
+}) {
+  const [pending, setPending] = useState(false)
+  const [connectError, setConnectError] = useState<unknown>(null)
+  const connect = async () => {
+    setPending(true)
+    setConnectError(null)
+    try {
+      const result = await apiFetch<{ authorizationUrl: string }>("/mail/oauth/start", {
+        body: JSON.stringify({ client: isDesktopApp() ? "desktop" : "web" }),
+        method: "POST",
+      })
+      if (isDesktopApp()) {
+        await invoke("open_mail_authorization_url", {
+          authorizationUrl: result.authorizationUrl,
+        })
+        toast.info("Finish connecting Gmail in your browser.")
+        setPending(false)
+      } else {
+        window.location.assign(result.authorizationUrl)
+      }
+    } catch (connectionError) {
+      setConnectError(connectionError)
+      setPending(false)
+    }
+  }
+
+  return (
+    <MailCenteredState>
+      <GoogleIcon className="size-7" />
+      <div className="space-y-1 text-center">
+        <h1 className="text-lg font-semibold text-content-primary">
+          {connection?.status === "reconnect_required" ? "Reconnect Gmail" : "Connect your Gmail account"}
+        </h1>
+        <p className="max-w-sm text-sm leading-6 text-content-secondary">
+          Read, organize, draft, and send Gmail from Zilobase. Your mailbox remains authoritative in Google.
+        </p>
+      </div>
+      <Button
+        disabled={loading || pending || connection?.providerConfigured === false}
+        onClick={() => void connect()}
+        type="button"
+      >
+        <GoogleIcon />
+        {pending ? "Opening Google…" : connection?.status === "reconnect_required" ? "Reconnect Google account" : "Connect Google account"}
+      </Button>
+      {connection?.providerConfigured === false ? (
+        <p className="text-center text-xs text-feedback-danger-text">
+          Gmail is not configured on this Zilobase server.
+        </p>
+      ) : null}
+      {error || connectError ? (
+        <div className="space-y-2 text-center">
+          <p className="text-xs text-feedback-danger-text">
+            {getApiErrorMessage(connectError ?? error)}
+          </p>
+          <Button onClick={onConnected} size="sm" type="button" variant="outline">Try again</Button>
+        </div>
+      ) : null}
+    </MailCenteredState>
+  )
+}
+
+function MailPreparationState({ connection }: { connection: MailConnection }) {
+  const [disconnecting, setDisconnecting] = useState(false)
+  return (
+    <MailCenteredState>
+      <div className="space-y-1 text-center">
+        <h1 className="text-lg font-semibold text-content-primary">Preparing your mailbox</h1>
+        <p className="text-sm text-content-secondary">
+          {connection.email ? `Connected as ${connection.email}.` : "Gmail is connected."} Mail synchronization is being prepared.
+        </p>
+      </div>
+      <Button
+        disabled={disconnecting}
+        onClick={async () => {
+          setDisconnecting(true)
+          try {
+            await apiFetch("/mail/connection", { method: "DELETE" })
+            window.location.reload()
+          } catch (error) {
+            toast.error(getApiErrorMessage(error))
+            setDisconnecting(false)
+          }
+        }}
+        type="button"
+        variant="outline"
+      >
+        {disconnecting ? "Disconnecting…" : "Disconnect Gmail"}
+      </Button>
+    </MailCenteredState>
+  )
+}
+
+function MailCenteredState({ children }: { children: React.ReactNode }) {
+  return (
+    <PageSidePaneShell
+      body={<main className="grid min-h-0 flex-1 place-items-center bg-surface-canvas px-6"><section className="flex max-w-md flex-col items-center gap-5 py-12">{children}</section></main>}
+      className="h-full bg-surface-canvas"
+      header={<PageSidePaneHeaderCell className="z-10" side="main" splitActive={false}><PagePaneHeader className="min-w-0 flex-1" pathname="/mail" showActions={false} /></PageSidePaneHeaderCell>}
+      open={false}
+      visible={false}
+    />
   )
 }
 

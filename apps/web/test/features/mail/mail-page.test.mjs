@@ -52,6 +52,16 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(headerSource, /pathname === "\/mail"[\s\S]*mailViewIds\.includes\(requestedView[\s\S]*mailViewLabels\[mailView\]/)
   })
 
+  test("disconnected mail offers Google connection and desktop uses the system browser", async () => {
+    const mailSource = await readSource("/src/features/mail/pages/mail.tsx")
+
+    assert.match(mailSource, /Connect your Gmail account/)
+    assert.match(mailSource, /method: "POST"/)
+    assert.match(mailSource, /open_mail_authorization_url/)
+    assert.match(mailSource, /Preparing your mailbox/)
+    assert.match(mailSource, /connectionQuery\.data\.mailboxReady/)
+  })
+
   test("Mail messages open in the shared side pane with dialog and row navigation controls", async () => {
     const [appLayoutSource, mailSource, paneSource, presentationSource] = await Promise.all([
       readSource("/src/app/shell/content/app-layout.tsx"),

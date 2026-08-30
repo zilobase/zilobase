@@ -160,9 +160,7 @@ export const gmailConnection = pgTable(
   },
   (table) => [
     uniqueIndex("gmail_connection_user_unique").on(table.userId),
-    uniqueIndex("gmail_connection_google_subject_unique").on(
-      table.googleSubject,
-    ),
+    index("gmail_connection_google_subject_idx").on(table.googleSubject),
     index("gmail_connection_watch_expiry_idx").on(
       table.status,
       table.watchExpiresAt,

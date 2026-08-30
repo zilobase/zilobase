@@ -78,6 +78,7 @@ export type MailLabelRecord = {
 export type MailConnection = {
   connectionId: string | null
   email: string | null
+  mailboxReady: boolean
   mailboxRevision: number
   providerConfigured: boolean
   status: MailConnectionStatus
