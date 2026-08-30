@@ -105,6 +105,7 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(controllerSource, /URL\.createObjectURL[\s\S]*URL\.revokeObjectURL/)
     assert.match(mailSource, /sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"/)
     assert.match(mailSource, /loadExternalImages: true[\s\S]*frame\.style\.height = "1px"[\s\S]*ResizeObserver[\s\S]*scrolling="no"/)
+    assert.match(mailSource, /resolvedTheme[\s\S]*themeFamily[\s\S]*applyFrameTheme[\s\S]*requestAnimationFrame/)
     assert.match(mailSource, /getComputedStyle\(frame\)[\s\S]*applyMailDocumentTheme/)
     assert.doesNotMatch(mailSource, />Load external images</)
     const conversationBody = mailSource.slice(mailSource.indexOf("function ConversationBody"), mailSource.indexOf("function MailMessageActions"))

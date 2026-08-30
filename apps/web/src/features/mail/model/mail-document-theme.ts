@@ -6,6 +6,7 @@ type RgbaColor = {
 }
 
 const MIN_TEXT_CONTRAST = 4.5
+const correctedColors = new WeakMap<HTMLElement, { priority: string; value: string }>()
 
 export function applyMailDocumentTheme(
   document: Document,
@@ -15,6 +16,14 @@ export function applyMailDocumentTheme(
   const background = parseCssColor(theme.backgroundColor)
   const fallbackText = parseCssColor(theme.textColor)
   if (!view || !background || !fallbackText) return
+
+  for (const element of document.body.querySelectorAll<HTMLElement>("*")) {
+    const original = correctedColors.get(element)
+    if (!original) continue
+    if (original.value) element.style.setProperty("color", original.value, original.priority)
+    else element.style.removeProperty("color")
+    correctedColors.delete(element)
+  }
 
   document.documentElement.style.setProperty("background-color", theme.backgroundColor, "important")
   document.body.style.setProperty("background-color", theme.backgroundColor, "important")
@@ -37,6 +46,10 @@ export function applyMailDocumentTheme(
     const renderedFallback = composite(fallbackText, backgroundResult.color)
     if (contrastRatio(renderedFallback, backgroundResult.color) <= textContrast) continue
 
+    correctedColors.set(element, {
+      priority: element.style.getPropertyPriority("color"),
+      value: element.style.getPropertyValue("color"),
+    })
     element.style.setProperty("color", theme.textColor, "important")
   }
 }

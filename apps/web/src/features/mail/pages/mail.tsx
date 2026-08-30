@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import { invoke } from "@tauri-apps/api/core"
@@ -15,6 +15,7 @@ import type {
 } from "@zilobase/features/mail"
 import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 import { toast } from "sonner"
+import { useTheme } from "next-themes"
 
 import { apiFetch, getApiErrorMessage, toApiUrl } from "@/features/desktop/network/api"
 import { isDesktopApp } from "@/features/desktop/platform"
@@ -55,6 +56,7 @@ import {
 } from "@/shared/ui/dropdown-menu"
 import { Input } from "@/shared/ui/input"
 import { Separator } from "@/shared/ui/separator"
+import { useThemeFamily } from "@/shared/providers/theme-family-provider"
 import {
   EmbeddedItemPresentationDropdown,
   MainPaneHeaderLeadingControl,
@@ -743,6 +745,9 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
   online: boolean
 }) {
   const frameObserver = useRef<ResizeObserver | null>(null)
+  const frameRef = useRef<HTMLIFrameElement | null>(null)
+  const { resolvedTheme } = useTheme()
+  const { themeFamily } = useThemeFamily()
   const [inlineImageUrls, setInlineImageUrls] = useState<Record<string, string>>({})
   const inlineAttachments = useMemo(
     () => message.attachments.filter((attachment) => attachment.inline && attachment.contentId),
@@ -755,7 +760,23 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
     () => message.bodyHtml ? sanitizeMailHtml(message.bodyHtml, { inlineImageUrls, loadExternalImages: true }) : "",
     [inlineImageUrls, message.bodyHtml],
   )
+  const applyFrameTheme = useCallback((frame: HTMLIFrameElement) => {
+    const document = frame.contentDocument
+    if (!document) return
+    const frameStyle = window.getComputedStyle(frame)
+    applyMailDocumentTheme(document, {
+      backgroundColor: frameStyle.backgroundColor,
+      textColor: frameStyle.color,
+    })
+  }, [])
   useEffect(() => () => frameObserver.current?.disconnect(), [])
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame?.contentDocument) return
+    applyFrameTheme(frame)
+    const animationFrame = window.requestAnimationFrame(() => applyFrameTheme(frame))
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [applyFrameTheme, resolvedTheme, themeFamily])
   useEffect(() => {
     setInlineImageUrls({})
     if (!online || !inlineAttachments.length) return
@@ -789,11 +810,7 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
             const frame = event.currentTarget
             const document = frame.contentDocument
             if (!document) return
-            const frameStyle = window.getComputedStyle(frame)
-            applyMailDocumentTheme(document, {
-              backgroundColor: frameStyle.backgroundColor,
-              textColor: frameStyle.color,
-            })
+            applyFrameTheme(frame)
             const resize = () => {
               frame.style.height = "1px"
               const height = `${Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1)}px`
@@ -805,6 +822,7 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
             frameObserver.current.observe(document.body)
           }}
           referrerPolicy="no-referrer"
+          ref={frameRef}
           sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
           scrolling="no"
           srcDoc={renderedHtml}
