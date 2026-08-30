@@ -13,6 +13,7 @@ export const authenticatedSessionMiddleware: MiddlewareHandler<AppBindings> =
       c.req.path === "/desktop" ||
       c.req.path === "/api/instance/bootstrap" ||
       c.req.path === "/mail/oauth/google/callback" ||
+      c.req.path === "/mail/google/pubsub" ||
       c.req.path.startsWith("/api/auth/")
     ) {
       await next();

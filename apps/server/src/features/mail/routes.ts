@@ -15,6 +15,8 @@ import {
   revokeGmailConnection,
 } from "./google-oauth"
 import { createGmailGateway, GmailApiError } from "./gmail-gateway"
+import { GmailPushError, processGmailPubsubRequest } from "./gmail-pubsub"
+import { initializeGmailWatch, stopGmailWatch } from "./gmail-watch"
 import { normalizeGmailLabels, normalizeGmailMessage, normalizeGmailThread } from "./mail-normalize"
 import { synchronizeMailbox } from "./mail-sync"
 import { MailConcurrencyError, withMailUserConcurrency } from "./user-concurrency"
@@ -70,6 +72,22 @@ mailRoutes.get("/oauth/google/callback", async (c) => {
   }
   try {
     const result = await completeGmailOauth(c.env, { code, state })
+    const [connected] = await db
+      .select()
+      .from(gmailConnection)
+      .where(eq(gmailConnection.id, result.connectionId))
+      .limit(1)
+    if (connected) {
+      await initializeGmailWatch(c.env, connected).catch(async (error) => {
+        await db
+          .update(gmailConnection)
+          .set({
+            lastErrorCode: error instanceof GmailApiError ? error.code : "watch_failed",
+            updatedAt: new Date(),
+          })
+          .where(eq(gmailConnection.id, connected.id))
+      })
+    }
     if (result.clientKind === "desktop") {
       const discovery = await getZilobaseDiscoveryDocument(c.env)
       const deepLink = buildDesktopMailReturnUrl(discovery)
@@ -94,10 +112,29 @@ mailRoutes.delete("/connection", async (c) => {
     .where(eq(gmailConnection.userId, user.id))
     .limit(1)
   if (connection) {
+    await stopGmailWatch(c.env, connection)
     await revokeGmailConnection(c.env, connection)
     await db.delete(gmailConnection).where(eq(gmailConnection.id, connection.id))
   }
   return c.json({ success: true })
+})
+
+mailRoutes.post("/google/pubsub", async (c) => {
+  try {
+    await processGmailPubsubRequest(c.env, c.req.raw)
+    return c.body(null, 204)
+  } catch (error) {
+    const status = error instanceof GmailPushError ? error.status : 500
+    return c.json(
+      { message: error instanceof GmailPushError ? error.message : "Gmail push could not be processed." },
+      status === 400 ? 400
+        : status === 401 ? 401
+          : status === 403 ? 403
+            : status === 413 ? 413
+              : status === 503 ? 503
+                : 500,
+    )
+  }
 })
 
 mailRoutes.post("/sync", async (c) => {

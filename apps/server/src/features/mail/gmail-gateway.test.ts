@@ -45,6 +45,24 @@ test("refresh-token invalidation is classified as a required reconnect", () => {
   assert.equal(accessTokenFromRefresh(200, { access_token: "short-lived-access" }), "short-lived-access")
 })
 
+test("watch creation and stop use Gmail's mailbox lifecycle endpoints", async () => {
+  const requests: Array<{ body: unknown; path: string }> = []
+  const gateway = new GmailGateway("token", async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString())
+    requests.push({ body: init?.body ? JSON.parse(String(init.body)) : null, path: url.pathname })
+    return url.pathname.endsWith("/watch")
+      ? Response.json({ expiration: "2000000000000", historyId: "100" })
+      : new Response(null, { status: 204 })
+  })
+
+  assert.equal((await gateway.watch("projects/example/topics/gmail")).historyId, "100")
+  await gateway.stop()
+  assert.deepEqual(requests, [
+    { body: { topicName: "projects/example/topics/gmail" }, path: "/gmail/v1/users/me/watch" },
+    { body: {}, path: "/gmail/v1/users/me/stop" },
+  ])
+})
+
 test("attachment responses remain streaming responses and are not decoded or retained", async () => {
   const encoded = Buffer.from("attachment-bytes").toString("base64url")
   const body = new ReadableStream({

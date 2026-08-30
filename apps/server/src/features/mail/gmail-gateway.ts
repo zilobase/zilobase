@@ -175,8 +175,40 @@ export class GmailGateway {
     ).then(decodeGmailAttachmentResponse)
   }
 
+  watch(topicName: string) {
+    return this.writeJson<{ expiration?: string; historyId?: string }>(
+      "/gmail/v1/users/me/watch",
+      { topicName },
+    )
+  }
+
+  async stop() {
+    await this.writeJson("/gmail/v1/users/me/stop", {})
+  }
+
   private async json<T>(path: string, operation?: "history") {
     const response = await this.request(path, operation)
+    return (await response.json()) as T
+  }
+
+  private async writeJson<T = unknown>(path: string, body: unknown) {
+    let response: Response
+    try {
+      response = await this.fetcher(new URL(path, GMAIL_API_ORIGIN), {
+        body: JSON.stringify(body),
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${this.accessToken}`,
+          "content-type": "application/json",
+        },
+        method: "POST",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      })
+    } catch {
+      throw new GmailApiError("Gmail did not respond in time.", 504, "provider_error", true)
+    }
+    if (!response.ok) throw normalizeGmailError(response.status)
+    if (response.status === 204) return undefined as T
     return (await response.json()) as T
   }
 

@@ -118,6 +118,7 @@ export {
   type DatabaseRealtimeMutationEvent,
 } from "../features/databases/realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";
+export { renewGmailWatches } from "../features/mail/gmail-watch";
 export {
   MembershipService,
   type GrantMembershipInput,

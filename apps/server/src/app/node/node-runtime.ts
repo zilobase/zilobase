@@ -28,6 +28,7 @@ import { setRealtimeReadinessProbe } from "../../infrastructure/realtime/readine
 import { cleanupExpiredAiAgentData } from "../../features/ai/actions/agent-operations";
 import { AI_JOB_HANDLERS } from "../../features/ai/jobs/ai-job-handlers";
 import { runAiJobBatch } from "../../features/ai/jobs/ai-jobs";
+import { renewGmailWatches } from "../../features/mail/gmail-watch";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -214,6 +215,7 @@ function startMaintenanceDrainer(
           }),
           drainDatabaseRealtimeOutbox(env, { limit: 250 }),
           expireTemporaryMemberships(),
+          renewGmailWatches(env),
         ]),
       );
     } catch (error) {
