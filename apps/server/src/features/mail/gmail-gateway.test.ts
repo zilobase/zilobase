@@ -47,6 +47,35 @@ test("Gmail transport failures are not mislabeled as timeouts", async () => {
   )
 })
 
+test("thread metadata uses one Gmail batch request with Worker-compatible inputs", async () => {
+  const requests: Array<{ body: string; input: RequestInfo | URL }> = []
+  const responseBoundary = "batch_response"
+  const gateway = new GmailGateway("token", async (input, init) => {
+    requests.push({ body: String(init?.body ?? ""), input })
+    const parts = ["thread-1", "thread-2"].map((id, index) => [
+      `--${responseBoundary}`,
+      "Content-Type: application/http",
+      `Content-ID: <response-thread-${index}>`,
+      "",
+      "HTTP/1.1 200 OK",
+      "Content-Type: application/json",
+      "",
+      JSON.stringify({ id, messages: [] }),
+    ].join("\r\n")).join("\r\n")
+    return new Response(`${parts}\r\n--${responseBoundary}--\r\n`, {
+      headers: { "content-type": `multipart/mixed; boundary=${responseBoundary}` },
+    })
+  })
+
+  const threads = await gateway.getThreads(["thread-1", "thread-2"], "metadata")
+
+  assert.equal(requests.length, 1)
+  assert.equal(requests[0]?.input, "https://gmail.googleapis.com/batch/gmail/v1")
+  assert.match(requests[0]?.body ?? "", /GET \/gmail\/v1\/users\/me\/threads\/thread-1\?format=metadata/)
+  assert.match(requests[0]?.body ?? "", /metadataHeaders=Subject/)
+  assert.deepEqual(threads.map((thread) => thread.id), ["thread-1", "thread-2"])
+})
+
 test("history 404 and quota responses are normalized without provider response contents", async () => {
   const history = new GmailGateway("token", async () => new Response("provider details", { status: 404 }))
   await assert.rejects(

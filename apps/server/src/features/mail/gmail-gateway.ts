@@ -6,9 +6,11 @@ import { getRequiredStringEnv, type RuntimeEnv } from "../../shared/config/confi
 import { decryptMailSecret } from "./security/mail-credentials"
 
 const GMAIL_API_ORIGIN = "https://gmail.googleapis.com"
+const GMAIL_BATCH_URL = "https://gmail.googleapis.com/batch/gmail/v1"
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 const REQUEST_TIMEOUT_MS = 15_000
 const SAFE_READ_RETRIES = 2
+const GMAIL_BATCH_SIZE = 50
 const MAX_ATTACHMENT_DOWNLOAD_BYTES = 30 * 1024 * 1024
 
 export type GmailHeader = { name?: string; value?: string }
@@ -145,6 +147,14 @@ export class GmailGateway {
       for (const header of MAIL_METADATA_HEADERS) params.append("metadataHeaders", header)
     }
     return this.json<GmailThread>(`/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}?${params}`)
+  }
+
+  async getThreads(threadIds: string[], format: "full" | "metadata" = "metadata") {
+    const threads: GmailThread[] = []
+    for (let offset = 0; offset < threadIds.length; offset += GMAIL_BATCH_SIZE) {
+      threads.push(...await this.batchGetThreads(threadIds.slice(offset, offset + GMAIL_BATCH_SIZE), format))
+    }
+    return threads
   }
 
   getMessage(messageId: string, format: "full" | "metadata" = "full") {
@@ -340,6 +350,59 @@ export class GmailGateway {
     }
     throw lastError ?? new GmailApiError("Gmail request failed.", 502, "provider_error")
   }
+
+  private async batchGetThreads(threadIds: string[], format: "full" | "metadata") {
+    if (!threadIds.length) return []
+    const boundary = `zilobase_${crypto.randomUUID().replaceAll("-", "")}`
+    const body = `${threadIds.map((threadId, index) => {
+      const params = new URLSearchParams({ format })
+      if (format === "metadata") {
+        for (const header of MAIL_METADATA_HEADERS) params.append("metadataHeaders", header)
+      }
+      return [
+        `--${boundary}`,
+        "Content-Type: application/http",
+        `Content-ID: <thread-${index}>`,
+        "",
+        `GET /gmail/v1/users/me/threads/${encodeURIComponent(threadId)}?${params} HTTP/1.1`,
+        "Accept: application/json",
+        "",
+      ].join("\r\n")
+    }).join("") }--${boundary}--\r\n`
+    let lastError: GmailApiError | null = null
+    for (let attempt = 0; attempt <= SAFE_READ_RETRIES; attempt += 1) {
+      let response: Response
+      try {
+        response = await this.fetcher(GMAIL_BATCH_URL, {
+          body,
+          headers: {
+            accept: "multipart/mixed",
+            authorization: `Bearer ${this.accessToken}`,
+            "content-type": `multipart/mixed; boundary=${boundary}`,
+          },
+          method: "POST",
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        })
+      } catch (error) {
+        lastError = normalizeGmailTransportError(error)
+        if (attempt < SAFE_READ_RETRIES) continue
+        throw lastError
+      }
+      if (!response.ok) {
+        lastError = normalizeGmailError(response.status)
+      } else {
+        try {
+          return parseGmailBatchThreads(await response.text(), response.headers.get("content-type"))
+        } catch (error) {
+          lastError = error instanceof GmailApiError
+            ? error
+            : new GmailApiError("Gmail returned an invalid batch response.", 502, "provider_error", true)
+        }
+      }
+      if (!lastError.retryable || attempt === SAFE_READ_RETRIES) throw lastError
+    }
+    throw lastError ?? new GmailApiError("Gmail batch request failed.", 502, "provider_error")
+  }
 }
 
 function normalizeGmailTransportError(error: unknown) {
@@ -348,6 +411,31 @@ function normalizeGmailTransportError(error: unknown) {
     return new GmailApiError("Gmail did not respond in time.", 504, "provider_error", true)
   }
   return new GmailApiError("Gmail could not be reached.", 502, "provider_error", true)
+}
+
+function parseGmailBatchThreads(body: string, contentType: string | null) {
+  const boundaryMatch = contentType?.match(/boundary=(?:"([^"]+)"|([^;\s]+))/i)
+  const boundary = boundaryMatch?.[1] ?? boundaryMatch?.[2]
+  if (!boundary) throw new GmailApiError("Gmail returned an invalid batch response.", 502, "provider_error", true)
+  const threads: GmailThread[] = []
+  for (const rawPart of body.split(`--${boundary}`).slice(1)) {
+    const part = rawPart.trim()
+    if (!part || part === "--") continue
+    const responseStart = part.search(/HTTP\/1\.[01]\s+\d{3}/)
+    if (responseStart < 0) throw new GmailApiError("Gmail returned an invalid batch response.", 502, "provider_error", true)
+    const responsePart = part.slice(responseStart)
+    const statusMatch = responsePart.match(/^HTTP\/1\.[01]\s+(\d{3})/)
+    const bodyMatch = /\r?\n\r?\n/.exec(responsePart)
+    if (!statusMatch || !bodyMatch) throw new GmailApiError("Gmail returned an invalid batch response.", 502, "provider_error", true)
+    const status = Number(statusMatch[1])
+    if (status < 200 || status >= 300) throw normalizeGmailError(status)
+    try {
+      threads.push(JSON.parse(responsePart.slice(bodyMatch.index + bodyMatch[0].length).trim()) as GmailThread)
+    } catch {
+      throw new GmailApiError("Gmail returned an invalid batch response.", 502, "provider_error", true)
+    }
+  }
+  return threads
 }
 
 export function decodeGmailAttachmentResponse(response: Response, maxBytes = MAX_ATTACHMENT_DOWNLOAD_BYTES) {

@@ -92,6 +92,7 @@ function fakeGateway(overrides: Record<string, unknown> = {}) {
   return {
     getProfile: async () => ({ historyId: "200" }),
     getThread: async (id: string) => fixtureThread(id),
+    getThreads: async (ids: string[]) => ids.map(fixtureThread),
     listHistory: async () => ({ historyId: "200" }),
     listLabels: async () => ({ labels: [{ id: "INBOX", name: "Inbox", type: "system" }] }),
     listThreads: async () => ({ threads: [{ id: "thread-1" }] }),

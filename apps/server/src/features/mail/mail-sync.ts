@@ -4,7 +4,7 @@ import { GmailApiError, type GmailGateway, type GmailHistory } from "./gmail-gat
 import { normalizeGmailLabels, normalizeGmailThread } from "./mail-normalize"
 
 export async function synchronizeMailbox(
-  gateway: Pick<GmailGateway, "getProfile" | "getThread" | "listHistory" | "listLabels" | "listThreads">,
+  gateway: Pick<GmailGateway, "getProfile" | "getThread" | "getThreads" | "listHistory" | "listLabels" | "listThreads">,
   request: MailSyncRequest,
   mailboxRevision: number,
 ): Promise<MailSyncResponse> {
@@ -20,7 +20,7 @@ export async function synchronizeMailbox(
 }
 
 async function fullSync(
-  gateway: Pick<GmailGateway, "getProfile" | "getThread" | "listLabels" | "listThreads">,
+  gateway: Pick<GmailGateway, "getProfile" | "getThreads" | "listLabels" | "listThreads">,
   request: MailSyncRequest,
   mailboxRevision: number,
   mode: "full" | "recovery",
@@ -36,8 +36,9 @@ async function fullSync(
     gateway.listLabels(),
     gateway.getProfile(),
   ])
-  const normalized = await Promise.all(
-    (listed.threads ?? []).flatMap((thread) => thread.id ? [gateway.getThread(thread.id, "metadata")] : []),
+  const normalized = await gateway.getThreads(
+    (listed.threads ?? []).flatMap((thread) => thread.id ? [thread.id] : []),
+    "metadata",
   )
   const records = normalized.map((thread) => normalizeGmailThread(thread))
   const historyId = maxHistoryId(normalized.map((thread) => thread.historyId), profile.historyId ?? "0")
