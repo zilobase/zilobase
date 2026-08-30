@@ -24,6 +24,16 @@ test("safe Gmail reads retry transient failures and preserve pagination paramete
   assert.equal(result.nextPageToken, "next")
 })
 
+test("Gmail fetch stays bound to the Worker global receiver", async () => {
+  const receiverSensitiveFetch = function (this: unknown) {
+    assert.equal(this, globalThis)
+    return Promise.resolve(Response.json({ labels: [] }))
+  } as typeof fetch
+  const gateway = new GmailGateway("access-token", receiverSensitiveFetch)
+
+  await gateway.listLabels()
+})
+
 test("Gmail transport failures are not mislabeled as timeouts", async () => {
   const unavailable = new GmailGateway("token", async () => {
     throw new TypeError("provider transport details")

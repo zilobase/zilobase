@@ -121,10 +121,14 @@ export function accessTokenFromRefresh(
 }
 
 export class GmailGateway {
+  private readonly fetcher: typeof fetch
+
   constructor(
     private readonly accessToken: string,
-    private readonly fetcher: typeof fetch = fetch,
-  ) {}
+    fetcher: typeof fetch = fetch,
+  ) {
+    this.fetcher = fetcher.bind(globalThis)
+  }
 
   async listThreads(input: {
     labelIds?: string[]
