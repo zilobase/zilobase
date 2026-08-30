@@ -2,7 +2,11 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { test } from "vitest"
 
-import { buildGmailAuthorizationUrl, gmailOauthCallbackUrl } from "./google-oauth"
+import {
+  buildGmailAuthorizationUrl,
+  gmailOauthCallbackUrl,
+  hasRequiredGmailScopes,
+} from "./google-oauth"
 import { buildDesktopMailReturnUrl } from "./routes"
 
 const env = {
@@ -52,4 +56,28 @@ test("desktop Gmail completion contains routing metadata but no OAuth credential
 test("public Gmail OAuth completion establishes its own database context", async () => {
   const source = await readFile(new URL("./google-oauth.ts", import.meta.url), "utf8")
   assert.match(source, /return runWithDbEnv\(env, \(\) => completeGmailOauthWithDatabase\(env, input, fetcher\)\)/)
+})
+
+test("Gmail OAuth accepts Google's canonical email scope alias", () => {
+  assert.equal(hasRequiredGmailScopes(new Set([
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/gmail.modify",
+  ])), true)
+  assert.equal(hasRequiredGmailScopes(new Set([
+    "openid",
+    "email",
+    "https://www.googleapis.com/auth/gmail.modify",
+  ])), true)
+})
+
+test("Gmail OAuth still requires identity and mailbox modification access", () => {
+  assert.equal(hasRequiredGmailScopes(new Set([
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+  ])), false)
+  assert.equal(hasRequiredGmailScopes(new Set([
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/gmail.modify",
+  ])), false)
 })

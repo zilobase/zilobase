@@ -22,6 +22,7 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 const GOOGLE_REVOCATION_URL = "https://oauth2.googleapis.com/revoke"
 const GMAIL_PROFILE_URL = "https://gmail.googleapis.com/gmail/v1/users/me/profile"
 const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
+const GOOGLE_EMAIL_SCOPE = "https://www.googleapis.com/auth/userinfo.email"
 const REQUIRED_SCOPES = ["openid", "email", GMAIL_SCOPE] as const
 const OAUTH_ATTEMPT_TTL_MS = 10 * 60 * 1_000
 
@@ -157,7 +158,7 @@ async function completeGmailOauthWithDatabase(
   )
   const tokens = await exchangeGoogleCode(env, input.code, verifier, fetcher)
   const scopes = new Set((tokens.scope ?? "").split(/\s+/).filter(Boolean))
-  if (!REQUIRED_SCOPES.every((scope) => scopes.has(scope))) {
+  if (!hasRequiredGmailScopes(scopes)) {
     throw new GmailOauthError("Gmail access was not fully granted.", 400)
   }
   if (!tokens.access_token || !tokens.refresh_token || !tokens.id_token) {
@@ -218,6 +219,12 @@ async function completeGmailOauthWithDatabase(
       },
     })
   return { clientKind: attempt.clientKind as OAuthClientKind, connectionId }
+}
+
+export function hasRequiredGmailScopes(scopes: ReadonlySet<string>) {
+  return scopes.has("openid") &&
+    (scopes.has("email") || scopes.has(GOOGLE_EMAIL_SCOPE)) &&
+    scopes.has(GMAIL_SCOPE)
 }
 
 export async function revokeGmailConnection(
