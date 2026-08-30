@@ -90,6 +90,7 @@ export {
   getDatabaseRealtimeWebSocketUrl,
   getMeetingAudioWebSocketUrl,
   getMeetingCollaborationWebSocketUrl,
+  getMailRealtimeWebSocketUrl,
   getDatabaseUrl,
   getRuntimeAdapter,
   runWithRuntimeAdapter,
@@ -98,6 +99,7 @@ export {
   type MeetingRecorderRuntimeInput,
   type MeetingRecorderRuntimeState,
   type ServerRuntimeAdapter,
+  type MailNotificationEvent,
 } from "../infrastructure/runtime/runtime-adapter";
 export {
   createDatabaseRealtimeTicket,

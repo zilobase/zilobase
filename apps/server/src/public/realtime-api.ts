@@ -11,6 +11,14 @@ export type {
 } from "../features/meetings/meeting-types";
 export type { MeetingStatus };
 export {
+  createMailRealtimeTicket,
+  MAIL_REALTIME_AUTH_PROTOCOL_PREFIX,
+  MAIL_REALTIME_PROTOCOL,
+  verifyMailRealtimeTicket,
+  type MailRealtimeTicketClaims,
+} from "../features/mail/mail-realtime-ticket";
+export type { MailNotificationEvent } from "../infrastructure/runtime/runtime-adapter";
+export {
   createMeetingAudioTicket,
   MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
   MEETING_AUDIO_PROTOCOL,

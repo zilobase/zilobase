@@ -116,6 +116,10 @@ export function databaseRealtimeChannel(databaseId: string) {
   return `zilobase:realtime:database:${databaseId}`;
 }
 
+export function mailRealtimeChannel(connectionId: string) {
+  return `zilobase:realtime:mail:${connectionId}`;
+}
+
 function parseEnvelope(raw: string): RealtimeEnvelope | null {
   try {
     const value = JSON.parse(raw) as Partial<RealtimeEnvelope>;

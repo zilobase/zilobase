@@ -173,7 +173,7 @@ export function useMailController(input: {
     hasMore: Boolean(syncState?.pageTokens[input.view]),
     online,
     openThread,
-    refresh: () => runSync(),
+    refresh: runSync,
     loadMore: () => runSync({ loadMore: true }),
     syncing,
     threads,

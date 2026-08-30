@@ -37,6 +37,7 @@ import {
 import { mailViewIcons, mailViewLabels } from "@/features/sidebar"
 
 import { sanitizeMailHtml } from "../model/mail-html"
+import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
@@ -78,6 +79,11 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     query,
     userId,
     view,
+  })
+  useMailRealtime({
+    connectionId: connection.connectionId!,
+    enabled: controller.online && Boolean(controller.database),
+    onSynchronize: controller.refresh,
   })
   const selectedThread = controller.threads.find((thread) => thread.id === selection) ?? null
   const selectedMessages = useLiveQuery(

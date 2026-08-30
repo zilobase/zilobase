@@ -17,6 +17,12 @@ import {
 import { createGmailGateway, GmailApiError } from "./gmail-gateway"
 import { GmailPushError, processGmailPubsubRequest } from "./gmail-pubsub"
 import { initializeGmailWatch, stopGmailWatch } from "./gmail-watch"
+import {
+  createMailRealtimeTicket,
+  MAIL_REALTIME_AUTH_PROTOCOL_PREFIX,
+  MAIL_REALTIME_PROTOCOL,
+} from "./mail-realtime-ticket"
+import { getMailRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter"
 import { normalizeGmailLabels, normalizeGmailMessage, normalizeGmailThread } from "./mail-normalize"
 import { synchronizeMailbox } from "./mail-sync"
 import { MailConcurrencyError, withMailUserConcurrency } from "./user-concurrency"
@@ -203,6 +209,25 @@ mailRoutes.get("/labels", async (c) => {
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     const result = await gateway.listLabels()
     return c.json({ labels: normalizeGmailLabels(result.labels ?? []) })
+  })
+})
+
+mailRoutes.post("/realtime-ticket", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const ticket = await createMailRealtimeTicket({
+    connectionId: owned.connection.id,
+    userId: owned.userId,
+  }, c.env)
+  const websocketUrl = new URL(getMailRealtimeWebSocketUrl(c.req.raw, c.env))
+  websocketUrl.searchParams.set("connection", owned.connection.id)
+  return c.json({
+    ...ticket,
+    websocketProtocols: [
+      MAIL_REALTIME_PROTOCOL,
+      `${MAIL_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.ticket}`,
+    ],
+    websocketUrl: websocketUrl.toString(),
   })
 })
 

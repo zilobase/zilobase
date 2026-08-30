@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm"
 import { db } from "../../infrastructure/database"
 import { gmailConnection } from "../../infrastructure/database/schema"
 import { getStringEnv, type RuntimeEnv } from "../../shared/config/config"
+import { publishMailNotification } from "../../infrastructure/runtime/runtime-adapter"
 import { verifyGoogleOidcToken } from "./security/google-oidc-token"
 
 const MAX_PUSH_BYTES = 64 * 1024
@@ -42,8 +43,10 @@ export async function processGmailPubsubRequest(
       eq(gmailConnection.status, "connected"),
       sql`(${gmailConnection.notificationHistoryId} is null or ${gmailConnection.notificationHistoryId}::numeric < ${notification.historyId}::numeric)`,
     ))
-    .returning({ connectionId: gmailConnection.id, revision: gmailConnection.mailboxRevision })
-  return updated[0] ?? null
+    .returning({ connectionId: gmailConnection.id, revision: gmailConnection.mailboxRevision, userId: gmailConnection.userId })
+  const event = updated[0] ?? null
+  if (event) await publishMailNotification(env, event)
+  return event
 }
 
 export function parsePubsubEnvelope(text: string, expectedSubscription: string) {

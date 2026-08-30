@@ -63,6 +63,7 @@ export type ServerRuntimeAdapter = {
     env: RuntimeEnv,
   ): string;
   getMeetingAudioWebSocketUrl?(request: Request, env: RuntimeEnv): string;
+  getMailRealtimeWebSocketUrl?(request: Request, env: RuntimeEnv): string;
   getMeetingRecorderSession?(input: {
     env: RuntimeEnv;
     meetingId: string;
@@ -72,6 +73,10 @@ export type ServerRuntimeAdapter = {
   publishDatabaseMutation?(input: {
     env: RuntimeEnv;
     event: DatabaseRealtimeMutationEvent;
+  }): Promise<void>;
+  publishMailNotification?(input: {
+    env: RuntimeEnv;
+    event: MailNotificationEvent;
   }): Promise<void>;
   releaseMeetingRecorderSession?(
     input: MeetingRecorderRuntimeInput,
@@ -88,6 +93,12 @@ export type ServerRuntimeAdapter = {
     durationMs?: number;
   }): Promise<MeetingRecorderRuntimeState>;
   selfHosted?: false;
+};
+
+export type MailNotificationEvent = {
+  connectionId: string;
+  revision: number;
+  userId: string;
 };
 
 export type MeetingRecorderRuntimeInput = {
@@ -209,6 +220,27 @@ export function getMeetingAudioWebSocketUrl(
   url.search = "";
   url.hash = "";
   return url.toString();
+}
+
+export function getMailRealtimeWebSocketUrl(request: Request, env: RuntimeEnv) {
+  const configured = getRuntimeAdapter().getMailRealtimeWebSocketUrl?.(
+    request,
+    env,
+  );
+  if (configured) return configured;
+  const url = new URL(request.url);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/mail-realtime";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+export async function publishMailNotification(
+  env: RuntimeEnv,
+  event: MailNotificationEvent,
+) {
+  await getRuntimeAdapter().publishMailNotification?.({ env, event });
 }
 
 let runtimeAdapter: ServerRuntimeAdapter = {};
