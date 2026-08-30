@@ -146,6 +146,9 @@ import {
   summarizeMessagesForDebug,
 } from "../../model/chat-runtime-model";
 
+const AI_SCROLL_SHELL_SELECTOR =
+  "[data-ai-scroll-shell], [data-page-scroll-viewport]";
+
 const ShellScrollButton = ({
   targetRef,
 }: {
@@ -155,7 +158,7 @@ const ShellScrollButton = ({
 
   useEffect(() => {
     const scrollShell = targetRef.current?.closest(
-      "[data-ai-scroll-shell]",
+      AI_SCROLL_SHELL_SELECTOR,
     ) as HTMLElement | null;
 
     if (!scrollShell) {
@@ -183,7 +186,7 @@ const ShellScrollButton = ({
 
   const handleClick = useCallback(() => {
     const scrollShell = targetRef.current?.closest(
-      "[data-ai-scroll-shell]",
+      AI_SCROLL_SHELL_SELECTOR,
     ) as HTMLElement | null;
 
     scrollShell?.scrollTo({
@@ -1877,7 +1880,7 @@ const ChatbotInner = ({
     }
 
     const scrollShell = rootRef.current?.closest(
-      "[data-ai-scroll-shell]",
+      AI_SCROLL_SHELL_SELECTOR,
     ) as HTMLElement | null;
 
     window.requestAnimationFrame(() => {
@@ -1891,22 +1894,27 @@ const ChatbotInner = ({
   return (
     <div
       className={
-        hasMessages || isSidebar
+        isSidebar
           ? "relative flex h-full min-h-0 flex-col"
-          : "relative flex h-full min-h-0 flex-col justify-center"
+          : hasMessages
+            ? "relative flex min-h-full flex-col"
+            : "relative flex min-h-full flex-col justify-center"
       }
       ref={rootRef}
     >
       <Conversation
-        className={
-          hasMessages || isSidebar ? "min-h-0" : "flex-none overflow-visible"
-        }
+        className={isSidebar ? "min-h-0" : "flex-none overflow-visible"}
       >
         <ConversationContent
           className={
             hasMessages || isSidebar
               ? "px-0 pb-10 md:px-4"
               : "px-0 pb-0 md:px-4"
+          }
+          scrollClassName={
+            isSidebar
+              ? undefined
+              : "h-auto! overflow-visible! [scrollbar-gutter:auto]!"
           }
         >
           {!hasMessages ? (

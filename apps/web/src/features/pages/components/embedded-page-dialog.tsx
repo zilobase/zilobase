@@ -56,7 +56,8 @@ export function EmbeddedPageDialog({
       open={dialogPageId !== null}
     >
       <DialogContent
-        className="flex h-[90dvh] max-h-[90dvh] min-h-0 w-full flex-col gap-0 overflow-hidden p-0 sm:h-[90vh] sm:max-h-[90vh] sm:max-w-4xl"
+        className="flex h-[90dvh] max-h-[90dvh] min-h-0 w-full flex-col gap-0 overflow-hidden p-0 dark:bg-surface-navigation sm:h-[90vh] sm:max-h-[90vh] sm:max-w-4xl"
+        data-page-dialog-panel
         hideMobileDragHandle
         showCloseButton={false}
         unstyledContent

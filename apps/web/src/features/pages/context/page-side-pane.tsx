@@ -279,6 +279,7 @@ export function PageScrollViewport({
           "flex h-full min-h-0 min-w-0 flex-col overflow-y-auto [scrollbar-gutter:stable]",
           scrollClassName,
         )}
+        data-page-scroll-viewport
       >
         {children}
       </div>
@@ -507,6 +508,7 @@ export function PageSidePaneSideCell({
 export function PageSidePaneLayout({
   className,
   main,
+  mainScrollClassName,
   sidePane,
   sidePaneClassName,
   sidePaneOpen,
@@ -516,6 +518,7 @@ export function PageSidePaneLayout({
 }: {
   className?: string
   main: ReactNode
+  mainScrollClassName?: string
   sidePane: ReactNode | null
   sidePaneClassName?: string
   sidePaneOpen: boolean
@@ -525,7 +528,9 @@ export function PageSidePaneLayout({
 }) {
   const split = (
     <>
-      <PageSidePaneMainCell className={standalone ? undefined : "min-h-0"}>
+      <PageSidePaneMainCell
+        className={cn(!standalone && "min-h-0", mainScrollClassName)}
+      >
         {main}
       </PageSidePaneMainCell>
       <PageSidePaneSideCell

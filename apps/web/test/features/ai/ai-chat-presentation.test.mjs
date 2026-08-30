@@ -35,4 +35,19 @@ export function register({ readSource, assert, test }) {
     assert.match(historySource, /className="sticky top-0 z-10 pb-2 pt-1"/)
     assert.doesNotMatch(historySource, /sticky top-0 z-10 bg-sidebar px-1/)
   })
+
+  test("full-page Ask AI uses the page viewport and hides the duplicate launcher", async () => {
+    const aiPageSource = await readSource("/src/features/ai/pages/ai.tsx")
+    const chatbotSource = await readSource("/src/features/ai/components/elements/chatbot.tsx")
+    const layoutSource = await readSource("/src/app/shell/content/app-layout.tsx")
+    const sidePaneSource = await readSource("/src/features/pages/context/page-side-pane.tsx")
+
+    assert.match(layoutSource, /chatSidebarOpen \|\| isAiPage \? null/)
+    assert.match(sidePaneSource, /data-page-scroll-viewport/)
+    assert.match(chatbotSource, /\[data-ai-scroll-shell\], \[data-page-scroll-viewport\]/)
+    assert.match(chatbotSource, /isSidebar\s*\? undefined\s*:\s*"h-auto! overflow-visible! \[scrollbar-gutter:auto\]!"/)
+    assert.match(aiPageSource, /className="box-border flex min-h-full px-4 py-4 md:py-6"/)
+    assert.match(aiPageSource, /mainScrollClassName="overscroll-y-none"/)
+    assert.doesNotMatch(aiPageSource, /<main className="[^"]*overflow-hidden/)
+  })
 }

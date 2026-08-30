@@ -628,7 +628,7 @@ function AppLayoutContent({
           {chatPanel}
         </aside>
       ) : null}
-      {chatSidebarOpen ? null : (
+      {chatSidebarOpen || isAiPage ? null : (
         <ChatSidebarTrigger
           adjacentSidebarOpen={
             utilitySidebarOpen ||

@@ -10,6 +10,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 - Previous-release migration gates now select the latest published release instead of unpublished or failed release tags.
 - Community Helm migration jobs now launch the migration entrypoint bundled in the production image.
+- Embedded database headers and page dialogs now match side-panel surfaces in dark mode.
 
 ## 0.0.53
 

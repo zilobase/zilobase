@@ -31,9 +31,9 @@ export default function AiPage() {
   return (
     <PageSidePaneLayout
       main={
-        <div className="h-full min-h-0 overflow-hidden">
-          <main className="box-border flex h-full min-h-0 overflow-hidden px-4 py-4 md:py-6">
-            <section className="mx-auto h-full min-h-0 w-full max-w-6xl overflow-hidden">
+        <div className="min-h-full">
+          <main className="box-border flex min-h-full px-4 py-4 md:py-6">
+            <section className="mx-auto min-h-full w-full max-w-6xl">
               {isBootstrapping ? (
                 <div className="flex h-full items-center justify-center text-content-secondary text-sm">
                   Loading chat...
@@ -57,6 +57,7 @@ export default function AiPage() {
           </main>
         </div>
       }
+      mainScrollClassName="overscroll-y-none"
       sidePane={
         sidePaneContentReady &&
         (renderedSidePanePageId || renderedSidePaneDatabaseId) ? (

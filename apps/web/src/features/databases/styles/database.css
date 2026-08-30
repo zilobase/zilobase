@@ -959,7 +959,8 @@
     scrollbar-width: none;
   }
 
-  [data-page-side-pane-panel] .database-table-sticky-header {
+  :is([data-page-side-pane-panel], [data-page-dialog-panel])
+    .database-table-sticky-header {
     @apply dark:bg-surface-navigation;
   }
 
