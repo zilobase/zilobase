@@ -11,7 +11,32 @@ import {
 import type { NodeRealtimeBus } from "../../infrastructure/node/realtime-bus"
 import { attachNodeMailRealtimeRuntime } from "./mail-realtime-runtime"
 
-const env = { COLLABORATION_SECRET: "mail-realtime-test-secret" }
+const env = {
+  COLLABORATION_SECRET: "mail-realtime-test-secret",
+  MAIL_ENABLED: "true",
+}
+
+test("mail realtime is unavailable when the feature is disabled", async () => {
+  const server = createServer((_request, response) => response.end())
+  const runtime = attachNodeMailRealtimeRuntime(server, {
+    COLLABORATION_SECRET: env.COLLABORATION_SECRET,
+  })
+  await listen(server)
+  const address = server.address()
+  assert(address && typeof address === "object")
+
+  try {
+    assert.equal(
+      await requestUpgradeStatus(
+        `ws://127.0.0.1:${address.port}/mail-realtime?connection=connection-1`,
+      ),
+      404,
+    )
+  } finally {
+    await runtime.destroy()
+    await closeServer(server)
+  }
+})
 
 test("mail realtime rejects missing tickets and tickets for another connection", async () => {
   const fixture = await startFixture()

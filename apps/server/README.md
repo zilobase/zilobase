@@ -54,6 +54,8 @@ be derived from the API request URL, such as behind a development proxy.
 
 Gmail uses its own Google OAuth Web application client and a dedicated
 `GMAIL_TOKEN_ENCRYPTION_KEY`; it does not reuse Google sign-in credentials.
+The integration is inaccessible unless the runtime has `MAIL_ENABLED=true`; the
+web client must also be built with `VITE_FEATURE_MAIL=true` to expose Mail.
 Production also requires authenticated Gmail Pub/Sub configuration. Loaded
 mail is cached only in the user's browser or desktop IndexedDB, not in the
 server database. See the repository's

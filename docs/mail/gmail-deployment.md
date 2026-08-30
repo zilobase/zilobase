@@ -6,10 +6,13 @@ OAuth credentials and control metadata, while each device stores loaded mail in
 its own mail-only IndexedDB database. Attachment bytes are streamed and are not
 retained by either cache.
 
-Production Gmail requires all seven `GMAIL_*` variables documented below. Leave
-all seven empty to disable Gmail. A loopback development server may configure
-only the three OAuth variables and rely on synchronization after connect, focus,
-or reconnect instead of push notifications.
+Mail is disabled by default. Set both `MAIL_ENABLED=true` in the server runtime
+and `VITE_FEATURE_MAIL=true` while building the web client to expose it. The
+hosted Cloudflare deployment derives both from its single `MAIL_ENABLED` flag.
+When enabled, production Gmail requires all seven `GMAIL_*` variables documented
+below. A loopback development server may configure only the three OAuth variables
+and rely on synchronization after connect, focus, or reconnect instead of push
+notifications.
 
 ## 1. Google Cloud project and APIs
 
@@ -124,6 +127,7 @@ repository.
 Configure the runtime:
 
 ```dotenv
+MAIL_ENABLED=true
 GMAIL_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
 GMAIL_GOOGLE_CLIENT_SECRET=YOUR_CLIENT_SECRET
 GMAIL_TOKEN_ENCRYPTION_KEY=YOUR_BASE64_32_BYTE_KEY
@@ -146,9 +150,10 @@ The validator prints URLs and status only; it never prints credentials.
 ### Docker Compose
 
 Copy `.env.selfhost.example` to the ignored `.env.selfhost`, configure the
-values above, and deploy normally. `docker-compose.yml` passes all Gmail values
-only to the API container. Both the OAuth callback and Pub/Sub webhook use the
-public `BETTER_AUTH_URL` origin.
+values above, and build the image with `--build-arg VITE_FEATURE_MAIL=true`.
+`docker-compose.yml` passes the runtime flag and all Gmail values only to the API
+container. Both the OAuth callback and Pub/Sub webhook use the public
+`BETTER_AUTH_URL` origin.
 
 ```sh
 npm run mail:config:check -- --env-file=.env.selfhost
@@ -193,7 +198,8 @@ http://127.0.0.1:3000/mail/oauth/google/callback
 ```
 
 Set only `GMAIL_GOOGLE_CLIENT_ID`, `GMAIL_GOOGLE_CLIENT_SECRET`, and
-`GMAIL_TOKEN_ENCRYPTION_KEY`; leave every `GMAIL_PUBSUB_*` value empty. Connect,
+`GMAIL_TOKEN_ENCRYPTION_KEY`; set `MAIL_ENABLED=true` and
+`VITE_FEATURE_MAIL=true`, then leave every `GMAIL_PUBSUB_*` value empty. Connect,
 initial sync, incremental sync, search, mutations, drafts, and send still work.
 No watch is created. Reload or refocus the mailbox to retrieve changes made by
 another Gmail client. Use a controlled HTTPS tunnel and a separate test

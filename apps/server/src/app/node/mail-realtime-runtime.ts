@@ -11,7 +11,7 @@ import {
   verifyMailRealtimeTicket,
   type MailRealtimeTicketClaims,
 } from "../../features/mail/mail-realtime-ticket"
-import type { RuntimeEnv } from "../../shared/config/config"
+import { isMailFeatureEnabled, type RuntimeEnv } from "../../shared/config/config"
 import { recordMailMetric } from "../../features/mail/mail-metrics"
 
 type Room = {
@@ -76,6 +76,10 @@ export function attachNodeMailRealtimeRuntime(
   const upgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "/", "http://zilobase.local")
     if (url.pathname !== "/mail-realtime") return
+    if (!isMailFeatureEnabled(env)) {
+      rejectUpgrade(socket, "404 Not Found")
+      return
+    }
     void websocket.handleUpgrade(request, socket, head).catch(() => rejectUpgrade(socket))
   }
   server.on("upgrade", upgrade)
@@ -86,6 +90,7 @@ export function attachNodeMailRealtimeRuntime(
       await websocket.close(1001, "Server shutting down")
     },
     async publishNotification(event: MailNotificationEvent) {
+      if (!isMailFeatureEnabled(env)) return
       const room = rooms.get(event.connectionId)
       if (room) broadcast(room, event, attachments)
       await bus?.publish(mailRealtimeChannel(event.connectionId), event)
@@ -133,6 +138,6 @@ function isNotification(value: unknown, connectionId: string): value is MailNoti
   return event.connectionId === connectionId && Number.isSafeInteger(event.revision) && (event.revision as number) >= 0
 }
 
-function rejectUpgrade(socket: Duplex) {
-  if (!socket.destroyed) socket.end("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+function rejectUpgrade(socket: Duplex, status = "401 Unauthorized") {
+  if (!socket.destroyed) socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`)
 }

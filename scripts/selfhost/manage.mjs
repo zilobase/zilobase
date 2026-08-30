@@ -97,6 +97,7 @@ async function ensureDevelopmentEnvironment() {
     "SMTP_PASSWORD=",
     "GOOGLE_CLIENT_ID=",
     "GOOGLE_CLIENT_SECRET=",
+    "MAIL_ENABLED=false",
     "GMAIL_GOOGLE_CLIENT_ID=",
     "GMAIL_GOOGLE_CLIENT_SECRET=",
     "GMAIL_TOKEN_ENCRYPTION_KEY=",

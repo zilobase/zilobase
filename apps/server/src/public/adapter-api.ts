@@ -51,6 +51,7 @@ export {
   SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX,
 } from "../shared/security/auth-headers";
 export {
+  isMailFeatureEnabled,
   getCanonicalApiOrigin,
   getCanonicalHttpOrigin,
   getCanonicalWebOrigin,

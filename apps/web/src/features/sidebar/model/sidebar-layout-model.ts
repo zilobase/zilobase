@@ -115,6 +115,24 @@ export function moveArrayItem<T>(items: T[], index: number, offset: -1 | 1) {
   return next
 }
 
+export function withoutMailFeatures(
+  layout: SidebarWorkspaceLayout,
+): SidebarWorkspaceLayout {
+  return {
+    ...layout,
+    tabs: layout.tabs
+      .filter((tab) => tab.id !== "mail")
+      .map((tab) => ({
+        ...tab,
+        shortcuts: tab.shortcuts.filter((shortcut) => {
+          const target = shortcut.target
+          return target.type !== "mail" &&
+            !(target.type === "action" && target.action === "composeMail")
+        }),
+      })),
+  }
+}
+
 export function moveLayoutEntry(
   layout: SidebarWorkspaceLayout,
   sourceTabId: string,

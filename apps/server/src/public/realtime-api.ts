@@ -10,6 +10,7 @@ export type {
   MeetingLifecycleAction,
 } from "../features/meetings/meeting-types";
 export type { MeetingStatus };
+export { isMailFeatureEnabled } from "../shared/config/config";
 export {
   createMailRealtimeTicket,
   MAIL_REALTIME_AUTH_PROTOCOL_PREFIX,

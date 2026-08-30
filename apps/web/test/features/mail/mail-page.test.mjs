@@ -24,7 +24,7 @@ export function register({ assert, loadModule, readSource, test }) {
       readSource("/src/features/mail/pages/mail.tsx"),
     ])
 
-    assert.match(routeSource, /path: "\/mail"[\s\S]*validateSearch: validateMailSearch[\s\S]*component: MailPage/)
+    assert.match(routeSource, /isFeatureEnabled\("mail"\)[\s\S]*path: "\/mail"[\s\S]*validateSearch: validateMailSearch[\s\S]*component: MailPage/)
     assert.match(mailSource, /px-4 pb-8 pt-5 sm:px-6 md:px-10 lg:px-12/)
     assert.match(mailSource, /messageGroups\s*\.map/)
     assert.match(mailSource, /<MailThreadRow/)

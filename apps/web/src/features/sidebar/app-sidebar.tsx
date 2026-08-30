@@ -105,6 +105,8 @@ import {
   readActiveSidebarTab,
   writeActiveSidebarTab,
 } from "./model/sidebar-persistence"
+import { isFeatureEnabled } from "@/shared/config/feature-flags"
+import { withoutMailFeatures } from "./model/sidebar-layout-model"
 
 const sidebarNavigationIcons: SidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
@@ -162,7 +164,10 @@ export function AppSidebar({
     [userSettings.sidebarConfig],
   )
   const layout = React.useMemo(
-    () => resolveSidebarWorkspaceLayout(sidebarConfig, workspaceId),
+    () => {
+      const resolved = resolveSidebarWorkspaceLayout(sidebarConfig, workspaceId)
+      return isFeatureEnabled("mail") ? resolved : withoutMailFeatures(resolved)
+    },
     [sidebarConfig, workspaceId],
   )
   const [activeTabId, setActiveTabId] = React.useState("home")

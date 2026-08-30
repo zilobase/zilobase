@@ -2,7 +2,7 @@ import { and, eq, isNull, lt, or } from "drizzle-orm"
 
 import { db } from "../../infrastructure/database"
 import { gmailConnection } from "../../infrastructure/database/schema"
-import { getStringEnv, type RuntimeEnv } from "../../shared/config/config"
+import { getStringEnv, isMailFeatureEnabled, type RuntimeEnv } from "../../shared/config/config"
 import { createGmailGateway, GmailApiError } from "./gmail-gateway"
 import { recordMailMetric } from "./mail-metrics"
 
@@ -35,6 +35,7 @@ export async function initializeGmailWatch(
 }
 
 export async function renewGmailWatches(env: RuntimeEnv, limit = 25) {
+  if (!isMailFeatureEnabled(env)) return { failed: 0, renewed: 0 }
   if (!gmailPubsubTopic(env)) return { failed: 0, renewed: 0 }
   const now = new Date()
   const horizon = new Date(now.getTime() + RENEW_BEFORE_MS)

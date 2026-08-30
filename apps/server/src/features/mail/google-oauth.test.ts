@@ -7,7 +7,7 @@ import {
   gmailOauthCallbackUrl,
   hasRequiredGmailScopes,
 } from "./google-oauth"
-import { buildDesktopMailReturnUrl } from "./routes"
+import { buildDesktopMailReturnUrl, mailRoutes } from "./routes"
 
 const env = {
   BETTER_AUTH_URL: "https://api.zilobase.example",
@@ -16,6 +16,13 @@ const env = {
   GMAIL_GOOGLE_CLIENT_SECRET: "gmail-secret",
   GMAIL_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 2).toString("base64"),
 }
+
+test("mail HTTP routes are unavailable when the feature is disabled", async () => {
+  const response = await mailRoutes.request("/connection", undefined, {})
+
+  assert.equal(response.status, 404)
+  assert.deepEqual(await response.json(), { message: "Not found." })
+})
 
 test("Gmail OAuth requests exact callback, offline access, PKCE, and only required scopes", () => {
   const url = buildGmailAuthorizationUrl(env, {

@@ -11,7 +11,7 @@ import type {
 
 import { db, runWithDbEnv } from "../../infrastructure/database"
 import { gmailConnection } from "../../infrastructure/database/schema"
-import { getCanonicalWebOrigin } from "../../shared/config/config"
+import { getCanonicalWebOrigin, isMailFeatureEnabled } from "../../shared/config/config"
 import type { AppBindings } from "../../shared/types"
 import { getZilobaseDiscoveryDocument } from "../instance/service"
 import {
@@ -41,6 +41,9 @@ export const mailRoutes = new Hono<AppBindings>()
 
 mailRoutes.use("*", async (c, next) => {
   try {
+    if (!isMailFeatureEnabled(c.env)) {
+      return c.json({ message: "Not found." }, 404)
+    }
     await next()
   } finally {
     c.header("Cache-Control", "private, no-store, max-age=0")

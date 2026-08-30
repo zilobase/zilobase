@@ -5,6 +5,7 @@ import { CanvasPage } from "@/features/canvas/index";
 import { RecentsPage } from "@/features/library/index";
 import { MailPage } from "@/features/mail/index";
 import { TasksPage } from "@/features/tasks/index";
+import { isFeatureEnabled } from "@/shared/config/feature-flags";
 import { appRoute } from "../route-roots";
 import { validateAiSearch, validateLibrarySearch, validateMailSearch } from "../search-validators";
 
@@ -26,12 +27,14 @@ export const appRoutes = [
     validateSearch: validateLibrarySearch,
     component: RecentsPage,
   }),
-  createRoute({
-    getParentRoute: () => appRoute,
-    path: "/mail",
-    validateSearch: validateMailSearch,
-    component: MailPage,
-  }),
+  ...(isFeatureEnabled("mail")
+    ? [createRoute({
+        getParentRoute: () => appRoute,
+        path: "/mail",
+        validateSearch: validateMailSearch,
+        component: MailPage,
+      })]
+    : []),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/tasks",
