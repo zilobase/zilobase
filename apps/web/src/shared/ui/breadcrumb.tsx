@@ -48,7 +48,7 @@ export function BreadcrumbLink({
   ...props
 }: useRender.ComponentProps<"a">): React.ReactElement {
   const defaultProps = {
-    className: cn("transition-colors hover:text-content-primary", className),
+    className: cn("inline-flex items-center transition-colors hover:text-content-primary", className),
     "data-slot": "breadcrumb-link",
   }
 
@@ -66,7 +66,7 @@ export function BreadcrumbPage({
   return (
     <span
       aria-current="page"
-      className={cn("font-medium text-content-primary", className)}
+      className={cn("inline-flex items-center font-medium text-content-primary", className)}
       data-slot="breadcrumb-page"
       {...props}
     />
