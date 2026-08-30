@@ -51,4 +51,20 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(shortcutSource, /target\.action === "composeMail"[\s\S]*compose: true/)
     assert.match(headerSource, /pathname === "\/mail"[\s\S]*mailViewIds\.includes\(requestedView[\s\S]*mailViewLabels\[mailView\]/)
   })
+
+  test("Mail messages open in the shared side pane with dialog and row navigation controls", async () => {
+    const [mailSource, paneSource, presentationSource] = await Promise.all([
+      readSource("/src/features/mail/pages/mail.tsx"),
+      readSource("/src/features/pages/context/page-side-pane.tsx"),
+      readSource("/src/features/pages/components/embedded-item-presentation-dropdown.tsx"),
+    ])
+
+    assert.match(mailSource, /<PageSidePaneLayout[\s\S]*standalone[\s\S]*viewportHeightClass="h-full"/)
+    assert.match(mailSource, /onOpen=\{\(\) => openMessage\(message\.id\)\}/)
+    assert.match(mailSource, /aria-label="Open previous message"[\s\S]*aria-label="Open next message"/)
+    assert.match(mailSource, /<EmbeddedItemPresentationDropdown[\s\S]*itemLabel="mail"/)
+    assert.match(mailSource, /<MailMessageDialog[\s\S]*messagePresentation === "dialog"/)
+    assert.match(presentationSource, /embeddedItemsOpenAsModes\.map/)
+    assert.match(paneSource, /header \? "row-start-2" : "row-start-1"/)
+  })
 }

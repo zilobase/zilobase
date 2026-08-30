@@ -179,7 +179,12 @@ export function PageSidePaneShell({
           {header}
         </header>
       ) : null}
-      <div className="relative col-span-full row-start-2 min-h-0 overflow-hidden">
+      <div
+        className={cn(
+          "relative col-span-full min-h-0 overflow-hidden",
+          header ? "row-start-2" : "row-start-1",
+        )}
+      >
         {body}
       </div>
     </div>

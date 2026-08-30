@@ -5,6 +5,9 @@ import { toast } from "sonner"
 import {
   ArchiveIcon,
   CheckIcon,
+  ChevronDown,
+  ChevronUp,
+  ChevronsRightIcon,
   FilterIcon,
   Paperclip,
   RefreshCwIcon,
@@ -13,7 +16,10 @@ import {
   SlidersHorizontalIcon,
   StarIcon,
   Trash2Icon,
+  XIcon,
 } from "@/shared/components/icons"
+import { EmbeddedItemPresentationDropdown } from "@/features/pages/components"
+import { PageSidePaneLayout } from "@/features/pages/context"
 import { Button } from "@/shared/ui/button"
 import {
   Dialog,
@@ -24,14 +30,21 @@ import {
   DialogTitle,
 } from "@/shared/ui/dialog"
 import { Input } from "@/shared/ui/input"
+import { Separator } from "@/shared/ui/separator"
 import { Textarea } from "@/shared/ui/textarea"
 import { cn } from "@/shared/lib/utils"
 import { mailViewIcons, mailViewLabels } from "@/features/sidebar"
+import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 import type { MailView } from "@zilobase/features/user-settings"
 
 import { starterMailMessages, type MailMessage } from "../model/mail-data"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
+
+type MailSelection = {
+  id: string
+  messageIds: string[]
+}
 
 export default function MailPage() {
   const { compose, view } = useSearch({ from: "/app/mail" })
@@ -40,6 +53,8 @@ export default function MailPage() {
   const [query, setQuery] = useState("")
   const [attachmentsOnly, setAttachmentsOnly] = useState(false)
   const [composeOpen, setComposeOpen] = useState(false)
+  const [messagePresentation, setMessagePresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
+  const [selection, setSelection] = useState<MailSelection | null>(null)
   const ActiveViewIcon = mailViewIcons[view]
 
   useEffect(() => {
@@ -74,11 +89,67 @@ export default function MailPage() {
     setMessages((current) => current.map((message) => message.id === id ? update(message) : message))
   }
 
+  const selectedMessage = selection
+    ? messages.find((message) => message.id === selection.id) ?? null
+    : null
+  const selectedMessageIndex = selection
+    ? selection.messageIds.indexOf(selection.id)
+    : -1
+  const previousMessageId = selection && selectedMessageIndex > 0
+    ? selection.messageIds[selectedMessageIndex - 1] ?? null
+    : null
+  const nextMessageId = selection && selectedMessageIndex >= 0
+    ? selection.messageIds[selectedMessageIndex + 1] ?? null
+    : null
+
+  const openMessage = (id: string) => {
+    setSelection({
+      id,
+      messageIds: visibleMessages.map((message) => message.id),
+    })
+    updateMessage(id, (current) => ({ ...current, unread: false }))
+  }
+
+  const openAdjacentMessage = (id: string | null) => {
+    if (!id) return
+    setSelection((current) => current ? { ...current, id } : null)
+    updateMessage(id, (current) => ({ ...current, unread: false }))
+  }
+
+  const closeMessage = () => setSelection(null)
+  const messageViewer = selectedMessage ? (
+    <MailMessageViewer
+      message={selectedMessage}
+      mode={messagePresentation}
+      nextDisabled={!nextMessageId}
+      onArchive={() => {
+        updateMessage(selectedMessage.id, (current) => ({ ...current, folder: "archive", unread: false }))
+        closeMessage()
+        toast.success("Message archived.")
+      }}
+      onClose={closeMessage}
+      onModeChange={setMessagePresentation}
+      onNext={() => openAdjacentMessage(nextMessageId)}
+      onPrevious={() => openAdjacentMessage(previousMessageId)}
+      onStar={() => updateMessage(selectedMessage.id, (current) => ({ ...current, starred: !current.starred }))}
+      onTrash={() => {
+        updateMessage(selectedMessage.id, (current) => ({ ...current, folder: "trash", unread: false }))
+        closeMessage()
+        toast.success("Message moved to trash.")
+      }}
+      previousDisabled={!previousMessageId}
+    />
+  ) : null
+
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas">
-      <section className="animate-in fade-in-0 duration-300">
-        <div className="px-4 pb-8 pt-5 sm:px-6 md:px-10 lg:px-12">
-          <div className="mx-auto w-full max-w-[96rem]">
+    <>
+      <PageSidePaneLayout
+        className="bg-surface-canvas"
+        main={(
+          <main className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas">
+            <section className="animate-in fade-in-0 duration-300">
+              <div className="px-4 pb-8 pt-5 sm:px-6 md:px-10 lg:px-12">
+                <div className="mx-auto w-full max-w-[96rem]">
             <div className="flex min-w-0 items-center justify-between gap-3 max-sm:flex-wrap">
               <div className="flex shrink-0 items-center gap-2">
                 <ActiveViewIcon className="size-5 shrink-0 text-action-link" />
@@ -134,7 +205,7 @@ export default function MailPage() {
                             updateMessage(message.id, (current) => ({ ...current, folder: "archive", unread: false }))
                             toast.success("Message archived.")
                           }}
-                          onOpen={() => updateMessage(message.id, (current) => ({ ...current, unread: false }))}
+                          onOpen={() => openMessage(message.id)}
                           onStar={(event) => {
                             event.stopPropagation()
                             updateMessage(message.id, (current) => ({ ...current, starred: !current.starred }))
@@ -154,9 +225,25 @@ export default function MailPage() {
             ) : (
               <MailEmptyState query={query} view={view} />
             )}
-          </div>
-        </div>
-      </section>
+                </div>
+              </div>
+            </section>
+          </main>
+        )}
+        sidePane={messagePresentation === "sidepanel" ? messageViewer : null}
+        sidePaneOpen={Boolean(selectedMessage && messagePresentation === "sidepanel")}
+        sidePaneVisible={Boolean(selectedMessage && messagePresentation === "sidepanel")}
+        standalone
+        viewportHeightClass="h-full"
+      />
+      <MailMessageDialog
+        onOpenChange={(open) => {
+          if (!open) closeMessage()
+        }}
+        open={Boolean(selectedMessage && messagePresentation === "dialog")}
+      >
+        {messageViewer}
+      </MailMessageDialog>
       <ComposeDialog
         onOpenChange={setComposeOpen}
         onSend={(message) => {
@@ -166,7 +253,131 @@ export default function MailPage() {
         }}
         open={composeOpen}
       />
-    </main>
+    </>
+  )
+}
+
+function MailMessageViewer({
+  message,
+  mode,
+  nextDisabled,
+  onArchive,
+  onClose,
+  onModeChange,
+  onNext,
+  onPrevious,
+  onStar,
+  onTrash,
+  previousDisabled,
+}: {
+  message: MailMessage
+  mode: EmbeddedItemsOpenAs
+  nextDisabled: boolean
+  onArchive: () => void
+  onClose: () => void
+  onModeChange: (mode: EmbeddedItemsOpenAs) => void
+  onNext: () => void
+  onPrevious: () => void
+  onStar: () => void
+  onTrash: () => void
+  previousDisabled: boolean
+}) {
+  const CloseIcon = mode === "sidepanel" ? ChevronsRightIcon : XIcon
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-surface-canvas dark:bg-surface-navigation">
+      <header className="flex h-12 shrink-0 items-center gap-1 border-b border-stroke-default px-2">
+        <Button aria-label="Close message" onClick={onClose} size="icon" title="Close" type="button" variant="ghost">
+          <CloseIcon />
+        </Button>
+        <EmbeddedItemPresentationDropdown
+          itemLabel="mail"
+          mode={mode}
+          onSelect={onModeChange}
+        />
+        <Separator className="mx-1 data-[orientation=vertical]:h-4" orientation="vertical" />
+        <Button aria-label="Open previous message" disabled={previousDisabled} onClick={onPrevious} size="icon" title="Previous message" type="button" variant="ghost">
+          <ChevronUp />
+        </Button>
+        <Button aria-label="Open next message" disabled={nextDisabled} onClick={onNext} size="icon" title="Next message" type="button" variant="ghost">
+          <ChevronDown />
+        </Button>
+        <div className="ml-auto flex items-center gap-0.5">
+          <Button
+            aria-label={message.starred ? "Remove star" : "Star message"}
+            className={cn(message.starred && "text-feedback-warning-text")}
+            onClick={onStar}
+            size="icon"
+            title={message.starred ? "Remove star" : "Star"}
+            type="button"
+            variant="ghost"
+          >
+            <StarIcon weight={message.starred ? "fill" : "regular"} />
+          </Button>
+          {message.folder !== "archive" && message.folder !== "drafts" ? (
+            <Button aria-label="Archive message" onClick={onArchive} size="icon" title="Archive" type="button" variant="ghost">
+              <ArchiveIcon />
+            </Button>
+          ) : null}
+          {message.folder !== "trash" ? (
+            <Button aria-label="Move message to trash" onClick={onTrash} size="icon" title="Move to trash" type="button" variant="ghost">
+              <Trash2Icon />
+            </Button>
+          ) : null}
+        </div>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <article className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-7">
+          <div className="flex min-w-0 items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold leading-7 text-content-primary">
+                {message.subject}
+              </h2>
+              <p className="mt-4 text-sm font-medium text-content-primary">
+                {message.sender}
+              </p>
+              <p className="mt-0.5 text-xs text-content-secondary">
+                {message.recipient ? `To ${message.recipient}` : "To you"}
+              </p>
+            </div>
+            <time className="shrink-0 pt-1 text-xs tabular-nums text-content-secondary">
+              {message.time}
+            </time>
+          </div>
+          <div className="mt-6 border-t border-stroke-default pt-6 text-sm leading-6 text-content-primary">
+            <p>{message.preview}</p>
+          </div>
+          {message.attachment ? (
+            <div className="mt-6 inline-flex items-center gap-2 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary">
+              <Paperclip className="size-3.5" />
+              Attachment
+            </div>
+          ) : null}
+        </article>
+      </div>
+    </div>
+  )
+}
+
+function MailMessageDialog({ children, onOpenChange, open }: {
+  children: React.ReactNode
+  onOpenChange: (open: boolean) => void
+  open: boolean
+}) {
+  return (
+    <Dialog onOpenChange={onOpenChange} open={open}>
+      <DialogContent
+        className="flex h-[90dvh] max-h-[90dvh] min-h-0 w-full flex-col gap-0 overflow-hidden p-0 dark:bg-surface-navigation sm:h-[90vh] sm:max-h-[90vh] sm:max-w-4xl"
+        data-mail-dialog-panel
+        hideMobileDragHandle
+        showCloseButton={false}
+        unstyledContent
+      >
+        <DialogTitle className="sr-only">Mail message</DialogTitle>
+        <DialogDescription className="sr-only">Mail message preview</DialogDescription>
+        {children}
+      </DialogContent>
+    </Dialog>
   )
 }
 
