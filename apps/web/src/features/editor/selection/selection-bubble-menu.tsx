@@ -1,5 +1,5 @@
 import { BubbleMenu } from "@tiptap/react/menus"
-import { AllSelection } from "@tiptap/pm/state"
+import { AllSelection, NodeSelection } from "@tiptap/pm/state"
 import { useEffect } from "react"
 
 import {
@@ -111,8 +111,10 @@ export function SelectionBubbleMenu({
 
         return (
           editor.isEditable &&
+          !editor.view.dom.classList.contains("dragging") &&
           blockSelectionMode !== "all" &&
           !(selection instanceof AllSelection) &&
+          !(selection instanceof NodeSelection) &&
           !selection.empty &&
           state.doc.textBetween(from, to).trim().length > 0
         )
