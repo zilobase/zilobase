@@ -7,7 +7,7 @@ import type {
   MailView,
 } from "@zilobase/features/mail"
 
-const MAIL_DATABASE_VERSION = 1
+const MAIL_DATABASE_VERSION = 2
 const openDatabases = new Map<string, MailDatabase>()
 
 export type MailSyncStateRecord = {
@@ -15,6 +15,7 @@ export type MailSyncStateRecord = {
   historyId: string | null
   key: "primary"
   lastSyncedAt: number | null
+  loadedViews?: Partial<Record<MailView, boolean>>
   mailboxRevision: number
   pageTokens: Partial<Record<MailView, string>>
   schemaVersion: number
@@ -35,10 +36,12 @@ export class MailDatabase extends Dexie {
     this.version(MAIL_DATABASE_VERSION).stores({
       labels: "id, name, type",
       messages:
-        "id, threadId, draftId, internalDate, *labelIds, [threadId+internalDate]",
+        "id, threadId, draftId, date, internalDate, *labelIds, [threadId+internalDate]",
       syncState: "key, connectionId, userId",
-      threads: "id, internalDate, latestMessageId, *labelIds",
-    })
+      threads: "id, internalDate, latestMessageId, unread, starred, *labelIds",
+    }).upgrade((transaction) => transaction.table("syncState").toCollection().modify({
+      schemaVersion: MAIL_DATABASE_VERSION,
+    }))
   }
 }
 
@@ -88,6 +91,7 @@ export async function openMailDatabase(input: {
       historyId: null,
       key: "primary",
       lastSyncedAt: null,
+      loadedViews: {},
       mailboxRevision: 0,
       pageTokens: {},
       schemaVersion: MAIL_DATABASE_VERSION,
@@ -102,6 +106,7 @@ export async function applyMailSyncResponse(
   database: MailDatabase,
   response: MailSyncResponse,
   view: MailView,
+  options: { markViewLoaded?: boolean } = {},
 ) {
   await database.transaction(
     "rw",
@@ -126,6 +131,9 @@ export async function applyMailSyncResponse(
         ...current,
         historyId: response.historyId,
         lastSyncedAt: Date.now(),
+        loadedViews: options.markViewLoaded === false
+          ? current.loadedViews
+          : { ...current.loadedViews, [view]: true },
         mailboxRevision: response.mailboxRevision,
         pageTokens: {
           ...current.pageTokens,
@@ -134,6 +142,16 @@ export async function applyMailSyncResponse(
       })
     },
   )
+}
+
+export async function upsertFullMailThread(
+  database: MailDatabase,
+  input: { messages: MailMessageRecord[]; thread: MailThreadSummary },
+) {
+  await database.transaction("rw", database.messages, database.threads, async () => {
+    await mergeMessages(database, input.messages)
+    await database.threads.put(input.thread)
+  })
 }
 
 async function mergeMessages(

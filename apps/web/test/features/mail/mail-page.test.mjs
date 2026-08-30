@@ -27,13 +27,13 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(routeSource, /path: "\/mail"[\s\S]*validateSearch: validateMailSearch[\s\S]*component: MailPage/)
     assert.match(mailSource, /px-4 pb-8 pt-5 sm:px-6 md:px-10 lg:px-12/)
     assert.match(mailSource, /messageGroups\s*\.map/)
-    assert.match(mailSource, /<MailRow/)
+    assert.match(mailSource, /<MailThreadRow/)
     assert.doesNotMatch(mailSource, /<table|DatabaseTableView/)
     assert.doesNotMatch(mailSource, /group\/mail-row[^\n]*border-b/)
     assert.match(mailSource, /group\/mail-row grid h-9/)
     assert.doesNotMatch(mailSource, /getInitials|avatarClassName/)
     assert.doesNotMatch(mailSource, /primaryViews|aria-label="Mail views"|visibleMessages\.length/)
-    assert.match(mailSource, /aria-label="Refresh mail"[\s\S]*aria-label="Mail display options"/)
+    assert.match(mailSource, /aria-label="Search mail"[\s\S]*aria-label="Refresh mail"/)
     assert.match(mailSource, /justify-between[\s\S]*ActiveViewIcon[\s\S]*text-xl[\s\S]*mailViewLabels\[view\][\s\S]*aria-label="Search mail"/)
     assert.match(mailSource, /ActiveViewIcon className="size-5/)
     assert.doesNotMatch(mailSource, /A calm place for conversations/)
@@ -59,7 +59,7 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(mailSource, /method: "POST"/)
     assert.match(mailSource, /open_mail_authorization_url/)
     assert.match(mailSource, /Preparing your mailbox/)
-    assert.match(mailSource, /connectionQuery\.data\.mailboxReady/)
+    assert.match(mailSource, /<ConnectedMailbox connection=\{connectionQuery\.data\}/)
   })
 
   test("Mail messages open in the shared side pane with dialog and row navigation controls", async () => {
@@ -72,16 +72,35 @@ export function register({ assert, loadModule, readSource, test }) {
 
     assert.match(mailSource, /<PageSidePaneShell[\s\S]*<PageSidePaneLayout/)
     assert.match(mailSource, /<PageSidePaneHeaderCell[\s\S]*side="main"[\s\S]*<PagePaneHeader[\s\S]*showActions=\{false\}/)
-    assert.match(mailSource, /<PageSidePaneHeaderCell side="side"[\s\S]*<MailMessageToolbar/)
-    assert.match(mailSource, /onOpen=\{\(\) => openMessage\(message\.id\)\}/)
-    assert.match(mailSource, /selected=\{selection\?\.id === message\.id\}/)
-    assert.match(mailSource, /data-selected=\{selected \? "true" : undefined\}[\s\S]*selected && "bg-action-neutral-hover text-action-on-neutral"/)
+    assert.match(mailSource, /<PageSidePaneHeaderCell side="side"[\s\S]*<ConversationToolbar/)
+    assert.match(mailSource, /onOpen=\{\(\) => setSelection\(thread\.id\)\}/)
+    assert.match(mailSource, /selected=\{selection === thread\.id\}/)
+    assert.match(mailSource, /data-selected=\{selected \? "true" : undefined\}/)
+    assert.match(mailSource, /selected \? "bg-action-neutral-hover text-action-on-neutral"/)
     assert.match(mailSource, /aria-label="Open previous message"[\s\S]*aria-label="Open next message"/)
     assert.match(mailSource, /<EmbeddedItemPresentationDropdown[\s\S]*itemLabel="mail"/)
-    assert.match(mailSource, /<MailMessageDialog[\s\S]*messagePresentation === "dialog"/)
-    assert.doesNotMatch(mailSource, /MailMessageToolbar[\s\S]*border-b border-stroke-default/)
+    assert.match(mailSource, /<Dialog open=\{Boolean\(selectedThread && presentation === "dialog"\)\}/)
+    assert.doesNotMatch(mailSource, /ConversationToolbar[\s\S]*border-b border-stroke-default/)
     assert.match(appLayoutSource, /embeddedMobileViewer \|\| isMailPage \? undefined/)
     assert.match(presentationSource, /embeddedItemsOpenAsModes\.map/)
     assert.match(paneSource, /header \? "row-start-2" : "row-start-1"/)
+  })
+
+  test("mail renders live Dexie threads, lazy bodies, and scriptless sanitized HTML", async () => {
+    const [mailSource, controllerSource, htmlSource] = await Promise.all([
+      readSource("/src/features/mail/pages/mail.tsx"),
+      readSource("/src/features/mail/model/mail-sync-controller.ts"),
+      readSource("/src/features/mail/model/mail-html.ts"),
+    ])
+
+    assert.doesNotMatch(mailSource, /starterMailMessages|setMessages/)
+    assert.match(controllerSource, /useLiveQuery/)
+    assert.match(controllerSource, /applyMailSyncResponse/)
+    assert.match(controllerSource, /upsertFullMailThread/)
+    assert.match(controllerSource, /URL\.createObjectURL[\s\S]*URL\.revokeObjectURL/)
+    assert.match(mailSource, /sandbox="allow-popups allow-popups-to-escape-sandbox"/)
+    assert.match(htmlSource, /DOMPurify\.sanitize/)
+    assert.match(htmlSource, /data-zilobase-external-image/)
+    assert.match(htmlSource, /default-src 'none'/)
   })
 }

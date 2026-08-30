@@ -82,13 +82,42 @@ export function register({ assert, loadModule, test }) {
       historyId: "10",
       key: "primary",
       lastSyncedAt: (await database.syncState.get("primary")).lastSyncedAt,
+      loadedViews: { inbox: true },
       mailboxRevision: 2,
       pageTokens: { inbox: "next" },
-      schemaVersion: 1,
+      schemaVersion: 2,
       userId: "user-1",
     })
 
     const name = database.name
     await destroyMailDatabase(name)
+  })
+
+  test("mail cache transactions roll back all writes on failure", async () => {
+    const { destroyMailDatabase, openMailDatabase } = await loadModule(
+      "/src/features/mail/cache/mail-database.ts",
+    )
+    const database = await openMailDatabase({
+      apiOrigin: "https://api.example.com",
+      connectionId: "gmail-rollback",
+      userId: "user-1",
+    })
+    await assert.rejects(database.transaction("rw", database.labels, async () => {
+      await database.labels.put({
+        color: null,
+        id: "temporary",
+        labelListVisibility: null,
+        messageListVisibility: null,
+        messagesTotal: null,
+        messagesUnread: null,
+        name: "Temporary",
+        threadsTotal: null,
+        threadsUnread: null,
+        type: "user",
+      })
+      throw new Error("rollback")
+    }), /rollback/)
+    assert.equal(await database.labels.get("temporary"), undefined)
+    await destroyMailDatabase(database.name)
   })
 }

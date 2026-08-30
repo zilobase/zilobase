@@ -1,163 +1,52 @@
-import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from "react"
-import { useNavigate, useSearch } from "@tanstack/react-router"
+import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { useNavigate, useSearch } from "@tanstack/react-router"
 import { invoke } from "@tauri-apps/api/core"
+import { useLiveQuery } from "dexie-react-hooks"
+import { useSession } from "@zilobase/features/auth"
+import type { MailConnection, MailMessageRecord, MailThreadSummary } from "@zilobase/features/mail"
+import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 import { toast } from "sonner"
 
+import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
+import { isDesktopApp } from "@/features/desktop/platform"
 import {
-  ArchiveIcon,
-  CheckIcon,
   ChevronDown,
   ChevronUp,
   ChevronsRightIcon,
-  FilterIcon,
+  DownloadIcon,
+  Loader2Icon,
   Paperclip,
   RefreshCwIcon,
   SearchIcon,
-  SendIcon,
-  SlidersHorizontalIcon,
   StarIcon,
-  Trash2Icon,
+  WifiOffIcon,
   XIcon,
 } from "@/shared/components/icons"
-import {
-  EmbeddedItemPresentationDropdown,
-  PagePaneHeader,
-} from "@/features/pages/components"
+import { GoogleIcon } from "@/shared/components/google-icon"
+import { Button } from "@/shared/ui/button"
+import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog"
+import { Input } from "@/shared/ui/input"
+import { Separator } from "@/shared/ui/separator"
+import { EmbeddedItemPresentationDropdown, PagePaneHeader } from "@/features/pages/components"
 import {
   PageSidePaneHeaderCell,
   PageSidePaneLayout,
   PageSidePaneShell,
 } from "@/features/pages/context"
-import { Button } from "@/shared/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog"
-import { Input } from "@/shared/ui/input"
-import { Separator } from "@/shared/ui/separator"
-import { Textarea } from "@/shared/ui/textarea"
-import { cn } from "@/shared/lib/utils"
-import { GoogleIcon } from "@/shared/components/google-icon"
-import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
-import { isDesktopApp } from "@/features/desktop/platform"
 import { mailViewIcons, mailViewLabels } from "@/features/sidebar"
-import type { MailConnection } from "@zilobase/features/mail"
-import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
-import type { MailView } from "@zilobase/features/user-settings"
 
-import { starterMailMessages, type MailMessage } from "../model/mail-data"
+import { sanitizeMailHtml } from "../model/mail-html"
+import { useMailController } from "../model/mail-sync-controller"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
 
-type MailSelection = {
-  id: string
-  messageIds: string[]
-}
-
 export default function MailPage() {
-  const { compose, view } = useSearch({ from: "/app/mail" })
-  const navigate = useNavigate()
-  const [messages, setMessages] = useState(starterMailMessages)
-  const [query, setQuery] = useState("")
-  const [attachmentsOnly, setAttachmentsOnly] = useState(false)
-  const [composeOpen, setComposeOpen] = useState(false)
-  const [messagePresentation, setMessagePresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
-  const [selection, setSelection] = useState<MailSelection | null>(null)
-  const ActiveViewIcon = mailViewIcons[view]
   const connectionQuery = useQuery({
     queryKey: ["mail", "connection"],
     queryFn: ({ signal }) => apiFetch<MailConnection>("/mail/connection", { signal }),
     staleTime: 15_000,
   })
-
-  useEffect(() => {
-    if (!compose) return
-    setComposeOpen(true)
-    void navigate({
-      replace: true,
-      search: { compose: undefined, view },
-      to: "/mail",
-    })
-  }, [compose, navigate, view])
-
-  const visibleMessages = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
-    return messages.filter((message) => {
-      if (!messageMatchesView(message, view)) return false
-      if (attachmentsOnly && !message.attachment) return false
-      if (!normalizedQuery) return true
-      return [message.sender, message.recipient, message.subject, message.preview]
-        .some((value) => value?.toLowerCase().includes(normalizedQuery))
-    })
-  }, [attachmentsOnly, messages, query, view])
-
-  const groupedMessages = messageGroups
-    .map((group) => ({
-      group,
-      messages: visibleMessages.filter((message) => message.group === group),
-    }))
-    .filter((entry) => entry.messages.length > 0)
-
-  const updateMessage = (id: string, update: (message: MailMessage) => MailMessage) => {
-    setMessages((current) => current.map((message) => message.id === id ? update(message) : message))
-  }
-
-  const selectedMessage = selection
-    ? messages.find((message) => message.id === selection.id) ?? null
-    : null
-  const selectedMessageIndex = selection
-    ? selection.messageIds.indexOf(selection.id)
-    : -1
-  const previousMessageId = selection && selectedMessageIndex > 0
-    ? selection.messageIds[selectedMessageIndex - 1] ?? null
-    : null
-  const nextMessageId = selection && selectedMessageIndex >= 0
-    ? selection.messageIds[selectedMessageIndex + 1] ?? null
-    : null
-
-  const openMessage = (id: string) => {
-    setSelection({
-      id,
-      messageIds: visibleMessages.map((message) => message.id),
-    })
-    updateMessage(id, (current) => ({ ...current, unread: false }))
-  }
-
-  const openAdjacentMessage = (id: string | null) => {
-    if (!id) return
-    setSelection((current) => current ? { ...current, id } : null)
-    updateMessage(id, (current) => ({ ...current, unread: false }))
-  }
-
-  const closeMessage = () => setSelection(null)
-  const messageViewerProps = selectedMessage ? {
-    message: selectedMessage,
-    mode: messagePresentation,
-    nextDisabled: !nextMessageId,
-    onArchive: () => {
-        updateMessage(selectedMessage.id, (current) => ({ ...current, folder: "archive", unread: false }))
-        closeMessage()
-        toast.success("Message archived.")
-      },
-    onClose: closeMessage,
-    onModeChange: setMessagePresentation,
-    onNext: () => openAdjacentMessage(nextMessageId),
-    onPrevious: () => openAdjacentMessage(previousMessageId),
-    onStar: () => updateMessage(selectedMessage.id, (current) => ({ ...current, starred: !current.starred })),
-    onTrash: () => {
-        updateMessage(selectedMessage.id, (current) => ({ ...current, folder: "trash", unread: false }))
-        closeMessage()
-        toast.success("Message moved to trash.")
-      },
-    previousDisabled: !previousMessageId,
-  } satisfies MailMessageViewerProps : null
-  const messageViewer = messageViewerProps ? <MailMessageViewer {...messageViewerProps} /> : null
-  const sidePaneOpen = Boolean(selectedMessage && messagePresentation === "sidepanel")
 
   if (!connectionQuery.data || connectionQuery.data.status !== "connected") {
     return (
@@ -169,12 +58,71 @@ export default function MailPage() {
       />
     )
   }
+  return <ConnectedMailbox connection={connectionQuery.data} />
+}
 
-  if (!connectionQuery.data.mailboxReady) {
-    return <MailPreparationState connection={connectionQuery.data} />
-  }
+function ConnectedMailbox({ connection }: { connection: MailConnection }) {
+  const { data: session } = useSession()
+  if (!session?.user?.id) return <MailCenteredState><MailboxLoading /></MailCenteredState>
+  return <MailboxContent connection={connection} userId={session.user.id} />
+}
 
-  /* The existing presentation is replaced by the Dexie-backed sync controller in Pass 5. */
+function MailboxContent({ connection, userId }: { connection: MailConnection; userId: string }) {
+  const { compose, view } = useSearch({ from: "/app/mail" })
+  const navigate = useNavigate()
+  const [query, setQuery] = useState("")
+  const [selection, setSelection] = useState<string | null>(null)
+  const [presentation, setPresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
+  const controller = useMailController({
+    connection,
+    query,
+    userId,
+    view,
+  })
+  const selectedThread = controller.threads.find((thread) => thread.id === selection) ?? null
+  const selectedMessages = useLiveQuery(
+    () => controller.database && selection
+      ? controller.database.messages.where("threadId").equals(selection).sortBy("internalDate")
+      : [],
+    [controller.database, selection],
+    [],
+  )
+  const selectedIndex = selectedThread
+    ? controller.threads.findIndex((thread) => thread.id === selectedThread.id)
+    : -1
+  const previousId = selectedIndex > 0 ? controller.threads[selectedIndex - 1]?.id ?? null : null
+  const nextId = selectedIndex >= 0 ? controller.threads[selectedIndex + 1]?.id ?? null : null
+  const ActiveViewIcon = mailViewIcons[view]
+
+  useEffect(() => {
+    if (!selection) return
+    void controller.openThread(selection)
+  }, [controller.openThread, selection])
+
+  useEffect(() => {
+    if (!compose) return
+    toast.info("Compose is available after Gmail drafts finish loading.")
+    void navigate({ replace: true, search: { compose: undefined, view }, to: "/mail" })
+  }, [compose, navigate, view])
+
+  const groupedThreads = useMemo(() => messageGroups
+    .map((group) => ({ group, threads: controller.threads.filter((thread) => dateGroup(thread.internalDate) === group) }))
+    .filter((entry) => entry.threads.length > 0), [controller.threads])
+  const sidePaneOpen = Boolean(selectedThread && presentation === "sidepanel")
+  const viewerProps = selectedThread ? {
+    messages: selectedMessages ?? [],
+    mode: presentation,
+    nextDisabled: !nextId,
+    onClose: () => setSelection(null),
+    onDownload: controller.downloadAttachment,
+    onModeChange: setPresentation,
+    onNext: () => nextId && setSelection(nextId),
+    onPrevious: () => previousId && setSelection(previousId),
+    online: controller.online,
+    previousDisabled: !previousId,
+    thread: selectedThread,
+  } satisfies ConversationProps : null
+
   return (
     <>
       <PageSidePaneShell
@@ -182,91 +130,79 @@ export default function MailPage() {
           <PageSidePaneLayout
             main={(
               <main className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas">
-            <section className="animate-in fade-in-0 duration-300">
-              <div className="px-4 pb-8 pt-5 sm:px-6 md:px-10 lg:px-12">
-                <div className="mx-auto w-full max-w-[96rem]">
-            <div className="flex min-w-0 items-center justify-between gap-3 max-sm:flex-wrap">
-              <div className="flex shrink-0 items-center gap-2">
-                <ActiveViewIcon className="size-5 shrink-0 text-action-link" />
-                <h1 className="text-xl font-semibold leading-7 tracking-normal text-content-primary">
-                  {mailViewLabels[view]}
-                </h1>
-              </div>
-              <div className="flex min-w-0 flex-1 items-center justify-end gap-1 max-sm:basis-full">
-                <div className="relative min-w-0 flex-1 sm:max-w-64">
-                  <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-content-secondary" />
-                  <Input
-                    aria-label="Search mail"
-                    className="h-8 bg-transparent pl-8"
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search mail"
-                    value={query}
-                  />
-                </div>
-                <Button
-                  aria-label="Show messages with attachments"
-                  className={cn(attachmentsOnly && "bg-action-neutral-hover text-action-on-neutral")}
-                  onClick={() => setAttachmentsOnly((current) => !current)}
-                  size="icon-lg"
-                  title="Messages with attachments"
-                  type="button"
-                  variant="ghost"
-                >
-                  <FilterIcon />
-                </Button>
-                <Button aria-label="Refresh mail" onClick={() => toast.success("Mail is up to date.")} size="icon-lg" title="Refresh mail" type="button" variant="ghost">
-                  <RefreshCwIcon />
-                </Button>
-                <Button aria-label="Mail display options" size="icon-lg" title="Display options" type="button" variant="ghost">
-                  <SlidersHorizontalIcon />
-                </Button>
-              </div>
-            </div>
+                <section className="animate-in fade-in-0 duration-300">
+                  <div className="px-4 pb-8 pt-5 sm:px-6 md:px-10 lg:px-12">
+                    <div className="mx-auto w-full max-w-[96rem]">
+                      <div className="flex min-w-0 items-center justify-between gap-3 max-sm:flex-wrap">
+                        <div className="flex shrink-0 items-center gap-2">
+                          <ActiveViewIcon className="size-5 shrink-0 text-action-link" />
+                          <h1 className="text-xl font-semibold leading-7 tracking-normal text-content-primary">
+                            {mailViewLabels[view]}
+                          </h1>
+                          {!controller.online ? <WifiOffIcon className="size-4 text-content-secondary" aria-label="Offline" /> : null}
+                        </div>
+                        <div className="flex min-w-0 flex-1 items-center justify-end gap-1 max-sm:basis-full">
+                          <div className="relative min-w-0 flex-1 sm:max-w-72">
+                            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-content-secondary" />
+                            <Input
+                              aria-label="Search mail"
+                              className="h-8 bg-transparent pl-8"
+                              onChange={(event) => setQuery(event.target.value)}
+                              placeholder={controller.online ? "Search Gmail" : "Search downloaded mail"}
+                              value={query}
+                            />
+                          </div>
+                          <Button
+                            aria-label="Refresh mail"
+                            disabled={!controller.online || controller.syncing}
+                            onClick={() => void controller.refresh()}
+                            size="icon-lg"
+                            title="Refresh mail"
+                            type="button"
+                            variant="ghost"
+                          >
+                            <RefreshCwIcon className={controller.syncing ? "animate-spin" : undefined} />
+                          </Button>
+                        </div>
+                      </div>
 
-            {groupedMessages.length ? (
-              <div>
-                {groupedMessages.map(({ group, messages: groupMessages }) => (
-                  <section aria-labelledby={`mail-group-${group}`} className="pt-3" key={group}>
-                    <h3 className="px-2 pb-1.5 text-xs font-semibold text-content-secondary" id={`mail-group-${group}`}>
-                      {group}
-                    </h3>
-                    <div className="border-t border-stroke-default">
-                      {groupMessages.map((message) => (
-                        <MailRow
-                          key={message.id}
-                          message={message}
-                          onArchive={(event) => {
-                            event.stopPropagation()
-                            updateMessage(message.id, (current) => ({ ...current, folder: "archive", unread: false }))
-                            toast.success("Message archived.")
-                          }}
-                          onOpen={() => openMessage(message.id)}
-                          onStar={(event) => {
-                            event.stopPropagation()
-                            updateMessage(message.id, (current) => ({ ...current, starred: !current.starred }))
-                          }}
-                          onTrash={(event) => {
-                            event.stopPropagation()
-                            updateMessage(message.id, (current) => ({ ...current, folder: "trash", unread: false }))
-                            toast.success("Message moved to trash.")
-                          }}
-                          selected={selection?.id === message.id}
-                          view={view}
-                        />
-                      ))}
+                      {!controller.database ? <MailboxLoading /> : groupedThreads.length ? (
+                        <div>
+                          {groupedThreads.map(({ group, threads }) => (
+                            <section aria-labelledby={`mail-group-${group}`} className="pt-3" key={group}>
+                              <h3 className="px-2 pb-1.5 text-xs font-semibold text-content-secondary" id={`mail-group-${group}`}>
+                                {group}
+                              </h3>
+                              <div className="border-t border-stroke-default">
+                                {threads.map((thread) => (
+                                  <MailThreadRow
+                                    key={thread.id}
+                                    onOpen={() => setSelection(thread.id)}
+                                    selected={selection === thread.id}
+                                    thread={thread}
+                                  />
+                                ))}
+                              </div>
+                            </section>
+                          ))}
+                          {controller.hasMore ? (
+                            <div className="flex justify-center pt-5">
+                              <Button disabled={!controller.online || controller.syncing} onClick={() => void controller.loadMore()} type="button" variant="outline">
+                                {controller.syncing ? "Loading…" : "Load more"}
+                              </Button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : <MailEmptyState offline={!controller.online} query={query} />}
+                      {controller.error ? (
+                        <p className="mt-4 text-sm text-feedback-danger-text">{getApiErrorMessage(controller.error)}</p>
+                      ) : null}
                     </div>
-                  </section>
-                ))}
-              </div>
-            ) : (
-              <MailEmptyState query={query} view={view} />
-            )}
-                </div>
-              </div>
-            </section>
+                  </div>
+                </section>
               </main>
             )}
-            sidePane={sidePaneOpen && selectedMessage ? <MailMessageContent message={selectedMessage} /> : null}
+            sidePane={sidePaneOpen && viewerProps ? <ConversationBody {...viewerProps} /> : null}
             sidePaneOpen={sidePaneOpen}
             sidePaneVisible={sidePaneOpen}
           />
@@ -277,9 +213,9 @@ export default function MailPage() {
             <PageSidePaneHeaderCell className="z-10" side="main" splitActive={sidePaneOpen}>
               <PagePaneHeader className="min-w-0 flex-1" pathname="/mail" showActions={false} />
             </PageSidePaneHeaderCell>
-            {sidePaneOpen && messageViewerProps ? (
+            {sidePaneOpen && viewerProps ? (
               <PageSidePaneHeaderCell side="side" splitActive={sidePaneOpen}>
-                <MailMessageToolbar {...messageViewerProps} />
+                <ConversationToolbar {...viewerProps} />
               </PageSidePaneHeaderCell>
             ) : null}
           </>
@@ -287,33 +223,136 @@ export default function MailPage() {
         open={sidePaneOpen}
         visible={sidePaneOpen}
       />
-      <MailMessageDialog
-        onOpenChange={(open) => {
-          if (!open) closeMessage()
-        }}
-        open={Boolean(selectedMessage && messagePresentation === "dialog")}
-      >
-        {messageViewer}
-      </MailMessageDialog>
-      <ComposeDialog
-        onOpenChange={setComposeOpen}
-        onSend={(message) => {
-          setMessages((current) => [message, ...current])
-          setComposeOpen(false)
-          toast.success("Message sent.")
-        }}
-        open={composeOpen}
-      />
+      <Dialog open={Boolean(selectedThread && presentation === "dialog")} onOpenChange={(open) => !open && setSelection(null)}>
+        <DialogContent className="h-[min(52rem,90vh)] max-w-4xl gap-0 overflow-hidden p-0">
+          <DialogTitle className="sr-only">{selectedThread?.subject ?? "Mail conversation"}</DialogTitle>
+          {viewerProps ? <ConversationViewer {...viewerProps} /> : null}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
 
-function MailConnectionState({
-  connection,
-  error,
-  loading,
-  onConnected,
-}: {
+function MailThreadRow({ onOpen, selected, thread }: {
+  onOpen: () => void
+  selected: boolean
+  thread: MailThreadSummary
+}) {
+  const participant = thread.participants[0]
+  return (
+    <button
+      className={`group/mail-row grid h-9 w-full grid-cols-[minmax(8rem,0.8fr)_minmax(12rem,2fr)_auto] items-center gap-3 px-2 text-left text-sm hover:bg-action-neutral-hover ${selected ? "bg-action-neutral-hover text-action-on-neutral" : ""}`}
+      data-selected={selected ? "true" : undefined}
+      onClick={onOpen}
+      type="button"
+    >
+      <span className={`truncate ${thread.unread ? "font-semibold text-content-primary" : "text-content-secondary"}`}>
+        {participant?.name || participant?.address || "Unknown sender"}
+        {thread.messageCount > 1 ? ` (${thread.messageCount})` : ""}
+      </span>
+      <span className="min-w-0 truncate">
+        <span className={thread.unread ? "font-semibold text-content-primary" : "text-content-primary"}>{thread.subject}</span>
+        <span className="text-content-secondary"> — {thread.snippet}</span>
+      </span>
+      <span className="flex items-center gap-2 text-xs text-content-secondary">
+        {thread.attachmentCount ? <Paperclip className="size-3.5" /> : null}
+        {thread.starred ? <StarIcon className="size-3.5 text-feedback-warning-text" weight="fill" /> : null}
+        {formatThreadDate(thread.internalDate)}
+      </span>
+    </button>
+  )
+}
+
+type ConversationProps = {
+  messages: MailMessageRecord[]
+  mode: EmbeddedItemsOpenAs
+  nextDisabled: boolean
+  onClose: () => void
+  onDownload: (messageId: string, attachmentId: string, filename: string) => Promise<void>
+  onModeChange: (mode: EmbeddedItemsOpenAs) => void
+  onNext: () => void
+  onPrevious: () => void
+  online: boolean
+  previousDisabled: boolean
+  thread: MailThreadSummary
+}
+
+function ConversationViewer(props: ConversationProps) {
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-surface-canvas dark:bg-surface-navigation">
+      <header className="flex h-12 shrink-0"><ConversationToolbar {...props} /></header>
+      <ConversationBody {...props} />
+    </div>
+  )
+}
+
+function ConversationToolbar({ mode, nextDisabled, onClose, onModeChange, onNext, onPrevious, previousDisabled }: ConversationProps) {
+  const CloseIcon = mode === "sidepanel" ? ChevronsRightIcon : XIcon
+  return (
+    <div className="flex h-full min-w-0 flex-1 items-center gap-1 px-2">
+      <Button aria-label="Close message" onClick={onClose} size="icon" title="Close" type="button" variant="ghost"><CloseIcon /></Button>
+      <EmbeddedItemPresentationDropdown itemLabel="mail" mode={mode} onSelect={onModeChange} />
+      <Separator className="mx-1 data-[orientation=vertical]:h-4" orientation="vertical" />
+      <Button aria-label="Open previous message" disabled={previousDisabled} onClick={onPrevious} size="icon" title="Previous message" type="button" variant="ghost"><ChevronUp /></Button>
+      <Button aria-label="Open next message" disabled={nextDisabled} onClick={onNext} size="icon" title="Next message" type="button" variant="ghost"><ChevronDown /></Button>
+    </div>
+  )
+}
+
+function ConversationBody({ messages, onDownload, online, thread }: ConversationProps) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas dark:bg-surface-navigation">
+      <article className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-7">
+        <h2 className="text-xl font-semibold leading-7 text-content-primary">{thread.subject}</h2>
+        {!messages.length ? <MailboxLoading /> : messages.map((message) => (
+          <section className="mt-5 border-t border-stroke-default pt-5 first:border-0" key={message.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-content-primary">{message.from?.name || message.from?.address || "Unknown sender"}</p>
+                <p className="text-xs text-content-secondary">to {message.to.map((address) => address.name || address.address).join(", ") || "me"}</p>
+              </div>
+              <time className="text-xs text-content-secondary">{formatMessageDate(message.internalDate)}</time>
+            </div>
+            <MailMessageBody message={message} />
+            {message.attachments.length ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {message.attachments.map((attachment) => (
+                  <Button
+                    disabled={!online}
+                    key={attachment.attachmentId}
+                    onClick={() => void onDownload(message.id, attachment.attachmentId, attachment.filename).catch((error) => toast.error(getApiErrorMessage(error)))}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <DownloadIcon /> {attachment.filename} <span className="text-content-secondary">{formatBytes(attachment.size)}</span>
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ))}
+      </article>
+    </div>
+  )
+}
+
+function MailMessageBody({ message }: { message: MailMessageRecord }) {
+  if (!message.hasFullBody) return <p className="mt-4 text-sm text-content-secondary">Connect to load this message.</p>
+  if (message.bodyHtml) {
+    return (
+      <iframe
+        className="mt-4 min-h-64 w-full border-0"
+        sandbox="allow-popups allow-popups-to-escape-sandbox"
+        srcDoc={sanitizeMailHtml(message.bodyHtml)}
+        title={`Message from ${message.from?.name || message.from?.address || "sender"}`}
+      />
+    )
+  }
+  return <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-content-primary">{message.bodyText || message.snippet}</div>
+}
+
+function MailConnectionState({ connection, error, loading, onConnected }: {
   connection: MailConnection | null
   error: unknown
   loading: boolean
@@ -330,20 +369,15 @@ function MailConnectionState({
         method: "POST",
       })
       if (isDesktopApp()) {
-        await invoke("open_mail_authorization_url", {
-          authorizationUrl: result.authorizationUrl,
-        })
+        await invoke("open_mail_authorization_url", { authorizationUrl: result.authorizationUrl })
         toast.info("Finish connecting Gmail in your browser.")
         setPending(false)
-      } else {
-        window.location.assign(result.authorizationUrl)
-      }
+      } else window.location.assign(result.authorizationUrl)
     } catch (connectionError) {
       setConnectError(connectionError)
       setPending(false)
     }
   }
-
   return (
     <MailCenteredState>
       <GoogleIcon className="size-7" />
@@ -351,62 +385,18 @@ function MailConnectionState({
         <h1 className="text-lg font-semibold text-content-primary">
           {connection?.status === "reconnect_required" ? "Reconnect Gmail" : "Connect your Gmail account"}
         </h1>
-        <p className="max-w-sm text-sm leading-6 text-content-secondary">
-          Read, organize, draft, and send Gmail from Zilobase. Your mailbox remains authoritative in Google.
-        </p>
+        <p className="max-w-sm text-sm leading-6 text-content-secondary">Read, organize, draft, and send Gmail from Zilobase. Gmail remains authoritative.</p>
       </div>
-      <Button
-        disabled={loading || pending || connection?.providerConfigured === false}
-        onClick={() => void connect()}
-        type="button"
-      >
-        <GoogleIcon />
-        {pending ? "Opening Google…" : connection?.status === "reconnect_required" ? "Reconnect Google account" : "Connect Google account"}
+      <Button disabled={loading || pending || connection?.providerConfigured === false} onClick={() => void connect()} type="button">
+        <GoogleIcon /> {pending ? "Opening Google…" : "Connect Google account"}
       </Button>
-      {connection?.providerConfigured === false ? (
-        <p className="text-center text-xs text-feedback-danger-text">
-          Gmail is not configured on this Zilobase server.
-        </p>
-      ) : null}
+      {connection?.providerConfigured === false ? <p className="text-center text-xs text-feedback-danger-text">Gmail is not configured on this Zilobase server.</p> : null}
       {error || connectError ? (
         <div className="space-y-2 text-center">
-          <p className="text-xs text-feedback-danger-text">
-            {getApiErrorMessage(connectError ?? error)}
-          </p>
+          <p className="text-xs text-feedback-danger-text">{getApiErrorMessage(connectError ?? error)}</p>
           <Button onClick={onConnected} size="sm" type="button" variant="outline">Try again</Button>
         </div>
       ) : null}
-    </MailCenteredState>
-  )
-}
-
-function MailPreparationState({ connection }: { connection: MailConnection }) {
-  const [disconnecting, setDisconnecting] = useState(false)
-  return (
-    <MailCenteredState>
-      <div className="space-y-1 text-center">
-        <h1 className="text-lg font-semibold text-content-primary">Preparing your mailbox</h1>
-        <p className="text-sm text-content-secondary">
-          {connection.email ? `Connected as ${connection.email}.` : "Gmail is connected."} Mail synchronization is being prepared.
-        </p>
-      </div>
-      <Button
-        disabled={disconnecting}
-        onClick={async () => {
-          setDisconnecting(true)
-          try {
-            await apiFetch("/mail/connection", { method: "DELETE" })
-            window.location.reload()
-          } catch (error) {
-            toast.error(getApiErrorMessage(error))
-            setDisconnecting(false)
-          }
-        }}
-        type="button"
-        variant="outline"
-      >
-        {disconnecting ? "Disconnecting…" : "Disconnect Gmail"}
-      </Button>
     </MailCenteredState>
   )
 }
@@ -423,296 +413,36 @@ function MailCenteredState({ children }: { children: React.ReactNode }) {
   )
 }
 
-type MailMessageViewerProps = {
-  message: MailMessage
-  mode: EmbeddedItemsOpenAs
-  nextDisabled: boolean
-  onArchive: () => void
-  onClose: () => void
-  onModeChange: (mode: EmbeddedItemsOpenAs) => void
-  onNext: () => void
-  onPrevious: () => void
-  onStar: () => void
-  onTrash: () => void
-  previousDisabled: boolean
+function MailboxLoading() {
+  return <div className="flex items-center justify-center gap-2 py-16 text-sm text-content-secondary"><Loader2Icon className="size-4 animate-spin" /> Preparing your mailbox</div>
 }
 
-function MailMessageViewer(props: MailMessageViewerProps) {
-  return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-canvas dark:bg-surface-navigation">
-      <header className="flex h-12 shrink-0">
-        <MailMessageToolbar {...props} />
-      </header>
-      <MailMessageContent message={props.message} />
-    </div>
-  )
+function MailEmptyState({ offline, query }: { offline: boolean; query: string }) {
+  return <div className="py-16 text-center text-sm text-content-secondary">{query ? `No ${offline ? "downloaded " : ""}mail matches your search.` : "No mail in this folder."}</div>
 }
 
-function MailMessageToolbar({
-  message,
-  mode,
-  nextDisabled,
-  onArchive,
-  onClose,
-  onModeChange,
-  onNext,
-  onPrevious,
-  onStar,
-  onTrash,
-  previousDisabled,
-}: MailMessageViewerProps) {
-  const CloseIcon = mode === "sidepanel" ? ChevronsRightIcon : XIcon
-
-  return (
-      <div className="flex h-full min-w-0 flex-1 items-center gap-1 px-2">
-        <Button aria-label="Close message" onClick={onClose} size="icon" title="Close" type="button" variant="ghost">
-          <CloseIcon />
-        </Button>
-        <EmbeddedItemPresentationDropdown
-          itemLabel="mail"
-          mode={mode}
-          onSelect={onModeChange}
-        />
-        <Separator className="mx-1 data-[orientation=vertical]:h-4" orientation="vertical" />
-        <Button aria-label="Open previous message" disabled={previousDisabled} onClick={onPrevious} size="icon" title="Previous message" type="button" variant="ghost">
-          <ChevronUp />
-        </Button>
-        <Button aria-label="Open next message" disabled={nextDisabled} onClick={onNext} size="icon" title="Next message" type="button" variant="ghost">
-          <ChevronDown />
-        </Button>
-        <div className="ml-auto flex items-center gap-0.5">
-          <Button
-            aria-label={message.starred ? "Remove star" : "Star message"}
-            className={cn(message.starred && "text-feedback-warning-text")}
-            onClick={onStar}
-            size="icon"
-            title={message.starred ? "Remove star" : "Star"}
-            type="button"
-            variant="ghost"
-          >
-            <StarIcon weight={message.starred ? "fill" : "regular"} />
-          </Button>
-          {message.folder !== "archive" && message.folder !== "drafts" ? (
-            <Button aria-label="Archive message" onClick={onArchive} size="icon" title="Archive" type="button" variant="ghost">
-              <ArchiveIcon />
-            </Button>
-          ) : null}
-          {message.folder !== "trash" ? (
-            <Button aria-label="Move message to trash" onClick={onTrash} size="icon" title="Move to trash" type="button" variant="ghost">
-              <Trash2Icon />
-            </Button>
-          ) : null}
-        </div>
-      </div>
-  )
+function dateGroup(timestamp: number): (typeof messageGroups)[number] {
+  const date = new Date(timestamp)
+  const today = new Date()
+  if (date.toDateString() === today.toDateString()) return "Today"
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  return date.toDateString() === yesterday.toDateString() ? "Yesterday" : "Earlier"
 }
 
-function MailMessageContent({ message }: { message: MailMessage }) {
-  return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-canvas dark:bg-surface-navigation">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <article className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-7">
-          <div className="flex min-w-0 items-start justify-between gap-4">
-            <div className="min-w-0">
-              <h2 className="text-xl font-semibold leading-7 text-content-primary">
-                {message.subject}
-              </h2>
-              <p className="mt-4 text-sm font-medium text-content-primary">
-                {message.sender}
-              </p>
-              <p className="mt-0.5 text-xs text-content-secondary">
-                {message.recipient ? `To ${message.recipient}` : "To you"}
-              </p>
-            </div>
-            <time className="shrink-0 pt-1 text-xs tabular-nums text-content-secondary">
-              {message.time}
-            </time>
-          </div>
-          <div className="mt-6 border-t border-stroke-default pt-6 text-sm leading-6 text-content-primary">
-            <p>{message.preview}</p>
-          </div>
-          {message.attachment ? (
-            <div className="mt-6 inline-flex items-center gap-2 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary">
-              <Paperclip className="size-3.5" />
-              Attachment
-            </div>
-          ) : null}
-        </article>
-      </div>
-    </div>
-  )
+function formatThreadDate(timestamp: number) {
+  const date = new Date(timestamp)
+  return dateGroup(timestamp) === "Today"
+    ? date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : date.toLocaleDateString([], { day: "numeric", month: "short" })
 }
 
-function MailMessageDialog({ children, onOpenChange, open }: {
-  children: React.ReactNode
-  onOpenChange: (open: boolean) => void
-  open: boolean
-}) {
-  return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent
-        className="flex h-[90dvh] max-h-[90dvh] min-h-0 w-full flex-col gap-0 overflow-hidden p-0 dark:bg-surface-navigation sm:h-[90vh] sm:max-h-[90vh] sm:max-w-4xl"
-        data-mail-dialog-panel
-        hideMobileDragHandle
-        showCloseButton={false}
-        unstyledContent
-      >
-        <DialogTitle className="sr-only">Mail message</DialogTitle>
-        <DialogDescription className="sr-only">Mail message preview</DialogDescription>
-        {children}
-      </DialogContent>
-    </Dialog>
-  )
+function formatMessageDate(timestamp: number) {
+  return new Date(timestamp).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
 }
 
-function MailRow({ message, onArchive, onOpen, onStar, onTrash, selected, view }: {
-  message: MailMessage
-  onArchive: (event: MouseEvent<HTMLButtonElement>) => void
-  onOpen: () => void
-  onStar: (event: MouseEvent<HTMLButtonElement>) => void
-  onTrash: (event: MouseEvent<HTMLButtonElement>) => void
-  selected: boolean
-  view: MailView
-}) {
-  const displayName = view === "sent" || view === "drafts"
-    ? `To: ${message.recipient ?? "No recipient"}`
-    : message.sender
-
-  return (
-    <article
-      data-selected={selected ? "true" : undefined}
-      className={cn(
-        "group/mail-row grid h-9 cursor-pointer grid-cols-[1rem_minmax(7rem,13rem)_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 outline-none transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-action-focus-ring max-md:h-auto max-md:min-h-12 max-md:grid-cols-[1rem_minmax(0,1fr)_auto] max-md:py-1",
-        message.unread && "bg-surface-raised",
-        selected && "bg-action-neutral-hover text-action-on-neutral",
-      )}
-      onClick={onOpen}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onOpen()
-        }
-      }}
-      role="button"
-      tabIndex={0}
-    >
-      <span aria-label={message.unread ? "Unread" : "Read"} className={cn("size-1.5 justify-self-center rounded-full", message.unread ? "bg-action-primary" : "bg-transparent")} />
-      <div className="min-w-0">
-        <span className={cn("truncate text-sm", message.unread ? "font-semibold text-content-primary" : "font-medium text-content-secondary")}>
-          {displayName}
-        </span>
-      </div>
-      <div className="min-w-0 max-md:col-start-2 max-md:row-start-2">
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span className={cn("truncate text-sm text-content-primary", message.unread && "font-semibold")}>{message.subject}</span>
-          {message.attachment ? <Paperclip aria-label="Has attachment" className="size-3.5 shrink-0 text-content-secondary" /> : null}
-          <span className="min-w-0 flex-1 truncate text-sm text-content-secondary max-lg:hidden">— {message.preview}</span>
-        </div>
-      </div>
-      <div className="flex items-center justify-end gap-0.5 max-md:col-start-3 max-md:row-span-2 max-md:row-start-1">
-        <div className="hidden items-center group-hover/mail-row:flex group-focus-within/mail-row:flex">
-          <MailRowAction active={message.starred} label={message.starred ? "Remove star" : "Star"} onClick={onStar}>
-            <StarIcon weight={message.starred ? "fill" : "regular"} />
-          </MailRowAction>
-          {message.folder !== "archive" && message.folder !== "drafts" ? (
-            <MailRowAction label="Archive" onClick={onArchive}><ArchiveIcon /></MailRowAction>
-          ) : null}
-          {message.folder !== "trash" ? (
-            <MailRowAction label="Move to trash" onClick={onTrash}><Trash2Icon /></MailRowAction>
-          ) : null}
-        </div>
-        <time className="ml-2 w-16 shrink-0 text-right text-xs tabular-nums text-content-secondary group-hover/mail-row:hidden group-focus-within/mail-row:hidden">
-          {message.time}
-        </time>
-      </div>
-    </article>
-  )
-}
-
-function MailRowAction({ active = false, children, label, onClick }: {
-  active?: boolean
-  children: React.ReactNode
-  label: string
-  onClick: (event: MouseEvent<HTMLButtonElement>) => void
-}) {
-  return (
-    <button
-      aria-label={label}
-      className={cn("inline-flex size-7 items-center justify-center rounded-md text-content-secondary outline-none hover:bg-action-neutral-pressed hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring [&_svg]:size-3.5", active && "text-feedback-warning-text")}
-      onClick={onClick}
-      title={label}
-      type="button"
-    >
-      {children}
-    </button>
-  )
-}
-
-function MailEmptyState({ query, view }: { query: string; view: MailView }) {
-  return (
-    <div className="flex min-h-72 flex-col items-center justify-center border-t border-stroke-default px-6 text-center">
-      <span className="inline-flex size-10 items-center justify-center rounded-xl bg-action-neutral-hover text-content-secondary">
-        {query ? <SearchIcon className="size-5" /> : <CheckIcon className="size-5" />}
-      </span>
-      <h3 className="mt-4 text-sm font-semibold text-content-primary">
-        {query ? "No matching messages" : `${mailViewLabels[view]} is clear`}
-      </h3>
-      <p className="mt-1 max-w-sm text-sm text-content-secondary">
-        {query ? "Try a different sender, subject, or keyword." : "There’s nothing here right now. Enjoy the quiet."}
-      </p>
-    </div>
-  )
-}
-
-function ComposeDialog({ onOpenChange, onSend, open }: {
-  onOpenChange: (open: boolean) => void
-  onSend: (message: MailMessage) => void
-  open: boolean
-}) {
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const form = new FormData(event.currentTarget)
-    const recipient = String(form.get("recipient") ?? "").trim()
-    const subject = String(form.get("subject") ?? "").trim()
-    const body = String(form.get("body") ?? "").trim()
-    if (!recipient) return
-    onSend({
-      folder: "sent",
-      group: "Today",
-      id: crypto.randomUUID(),
-      preview: body || "No message body",
-      recipient,
-      sender: "You",
-      starred: false,
-      subject: subject || "(No subject)",
-      time: "Now",
-      unread: false,
-    })
-    event.currentTarget.reset()
-  }
-
-  return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>New message</DialogTitle>
-          <DialogDescription>Compose a focused email without leaving your workspace.</DialogDescription>
-        </DialogHeader>
-        <form className="grid gap-3" onSubmit={handleSubmit}>
-          <Input aria-label="Recipient" name="recipient" placeholder="To" required type="email" />
-          <Input aria-label="Subject" name="subject" placeholder="Subject" />
-          <Textarea aria-label="Message" className="min-h-48" name="body" placeholder="Write your message…" />
-          <DialogFooter>
-            <Button type="submit"><SendIcon />Send</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function messageMatchesView(message: MailMessage, view: MailView) {
-  if (view === "unread") return message.folder === "inbox" && message.unread
-  if (view === "starred") return message.starred && message.folder !== "trash" && message.folder !== "spam"
-  return message.folder === view
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

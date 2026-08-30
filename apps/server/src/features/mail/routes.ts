@@ -32,7 +32,7 @@ mailRoutes.get("/connection", async (c) => {
   return c.json({
     connectionId: connection?.id ?? null,
     email: connection?.email ?? null,
-    mailboxReady: false,
+    mailboxReady: Boolean(connection),
     mailboxRevision: connection?.mailboxRevision ?? 0,
     providerConfigured: gmailProviderConfigured(c.env),
     status: connection?.status ?? "disconnected",
