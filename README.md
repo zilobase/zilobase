@@ -88,6 +88,7 @@ Read the self-hosting guide:
 - [Self-hosting overview](./docs/self-hosting/overview.md)
 - [Domains and TLS](./docs/self-hosting/domain.md)
 - [Operations guide](./docs/self-hosting/operations.md)
+- [Gmail deployment and verification](./docs/mail/gmail-deployment.md)
 
 ## Ask AI
 
@@ -135,6 +136,7 @@ Common commands:
 | `npm run selfhost:down` | Stop containers and preserve data volumes. |
 | `npm run selfhost:reset` | Explicitly delete local self-hosted data volumes. |
 | `npm run test:selfhost` | Run the isolated end-to-end Compose smoke test. |
+| `npm run mail:config:check` | Validate Gmail OAuth, encryption, and Pub/Sub configuration. |
 
 `npm run dev:desktop` talks to the local API at `http://localhost:3000`. Packaged
 releases default to Zilobase Cloud at `https://api.zilobase.com`. On the server

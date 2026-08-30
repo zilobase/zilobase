@@ -38,6 +38,8 @@
     "selfhost:reset": "node scripts/selfhost/manage.mjs reset",
     "test:selfhost": "node scripts/selfhost/manage.mjs test",
     "test:selfhost:upgrade": "node scripts/selfhost/test-upgrade.mjs",
+    "test:mail:deployment": "node --test scripts/mail/gmail-deployment-config.test.mjs && node scripts/mail/check-documentation.mjs",
+    "mail:config:check": "node scripts/mail/check-gmail-config.mjs",
     "release": "npm run tokens:check && node scripts/release/release.mjs",
     "version:set": "node scripts/release/set-version.mjs"
   },

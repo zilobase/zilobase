@@ -50,6 +50,17 @@ it separately when collaboration tickets should have an independent signing
 key. Set `COLLABORATION_WEBSOCKET_URL` when the public WebSocket origin cannot
 be derived from the API request URL, such as behind a development proxy.
 
+## Gmail
+
+Gmail uses its own Google OAuth Web application client and a dedicated
+`GMAIL_TOKEN_ENCRYPTION_KEY`; it does not reuse Google sign-in credentials.
+Production also requires authenticated Gmail Pub/Sub configuration. Loaded
+mail is cached only in the user's browser or desktop IndexedDB, not in the
+server database. See the repository's
+[Gmail deployment runbook](../../docs/mail/gmail-deployment.md) for the exact
+callback, webhook, environment, verification, and staging requirements. Run
+`npm run mail:config:check` from the repository root before deployment.
+
 ## Runtime extension API
 
 The server exports a runtime-neutral extension surface from

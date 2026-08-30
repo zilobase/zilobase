@@ -1,5 +1,10 @@
 # Self-hosting Zilobase
 
+Gmail mailbox integration is optional. When enabling it, follow the complete
+[Gmail deployment and verification runbook](../mail/gmail-deployment.md) before
+starting the service; production requires authenticated Pub/Sub push and Google
+restricted-scope approval.
+
 Docker Compose and the Community Helm chart are the supported
 self-hosted artifacts. A separate virtual machine is unnecessary for local
 development; use a clean public Ubuntu host or isolated Kubernetes cluster for

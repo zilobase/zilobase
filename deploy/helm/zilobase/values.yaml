@@ -7,6 +7,15 @@ realtime:
   networkCIDR: 10.0.0.0/8
   port: 6379
 
+gmail:
+  enabled: false
+  googleClientId: ""
+  pubsubTopic: ""
+  pubsubPushAudience: ""
+  pubsubServiceAccountEmail: ""
+  pubsubSubscription: ""
+  networkCIDR: 0.0.0.0/0
+
 image:
   repository: ghcr.io/zilobase/zilobase
   digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
@@ -26,6 +35,8 @@ secretKeys:
   s3AccessKeyId: S3_ACCESS_KEY_ID
   s3SecretAccessKey: S3_SECRET_ACCESS_KEY
   smtpPassword: SMTP_PASSWORD
+  gmailGoogleClientSecret: GMAIL_GOOGLE_CLIENT_SECRET
+  gmailTokenEncryptionKey: GMAIL_TOKEN_ENCRYPTION_KEY
 
 config:
   externalUrl: https://zilobase.example.invalid
