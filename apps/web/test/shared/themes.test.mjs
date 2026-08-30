@@ -1,6 +1,4 @@
 const removedThemeIds = [
-  "warm",
-  "midnight",
   "rose",
   "forest",
   "ocean",
@@ -21,7 +19,10 @@ export function register({ readSource, assert, loadModule, test }) {
 
     assert.deepEqual(appearanceModes.map((mode) => mode.value), ["light", "dark", "system"])
     assert.deepEqual(selectableThemeIds, ["light", "dark"])
-    assert.deepEqual(themeFamilies.map((theme) => theme.value), ["default", "notion"])
+    assert.deepEqual(
+      themeFamilies.map((theme) => theme.value),
+      ["default", "warm", "midnight", "notion"],
+    )
     assert.equal(getThemeColorScheme("light"), "light")
     assert.equal(getThemeColorScheme("dark"), "dark")
     assert.equal(getThemeColorScheme("system"), null)
@@ -37,12 +38,12 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(provider, /if \(isThemeFamilyId\(storedFamily\)\) return storedFamily\s+return "default"/)
     assert.match(provider, /dataset\.themeFamily = themeFamily/)
     assert.match(provider, /localStorage\.setItem\(THEME_FAMILY_STORAGE_KEY, themeFamily\)/)
-    assert.match(document, /const families = \["default", "notion"\]/)
+    assert.match(document, /const families = \["default", "warm", "midnight", "notion"\]/)
     assert.match(document, /dataset\.themeFamily = resolvedFamily/)
     for (const id of removedThemeIds) assert.doesNotMatch(document, new RegExp(`"${id}"`))
   })
 
-  test("Default and Notion expose the specified light and dark core palettes", async () => {
+  test("theme families expose their specified light and dark core palettes", async () => {
     const css = await readSource("/src/shared/styles/color-tokens.css")
     const defaultLight = declarations(readRule(css, ".light"))
     const defaultDark = merge(defaultLight, declarations(readRule(css, ".dark")))
@@ -53,6 +54,22 @@ export function register({ readSource, assert, loadModule, test }) {
     const notionDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="notion"]')),
+    )
+    const warmLight = merge(
+      defaultLight,
+      declarations(readRule(css, '.light[data-theme-family="warm"]')),
+    )
+    const warmDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="warm"]')),
+    )
+    const midnightLight = merge(
+      defaultLight,
+      declarations(readRule(css, '.light[data-theme-family="midnight"]')),
+    )
+    const midnightDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="midnight"]')),
     )
 
     assertTokens(defaultLight, {
@@ -115,6 +132,42 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-action-background-neutral-hover": "#2c2c2c",
       "--zb-color-action-background-neutral-pressed": "#252525",
     })
+    assertTokens(warmLight, {
+      "--zb-color-surface-background-canvas": "#fbf8f1",
+      "--zb-color-surface-background-card": "#fffdf8",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "#f6f0e7",
+      "--zb-color-content-text-primary": "#2f2923",
+      "--zb-color-content-text-secondary": "#77695b",
+      "--zb-color-action-background-primary": "#5f4938",
+    })
+    assertTokens(warmDark, {
+      "--zb-color-surface-background-canvas": "#1c1713",
+      "--zb-color-surface-background-card": "#241e19",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "var(--zb-color-surface-background-card)",
+      "--zb-color-content-text-primary": "#f4ede5",
+      "--zb-color-content-text-secondary": "#a89686",
+      "--zb-color-action-background-primary": "#dcc1a6",
+    })
+    assertTokens(midnightLight, {
+      "--zb-color-surface-background-canvas": "#f6f8ff",
+      "--zb-color-surface-background-card": "#ffffff",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "#edf2fc",
+      "--zb-color-content-text-primary": "#1a2340",
+      "--zb-color-content-text-secondary": "#5c6a8a",
+      "--zb-color-action-background-primary": "#334e8a",
+    })
+    assertTokens(midnightDark, {
+      "--zb-color-surface-background-canvas": "#0b1020",
+      "--zb-color-surface-background-card": "#0f1526",
+      "--zb-color-surface-background-overlay": "var(--zb-color-surface-background-card)",
+      "--zb-color-surface-background-navigation": "var(--zb-color-surface-background-card)",
+      "--zb-color-content-text-primary": "#eef2ff",
+      "--zb-color-content-text-secondary": "#8390ad",
+      "--zb-color-action-background-primary": "#dbe7ff",
+    })
   })
 
   test("dark themes keep raised chrome and overlays on one surface tier", async () => {
@@ -125,8 +178,21 @@ export function register({ readSource, assert, loadModule, test }) {
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="notion"]')),
     )
+    const warmDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="warm"]')),
+    )
+    const midnightDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="midnight"]')),
+    )
 
-    for (const [name, palette] of Object.entries({ defaultDark, notionDark })) {
+    for (const [name, palette] of Object.entries({
+      defaultDark,
+      warmDark,
+      midnightDark,
+      notionDark,
+    })) {
       const card = resolve(palette, "--zb-color-surface-background-card")
       assert.equal(
         resolve(palette, "--zb-color-surface-background-overlay"),
@@ -162,10 +228,30 @@ export function register({ readSource, assert, loadModule, test }) {
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="notion"]')),
     )
+    const warmLight = merge(
+      defaultLight,
+      declarations(readRule(css, '.light[data-theme-family="warm"]')),
+    )
+    const warmDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="warm"]')),
+    )
+    const midnightLight = merge(
+      defaultLight,
+      declarations(readRule(css, '.light[data-theme-family="midnight"]')),
+    )
+    const midnightDark = merge(
+      defaultDark,
+      declarations(readRule(css, '.dark[data-theme-family="midnight"]')),
+    )
 
     for (const [name, palette] of Object.entries({
       defaultLight,
       defaultDark,
+      warmLight,
+      warmDark,
+      midnightLight,
+      midnightDark,
       notionLight,
       notionDark,
     })) {

@@ -6,6 +6,8 @@ export const appearanceModes = [
 
 export const themeFamilies = [
   { label: "Default", value: "default" },
+  { label: "Warm", value: "warm" },
+  { label: "Midnight", value: "midnight" },
   { label: "Notion", value: "notion" },
 ] as const
 
