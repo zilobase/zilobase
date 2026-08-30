@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
 import { test } from "vitest"
 
 import { buildGmailAuthorizationUrl, gmailOauthCallbackUrl } from "./google-oauth"
@@ -46,4 +47,9 @@ test("desktop Gmail completion contains routing metadata but no OAuth credential
   assert.equal(url.searchParams.has("code"), false)
   assert.equal(url.searchParams.has("state"), false)
   assert.equal(url.searchParams.has("token"), false)
+})
+
+test("public Gmail OAuth completion establishes its own database context", async () => {
+  const source = await readFile(new URL("./google-oauth.ts", import.meta.url), "utf8")
+  assert.match(source, /return runWithDbEnv\(env, \(\) => completeGmailOauthWithDatabase\(env, input, fetcher\)\)/)
 })

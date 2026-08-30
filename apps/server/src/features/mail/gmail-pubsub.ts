@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm"
 
-import { db } from "../../infrastructure/database"
+import { db, runWithDbEnv } from "../../infrastructure/database"
 import { gmailConnection } from "../../infrastructure/database/schema"
 import { getStringEnv, type RuntimeEnv } from "../../shared/config/config"
 import { publishMailNotification } from "../../infrastructure/runtime/runtime-adapter"
@@ -31,22 +31,24 @@ export async function processGmailPubsubRequest(
     throw new GmailPushError("Push payload is too large.", 413)
   }
   const notification = parsePubsubEnvelope(text, config.subscription)
-  const updated = await db
-    .update(gmailConnection)
-    .set({
-      mailboxRevision: sql`${gmailConnection.mailboxRevision} + 1`,
-      notificationHistoryId: notification.historyId,
-      updatedAt: new Date(),
-    })
-    .where(and(
-      eq(gmailConnection.email, notification.emailAddress),
-      eq(gmailConnection.status, "connected"),
-      sql`(${gmailConnection.notificationHistoryId} is null or ${gmailConnection.notificationHistoryId}::numeric < ${notification.historyId}::numeric)`,
-    ))
-    .returning({ connectionId: gmailConnection.id, revision: gmailConnection.mailboxRevision, userId: gmailConnection.userId })
-  const event = updated[0] ?? null
-  if (event) await publishMailNotification(env, event)
-  return event
+  return runWithDbEnv(env, async () => {
+    const updated = await db
+      .update(gmailConnection)
+      .set({
+        mailboxRevision: sql`${gmailConnection.mailboxRevision} + 1`,
+        notificationHistoryId: notification.historyId,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(gmailConnection.email, notification.emailAddress),
+        eq(gmailConnection.status, "connected"),
+        sql`(${gmailConnection.notificationHistoryId} is null or ${gmailConnection.notificationHistoryId}::numeric < ${notification.historyId}::numeric)`,
+      ))
+      .returning({ connectionId: gmailConnection.id, revision: gmailConnection.mailboxRevision, userId: gmailConnection.userId })
+    const event = updated[0] ?? null
+    if (event) await publishMailNotification(env, event)
+    return event
+  })
 }
 
 export function parsePubsubEnvelope(text: string, expectedSubscription: string) {

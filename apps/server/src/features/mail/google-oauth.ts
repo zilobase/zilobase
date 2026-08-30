@@ -1,6 +1,6 @@
 import { and, eq, gt, isNull } from "drizzle-orm"
 
-import { db } from "../../infrastructure/database"
+import { db, runWithDbEnv } from "../../infrastructure/database"
 import {
   gmailConnection,
   gmailOauthAttempt,
@@ -107,6 +107,14 @@ export async function completeGmailOauth(
   env: RuntimeEnv,
   input: { code: string; state: string },
   fetcher: typeof fetch = fetch,
+) {
+  return runWithDbEnv(env, () => completeGmailOauthWithDatabase(env, input, fetcher))
+}
+
+async function completeGmailOauthWithDatabase(
+  env: RuntimeEnv,
+  input: { code: string; state: string },
+  fetcher: typeof fetch,
 ) {
   const stateHash = await sha256Hex(input.state)
   const [attempt] = await db
