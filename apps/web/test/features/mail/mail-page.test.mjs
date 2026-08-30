@@ -30,7 +30,7 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(mailSource, /<MailThreadRow/)
     assert.doesNotMatch(mailSource, /<table|DatabaseTableView/)
     assert.doesNotMatch(mailSource, /group\/mail-row[^\n]*border-b/)
-    assert.match(mailSource, /group\/mail-row grid h-9/)
+    assert.match(mailSource, /group\/mail-row flex h-9/)
     assert.doesNotMatch(mailSource, /getInitials|avatarClassName/)
     assert.doesNotMatch(mailSource, /primaryViews|aria-label="Mail views"|visibleMessages\.length/)
     assert.match(mailSource, /aria-label="Search mail"[\s\S]*aria-label="Refresh mail"/)
@@ -102,5 +102,19 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(htmlSource, /DOMPurify\.sanitize/)
     assert.match(htmlSource, /data-zilobase-external-image/)
     assert.match(htmlSource, /default-src 'none'/)
+  })
+
+  test("mail organization controls are online-only and available at thread, message, and batch scope", async () => {
+    const [mailSource, controllerSource] = await Promise.all([
+      readSource("/src/features/mail/pages/mail.tsx"),
+      readSource("/src/features/mail/model/mail-sync-controller.ts"),
+    ])
+
+    assert.match(mailSource, /batchSelection\.size[\s\S]*Mark selected read[\s\S]*Archive selected/)
+    assert.match(mailSource, /function MailMessageActions[\s\S]*Move to spam[\s\S]*Move to trash/)
+    assert.match(mailSource, /function MailLabelMenu[\s\S]*Create label[\s\S]*Rename[\s\S]*Delete label/)
+    assert.match(mailSource, /disabled=\{!online \|\| mutating\}/)
+    assert.match(controllerSource, /optimisticallyModifyThread[\s\S]*restoreMailMutation/)
+    assert.match(controllerSource, /isDefiniteMailMutationFailure/)
   })
 }

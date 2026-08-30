@@ -2,21 +2,35 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { useLiveQuery } from "dexie-react-hooks"
 import type {
   MailConnection,
+  MailLabelRecord,
+  MailLabelWriteRequest,
   MailMessageRecord,
+  MailMessageMutationResponse,
+  MailModifyRequest,
   MailSyncRequest,
   MailSyncResponse,
   MailThreadSummary,
+  MailThreadMutationResponse,
   MailView,
 } from "@zilobase/features/mail"
 
-import { apiFetch, getApiRequestHeaders, toApiUrl } from "@/features/desktop/network/api"
+import { ApiError, apiFetch, getApiRequestHeaders, toApiUrl } from "@/features/desktop/network/api"
 import { desktopNetworkFetch } from "@/features/desktop/network"
 import { getConnectivityState, subscribeConnectivity } from "@/features/offline/model"
 import {
   applyMailSyncResponse,
+  clearMailReconciliation,
   closeMailDatabase,
+  deleteMailLabelFromCache,
+  deleteMailMessageFromCache,
+  deleteMailThreadFromCache,
   mailDatabaseName,
   openMailDatabase,
+  optimisticallyModifyMessage,
+  optimisticallyModifyThread,
+  queueMailReconciliation,
+  reconcileMailMessage,
+  restoreMailMutation,
   upsertFullMailThread,
   type MailDatabase,
 } from "../cache/mail-database"
@@ -29,6 +43,7 @@ export function useMailController(input: {
 }) {
   const [database, setDatabase] = useState<MailDatabase | null>(null)
   const [syncing, setSyncing] = useState(false)
+  const [mutating, setMutating] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [searchResultIds, setSearchResultIds] = useState<string[] | null>(null)
   const online = useSyncExternalStore(
@@ -65,6 +80,11 @@ export function useMailController(input: {
     () => database?.syncState.get("primary"),
     [database],
     undefined,
+  )
+  const labels = useLiveQuery(
+    () => database ? database.labels.orderBy("name").toArray() : [],
+    [database],
+    [],
   )
 
   const runSync = useCallback(async (options: { loadMore?: boolean; search?: string } = {}) => {
@@ -166,18 +186,236 @@ export function useMailController(input: {
     window.setTimeout(() => URL.revokeObjectURL(url), 0)
   }, [online])
 
+  const modifyThread = useCallback(async (threadId: string, modification: MailModifyRequest) => {
+    if (!database || !online) throw new Error("Reconnect to organize mail.")
+    setMutating(true)
+    let snapshot: Awaited<ReturnType<typeof optimisticallyModifyThread>> | null = null
+    try {
+      snapshot = await optimisticallyModifyThread(database, threadId, modification)
+      const response = await apiFetch<MailThreadMutationResponse>(
+        `/mail/threads/${encodeURIComponent(threadId)}/modify`,
+        { body: JSON.stringify(modification), method: "POST" },
+      )
+      await upsertFullMailThread(database, response)
+    } catch (mutationError) {
+      if (snapshot && isDefiniteMailMutationFailure(mutationError)) await restoreMailMutation(database, snapshot)
+      await queueMailReconciliation(database, { threadIds: [threadId] })
+      setError(mutationError)
+      throw mutationError
+    } finally {
+      setMutating(false)
+    }
+  }, [database, online, runSync])
+
+  const batchModifyThreads = useCallback(async (threadIds: string[], modification: MailModifyRequest) => {
+    if (!database || !online) throw new Error("Reconnect to organize mail.")
+    if (!threadIds.length || threadIds.length > 50) throw new Error("Select between 1 and 50 Gmail threads.")
+    setMutating(true)
+    const snapshots = []
+    try {
+      for (const threadId of threadIds) {
+        snapshots.push(await optimisticallyModifyThread(database, threadId, modification))
+      }
+      await apiFetch("/mail/threads/batch-modify", {
+        body: JSON.stringify({ ...modification, ids: threadIds }),
+        method: "POST",
+      })
+      void runSync()
+    } catch (mutationError) {
+      if (isDefiniteMailMutationFailure(mutationError)) {
+        for (const snapshot of snapshots) await restoreMailMutation(database, snapshot)
+      }
+      await queueMailReconciliation(database, { threadIds })
+      setError(mutationError)
+      throw mutationError
+    } finally {
+      setMutating(false)
+    }
+  }, [database, online, runSync])
+
+  const actOnThread = useCallback(async (threadId: string, action: "restore" | "trash") => {
+    if (!database || !online) throw new Error("Reconnect to organize mail.")
+    const modification = action === "trash"
+      ? { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] }
+      : { removeLabelIds: ["TRASH"] }
+    setMutating(true)
+    let snapshot: Awaited<ReturnType<typeof optimisticallyModifyThread>> | null = null
+    try {
+      snapshot = await optimisticallyModifyThread(database, threadId, modification)
+      const response = await apiFetch<MailThreadMutationResponse>(
+        `/mail/threads/${encodeURIComponent(threadId)}/action`,
+        { body: JSON.stringify({ action }), method: "POST" },
+      )
+      await upsertFullMailThread(database, response)
+    } catch (mutationError) {
+      if (snapshot && isDefiniteMailMutationFailure(mutationError)) await restoreMailMutation(database, snapshot)
+      await queueMailReconciliation(database, { threadIds: [threadId] })
+      setError(mutationError)
+      throw mutationError
+    } finally {
+      setMutating(false)
+    }
+  }, [database, online, runSync])
+
+  const modifyMessage = useCallback(async (messageId: string, modification: MailModifyRequest) => {
+    if (!database || !online) throw new Error("Reconnect to organize mail.")
+    setMutating(true)
+    let snapshot: Awaited<ReturnType<typeof optimisticallyModifyMessage>> | null = null
+    try {
+      snapshot = await optimisticallyModifyMessage(database, messageId, modification)
+      const response = await apiFetch<MailMessageMutationResponse>(
+        `/mail/messages/${encodeURIComponent(messageId)}/modify`,
+        { body: JSON.stringify(modification), method: "POST" },
+      )
+      await reconcileMailMessage(database, response.message)
+    } catch (mutationError) {
+      if (snapshot && isDefiniteMailMutationFailure(mutationError)) await restoreMailMutation(database, snapshot)
+      await queueMailReconciliation(database, { messageIds: [messageId] })
+      setError(mutationError)
+      throw mutationError
+    } finally {
+      setMutating(false)
+    }
+  }, [database, online, runSync])
+
+  const actOnMessage = useCallback(async (messageId: string, action: "restore" | "trash") => {
+    if (!database || !online) throw new Error("Reconnect to organize mail.")
+    const modification = action === "trash"
+      ? { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] }
+      : { removeLabelIds: ["TRASH"] }
+    setMutating(true)
+    let snapshot: Awaited<ReturnType<typeof optimisticallyModifyMessage>> | null = null
+    try {
+      snapshot = await optimisticallyModifyMessage(database, messageId, modification)
+      const response = await apiFetch<MailMessageMutationResponse>(
+        `/mail/messages/${encodeURIComponent(messageId)}/action`,
+        { body: JSON.stringify({ action }), method: "POST" },
+      )
+      await reconcileMailMessage(database, response.message)
+    } catch (mutationError) {
+      if (snapshot && isDefiniteMailMutationFailure(mutationError)) await restoreMailMutation(database, snapshot)
+      await queueMailReconciliation(database, { messageIds: [messageId] })
+      setError(mutationError)
+      throw mutationError
+    } finally {
+      setMutating(false)
+    }
+  }, [database, online, runSync])
+
+  const createLabel = useCallback(async (input: MailLabelWriteRequest) => {
+    if (!database || !online) throw new Error("Reconnect to manage Gmail labels.")
+    setMutating(true)
+    try {
+      const { label } = await apiFetch<{ label: MailLabelRecord }>("/mail/labels", {
+        body: JSON.stringify(input),
+        method: "POST",
+      })
+      await database.labels.put(label)
+      return label
+    } finally {
+      setMutating(false)
+    }
+  }, [database, online])
+
+  const updateLabel = useCallback(async (label: MailLabelRecord, input: MailLabelWriteRequest) => {
+    if (!database || !online) throw new Error("Reconnect to manage Gmail labels.")
+    setMutating(true)
+    try {
+      await database.labels.put({ ...label, ...input })
+      const response = await apiFetch<{ label: MailLabelRecord }>(
+        `/mail/labels/${encodeURIComponent(label.id)}`,
+        { body: JSON.stringify(input), method: "PATCH" },
+      )
+      await database.labels.put(response.label)
+      return response.label
+    } catch (mutationError) {
+      if (isDefiniteMailMutationFailure(mutationError)) await database.labels.put(label)
+      else void runSync()
+      throw mutationError
+    } finally {
+      setMutating(false)
+    }
+  }, [database, online, runSync])
+
+  const deleteLabel = useCallback(async (labelId: string) => {
+    if (!database || !online) throw new Error("Reconnect to manage Gmail labels.")
+    setMutating(true)
+    try {
+      await apiFetch(`/mail/labels/${encodeURIComponent(labelId)}`, { method: "DELETE" })
+      await deleteMailLabelFromCache(database, labelId)
+    } finally {
+      setMutating(false)
+    }
+  }, [database, online])
+
+  const reconcilePending = useCallback(async () => {
+    if (!database || !online) return
+    const state = await database.syncState.get("primary")
+    for (const threadId of state?.pendingThreadReconciliationIds ?? []) {
+      try {
+        const response = await apiFetch<MailThreadMutationResponse>(`/mail/threads/${encodeURIComponent(threadId)}`)
+        await upsertFullMailThread(database, response)
+        await clearMailReconciliation(database, { threadId })
+      } catch (reconciliationError) {
+        if (reconciliationError instanceof ApiError && reconciliationError.status === 404) {
+          await deleteMailThreadFromCache(database, threadId)
+          await clearMailReconciliation(database, { threadId })
+          continue
+        }
+        return
+      }
+    }
+    for (const messageId of state?.pendingMessageReconciliationIds ?? []) {
+      try {
+        const response = await apiFetch<MailMessageMutationResponse>(`/mail/messages/${encodeURIComponent(messageId)}`)
+        await reconcileMailMessage(database, response.message)
+        await clearMailReconciliation(database, { messageId })
+      } catch (reconciliationError) {
+        if (reconciliationError instanceof ApiError && reconciliationError.status === 404) {
+          await deleteMailMessageFromCache(database, messageId)
+          await clearMailReconciliation(database, { messageId })
+          continue
+        }
+        return
+      }
+    }
+    if ((state?.pendingThreadReconciliationIds?.length ?? 0) + (state?.pendingMessageReconciliationIds?.length ?? 0) > 0) {
+      void runSync()
+    }
+  }, [database, online, runSync])
+
+  useEffect(() => {
+    if (!database || !online) return
+    const timer = window.setTimeout(() => void reconcilePending(), 0)
+    return () => window.clearTimeout(timer)
+  }, [database, online, reconcilePending, syncState?.pendingMessageReconciliationIds, syncState?.pendingThreadReconciliationIds])
+
   return {
     database,
+    actOnMessage,
+    actOnThread,
+    batchModifyThreads,
+    createLabel,
+    deleteLabel,
     downloadAttachment,
     error,
     hasMore: Boolean(syncState?.pageTokens[input.view]),
+    labels: labels ?? [],
+    modifyMessage,
+    modifyThread,
+    mutating,
     online,
     openThread,
     refresh: runSync,
     loadMore: () => runSync({ loadMore: true }),
     syncing,
     threads,
+    updateLabel,
   }
+}
+
+export function isDefiniteMailMutationFailure(error: unknown) {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500
 }
 
 export function threadMatchesView(thread: MailThreadSummary, view: MailView) {

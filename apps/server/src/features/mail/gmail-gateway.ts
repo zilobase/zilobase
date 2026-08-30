@@ -160,6 +160,66 @@ export class GmailGateway {
     return this.json<{ labels?: GmailLabel[] }>("/gmail/v1/users/me/labels")
   }
 
+  createLabel(input: GmailLabelWrite) {
+    return this.writeJson<GmailLabel>("/gmail/v1/users/me/labels", input)
+  }
+
+  updateLabel(labelId: string, input: GmailLabelWrite) {
+    return this.writeJson<GmailLabel>(
+      `/gmail/v1/users/me/labels/${encodeURIComponent(labelId)}`,
+      input,
+      "PATCH",
+    )
+  }
+
+  deleteLabel(labelId: string) {
+    return this.writeJson(
+      `/gmail/v1/users/me/labels/${encodeURIComponent(labelId)}`,
+      undefined,
+      "DELETE",
+    )
+  }
+
+  modifyThread(threadId: string, input: GmailModifyRequest) {
+    return this.writeJson<GmailThread>(
+      `/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}/modify`,
+      input,
+    )
+  }
+
+  modifyMessage(messageId: string, input: GmailModifyRequest) {
+    return this.writeJson<GmailMessage>(
+      `/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/modify`,
+      input,
+    )
+  }
+
+  batchModifyMessages(ids: string[], input: GmailModifyRequest) {
+    return this.writeJson("/gmail/v1/users/me/messages/batchModify", { ...input, ids })
+  }
+
+  async batchModifyThreads(ids: string[], input: GmailModifyRequest) {
+    for (let offset = 0; offset < ids.length; offset += 5) {
+      await Promise.all(ids.slice(offset, offset + 5).map((id) => this.modifyThread(id, input)))
+    }
+  }
+
+  trashThread(threadId: string) {
+    return this.writeJson<GmailThread>(`/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}/trash`, undefined)
+  }
+
+  untrashThread(threadId: string) {
+    return this.writeJson<GmailThread>(`/gmail/v1/users/me/threads/${encodeURIComponent(threadId)}/untrash`, undefined)
+  }
+
+  trashMessage(messageId: string) {
+    return this.writeJson<GmailMessage>(`/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/trash`, undefined)
+  }
+
+  untrashMessage(messageId: string) {
+    return this.writeJson<GmailMessage>(`/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/untrash`, undefined)
+  }
+
   listHistory(input: { pageToken?: string; startHistoryId: string }) {
     const params = new URLSearchParams({ startHistoryId: input.startHistoryId })
     if (input.pageToken) params.set("pageToken", input.pageToken)
@@ -191,17 +251,21 @@ export class GmailGateway {
     return (await response.json()) as T
   }
 
-  private async writeJson<T = unknown>(path: string, body: unknown) {
+  private async writeJson<T = unknown>(
+    path: string,
+    body: unknown,
+    method: "DELETE" | "PATCH" | "POST" = "POST",
+  ) {
     let response: Response
     try {
       response = await this.fetcher(new URL(path, GMAIL_API_ORIGIN), {
-        body: JSON.stringify(body),
+        body: body === undefined ? undefined : JSON.stringify(body),
         headers: {
           accept: "application/json",
           authorization: `Bearer ${this.accessToken}`,
-          "content-type": "application/json",
+          ...(body === undefined ? {} : { "content-type": "application/json" }),
         },
-        method: "POST",
+        method,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       })
     } catch {
@@ -289,6 +353,18 @@ export type GmailLabel = {
   threadsTotal?: number
   threadsUnread?: number
   type?: string
+}
+
+export type GmailModifyRequest = {
+  addLabelIds?: string[]
+  removeLabelIds?: string[]
+}
+
+export type GmailLabelWrite = {
+  color?: { backgroundColor: string; textColor: string }
+  labelListVisibility?: "labelHide" | "labelShow" | "labelShowIfUnread"
+  messageListVisibility?: "hide" | "show"
+  name?: string
 }
 
 export const MAIL_METADATA_HEADERS = [

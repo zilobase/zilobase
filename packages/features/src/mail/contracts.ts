@@ -122,6 +122,36 @@ export type MailModifyRequest = {
   removeLabelIds?: string[]
 }
 
+export type MailBatchModifyRequest = MailModifyRequest & {
+  ids: string[]
+}
+
+export type MailSystemAction = "restore" | "trash"
+
+export type MailActionRequest = {
+  action: MailSystemAction
+}
+
+export type MailThreadMutationResponse = {
+  messages: MailMessageRecord[]
+  thread: MailThreadSummary
+}
+
+export type MailMessageMutationResponse = {
+  message: MailMessageRecord
+}
+
+export type MailBatchMutationResponse = {
+  acceptedIds: string[]
+}
+
+export type MailLabelWriteRequest = {
+  color?: { backgroundColor: string; textColor: string }
+  labelListVisibility?: "labelHide" | "labelShow" | "labelShowIfUnread"
+  messageListVisibility?: "hide" | "show"
+  name?: string
+}
+
 export type MailComposeAttachment = {
   contentBase64: string
   filename: string

@@ -120,4 +120,154 @@ export function register({ assert, loadModule, test }) {
     assert.equal(await database.labels.get("temporary"), undefined)
     await destroyMailDatabase(database.name)
   })
+
+  test("mail optimistic label changes update message and thread state and can roll back", async () => {
+    const {
+      applyMailSyncResponse,
+      destroyMailDatabase,
+      openMailDatabase,
+      optimisticallyModifyMessage,
+      optimisticallyModifyThread,
+      restoreMailMutation,
+    } = await loadModule("/src/features/mail/cache/mail-database.ts")
+    const database = await openMailDatabase({
+      apiOrigin: "https://api.example.com",
+      connectionId: "gmail-optimistic",
+      userId: "user-1",
+    })
+    await applyMailSyncResponse(database, mutationFixture(), "inbox")
+
+    const messageSnapshot = await optimisticallyModifyMessage(
+      database,
+      "message-1",
+      { removeLabelIds: ["UNREAD"], addLabelIds: ["STARRED"] },
+    )
+    assert.equal((await database.messages.get("message-1")).labelIds.includes("UNREAD"), false)
+    assert.equal((await database.threads.get("thread-1")).unread, true)
+    assert.equal((await database.threads.get("thread-1")).starred, true)
+
+    await restoreMailMutation(database, messageSnapshot)
+    assert.equal((await database.messages.get("message-1")).labelIds.includes("UNREAD"), true)
+    assert.equal((await database.threads.get("thread-1")).starred, false)
+
+    await optimisticallyModifyThread(database, "thread-1", {
+      addLabelIds: ["TRASH"],
+      removeLabelIds: ["INBOX"],
+    })
+    assert.equal((await database.messages.get("message-1")).labelIds.includes("TRASH"), true)
+    assert.equal((await database.messages.get("message-2")).labelIds.includes("INBOX"), false)
+    await destroyMailDatabase(database.name)
+  })
+
+  test("deleting a custom label removes it from all cached records", async () => {
+    const {
+      applyMailSyncResponse,
+      deleteMailLabelFromCache,
+      destroyMailDatabase,
+      openMailDatabase,
+    } = await loadModule("/src/features/mail/cache/mail-database.ts")
+    const database = await openMailDatabase({
+      apiOrigin: "https://api.example.com",
+      connectionId: "gmail-label-delete",
+      userId: "user-1",
+    })
+    const fixture = mutationFixture()
+    fixture.labels = [{
+      color: null,
+      id: "Label_1",
+      labelListVisibility: "labelShow",
+      messageListVisibility: "show",
+      messagesTotal: 2,
+      messagesUnread: 2,
+      name: "Projects",
+      threadsTotal: 1,
+      threadsUnread: 1,
+      type: "user",
+    }]
+    fixture.messages.forEach((message) => message.labelIds.push("Label_1"))
+    fixture.threads[0].labelIds.push("Label_1")
+    await applyMailSyncResponse(database, fixture, "inbox")
+    await deleteMailLabelFromCache(database, "Label_1")
+
+    assert.equal(await database.labels.get("Label_1"), undefined)
+    assert.equal((await database.messages.get("message-1")).labelIds.includes("Label_1"), false)
+    assert.equal((await database.threads.get("thread-1")).labelIds.includes("Label_1"), false)
+    await destroyMailDatabase(database.name)
+  })
+
+  test("ambiguous mail mutations persist bounded reconciliation targets", async () => {
+    const {
+      clearMailReconciliation,
+      destroyMailDatabase,
+      openMailDatabase,
+      queueMailReconciliation,
+    } = await loadModule("/src/features/mail/cache/mail-database.ts")
+    const database = await openMailDatabase({
+      apiOrigin: "https://api.example.com",
+      connectionId: "gmail-reconciliation",
+      userId: "user-1",
+    })
+    await queueMailReconciliation(database, {
+      messageIds: ["message-1", "message-1"],
+      threadIds: ["thread-1"],
+    })
+    assert.deepEqual((await database.syncState.get("primary")).pendingMessageReconciliationIds, ["message-1"])
+    assert.deepEqual((await database.syncState.get("primary")).pendingThreadReconciliationIds, ["thread-1"])
+    await clearMailReconciliation(database, { messageId: "message-1", threadId: "thread-1" })
+    assert.deepEqual((await database.syncState.get("primary")).pendingMessageReconciliationIds, [])
+    assert.deepEqual((await database.syncState.get("primary")).pendingThreadReconciliationIds, [])
+    await destroyMailDatabase(database.name)
+  })
+}
+
+function mutationFixture() {
+  const message = (id, internalDate) => ({
+    attachmentCount: 0,
+    attachments: [],
+    bcc: [],
+    bodyHtml: null,
+    bodyText: "Cached body",
+    cc: [],
+    date: null,
+    draftId: null,
+    from: null,
+    hasFullBody: true,
+    historyId: "10",
+    id,
+    inReplyTo: null,
+    internalDate,
+    labelIds: ["INBOX", "UNREAD"],
+    messageIdHeader: null,
+    references: [],
+    replyTo: null,
+    sizeEstimate: 10,
+    snippet: "Preview",
+    subject: "Subject",
+    threadId: "thread-1",
+    to: [],
+  })
+  return {
+    deletedMessageIds: [],
+    deletedThreadIds: [],
+    historyId: "10",
+    labels: [],
+    mailboxRevision: 2,
+    messages: [message("message-1", 100), message("message-2", 200)],
+    mode: "full",
+    nextPageToken: null,
+    threads: [{
+      attachmentCount: 0,
+      id: "thread-1",
+      internalDate: 200,
+      labelIds: ["INBOX", "UNREAD"],
+      latestMessageId: "message-2",
+      messageCount: 2,
+      messageIds: ["message-1", "message-2"],
+      participants: [],
+      snippet: "Preview",
+      starred: false,
+      subject: "Subject",
+      unread: true,
+    }],
+  }
 }

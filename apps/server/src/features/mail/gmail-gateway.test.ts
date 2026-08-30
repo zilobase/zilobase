@@ -63,6 +63,51 @@ test("watch creation and stop use Gmail's mailbox lifecycle endpoints", async ()
   ])
 })
 
+test("Gmail mutations use native modify, trash, batch, and custom-label endpoints without retries", async () => {
+  const requests: Array<{ body: unknown; method: string; path: string }> = []
+  const gateway = new GmailGateway("token", async (input, init) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString())
+    requests.push({
+      body: init?.body ? JSON.parse(String(init.body)) : null,
+      method: init?.method ?? "GET",
+      path: url.pathname,
+    })
+    if (init?.method === "DELETE") return new Response(null, { status: 204 })
+    return Response.json({ id: url.pathname.includes("labels") ? "Label_1" : "message-1", name: "Projects", type: "user" })
+  })
+
+  await gateway.modifyThread("thread-1", { addLabelIds: ["STARRED"] })
+  await gateway.modifyMessage("message-1", { removeLabelIds: ["UNREAD"] })
+  await gateway.batchModifyMessages(["message-1"], { removeLabelIds: ["INBOX"] })
+  await gateway.trashThread("thread-1")
+  await gateway.untrashMessage("message-1")
+  await gateway.createLabel({ name: "Projects" })
+  await gateway.updateLabel("Label_1", { labelListVisibility: "labelHide" })
+  await gateway.deleteLabel("Label_1")
+
+  assert.deepEqual(requests.map(({ method, path }) => ({ method, path })), [
+    { method: "POST", path: "/gmail/v1/users/me/threads/thread-1/modify" },
+    { method: "POST", path: "/gmail/v1/users/me/messages/message-1/modify" },
+    { method: "POST", path: "/gmail/v1/users/me/messages/batchModify" },
+    { method: "POST", path: "/gmail/v1/users/me/threads/thread-1/trash" },
+    { method: "POST", path: "/gmail/v1/users/me/messages/message-1/untrash" },
+    { method: "POST", path: "/gmail/v1/users/me/labels" },
+    { method: "PATCH", path: "/gmail/v1/users/me/labels/Label_1" },
+    { method: "DELETE", path: "/gmail/v1/users/me/labels/Label_1" },
+  ])
+  assert.deepEqual(requests[2]?.body, { ids: ["message-1"], removeLabelIds: ["INBOX"] })
+})
+
+test("unsafe Gmail writes are never retried", async () => {
+  let calls = 0
+  const gateway = new GmailGateway("token", async () => {
+    calls += 1
+    return new Response("unavailable", { status: 503 })
+  })
+  await assert.rejects(gateway.modifyMessage("message-1", { addLabelIds: ["STARRED"] }), GmailApiError)
+  assert.equal(calls, 1)
+})
+
 test("attachment responses remain streaming responses and are not decoded or retained", async () => {
   const encoded = Buffer.from("attachment-bytes").toString("base64url")
   const body = new ReadableStream({

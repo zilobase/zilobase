@@ -230,6 +230,7 @@ export {
   Sun as SunIcon,
   Table as Table2,
   Table as TablePropertiesIcon,
+  Tag as TagIcon,
   TextAlignCenter as AlignCenter,
   TextAlignLeft as AlignLeft,
   TextAlignRight as AlignRight,

@@ -1,6 +1,13 @@
 import { eq } from "drizzle-orm"
 import { Hono, type Context } from "hono"
-import type { MailSyncRequest, MailView } from "@zilobase/features/mail"
+import type {
+  MailActionRequest,
+  MailBatchModifyRequest,
+  MailLabelWriteRequest,
+  MailModifyRequest,
+  MailSyncRequest,
+  MailView,
+} from "@zilobase/features/mail"
 
 import { db } from "../../infrastructure/database"
 import { gmailConnection } from "../../infrastructure/database/schema"
@@ -212,6 +219,116 @@ mailRoutes.get("/labels", async (c) => {
   })
 })
 
+mailRoutes.post("/labels", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const body = parseMailLabelWriteRequest(await c.req.json().catch(() => null), true)
+  if (!body) return c.json({ message: "A valid Gmail label is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    const label = normalizeGmailLabels([await gateway.createLabel(body)])[0]
+    if (!label) throw new GmailApiError("Gmail returned an invalid label.", 502, "provider_error")
+    return c.json({ label })
+  })
+})
+
+mailRoutes.patch("/labels/:labelId", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const labelId = safeUserLabelId(c.req.param("labelId"))
+  const body = parseMailLabelWriteRequest(await c.req.json().catch(() => null), false)
+  if (!labelId || !body) return c.json({ message: "A valid Gmail label update is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    const label = normalizeGmailLabels([await gateway.updateLabel(labelId, body)])[0]
+    if (!label) throw new GmailApiError("Gmail returned an invalid label.", 502, "provider_error")
+    return c.json({ label })
+  })
+})
+
+mailRoutes.delete("/labels/:labelId", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const labelId = safeUserLabelId(c.req.param("labelId"))
+  if (!labelId) return c.json({ message: "A valid Gmail label is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    await gateway.deleteLabel(labelId)
+    return c.json({ deletedId: labelId })
+  })
+})
+
+mailRoutes.post("/threads/batch-modify", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const body = parseMailBatchModifyRequest(await c.req.json().catch(() => null), 50)
+  if (!body) return c.json({ message: "A valid thread batch modification is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    await gateway.batchModifyThreads(body.ids, body)
+    return c.json({ acceptedIds: body.ids })
+  })
+})
+
+mailRoutes.post("/messages/batch-modify", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const body = parseMailBatchModifyRequest(await c.req.json().catch(() => null), 1_000)
+  if (!body) return c.json({ message: "A valid message batch modification is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    await gateway.batchModifyMessages(body.ids, body)
+    return c.json({ acceptedIds: body.ids })
+  })
+})
+
+mailRoutes.post("/threads/:threadId/modify", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const threadId = safeGmailId(c.req.param("threadId"))
+  const body = parseMailModifyRequest(await c.req.json().catch(() => null))
+  if (!threadId || !body) return c.json({ message: "A valid thread modification is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    await gateway.modifyThread(threadId, body)
+    const record = normalizeGmailThread(await gateway.getThread(threadId, "metadata"), false)
+    return c.json({ messages: record.messages, thread: record.summary })
+  })
+})
+
+mailRoutes.post("/messages/:messageId/modify", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const messageId = safeGmailId(c.req.param("messageId"))
+  const body = parseMailModifyRequest(await c.req.json().catch(() => null))
+  if (!messageId || !body) return c.json({ message: "A valid message modification is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    await gateway.modifyMessage(messageId, body)
+    return c.json({ message: normalizeGmailMessage(await gateway.getMessage(messageId, "metadata"), false) })
+  })
+})
+
+mailRoutes.post("/threads/:threadId/action", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const threadId = safeGmailId(c.req.param("threadId"))
+  const body = parseMailActionRequest(await c.req.json().catch(() => null))
+  if (!threadId || !body) return c.json({ message: "A valid thread action is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    if (body.action === "trash") await gateway.trashThread(threadId)
+    else await gateway.untrashThread(threadId)
+    const record = normalizeGmailThread(await gateway.getThread(threadId, "metadata"), false)
+    return c.json({ messages: record.messages, thread: record.summary })
+  })
+})
+
+mailRoutes.post("/messages/:messageId/action", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const messageId = safeGmailId(c.req.param("messageId"))
+  const body = parseMailActionRequest(await c.req.json().catch(() => null))
+  if (!messageId || !body) return c.json({ message: "A valid message action is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    if (body.action === "trash") await gateway.trashMessage(messageId)
+    else await gateway.untrashMessage(messageId)
+    return c.json({ message: normalizeGmailMessage(await gateway.getMessage(messageId, "metadata"), false) })
+  })
+})
+
 mailRoutes.post("/realtime-ticket", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
@@ -305,6 +422,97 @@ function optionalIdList(value: unknown) {
     value.every((id) => typeof id === "string" && safeGmailId(id) !== null)
   )
 }
+
+export function parseMailModifyRequest(value: unknown): MailModifyRequest | null {
+  if (!value || typeof value !== "object") return null
+  const input = value as Record<string, unknown>
+  const addLabelIds = parseLabelIds(input.addLabelIds)
+  const removeLabelIds = parseLabelIds(input.removeLabelIds)
+  if (!addLabelIds || !removeLabelIds || addLabelIds.length + removeLabelIds.length === 0) return null
+  if (addLabelIds.some((id) => removeLabelIds.includes(id))) return null
+  return {
+    ...(addLabelIds.length ? { addLabelIds } : {}),
+    ...(removeLabelIds.length ? { removeLabelIds } : {}),
+  }
+}
+
+export function parseMailBatchModifyRequest(value: unknown, limit: number): MailBatchModifyRequest | null {
+  const modification = parseMailModifyRequest(value)
+  if (!modification || !value || typeof value !== "object") return null
+  const ids = (value as Record<string, unknown>).ids
+  if (!Array.isArray(ids) || ids.length < 1 || ids.length > limit) return null
+  if (!ids.every((id) => typeof id === "string" && safeGmailId(id))) return null
+  const uniqueIds = [...new Set(ids as string[])]
+  if (uniqueIds.length !== ids.length) return null
+  return { ...modification, ids: uniqueIds }
+}
+
+export function parseMailActionRequest(value: unknown): MailActionRequest | null {
+  if (!value || typeof value !== "object") return null
+  const action = (value as Record<string, unknown>).action
+  return action === "restore" || action === "trash" ? { action } : null
+}
+
+export function parseMailLabelWriteRequest(value: unknown, creating: boolean): MailLabelWriteRequest | null {
+  if (!value || typeof value !== "object") return null
+  const input = value as Record<string, unknown>
+  const output: MailLabelWriteRequest = {}
+  if (input.name !== undefined) {
+    if (typeof input.name !== "string" || !input.name.trim() || input.name.length > 225 || /[\r\n\0]/.test(input.name)) return null
+    output.name = input.name.trim()
+  }
+  if (input.labelListVisibility !== undefined) {
+    if (!["labelHide", "labelShow", "labelShowIfUnread"].includes(input.labelListVisibility as string)) return null
+    output.labelListVisibility = input.labelListVisibility as NonNullable<MailLabelWriteRequest["labelListVisibility"]>
+  }
+  if (input.messageListVisibility !== undefined) {
+    if (!["hide", "show"].includes(input.messageListVisibility as string)) return null
+    output.messageListVisibility = input.messageListVisibility as NonNullable<MailLabelWriteRequest["messageListVisibility"]>
+  }
+  if (input.color !== undefined) {
+    if (isLabelColor(input.color)) output.color = {
+      backgroundColor: input.color.backgroundColor,
+      textColor: input.color.textColor,
+    }
+    else return null
+  }
+  return (creating ? Boolean(output.name) : Object.keys(output).length > 0) ? output : null
+}
+
+function parseLabelIds(value: unknown) {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || value.length > 100) return null
+  if (!value.every((id) => typeof id === "string" && safeGmailId(id))) return null
+  const ids = [...new Set(value as string[])]
+  return ids.length === value.length ? ids : null
+}
+
+function isLabelColor(value: unknown): value is { backgroundColor: string; textColor: string } {
+  if (!value || typeof value !== "object") return false
+  const color = value as Record<string, unknown>
+  return typeof color.backgroundColor === "string" && GMAIL_LABEL_COLORS.has(color.backgroundColor.toLowerCase()) &&
+    typeof color.textColor === "string" && GMAIL_LABEL_COLORS.has(color.textColor.toLowerCase())
+}
+
+function safeUserLabelId(value: string) {
+  return /^Label_[A-Za-z0-9_-]{1,500}$/.test(value) ? value : null
+}
+
+const GMAIL_LABEL_COLORS = new Set([
+  "#000000", "#434343", "#666666", "#999999", "#cccccc", "#efefef", "#f3f3f3", "#ffffff",
+  "#fb4c2f", "#ffad47", "#fad165", "#16a766", "#43d692", "#4a86e8", "#a479e2", "#f691b3",
+  "#f6c5be", "#ffe6c7", "#fef1d1", "#b9e4d0", "#c6f3de", "#c9daf8", "#e4d7f5", "#fcdee8",
+  "#efa093", "#ffd6a2", "#fce8b3", "#89d3b2", "#a0eac9", "#a4c2f4", "#d0bcf1", "#fbc8d9",
+  "#e66550", "#ffbc6b", "#fcda83", "#44b984", "#68dfa9", "#6d9eeb", "#b694e8", "#f7a7c0",
+  "#cc3a21", "#eaa041", "#f2c960", "#149e60", "#3dc789", "#3c78d8", "#8e63ce", "#e07798",
+  "#ac2b16", "#cf8933", "#d5ae49", "#0b804b", "#2a9c68", "#285bac", "#653e9b", "#b65775",
+  "#822111", "#a46a21", "#aa8831", "#076239", "#1a764d", "#1c4587", "#41236d", "#83334c",
+  "#464646", "#e7e7e7", "#0d3472", "#b6cff5", "#0d3b44", "#98d7e4", "#3d188e", "#e3d7ff",
+  "#711a36", "#fbd3e0", "#8a1c0a", "#f2b2a8", "#7a2e0b", "#ffc8af", "#7a4706", "#ffdeb5",
+  "#594c05", "#fbe983", "#684e07", "#fdedc1", "#0b4f30", "#b3efd3", "#04502e", "#a2dcc1",
+  "#c2c2c2", "#4986e7", "#2da2bb", "#b99aff", "#994a64", "#f691b2", "#ff7537", "#ffad46",
+  "#662e37", "#ebdbde", "#cca6ac", "#094228", "#42d692", "#16a765",
+])
 
 function isMailView(value: unknown): value is MailView {
   return ["archive", "drafts", "inbox", "sent", "spam", "starred", "trash", "unread"].includes(value as string)
