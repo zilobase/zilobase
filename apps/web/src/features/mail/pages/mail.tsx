@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import { invoke } from "@tauri-apps/api/core"
@@ -185,6 +185,7 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
     onActOnThread: controller.actOnThread,
     onClose: () => setSelection(null),
     onDownload: controller.downloadAttachment,
+    onLoadInlineAttachment: controller.loadInlineAttachment,
     onModeChange: setPresentation,
     onCompose: setComposerSeed,
     onModifyMessage: controller.modifyMessage,
@@ -413,6 +414,7 @@ type ConversationProps = {
   onActOnThread: (threadId: string, action: "restore" | "trash") => Promise<void>
   onClose: () => void
   onDownload: (messageId: string, attachmentId: string, filename: string) => Promise<void>
+  onLoadInlineAttachment: (messageId: string, attachmentId: string) => Promise<string>
   onModeChange: (mode: EmbeddedItemsOpenAs) => void
   onCompose: (seed: MailComposeSeed) => void
   onModifyMessage: (messageId: string, modification: MailModifyRequest) => Promise<void>
@@ -427,8 +429,8 @@ type ConversationProps = {
 
 function ConversationViewer(props: ConversationProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-canvas dark:bg-surface-navigation">
-      <header className="flex h-12 shrink-0"><ConversationToolbar {...props} /></header>
+    <div className="h-full min-h-0 overflow-y-auto bg-surface-canvas dark:bg-surface-navigation">
+      <header className="sticky top-0 z-10 flex h-12 bg-surface-canvas dark:bg-surface-navigation"><ConversationToolbar {...props} /></header>
       <ConversationBody {...props} />
     </div>
   )
@@ -454,9 +456,9 @@ function ConversationToolbar({ labels, mode, mutating, nextDisabled, onActOnThre
   )
 }
 
-function ConversationBody({ labels, messages, mutating, onActOnMessage, onCompose, onDownload, onModifyMessage, online, ownEmail, thread }: ConversationProps) {
+function ConversationBody({ labels, messages, mutating, onActOnMessage, onCompose, onDownload, onLoadInlineAttachment, onModifyMessage, online, ownEmail, thread }: ConversationProps) {
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas dark:bg-surface-navigation">
+    <div className="w-full bg-surface-canvas dark:bg-surface-navigation">
       <article className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-7">
         <h2 className="text-xl font-semibold leading-7 text-content-primary">{thread.subject}</h2>
         {!messages.length ? <MailboxLoading /> : messages.map((message) => (
@@ -471,7 +473,7 @@ function ConversationBody({ labels, messages, mutating, onActOnMessage, onCompos
                 <MailMessageActions labels={labels} message={message} mutating={mutating} onAction={onActOnMessage} onModify={onModifyMessage} online={online} />
               </div>
             </div>
-            <MailMessageBody message={message} />
+            <MailMessageBody message={message} onLoadInlineAttachment={onLoadInlineAttachment} online={online} />
             <div className="mt-4 flex gap-2">
               <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail))} size="sm" type="button" variant="outline">Reply</Button>
               <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail, true))} size="sm" type="button" variant="outline">Reply all</Button>
@@ -615,16 +617,89 @@ function showMailError(error: unknown) {
   toast.error(getApiErrorMessage(error))
 }
 
-function MailMessageBody({ message }: { message: MailMessageRecord }) {
+function MailMessageBody({ message, onLoadInlineAttachment, online }: {
+  message: MailMessageRecord
+  onLoadInlineAttachment: (messageId: string, attachmentId: string) => Promise<string>
+  online: boolean
+}) {
+  const frameObserver = useRef<ResizeObserver | null>(null)
+  const [inlineImageUrls, setInlineImageUrls] = useState<Record<string, string>>({})
+  const [loadExternalImages, setLoadExternalImages] = useState(false)
+  const inlineAttachments = useMemo(
+    () => message.attachments.filter((attachment) => attachment.inline && attachment.contentId),
+    [message.attachments],
+  )
+  const inlineAttachmentKey = inlineAttachments
+    .map((attachment) => `${attachment.attachmentId}:${attachment.contentId}`)
+    .join("|")
+  const blockedHtml = useMemo(
+    () => message.bodyHtml ? sanitizeMailHtml(message.bodyHtml, { inlineImageUrls }) : "",
+    [inlineImageUrls, message.bodyHtml],
+  )
+  const hasExternalImages = blockedHtml.includes('data-zilobase-external-image="blocked"')
+  const renderedHtml = useMemo(
+    () => loadExternalImages && message.bodyHtml
+      ? sanitizeMailHtml(message.bodyHtml, { inlineImageUrls, loadExternalImages: true })
+      : blockedHtml,
+    [blockedHtml, inlineImageUrls, loadExternalImages, message.bodyHtml],
+  )
+  useEffect(() => () => frameObserver.current?.disconnect(), [])
+  useEffect(() => {
+    setInlineImageUrls({})
+    if (!online || !inlineAttachments.length) return
+    let active = true
+    const objectUrls: string[] = []
+    void Promise.all(inlineAttachments.map(async (attachment) => {
+      const url = await onLoadInlineAttachment(message.id, attachment.attachmentId)
+      objectUrls.push(url)
+      return [attachment.contentId!, url] as const
+    })).then((entries) => {
+      if (active) setInlineImageUrls(Object.fromEntries(entries))
+      else for (const url of objectUrls) URL.revokeObjectURL(url)
+    }).catch((error) => {
+      for (const url of objectUrls) URL.revokeObjectURL(url)
+      if (active) toast.error(getApiErrorMessage(error), { id: `mail-inline-images-${message.id}` })
+    })
+    return () => {
+      active = false
+      for (const url of objectUrls) URL.revokeObjectURL(url)
+    }
+  }, [inlineAttachmentKey, message.id, onLoadInlineAttachment, online])
+
   if (!message.hasFullBody) return <p className="mt-4 text-sm text-content-secondary">Connect to load this message.</p>
   if (message.bodyHtml) {
     return (
-      <iframe
-        className="mt-4 min-h-64 w-full border-0"
-        sandbox="allow-popups allow-popups-to-escape-sandbox"
-        srcDoc={sanitizeMailHtml(message.bodyHtml)}
-        title={`Message from ${message.from?.name || message.from?.address || "sender"}`}
-      />
+      <div className="mt-4">
+        {hasExternalImages && !loadExternalImages ? (
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-content-secondary">
+            <Button onClick={() => setLoadExternalImages(true)} size="sm" type="button" variant="outline">Load external images</Button>
+            <span>Images are blocked by default for privacy.</span>
+          </div>
+        ) : null}
+        <iframe
+          className="min-h-64 w-full overflow-hidden border-0"
+          onLoad={(event) => {
+            frameObserver.current?.disconnect()
+            const frame = event.currentTarget
+            const document = frame.contentDocument
+            if (!document) return
+            const resize = () => {
+              const height = `${Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)}px`
+              if (frame.style.height !== height) frame.style.height = height
+            }
+            resize()
+            window.requestAnimationFrame(resize)
+            frameObserver.current = new ResizeObserver(resize)
+            frameObserver.current.observe(document.documentElement)
+            frameObserver.current.observe(document.body)
+          }}
+          referrerPolicy="no-referrer"
+          sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
+          scrolling="no"
+          srcDoc={renderedHtml}
+          title={`Message from ${message.from?.name || message.from?.address || "sender"}`}
+        />
+      </div>
     )
   }
   return <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-content-primary">{message.bodyText || message.snippet}</div>

@@ -179,18 +179,28 @@ export function useMailController(input: {
 
   const downloadAttachment = useCallback(async (messageId: string, attachmentId: string, filename: string) => {
     if (!online) throw new Error("Reconnect to download attachments.")
-    const response = await desktopNetworkFetch(
-      toApiUrl(`/mail/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`),
-      { credentials: "include", headers: getApiRequestHeaders() },
-    )
-    if (!response.ok) throw new Error("The attachment could not be downloaded.")
-    const url = URL.createObjectURL(await response.blob())
+    const blob = await fetchAttachmentBlob(messageId, attachmentId)
+    const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
     anchor.download = safeMailDownloadFilename(filename)
     anchor.click()
     window.setTimeout(() => URL.revokeObjectURL(url), 0)
   }, [online])
+
+  const loadInlineAttachment = useCallback(async (messageId: string, attachmentId: string) => {
+    if (!online) throw new Error("Reconnect to load inline images.")
+    return URL.createObjectURL(await fetchAttachmentBlob(messageId, attachmentId))
+  }, [online])
+
+  const fetchAttachmentBlob = async (messageId: string, attachmentId: string) => {
+    const response = await desktopNetworkFetch(
+      toApiUrl(`/mail/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`),
+      { credentials: "include", headers: getApiRequestHeaders() },
+    )
+    if (!response.ok) throw new Error("The attachment could not be downloaded.")
+    return response.blob()
+  }
 
   const modifyThread = useCallback(async (threadId: string, modification: MailModifyRequest) => {
     if (!database || !online) throw new Error("Reconnect to organize mail.")
@@ -402,6 +412,7 @@ export function useMailController(input: {
     error,
     hasMore: Boolean(syncState?.pageTokens[input.view]),
     labels: labels ?? [],
+    loadInlineAttachment,
     modifyMessage,
     modifyThread,
     mutating,
