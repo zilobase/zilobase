@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLiveQuery } from "dexie-react-hooks"
 import type {
   MailConnection,
@@ -34,6 +34,7 @@ import {
   type MailDatabase,
 } from "../cache/mail-database"
 import { safeMailDownloadFilename } from "./mail-attachment"
+import { loadMailThreadOnce } from "./mail-thread-loader"
 
 export function useMailController(input: {
   connection: MailConnection
@@ -46,6 +47,7 @@ export function useMailController(input: {
   const [mutating, setMutating] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [searchResultIds, setSearchResultIds] = useState<string[] | null>(null)
+  const threadLoads = useRef(new Map<string, Promise<void>>())
   const online = useSyncExternalStore(
     subscribeConnectivity,
     () => getConnectivityState() === "online",
@@ -163,19 +165,34 @@ export function useMailController(input: {
     ].some((value) => value.toLowerCase().includes(query)))
   }, [cachedThreads, input.query, input.view, searchResultIds])
 
-  const openThread = useCallback(async (threadId: string) => {
+  const loadThread = useCallback((threadId: string) => {
     if (!database) return
-    const cached = await database.messages.where("threadId").equals(threadId).toArray()
-    if (!online || (cached.length > 0 && cached.every((message) => message.hasFullBody))) return
-    try {
+    const key = `${database.name}:${threadId}`
+    return loadMailThreadOnce(threadLoads.current, key, async () => {
+      const cached = await database.messages.where("threadId").equals(threadId).toArray()
+      if (!online || (cached.length > 0 && cached.every((message) => message.hasFullBody))) return
       const response = await apiFetch<{ messages: MailMessageRecord[]; thread: MailThreadSummary }>(
         `/mail/threads/${encodeURIComponent(threadId)}`,
       )
       await upsertFullMailThread(database, response)
+    })
+  }, [database, online])
+
+  const openThread = useCallback(async (threadId: string) => {
+    try {
+      await loadThread(threadId)
     } catch (threadError) {
       setError(threadError)
     }
-  }, [database, online])
+  }, [loadThread])
+
+  const prefetchThread = useCallback(async (threadId: string) => {
+    try {
+      await loadThread(threadId)
+    } catch {
+      // Intent prefetch is opportunistic; a foreground open retries and reports failures.
+    }
+  }, [loadThread])
 
   const downloadAttachment = useCallback(async (messageId: string, attachmentId: string, filename: string) => {
     if (!online) throw new Error("Reconnect to download attachments.")
@@ -418,6 +435,7 @@ export function useMailController(input: {
     mutating,
     online,
     openThread,
+    prefetchThread,
     refresh: runSync,
     loadMore: () => runSync({ loadMore: true }),
     syncing,

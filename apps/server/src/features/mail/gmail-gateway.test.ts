@@ -3,7 +3,9 @@ import { test } from "vitest"
 
 import {
   accessTokenFromRefresh,
+  clearGmailAccessTokenCache,
   decodeGmailAttachmentResponse,
+  getCachedGmailAccessToken,
   GmailApiError,
   GmailGateway,
 } from "./gmail-gateway"
@@ -106,6 +108,54 @@ test("refresh-token invalidation is classified as a required reconnect", () => {
     (error: unknown) => error instanceof GmailApiError && error.code === "authorization_revoked" && error.status === 401,
   )
   assert.equal(accessTokenFromRefresh(200, { access_token: "short-lived-access" }), "short-lived-access")
+})
+
+test("Gmail access tokens are reused, coalesced, expired, and credential-bound", async () => {
+  clearGmailAccessTokenCache()
+  let refreshes = 0
+  const refresh = async () => {
+    refreshes += 1
+    await Promise.resolve()
+    return { accessToken: `access-${refreshes}`, expiresInSeconds: 3_600 }
+  }
+  const identity = { connectionId: "connection-1", credentialVersion: "credential-1" }
+
+  const [first, coalesced] = await Promise.all([
+    getCachedGmailAccessToken(identity, refresh, 1_000),
+    getCachedGmailAccessToken(identity, refresh, 1_000),
+  ])
+  assert.equal(first, "access-1")
+  assert.equal(coalesced, "access-1")
+  assert.equal(await getCachedGmailAccessToken(identity, refresh, 2_000), "access-1")
+  assert.equal(refreshes, 1)
+
+  assert.equal(
+    await getCachedGmailAccessToken({ ...identity, credentialVersion: "credential-2" }, refresh, 2_000),
+    "access-2",
+  )
+  assert.equal(await getCachedGmailAccessToken(identity, refresh, 3_302_000), "access-3")
+  assert.equal(refreshes, 3)
+
+  let finishRefresh!: (value: { accessToken: string; expiresInSeconds: number }) => void
+  const invalidated = getCachedGmailAccessToken(
+    { connectionId: "connection-2", credentialVersion: "credential-1" },
+    () => new Promise((resolve) => { finishRefresh = resolve }),
+    4_000,
+  )
+  clearGmailAccessTokenCache("connection-2")
+  finishRefresh({ accessToken: "invalidated-access", expiresInSeconds: 3_600 })
+  await invalidated
+  let replacementRefreshes = 0
+  assert.equal(await getCachedGmailAccessToken(
+    { connectionId: "connection-2", credentialVersion: "credential-1" },
+    async () => {
+      replacementRefreshes += 1
+      return { accessToken: "replacement-access", expiresInSeconds: 3_600 }
+    },
+    5_000,
+  ), "replacement-access")
+  assert.equal(replacementRefreshes, 1)
+  clearGmailAccessTokenCache()
 })
 
 test("watch creation and stop use Gmail's mailbox lifecycle endpoints", async () => {

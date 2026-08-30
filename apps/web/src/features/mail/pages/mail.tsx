@@ -136,11 +136,51 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
   const previousId = selectedIndex > 0 ? controller.threads[selectedIndex - 1]?.id ?? null : null
   const nextId = selectedIndex >= 0 ? controller.threads[selectedIndex + 1]?.id ?? null : null
   const ActiveViewIcon = mailViewIcons[view]
+  const idlePrefetchIds = useMemo(() => controller.threads.slice(0, 6).map((thread) => thread.id), [controller.threads])
+  const idlePrefetchKey = idlePrefetchIds.join("|")
 
   useEffect(() => {
     if (!selection) return
     void controller.openThread(selection)
   }, [controller.openThread, selection])
+
+  useEffect(() => {
+    if (!selection || !controller.online) return
+    const adjacentThreadIds = [previousId, nextId].filter((threadId): threadId is string => Boolean(threadId))
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        for (const threadId of adjacentThreadIds) await controller.prefetchThread(threadId)
+      })()
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [controller.online, controller.prefetchThread, nextId, previousId, selection])
+
+  useEffect(() => {
+    if (!controller.database || !controller.online || controller.syncing || !idlePrefetchIds.length) return
+    let cancelled = false
+    const prefetch = async () => {
+      let cursor = 0
+      const worker = async () => {
+        while (!cancelled && cursor < idlePrefetchIds.length) {
+          const threadId = idlePrefetchIds[cursor++]
+          if (threadId) await controller.prefetchThread(threadId)
+        }
+      }
+      await Promise.all([worker(), worker()])
+    }
+    let idleHandle: number | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+    if (typeof window.requestIdleCallback === "function") {
+      idleHandle = window.requestIdleCallback(() => void prefetch(), { timeout: 1_200 })
+    } else {
+      timer = globalThis.setTimeout(() => void prefetch(), 400)
+    }
+    return () => {
+      cancelled = true
+      if (idleHandle !== null) window.cancelIdleCallback(idleHandle)
+      if (timer !== null) globalThis.clearTimeout(timer)
+    }
+  }, [controller.database, controller.online, controller.prefetchThread, controller.syncing, idlePrefetchKey])
 
   useEffect(() => setBatchSelection(new Set()), [view])
 
@@ -286,6 +326,7 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
                                       return next
                                     })}
                                     onOpen={() => setSelection(thread.id)}
+                                    onPrefetch={() => void controller.prefetchThread(thread.id)}
                                     online={controller.online}
                                     selected={selection === thread.id}
                                     thread={thread}
@@ -347,13 +388,14 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
   )
 }
 
-function MailThreadRow({ batchSelected, mutating, onAction, onBatchToggle, onModify, onOpen, online, selected, thread }: {
+function MailThreadRow({ batchSelected, mutating, onAction, onBatchToggle, onModify, onOpen, onPrefetch, online, selected, thread }: {
   batchSelected: boolean
   mutating: boolean
   onAction: (action: "restore" | "trash") => Promise<void>
   onBatchToggle: (checked: boolean) => void
   onModify: (modification: MailModifyRequest) => Promise<void>
   onOpen: () => void
+  onPrefetch: () => void
   online: boolean
   selected: boolean
   thread: MailThreadSummary
@@ -365,7 +407,7 @@ function MailThreadRow({ batchSelected, mutating, onAction, onBatchToggle, onMod
       data-selected={selected ? "true" : undefined}
     >
       <Checkbox aria-label={`Select ${thread.subject}`} checked={batchSelected} className="ml-2 shrink-0" onCheckedChange={(checked) => onBatchToggle(checked === true)} />
-      <button className="grid min-w-0 flex-1 grid-cols-[minmax(8rem,0.8fr)_minmax(12rem,2fr)_auto] items-center gap-3 px-2 text-left text-sm" onClick={onOpen} type="button">
+      <button className="grid min-w-0 flex-1 grid-cols-[minmax(8rem,0.8fr)_minmax(12rem,2fr)_auto] items-center gap-3 px-2 text-left text-sm" onClick={onOpen} onFocus={onPrefetch} onPointerEnter={onPrefetch} type="button">
         <span className={`truncate ${thread.unread ? "font-semibold text-content-primary" : "text-content-secondary"}`}>
           {participant?.name || participant?.address || "Unknown sender"}
           {thread.messageCount > 1 ? ` (${thread.messageCount})` : ""}

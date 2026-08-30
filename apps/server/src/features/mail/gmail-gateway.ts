@@ -12,6 +12,24 @@ const REQUEST_TIMEOUT_MS = 15_000
 const SAFE_READ_RETRIES = 2
 const GMAIL_BATCH_SIZE = 50
 const MAX_ATTACHMENT_DOWNLOAD_BYTES = 30 * 1024 * 1024
+const ACCESS_TOKEN_REFRESH_SKEW_MS = 60_000
+const ACCESS_TOKEN_FALLBACK_TTL_MS = 5 * 60_000
+const ACCESS_TOKEN_MAX_TTL_MS = 55 * 60_000
+const MAX_CACHED_ACCESS_TOKENS = 1_000
+
+type CachedAccessToken = {
+  accessToken: string
+  credentialVersion: string
+  validUntil: number
+}
+
+type PendingAccessToken = {
+  credentialVersion: string
+  promise: Promise<string>
+}
+
+const gmailAccessTokens = new Map<string, CachedAccessToken>()
+const pendingGmailAccessTokens = new Map<string, PendingAccessToken>()
 
 export type GmailHeader = { name?: string; value?: string }
 export type GmailPart = {
@@ -70,43 +88,128 @@ export async function createGmailGateway(
   connection: GmailConnectionRow,
   fetcher: typeof fetch = fetch,
 ) {
-  const refreshToken = await decryptMailSecret(
-    env,
-    {
-      ciphertext: connection.refreshTokenCiphertext,
-      iv: connection.refreshTokenIv,
-      keyVersion: connection.refreshTokenKeyVersion,
+  const credentialVersion = [
+    connection.refreshTokenKeyVersion,
+    connection.refreshTokenIv,
+    connection.refreshTokenCiphertext,
+  ].join(":")
+  const accessToken = await getCachedGmailAccessToken(
+    { connectionId: connection.id, credentialVersion },
+    async () => {
+      const refreshToken = await decryptMailSecret(
+        env,
+        {
+          ciphertext: connection.refreshTokenCiphertext,
+          iv: connection.refreshTokenIv,
+          keyVersion: connection.refreshTokenKeyVersion,
+        },
+        { connectionId: connection.id, purpose: "refresh_token", userId: connection.userId },
+      )
+      const tokenResponse = await fetcher(GOOGLE_TOKEN_URL, {
+        body: new URLSearchParams({
+          client_id: getRequiredStringEnv(env, "GMAIL_GOOGLE_CLIENT_ID"),
+          client_secret: getRequiredStringEnv(env, "GMAIL_GOOGLE_CLIENT_SECRET"),
+          grant_type: "refresh_token",
+          refresh_token: refreshToken,
+        }),
+        headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
+        method: "POST",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      })
+      const token = (await tokenResponse.json().catch(() => ({}))) as {
+        access_token?: string
+        error?: string
+        expires_in?: number
+      }
+      try {
+        return {
+          accessToken: accessTokenFromRefresh(tokenResponse.status, token),
+          expiresInSeconds: token.expires_in,
+        }
+      } catch (error) {
+        if (error instanceof GmailApiError && error.code === "authorization_revoked") {
+          await db
+            .update(gmailConnection)
+            .set({ lastErrorCode: "authorization_revoked", status: "reconnect_required", updatedAt: new Date() })
+            .where(eq(gmailConnection.id, connection.id))
+        }
+        throw error
+      }
     },
-    { connectionId: connection.id, purpose: "refresh_token", userId: connection.userId },
   )
-  const tokenResponse = await fetcher(GOOGLE_TOKEN_URL, {
-    body: new URLSearchParams({
-      client_id: getRequiredStringEnv(env, "GMAIL_GOOGLE_CLIENT_ID"),
-      client_secret: getRequiredStringEnv(env, "GMAIL_GOOGLE_CLIENT_SECRET"),
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-    }),
-    headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
-    method: "POST",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  })
-  const token = (await tokenResponse.json().catch(() => ({}))) as {
-    access_token?: string
-    error?: string
-  }
-  let accessToken: string
-  try {
-    accessToken = accessTokenFromRefresh(tokenResponse.status, token)
-  } catch (error) {
-    if (error instanceof GmailApiError && error.code === "authorization_revoked") {
-      await db
-        .update(gmailConnection)
-        .set({ lastErrorCode: "authorization_revoked", status: "reconnect_required", updatedAt: new Date() })
-        .where(eq(gmailConnection.id, connection.id))
-    }
-    throw error
-  }
   return new GmailGateway(accessToken, fetcher)
+}
+
+export async function getCachedGmailAccessToken(
+  input: { connectionId: string; credentialVersion: string },
+  refresh: () => Promise<{ accessToken: string; expiresInSeconds?: number }>,
+  now = Date.now(),
+) {
+  const cached = gmailAccessTokens.get(input.connectionId)
+  if (cached?.credentialVersion === input.credentialVersion && cached.validUntil > now) {
+    gmailAccessTokens.delete(input.connectionId)
+    gmailAccessTokens.set(input.connectionId, cached)
+    return cached.accessToken
+  }
+  if (cached) gmailAccessTokens.delete(input.connectionId)
+
+  const pending = pendingGmailAccessTokens.get(input.connectionId)
+  if (pending?.credentialVersion === input.credentialVersion) return pending.promise
+
+  const promise = refresh().then(({ accessToken, expiresInSeconds }) => {
+    const validUntil = now + accessTokenCacheTtl(expiresInSeconds)
+    if (validUntil > now && pendingGmailAccessTokens.get(input.connectionId)?.promise === promise) {
+      pruneAccessTokenCache(now)
+      gmailAccessTokens.set(input.connectionId, {
+        accessToken,
+        credentialVersion: input.credentialVersion,
+        validUntil,
+      })
+    }
+    return accessToken
+  })
+  pendingGmailAccessTokens.set(input.connectionId, {
+    credentialVersion: input.credentialVersion,
+    promise,
+  })
+  try {
+    return await promise
+  } finally {
+    if (pendingGmailAccessTokens.get(input.connectionId)?.promise === promise) {
+      pendingGmailAccessTokens.delete(input.connectionId)
+    }
+  }
+}
+
+export function clearGmailAccessTokenCache(connectionId?: string) {
+  if (connectionId) {
+    gmailAccessTokens.delete(connectionId)
+    pendingGmailAccessTokens.delete(connectionId)
+    return
+  }
+  gmailAccessTokens.clear()
+  pendingGmailAccessTokens.clear()
+}
+
+function accessTokenCacheTtl(expiresInSeconds: number | undefined) {
+  if (!Number.isFinite(expiresInSeconds) || !expiresInSeconds || expiresInSeconds <= 0) {
+    return ACCESS_TOKEN_FALLBACK_TTL_MS
+  }
+  return Math.min(
+    ACCESS_TOKEN_MAX_TTL_MS,
+    Math.max(0, expiresInSeconds * 1_000 - ACCESS_TOKEN_REFRESH_SKEW_MS),
+  )
+}
+
+function pruneAccessTokenCache(now: number) {
+  for (const [connectionId, cached] of gmailAccessTokens) {
+    if (cached.validUntil <= now) gmailAccessTokens.delete(connectionId)
+  }
+  while (gmailAccessTokens.size >= MAX_CACHED_ACCESS_TOKENS) {
+    const oldestConnectionId = gmailAccessTokens.keys().next().value
+    if (!oldestConnectionId) break
+    gmailAccessTokens.delete(oldestConnectionId)
+  }
 }
 
 export function accessTokenFromRefresh(

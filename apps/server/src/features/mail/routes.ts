@@ -21,7 +21,7 @@ import {
   gmailProviderConfigured,
   revokeGmailConnection,
 } from "./google-oauth"
-import { createGmailGateway, GmailApiError } from "./gmail-gateway"
+import { clearGmailAccessTokenCache, createGmailGateway, GmailApiError } from "./gmail-gateway"
 import { GmailPushError, processGmailPubsubRequest } from "./gmail-pubsub"
 import { initializeGmailWatch, stopGmailWatch } from "./gmail-watch"
 import {
@@ -151,6 +151,7 @@ mailRoutes.delete("/connection", async (c) => {
   if (connection) {
     await stopGmailWatch(c.env, connection)
     await revokeGmailConnection(c.env, connection)
+    clearGmailAccessTokenCache(connection.id)
     await db.delete(gmailConnection).where(eq(gmailConnection.id, connection.id))
   }
   return c.json({ success: true })
@@ -494,6 +495,7 @@ async function runMailOperation(
       await recordMailMetric("quota_failure", { connectionId: connection.id, code: error.code, status: error.status })
     }
     if (error instanceof GmailApiError && error.code === "authorization_revoked") {
+      clearGmailAccessTokenCache(connection.id)
       await db
         .update(gmailConnection)
         .set({ lastErrorCode: error.code, status: "reconnect_required", updatedAt: new Date() })
