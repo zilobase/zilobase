@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm"
 import { Hono, type Context } from "hono"
+import type { MailSyncRequest, MailView } from "@zilobase/features/mail"
 
 import { db } from "../../infrastructure/database"
 import { gmailConnection } from "../../infrastructure/database/schema"
@@ -13,6 +14,10 @@ import {
   gmailProviderConfigured,
   revokeGmailConnection,
 } from "./google-oauth"
+import { createGmailGateway, GmailApiError } from "./gmail-gateway"
+import { normalizeGmailLabels, normalizeGmailMessage, normalizeGmailThread } from "./mail-normalize"
+import { synchronizeMailbox } from "./mail-sync"
+import { MailConcurrencyError, withMailUserConcurrency } from "./user-concurrency"
 
 export const mailRoutes = new Hono<AppBindings>()
 
@@ -95,12 +100,152 @@ mailRoutes.delete("/connection", async (c) => {
   return c.json({ success: true })
 })
 
+mailRoutes.post("/sync", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const body = (await c.req.json().catch(() => null)) as Partial<MailSyncRequest> | null
+  if (!body || body.connectionId !== owned.connection.id || !isMailView(body.view)) {
+    return c.json({ message: "A valid mail synchronization request is required." }, 400)
+  }
+  if (
+    !optionalCursor(body.historyId) ||
+    !optionalCursor(body.pageToken) ||
+    !optionalQuery(body.query) ||
+    !optionalIdList(body.knownMessageIds) ||
+    !optionalIdList(body.knownThreadIds)
+  ) {
+    return c.json({ message: "The mail synchronization cursor is invalid." }, 400)
+  }
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
+    c.json(await synchronizeMailbox(gateway, body as MailSyncRequest, owned.connection.mailboxRevision)),
+  )
+})
+
+mailRoutes.get("/threads/:threadId", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const threadId = safeGmailId(c.req.param("threadId"))
+  if (!threadId) return c.json({ message: "A valid Gmail thread ID is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    const record = normalizeGmailThread(await gateway.getThread(threadId, "full"), true)
+    return c.json({ messages: record.messages, thread: record.summary })
+  })
+})
+
+mailRoutes.get("/messages/:messageId", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const messageId = safeGmailId(c.req.param("messageId"))
+  if (!messageId) return c.json({ message: "A valid Gmail message ID is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
+    c.json({ message: normalizeGmailMessage(await gateway.getMessage(messageId, "full"), true) }),
+  )
+})
+
+mailRoutes.get("/messages/:messageId/attachments/:attachmentId", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  const messageId = safeGmailId(c.req.param("messageId"))
+  const attachmentId = safeGmailId(c.req.param("attachmentId"))
+  if (!messageId || !attachmentId) return c.json({ message: "A valid Gmail attachment is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    const upstream = await gateway.getAttachment(messageId, attachmentId)
+    return new Response(upstream.body, {
+      headers: {
+        "cache-control": "private, no-store",
+        "content-type": upstream.headers.get("content-type") ?? "application/octet-stream",
+      },
+      status: upstream.status,
+    })
+  })
+})
+
+mailRoutes.get("/labels", async (c) => {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    const result = await gateway.listLabels()
+    return c.json({ labels: normalizeGmailLabels(result.labels ?? []) })
+  })
+})
+
 function oauthError(c: Context<AppBindings>, error: unknown) {
   const status = error instanceof GmailOauthError ? error.status : 500
   return c.json(
     { message: error instanceof Error ? error.message : "Gmail could not be connected." },
     status === 400 ? 400 : 500,
   )
+}
+
+async function requireOwnedConnection(c: Context<AppBindings>) {
+  const user = c.get("user")
+  if (!user) return c.json({ message: "Authentication required." }, 401)
+  const [connection] = await db
+    .select()
+    .from(gmailConnection)
+    .where(eq(gmailConnection.userId, user.id))
+    .limit(1)
+  if (!connection) return c.json({ message: "Connect Gmail to continue." }, 409)
+  if (connection.status !== "connected") return c.json({ message: "Reconnect Gmail to continue." }, 409)
+  return { connection, userId: user.id }
+}
+
+async function runMailOperation(
+  c: Context<AppBindings>,
+  userId: string,
+  connection: typeof gmailConnection.$inferSelect,
+  operation: (gateway: Awaited<ReturnType<typeof createGmailGateway>>) => Promise<Response>,
+) {
+  try {
+    return await withMailUserConcurrency(userId, async () => {
+      const gateway = await createGmailGateway(c.env, connection)
+      return operation(gateway)
+    })
+  } catch (error) {
+    if (error instanceof GmailApiError && error.code === "authorization_revoked") {
+      await db
+        .update(gmailConnection)
+        .set({ lastErrorCode: error.code, status: "reconnect_required", updatedAt: new Date() })
+        .where(eq(gmailConnection.id, connection.id))
+    }
+    const status = error instanceof GmailApiError || error instanceof MailConcurrencyError
+      ? error.status
+      : 500
+    return c.json(
+      { message: error instanceof Error ? error.message : "The Gmail operation failed." },
+      statusCode(status),
+    )
+  }
+}
+
+function statusCode(status: number): 400 | 401 | 404 | 409 | 429 | 500 | 502 | 504 {
+  return [400, 401, 404, 409, 429, 500, 502, 504].includes(status)
+    ? status as 400 | 401 | 404 | 409 | 429 | 500 | 502 | 504
+    : 500
+}
+
+function safeGmailId(value: string) {
+  return /^[A-Za-z0-9_-]{1,512}$/.test(value) ? value : null
+}
+
+function optionalCursor(value: unknown) {
+  return value === undefined || (typeof value === "string" && value.length > 0 && value.length <= 1024)
+}
+
+function optionalQuery(value: unknown) {
+  return value === undefined || (typeof value === "string" && value.length <= 2048)
+}
+
+function optionalIdList(value: unknown) {
+  return value === undefined || (
+    Array.isArray(value) &&
+    value.length <= 5_000 &&
+    value.every((id) => typeof id === "string" && safeGmailId(id) !== null)
+  )
+}
+
+function isMailView(value: unknown): value is MailView {
+  return ["archive", "drafts", "inbox", "sent", "spam", "starred", "trash", "unread"].includes(value as string)
 }
 
 export function buildDesktopMailReturnUrl(input: {

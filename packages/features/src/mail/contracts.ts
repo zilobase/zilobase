@@ -98,6 +98,8 @@ export type MailView =
 export type MailSyncRequest = {
   connectionId: string
   historyId?: string
+  knownMessageIds?: string[]
+  knownThreadIds?: string[]
   pageToken?: string
   query?: string
   view: MailView

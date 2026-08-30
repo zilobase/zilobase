@@ -1,0 +1,69 @@
+import assert from "node:assert/strict"
+import { test } from "vitest"
+
+import {
+  accessTokenFromRefresh,
+  decodeGmailAttachmentResponse,
+  GmailApiError,
+  GmailGateway,
+} from "./gmail-gateway"
+
+test("safe Gmail reads retry transient failures and preserve pagination parameters", async () => {
+  const requests: URL[] = []
+  const gateway = new GmailGateway("access-token", async (input) => {
+    requests.push(new URL(input instanceof Request ? input.url : input.toString()))
+    if (requests.length === 1) return new Response("unavailable", { status: 503 })
+    return Response.json({ nextPageToken: "next", threads: [] })
+  })
+
+  const result = await gateway.listThreads({ labelIds: ["INBOX"], maxResults: 50, pageToken: "page" })
+  assert.equal(requests.length, 2)
+  assert.equal(requests[1]?.searchParams.get("labelIds"), "INBOX")
+  assert.equal(requests[1]?.searchParams.get("pageToken"), "page")
+  assert.equal(result.nextPageToken, "next")
+})
+
+test("history 404 and quota responses are normalized without provider response contents", async () => {
+  const history = new GmailGateway("token", async () => new Response("provider details", { status: 404 }))
+  await assert.rejects(
+    history.listHistory({ startHistoryId: "old" }),
+    (error: unknown) => error instanceof GmailApiError && error.code === "history_cursor_invalid",
+  )
+
+  const quota = new GmailGateway("token", async () => new Response("provider details", { status: 429 }))
+  await assert.rejects(
+    quota.listLabels(),
+    (error: unknown) => error instanceof GmailApiError && error.code === "quota_exceeded" && !error.message.includes("provider details"),
+  )
+})
+
+test("refresh-token invalidation is classified as a required reconnect", () => {
+  assert.throws(
+    () => accessTokenFromRefresh(400, { error: "invalid_grant" }),
+    (error: unknown) => error instanceof GmailApiError && error.code === "authorization_revoked" && error.status === 401,
+  )
+  assert.equal(accessTokenFromRefresh(200, { access_token: "short-lived-access" }), "short-lived-access")
+})
+
+test("attachment responses remain streaming responses and are not decoded or retained", async () => {
+  const encoded = Buffer.from("attachment-bytes").toString("base64url")
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new TextEncoder().encode(`{"size":16,"data":"${encoded.slice(0, 8)}`))
+      controller.enqueue(new TextEncoder().encode(`${encoded.slice(8)}"}`))
+      controller.close()
+    },
+  })
+  const gateway = new GmailGateway("token", async () => new Response(body, {
+    headers: { "content-type": "application/pdf" },
+  }))
+  const response = await gateway.getAttachment("message-1", "attachment-1")
+
+  assert.ok(response.body)
+  assert.equal(await response.text(), "attachment-bytes")
+})
+
+test("attachment decoder rejects malformed provider envelopes", async () => {
+  const response = decodeGmailAttachmentResponse(Response.json({ size: 12 }))
+  await assert.rejects(response.arrayBuffer(), /invalid attachment payload/)
+})
