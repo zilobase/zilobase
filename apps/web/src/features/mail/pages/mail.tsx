@@ -692,7 +692,6 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
 }) {
   const frameObserver = useRef<ResizeObserver | null>(null)
   const [inlineImageUrls, setInlineImageUrls] = useState<Record<string, string>>({})
-  const [loadExternalImages, setLoadExternalImages] = useState(false)
   const inlineAttachments = useMemo(
     () => message.attachments.filter((attachment) => attachment.inline && attachment.contentId),
     [message.attachments],
@@ -700,16 +699,9 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
   const inlineAttachmentKey = inlineAttachments
     .map((attachment) => `${attachment.attachmentId}:${attachment.contentId}`)
     .join("|")
-  const blockedHtml = useMemo(
-    () => message.bodyHtml ? sanitizeMailHtml(message.bodyHtml, { inlineImageUrls }) : "",
-    [inlineImageUrls, message.bodyHtml],
-  )
-  const hasExternalImages = blockedHtml.includes('data-zilobase-external-image="blocked"')
   const renderedHtml = useMemo(
-    () => loadExternalImages && message.bodyHtml
-      ? sanitizeMailHtml(message.bodyHtml, { inlineImageUrls, loadExternalImages: true })
-      : blockedHtml,
-    [blockedHtml, inlineImageUrls, loadExternalImages, message.bodyHtml],
+    () => message.bodyHtml ? sanitizeMailHtml(message.bodyHtml, { inlineImageUrls, loadExternalImages: true }) : "",
+    [inlineImageUrls, message.bodyHtml],
   )
   useEffect(() => () => frameObserver.current?.disconnect(), [])
   useEffect(() => {
@@ -738,27 +730,25 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
   if (message.bodyHtml) {
     return (
       <div className="mt-4">
-        {hasExternalImages && !loadExternalImages ? (
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-content-secondary">
-            <Button onClick={() => setLoadExternalImages(true)} size="sm" type="button" variant="outline">Load external images</Button>
-            <span>Images are blocked by default for privacy.</span>
-          </div>
-        ) : null}
         <iframe
-          className="block min-h-24 w-full overflow-hidden border-0"
+          className="block h-px w-full overflow-hidden border-0 bg-surface-canvas text-content-primary dark:bg-surface-navigation"
           onLoad={(event) => {
             frameObserver.current?.disconnect()
             const frame = event.currentTarget
             const document = frame.contentDocument
             if (!document) return
+            const frameStyle = window.getComputedStyle(frame)
+            document.documentElement.style.setProperty("background-color", frameStyle.backgroundColor, "important")
+            document.body.style.setProperty("background-color", frameStyle.backgroundColor, "important")
+            document.body.style.setProperty("color", frameStyle.color, "important")
             const resize = () => {
-              const height = `${Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)}px`
+              frame.style.height = "1px"
+              const height = `${Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1)}px`
               if (frame.style.height !== height) frame.style.height = height
             }
             resize()
             window.requestAnimationFrame(resize)
             frameObserver.current = new ResizeObserver(resize)
-            frameObserver.current.observe(document.documentElement)
             frameObserver.current.observe(document.body)
           }}
           referrerPolicy="no-referrer"

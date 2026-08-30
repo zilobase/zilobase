@@ -35,6 +35,7 @@ export function register({ assert, loadModule, test }) {
       assert.doesNotMatch(withImages, /srcset=/)
       assert.doesNotMatch(withImages, /src="http:\/\/insecure\.example/)
       assert.match(withImages, /img-src data: blob: https:/)
+      assert.match(withImages, /height:auto!important;min-height:0!important;background:transparent!important/)
 
       const withInlineImage = sanitizeMailHtml(
         '<img src="cid:logo@example.com">',
