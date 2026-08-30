@@ -11,6 +11,7 @@ import {
 test("safe Gmail reads retry transient failures and preserve pagination parameters", async () => {
   const requests: URL[] = []
   const gateway = new GmailGateway("access-token", async (input) => {
+    assert.equal(typeof input, "string")
     requests.push(new URL(input instanceof Request ? input.url : input.toString()))
     if (requests.length === 1) return new Response("unavailable", { status: 503 })
     return Response.json({ nextPageToken: "next", threads: [] })
@@ -21,6 +22,29 @@ test("safe Gmail reads retry transient failures and preserve pagination paramete
   assert.equal(requests[1]?.searchParams.get("labelIds"), "INBOX")
   assert.equal(requests[1]?.searchParams.get("pageToken"), "page")
   assert.equal(result.nextPageToken, "next")
+})
+
+test("Gmail transport failures are not mislabeled as timeouts", async () => {
+  const unavailable = new GmailGateway("token", async () => {
+    throw new TypeError("provider transport details")
+  })
+  await assert.rejects(
+    unavailable.listLabels(),
+    (error: unknown) => error instanceof GmailApiError &&
+      error.status === 502 &&
+      error.message === "Gmail could not be reached." &&
+      !error.message.includes("provider transport details"),
+  )
+
+  const timedOut = new GmailGateway("token", async () => {
+    throw new DOMException("The operation timed out", "TimeoutError")
+  })
+  await assert.rejects(
+    timedOut.listLabels(),
+    (error: unknown) => error instanceof GmailApiError &&
+      error.status === 504 &&
+      error.message === "Gmail did not respond in time.",
+  )
 })
 
 test("history 404 and quota responses are normalized without provider response contents", async () => {

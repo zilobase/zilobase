@@ -301,7 +301,7 @@ export class GmailGateway {
   ) {
     let response: Response
     try {
-      response = await this.fetcher(new URL(path, GMAIL_API_ORIGIN), {
+      response = await this.fetcher(new URL(path, GMAIL_API_ORIGIN).toString(), {
         body: body === undefined ? undefined : JSON.stringify(body),
         headers: {
           accept: "application/json",
@@ -311,8 +311,8 @@ export class GmailGateway {
         method,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       })
-    } catch {
-      throw new GmailApiError("Gmail did not respond in time.", 504, "provider_error", true)
+    } catch (error) {
+      throw normalizeGmailTransportError(error)
     }
     if (!response.ok) throw normalizeGmailError(response.status)
     if (response.status === 204) return undefined as T
@@ -324,12 +324,12 @@ export class GmailGateway {
     for (let attempt = 0; attempt <= SAFE_READ_RETRIES; attempt += 1) {
       let response: Response
       try {
-        response = await this.fetcher(new URL(path, GMAIL_API_ORIGIN), {
+        response = await this.fetcher(new URL(path, GMAIL_API_ORIGIN).toString(), {
           headers: { accept: "application/json", authorization: `Bearer ${this.accessToken}` },
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         })
-      } catch {
-        lastError = new GmailApiError("Gmail did not respond in time.", 504, "provider_error", true)
+      } catch (error) {
+        lastError = normalizeGmailTransportError(error)
         if (attempt < SAFE_READ_RETRIES) continue
         throw lastError
       }
@@ -340,6 +340,14 @@ export class GmailGateway {
     }
     throw lastError ?? new GmailApiError("Gmail request failed.", 502, "provider_error")
   }
+}
+
+function normalizeGmailTransportError(error: unknown) {
+  const name = error instanceof Error ? error.name : ""
+  if (name === "AbortError" || name === "TimeoutError") {
+    return new GmailApiError("Gmail did not respond in time.", 504, "provider_error", true)
+  }
+  return new GmailApiError("Gmail could not be reached.", 502, "provider_error", true)
 }
 
 export function decodeGmailAttachmentResponse(response: Response, maxBytes = MAX_ATTACHMENT_DOWNLOAD_BYTES) {
