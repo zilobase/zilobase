@@ -788,12 +788,93 @@ export function register({ assert, loadModule, test }) {
       ],
       [
         {
-          config: { emoji: "📌", groupPropertyId: undefined },
+          config: { emoji: "📌" },
           databaseId,
           databaseViewId: "view-1",
         },
       ],
     ]);
+  });
+
+  test("database view commands swap grouped board property visibility", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/features/databases/commands/database-view-commands.ts",
+    );
+    const updateDatabaseView = createMutation();
+    let latestViewConfig;
+    const statusProperty = createProperty(
+      "database-property-status",
+      "property-status",
+      "Status",
+      "status",
+    );
+    const ownerProperty = createProperty(
+      "database-property-owner",
+      "property-owner",
+      "Owner",
+      "person",
+    );
+    const notesProperty = createProperty(
+      "database-property-notes",
+      "property-notes",
+      "Notes",
+      "text",
+    );
+    const properties = [statusProperty, ownerProperty, notesProperty];
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: {
+          groupPropertyId: "property-status",
+          hiddenPropertyIds: [
+            "database-property-status",
+            "database-property-notes",
+          ],
+        },
+        id: "view-1",
+        name: "Board",
+        type: "kanban",
+      },
+      databaseId,
+      editable: true,
+      getLatestViewConfig: (_databaseId, _viewId, fallbackConfig) =>
+        latestViewConfig ?? fallbackConfig,
+      isKanbanView: true,
+      items: [],
+      kanbanGroupProperty: statusProperty,
+      mutations: createMutations({ updateDatabaseView }),
+      payload: createPayload({ properties }),
+      properties,
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setLatestViewConfig: (_databaseId, _viewId, config) => {
+        latestViewConfig = config;
+      },
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.setViewGroupProperty("property-owner");
+    commands.togglePropertyVisibility("database-property-owner");
+
+    assert.deepEqual(
+      updateDatabaseView.calls.map(([input]) => input.config),
+      [
+        {
+          groupPropertyId: "property-owner",
+          hiddenPropertyIds: [
+            "database-property-notes",
+            "database-property-owner",
+          ],
+        },
+        {
+          groupPropertyId: "property-owner",
+          hiddenPropertyIds: ["database-property-notes"],
+        },
+      ],
+    );
   });
 
   test("database view commands save conditional color config", async () => {
@@ -920,6 +1001,68 @@ export function register({ assert, loadModule, test }) {
     );
   });
 
+  test("database view commands add kanban view with three visible non-grouped properties", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/features/databases/commands/database-view-commands.ts",
+    );
+    const addDatabaseView = createMutation();
+    const properties = [
+      createProperty(
+        "database-property-status",
+        "property-status",
+        "Status",
+        "status",
+      ),
+      createProperty(
+        "database-property-owner",
+        "property-owner",
+        "Owner",
+        "person",
+      ),
+      createProperty(
+        "database-property-priority",
+        "property-priority",
+        "Priority",
+        "number",
+      ),
+      createProperty("database-property-date", "property-date", "Date", "date"),
+      createProperty(
+        "database-property-notes",
+        "property-notes",
+        "Notes",
+        "text",
+      ),
+    ];
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: null,
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addDatabaseView }),
+      payload: createPayload({ properties }),
+      properties,
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.addKanbanView();
+
+    assert.deepEqual(addDatabaseView.calls[0][0].config, {
+      groupPropertyId: "property-status",
+      hiddenPropertyIds: [
+        "database-property-status",
+        "database-property-notes",
+      ],
+    });
+  });
+
   test("database view commands avoid writing read-only group values", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/features/databases/commands/database-view-commands.ts",
@@ -1011,13 +1154,79 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(updateDatabaseView.calls, [
       [
         {
-          config: { emoji: "pin", groupPropertyId: "property-status" },
+          config: {
+            emoji: "pin",
+            groupPropertyId: "property-status",
+            hiddenPropertyIds: ["database-property-1"],
+          },
           databaseId,
           databaseViewId: "view-1",
           type: "kanban",
         },
       ],
     ]);
+  });
+
+  test("database view commands remove grouping when a board becomes a table", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/features/databases/commands/database-view-commands.ts",
+    );
+    const updateDatabaseView = createMutation();
+    const statusProperty = createProperty(
+      "database-property-status",
+      "property-status",
+      "Status",
+      "status",
+    );
+    const notesProperty = createProperty(
+      "database-property-notes",
+      "property-notes",
+      "Notes",
+      "text",
+    );
+    const properties = [statusProperty, notesProperty];
+    const commands = getDatabaseViewCommands({
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: {
+          emoji: "pin",
+          groupPropertyId: "property-status",
+          hiddenPropertyIds: [
+            "database-property-status",
+            "database-property-notes",
+          ],
+        },
+        id: "view-1",
+        name: "Board",
+        type: "kanban",
+      },
+      databaseId,
+      editable: true,
+      isKanbanView: true,
+      items: [],
+      kanbanGroupProperty: statusProperty,
+      mutations: createMutations({ updateDatabaseView }),
+      payload: createPayload({ properties }),
+      properties,
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.setViewType("table");
+
+    assert.deepEqual(updateDatabaseView.calls[0][0], {
+      config: {
+        emoji: "pin",
+        hiddenPropertyIds: ["database-property-notes"],
+      },
+      databaseId,
+      databaseViewId: "view-1",
+      type: "table",
+    });
   });
 
   test("database view commands add timeline view with existing date property", async () => {
@@ -1680,7 +1889,12 @@ export function register({ assert, loadModule, test }) {
       addDatabaseView.calls.map(([input]) => input),
       [
         { dataSourceId: databaseId, databaseId, name: "List", type: "list" },
-        { dataSourceId: databaseId, databaseId, name: "Gallery", type: "gallery" },
+        {
+          dataSourceId: databaseId,
+          databaseId,
+          name: "Gallery",
+          type: "gallery",
+        },
       ],
     );
     assert.deepEqual(activeViewIds, ["view-list", "view-gallery"]);

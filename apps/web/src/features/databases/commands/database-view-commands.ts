@@ -13,6 +13,7 @@ import {
   getKanbanGroupPropertyId,
   type DatabasePropertyListItem,
 } from "../views/kanban/model/database-kanban-config";
+import { getDefaultKanbanHiddenPropertyIds } from "../views/kanban/model/database-kanban-visibility";
 import {
   ganttMoveToDateValue,
   getTimelineDateProperty,
@@ -627,7 +628,10 @@ export function getDatabaseViewCommands({
       if (groupProperty) {
         addView(
           groupProperty.property.id,
-          currentProperties.map((property) => property.id),
+          getDefaultKanbanHiddenPropertyIds(
+            currentProperties,
+            groupProperty.property.id,
+          ),
         );
         return;
       }
@@ -786,10 +790,52 @@ export function getDatabaseViewCommands({
         return;
       }
 
+      const currentConfig =
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
+        activeView.config;
+      let nextConfig = getMergedDatabaseConfig(currentConfig, {
+        groupPropertyId: groupPropertyId ?? undefined,
+      });
+
+      if (groupPropertyId === null) {
+        nextConfig = removeDatabaseGroupProperty(nextConfig);
+      }
+
+      if (isKanbanView) {
+        const currentGroupPropertyId =
+          getKanbanGroupPropertyId(currentConfig) ??
+          kanbanGroupProperty?.property.id ??
+          null;
+        const hiddenPropertyIds = new Set(
+          hasViewHiddenPropertyIds(currentConfig)
+            ? getViewHiddenPropertyIds(currentConfig)
+            : getDefaultKanbanHiddenPropertyIds(
+                properties,
+                currentGroupPropertyId,
+              ),
+        );
+        const previousGroupProperty = properties.find(
+          (property) => property.property.id === currentGroupPropertyId,
+        );
+        const nextGroupProperty = properties.find(
+          (property) => property.property.id === groupPropertyId,
+        );
+
+        if (previousGroupProperty) {
+          hiddenPropertyIds.delete(previousGroupProperty.id);
+        }
+        if (nextGroupProperty) {
+          hiddenPropertyIds.add(nextGroupProperty.id);
+        }
+
+        nextConfig = getMergedDatabaseConfig(nextConfig, {
+          hiddenPropertyIds: [...hiddenPropertyIds],
+        });
+      }
+
+      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
       updateDatabaseView.mutate({
-        config: getMergedDatabaseConfig(activeView.config, {
-          groupPropertyId: groupPropertyId ?? undefined,
-        }),
+        config: nextConfig,
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
       });
@@ -983,15 +1029,64 @@ export function getDatabaseViewCommands({
         return;
       }
 
+      const currentConfig =
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
+        activeView.config;
+      let nextConfig = currentConfig;
+
+      if (type === "kanban") {
+        const groupPropertyId =
+          kanbanGroupProperty?.property.id ??
+          (properties.length === 0 ? "name" : null);
+
+        nextConfig = getMergedDatabaseConfig(currentConfig, {
+          groupPropertyId: groupPropertyId ?? undefined,
+          hiddenPropertyIds: hasViewHiddenPropertyIds(currentConfig)
+            ? [
+                ...new Set([
+                  ...getViewHiddenPropertyIds(currentConfig),
+                  ...properties
+                    .filter(
+                      (property) => property.property.id === groupPropertyId,
+                    )
+                    .map((property) => property.id),
+                ]),
+              ]
+            : getDefaultKanbanHiddenPropertyIds(properties, groupPropertyId),
+        });
+      } else if (type === "table" && activeView.type === "kanban") {
+        const previousGroupPropertyId =
+          getKanbanGroupPropertyId(currentConfig) ??
+          kanbanGroupProperty?.property.id ??
+          null;
+        const previousGroupProperty = properties.find(
+          (property) => property.property.id === previousGroupPropertyId,
+        );
+        const hiddenPropertyIds = new Set(
+          hasViewHiddenPropertyIds(currentConfig)
+            ? getViewHiddenPropertyIds(currentConfig)
+            : getDefaultKanbanHiddenPropertyIds(
+                properties,
+                previousGroupPropertyId,
+              ),
+        );
+
+        if (previousGroupProperty) {
+          hiddenPropertyIds.delete(previousGroupProperty.id);
+        }
+
+        nextConfig = getMergedDatabaseConfig(
+          removeDatabaseGroupProperty(currentConfig),
+          {
+            hiddenPropertyIds: [...hiddenPropertyIds],
+          },
+        );
+      }
+
+      setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
+
       updateDatabaseView.mutate({
-        config:
-          type === "kanban"
-            ? getMergedDatabaseConfig(activeView.config, {
-                groupPropertyId:
-                  kanbanGroupProperty?.property.id ??
-                  (properties.length === 0 ? "name" : undefined),
-              })
-            : activeView.config,
+        config: nextConfig,
         databaseId: viewDatabaseId ?? databaseId,
         databaseViewId: activeView.id,
         type,
@@ -1157,7 +1252,12 @@ export function getDatabaseViewCommands({
         hasViewHiddenPropertyIds(currentConfig)
           ? getViewHiddenPropertyIds(currentConfig)
           : isKanbanView
-            ? properties.map((property) => property.id)
+            ? getDefaultKanbanHiddenPropertyIds(
+                properties,
+                getKanbanGroupPropertyId(currentConfig) ??
+                  kanbanGroupProperty?.property.id ??
+                  null,
+              )
             : properties
                 .filter((property) =>
                   getPropertyHidden(property.property.config),
@@ -1286,6 +1386,13 @@ export function getDatabaseViewCommands({
       );
     },
   };
+}
+
+function removeDatabaseGroupProperty(config: unknown) {
+  const nextConfig = getMergedDatabaseConfig(config, {});
+
+  delete nextConfig.groupPropertyId;
+  return nextConfig;
 }
 
 function getDatabaseViewCommandsContext({
