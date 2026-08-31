@@ -112,6 +112,7 @@ test("embedded database creation preserves an omitted teamspace for parent inher
 
   assert.equal(response.status, 201);
   assert.deepEqual(mocks.createDatabase.mock.calls[0]?.[0], {
+    env: undefined,
     name: "New database",
     pageId: "page-1",
     standalone: false,
