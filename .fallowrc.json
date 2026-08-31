@@ -6,6 +6,8 @@
     "src/main.{js,jsx,mjs}",
     // The web test runner discovers these modules with fs.readdir().
     "apps/web/test/**/*.test.mjs",
+    // Workspace package tests run directly through Node or Vitest.
+    "packages/**/*.test.ts",
     // Runtime and developer entry points invoked outside package scripts.
     "scripts/desktop/run-signed-macos-debug.mjs",
     "scripts/selfhost/test.mjs"
