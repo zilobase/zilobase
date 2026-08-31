@@ -1,6 +1,10 @@
 # Ask AI Agent implementation plan
 
-Status: complete
+Status: capability implementation complete; durable execution hardening in
+progress. See the
+[behavioral contract](./ask-ai-behavioral-contract.md) for the outcome-oriented
+runtime pass and [durable architecture](./durable-agent-architecture.md) for
+the reload/recovery audit and staged backend plan.
 
 Reference: <https://www.notion.com/help/notion-agent> (reviewed 2026-08-27)
 

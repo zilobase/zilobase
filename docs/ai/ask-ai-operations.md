@@ -51,7 +51,7 @@ the workspace admin role on every request.
 | `AI_AGENT_MAX_INPUT_MESSAGES` | 500 | 10–500 |
 | `AI_AGENT_MAX_INPUT_CHARACTERS` | 250,000 | 10,000–1,000,000 |
 | `AI_AGENT_MAX_STEPS` | 15 | 1–15 |
-| `AI_AGENT_MAX_OUTPUT_TOKENS` | 1,600 | 256–8,000 |
+| `AI_AGENT_MAX_OUTPUT_TOKENS` | 8,000 | 256–8,000 |
 | `AI_AGENT_MAX_PROVIDER_RETRIES` | 2 | 0–5 |
 | `AI_AGENT_TURN_TIMEOUT_MS` | 180,000 | 30,000–600,000 |
 | `AI_AGENT_STREAM_STEP_TIMEOUT_MS` | 60,000 | 10,000–180,000 |
@@ -71,8 +71,8 @@ retries. Failures use finite error codes such as `provider_timeout`,
 `provider_rate_limited`, `permission_denied`, and `capability_unavailable`.
 
 Node deployments run a PostgreSQL leased AI-job worker continuously and
-maintenance on startup and every five minutes. Hosted deployments dispatch the
-same idempotent handlers through the `AI_JOBS` Cloudflare Queue. Upload
+maintenance on startup and every five minutes. Runtime adapters can invoke the
+same exported idempotent handlers using their own queue implementation. Upload
 extraction, meeting summaries, and thread compaction expose durable job status
 at `GET /api/ai/jobs/:jobId`.
 
