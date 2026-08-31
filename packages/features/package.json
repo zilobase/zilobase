@@ -114,6 +114,10 @@
       "types": "./src/pages/nav-delta.ts",
       "default": "./src/pages/nav-delta.ts"
     },
+    "./pages/navigation-realtime": {
+      "types": "./src/pages/navigation-realtime.ts",
+      "default": "./src/pages/navigation-realtime.ts"
+    },
     "./pages/queries": {
       "types": "./src/pages/queries.ts",
       "default": "./src/pages/queries.ts"

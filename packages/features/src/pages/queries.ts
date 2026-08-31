@@ -367,6 +367,8 @@ export const pagesQueryOptions = (
   queryOptions({
     queryKey: pagesQueryKey(workspaceId, options?.deleted ?? "active"),
     enabled: Boolean(workspaceId),
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: true,
     queryFn: async ({ signal }) => {
       if (!workspaceId) {
         return { databases: [], pages: [], placements: [] };

@@ -41,6 +41,7 @@ import {
   applyNavDelta,
   type NavDelta,
 } from "./nav-delta";
+import { applyNavigationDeltaToCache } from "./navigation-realtime";
 
 type CreatePageInput = {
   content?: unknown;
@@ -290,10 +291,10 @@ export function useCreatePage() {
           },
         }),
       );
-      queryClient.setQueriesData<PageNavigationPayload | undefined>(
-        { queryKey: pagesNavRootQueryKey(pageRecord.workspaceId) },
-        (current) =>
-          applyNavDelta(current, navDelta ?? { upsertPages: [pageRecord] }),
+      applyNavigationDeltaToCache(
+        queryClient,
+        pageRecord.workspaceId,
+        navDelta ?? { upsertPages: [pageRecord] },
       );
 
       if (pageRecord.metadata?.zilobaseai) {

@@ -22,6 +22,7 @@ const expectedFeatureExports = [
   "./pages/content-state",
   "./pages/layouts",
   "./pages/nav-delta",
+  "./pages/navigation-realtime",
   "./pages/queries",
   "./search",
   "./teamspaces",

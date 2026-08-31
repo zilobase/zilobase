@@ -41,9 +41,9 @@ import { applyCreatedDatabaseToPageNav } from "./create-database-cache";
 import { shouldClearValuesForPropertyTypeChange } from "./property-types";
 import {
   applyDatabaseFavoriteToNav,
-  applyNavDelta,
   type NavDelta,
 } from "../pages/nav-delta";
+import { applyNavigationDeltaToCache } from "../pages/navigation-realtime";
 import {
   pagesNavRootQueryKey,
   pagesQueryKey,
@@ -574,13 +574,18 @@ export function useCreateDatabase() {
         return;
       }
 
-      queryClient.setQueriesData<PageNavigationPayload | undefined>(
-        { queryKey: pagesNavRootQueryKey(payload.database.workspaceId) },
-        (current) =>
-          payload.navDelta
-            ? applyNavDelta(current, payload.navDelta)
-            : applyCreatedDatabaseToPageNav(current, payload),
-      );
+      if (payload.navDelta) {
+        applyNavigationDeltaToCache(
+          queryClient,
+          payload.database.workspaceId,
+          payload.navDelta,
+        );
+      } else {
+        queryClient.setQueriesData<PageNavigationPayload | undefined>(
+          { queryKey: pagesNavRootQueryKey(payload.database.workspaceId) },
+          (current) => applyCreatedDatabaseToPageNav(current, payload),
+        );
+      }
     },
   });
 }

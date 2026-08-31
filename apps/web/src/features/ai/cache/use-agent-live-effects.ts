@@ -11,10 +11,9 @@ import {
 } from "@zilobase/features/databases"
 import {
   applyNavDelta,
+  applyNavigationDeltaToCache,
   pageQueryKey,
-  pagesNavRootQueryKey,
   type PageDetail,
-  type PageNavigationPayload,
 } from "@zilobase/features/pages"
 import { insertDatabaseBlockInContent } from "@zilobase/page-context"
 
@@ -95,12 +94,10 @@ export function useAgentLiveEffects() {
     }
 
     if (effect.kind === "nav-delta") {
-      queryClient.setQueriesData<PageNavigationPayload | undefined>(
-        { queryKey: pagesNavRootQueryKey(effect.workspaceId) },
-        (current) => applyNavDelta(
-          current,
-          effect.delta as Parameters<typeof applyNavDelta>[1],
-        ),
+      applyNavigationDeltaToCache(
+        queryClient,
+        effect.workspaceId,
+        effect.delta as Parameters<typeof applyNavDelta>[1],
       )
       handledEffectIds.current.add(effect.effectId)
       return
