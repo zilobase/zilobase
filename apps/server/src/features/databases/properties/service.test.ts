@@ -245,6 +245,34 @@ test("updateDatabasePropertyService normalizes retained status config", async ()
   );
 });
 
+test("updateDatabasePropertyService merges glyph patches without removing options", async () => {
+  const { updates } = transactionRecorder();
+  mocks.selectResults.push(
+    [{ id: "column-1", propertyId: "property-1" }],
+    [{
+      config: {
+        icon: "old-icon",
+        options: [{ id: "todo", name: "Todo", color: "gray" }],
+      },
+      type: "select",
+    }],
+  );
+  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
+
+  await updateDatabasePropertyService({
+    config: { icon: "safe-new-icon" },
+    databaseId: "database-1",
+    databasePropertyId: "column-1",
+    mergeConfig: true,
+    userId: "user-1",
+  });
+
+  assert.deepEqual((updates[1] as Record<string, any>).config, {
+    icon: "safe-new-icon",
+    options: [{ id: "todo", name: "Todo", color: "gray" }],
+  });
+});
+
 test("updateDatabasePropertyService rejects missing records and invalid types", async () => {
   mocks.selectResults.push([]);
   await assert.rejects(

@@ -54,7 +54,7 @@ export function resolvePublicRequestUrl(
         );
       }
     } catch {
-      // Fall through to referer or local wrangler origin.
+      // Fall through to referer or the local adapter origin.
     }
   }
 
@@ -69,11 +69,11 @@ export function resolvePublicRequestUrl(
         );
       }
     } catch {
-      // Fall through to local wrangler origin.
+      // Fall through to the local adapter origin.
     }
   }
 
-  const localPort = getStringEnv(env, "ZILOBASE_CLOUDFLARE_PORT");
+  const localPort = getStringEnv(env, "ZILOBASE_ADAPTER_PORT");
   if (localPort && isLocalAuthConfiguration(env)) {
     return new URL(
       `${incoming.pathname}${incoming.search}`,

@@ -22,16 +22,20 @@ test("stale turn cutoff matches the configured total turn timeout", () => {
 
 test("agent limits use bounded defaults and operator overrides", () => {
   const defaults = readAiAgentLimits({});
+  assert.equal(defaults.dailyUsageLimitsEnabled, true);
   assert.equal(defaults.maxConcurrentTurnsPerUser, 2);
   assert.equal(defaults.maxFilesPerTurn, 5);
+  assert.equal(defaults.maxOutputTokens, 8_000);
   assert.equal(defaults.maxSteps, 15);
 
   const overridden = readAiAgentLimits({
+    AI_AGENT_DAILY_USAGE_LIMITS_ENABLED: "false",
     AI_AGENT_MAX_CONCURRENT_TURNS_PER_USER: "4",
     AI_AGENT_MAX_FILES_PER_TURN: "99",
     AI_AGENT_MAX_PROVIDER_RETRIES: "0",
     AI_AGENT_MAX_STEPS: "0",
   });
+  assert.equal(overridden.dailyUsageLimitsEnabled, false);
   assert.equal(overridden.maxConcurrentTurnsPerUser, 4);
   assert.equal(overridden.maxFilesPerTurn, 5);
   assert.equal(overridden.maxRetries, 0);

@@ -42,7 +42,7 @@ workspaceSettingsRoutes.get("/ai/models", async (c) => {
       {
         chef: "Zilobase",
         chefSlug: "openai",
-        description: "Automatically uses the workspace default model.",
+        description: "Uses the best enabled workspace model for this task.",
         gatewayId: "auto",
         id: "auto",
         name: "Auto",

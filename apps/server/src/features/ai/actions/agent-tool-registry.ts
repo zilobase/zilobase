@@ -12,6 +12,7 @@ import { buildPageEditTools } from "../tools/ask-ai-page-tools";
 import { buildWorkspaceActionTools } from "../tools/ask-ai-workspace-action-tools";
 import { buildWorkspaceReadTools } from "../tools/ask-ai-workspace-tools";
 import { requestAgentActionApproval } from "./agent-approvals";
+import type { AgentProgressPublisher } from "../chat/agent-progress";
 
 export type AgentToolRegistryContext = {
   editablePageIds: string[];
@@ -21,6 +22,7 @@ export type AgentToolRegistryContext = {
   userId: string;
   workspaceId: string;
   withDb: <T>(fn: () => Promise<T>) => Promise<T>;
+  progress?: AgentProgressPublisher;
 };
 
 export function buildRegisteredAgentTools(
@@ -71,6 +73,11 @@ export function buildRegisteredAgentTools(
     return [name, {
       ...registeredTool,
       execute: async (toolInput: unknown, toolOptions: { toolCallId: string }) => {
+        context.progress?.startTool({
+          title: descriptor.title,
+          toolCallId: toolOptions.toolCallId,
+          toolName: name,
+        });
         try {
           if (
             descriptor.risk === "review" &&
@@ -79,16 +86,21 @@ export function buildRegisteredAgentTools(
           ) {
             const targetKey = getReviewTargetKey(name, toolInput);
             if (targetKey && pendingReviewTargetKeys.has(targetKey)) {
-              return {
+              const duplicateResult = {
                 error: { code: "duplicate_review_target", retryable: false },
                 ok: false,
-                status: "unavailable",
+                status: "unavailable" as const,
                 summary: "Only one approval can be requested for the same object in a turn. Combine all requested changes into one update.",
               };
+              context.progress?.finishTool({
+                failed: true,
+                toolCallId: toolOptions.toolCallId,
+              });
+              return duplicateResult;
             }
             if (targetKey) pendingReviewTargetKeys.add(targetKey);
             try {
-              return await context.withDb(() => requestAgentActionApproval({
+              const approvalResult = await context.withDb(() => requestAgentActionApproval({
                 descriptor,
                 threadId: context.threadId,
                 toolCallId: toolOptions.toolCallId,
@@ -96,6 +108,11 @@ export function buildRegisteredAgentTools(
                 userId: context.userId,
                 workspaceId: context.workspaceId,
               }));
+              context.progress?.finishTool({
+                failed: isFailedAgentToolResult(approvalResult),
+                toolCallId: toolOptions.toolCallId,
+              });
+              return approvalResult;
             } catch (error) {
               if (targetKey) pendingReviewTargetKeys.delete(targetKey);
               throw error;
@@ -103,8 +120,17 @@ export function buildRegisteredAgentTools(
           }
           const result = await execute(toolInput as never, toolOptions as never);
           if (CREATION_TOOL_NAMES.has(name)) collectCreatedIds(result, createdObjectIds);
+          context.progress?.finishTool({
+            failed: isFailedAgentToolResult(result),
+            toolCallId: toolOptions.toolCallId,
+          });
           return result;
         } catch (error) {
+          context.progress?.finishTool({
+            detail: error instanceof Error ? error.message : undefined,
+            failed: true,
+            toolCallId: toolOptions.toolCallId,
+          });
           console.error(JSON.stringify({
             code: readSafeToolErrorCode(error),
             event: "ai_agent_tool_execution_failed",
@@ -116,6 +142,15 @@ export function buildRegisteredAgentTools(
       },
     }];
   })) as ToolSet;
+}
+
+export function isFailedAgentToolResult(value: unknown) {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      (value as { ok?: unknown }).ok === false,
+  );
 }
 
 function getReviewTargetKey(toolName: string, input: unknown) {

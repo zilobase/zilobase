@@ -3,7 +3,7 @@ import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
 import {
   insertDatabaseBlockInContent,
   shouldShowInlineDatabaseTitle,
-} from "@zilobase/page-context";
+} from "@zilobase/page-context/insert-database-block";
 
 import {
   canAccessDatabaseInWorkspace,

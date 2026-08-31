@@ -5,6 +5,12 @@ import {
   buildAgentPolicyInstruction,
   resolveAgentCapabilityPolicy,
 } from "./agent-capabilities";
+import { isFailedAgentToolResult } from "./agent-tool-registry";
+
+test("structured tool failures are treated as failed executions", () => {
+  assert.equal(isFailedAgentToolResult({ ok: false, status: "failed" }), true);
+  assert.equal(isFailedAgentToolResult({ ok: true, status: "succeeded" }), false);
+});
 
 test("agent capability policy keeps direct edits behind item-level checks", () => {
   const policy = resolveAgentCapabilityPolicy({

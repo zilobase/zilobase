@@ -30,6 +30,7 @@ const DAY_MS = 24 * 60 * 60 * 1_000;
 export type AiAgentLimits = {
   auditRetentionDays: number;
   cleanupBatchSize: number;
+  dailyUsageLimitsEnabled: boolean;
   maxArtifactBytesPerUserPerDay: number;
   maxArtifactsPerUserPerDay: number;
   maxConcurrentTurnsPerUser: number;
@@ -71,6 +72,9 @@ export function readAiAgentLimits(env: RuntimeEnv): AiAgentLimits {
   return {
     auditRetentionDays: readBoundedIntegerEnv(env, "AI_AGENT_AUDIT_RETENTION_DAYS", 90, 7, 365),
     cleanupBatchSize: readBoundedIntegerEnv(env, "AI_AGENT_CLEANUP_BATCH_SIZE", 100, 10, 1_000),
+    dailyUsageLimitsEnabled:
+      getStringEnv(env, "AI_AGENT_DAILY_USAGE_LIMITS_ENABLED")?.trim().toLowerCase() !==
+      "false",
     maxArtifactBytesPerUserPerDay: readBoundedIntegerEnv(
       env,
       "AI_AGENT_MAX_ARTIFACT_BYTES_PER_USER_PER_DAY",
@@ -108,7 +112,7 @@ export function readAiAgentLimits(env: RuntimeEnv): AiAgentLimits {
       1_000_000,
     ),
     maxInputMessages: readBoundedIntegerEnv(env, "AI_AGENT_MAX_INPUT_MESSAGES", 500, 10, 500),
-    maxOutputTokens: readBoundedIntegerEnv(env, "AI_AGENT_MAX_OUTPUT_TOKENS", 1_600, 256, 8_000),
+    maxOutputTokens: readBoundedIntegerEnv(env, "AI_AGENT_MAX_OUTPUT_TOKENS", 8_000, 256, 8_000),
     maxRetries: readBoundedIntegerEnv(env, "AI_AGENT_MAX_PROVIDER_RETRIES", 2, 0, 5),
     maxSteps: readBoundedIntegerEnv(env, "AI_AGENT_MAX_STEPS", 15, 1, 15),
     maxTokensPerUserPerDay: readBoundedIntegerEnv(
@@ -688,19 +692,21 @@ async function resolveTurnQuotaRejection(input: {
       15,
     );
   }
-  if (Number(daily[0]?.turns ?? 0) >= input.limits.maxTurnsPerUserPerDay) {
-    return operationalRejection(
-      "daily_turn_limit_exceeded",
-      "Your Ask AI turn allowance for the last 24 hours has been reached.",
-      3_600,
-    );
-  }
-  if (Number(daily[0]?.tokens ?? 0) >= input.limits.maxTokensPerUserPerDay) {
-    return operationalRejection(
-      "daily_token_limit_exceeded",
-      "Your Ask AI token allowance for the last 24 hours has been reached.",
-      3_600,
-    );
+  if (input.limits.dailyUsageLimitsEnabled) {
+    if (Number(daily[0]?.turns ?? 0) >= input.limits.maxTurnsPerUserPerDay) {
+      return operationalRejection(
+        "daily_turn_limit_exceeded",
+        "Your Ask AI turn allowance for the last 24 hours has been reached.",
+        3_600,
+      );
+    }
+    if (Number(daily[0]?.tokens ?? 0) >= input.limits.maxTokensPerUserPerDay) {
+      return operationalRejection(
+        "daily_token_limit_exceeded",
+        "Your Ask AI token allowance for the last 24 hours has been reached.",
+        3_600,
+      );
+    }
   }
   return null;
 }

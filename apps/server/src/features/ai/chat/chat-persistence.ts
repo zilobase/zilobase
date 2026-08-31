@@ -330,6 +330,7 @@ export async function syncAiChatThreadMessages(
       .insert(aiChatMessage)
       .values(
         [...persistableMessages.values()].map((message, sequence) => ({
+          clientId: message.id,
           id: message.id,
           threadId,
           role: message.role,
@@ -340,14 +341,25 @@ export async function syncAiChatThreadMessages(
         })),
       )
       .onConflictDoUpdate({
-        target: aiChatMessage.id,
+        target: [aiChatMessage.threadId, aiChatMessage.sequence],
         set: {
-          role: sql`excluded.${aiChatMessage.role}`,
-          parts: sql`excluded.${aiChatMessage.parts}`,
-          sequence: sql`excluded.${aiChatMessage.sequence}`,
+          clientId:
+            sql`coalesce(${aiChatMessage.clientId}, excluded.${sql.identifier(aiChatMessage.clientId.name)})`,
+          role: sql`excluded.${sql.identifier(aiChatMessage.role.name)}`,
+          parts: sql`excluded.${sql.identifier(aiChatMessage.parts.name)}`,
+          sequence: sql`excluded.${sql.identifier(aiChatMessage.sequence.name)}`,
           updatedAt: now,
         },
       });
+
+    await db
+      .update(aiChatThread)
+      .set({
+        nextMessageSequence:
+          sql`greatest(${aiChatThread.nextMessageSequence}, ${persistableMessages.size})`,
+        updatedAt: now,
+      })
+      .where(eq(aiChatThread.id, threadId));
   }
 
   if (options?.deleteStaleRows) {
@@ -505,31 +517,6 @@ export async function maybeAutoTitleAiChatThread(
       updatedAt: new Date(),
     })
     .where(eq(aiChatThread.id, threadId));
-}
-
-function buildAiChatAgentInstanceName(input: {
-  workspaceId: string;
-  threadId: string;
-  userId: string;
-}) {
-  return `org-${input.workspaceId}-user-${input.userId}-thread-${input.threadId}`;
-}
-
-export function parseAiChatAgentInstanceName(instance: string) {
-  const match =
-    /^org-(.+)-user-(.+)-thread-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(
-      instance,
-    );
-
-  if (!match) {
-    return null;
-  }
-
-  return {
-    workspaceId: match[1],
-    userId: match[2],
-    threadId: match[3],
-  };
 }
 
 function deriveThreadTitle(messages: readonly UIMessage[]) {

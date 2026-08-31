@@ -86,14 +86,14 @@ export async function generateMeetingSummary(input: {
     ? chunks[0]
     : (await Promise.all(chunks.map(async (chunk, index) => {
         const partial = await requestSummary(
-          model.model,
+          model,
           chunk,
           `Create an intermediate factual summary for transcript part ${index + 1} of ${chunks.length}.`,
         );
         return JSON.stringify(partial);
       }))).join("\n");
   const summary = await requestSummary(
-    model.model,
+    model,
     source,
     `${instructions}\nWrite the output in meeting language: ${record.language}.`,
   );
@@ -118,13 +118,14 @@ export async function generateMeetingSummary(input: {
 }
 
 async function requestSummary(
-  model: ResolvedAiModel["model"],
+  resolvedModel: ResolvedAiModel,
   transcript: string,
   instructions: string,
 ) {
   const result = await generateText({
-    model,
+    model: resolvedModel.model,
     output: Output.object({ schema: summarySchema }),
+    providerOptions: resolvedModel.providerOptions,
     prompt: `${instructions}\n\nTranscript:\n${transcript}`,
     system: "You summarize meetings faithfully. Do not invent decisions, owners, dates, or action items. Use concise plain language.",
   });

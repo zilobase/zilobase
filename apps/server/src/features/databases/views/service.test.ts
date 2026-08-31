@@ -210,6 +210,29 @@ test("updateDatabaseViewService updates supplied view fields", async () => {
   });
 });
 
+test("updateDatabaseViewService merges glyph patches without removing view config", async () => {
+  const { updates } = transactionRecorder();
+  mocks.selectResults.push([{
+    config: { filters: [{ propertyId: "property-1" }], icon: "old-icon" },
+    dataSourceId: "database-1",
+    id: "view-1",
+  }]);
+  mocks.fetchDelta.mockResolvedValue({ views: [{ id: "view-1" }] });
+
+  await updateDatabaseViewService({
+    config: { icon: "safe-new-icon" },
+    databaseId: "database-1",
+    mergeConfig: true,
+    userId: "user-1",
+    viewId: "view-1",
+  });
+
+  assert.deepEqual((updates[0] as Record<string, unknown>).config, {
+    filters: [{ propertyId: "property-1" }],
+    icon: "safe-new-icon",
+  });
+});
+
 test("updateDatabaseViewService creates single-parent sub-item relation properties", async () => {
   const { inserts, updates } = transactionRecorder();
   mocks.selectResults.push(

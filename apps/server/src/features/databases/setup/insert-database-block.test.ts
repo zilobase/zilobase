@@ -4,7 +4,7 @@ import { test } from "vitest";
 import {
   insertDatabaseBlockInContent,
   shouldShowInlineDatabaseTitle,
-} from "@zilobase/page-context";
+} from "@zilobase/page-context/insert-database-block";
 
 const DATABASE_ID = "bf51b30e-1234-5678-9abc-def012345678";
 

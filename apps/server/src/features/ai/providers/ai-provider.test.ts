@@ -4,6 +4,7 @@ import { beforeEach, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   chat: vi.fn(),
   createOpenAI: vi.fn(),
+  responses: vi.fn(),
   workspaceConfig: [] as unknown[],
 }));
 
@@ -34,14 +35,20 @@ import {
 beforeEach(() => {
   mocks.chat.mockReset();
   mocks.chat.mockImplementation((modelId: string) => ({ modelId }));
+  mocks.responses.mockReset();
+  mocks.responses.mockImplementation((modelId: string) => ({ modelId }));
   mocks.createOpenAI.mockReset();
-  mocks.createOpenAI.mockReturnValue({ chat: mocks.chat });
+  mocks.createOpenAI.mockReturnValue({
+    chat: mocks.chat,
+    responses: mocks.responses,
+  });
   mocks.workspaceConfig = [];
 });
 
 test("resolveOpenAiChatModel normalizes bearer keys and defaults the model", () => {
   const model = resolveOpenAiChatModel("  Bearer secret-key  ");
   assert.deepEqual(model, { modelId: DEFAULT_OPENAI_CHAT_MODEL });
+  assert.equal(mocks.responses.mock.calls[0]?.[0], DEFAULT_OPENAI_CHAT_MODEL);
   assert.deepEqual(mocks.createOpenAI.mock.calls[0]?.[0], {
     apiKey: "secret-key",
   });
@@ -50,6 +57,7 @@ test("resolveOpenAiChatModel normalizes bearer keys and defaults the model", () 
 test("resolveOpenAiChatModel accepts provider-prefixed model identifiers", () => {
   const model = resolveOpenAiChatModel("secret", "openai:gpt-5-mini");
   assert.deepEqual(model, { modelId: "gpt-5-mini" });
+  assert.equal(mocks.chat.mock.calls[0]?.[0], "gpt-5-mini");
 });
 
 test("resolveWorkspaceAiModel delegates selected and default models", async () => {
@@ -69,6 +77,41 @@ test("resolveWorkspaceAiModel delegates selected and default models", async () =
   );
   assert.equal(automatic.catalog.id, DEFAULT_OPENAI_CHAT_MODEL);
   assert.deepEqual(automatic.model, { modelId: DEFAULT_OPENAI_CHAT_MODEL });
+  assert.deepEqual(automatic.providerOptions, {
+    openai: { reasoningEffort: "medium" },
+  });
+});
+
+test("automatic selection respects a workspace's enabled legacy models", async () => {
+  mocks.workspaceConfig = [{
+    baseUrl: null,
+    enabled: true,
+    modelIds: ["gpt-4o"],
+  }];
+
+  const model = await resolveWorkspaceAiModel(
+    "workspace-1",
+    "auto",
+    { OPENAI_API_KEY: "key" },
+  );
+
+  assert.equal(model.catalog.id, "gpt-4o");
+  assert.deepEqual(model.model, { modelId: "gpt-4o" });
+  assert.equal(model.providerOptions, undefined);
+});
+
+test("automatic selection uses the fast tier for meeting summaries", async () => {
+  const model = await resolveWorkspaceAiModel(
+    "workspace-1",
+    "auto",
+    { OPENAI_API_KEY: "key" },
+    "meeting-summary",
+  );
+
+  assert.equal(model.catalog.id, "gpt-5.6-luna");
+  assert.deepEqual(model.providerOptions, {
+    openai: { reasoningEffort: "low" },
+  });
 });
 
 test("resolveWorkspaceAiModel rejects models outside the server catalog", async () => {

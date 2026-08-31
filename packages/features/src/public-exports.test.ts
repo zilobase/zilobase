@@ -35,6 +35,7 @@ const expectedPageContextExports = [
   "./build-database-markdown",
   "./extract-database-ids",
   "./format-property-value",
+  "./insert-database-block",
   "./prosemirror-to-markdown",
   "./strip-database-payload",
   "./types",

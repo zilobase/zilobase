@@ -2,7 +2,32 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import * as Y from "yjs";
 
-import { extractPageCommentThreads } from "./ask-ai-workspace-tools";
+import {
+  extractPageCommentThreads,
+  queryWorkspaceDatabaseInputSchema,
+} from "./ask-ai-workspace-tools";
+
+test("database query input requires an explicit source and enforces its public limit", () => {
+  const invalid = queryWorkspaceDatabaseInputSchema.safeParse({
+    databaseId: "database-1",
+    dataSourceId: "",
+    limit: 100,
+    query: "",
+  });
+  assert.equal(invalid.success, false);
+
+  assert.deepEqual(
+    queryWorkspaceDatabaseInputSchema.parse({
+      databaseId: "database-1",
+      dataSourceId: "source-1",
+    }),
+    {
+      databaseId: "database-1",
+      dataSourceId: "source-1",
+      limit: 25,
+    },
+  );
+});
 
 test("page comment extraction reads and orders current collaboration comments", () => {
   const document = new Y.Doc();

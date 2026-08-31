@@ -6,11 +6,13 @@ export type AiWorkload =
   | "realtime-transcription";
 
 export type AiModelCatalogItem = {
+  api: "chat" | "responses";
   contextWindowTokens: number;
   id: string;
   maxOutputTokens: number;
   name: string;
   providerId: "openai";
+  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
   supportsFiles: boolean;
   supportsStructuredOutput: boolean;
   supportsTools: boolean;
@@ -28,10 +30,50 @@ export type AiProviderCatalogItem = {
 
 const openAiModels: AiModelCatalogItem[] = [
   {
+    api: "responses",
+    contextWindowTokens: 1_050_000,
+    id: "gpt-5.6-sol",
+    maxOutputTokens: 128_000,
+    name: "GPT-5.6 Sol",
+    providerId: "openai",
+    reasoningEffort: "medium",
+    supportsFiles: true,
+    supportsStructuredOutput: true,
+    supportsTools: true,
+    workloads: ["chat", "editor", "meeting-summary"],
+  },
+  {
+    api: "responses",
+    contextWindowTokens: 1_050_000,
+    id: "gpt-5.6-terra",
+    maxOutputTokens: 128_000,
+    name: "GPT-5.6 Terra",
+    providerId: "openai",
+    reasoningEffort: "medium",
+    supportsFiles: true,
+    supportsStructuredOutput: true,
+    supportsTools: true,
+    workloads: ["chat", "editor", "meeting-summary"],
+  },
+  {
+    api: "responses",
+    contextWindowTokens: 1_050_000,
+    id: "gpt-5.6-luna",
+    maxOutputTokens: 128_000,
+    name: "GPT-5.6 Luna",
+    providerId: "openai",
+    reasoningEffort: "low",
+    supportsFiles: true,
+    supportsStructuredOutput: true,
+    supportsTools: true,
+    workloads: ["chat", "editor", "meeting-summary"],
+  },
+  {
+    api: "chat",
     contextWindowTokens: 128_000,
-    id: "gpt-4o-mini",
+    id: "gpt-4o",
     maxOutputTokens: 16_384,
-    name: "GPT-4o Mini",
+    name: "GPT-4o",
     providerId: "openai",
     supportsFiles: true,
     supportsStructuredOutput: true,
@@ -39,10 +81,11 @@ const openAiModels: AiModelCatalogItem[] = [
     workloads: ["chat", "editor", "meeting-summary"],
   },
   {
+    api: "chat",
     contextWindowTokens: 128_000,
-    id: "gpt-4o",
+    id: "gpt-4o-mini",
     maxOutputTokens: 16_384,
-    name: "GPT-4o",
+    name: "GPT-4o Mini",
     providerId: "openai",
     supportsFiles: true,
     supportsStructuredOutput: true,
@@ -73,5 +116,14 @@ export function getAiModelCatalogItem(providerId: string, modelId: string) {
 }
 
 export function defaultAiModelForWorkload(workload: AiWorkload) {
-  return openAiModels.find((model) => model.workloads.includes(workload)) ?? null;
+  const preferredModelId = ({
+    chat: "gpt-5.6-terra",
+    editor: "gpt-5.6-terra",
+    "meeting-summary": "gpt-5.6-luna",
+  } as Partial<Record<AiWorkload, string>>)[workload];
+
+  return openAiModels.find(
+    (model) =>
+      model.id === preferredModelId && model.workloads.includes(workload),
+  ) ?? openAiModels.find((model) => model.workloads.includes(workload)) ?? null;
 }

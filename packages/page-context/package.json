@@ -20,6 +20,10 @@
       "types": "./src/database/extract-database-ids.ts",
       "default": "./src/database/extract-database-ids.ts"
     },
+    "./insert-database-block": {
+      "types": "./src/database/insert-database-block.ts",
+      "default": "./src/database/insert-database-block.ts"
+    },
     "./prosemirror-to-markdown": {
       "types": "./src/markdown/prosemirror-to-markdown.ts",
       "default": "./src/markdown/prosemirror-to-markdown.ts"

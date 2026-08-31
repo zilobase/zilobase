@@ -139,6 +139,7 @@ export async function updateDatabasePropertyService(input: {
   databaseId: string;
   databasePropertyId: string;
   env?: RuntimeEnv;
+  mergeConfig?: boolean;
   name?: string;
   position?: number;
   type?: string;
@@ -206,9 +207,21 @@ export async function updateDatabasePropertyService(input: {
   }
 
   if (input.config !== undefined) {
+    const config = input.mergeConfig &&
+        pagePropertyRecord.config &&
+        typeof pagePropertyRecord.config === "object" &&
+        !Array.isArray(pagePropertyRecord.config) &&
+        input.config &&
+        typeof input.config === "object" &&
+        !Array.isArray(input.config)
+      ? {
+          ...(pagePropertyRecord.config as Record<string, unknown>),
+          ...(input.config as Record<string, unknown>),
+        }
+      : input.config;
     propertyValues.config = normalizePropertyConfig(
       effectiveType,
-      input.config,
+      config,
     );
   } else if (effectiveType === "status" && input.type !== undefined) {
     propertyValues.config = normalizePropertyConfig(

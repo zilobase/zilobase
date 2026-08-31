@@ -19,10 +19,18 @@ import { searchWorkspaceItems } from "../../search/service";
 import { getDatabaseRecord } from "../../databases/access";
 import { getDatabasePayload } from "../../databases/core";
 import { hashPageContentMarkdown } from "../conversion/page-content-version";
+import { loadAgentDatabaseDescriptor } from "../context/database-agent-context";
 
 const MAX_PAGE_MARKDOWN_CHARS = 48_000;
 const MAX_COMMENT_BODY_CHARS = 4_000;
 const MAX_QUERY_ROWS = 50;
+
+export const queryWorkspaceDatabaseInputSchema = z.object({
+  databaseId: z.string().trim().min(1),
+  dataSourceId: z.string().trim().min(1),
+  query: z.string().trim().max(500).optional(),
+  limit: z.number().int().min(1).max(MAX_QUERY_ROWS).default(25),
+});
 
 type WorkspaceReadToolContext = {
   userId: string;
@@ -86,20 +94,34 @@ export function buildWorkspaceReadTools(
             workspaceId: context.workspaceId,
           });
           const citations = results.map(toSearchCitation);
+          const detailedResults = await Promise.all(results.map(async (result) => {
+            const databaseDescriptor = result.type === "database"
+              ? await loadAgentDatabaseDescriptor({
+                  databaseId: result.id,
+                  userId: context.userId,
+                  workspaceId: context.workspaceId,
+                })
+              : null;
+
+            return {
+              excerpt: result.excerpt,
+              id: result.id,
+              path: result.path,
+              title: result.title,
+              type: result.type,
+              updatedAt: result.updatedAt.toISOString(),
+              ...(databaseDescriptor
+                ? { database: databaseDescriptor }
+                : {}),
+            };
+          }));
 
           return succeeded(
             results.length === 1
               ? "Found 1 accessible workspace item."
               : `Found ${results.length} accessible workspace items.`,
             {
-              results: results.map((result) => ({
-                excerpt: result.excerpt,
-                id: result.id,
-                path: result.path,
-                title: result.title,
-                type: result.type,
-                updatedAt: result.updatedAt.toISOString(),
-              })),
+              results: detailedResults,
             },
             citations,
           );
@@ -135,13 +157,8 @@ export function buildWorkspaceReadTools(
 
     queryWorkspaceDatabase: tool({
       description:
-        "Query the rows and property values of a Zilobase database the current user can view. Use databaseId from searchWorkspace. Optionally select a data source and filter rows with a case-insensitive text query. Returns a typed table and row citations.",
-      inputSchema: z.object({
-        databaseId: z.string().trim().min(1),
-        dataSourceId: z.string().trim().min(1).optional(),
-        query: z.string().trim().max(500).optional(),
-        limit: z.number().int().min(1).max(MAX_QUERY_ROWS).default(25),
-      }),
+        "Query rows and property values from one explicit Zilobase data source. Copy both databaseId and dataSourceId exactly from page context or searchWorkspace.database.dataSources. Never use an empty dataSourceId. Omit limit to use 25; otherwise limit must be an integer from 1 through 50. Returns a typed table and row citations.",
+      inputSchema: queryWorkspaceDatabaseInputSchema,
       execute: (input) =>
         context.withDb(async () => {
           const record = await getDatabaseRecord(input.databaseId);
@@ -158,13 +175,13 @@ export function buildWorkspaceReadTools(
             record.id,
             context.userId,
             record,
-            input.dataSourceId
-              ? { dataSourceId: input.dataSourceId }
-              : undefined,
+            { dataSourceId: input.dataSourceId },
           );
 
-          if (!payload?.activeDataSource) {
-            throw new Error("Database has no accessible data source.");
+          if (payload?.activeDataSource?.id !== input.dataSourceId) {
+            throw new Error(
+              "The requested data source is not linked to this database or is not accessible.",
+            );
           }
 
           const table = buildDatabaseTable(payload, {

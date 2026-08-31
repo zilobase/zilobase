@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { UIMessage } from "ai";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { beforeEach, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -8,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   insertedValues: [] as unknown[],
   limitRows: [] as Array<{ id: string }>,
   selectCalls: 0,
+  threadUpdates: [] as unknown[],
 }));
 
 vi.mock("../../../infrastructure/database", () => ({
@@ -41,6 +43,14 @@ vi.mock("../../../infrastructure/database", () => ({
       };
       return builder;
     },
+    update() {
+      return {
+        set(value: unknown) {
+          mocks.threadUpdates.push(value);
+          return { async where() {} };
+        },
+      };
+    },
   },
 }));
 
@@ -55,6 +65,7 @@ beforeEach(() => {
   mocks.insertedValues.length = 0;
   mocks.limitRows = [];
   mocks.selectCalls = 0;
+  mocks.threadUpdates.length = 0;
 });
 
 function message(id: string, role: "assistant" | "user", text: string) {
@@ -96,17 +107,60 @@ test("syncAiChatThreadMessages bulk upserts persistable messages", async () => {
 
   assert.equal(mocks.insertedValues.length, 1);
   assert.equal(mocks.conflictOptions.length, 1);
+  const conflict = mocks.conflictOptions[0] as {
+    set: { clientId: unknown; parts: unknown; role: unknown; sequence: unknown };
+    target: Array<{ name: string }>;
+  };
+  const dialect = new PgDialect();
+  assert.deepEqual(conflict.target.map((column) => column.name), [
+    "thread_id",
+    "sequence",
+  ]);
+  assert.equal(
+    dialect.sqlToQuery(conflict.set.clientId as never).sql,
+    'coalesce("ai_chat_message"."client_id", excluded."client_id")',
+  );
+  assert.equal(
+    dialect.sqlToQuery(conflict.set.role as never).sql,
+    'excluded."role"',
+  );
+  assert.equal(
+    dialect.sqlToQuery(conflict.set.parts as never).sql,
+    'excluded."parts"',
+  );
+  assert.equal(
+    dialect.sqlToQuery(conflict.set.sequence as never).sql,
+    'excluded."sequence"',
+  );
   assert.equal((mocks.insertedValues[0] as unknown[]).length, 2);
   assert.deepEqual(
     (mocks.insertedValues[0] as Array<Record<string, unknown>>).map(
-      ({ id, role, threadId }) => ({ id, role, threadId }),
+      ({ clientId, id, role, threadId }) => ({ clientId, id, role, threadId }),
     ),
     [
-      { id: "message-1", role: "user", threadId: "thread-1" },
-      { id: "message-2", role: "assistant", threadId: "thread-1" },
+      {
+        clientId: "message-1",
+        id: "message-1",
+        role: "user",
+        threadId: "thread-1",
+      },
+      {
+        clientId: "message-2",
+        id: "message-2",
+        role: "assistant",
+        threadId: "thread-1",
+      },
     ],
   );
   assert.equal(mocks.selectCalls, 1);
+  assert.equal(mocks.threadUpdates.length, 1);
+  const threadUpdate = mocks.threadUpdates[0] as {
+    nextMessageSequence: unknown;
+  };
+  assert.equal(
+    dialect.sqlToQuery(threadUpdate.nextMessageSequence as never).sql,
+    'greatest("ai_chat_thread"."next_message_sequence", $1)',
+  );
 });
 
 test("syncAiChatThreadMessages deduplicates IDs with last-message-wins semantics", async () => {

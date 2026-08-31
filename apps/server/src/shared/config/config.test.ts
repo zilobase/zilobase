@@ -42,7 +42,7 @@ test("public request URLs prefer the local Host over a rewritten production orig
       ),
       {
         BETTER_AUTH_URL: "http://localhost:3000",
-        ZILOBASE_CLOUDFLARE_PORT: "3000",
+        ZILOBASE_ADAPTER_PORT: "3000",
       },
     ).href,
     "http://localhost:3000/desktop/authorize?client_id=zilobase-desktop",
@@ -55,7 +55,7 @@ test("public request URLs prefer the local Host over a rewritten production orig
       ),
       {
         BETTER_AUTH_URL: "https://api.zilobase.com",
-        ZILOBASE_CLOUDFLARE_PORT: "3000",
+        ZILOBASE_ADAPTER_PORT: "3000",
       },
     ).href,
     "https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop",

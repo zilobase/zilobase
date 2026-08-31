@@ -46,6 +46,7 @@ const createAgentTurnSchema = z.object({
     role: z.enum(["primary", "attached"]),
     type: z.enum(["page", "database"]),
   })).max(20).default([]),
+  debugStream: z.boolean().default(false),
   mentionedUserIds: z.array(z.string().trim().min(1)).max(12).default([]),
   modelId: z.string().trim().min(1).max(160).default("auto"),
   text: z.string().trim().min(1).max(100_000),
@@ -151,6 +152,7 @@ aiRoutes.post("/threads/:threadId/turns", async (c) => {
       attachmentIds: body.data.attachmentIds,
       clientTurnId: body.data.clientTurnId,
       contextRefs: body.data.contextRefs,
+      debugStream: body.data.debugStream,
       mentionedUserIds: body.data.mentionedUserIds,
       model: body.data.modelId,
       pageContext: null,
@@ -321,6 +323,7 @@ aiRoutes.post("/editor", async (c) => {
       experimental_transform: smoothStream({ chunking: "word", delayInMs: 16 }),
       maxOutputTokens: 1800,
       model: model.model,
+      providerOptions: model.providerOptions,
       prompt: buildEditorPrompt({
         prompt: body.data.prompt,
         selectedText: body.data.selectedText,
@@ -337,7 +340,7 @@ aiRoutes.post("/editor", async (c) => {
         "Use headings, lists, tables, blockquotes, and inline formatting when they make the result easier to scan.",
         "Do not include prefaces such as 'Here is' or mention that you are an AI.",
       ].join("\n"),
-      temperature: 0.45,
+      temperature: model.providerOptions ? undefined : 0.45,
       onError: ({ error }) => {
         console.warn("Editor AI stream provider error", toProviderErrorMessage(error));
       },

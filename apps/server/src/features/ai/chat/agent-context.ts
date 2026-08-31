@@ -1,12 +1,13 @@
 import type { ModelMessage } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
+import { extractDatabaseIds } from "@zilobase/page-context/extract-database-ids";
 
-import { canAccessDatabaseRecord, canAccessPageInWorkspace } from "../../access";
+import { canAccessPageInWorkspace } from "../../access";
 import { materializePageContentFromYjs } from "../../collaboration/service";
 import { db } from "../../../infrastructure/database";
 import { page, pageCollaborationDocument } from "../../../infrastructure/database/schema";
-import { getDatabaseRecord } from "../../databases/access";
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
+import { loadAgentDatabaseContext } from "../context/database-agent-context";
 
 export type AgentContextRef = {
   id: string;
@@ -80,9 +81,19 @@ async function resolvePageSection(
     ? materializePageContentFromYjs(new Uint8Array(record.collaborationState))
     : record.content;
   const markdown = prosemirrorToMarkdown(content).slice(0, MAX_PAGE_CHARS);
+  const embeddedDatabases = await Promise.all(
+    extractDatabaseIds(content).map((databaseId) =>
+      resolveDatabaseSection(input, {
+        id: databaseId,
+        role: "attached",
+        type: "database",
+      })
+    ),
+  );
   return [
     `<workspace_page id="${escapeAttribute(record.id)}" role="${ref.role}" title="${escapeAttribute(record.name || "Untitled")}" updated_at="${record.updatedAt.toISOString()}">`,
     markdown,
+    ...embeddedDatabases,
     "</workspace_page>",
   ].join("\n");
 }
@@ -91,17 +102,18 @@ async function resolveDatabaseSection(
   input: { userId: string; workspaceId: string },
   ref: AgentContextRef,
 ) {
-  const record = await getDatabaseRecord(ref.id);
-  if (
-    !record ||
-    record.workspaceId !== input.workspaceId ||
-    !(await canAccessDatabaseRecord(record, input.userId, "view"))
-  ) {
+  const context = await loadAgentDatabaseContext({
+    databaseId: ref.id,
+    userId: input.userId,
+    workspaceId: input.workspaceId,
+  });
+  if (!context) {
     throw new Error("An attached database is not accessible.");
   }
   return [
-    `<workspace_database id="${escapeAttribute(record.id)}" role="${ref.role}" title="${escapeAttribute(record.name || "Database")}">`,
-    "Use queryWorkspaceDatabase with this exact database id to read current properties and rows.",
+    `<workspace_database id="${escapeAttribute(context.descriptor.id)}" role="${ref.role}" title="${escapeAttribute(context.descriptor.name || "Database")}">`,
+    "Use queryWorkspaceDatabase with the exact host database ID and source ID shown below. Never leave dataSourceId empty. Omit limit to use 25, or use an integer from 1 through 50.",
+    context.markdown,
     "</workspace_database>",
   ].join("\n");
 }

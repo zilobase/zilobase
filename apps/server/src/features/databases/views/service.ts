@@ -151,6 +151,7 @@ export async function updateDatabaseViewService(input: {
   config?: unknown;
   databaseId: string;
   env?: RuntimeEnv;
+  mergeConfig?: boolean;
   name?: string;
   type?: string;
   userId: string;
@@ -162,7 +163,11 @@ export async function updateDatabaseViewService(input: {
   );
 
   const [existingView] = await db
-    .select({ id: databaseView.id, dataSourceId: databaseView.dataSourceId })
+    .select({
+      config: databaseView.config,
+      dataSourceId: databaseView.dataSourceId,
+      id: databaseView.id,
+    })
     .from(databaseView)
     .where(
       and(
@@ -201,7 +206,18 @@ export async function updateDatabaseViewService(input: {
       value: string | string[];
     }>;
   } | null = null;
-  let effectiveConfig = input.config;
+  let effectiveConfig = input.mergeConfig &&
+      existingView.config &&
+      typeof existingView.config === "object" &&
+      !Array.isArray(existingView.config) &&
+      input.config &&
+      typeof input.config === "object" &&
+      !Array.isArray(input.config)
+    ? {
+        ...(existingView.config as Record<string, unknown>),
+        ...(input.config as Record<string, unknown>),
+      }
+    : input.config;
 
   if (needsSubItemProperties && requestedSubItems) {
     const source = await requireDataSourceEditAccess(

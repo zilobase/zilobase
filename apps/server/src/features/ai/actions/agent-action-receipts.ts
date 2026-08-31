@@ -10,8 +10,10 @@ type ReceiptContext = {
   workspaceId: string;
 };
 
-type ReceiptedResult = {
+export type ReceiptedResult = {
+  ok?: boolean;
   receipt?: AgentActionReceipt;
+  status?: string;
 };
 
 export async function runIdempotentAgentAction<T extends ReceiptedResult>(input: {
@@ -59,13 +61,16 @@ export async function runIdempotentAgentAction<T extends ReceiptedResult>(input:
         toolName: input.toolName,
       },
     };
+    const resultStatus = resolveAgentActionResultStatus(result);
+    const failedResult = resultStatus === "failed";
 
     await db
       .update(aiAgentActionReceipt)
       .set({
         completedAt,
+        error: failedResult ? readFailedActionSummary(result) : null,
         result: withReceipt,
-        status: "succeeded",
+        status: resultStatus,
         updatedAt: completedAt,
       })
       .where(eq(aiAgentActionReceipt.id, receiptId));
@@ -123,7 +128,10 @@ async function readExistingAgentAction<T extends ReceiptedResult>(input: {
     throw new Error("Agent action idempotency key was reused with another action.");
   }
 
-  if (existing.status === "succeeded" && isReceiptedResult(existing.result)) {
+  if (
+    (existing.status === "succeeded" || existing.status === "failed") &&
+    isReceiptedResult(existing.result)
+  ) {
     return existing.result as T;
   }
 
@@ -160,6 +168,19 @@ function stableStringify(value: unknown): string {
 
 function isReceiptedResult(value: unknown): value is ReceiptedResult {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+export function resolveAgentActionResultStatus(value: ReceiptedResult) {
+  return value.ok === false || value.status === "failed"
+    ? "failed" as const
+    : "succeeded" as const;
+}
+
+function readFailedActionSummary(value: ReceiptedResult) {
+  const summary = (value as { summary?: unknown }).summary;
+  return typeof summary === "string" && summary.trim()
+    ? summary.slice(0, 1_000)
+    : "The agent action completed with errors.";
 }
 
 function toSafeActionError(error: unknown) {

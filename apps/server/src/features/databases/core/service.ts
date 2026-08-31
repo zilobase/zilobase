@@ -31,6 +31,8 @@ import { getDatabasePayload } from "./payload";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 export async function createDatabaseService(input: {
+  defaultViewIcon?: string;
+  icon?: string;
   name?: string;
   workspaceId: string;
   pageId?: string;
@@ -122,7 +124,7 @@ export async function createDatabaseService(input: {
       pageId: standalone ? null : input.pageId,
       ...(teamspaceId ? { teamspaceId } : {}),
       name,
-      config: {},
+      config: input.icon ? { emoji: input.icon } : {},
     });
     await tx.insert(dataSource).values({
       id: dataSourceId,
@@ -130,7 +132,7 @@ export async function createDatabaseService(input: {
       parentDatabaseId: databaseId,
       createdById: input.userId,
       name,
-      config: {},
+      config: input.icon ? { emoji: input.icon } : {},
     });
     await tx.insert(databaseDataSource).values({
       databaseId,
@@ -139,6 +141,9 @@ export async function createDatabaseService(input: {
       position: 0,
     });
     await tx.insert(databaseView).values({
+      ...(input.defaultViewIcon
+        ? { config: { icon: input.defaultViewIcon } }
+        : {}),
       id: defaultViewId,
       databaseId,
       dataSourceId,

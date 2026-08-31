@@ -15,7 +15,6 @@ export {
   getAiChatThreadForUser,
   loadAiChatThreadMessages,
   maybeAutoTitleAiChatThread,
-  parseAiChatAgentInstanceName,
   syncAiChatThreadMessages,
   touchAiChatThreadActivity,
 } from "../features/ai/chat/chat-persistence";

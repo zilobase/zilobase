@@ -69,5 +69,5 @@ The server exports a runtime-neutral extension surface from
 `@zilobase/server/adapter-api`. It includes the Hocuspocus factory, ticket
 helpers, Yjs conversion helpers, and collaboration runtime callbacks for
 alternate runtimes. Node-only migration and server runtime helpers are exported
-separately from `@zilobase/server/node-adapter-api` so Worker bundles do not
-load filesystem-dependent modules.
+separately from `@zilobase/server/node-adapter-api` so alternate runtime bundles
+do not load filesystem-dependent modules.

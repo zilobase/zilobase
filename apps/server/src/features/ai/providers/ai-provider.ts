@@ -37,13 +37,6 @@ export async function resolveWorkspaceAiModel(
     : envOrApiKey ?? {};
   const selection = parseSelectedModelId(selectedModelId, workload);
   const provider = getAiProviderCatalogItem(selection.providerId);
-  const catalogModel = getAiModelCatalogItem(provider.id, selection.modelId);
-  if (!catalogModel || !catalogModel.workloads.includes(workload)) {
-    throw new AiProviderConfigError(
-      `AI model ${selection.providerId}:${selection.modelId} is not available for ${workload}.`,
-      400,
-    );
-  }
 
   const [workspaceConfig] = await db
     .select()
@@ -53,6 +46,21 @@ export async function resolveWorkspaceAiModel(
       eq(workspaceAiProviderConfig.providerId, provider.id),
     ))
     .limit(1);
+  const catalogModel = selection.modelId
+    ? getAiModelCatalogItem(provider.id, selection.modelId)
+    : resolveAutomaticModel({
+        enabledModelIds: workspaceConfig?.enabled
+          ? workspaceConfig.modelIds
+          : [],
+        provider,
+        workload,
+      });
+  if (!catalogModel || !catalogModel.workloads.includes(workload)) {
+    throw new AiProviderConfigError(
+      `AI model ${selection.providerId}:${selection.modelId ?? "auto"} is not available for ${workload}.`,
+      400,
+    );
+  }
   if (
     workspaceConfig?.enabled &&
     workspaceConfig.modelIds.length > 0 &&
@@ -84,7 +92,12 @@ export async function resolveWorkspaceAiModel(
   return {
     catalog: catalogModel,
     credentialSource: workspaceCredential ? "workspace" as const : "managed" as const,
-    model: openai.chat(catalogModel.id),
+    model: catalogModel.api === "responses"
+      ? openai.responses(catalogModel.id)
+      : openai.chat(catalogModel.id),
+    providerOptions: catalogModel.reasoningEffort
+      ? { openai: { reasoningEffort: catalogModel.reasoningEffort } }
+      : undefined,
     providerId: provider.id,
   };
 }
@@ -94,11 +107,10 @@ function parseSelectedModelId(
   workload: AiWorkload,
 ) {
   if (!selectedModelId || selectedModelId === "auto") {
-    const model = defaultAiModelForWorkload(workload);
-    if (!model) {
+    if (!defaultAiModelForWorkload(workload)) {
       throw new AiProviderConfigError(`No AI model is configured for ${workload}.`, 503);
     }
-    return { modelId: model.id, providerId: model.providerId };
+    return { modelId: null, providerId: "openai" as const };
   }
 
   const separatorIndex = selectedModelId.indexOf(":");
@@ -110,13 +122,31 @@ function parseSelectedModelId(
       };
 }
 
-export const DEFAULT_OPENAI_CHAT_MODEL = "gpt-4o-mini";
+function resolveAutomaticModel(input: {
+  enabledModelIds: string[];
+  provider: ReturnType<typeof getAiProviderCatalogItem>;
+  workload: AiWorkload;
+}) {
+  const enabledIds = new Set(input.enabledModelIds);
+  const candidates = input.provider.models.filter(
+    (model) =>
+      model.workloads.includes(input.workload) &&
+      (enabledIds.size === 0 || enabledIds.has(model.id)),
+  );
+  const preferred = defaultAiModelForWorkload(input.workload);
+
+  return candidates.find((model) => model.id === preferred?.id) ??
+    candidates[0] ?? null;
+}
+
+export const DEFAULT_OPENAI_CHAT_MODEL = "gpt-5.6-terra";
 
 export function resolveOpenAiChatModel(
   openAiApiKey?: string,
   selectedModelId?: string,
 ) {
-  const modelId = parseSelectedModelId(selectedModelId, "chat").modelId;
+  const modelId = parseSelectedModelId(selectedModelId, "chat").modelId ??
+    DEFAULT_OPENAI_CHAT_MODEL;
   const apiKey = normalizeApiKey(openAiApiKey);
 
   if (!apiKey) {
@@ -127,7 +157,9 @@ export function resolveOpenAiChatModel(
     apiKey,
   });
 
-  return provider.chat(modelId ?? DEFAULT_OPENAI_CHAT_MODEL);
+  return modelId.startsWith("gpt-5.6")
+    ? provider.responses(modelId)
+    : provider.chat(modelId);
 }
 
 export function validateAiProviderBaseUrl(
@@ -173,7 +205,14 @@ export function validateAiProviderBaseUrl(
 export type ResolvedAiModel = {
   catalog: AiModelCatalogItem;
   credentialSource: "managed" | "workspace";
-  model: ReturnType<ReturnType<typeof createOpenAI>["chat"]>;
+  model:
+    | ReturnType<ReturnType<typeof createOpenAI>["chat"]>
+    | ReturnType<ReturnType<typeof createOpenAI>["responses"]>;
+  providerOptions?: {
+    openai: {
+      reasoningEffort: NonNullable<AiModelCatalogItem["reasoningEffort"]>;
+    };
+  };
   providerId: "openai";
 };
 
