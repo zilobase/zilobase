@@ -7,6 +7,17 @@ export const libraryViewIds = [
   "private",
 ] as const
 
+export const mailViewIds = [
+  "inbox",
+  "unread",
+  "starred",
+  "sent",
+  "drafts",
+  "archive",
+  "spam",
+  "trash",
+] as const
+
 export const sidebarSectionIds = ["recents", "favorites", "private", "shared"] as const
 export const sidebarItemIds = [
   "askAi", "meetings", "tasks", ...sidebarSectionIds,
@@ -16,7 +27,7 @@ export const sidebarSectionLimits = [5, 10, 15, 20, 50, 100] as const
 export const sidebarSectionSorts = ["lastEdited", "alphabetical"] as const
 export const sidebarTabIconIds = [
   "home", "circle", "star", "briefcase", "folder", "list",
-  "calendar", "sparkles", "database",
+  "calendar", "sparkles", "database", "mail",
 ] as const
 export const sidebarSectionKinds = [
   "favorites", "recents", "private", "shared", "teamspaces", "meetings",
@@ -24,6 +35,7 @@ export const sidebarSectionKinds = [
 ] as const
 
 export type LibraryView = (typeof libraryViewIds)[number]
+export type MailView = (typeof mailViewIds)[number]
 export type SidebarItemId = (typeof sidebarItemIds)[number]
 export type SidebarSectionId = (typeof sidebarSectionIds)[number]
 export type SidebarSectionKind = (typeof sidebarSectionKinds)[number]
@@ -36,9 +48,10 @@ export type SidebarShortcut = {
   id: string
   label?: string
   target:
-    | { action: "createPage" | "createDatabase" | "createChat"; type: "action" }
+    | { action: "composeMail" | "createPage" | "createDatabase" | "createChat"; type: "action" }
     | { route: "ai" | "meetings" | "tasks" | "trash" | "settings"; type: "route" }
     | { type: "library"; view: LibraryView }
+    | { type: "mail"; view: MailView }
     | { pageId: string; type: "page" }
     | { databaseId: string; type: "database"; viewId?: string }
 }
@@ -107,14 +120,36 @@ const defaultShortcuts: SidebarShortcut[] = [
   { id: "default-trash", target: { route: "trash", type: "route" } },
 ]
 
+const defaultMailComposeShortcut: SidebarShortcut = {
+  id: "default-mail-compose",
+  target: { action: "composeMail", type: "action" },
+}
+
+const defaultMailShortcuts: SidebarShortcut[] = [
+  defaultMailComposeShortcut,
+  ...mailViewIds.map((view) => ({
+    id: `default-mail-${view}`,
+    target: { type: "mail" as const, view },
+  })),
+]
+
 export const defaultSidebarWorkspaceLayout: SidebarWorkspaceLayout = {
-  tabs: [{
-    icon: "home",
-    id: "home",
-    name: "Home",
-    sections: defaultSections,
-    shortcuts: defaultShortcuts,
-  }],
+  tabs: [
+    {
+      icon: "home",
+      id: "home",
+      name: "Home",
+      sections: defaultSections,
+      shortcuts: defaultShortcuts,
+    },
+    {
+      icon: "mail",
+      id: "mail",
+      name: "Mail",
+      sections: [],
+      shortcuts: defaultMailShortcuts,
+    },
+  ],
   taskDatabaseIds: [],
 }
 
@@ -183,9 +218,23 @@ export function normalizeSidebarWorkspaceLayout(value: unknown): SidebarWorkspac
   const home = configuredHome
     ? { ...configuredHome, icon: "home", id: "home", name: "Home" }
     : cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout).tabs[0]!
+  const configuredMail = tabs.find((tab) => tab.id === "mail")
+  const mail = configuredMail
+    ? {
+        ...configuredMail,
+        icon: "mail",
+        id: "mail",
+        name: "Mail",
+        shortcuts: ensureMailComposeShortcut(configuredMail.shortcuts),
+      }
+    : cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout).tabs[1]!
 
   return {
-    tabs: [home, ...tabs.filter((tab) => tab.id !== "home")].slice(0, 8),
+    tabs: [
+      home,
+      mail,
+      ...tabs.filter((tab) => tab.id !== "home" && tab.id !== "mail"),
+    ].slice(0, 8),
     taskDatabaseIds: uniqueStrings(layout.taskDatabaseIds).slice(0, 10),
   }
 }
@@ -227,12 +276,14 @@ function normalizeShortcut(value: unknown): SidebarShortcut | null {
   const target = value.target
   let normalizedTarget: SidebarShortcut["target"] | null = null
 
-  if (target.type === "action" && isIncluded(target.action, ["createPage", "createDatabase", "createChat"] as const)) {
+  if (target.type === "action" && isIncluded(target.action, ["composeMail", "createPage", "createDatabase", "createChat"] as const)) {
     normalizedTarget = { action: target.action, type: "action" }
   } else if (target.type === "route" && isIncluded(target.route, ["ai", "meetings", "tasks", "trash", "settings"] as const)) {
     normalizedTarget = { route: target.route, type: "route" }
   } else if (target.type === "library" && isIncluded(target.view, libraryViewIds)) {
     normalizedTarget = { type: "library", view: target.view }
+  } else if (target.type === "mail" && isIncluded(target.view, mailViewIds)) {
+    normalizedTarget = { type: "mail", view: target.view }
   } else if (target.type === "page" && isSafeId(target.pageId)) {
     normalizedTarget = { pageId: target.pageId, type: "page" }
   } else if (target.type === "database" && isSafeId(target.databaseId)) {
@@ -248,6 +299,14 @@ function normalizeShortcut(value: unknown): SidebarShortcut | null {
   return normalizedTarget
     ? { id: value.id, ...(icon ? { icon } : {}), ...(label ? { label } : {}), target: normalizedTarget }
     : null
+}
+
+function ensureMailComposeShortcut(shortcuts: SidebarShortcut[]) {
+  return shortcuts.some((shortcut) =>
+    shortcut.target.type === "action" && shortcut.target.action === "composeMail"
+  )
+    ? shortcuts
+    : [{ ...defaultMailComposeShortcut, target: { ...defaultMailComposeShortcut.target } }, ...shortcuts].slice(0, 24)
 }
 
 function normalizeSection(value: unknown): SidebarSection | null {

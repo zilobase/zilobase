@@ -9,6 +9,7 @@ import { attachNodeCollaborationRuntime } from "./collaboration-runtime";
 import { setCollaborationExtensionsFactory } from "../../features/collaboration/service";
 import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
 import { attachNodeMeetingAudioRuntime } from "./meeting-audio-runtime";
+import { attachNodeMailRealtimeRuntime } from "./mail-realtime-runtime";
 import { createDbClientForUrl, runWithDbEnv } from "../../infrastructure/database";
 import { assertSelfHostedProductionConfiguration } from "../../features/instance/registration";
 import {
@@ -28,6 +29,7 @@ import { setRealtimeReadinessProbe } from "../../infrastructure/realtime/readine
 import { cleanupExpiredAiAgentData } from "../../features/ai/actions/agent-operations";
 import { AI_JOB_HANDLERS } from "../../features/ai/jobs/ai-job-handlers";
 import { runAiJobBatch } from "../../features/ai/jobs/ai-jobs";
+import { renewGmailWatches } from "../../features/mail/gmail-watch";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -81,15 +83,17 @@ export function createNodeRuntime({
   setRealtimeReadinessProbe(() => realtimeBus?.isReady() ?? true);
   const collaboration = attachNodeCollaborationRuntime(server, env, {
     editionExtension,
-    passthroughPaths: ["/database-collaboration", "/meeting-audio"],
+    passthroughPaths: ["/database-collaboration", "/mail-realtime", "/meeting-audio"],
     realtimeBus,
   });
   const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { realtimeBus });
   const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
+  const mailRealtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus });
   const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
     ...runtimeAdapter,
     publishDatabaseMutation: ({ event }) =>
       databaseRealtime.publishMutation(event),
+    publishMailNotification: ({ event }) => mailRealtime.publishNotification(event),
   };
   let stopMaintenanceDrainer: (() => void) | null = null;
   let stopAiJobWorker: (() => void) | null = null;
@@ -144,6 +148,7 @@ export function createNodeRuntime({
       stopAiJobWorker = null;
       await databaseRealtime.destroy();
       await meetingAudio.destroy();
+      await mailRealtime.destroy();
       await collaboration.destroy();
       await realtimeBus?.close();
       setRealtimeReadinessProbe(null);
@@ -214,6 +219,7 @@ function startMaintenanceDrainer(
           }),
           drainDatabaseRealtimeOutbox(env, { limit: 250 }),
           expireTemporaryMemberships(),
+          renewGmailWatches(env),
         ]),
       );
     } catch (error) {

@@ -39,7 +39,7 @@ export function register({ assert, loadModule, test }) {
     assert.equal(first.defaultLayout.tabs[0].sections[2].sort, "alphabetical")
   })
 
-  test("v2 sidebar normalization enforces a locked Home tab and payload caps", async () => {
+  test("v2 sidebar normalization enforces locked Home and Mail tabs with payload caps", async () => {
     const { normalizeSidebarConfig } = await loadModule(configPath)
     const tabs = Array.from({ length: 12 }, (_, index) => ({
       icon: index === 0 ? "<script>" : "star",
@@ -65,6 +65,9 @@ export function register({ assert, loadModule, test }) {
     assert.equal(config.defaultLayout.tabs[0].name, "Home")
     assert.equal(config.defaultLayout.tabs[0].icon, "home")
     assert.equal(config.defaultLayout.tabs[0].sections.length, 24)
+    assert.equal(config.defaultLayout.tabs[1].id, "mail")
+    assert.equal(config.defaultLayout.tabs[1].name, "Mail")
+    assert.equal(config.defaultLayout.tabs[1].icon, "mail")
   })
 
   test("shared pages and teamspaces are independent sidebar sections", async () => {
@@ -131,15 +134,16 @@ export function register({ assert, loadModule, test }) {
     const makeLayout = (icon) => ({
       tabs: [
         { icon: "home", id: "home", name: "Home", sections: [], shortcuts: [] },
+        { icon: "mail", id: "mail", name: "Mail", sections: [], shortcuts: [] },
         { icon, id: "custom", name: "Custom", sections: [], shortcuts: [] },
       ],
       taskDatabaseIds: [],
     })
     const safeSvg = '<svg viewBox="0 0 24 24"><path d="M1 1h2v2z" /></svg>'
 
-    assert.equal(normalizeSidebarWorkspaceLayout(makeLayout(safeSvg)).tabs[1].icon, safeSvg)
+    assert.equal(normalizeSidebarWorkspaceLayout(makeLayout(safeSvg)).tabs[2].icon, safeSvg)
     assert.equal(
-      normalizeSidebarWorkspaceLayout(makeLayout('<svg onload="alert(1)"></svg>')).tabs[1].icon,
+      normalizeSidebarWorkspaceLayout(makeLayout('<svg onload="alert(1)"></svg>')).tabs[2].icon,
       "circle",
     )
   })

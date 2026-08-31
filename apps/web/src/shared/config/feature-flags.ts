@@ -25,6 +25,10 @@ export const appConfig = {
       import.meta.env.VITE_FEATURE_DATABASE_REALTIME,
       true,
     ),
+    mail: readBooleanFeatureFlag(
+      import.meta.env.VITE_FEATURE_MAIL,
+      false,
+    ),
     notionImport: readBooleanFeatureFlag(
       import.meta.env.VITE_FEATURE_NOTION_IMPORT,
       false,

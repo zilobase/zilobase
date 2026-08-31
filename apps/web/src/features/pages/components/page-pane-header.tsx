@@ -1,15 +1,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
-  CheckIcon,
   ChevronDown,
   ChevronUp,
   ChevronsRight,
   Layers3Icon,
   LockIcon,
+  MailIcon,
   Maximize2,
-  SidebarSimpleIcon,
-  SquareIcon,
   UsersIcon,
 } from "@/shared/components/icons";
 import { toast } from "sonner";
@@ -32,8 +30,9 @@ import {
   BreadcrumbSeparator,
 } from "@/shared/ui/breadcrumb";
 import { Separator } from "@/shared/ui/separator";
-import { libraryViewIcons } from "@/features/sidebar";
-import { libraryViewLabels } from "@/features/sidebar";
+import { SidebarTrigger, useSidebar } from "@/shared/ui/sidebar";
+import { libraryViewIcons, mailViewIcons } from "@/features/sidebar";
+import { libraryViewLabels, mailViewLabels } from "@/features/sidebar";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { useDatabase } from "@zilobase/features/databases";
 import { useMeeting } from "@zilobase/features/meetings";
@@ -41,20 +40,21 @@ import { useTeamspaces } from "@zilobase/features/teamspaces";
 import {
   defaultUserSettings,
   libraryViewIds,
+  mailViewIds,
   useUpdateUserSettings,
   useUserSettings,
   type LibraryView,
+  type MailView,
 } from "@zilobase/features/user-settings";
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "../icons/page-icon";
 import { DEFAULT_DATABASE_ITEM_ICON, DEFAULT_MEETING_ITEM_ICON } from "../icons/item-icons";
 import {
-  embeddedItemsOpenAsLabels,
-  embeddedItemsOpenAsModes,
   resolveEmbeddedItemsOpenAs,
   usePage,
   usePageNavigation,
   type EmbeddedItemsOpenAs,
 } from "@zilobase/features/pages";
+import { EmbeddedItemPresentationDropdown } from "./embedded-item-presentation-dropdown";
 import {
   buildCanonicalBreadcrumbTrail,
   getBreadcrumbNavigationSection,
@@ -138,6 +138,25 @@ export function PagePaneHeader({
         </div>
       ) : null}
     </header>
+  );
+}
+
+export function MainPaneHeaderLeadingControl() {
+  const { isMobile, open, openMobile } = useSidebar();
+  const isCollapsed = isMobile ? !openMobile : !open;
+
+  if (!isCollapsed) {
+    return null;
+  }
+
+  return (
+    <>
+      <SidebarTrigger className="shrink-0" />
+      <Separator
+        orientation="vertical"
+        className="data-[orientation=vertical]:h-4"
+      />
+    </>
   );
 }
 
@@ -260,8 +279,9 @@ function PagePaneControls({
         </Link>
       </Button>
       {pageId ? (
-        <OpenPageAsDropdown
+        <EmbeddedItemPresentationDropdown
           disabled={!isPublishedFallback && updateUserSettings.isPending}
+          itemLabel="pages"
           mode={mode}
           onSelect={handleModeSelect}
         />
@@ -295,59 +315,6 @@ function PagePaneControls({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function OpenPageAsDropdown({
-  disabled,
-  mode,
-  onSelect,
-}: {
-  disabled?: boolean;
-  mode: EmbeddedItemsOpenAs;
-  onSelect: (mode: EmbeddedItemsOpenAs) => void;
-}) {
-  const ModeIcon = mode === "sidepanel" ? SidebarSimpleIcon : SquareIcon;
-  const [open, setOpen] = useState(false);
-
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          aria-label="Open pages as"
-          disabled={disabled}
-          size="icon"
-          title={`Open pages as ${embeddedItemsOpenAsLabels[mode]}`}
-          type="button"
-          variant="ghost"
-        >
-          <ModeIcon mirrored={mode === "sidepanel"} />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="w-52"
-      >
-        {embeddedItemsOpenAsModes.map((value) => {
-          const OptionIcon = value === "sidepanel" ? SidebarSimpleIcon : SquareIcon;
-
-          return (
-            <DropdownMenuItem
-              key={value}
-              onSelect={(event) => {
-                event.preventDefault();
-                onSelect(value);
-                setOpen(false);
-              }}
-            >
-              <OptionIcon mirrored={value === "sidepanel"} />
-              <span>{embeddedItemsOpenAsLabels[value]}</span>
-              {mode === value ? <CheckIcon className="ml-auto" /> : null}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 
@@ -424,9 +391,37 @@ function AppBreadcrumbs({ pathname }: { pathname: string }) {
           </BreadcrumbItem>
           <BreadcrumbSlash />
           <BreadcrumbItem>
-            <BreadcrumbPage className="line-clamp-1 gap-1.5">
+            <BreadcrumbPage className="gap-1.5">
               <LibraryViewIcon aria-hidden="true" className="size-4 shrink-0" />
-              {libraryViewLabels[libraryView]}
+              <span className="line-clamp-1">{libraryViewLabels[libraryView]}</span>
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    );
+  }
+
+  if (pathname === "/mail") {
+    const requestedView = location.search.view;
+    const mailView = mailViewIds.includes(requestedView as MailView)
+      ? requestedView as MailView
+      : "inbox";
+    const MailViewIcon = mailViewIcons[mailView];
+
+    return (
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink className="gap-1.5" render={<Link search={{ view: "inbox" }} to="/mail" />}>
+              <MailIcon aria-hidden="true" className="size-4 shrink-0" />
+              <span className="line-clamp-1">Mail</span>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSlash />
+          <BreadcrumbItem>
+            <BreadcrumbPage className="gap-1.5">
+              <MailViewIcon aria-hidden="true" className="size-4 shrink-0" />
+              <span className="line-clamp-1">{mailViewLabels[mailView]}</span>
             </BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>

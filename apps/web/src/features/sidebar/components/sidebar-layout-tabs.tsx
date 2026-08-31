@@ -65,7 +65,7 @@ export function SidebarLayoutTabs({
         <div className="flex min-w-0 items-center gap-1">
           <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd} sensors={sensors}>
             <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <SortableContext items={tabs.filter((tab) => tab.id !== "home").map((tab) => tab.id)} strategy={horizontalListSortingStrategy}>
+              <SortableContext items={tabs.filter((tab) => !isFixedTab(tab.id)).map((tab) => tab.id)} strategy={horizontalListSortingStrategy}>
                 {tabs.map((tab) => (
                   <SidebarLayoutTab
                     active={tab.id === activeTabId}
@@ -114,7 +114,7 @@ export function SidebarLayoutTabs({
 }
 
 function SidebarLayoutTab({ active, activeTabSettings, editing, onSelectTab, tab }: { active: boolean; activeTabSettings?: React.ReactNode; editing: boolean; onSelectTab: (tabId: string) => void; tab: SidebarTab }) {
-  const canDrag = editing && tab.id !== "home"
+  const canDrag = editing && !isFixedTab(tab.id)
   const sortable = useSortable({
     animateLayoutChanges: ({ isSorting }) => isSorting,
     disabled: !canDrag,
@@ -157,6 +157,10 @@ function SidebarLayoutTab({ active, activeTabSettings, editing, onSelectTab, tab
   }
 
   return <Tooltip><TooltipTrigger asChild>{button}</TooltipTrigger><TooltipContent side="bottom" sideOffset={6}>{tab.name}</TooltipContent></Tooltip>
+}
+
+function isFixedTab(tabId: string) {
+  return tabId === "home" || tabId === "mail"
 }
 
 const tabButtonVariants = {

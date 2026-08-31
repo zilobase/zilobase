@@ -217,6 +217,7 @@ export function useOpenInNewTab() {
 
 export function getDesktopTabTitle(pathname: string) {
   if (pathname === "/recents") return "Recents"
+  if (pathname === "/mail") return "Mail"
   if (pathname === "/ai") return "Ask AI"
   if (pathname === "/tasks") return "Tasks"
   if (pathname === "/canvas") return "Canvas"

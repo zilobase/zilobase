@@ -1,5 +1,9 @@
 export type RuntimeEnv = Record<string, unknown>;
 
+export function isMailFeatureEnabled(env: RuntimeEnv) {
+  return getStringEnv(env, "MAIL_ENABLED")?.trim().toLowerCase() === "true";
+}
+
 const DESKTOP_CLIENT_ORIGINS = [
   "tauri://localhost",
   "http://tauri.localhost",

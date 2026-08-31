@@ -44,4 +44,30 @@ export function register({ assert, loadModule, test }) {
     assert.equal(isShortcutActive(shortcut({ type: "route", route: "settings" }), "/recents", {}, true), true)
     assert.equal(isShortcutActive(shortcut({ type: "action", action: "createPage" }), "/recents", {}), false)
   })
+
+  test("disabled mail removes its tab and shortcuts from every sidebar tab", async () => {
+    const { withoutMailFeatures } = await loadModule(
+      "/src/features/sidebar/model/sidebar-layout-model.ts",
+    )
+    const layout = {
+      tabs: [
+        { icon: "home", id: "home", name: "Home", sections: [], shortcuts: [
+          { id: "compose", target: { action: "composeMail", type: "action" } },
+          { id: "inbox", target: { type: "mail", view: "inbox" } },
+          { id: "tasks", target: { route: "tasks", type: "route" } },
+        ] },
+        { icon: "mail", id: "mail", name: "Mail", sections: [], shortcuts: [] },
+      ],
+      taskDatabaseIds: ["tasks"],
+    }
+
+    assert.deepEqual(withoutMailFeatures(layout), {
+      tabs: [
+        { icon: "home", id: "home", name: "Home", sections: [], shortcuts: [
+          { id: "tasks", target: { route: "tasks", type: "route" } },
+        ] },
+      ],
+      taskDatabaseIds: ["tasks"],
+    })
+  })
 }

@@ -51,6 +51,7 @@ export {
   SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX,
 } from "../shared/security/auth-headers";
 export {
+  isMailFeatureEnabled,
   getCanonicalApiOrigin,
   getCanonicalHttpOrigin,
   getCanonicalWebOrigin,
@@ -90,6 +91,7 @@ export {
   getDatabaseRealtimeWebSocketUrl,
   getMeetingAudioWebSocketUrl,
   getMeetingCollaborationWebSocketUrl,
+  getMailRealtimeWebSocketUrl,
   getDatabaseUrl,
   getRuntimeAdapter,
   runWithRuntimeAdapter,
@@ -98,6 +100,7 @@ export {
   type MeetingRecorderRuntimeInput,
   type MeetingRecorderRuntimeState,
   type ServerRuntimeAdapter,
+  type MailNotificationEvent,
 } from "../infrastructure/runtime/runtime-adapter";
 export {
   createDatabaseRealtimeTicket,
@@ -118,6 +121,7 @@ export {
   type DatabaseRealtimeMutationEvent,
 } from "../features/databases/realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";
+export { renewGmailWatches } from "../features/mail/gmail-watch";
 export {
   MembershipService,
   type GrantMembershipInput,

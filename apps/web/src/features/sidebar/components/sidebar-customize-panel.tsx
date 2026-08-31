@@ -186,12 +186,12 @@ export function SidebarCustomizePanel({
     onActiveTabChange(id)
   }
   const deleteTab = () => {
-    if (activeTab.id === "home") return
+    if (isFixedTab(activeTab.id)) return
     setDraft((current) => ({ ...current, tabs: current.tabs.filter((tab) => tab.id !== activeTab.id) }))
     onActiveTabChange("home")
   }
   const requestDeleteTab = () => {
-    if (activeTab.id === "home") return
+    if (isFixedTab(activeTab.id)) return
     if (!activeTab.shortcuts.length && !activeTab.sections.length) {
       deleteTab()
       return
@@ -202,7 +202,7 @@ export function SidebarCustomizePanel({
     setDraft((current) => {
       const from = current.tabs.findIndex((tab) => tab.id === draggedTabId)
       const to = current.tabs.findIndex((tab) => tab.id === overTabId)
-      if (from <= 0 || to <= 0 || from === to) return current
+      if (from < 2 || to < 2 || from === to) return current
       const tabs = [...current.tabs]
       const [tab] = tabs.splice(from, 1)
       if (!tab) return current
@@ -514,9 +514,13 @@ function DatabaseSourceMenu({ databases, onChange, section }: { databases: PageD
 }
 
 function TabSettingsEditor({ onDelete, onIconChange, onNameChange, tab }: { onDelete: () => void; onIconChange: (icon: string) => void; onNameChange: (name: string) => void; tab: SidebarTab }) {
-  const editable = tab.id !== "home"
+  const editable = !isFixedTab(tab.id)
   const [iconPickerOpen, setIconPickerOpen] = React.useState(false)
-  return <div className="bg-surface-overlay text-content-primary"><div className="flex items-center gap-2 p-2"><Popover onOpenChange={setIconPickerOpen} open={iconPickerOpen}><PopoverTrigger asChild><button aria-label="Change tab icon" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-stroke-default bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50" disabled={!editable} type="button"><SidebarTabIcon value={tab.icon} /></button></PopoverTrigger><PopoverContent align="start" className="w-auto gap-0 overflow-hidden p-0" side="right" sideOffset={6}><IconEmojiPicker allowUpload={false} onEmojiSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} onIconSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} /></PopoverContent></Popover><Input aria-label="Tab name" className="h-8 min-w-0 flex-1 text-sm font-medium" disabled={!editable} maxLength={40} onChange={(event) => onNameChange(event.target.value)} placeholder="Untitled tab" value={tab.name} /></div>{editable ? <div className="border-t border-stroke-default p-1"><button className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-action-danger-text hover:bg-feedback-error-subtle" onClick={onDelete} type="button"><Trash2Icon className="size-4" />Delete tab</button></div> : <p className="border-t border-stroke-default px-3 py-2 text-xs text-content-secondary">Home is the fixed default tab.</p>}</div>
+  return <div className="bg-surface-overlay text-content-primary"><div className="flex items-center gap-2 p-2"><Popover onOpenChange={setIconPickerOpen} open={iconPickerOpen}><PopoverTrigger asChild><button aria-label="Change tab icon" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-stroke-default bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50" disabled={!editable} type="button"><SidebarTabIcon value={tab.icon} /></button></PopoverTrigger><PopoverContent align="start" className="w-auto gap-0 overflow-hidden p-0" side="right" sideOffset={6}><IconEmojiPicker allowUpload={false} onEmojiSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} onIconSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} /></PopoverContent></Popover><Input aria-label="Tab name" className="h-8 min-w-0 flex-1 text-sm font-medium" disabled={!editable} maxLength={40} onChange={(event) => onNameChange(event.target.value)} placeholder="Untitled tab" value={tab.name} /></div>{editable ? <div className="border-t border-stroke-default p-1"><button className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-action-danger-text hover:bg-feedback-error-subtle" onClick={onDelete} type="button"><Trash2Icon className="size-4" />Delete tab</button></div> : <p className="border-t border-stroke-default px-3 py-2 text-xs text-content-secondary">{tab.name} is a fixed default tab.</p>}</div>
+}
+
+function isFixedTab(tabId: string) {
+  return tabId === "home" || tabId === "mail"
 }
 
 function resolveShortcutLabel(shortcut: SidebarShortcut, pages: Page[], databases: PageDatabase[]) {

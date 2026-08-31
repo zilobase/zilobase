@@ -14,8 +14,15 @@ import {
   isLocalDevelopmentHost,
   isLocalRequestOrigin,
   isLoopbackHost,
+  isMailFeatureEnabled,
   resolvePublicRequestUrl,
 } from "./config";
+
+test("mail is disabled unless explicitly enabled", () => {
+  assert.equal(isMailFeatureEnabled({}), false);
+  assert.equal(isMailFeatureEnabled({ MAIL_ENABLED: "false" }), false);
+  assert.equal(isMailFeatureEnabled({ MAIL_ENABLED: "TRUE" }), true);
+});
 
 test("public request URLs prefer the local Host over a rewritten production origin", () => {
   const request = new Request(

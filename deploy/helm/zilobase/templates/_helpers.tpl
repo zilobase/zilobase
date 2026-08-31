@@ -49,6 +49,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
   valueFrom: { secretKeyRef: { name: {{ .Values.existingSecret | quote }}, key: {{ .Values.secretKeys.s3SecretAccessKey | quote }} } }
 - name: SMTP_PASSWORD
   valueFrom: { secretKeyRef: { name: {{ .Values.existingSecret | quote }}, key: {{ .Values.secretKeys.smtpPassword | quote }}, optional: true } }
+{{- if .Values.gmail.enabled }}
+- name: GMAIL_GOOGLE_CLIENT_SECRET
+  valueFrom: { secretKeyRef: { name: {{ .Values.existingSecret | quote }}, key: {{ .Values.secretKeys.gmailGoogleClientSecret | quote }} } }
+- name: GMAIL_TOKEN_ENCRYPTION_KEY
+  valueFrom: { secretKeyRef: { name: {{ .Values.existingSecret | quote }}, key: {{ .Values.secretKeys.gmailTokenEncryptionKey | quote }} } }
+{{- end }}
 {{- if .Values.realtime.enabled }}
 - name: REALTIME_REDIS_URL
   valueFrom: { secretKeyRef: { name: {{ .Values.realtime.existingSecret | quote }}, key: {{ .Values.realtime.secretKey | quote }} } }
@@ -70,5 +76,12 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - { name: SMTP_PORT, value: {{ .Values.config.smtpPort | quote }} }
 - { name: SMTP_SECURE, value: {{ .Values.config.smtpSecure | quote }} }
 - { name: SMTP_USER, value: {{ .Values.config.smtpUser | quote }} }
+{{- if .Values.gmail.enabled }}
+- { name: GMAIL_GOOGLE_CLIENT_ID, value: {{ .Values.gmail.googleClientId | quote }} }
+- { name: GMAIL_PUBSUB_TOPIC, value: {{ .Values.gmail.pubsubTopic | quote }} }
+- { name: GMAIL_PUBSUB_PUSH_AUDIENCE, value: {{ .Values.gmail.pubsubPushAudience | quote }} }
+- { name: GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL, value: {{ .Values.gmail.pubsubServiceAccountEmail | quote }} }
+- { name: GMAIL_PUBSUB_SUBSCRIPTION, value: {{ .Values.gmail.pubsubSubscription | quote }} }
+{{- end }}
 - { name: DRIZZLE_MIGRATIONS_DIR, value: "/app/apps/server/drizzle" }
 {{- end }}

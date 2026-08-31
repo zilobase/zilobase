@@ -202,6 +202,7 @@ pub fn run() {
             desktop_server::remove_desktop_server_profile,
             oauth::start_browser_authorization,
             oauth::cancel_browser_authorization,
+            oauth::open_mail_authorization_url,
             diagnostics::record_renderer_diagnostic,
             diagnostics::get_diagnostics_info,
             diagnostics::open_diagnostics_folder,

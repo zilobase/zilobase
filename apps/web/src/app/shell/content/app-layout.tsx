@@ -33,6 +33,7 @@ import {
 
 import {
   getDatabaseId,
+  MainPaneHeaderLeadingControl,
   PagePaneHeader,
   useRoutePageId,
 } from "@/features/pages/components/index"
@@ -45,7 +46,6 @@ import {
   type SettingsSection,
   ZilobaseAiSettingsPage,
 } from "@/features/settings"
-import { Separator } from "@/shared/ui/separator"
 import { ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable"
 import {
   Sheet,
@@ -57,7 +57,6 @@ import {
 import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
   useSidebar,
 } from "@/shared/ui/sidebar"
 import { isEmbeddedMobileViewer } from "@/features/pages/model/embedded-view"
@@ -219,6 +218,7 @@ function AppLayoutContent({
     setOpen: setAppSidebarOpen,
   } = useSidebar()
   const isAiPage = pathname === "/ai"
+  const isMailPage = pathname === "/mail"
   const pageId = useRoutePageId(pathname)
   const databaseId = getDatabaseId(pathname)
   const { data: databasePayload } = useDatabase(databaseId, {
@@ -562,7 +562,7 @@ function AppLayoutContent({
                 )
               }
               header={
-                embeddedMobileViewer ? undefined : (
+                embeddedMobileViewer || isMailPage ? undefined : (
                   <AppHeader
                     discussionsOpen={discussionsSidebarOpen}
                     isSettingsPage={isSettingsPage || isAiPage}
@@ -817,36 +817,6 @@ function AppHeader({
           />
         </PageSidePaneHeaderCell>
       ) : null}
-    </>
-  )
-}
-
-function MainPaneHeaderLeadingControl() {
-  const { isMobile, open, openMobile } = useSidebar()
-  const isCollapsed = isMobile ? !openMobile : !open
-
-  if (isCollapsed) {
-    return <CollapsedSidebarTrigger />
-  }
-
-  return null
-}
-
-function CollapsedSidebarTrigger() {
-  const { isMobile, open, openMobile } = useSidebar()
-  const isCollapsed = isMobile ? !openMobile : !open
-
-  if (!isCollapsed) {
-    return null
-  }
-
-  return (
-    <>
-      <SidebarTrigger className="shrink-0" />
-      <Separator
-        orientation="vertical"
-        className="data-[orientation=vertical]:h-4"
-      />
     </>
   )
 }

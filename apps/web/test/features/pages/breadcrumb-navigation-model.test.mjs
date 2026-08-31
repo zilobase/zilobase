@@ -9,6 +9,18 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.doesNotMatch(viewportSource, /top-0[^\n]*bg-gradient-to-b|bg-gradient-to-b[^\n]*top-0/)
   })
 
+  test("breadcrumb links and current pages align icons with labels", async () => {
+    const [primitiveSource, headerSource] = await Promise.all([
+      readSource("/src/shared/ui/breadcrumb.tsx"),
+      readSource("/src/features/pages/components/page-pane-header.tsx"),
+    ])
+
+    assert.match(primitiveSource, /inline-flex items-center transition-colors/)
+    assert.match(primitiveSource, /inline-flex items-center font-medium text-content-primary/)
+    assert.doesNotMatch(headerSource, /BreadcrumbPage className="line-clamp-1 gap-1\.5"/)
+    assert.match(headerSource, /BreadcrumbPage className="gap-1\.5"[\s\S]*span className="line-clamp-1"/)
+  })
+
   test("Library breadcrumbs reflect the active view label and icon", async () => {
     const source = await readSource("/src/features/pages/components/page-pane-header.tsx")
 

@@ -11,6 +11,7 @@ import { imageRoutes } from "../features/images/routes";
 import { instanceRoutes } from "../features/instance/routes";
 import { metadataRoutes } from "../features/metadata/routes";
 import { meetingRoutes } from "../features/meetings/routes";
+import { mailRoutes } from "../features/mail";
 import { pageRoutes } from "../features/pages/page-routes";
 import { pageGuestRoutes } from "../features/page-guests";
 import { pageLayoutRoutes } from "../features/page-layouts/routes";
@@ -34,6 +35,7 @@ export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/images", imageRoutes);
   app.route("/metadata", metadataRoutes);
   app.route("/meetings", meetingRoutes);
+  app.route("/mail", mailRoutes);
   app.route("/workspaces", workspaceRoutes);
   app.route("/workspaces", teamspaceRoutes);
   app.route("/api/workspace/settings", workspaceSettingsRoutes);

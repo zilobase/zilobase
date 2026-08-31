@@ -3,6 +3,7 @@ export function register({ assert, loadModule, test }) {
     const { isFeatureEnabled } = await loadModule("/src/shared/config/feature-flags.ts")
 
     assert.equal(isFeatureEnabled("notionImport"), false)
+    assert.equal(isFeatureEnabled("mail"), false)
     assert.equal(isFeatureEnabled("teamspaces"), true)
   })
 

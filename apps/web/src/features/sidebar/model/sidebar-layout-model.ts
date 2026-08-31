@@ -1,5 +1,6 @@
 import type {
   LibraryView,
+  MailView,
   SidebarSection,
   SidebarSectionKind,
   SidebarShortcut,
@@ -28,11 +29,24 @@ export const libraryViewLabels: Record<LibraryView, string> = {
   teamspaces: "Teamspaces",
 }
 
+export const mailViewLabels: Record<MailView, string> = {
+  archive: "Archive",
+  drafts: "Drafts",
+  inbox: "Inbox",
+  sent: "Sent",
+  spam: "Spam",
+  starred: "Starred",
+  trash: "Trash",
+  unread: "Unread",
+}
+
 export function getShortcutLabel(shortcut: SidebarShortcut) {
   if (shortcut.label) return shortcut.label
   const target = shortcut.target
   if (target.type === "action") {
-    return target.action === "createPage"
+    return target.action === "composeMail"
+      ? "Compose"
+      : target.action === "createPage"
       ? "New page"
       : target.action === "createDatabase"
         ? "New database"
@@ -48,6 +62,7 @@ export function getShortcutLabel(shortcut: SidebarShortcut) {
     }[target.route]
   }
   if (target.type === "library") return libraryViewLabels[target.view]
+  if (target.type === "mail") return mailViewLabels[target.view]
   return target.type === "page" ? "Page" : "Database"
 }
 
@@ -61,6 +76,9 @@ export function isShortcutActive(
   if (target.type === "action") return false
   if (target.type === "library") {
     return pathname === "/recents" && search.view === target.view
+  }
+  if (target.type === "mail") {
+    return pathname === "/mail" && search.view === target.view
   }
   if (target.type === "page") return pathname === `/p/${target.pageId}`
   if (target.type === "database") {
@@ -95,6 +113,24 @@ export function moveArrayItem<T>(items: T[], index: number, offset: -1 | 1) {
   const next = [...items]
   ;[next[index], next[nextIndex]] = [next[nextIndex]!, next[index]!]
   return next
+}
+
+export function withoutMailFeatures(
+  layout: SidebarWorkspaceLayout,
+): SidebarWorkspaceLayout {
+  return {
+    ...layout,
+    tabs: layout.tabs
+      .filter((tab) => tab.id !== "mail")
+      .map((tab) => ({
+        ...tab,
+        shortcuts: tab.shortcuts.filter((shortcut) => {
+          const target = shortcut.target
+          return target.type !== "mail" &&
+            !(target.type === "action" && target.action === "composeMail")
+        }),
+      })),
+  }
 }
 
 export function moveLayoutEntry(

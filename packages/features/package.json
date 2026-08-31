@@ -57,6 +57,10 @@
       "types": "./src/meetings/index.ts",
       "default": "./src/meetings/index.ts"
     },
+    "./mail": {
+      "types": "./src/mail/index.ts",
+      "default": "./src/mail/index.ts"
+    },
     "./workspaces": {
       "types": "./src/workspaces/index.ts",
       "default": "./src/workspaces/index.ts"
