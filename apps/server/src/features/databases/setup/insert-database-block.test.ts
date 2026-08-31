@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { insertDatabaseBlockInContent } from "./insert-database-block";
+import {
+  insertDatabaseBlockInContent,
+  shouldShowInlineDatabaseTitle,
+} from "@zilobase/page-context";
 
 const DATABASE_ID = "bf51b30e-1234-5678-9abc-def012345678";
 
@@ -12,6 +15,43 @@ test("insertDatabaseBlockInContent appends block to empty doc", () => {
   assert.equal(result.content.type, "doc");
   assert.equal(result.content.content?.[0]?.type, "databaseBlock");
   assert.equal(result.content.content?.[0]?.attrs?.databaseId, DATABASE_ID);
+});
+
+test("insertDatabaseBlockInContent can hide a redundant inline title", () => {
+  const result = insertDatabaseBlockInContent(null, {
+    databaseId: DATABASE_ID,
+    showTitle: false,
+  });
+
+  assert.equal(result.content.content?.[0]?.attrs?.showTitle, false);
+});
+
+test("matching page and database names use the native page title only", () => {
+  assert.equal(
+    shouldShowInlineDatabaseTitle("🚀 Release Tracker", "Release Tracker"),
+    false,
+  );
+  assert.equal(
+    shouldShowInlineDatabaseTitle("Launch Dashboard", "Release Tracker"),
+    true,
+  );
+});
+
+test("insertDatabaseBlockInContent repairs an existing block title", () => {
+  const result = insertDatabaseBlockInContent({
+    type: "doc",
+    content: [{
+      attrs: { databaseId: DATABASE_ID, showTitle: true },
+      type: "databaseBlock",
+    }],
+  }, {
+    databaseId: DATABASE_ID,
+    showTitle: false,
+  });
+
+  assert.equal(result.alreadyEmbedded, true);
+  assert.equal(result.titleUpdated, true);
+  assert.equal(result.content.content?.[0]?.attrs?.showTitle, false);
 });
 
 test("insertDatabaseBlockInContent inserts after matching heading", () => {

@@ -12,9 +12,25 @@
       "types": "./src/database/format-property-value.ts",
       "default": "./src/database/format-property-value.ts"
     },
+    "./build-database-markdown": {
+      "types": "./src/database/build-database-markdown.ts",
+      "default": "./src/database/build-database-markdown.ts"
+    },
+    "./extract-database-ids": {
+      "types": "./src/database/extract-database-ids.ts",
+      "default": "./src/database/extract-database-ids.ts"
+    },
     "./prosemirror-to-markdown": {
       "types": "./src/markdown/prosemirror-to-markdown.ts",
       "default": "./src/markdown/prosemirror-to-markdown.ts"
+    },
+    "./strip-database-payload": {
+      "types": "./src/database/strip-database-payload.ts",
+      "default": "./src/database/strip-database-payload.ts"
+    },
+    "./types": {
+      "types": "./src/shared/types.ts",
+      "default": "./src/shared/types.ts"
     }
   }
 }

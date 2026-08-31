@@ -1,5 +1,9 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
+import {
+  insertDatabaseBlockInContent,
+  shouldShowInlineDatabaseTitle,
+} from "@zilobase/page-context";
 
 import {
   canAccessDatabaseInWorkspace,
@@ -17,7 +21,6 @@ import {
 } from "../../collaboration/service";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { upsertPageItemPlacement } from "../placements/page-item-placements";
-import { insertDatabaseBlockInContent } from "../../databases/setup/insert-database-block";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 export async function createPageService(input: {
@@ -49,6 +52,7 @@ export async function createPageService(input: {
   }
 
   const pageId = crypto.randomUUID();
+  const parentPlacementId = input.parentPageId ? crypto.randomUUID() : null;
 
   const [record] = await db.transaction(async (tx) => {
     const [created] = await tx
@@ -68,6 +72,7 @@ export async function createPageService(input: {
 
     if (input.parentPageId) {
       await upsertPageItemPlacement(tx, {
+        id: parentPlacementId!,
         workspaceId: input.workspaceId,
         parentKind: "page",
         parentId: input.parentPageId,
@@ -86,7 +91,23 @@ export async function createPageService(input: {
     return [created];
   });
 
-  return { page: record, pageId: record.id };
+  return {
+    page: record,
+    pageId: record.id,
+    parentPlacement: parentPlacementId && input.parentPageId
+      ? {
+          id: parentPlacementId,
+          workspaceId: input.workspaceId,
+          parentKind: "page" as const,
+          parentId: input.parentPageId,
+          itemKind: "page" as const,
+          itemId: record.id,
+          placementKind: "primary" as const,
+          sourceRowId: null,
+          position: 0,
+        }
+      : null,
+  };
 }
 
 export async function linkDatabaseInPageService(input: {
@@ -163,6 +184,7 @@ export async function embedDatabaseInPageService(input: {
   afterHeading?: string;
   databaseId: string;
   env: RuntimeEnv;
+  showTitle?: boolean;
   userId: string;
   pageId: string;
 }) {
@@ -181,7 +203,11 @@ export async function embedDatabaseInPageService(input: {
   }
 
   const [databaseRecord] = await db
-    .select({ id: database.id, workspaceId: database.workspaceId })
+    .select({
+      id: database.id,
+      name: database.name,
+      workspaceId: database.workspaceId,
+    })
     .from(database)
     .where(and(eq(database.id, input.databaseId), isNull(database.deletedAt)))
     .limit(1);
@@ -209,20 +235,25 @@ export async function embedDatabaseInPageService(input: {
     // Fall back to the stored page snapshot when collaboration state is missing.
   }
 
-  const { content, alreadyEmbedded } = insertDatabaseBlockInContent(
+  const showTitle = input.showTitle ??
+    shouldShowInlineDatabaseTitle(existing.name, databaseRecord.name);
+  const { content, alreadyEmbedded, titleUpdated } = insertDatabaseBlockInContent(
     baseContent,
     {
       afterHeading: input.afterHeading,
       databaseId: input.databaseId,
+      showTitle,
     },
   );
 
-  if (alreadyEmbedded) {
+  if (alreadyEmbedded && !titleUpdated) {
     return {
       alreadyEmbedded: true,
       databaseId: input.databaseId,
       embedMarkdown: `[Database (${input.databaseId})]`,
       pageId: existing.id,
+      showTitle,
+      titleUpdated: false,
     };
   }
 
@@ -240,10 +271,12 @@ export async function embedDatabaseInPageService(input: {
   };
 
   return {
-    alreadyEmbedded: false,
+    alreadyEmbedded,
     databaseId: input.databaseId,
     embedMarkdown: `[Database (${input.databaseId})]`,
     page: updated,
     pageId: existing.id,
+    showTitle,
+    titleUpdated,
   };
 }

@@ -12,11 +12,16 @@ import type { DatabaseContextPayload } from "../shared/types"
 type ViewDescriptor = {
   viewName: string
   viewType: string
-  isExternal: boolean
-  dataSourceId: string
-  dataSourceName: string
   schema: DatabaseContextPayload
   view: DatabaseContextPayload["views"][number]
+}
+
+type DataSourceDescriptor = {
+  dataSourceId: string
+  dataSourceName: string
+  isExternal: boolean
+  parentDatabaseId: string
+  views: ViewDescriptor[]
 }
 
 export function buildDatabaseMarkdown(
@@ -24,16 +29,29 @@ export function buildDatabaseMarkdown(
   dataSourceSchemas: Record<string, DatabaseContextPayload>,
 ): string {
   const lines: string[] = []
-  const descriptors = collectViewDescriptors(hostSchema, dataSourceSchemas)
+  const sources = collectDataSourceDescriptors(hostSchema, dataSourceSchemas)
+  const descriptors = sources.flatMap((source) => source.views)
 
   lines.push(`#### Database: ${hostSchema.database.name}`)
-  lines.push(`- ID: ${hostSchema.database.id}`)
+  lines.push(`- Host database ID: ${hostSchema.database.id}`)
   lines.push(`- Row count: ${hostSchema.rowCount}`)
+  lines.push(`- Accessible data sources: ${sources.length}`)
   lines.push("")
 
-  for (const descriptor of descriptors) {
-    lines.push(...buildViewSection(descriptor))
-    lines.push(...buildViewRowsSection(descriptor))
+  for (const source of sources) {
+    lines.push(
+      `##### Data source: ${source.dataSourceName} (${source.isExternal ? "attached" : "native"})`,
+    )
+    lines.push(`- Source ID: ${source.dataSourceId}`)
+    lines.push(`- Parent database ID: ${source.parentDatabaseId}`)
+    lines.push(`- Views: ${source.views.length}`)
+
+    for (const descriptor of source.views) {
+      lines.push("")
+      lines.push(...buildViewSection(descriptor))
+      lines.push(...buildViewRowsSection(descriptor))
+    }
+
     lines.push("")
   }
 
@@ -42,35 +60,36 @@ export function buildDatabaseMarkdown(
   return lines.join("\n").trim()
 }
 
-function collectViewDescriptors(
+function collectDataSourceDescriptors(
   hostSchema: DatabaseContextPayload,
   dataSourceSchemas: Record<string, DatabaseContextPayload>,
 ) {
-  const descriptors: ViewDescriptor[] = []
+  const descriptors: DataSourceDescriptor[] = []
 
-  for (const view of [...hostSchema.views].sort(
-    (left, right) => left.position - right.position,
-  )) {
-    const source = hostSchema.dataSources.find(
-      (candidate) => candidate.id === view.dataSourceId,
-    )
+  for (const source of hostSchema.dataSources) {
     const sourceSchema =
-      hostSchema.activeDataSource?.id === view.dataSourceId
+      hostSchema.activeDataSource?.id === source.id
         ? hostSchema
-        : dataSourceSchemas[view.dataSourceId]
+        : dataSourceSchemas[source.id]
 
-    if (!source || !sourceSchema) {
+    if (!sourceSchema) {
       continue
     }
 
     descriptors.push({
-      viewName: view.name,
-      viewType: view.type,
       isExternal: source.parentDatabaseId !== hostSchema.database.id,
       dataSourceId: source.id,
       dataSourceName: source.name,
-      schema: sourceSchema,
-      view,
+      parentDatabaseId: source.parentDatabaseId,
+      views: hostSchema.views
+        .filter((view) => view.dataSourceId === source.id)
+        .sort((left, right) => left.position - right.position)
+        .map((view) => ({
+          viewName: view.name,
+          viewType: view.type,
+          schema: sourceSchema,
+          view,
+        })),
     })
   }
 
@@ -89,14 +108,9 @@ function buildViewSection(descriptor: ViewDescriptor) {
   const nameLabel = getNameColumnLabel(descriptor.schema.activeDataSource?.config)
 
   lines.push(
-    `##### View: ${descriptor.viewName} (${descriptor.isExternal ? "attached" : "native"}, ${descriptor.viewType})`,
+    `###### View: ${descriptor.viewName} (${descriptor.viewType})`,
   )
-
-  if (descriptor.isExternal) {
-    lines.push(
-      `- Attached data source: ${descriptor.dataSourceName} (id: ${descriptor.dataSourceId})`,
-    )
-  }
+  lines.push(`- View ID: ${descriptor.view.id}`)
 
   lines.push("- Visible properties:")
   lines.push(`  - ${nameLabel} (text)`)
@@ -253,7 +267,7 @@ function buildPropertyUnion(descriptors: ViewDescriptor[]) {
 
   for (const entry of union.values()) {
     lines.push(
-      `| ${entry.label} | ${entry.typeHint} | ${[...entry.views].join(", ")} |`,
+      `| ${escapeTableCell(entry.label)} | ${escapeTableCell(entry.typeHint)} | ${escapeTableCell([...entry.views].join(", "))} |`,
     )
   }
 
