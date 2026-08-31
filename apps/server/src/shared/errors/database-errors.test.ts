@@ -8,16 +8,16 @@ import {
   isDatabaseUnavailableError,
 } from "./database-errors";
 
-test("recognizes PostgreSQL and nested Hyperdrive availability failures", () => {
+test("recognizes PostgreSQL and nested pool availability failures", () => {
   const postgresError = Object.assign(new Error("too many connections"), {
     code: "53300",
   });
-  const hyperdriveError = new Error("query failed", {
+  const poolError = new Error("query failed", {
     cause: new Error("Failed to acquire a connection from the pool."),
   });
 
   assert.equal(isDatabaseUnavailableError(postgresError), true);
-  assert.equal(isDatabaseUnavailableError(hyperdriveError), true);
+  assert.equal(isDatabaseUnavailableError(poolError), true);
   assert.equal(getDatabaseErrorCode(postgresError), "53300");
   assert.equal(DATABASE_UNAVAILABLE_CODE, "DATABASE_UNAVAILABLE");
   assert.equal(

@@ -26,7 +26,7 @@ test("safe Gmail reads retry transient failures and preserve pagination paramete
   assert.equal(result.nextPageToken, "next")
 })
 
-test("Gmail fetch stays bound to the Worker global receiver", async () => {
+test("Gmail fetch stays bound to the runtime global receiver", async () => {
   const receiverSensitiveFetch = function (this: unknown) {
     assert.equal(this, globalThis)
     return Promise.resolve(Response.json({ labels: [] }))
@@ -59,7 +59,7 @@ test("Gmail transport failures are not mislabeled as timeouts", async () => {
   )
 })
 
-test("thread metadata uses one Gmail batch request with Worker-compatible inputs", async () => {
+test("thread metadata uses one Gmail batch request with portable inputs", async () => {
   const requests: Array<{ body: string; input: RequestInfo | URL }> = []
   const responseBoundary = "batch_response"
   const gateway = new GmailGateway("token", async (input, init) => {

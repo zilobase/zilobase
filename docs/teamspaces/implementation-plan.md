@@ -2,7 +2,7 @@
 
 Status: Implemented in five green, independently committed phases
 Date: 2026-08-22
-Scope: Zilobase community, cloud adapter, and Enterprise-compatible extension points
+Scope: Zilobase Community and deployment-compatible extension points
 
 ## 1. Outcome
 
@@ -505,7 +505,7 @@ Add a read-only checker and an explicit repair mode for:
 ### 10.4 Realtime and integration tests
 
 - Page and database collaboration tickets follow new access immediately after join, removal, archive, guest disable, or temporary expiry.
-- Cloud-adapter room access matches server access decisions.
+- Alternate-runtime room access matches server access decisions.
 - Search, AI page tools, recents, favorites, publishing, exports, imports, and database rows do not leak inaccessible content.
 - Self-hosted migration/upgrade tests and Enterprise audit-event tests.
 

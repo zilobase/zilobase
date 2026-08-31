@@ -22,16 +22,17 @@ test("server timing preserves request IDs and emits collected timings", async ()
   assert.equal(response.headers.get("server-timing"), "database;dur=12");
 });
 
-test("server timing falls back to Cloudflare ray IDs and omits empty metrics", async () => {
+test("server timing omits empty metrics", async () => {
   const app = new Hono<AppBindings>();
   app.use("*", serverTimingMiddleware);
   app.get("/plain", (c) => c.text("ok"));
 
-  const response = await app.request("/plain", {
-    headers: { "cf-ray": "ray-1" },
-  });
+  const response = await app.request("/plain");
 
-  assert.equal(response.headers.get("x-zilobase-request-id"), "ray-1");
+  assert.match(
+    response.headers.get("x-zilobase-request-id") ?? "",
+    /^[0-9a-f-]{36}$/,
+  );
   assert.equal(response.headers.has("server-timing"), false);
 });
 

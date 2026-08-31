@@ -8,10 +8,10 @@ retained by either cache.
 
 Mail is disabled by default. Set both `MAIL_ENABLED=true` in the server runtime
 and `VITE_FEATURE_MAIL=true` while building the web client to expose it. The
-hosted Cloudflare deployment derives both from its single `MAIL_ENABLED` flag.
-When enabled, production Gmail requires all seven `GMAIL_*` variables documented
-below. A loopback development server may configure only the three OAuth variables
-and rely on synchronization after connect, focus, or reconnect instead of push
+deployment adapter may derive both from one operator-facing flag. When enabled,
+production Gmail requires all seven `GMAIL_*` variables documented below. A
+loopback development server may configure only the three OAuth variables and
+rely on synchronization after connect, focus, or reconnect instead of push
 notifications.
 
 ## 1. Google Cloud project and APIs
@@ -105,8 +105,8 @@ gcloud pubsub subscriptions create zilobase-gmail-push \
 
 Google documents the OIDC setup and token-creator grant in
 [authenticated push subscriptions](https://cloud.google.com/pubsub/docs/authenticate-push-subscriptions).
-The endpoint must be publicly reachable over valid HTTPS; do not place login,
-Cloudflare Access, or another interactive challenge in front of it. Zilobase
+The endpoint must be publicly reachable over valid HTTPS; do not place login or
+another interactive challenge in front of it. Zilobase
 still rejects requests unless the Google signature, issuer, exact audience,
 service-account email, subscription resource, payload, and Gmail account match.
 
@@ -172,22 +172,6 @@ the keys selected by `secretKeys.gmailGoogleClientSecret` and
 default Gmail egress CIDR is intentionally explicit and should be replaced by
 the operator's HTTPS egress proxy range where one exists.
 
-### Hosted Cloudflare adapter
-
-In `zilobase-cloud-adapter`, copy `.env.production.example`, provide the complete
-Gmail set for first deployment or rotation, and run:
-
-```sh
-npm run deploy:check
-npm run deploy
-```
-
-The adapter validates Gmail before builds or deployment. OAuth credentials and
-the encryption key are Worker secrets. Pub/Sub identifiers are also deployed
-through the scoped secret upload path so environment-specific configuration is
-not baked into the public repository. The `MAIL_NOTIFICATION_ROOM` Durable
-Object binding and its migration must remain in `wrangler.jsonc`.
-
 ## 5. Local development without a public push callback
 
 Configure a Google OAuth Web client with the exact loopback callback, for
@@ -207,8 +191,9 @@ subscription only when push delivery itself must be tested.
 
 ## 6. Operations and recovery
 
-Zilobase renews watches from both the Node maintenance loop and the Cloudflare
-scheduled handler. Alert on these structured non-PII events:
+Zilobase renews watches from the Node maintenance loop. Deployment adapters must
+schedule the same exported renewal operation. Alert on these structured non-PII
+events:
 
 - `mail.watch_health` failures or no successes for 24 hours
 - `mail.webhook_rejection` increases

@@ -8,7 +8,6 @@ export const serverTimingMiddleware: MiddlewareHandler<AppBindings> = async (
 ) => {
   const requestId =
     c.req.header("x-zilobase-request-id") ??
-    c.req.header("cf-ray") ??
     crypto.randomUUID();
   c.set("requestId", requestId);
   c.set("serverTimings", []);

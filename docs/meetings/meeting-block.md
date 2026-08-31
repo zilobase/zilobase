@@ -2,7 +2,7 @@
 
 The meeting block is an editor-native, collaborative recorder for the Zilobase desktop and web apps. It captures local audio, streams each active source through its own persistent realtime transcription session, keeps notes, generated summaries, and transcripts in a meeting-scoped Yjs document rendered with the full page editor, and stores finalized meeting state and transcript segments in Postgres. Partial speech is read-only live text; a completed turn becomes one durable editor paragraph. Summary generation replaces the collaborative summary document, after which collaborators can edit it like meeting notes. The block header matches the inline database title, icon, cover, properties spacing, more-menu, expand, and primary-action layout. Meetings in the sidebar open `/m/:meetingId`; an embedded block includes a page-icon tab action that returns to its host page.
 
-The feature is always gated by `MEETING_BLOCK_ENABLED`. New and self-hosted deployments should keep it `false` until the database migrations, both WebSocket endpoints, OpenAI credentials, and a compatible desktop release are deployed together. The production Cloudflare configuration is the enabled rollout cohort; rollback remains a flag-only change.
+The feature is always gated by `MEETING_BLOCK_ENABLED`. New deployments should keep it `false` until the database migrations, both WebSocket endpoints, OpenAI credentials, and a compatible desktop release are deployed together. Rollback remains a flag-only change.
 
 ## Architecture
 
@@ -10,18 +10,10 @@ The feature is always gated by `MEETING_BLOCK_ENABLED`. New and self-hosted depl
 Desktop or web meeting block
   ├─ HTTPS /meetings/* ───────────────> access, consent, initial recorder claim
   ├─ WS /meeting-collaboration ─┐
-  └─ WS /meeting-audio ─────────┴──> runtime selected by deployment
-                                   ├─ Node server
-                                   │    ├─ Hocuspocus Yjs room
-                                   │    ├─ Postgres recorder lease/checkpoints
-                                   │    └─ one OpenAI Realtime session per active source
-                                   └─ Cloudflare Worker
-                                        └─ MeetingCollaborationRoom (one per meeting)
-                                             ├─ hibernating Yjs sockets
-                                             ├─ SQLite lease, Yjs state, checkpoints
-                                             ├─ SQLite final-document outbox
-                                             ├─ one OpenAI Realtime session per active source
-                                             └─ alarms for recovery/finalization
+  └─ WS /meeting-audio ─────────┴──> Node server
+                                        ├─ Hocuspocus Yjs room
+                                        ├─ Postgres recorder lease/checkpoints
+                                        └─ one OpenAI Realtime session per active source
 
                                    │ idempotent persistence
                                    ▼
@@ -34,15 +26,13 @@ Postgres
   └─ meeting_consent_event
 ```
 
-Node deployments host both WebSocket paths in the server process. Postgres owns the recorder lease and completed transcript segments; Hocuspocus owns the live Yjs document, and the audio socket renews its lease and rotates its ticket without browser polling. An expired lease left by a terminated process is recovered to `processing` the next time a recorder claim is attempted, so a meeting cannot remain permanently stuck in `recording`. A horizontally scaled Node deployment must keep a meeting's WebSocket traffic on one process (connection affinity, or an equivalent single-owner gateway); the process-local OpenAI session is deliberately not presented as a distributed coordinator. The database constraints still make completed segment writes idempotent, but affinity is what prevents two Node processes from briefly transcribing the same live lease. Use the Durable Object runtime when per-meeting global coordination at the edge is required.
+Node deployments host both WebSocket paths in the server process. Postgres owns the recorder lease and completed transcript segments; Hocuspocus owns the live Yjs document, and the audio socket renews its lease and rotates its ticket without browser polling. An expired lease left by a terminated process is recovered to `processing` the next time a recorder claim is attempted, so a meeting cannot remain permanently stuck in `recording`. A horizontally scaled deployment must keep a meeting's WebSocket traffic on one process through connection affinity or an equivalent single-owner gateway. The process-local OpenAI session is deliberately not presented as a distributed coordinator. Database constraints make completed segment writes idempotent, while affinity prevents two processes from briefly transcribing the same live lease.
 
-On Cloudflare, the edge Worker authenticates both paths and deterministically routes them to the same `MeetingCollaborationRoom` instance using `meeting:<meetingId>`. The room owns the OpenAI connection, live Yjs document, recorder identity, and collaborator fan-out. Its Durable Object SQLite database—not JavaScript memory and not Postgres—is the canonical live recorder state. Collaboration sockets use the hibernation API when idle. Continuous audio and the outbound provider socket keep the room awake only while it is actively transcribing. The outbound upgrade uses a cancellable 15-second handshake timer that is cleared as soon as OpenAI returns `101`; a one-shot `AbortSignal.timeout()` must not remain attached to the upgraded socket. Recorder ownership, completed turns, and the latest Yjs state survive eviction; alarms retry finalization. Audio and collaboration tickets are short-lived, signed, scoped, and rotated over their existing sockets.
-
-A meeting collaboration ticket contains authorization and a WebSocket URL only. The room seeds its Yjs base state from Postgres once, then serves it from Durable Object SQLite. Opening or refreshing a meeting therefore does not load the full Yjs snapshot through the ticket endpoint.
+A meeting collaboration ticket contains authorization and a WebSocket URL only. Opening or refreshing a meeting loads collaborative state through the WebSocket rather than placing the full Yjs snapshot in the ticket response.
 
 The server connects to OpenAI Realtime with `intent=transcription`; the transcription model is selected only in the transcription `session.update`. Meetings default to `gpt-live-transcribe` with `delay: minimal`, which emits partial text while speech is still arriving. Each source has an independent OpenAI input buffer so microphone speech and system speech can be recognized concurrently instead of competing inside a mono mix. The session sets `turn_detection: null`; application-side PCM activity detection commits a completed turn after 500 ms of silence, with a 30-second maximum turn bound. Pause and stop manually commit all source buffers and wait for every final result so the last phrase from either lane is not lost. Backend connections include a stable SHA-256 safety identifier derived from the authenticated user ID; the raw internal ID is not disclosed to OpenAI.
 
-Both browser and native clients use the `zilobase.meeting-audio.v2` protocol. A binary packet contains an eight-byte frame sequence, one source byte, and PCM16 payload. Clients declare their active sources, wait for every provider lane to be ready, and only then send PCM. They retain bounded, source-aware replay windows and reconcile them against the server's `nextSequences` watermarks after every reconnect or resume. A recovery watermark advances only after that source's provider turn completes and its transcript checkpoint succeeds; merely receiving an audio frame is not an acknowledgement that it was transcribed. If a watermark falls in the middle of a 100 ms packet, the server and client trim only the acknowledged 20 ms frames rather than dropping the packet's new tail. This gives Node restarts and Durable Object eviction a recoverable audio boundary without persisting raw audio server-side. Permanent provider configuration errors preserve the provider close code/reason, close the audio channel with application code `4400`, and are not retried. Transient disconnects keep the recorder lease recoverable, rewind each lane to its last completed turn, and use bounded exponential reconnects (six attempts), while the local recovery recording continues independently.
+Both browser and native clients use the `zilobase.meeting-audio.v2` protocol. A binary packet contains an eight-byte frame sequence, one source byte, and PCM16 payload. Clients declare their active sources, wait for every provider lane to be ready, and only then send PCM. They retain bounded, source-aware replay windows and reconcile them against the server's `nextSequences` watermarks after every reconnect or resume. A recovery watermark advances only after that source's provider turn completes and its transcript checkpoint succeeds; merely receiving an audio frame is not an acknowledgement that it was transcribed. If a watermark falls in the middle of a 100 ms packet, the server and client trim only the acknowledged 20 ms frames rather than dropping the packet's new tail. This gives process restarts a recoverable audio boundary without persisting raw audio server-side. Permanent provider configuration errors preserve the provider close code/reason, close the audio channel with application code `4400`, and are not retried. Transient disconnects keep the recorder lease recoverable, rewind each lane to its last completed turn, and use bounded exponential reconnects (six attempts), while the local recovery recording continues independently.
 
 The native recorder uses CPAL, based on the capture patterns in Meetily. See `THIRD_PARTY_NOTICES.md` for attribution. Current macOS releases use Core Audio process taps, Windows uses WASAPI output loopback, and Linux prefers PipeWire with PulseAudio/ALSA monitor inputs as fallbacks. Virtual inputs such as BlackHole remain supported. The web recorder uses `getUserMedia` for microphone audio and the browser's `getDisplayMedia` sharing chooser for tab/system audio; browsers that do not return a display-audio track continue microphone-only.
 
@@ -60,11 +50,11 @@ Microphone and system streams are resampled independently to 24 kHz mono and gro
 
 Only one editor may own the recorder lease at a time. The owner can start, pause, resume, and stop capture. Lifecycle endpoints require that exact user's recorder lease; UI hiding is not the security boundary. Other collaborators continue editing notes and viewing incoming transcript text, see the recorder's name, and are not shown transport controls.
 
-Notes, summaries, and transcripts use one meeting-specific Yjs room. The recorder receives each provider delta directly, while source-specific `liveTranscript:microphone` and `liveTranscript:system` maps are replaced at most four times per second so every collaborator can see both speakers while they overlap. The client selects the newest draft from each lane, maps microphone to `You` and system audio to `Others`, orders the drafts by meeting timestamp, and presents them in one transcript timeline. Each draft is a transient, read-only `[m:ss] You: text` or `[m:ss] Others: text` paragraph using the same typography and spacing as finalized transcript paragraphs; drafts are not inserted into the Yjs transcript, persistence, or undo history. Each completed activity-detected turn replaces only its source's decoration with one generated Yjs paragraph and one small SQLite checkpoint. Source metadata is retained in those checkpoints so labels remain correct after reconnects or Durable Object eviction. The room reconstructs missed transcript state from the rows instead of repeatedly writing the entire growing Yjs document. A server-side Yjs sync guard rejects client mutations to transcript nodes while any recorder lease exists; notes and summary remain collaborative.
+Notes, summaries, and transcripts use one meeting-specific Yjs room. The recorder receives each provider delta directly, while source-specific `liveTranscript:microphone` and `liveTranscript:system` maps are replaced at most four times per second so every collaborator can see both speakers while they overlap. The client selects the newest draft from each lane, maps microphone to `You` and system audio to `Others`, orders the drafts by meeting timestamp, and presents them in one transcript timeline. Each draft is a transient, read-only `[m:ss] You: text` or `[m:ss] Others: text` paragraph using the same typography and spacing as finalized transcript paragraphs; drafts are not inserted into the Yjs transcript, persistence, or undo history. Each completed activity-detected turn replaces only its source's decoration with one generated Yjs paragraph and one Postgres transcript checkpoint. Source metadata is retained so labels remain correct after reconnects. The room reconstructs missed transcript state from those rows instead of repeatedly writing the entire growing Yjs document. A server-side Yjs sync guard rejects client mutations to transcript nodes while any recorder lease exists; notes and summary remain collaborative.
 
-Pause, resume, and stop are acknowledged commands on the existing audio WebSocket. Pause finishes the current provider turn without releasing ownership. On Cloudflare, stop waits for the provider's final turn, merges any Yjs edit that arrived during finalization, and executes an idempotent Postgres transaction for all segments plus the final document and meeting metadata. The exact final merged document is also staged atomically in a SQLite outbox before recorder checkpoints are removed; a Durable Object alarm copies that snapshot to Postgres and retries transient failures. A retry cannot move a summarized `completed` meeting back to `processing`. On Node, completed turns are persisted incrementally; the acknowledged audio stop performs the durable lifecycle transition before the client receives completion. Summary generation checks both the database lease and the Durable Object recorder state, so it cannot race an active or still-finalizing recording. There is no five-second meeting polling or recorder heartbeat HTTP request. The UI derives live state, recorder identity, and live words from Yjs. A summary records how many finalized transcript segments it used and is marked out of date when later segments arrive.
+Pause, resume, and stop are acknowledged commands on the existing audio WebSocket. Pause finishes the current provider turn without releasing ownership. Completed turns are persisted incrementally; the acknowledged audio stop performs the durable lifecycle transition before the client receives completion. Summary generation checks the database lease so it cannot race an active or still-finalizing recording. There is no five-second meeting polling or recorder heartbeat HTTP request. The UI derives live state, recorder identity, and live words from Yjs. A summary records how many finalized transcript segments it used and is marked out of date when later segments arrive.
 
-If the recorder socket disappears, the room allows a short ten-second reconnect window. Recorder ownership and completed turns survive object eviction in SQLite. A Durable Object alarm finalizes abandoned recording checkpoints to Postgres; failed finalization is retried idempotently before another user can claim the meeting. A desktop reload can reuse the current tab's lease from session storage. Device disconnects terminate native capture with a visible error; local audio and checkpoint files remain available for recovery.
+If the recorder socket disappears, the room allows a short ten-second reconnect window. Expired Postgres recorder leases are recovered before another user can claim the meeting. A desktop reload can reuse the current tab's lease from session storage. Device disconnects terminate native capture with a visible error; local audio and checkpoint files remain available for recovery.
 
 ## Consent and privacy
 
@@ -72,7 +62,7 @@ Starting capture always opens a consent confirmation. The recorder may either co
 
 This is a product safeguard, not legal advice. Workspace operators remain responsible for applicable consent, notice, employment, privacy, and data-residency requirements.
 
-Raw audio is sent continuously to the provider and is not persisted by the server. The server coalesces only a 100 ms outbound packet; application-side PCM activity detection finds natural turn boundaries and explicitly commits them to OpenAI. Long leading-silence buffers are cleared without creating transcript turns. Durable Object storage contains Yjs/checkpoint data, never raw audio. The desktop writes a local WAV file and checkpoint while recording. After a successful summary, the block deletes that local directory unless **Archive local audio** is enabled. If capture or summarization fails, it deliberately preserves the file for recovery. Notes, summaries, transcripts, and consent events remain durable while the soft-deleted meeting record exists; deployments that require fixed retention must add a scheduled hard-delete policy.
+Raw audio is sent continuously to the provider and is not persisted by the server. The server coalesces only a 100 ms outbound packet; application-side PCM activity detection finds natural turn boundaries and explicitly commits them to OpenAI. Long leading-silence buffers are cleared without creating transcript turns. The desktop writes a local WAV file and checkpoint while recording. After a successful summary, the block deletes that local directory unless **Archive local audio** is enabled. If capture or summarization fails, it deliberately preserves the file for recovery. Notes, summaries, transcripts, and consent events remain durable while the soft-deleted meeting record exists; deployments that require fixed retention must add a scheduled hard-delete policy.
 
 ## Configuration
 
@@ -87,14 +77,12 @@ Apply migrations `0039_meetings.sql`, `0040_meeting_recorder_lease.sql`, `0041_m
 | `MEETING_AUDIO_WEBSOCKET_URL` | No | Public audio WebSocket override. |
 | `MEETING_COLLABORATION_WEBSOCKET_URL` | No | Public meeting Yjs WebSocket override. |
 
-Cloudflare deployments must deploy Durable Object migrations through `v12`. Migration `v12` removes the former separate audio Durable Object. Both meeting WebSocket paths now use the existing `MEETING_COLLABORATION` binding and the same per-meeting object. Keep `MEETING_BLOCK_ENABLED` false until the staged rollout begins; the checked-in production configuration is currently the enabled cohort.
-
-For local `npm run dev:stack`, `.env.development` is loaded once and the invoking shell takes precedence. The launcher writes only the merged required Worker secrets to a mode-`0600` temporary env file and removes it when the stack exits. This prevents Wrangler's automatic `.env` loading from silently replacing a newer shell `OPENAI_API_KEY` with a stale local value.
+Keep `MEETING_BLOCK_ENABLED` false until the staged rollout begins.
 
 ## Rollout
 
 1. Back up Postgres and apply the five migrations.
-2. Deploy the server or Cloudflare adapter with the feature flag still disabled.
+2. Deploy the server with the feature flag still disabled.
 3. Verify both meeting WebSocket endpoints accept upgrades and reject missing or mismatched tickets.
 4. Deploy a desktop build containing the native recorder and the web capture provider.
 5. Enable an internal workspace cohort and run microphone-only and microphone-plus-system meetings through consent, pause/resume, stop, transcript, summary, export, and local-file cleanup.
@@ -102,7 +90,7 @@ For local `npm run dev:stack`, `.env.development` is loaded once and the invokin
 7. Test native output loopback and a fallback monitor/virtual input separately on every desktop platform offered to users; test browser system-audio fallback separately.
 8. Watch `meeting_audio_runtime_error`, WebSocket upgrade failures, OpenAI latency/errors, recorder lease conflicts, and summary failures before widening access.
 
-Rollback is configuration-only: set `MEETING_BLOCK_ENABLED=false`. Existing blocks remain in page documents but API operations return 404. Do not roll back the additive database or Durable Object migrations during an incident.
+Rollback is configuration-only: set `MEETING_BLOCK_ENABLED=false`. Existing blocks remain in page documents but API operations return 404. Do not roll back additive database migrations during an incident.
 
 ## Verification
 
@@ -113,7 +101,6 @@ npm run build --workspace @zilobase/server
 npm test --workspace @zilobase/server -- src/features/meetings
 npm run build --workspace @zilobase/web
 (cd apps/desktop/src-tauri && cargo check && cargo test meeting_capture --lib)
-(cd ../zilobase-cloud-adapter && npm run build && npm test)
 ```
 
 Manual acceptance still matters because CI cannot grant capture permission or validate physical and virtual audio devices. Cover each desktop OS, desktop Chrome/Edge/Safari/Firefox as offered, and mobile Safari/Chrome microphone fallback. Verify permission denial, a share without audio, device disconnect, network interruption, application restart recovery, a three-hour forced stop, and local audio deletion with archiving both off and on.

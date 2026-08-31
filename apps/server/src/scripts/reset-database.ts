@@ -10,7 +10,7 @@ try {
   await pool.query("drop schema if exists drizzle cascade");
   await pool.query("create schema public");
   await pool.query("grant all on schema public to public");
-  // Worker connects as zilobase_runtime via Hyperdrive; DROP SCHEMA drops table grants.
+  // Alternate runtimes may connect as zilobase_runtime; DROP SCHEMA drops table grants.
   await pool.query(`
     DO $$
     BEGIN

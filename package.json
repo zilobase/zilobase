@@ -39,8 +39,9 @@
     "test:selfhost": "node scripts/selfhost/manage.mjs test",
     "test:selfhost:upgrade": "node scripts/selfhost/test-upgrade.mjs",
     "test:mail:deployment": "node --test scripts/mail/gmail-deployment-config.test.mjs && node scripts/mail/check-documentation.mjs",
+    "test:community-boundary": "node scripts/check-community-boundary.mjs",
     "mail:config:check": "node scripts/mail/check-gmail-config.mjs",
-    "release": "npm run tokens:check && node scripts/release/release.mjs",
+    "release": "npm run tokens:check && npm run test:community-boundary && node scripts/release/release.mjs",
     "version:set": "node scripts/release/set-version.mjs"
   },
   "devDependencies": {

@@ -152,12 +152,12 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 - Meeting capture now transcribes microphone and system audio concurrently while presenting both sources in one timestamped `You` and `Others` timeline.
 - Live transcript previews use the final read-only transcript typography and are replaced atomically as provider turns complete.
-- Cloudflare meetings persist recorder leases, transcript checkpoints, and final document outbox state in the meeting Durable Object for crash recovery.
+- Hosted meetings persist recorder leases, transcript checkpoints, and final document outbox state for crash recovery.
 
 ### Changed
 
 - Meeting notes, summaries, transcripts, live drafts, and recorder presence now share one meeting-scoped collaborative document and editor implementation.
-- Node deployments use persistent realtime transcription sessions with explicit audio commits, while Cloudflare routes collaboration and recording through the same per-meeting Durable Object.
+- Node deployments use persistent realtime transcription sessions with explicit audio commits, while deployment adapters can provide their own coordinated meeting runtime.
 - Browser and native capture keep independent microphone and system lanes, acknowledge audio sequences, replay only unacknowledged frames, and rotate tickets on the active WebSocket.
 - Meeting queries now use the canonical response shape without transcript polling or browser recorder-heartbeat requests.
 
@@ -166,7 +166,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - Realtime transcription no longer configures unsupported model turn detection and finalizes outstanding speech before acknowledging stop.
 - Completed meetings no longer retain the Finishing the transcript footer.
 - Source-aware transcript ordering and storage prevent overlapping microphone and system turns from replacing one another.
-- Local Cloudflare development isolates merged runtime secrets in a temporary env file so Wrangler cannot reload stale credentials.
+- Local adapter development isolates merged runtime secrets in a temporary env file so runtime tooling cannot reload stale credentials.
 
 ## 0.0.43
 
@@ -181,7 +181,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - macOS release signing keeps the temporary Developer ID keychain unlocked through long Apple notarization waits, preventing DMG signing from hanging until the GitHub Actions six-hour limit.
 - First-time user settings creation safely handles concurrent requests.
 - Workspace creation refreshes workspace and session caches in parallel without redundant invalidation.
-- Local database resets restore schema and default table privileges for the Hyperdrive runtime role.
+- Local database resets restore schema and default table privileges for alternate runtime roles.
 
 ## 0.0.42
 
@@ -208,12 +208,12 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 - Meeting blocks now use one outlined container with aligned Summary, Notes, and Transcript content, while nested database blocks retain their own layout and controls.
 - Pausing a meeting now suspends the audio transport and credential refresh work until capture resumes.
-- Local Cloudflare development uses local meeting audio and collaboration WebSocket endpoints instead of production Cloud endpoints.
+- Local adapter development uses local meeting audio and collaboration WebSocket endpoints instead of production endpoints.
 
 ### Fixed
 
 - Fixed browser meeting WebSocket authentication by using short-lived meeting tickets rather than relying on unavailable browser WebSocket headers.
-- Fixed Cloudflare meeting audio handling for binary Worker payloads and contained failed transcription sessions without retry loops.
+- Fixed hosted meeting audio handling for binary runtime payloads and contained failed transcription sessions without retry loops.
 - Empty meeting blocks no longer poll the meeting endpoint every few seconds while the page remains open.
 
 ## 0.0.40
@@ -280,7 +280,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 ### Fixed
 
 - Desktop Google sign-in now redirects to Google with the Better Auth state cookie instead of printing `{url, redirect:true}` in the browser.
-- Local wrangler no longer rewrites production Cloud requests to localhost when creating OAuth callback URLs.
+- Local adapter tooling no longer rewrites production requests to localhost when creating OAuth callback URLs.
 
 ## 0.0.36
 
@@ -328,7 +328,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 - Adopted the legacy Drizzle migration journal when upgrading from public `0.0.31` images so existing databases keep their applied migrations and data.
 - Waited for restored Community databases to become ready before continuing Helm recovery, and retried MinIO initialization on first boot.
 - Stabilized desktop sign-in HTML responses and the login page structure so browser PKCE and the server selector complete against Community instances.
-- Kept the worker adapter API runtime-neutral so Community server and Cloud adapter builds stay independent.
+- Kept the runtime adapter API neutral so Community and alternate deployment builds stay independent.
 
 ## 0.0.31
 
@@ -473,7 +473,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 - Kept page rendering independent from realtime startup by mounting cached or server content first, then preparing Yjs and connecting collaboration after the editor has painted.
 - Cancelled deferred collaboration work and ticket requests when navigating between pages, preventing stale connections from racing the active page.
-- Hardened hosted Durable Object lifecycle handling for hibernating chat sessions, collaboration refresh grace periods, and database realtime expiry cleanup.
+- Hardened hosted lifecycle handling for hibernating chat sessions, collaboration refresh grace periods, and database realtime expiry cleanup.
 
 ## 0.0.18
 
@@ -639,7 +639,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 ### Changed
 
-- Bound the hosted web worker to the server service for same-origin API routing.
+- Bound the hosted web runtime to the server service for same-origin API routing.
 - Reorganized server runtime and database editor modules.
 - Refined database timeline and block drag editor styling.
 
