@@ -15,6 +15,9 @@
     "jsx": "react-jsx",
     "ignoreDeprecations": "5.0",
 "paths": {
+      "@zilobase/ai-conversation-adapter": [
+        "./src/features/ai/conversation/use-agent-conversation.ts"
+      ],
       "@zilobase/edition-web": ["./src/app/edition/community.tsx"],
       "@/*": ["./src/*"],
       "@/packages/editor": ["./src/features/editor/index.ts"],

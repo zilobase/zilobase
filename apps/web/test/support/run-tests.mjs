@@ -122,6 +122,15 @@ function aliasPlugin() {
   return {
     name: "zilobase-test-alias",
     setup(build) {
+      build.onResolve(
+        { filter: /^@zilobase\/ai-conversation-adapter$/ },
+        () => ({
+          path: join(
+            srcDir,
+            "features/ai/conversation/use-agent-conversation.ts"
+          ),
+        })
+      )
       build.onResolve({ filter: /^@zilobase\/edition-web$/ }, () => ({
         path: join(srcDir, "edition", "community.tsx"),
       }))

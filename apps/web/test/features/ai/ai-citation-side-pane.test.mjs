@@ -35,26 +35,29 @@ export function register({ readSource, assert, loadModule, test }) {
     )
   })
 
-  test("AI citation pills use the shared side-pane controller and renderers", async () => {
+  test("AI resource badges use the shared side-pane controller and renderers", async () => {
     const chatbotSource = await readSource("/src/features/ai/components/elements/chatbot.tsx")
+    const badgeSource = await readSource(
+      "/src/features/ai/components/elements/agent-resource-badges.tsx"
+    )
     const aiPageSource = await readSource("/src/features/ai/pages/ai.tsx")
 
-    assert.match(chatbotSource, /sidePane\.openSidePane\(sidePaneTarget\.id\)/)
+    assert.match(badgeSource, /sidePane\.openSidePane\(sidePaneTarget\.id\)/)
     assert.match(
-      chatbotSource,
+      badgeSource,
       /sidePane\.openDatabaseSidePane\(sidePaneTarget\.id\)/,
     )
     assert.match(chatbotSource, /openInMainPage=\{isSidebar\}/)
     assert.match(
-      chatbotSource,
+      badgeSource,
       /sidePane\.openPageInMainPane\(sidePaneTarget\.id\)/,
     )
     assert.match(
-      chatbotSource,
+      badgeSource,
       /sidePane\.openDatabaseInMainPane\(sidePaneTarget\.id\)/,
     )
-    assert.match(chatbotSource, /to: "\/p\/\$pageId"/)
-    assert.match(chatbotSource, /to: "\/d\/\$databaseId"/)
+    assert.match(badgeSource, /to: "\/p\/\$pageId"/)
+    assert.match(badgeSource, /to: "\/d\/\$databaseId"/)
     assert.match(aiPageSource, /<PageSidePaneLayout/)
     assert.match(aiPageSource, /<PageEditorPane/)
     assert.match(aiPageSource, /<DatabaseMainPane/)

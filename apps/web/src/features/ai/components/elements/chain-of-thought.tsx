@@ -105,12 +105,13 @@ type ChainOfThoughtStepProps = ComponentProps<"div"> & {
   icon?: Icon;
   label: ReactNode;
   description?: ReactNode;
-  status?: "complete" | "active" | "pending";
+  status?: "complete" | "active" | "failed" | "pending";
 };
 
 const stepStatusStyles = {
   active: "text-content-primary",
   complete: "text-content-secondary",
+  failed: "text-action-danger-text",
   pending: "text-content-secondary",
 };
 

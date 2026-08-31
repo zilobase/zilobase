@@ -13,6 +13,7 @@ import { isProposePageContentUpdateToolName } from "@zilobase/features/ai-chat";
 import { isDatabaseConfigToolPart } from "./database-tool-steps";
 import { useEffect, useState } from "react";
 import type { AgentToolPresentation } from "./agent-tool-presentation";
+import type { AgentProgressSnapshot } from "@zilobase/features/ai-chat";
 
 type AgentToolTaskGroupProps = {
   getToolPresentation: (
@@ -20,6 +21,7 @@ type AgentToolTaskGroupProps = {
     toolName: string,
   ) => AgentToolPresentation;
   parts: ToolPart[];
+  progressByToolCallId?: Map<string, AgentProgressSnapshot>;
 };
 
 const finishedLabels: Partial<Record<ToolPart["state"], string>> = {
@@ -46,19 +48,22 @@ function isAgentToolPart(part: ToolPart) {
 const AgentToolTaskItem = ({
   getToolPresentation,
   part,
+  progress,
 }: {
   getToolPresentation: (
     part: ToolPart,
     toolName: string,
   ) => AgentToolPresentation;
   part: ToolPart;
+  progress?: AgentProgressSnapshot;
 }) => {
   const toolName = getStaticToolName(part);
   const { progressPhrases, title } = getToolPresentation(part, toolName);
   const finishedLabel = finishedLabels[part.state];
-  const isRunning =
-    !finishedLabel &&
-    (part.state === "input-available" || part.state === "input-streaming");
+  const isRunning = progress
+    ? progress.status === "running"
+    : !finishedLabel &&
+      (part.state === "input-available" || part.state === "input-streaming");
   const [phraseIndex, setPhraseIndex] = useState(0);
 
   useEffect(() => {
@@ -75,7 +80,21 @@ const AgentToolTaskItem = ({
     };
   }, [isRunning, progressPhrases.length]);
 
-  const statusText = part.errorText
+  const currentProgressStep = progress?.steps.find(
+    (step) => step.status === "running",
+  );
+  const failedProgressStep = progress
+    ? [...progress.steps].reverse().find((step) => step.status === "failed")
+    : undefined;
+  const statusText = progress?.status === "failed"
+    ? failedProgressStep?.detail ?? `Failed: ${progress.title}`
+    : progress?.status === "succeeded"
+      ? `Completed: ${progress.title}`
+      : part.state === "input-streaming"
+        ? `Preparing ${title} input`
+      : currentProgressStep
+        ? currentProgressStep.detail ?? currentProgressStep.label
+        : part.errorText
     ? part.errorText
     : finishedLabel
       ? `${finishedLabel}: ${title}`
@@ -98,7 +117,7 @@ const AgentToolTaskItem = ({
         ) : (
           <span
             className={
-              part.errorText
+              part.errorText || progress?.status === "failed"
                 ? "text-action-danger-text text-sm"
                 : "text-content-secondary text-sm"
             }
@@ -114,12 +133,20 @@ const AgentToolTaskItem = ({
 export const AgentToolTaskGroup = ({
   getToolPresentation,
   parts,
+  progressByToolCallId,
 }: AgentToolTaskGroupProps) => {
   const hasActiveStep = parts.some(
-    (part) => !finishedLabels[part.state],
+    (part) => {
+      const progress = progressByToolCallId?.get(part.toolCallId);
+      return progress
+        ? progress.status === "running"
+        : !finishedLabels[part.state];
+    },
   );
   const hasError = parts.some(
-    (part) => part.state === "output-error" || Boolean(part.errorText),
+    (part) =>
+      progressByToolCallId?.get(part.toolCallId)?.status === "failed" ||
+      part.state === "output-error" || Boolean(part.errorText),
   );
   const title = hasActiveStep
     ? "Working with Zilobase"
@@ -138,8 +165,55 @@ export const AgentToolTaskGroup = ({
             getToolPresentation={getToolPresentation}
             key={part.toolCallId}
             part={part}
+            progress={progressByToolCallId?.get(part.toolCallId)}
           />
         ))}
+      </TaskContent>
+    </Task>
+  );
+};
+
+export const AgentProgressOnlyTask = ({
+  progress,
+}: {
+  progress: AgentProgressSnapshot;
+}) => {
+  const currentStep = progress.steps.find((step) => step.status === "running");
+  const failedStep = [...progress.steps].reverse().find(
+    (step) => step.status === "failed",
+  );
+  const statusText = progress.status === "failed"
+    ? failedStep?.detail ?? `Failed: ${progress.title}`
+    : progress.status === "succeeded"
+      ? `Completed: ${progress.title}`
+      : currentStep?.detail ?? currentStep?.label ??
+        `Executing ${progress.title}`;
+
+  return (
+    <Task className="not-prose mb-3" defaultOpen>
+      <TaskTrigger title={progress.title} />
+      <TaskContent>
+        <TaskItem className="flex items-start gap-2">
+          <span className="mt-2 size-2 shrink-0 rounded-full bg-indicator-muted" />
+          {progress.status === "running" ? (
+            <Shimmer
+              as="span"
+              className="font-medium text-sm"
+              duration={1.35}
+              spread={1.1}
+            >
+              {statusText}
+            </Shimmer>
+          ) : (
+            <span className={
+              progress.status === "failed"
+                ? "text-action-danger-text text-sm"
+                : "text-content-secondary text-sm"
+            }>
+              {statusText}
+            </span>
+          )}
+        </TaskItem>
       </TaskContent>
     </Task>
   );
@@ -175,14 +249,27 @@ export function buildMessagePartGroups(
       let nextIndex = index + 1;
 
       while (nextIndex < parts.length) {
-        const nextPart = parts[nextIndex];
+        let candidateIndex = nextIndex;
 
-        if (!(isToolUIPart(nextPart) && isDatabaseConfigToolPart(nextPart))) {
+        while (
+          candidateIndex < parts.length &&
+          isTransparentToolGroupingPart(parts[candidateIndex]!)
+        ) {
+          candidateIndex += 1;
+        }
+
+        const nextPart = parts[candidateIndex];
+
+        if (
+          !nextPart ||
+          !isToolUIPart(nextPart) ||
+          !isDatabaseConfigToolPart(nextPart)
+        ) {
           break;
         }
 
         databaseParts.push(nextPart);
-        nextIndex += 1;
+        nextIndex = candidateIndex + 1;
       }
 
       groups.push({
@@ -226,4 +313,10 @@ export function buildMessagePartGroups(
   }
 
   return groups;
+}
+
+function isTransparentToolGroupingPart(part: UIMessage["parts"][number]) {
+  return part.type === "reasoning" ||
+    part.type === "step-start" ||
+    ("type" in part && part.type === "data-agent-progress");
 }

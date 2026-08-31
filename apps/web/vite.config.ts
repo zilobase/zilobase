@@ -1,7 +1,9 @@
+import { dirname, resolve } from "node:path";
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig, type ProxyOptions } from "vite";
+import { defineConfig, searchForWorkspaceRoot, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { aiDevTracePlugin } from "./vite/ai-dev-trace-plugin.ts";
 
 const host = process.env.TAURI_DEV_HOST;
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
@@ -11,6 +13,15 @@ const featuresDir = fileURLToPath(
 );
 const pageContextDir = fileURLToPath(
   new URL("../../packages/page-context/src", import.meta.url),
+);
+const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
+const externalAiConversationModule =
+  process.env.ZILOBASE_WEB_AI_CONVERSATION_MODULE?.trim();
+const aiConversationModule = externalAiConversationModule
+  ? resolve(externalAiConversationModule)
+  : `${srcDir}/features/ai/conversation/use-agent-conversation.ts`;
+const adapterWebSocketPaths = readAdapterWebSocketPaths(
+  process.env.ZILOBASE_WEB_ADAPTER_WEBSOCKET_PATHS,
 );
 const backendTarget = process.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:3000";
 const expectedWsProxyErrorCodes = new Set(["ECONNRESET", "EPIPE"]);
@@ -77,13 +88,25 @@ function isExpectedWsProxyError(error: unknown) {
   );
 }
 
+function readAdapterWebSocketPaths(value: string | undefined) {
+  if (!value?.trim()) return [];
+
+  return [...new Set(value.split(",").map((path) => path.trim()).filter(
+    (path) => /^\/[a-z0-9/_-]+$/i.test(path),
+  ))];
+}
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   envDir: fileURLToPath(new URL("../..", import.meta.url)),
-  plugins: [react(), tailwindcss()],
+  plugins: [aiDevTracePlugin(repoRoot), react(), tailwindcss()],
   resolve: {
     dedupe: ["react", "react-dom"],
     alias: [
+      {
+        find: "@zilobase/ai-conversation-adapter",
+        replacement: aiConversationModule,
+      },
       {
         find: "@zilobase/edition-web",
         replacement: `${srcDir}/app/edition/community.tsx`,
@@ -93,6 +116,10 @@ export default defineConfig(async () => ({
       {
         find: "@zilobase/features/databases/property-types",
         replacement: `${featuresDir}/databases/property-types.ts`,
+      },
+      {
+        find: "@zilobase/features/ai-chat/conversation-adapter",
+        replacement: `${featuresDir}/ai-chat/conversation-adapter.ts`,
       },
       {
         find: /^@zilobase\/features\/(.+)$/,
@@ -118,7 +145,12 @@ export default defineConfig(async () => ({
     proxy: {
       "/health": createBackendProxy(),
       "/api": createBackendProxy(),
-      "/agents": createBackendProxy({ ws: true }),
+      ...Object.fromEntries(
+        adapterWebSocketPaths.map((path) => [
+          path,
+          createBackendProxy({ ws: true }),
+        ]),
+      ),
       "/session": createBackendProxy(),
       "/sign-in": createBackendProxy(),
       "/sign-up": createBackendProxy(),
@@ -144,5 +176,13 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching the desktop shell
       ignored: ["**/src-tauri/**", "../desktop/src-tauri/**"],
     },
+    fs: externalAiConversationModule
+      ? {
+          allow: [
+            searchForWorkspaceRoot(process.cwd()),
+            dirname(aiConversationModule),
+          ],
+        }
+      : undefined,
   },
 }));

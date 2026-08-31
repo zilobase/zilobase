@@ -9,7 +9,10 @@ import {
   usePageEditorRegistryVersion,
 } from "@/features/editor/runtime/page-editor-registry"
 
-const EMBED_DATABASE_IN_PAGE_TOOL = "embedDatabaseInPage"
+const EMBED_DATABASE_IN_PAGE_TOOLS = new Set([
+  "buildDatabaseFromBlueprint",
+  "embedDatabaseInPage",
+])
 
 type UseDatabaseEmbedAutoApplyOptions = {
   enabled?: boolean
@@ -26,6 +29,23 @@ function readEmbedAfterHeading(input: unknown) {
   return typeof afterHeading === "string" && afterHeading.trim().length > 0
     ? afterHeading.trim()
     : undefined
+}
+
+function readEmbedShowTitle(input: unknown, output: unknown) {
+  if (output && typeof output === "object" && !Array.isArray(output)) {
+    const data = (output as { data?: unknown }).data
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      const showTitle = (data as { showInlineDatabaseTitle?: unknown })
+        .showInlineDatabaseTitle
+      if (typeof showTitle === "boolean") return showTitle
+    }
+  }
+
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return undefined
+  }
+  const showTitle = (input as { showTitle?: unknown }).showTitle
+  return typeof showTitle === "boolean" ? showTitle : undefined
 }
 
 export function useDatabaseEmbedAutoApply({
@@ -51,7 +71,7 @@ export function useDatabaseEmbedAutoApply({
           continue
         }
 
-        if (getToolName(part) !== EMBED_DATABASE_IN_PAGE_TOOL) {
+        if (!EMBED_DATABASE_IN_PAGE_TOOLS.has(getToolName(part))) {
           continue
         }
 
@@ -75,15 +95,20 @@ export function useDatabaseEmbedAutoApply({
 
         try {
           const currentContent = handle.getContentJson()
-          const { content, alreadyEmbedded } = insertDatabaseBlockInContent(
-            currentContent,
-            {
-              afterHeading: readEmbedAfterHeading(part.input),
-              databaseId,
-            },
-          )
+          const { content, alreadyEmbedded, titleUpdated } =
+            insertDatabaseBlockInContent(
+              currentContent,
+              {
+                afterHeading: readEmbedAfterHeading(part.input),
+                databaseId,
+                showTitle: readEmbedShowTitle(part.input, part.output),
+              },
+            )
 
-          if (!alreadyEmbedded && !handle.setContentJson(content)) {
+          if (
+            (!alreadyEmbedded || titleUpdated) &&
+            !handle.setContentJson(content)
+          ) {
             continue
           }
 

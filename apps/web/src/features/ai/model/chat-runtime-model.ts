@@ -5,7 +5,7 @@ export const fallbackModels: WorkspaceAiChatModel[] = [
   {
     chef: "Zilobase",
     chefSlug: "openai",
-    description: "Automatically uses the workspace default model.",
+    description: "Uses the best enabled workspace model for this task.",
     gatewayId: "auto",
     id: "auto",
     name: "Auto",
@@ -14,9 +14,25 @@ export const fallbackModels: WorkspaceAiChatModel[] = [
   {
     chef: "OpenAI",
     chefSlug: "openai",
-    gatewayId: "gpt-4o-mini",
-    id: "gpt-4o-mini",
-    name: "GPT-4o Mini",
+    gatewayId: "gpt-5.6-sol",
+    id: "gpt-5.6-sol",
+    name: "GPT-5.6 Sol",
+    providers: ["openai"],
+  },
+  {
+    chef: "OpenAI",
+    chefSlug: "openai",
+    gatewayId: "gpt-5.6-terra",
+    id: "gpt-5.6-terra",
+    name: "GPT-5.6 Terra",
+    providers: ["openai"],
+  },
+  {
+    chef: "OpenAI",
+    chefSlug: "openai",
+    gatewayId: "gpt-5.6-luna",
+    id: "gpt-5.6-luna",
+    name: "GPT-5.6 Luna",
     providers: ["openai"],
   },
   {
@@ -27,15 +43,22 @@ export const fallbackModels: WorkspaceAiChatModel[] = [
     name: "GPT-4o",
     providers: ["openai"],
   },
+  {
+    chef: "OpenAI",
+    chefSlug: "openai",
+    gatewayId: "gpt-4o-mini",
+    id: "gpt-4o-mini",
+    name: "GPT-4o Mini",
+    providers: ["openai"],
+  },
 ];
 
 export const emptyAgentChatMessages: UIMessage[] = [];
 
 export const pendingPhrases = [
-  "Thinking through your question",
-  "Analyzing page context",
-  "Searching your workspace",
-  "Preparing tool calls",
+  "Planning changes",
+  "Checking workspace access",
+  "Preparing the first step",
 ];
 
 const providerLogoSlugs: Record<string, string> = {

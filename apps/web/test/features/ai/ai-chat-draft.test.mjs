@@ -10,7 +10,7 @@ export function register({ readSource, assert, test }) {
     assert.match(chatbotSource, /if \(!targetThreadId\)[\s\S]*createThread[\s\S]*mutateAsync/)
     assert.match(
       chatbotSource,
-      /sendMessage\([\s\S]*buildChatRequestBody\(\s*targetThreadId(?:,|\s*\))/,
+      /buildChatRequestBody\(\s*targetThreadId[\s\S]*sendMessage\([\s\S]*body:\s*requestBody/,
     )
   })
 }

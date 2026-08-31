@@ -34,11 +34,10 @@ import {
   type ContextAttachMenuHandle,
 } from "./context-attach-menu";
 import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry";
-import { useOptionalPageSidePane } from "@/features/pages/context/index";
 import { usePageAiContext } from "../../context/use-page-ai-context";
 import { useDatabaseEmbedAutoApply } from "../../cache/use-database-embed-auto-apply";
 import { useDatabaseToolCacheSync } from "../../cache/use-database-tool-cache-sync";
-import { useAgentConversation } from "../../conversation/use-agent-conversation";
+import { useAgentLiveEffects } from "../../cache/use-agent-live-effects";
 import {
   updatePageEditSnapshotStatus,
   usePageEditAutoApply,
@@ -46,11 +45,16 @@ import {
 import { usePageEditApplier } from "../../cache/use-page-edit-applier";
 import { DatabaseToolStepsGroup } from "./database-tool-steps";
 import {
+  AgentProgressOnlyTask,
   AgentToolTaskGroup,
   buildMessagePartGroups,
 } from "./agent-tool-task";
 import { resolveAgentToolPresentation } from "./agent-tool-presentation";
 import { AgentActionReviews } from "./agent-action-review";
+import {
+  AgentLiveDebugger,
+  useAgentLiveDebugger,
+} from "./agent-live-debugger";
 import { PageEditCard } from "./page-edit-card";
 import {
   PromptInput,
@@ -88,7 +92,8 @@ import {
   readAgentResultTable,
   readDatabaseConfigToolIds,
   getAgentToolDescriptor,
-  type AgentCitation,
+  isAgentProgressPart,
+  type AgentProgressSnapshot,
   type AiChatFeedback,
   type AiChatThreadMessagesResponse,
   type WorkspaceAiChatModel,
@@ -98,14 +103,22 @@ import {
   useSubmitAiChatFeedback,
   useWorkspaceAiModels,
 } from "@zilobase/features/ai-chat";
+import { useAgentConversation } from "@zilobase/ai-conversation-adapter";
+import {
+  useAiDevMessageTrace,
+  useAiDevTrace,
+} from "../../debug/use-ai-dev-trace";
 import { useSession } from "@zilobase/features/auth";
 import { useZilobaseFeatures } from "@zilobase/features";
 import { useDatabase } from "@zilobase/features/databases";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces";
 import { usePageAccessLevel, usePageNavigation } from "@zilobase/features/pages";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { toApiUrl } from "@/features/desktop/network/api";
+import {
+  getApiRequestHeaders,
+  resolveApiBaseUrl,
+  toApiUrl,
+} from "@/features/desktop/network/api";
 import {
   type ChatStatus,
   type UIMessage,
@@ -133,7 +146,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AgentResultTable } from "./agent-result-table";
-import { getAgentCitationSidePaneTarget } from "./agent-citation-navigation";
+import { AgentResourceBadges } from "./agent-resource-badges";
 import {
   AI_FILE_ACCEPT,
   MAX_AI_FILE_BYTES,
@@ -255,9 +268,11 @@ const ModelItem = ({
   );
 };
 
-const PendingAssistantStatus = () => {
+const PendingAssistantStatus = ({ status }: { status: ChatStatus }) => {
   const [phraseIndex, setPhraseIndex] = useState(0);
-  const phrase = pendingPhrases[phraseIndex % pendingPhrases.length];
+  const phrase = status === "submitted"
+    ? "Preparing context"
+    : pendingPhrases[phraseIndex % pendingPhrases.length];
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -304,7 +319,8 @@ function shouldShowPendingAssistant(messages: UIMessage[], status: ChatStatus) {
   }
 
   return !lastMessage.parts.some(
-    (part) => part.type === "text" || isToolUIPart(part),
+    (part) =>
+      part.type === "text" || isToolUIPart(part) || isAgentProgressPart(part),
   );
 }
 
@@ -442,99 +458,6 @@ function collectMessageCitations(message: UIMessage) {
   });
 }
 
-const AgentCitations = ({
-  citations,
-  openInMainPage,
-}: {
-  citations: AgentCitation[];
-  openInMainPage: boolean;
-}) => {
-  const navigate = useNavigate();
-  const sidePane = useOptionalPageSidePane();
-
-  if (citations.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="not-prose mt-3 flex flex-wrap gap-2" aria-label="Sources">
-      {citations.map((citation) => {
-        const external = citation.url.startsWith("https://");
-        const href = citation.url.startsWith("/api/")
-          ? toApiUrl(citation.url)
-          : citation.url;
-        const sidePaneTarget = getAgentCitationSidePaneTarget(citation);
-
-        return (
-          <a
-            className="inline-flex max-w-full items-center gap-1.5 rounded-md border bg-surface-canvas px-2 py-1 text-content-secondary text-xs transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral"
-            href={href}
-            key={`${citation.source}:${citation.id}`}
-            onClick={(event) => {
-              if (
-                !sidePaneTarget ||
-                event.button !== 0 ||
-                event.metaKey ||
-                event.ctrlKey ||
-                event.shiftKey ||
-                event.altKey
-              ) {
-                return;
-              }
-
-              event.preventDefault();
-
-              if (openInMainPage) {
-                if (sidePane) {
-                  if (sidePaneTarget.type === "database") {
-                    sidePane.openDatabaseInMainPane(sidePaneTarget.id);
-                    return;
-                  }
-
-                  sidePane.openPageInMainPane(sidePaneTarget.id);
-                  return;
-                }
-
-                if (sidePaneTarget.type === "database") {
-                  void navigate({
-                    params: { databaseId: sidePaneTarget.id },
-                    search: { view: undefined },
-                    to: "/d/$databaseId",
-                  });
-                  return;
-                }
-
-                void navigate({
-                  params: { pageId: sidePaneTarget.id },
-                  to: "/p/$pageId",
-                });
-                return;
-              }
-
-              if (!sidePane) {
-                return;
-              }
-
-              if (sidePaneTarget.type === "database") {
-                sidePane.openDatabaseSidePane(sidePaneTarget.id);
-                return;
-              }
-
-              sidePane.openSidePane(sidePaneTarget.id);
-            }}
-            rel={external ? "noreferrer" : undefined}
-            target={external ? "_blank" : undefined}
-            title={citation.excerpt ?? citation.title}
-          >
-            <FileTextIcon className="size-3.5 shrink-0" />
-            <span className="truncate">{citation.title}</span>
-          </a>
-        );
-      })}
-    </div>
-  );
-};
-
 const AssistantFeedback = ({
   isPending,
   onSubmit,
@@ -614,8 +537,10 @@ const ChatMessage = ({
   message,
   feedbackRating,
   feedbackPending,
+  showFeedback,
   onApplyPageEdit,
   onDiscardPageEdit,
+  onRetryIncompleteDatabase,
   onTogglePageEditChanges,
   onUndoPageEdit,
   onSubmitFeedback,
@@ -631,8 +556,10 @@ const ChatMessage = ({
   message: UIMessage;
   feedbackRating?: -1 | 1;
   feedbackPending: boolean;
+  showFeedback: boolean;
   onApplyPageEdit: (toolCallId: string) => void | Promise<void>;
   onDiscardPageEdit: (toolCallId: string) => void | Promise<void>;
+  onRetryIncompleteDatabase: (prompt: string) => void | Promise<void>;
   onTogglePageEditChanges: (toolCallId: string) => void;
   onUndoPageEdit: (toolCallId: string) => void | Promise<void>;
   onSubmitFeedback: (
@@ -650,6 +577,13 @@ const ChatMessage = ({
   }
 
   const partGroups = buildMessagePartGroups(message.parts);
+  const progressByToolCallId = new Map<string, AgentProgressSnapshot>(
+    message.parts.flatMap((part) =>
+      isAgentProgressPart(part)
+        ? [[part.data.toolCallId, part.data] as const]
+        : [],
+    ),
+  );
   const citations = collectMessageCitations(message);
   const tables = message.parts.flatMap((part) => {
     if (!isToolUIPart(part)) return [];
@@ -665,7 +599,9 @@ const ChatMessage = ({
             return (
               <DatabaseToolStepsGroup
                 key={`${message.id}-db-${group.startIndex}`}
+                onRetryIncomplete={onRetryIncompleteDatabase}
                 parts={group.parts}
+                progressByToolCallId={progressByToolCallId}
               />
             );
           }
@@ -682,6 +618,7 @@ const ChatMessage = ({
                 }
                 key={`${message.id}-agent-${group.startIndex}`}
                 parts={group.parts}
+                progressByToolCallId={progressByToolCallId}
               />
             );
           }
@@ -698,6 +635,22 @@ const ChatMessage = ({
 
           if (part.type === "reasoning") {
             return null;
+          }
+
+          if (isAgentProgressPart(part)) {
+            const hasMatchingToolPart = message.parts.some(
+              (candidate) =>
+                isToolUIPart(candidate) &&
+                candidate.toolCallId === part.data.toolCallId,
+            );
+            return hasMatchingToolPart
+              ? null
+              : (
+                  <AgentProgressOnlyTask
+                    key={`${message.id}-progress-${part.data.toolCallId}`}
+                    progress={part.data}
+                  />
+                );
           }
 
           if (part.type === "file") {
@@ -761,11 +714,11 @@ const ChatMessage = ({
             workspaceId={workspaceId}
           />
         ) : null}
-        <AgentCitations
+        <AgentResourceBadges
           citations={citations}
           openInMainPage={isSidebar}
         />
-        {message.role === "assistant" ? (
+        {message.role === "assistant" && showFeedback ? (
           <AssistantFeedback
             isPending={feedbackPending}
             onSubmit={(rating, reason) =>
@@ -791,10 +744,12 @@ const EmptyState = ({
       <InboxIcon className="size-6 text-content-secondary" />
     </div>
     <div className="space-y-2">
-      <h2 className="font-semibold text-xl">Ask AI about your page</h2>
+      <h2 className="font-semibold text-xl">
+        {isSidebar ? "What should I do with this page?" : "What can I help you build?"}
+      </h2>
       <p className="mx-auto max-w-xl text-content-secondary text-sm">
-        Search accessible Zilobase pages and databases, use attached context,
-        analyze uploaded files, create downloads, and complete supported actions.
+        Describe the outcome in ordinary language. Ask AI will infer the setup,
+        use your workspace context, and complete the supported steps.
       </p>
     </div>
     <div className="flex max-w-2xl flex-wrap justify-center gap-2">
@@ -806,7 +761,7 @@ const EmptyState = ({
           ]
         : [
             "Find the latest decisions in this workspace",
-            "Create a project tracker with owners and status",
+            "Create a 1:1 meeting notes database with useful properties and a This week view",
             "Analyze an uploaded file and show the key trends",
           ]
       ).map((suggestion) => (
@@ -938,6 +893,13 @@ const ChatbotInner = ({
   const [mentionMenuEntries, setMentionMenuEntries] = useState<
     ContextAttachMenuEntry[]
   >([]);
+  const [feedbackReadyMessageIds, setFeedbackReadyMessageIds] = useState(
+    () => new Set(
+      initialMessages
+        .filter((message) => message.role === "assistant")
+        .map((message) => message.id),
+    ),
+  );
   const mentionMenuRef = useRef<ContextAttachMenuHandle | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const workspaceId = useActiveWorkspaceId();
@@ -1077,9 +1039,7 @@ const ChatbotInner = ({
   );
   const isAgentReady = Boolean(workspaceId && userId && threadId);
   const isComposerReady = Boolean(workspaceId && userId);
-  const agentName = isAgentReady
-    ? `org-${workspaceId}-user-${userId}-thread-${threadId}`
-    : "chat-not-ready";
+  const conversationId = threadId ?? "chat-not-ready";
 
   const { getEditorHandle } = usePageEditorRegistry();
   const { commitPageEdit, undoPageEdit } = usePageEditApplier();
@@ -1136,6 +1096,7 @@ const ChatbotInner = ({
           })),
       ],
       modelId: model,
+      debugStream: import.meta.env.DEV,
       mentionedUserIds: attachments
         .filter((attachment) => attachment.type === "person")
         .map((attachment) => attachment.id),
@@ -1155,6 +1116,18 @@ const ChatbotInner = ({
         : null,
     [workspaceId, threadId],
   );
+  const handleAgentData = useAgentLiveEffects();
+  const liveDebugger = useAgentLiveDebugger();
+  const devTrace = useAiDevTrace({ threadId, workspaceId });
+  const debugContextRef = useRef<Record<string, unknown>>({});
+  const handleAgentStreamData = useCallback((part: {
+    data: unknown;
+    type: string;
+  }) => {
+    handleAgentData(part);
+    liveDebugger.onData(part);
+    devTrace.record("stream-data", part);
+  }, [devTrace.record, handleAgentData, liveDebugger.onData]);
 
   const {
     clearError,
@@ -1165,11 +1138,15 @@ const ChatbotInner = ({
     status,
     stop,
   } = useAgentConversation({
-    id: agentName,
+    apiBaseUrl: resolveApiBaseUrl(),
+    headers: getApiRequestHeaders(),
+    id: conversationId,
     initialMessages,
+    onData: handleAgentStreamData,
     onError: (chatError) => {
+      devTrace.record("response-error", chatError);
       logAiChatError("useChat onError", chatError, {
-        agentName,
+        conversationId,
         canApplyPageEdits,
         isAgentReady,
         isSidebar,
@@ -1183,15 +1160,45 @@ const ChatbotInner = ({
         description: chatError.message,
       });
     },
+    onFinish: ({ message, isAbort, isDisconnect, isError }) => {
+      devTrace.record("response-finish", {
+        isAbort,
+        isDisconnect,
+        isError,
+        message,
+      });
+      if (isAbort || isDisconnect || isError) return;
+      setFeedbackReadyMessageIds((current) => {
+        const next = new Set(current);
+        next.add(message.id);
+        return next;
+      });
+      const hasVisibleOutput = message.parts.some(
+        (part) =>
+          (part.type === "text" && part.text.trim().length > 0) ||
+          isToolUIPart(part) ||
+          isAgentProgressPart(part),
+      );
+      if (hasVisibleOutput) return;
+      logAiChatError(
+        "Ask AI stream finished without visible output",
+        new Error("The provider completed an empty assistant response."),
+        debugContextRef.current,
+      );
+      toast.error("Ask AI returned no response", {
+        description: "Nothing was generated. Please retry your message.",
+      });
+    },
     threadId,
+    userId,
     workspaceId,
   });
 
-  const debugContextRef = useRef<Record<string, unknown>>({});
+  useAiDevMessageTrace(messages, devTrace.record);
 
   useEffect(() => {
     debugContextRef.current = {
-      agentName,
+      conversationId,
       databaseId,
       isAgentReady,
       isSidebar,
@@ -1204,7 +1211,7 @@ const ChatbotInner = ({
       pageId,
     };
   }, [
-    agentName,
+    conversationId,
     databaseId,
     isAgentReady,
     isSidebar,
@@ -1646,6 +1653,13 @@ const ChatbotInner = ({
       }
 
       let uploadedFiles: Awaited<ReturnType<typeof uploadAiChatFile>>[] = [];
+      devTrace.record("submission-received", {
+        files: files.map((file) => ({
+          filename: file.filename,
+          mediaType: file.mediaType,
+        })),
+        text: content.trim(),
+      }, targetThreadId);
       try {
         uploadedFiles = await Promise.all(files.map((part) =>
           uploadAiChatFile({
@@ -1655,6 +1669,7 @@ const ChatbotInner = ({
           })
         ));
       } catch (uploadError) {
+        devTrace.record("file-upload-error", uploadError, targetThreadId);
         toast.error("File upload failed", {
           description: uploadError instanceof Error ? uploadError.message : "Try again.",
         });
@@ -1669,19 +1684,34 @@ const ChatbotInner = ({
       setText("");
       setTextCursor(0);
       setDismissedMentionKey(null);
+      liveDebugger.reset();
 
       try {
+        const clientTurnId = crypto.randomUUID();
+        const requestBody = buildChatRequestBody(
+          targetThreadId,
+          uploadedFiles.map((file) => file.id),
+          clientTurnId,
+        );
+        devTrace.record("user-message", {
+          clientTurnId,
+          contextRefs: requestBody.contextRefs,
+          files: uploadedFiles.map((file) => ({
+            id: file.id,
+            filename: file.part.filename,
+            mediaType: file.part.mediaType,
+          })),
+          modelId: requestBody.modelId,
+          text: content.trim() || "Review the attached file(s).",
+        }, targetThreadId);
+        devTrace.record("turn-start", { clientTurnId }, targetThreadId);
         await sendMessage(
           {
             files: uploadedFiles.map((file) => file.part),
             text: content.trim() || "Review the attached file(s).",
           },
           {
-            body: buildChatRequestBody(
-              targetThreadId,
-              uploadedFiles.map((file) => file.id),
-              crypto.randomUUID(),
-            ),
+            body: requestBody,
           },
         );
       } finally {
@@ -1697,9 +1727,11 @@ const ChatbotInner = ({
       attachments,
       buildChatRequestBody,
       createThread,
+      devTrace.record,
       effectivePrimarySource,
       getEditorHandle,
       isComposerReady,
+      liveDebugger.reset,
       onThreadCreated,
       pageContext,
       queryClient,
@@ -1711,6 +1743,11 @@ const ChatbotInner = ({
 
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => submitText(message.text || "", message.files),
+    [submitText],
+  );
+
+  const handleRetryIncompleteDatabase = useCallback(
+    (prompt: string) => submitText(prompt),
     [submitText],
   );
 
@@ -1944,8 +1981,10 @@ const ChatbotInner = ({
                 isSidebar={isSidebar}
                 key={message.id}
                 message={message}
+                showFeedback={feedbackReadyMessageIds.has(message.id)}
                 onApplyPageEdit={handleApplyPageEdit}
                 onDiscardPageEdit={handleDiscardPageEdit}
+                onRetryIncompleteDatabase={handleRetryIncompleteDatabase}
                 onSubmitFeedback={handleSubmitFeedback}
                 onTogglePageEditChanges={handleTogglePageEditChanges}
                 onUndoPageEdit={handleUndoPageEdit}
@@ -1956,7 +1995,14 @@ const ChatbotInner = ({
               />
             ))
           )}
-          {showPendingAssistant ? <PendingAssistantStatus /> : null}
+          {import.meta.env.DEV ? (
+            <AgentLiveDebugger
+              events={liveDebugger.events}
+              status={status}
+              turnStartedAt={liveDebugger.turnStartedAt}
+            />
+          ) : null}
+          {showPendingAssistant ? <PendingAssistantStatus status={status} /> : null}
         </ConversationContent>
       </Conversation>
       <div
@@ -2019,7 +2065,9 @@ const ChatbotInner = ({
                 onClick={syncTextCursor}
                 onKeyDown={handleTextareaKeyDown}
                 onSelect={syncTextCursor}
-                placeholder="Ask about your page, or type @ to attach pages and databases..."
+                placeholder={isSidebar
+                  ? "Ask AI to update this page, or type @ to add context..."
+                  : "Ask AI to find, create, or update anything..."}
                 ref={textareaRef}
                 value={text}
               />
