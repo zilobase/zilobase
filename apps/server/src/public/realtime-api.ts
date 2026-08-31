@@ -22,6 +22,7 @@ export type { MailNotificationEvent } from "../infrastructure/runtime/runtime-ad
 export {
   NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
   NAVIGATION_REALTIME_PROTOCOL,
+  createNavigationRealtimeTicket,
   verifyNavigationRealtimeTicket,
   type NavigationRealtimeTicketClaims,
 } from "../shared/security/navigation-realtime-ticket";
