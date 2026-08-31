@@ -141,6 +141,28 @@ test("workspace routes reject non-admin updates", async () => {
   });
 });
 
+test("workspace deletion requires ownership and an exact name confirmation", async () => {
+  mocks.membership.mockResolvedValueOnce({ role: "admin" });
+  const forbidden = await appFor(workspaceRoutes).request("/workspace-1", {
+    body: JSON.stringify({ confirmationName: "Acme" }),
+    headers: { "content-type": "application/json" },
+    method: "DELETE",
+  });
+  assert.equal(forbidden.status, 403);
+
+  mocks.membership.mockResolvedValueOnce({ role: "owner" });
+  mocks.selectResults.push([{ id: "workspace-1", name: "Acme" }]);
+  const mismatch = await appFor(workspaceRoutes).request("/workspace-1", {
+    body: JSON.stringify({ confirmationName: "Not Acme" }),
+    headers: { "content-type": "application/json" },
+    method: "DELETE",
+  });
+  assert.equal(mismatch.status, 400);
+  assert.deepEqual(await mismatch.json(), {
+    error: "The workspace name does not match.",
+  });
+});
+
 test("workspace access targets return scoped members and teams", async () => {
   mocks.selectResults.push(
     [{ email: "user@example.com", id: "user-1", memberId: "member-1", name: "User", role: "owner" }],

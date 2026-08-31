@@ -381,6 +381,45 @@ export function useUpdateWorkspace() {
   })
 }
 
+export function useDeleteWorkspace() {
+  const {
+    apiFetch,
+    auth,
+    queryClient,
+    setPreferredActiveWorkspaceId,
+  } = useZilobaseFeatures()
+
+  return useMutation({
+    mutationFn: (input: { confirmationName: string; workspaceId: string }) =>
+      apiFetch<{ deleted: boolean; workspaceId: string }>(
+        `/workspaces/${encodeURIComponent(input.workspaceId)}`,
+        {
+          body: JSON.stringify({ confirmationName: input.confirmationName }),
+          method: "DELETE",
+        },
+      ),
+    onSuccess: async (_result, input) => {
+      const remaining = (
+        queryClient.getQueryData<Workspace[]>(workspacesQueryKey) ?? []
+      ).filter((workspace) => workspace.id !== input.workspaceId)
+      const nextWorkspace = remaining[0] ?? null
+
+      queryClient.setQueryData(workspacesQueryKey, remaining)
+      setPreferredActiveWorkspaceId?.(nextWorkspace?.id ?? null)
+
+      if (nextWorkspace) {
+        await auth.setActiveWorkspace(nextWorkspace.id)
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
+        queryClient.invalidateQueries({ queryKey: pageRootQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: pagesRootQueryKey() }),
+      ])
+    },
+  })
+}
+
 function createSlug(value: string) {
   const slug = value
     .trim()

@@ -13,7 +13,7 @@ import {
   defaultRoles,
   memberAc,
 } from "better-auth/plugins/organization/access";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { API_KEY_PREFIX } from "../api-keys";
 import { db, type Database } from "../../infrastructure/database";
 import * as schema from "../../infrastructure/database/schema";
@@ -99,6 +99,44 @@ function sharedAuthOptions(
     },
     emailVerification: {
       autoSignInAfterVerification: true,
+    },
+    user: {
+      deleteUser: {
+        enabled: true,
+        async beforeDelete(deletingUser: { id: string }) {
+          const ownedWorkspaces = await database
+            .select({ workspaceId: schema.member.organizationId })
+            .from(schema.member)
+            .where(
+              and(
+                eq(schema.member.userId, deletingUser.id),
+                eq(schema.member.role, "owner"),
+              ),
+            );
+
+          for (const ownedWorkspace of ownedWorkspaces) {
+            const [anotherOwner] = await database
+              .select({ id: schema.member.id })
+              .from(schema.member)
+              .where(
+                and(
+                  eq(schema.member.organizationId, ownedWorkspace.workspaceId),
+                  eq(schema.member.role, "owner"),
+                  ne(schema.member.userId, deletingUser.id),
+                ),
+              )
+              .limit(1);
+
+            if (!anotherOwner) {
+              throw new APIError("BAD_REQUEST", {
+                code: "WORKSPACE_OWNER_REQUIRED",
+                message:
+                  "Delete workspaces you solely own or assign another owner before deleting your account.",
+              });
+            }
+          }
+        },
+      },
     },
     databaseHooks: {
       user: {

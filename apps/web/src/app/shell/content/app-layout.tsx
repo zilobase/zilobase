@@ -42,6 +42,7 @@ import {
   getSettingsSection,
   PreferencesSettingsPage,
   ProfileSettingsPage,
+  SecuritySettingsPage,
   SettingsDialog,
   type SettingsSection,
   ZilobaseAiSettingsPage,
@@ -668,6 +669,8 @@ function SettingsSectionContent({ section }: { section: SettingsSection }) {
       return <PreferencesSettingsPage />
     case "workspace":
       return <WorkspaceSettingsPage />
+    case "security":
+      return <SecuritySettingsPage />
     case "zilobase-ai":
       return <ZilobaseAiSettingsPage />
     case "api-keys":

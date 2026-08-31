@@ -6,6 +6,7 @@ import {
   UserIcon,
   UsersIcon,
   Layers3Icon,
+  LockIcon,
 } from "@/shared/components/icons"
 import type { ComponentType } from "react"
 import { useSession } from "@zilobase/features/auth"
@@ -30,6 +31,7 @@ import { editionWebModule } from "@zilobase/edition-web"
 export type CoreSettingsSection =
   | "profile"
   | "preferences"
+  | "security"
   | "workspace"
   | "zilobase-ai"
   | "api-keys"
@@ -43,6 +45,7 @@ const settingsItems: Array<{
   icon: ComponentType<{ className?: string }>
 }> = [
   { title: "Profile", section: "profile", icon: UserIcon },
+  { title: "Security", section: "security", icon: LockIcon },
   {
     title: "Preferences",
     section: "preferences",

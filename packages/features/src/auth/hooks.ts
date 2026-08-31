@@ -159,3 +159,18 @@ export function useSetPassword() {
     },
   })
 }
+
+export function useDeleteAccount() {
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+
+  return useMutation({
+    mutationFn: (input: { password?: string }) =>
+      apiFetch<{ message: string; success: boolean }>("/api/auth/delete-user", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.setQueryData(sessionQueryKey, { user: null, session: null })
+    },
+  })
+}

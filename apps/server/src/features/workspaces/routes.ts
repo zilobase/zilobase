@@ -7,6 +7,7 @@ import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import { db } from "../../infrastructure/database";
 import {
   invitation,
+  instanceSettings,
   member,
   session as authSession,
   workspace,
@@ -572,4 +573,71 @@ workspaceRoutes.patch("/:workspaceId", async (c) => {
   }
 
   return c.json(updatedWorkspace);
+});
+
+workspaceRoutes.delete("/:workspaceId", async (c) => {
+  const requestUser = requireUser(c);
+
+  if (!requestUser) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+
+  const workspaceId = c.req.param("workspaceId");
+  const mismatch = rejectMismatchedApiKeyWorkspace(c, workspaceId);
+
+  if (mismatch) {
+    return mismatch;
+  }
+
+  const membership = await getMembership(workspaceId, requestUser.id);
+
+  if (!membership || membership.role !== "owner") {
+    return c.json({ error: "Only the workspace owner can delete this workspace." }, 403);
+  }
+
+  const parsed = z
+    .object({ confirmationName: z.string() })
+    .strict()
+    .safeParse(await c.req.json().catch(() => null));
+
+  if (!parsed.success) {
+    return c.json({ error: "Enter the workspace name to confirm deletion." }, 400);
+  }
+
+  const [targetWorkspace] = await db
+    .select({ id: workspace.id, name: workspace.name })
+    .from(workspace)
+    .where(eq(workspace.id, workspaceId))
+    .limit(1);
+
+  if (!targetWorkspace) {
+    return c.json({ error: "Workspace not found." }, 404);
+  }
+
+  if (parsed.data.confirmationName.trim() !== targetWorkspace.name) {
+    return c.json({ error: "The workspace name does not match." }, 400);
+  }
+
+  const [pinnedInstance] = await db
+    .select({ id: instanceSettings.id })
+    .from(instanceSettings)
+    .where(eq(instanceSettings.pinnedWorkspaceId, workspaceId))
+    .limit(1);
+
+  if (pinnedInstance) {
+    return c.json(
+      { error: "This workspace is pinned by the instance administrator and cannot be deleted." },
+      409,
+    );
+  }
+
+  await db.transaction(async (transaction) => {
+    await transaction
+      .update(authSession)
+      .set({ activeTeamId: null, activeWorkspaceId: null })
+      .where(eq(authSession.activeWorkspaceId, workspaceId));
+    await transaction.delete(workspace).where(eq(workspace.id, workspaceId));
+  });
+
+  return c.json({ deleted: true, workspaceId });
 });

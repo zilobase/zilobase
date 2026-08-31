@@ -25,7 +25,6 @@ import {
   FieldLabel,
 } from "@/shared/ui/field"
 import { Input } from "@/shared/ui/input"
-import { Separator } from "@/shared/ui/separator"
 import { Spinner } from "@/shared/ui/spinner"
 import { getApiErrorMessage } from "@/features/desktop/network/api"
 import {
@@ -48,8 +47,6 @@ import { useOfflineManifest } from "@/features/offline/index"
 import {
   sessionQueryKey,
   type SessionResponse,
-  useChangePassword,
-  useSetPassword,
   useSession,
   useSignOut,
   useUpdateUserProfile,
@@ -96,7 +93,7 @@ export default function ProfileSettingsPage() {
     <main className="flex min-h-full flex-1 flex-col gap-6 px-4 py-8">
       <SettingsHeader
         title="Profile"
-        description="Update your personal details and account security."
+        description="Update your personal details and manage your session."
       />
 
       <div className="mx-auto grid w-full max-w-3xl gap-6">
@@ -104,11 +101,6 @@ export default function ProfileSettingsPage() {
           initialEmail={sessionData?.user?.email ?? ""}
           initialImage={sessionData?.user?.image ?? null}
           initialName={sessionData?.user?.name ?? ""}
-          isReady={Boolean(sessionData?.user)}
-        />
-        <Separator />
-        <PasswordCard
-          hasPassword={sessionData?.user?.hasPassword ?? true}
           isReady={Boolean(sessionData?.user)}
         />
       </div>
@@ -409,180 +401,6 @@ function ProfileDetailsCard({
             />
             <FieldDescription>
               This address is used for sign-in and page invitations.
-            </FieldDescription>
-            <FieldError>{error}</FieldError>
-          </Field>
-        </FieldGroup>
-      </form>
-    </section>
-  )
-}
-
-function PasswordCard({
-  hasPassword,
-  isReady,
-}: {
-  hasPassword: boolean
-  isReady: boolean
-}) {
-  const changePassword = useChangePassword()
-  const setPassword = useSetPassword()
-  const [currentPassword, setCurrentPassword] = React.useState("")
-  const [newPassword, setNewPassword] = React.useState("")
-  const [confirmPassword, setConfirmPassword] = React.useState("")
-  const [error, setError] = React.useState("")
-  const isPending = changePassword.isPending || setPassword.isPending
-
-  const canSubmit =
-    Boolean(
-      (hasPassword ? currentPassword : true) && newPassword && confirmPassword,
-    ) &&
-    !isPending
-
-  const updatePassword = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (newPassword !== confirmPassword) {
-      setError("New passwords do not match.")
-      return
-    }
-
-    if (hasPassword && newPassword === currentPassword) {
-      setError("Choose a new password that is different from the current one.")
-      return
-    }
-
-    setError("")
-
-    if (!hasPassword) {
-      setPassword.mutate(
-        { newPassword },
-        {
-          onSuccess: () => {
-            setCurrentPassword("")
-            setNewPassword("")
-            setConfirmPassword("")
-            toast.success("Password set.")
-          },
-          onError: (mutationError) => {
-            setError(getApiErrorMessage(mutationError))
-          },
-        },
-      )
-      return
-    }
-
-    changePassword.mutate(
-      {
-        currentPassword,
-        newPassword,
-      },
-      {
-        onSuccess: () => {
-          setCurrentPassword("")
-          setNewPassword("")
-          setConfirmPassword("")
-          toast.success("Password updated.")
-        },
-        onError: (mutationError) => {
-          setError(getApiErrorMessage(mutationError))
-        },
-      },
-    )
-  }
-
-  const passwordActionLabel = hasPassword ? "Update password" : "Set password"
-
-  return (
-    <section className="grid gap-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <h3 className="font-heading text-base leading-snug font-medium">
-            Password
-          </h3>
-          <p className="text-sm text-content-secondary">
-            {hasPassword
-              ? "Change the password associated with your account."
-              : "Set a password for signing in to your account."}
-          </p>
-        </div>
-        <Button
-          className="shrink-0"
-          disabled={!isReady || !canSubmit}
-          form="profile-password-form"
-          type="submit"
-        >
-          {isPending ? <Spinner /> : null}
-          {passwordActionLabel}
-        </Button>
-      </div>
-      <form
-        className="grid gap-4"
-        id="profile-password-form"
-        onSubmit={updatePassword}
-      >
-        <FieldGroup>
-          {hasPassword && (
-            <Field data-invalid={Boolean(error)}>
-              <FieldLabel htmlFor="profile-current-password">
-                Current password
-              </FieldLabel>
-              <Input
-                autoComplete="current-password"
-                disabled={!isReady || isPending}
-                id="profile-current-password"
-                onChange={(event) => {
-                  setCurrentPassword(event.target.value)
-                  if (error) {
-                    setError("")
-                  }
-                }}
-                type="password"
-                value={currentPassword}
-              />
-            </Field>
-          )}
-
-          <Field>
-            <FieldLabel htmlFor="profile-new-password">
-              {hasPassword ? "New password" : "Password"}
-            </FieldLabel>
-            <Input
-              autoComplete="new-password"
-              disabled={!isReady || isPending}
-              id="profile-new-password"
-              minLength={8}
-              onChange={(event) => {
-                setNewPassword(event.target.value)
-                if (error) {
-                  setError("")
-                }
-              }}
-              type="password"
-              value={newPassword}
-            />
-          </Field>
-
-          <Field data-invalid={Boolean(error)}>
-            <FieldLabel htmlFor="profile-confirm-password">
-              Confirm new password
-            </FieldLabel>
-            <Input
-              autoComplete="new-password"
-              disabled={!isReady || isPending}
-              id="profile-confirm-password"
-              minLength={8}
-              onChange={(event) => {
-                setConfirmPassword(event.target.value)
-                if (error) {
-                  setError("")
-                }
-              }}
-              type="password"
-              value={confirmPassword}
-            />
-            <FieldDescription>
-              Use a password you have not used elsewhere.
             </FieldDescription>
             <FieldError>{error}</FieldError>
           </Field>

@@ -4,6 +4,7 @@ import {
   ApiKeysSettingsPage,
   PreferencesSettingsPage,
   ProfileSettingsPage,
+  SecuritySettingsPage,
   ZilobaseAiSettingsPage,
 } from "@/features/settings";
 import { TeamSettingsPage, TeamspacesSettingsPage } from "@/features/teamspaces";
@@ -32,6 +33,11 @@ export const settingsRoutes = [
     getParentRoute: () => appRoute,
     path: "/settings/profile",
     component: ProfileSettingsPage,
+  }),
+  createRoute({
+    getParentRoute: () => appRoute,
+    path: "/settings/security",
+    component: SecuritySettingsPage,
   }),
   createRoute({
     getParentRoute: () => appRoute,
