@@ -19,6 +19,7 @@ export function useNavigationRealtime(workspaceId: string | null | undefined) {
     if (!workspaceId || !navigationRealtimeEnabled || typeof WebSocket === "undefined") return
     let socket: WebSocket | null = null
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null
     let invalidateTimer: ReturnType<typeof setTimeout> | null = null
     let reconnectAttempt = 0
@@ -50,6 +51,13 @@ export function useNavigationRealtime(workspaceId: string | null | undefined) {
         if (stopped) return
         const next = new WebSocket(ticket.websocketUrl, ticket.websocketProtocols)
         socket = next
+        const refreshIn = Math.max(
+          1_000,
+          new Date(ticket.expiresAt).getTime() - Date.now() - 30_000,
+        )
+        refreshTimer = setTimeout(() => {
+          if (socket === next) next.close(4001, "Refreshing workspace ticket")
+        }, refreshIn)
         next.addEventListener("open", () => {
           reconnectAttempt = 0
           heartbeatTimer = setInterval(() => {
@@ -69,6 +77,8 @@ export function useNavigationRealtime(workspaceId: string | null | undefined) {
         next.addEventListener("close", () => {
           if (socket !== next) return
           socket = null
+          if (refreshTimer) clearTimeout(refreshTimer)
+          refreshTimer = null
           if (heartbeatTimer) clearInterval(heartbeatTimer)
           heartbeatTimer = null
           scheduleReconnect()
@@ -87,6 +97,7 @@ export function useNavigationRealtime(workspaceId: string | null | undefined) {
       window.removeEventListener("online", onOnline)
       document.removeEventListener("visibilitychange", onVisibility)
       if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (refreshTimer) clearTimeout(refreshTimer)
       if (heartbeatTimer) clearInterval(heartbeatTimer)
       if (invalidateTimer) clearTimeout(invalidateTimer)
       socket?.close(1000, "Workspace changed")
