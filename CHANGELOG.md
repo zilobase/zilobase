@@ -4,6 +4,28 @@ All notable Zilobase product releases are documented here.
 
 Zilobase uses one product version across the web, server, and desktop apps. Versions stay on `0.x.y` until the self-hosted install, upgrade, auth, data storage, and core note workflows are stable enough for `1.0.0`.
 
+## 0.0.55
+
+### Added
+
+- Mail workspaces can connect Gmail accounts, synchronize and cache conversations, compose drafts with attachments, manage threads and labels, and receive realtime mailbox invalidations. The integration remains disabled by default.
+- Hosted and self-hosted clients can reconcile workspace navigation changes through authenticated realtime tickets and revision-only invalidations.
+- Ask AI now supports durable live conversations through the shared agent contract.
+- Hosted deployments can expose an isolated interactive guest demo workspace.
+- Forest, Ocean, Warm, and Midnight theme families extend the application appearance choices.
+
+### Changed
+
+- Kanban cards show a useful default set of properties, hide the active grouping property unless it is explicitly enabled, restore the previous grouping property when grouping changes, and clear grouping when switching to a table view.
+- Community runtime boundaries and page-context helpers are centralized so provider-specific deployment behavior remains in external adapters.
+
+### Fixed
+
+- Self-hosted Compose falls back to the authentication secret for collaboration and safely handles MinIO passwords that begin with a dash during startup, backup, restore, and Helm validation.
+- Gmail synchronization, cache lifetime, callback scoping, Worker requests, message rendering, background errors, and security checks are more reliable.
+- Workspace navigation ticket creation, database-tool publications, and realtime refreshes now cover structural mutations consistently.
+- Mail panes, breadcrumbs, selection controls, and dark raised surfaces retain readable and consistent styling.
+
 ## 0.0.54
 
 ### Fixed
