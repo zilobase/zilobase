@@ -101,7 +101,7 @@ jobs:
           docker cp "$RUNNER_TEMP/community-minio-tls/public.crt" community-helm-minio:/root/.minio/certs/public.crt
           docker cp "$RUNNER_TEMP/community-minio-tls/private.key" community-helm-minio:/root/.minio/certs/private.key
           docker restart community-helm-minio >/dev/null
-          until docker exec community-helm-minio sh -c 'mc --insecure alias set ga https://127.0.0.1 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1'; do sleep 1; done
+          until docker exec community-helm-minio sh -c 'mc --insecure alias set -- ga https://127.0.0.1 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1'; do sleep 1; done
           docker exec community-helm-minio sh -c 'mc --insecure mb ga/zilobase >/dev/null && mc --insecure version enable ga/zilobase >/dev/null'
 
           postgres_ip=$(docker inspect community-helm-postgres --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
@@ -217,7 +217,7 @@ jobs:
           docker cp "$RUNNER_TEMP/community-minio-tls/public.crt" community-helm-minio:/root/.minio/certs/public.crt
           docker cp "$RUNNER_TEMP/community-minio-tls/private.key" community-helm-minio:/root/.minio/certs/private.key
           docker restart community-helm-minio >/dev/null
-          until docker exec community-helm-minio sh -c 'mc --insecure alias set ga https://127.0.0.1 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1'; do sleep 1; done
+          until docker exec community-helm-minio sh -c 'mc --insecure alias set -- ga https://127.0.0.1 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1'; do sleep 1; done
           restored_minio_ip=$(docker inspect community-helm-minio --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
 
           kubectl -n external patch endpointslice postgres-external --type merge \

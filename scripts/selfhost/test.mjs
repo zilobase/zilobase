@@ -643,8 +643,8 @@ async function mirrorObjectStorage(direction, localDirectory) {
     : ""
   const script =
     direction === "backup"
-      ? `mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite "local/$MINIO_BUCKET" /backup${normalizeBackupOwnership}`
-      : 'mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite /backup "local/$MINIO_BUCKET"'
+      ? `mc alias set -- local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite "local/$MINIO_BUCKET" /backup${normalizeBackupOwnership}`
+      : 'mc alias set -- local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null && mc mirror --overwrite /backup "local/$MINIO_BUCKET"'
   const result = await capture("docker", [
     "run",
     "--rm",

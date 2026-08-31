@@ -54,7 +54,7 @@ services:
       GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL: ${GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL:-}
       GMAIL_PUBSUB_SUBSCRIPTION: ${GMAIL_PUBSUB_SUBSCRIPTION:-}
       MAIL_ENABLED: ${MAIL_ENABLED:-false}
-      COLLABORATION_SECRET: ${COLLABORATION_SECRET:-}
+      COLLABORATION_SECRET: ${COLLABORATION_SECRET:-${BETTER_AUTH_SECRET}}
       IMAGE_STORAGE_MODE: s3
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:?Set S3_PUBLIC_ENDPOINT to the public object-storage origin}
@@ -138,7 +138,7 @@ services:
       - |
         set -eu
         attempts=0
-        until mc alias set zilobase http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+        until mc alias set -- zilobase http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
           attempts=$$((attempts + 1))
           if [ "$$attempts" -ge 20 ]; then
             echo "MinIO did not accept authenticated requests after 20 attempts" >&2
