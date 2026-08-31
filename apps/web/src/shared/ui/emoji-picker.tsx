@@ -33,7 +33,7 @@ function EmojiPickerSearch({
   return (
     <FrimousseEmojiPicker.Search
       className={cn(
-        "mx-2 mt-2 h-8 rounded-md border border-control-border bg-control-background px-2.5 text-sm outline-none placeholder:text-content-secondary focus-visible:border-action-focus-ring focus-visible:ring-2 focus-visible:ring-action-focus-ring dark:bg-control-background",
+        "mx-2 mt-2 h-8 rounded-md border border-control-border bg-control-background px-2.5 text-sm outline-none placeholder:text-content-secondary focus-visible:border-action-focus-ring focus-visible:ring-1 focus-visible:ring-action-focus-ring dark:bg-control-background",
         className
       )}
       {...props}

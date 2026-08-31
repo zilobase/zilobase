@@ -32,7 +32,7 @@ function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="input-otp-group"
       className={cn(
-        "flex items-center rounded-md has-aria-invalid:border-action-danger-border has-aria-invalid:ring-2 has-aria-invalid:ring-action-danger-border dark:has-aria-invalid:ring-action-danger-border",
+        "flex items-center rounded-md has-aria-invalid:border-action-danger-border has-aria-invalid:ring-1 has-aria-invalid:ring-action-danger-border dark:has-aria-invalid:ring-action-danger-border",
         className
       )}
       {...props}
@@ -55,7 +55,7 @@ function InputOTPSlot({
       data-slot="input-otp-slot"
       data-active={isActive}
       className={cn(
-        "relative flex size-7 items-center justify-center border-y border-r border-control-border bg-control-background text-xs/relaxed transition-all outline-none first:rounded-l-md first:border-l last:rounded-r-md aria-invalid:border-action-danger-border data-[active=true]:z-10 data-[active=true]:border-action-focus-ring data-[active=true]:ring-2 data-[active=true]:ring-action-focus-ring data-[active=true]:aria-invalid:border-action-danger-border data-[active=true]:aria-invalid:ring-action-danger-border dark:bg-control-background dark:data-[active=true]:aria-invalid:ring-action-danger-border",
+        "relative flex size-7 items-center justify-center border-y border-r border-control-border bg-control-background text-xs/relaxed transition-all outline-none first:rounded-l-md first:border-l last:rounded-r-md aria-invalid:border-action-danger-border data-[active=true]:z-10 data-[active=true]:border-action-focus-ring data-[active=true]:ring-1 data-[active=true]:ring-action-focus-ring data-[active=true]:aria-invalid:border-action-danger-border data-[active=true]:aria-invalid:ring-action-danger-border dark:bg-control-background dark:data-[active=true]:aria-invalid:ring-action-danger-border",
         className
       )}
       {...props}

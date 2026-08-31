@@ -95,7 +95,7 @@ export function PhosphorIconPicker({
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-content-secondary" />
         <input
           autoFocus
-          className="h-8 w-full rounded-md border border-control-border bg-control-background pr-2.5 pl-8 text-sm outline-none placeholder:text-content-secondary focus-visible:border-action-focus-ring focus-visible:ring-2 focus-visible:ring-action-focus-ring dark:bg-control-background"
+          className="h-8 w-full rounded-md border border-control-border bg-control-background pr-2.5 pl-8 text-sm outline-none placeholder:text-content-secondary focus-visible:border-action-focus-ring focus-visible:ring-1 focus-visible:ring-action-focus-ring dark:bg-control-background"
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search Phosphor icons..."
           type="search"
