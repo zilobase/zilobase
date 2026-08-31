@@ -18,6 +18,8 @@ import {
   type ServerRuntimeAdapter,
 } from "../../infrastructure/runtime/runtime-adapter";
 import { drainDatabaseRealtimeOutbox } from "../../features/databases/realtime/outbox";
+import { drainNavigationRealtimeOutbox } from "../../features/workspaces/navigation-realtime/outbox";
+import { attachNodeNavigationRealtimeRuntime } from "./navigation-realtime-runtime";
 import { expireTemporaryMemberships } from "../../features/memberships";
 import type { AppBindings } from "../../shared/types";
 import { getAppEditionExtension } from "../../shared/edition-extension-registry";
@@ -83,17 +85,19 @@ export function createNodeRuntime({
   setRealtimeReadinessProbe(() => realtimeBus?.isReady() ?? true);
   const collaboration = attachNodeCollaborationRuntime(server, env, {
     editionExtension,
-    passthroughPaths: ["/database-collaboration", "/mail-realtime", "/meeting-audio"],
+    passthroughPaths: ["/database-collaboration", "/mail-realtime", "/meeting-audio", "/navigation-realtime"],
     realtimeBus,
   });
   const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { realtimeBus });
   const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
   const mailRealtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus });
+  const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
   const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
     ...runtimeAdapter,
     publishDatabaseMutation: ({ event }) =>
       databaseRealtime.publishMutation(event),
     publishMailNotification: ({ event }) => mailRealtime.publishNotification(event),
+    publishNavigationInvalidation: ({ event }) => navigationRealtime.publish(event),
   };
   let stopMaintenanceDrainer: (() => void) | null = null;
   let stopAiJobWorker: (() => void) | null = null;
@@ -149,6 +153,7 @@ export function createNodeRuntime({
       await databaseRealtime.destroy();
       await meetingAudio.destroy();
       await mailRealtime.destroy();
+      await navigationRealtime.destroy();
       await collaboration.destroy();
       await realtimeBus?.close();
       setRealtimeReadinessProbe(null);
@@ -218,6 +223,7 @@ function startMaintenanceDrainer(
             );
           }),
           drainDatabaseRealtimeOutbox(env, { limit: 250 }),
+          drainNavigationRealtimeOutbox(env, { limit: 250 }),
           expireTemporaryMemberships(),
           renewGmailWatches(env),
         ]),

@@ -120,6 +120,10 @@ export function mailRealtimeChannel(connectionId: string) {
   return `zilobase:realtime:mail:${connectionId}`;
 }
 
+export function navigationRealtimeChannel(workspaceId: string) {
+  return `zilobase:realtime:navigation:${workspaceId}`;
+}
+
 function parseEnvelope(raw: string): RealtimeEnvelope | null {
   try {
     const value = JSON.parse(raw) as Partial<RealtimeEnvelope>;

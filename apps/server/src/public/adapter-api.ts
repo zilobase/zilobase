@@ -119,6 +119,7 @@ export {
   drainDatabaseRealtimeOutbox,
   type DatabaseRealtimeMutationEvent,
 } from "../features/databases/realtime/outbox";
+export { drainNavigationRealtimeOutbox } from "../features/workspaces/navigation-realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";
 export { renewGmailWatches } from "../features/mail/gmail-watch";
 export {

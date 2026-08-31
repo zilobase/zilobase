@@ -20,6 +20,13 @@ export {
 } from "../features/mail/mail-realtime-ticket";
 export type { MailNotificationEvent } from "../infrastructure/runtime/runtime-adapter";
 export {
+  NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
+  NAVIGATION_REALTIME_PROTOCOL,
+  verifyNavigationRealtimeTicket,
+  type NavigationRealtimeTicketClaims,
+} from "../shared/security/navigation-realtime-ticket";
+export type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages/navigation-realtime";
+export {
   createMeetingAudioTicket,
   MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
   MEETING_AUDIO_PROTOCOL,

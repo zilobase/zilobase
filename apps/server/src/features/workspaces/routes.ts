@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
-import { getMembership, isPrivilegedOrgRole } from "../access";
+import { getMembership, getWorkspaceRealtimeAccessExpiration, isPrivilegedOrgRole } from "../access";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import { db } from "../../infrastructure/database";
 import {
@@ -25,8 +25,39 @@ import {
 } from "../memberships";
 import { sendEmail } from "../../infrastructure/email/email";
 import { getPrimaryClientOrigin } from "../../shared/config/config";
+import { getNavigationRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
+import {
+  createNavigationRealtimeTicket,
+  NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
+  NAVIGATION_REALTIME_PROTOCOL,
+  verifyNavigationRealtimeTicket,
+} from "../../shared/security/navigation-realtime-ticket";
 
 export const workspaceRoutes = new Hono<AppBindings>();
+
+workspaceRoutes.post("/:workspaceId/navigation-realtime-ticket", async (c) => {
+  const requestUser = c.get("user") ?? null;
+  if (!requestUser || c.get("authMethod") !== "session") return c.json({ error: "Unauthorized" }, 401);
+  const workspaceId = c.req.param("workspaceId");
+  if (!(await getMembership(workspaceId, requestUser.id))) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json().catch(() => null);
+  const refreshToken = body && typeof body === "object" && "token" in body && typeof body.token === "string" ? body.token : undefined;
+  let sessionId: string | undefined;
+  if (refreshToken) {
+    if (refreshToken.length > 8 * 1024) return c.json({ error: "Invalid realtime session" }, 400);
+    try {
+      const previous = await verifyNavigationRealtimeTicket(refreshToken, c.env);
+      if (previous.workspaceId !== workspaceId || previous.userId !== requestUser.id) return c.json({ error: "Invalid realtime session" }, 401);
+      sessionId = previous.sessionId;
+    } catch { return c.json({ error: "Invalid realtime session" }, 401); }
+  }
+  const ticket = await createNavigationRealtimeTicket({ sessionId, userId: requestUser.id, workspaceId }, c.env, {
+    maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(workspaceId, requestUser.id),
+  });
+  const websocketUrl = new URL(getNavigationRealtimeWebSocketUrl(c.req.raw, c.env));
+  websocketUrl.searchParams.set("workspace", workspaceId);
+  return c.json({ ...ticket, workspaceId, websocketProtocols: [NAVIGATION_REALTIME_PROTOCOL, `${NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.token}`], websocketUrl: websocketUrl.toString() });
+});
 
 const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
 const memberInvitationSchema = z

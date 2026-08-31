@@ -115,8 +115,8 @@
       "default": "./src/pages/nav-delta.ts"
     },
     "./pages/navigation-realtime": {
-      "types": "./src/pages/navigation-realtime.ts",
-      "default": "./src/pages/navigation-realtime.ts"
+      "types": "./src/pages/navigation-realtime-contract.ts",
+      "default": "./src/pages/navigation-realtime-contract.ts"
     },
     "./pages/queries": {
       "types": "./src/pages/queries.ts",
