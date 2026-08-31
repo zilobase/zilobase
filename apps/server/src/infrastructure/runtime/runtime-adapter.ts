@@ -1,4 +1,5 @@
 import type { DatabaseRealtimeMutationEvent } from "../../features/databases/realtime/contracts";
+import type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages/navigation-realtime";
 import type {
   MeetingAudioSource,
   MeetingLifecycleAction,
@@ -64,6 +65,7 @@ export type ServerRuntimeAdapter = {
   ): string;
   getMeetingAudioWebSocketUrl?(request: Request, env: RuntimeEnv): string;
   getMailRealtimeWebSocketUrl?(request: Request, env: RuntimeEnv): string;
+  getNavigationRealtimeWebSocketUrl?(request: Request, env: RuntimeEnv): string;
   getMeetingRecorderSession?(input: {
     env: RuntimeEnv;
     meetingId: string;
@@ -77,6 +79,10 @@ export type ServerRuntimeAdapter = {
   publishMailNotification?(input: {
     env: RuntimeEnv;
     event: MailNotificationEvent;
+  }): Promise<void>;
+  publishNavigationInvalidation?(input: {
+    env: RuntimeEnv;
+    event: NavigationRealtimeInvalidateEvent;
   }): Promise<void>;
   releaseMeetingRecorderSession?(
     input: MeetingRecorderRuntimeInput,
@@ -231,6 +237,25 @@ export function getMailRealtimeWebSocketUrl(request: Request, env: RuntimeEnv) {
   const url = new URL(request.url);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/mail-realtime";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+export function getNavigationRealtimeWebSocketUrl(
+  request: Request,
+  env: RuntimeEnv,
+) {
+  const explicitUrl = getStringEnv(env, "NAVIGATION_REALTIME_WEBSOCKET_URL");
+  if (explicitUrl) return explicitUrl;
+  const configured = getRuntimeAdapter().getNavigationRealtimeWebSocketUrl?.(
+    request,
+    env,
+  );
+  if (configured) return configured;
+  const url = new URL(request.url);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/navigation-realtime";
   url.search = "";
   url.hash = "";
   return url.toString();

@@ -113,6 +113,7 @@ databaseRoutes.post("/", async (c) => {
 
   try {
     const created = await createDatabaseService({
+      env: c.env,
       name,
       pageId: typeof pageId === "string" ? pageId : undefined,
       standalone: standalone === true,

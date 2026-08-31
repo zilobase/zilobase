@@ -20,6 +20,7 @@ import {
   replacePageContent,
 } from "../../collaboration/service";
 import type { RuntimeEnv } from "../../../shared/config/config";
+import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../../workspaces/navigation-realtime/outbox";
 import { upsertPageItemPlacement } from "../placements/page-item-placements";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
@@ -32,6 +33,7 @@ export async function createPageService(input: {
   type?: string;
   url?: string;
   userId: string;
+  env?: RuntimeEnv;
 }) {
   if (input.parentPageId) {
     const [parent] = await db
@@ -54,7 +56,7 @@ export async function createPageService(input: {
   const pageId = crypto.randomUUID();
   const parentPlacementId = input.parentPageId ? crypto.randomUUID() : null;
 
-  const [record] = await db.transaction(async (tx) => {
+  const { record, navigationEvent } = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(page)
       .values({
@@ -88,8 +90,10 @@ export async function createPageService(input: {
       updatedAt: new Date(),
     });
 
-    return [created];
+    const navigationEvent = await enqueueNavigationInvalidation(tx, input.workspaceId);
+    return { record: created, navigationEvent };
   });
+  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
 
   return {
     page: record,

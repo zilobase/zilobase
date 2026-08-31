@@ -29,6 +29,7 @@ import { commitDatabaseMutation } from "./commit";
 import type { DatabaseDelta } from "../realtime/delta";
 import { getDatabasePayload } from "./payload";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
+import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../../workspaces/navigation-realtime/outbox";
 
 export async function createDatabaseService(input: {
   defaultViewIcon?: string;
@@ -39,6 +40,7 @@ export async function createDatabaseService(input: {
   standalone?: boolean;
   teamspaceId?: string | null;
   userId: string;
+  env?: RuntimeEnv;
 }) {
   const name = input.name?.trim() || "New database";
   const standalone = input.standalone === true;
@@ -116,7 +118,7 @@ export async function createDatabaseService(input: {
           .limit(1)
       : [];
 
-  await db.transaction(async (tx) => {
+  const navigationEvent = await db.transaction(async (tx) => {
     await tx.insert(database).values({
       id: databaseId,
       workspaceId: input.workspaceId,
@@ -175,7 +177,9 @@ export async function createDatabaseService(input: {
           target: [favorite.userId, favorite.databaseId],
         });
     }
+    return enqueueNavigationInvalidation(tx, input.workspaceId);
   });
+  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
 
   return {
     databaseId,

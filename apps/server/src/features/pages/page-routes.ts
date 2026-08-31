@@ -61,6 +61,7 @@ import {
 } from "../collaboration/service";
 import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { getPageTeamspaceSecurityPolicy } from "../teamspaces";
+import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../workspaces/navigation-realtime/outbox";
 import { TeamspaceManagementService } from "../teamspaces/management";
 import {
   commitDatabaseMutationBatch,
@@ -884,7 +885,7 @@ pageRoutes.post("/", async (c) => {
         position: 0,
       }
     : null;
-  const [record] = await db.transaction(async (tx) => {
+  const { record, navigationEvent } = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(page)
       .values({
@@ -932,8 +933,11 @@ pageRoutes.post("/", async (c) => {
         });
     }
 
-    return [created];
+    const navigationEvent = await enqueueNavigationInvalidation(tx, workspaceId);
+    return { record: created, navigationEvent };
   });
+
+  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   const pagePayload = { ...record, isFavorite: shouldInheritFavorite };
 

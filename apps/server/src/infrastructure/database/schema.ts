@@ -1197,6 +1197,32 @@ export const databaseRealtimeOutbox = pgTable(
   ],
 );
 
+export const navigationRealtimeOutbox = pgTable(
+  "navigation_realtime_outbox",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
+    committedAt: timestamp("committed_at", { withTimezone: true }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("navigation_realtime_outbox_ready_idx").on(
+      table.nextAttemptAt,
+      table.committedAt,
+    ),
+    index("navigation_realtime_outbox_workspace_idx").on(
+      table.workspaceId,
+      table.committedAt,
+    ),
+  ],
+);
+
 export const databaseAccess = pgTable(
   "database_access",
   {

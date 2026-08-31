@@ -731,6 +731,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
       }),
       execute: withDbExecute(context, "createPage", async (input, options) => {
         const result = await createPageService({
+          env: context.env,
           content: input.markdown
             ? markdownToPageContent(
                 stripDuplicatePageTitleHeadings(input.markdown, input.name),
@@ -783,6 +784,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
           : undefined;
 
         const result = await createDatabaseService({
+          env: context.env,
           defaultViewIcon: buildAgentGlyphSvg(resolveAgentGlyphName({
             fallbackKind: "view",
             name: "Table",
