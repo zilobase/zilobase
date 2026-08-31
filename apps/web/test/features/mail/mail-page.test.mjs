@@ -41,6 +41,15 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.doesNotMatch(mailSource, /border-b border-stroke-default pb-2|<PlusIcon \/>[\s\S]*Compose/)
   })
 
+  test("Mail hides the global Ask AI launcher", async () => {
+    const appLayoutSource = await readSource("/src/app/shell/content/app-layout.tsx")
+
+    assert.match(
+      appLayoutSource,
+      /chatSidebarOpen \|\| isAiPage \|\| isMailPage \? null : \([\s\S]*<ChatSidebarTrigger/,
+    )
+  })
+
   test("Mail navigation is connected to sidebar shortcuts and breadcrumbs", async () => {
     const [shortcutSource, headerSource] = await Promise.all([
       readSource("/src/features/sidebar/components/sidebar-shortcut-list.tsx"),
