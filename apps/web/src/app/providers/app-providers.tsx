@@ -18,12 +18,15 @@ import {
 } from "@/shared/providers/theme-family-provider"
 import { AppIconProvider } from "@/shared/components/app-icon-provider"
 import { DemoExperience } from "@/features/demo"
+import { useNavigationRealtime } from "@zilobase/features/pages"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
     <AppIconProvider>
       <OfflineQueryProvider client={queryClient}>
         <WebFeaturesProvider>
+          <NavigationRealtimeSync />
           <ShortcutProvider>
             <ThemeProvider
               attribute="class"
@@ -54,6 +57,11 @@ export function AppProviders({ children }: React.PropsWithChildren) {
       </OfflineQueryProvider>
     </AppIconProvider>
   )
+}
+
+function NavigationRealtimeSync() {
+  useNavigationRealtime(useActiveWorkspaceId())
+  return null
 }
 
 function ThemeDocumentSync() {

@@ -165,6 +165,8 @@ export function WebFeaturesProvider({
         auth: webAuthClient,
         databaseRealtimeEnabled:
           !isHostedDemoRuntime() && isFeatureEnabled("databaseRealtime"),
+        navigationRealtimeEnabled:
+          !isHostedDemoRuntime() && isFeatureEnabled("navigationRealtime"),
         preferredActiveWorkspaceId,
         queryClient,
         setPreferredActiveWorkspaceId,
