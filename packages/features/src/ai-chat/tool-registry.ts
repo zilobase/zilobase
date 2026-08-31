@@ -19,6 +19,7 @@ export const AGENT_TOOL_DESCRIPTORS = [
   descriptor("createDownloadableArtifact", "artifact.create", "artifact", "none", "Create downloadable file"),
   descriptor("proposePageContentUpdate", "page.content.update", "write", "review", "Update page content"),
   descriptor("updateWorkspacePage", "page.content.update", "write", "review", "Update Zilobase page", 2),
+  descriptor("buildDatabaseFromBlueprint", "page-database.configure", "write", "none", "Build database", 4),
   descriptor("createPage", "page-database.configure", "write", "none", "Create page", 2),
   descriptor("createDatabase", "page-database.configure", "write", "none", "Create database", 3),
   descriptor("embedDatabaseInPage", "page-database.configure", "write", "none", "Embed database in page", 2),

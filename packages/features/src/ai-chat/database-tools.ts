@@ -1,6 +1,7 @@
 import type { AgentCitation } from "./agent-contract"
 
 export const DATABASE_CONFIG_TOOL_NAMES = [
+  "buildDatabaseFromBlueprint",
   "createPage",
   "createDatabase",
   "embedDatabaseInPage",
@@ -19,15 +20,20 @@ export type DatabaseConfigToolName =
 
 export type DatabaseConfigToolOutput = {
   citations?: AgentCitation[]
+  data?: unknown
+  error?: {
+    code: string
+    retryable: boolean
+  }
   hints?: string[]
   ids: Record<string, string>
-  ok: true
+  ok: boolean
   receipt?: {
     actionId: string
     completedAt: string
     toolName: string
   }
-  status: "succeeded"
+  status: "failed" | "succeeded"
   summary: string
 }
 
@@ -44,7 +50,7 @@ export function readDatabaseConfigToolIds(output: unknown) {
 
   const record = output as DatabaseConfigToolOutput
 
-  if (record.ok !== true || !record.ids || typeof record.ids !== "object") {
+  if (!record.ids || typeof record.ids !== "object") {
     return null
   }
 

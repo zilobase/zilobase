@@ -37,6 +37,18 @@
       "types": "./src/ai-chat/agent-contract.ts",
       "default": "./src/ai-chat/agent-contract.ts"
     },
+    "./ai-chat/conversation-adapter": {
+      "types": "./src/ai-chat/conversation-adapter.ts",
+      "default": "./src/ai-chat/conversation-adapter.ts"
+    },
+    "./ai-chat/live-agent": {
+      "types": "./src/ai-chat/live-agent.ts",
+      "default": "./src/ai-chat/live-agent.ts"
+    },
+    "./ai-chat/agent-icons": {
+      "types": "./src/ai-chat/agent-icons.ts",
+      "default": "./src/ai-chat/agent-icons.ts"
+    },
     "./ai-chat/apply-page-content-patch": {
       "types": "./src/ai-chat/apply-page-content-patch.ts",
       "default": "./src/ai-chat/apply-page-content-patch.ts"
@@ -52,6 +64,10 @@
     "./databases/property-types": {
       "types": "./src/databases/property-types.ts",
       "default": "./src/databases/property-types.ts"
+    },
+    "./databases/queries": {
+      "types": "./src/databases/queries.ts",
+      "default": "./src/databases/queries.ts"
     },
     "./meetings": {
       "types": "./src/meetings/index.ts",
@@ -93,6 +109,14 @@
     "./pages/content-state": {
       "types": "./src/pages/content-state.ts",
       "default": "./src/pages/content-state.ts"
+    },
+    "./pages/nav-delta": {
+      "types": "./src/pages/nav-delta.ts",
+      "default": "./src/pages/nav-delta.ts"
+    },
+    "./pages/queries": {
+      "types": "./src/pages/queries.ts",
+      "default": "./src/pages/queries.ts"
     }
   }
 }

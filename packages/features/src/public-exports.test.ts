@@ -6,16 +6,23 @@ const expectedFeatureExports = [
   ".",
   "./ai-chat",
   "./ai-chat/agent-contract",
+  "./ai-chat/agent-icons",
   "./ai-chat/apply-page-content-patch",
+  "./ai-chat/conversation-adapter",
+  "./ai-chat/live-agent",
   "./ai-chat/tool-registry",
   "./api-keys",
   "./auth",
   "./databases",
   "./databases/property-types",
+  "./databases/queries",
+  "./mail",
   "./meetings",
   "./pages",
   "./pages/content-state",
   "./pages/layouts",
+  "./pages/nav-delta",
+  "./pages/queries",
   "./search",
   "./teamspaces",
   "./user-settings",
@@ -25,8 +32,12 @@ const expectedFeatureExports = [
 
 const expectedPageContextExports = [
   ".",
+  "./build-database-markdown",
+  "./extract-database-ids",
   "./format-property-value",
   "./prosemirror-to-markdown",
+  "./strip-database-payload",
+  "./types",
 ];
 
 test("workspace packages retain their published export specifiers", async () => {
