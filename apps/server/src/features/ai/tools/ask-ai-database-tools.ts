@@ -387,6 +387,7 @@ async function executeDatabaseBlueprint(
                   requested: input.hostPage?.icon,
                 }),
               },
+              env: context.env,
               name: input.hostPage!.name,
               parentPageId: input.hostPage?.parentPageId,
               userId: context.userId,
@@ -425,6 +426,7 @@ async function executeDatabaseBlueprint(
             requested: input.views[0]?.icon,
             type: input.views[0]?.type ?? "table",
           })),
+          env: context.env,
           icon: resolveStoredAgentIcon({
             emoji: input.emoji,
             fallbackKind: "database",
@@ -918,7 +920,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
         const result = await linkDatabaseInPageService({
           databaseId: input.databaseId,
-
+          env: context.env,
           hostPageId,
           userId: context.userId,
         });
