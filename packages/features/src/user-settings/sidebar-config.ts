@@ -113,11 +113,18 @@ const defaultSections: SidebarSection[] = [
 ]
 
 const defaultShortcuts: SidebarShortcut[] = [
-  { id: "default-ask-ai", target: { route: "ai", type: "route" } },
   { id: "default-meetings", target: { route: "meetings", type: "route" } },
   { id: "default-tasks", target: { route: "tasks", type: "route" } },
   { id: "default-library", target: { type: "library", view: "recents" } },
   { id: "default-trash", target: { route: "trash", type: "route" } },
+]
+
+const defaultAiShortcuts: SidebarShortcut[] = [
+  { id: "default-ai-new-chat", target: { action: "createChat", type: "action" } },
+]
+
+const defaultAiSections: SidebarSection[] = [
+  { id: "default-ai-chats", kind: "aiChats", limit: 50, sort: "lastEdited" },
 ]
 
 const defaultMailComposeShortcut: SidebarShortcut = {
@@ -141,6 +148,13 @@ export const defaultSidebarWorkspaceLayout: SidebarWorkspaceLayout = {
       name: "Home",
       sections: defaultSections,
       shortcuts: defaultShortcuts,
+    },
+    {
+      icon: "sparkles",
+      id: "ai",
+      name: "AI",
+      sections: defaultAiSections,
+      shortcuts: defaultAiShortcuts,
     },
     {
       icon: "mail",
@@ -216,8 +230,19 @@ export function normalizeSidebarWorkspaceLayout(value: unknown): SidebarWorkspac
   const tabs = uniqueById(configuredTabs)
   const configuredHome = tabs.find((tab) => tab.id === "home")
   const home = configuredHome
-    ? { ...configuredHome, icon: "home", id: "home", name: "Home" }
+    ? normalizeWorkspaceTab({ ...configuredHome, icon: "home", id: "home", name: "Home" })
     : cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout).tabs[0]!
+  const configuredAi = tabs.find((tab) => tab.id === "ai")
+  const ai = configuredAi
+    ? {
+        ...configuredAi,
+        icon: "sparkles",
+        id: "ai",
+        name: "AI",
+        sections: configuredAi.sections.filter((section) => section.kind === "aiChats"),
+        shortcuts: configuredAi.shortcuts.filter(isAiShortcut),
+      }
+    : cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout).tabs[1]!
   const configuredMail = tabs.find((tab) => tab.id === "mail")
   const mail = configuredMail
     ? {
@@ -225,15 +250,19 @@ export function normalizeSidebarWorkspaceLayout(value: unknown): SidebarWorkspac
         icon: "mail",
         id: "mail",
         name: "Mail",
-        shortcuts: ensureMailComposeShortcut(configuredMail.shortcuts),
+        sections: [],
+        shortcuts: ensureMailComposeShortcut(configuredMail.shortcuts.filter(isMailShortcut)),
       }
-    : cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout).tabs[1]!
+    : cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout).tabs[2]!
 
   return {
     tabs: [
       home,
+      ai,
       mail,
-      ...tabs.filter((tab) => tab.id !== "home" && tab.id !== "mail"),
+      ...tabs
+        .filter((tab) => !isFixedSidebarTabId(tab.id))
+        .map(normalizeWorkspaceTab),
     ].slice(0, 8),
     taskDatabaseIds: uniqueStrings(layout.taskDatabaseIds).slice(0, 10),
   }
@@ -301,12 +330,51 @@ function normalizeShortcut(value: unknown): SidebarShortcut | null {
     : null
 }
 
+export function isFixedSidebarTabId(tabId: string) {
+  return tabId === "home" || tabId === "ai" || tabId === "mail"
+}
+
+export function isStaticSidebarTabId(tabId: string) {
+  return tabId === "ai" || tabId === "mail"
+}
+
+export function isRequiredSidebarShortcut(tabId: string, shortcut: SidebarShortcut) {
+  return tabId === "mail" &&
+    shortcut.target.type === "action" &&
+    shortcut.target.action === "composeMail"
+}
+
+function isAiShortcut(shortcut: SidebarShortcut) {
+  const target = shortcut.target
+  return (target.type === "action" && target.action === "createChat") ||
+    (target.type === "route" && target.route === "ai")
+}
+
+function isMailShortcut(shortcut: SidebarShortcut) {
+  const target = shortcut.target
+  return target.type === "mail" ||
+    (target.type === "action" && target.action === "composeMail")
+}
+
 function ensureMailComposeShortcut(shortcuts: SidebarShortcut[]) {
-  return shortcuts.some((shortcut) =>
-    shortcut.target.type === "action" && shortcut.target.action === "composeMail"
-  )
+  return shortcuts.some((shortcut) => isRequiredSidebarShortcut("mail", shortcut))
     ? shortcuts
     : [{ ...defaultMailComposeShortcut, target: { ...defaultMailComposeShortcut.target } }, ...shortcuts].slice(0, 24)
+}
+
+function normalizeWorkspaceTab(tab: SidebarTab): SidebarTab {
+  return {
+    ...tab,
+    sections: tab.sections.filter((section) => section.kind !== "aiChats"),
+    shortcuts: tab.shortcuts.filter((shortcut) => {
+      const target = shortcut.target
+      if (target.type === "mail") return false
+      if (target.type === "action") {
+        return target.action !== "composeMail" && target.action !== "createChat"
+      }
+      return target.type !== "route" || target.route !== "ai"
+    }),
+  }
 }
 
 function normalizeSection(value: unknown): SidebarSection | null {

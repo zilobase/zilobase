@@ -8,6 +8,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 ### Added
 
+- The sidebar now keeps Home, AI, and Mail as permanent tabs that follow their routes. AI and Mail remain service-scoped but allow their shortcuts and sections to be arranged or removed; Mail always retains Compose.
 - Mail workspaces can connect Gmail accounts, synchronize and cache conversations, compose drafts with attachments, manage threads and labels, and receive realtime mailbox invalidations. The integration remains disabled by default.
 - Hosted and self-hosted clients can reconcile workspace navigation changes through authenticated realtime tickets and revision-only invalidations.
 - Ask AI now supports durable live conversations through the shared agent contract.

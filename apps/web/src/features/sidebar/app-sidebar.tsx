@@ -92,6 +92,7 @@ import {
 import { useTeamspaces, useTeamspaceSettings } from "@zilobase/features/teamspaces"
 import {
   defaultUserSettings,
+  isStaticSidebarTabId,
   normalizeSidebarConfig,
   resolveSidebarWorkspaceLayout,
   useUpdateUserSettings,
@@ -170,29 +171,44 @@ export function AppSidebar({
     },
     [sidebarConfig, workspaceId],
   )
+  const { activeThreadId, setActiveThreadId } = useAiChatThreadState({ enabled: false })
   const [activeTabId, setActiveTabId] = React.useState("home")
   React.useEffect(() => {
     const stored = readActiveSidebarTab(workspaceId)
-    const next = layout.tabs.some((tab) => tab.id === stored) ? stored : "home"
+    const next = layout.tabs.some((tab) => tab.id === stored) && !isStaticSidebarTabId(stored)
+      ? stored
+      : "home"
     setActiveTabId(next)
   }, [layout.tabs, workspaceId])
   const selectTab = React.useCallback((tabId: string) => {
     setActiveTabId(tabId)
-    writeActiveSidebarTab(workspaceId, tabId)
+    if (!isStaticSidebarTabId(tabId)) writeActiveSidebarTab(workspaceId, tabId)
   }, [workspaceId])
   const selectNavigationTab = React.useCallback((tabId: string) => {
     selectTab(tabId)
     if (tabId === "mail") {
       void navigate({ search: { view: "inbox" }, to: "/mail" })
-    } else if (pathname === "/mail") {
+    } else if (tabId === "ai") {
+      void navigate({ search: { thread: activeThreadId ?? undefined }, to: "/ai" })
+    } else if (pathname === "/mail" || pathname === "/ai") {
       void navigate({ search: { view: "recents" }, to: "/recents" })
     }
-  }, [navigate, pathname, selectTab])
+  }, [activeThreadId, navigate, pathname, selectTab])
   React.useEffect(() => {
-    if (pathname === "/mail" && layout.tabs.some((tab) => tab.id === "mail")) {
-      selectTab("mail")
+    if (customizing) return
+    const staticTabId = pathname === "/mail" ? "mail" : pathname === "/ai" ? "ai" : null
+    if (staticTabId && layout.tabs.some((tab) => tab.id === staticTabId)) {
+      setActiveTabId(staticTabId)
+      return
     }
-  }, [layout.tabs, pathname, selectTab])
+    if (!staticTabId && isStaticSidebarTabId(activeTabId)) {
+      const stored = readActiveSidebarTab(workspaceId)
+      const next = layout.tabs.some((tab) => tab.id === stored) && !isStaticSidebarTabId(stored)
+        ? stored
+        : "home"
+      setActiveTabId(next)
+    }
+  }, [activeTabId, customizing, layout.tabs, pathname, workspaceId])
   const activeTab = layout.tabs.find((tab) => tab.id === activeTabId) ?? layout.tabs[0]!
   const needsMeetings = activeTab.sections.some((section) => section.kind === "meetings")
   const { data: navigation } = usePageNavigation(workspaceId)
@@ -201,7 +217,6 @@ export function AppSidebar({
   const { data: meetingsPayload } = useWorkspaceMeetings(needsMeetings ? workspaceId : null)
   const { isPending: isCreatingPage, mutateAsync: createPage } = useCreatePage()
   const { isPending: isCreatingDatabase, mutateAsync: createDatabase } = useCreateDatabase()
-  const { setActiveThreadId } = useAiChatThreadState({ enabled: false })
   const { isPending: isSettingPageFavorite, mutate: setPageFavorite } = useSetPageFavorite()
   const { isPending: isAddingDatabaseRow, mutate: addDatabaseRow } = useAddDatabaseRow()
   const { isPending: isSettingDatabaseFavorite, mutate: setDatabaseFavorite } = useSetDatabaseFavorite()

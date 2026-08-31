@@ -9,6 +9,7 @@ export function register({ assert, loadModule, test }) {
           { id: "one", target: { route: "ai", type: "route" } },
           { id: "two", target: { route: "tasks", type: "route" } },
         ] },
+        { icon: "sparkles", id: "ai", name: "AI", sections: [], shortcuts: [] },
         { icon: "star", id: "work", name: "Work", sections: [], shortcuts: [] },
       ],
       taskDatabaseIds: [],
@@ -17,7 +18,8 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(moveArrayItem(["one", "two"], 1, -1), ["two", "one"])
     const moved = moveLayoutEntry(layout, "home", "work", "shortcuts", "two")
     assert.deepEqual(moved.tabs[0].shortcuts.map((item) => item.id), ["one"])
-    assert.deepEqual(moved.tabs[1].shortcuts.map((item) => item.id), ["two"])
+    assert.deepEqual(moved.tabs[2].shortcuts.map((item) => item.id), ["two"])
+    assert.equal(moveLayoutEntry(layout, "home", "ai", "shortcuts", "two"), layout)
   })
 
   test("exact shortcuts are deduplicated only within the current tab", async () => {

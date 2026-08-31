@@ -3,7 +3,7 @@ export function register({ assert, loadModule, readSource, test }) {
     const { defaultSidebarWorkspaceLayout, mailViewIds, normalizeSidebarWorkspaceLayout } = await loadModule(
       "/packages/features/src/user-settings/sidebar-config.ts",
     )
-    const mail = defaultSidebarWorkspaceLayout.tabs[1]
+    const mail = defaultSidebarWorkspaceLayout.tabs.find((tab) => tab.id === "mail")
 
     assert.equal(mail.id, "mail")
     assert.equal(mail.name, "Mail")
@@ -15,7 +15,7 @@ export function register({ assert, loadModule, readSource, test }) {
       tabs: [{ icon: "home", id: "home", name: "Home", sections: [], shortcuts: [] }],
       taskDatabaseIds: [],
     })
-    assert.equal(normalized.tabs[1].id, "mail")
+    assert.equal(normalized.tabs[2].id, "mail")
   })
 
   test("Mail route uses grouped list rows and compact page spacing", async () => {

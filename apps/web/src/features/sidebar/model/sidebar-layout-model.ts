@@ -140,7 +140,11 @@ export function moveLayoutEntry(
   entryType: "sections" | "shortcuts",
   entryId: string,
 ) {
-  if (sourceTabId === targetTabId) return layout
+  if (
+    sourceTabId === targetTabId ||
+    isStaticTabId(sourceTabId) ||
+    isStaticTabId(targetTabId)
+  ) return layout
   const source = layout.tabs.find((tab) => tab.id === sourceTabId)
   const entry = source?.[entryType].find((item) => item.id === entryId)
   if (!entry) return layout
@@ -157,6 +161,10 @@ export function moveLayoutEntry(
       return tab
     }),
   }
+}
+
+function isStaticTabId(tabId: string) {
+  return tabId === "ai" || tabId === "mail"
 }
 
 export function hasShortcutTarget(tab: SidebarTab, target: SidebarShortcut["target"]) {

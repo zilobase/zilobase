@@ -57,6 +57,10 @@ export function register({ readSource, assert, test }) {
     assert.match(sidebarTabsSource, /translate3d\(\$\{sortable\.transform\.x\}px, 0, 0\)/)
     assert.match(sidebarTabsSource, /activationConstraint: \{ distance: 4 \}/)
     assert.match(sidebarCustomizeSource, /activeTabSettings=/)
+    assert.doesNotMatch(sidebarCustomizeSource, /managed by Zilobase|<StaticTabContents/)
+    assert.match(sidebarCustomizeSource, /tabId === "mail"[\s\S]*mailViewIds\.map/)
+    assert.match(sidebarCustomizeSource, /Compose is required/)
+    assert.match(sidebarCustomizeSource, /isFixedSidebarTabId\(current\.tabs\[from\]!\.id\)/)
     assert.match(sidebarSource, /<SidebarCustomizePanel activeTabId=\{activeTabId\}/)
     assert.doesNotMatch(sidebarSource, /<SidebarCustomizePanel activeTabId=\{activeTab\.id\}/)
     assert.doesNotMatch(sidebarCustomizeSource, /autoFocus=\{newTabId/)
@@ -145,6 +149,10 @@ export function register({ readSource, assert, test }) {
     )
     assert.doesNotMatch(sidebarSource, /useCreateAiChatThread/)
     assert.match(sidebarSource, /setActiveThreadId\(null\)/)
+    assert.match(sidebarSource, /tabId === "mail"[\s\S]*search: \{ view: "inbox" \}[\s\S]*to: "\/mail"/)
+    assert.match(sidebarSource, /tabId === "ai"[\s\S]*activeThreadId \?\? undefined[\s\S]*to: "\/ai"/)
+    assert.match(sidebarSource, /staticTabId = pathname === "\/mail" \? "mail" : pathname === "\/ai" \? "ai" : null/)
+    assert.match(sidebarSource, /!staticTabId && isStaticSidebarTabId\(activeTabId\)[\s\S]*readActiveSidebarTab\(workspaceId\)/)
     assert.match(
       sidebarShortcutSource,
       /<SidebarMenuButton[\s\S]*isActive=\{isShortcutActive/,

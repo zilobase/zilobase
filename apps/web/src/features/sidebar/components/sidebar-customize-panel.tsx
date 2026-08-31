@@ -34,7 +34,6 @@ import {
   MoreHorizontalIcon,
   PlusIcon,
   SettingsIcon,
-  SparklesIcon,
   StarIcon,
   Trash2Icon,
   UsersIcon,
@@ -44,12 +43,13 @@ import { toast } from "sonner"
 
 import { SidebarLayoutTabs } from "./sidebar-layout-tabs"
 import { DatabaseViewIcon } from "@/features/databases"
-import { libraryViewIcons, SidebarShortcutIcon, SidebarTabIcon } from "./sidebar-layout-icons"
+import { libraryViewIcons, mailViewIcons, SidebarShortcutIcon, SidebarTabIcon } from "./sidebar-layout-icons"
 import {
   getSectionLabel,
   getShortcutLabel,
   hasShortcutTarget,
   libraryViewLabels,
+  mailViewLabels,
   moveArrayItem,
   moveLayoutEntry,
   sidebarSectionLabels,
@@ -96,7 +96,11 @@ import { useAppSearchResults, type AppSearchResult } from "@zilobase/features/se
 import type { Page, PageDatabase, PageDatabaseView } from "@zilobase/features/pages"
 import {
   cloneSidebarWorkspaceLayout,
+  isFixedSidebarTabId,
+  isRequiredSidebarShortcut,
+  isStaticSidebarTabId,
   libraryViewIds,
+  mailViewIds,
   sidebarSectionKinds,
   sidebarSectionLimits,
   sidebarSectionSorts,
@@ -186,12 +190,12 @@ export function SidebarCustomizePanel({
     onActiveTabChange(id)
   }
   const deleteTab = () => {
-    if (isFixedTab(activeTab.id)) return
+    if (isFixedSidebarTabId(activeTab.id)) return
     setDraft((current) => ({ ...current, tabs: current.tabs.filter((tab) => tab.id !== activeTab.id) }))
     onActiveTabChange("home")
   }
   const requestDeleteTab = () => {
-    if (isFixedTab(activeTab.id)) return
+    if (isFixedSidebarTabId(activeTab.id)) return
     if (!activeTab.shortcuts.length && !activeTab.sections.length) {
       deleteTab()
       return
@@ -202,7 +206,13 @@ export function SidebarCustomizePanel({
     setDraft((current) => {
       const from = current.tabs.findIndex((tab) => tab.id === draggedTabId)
       const to = current.tabs.findIndex((tab) => tab.id === overTabId)
-      if (from < 2 || to < 2 || from === to) return current
+      if (
+        from < 0 ||
+        to < 0 ||
+        from === to ||
+        isFixedSidebarTabId(current.tabs[from]!.id) ||
+        isFixedSidebarTabId(current.tabs[to]!.id)
+      ) return current
       const tabs = [...current.tabs]
       const [tab] = tabs.splice(from, 1)
       if (!tab) return current
@@ -227,6 +237,10 @@ export function SidebarCustomizePanel({
   const addSection = (kind: Exclude<SidebarSectionKind, "databaseView">) => {
     if (activeTab.sections.length >= 24) {
       toast.info("This tab already has the maximum of 24 sections.")
+      return
+    }
+    if (activeTab.id === "ai" && activeTab.sections.some((section) => section.kind === kind)) {
+      toast.info("That section is already in this tab.")
       return
     }
     updateTab((tab) => ({
@@ -289,7 +303,7 @@ export function SidebarCustomizePanel({
         tabs={draft.tabs}
       />
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pb-4 pt-3">
-        <AddShortcutMenu databases={databases} onAdd={addShortcut} pages={pages} workspaceId={workspaceId} />
+        <AddShortcutMenu databases={databases} onAdd={addShortcut} pages={pages} tabId={activeTab.id} workspaceId={workspaceId} />
         <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd} sensors={sensors}>
           <SortableContext items={activeTab.shortcuts.map((shortcut) => `shortcuts:${shortcut.id}`)} strategy={verticalListSortingStrategy}>
             <div className="space-y-0.5 py-1">
@@ -325,29 +339,31 @@ export function SidebarCustomizePanel({
             </div>
           </SortableContext>
 
-          <div className="my-2 h-px bg-stroke-default" />
-          <AddSectionMenu databases={databases} onAdd={addSection} onAddDatabase={addDatabaseSection} workspaceId={workspaceId} />
-          <SortableContext items={activeTab.sections.map((section) => `sections:${section.id}`)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-0.5 py-1">
-              {activeTab.sections.map((section, index) => {
-              const Icon = sectionIcons[section.kind]
-              return (
-                <EditableRow id={`sections:${section.id}`} key={section.id}>
-                  <Icon className="size-4 text-content-secondary" />
-                  <span className="min-w-0 flex-1 truncate">{getSectionLabel(section)}</span>
-                  <SectionSettings
-                    databases={databases}
-                    index={index}
-                    layout={draft}
-                    onChange={setDraft}
-                    section={section}
-                    sourceTabId={activeTab.id}
-                  />
-                </EditableRow>
-              )
-              })}
-            </div>
-          </SortableContext>
+          {activeTab.id !== "mail" ? <>
+            <div className="my-2 h-px bg-stroke-default" />
+            <AddSectionMenu databases={databases} onAdd={addSection} onAddDatabase={addDatabaseSection} tabId={activeTab.id} workspaceId={workspaceId} />
+            <SortableContext items={activeTab.sections.map((section) => `sections:${section.id}`)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-0.5 py-1">
+                {activeTab.sections.map((section, index) => {
+                const Icon = sectionIcons[section.kind]
+                return (
+                  <EditableRow id={`sections:${section.id}`} key={section.id}>
+                    <Icon className="size-4 text-content-secondary" />
+                    <span className="min-w-0 flex-1 truncate">{getSectionLabel(section)}</span>
+                    <SectionSettings
+                      databases={databases}
+                      index={index}
+                      layout={draft}
+                      onChange={setDraft}
+                      section={section}
+                      sourceTabId={activeTab.id}
+                    />
+                  </EditableRow>
+                )
+                })}
+              </div>
+            </SortableContext>
+          </> : null}
         </DndContext>
       </div>
       <div className="border-t border-stroke-default bg-surface-navigation p-3">
@@ -429,37 +445,43 @@ const sidebarEditorButtonClassName =
 const sidebarEditorActionClassName =
   "absolute right-1 top-1.5 inline-flex size-5 shrink-0 cursor-default items-center justify-center rounded-md text-content-secondary opacity-0 outline-none transition-colors group-hover/editor-row:opacity-100 hover:bg-action-neutral-hover focus-visible:bg-action-neutral-hover focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-action-focus-ring data-[state=open]:bg-action-neutral-hover data-[state=open]:opacity-100 [&_svg]:size-4!"
 
-function AddShortcutMenu({ databases, onAdd, pages, workspaceId }: { databases: PageDatabase[]; onAdd: (target: SidebarShortcut["target"], label?: string) => void; pages: Page[]; workspaceId: string | null }) {
+function AddShortcutMenu({ databases, onAdd, pages, tabId, workspaceId }: { databases: PageDatabase[]; onAdd: (target: SidebarShortcut["target"], label?: string) => void; pages: Page[]; tabId: string; workspaceId: string | null }) {
+  const contents = tabId === "ai"
+    ? <><DropDrawerLabel>AI</DropDrawerLabel><DropDrawerItem onSelect={() => onAdd({ action: "createChat", type: "action" })}><BotIcon />New AI chat</DropDrawerItem></>
+    : tabId === "mail"
+      ? <><DropDrawerLabel>Mail folders</DropDrawerLabel>{mailViewIds.map((view) => { const Icon = mailViewIcons[view]; return <DropDrawerItem key={view} onSelect={() => onAdd({ type: "mail", view })}><Icon />{mailViewLabels[view]}</DropDrawerItem> })}</>
+      : <>
+          <DropDrawerLabel>Create</DropDrawerLabel>
+          <DropDrawerItem onSelect={() => onAdd({ action: "createPage", type: "action" })}><FileIcon />New page</DropDrawerItem>
+          <DropDrawerItem onSelect={() => onAdd({ action: "createDatabase", type: "action" })}><DatabaseIcon />New database</DropDrawerItem>
+          <DropDrawerSeparator />
+          <DropDrawerLabel>Go to</DropDrawerLabel>
+          <DropDrawerItem onSelect={() => onAdd({ route: "tasks", type: "route" })}><ListChecksIcon />Tasks</DropDrawerItem>
+          <DropDrawerSub title="Library views"><DropDrawerSubTrigger><LibraryIcon />Library views</DropDrawerSubTrigger><DropDrawerSubContent className="w-56">{libraryViewIds.map((view) => { const Icon = libraryViewIcons[view]; return <DropDrawerItem key={view} onSelect={() => onAdd({ type: "library", view })}><Icon />{libraryViewLabels[view]}</DropDrawerItem> })}</DropDrawerSubContent></DropDrawerSub>
+          <DropDrawerSub title="Pages"><DropDrawerSubTrigger><FileIcon />Page</DropDrawerSubTrigger><DropDrawerSubContent className="w-72 overflow-hidden p-0"><PageShortcutPicker onSelect={(pageId, label) => onAdd({ pageId, type: "page" }, label)} pages={pages} workspaceId={workspaceId} /></DropDrawerSubContent></DropDrawerSub>
+          <DropDrawerSub title="Databases"><DropDrawerSubTrigger><DatabaseIcon />Database or view</DropDrawerSubTrigger><DropDrawerSubContent className="w-72 overflow-hidden p-0"><DatabasePicker databases={databases} onSelect={(database, view) => onAdd({ databaseId: database.id, type: "database", ...(view ? { viewId: view.id } : {}) }, view?.name.trim() || database.name.trim() || "Untitled database")} workspaceId={workspaceId} /></DropDrawerSubContent></DropDrawerSub>
+          <DropDrawerItem onSelect={() => onAdd({ route: "trash", type: "route" })}><Trash2Icon />Trash</DropDrawerItem>
+          <DropDrawerItem onSelect={() => onAdd({ route: "settings", type: "route" })}><SettingsIcon />Settings</DropDrawerItem>
+        </>
   return (
     <DropDrawer>
       <DropDrawerTrigger asChild><button className={sidebarEditorButtonClassName} type="button"><PlusIcon className="size-4" />Add shortcut</button></DropDrawerTrigger>
       <DropDrawerContent align="start" className="w-72">
-        <DropDrawerLabel>Create</DropDrawerLabel>
-        <DropDrawerItem onSelect={() => onAdd({ action: "createPage", type: "action" })}><FileIcon />New page</DropDrawerItem>
-        <DropDrawerItem onSelect={() => onAdd({ action: "createDatabase", type: "action" })}><DatabaseIcon />New database</DropDrawerItem>
-        <DropDrawerItem onSelect={() => onAdd({ action: "createChat", type: "action" })}><BotIcon />New AI chat</DropDrawerItem>
-        <DropDrawerSeparator />
-        <DropDrawerLabel>Go to</DropDrawerLabel>
-        <DropDrawerItem onSelect={() => onAdd({ route: "ai", type: "route" })}><SparklesIcon />Ask AI</DropDrawerItem>
-        <DropDrawerItem onSelect={() => onAdd({ route: "tasks", type: "route" })}><ListChecksIcon />Tasks</DropDrawerItem>
-        <DropDrawerSub title="Library views"><DropDrawerSubTrigger><LibraryIcon />Library views</DropDrawerSubTrigger><DropDrawerSubContent className="w-56">{libraryViewIds.map((view) => { const Icon = libraryViewIcons[view]; return <DropDrawerItem key={view} onSelect={() => onAdd({ type: "library", view })}><Icon />{libraryViewLabels[view]}</DropDrawerItem> })}</DropDrawerSubContent></DropDrawerSub>
-        <DropDrawerSub title="Pages"><DropDrawerSubTrigger><FileIcon />Page</DropDrawerSubTrigger><DropDrawerSubContent className="w-72 overflow-hidden p-0"><PageShortcutPicker onSelect={(pageId, label) => onAdd({ pageId, type: "page" }, label)} pages={pages} workspaceId={workspaceId} /></DropDrawerSubContent></DropDrawerSub>
-        <DropDrawerSub title="Databases"><DropDrawerSubTrigger><DatabaseIcon />Database or view</DropDrawerSubTrigger><DropDrawerSubContent className="w-72 overflow-hidden p-0"><DatabasePicker databases={databases} onSelect={(database, view) => onAdd({ databaseId: database.id, type: "database", ...(view ? { viewId: view.id } : {}) }, view?.name.trim() || database.name.trim() || "Untitled database")} workspaceId={workspaceId} /></DropDrawerSubContent></DropDrawerSub>
-        <DropDrawerItem onSelect={() => onAdd({ route: "trash", type: "route" })}><Trash2Icon />Trash</DropDrawerItem>
-        <DropDrawerItem onSelect={() => onAdd({ route: "settings", type: "route" })}><SettingsIcon />Settings</DropDrawerItem>
+        {contents}
       </DropDrawerContent>
     </DropDrawer>
   )
 }
 
-function AddSectionMenu({ databases, onAdd, onAddDatabase, workspaceId }: { databases: PageDatabase[]; onAdd: (kind: Exclude<SidebarSectionKind, "databaseView">) => void; onAddDatabase: (database: PageDatabase, viewId?: string) => void; workspaceId: string | null }) {
+function AddSectionMenu({ databases, onAdd, onAddDatabase, tabId, workspaceId }: { databases: PageDatabase[]; onAdd: (kind: Exclude<SidebarSectionKind, "databaseView">) => void; onAddDatabase: (database: PageDatabase, viewId?: string) => void; tabId: string; workspaceId: string | null }) {
   return (
     <DropDrawer>
       <DropDrawerTrigger asChild><button className={sidebarEditorButtonClassName} type="button"><PlusIcon className="size-4" />Add section</button></DropDrawerTrigger>
       <DropDrawerContent align="start" className="w-72">
         <DropDrawerLabel>Sections</DropDrawerLabel>
-        {sidebarSectionKinds.filter((kind) => kind !== "databaseView").map((kind) => { const Icon = sectionIcons[kind]; return <DropDrawerItem key={kind} onSelect={() => onAdd(kind)}><Icon />{sidebarSectionLabels[kind]}</DropDrawerItem> })}
-        <DropDrawerSub title="Database view"><DropDrawerSubTrigger><DatabaseIcon />Database view</DropDrawerSubTrigger><DropDrawerSubContent className="w-72 overflow-hidden p-0"><DatabasePicker databases={databases} onSelect={(database, view) => onAddDatabase(database, view?.id)} workspaceId={workspaceId} /></DropDrawerSubContent></DropDrawerSub>
+        {tabId === "ai"
+          ? <DropDrawerItem onSelect={() => onAdd("aiChats")}><MessageSquareIcon />AI chats</DropDrawerItem>
+          : <>{sidebarSectionKinds.filter((kind) => kind !== "databaseView" && kind !== "aiChats").map((kind) => { const Icon = sectionIcons[kind]; return <DropDrawerItem key={kind} onSelect={() => onAdd(kind)}><Icon />{sidebarSectionLabels[kind]}</DropDrawerItem> })}<DropDrawerSub title="Database view"><DropDrawerSubTrigger><DatabaseIcon />Database view</DropDrawerSubTrigger><DropDrawerSubContent className="w-72 overflow-hidden p-0"><DatabasePicker databases={databases} onSelect={(database, view) => onAddDatabase(database, view?.id)} workspaceId={workspaceId} /></DropDrawerSubContent></DropDrawerSub></>}
       </DropDrawerContent>
     </DropDrawer>
   )
@@ -467,6 +489,7 @@ function AddSectionMenu({ databases, onAdd, onAddDatabase, workspaceId }: { data
 
 function EntryMenu({ index, itemId, itemType, label, layout, onChange, onIconChange, onRename, placeholder, shortcut, sourceTabId }: { index: number; itemId: string; itemType: "sections" | "shortcuts"; label?: string; layout: SidebarWorkspaceLayout; onChange: React.Dispatch<React.SetStateAction<SidebarWorkspaceLayout>>; onIconChange?: (icon: string) => void; onRename?: (label: string) => void; placeholder?: string; shortcut?: SidebarShortcut; sourceTabId: string }) {
   const tab = layout.tabs.find((entry) => entry.id === sourceTabId)!
+  const required = shortcut ? isRequiredSidebarShortcut(sourceTabId, shortcut) : false
   const setRowMenuOpen = React.useContext(EditableRowMenuContext)
   const [iconPickerOpen, setIconPickerOpen] = React.useState(false)
   return (
@@ -476,9 +499,9 @@ function EntryMenu({ index, itemId, itemType, label, layout, onChange, onIconCha
         {onRename && onIconChange && shortcut ? <div className="flex items-center gap-2 p-2"><Popover onOpenChange={setIconPickerOpen} open={iconPickerOpen}><PopoverTrigger asChild><button aria-label="Change shortcut icon" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-stroke-default bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none" type="button"><SidebarShortcutIcon shortcut={shortcut} /></button></PopoverTrigger><PopoverContent align="start" className="w-auto gap-0 overflow-hidden p-0" side="right" sideOffset={6}><IconEmojiPicker allowUpload={false} onEmojiSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} onIconSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} /></PopoverContent></Popover><Input aria-label="Shortcut name" className="h-8 min-w-0 flex-1" maxLength={40} onChange={(event) => onRename(event.target.value)} placeholder={placeholder} value={label ?? ""} /></div> : null}
         <DropDrawerItem disabled={index === 0} onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => itemType === "sections" ? { ...entry, sections: moveArrayItem(entry.sections, index, -1) } : { ...entry, shortcuts: moveArrayItem(entry.shortcuts, index, -1) }))}><ArrowUpIcon />Move up</DropDrawerItem>
         <DropDrawerItem disabled={index === tab[itemType].length - 1} onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => itemType === "sections" ? { ...entry, sections: moveArrayItem(entry.sections, index, 1) } : { ...entry, shortcuts: moveArrayItem(entry.shortcuts, index, 1) }))}><ArrowDownIcon />Move down</DropDrawerItem>
-        <DropDrawerSub title="Move to tab"><DropDrawerSubTrigger><ArrowRightIcon />Move to tab</DropDrawerSubTrigger><DropDrawerSubContent className="w-48">{layout.tabs.filter((entry) => entry.id !== sourceTabId).map((entry) => <DropDrawerItem key={entry.id} onSelect={() => onChange((current) => moveLayoutEntry(current, sourceTabId, entry.id, itemType, itemId))}>{entry.name}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub>
+        {!isStaticSidebarTabId(sourceTabId) ? <DropDrawerSub title="Move to tab"><DropDrawerSubTrigger><ArrowRightIcon />Move to tab</DropDrawerSubTrigger><DropDrawerSubContent className="w-48">{layout.tabs.filter((entry) => entry.id !== sourceTabId && !isStaticSidebarTabId(entry.id)).map((entry) => <DropDrawerItem key={entry.id} onSelect={() => onChange((current) => moveLayoutEntry(current, sourceTabId, entry.id, itemType, itemId))}>{entry.name}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub> : null}
         <DropDrawerSeparator />
-        <DropDrawerItem variant="destructive" onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => itemType === "sections" ? { ...entry, sections: entry.sections.filter((item) => item.id !== itemId) } : { ...entry, shortcuts: entry.shortcuts.filter((item) => item.id !== itemId) }))}><Trash2Icon />Remove</DropDrawerItem>
+        <DropDrawerItem disabled={required} variant="destructive" onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => itemType === "sections" ? { ...entry, sections: entry.sections.filter((item) => item.id !== itemId) } : { ...entry, shortcuts: entry.shortcuts.filter((item) => item.id !== itemId) }))}><Trash2Icon />{required ? "Compose is required" : "Remove"}</DropDrawerItem>
       </DropDrawerContent>
     </DropDrawer>
   )
@@ -500,7 +523,7 @@ function SectionSettings({ databases, index, layout, onChange, section, sourceTa
         <DropDrawerSeparator />
         <DropDrawerItem disabled={index === 0} onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => ({ ...entry, sections: moveArrayItem(entry.sections, index, -1) })))}><ArrowUpIcon />Move up</DropDrawerItem>
         <DropDrawerItem disabled={index === tab.sections.length - 1} onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => ({ ...entry, sections: moveArrayItem(entry.sections, index, 1) })))}><ArrowDownIcon />Move down</DropDrawerItem>
-        <DropDrawerSub title="Move to tab"><DropDrawerSubTrigger><ArrowRightIcon />Move to tab</DropDrawerSubTrigger><DropDrawerSubContent className="w-48">{layout.tabs.filter((entry) => entry.id !== sourceTabId).map((entry) => <DropDrawerItem key={entry.id} onSelect={() => onChange((current) => moveLayoutEntry(current, sourceTabId, entry.id, "sections", section.id))}>{entry.name}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub>
+        {!isStaticSidebarTabId(sourceTabId) ? <DropDrawerSub title="Move to tab"><DropDrawerSubTrigger><ArrowRightIcon />Move to tab</DropDrawerSubTrigger><DropDrawerSubContent className="w-48">{layout.tabs.filter((entry) => entry.id !== sourceTabId && !isStaticSidebarTabId(entry.id)).map((entry) => <DropDrawerItem key={entry.id} onSelect={() => onChange((current) => moveLayoutEntry(current, sourceTabId, entry.id, "sections", section.id))}>{entry.name}</DropDrawerItem>)}</DropDrawerSubContent></DropDrawerSub> : null}
         <DropDrawerSeparator />
         <DropDrawerItem variant="destructive" onSelect={() => onChange((current) => updateSidebarTab(current, sourceTabId, (entry) => ({ ...entry, sections: entry.sections.filter((item) => item.id !== section.id) })))}><Trash2Icon />Remove section</DropDrawerItem>
       </DropDrawerContent>
@@ -514,13 +537,9 @@ function DatabaseSourceMenu({ databases, onChange, section }: { databases: PageD
 }
 
 function TabSettingsEditor({ onDelete, onIconChange, onNameChange, tab }: { onDelete: () => void; onIconChange: (icon: string) => void; onNameChange: (name: string) => void; tab: SidebarTab }) {
-  const editable = !isFixedTab(tab.id)
+  const editable = !isFixedSidebarTabId(tab.id)
   const [iconPickerOpen, setIconPickerOpen] = React.useState(false)
-  return <div className="bg-surface-overlay text-content-primary"><div className="flex items-center gap-2 p-2"><Popover onOpenChange={setIconPickerOpen} open={iconPickerOpen}><PopoverTrigger asChild><button aria-label="Change tab icon" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-stroke-default bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50" disabled={!editable} type="button"><SidebarTabIcon value={tab.icon} /></button></PopoverTrigger><PopoverContent align="start" className="w-auto gap-0 overflow-hidden p-0" side="right" sideOffset={6}><IconEmojiPicker allowUpload={false} onEmojiSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} onIconSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} /></PopoverContent></Popover><Input aria-label="Tab name" className="h-8 min-w-0 flex-1 text-sm font-medium" disabled={!editable} maxLength={40} onChange={(event) => onNameChange(event.target.value)} placeholder="Untitled tab" value={tab.name} /></div>{editable ? <div className="border-t border-stroke-default p-1"><button className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-action-danger-text hover:bg-feedback-error-subtle" onClick={onDelete} type="button"><Trash2Icon className="size-4" />Delete tab</button></div> : <p className="border-t border-stroke-default px-3 py-2 text-xs text-content-secondary">{tab.name} is a fixed default tab.</p>}</div>
-}
-
-function isFixedTab(tabId: string) {
-  return tabId === "home" || tabId === "mail"
+  return <div className="bg-surface-overlay text-content-primary"><div className="flex items-center gap-2 p-2"><Popover onOpenChange={setIconPickerOpen} open={iconPickerOpen}><PopoverTrigger asChild><button aria-label="Change tab icon" className="flex size-8 shrink-0 items-center justify-center rounded-md border border-stroke-default bg-surface-canvas text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50" disabled={!editable} type="button"><SidebarTabIcon value={tab.icon} /></button></PopoverTrigger><PopoverContent align="start" className="w-auto gap-0 overflow-hidden p-0" side="right" sideOffset={6}><IconEmojiPicker allowUpload={false} onEmojiSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} onIconSelect={(icon) => { onIconChange(icon); setIconPickerOpen(false) }} /></PopoverContent></Popover><Input aria-label="Tab name" className="h-8 min-w-0 flex-1 text-sm font-medium" disabled={!editable} maxLength={40} onChange={(event) => onNameChange(event.target.value)} placeholder="Untitled tab" value={tab.name} /></div>{editable ? <div className="border-t border-stroke-default p-1"><button className="flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-action-danger-text hover:bg-feedback-error-subtle" onClick={onDelete} type="button"><Trash2Icon className="size-4" />Delete tab</button></div> : <p className="border-t border-stroke-default px-3 py-2 text-xs text-content-secondary">{tab.name} is a default tab and cannot be deleted.</p>}</div>
 }
 
 function resolveShortcutLabel(shortcut: SidebarShortcut, pages: Page[], databases: PageDatabase[]) {
