@@ -93,11 +93,14 @@ export function register({ assert, loadModule, test }) {
       model.addableSortFieldOptions.map((option) => option.value),
       ["name", "database-property-status"]
     )
+    assert.deepEqual(model.activeVisibilityConfig.hiddenPropertyIds, [
+      "database-property-status",
+    ])
     assert.deepEqual(
-      model.activeVisibilityConfig.hiddenPropertyIds,
-      ["database-property-status", "database-property-priority"]
+      model.visibleProperties.map((property) => property.id),
+      ["database-property-priority"]
     )
-    assert.equal(model.visiblePropertyCount, 1)
+    assert.equal(model.visiblePropertyCount, 2)
     assert.equal(model.showPropertyTitles, false)
     assert.equal(
       getDatabaseViewModel({
@@ -161,6 +164,71 @@ export function register({ assert, loadModule, test }) {
       "page-2:property-priority": "1",
       "page-2:property-status": "",
     })
+  })
+
+  test("database view model shows the first three non-grouped board properties by default", async () => {
+    const { getDatabaseViewModel } = await loadModule(
+      "/src/features/databases/model/database-view-model.tsx"
+    )
+    const properties = [
+      createProperty(
+        "database-property-status",
+        "property-status",
+        "Status",
+        "status"
+      ),
+      createProperty(
+        "database-property-owner",
+        "property-owner",
+        "Owner",
+        "person"
+      ),
+      createProperty(
+        "database-property-priority",
+        "property-priority",
+        "Priority",
+        "number"
+      ),
+      createProperty("database-property-date", "property-date", "Date", "date"),
+      createProperty(
+        "database-property-notes",
+        "property-notes",
+        "Notes",
+        "text"
+      ),
+    ]
+    const payload = {
+      database: { config: {}, id: "database-1", name: "Roadmap" },
+      properties,
+      rows: [],
+      values: [],
+      views: [
+        {
+          config: { groupPropertyId: "property-status" },
+          id: "view-kanban",
+          name: "Board",
+          type: "kanban",
+        },
+      ],
+    }
+
+    const model = getDatabaseViewModel({
+      activeViewId: "view-kanban",
+      payload,
+    })
+
+    assert.deepEqual(
+      model.visibleProperties.map((property) => property.id),
+      [
+        "database-property-owner",
+        "database-property-priority",
+        "database-property-date",
+      ]
+    )
+    assert.deepEqual(model.activeVisibilityConfig.hiddenPropertyIds, [
+      "database-property-status",
+      "database-property-notes",
+    ])
   })
 
   test("database view model filters rows before sorting", async () => {

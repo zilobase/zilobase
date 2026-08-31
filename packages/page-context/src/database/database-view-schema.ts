@@ -108,11 +108,40 @@ export function getActiveVisibilityConfig({
     return activeViewConfig;
   }
 
+  const configuredGroupPropertyId =
+    activeViewConfig &&
+    typeof activeViewConfig === "object" &&
+    !Array.isArray(activeViewConfig) &&
+    typeof (activeViewConfig as DatabaseConfig).groupPropertyId === "string"
+      ? (activeViewConfig as DatabaseConfig).groupPropertyId ?? null
+      : null;
+  const groupProperty = configuredGroupPropertyId
+    ? properties.find(
+        (property) => property.property.id === configuredGroupPropertyId,
+      )
+    : properties.find((property) => property.property.type === "status") ??
+      properties.find((property) =>
+        ["select", "multi_select"].includes(property.property.type),
+      ) ??
+      properties[0];
+  let visiblePropertyCount = 0;
+  const hiddenPropertyIds = properties.flatMap((property) => {
+    const hiddenByDefault =
+      property.id === groupProperty?.id ||
+      getPropertyHidden(property.property.config) ||
+      visiblePropertyCount >= 3;
+
+    if (hiddenByDefault) return [property.id];
+
+    visiblePropertyCount += 1;
+    return [];
+  });
+
   return {
     ...(activeViewConfig && typeof activeViewConfig === "object"
       ? activeViewConfig
       : {}),
-    hiddenPropertyIds: properties.map((property) => property.id),
+    hiddenPropertyIds,
   };
 }
 

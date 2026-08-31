@@ -11,6 +11,7 @@ import {
   getKanbanGroupProperty,
   getKanbanOptions,
 } from "../views/kanban/model/database-kanban-config"
+import { getDefaultKanbanHiddenPropertyIds } from "../views/kanban/model/database-kanban-visibility"
 import {
   getTimelineDateProperties,
   getTimelineDateProperty,
@@ -316,7 +317,10 @@ function getActiveVisibilityConfig({
   }
 
   return getMergedDatabaseConfig(activeViewConfig, {
-    hiddenPropertyIds: properties.map((property) => property.id),
+    hiddenPropertyIds: getDefaultKanbanHiddenPropertyIds(
+      getOrderedDatabaseProperties(properties, activeViewConfig),
+      getKanbanGroupProperty(properties, activeViewConfig)?.property.id ?? null
+    ),
   })
 }
 
