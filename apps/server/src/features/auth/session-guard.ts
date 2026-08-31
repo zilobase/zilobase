@@ -2,9 +2,14 @@ import type { MiddlewareHandler } from "hono";
 
 import { sessionMiddleware } from "./session-middleware";
 import type { AppBindings } from "../../shared/types";
+import { isHostedDemoRequest } from "../demo/request";
 
 export const authenticatedSessionMiddleware: MiddlewareHandler<AppBindings> =
   async (c, next) => {
+    if (isHostedDemoRequest(c.env, c.req.raw.headers)) {
+      return sessionMiddleware(c, next);
+    }
+
     if (
       c.req.path === "/" ||
       c.req.path === "/health" ||

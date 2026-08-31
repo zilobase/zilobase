@@ -16,6 +16,8 @@ import { getConnectivityState } from "@/features/offline/index";
 import { getDefaultAppPath, getFreshSession, getWorkspaces } from "../guards";
 import { rootRoute } from "../route-roots";
 import { validateLoginSearch, validateSignupSearch } from "../search-validators";
+import { isHostedDemoRuntime } from "@/features/demo";
+import { apiFetch } from "@/features/desktop/network/api";
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -25,6 +27,13 @@ const indexRoute = createRoute({
     if (!session.user) throw redirect({ to: "/login" });
 
     const workspaces = await getWorkspaces();
+    if (isHostedDemoRuntime()) {
+      const { startPath } = await apiFetch<{ startPath: string }>(
+        "/demo/bootstrap",
+        { method: "GET" },
+      );
+      throw redirect({ href: startPath });
+    }
     if (workspaces.length === 0) throw redirect({ to: "/onboarding" });
     throw redirect({ href: await getDefaultAppPath(session, workspaces) });
   },

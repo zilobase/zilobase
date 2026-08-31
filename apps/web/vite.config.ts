@@ -20,7 +20,25 @@ function createBackendProxy(options: { ws?: boolean } = {}): ProxyOptions {
     target: backendTarget,
     changeOrigin: true,
     ...options,
-    ...(options.ws ? { configure: suppressExpectedWsProxyErrors } : {}),
+    configure(proxy) {
+      if (options.ws) suppressExpectedWsProxyErrors(proxy);
+      proxy.on("proxyReq", (proxyRequest, request) => {
+        if (request.headers.host?.split(":", 1)[0]?.toLowerCase() !== "demo.localhost") {
+          proxyRequest.removeHeader("x-zilobase-demo");
+          return;
+        }
+
+        for (const header of [
+          "authorization",
+          "cookie",
+          "x-api-key",
+          "x-mobile-auth-cookie",
+        ]) {
+          proxyRequest.removeHeader(header);
+        }
+        proxyRequest.setHeader("x-zilobase-demo", "1");
+      });
+    },
   };
 }
 
@@ -110,6 +128,7 @@ export default defineConfig(async () => ({
       "/search": createBackendProxy(),
       "/pages": createBackendProxy({ ws: true }),
       "/databases": createBackendProxy({ ws: true }),
+      "/demo": createBackendProxy(),
       "/database-collaboration": createBackendProxy({ ws: true }),
       "/images": createBackendProxy(),
       "/user-settings": createBackendProxy(),

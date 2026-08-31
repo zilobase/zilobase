@@ -20,6 +20,7 @@ export type Session = {
 }
 
 export type SessionResponse = {
+  demoMode?: boolean
   user: SessionUser | null
   session: Session | null
   workspacePinned?: boolean

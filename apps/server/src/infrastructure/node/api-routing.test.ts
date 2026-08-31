@@ -9,6 +9,7 @@ test("the combined Node runtime sends discovery, probes, and desktop auth to the
     "/health",
     "/ready",
     "/api/auth/session",
+    "/demo/bootstrap",
     "/desktop",
     "/desktop/authorize",
   ]) {

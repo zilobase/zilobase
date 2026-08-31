@@ -42,6 +42,21 @@ test("protected paths delegate to the authenticated session middleware", async (
   assert.equal(sessionMiddleware.mock.calls.length, 1);
 });
 
+test("enabled demo requests resolve a synthetic session even on public auth paths", async () => {
+  const app = new Hono<AppBindings>();
+  app.use("*", authenticatedSessionMiddleware);
+  app.post("/api/auth/sign-out", (c) => c.text("unreachable"));
+
+  const response = await app.request(
+    "/api/auth/sign-out",
+    { headers: { "x-zilobase-demo": "1" }, method: "POST" },
+    { ZILOBASE_DEMO_ENABLED: "true" } as AppBindings["Bindings"],
+  );
+
+  assert.equal(await response.text(), "authenticated");
+  assert.equal(sessionMiddleware.mock.calls.length, 1);
+});
+
 test("browser consent resolves a session while the native token exchange stays public", async () => {
   const app = new Hono<AppBindings>();
   app.use("*", authenticatedSessionMiddleware);

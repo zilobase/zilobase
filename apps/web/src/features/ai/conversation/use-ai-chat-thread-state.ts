@@ -3,6 +3,7 @@ import { useAiChatThreads } from "@zilobase/features/ai-chat";
 import { useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect } from "react";
 import { create } from "zustand";
+import { isHostedDemoRuntime } from "@/features/demo";
 
 type StoredAiChatThreadState = {
   activeThreadId: string | null;
@@ -188,9 +189,12 @@ export function useAiChatThreadState(options?: { enabled?: boolean }) {
       return;
     }
 
-    setStoredActiveThreadId(workspaceId, null);
+    const fallbackThreadId = isHostedDemoRuntime()
+      ? threads.find((thread) => thread.pinnedAt)?.id ?? threads[0]?.id ?? null
+      : null;
+    setStoredActiveThreadId(workspaceId, fallbackThreadId);
     markBootstrapped(workspaceId);
-    replaceAiThreadSearchParam(null);
+    replaceAiThreadSearchParam(fallbackThreadId);
   }, [
     activeThreadId,
     enabled,

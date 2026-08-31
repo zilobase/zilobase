@@ -17,6 +17,7 @@ import {
   useThemeFamily,
 } from "@/shared/providers/theme-family-provider"
 import { AppIconProvider } from "@/shared/components/app-icon-provider"
+import { DemoExperience } from "@/features/demo"
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
@@ -33,17 +34,19 @@ export function AppProviders({ children }: React.PropsWithChildren) {
             >
               <ThemeFamilyProvider>
                 <ThemeDocumentSync />
-                <TooltipProvider>
-                  <PageEditorRegistryProvider>
-                    <PageCommentsRegistryProvider>
-                      <PageEditorCommentsProvider>
-                        {children}
-                      </PageEditorCommentsProvider>
-                    </PageCommentsRegistryProvider>
-                  </PageEditorRegistryProvider>
-                  <DesktopUpdater />
-                  <Toaster />
-                </TooltipProvider>
+                <DemoExperience>
+                  <TooltipProvider>
+                    <PageEditorRegistryProvider>
+                      <PageCommentsRegistryProvider>
+                        <PageEditorCommentsProvider>
+                          {children}
+                        </PageEditorCommentsProvider>
+                      </PageCommentsRegistryProvider>
+                    </PageEditorRegistryProvider>
+                    <DesktopUpdater />
+                    <Toaster />
+                  </TooltipProvider>
+                </DemoExperience>
               </ThemeFamilyProvider>
             </ThemeProvider>
           </ShortcutProvider>

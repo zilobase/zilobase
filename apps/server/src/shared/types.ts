@@ -107,6 +107,7 @@ export type AppBindings = {
     MEETING_COLLABORATION_WEBSOCKET_URL?: string;
     OPENAI_REALTIME_TRANSCRIPTION_MODEL?: string;
     REALTIME_REDIS_URL?: string;
+    ZILOBASE_DEMO_ENABLED?: string;
     ZILOBASE_INSTANCE_NAME?: string;
     ZILOBASE_BOOTSTRAP_TOKEN?: string;
     ZILOBASE_MINIMUM_DESKTOP_VERSION?: string;
@@ -118,7 +119,7 @@ export type AppBindings = {
   };
   Variables: {
     apiKey: ApiKeyContext | null;
-    authMethod: "apiKey" | "session" | null;
+    authMethod: "apiKey" | "demo" | "session" | null;
     requestId: string;
     editionExtension: ZilobaseEditionExtension | null;
     serverTimings: string[];

@@ -15,6 +15,10 @@ import {
   type DesktopServer,
 } from "@/features/desktop/server/desktop-server"
 import { desktopNetworkFetch } from "@/features/desktop/network/index"
+import {
+  applyDemoReadOverlay,
+  interceptDemoMutation,
+} from "@/features/demo/transport"
 
 declare global {
   interface Window {
@@ -65,6 +69,8 @@ export async function apiFetch<T>(
   { auth = true, headers, body, timeoutMs, ...init }: ApiFetchOptions = {},
 ) {
   const method = (init.method ?? "GET").toUpperCase()
+  const demoMutation = interceptDemoMutation<T>(path, method, body)
+  if (demoMutation.handled) return demoMutation.value
   if (
     isDesktopOfflineSupported() &&
     isOfflineMode() &&
@@ -130,7 +136,7 @@ export async function apiFetch<T>(
     throw new ApiError(readErrorMessage(data, response.status), response.status, data)
   }
 
-  return resolveRuntimeResponse(path, data) as T
+  return applyDemoReadOverlay(path, resolveRuntimeResponse(path, data)) as T
 }
 
 function resolveRuntimeResponse(path: string, data: unknown) {

@@ -24,6 +24,10 @@ import {
 import { queryClient } from "@/shared/lib/query-client"
 import { useAppStore } from "@/features/desktop/state/app-store"
 import { isFeatureEnabled } from "@/shared/config/feature-flags"
+import {
+  isHostedDemoRuntime,
+  requestDemoGuard,
+} from "@/features/demo"
 
 export const webAuthClient: ZilobaseAuthClient = {
   getSession: async () => {
@@ -52,66 +56,96 @@ export const webAuthClient: ZilobaseAuthClient = {
       throw error
     }
   },
-  requestSignInOtp: (email) =>
-    authFetch<{ success: boolean }>("/email-otp/send-verification-otp", {
-      email,
-      type: "sign-in",
-    }),
+  requestSignInOtp: (email) => isHostedDemoRuntime()
+    ? rejectDemoAction()
+    : authFetch<{ success: boolean }>("/email-otp/send-verification-otp", {
+        email,
+        type: "sign-in",
+      }),
   signInWithOtp: (input: SignInWithOtpInput) =>
-    authFetch<{ token: string; user: unknown }>("/sign-in/email-otp", input),
+    isHostedDemoRuntime()
+      ? rejectDemoAction()
+      : authFetch<{ token: string; user: unknown }>("/sign-in/email-otp", input),
   signInWithPassword: (input: SignInWithPasswordInput) =>
-    authFetch<{ token: string; user: unknown }>("/sign-in/email", input),
+    isHostedDemoRuntime()
+      ? rejectDemoAction()
+      : authFetch<{ token: string; user: unknown }>("/sign-in/email", input),
   signUp: (input: SignUpInput) =>
-    authFetch<{ user: unknown }>("/sign-up/email", {
-      ...input,
-      callbackURL:
-        input.callbackURL ??
-        (input.invitationId
-          ? `/accept-invitation?id=${encodeURIComponent(input.invitationId)}`
-          : "/onboarding"),
-    }),
+    isHostedDemoRuntime()
+      ? rejectDemoAction()
+      : authFetch<{ user: unknown }>("/sign-up/email", {
+          ...input,
+          callbackURL:
+            input.callbackURL ??
+            (input.invitationId
+              ? `/accept-invitation?id=${encodeURIComponent(input.invitationId)}`
+              : "/onboarding"),
+        }),
   requestEmailVerificationOtp: (email) =>
-    authFetch<{ success: boolean }>("/email-otp/send-verification-otp", {
-      email,
-      type: "email-verification",
-    }),
+    isHostedDemoRuntime()
+      ? rejectDemoAction()
+      : authFetch<{ success: boolean }>("/email-otp/send-verification-otp", {
+          email,
+          type: "email-verification",
+        }),
   verifyEmailOtp: (input: VerifyEmailOtpInput) =>
-    authFetch<{ user: unknown }>("/email-otp/verify-email", input),
+    isHostedDemoRuntime()
+      ? rejectDemoAction()
+      : authFetch<{ user: unknown }>("/email-otp/verify-email", input),
   signOut: async () => {
+    if (isHostedDemoRuntime()) throw requestDemoGuard()
     const result = await authFetch("/sign-out", {})
     await clearApiAuthToken()
     useAppStore.getState().resetAccountState()
     return result
   },
   createWorkspace: <TWorkspace,>(input: { name: string; slug: string }) =>
-    authFetch<Workspace>("/workspace/create", input) as Promise<TWorkspace>,
+    isHostedDemoRuntime()
+      ? rejectDemoAction<TWorkspace>()
+      : authFetch<Workspace>("/workspace/create", input) as Promise<TWorkspace>,
   setActiveWorkspace: (workspaceId: string) =>
-    authFetch("/workspace/set-active", { workspaceId }),
+    isHostedDemoRuntime()
+      ? rejectDemoAction()
+      : authFetch("/workspace/set-active", { workspaceId }),
   inviteWorkspaceMember: (input: {
     email: string
     workspaceId: string
     role: string
   }) =>
-    authFetch("/workspace/invite-member", {
-      ...input,
-      role: input.role as WorkspaceRole,
-    }),
+    isHostedDemoRuntime()
+      ? rejectDemoAction()
+      : authFetch("/workspace/invite-member", {
+          ...input,
+          role: input.role as WorkspaceRole,
+        }),
   acceptWorkspaceInvitation: <TResponse,>(input: { invitationId: string }) =>
-    authFetch<AcceptWorkspaceInvitationResponse>(
-      "/workspace/accept-invitation",
-      input,
-    ) as Promise<TResponse>,
+    isHostedDemoRuntime()
+      ? rejectDemoAction<TResponse>()
+      : authFetch<AcceptWorkspaceInvitationResponse>(
+          "/workspace/accept-invitation",
+          input,
+        ) as Promise<TResponse>,
   listWorkspaces: <TWorkspace,>() =>
-    apiFetch<Workspace[]>("/api/auth/workspace/list", {
-      method: "GET",
-    }) as Promise<TWorkspace[]>,
+    isHostedDemoRuntime()
+      ? apiFetch<{ workspace: Workspace }>("/demo/bootstrap", {
+          method: "GET",
+        }).then(({ workspace }) => [workspace] as TWorkspace[])
+      : apiFetch<Workspace[]>("/api/auth/workspace/list", {
+          method: "GET",
+        }) as Promise<TWorkspace[]>,
   listWorkspaceInvitations: <TInvitation,>(workspaceId: string) =>
-    apiFetch<WorkspaceInvitation[]>(
-      `/api/auth/workspace/list-invitations?workspaceId=${encodeURIComponent(workspaceId)}`,
-      {
-        method: "GET",
-      },
-    ) as Promise<TInvitation[]>,
+    isHostedDemoRuntime()
+      ? Promise.resolve([])
+      : apiFetch<WorkspaceInvitation[]>(
+          `/api/auth/workspace/list-invitations?workspaceId=${encodeURIComponent(workspaceId)}`,
+          {
+            method: "GET",
+          },
+        ) as Promise<TInvitation[]>,
+}
+
+function rejectDemoAction<T = unknown>(): Promise<T> {
+  return Promise.reject(requestDemoGuard())
 }
 
 export function WebFeaturesProvider({
@@ -129,7 +163,8 @@ export function WebFeaturesProvider({
       value={{
         apiFetch,
         auth: webAuthClient,
-        databaseRealtimeEnabled: isFeatureEnabled("databaseRealtime"),
+        databaseRealtimeEnabled:
+          !isHostedDemoRuntime() && isFeatureEnabled("databaseRealtime"),
         preferredActiveWorkspaceId,
         queryClient,
         setPreferredActiveWorkspaceId,

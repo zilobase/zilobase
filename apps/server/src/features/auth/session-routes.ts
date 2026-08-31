@@ -46,6 +46,7 @@ sessionRoutes.get("/", (c) => timed(c, "route_session_total", async () => {
       : session;
 
   return c.json({
+    demoMode: c.get("authMethod") === "demo",
     session: responseSession,
     workspacePinned: isSelfHostedRuntime(),
     user: {

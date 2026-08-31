@@ -67,6 +67,7 @@ import type {
 } from "@/packages/editor/core/types";
 import type { OpenPageOptions } from "../navigation/open-page-options";
 import { usePageCollaboration } from "@/packages/editor/collaboration/use-page-collaboration";
+import { isHostedDemoRuntime } from "@/features/demo";
 import { canEditOnlineDatabase } from "@/packages/editor/database-editability";
 import {
   useConnectivity,
@@ -390,6 +391,7 @@ export function PageEditorPane({
   readOnly = false,
   pageId,
 }: PageEditorPaneProps) {
+  const demoMode = isHostedDemoRuntime();
   const connectivity = useConnectivity();
   const offlineSessionLocked = useOfflineSessionLocked();
   const offlineManifest = useOfflineManifest();
@@ -434,6 +436,9 @@ export function PageEditorPane({
   const deleteMeeting = useDeleteMeeting();
   const updatePage = useUpdatePage();
   const restorePage = useRestorePage();
+  const [demoPersistenceReadyPageId, setDemoPersistenceReadyPageId] = useState<
+    string | null
+  >(demoMode ? null : pageId);
   const contentSaveTimeoutRef = useRef<number | null>(null);
   const lastSavedContentRef = useRef<string | null>(null);
   const lastPageBlockIdsRef = useRef<Set<string>>(new Set());
@@ -445,6 +450,17 @@ export function PageEditorPane({
   const paneRef = useRef<HTMLElement | null>(null);
   const { getEditorHandle, registerEditor, unregisterEditor } =
     usePageEditorRegistry();
+
+  useEffect(() => {
+    if (!demoMode) return;
+    // TipTap normalizes seeded JSON during mount. Ignore that initialization
+    // write so it cannot cancel the page query that is still settling.
+    const timer = window.setTimeout(
+      () => setDemoPersistenceReadyPageId(pageId),
+      1_000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [demoMode, pageId]);
 
   const getStructuralBlockDeleteAction = useCallback(
     (request: StructuralBlockDeleteRequest) => {
@@ -592,10 +608,12 @@ export function PageEditorPane({
     }
   }, [embedPageItem, navigation, page, pageEditable]);
 
-  const collaborationEnabled = Boolean(
-    pageEditable ||
-      (enableComments && session?.user && page && !page.deletedAt),
-  );
+  const collaborationEnabled =
+    !demoMode &&
+    Boolean(
+      pageEditable ||
+        (enableComments && session?.user && page && !page.deletedAt),
+    );
   const collaboration = usePageCollaboration({
     enabled: collaborationEnabled,
     pageId,
@@ -637,8 +655,11 @@ export function PageEditorPane({
     };
   }, [commentController, commentsRegistry, pageId]);
   const liveEditingReady =
-    !pageEditable || Boolean(collaboration.document && !collaboration.error);
+    demoMode ||
+    !pageEditable ||
+    Boolean(collaboration.document && !collaboration.error);
   const waitingForCollaboration =
+    !demoMode &&
     collaborationEnabled &&
     !collaboration.error &&
     connectivity === "online" &&
@@ -752,6 +773,14 @@ export function PageEditorPane({
       const serializedContent = serializePageContent(content);
 
       if (
+        demoMode &&
+        demoPersistenceReadyPageId !== pageId
+      ) {
+        lastSavedContentRef.current = serializedContent;
+        return;
+      }
+
+      if (
         serializedContent &&
         serializedContent === lastSavedContentRef.current
       ) {
@@ -792,6 +821,8 @@ export function PageEditorPane({
     [
       clearContentSaveTimeout,
       collaboration.document,
+      demoPersistenceReadyPageId,
+      demoMode,
       pageEditable,
       removePageEmbed,
       updatePage,
