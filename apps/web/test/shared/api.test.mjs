@@ -12,6 +12,21 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
+  test("hosted demo requests stay on the isolated web origin", async () => {
+    const { resolveApiBaseUrl } = await loadModule(
+      "/src/features/desktop/network/api.ts",
+    )
+
+    assert.equal(
+      resolveApiBaseUrl(new URL("http://demo.localhost:1420/p/start")),
+      "",
+    )
+    assert.equal(
+      resolveApiBaseUrl(new URL("https://demo.zilobase.com/p/start")),
+      "",
+    )
+  })
+
   test("desktop requests resolve against the selected runtime server", async () => {
     const { resolveApiBaseUrl } = await loadModule("/src/features/desktop/network/api.ts")
     const server = {

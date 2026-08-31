@@ -424,7 +424,11 @@ export function resolveRuntimeApiOrigin(
     return CLOUD_DESKTOP_SERVER.apiOrigin
   }
 
-  if (location?.hostname === "app.zilobase.com") {
+  if (
+    location?.hostname === "app.zilobase.com" ||
+    location?.hostname === "demo.zilobase.com" ||
+    location?.hostname === "demo.localhost"
+  ) {
     return ""
   }
 

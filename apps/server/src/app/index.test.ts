@@ -25,6 +25,7 @@ test("createApp registers every public feature route group", () => {
     "GET /api/ai/operations/turns/:turnId/tools",
     "POST /api/keys",
     "GET /databases/:id",
+    "GET /demo/bootstrap",
     "POST /images/uploads",
     "POST /user-settings/profile/image/uploads",
     "GET /metadata/bookmark",
@@ -50,10 +51,10 @@ test("createApp keeps global middleware ahead of feature routes", () => {
   const routes = createApp().routes;
   const firstFeatureRoute = routes.findIndex(({ path }) => path !== "/*");
 
-  assert.equal(firstFeatureRoute, 4);
+  assert.equal(firstFeatureRoute, 5);
   assert.deepEqual(
     routes.slice(0, firstFeatureRoute).map(({ path }) => path),
-    ["/*", "/*", "/*", "/*"],
+    ["/*", "/*", "/*", "/*", "/*"],
   );
 });
 

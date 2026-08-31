@@ -21,6 +21,7 @@ import {
 import { collaborationColor } from "./color"
 import { patchOfflineItem } from "@/features/offline/index"
 import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
+import { isHostedDemoRuntime } from "@/features/demo"
 
 export type CollaborationUser = {
   avatar?: string | null
@@ -48,6 +49,7 @@ export function usePageCollaboration({
   user: SessionUser | null | undefined
   workspaceId?: string | null
 }) {
+  const demoMode = isHostedDemoRuntime()
   const manifest = useOfflineManifest()
   const connectivity = useConnectivity()
   const offlineItem = manifest.items.find(
@@ -81,6 +83,19 @@ export function usePageCollaboration({
     const controller = new AbortController()
     let local: Awaited<ReturnType<typeof openLocalPageDocument>> | null = null
     let ephemeral: Y.Doc | null = null
+
+    if (demoMode) {
+      setStatus("local")
+      setError(null)
+      setDocument(null)
+      setSynced(false)
+
+      return () => {
+        disposed = true
+        setDocument(null)
+        setSynced(false)
+      }
+    }
 
     const prepare = async () => {
       try {
@@ -141,6 +156,7 @@ export function usePageCollaboration({
     }
   }, [
     downloaded,
+    demoMode,
     enabled,
     pageId,
     preparationConnectivity,
@@ -178,6 +194,14 @@ export function usePageCollaboration({
   }, [document, downloaded, localPage, pageId])
 
   useEffect(() => {
+    if (demoMode) {
+      setProvider(null)
+      setSynced(Boolean(document))
+      setUsers([])
+      if (document) setStatus("local")
+      return
+    }
+
     if (!document || !enabled || !user || connectivity !== "online") {
       setProvider(null)
       setSynced(false)
@@ -283,7 +307,7 @@ export function usePageCollaboration({
       setSynced(false)
       setUsers([])
     }
-  }, [connectivity, document, downloaded, enabled, pageId, user?.id])
+  }, [connectivity, demoMode, document, downloaded, enabled, pageId, user?.id])
 
   useEffect(() => {
     if (!provider || connectivity !== "online") return

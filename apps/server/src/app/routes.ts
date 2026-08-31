@@ -22,6 +22,7 @@ import { pageSettingsRoutes } from "../features/user-settings";
 import { workspaceRoutes } from "../features/workspaces/routes";
 import { workspaceSettingsRoutes } from "../features/workspaces/settings/routes";
 import type { AppBindings } from "../shared/types";
+import { demoRoutes } from "../features/demo/routes";
 
 export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/api/ai", aiRoutes);
@@ -30,6 +31,7 @@ export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/", desktopAuthRoutes);
   app.route("/", authRoutes);
   app.route("/databases", databaseRoutes);
+  app.route("/demo", demoRoutes);
   app.route("/", healthRoutes);
   app.route("/", instanceRoutes);
   app.route("/images", imageRoutes);

@@ -12,6 +12,7 @@ import {
 import { registerAppEditionExtension } from "../shared/edition-extension-registry";
 import type { AppBindings } from "../shared/types";
 import type { EditionExtensionOptions } from "../shared/types";
+import { demoWriteGuard } from "../features/demo/write-guard";
 
 export function createApp(options: EditionExtensionOptions = {}) {
   const app = new Hono<AppBindings>();
@@ -24,6 +25,7 @@ export function createApp(options: EditionExtensionOptions = {}) {
   app.use("*", createCorsMiddleware());
   app.use("*", serverTimingMiddleware);
   app.use("*", authenticatedSessionMiddleware);
+  app.use("*", demoWriteGuard);
   registerRoutes(app);
   options.editionExtension?.registerRoutes(app);
   app.onError(appErrorHandler);

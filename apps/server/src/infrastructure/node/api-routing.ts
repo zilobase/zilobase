@@ -12,6 +12,7 @@ const apiPathPrefixes = [
   "/search",
   "/pages",
   "/databases",
+  "/demo",
   "/desktop",
   "/images",
   "/metadata",

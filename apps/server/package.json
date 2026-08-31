@@ -42,6 +42,7 @@
     "db:generate": "DOTENV_CONFIG_PATH=../../.env.development drizzle-kit generate",
     "db:migrate": "DOTENV_CONFIG_PATH=../../.env.development drizzle-kit migrate",
     "db:migrate:production": "tsx src/scripts/migrate.ts",
+    "db:seed:demo": "tsx src/scripts/seed-demo.ts",
     "db:reset": "DOTENV_CONFIG_PATH=../../.env.development tsx src/scripts/reset-database.ts && DOTENV_CONFIG_PATH=../../.env.development drizzle-kit migrate",
     "db:studio": "DOTENV_CONFIG_PATH=../../.env.development drizzle-kit studio"
   },

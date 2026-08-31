@@ -69,6 +69,10 @@ import {
 import { Shimmer } from "./shimmer";
 import type { ToolPart } from "./tool";
 import { Button } from "@/shared/ui/button";
+import {
+  isHostedDemoRuntime,
+  requestDemoGuard,
+} from "@/features/demo";
 import { Input } from "@/shared/ui/input";
 import {
   aiChatThreadMessagesQueryKey,
@@ -1582,6 +1586,11 @@ const ChatbotInner = ({
   const submitText = useCallback(
     async (content: string, files: PromptInputMessage["files"] = []) => {
       if (!content.trim() && files.length === 0) {
+        return;
+      }
+
+      if (isHostedDemoRuntime()) {
+        requestDemoGuard();
         return;
       }
 

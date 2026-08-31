@@ -12,6 +12,8 @@ import { db } from "../../infrastructure/database";
 import { user as userTable } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
 import { expireTemporaryMemberships } from "../memberships";
+import { DEMO_IDS } from "../demo/constants";
+import { isHostedDemoRequest } from "../demo/request";
 
 function normalizeAuthSession<TSession extends Record<string, unknown>>(
   session: TSession | null | undefined,
@@ -40,6 +42,45 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (
   return await timed(c, "session_db", () => runWithDbEnv(c.env, async () => {
     c.set("apiKey", null);
     c.set("authMethod", null);
+
+    if (isHostedDemoRequest(c.env, c.req.raw.headers)) {
+      const [demoUser] = await db
+        .select()
+        .from(userTable)
+        .where(eq(userTable.id, DEMO_IDS.user))
+        .limit(1);
+
+      if (
+        !demoUser ||
+        !(await getMembership(DEMO_IDS.workspace, DEMO_IDS.user))
+      ) {
+        return c.json(
+          {
+            code: "DEMO_UNAVAILABLE",
+            error: "The hosted demo is unavailable.",
+          },
+          503,
+        );
+      }
+
+      const now = new Date();
+      c.set("user", demoUser);
+      c.set("session", {
+        activeTeamId: null,
+        activeWorkspaceId: DEMO_IDS.workspace,
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+        id: "demo:synthetic-session",
+        ipAddress: null,
+        token: "",
+        updatedAt: now,
+        userAgent: null,
+        userId: demoUser.id,
+      });
+      c.set("authMethod", "demo");
+      await timed(c, "session_next", next);
+      return;
+    }
 
     const rawApiKey = readApiKeyFromHeaders(c.req.raw.headers);
     const auth = createAuth(c.env, c.req.raw, db, {
