@@ -626,7 +626,7 @@ function AppLayoutContent({
           {chatPanel}
         </FloatingWidget>
       ) : null}
-      {chatSidebarOpen || isAiPage ? null : (
+      {chatSidebarOpen || isAiPage || isMailPage ? null : (
         <ChatSidebarTrigger
           adjacentSidebarOpen={
             utilitySidebarOpen ||
