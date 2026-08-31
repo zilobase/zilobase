@@ -193,6 +193,7 @@ databaseRoutes.put("/:id/access", async (c) => {
       await upsertDatabaseAccessRuleService({
         body,
         databaseId: c.req.param("id"),
+        env: c.env,
         userId: user.id,
       }),
     );
@@ -213,6 +214,7 @@ databaseRoutes.delete("/:id/access/public", async (c) => {
     return c.json(
       await deletePublicDatabaseAccessService({
         databaseId: c.req.param("id"),
+        env: c.env,
         userId: user.id,
       }),
     );
@@ -233,6 +235,7 @@ databaseRoutes.delete("/:id/access/:ruleId", async (c) => {
     return c.json(
       await deleteDatabaseAccessRuleService({
         databaseId: c.req.param("id"),
+        env: c.env,
         ruleId: c.req.param("ruleId"),
         userId: user.id,
       }),
@@ -281,6 +284,7 @@ databaseRoutes.delete("/:id", async (c) => {
     return c.json(
       await deleteDatabaseService({
         databaseId: c.req.param("id"),
+        env: c.env,
         userId: user.id,
       }),
     );
@@ -304,6 +308,7 @@ databaseRoutes.post("/:id/restore", async (c) => {
     return c.json(
       await restoreDatabaseService({
         databaseId: c.req.param("id"),
+        env: c.env,
         userId: user.id,
       }),
     );

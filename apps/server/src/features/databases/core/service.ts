@@ -233,6 +233,9 @@ export async function updateDatabaseService(input: {
       changed: ["database"],
       databaseId: existing.id,
       env: input.env,
+      ...(existing.workspaceId
+        ? { navigationWorkspaceId: existing.workspaceId }
+        : {}),
     },
     async (tx) => {
       await tx.update(database).set(values).where(eq(database.id, existing.id));
@@ -253,6 +256,7 @@ export async function updateDatabaseService(input: {
 
 export async function deleteDatabaseService(input: {
   databaseId: string;
+  env?: RuntimeEnv;
   userId: string;
 }) {
   const existing = await getDatabaseRecord(input.databaseId);
@@ -267,6 +271,7 @@ export async function deleteDatabaseService(input: {
 
   const deleted = await softDeleteDatabaseTree({
     databaseId: existing.id,
+    env: input.env,
     workspaceId: existing.workspaceId,
     userId: input.userId,
   });
@@ -285,6 +290,7 @@ export async function deleteDatabaseService(input: {
 
 export async function restoreDatabaseService(input: {
   databaseId: string;
+  env?: RuntimeEnv;
   userId: string;
 }) {
   const existing = await getDatabaseRecord(input.databaseId, {
@@ -316,7 +322,7 @@ export async function restoreDatabaseService(input: {
 
   const deletedAt = existing.deletedAt;
   const now = new Date();
-  const restored = await db.transaction(async (tx) => {
+  const { navigationEvent, ...restored } = await db.transaction(async (tx) => {
     const restoredDatabases = await tx
       .update(database)
       .set({
@@ -382,10 +388,16 @@ export async function restoreDatabaseService(input: {
       .returning({ id: page.id });
 
     return {
+      navigationEvent: await enqueueNavigationInvalidation(
+        tx,
+        existing.workspaceId,
+        { committedAt: now },
+      ),
       restoredDatabaseIds,
       restoredPageIds: restoredPages.map((record) => record.id),
     };
   });
+  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
 
   const restoredRecord = {
     ...existing,

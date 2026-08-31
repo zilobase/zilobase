@@ -42,6 +42,14 @@ vi.mock("../../pages/mutations/soft-delete-nav-items", () => ({
 vi.mock("./payload", () => ({
   getDatabasePayload: mocks.payload,
 }));
+vi.mock("../../workspaces/navigation-realtime/outbox", () => ({
+  enqueueNavigationInvalidation: vi.fn(async (_tx, workspaceId: string) => ({
+    committedAt: new Date(),
+    id: "navigation-event-1",
+    workspaceId,
+  })),
+  publishCommittedNavigationInvalidation: vi.fn(async () => true),
+}));
 vi.mock("../../../infrastructure/database", () => ({
   db: {
     select() {

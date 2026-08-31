@@ -113,6 +113,7 @@ export async function createDatabaseViewService(input: {
       changed: ["views"],
       databaseId: existing.id,
       env: input.env,
+      navigationWorkspaceId: existing.workspaceId,
     },
     async (tx) => {
       const now = new Date();
@@ -391,6 +392,7 @@ export async function updateDatabaseViewService(input: {
       changed: subItemSetup ? ["views", "properties", "values"] : ["views"],
       databaseId: existing.id,
       env: input.env,
+      navigationWorkspaceId: existing.workspaceId,
     },
     async (tx) => {
       const now = new Date();
@@ -555,6 +557,7 @@ export async function deleteDatabaseViewService(input: {
       changed: ["views"],
       databaseId: existing.id,
       env: input.env,
+      navigationWorkspaceId: existing.workspaceId,
     },
     async (tx) => {
       await tx.delete(databaseView).where(eq(databaseView.id, existingView.id));

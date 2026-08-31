@@ -17,6 +17,10 @@ import {
   toMutationResponse,
 } from "../realtime/delta";
 import { publishDatabaseRealtimeEvent } from "../realtime/outbox";
+import {
+  enqueueNavigationInvalidation,
+  publishCommittedNavigationInvalidation,
+} from "../../workspaces/navigation-realtime/outbox";
 
 export class DatabaseMutationError extends Error {
   constructor(
@@ -39,6 +43,7 @@ type CommitOptions = {
   changed: DatabaseChangedArea[];
   databaseId: string;
   env?: RuntimeEnv;
+  navigationWorkspaceId?: string;
 };
 
 type BatchMutation = {
@@ -56,6 +61,7 @@ type DataSourceBatchMutation = {
 type BatchCommitOptions = {
   actorId: string;
   env?: RuntimeEnv;
+  navigationWorkspaceId?: string;
 };
 
 type CommitMetadata = {
@@ -119,7 +125,7 @@ export async function commitDatabaseMutationBatch<T>(
   ) => Promise<{ mutations: BatchMutation[]; result: T }>,
 ): Promise<DatabaseMutationBatchResult<T>> {
   const committedAt = new Date().toISOString();
-  const { commits, result } = await db.transaction(async (tx) => {
+  const { commits, navigationEvent, result } = await db.transaction(async (tx) => {
     const mutationResult = await mutate(tx);
     const mutationCountsByDatabase = new Map<string, number>();
 
@@ -192,10 +198,19 @@ export async function commitDatabaseMutationBatch<T>(
       await tx.insert(databaseRealtimeOutbox).values(outboxRows);
     }
 
-    return { commits, result: mutationResult.result };
+    const navigationEvent = options.navigationWorkspaceId
+      ? await enqueueNavigationInvalidation(tx, options.navigationWorkspaceId, {
+          committedAt: new Date(committedAt),
+        })
+      : null;
+
+    return { commits, navigationEvent, result: mutationResult.result };
   });
 
   await publishCommits(commits, options.env);
+  if (navigationEvent) {
+    await publishCommittedNavigationInvalidation(navigationEvent, options.env);
+  }
 
   return { commits, result };
 }
@@ -205,7 +220,11 @@ export async function commitDatabaseMutation(
   mutate: (tx: DatabaseTransaction) => Promise<{ delta: DatabaseDelta }>,
 ): Promise<DatabaseMutationCommitResult> {
   const { commits } = await commitDatabaseMutationBatch(
-    options,
+    {
+      actorId: options.actorId,
+      env: options.env,
+      navigationWorkspaceId: options.navigationWorkspaceId,
+    },
     async (tx) => {
       const result = await mutate(tx);
       return {

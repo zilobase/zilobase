@@ -12,6 +12,11 @@ import {
   workspace,
 } from "../../infrastructure/database/schema";
 import type { ZilobaseEditionExtension } from "../../shared/types";
+import type { RuntimeEnv } from "../../shared/config/config";
+import {
+  enqueueNavigationInvalidation,
+  publishCommittedNavigationInvalidation,
+} from "../workspaces/navigation-realtime/outbox";
 import { activeMembershipCondition } from "../memberships";
 import {
   canCreateTeamspace,
@@ -52,6 +57,7 @@ export class TeamspaceManagementService {
   constructor(
     private readonly database: Database = db,
     private readonly editionExtension?: ZilobaseEditionExtension,
+    private readonly env?: RuntimeEnv,
   ) {}
 
   async list(input: {
@@ -178,7 +184,7 @@ export class TeamspaceManagementService {
     }
 
     try {
-      const result = await this.database.transaction(async (transaction) => {
+      const { navigationEvent, record: result } = await this.database.transaction(async (transaction) => {
         const [created] = await transaction
           .insert(teamspace)
           .values({
@@ -201,8 +207,16 @@ export class TeamspaceManagementService {
           role: "owner",
           teamspaceId: created.id,
         });
-        return created;
+        return {
+          navigationEvent: this.env
+            ? await enqueueNavigationInvalidation(transaction, input.workspaceId)
+            : null,
+          record: created,
+        };
       });
+      if (navigationEvent) {
+        await publishCommittedNavigationInvalidation(navigationEvent, this.env);
+      }
       await this.audit("teamspace.created", input, {
         accessMode: result.accessMode,
         teamspaceId: result.id,
@@ -237,9 +251,8 @@ export class TeamspaceManagementService {
         403,
       );
     }
-    const [updated] = await this.database
-      .update(teamspace)
-      .set({
+    const { navigationEvent, updated } = await this.database.transaction(async (transaction) => {
+      const [updated] = await transaction.update(teamspace).set({
         ...(input.accessMode !== undefined
           ? { accessMode: input.accessMode }
           : {}),
@@ -270,6 +283,16 @@ export class TeamspaceManagementService {
       })
       .where(eq(teamspace.id, record.id))
       .returning();
+      return {
+        navigationEvent: this.env
+          ? await enqueueNavigationInvalidation(transaction, input.workspaceId)
+          : null,
+        updated,
+      };
+    });
+    if (navigationEvent) {
+      await publishCommittedNavigationInvalidation(navigationEvent, this.env);
+    }
     await this.audit("teamspace.updated", input, {
       teamspaceId: record.id,
     });
@@ -288,15 +311,24 @@ export class TeamspaceManagementService {
         409,
       );
     }
-    const [updated] = await this.database
-      .update(teamspace)
-      .set({
+    const { navigationEvent, updated } = await this.database.transaction(async (transaction) => {
+      const [updated] = await transaction.update(teamspace).set({
         archivedAt: new Date(),
         archivedById: input.userId,
         updatedAt: new Date(),
       })
       .where(eq(teamspace.id, record.id))
       .returning();
+      return {
+        navigationEvent: this.env
+          ? await enqueueNavigationInvalidation(transaction, input.workspaceId)
+          : null,
+        updated,
+      };
+    });
+    if (navigationEvent) {
+      await publishCommittedNavigationInvalidation(navigationEvent, this.env);
+    }
     await this.audit("teamspace.archived", input, { teamspaceId: record.id });
     return updated!;
   }
@@ -316,11 +348,22 @@ export class TeamspaceManagementService {
     const record = await this.getRecord(input.workspaceId, input.teamspaceId);
     if (!record) throw new TeamspaceManagementError("Teamspace not found.", 404);
     try {
-      const [updated] = await this.database
-        .update(teamspace)
-        .set({ archivedAt: null, archivedById: null, updatedAt: new Date() })
-        .where(eq(teamspace.id, record.id))
-        .returning();
+      const { navigationEvent, updated } = await this.database.transaction(async (transaction) => {
+        const [updated] = await transaction
+          .update(teamspace)
+          .set({ archivedAt: null, archivedById: null, updatedAt: new Date() })
+          .where(eq(teamspace.id, record.id))
+          .returning();
+        return {
+          navigationEvent: this.env
+            ? await enqueueNavigationInvalidation(transaction, input.workspaceId)
+            : null,
+          updated,
+        };
+      });
+      if (navigationEvent) {
+        await publishCommittedNavigationInvalidation(navigationEvent, this.env);
+      }
       await this.audit("teamspace.restored", input, { teamspaceId: record.id });
       return updated!;
     } catch (error) {

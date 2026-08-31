@@ -3,6 +3,11 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
 import { dataSource, database, databaseRow, page } from "../../../infrastructure/database/schema";
 import { loadWorkspacePageGraph } from "../graph/loader";
+import type { RuntimeEnv } from "../../../shared/config/config";
+import {
+  enqueueNavigationInvalidation,
+  publishCommittedNavigationInvalidation,
+} from "../../workspaces/navigation-realtime/outbox";
 
 type SoftDeleteResult = {
   deletedAt: Date;
@@ -47,14 +52,18 @@ async function softDeleteRecords({
   databaseIds,
   userId,
   pageIds,
+  workspaceId,
+  env,
 }: {
   databaseIds: string[];
+  env?: RuntimeEnv;
   userId: string;
   pageIds: string[];
+  workspaceId: string;
 }) {
   const now = new Date();
 
-  await db.transaction(async (tx) => {
+  const navigationEvent = await db.transaction(async (tx) => {
     if (pageIds.length > 0) {
       await tx
         .update(page)
@@ -98,7 +107,10 @@ async function softDeleteRecords({
           ),
         );
     }
+    return enqueueNavigationInvalidation(tx, workspaceId, { committedAt: now });
   });
+
+  await publishCommittedNavigationInvalidation(navigationEvent, env);
 
   return now;
 }
@@ -107,7 +119,9 @@ export async function softDeletePageTree({
   workspaceId,
   rootPageId,
   userId,
+  env,
 }: {
+  env?: RuntimeEnv;
   workspaceId: string;
   rootPageId: string;
   userId: string;
@@ -139,6 +153,8 @@ export async function softDeletePageTree({
     databaseIds: deletedDatabaseIds,
     userId,
     pageIds: deletedPageIds,
+    workspaceId,
+    env,
   });
 
   return { deletedAt, deletedDatabaseIds, deletedPageIds };
@@ -148,8 +164,10 @@ export async function softDeleteDatabaseTree({
   databaseId,
   workspaceId,
   userId,
+  env,
 }: {
   databaseId: string;
+  env?: RuntimeEnv;
   workspaceId: string;
   userId: string;
 }): Promise<SoftDeleteResult> {
@@ -179,6 +197,8 @@ export async function softDeleteDatabaseTree({
     databaseIds: deletedDatabaseIds,
     userId,
     pageIds: deletedPageIds,
+    workspaceId,
+    env,
   });
 
   return { deletedAt, deletedDatabaseIds, deletedPageIds };

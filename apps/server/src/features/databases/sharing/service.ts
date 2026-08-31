@@ -7,6 +7,11 @@ import { activeMembershipCondition } from "../../memberships";
 import { requireDatabaseAccess } from "../access/database-access";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import { getDatabaseTeamspaceSecurityPolicy } from "../../teamspaces";
+import type { RuntimeEnv } from "../../../shared/config/config";
+import {
+  enqueueNavigationInvalidation,
+  publishCommittedNavigationInvalidation,
+} from "../../workspaces/navigation-realtime/outbox";
 
 export async function listDatabaseAccessRulesService(input: {
   databaseId: string;
@@ -29,6 +34,7 @@ export async function listDatabaseAccessRulesService(input: {
 export async function upsertDatabaseAccessRuleService(input: {
   body: unknown;
   databaseId: string;
+  env?: RuntimeEnv;
   userId: string;
 }) {
   const existing = await requireDatabaseAccess(
@@ -117,31 +123,39 @@ export async function upsertDatabaseAccessRuleService(input: {
     throw new ServiceMutationError("Target not found", 404);
   }
 
-  const [rule] = await db
-    .insert(databaseAccess)
-    .values({
-      id: crypto.randomUUID(),
-      accessLevel: normalizedAccessLevel,
-      workspaceId: existing.workspaceId,
-      targetId,
-      targetType,
-      databaseId: existing.id,
-    })
-    .onConflictDoUpdate({
-      target: [
-        databaseAccess.databaseId,
-        databaseAccess.targetType,
-        databaseAccess.targetId,
-      ],
-      set: { accessLevel: normalizedAccessLevel, updatedAt: new Date() },
-    })
-    .returning();
+  const { navigationEvent, rule } = await db.transaction(async (tx) => {
+    const [rule] = await tx
+      .insert(databaseAccess)
+      .values({
+        id: crypto.randomUUID(),
+        accessLevel: normalizedAccessLevel,
+        workspaceId: existing.workspaceId,
+        targetId,
+        targetType,
+        databaseId: existing.id,
+      })
+      .onConflictDoUpdate({
+        target: [
+          databaseAccess.databaseId,
+          databaseAccess.targetType,
+          databaseAccess.targetId,
+        ],
+        set: { accessLevel: normalizedAccessLevel, updatedAt: new Date() },
+      })
+      .returning();
+    return {
+      navigationEvent: await enqueueNavigationInvalidation(tx, existing.workspaceId),
+      rule,
+    };
+  });
+  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
 
   return { access: rule };
 }
 
 export async function deletePublicDatabaseAccessService(input: {
   databaseId: string;
+  env?: RuntimeEnv;
   userId: string;
 }) {
   const existing = await requireDatabaseAccess(
@@ -150,21 +164,26 @@ export async function deletePublicDatabaseAccessService(input: {
     "full",
   );
 
-  await db
-    .delete(databaseAccess)
-    .where(
-      and(
-        eq(databaseAccess.databaseId, existing.id),
-        eq(databaseAccess.targetType, "public"),
-        eq(databaseAccess.targetId, "*"),
-      ),
-    );
+  const navigationEvent = await db.transaction(async (tx) => {
+    await tx
+      .delete(databaseAccess)
+      .where(
+        and(
+          eq(databaseAccess.databaseId, existing.id),
+          eq(databaseAccess.targetType, "public"),
+          eq(databaseAccess.targetId, "*"),
+        ),
+      );
+    return enqueueNavigationInvalidation(tx, existing.workspaceId);
+  });
+  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
 
   return { access: null };
 }
 
 export async function deleteDatabaseAccessRuleService(input: {
   databaseId: string;
+  env?: RuntimeEnv;
   ruleId: string;
   userId: string;
 }) {
@@ -174,14 +193,18 @@ export async function deleteDatabaseAccessRuleService(input: {
     "full",
   );
 
-  await db
-    .delete(databaseAccess)
-    .where(
-      and(
-        eq(databaseAccess.id, input.ruleId),
-        eq(databaseAccess.databaseId, existing.id),
-      ),
-    );
+  const navigationEvent = await db.transaction(async (tx) => {
+    await tx
+      .delete(databaseAccess)
+      .where(
+        and(
+          eq(databaseAccess.id, input.ruleId),
+          eq(databaseAccess.databaseId, existing.id),
+        ),
+      );
+    return enqueueNavigationInvalidation(tx, existing.workspaceId);
+  });
+  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
 
   return { access: null };
 }

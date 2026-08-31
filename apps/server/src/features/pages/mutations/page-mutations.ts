@@ -116,6 +116,7 @@ export async function createPageService(input: {
 
 export async function linkDatabaseInPageService(input: {
   databaseId: string;
+  env?: RuntimeEnv;
   hostPageId: string;
   userId: string;
 }) {
@@ -168,14 +169,18 @@ export async function linkDatabaseInPageService(input: {
     };
   }
 
-  await upsertPageItemPlacement(db, {
-    workspaceId: host.workspaceId,
-    parentKind: "page",
-    parentId: host.id,
-    itemKind: "database",
-    itemId: databaseRecord.id,
-    placementKind: "linked",
+  const navigationEvent = await db.transaction(async (tx) => {
+    await upsertPageItemPlacement(tx, {
+      workspaceId: host.workspaceId,
+      parentKind: "page",
+      parentId: host.id,
+      itemKind: "database",
+      itemId: databaseRecord.id,
+      placementKind: "linked",
+    });
+    return enqueueNavigationInvalidation(tx, host.workspaceId);
   });
+  await publishCommittedNavigationInvalidation(navigationEvent, input.env);
 
   return {
     action: "addLink" as const,

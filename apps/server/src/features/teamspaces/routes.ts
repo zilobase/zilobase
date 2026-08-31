@@ -260,6 +260,7 @@ async function handle(
       new TeamspaceManagementService(
         undefined,
         c.get("editionExtension") ?? undefined,
+        c.env,
       ),
       requestUser.id,
       c.req.param("workspaceId")!,

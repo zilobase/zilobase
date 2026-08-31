@@ -20,7 +20,8 @@ vi.mock("../../teamspaces", () => ({
   getDatabaseTeamspaceSecurityPolicy: mocks.securityPolicy,
 }));
 vi.mock("../../../infrastructure/database", () => ({
-  db: {
+  db: (() => {
+    const databaseMock = {
     delete() {
       return {
         async where(value: unknown) { mocks.delete(value); },
@@ -56,7 +57,20 @@ vi.mock("../../../infrastructure/database", () => ({
       };
       return builder;
     },
-  },
+      async transaction(callback: (tx: unknown) => Promise<unknown>) {
+        return callback(databaseMock);
+      },
+    };
+    return databaseMock;
+  })(),
+}));
+vi.mock("../../workspaces/navigation-realtime/outbox", () => ({
+  enqueueNavigationInvalidation: vi.fn(async () => ({
+    committedAt: new Date(),
+    id: "navigation-event-1",
+    workspaceId: "workspace-1",
+  })),
+  publishCommittedNavigationInvalidation: vi.fn(async () => true),
 }));
 
 import {

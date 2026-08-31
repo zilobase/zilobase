@@ -160,6 +160,7 @@ test("createDatabaseViewService creates a uniquely named trailing view", async (
     changed: ["views"],
     databaseId: "database-1",
     env: { ENV: "test" },
+    navigationWorkspaceId: "workspace-1",
   });
 });
 
@@ -336,6 +337,7 @@ test("deleteDatabaseViewService deletes a view while preserving one remaining vi
     changed: ["views"],
     databaseId: "database-1",
     env: { ENV: "test" },
+    navigationWorkspaceId: "workspace-1",
   });
 });
 

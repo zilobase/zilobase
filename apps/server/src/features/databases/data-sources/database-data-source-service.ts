@@ -51,6 +51,7 @@ export async function createDatabaseDataSourceService(input: {
       changed: ["database", "views"],
       databaseId: host.id,
       env: input.env,
+      navigationWorkspaceId: host.workspaceId,
     },
     async (tx) => {
       await tx.insert(dataSource).values({
@@ -146,6 +147,7 @@ export async function linkDatabaseDataSourceService(input: {
       changed: ["views"],
       databaseId: host.id,
       env: input.env,
+      navigationWorkspaceId: host.workspaceId,
     },
     async (tx) => {
       await tx
@@ -219,6 +221,7 @@ export async function replaceDatabaseViewDataSourceService(input: {
       changed: ["views"],
       databaseId: host.id,
       env: input.env,
+      navigationWorkspaceId: host.workspaceId,
     },
     async (tx) => {
       await tx

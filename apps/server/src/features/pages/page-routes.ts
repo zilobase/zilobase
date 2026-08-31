@@ -998,7 +998,7 @@ pageRoutes.post("/:id/move-teamspace", async (c) => {
   const graph = await loadWorkspacePageGraph(record.workspaceId);
   const pageIds = graph.getPrimaryNestedPageIds(record.id);
   const now = new Date();
-  await db.transaction(async (tx) => {
+  const navigationEvent = await db.transaction(async (tx) => {
     await tx
       .update(page)
       .set({ teamspaceId: destinationId, updatedAt: now })
@@ -1019,7 +1019,9 @@ pageRoutes.post("/:id/move-teamspace", async (c) => {
           isNull(pageItemPlacement.deletedAt),
         ),
       );
+    return enqueueNavigationInvalidation(tx, record.workspaceId, { committedAt: now });
   });
+  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ movedPageIds: pageIds, teamspaceId: destinationId });
 });
@@ -1058,6 +1060,7 @@ pageRoutes.post("/:id/convert-to-teamspace", async (c) => {
   const service = new TeamspaceManagementService(
     undefined,
     c.get("editionExtension") ?? undefined,
+    c.env,
   );
   try {
     const created = await service.create({
@@ -1068,7 +1071,7 @@ pageRoutes.post("/:id/convert-to-teamspace", async (c) => {
     });
     const graph = await loadWorkspacePageGraph(record.workspaceId);
     const pageIds = graph.getPrimaryNestedPageIds(record.id);
-    await db.transaction(async (tx) => {
+    const navigationEvent = await db.transaction(async (tx) => {
       await tx
         .update(page)
         .set({ teamspaceId: created.id, updatedAt: new Date() })
@@ -1089,7 +1092,9 @@ pageRoutes.post("/:id/convert-to-teamspace", async (c) => {
             isNull(pageItemPlacement.deletedAt),
           ),
         );
+      return enqueueNavigationInvalidation(tx, record.workspaceId);
     });
+    await publishCommittedNavigationInvalidation(navigationEvent, c.env);
     return c.json({ movedPageIds: pageIds, teamspace: created }, 201);
   } catch (error) {
     if (error instanceof Error && "status" in error) {
@@ -1228,14 +1233,18 @@ pageRoutes.post("/:id/embed-item", async (c) => {
           : "addLink";
 
     if (primaryPlacement[0]?.parentId !== host.id) {
-      await upsertPageItemPlacement(db, {
-        workspaceId: host.workspaceId,
-        parentKind: "page",
-        parentId: host.id,
-        itemKind: "page",
-        itemId: child.id,
-        placementKind: action === "setParent" ? "primary" : "linked",
+      const navigationEvent = await db.transaction(async (tx) => {
+        await upsertPageItemPlacement(tx, {
+          workspaceId: host.workspaceId,
+          parentKind: "page",
+          parentId: host.id,
+          itemKind: "page",
+          itemId: child.id,
+          placementKind: action === "setParent" ? "primary" : "linked",
+        });
+        return enqueueNavigationInvalidation(tx, host.workspaceId);
       });
+      await publishCommittedNavigationInvalidation(navigationEvent, c.env);
     }
 
     return c.json({
@@ -1275,14 +1284,18 @@ pageRoutes.post("/:id/embed-item", async (c) => {
     return c.json({ action: "setParent", host });
   }
 
-  await upsertPageItemPlacement(db, {
-    workspaceId: host.workspaceId,
-    parentKind: "page",
-    parentId: host.id,
-    itemKind: "database",
-    itemId: databaseRecord.id,
-    placementKind: "linked",
+  const navigationEvent = await db.transaction(async (tx) => {
+    await upsertPageItemPlacement(tx, {
+      workspaceId: host.workspaceId,
+      parentKind: "page",
+      parentId: host.id,
+      itemKind: "database",
+      itemId: databaseRecord.id,
+      placementKind: "linked",
+    });
+    return enqueueNavigationInvalidation(tx, host.workspaceId);
   });
+  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ action: "addLink", host });
 });
@@ -1361,12 +1374,16 @@ pageRoutes.delete("/:id/embed-item", async (c) => {
     )
     .limit(1);
 
-  await softDeletePageItemPlacement(db, {
-    workspaceId: host.workspaceId,
-    parentKind: "page",
-    parentId: host.id,
-    item: ref,
+  const navigationEvent = await db.transaction(async (tx) => {
+    await softDeletePageItemPlacement(tx, {
+      workspaceId: host.workspaceId,
+      parentKind: "page",
+      parentId: host.id,
+      item: ref,
+    });
+    return enqueueNavigationInvalidation(tx, host.workspaceId);
   });
+  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({
     action:
@@ -1873,24 +1890,31 @@ pageRoutes.put("/:id/access", async (c) => {
     return c.json({ error: "Target not found" }, 404);
   }
 
-  const [rule] = await db
-    .insert(pageAccess)
-    .values({
-      id: crypto.randomUUID(),
-      accessLevel: normalizedAccessLevel,
-      workspaceId: record.workspaceId,
-      targetId,
-      targetType,
-      pageId: record.id,
-    })
-    .onConflictDoUpdate({
-      target: [pageAccess.pageId, pageAccess.targetType, pageAccess.targetId],
-      set: {
+  const { navigationEvent, rule } = await db.transaction(async (tx) => {
+    const [rule] = await tx
+      .insert(pageAccess)
+      .values({
+        id: crypto.randomUUID(),
         accessLevel: normalizedAccessLevel,
-        updatedAt: new Date(),
-      },
-    })
-    .returning();
+        workspaceId: record.workspaceId,
+        targetId,
+        targetType,
+        pageId: record.id,
+      })
+      .onConflictDoUpdate({
+        target: [pageAccess.pageId, pageAccess.targetType, pageAccess.targetId],
+        set: {
+          accessLevel: normalizedAccessLevel,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return {
+      navigationEvent: await enqueueNavigationInvalidation(tx, record.workspaceId),
+      rule,
+    };
+  });
+  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ access: rule });
 });
@@ -1928,16 +1952,23 @@ pageRoutes.delete("/:id/access/public", async (c) => {
     return deletePublicAccessOrgMismatch;
   }
 
-  const [rule] = await db
-    .delete(pageAccess)
-    .where(
-      and(
-        eq(pageAccess.pageId, record.id),
-        eq(pageAccess.targetType, "public"),
-        eq(pageAccess.targetId, "*"),
-      ),
-    )
-    .returning();
+  const { navigationEvent, rule } = await db.transaction(async (tx) => {
+    const [rule] = await tx
+      .delete(pageAccess)
+      .where(
+        and(
+          eq(pageAccess.pageId, record.id),
+          eq(pageAccess.targetType, "public"),
+          eq(pageAccess.targetId, "*"),
+        ),
+      )
+      .returning();
+    return {
+      navigationEvent: await enqueueNavigationInvalidation(tx, record.workspaceId),
+      rule,
+    };
+  });
+  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ access: rule ?? null });
 });
@@ -1975,19 +2006,27 @@ pageRoutes.delete("/:id/access/:ruleId", async (c) => {
     return deleteAccessOrgMismatch;
   }
 
-  const [rule] = await db
-    .delete(pageAccess)
-    .where(
-      and(
-        eq(pageAccess.id, c.req.param("ruleId")),
-        eq(pageAccess.pageId, record.id),
-      ),
-    )
-    .returning();
+  const { navigationEvent, rule } = await db.transaction(async (tx) => {
+    const [rule] = await tx
+      .delete(pageAccess)
+      .where(
+        and(
+          eq(pageAccess.id, c.req.param("ruleId")),
+          eq(pageAccess.pageId, record.id),
+        ),
+      )
+      .returning();
+    return {
+      navigationEvent: await enqueueNavigationInvalidation(tx, record.workspaceId),
+      rule,
+    };
+  });
 
   if (!rule) {
     return c.json({ error: "Access rule not found" }, 404);
   }
+
+  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({ access: rule });
 });
@@ -2422,7 +2461,9 @@ pageRoutes.patch("/:id", async (c) => {
 
   const updatesDatabaseRow =
     patch.name !== undefined || patch.metadata !== undefined;
-  const record = updatesDatabaseRow
+  const changesNavigation =
+    patch.name !== undefined || patch.metadata !== undefined || patch.type !== undefined;
+  const mutationResult = updatesDatabaseRow
     ? (
         await commitDatabaseMutationBatch(
           { actorId: user.id, env: c.env },
@@ -2470,21 +2511,40 @@ pageRoutes.patch("/:id", async (c) => {
                   ],
                 },
               })),
-              result: updatedPage,
+              result: {
+                navigationEvent: changesNavigation
+                  ? await enqueueNavigationInvalidation(tx, existing.workspaceId)
+                  : null,
+                page: updatedPage,
+              },
             };
           },
         )
       ).result
-    : (
-        await db
+    : await db.transaction(async (tx) => {
+        const [updatedPage] = await tx
           .update(page)
           .set(values)
           .where(eq(page.id, existing.id))
-          .returning()
-      )[0];
+          .returning();
+        return {
+          navigationEvent: changesNavigation
+            ? await enqueueNavigationInvalidation(tx, existing.workspaceId)
+            : null,
+          page: updatedPage,
+        };
+      });
+  const record = mutationResult.page;
 
   if (!record) {
     return c.json({ error: "Page not found" }, 404);
+  }
+
+  if (mutationResult.navigationEvent) {
+    await publishCommittedNavigationInvalidation(
+      mutationResult.navigationEvent,
+      c.env,
+    );
   }
 
   if (patch.content !== undefined) {
@@ -2536,7 +2596,7 @@ pageRoutes.post("/:id/restore", async (c) => {
   }
 
   const deletedAt = existing.deletedAt;
-  const restored = await db.transaction(async (tx) => {
+  const { navigationEvent, ...restored } = await db.transaction(async (tx) => {
     const now = new Date();
     const restoredPages = await tx
       .update(page)
@@ -2602,12 +2662,18 @@ pageRoutes.post("/:id/restore", async (c) => {
     }
 
     return {
+      navigationEvent: await enqueueNavigationInvalidation(
+        tx,
+        existing.workspaceId,
+        { committedAt: now },
+      ),
       page:
         restoredPages.find((record) => record.id === existing.id) ?? existing,
       restoredDatabaseIds,
       restoredPageIds: restoredPages.map((record) => record.id),
     };
   });
+  await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json(restored);
 });
@@ -2647,6 +2713,7 @@ pageRoutes.delete("/:id", async (c) => {
   }
 
   const { deletedDatabaseIds, deletedPageIds } = await softDeletePageTree({
+    env: c.env,
     workspaceId: existing.workspaceId,
     rootPageId: existing.id,
     userId: user.id,
