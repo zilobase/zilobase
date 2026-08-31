@@ -84,6 +84,7 @@ import {
   useOptionalPageLayoutSidebar,
 } from "@/features/pages/context/index"
 import { Button } from "@/shared/ui/button"
+import { FloatingWidget } from "@/shared/components/floating-widget"
 import { TeamSettingsPage, TeamspacesSettingsPage } from "@/features/teamspaces"
 import { WorkspaceSettingsPage } from "@/features/workspaces"
 import { editionWebModule } from "@zilobase/edition-web"
@@ -621,12 +622,9 @@ function AppLayoutContent({
         pageSidebarPanel={pageSidebarPanel}
       />
       {chatSidebarOpen && !isMobile && chatPresentationMode === "floating" ? (
-        <aside
-          aria-label="Floating Ask AI chat"
-          className="fixed bottom-16 right-4 z-50 flex h-[min(44rem,calc(var(--app-viewport-height,100svh)-6rem))] w-[min(28rem,calc(100vw-2rem))] min-h-0 flex-col overflow-hidden rounded-xl border bg-surface-canvas text-content-primary shadow-2xl"
-        >
+        <FloatingWidget aria-label="Floating Ask AI chat">
           {chatPanel}
-        </aside>
+        </FloatingWidget>
       ) : null}
       {chatSidebarOpen || isAiPage ? null : (
         <ChatSidebarTrigger

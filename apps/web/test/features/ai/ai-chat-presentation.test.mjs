@@ -12,6 +12,7 @@ export function register({ readSource, assert, test }) {
       /chatSidebarOpen\s*&&\s*!isMobile\s*&&\s*chatPresentationMode\s*===\s*"floating"/,
     )
     assert.match(layoutSource, /aria-label="Floating Ask AI chat"/)
+    assert.match(layoutSource, /<FloatingWidget aria-label="Floating Ask AI chat">/)
     assert.match(
       layoutSource,
       /chatPanel=\{dockedChatOpen \? chatPanel : null\}/,

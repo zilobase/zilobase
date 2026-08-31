@@ -8,9 +8,9 @@ import type {
 import { toast } from "sonner"
 
 import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
-import { Loader2Icon, Paperclip, SendIcon, TrashIcon } from "@/shared/components/icons"
+import { FloatingWidget } from "@/shared/components/floating-widget"
+import { Loader2Icon, Paperclip, SendIcon, TrashIcon, XIcon } from "@/shared/components/icons"
 import { Button } from "@/shared/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
 import { Textarea } from "@/shared/ui/textarea"
@@ -141,13 +141,23 @@ export function MailComposer({ onClose, onSent, online, seed }: {
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl gap-0 p-0" onInteractOutside={(event) => event.preventDefault()}>
-        <DialogHeader className="border-b border-stroke-default px-5 py-4">
-          <DialogTitle>New message</DialogTitle>
-          <DialogDescription>{online ? saving ? "Saving draft…" : draftId ? "Draft saved in Gmail" : "Drafts save automatically" : "Reconnect to compose or send mail."}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3 px-5 py-4">
+    <FloatingWidget aria-label="Mail composer" className="z-[60]">
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+        <Button
+          aria-label="Close mail composer"
+          onClick={onClose}
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+        >
+          <XIcon />
+        </Button>
+        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">New message</h2>
+        <span className="truncate text-content-secondary text-xs">
+          {online ? saving ? "Saving draft…" : draftId ? "Draft saved" : "Drafts save automatically" : "Offline"}
+        </span>
+      </header>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
           <div className="flex items-center gap-2">
             <Label className="w-8" htmlFor="mail-compose-to">To</Label>
             <Input autoFocus disabled={!online || sending} id="mail-compose-to" onChange={(event) => setTo(event.target.value)} placeholder="name@example.com" value={to} />
@@ -158,22 +168,21 @@ export function MailComposer({ onClose, onSent, online, seed }: {
             <div className="flex items-center gap-2"><Label className="w-8" htmlFor="mail-compose-bcc">Bcc</Label><Input disabled={!online || sending} id="mail-compose-bcc" onChange={(event) => setBcc(event.target.value)} value={bcc} /></div>
           </> : null}
           <Input aria-label="Subject" disabled={!online || sending} onChange={(event) => setSubject(event.target.value)} placeholder="Subject" value={subject} />
-          <Textarea aria-label="Message body" className="min-h-64" disabled={!online || sending} onChange={(event) => setBodyText(event.target.value)} placeholder="Write a message…" value={bodyText} />
+          <Textarea aria-label="Message body" className="min-h-64 flex-1 resize-none" disabled={!online || sending} onChange={(event) => setBodyText(event.target.value)} placeholder="Write a message…" value={bodyText} />
           {attachments.length ? <div className="flex flex-wrap gap-2">{attachments.map((attachment, index) => (
             <Button disabled={sending} key={`${attachment.filename}-${index}`} onClick={() => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))} size="sm" type="button" variant="outline">
               <Paperclip /> {attachment.filename} ×
             </Button>
           ))}</div> : null}
+      </div>
+      <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-stroke-default px-4 py-3">
+        <Button disabled={sending || (Boolean(draftId) && !online)} onClick={() => void discard()} type="button" variant="ghost"><TrashIcon /> Discard</Button>
+        <div className="flex items-center gap-2">
+          <Label className="cursor-pointer"><input className="sr-only" disabled={!online || sending} multiple onChange={(event) => void attach(event.target.files)} type="file" /><span className="inline-flex h-8 items-center gap-2 rounded-md px-3 hover:bg-action-neutral-hover"><Paperclip /> Attach</span></Label>
+          <Button disabled={!online || sending} onClick={() => void send()} type="button">{sending ? <Loader2Icon className="animate-spin" /> : <SendIcon />} Send</Button>
         </div>
-        <DialogFooter className="border-t border-stroke-default px-5 py-3 sm:justify-between">
-          <Button disabled={sending || (Boolean(draftId) && !online)} onClick={() => void discard()} type="button" variant="ghost"><TrashIcon /> Discard</Button>
-          <div className="flex items-center gap-2">
-            <Label className="cursor-pointer"><input className="sr-only" disabled={!online || sending} multiple onChange={(event) => void attach(event.target.files)} type="file" /><span className="inline-flex h-8 items-center gap-2 rounded-md px-3 hover:bg-action-neutral-hover"><Paperclip /> Attach</span></Label>
-            <Button disabled={!online || sending} onClick={() => void send()} type="button">{sending ? <Loader2Icon className="animate-spin" /> : <SendIcon />} Send</Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </footer>
+    </FloatingWidget>
   )
 }
 

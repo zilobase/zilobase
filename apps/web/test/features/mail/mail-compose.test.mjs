@@ -32,4 +32,14 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.doesNotMatch(source, /indexedDB|localStorage|outbox/i)
     assert.match(source, /MAX_ATTACHMENT_BYTES = 20 \* 1024 \* 1024/)
   })
+
+  test("the composer reuses the Ask AI floating widget surface", async () => {
+    const composerSource = await readSource("/src/features/mail/components/mail-composer.tsx")
+    const widgetSource = await readSource("/src/shared/components/floating-widget.tsx")
+
+    assert.match(composerSource, /<FloatingWidget aria-label="Mail composer"/)
+    assert.match(widgetSource, /fixed bottom-16 right-4/)
+    assert.match(widgetSource, /h-\[min\(44rem/)
+    assert.match(widgetSource, /w-\[min\(28rem/)
+  })
 }
