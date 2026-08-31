@@ -34,10 +34,9 @@ Node keeps only rooms for workspaces with connected clients. Redis/Valkey is
 used for cross-process fanout when configured. Without that bus, realtime is
 single-process and reconnect reconciliation remains the safety net.
 
-Cloudflare routes each workspace to a hibernatable Durable Object. Authenticated
-claims live in WebSocket attachments, so sockets survive hibernation without an
-always-running object. Publication wakes the room, broadcasts the generic event,
-and lets it hibernate again.
+Hosted transports are supplied by deployment adapters outside this repository.
+They preserve the same authenticated workspace-room contract and generic
+invalidation payload as the Node transport.
 
 ## Event policy
 
@@ -54,7 +53,7 @@ responses through their existing cache paths.
 1. Apply migration `0064_navigation_realtime_outbox.sql`.
 2. Deploy producers and the scheduled drainer; watch backlog age, attempts, and
    `navigation_realtime_*` structured logs.
-3. Deploy Node or Cloudflare transport and verify workspace isolation.
+3. Deploy the Node or hosted-adapter transport and verify workspace isolation.
 4. Enable `VITE_FEATURE_NAVIGATION_REALTIME` for a client cohort, then expand.
 5. Enable multi-node Node deployments only after Redis/Valkey fanout is proven.
 
