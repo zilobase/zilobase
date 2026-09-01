@@ -1,4 +1,5 @@
 export * from "./apply-delta"
+export * from "./automations"
 export * from "./mutation-hooks"
 export * from "./query-hooks"
 export * from "./queries"

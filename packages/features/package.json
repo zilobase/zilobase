@@ -5,7 +5,10 @@
   "license": "MIT",
   "scripts": {
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "test:databases": "tsx --test src/databases/*.test.ts"
+    "test:databases": "tsx --test src/databases/*.test.ts src/databases/automations/*.test.ts"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tanstack/react-query": "^5.100.14",
