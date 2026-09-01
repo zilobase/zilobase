@@ -14,13 +14,17 @@ test("mail realtime tickets preserve the connection owner and expire quickly", a
   vi.useFakeTimers()
   vi.setSystemTime(new Date("2026-08-30T00:00:00.000Z"))
   const result = await createMailRealtimeTicket({
+    bindingId: "binding-1",
     connectionId: "connection-1",
     userId: "user-1",
+    workspaceId: "workspace-1",
   }, env)
   const claims = await verifyMailRealtimeTicket(result.ticket, env)
 
   assert.equal(claims.connectionId, "connection-1")
+  assert.equal(claims.bindingId, "binding-1")
   assert.equal(claims.userId, "user-1")
+  assert.equal(claims.workspaceId, "workspace-1")
   assert.equal(claims.exp, Date.now() + 5 * 60_000)
   assert.equal(result.expiresAt, new Date(claims.exp).toISOString())
 
@@ -33,8 +37,10 @@ test("mail realtime tickets preserve the connection owner and expire quickly", a
 
 test("mail realtime tickets reject tampering and the wrong signing key", async () => {
   const { ticket } = await createMailRealtimeTicket({
+    bindingId: "binding-1",
     connectionId: "connection-1",
     userId: "user-1",
+    workspaceId: "workspace-1",
   }, env)
   const [payload, signature] = ticket.split(".")
   const tampered = `${signature?.startsWith("A") ? "B" : "A"}${signature?.slice(1)}`

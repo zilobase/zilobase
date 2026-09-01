@@ -161,22 +161,20 @@ mailRoutes.get("/oauth/google/callback", async (c) => {
     const result = await runWithDbEnv(c.env, async () => {
       const completed = await completeGmailOauth(c.env, { code, state })
       await recordMailMetric("oauth_outcome", { connectionId: completed.connectionId, outcome: "success" })
-      const [connected] = completed.workspaceId
-        ? []
-        : await db
-          .select()
-          .from(gmailConnection)
-          .where(eq(gmailConnection.id, completed.connectionId))
-          .limit(1)
-      if (connected && !completed.workspaceId) {
-        await initializeGmailWatch(c.env, connected).catch(async (error) => {
+      const [account] = await db
+        .select()
+        .from(gmailAccount)
+        .where(eq(gmailAccount.id, completed.connectionId))
+        .limit(1)
+      if (account) {
+        await initializeGmailWatch(c.env, account).catch(async (error) => {
           await db
-            .update(gmailConnection)
+            .update(gmailAccount)
             .set({
               lastErrorCode: error instanceof GmailApiError ? error.code : "watch_failed",
               updatedAt: new Date(),
             })
-            .where(eq(gmailConnection.id, connected.id))
+            .where(eq(gmailAccount.id, account.id))
         })
       }
       return completed
@@ -537,11 +535,13 @@ mailRoutes.post("/realtime-ticket", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
   const ticket = await createMailRealtimeTicket({
+    bindingId: owned.bindingId,
     connectionId: owned.connection.id,
     userId: owned.userId,
+    workspaceId: owned.workspaceId,
   }, c.env)
   const websocketUrl = new URL(getMailRealtimeWebSocketUrl(c.req.raw, c.env))
-  websocketUrl.searchParams.set("connection", owned.connection.id)
+  websocketUrl.searchParams.set("binding", owned.bindingId)
   return c.json({
     ...ticket,
     websocketProtocols: [
@@ -568,7 +568,7 @@ async function requireOwnedConnection(c: Context<AppBindings>) {
     const membership = await requireWorkspaceMember(c, workspaceId, user.id)
     if (membership instanceof Response) return membership
     const [owned] = await db
-      .select({ connection: gmailAccount })
+      .select({ bindingId: gmailWorkspaceConnection.id, connection: gmailAccount })
       .from(gmailWorkspaceConnection)
       .innerJoin(
         gmailAccount,
@@ -584,7 +584,12 @@ async function requireOwnedConnection(c: Context<AppBindings>) {
     if (owned.connection.status !== "connected") {
       return c.json({ message: "Reconnect Gmail to continue." }, 409)
     }
-    return { connection: owned.connection, userId: user.id, workspaceId }
+    return {
+      bindingId: owned.bindingId,
+      connection: owned.connection,
+      userId: user.id,
+      workspaceId,
+    }
   }
   const [connection] = await db
     .select()
@@ -593,7 +598,12 @@ async function requireOwnedConnection(c: Context<AppBindings>) {
     .limit(1)
   if (!connection) return c.json({ message: "Connect Gmail to continue." }, 409)
   if (connection.status !== "connected") return c.json({ message: "Reconnect Gmail to continue." }, 409)
-  return { connection, userId: user.id }
+  return {
+    bindingId: `legacy:${connection.id}`,
+    connection,
+    userId: user.id,
+    workspaceId: "legacy",
+  }
 }
 
 async function runMailOperation(

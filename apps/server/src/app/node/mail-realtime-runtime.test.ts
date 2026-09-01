@@ -28,7 +28,7 @@ test("mail realtime is unavailable when the feature is disabled", async () => {
   try {
     assert.equal(
       await requestUpgradeStatus(
-        `ws://127.0.0.1:${address.port}/mail-realtime?connection=connection-1`,
+        `ws://127.0.0.1:${address.port}/mail-realtime?binding=binding-1`,
       ),
       404,
     )
@@ -61,15 +61,23 @@ test("mail realtime broadcasts only connection ID and revision locally", async (
     await Promise.all([first.opened, second.opened])
     await Promise.all([first.next("mail.ready"), second.next("mail.ready")])
     await fixture.runtime.publishNotification({
+      bindingId: "binding-1",
       connectionId: "connection-1",
       revision: 7,
       userId: "user-1",
+      workspaceId: "workspace-1",
     })
     const [one, two] = await Promise.all([
       first.next("mail.invalidate"),
       second.next("mail.invalidate"),
     ])
-    assert.deepEqual(one, { connectionId: "connection-1", revision: 7, type: "mail.invalidate" })
+    assert.deepEqual(one, {
+      bindingId: "binding-1",
+      connectionId: "connection-1",
+      revision: 7,
+      type: "mail.invalidate",
+      workspaceId: "workspace-1",
+    })
     assert.deepEqual(two, one)
   } finally {
     first.close()
@@ -88,9 +96,11 @@ test("mail realtime fans out through the multi-node realtime bus", async () => {
     await client.opened
     await client.next("mail.ready")
     await publisher.runtime.publishNotification({
+      bindingId: "binding-1",
       connectionId: "connection-1",
       revision: 9,
       userId: "user-1",
+      workspaceId: "workspace-1",
     })
     assert.equal((await client.next("mail.invalidate")).revision, 9)
   } finally {
@@ -111,7 +121,7 @@ async function startFixture(realtimeBus?: NodeRealtimeBus) {
       await closeServer(server)
     },
     runtime,
-    url: `ws://127.0.0.1:${address.port}/mail-realtime?connection=connection-1`,
+    url: `ws://127.0.0.1:${address.port}/mail-realtime?binding=binding-1`,
   }
 }
 
@@ -179,7 +189,12 @@ class MailRealtimeClient {
 }
 
 function createTicket(connectionId: string) {
-  return createMailRealtimeTicket({ connectionId, userId: "user-1" }, env).then((result) => result.ticket)
+  return createMailRealtimeTicket({
+    bindingId: connectionId === "connection-1" ? "binding-1" : "binding-2",
+    connectionId,
+    userId: "user-1",
+    workspaceId: "workspace-1",
+  }, env).then((result) => result.ticket)
 }
 
 function protocols(ticket: string) {

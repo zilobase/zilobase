@@ -8,12 +8,13 @@ import type {
   MailView,
 } from "@zilobase/features/mail"
 
-const MAIL_DATABASE_VERSION = 2
+const MAIL_DATABASE_VERSION = 3
 const openDatabases = new Map<string, MailDatabase>()
-const MAIL_LIFECYCLE_CHANNEL = "zilobase:mail-cache-lifecycle:v1"
+const MAIL_LIFECYCLE_CHANNEL = "zilobase:mail-cache-lifecycle:v2"
 let lifecycleChannel: BroadcastChannel | null = null
 
 export type MailSyncStateRecord = {
+  bindingId: string
   connectionId: string
   historyId: string | null
   key: "primary"
@@ -25,6 +26,7 @@ export type MailSyncStateRecord = {
   pageTokens: Partial<Record<MailView, string>>
   schemaVersion: number
   userId: string
+  workspaceId: string
 }
 
 export class MailDatabase extends Dexie {
@@ -35,14 +37,19 @@ export class MailDatabase extends Dexie {
 
   constructor(
     name: string,
-    readonly identity: { connectionId: string; userId: string },
+    readonly identity: {
+      bindingId: string
+      connectionId: string
+      userId: string
+      workspaceId: string
+    },
   ) {
     super(name)
     this.version(MAIL_DATABASE_VERSION).stores({
       labels: "id, name, type",
       messages:
         "id, threadId, draftId, date, internalDate, *labelIds, [threadId+internalDate]",
-      syncState: "key, connectionId, userId",
+      syncState: "key, bindingId, connectionId, userId, workspaceId",
       threads: "id, internalDate, latestMessageId, unread, starred, *labelIds",
     }).upgrade((transaction) => transaction.table("syncState").toCollection().modify({
       schemaVersion: MAIL_DATABASE_VERSION,
@@ -52,28 +59,37 @@ export class MailDatabase extends Dexie {
 
 export function mailDatabaseName(input: {
   apiOrigin: string
+  bindingId?: string
   connectionId: string
   userId: string
+  workspaceId?: string
 }) {
   const origin = new URL(input.apiOrigin).origin
   const userId = requireIdentifier(input.userId, "user")
-  const connectionId = requireIdentifier(input.connectionId, "connection")
-  return `zilobase:v1:${encodeURIComponent(origin)}:${encodeURIComponent(userId)}:mail:${encodeURIComponent(connectionId)}`
+  const workspaceId = requireIdentifier(input.workspaceId ?? "legacy", "workspace")
+  const bindingId = requireIdentifier(input.bindingId ?? input.connectionId, "binding")
+  return `zilobase:v2:${encodeURIComponent(origin)}:${encodeURIComponent(userId)}:workspace:${encodeURIComponent(workspaceId)}:mail:${encodeURIComponent(bindingId)}`
 }
 
 export async function openMailDatabase(input: {
   apiOrigin: string
+  bindingId?: string
   connectionId: string
   userId: string
+  workspaceId?: string
 }, recoveryAttempt = false): Promise<MailDatabase> {
   const name = mailDatabaseName(input)
+  const bindingId = input.bindingId ?? input.connectionId
+  const workspaceId = input.workspaceId ?? "legacy"
   try {
     initializeLifecycleChannel()
     let database = openDatabases.get(name)
     if (!database) {
       database = new MailDatabase(name, {
+        bindingId,
         connectionId: input.connectionId,
         userId: input.userId,
+        workspaceId,
       })
       openDatabases.set(name, database)
     }
@@ -84,11 +100,14 @@ export async function openMailDatabase(input: {
       state &&
       (state.schemaVersion !== MAIL_DATABASE_VERSION ||
         state.connectionId !== input.connectionId ||
-        state.userId !== input.userId)
+        state.bindingId !== bindingId ||
+        state.userId !== input.userId ||
+        state.workspaceId !== workspaceId)
     ) throw new MailCacheError("The mail cache schema is incompatible.", "schema_incompatible")
 
     if (!state) {
       await database.syncState.put({
+        bindingId,
         connectionId: input.connectionId,
         historyId: null,
         key: "primary",
@@ -98,6 +117,7 @@ export async function openMailDatabase(input: {
         pageTokens: {},
         schemaVersion: MAIL_DATABASE_VERSION,
         userId: input.userId,
+        workspaceId,
       })
     }
     await destroyOtherConnectionDatabases(input, name)
@@ -372,9 +392,17 @@ export async function prepareMailDatabasesForDeletion(prefix: string) {
   if (channel) await new Promise((resolve) => globalThis.setTimeout(resolve, 75))
 }
 
-export function mailDatabasePrefix(input: { apiOrigin: string; userId?: string }) {
+export function mailDatabasePrefix(input: {
+  apiOrigin: string
+  userId?: string
+  workspaceId?: string
+}) {
   const origin = encodeURIComponent(new URL(input.apiOrigin).origin)
-  return `zilobase:v1:${origin}:${input.userId ? `${encodeURIComponent(requireIdentifier(input.userId, "user"))}:mail:` : ""}`
+  if (!input.userId) return `zilobase:v2:${origin}:`
+  const user = encodeURIComponent(requireIdentifier(input.userId, "user"))
+  if (!input.workspaceId) return `zilobase:v2:${origin}:${user}:workspace:`
+  const workspace = encodeURIComponent(requireIdentifier(input.workspaceId, "workspace"))
+  return `zilobase:v2:${origin}:${user}:workspace:${workspace}:mail:`
 }
 
 export class MailCacheError extends Error {
@@ -420,7 +448,13 @@ async function deleteMailDatabaseWithTimeout(name: string) {
 }
 
 async function destroyOtherConnectionDatabases(
-  input: { apiOrigin: string; connectionId: string; userId: string },
+  input: {
+    apiOrigin: string
+    bindingId?: string
+    connectionId: string
+    userId: string
+    workspaceId?: string
+  },
   currentName: string,
 ) {
   const prefix = mailDatabasePrefix(input)

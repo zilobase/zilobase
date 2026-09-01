@@ -59,8 +59,10 @@ export function useMailController(input: {
     setDatabase(null)
     const identity = {
       apiOrigin: new URL(toApiUrl("/"), window.location.origin).origin,
+      bindingId: input.connection.bindingId ?? input.connection.connectionId,
       connectionId: input.connection.connectionId,
       userId: input.userId,
+      workspaceId: input.connection.workspaceId ?? "legacy",
     }
     let active = true
     void openMailDatabase(identity).then((next) => {
@@ -77,7 +79,12 @@ export function useMailController(input: {
       // such as disconnect, logout, and server replacement own cache closure.
       active = false
     }
-  }, [input.connection.connectionId, input.userId])
+  }, [
+    input.connection.bindingId,
+    input.connection.connectionId,
+    input.connection.workspaceId,
+    input.userId,
+  ])
 
   const cachedThreads = useLiveQuery(
     () => database ? database.threads.orderBy("internalDate").reverse().toArray() : [],

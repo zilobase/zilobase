@@ -7,9 +7,11 @@ export const MAIL_REALTIME_PROTOCOL = "zilobase.mail.v1"
 export const MAIL_REALTIME_AUTH_PROTOCOL_PREFIX = "zilobase.mail.auth."
 
 export type MailRealtimeTicketClaims = {
+  bindingId: string
   connectionId: string
   exp: number
   userId: string
+  workspaceId: string
 }
 
 export async function createMailRealtimeTicket(
@@ -62,7 +64,9 @@ function signingKey(env: RuntimeEnv, usages: KeyUsage[]) {
 function isClaims(value: unknown): value is MailRealtimeTicketClaims {
   if (!value || typeof value !== "object") return false
   const claims = value as Record<string, unknown>
-  return typeof claims.connectionId === "string" && claims.connectionId.length <= 512 &&
+  return typeof claims.bindingId === "string" && claims.bindingId.length <= 512 &&
+    typeof claims.connectionId === "string" && claims.connectionId.length <= 512 &&
     typeof claims.userId === "string" && claims.userId.length <= 512 &&
+    typeof claims.workspaceId === "string" && claims.workspaceId.length <= 512 &&
     typeof claims.exp === "number"
 }

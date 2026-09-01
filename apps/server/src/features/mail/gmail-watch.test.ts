@@ -14,6 +14,6 @@ test("Gmail watch topics require canonical Pub/Sub resource names", () => {
 
 test("watch renewal uses a database claim lock", async () => {
   const watch = await readFile(new URL("./gmail-watch.ts", import.meta.url), "utf8")
-  assert.match(watch, /\.returning\(\{ id: gmailConnection\.id \}\)/)
+  assert.match(watch, /\.returning\(\{ id: gmailAccount\.id \}\)/)
   assert.match(watch, /RENEW_LOCK_MS/)
 })

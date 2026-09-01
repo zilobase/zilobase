@@ -42,7 +42,9 @@ test("Pub/Sub envelopes reject malformed base64, oversized IDs, and missing mess
 test("Pub/Sub revision advancement is one atomic newer-history update", async () => {
   const source = await readFile(new URL("./gmail-pubsub.ts", import.meta.url), "utf8")
   assert.match(source, /return runWithDbEnv\(env, async \(\) =>/)
-  assert.match(source, /mailboxRevision:\s*sql`\$\{gmailConnection\.mailboxRevision\} \+ 1`/)
+  assert.match(source, /mailboxRevision:\s*sql`\$\{gmailAccount\.mailboxRevision\} \+ 1`/)
   assert.match(source, /notificationHistoryId\}::numeric < \$\{notification\.historyId\}::numeric/)
+  assert.match(source, /from\(gmailWorkspaceConnection\)/)
+  assert.match(source, /publishMailNotification\(env, event\)/)
   assert.doesNotMatch(source, /subject|snippet|bodyHtml|bodyText/)
 })

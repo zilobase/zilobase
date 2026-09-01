@@ -1,5 +1,5 @@
 export function register({ assert, loadModule, test }) {
-  test("mail cache names are scoped to origin, user, and connection", async () => {
+  test("mail cache names are scoped to origin, user, workspace, and binding", async () => {
     const { mailDatabaseName } = await loadModule(
       "/src/features/mail/cache/mail-database.ts",
     )
@@ -7,10 +7,12 @@ export function register({ assert, loadModule, test }) {
     assert.equal(
       mailDatabaseName({
         apiOrigin: "https://api.example.com/path",
+        bindingId: "binding-1",
         connectionId: "gmail-1",
         userId: "user-1",
+        workspaceId: "workspace-1",
       }),
-      "zilobase:v1:https%3A%2F%2Fapi.example.com:user-1:mail:gmail-1",
+      "zilobase:v2:https%3A%2F%2Fapi.example.com:user-1:workspace:workspace-1:mail:binding-1",
     )
   })
 
@@ -78,6 +80,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.equal((await database.messages.get("message-1"))?.subject, "Subject")
     assert.deepEqual(await database.syncState.get("primary"), {
+      bindingId: "gmail-transaction",
       connectionId: "gmail-transaction",
       historyId: "10",
       key: "primary",
@@ -85,8 +88,9 @@ export function register({ assert, loadModule, test }) {
       loadedViews: { inbox: true },
       mailboxRevision: 2,
       pageTokens: { inbox: "next" },
-      schemaVersion: 2,
+      schemaVersion: 3,
       userId: "user-1",
+      workspaceId: "legacy",
     })
 
     const name = database.name
@@ -168,7 +172,7 @@ export function register({ assert, loadModule, test }) {
     await first.messages.put(mutationFixture().messages[0])
     closeMailDatabase(first.name)
     const rebuilt = await openMailDatabase(identity)
-    assert.equal((await rebuilt.syncState.get("primary")).schemaVersion, 2)
+    assert.equal((await rebuilt.syncState.get("primary")).schemaVersion, 3)
     assert.equal(await rebuilt.messages.count(), 0)
     await destroyMailDatabase(rebuilt.name)
   })

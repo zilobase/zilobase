@@ -102,9 +102,11 @@ export type ServerRuntimeAdapter = {
 };
 
 export type MailNotificationEvent = {
+  bindingId: string;
   connectionId: string;
   revision: number;
   userId: string;
+  workspaceId: string;
 };
 
 export type MeetingRecorderRuntimeInput = {

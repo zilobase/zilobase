@@ -11,9 +11,11 @@ type MailRealtimeTicket = {
 }
 
 type MailRealtimeMessage = {
+  bindingId: string
   connectionId: string
   revision: number
   type: "mail.invalidate"
+  workspaceId: string
 }
 
 type LockManagerLike = {
@@ -30,9 +32,11 @@ const HEARTBEAT_MS = 20_000
 const MAX_RECONNECT_MS = 30_000
 
 export function useMailRealtime(input: {
+  bindingId: string
   connectionId: string
   enabled: boolean
   onSynchronize: () => Promise<unknown>
+  workspaceId: string
 }) {
   useEffect(() => {
     if (!input.enabled || typeof WebSocket === "undefined") return
@@ -44,15 +48,15 @@ export function useMailRealtime(input: {
     let ticketTimer: ReturnType<typeof setTimeout> | null = null
     const channel = typeof BroadcastChannel === "undefined"
       ? null
-      : new BroadcastChannel(`zilobase:mail:${input.connectionId}`)
+      : new BroadcastChannel(`zilobase:mail:${input.workspaceId}:${input.bindingId}`)
 
     const synchronizeRevision = (revision: number) => coordinateMailRevision({
-      connectionId: input.connectionId,
+      bindingId: input.bindingId,
       revision,
       synchronize: input.onSynchronize,
     })
     const recover = () => coordinateMailRecovery({
-      connectionId: input.connectionId,
+      bindingId: input.bindingId,
       synchronize: input.onSynchronize,
     })
 
@@ -74,7 +78,10 @@ export function useMailRealtime(input: {
       if (stopped || navigator.onLine === false || socket) return
       recordDesktopDiagnostic("mail.socket_state", { status: "started" })
       try {
-        const ticket = await apiFetch<MailRealtimeTicket>("/mail/realtime-ticket", {
+        const ticketPath = input.workspaceId === "legacy"
+          ? "/mail/realtime-ticket"
+          : `/workspaces/${encodeURIComponent(input.workspaceId)}/mail/realtime-ticket`
+        const ticket = await apiFetch<MailRealtimeTicket>(ticketPath, {
           body: "{}",
           method: "POST",
         })
@@ -97,7 +104,11 @@ export function useMailRealtime(input: {
           void recover()
         })
         nextSocket.addEventListener("message", (event) => {
-          const message = parseMailRealtimeMessage(event.data, input.connectionId)
+          const message = parseMailRealtimeMessage(
+            event.data,
+            input.bindingId,
+            input.workspaceId,
+          )
           if (!message) return
           channel?.postMessage(message)
           void synchronizeRevision(message.revision)
@@ -127,7 +138,11 @@ export function useMailRealtime(input: {
     }
     if (channel) {
       channel.onmessage = (event) => {
-        const message = parseMailRealtimeMessage(event.data, input.connectionId)
+        const message = parseMailRealtimeMessage(
+          event.data,
+          input.bindingId,
+          input.workspaceId,
+        )
         if (message) void synchronizeRevision(message.revision)
       }
     }
@@ -146,17 +161,25 @@ export function useMailRealtime(input: {
       window.removeEventListener("focus", handleFocus)
       window.removeEventListener("online", handleOnline)
     }
-  }, [input.connectionId, input.enabled, input.onSynchronize])
+  }, [
+    input.bindingId,
+    input.enabled,
+    input.onSynchronize,
+    input.workspaceId,
+  ])
 }
 
 export async function coordinateMailRevision(input: {
-  connectionId: string
+  bindingId?: string
+  connectionId?: string
   locks?: LockManagerLike | null
   revision: number
   storage?: StorageLike | null
   synchronize: () => Promise<unknown>
 }) {
-  const key = `zilobase:mail:revision:${input.connectionId}`
+  const scope = input.bindingId ?? input.connectionId
+  if (!scope) throw new Error("A mail binding is required.")
+  const key = `zilobase:mail:revision:${scope}`
   const storage = input.storage === undefined ? browserStorage() : input.storage
   const locks = input.locks === undefined ? browserLocks() : input.locks
   const synchronize = async () => {
@@ -169,24 +192,27 @@ export async function coordinateMailRevision(input: {
   }
   if (!locks) return synchronize()
   return locks.request(
-    `zilobase:mail:sync:${input.connectionId}`,
+    `zilobase:mail:sync:${scope}`,
     { ifAvailable: true, mode: "exclusive" },
     (lock) => lock ? synchronize() : Promise.resolve(false),
   )
 }
 
 export async function coordinateMailRecovery(input: {
-  connectionId: string
+  bindingId?: string
+  connectionId?: string
   locks?: LockManagerLike | null
   synchronize: () => Promise<unknown>
 }) {
   const locks = input.locks === undefined ? browserLocks() : input.locks
+  const scope = input.bindingId ?? input.connectionId
+  if (!scope) throw new Error("A mail binding is required.")
   if (!locks) {
     await input.synchronize()
     return true
   }
   return locks.request(
-    `zilobase:mail:sync:${input.connectionId}`,
+    `zilobase:mail:sync:${scope}`,
     { ifAvailable: true, mode: "exclusive" },
     async (lock) => {
       if (!lock) return false
@@ -200,7 +226,11 @@ export function mailReconnectDelay(attempt: number) {
   return Math.min(MAX_RECONNECT_MS, 1_000 * 2 ** Math.max(0, Math.min(attempt, 10)))
 }
 
-function parseMailRealtimeMessage(data: unknown, connectionId: string): MailRealtimeMessage | null {
+function parseMailRealtimeMessage(
+  data: unknown,
+  bindingId: string,
+  workspaceId: string,
+): MailRealtimeMessage | null {
   let value = data
   if (typeof data === "string") {
     try { value = JSON.parse(data) } catch { return null }
@@ -209,7 +239,9 @@ function parseMailRealtimeMessage(data: unknown, connectionId: string): MailReal
   const message = value as Partial<MailRealtimeMessage>
   if (
     message.type !== "mail.invalidate" ||
-    message.connectionId !== connectionId ||
+    message.bindingId !== bindingId ||
+    message.workspaceId !== workspaceId ||
+    typeof message.connectionId !== "string" ||
     !Number.isSafeInteger(message.revision) ||
     Number(message.revision) < 0
   ) return null

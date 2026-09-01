@@ -32,24 +32,24 @@ export function attachNodeMailRealtimeRuntime(
     serverOptions: { maxPayload: 4 * 1024 },
     hooks: {
       async upgrade(request) {
-        const connectionId = new URL(request.url).searchParams.get("connection")
+        const bindingId = new URL(request.url).searchParams.get("binding")
         const token = readTicket(request.headers)
-        if (!connectionId || !token) throw new Response("Missing mail realtime ticket", { status: 401 })
+        if (!bindingId || !token) throw new Response("Missing mail realtime ticket", { status: 401 })
         const claims = await verifyMailRealtimeTicket(token, env)
-        if (claims.connectionId !== connectionId) throw new Response("Invalid mail realtime ticket", { status: 403 })
+        if (claims.bindingId !== bindingId) throw new Response("Invalid mail realtime ticket", { status: 403 })
         return { context: { mailRealtime: claims }, protocol: MAIL_REALTIME_PROTOCOL }
       },
       async open(peer) {
         const claims = readClaims(peer)
         if (!claims) return peer.close(1008, "Invalid mail realtime session")
         attachments.set(peer, claims)
-        const room = rooms.get(claims.connectionId) ?? { peers: new Set<Peer>() }
-        rooms.set(claims.connectionId, room)
+        const room = rooms.get(claims.bindingId) ?? { peers: new Set<Peer>() }
+        rooms.set(claims.bindingId, room)
         room.peers.add(peer)
         void recordMailMetric("socket_state", { connectionId: claims.connectionId, code: "open", outcome: "success" })
         if (bus && !room.unsubscribe) {
-          room.unsubscribe = await bus.subscribe(mailRealtimeChannel(claims.connectionId), (payload) => {
-            if (isNotification(payload, claims.connectionId)) broadcast(room, payload, attachments)
+          room.unsubscribe = await bus.subscribe(mailRealtimeChannel(claims.bindingId), (payload) => {
+            if (isNotification(payload, claims.bindingId)) broadcast(room, payload, attachments)
           })
         }
         peer.send(JSON.stringify({ type: "mail.ready" }))
@@ -91,15 +91,21 @@ export function attachNodeMailRealtimeRuntime(
     },
     async publishNotification(event: MailNotificationEvent) {
       if (!isMailFeatureEnabled(env)) return
-      const room = rooms.get(event.connectionId)
+      const room = rooms.get(event.bindingId)
       if (room) broadcast(room, event, attachments)
-      await bus?.publish(mailRealtimeChannel(event.connectionId), event)
+      await bus?.publish(mailRealtimeChannel(event.bindingId), event)
     },
   }
 }
 
-function broadcast(room: Room, event: Pick<MailNotificationEvent, "connectionId" | "revision">, attachments: WeakMap<Peer, MailRealtimeTicketClaims>) {
-  const encoded = JSON.stringify({ connectionId: event.connectionId, revision: event.revision, type: "mail.invalidate" })
+function broadcast(room: Room, event: MailNotificationEvent, attachments: WeakMap<Peer, MailRealtimeTicketClaims>) {
+  const encoded = JSON.stringify({
+    bindingId: event.bindingId,
+    connectionId: event.connectionId,
+    revision: event.revision,
+    type: "mail.invalidate",
+    workspaceId: event.workspaceId,
+  })
   for (const peer of room.peers) {
     const claims = attachments.get(peer)
     if (!claims || claims.exp <= Date.now()) {
@@ -113,11 +119,11 @@ async function removePeer(peer: Peer, attachments: WeakMap<Peer, MailRealtimeTic
   const claims = attachments.get(peer)
   if (!claims) return
   attachments.delete(peer)
-  const room = rooms.get(claims.connectionId)
+  const room = rooms.get(claims.bindingId)
   room?.peers.delete(peer)
   if (room && room.peers.size === 0) {
     await room.unsubscribe?.()
-    rooms.delete(claims.connectionId)
+    rooms.delete(claims.bindingId)
   }
 }
 
@@ -132,10 +138,14 @@ function readClaims(peer: Peer) {
   return value && typeof value === "object" ? value as MailRealtimeTicketClaims : null
 }
 
-function isNotification(value: unknown, connectionId: string): value is MailNotificationEvent {
+function isNotification(value: unknown, bindingId: string): value is MailNotificationEvent {
   if (!value || typeof value !== "object") return false
   const event = value as Record<string, unknown>
-  return event.connectionId === connectionId && Number.isSafeInteger(event.revision) && (event.revision as number) >= 0
+  return event.bindingId === bindingId &&
+    typeof event.connectionId === "string" &&
+    typeof event.workspaceId === "string" &&
+    Number.isSafeInteger(event.revision) &&
+    (event.revision as number) >= 0
 }
 
 function rejectUpgrade(socket: Duplex, status = "401 Unauthorized") {

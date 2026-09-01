@@ -121,9 +121,11 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
     view,
   })
   useMailRealtime({
+    bindingId: connection.bindingId ?? connection.connectionId!,
     connectionId: connection.connectionId!,
     enabled: controller.online && Boolean(controller.database),
     onSynchronize: controller.refresh,
+    workspaceId: connection.workspaceId ?? "legacy",
   })
   useEffect(() => {
     if (!controller.error) return
@@ -210,8 +212,10 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
       await apiFetch("/mail/connection", { method: "DELETE" })
       await destroyMailDatabase(mailDatabaseName({
         apiOrigin: new URL(toApiUrl("/"), window.location.origin).origin,
+        bindingId: connection.bindingId ?? connection.connectionId!,
         connectionId: connection.connectionId!,
         userId,
+        workspaceId: connection.workspaceId ?? "legacy",
       }))
       setSelection(null)
       setComposerSeed(null)

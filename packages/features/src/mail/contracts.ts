@@ -76,6 +76,8 @@ export type MailLabelRecord = {
 }
 
 export type MailConnection = {
+  accountId?: string | null
+  bindingId?: string | null
   connectionId: string | null
   email: string | null
   mailboxReady: boolean
@@ -83,6 +85,7 @@ export type MailConnection = {
   providerConfigured: boolean
   status: MailConnectionStatus
   watchExpiresAt: string | null
+  workspaceId?: string | null
 }
 
 export type MailView =

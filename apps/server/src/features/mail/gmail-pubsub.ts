@@ -1,7 +1,10 @@
 import { and, eq, sql } from "drizzle-orm"
 
 import { db, runWithDbEnv } from "../../infrastructure/database"
-import { gmailConnection } from "../../infrastructure/database/schema"
+import {
+  gmailAccount,
+  gmailWorkspaceConnection,
+} from "../../infrastructure/database/schema"
 import { getStringEnv, type RuntimeEnv } from "../../shared/config/config"
 import { publishMailNotification } from "../../infrastructure/runtime/runtime-adapter"
 import { verifyGoogleOidcToken } from "./security/google-oidc-token"
@@ -33,21 +36,41 @@ export async function processGmailPubsubRequest(
   const notification = parsePubsubEnvelope(text, config.subscription)
   return runWithDbEnv(env, async () => {
     const updated = await db
-      .update(gmailConnection)
+      .update(gmailAccount)
       .set({
-        mailboxRevision: sql`${gmailConnection.mailboxRevision} + 1`,
+        mailboxRevision: sql`${gmailAccount.mailboxRevision} + 1`,
         notificationHistoryId: notification.historyId,
         updatedAt: new Date(),
       })
       .where(and(
-        eq(gmailConnection.email, notification.emailAddress),
-        eq(gmailConnection.status, "connected"),
-        sql`(${gmailConnection.notificationHistoryId} is null or ${gmailConnection.notificationHistoryId}::numeric < ${notification.historyId}::numeric)`,
+        eq(gmailAccount.email, notification.emailAddress),
+        eq(gmailAccount.status, "connected"),
+        sql`(${gmailAccount.notificationHistoryId} is null or ${gmailAccount.notificationHistoryId}::numeric < ${notification.historyId}::numeric)`,
       ))
-      .returning({ connectionId: gmailConnection.id, revision: gmailConnection.mailboxRevision, userId: gmailConnection.userId })
-    const event = updated[0] ?? null
-    if (event) await publishMailNotification(env, event)
-    return event
+      .returning({
+        connectionId: gmailAccount.id,
+        revision: gmailAccount.mailboxRevision,
+        userId: gmailAccount.userId,
+      })
+    const events = []
+    for (const account of updated) {
+      const bindings = await db
+        .select({
+          bindingId: gmailWorkspaceConnection.id,
+          workspaceId: gmailWorkspaceConnection.workspaceId,
+        })
+        .from(gmailWorkspaceConnection)
+        .where(and(
+          eq(gmailWorkspaceConnection.gmailAccountId, account.connectionId),
+          eq(gmailWorkspaceConnection.userId, account.userId),
+        ))
+      for (const binding of bindings) {
+        const event = { ...account, ...binding }
+        events.push(event)
+        await publishMailNotification(env, event)
+      }
+    }
+    return events
   })
 }
 
