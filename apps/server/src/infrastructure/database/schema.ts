@@ -172,6 +172,45 @@ export const gmailConnection = pgTable(
   ],
 );
 
+export const gmailAccount = pgTable(
+  "gmail_account",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    googleSubject: text("google_subject").notNull(),
+    email: text("email").notNull(),
+    scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
+    refreshTokenCiphertext: text("refresh_token_ciphertext").notNull(),
+    refreshTokenIv: text("refresh_token_iv").notNull(),
+    refreshTokenKeyVersion: text("refresh_token_key_version").notNull(),
+    status: text("status").notNull().default("connected"),
+    notificationHistoryId: text("notification_history_id"),
+    mailboxRevision: integer("mailbox_revision").notNull().default(0),
+    watchExpiresAt: timestamp("watch_expires_at", { withTimezone: true }),
+    lastWatchAt: timestamp("last_watch_at", { withTimezone: true }),
+    lastErrorCode: text("last_error_code"),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("gmail_account_owner_subject_unique").on(
+      table.userId,
+      table.googleSubject,
+    ),
+    uniqueIndex("gmail_account_id_user_unique").on(table.id, table.userId),
+    index("gmail_account_email_idx").on(table.email),
+    index("gmail_account_watch_expiry_idx").on(
+      table.status,
+      table.watchExpiresAt,
+    ),
+    check(
+      "gmail_account_status_check",
+      sql`${table.status} in ('connected', 'reconnect_required')`,
+    ),
+  ],
+);
+
 export const gmailOauthAttempt = pgTable(
   "gmail_oauth_attempt",
   {
@@ -359,6 +398,34 @@ export const member = pgTable(
       "member_temporary_expiry_check",
       sql`(${table.role} = 'temporary' and ${table.accessExpiresAt} is not null) or (${table.role} <> 'temporary' and ${table.accessExpiresAt} is null)`,
     ),
+  ],
+);
+
+export const gmailWorkspaceConnection = pgTable(
+  "gmail_workspace_connection",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    userId: text("user_id").notNull(),
+    gmailAccountId: text("gmail_account_id").notNull(),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("gmail_workspace_connection_workspace_user_unique").on(
+      table.workspaceId,
+      table.userId,
+    ),
+    index("gmail_workspace_connection_account_idx").on(table.gmailAccountId),
+    foreignKey({
+      columns: [table.workspaceId, table.userId],
+      foreignColumns: [member.organizationId, member.userId],
+      name: "gmail_workspace_connection_member_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [table.gmailAccountId, table.userId],
+      foreignColumns: [gmailAccount.id, gmailAccount.userId],
+      name: "gmail_workspace_connection_account_owner_fk",
+    }).onDelete("cascade"),
   ],
 );
 

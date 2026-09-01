@@ -31,3 +31,40 @@ test("Gmail send receipts contain deduplication metadata but no mail content", a
   assert.match(migration, /expires_at/)
   assert.doesNotMatch(migration, /body|subject|sender|recipient|attachment/)
 })
+
+test("workspace Gmail storage separates reusable accounts from private bindings", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../drizzle/0065_workspace_gmail_connections.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+
+  assert.match(migration, /CREATE TABLE "gmail_account"/)
+  assert.match(migration, /CREATE TABLE "gmail_workspace_connection"/)
+  assert.match(migration, /gmail_account_owner_subject_unique/)
+  assert.match(migration, /gmail_workspace_connection_workspace_user_unique/)
+  assert.match(migration, /gmail_workspace_connection_member_fk/)
+  assert.match(migration, /gmail_workspace_connection_account_owner_fk/)
+})
+
+test("legacy Gmail credentials become unbound reconnect-required accounts", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../drizzle/0065_workspace_gmail_connections.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+
+  assert.match(
+    migration,
+    /INSERT INTO "gmail_account"[\s\S]*'reconnect_required'/,
+  )
+  assert.match(migration, /'legacy_reconnect_required'/)
+  assert.doesNotMatch(
+    migration,
+    /INSERT INTO "gmail_workspace_connection"/,
+  )
+})

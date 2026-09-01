@@ -456,6 +456,13 @@
       "when": 1788192000000,
       "tag": "0064_navigation_realtime_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1788220800000,
+      "tag": "0065_workspace_gmail_connections",
+      "breakpoints": true
     }
   ]
 }
