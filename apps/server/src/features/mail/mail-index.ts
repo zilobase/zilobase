@@ -17,6 +17,7 @@ import {
   type GmailThread,
 } from "./gmail-gateway"
 import { normalizeGmailThread } from "./mail-normalize"
+import { enqueueMailDatabaseSyncForIndexedThread } from "./mail-database-sync-worker"
 
 const BACKFILL_PAGE_SIZE = 100
 const MAX_HISTORY_PAGES_PER_ADVANCE = 5
@@ -352,6 +353,7 @@ async function upsertIndexedThreads(
         },
         target: [mailThreadIndex.gmailAccountId, mailThreadIndex.gmailThreadId],
       })
+    await enqueueMailDatabaseSyncForIndexedThread(row)
   }
 }
 

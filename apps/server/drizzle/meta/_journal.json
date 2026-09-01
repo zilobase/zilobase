@@ -498,6 +498,13 @@
       "when": 1788238800000,
       "tag": "0070_mail_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1788242400000,
+      "tag": "0071_mail_database_sync",
+      "breakpoints": true
     }
   ]
 }

@@ -82,6 +82,7 @@ import {
   scheduleMailReminder,
 } from "./mail-reminders"
 import { inspectOrExecuteUnsubscribe, MailUnsubscribeError } from "./safe-unsubscribe"
+import { drainMailDatabaseSyncOutbox, getMailDatabaseSyncViewStatus, MailDatabaseSyncPausedError } from "./mail-database-sync-worker"
 
 export const mailRoutes = new Hono<AppBindings>()
 
@@ -324,6 +325,17 @@ mailRoutes.get("/views", async (c) => {
   }
 })
 
+mailRoutes.get("/views/:viewId/database-sync-status", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try {
+    return c.json(await getMailDatabaseSyncViewStatus(owned.bindingId, c.req.param("viewId")))
+  } catch (error) {
+    if (error instanceof MailDatabaseSyncPausedError) return c.json({ message: error.message }, 404)
+    throw error
+  }
+})
+
 mailRoutes.get("/reminders", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
@@ -390,7 +402,9 @@ mailRoutes.post("/index/advance", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
   try {
-    return c.json({ index: await advanceMailIndex(c.env, owned.connection.id) })
+    const index = await advanceMailIndex(c.env, owned.connection.id)
+    const databaseSync = await drainMailDatabaseSyncOutbox(c.env, { bindingId: owned.bindingId, limit: 10 })
+    return c.json({ databaseSync, index })
   } catch (error) {
     if (error instanceof GmailApiError) {
       const status = error.status === 401 ? 401 : error.status === 429 ? 429 : 502

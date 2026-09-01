@@ -517,6 +517,64 @@ export const mailReminder = pgTable(
   ],
 );
 
+export const mailDatabaseSyncRecord = pgTable(
+  "mail_database_sync_record",
+  {
+    id: text("id").primaryKey(),
+    bindingId: text("binding_id")
+      .notNull()
+      .references(() => gmailWorkspaceConnection.id, { onDelete: "cascade" }),
+    viewId: text("view_id")
+      .notNull()
+      .references(() => mailView.id, { onDelete: "cascade" }),
+    gmailThreadId: text("gmail_thread_id").notNull(),
+    destinationDataSourceId: text("destination_data_source_id")
+      .notNull()
+      .references(() => dataSource.id, { onDelete: "restrict" }),
+    databaseRowId: text("database_row_id").notNull(),
+    pageId: text("page_id").notNull(),
+    status: text("status").notNull().default("active"),
+    lastSourceUpdatedAt: timestamp("last_source_updated_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("mail_database_sync_record_view_thread_unique").on(table.viewId, table.gmailThreadId),
+    index("mail_database_sync_record_binding_idx").on(table.bindingId, table.updatedAt),
+    index("mail_database_sync_record_destination_idx").on(table.destinationDataSourceId, table.databaseRowId),
+    check("mail_database_sync_record_status_check", sql`${table.status} in ('active', 'paused')`),
+  ],
+);
+
+export const mailDatabaseSyncOutbox = pgTable(
+  "mail_database_sync_outbox",
+  {
+    id: text("id").primaryKey(),
+    bindingId: text("binding_id")
+      .notNull()
+      .references(() => gmailWorkspaceConnection.id, { onDelete: "cascade" }),
+    viewId: text("view_id")
+      .notNull()
+      .references(() => mailView.id, { onDelete: "cascade" }),
+    gmailThreadId: text("gmail_thread_id").notNull(),
+    sourceUpdatedAt: timestamp("source_updated_at", { withTimezone: true }).notNull(),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    workerId: text("worker_id"),
+    lastError: text("last_error"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("mail_database_sync_outbox_view_thread_unique").on(table.viewId, table.gmailThreadId),
+    index("mail_database_sync_outbox_ready_idx").on(table.status, table.nextAttemptAt),
+    index("mail_database_sync_outbox_binding_idx").on(table.bindingId, table.updatedAt),
+    check("mail_database_sync_outbox_status_check", sql`${table.status} in ('pending', 'processing', 'retry', 'completed', 'paused')`),
+  ],
+);
+
 export const mailIndexState = pgTable("mail_index_state", {
   gmailAccountId: text("gmail_account_id")
     .primaryKey()

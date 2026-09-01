@@ -569,6 +569,14 @@ export type MailDatabaseSyncConfig = {
   workspaceId: string | null
 }
 
+export type MailDatabaseSyncViewStatus = {
+  lastError: string | null
+  paused: number
+  pending: number
+  synced: number
+  viewId: string
+}
+
 export type MailViewConfig = {
   databaseSync: MailDatabaseSyncConfig
   filter: MailFilterExpression

@@ -11,6 +11,7 @@ import {
 
 import { db } from "../../infrastructure/database"
 import { mailProperty, mailThreadIndex, mailThreadPropertyValue, member, user } from "../../infrastructure/database/schema"
+import { enqueueMailDatabaseSyncForThread } from "./mail-database-sync-worker"
 
 export class MailPropertyError extends Error {
   constructor(message: string, readonly status: 400 | 404 | 409) {
@@ -125,6 +126,7 @@ export async function setMailThreadPropertyValue(input: {
     set: { updatedAt: now, value },
     target: [mailThreadPropertyValue.propertyId, mailThreadPropertyValue.gmailThreadId],
   })
+  await enqueueMailDatabaseSyncForThread(input.gmailAccountId, input.threadId)
   return { propertyId: property.id, value } satisfies MailThreadPropertyValue
 }
 

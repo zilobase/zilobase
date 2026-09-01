@@ -3,26 +3,31 @@ import {
   mailSystemPropertyCatalog,
   type MailCustomPropertyType,
   type MailDatabaseFieldMapping,
+  type MailDatabaseSyncViewStatus,
   type MailPersistedView,
   type MailPropertyDefinition,
 } from "@zilobase/features/mail"
 import { useAddDatabaseProperty, useCreateDatabase, useCreateDatabaseDataSource, useDatabase } from "@zilobase/features/databases"
 import { usePageNavigation } from "@zilobase/features/pages"
+import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { getApiErrorMessage } from "@/features/desktop/network/api"
+import { apiFetch } from "@/features/desktop/network/api"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { Input } from "@/shared/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
+import { mailApiBasePath } from "../model/mail-api-path"
 
 type SourceProperty = { id: string; label: string; type: string }
 
-export function MailDatabaseSyncPanel({ config, onChange, properties, saving, viewName, workspaceId }: {
+export function MailDatabaseSyncPanel({ config, onChange, properties, saving, viewId, viewName, workspaceId }: {
   config: MailPersistedView["config"]
   onChange: (config: MailPersistedView["config"]) => Promise<void>
   properties: MailPropertyDefinition[]
   saving: boolean
+  viewId: string
   viewName: string
   workspaceId: string
 }) {
@@ -37,6 +42,12 @@ export function MailDatabaseSyncPanel({ config, onChange, properties, saving, vi
   const createDatabase = useCreateDatabase()
   const createDataSource = useCreateDatabaseDataSource()
   const addProperty = useAddDatabaseProperty()
+  const syncStatus = useQuery({
+    enabled: config.databaseSync.enabled,
+    queryFn: ({ signal }) => apiFetch<MailDatabaseSyncViewStatus>(`${mailApiBasePath(workspaceId)}/views/${encodeURIComponent(viewId)}/database-sync-status`, { signal }),
+    queryKey: ["mail", "database-sync-status", workspaceId, viewId],
+    refetchInterval: 15_000,
+  })
   const sources = useMemo<SourceProperty[]>(() => [
     ...mailSystemPropertyCatalog.map((property) => ({ id: property.id, label: property.label, type: property.type })),
     ...properties.map((property) => ({ id: property.id, label: property.name, type: property.type })),
@@ -106,16 +117,16 @@ export function MailDatabaseSyncPanel({ config, onChange, properties, saving, vi
         <p className="mt-1 text-xs text-content-secondary">Mail never syncs across workspace boundaries.</p>
       </div>
       <div>
-        <div className="flex items-center justify-between"><label className="text-xs font-medium text-content-secondary" htmlFor="mail-sync-database">Database</label><Button disabled={working} onClick={() => void createDestination()} size="sm" type="button" variant="ghost">Create new</Button></div>
-        <Select disabled={working} onValueChange={selectDatabase} value={draft.destinationDatabaseId ?? "none"}>
+        <div className="flex items-center justify-between"><label className="text-xs font-medium text-content-secondary" htmlFor="mail-sync-database">Database</label><Button disabled={working || config.databaseSync.enabled} onClick={() => void createDestination()} size="sm" type="button" variant="ghost">Create new</Button></div>
+        <Select disabled={working || config.databaseSync.enabled} onValueChange={selectDatabase} value={draft.destinationDatabaseId ?? "none"}>
           <SelectTrigger id="mail-sync-database" className="w-full"><SelectValue placeholder="Select a database" /></SelectTrigger>
           <SelectContent><SelectItem value="none" disabled>Select a database</SelectItem>{(navigation.data?.databases ?? []).map((database) => <SelectItem key={database.id} value={database.id}>{database.name}</SelectItem>)}</SelectContent>
         </Select>
       </div>
       {draft.destinationDatabaseId ? (
         <div>
-          <div className="flex items-center justify-between"><label className="text-xs font-medium text-content-secondary" htmlFor="mail-sync-source">Data source</label><Button disabled={working} onClick={() => void createDestinationDataSource()} size="sm" type="button" variant="ghost">Create source</Button></div>
-          <Select disabled={working || selectedDatabase.isLoading} onValueChange={(destinationDataSourceId) => setDraft((current) => ({ ...current, destinationDataSourceId, mappings: requiredTitleMapping(current.mappings) }))} value={draft.destinationDataSourceId ?? "none"}>
+          <div className="flex items-center justify-between"><label className="text-xs font-medium text-content-secondary" htmlFor="mail-sync-source">Data source</label><Button disabled={working || config.databaseSync.enabled} onClick={() => void createDestinationDataSource()} size="sm" type="button" variant="ghost">Create source</Button></div>
+          <Select disabled={working || config.databaseSync.enabled || selectedDatabase.isLoading} onValueChange={(destinationDataSourceId) => setDraft((current) => ({ ...current, destinationDataSourceId, mappings: requiredTitleMapping(current.mappings) }))} value={draft.destinationDataSourceId ?? "none"}>
             <SelectTrigger id="mail-sync-source" className="w-full"><SelectValue placeholder="Select a data source" /></SelectTrigger>
             <SelectContent><SelectItem value="none" disabled>Select a data source</SelectItem>{(selectedDatabase.data?.dataSources ?? []).map((source) => <SelectItem key={source.id} value={source.id}>{source.name}</SelectItem>)}</SelectContent>
           </Select>
@@ -142,6 +153,7 @@ export function MailDatabaseSyncPanel({ config, onChange, properties, saving, vi
         <Checkbox checked={draft.enabled} disabled={working || !complete} onCheckedChange={(checked) => setDraft((current) => ({ ...current, enabled: checked === true }))} />
         <span><span className="block font-medium text-content-primary">Sync new matching mail</span><span className="block text-xs text-content-secondary">Enabling records the cutoff now. Existing mail is never backfilled, and disabling never removes database rows.</span></span>
       </label>
+      {syncStatus.data ? <p className="text-xs text-content-secondary">{syncStatus.data.synced} synced · {syncStatus.data.pending} pending{syncStatus.data.paused ? ` · ${syncStatus.data.paused} paused: ${syncStatus.data.lastError ?? "destination unavailable"}` : ""}</p> : null}
       <Button className="w-full" disabled={working || (draft.enabled && !complete)} onClick={() => void save()} type="button">{working ? "Saving…" : "Save database sync"}</Button>
     </div>
   )

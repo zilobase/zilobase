@@ -583,6 +583,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                                 onChange={(config) => persistedViewsQuery.updateView({ value: { config }, viewId: activePersistedView.id }).then(() => undefined)}
                                 properties={customProperties}
                                 saving={persistedViewsQuery.savingView}
+                                viewId={activePersistedView.id}
                                 viewName={activePersistedView.name}
                                 workspaceId={connection.workspaceId!}
                               />
