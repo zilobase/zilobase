@@ -74,6 +74,14 @@ import {
   setMailThreadPropertyValue,
   updateMailProperty,
 } from "./mail-properties"
+import {
+  advanceMailReminders,
+  cancelMailReminder,
+  listMailReminders,
+  MailReminderError,
+  scheduleMailReminder,
+} from "./mail-reminders"
+import { inspectOrExecuteUnsubscribe, MailUnsubscribeError } from "./safe-unsubscribe"
 
 export const mailRoutes = new Hono<AppBindings>()
 
@@ -314,6 +322,62 @@ mailRoutes.get("/views", async (c) => {
   } catch (error) {
     return mailViewError(c, error)
   }
+})
+
+mailRoutes.get("/reminders", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  return c.json({ reminders: await listMailReminders(owned.bindingId) })
+})
+
+mailRoutes.post("/threads/:threadId/remind", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  const threadId = safeGmailId(c.req.param("threadId"))
+  const body = (await c.req.json().catch(() => null)) as { remindAt?: unknown } | null
+  if (!threadId || !body || typeof body.remindAt !== "string") return c.json({ message: "A valid mail reminder is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    try {
+      return c.json({ reminder: await scheduleMailReminder({ bindingId: owned.bindingId, gateway, remindAt: new Date(body.remindAt as string), threadId }) }, 201)
+    } catch (error) {
+      if (error instanceof MailReminderError) return c.json({ message: error.message }, error.status)
+      throw error
+    }
+  })
+})
+
+mailRoutes.delete("/reminders/:reminderId", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try { return c.json(await cancelMailReminder(owned.bindingId, c.req.param("reminderId"))) }
+  catch (error) { if (error instanceof MailReminderError) return c.json({ message: error.message }, error.status); throw error }
+})
+
+mailRoutes.post("/reminders/advance", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => c.json(await advanceMailReminders({
+    bindingId: owned.bindingId,
+    connectionId: owned.connection.id,
+    env: c.env,
+    gateway,
+    userId: owned.userId,
+    workspaceId: owned.workspaceId,
+  })))
+})
+
+mailRoutes.post("/threads/:threadId/unsubscribe", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  const threadId = safeGmailId(c.req.param("threadId"))
+  if (!threadId) return c.json({ message: "A valid Gmail thread ID is required." }, 400)
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    try { return c.json(await inspectOrExecuteUnsubscribe(await gateway.getThread(threadId, "metadata"))) }
+    catch (error) {
+      if (error instanceof MailUnsubscribeError) return c.json({ message: error.message }, error.status)
+      throw error
+    }
+  })
 })
 
 mailRoutes.get("/index/status", async (c) => {

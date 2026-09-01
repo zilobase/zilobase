@@ -647,6 +647,8 @@ export const MAIL_METADATA_HEADERS = [
   "From",
   "In-Reply-To",
   "Message-ID",
+  "List-Unsubscribe",
+  "List-Unsubscribe-Post",
   "References",
   "Reply-To",
   "Subject",

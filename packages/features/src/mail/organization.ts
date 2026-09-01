@@ -128,6 +128,18 @@ export type MailThreadPropertyValuesResponse = {
   values: MailThreadPropertyValue[]
 }
 
+export type MailReminder = {
+  id: string
+  remindAt: string
+  status: "pending" | "fired" | "cancelled"
+  threadId: string
+}
+
+export type MailUnsubscribeResponse = {
+  executed: boolean
+  fallback: { kind: "browser" | "mailto"; url: string } | null
+}
+
 export type MailSystemProperty = {
   filterable: boolean
   groupable: boolean

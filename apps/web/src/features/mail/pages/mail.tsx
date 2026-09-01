@@ -22,6 +22,7 @@ import {
   type MailPersistedView,
   type MailPropertyDefinition,
   type MailThreadPropertyValue,
+  type MailUnsubscribeResponse,
   type MailView,
 } from "@zilobase/features/mail"
 import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
@@ -94,6 +95,7 @@ import { cloneMailFilter, MailFilterEditor, mailFiltersEqual, MailFilterToolbar 
 import { isMutableMailGroup, MailGroupEditor } from "../components/mail-group-editor"
 import { formatMailPropertyValue, MailPropertiesPanel, MailThreadPropertyBar } from "../components/mail-properties-panel"
 import { mailHoverActionCatalog, MailHoverActionIcon, MailHoverActionsPanel } from "../components/mail-hover-actions-panel"
+import { MailRowActionDialog } from "../components/mail-row-action-dialog"
 import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
@@ -102,6 +104,7 @@ import { useMailViews } from "../model/use-mail-views"
 import { useIndexedMailView } from "../model/use-indexed-mail-view"
 import { useMailGroups } from "../model/use-mail-groups"
 import { useMailProperties, useMailThreadProperties } from "../model/use-mail-properties"
+import { useMailReminders } from "../model/use-mail-reminders"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
 const organizationFolderDetails = {
@@ -154,6 +157,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const [batchSelection, setBatchSelection] = useState<Set<string>>(() => new Set())
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set())
   const [presentation, setPresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
+  const [rowActionDialog, setRowActionDialog] = useState<{ mode: "command" | "label"; thread: MailThreadSummary } | null>(null)
   const [composerSeed, setComposerSeed] = useState<MailComposeSeed | null>(() => compose ? {} : null)
   const persistedViewsQuery = useMailViews({
     bindingId: connection.bindingId,
@@ -174,6 +178,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   })
   const customProperties = mailPropertiesQuery.data?.properties ?? []
   const propertyMembers = mailPropertiesQuery.data?.members ?? []
+  const mailReminders = useMailReminders({ bindingId: connection.bindingId, enabled: organizationEnabled, workspaceId: connection.workspaceId })
   const [draftFilter, setDraftFilter] = useState<MailFilterExpression | null>(null)
   useEffect(() => {
     setDraftFilter(activePersistedView ? cloneMailFilter(activePersistedView.config.filter) : null)
@@ -454,7 +459,36 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
       if (action.effect === "bin") await controller.actOnThread(thread.id, "trash")
       return
     }
-    toast.info(`${mailHoverActionCatalog[action.kind].label} execution is available in the advanced actions pass.`)
+    if (action.kind === "command" || action.kind === "any_label") {
+      setRowActionDialog({ mode: action.kind === "command" ? "command" : "label", thread })
+      return
+    }
+    if (action.kind === "reply") {
+      await controller.openThread(thread.id)
+      const messages = controller.database ? await controller.database.messages.where("threadId").equals(thread.id).sortBy("internalDate") : []
+      const latest = messages.at(-1)
+      if (!latest) throw new Error("This thread must finish loading before you can reply.")
+      setComposerSeed(replySeed(latest, connection.email!))
+      return
+    }
+    if (action.kind === "remind") {
+      const defaultDate = new Date(Date.now() + 86_400_000).toISOString().slice(0, 16)
+      const selected = window.prompt("Remind me at (YYYY-MM-DDTHH:mm)", defaultDate)?.trim()
+      if (!selected) return
+      const remindAt = new Date(selected)
+      if (!Number.isFinite(remindAt.getTime())) throw new Error("Enter a valid reminder date and time.")
+      await mailReminders.schedule({ remindAt: remindAt.toISOString(), threadId: thread.id })
+      await controller.refresh()
+      toast.success("Reminder scheduled")
+      return
+    }
+    if (action.kind === "unsubscribe") {
+      const result = await apiFetch<MailUnsubscribeResponse>(`${mailApiBasePath(connection.workspaceId)}/threads/${encodeURIComponent(thread.id)}/unsubscribe`, { body: "{}", method: "POST" })
+      if (result.executed) { toast.success("Unsubscribed"); return }
+      if (!result.fallback || !window.confirm(`Open the sender's ${result.fallback.kind === "mailto" ? "email" : "website"} unsubscribe flow?`)) return
+      if (result.fallback.kind === "mailto") window.location.href = result.fallback.url
+      else window.open(result.fallback.url, "_blank", "noopener,noreferrer")
+    }
   }
   const visibleCustomProperties = activePersistedView
     ? orderedVisibleCustomProperties(activePersistedView, customProperties)
@@ -740,6 +774,22 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
           {viewerProps ? <ConversationViewer {...viewerProps} /> : null}
         </DialogContent>
       </Dialog>
+      <MailRowActionDialog
+        labels={controller.labels}
+        mode={rowActionDialog?.mode ?? null}
+        onClose={() => setRowActionDialog(null)}
+        onSelect={({ kind, labelId }) => {
+          const thread = rowActionDialog?.thread
+          if (!thread) return
+          if (kind === "any_label") {
+            setRowActionDialog({ mode: "label", thread })
+            return
+          }
+          setRowActionDialog(null)
+          void runHoverAction(thread, { hidden: false, id: `command-${kind}`, kind, labelId }).catch(showMailError)
+        }}
+        thread={rowActionDialog?.thread ?? null}
+      />
       {composerSeed ? (
         <MailComposer
           onClose={() => setComposerSeed(null)}

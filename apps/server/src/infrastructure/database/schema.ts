@@ -497,6 +497,26 @@ export const mailThreadPropertyValue = pgTable(
   ],
 );
 
+export const mailReminder = pgTable(
+  "mail_reminder",
+  {
+    id: text("id").primaryKey(),
+    bindingId: text("binding_id")
+      .notNull()
+      .references(() => gmailWorkspaceConnection.id, { onDelete: "cascade" }),
+    gmailThreadId: text("gmail_thread_id").notNull(),
+    remindAt: timestamp("remind_at", { withTimezone: true }).notNull(),
+    status: text("status").notNull().default("pending"),
+    firedAt: timestamp("fired_at", { withTimezone: true }),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("mail_reminder_binding_thread_unique").on(table.bindingId, table.gmailThreadId),
+    index("mail_reminder_due_idx").on(table.status, table.remindAt),
+    check("mail_reminder_status_check", sql`${table.status} in ('pending', 'fired', 'cancelled')`),
+  ],
+);
+
 export const mailIndexState = pgTable("mail_index_state", {
   gmailAccountId: text("gmail_account_id")
     .primaryKey()
