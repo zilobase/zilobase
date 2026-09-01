@@ -10,6 +10,8 @@ import {
   type MailFilterOperator,
   type MailFilterValue,
   type MailLabelRecord,
+  type MailPropertyDefinition,
+  type MailPropertyWorkspaceMember,
 } from "@zilobase/features/mail"
 
 import { DatabaseConditionEditor } from "@/features/databases/views/view/database-condition-editor"
@@ -40,6 +42,8 @@ export function MailFilterToolbar({
   dirty,
   expression,
   labels,
+  members = [],
+  properties: customProperties = [],
   onChange,
   onReset,
   onSave,
@@ -49,13 +53,15 @@ export function MailFilterToolbar({
   dirty: boolean
   expression: MailFilterExpression
   labels: MailLabelRecord[]
+  members?: MailPropertyWorkspaceMember[]
+  properties?: MailPropertyDefinition[]
   onChange: (filter: MailFilterExpression) => void
   onReset: () => void
   onSave: () => void
   onSaveAsNew: () => void
   saving: boolean
 }) {
-  const properties = useMailFilterProperties(labels)
+  const properties = useMailFilterProperties(labels, customProperties, members)
   const conditions = flattenConditions(expression)
 
   return (
@@ -98,13 +104,17 @@ export function MailFilterToolbar({
 export function MailFilterEditor({
   expression,
   labels,
+  members = [],
+  properties: customProperties = [],
   onChange,
 }: {
   expression: MailFilterExpression
   labels: MailLabelRecord[]
+  members?: MailPropertyWorkspaceMember[]
+  properties?: MailPropertyDefinition[]
   onChange: (filter: MailFilterExpression) => void
 }) {
-  const properties = useMailFilterProperties(labels)
+  const properties = useMailFilterProperties(labels, customProperties, members)
   return (
     <div className="w-80 max-w-[calc(100vw-2rem)] space-y-2 p-1">
       <MailFilterGroupEditor
@@ -220,15 +230,22 @@ function MailQuickFilterPicker({ disabled, onSelect, properties }: { disabled: b
   )
 }
 
-function useMailFilterProperties(labels: MailLabelRecord[]) {
-  return useMemo<PropertyDefinition[]>(() => mailSystemPropertyCatalog
+function useMailFilterProperties(labels: MailLabelRecord[], customProperties: MailPropertyDefinition[], members: MailPropertyWorkspaceMember[]) {
+  return useMemo<PropertyDefinition[]>(() => [...mailSystemPropertyCatalog
     .filter((property) => property.filterable)
     .map((property) => ({
       id: property.id,
       label: property.label,
       propertyType: property.type === "date" ? "date" : property.type === "files" ? "files" : property.type === "boolean" ? "checkbox" : "text",
       valueOptions: valueOptions(property.id, labels),
-    })), [labels])
+    })), ...customProperties.map((property) => ({
+      id: property.id,
+      label: property.name,
+      propertyType: property.type,
+      valueOptions: property.type === "person"
+        ? members.map((member) => ({ label: member.name || member.email, value: member.id }))
+        : property.options.map((option) => ({ label: option.name, value: option.id })),
+    }))], [customProperties, labels, members])
 }
 
 function valueOptions(propertyId: string, labels: MailLabelRecord[]): DatabaseSearchableMenuOption[] {

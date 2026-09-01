@@ -21,7 +21,7 @@ import type { ReactNode } from "react"
 const panels = [
   { icon: IntersectSquareIcon, label: "Group", right: undefined, title: "Group" },
   { icon: FilterIcon, label: "Filter", right: undefined, title: "Filter" },
-  { icon: ListIcon, label: "Properties", right: "4 properties", title: "Properties" },
+  { icon: ListIcon, label: "Properties", right: undefined, title: "Properties" },
   { icon: DatabaseIcon, label: "Database", right: undefined, title: "Database" },
 ] as const
 
@@ -30,11 +30,15 @@ export function MailViewSettingsMenu({
   filterDirty = false,
   filterEditor,
   groupEditor,
+  propertiesEditor,
+  visiblePropertyCount = 0,
 }: {
   filterCount?: number
   filterDirty?: boolean
   filterEditor?: ReactNode
   groupEditor?: ReactNode
+  propertiesEditor?: ReactNode
+  visiblePropertyCount?: number
 }) {
   return (
     <DropDrawer defaultSubDisplayMode="inline">
@@ -68,12 +72,15 @@ export function MailViewSettingsMenu({
               {label === "Filter" && filterCount > 0 ? (
                 <span className={filterDirty ? "text-content-secondary" : "ml-auto text-content-secondary"}>{filterCount}</span>
               ) : null}
+              {label === "Properties" ? (
+                <span className="ml-auto text-content-secondary">{visiblePropertyCount} properties</span>
+              ) : null}
               {right ? (
                 <span className="ml-auto text-content-secondary">{right}</span>
               ) : null}
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-72">
-              {label === "Group" && groupEditor ? groupEditor : label === "Filter" && filterEditor ? filterEditor : (
+              {label === "Group" && groupEditor ? groupEditor : label === "Filter" && filterEditor ? filterEditor : label === "Properties" && propertiesEditor ? propertiesEditor : (
                 <DropDrawerItem disabled>
                   This panel is enabled in its organization pass.
                 </DropDrawerItem>

@@ -1,4 +1,4 @@
-import type { MailGroupConfig } from "@zilobase/features/mail"
+import type { MailGroupConfig, MailPropertyDefinition } from "@zilobase/features/mail"
 
 import { Checkbox } from "@/shared/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
@@ -16,10 +16,12 @@ const groupProperties = [
 ] as const
 
 export function MailGroupEditor({
+  customProperties = [],
   group,
   onChange,
   saving,
 }: {
+  customProperties?: MailPropertyDefinition[]
   group: MailGroupConfig | null
   onChange: (group: MailGroupConfig | null) => void
   saving: boolean
@@ -36,6 +38,7 @@ export function MailGroupEditor({
           <SelectTrigger id="mail-group-property" className="w-full"><SelectValue /></SelectTrigger>
           <SelectContent align="start">
             {groupProperties.map((property) => <SelectItem key={property.value} value={property.value}>{property.label}</SelectItem>)}
+            {customProperties.filter(isGroupableCustomProperty).map((property) => <SelectItem key={property.id} value={property.id}>{property.name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -63,4 +66,8 @@ export function MailGroupEditor({
 
 export function isMutableMailGroup(propertyId: string) {
   return !["date", "received_date", "from", "email_domain"].includes(propertyId)
+}
+
+export function isGroupableCustomProperty(property: MailPropertyDefinition) {
+  return !["files", "url"].includes(property.type)
 }

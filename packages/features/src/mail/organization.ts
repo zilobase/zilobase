@@ -620,6 +620,7 @@ export type MailIndexProgress = {
 export type MailIndexedThread = {
   bcc: MailAddress[]
   cc: MailAddress[]
+  customValues: Record<string, MailThreadPropertyValue["value"]>
   from: MailAddress[]
   hasCalendarEvent: boolean
   important: boolean

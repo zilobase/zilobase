@@ -47,4 +47,17 @@ test("indexed view queries are binding-scoped, cursor-paged, and intersect full 
   assert.match(source, /searchResult\.threadIds\.has\(indexed\.thread\.id\)/)
   assert.match(source, /input\.filter[\s\S]*normalizeMailFilterExpression/)
   assert.match(source, /index,/)
+  assert.match(source, /loadCustomValues\(input\.bindingId, rows\.map/)
+  assert.match(source, /eq\(mailProperty\.bindingId, bindingId\)/)
+  assert.match(source, /customValues,/)
+  assert.match(source, /customValues: indexed\.customValues/)
+})
+
+test("custom property values are loaded once per batch and grouped by scalar or multi-value", async () => {
+  const source = await readFile(new URL("./mail-query.ts", import.meta.url), "utf8")
+
+  assert.match(source, /inArray\(mailThreadPropertyValue\.gmailThreadId, threadIds\)/)
+  assert.match(source, /innerJoin\(mailProperty/)
+  assert.match(source, /Array\.isArray\(value\)/)
+  assert.match(source, /present\.length[\s\S]*\[\{ key: "empty", label: "Empty" \}\]/)
 })

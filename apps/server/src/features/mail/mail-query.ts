@@ -1,7 +1,8 @@
-import { and, desc, eq, lt, or } from "drizzle-orm"
+import { and, desc, eq, inArray, lt, or } from "drizzle-orm"
 import {
   evaluateMailFilterExpression,
   mailSystemFolderIds,
+  normalizeMailFilterExpression,
   normalizeMailViewConfig,
   type MailAddress,
   type MailFilterExpression,
@@ -10,18 +11,20 @@ import {
   type MailIndexedThread,
   type MailQueryGroup,
   type MailSystemFolderId,
+  type MailThreadPropertyValue,
   type MailThreadSummary,
   type MailViewQueryResponse,
   type MailViewConfig,
   type MailViewGroupsResponse,
-  normalizeMailFilterExpression,
 } from "@zilobase/features/mail"
 
 import { db } from "../../infrastructure/database"
 import {
   gmailAccount,
   mailIndexState,
+  mailProperty,
   mailThreadIndex,
+  mailThreadPropertyValue,
   mailView,
 } from "../../infrastructure/database/schema"
 import type { RuntimeEnv } from "../../shared/config/config"
@@ -89,9 +92,10 @@ export async function queryIndexedMail(input: {
       nextCursor = null
       break
     }
+    const customValues = await loadCustomValues(input.bindingId, rows.map((row) => row.gmailThreadId))
     for (const row of rows) {
       cursor = { id: row.id, internalDate: row.internalDate }
-      const indexed = serializeIndexedThread(row)
+      const indexed = serializeIndexedThread(row, customValues.get(row.gmailThreadId))
       if (
         evaluateMailFilterExpression(indexedFilterRecord(indexed), filter) &&
         (!input.groupKey || groupKeys(indexed, routeConfig?.group ?? null).includes(input.groupKey)) &&
@@ -140,9 +144,10 @@ export async function queryIndexedMailGroups(input: {
     .from(mailThreadIndex)
     .where(eq(mailThreadIndex.gmailAccountId, input.gmailAccountId))
     .orderBy(desc(mailThreadIndex.internalDate), desc(mailThreadIndex.id))
+  const customValues = await loadCustomValues(input.bindingId, rows.map((row) => row.gmailThreadId))
   const counts = new Map<string, { count: number; label: string }>()
   for (const row of rows) {
-    const indexed = serializeIndexedThread(row)
+    const indexed = serializeIndexedThread(row, customValues.get(row.gmailThreadId))
     if (
       !evaluateMailFilterExpression(indexedFilterRecord(indexed), filter) ||
       (searchResult && !searchResult.threadIds.has(indexed.thread.id))
@@ -261,6 +266,7 @@ async function searchGmailThreadIds(
 
 function serializeIndexedThread(
   row: typeof mailThreadIndex.$inferSelect,
+  customValues: Record<string, MailThreadPropertyValue["value"]> = {},
 ): MailIndexedThread {
   const from = addresses(row.fromAddresses)
   const to = addresses(row.toAddresses)
@@ -283,6 +289,7 @@ function serializeIndexedThread(
   return {
     bcc,
     cc,
+    customValues,
     from,
     hasCalendarEvent: row.hasCalendarEvent,
     important: row.important,
@@ -296,6 +303,7 @@ function indexedFilterRecord(indexed: MailIndexedThread): MailFilterRecord {
     attachmentCount: indexed.thread.attachmentCount,
     bcc: indexed.bcc,
     cc: indexed.cc,
+    customValues: indexed.customValues,
     from: indexed.from,
     hasCalendarEvent: indexed.hasCalendarEvent,
     important: indexed.important,
@@ -357,7 +365,14 @@ function groupEntries(indexed: MailIndexedThread, group: MailGroupConfig): Array
     case "labels": return thread.labelIds.length
       ? thread.labelIds.map((label) => ({ key: label, label }))
       : [{ key: "empty", label: "No label" }]
-    default: return [{ key: "empty", label: "Empty" }]
+    default: {
+      const value = indexed.customValues[group.propertyId]
+      const values = Array.isArray(value) ? value : [value]
+      const present = values.filter((item): item is string | number | boolean => ["string", "number", "boolean"].includes(typeof item))
+      return present.length
+        ? present.map((item) => ({ key: String(item), label: String(item) }))
+        : [{ key: "empty", label: "Empty" }]
+    }
   }
 }
 
@@ -382,4 +397,27 @@ function groupOrder(group: MailGroupConfig, left: MailQueryGroup, right: MailQue
     ? leftDate - rightDate
     : left.label.localeCompare(right.label)
   return group.direction === "descending" ? result : -result
+}
+
+async function loadCustomValues(bindingId: string, threadIds: string[]) {
+  const result = new Map<string, Record<string, MailThreadPropertyValue["value"]>>()
+  if (!threadIds.length) return result
+  const rows = await db
+    .select({
+      gmailThreadId: mailThreadPropertyValue.gmailThreadId,
+      propertyId: mailThreadPropertyValue.propertyId,
+      value: mailThreadPropertyValue.value,
+    })
+    .from(mailThreadPropertyValue)
+    .innerJoin(mailProperty, eq(mailProperty.id, mailThreadPropertyValue.propertyId))
+    .where(and(
+      eq(mailProperty.bindingId, bindingId),
+      inArray(mailThreadPropertyValue.gmailThreadId, threadIds),
+    ))
+  for (const row of rows) {
+    const values = result.get(row.gmailThreadId) ?? {}
+    values[row.propertyId] = row.value as MailThreadPropertyValue["value"]
+    result.set(row.gmailThreadId, values)
+  }
+  return result
 }
