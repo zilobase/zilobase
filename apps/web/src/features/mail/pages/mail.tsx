@@ -79,6 +79,7 @@ import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-comp
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
 import { mailApiBasePath } from "../model/mail-api-path"
+import { useMailViews } from "../model/use-mail-views"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
 
@@ -123,6 +124,12 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const [batchSelection, setBatchSelection] = useState<Set<string>>(() => new Set())
   const [presentation, setPresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
   const [composerSeed, setComposerSeed] = useState<MailComposeSeed | null>(() => compose ? {} : null)
+  const persistedViewsQuery = useMailViews({
+    bindingId: connection.bindingId,
+    enabled: isFeatureEnabled("mailOrganization"),
+    workspaceId: connection.workspaceId,
+  })
+  void persistedViewsQuery.data
   const controller = useMailController({
     connection,
     query,

@@ -89,3 +89,16 @@ test("workspace OAuth state and send receipts reference reusable Gmail accounts"
     /gmail_send_operation_connection_id_gmail_connection_id_fk" FOREIGN KEY/,
   )
 })
+
+test("mail views are private to a workspace binding and cascade on disconnect", async () => {
+  const migration = await readFile(
+    new URL("../../../drizzle/0067_private_mail_views.sql", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(migration, /CREATE TABLE "mail_view"/)
+  assert.match(migration, /"binding_id" text NOT NULL/)
+  assert.match(migration, /REFERENCES "public"\."gmail_workspace_connection"\("id"\) ON DELETE cascade/)
+  assert.match(migration, /mail_view_binding_position_idx/)
+  assert.doesNotMatch(migration, /message_body|body_html|body_text/)
+})

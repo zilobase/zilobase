@@ -555,6 +555,27 @@ export type MailPersistedView = {
   updatedAt: string
 }
 
+export type MailViewsBootstrap = {
+  systemFolders: readonly MailSystemFolderId[]
+  views: MailPersistedView[]
+}
+
+export type MailViewCreateInput = {
+  icon?: string | null
+  name?: string
+  templateId?: MailViewTemplateId
+}
+
+export type MailViewUpdateInput = {
+  config?: MailViewConfig
+  icon?: string | null
+  name?: string
+}
+
+export type MailViewReorderInput = {
+  viewIds: string[]
+}
+
 const emptyFilter = (id = "root"): MailFilterExpression => ({
   filters: [],
   id,

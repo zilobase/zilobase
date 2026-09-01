@@ -434,6 +434,27 @@ export const gmailWorkspaceConnection = pgTable(
   ],
 );
 
+export const mailView = pgTable(
+  "mail_view",
+  {
+    id: text("id").primaryKey(),
+    bindingId: text("binding_id")
+      .notNull()
+      .references(() => gmailWorkspaceConnection.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    icon: text("icon"),
+    templateId: text("template_id"),
+    protected: boolean("protected").notNull().default(false),
+    position: integer("position").notNull(),
+    config: jsonb("config").notNull().default({}),
+    ...timestampColumns(),
+  },
+  (table) => [
+    index("mail_view_binding_position_idx").on(table.bindingId, table.position),
+    index("mail_view_binding_updated_idx").on(table.bindingId, table.updatedAt),
+  ],
+);
+
 export const invitation = pgTable(
   "invitation",
   {

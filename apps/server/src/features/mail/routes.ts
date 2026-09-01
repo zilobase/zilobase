@@ -1,12 +1,16 @@
 import { and, count, eq } from "drizzle-orm"
 import { Hono, type Context } from "hono"
-import type {
-  MailActionRequest,
-  MailBatchModifyRequest,
-  MailLabelWriteRequest,
-  MailModifyRequest,
-  MailSyncRequest,
-  MailView,
+import {
+  mailSystemFolderIds,
+  mailViewTemplateIds,
+  type MailActionRequest,
+  type MailBatchModifyRequest,
+  type MailLabelWriteRequest,
+  type MailModifyRequest,
+  type MailSyncRequest,
+  type MailView,
+  type MailViewConfig,
+  type MailViewTemplateId,
 } from "@zilobase/features/mail"
 
 import { db, runWithDbEnv } from "../../infrastructure/database"
@@ -45,6 +49,15 @@ import { getMailRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtim
 import { normalizeGmailLabels, normalizeGmailMessage, normalizeGmailThread } from "./mail-normalize"
 import { synchronizeMailbox } from "./mail-sync"
 import { MailConcurrencyError, withMailUserConcurrency } from "./user-concurrency"
+import {
+  createMailView,
+  deleteMailView,
+  duplicateMailView,
+  listMailViews,
+  MailViewServiceError,
+  reorderMailViews,
+  updateMailView,
+} from "./mail-views"
 
 export const mailRoutes = new Hono<AppBindings>()
 
@@ -265,6 +278,126 @@ mailRoutes.post("/google/pubsub", async (c) => {
               : status === 503 ? 503
                 : 500,
     )
+  }
+})
+
+mailRoutes.get("/views", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try {
+    return c.json({
+      systemFolders: mailSystemFolderIds,
+      views: await listMailViews(owned.bindingId),
+    })
+  } catch (error) {
+    return mailViewError(c, error)
+  }
+})
+
+mailRoutes.post("/views", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+  if (!body || !optionalMailViewName(body.name) || !optionalMailViewIcon(body.icon)) {
+    return c.json({ message: "A valid mail view is required." }, 400)
+  }
+  const templateId = body.templateId === undefined
+    ? undefined
+    : mailViewTemplateIds.includes(body.templateId as MailViewTemplateId)
+      ? body.templateId as MailViewTemplateId
+      : null
+  if (templateId === null) return c.json({ message: "Unknown mail view template." }, 400)
+  try {
+    const view = await createMailView({
+      bindingId: owned.bindingId,
+      value: {
+        ...(body.icon !== undefined ? { icon: body.icon as string | null } : {}),
+        ...(body.name !== undefined ? { name: body.name as string } : {}),
+        ...(templateId ? { templateId } : {}),
+      },
+    })
+    return c.json({ view }, 201)
+  } catch (error) {
+    return mailViewError(c, error)
+  }
+})
+
+mailRoutes.put("/views/reorder", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  const body = (await c.req.json().catch(() => null)) as { viewIds?: unknown } | null
+  if (
+    !body ||
+    !Array.isArray(body.viewIds) ||
+    body.viewIds.length > 100 ||
+    !body.viewIds.every((id): id is string => typeof id === "string" && Boolean(id))
+  ) {
+    return c.json({ message: "A valid mail view order is required." }, 400)
+  }
+  try {
+    return c.json({
+      views: await reorderMailViews({
+        bindingId: owned.bindingId,
+        viewIds: body.viewIds,
+      }),
+    })
+  } catch (error) {
+    return mailViewError(c, error)
+  }
+})
+
+mailRoutes.post("/views/:viewId/duplicate", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try {
+    const view = await duplicateMailView({
+      bindingId: owned.bindingId,
+      viewId: c.req.param("viewId"),
+    })
+    return c.json({ view }, 201)
+  } catch (error) {
+    return mailViewError(c, error)
+  }
+})
+
+mailRoutes.patch("/views/:viewId", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+  if (
+    !body ||
+    !optionalMailViewName(body.name) ||
+    !optionalMailViewIcon(body.icon) ||
+    (body.config !== undefined && (!body.config || typeof body.config !== "object"))
+  ) {
+    return c.json({ message: "A valid mail view update is required." }, 400)
+  }
+  try {
+    const view = await updateMailView({
+      bindingId: owned.bindingId,
+      value: {
+        ...(body.config !== undefined ? { config: body.config as MailViewConfig } : {}),
+        ...(body.icon !== undefined ? { icon: body.icon as string | null } : {}),
+        ...(body.name !== undefined ? { name: body.name as string } : {}),
+      },
+      viewId: c.req.param("viewId"),
+    })
+    return c.json({ view })
+  } catch (error) {
+    return mailViewError(c, error)
+  }
+})
+
+mailRoutes.delete("/views/:viewId", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try {
+    return c.json(await deleteMailView({
+      bindingId: owned.bindingId,
+      viewId: c.req.param("viewId"),
+    }))
+  } catch (error) {
+    return mailViewError(c, error)
   }
 })
 
@@ -604,6 +737,34 @@ async function requireOwnedConnection(c: Context<AppBindings>) {
     userId: user.id,
     workspaceId: "legacy",
   }
+}
+
+async function requireWorkspaceMailBinding(c: Context<AppBindings>) {
+  const owned = await requireOwnedConnection(c)
+  if (owned instanceof Response) return owned
+  if (owned.workspaceId === "legacy") {
+    return c.json({ message: "Workspace mail views are not available on legacy routes." }, 404)
+  }
+  return owned
+}
+
+function optionalMailViewName(value: unknown) {
+  return value === undefined || (
+    typeof value === "string" && value.trim().length > 0 && value.trim().length <= 120
+  )
+}
+
+function optionalMailViewIcon(value: unknown) {
+  return value === undefined || value === null || (
+    typeof value === "string" && value.trim().length <= 80
+  )
+}
+
+function mailViewError(c: Context<AppBindings>, error: unknown) {
+  if (error instanceof MailViewServiceError) {
+    return c.json({ message: error.message }, error.status)
+  }
+  throw error
 }
 
 async function runMailOperation(
