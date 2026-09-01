@@ -108,6 +108,7 @@ import {
 } from "./model/sidebar-persistence"
 import { isFeatureEnabled } from "@/shared/config/feature-flags"
 import { withoutMailFeatures } from "./model/sidebar-layout-model"
+import { WorkspaceMailNavigation } from "./components/workspace-mail-navigation"
 
 const sidebarNavigationIcons: SidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
@@ -341,12 +342,18 @@ export function AppSidebar({
       ) : (
         <SidebarContent>
           <div aria-hidden="true" className="h-3 shrink-0" />
-          <SidebarShortcutList databases={navigation?.databases ?? []} onCreateChat={handleCreateChat} onCreateDatabase={handleCreateDatabase} onCreatePage={handleCreatePage} onOpenSettings={onOpenSettings} pages={navigation?.pages ?? []} settingsOpen={settingsOpen} shortcuts={activeTab.shortcuts} />
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleRuntimeSectionDragEnd} sensors={runtimeSectionSensors}>
-            <SortableContext items={activeTab.sections.map((section) => section.id)} strategy={verticalListSortingStrategy}>
-              {activeTab.sections.map((section) => <RuntimeSectionDragItem id={section.id} key={section.id}>{renderSection(section)}</RuntimeSectionDragItem>)}
-            </SortableContext>
-          </DndContext>
+          {activeTab.id === "mail" && isFeatureEnabled("mailOrganization") ? (
+            <WorkspaceMailNavigation workspaceId={workspaceId} />
+          ) : (
+            <>
+              <SidebarShortcutList databases={navigation?.databases ?? []} onCreateChat={handleCreateChat} onCreateDatabase={handleCreateDatabase} onCreatePage={handleCreatePage} onOpenSettings={onOpenSettings} pages={navigation?.pages ?? []} settingsOpen={settingsOpen} shortcuts={activeTab.shortcuts} />
+              <DndContext collisionDetection={closestCenter} onDragEnd={handleRuntimeSectionDragEnd} sensors={runtimeSectionSensors}>
+                <SortableContext items={activeTab.sections.map((section) => section.id)} strategy={verticalListSortingStrategy}>
+                  {activeTab.sections.map((section) => <RuntimeSectionDragItem id={section.id} key={section.id}>{renderSection(section)}</RuntimeSectionDragItem>)}
+                </SortableContext>
+              </DndContext>
+            </>
+          )}
         </SidebarContent>
       )}
       <SidebarFooter className="relative z-10 bg-surface-navigation p-0">

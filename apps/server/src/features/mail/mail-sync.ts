@@ -121,7 +121,9 @@ function addThread(message: { threadId?: string } | undefined, ids: Set<string>)
 
 export function viewFilter(view: MailView) {
   switch (view) {
+    case "all_mail": return { query: "-in:spam -in:trash" }
     case "archive": return { query: "-in:inbox -in:sent -in:drafts -in:spam -in:trash" }
+    case "bin": return { labelIds: ["TRASH"] }
     case "drafts": return { labelIds: ["DRAFT"] }
     case "inbox": return { labelIds: ["INBOX"] }
     case "sent": return { labelIds: ["SENT"] }

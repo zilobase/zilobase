@@ -949,7 +949,7 @@ const GMAIL_LABEL_COLORS = new Set([
 ])
 
 function isMailView(value: unknown): value is MailView {
-  return ["archive", "drafts", "inbox", "sent", "spam", "starred", "trash", "unread"].includes(value as string)
+  return ["all_mail", "archive", "bin", "drafts", "inbox", "sent", "spam", "starred", "trash", "unread"].includes(value as string)
 }
 
 export function buildDesktopMailReturnUrl(input: {

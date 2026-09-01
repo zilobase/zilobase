@@ -5,14 +5,17 @@ import { invoke } from "@tauri-apps/api/core"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useSession } from "@zilobase/features/auth"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
-import type {
-  MailConnection,
-  MailLabelRecord,
-  MailLabelWriteRequest,
-  MailMessageRecord,
-  MailModifyRequest,
-  MailSendResponse,
-  MailThreadSummary,
+import {
+  mailSystemFolderIds,
+  type MailConnection,
+  type MailLabelRecord,
+  type MailLabelWriteRequest,
+  type MailMessageRecord,
+  type MailModifyRequest,
+  type MailSendResponse,
+  type MailThreadSummary,
+  type MailPersistedView,
+  type MailView,
 } from "@zilobase/features/mail"
 import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 import { toast } from "sonner"
@@ -22,19 +25,24 @@ import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
 import { isDesktopApp } from "@/features/desktop/platform"
 import {
   ArchiveIcon,
+  BanIcon,
   ChevronDown,
   ChevronUp,
   ChevronsRightIcon,
   DownloadIcon,
+  FilePenLineIcon,
+  InboxIcon,
   Loader2Icon,
   MailIcon,
   MoreHorizontalIcon,
   Paperclip,
   RefreshCwIcon,
   SearchIcon,
+  SendIcon,
   StarIcon,
   TagIcon,
   TrashIcon,
+  Trash2Icon,
   TriangleAlertIcon,
   WifiOffIcon,
   XIcon,
@@ -82,6 +90,13 @@ import { mailApiBasePath } from "../model/mail-api-path"
 import { useMailViews } from "../model/use-mail-views"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
+const organizationFolderDetails = {
+  all_mail: { icon: MailIcon, label: "All Mail" },
+  bin: { icon: Trash2Icon, label: "Bin" },
+  drafts: { icon: FilePenLineIcon, label: "Drafts" },
+  sent: { icon: SendIcon, label: "Sent" },
+  spam: { icon: BanIcon, label: "Spam" },
+} as const
 
 export default function MailPage() {
   const activeWorkspaceId = useActiveWorkspaceId()
@@ -129,12 +144,30 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     enabled: isFeatureEnabled("mailOrganization"),
     workspaceId: connection.workspaceId,
   })
-  void persistedViewsQuery.data
+  const persistedViews = persistedViewsQuery.data?.views ?? []
+  const inboxView = persistedViews.find((persistedView) => persistedView.protected) ?? null
+  const activePersistedView = persistedViews.find((persistedView) => persistedView.id === view) ?? null
+  const activeSystemFolder = mailSystemFolderIds.includes(view as (typeof mailSystemFolderIds)[number])
+    ? view as (typeof mailSystemFolderIds)[number]
+    : null
+  const organizationEnabled = isFeatureEnabled("mailOrganization")
+  const providerView = organizationEnabled
+    ? providerViewForOrganizationRoute(activePersistedView, activeSystemFolder)
+    : legacyProviderView(view)
+  useEffect(() => {
+    if (!organizationEnabled || !persistedViewsQuery.isSuccess || !inboxView) return
+    if (activePersistedView || activeSystemFolder) return
+    void navigate({
+      replace: true,
+      search: { compose, view: inboxView.id },
+      to: "/mail",
+    })
+  }, [activePersistedView, activeSystemFolder, compose, inboxView, navigate, organizationEnabled, persistedViewsQuery.isSuccess])
   const controller = useMailController({
     connection,
     query,
     userId,
-    view,
+    view: providerView,
   })
   useMailRealtime({
     bindingId: connection.bindingId ?? connection.connectionId!,
@@ -160,7 +193,18 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     : -1
   const previousId = selectedIndex > 0 ? controller.threads[selectedIndex - 1]?.id ?? null : null
   const nextId = selectedIndex >= 0 ? controller.threads[selectedIndex + 1]?.id ?? null : null
-  const ActiveViewIcon = mailViewIcons[view]
+  const ActiveViewIcon = organizationEnabled
+    ? activePersistedView
+      ? persistedViewIcon(activePersistedView)
+      : activeSystemFolder
+        ? organizationFolderDetails[activeSystemFolder].icon
+        : InboxIcon
+    : mailViewIcons[providerView as keyof typeof mailViewIcons]
+  const activeViewLabel = organizationEnabled
+    ? activePersistedView?.name ?? (activeSystemFolder
+      ? organizationFolderDetails[activeSystemFolder].label
+      : "Inbox")
+    : mailViewLabels[providerView as keyof typeof mailViewLabels]
   const idlePrefetchIds = useMemo(() => controller.threads.slice(0, 6).map((thread) => thread.id), [controller.threads])
   const idlePrefetchKey = idlePrefetchIds.join("|")
 
@@ -259,7 +303,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                         <div className="flex shrink-0 items-center gap-2">
                           <ActiveViewIcon className="size-5 shrink-0 text-action-link" />
                           <h1 className="text-xl font-semibold leading-7 tracking-normal text-content-primary">
-                            {mailViewLabels[view]}
+                            {activeViewLabel}
                           </h1>
                           {!controller.online ? <WifiOffIcon className="size-4 text-content-secondary" aria-label="Offline" /> : null}
                         </div>
@@ -831,6 +875,33 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
     )
   }
   return <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-content-primary">{message.bodyText || message.snippet}</div>
+}
+
+function providerViewForOrganizationRoute(
+  view: MailPersistedView | null,
+  folder: (typeof mailSystemFolderIds)[number] | null,
+): MailView {
+  if (folder) return folder
+  if (
+    view?.templateId === "inbox" ||
+    view?.templateId === "starred" ||
+    view?.templateId === "unread"
+  ) {
+    return view.templateId
+  }
+  return "inbox"
+}
+
+function legacyProviderView(view: string): MailView {
+  return ["archive", "drafts", "inbox", "sent", "spam", "starred", "trash", "unread"].includes(view)
+    ? view as MailView
+    : "inbox"
+}
+
+function persistedViewIcon(view: MailPersistedView) {
+  if (view.templateId === "inbox") return InboxIcon
+  if (view.templateId === "starred") return StarIcon
+  return MailIcon
 }
 
 function MailConnectionState({ connection, error, loading, onConnected, workspaceId }: {

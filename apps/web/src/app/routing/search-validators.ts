@@ -1,4 +1,4 @@
-import { libraryViewIds, mailViewIds } from "@zilobase/features/user-settings";
+import { libraryViewIds } from "@zilobase/features/user-settings";
 
 import { normalizeTeamSettingsTab } from "@/features/teamspaces";
 
@@ -28,16 +28,15 @@ export function validateLibrarySearch(search: Record<string, unknown>): {
 
 export function validateMailSearch(search: Record<string, unknown>): {
   compose?: boolean;
-  view: (typeof mailViewIds)[number];
+  view: string;
 } {
   return {
     ...(search.compose === true || search.compose === "true"
       ? { compose: true }
       : {}),
     view:
-      typeof search.view === "string" &&
-      mailViewIds.includes(search.view as (typeof mailViewIds)[number])
-        ? (search.view as (typeof mailViewIds)[number])
+      typeof search.view === "string" && search.view.trim() && search.view.length <= 200
+        ? search.view.trim()
         : "inbox",
   };
 }

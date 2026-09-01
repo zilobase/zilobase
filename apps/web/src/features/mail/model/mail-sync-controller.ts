@@ -459,7 +459,9 @@ export function isDefiniteMailMutationFailure(error: unknown) {
 
 export function threadMatchesView(thread: MailThreadSummary, view: MailView) {
   switch (view) {
+    case "all_mail": return !["SPAM", "TRASH"].some((label) => thread.labelIds.includes(label))
     case "archive": return !["INBOX", "SENT", "DRAFT", "SPAM", "TRASH"].some((label) => thread.labelIds.includes(label))
+    case "bin": return thread.labelIds.includes("TRASH")
     case "drafts": return thread.labelIds.includes("DRAFT")
     case "inbox": return thread.labelIds.includes("INBOX")
     case "sent": return thread.labelIds.includes("SENT")

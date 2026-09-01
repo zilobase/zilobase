@@ -83,6 +83,8 @@ test("expired history recovers the visible folder and validates known cache IDs"
 })
 
 test("all supported folders map to Gmail system labels or an archive query", () => {
+  assert.deepEqual(viewFilter("all_mail"), { query: "-in:spam -in:trash" })
+  assert.deepEqual(viewFilter("bin"), { labelIds: ["TRASH"] })
   assert.deepEqual(viewFilter("unread"), { labelIds: ["UNREAD"] })
   assert.deepEqual(viewFilter("sent"), { labelIds: ["SENT"] })
   assert.match(viewFilter("archive").query ?? "", /-in:inbox/)

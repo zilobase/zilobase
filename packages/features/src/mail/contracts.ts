@@ -89,7 +89,9 @@ export type MailConnection = {
 }
 
 export type MailView =
+  | "all_mail"
   | "archive"
+  | "bin"
   | "drafts"
   | "inbox"
   | "sent"
