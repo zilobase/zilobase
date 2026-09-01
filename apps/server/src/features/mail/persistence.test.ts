@@ -102,3 +102,18 @@ test("mail views are private to a workspace binding and cascade on disconnect", 
   assert.match(migration, /mail_view_binding_position_idx/)
   assert.doesNotMatch(migration, /message_body|body_html|body_text/)
 })
+
+test("full-mailbox index stores queryable metadata without message content", async () => {
+  const migration = await readFile(
+    new URL("../../../drizzle/0068_full_mailbox_metadata_index.sql", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(migration, /CREATE TABLE "mail_index_state"/)
+  assert.match(migration, /CREATE TABLE "mail_thread_index"/)
+  assert.match(migration, /"history_page_token" text/)
+  assert.match(migration, /"next_page_token" text/)
+  assert.match(migration, /mail_thread_index_account_thread_unique/)
+  assert.match(migration, /ON DELETE cascade/)
+  assert.doesNotMatch(migration, /snippet|body_html|body_text|raw_message/)
+})

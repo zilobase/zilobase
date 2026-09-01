@@ -6,3 +6,8 @@ test("Node maintenance renews Gmail watches", async () => {
   const runtime = await readFile(new URL("./node-runtime.ts", import.meta.url), "utf8")
   assert.match(runtime, /renewGmailWatches\(env\)/)
 })
+
+test("Node maintenance advances bounded full-mailbox index work", async () => {
+  const runtime = await readFile(new URL("./node-runtime.ts", import.meta.url), "utf8")
+  assert.match(runtime, /advancePendingMailIndexes\(env\)/)
+})

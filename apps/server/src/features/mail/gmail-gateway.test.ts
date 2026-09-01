@@ -19,10 +19,11 @@ test("safe Gmail reads retry transient failures and preserve pagination paramete
     return Response.json({ nextPageToken: "next", threads: [] })
   })
 
-  const result = await gateway.listThreads({ labelIds: ["INBOX"], maxResults: 50, pageToken: "page" })
+  const result = await gateway.listThreads({ includeSpamTrash: true, labelIds: ["INBOX"], maxResults: 50, pageToken: "page" })
   assert.equal(requests.length, 2)
   assert.equal(requests[1]?.searchParams.get("labelIds"), "INBOX")
   assert.equal(requests[1]?.searchParams.get("pageToken"), "page")
+  assert.equal(requests[1]?.searchParams.get("includeSpamTrash"), "true")
   assert.equal(result.nextPageToken, "next")
 })
 

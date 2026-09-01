@@ -240,12 +240,14 @@ export class GmailGateway {
   }
 
   async listThreads(input: {
+    includeSpamTrash?: boolean
     labelIds?: string[]
     maxResults?: number
     pageToken?: string
     query?: string
   }) {
     const params = new URLSearchParams({ maxResults: String(input.maxResults ?? 50) })
+    if (input.includeSpamTrash) params.set("includeSpamTrash", "true")
     for (const labelId of input.labelIds ?? []) params.append("labelIds", labelId)
     if (input.pageToken) params.set("pageToken", input.pageToken)
     if (input.query) params.set("q", input.query)

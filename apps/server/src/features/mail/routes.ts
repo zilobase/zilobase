@@ -58,6 +58,11 @@ import {
   reorderMailViews,
   updateMailView,
 } from "./mail-views"
+import {
+  advanceMailIndex,
+  ensureMailIndexState,
+  getMailIndexProgress,
+} from "./mail-index"
 
 export const mailRoutes = new Hono<AppBindings>()
 
@@ -180,6 +185,7 @@ mailRoutes.get("/oauth/google/callback", async (c) => {
         .where(eq(gmailAccount.id, completed.connectionId))
         .limit(1)
       if (account) {
+        await ensureMailIndexState(account.id)
         await initializeGmailWatch(c.env, account).catch(async (error) => {
           await db
             .update(gmailAccount)
@@ -285,12 +291,37 @@ mailRoutes.get("/views", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
   try {
+    const [views, index] = await Promise.all([
+      listMailViews(owned.bindingId),
+      getMailIndexProgress(owned.connection.id),
+    ])
     return c.json({
+      index,
       systemFolders: mailSystemFolderIds,
-      views: await listMailViews(owned.bindingId),
+      views,
     })
   } catch (error) {
     return mailViewError(c, error)
+  }
+})
+
+mailRoutes.get("/index/status", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  return c.json({ index: await getMailIndexProgress(owned.connection.id) })
+})
+
+mailRoutes.post("/index/advance", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try {
+    return c.json({ index: await advanceMailIndex(c.env, owned.connection.id) })
+  } catch (error) {
+    if (error instanceof GmailApiError) {
+      const status = error.status === 401 ? 401 : error.status === 429 ? 429 : 502
+      return c.json({ message: error.message }, status)
+    }
+    throw error
   }
 })
 

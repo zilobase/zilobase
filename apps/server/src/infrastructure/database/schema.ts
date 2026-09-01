@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  bigint,
   check,
   customType,
   foreignKey,
@@ -452,6 +453,74 @@ export const mailView = pgTable(
   (table) => [
     index("mail_view_binding_position_idx").on(table.bindingId, table.position),
     index("mail_view_binding_updated_idx").on(table.bindingId, table.updatedAt),
+  ],
+);
+
+export const mailIndexState = pgTable("mail_index_state", {
+  gmailAccountId: text("gmail_account_id")
+    .primaryKey()
+    .references(() => gmailAccount.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"),
+  generation: integer("generation").notNull().default(0),
+  indexedThreadCount: integer("indexed_thread_count").notNull().default(0),
+  resultSizeEstimate: integer("result_size_estimate"),
+  historyId: text("history_id"),
+  historyStartId: text("history_start_id"),
+  historyPageToken: text("history_page_token"),
+  nextPageToken: text("next_page_token"),
+  lastErrorCode: text("last_error_code"),
+  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+  leaseToken: text("lease_token"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  ...timestampColumns(),
+});
+
+export const mailThreadIndex = pgTable(
+  "mail_thread_index",
+  {
+    id: text("id").primaryKey(),
+    gmailAccountId: text("gmail_account_id")
+      .notNull()
+      .references(() => gmailAccount.id, { onDelete: "cascade" }),
+    gmailThreadId: text("gmail_thread_id").notNull(),
+    generation: integer("generation").notNull(),
+    latestMessageId: text("latest_message_id").notNull(),
+    messageIds: jsonb("message_ids").$type<string[]>().notNull().default([]),
+    labelIds: jsonb("label_ids").$type<string[]>().notNull().default([]),
+    fromAddresses: jsonb("from_addresses").notNull().default([]),
+    toAddresses: jsonb("to_addresses").notNull().default([]),
+    ccAddresses: jsonb("cc_addresses").notNull().default([]),
+    bccAddresses: jsonb("bcc_addresses").notNull().default([]),
+    domains: jsonb("domains").$type<string[]>().notNull().default([]),
+    subject: text("subject").notNull(),
+    internalDate: bigint("internal_date", { mode: "number" }).notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    messageCount: integer("message_count").notNull(),
+    attachmentCount: integer("attachment_count").notNull(),
+    hasCalendarEvent: boolean("has_calendar_event").notNull().default(false),
+    unread: boolean("unread").notNull().default(false),
+    starred: boolean("starred").notNull().default(false),
+    important: boolean("important").notNull().default(false),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("mail_thread_index_account_thread_unique").on(
+      table.gmailAccountId,
+      table.gmailThreadId,
+    ),
+    index("mail_thread_index_account_date_idx").on(
+      table.gmailAccountId,
+      table.internalDate,
+    ),
+    index("mail_thread_index_account_unread_idx").on(
+      table.gmailAccountId,
+      table.unread,
+    ),
+    index("mail_thread_index_account_starred_idx").on(
+      table.gmailAccountId,
+      table.starred,
+    ),
   ],
 );
 

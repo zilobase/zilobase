@@ -151,6 +151,11 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     ? view as (typeof mailSystemFolderIds)[number]
     : null
   const organizationEnabled = isFeatureEnabled("mailOrganization")
+  const indexProgress = persistedViewsQuery.data?.index
+  const indexProgressKey = indexProgress
+    ? `${indexProgress.status}:${indexProgress.indexedThreadCount}`
+    : "none"
+  const refetchPersistedViews = persistedViewsQuery.refetch
   const providerView = organizationEnabled
     ? providerViewForOrganizationRoute(activePersistedView, activeSystemFolder)
     : legacyProviderView(view)
@@ -163,6 +168,26 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
       to: "/mail",
     })
   }, [activePersistedView, activeSystemFolder, compose, inboxView, navigate, organizationEnabled, persistedViewsQuery.isSuccess])
+  useEffect(() => {
+    if (
+      !organizationEnabled ||
+      !indexProgress ||
+      indexProgress.status === "ready" ||
+      indexProgress.status === "error"
+    ) return
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      void apiFetch(`${mailApiBasePath(connection.workspaceId)}/index/advance`, {
+        method: "POST",
+      }).catch(() => undefined).finally(() => {
+        if (!cancelled) void refetchPersistedViews()
+      })
+    }, 500)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [connection.workspaceId, indexProgressKey, organizationEnabled, refetchPersistedViews])
   const controller = useMailController({
     connection,
     query,
@@ -341,6 +366,14 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                           <MailViewSettingsMenu />
                         </div>
                       </div>
+
+                      {organizationEnabled && indexProgress && indexProgress.status !== "ready" ? (
+                        <div aria-live="polite" className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary" role="status">
+                          {indexProgress.status === "error"
+                            ? "Mail indexing paused. It will retry automatically."
+                            : `Indexing full mailbox… ${indexProgress.indexedThreadCount}${indexProgress.resultSizeEstimate ? ` of about ${indexProgress.resultSizeEstimate}` : ""} threads`}
+                        </div>
+                      ) : null}
 
                       {batchSelection.size ? (
                         <div className="mt-3 flex items-center gap-1 rounded-md border border-stroke-default bg-surface-raised px-2 py-1">

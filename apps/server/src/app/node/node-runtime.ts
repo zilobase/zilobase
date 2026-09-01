@@ -32,6 +32,7 @@ import { cleanupExpiredAiAgentData } from "../../features/ai/actions/agent-opera
 import { AI_JOB_HANDLERS } from "../../features/ai/jobs/ai-job-handlers";
 import { runAiJobBatch } from "../../features/ai/jobs/ai-jobs";
 import { renewGmailWatches } from "../../features/mail/gmail-watch";
+import { advancePendingMailIndexes } from "../../features/mail/mail-index";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -226,6 +227,7 @@ function startMaintenanceDrainer(
           drainNavigationRealtimeOutbox(env, { limit: 250 }),
           expireTemporaryMemberships(),
           renewGmailWatches(env),
+          advancePendingMailIndexes(env),
         ]),
       );
     } catch (error) {

@@ -556,6 +556,7 @@ export type MailPersistedView = {
 }
 
 export type MailViewsBootstrap = {
+  index?: MailIndexProgress
   systemFolders: readonly MailSystemFolderId[]
   views: MailPersistedView[]
 }
@@ -574,6 +575,21 @@ export type MailViewUpdateInput = {
 
 export type MailViewReorderInput = {
   viewIds: string[]
+}
+
+export type MailIndexStatus =
+  | "pending"
+  | "backfilling"
+  | "syncing"
+  | "ready"
+  | "error"
+
+export type MailIndexProgress = {
+  completedAt: string | null
+  indexedThreadCount: number
+  lastErrorCode: string | null
+  resultSizeEstimate: number | null
+  status: MailIndexStatus
 }
 
 const emptyFilter = (id = "root"): MailFilterExpression => ({

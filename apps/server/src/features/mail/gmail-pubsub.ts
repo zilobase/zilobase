@@ -8,6 +8,7 @@ import {
 import { getStringEnv, type RuntimeEnv } from "../../shared/config/config"
 import { publishMailNotification } from "../../infrastructure/runtime/runtime-adapter"
 import { verifyGoogleOidcToken } from "./security/google-oidc-token"
+import { advanceMailIndex } from "./mail-index"
 
 const MAX_PUSH_BYTES = 64 * 1024
 
@@ -54,6 +55,7 @@ export async function processGmailPubsubRequest(
       })
     const events = []
     for (const account of updated) {
+      await advanceMailIndex(env, account.connectionId).catch(() => undefined)
       const bindings = await db
         .select({
           bindingId: gmailWorkspaceConnection.id,
