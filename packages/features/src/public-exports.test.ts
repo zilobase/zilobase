@@ -14,6 +14,8 @@ const expectedFeatureExports = [
   "./api-keys",
   "./auth",
   "./databases",
+  "./databases/filter",
+  "./databases/formula",
   "./databases/property-types",
   "./databases/queries",
   "./mail",

@@ -29,8 +29,8 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 | Page added, including move into a source and initial values | 3, 4 | Creation/move fixtures and event evaluator tests | planned |
 | Property edited and any property edited | 3, 4 | Every writable property type and title fixtures | planned |
 | Complete type/operator matrix | 4 | Table-driven operator suite with invalid pair rejection | planned |
-| Type-aware empty handling for null, missing, zero, and false | 1, 4 | Shared predicate fixtures | planned |
-| Case-insensitive trimmed Unicode text comparison | 1, 4 | Browser/server equivalence fixtures | planned |
+| Type-aware empty handling for null, missing, zero, and false | 1, 4 | Shared predicate fixtures | verified |
+| Case-insensitive trimmed Unicode text comparison | 1, 4 | Browser/server equivalence fixtures | verified |
 | `any` and `all` clauses, maximum 20 clauses | 0, 4 | Contract limit and evaluator truth-table tests | contracted |
 | Fixed three-second aggregation window | 3 | Clock-controlled merge/close tests | planned |
 | First before/final after values and change-then-revert cancellation | 3 | Transaction and normalization fixtures | planned |
@@ -44,7 +44,7 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 
 | Capability | Pass | Required evidence | Status |
 | --- | ---: | --- | --- |
-| Shared deterministic formula/parser/value implementation | 1 | Identical web/server fixtures with injected clock/timezone | planned |
+| Shared deterministic formula/parser/value implementation | 1 | Identical web/server fixtures with injected clock/timezone | verified |
 | Trigger page/person, now/today, properties, relations, mentions, variables, and prior outputs | 1, 4 | Typed expression and ordered-action fixtures | planned |
 | Define up to 25 bounded variables | 0, 4 | Contract, size/list limit, and evaluation tests | contracted |
 | Edit trigger page using valid set/add/remove/clear modes | 4 | Property-type operation matrix | planned |

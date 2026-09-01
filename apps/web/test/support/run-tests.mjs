@@ -158,6 +158,21 @@ function aliasPlugin() {
           ),
         })
       )
+      build.onResolve(
+        { filter: /^@zilobase\/features\/databases\/(filter|formula)$/ },
+        (args) => ({
+          path: join(
+            appDir,
+            "..",
+            "..",
+            "packages",
+            "features",
+            "src",
+            "databases",
+            args.path.endsWith("/filter") ? "filter.ts" : "formula/index.ts"
+          ),
+        })
+      )
       build.onResolve({ filter: /^@\// }, async (args) => ({
         path: await resolveAliasPath(join(srcDir, args.path.slice(2))),
       }))

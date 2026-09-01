@@ -118,6 +118,10 @@ export default defineConfig(async () => ({
         replacement: `${featuresDir}/databases/property-types.ts`,
       },
       {
+        find: "@zilobase/features/databases/filter",
+        replacement: `${featuresDir}/databases/filter.ts`,
+      },
+      {
         find: "@zilobase/features/ai-chat/conversation-adapter",
         replacement: `${featuresDir}/ai-chat/conversation-adapter.ts`,
       },

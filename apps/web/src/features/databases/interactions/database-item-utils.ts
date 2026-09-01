@@ -5,17 +5,16 @@ import {
   toTrimmedStringArray,
   type DatabasePropertyValue,
 } from "../core/utils"
-import { isDateLikePropertyType } from "../core/database-property-types"
+import {
+  evaluateDatabaseFilter,
+  evaluateDatabaseFilters,
+  type DatabasePredicateContext,
+} from "@zilobase/features/databases/filter"
 import { getReadOnlyTimePropertyRawValue } from "../properties/model/read-only-time-property"
 import type {
   DatabaseFilterItemConfig,
-  DatabasePropertyFilterConfig,
   DatabaseSortConfig,
   DatabaseSortDirection,
-} from "../views/model/database-view-config"
-import {
-  isDatabaseFilterGroup,
-  type DatabasePropertyFilterOperator,
 } from "../views/model/database-view-config"
 
 export type SortableDatabaseItem = {
@@ -137,20 +136,6 @@ function getComparablePropertyValue(
   }
 }
 
-function getDateValue(value: DatabasePropertyValue | string | null | undefined) {
-  const rawValue = firstScalarValue(value)
-  const timestamp = rawValue ? new Date(rawValue).getTime() : Number.NaN
-
-  if (!Number.isFinite(timestamp)) {
-    return null
-  }
-
-  const date = new Date(timestamp)
-  date.setHours(0, 0, 0, 0)
-
-  return date
-}
-
 function getFilterPropertyValue(
   item: SortableDatabaseItem,
   property: SortableDatabaseProperty,
@@ -163,330 +148,47 @@ function getFilterPropertyValue(
   return propertyValuesByKey[`${item.pageId}:${property.property.id}`] ?? ""
 }
 
-function getFilterRowValues({
-  filter,
+function createDatabasePredicateContext({
   item,
   personOptionsById,
   properties,
   propertyValuesByKey,
 }: {
-  filter: DatabasePropertyFilterConfig
   item: SortableDatabaseItem
   personOptionsById: Map<string, string>
   properties: SortableDatabaseProperty[]
   propertyValuesByKey: Record<string, DatabasePropertyValue>
-}) {
-  if (filter.propertyId === "name") {
-    return item.page.name.trim() ? [item.page.name.trim()] : []
+}): DatabasePredicateContext {
+  const getProperty = (propertyId: string) =>
+    properties.find((property) => property.id === propertyId)
+
+  return {
+    getPropertyType(propertyId) {
+      return propertyId === "name"
+        ? "text"
+        : (getProperty(propertyId)?.property.type ?? "text")
+    },
+    getPropertyValues(propertyId) {
+      if (propertyId === "name") {
+        return item.page.name.trim() ? [item.page.name.trim()] : []
+      }
+
+      const property = getProperty(propertyId)
+      if (!property) return []
+
+      const value = getFilterPropertyValue(item, property, propertyValuesByKey)
+      if (property.property.type === "checkbox") {
+        return [value === "true" ? "Checked" : "Unchecked"]
+      }
+      if (property.property.type === "person") {
+        return toStringArray(value).map(
+          (personId) => personOptionsById.get(personId) ?? personId
+        )
+      }
+
+      return toTrimmedStringArray(value)
+    },
   }
-
-  const property = properties.find(
-    (databaseProperty) => databaseProperty.id === filter.propertyId
-  )
-
-  if (!property) {
-    return []
-  }
-
-  const value = getFilterPropertyValue(item, property, propertyValuesByKey)
-
-  if (property.property.type === "checkbox") {
-    return [value === "true" ? "Checked" : "Unchecked"]
-  }
-
-  if (property.property.type === "person") {
-    return toStringArray(value).map(
-      (personId) => personOptionsById.get(personId) ?? personId
-    )
-  }
-
-  return toTrimmedStringArray(value)
-}
-
-function getFilterPropertyType(
-  filter: DatabasePropertyFilterConfig,
-  properties: SortableDatabaseProperty[]
-) {
-  if (filter.propertyId === "name") {
-    return "text"
-  }
-
-  return (
-    properties.find((property) => property.id === filter.propertyId)?.property.type ??
-    "text"
-  )
-}
-
-function getNumberFilterValue(value: string | undefined) {
-  const numberValue = Number(value)
-
-  return Number.isFinite(numberValue) ? numberValue : null
-}
-
-function compareNumberFilter(
-  rowValue: number | null,
-  filterValue: number | null,
-  operator: DatabasePropertyFilterOperator
-) {
-  if (rowValue === null || filterValue === null) {
-    return operator === "is_not"
-  }
-
-  if (operator === "is_not") {
-    return rowValue !== filterValue
-  }
-
-  if (operator === "greater_than") {
-    return rowValue > filterValue
-  }
-
-  if (operator === "less_than") {
-    return rowValue < filterValue
-  }
-
-  if (operator === "greater_than_or_equal") {
-    return rowValue >= filterValue
-  }
-
-  if (operator === "less_than_or_equal") {
-    return rowValue <= filterValue
-  }
-
-  return rowValue === filterValue
-}
-
-function getRelativeDateRange(value: string | undefined) {
-  const [, direction = "this", unit = "week"] = (value ?? "relative:this:week")
-    .split(":")
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const start = new Date(today)
-  const end = new Date(today)
-
-  if (unit === "day") {
-    if (direction === "past") {
-      start.setDate(today.getDate() - 1)
-      end.setDate(today.getDate() - 1)
-    } else if (direction === "next") {
-      start.setDate(today.getDate() + 1)
-      end.setDate(today.getDate() + 1)
-    }
-
-    return { end, start }
-  }
-
-  if (unit === "week") {
-    const day = today.getDay()
-    start.setDate(today.getDate() - day)
-    end.setDate(start.getDate() + 6)
-  } else if (unit === "month") {
-    start.setDate(1)
-    end.setMonth(start.getMonth() + 1, 0)
-  } else {
-    start.setMonth(0, 1)
-    end.setMonth(11, 31)
-  }
-
-  if (direction === "past") {
-    if (unit === "week") {
-      start.setDate(start.getDate() - 7)
-      end.setDate(end.getDate() - 7)
-    } else if (unit === "month") {
-      start.setMonth(start.getMonth() - 1)
-      end.setMonth(end.getMonth() - 1)
-    } else {
-      start.setFullYear(start.getFullYear() - 1)
-      end.setFullYear(end.getFullYear() - 1)
-    }
-  } else if (direction === "next") {
-    if (unit === "week") {
-      start.setDate(start.getDate() + 7)
-      end.setDate(end.getDate() + 7)
-    } else if (unit === "month") {
-      start.setMonth(start.getMonth() + 1)
-      end.setMonth(end.getMonth() + 1)
-    } else {
-      start.setFullYear(start.getFullYear() + 1)
-      end.setFullYear(end.getFullYear() + 1)
-    }
-  }
-
-  return { end, start }
-}
-
-function compareDateFilter(
-  rowDate: Date | null,
-  filter: DatabasePropertyFilterConfig
-) {
-  if (!rowDate) {
-    return filter.operator === "is_not"
-  }
-
-  if (filter.operator === "is_relative_to_today") {
-    const range = getRelativeDateRange(filter.values[0])
-
-    return rowDate >= range.start && rowDate <= range.end
-  }
-
-  const filterDate = getDateValue(filter.values[0])
-
-  if (!filterDate) {
-    return true
-  }
-
-  if (filter.operator === "is_before") {
-    return rowDate < filterDate
-  }
-
-  if (filter.operator === "is_after") {
-    return rowDate > filterDate
-  }
-
-  if (filter.operator === "is_on_or_before") {
-    return rowDate <= filterDate
-  }
-
-  if (filter.operator === "is_on_or_after") {
-    return rowDate >= filterDate
-  }
-
-  if (filter.operator === "is_between") {
-    const secondFilterDate = getDateValue(filter.values[1])
-
-    if (!secondFilterDate) {
-      return rowDate >= filterDate
-    }
-
-    const startDate = filterDate <= secondFilterDate ? filterDate : secondFilterDate
-    const endDate = filterDate <= secondFilterDate ? secondFilterDate : filterDate
-
-    return rowDate >= startDate && rowDate <= endDate
-  }
-
-  if (filter.operator === "is_not") {
-    return rowDate.getTime() !== filterDate.getTime()
-  }
-
-  return rowDate.getTime() === filterDate.getTime()
-}
-
-function itemMatchesPropertyFilter({
-  filter,
-  item,
-  personOptionsById,
-  properties,
-  propertyValuesByKey,
-}: {
-  filter: DatabasePropertyFilterConfig
-  item: SortableDatabaseItem
-  personOptionsById: Map<string, string>
-  properties: SortableDatabaseProperty[]
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
-}) {
-  const propertyType = getFilterPropertyType(filter, properties)
-  const rowValues = getFilterRowValues({
-    filter,
-    item,
-    personOptionsById,
-    properties,
-    propertyValuesByKey,
-  })
-  const normalizedRowValues = rowValues.map((value) => value.trim().toLowerCase())
-  const normalizedFilterValues = filter.values.map((value) =>
-    value.trim().toLowerCase()
-  )
-  const hasRowValue = normalizedRowValues.some(Boolean)
-
-  if (filter.operator === "is_empty") {
-    return !hasRowValue
-  }
-
-  if (filter.operator === "is_not_empty") {
-    return hasRowValue
-  }
-
-  if (filter.values.length === 0) {
-    return true
-  }
-
-  if (isDateLikePropertyType(propertyType)) {
-    return compareDateFilter(getDateValue(rowValues[0]), filter)
-  }
-
-  if (propertyType === "number") {
-    return compareNumberFilter(
-      getNumberFilterValue(rowValues[0]),
-      getNumberFilterValue(filter.values[0]),
-      filter.operator
-    )
-  }
-
-  if (filter.operator === "is_not") {
-    return !normalizedFilterValues.some((value) =>
-      normalizedRowValues.includes(value)
-    )
-  }
-
-  if (filter.operator === "contains") {
-    return normalizedFilterValues.some((value) =>
-      normalizedRowValues.some((rowValue) => rowValue.includes(value))
-    )
-  }
-
-  if (filter.operator === "does_not_contain") {
-    return !normalizedFilterValues.some((value) =>
-      normalizedRowValues.some((rowValue) => rowValue.includes(value))
-    )
-  }
-
-  if (filter.operator === "starts_with") {
-    return normalizedFilterValues.some((value) =>
-      normalizedRowValues.some((rowValue) => rowValue.startsWith(value))
-    )
-  }
-
-  if (filter.operator === "ends_with") {
-    return normalizedFilterValues.some((value) =>
-      normalizedRowValues.some((rowValue) => rowValue.endsWith(value))
-    )
-  }
-
-  return normalizedFilterValues.some((value) =>
-    normalizedRowValues.includes(value)
-  )
-}
-
-function itemMatchesFilter({
-  filter,
-  item,
-  personOptionsById,
-  properties,
-  propertyValuesByKey,
-}: {
-  filter: DatabaseFilterItemConfig
-  item: SortableDatabaseItem
-  personOptionsById: Map<string, string>
-  properties: SortableDatabaseProperty[]
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
-}): boolean {
-  if (!isDatabaseFilterGroup(filter)) {
-    return itemMatchesPropertyFilter({
-      filter,
-      item,
-      personOptionsById,
-      properties,
-      propertyValuesByKey,
-    })
-  }
-
-  return itemMatchesFilters({
-    filters: filter.filters,
-    item,
-    operator: filter.operator,
-    personOptionsById,
-    properties,
-    propertyValuesByKey,
-  })
 }
 
 export function databaseItemMatchesFilter({
@@ -502,59 +204,15 @@ export function databaseItemMatchesFilter({
   properties: SortableDatabaseProperty[]
   propertyValuesByKey: Record<string, DatabasePropertyValue>
 }) {
-  return itemMatchesFilter({
+  return evaluateDatabaseFilter(
     filter,
-    item,
-    personOptionsById,
-    properties,
-    propertyValuesByKey,
-  })
-}
-
-function itemMatchesFilters({
-  filters,
-  item,
-  operator = "and",
-  personOptionsById,
-  properties,
-  propertyValuesByKey,
-}: {
-  filters: DatabaseFilterItemConfig[]
-  item: SortableDatabaseItem
-  operator?: "and" | "or"
-  personOptionsById: Map<string, string>
-  properties: SortableDatabaseProperty[]
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
-}) {
-  if (filters.length === 0) {
-    return true
-  }
-
-  const [firstFilter, ...remainingFilters] = filters
-  let matches = itemMatchesFilter({
-    filter: firstFilter,
-    item,
-    personOptionsById,
-    properties,
-    propertyValuesByKey,
-  })
-
-  for (const filter of remainingFilters) {
-    const filterMatches = itemMatchesFilter({
-      filter,
+    createDatabasePredicateContext({
       item,
       personOptionsById,
       properties,
       propertyValuesByKey,
     })
-
-    matches =
-      (filter.joinOperator ?? operator) === "or"
-        ? matches || filterMatches
-        : matches && filterMatches
-  }
-
-  return matches
+  )
 }
 
 export function getFilteredDatabaseItems(
@@ -569,13 +227,15 @@ export function getFilteredDatabaseItems(
   }
 
   return items.filter((item) =>
-    itemMatchesFilters({
+    evaluateDatabaseFilters(
       filters,
-      item,
-      personOptionsById,
-      properties,
-      propertyValuesByKey,
-    })
+      createDatabasePredicateContext({
+        item,
+        personOptionsById,
+        properties,
+        propertyValuesByKey,
+      })
+    )
   )
 }
 

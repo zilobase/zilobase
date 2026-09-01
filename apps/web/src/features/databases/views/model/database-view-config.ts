@@ -1,7 +1,37 @@
 import {
-  defaultStatusOption,
-  getDatabasePropertyFilterKind,
-} from "../../core/database-property-types";
+  databaseDateFilterOperators,
+  databaseNumberFilterOperators,
+  databasePropertyFilterOperators,
+  getDatabaseFilterOperatorLabel,
+  getDatabaseFilterOperatorsForType,
+  getValidDatabaseFilterOperator,
+  isDatabaseFilterGroup,
+  normalizeDatabaseFilter,
+  normalizeDatabaseFilters,
+  type DatabaseFilterGroupConfig,
+  type DatabaseFilterGroupOperator,
+  type DatabaseFilterItemConfig,
+  type DatabasePropertyFilterConfig,
+  type DatabasePropertyFilterOperator,
+} from "@zilobase/features/databases/filter";
+import { defaultStatusOption } from "../../core/database-property-types";
+
+export {
+  databaseDateFilterOperators,
+  databaseNumberFilterOperators,
+  databasePropertyFilterOperators,
+  getDatabaseFilterOperatorLabel,
+  getDatabaseFilterOperatorsForType,
+  getValidDatabaseFilterOperator,
+  isDatabaseFilterGroup,
+};
+export type {
+  DatabaseFilterGroupConfig,
+  DatabaseFilterGroupOperator,
+  DatabaseFilterItemConfig,
+  DatabasePropertyFilterConfig,
+  DatabasePropertyFilterOperator,
+};
 
 import type {
   DateFormatValue,
@@ -175,147 +205,6 @@ export type DatabaseSortConfig = {
   direction: DatabaseSortDirection;
 };
 
-export type DatabaseFilterGroupOperator = "and" | "or";
-
-export type DatabasePropertyFilterOperator =
-  | "is"
-  | "is_not"
-  | "contains"
-  | "does_not_contain"
-  | "starts_with"
-  | "ends_with"
-  | "greater_than"
-  | "less_than"
-  | "greater_than_or_equal"
-  | "less_than_or_equal"
-  | "is_before"
-  | "is_after"
-  | "is_on_or_before"
-  | "is_on_or_after"
-  | "is_between"
-  | "is_relative_to_today"
-  | "is_empty"
-  | "is_not_empty";
-
-export type DatabasePropertyFilterConfig = {
-  id: string;
-  joinOperator?: DatabaseFilterGroupOperator;
-  operator: DatabasePropertyFilterOperator;
-  propertyId: "name" | string;
-  values: string[];
-};
-
-export type DatabaseFilterGroupConfig = {
-  filters: DatabaseFilterItemConfig[];
-  id: string;
-  joinOperator?: DatabaseFilterGroupOperator;
-  operator: DatabaseFilterGroupOperator;
-  type: "group";
-};
-
-export type DatabaseFilterItemConfig =
-  DatabaseFilterGroupConfig | DatabasePropertyFilterConfig;
-
-export const databasePropertyFilterOperators: {
-  label: string;
-  value: DatabasePropertyFilterOperator;
-}[] = [
-  { label: "Is", value: "is" },
-  { label: "Is not", value: "is_not" },
-  { label: "Contains", value: "contains" },
-  { label: "Does not contain", value: "does_not_contain" },
-  { label: "Starts with", value: "starts_with" },
-  { label: "Ends with", value: "ends_with" },
-  { label: "Is empty", value: "is_empty" },
-  { label: "Is not empty", value: "is_not_empty" },
-];
-
-export const databaseNumberFilterOperators: {
-  label: string;
-  value: DatabasePropertyFilterOperator;
-}[] = [
-  { label: "Is", value: "is" },
-  { label: "Is not", value: "is_not" },
-  { label: "Greater than", value: "greater_than" },
-  { label: "Less than", value: "less_than" },
-  { label: "Greater than or equal", value: "greater_than_or_equal" },
-  { label: "Less than or equal", value: "less_than_or_equal" },
-  { label: "Is empty", value: "is_empty" },
-  { label: "Is not empty", value: "is_not_empty" },
-];
-
-export const databaseDateFilterOperators: {
-  label: string;
-  value: DatabasePropertyFilterOperator;
-}[] = [
-  { label: "Is", value: "is" },
-  { label: "Is not", value: "is_not" },
-  { label: "Is before", value: "is_before" },
-  { label: "Is after", value: "is_after" },
-  { label: "Is on or before", value: "is_on_or_before" },
-  { label: "Is on or after", value: "is_on_or_after" },
-  { label: "Is between", value: "is_between" },
-  { label: "Is relative to today", value: "is_relative_to_today" },
-  { label: "Is empty", value: "is_empty" },
-  { label: "Is not empty", value: "is_not_empty" },
-];
-
-export function getDatabaseFilterOperatorLabel(
-  operator: DatabasePropertyFilterOperator,
-) {
-  return (
-    [
-      ...databasePropertyFilterOperators,
-      ...databaseNumberFilterOperators,
-      ...databaseDateFilterOperators,
-    ].find((item) => item.value === operator)?.label ?? "Is"
-  );
-}
-
-export function getDatabaseFilterOperatorsForType(type: string) {
-  const filterKind = getDatabasePropertyFilterKind(type);
-
-  if (filterKind === "checkbox") {
-    return databasePropertyFilterOperators.filter((operator) =>
-      ["is", "is_not"].includes(operator.value),
-    );
-  }
-
-  if (filterKind === "date") {
-    return databaseDateFilterOperators;
-  }
-
-  if (filterKind === "number") {
-    return databaseNumberFilterOperators;
-  }
-
-  if (filterKind === "person") {
-    return databasePropertyFilterOperators.filter((operator) =>
-      ["contains", "does_not_contain", "is_empty", "is_not_empty"].includes(
-        operator.value,
-      ),
-    );
-  }
-
-  if (filterKind === "files") {
-    return databasePropertyFilterOperators.filter((operator) =>
-      ["is_empty", "is_not_empty"].includes(operator.value),
-    );
-  }
-
-  return databasePropertyFilterOperators;
-}
-
-export function getValidDatabaseFilterOperator(
-  operator: DatabasePropertyFilterOperator,
-  type: string,
-) {
-  const operators = getDatabaseFilterOperatorsForType(type);
-
-  return operators.some((item) => item.value === operator)
-    ? operator
-    : (operators[0]?.value ?? "is");
-}
 
 export function getDatabaseSorts(config: unknown): DatabaseSortConfig[] {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
@@ -784,58 +673,6 @@ function isDatabaseSortConfig(value: unknown): value is DatabaseSortConfig {
   );
 }
 
-export function isDatabaseFilterGroup(
-  filter: DatabaseFilterItemConfig,
-): filter is DatabaseFilterGroupConfig {
-  return "type" in filter && filter.type === "group";
-}
-
-function normalizeDatabaseFilters(values: unknown[]) {
-  return values.flatMap((value, index) => {
-    const filter = normalizeDatabaseFilter(value, `filter-${index}`);
-
-    return filter ? [filter] : [];
-  });
-}
-
-function normalizeDatabaseFilter(
-  value: unknown,
-  fallbackId: string,
-): DatabaseFilterItemConfig | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-
-  const valueRecord = value as Record<string, unknown>;
-
-  if (valueRecord.type === "group" && Array.isArray(valueRecord.filters)) {
-    const operator = valueRecord.operator;
-
-    return {
-      filters: normalizeDatabaseFilters(valueRecord.filters),
-      id: getDatabaseFilterId(value, fallbackId),
-      joinOperator: getDatabaseFilterGroupOperator(valueRecord.joinOperator),
-      operator: getDatabaseFilterGroupOperator(operator) ?? "and",
-      type: "group",
-    };
-  }
-
-  const propertyId = getDatabaseFilterPropertyId(valueRecord.propertyId);
-  const operator = getDatabasePropertyFilterOperator(valueRecord.operator);
-
-  if (!propertyId || !operator) {
-    return null;
-  }
-
-  return {
-    id: getDatabaseFilterId(value, fallbackId),
-    joinOperator: getDatabaseFilterGroupOperator(valueRecord.joinOperator),
-    operator,
-    propertyId,
-    values: getDatabaseFilterValues(valueRecord.values),
-  };
-}
-
 function normalizeDatabaseConditionalColor(
   value: unknown,
   fallbackId: string,
@@ -859,55 +696,12 @@ function normalizeDatabaseConditionalColor(
       valueRecord.applyTo === "this-property" ? "this-property" : "entire-row",
     color: typeof valueRecord.color === "string" ? valueRecord.color : "green",
     filter: normalizedFilter,
-    id: getDatabaseFilterId(value, fallbackId),
+    id:
+      typeof valueRecord.id === "string" && valueRecord.id.length > 0
+        ? valueRecord.id
+        : fallbackId,
     style: "page-background",
   };
-}
-
-function getDatabaseFilterId(value: object, fallbackId: string) {
-  const id = (value as { id?: unknown }).id;
-
-  return typeof id === "string" && id.length > 0 ? id : fallbackId;
-}
-
-function getDatabaseFilterPropertyId(value: unknown) {
-  if (value === "title") {
-    return "name";
-  }
-
-  return typeof value === "string" && value.length > 0 ? value : null;
-}
-
-function getDatabaseFilterValues(value: unknown) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.flatMap((item) =>
-    typeof item === "string" ||
-    typeof item === "number" ||
-    typeof item === "boolean"
-      ? [String(item)]
-      : [],
-  );
-}
-
-function getDatabasePropertyFilterOperator(
-  value: unknown,
-): DatabasePropertyFilterOperator | null {
-  return [
-    ...databasePropertyFilterOperators,
-    ...databaseNumberFilterOperators,
-    ...databaseDateFilterOperators,
-  ].some((operator) => operator.value === value)
-    ? (value as DatabasePropertyFilterOperator)
-    : null;
-}
-
-function getDatabaseFilterGroupOperator(
-  value: unknown,
-): DatabaseFilterGroupOperator | undefined {
-  return value === "and" || value === "or" ? value : undefined;
 }
 
 function getNameColumnConfig(config: unknown) {

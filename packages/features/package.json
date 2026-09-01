@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "test:databases": "tsx --test src/databases/*.test.ts src/databases/automations/*.test.ts"
+    "test:databases": "tsx --test src/databases/*.test.ts src/databases/automations/*.test.ts src/databases/formula/*.test.ts"
   },
   "dependencies": {
     "zod": "^4.4.3"
@@ -67,6 +67,14 @@
     "./databases/property-types": {
       "types": "./src/databases/property-types.ts",
       "default": "./src/databases/property-types.ts"
+    },
+    "./databases/filter": {
+      "types": "./src/databases/filter.ts",
+      "default": "./src/databases/filter.ts"
+    },
+    "./databases/formula": {
+      "types": "./src/databases/formula/index.ts",
+      "default": "./src/databases/formula/index.ts"
     },
     "./databases/queries": {
       "types": "./src/databases/queries.ts",
