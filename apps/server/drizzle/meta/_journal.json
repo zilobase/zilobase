@@ -484,6 +484,13 @@
       "when": 1788231600000,
       "tag": "0068_full_mailbox_metadata_index",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1788235200000,
+      "tag": "0069_custom_mail_properties",
+      "breakpoints": true
     }
   ]
 }

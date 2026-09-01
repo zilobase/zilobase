@@ -456,6 +456,47 @@ export const mailView = pgTable(
   ],
 );
 
+export const mailProperty = pgTable(
+  "mail_property",
+  {
+    id: text("id").primaryKey(),
+    bindingId: text("binding_id")
+      .notNull()
+      .references(() => gmailWorkspaceConnection.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    type: text("type").notNull(),
+    options: jsonb("options").notNull().default([]),
+    ...timestampColumns(),
+  },
+  (table) => [
+    index("mail_property_binding_created_idx").on(table.bindingId, table.createdAt),
+    check(
+      "mail_property_type_check",
+      sql`${table.type} in ('text', 'number', 'select', 'multi_select', 'status', 'date', 'person', 'checkbox', 'url', 'files')`,
+    ),
+  ],
+);
+
+export const mailThreadPropertyValue = pgTable(
+  "mail_thread_property_value",
+  {
+    id: text("id").primaryKey(),
+    propertyId: text("property_id")
+      .notNull()
+      .references(() => mailProperty.id, { onDelete: "cascade" }),
+    gmailThreadId: text("gmail_thread_id").notNull(),
+    value: jsonb("value"),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("mail_thread_property_value_property_thread_unique").on(
+      table.propertyId,
+      table.gmailThreadId,
+    ),
+    index("mail_thread_property_value_thread_idx").on(table.gmailThreadId),
+  ],
+);
+
 export const mailIndexState = pgTable("mail_index_state", {
   gmailAccountId: text("gmail_account_id")
     .primaryKey()

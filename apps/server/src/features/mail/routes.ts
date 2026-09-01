@@ -65,6 +65,15 @@ import {
   getMailIndexProgress,
 } from "./mail-index"
 import { MailQueryError, queryIndexedMail, queryIndexedMailGroups } from "./mail-query"
+import {
+  createMailProperty,
+  deleteMailProperty,
+  listMailProperties,
+  listMailThreadPropertyValues,
+  MailPropertyError,
+  setMailThreadPropertyValue,
+  updateMailProperty,
+} from "./mail-properties"
 
 export const mailRoutes = new Hono<AppBindings>()
 
@@ -388,6 +397,83 @@ mailRoutes.post("/query/groups", async (c) => {
   } catch (error) {
     if (error instanceof MailQueryError) return c.json({ message: error.message }, error.status)
     throw error
+  }
+})
+
+mailRoutes.get("/properties", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  return c.json(await listMailProperties(owned.bindingId, owned.workspaceId))
+})
+
+mailRoutes.post("/properties", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try {
+    const property = await createMailProperty({
+      bindingId: owned.bindingId,
+      value: await c.req.json().catch(() => null),
+    })
+    return c.json({ property }, 201)
+  } catch (error) {
+    return mailPropertyError(c, error)
+  }
+})
+
+mailRoutes.patch("/properties/:propertyId", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try {
+    return c.json({ property: await updateMailProperty({
+      bindingId: owned.bindingId,
+      propertyId: c.req.param("propertyId"),
+      value: await c.req.json().catch(() => null),
+    }) })
+  } catch (error) {
+    return mailPropertyError(c, error)
+  }
+})
+
+mailRoutes.delete("/properties/:propertyId", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try {
+    return c.json(await deleteMailProperty({ bindingId: owned.bindingId, propertyId: c.req.param("propertyId") }))
+  } catch (error) {
+    return mailPropertyError(c, error)
+  }
+})
+
+mailRoutes.get("/threads/:threadId/properties", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  try {
+    return c.json({ values: await listMailThreadPropertyValues({
+      bindingId: owned.bindingId,
+      gmailAccountId: owned.connection.id,
+      threadId: c.req.param("threadId"),
+    }) })
+  } catch (error) {
+    return mailPropertyError(c, error)
+  }
+})
+
+mailRoutes.put("/threads/:threadId/properties/:propertyId", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+  if (!body || !Object.hasOwn(body, "value")) return c.json({ message: "A property value is required." }, 400)
+  try {
+    return c.json({ value: await setMailThreadPropertyValue({
+      bindingId: owned.bindingId,
+      gmailAccountId: owned.connection.id,
+      propertyId: c.req.param("propertyId"),
+      threadId: c.req.param("threadId"),
+      value: body.value,
+      workspaceId: owned.workspaceId,
+    }) })
+  } catch (error) {
+    return mailPropertyError(c, error)
   }
 })
 
@@ -867,6 +953,11 @@ function mailViewError(c: Context<AppBindings>, error: unknown) {
   if (error instanceof MailViewServiceError) {
     return c.json({ message: error.message }, error.status)
   }
+  throw error
+}
+
+function mailPropertyError(c: Context<AppBindings>, error: unknown) {
+  if (error instanceof MailPropertyError) return c.json({ message: error.message }, error.status)
   throw error
 }
 

@@ -103,7 +103,29 @@ export type MailPropertyDefinition = {
 export type MailThreadPropertyValue = {
   files?: Array<{ id: string; name: string; url: string }>
   propertyId: string
-  value: MailFilterValue | MailFilterValue[]
+  value: MailFilterValue | MailFilterValue[] | Array<{ id: string; name: string; url: string }>
+}
+
+export type MailPropertyWorkspaceMember = {
+  email: string
+  id: string
+  image: string | null
+  name: string
+}
+
+export type MailPropertiesBootstrap = {
+  members: MailPropertyWorkspaceMember[]
+  properties: MailPropertyDefinition[]
+}
+
+export type MailPropertyWriteInput = {
+  name: string
+  options?: MailPropertyOption[]
+  type: MailCustomPropertyType
+}
+
+export type MailThreadPropertyValuesResponse = {
+  values: MailThreadPropertyValue[]
 }
 
 export type MailSystemProperty = {

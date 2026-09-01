@@ -117,3 +117,17 @@ test("full-mailbox index stores queryable metadata without message content", asy
   assert.match(migration, /ON DELETE cascade/)
   assert.doesNotMatch(migration, /snippet|body_html|body_text|raw_message/)
 })
+
+test("custom mail properties are binding-wide and thread values cascade with definitions", async () => {
+  const migration = await readFile(
+    new URL("../../../drizzle/0069_custom_mail_properties.sql", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(migration, /CREATE TABLE "mail_property"/)
+  assert.match(migration, /CREATE TABLE "mail_thread_property_value"/)
+  assert.match(migration, /mail_property_binding_id_gmail_workspace_connection_id_fk/)
+  assert.match(migration, /mail_thread_property_value_property_thread_unique/)
+  assert.match(migration, /'text', 'number', 'select', 'multi_select', 'status', 'date', 'person', 'checkbox', 'url', 'files'/)
+  assert.doesNotMatch(migration, /workspace_id.*mail_thread_property_value/)
+})
