@@ -15,14 +15,14 @@ export function register({ assert, loadModule, readSource, readWorkspace, test }
   })
 
   test("disconnect, logout, and desktop replacement all close mail caches before deletion", async () => {
-    const [mailPage, offlineStore, mailDatabase, mailController] = await Promise.all([
-      readSource("/src/features/mail/pages/mail.tsx"),
+    const [workspaceSettings, offlineStore, mailDatabase, mailController] = await Promise.all([
+      readSource("/src/features/workspaces/pages/workspace-settings.tsx"),
       readSource("/src/features/offline/model/offline-store.ts"),
       readSource("/src/features/mail/cache/mail-database.ts"),
       readSource("/src/features/mail/model/mail-sync-controller.ts"),
     ])
-    assert.match(mailPage, /method: "DELETE"/)
-    assert.match(mailPage, /destroyMailDatabase/)
+    assert.match(workspaceSettings, /method: "DELETE"/)
+    assert.match(workspaceSettings, /destroyMailDatabase/)
     assert.match(offlineStore, /clearAllOfflineData[^]*deleteIndexedDatabasesForPrefix/)
     assert.match(offlineStore, /prepareMailDatabasesForDeletion/)
     assert.match(mailDatabase, /BroadcastChannel/)

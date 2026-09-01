@@ -1,3 +1,5 @@
+import type { MailAddress, MailThreadSummary } from "./contracts"
+
 export const mailOrganizationContractVersion = 1 as const
 
 export const mailCustomPropertyTypes = [
@@ -590,6 +592,23 @@ export type MailIndexProgress = {
   lastErrorCode: string | null
   resultSizeEstimate: number | null
   status: MailIndexStatus
+}
+
+export type MailIndexedThread = {
+  bcc: MailAddress[]
+  cc: MailAddress[]
+  from: MailAddress[]
+  hasCalendarEvent: boolean
+  important: boolean
+  thread: MailThreadSummary
+  to: MailAddress[]
+}
+
+export type MailViewQueryResponse = {
+  index: MailIndexProgress
+  nextCursor: string | null
+  searchTruncated: boolean
+  threads: MailIndexedThread[]
 }
 
 const emptyFilter = (id = "root"): MailFilterExpression => ({

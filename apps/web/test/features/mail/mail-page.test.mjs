@@ -34,7 +34,7 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.doesNotMatch(mailSource, /getInitials|avatarClassName/)
     assert.doesNotMatch(mailSource, /primaryViews|aria-label="Mail views"|visibleMessages\.length/)
     assert.match(mailSource, /aria-label="Search mail"[\s\S]*aria-label="Refresh mail"/)
-    assert.match(mailSource, /justify-between[\s\S]*ActiveViewIcon[\s\S]*text-xl[\s\S]*mailViewLabels\[view\][\s\S]*aria-label="Search mail"/)
+    assert.match(mailSource, /justify-between[\s\S]*ActiveViewIcon[\s\S]*text-xl[\s\S]*activeViewLabel[\s\S]*aria-label="Search mail"/)
     assert.match(mailSource, /ActiveViewIcon className="size-5/)
     assert.doesNotMatch(mailSource, /A calm place for conversations/)
     assert.match(mailSource, /<h3 className="px-2/)

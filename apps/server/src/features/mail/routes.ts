@@ -63,6 +63,7 @@ import {
   ensureMailIndexState,
   getMailIndexProgress,
 } from "./mail-index"
+import { MailQueryError, queryIndexedMail } from "./mail-query"
 
 export const mailRoutes = new Hono<AppBindings>()
 
@@ -320,6 +321,39 @@ mailRoutes.post("/index/advance", async (c) => {
     if (error instanceof GmailApiError) {
       const status = error.status === 401 ? 401 : error.status === 429 ? 429 : 502
       return c.json({ message: error.message }, status)
+    }
+    throw error
+  }
+})
+
+mailRoutes.post("/query", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c)
+  if (owned instanceof Response) return owned
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+  if (
+    !body ||
+    typeof body.routeId !== "string" ||
+    !body.routeId ||
+    body.routeId.length > 200 ||
+    (body.cursor !== undefined && typeof body.cursor !== "string") ||
+    (body.limit !== undefined && (!Number.isInteger(body.limit) || Number(body.limit) < 1 || Number(body.limit) > 100)) ||
+    (body.search !== undefined && (typeof body.search !== "string" || body.search.length > 500))
+  ) {
+    return c.json({ message: "A valid indexed mail query is required." }, 400)
+  }
+  try {
+    return c.json(await queryIndexedMail({
+      bindingId: owned.bindingId,
+      ...(typeof body.cursor === "string" ? { cursor: body.cursor } : {}),
+      env: c.env,
+      gmailAccountId: owned.connection.id,
+      ...(typeof body.limit === "number" ? { limit: body.limit } : {}),
+      routeId: body.routeId,
+      ...(typeof body.search === "string" ? { search: body.search } : {}),
+    }))
+  } catch (error) {
+    if (error instanceof MailQueryError) {
+      return c.json({ message: error.message }, error.status)
     }
     throw error
   }

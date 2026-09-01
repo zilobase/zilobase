@@ -280,12 +280,19 @@ export class GmailGateway {
     return this.json<GmailMessage>(`/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}?${params}`)
   }
 
-  listMessages(input: { maxResults?: number; query: string }) {
+  listMessages(input: {
+    includeSpamTrash?: boolean
+    maxResults?: number
+    pageToken?: string
+    query: string
+  }) {
     const params = new URLSearchParams({
       maxResults: String(input.maxResults ?? 10),
       q: input.query,
     })
-    return this.json<{ messages?: GmailMessage[]; resultSizeEstimate?: number }>(
+    if (input.includeSpamTrash) params.set("includeSpamTrash", "true")
+    if (input.pageToken) params.set("pageToken", input.pageToken)
+    return this.json<{ messages?: GmailMessage[]; nextPageToken?: string; resultSizeEstimate?: number }>(
       `/gmail/v1/users/me/messages?${params}`,
     )
   }

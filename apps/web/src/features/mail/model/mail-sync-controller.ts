@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { useLiveQuery } from "dexie-react-hooks"
 import type {
+  MailFilterExpression,
   MailConnection,
   MailLabelRecord,
   MailLabelWriteRequest,
@@ -12,6 +13,10 @@ import type {
   MailThreadSummary,
   MailThreadMutationResponse,
   MailView,
+} from "@zilobase/features/mail"
+import {
+  evaluateMailFilterExpression,
+  mailFilterRecordFromThreadSummary,
 } from "@zilobase/features/mail"
 
 import { ApiError, apiFetch, getApiRequestHeaders, toApiUrl } from "@/features/desktop/network/api"
@@ -39,6 +44,7 @@ import { mailApiBasePath } from "./mail-api-path"
 
 export function useMailController(input: {
   connection: MailConnection
+  filter?: MailFilterExpression | null
   query: string
   userId: string
   view: MailView
@@ -160,7 +166,9 @@ export function useMailController(input: {
   }, [database, input.query, online, runSync])
 
   const threads = useMemo(() => {
-    const visible = (cachedThreads ?? []).filter((thread) => threadMatchesView(thread, input.view))
+    const visible = (cachedThreads ?? []).filter((thread) => input.filter
+      ? evaluateMailFilterExpression(mailFilterRecordFromThreadSummary(thread), input.filter)
+      : threadMatchesView(thread, input.view))
     if (searchResultIds) {
       const order = new Map(searchResultIds.map((id, index) => [id, index]))
       return visible.filter((thread) => order.has(thread.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
@@ -172,7 +180,7 @@ export function useMailController(input: {
       thread.snippet,
       ...thread.participants.flatMap((participant) => [participant.name ?? "", participant.address]),
     ].some((value) => value.toLowerCase().includes(query)))
-  }, [cachedThreads, input.query, input.view, searchResultIds])
+  }, [cachedThreads, input.filter, input.query, input.view, searchResultIds])
 
   const loadThread = useCallback((threadId: string) => {
     if (!database) return
