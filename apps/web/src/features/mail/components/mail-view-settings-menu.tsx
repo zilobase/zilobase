@@ -29,11 +29,13 @@ export function MailViewSettingsMenu({
   filterCount = 0,
   filterDirty = false,
   filterEditor,
+  databaseEditor,
   groupEditor,
   hoverActionsEditor,
   propertiesEditor,
   visiblePropertyCount = 0,
 }: {
+  databaseEditor?: ReactNode
   filterCount?: number
   filterDirty?: boolean
   filterEditor?: ReactNode
@@ -82,7 +84,7 @@ export function MailViewSettingsMenu({
               ) : null}
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-72">
-              {label === "Group" && groupEditor ? groupEditor : label === "Filter" && filterEditor ? filterEditor : label === "Properties" && propertiesEditor ? propertiesEditor : (
+              {label === "Group" && groupEditor ? groupEditor : label === "Filter" && filterEditor ? filterEditor : label === "Properties" && propertiesEditor ? propertiesEditor : label === "Database" && databaseEditor ? databaseEditor : (
                 <DropDrawerItem disabled>
                   This panel is enabled in its organization pass.
                 </DropDrawerItem>

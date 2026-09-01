@@ -12,15 +12,12 @@ import {
 
 import { db } from "../../infrastructure/database"
 import { mailView } from "../../infrastructure/database/schema"
+import { prepareMailDatabaseSyncConfig } from "./mail-database-sync"
+import { MailViewServiceError } from "./mail-view-errors"
+
+export { MailViewServiceError } from "./mail-view-errors"
 
 const seededTemplateIds = ["inbox", "unread", "starred"] as const
-
-export class MailViewServiceError extends Error {
-  constructor(message: string, readonly status: 400 | 404 | 409) {
-    super(message)
-    this.name = "MailViewServiceError"
-  }
-}
 
 export function seededMailViewId(
   bindingId: string,
@@ -65,7 +62,9 @@ export async function listMailViews(bindingId: string) {
 
 export async function createMailView(input: {
   bindingId: string
+  userId?: string
   value: MailViewCreateInput
+  workspaceId?: string
 }) {
   await ensureDefaultMailViews(input.bindingId)
   const template = input.value.templateId
@@ -82,7 +81,12 @@ export async function createMailView(input: {
     .values({
       bindingId: input.bindingId,
       config: input.value.config
-        ? normalizeMailViewConfig(input.value.config)
+        ? await prepareMailDatabaseSyncConfig({
+            bindingId: input.bindingId,
+            config: input.value.config,
+            userId: input.userId,
+            workspaceId: input.workspaceId,
+          })
         : template?.config ?? normalizeMailViewConfig({}),
       createdAt: now,
       icon: cleanIcon(input.value.icon, template?.icon ?? "mail"),
@@ -100,14 +104,23 @@ export async function createMailView(input: {
 
 export async function updateMailView(input: {
   bindingId: string
+  userId?: string
   value: MailViewUpdateInput
   viewId: string
+  workspaceId?: string
 }) {
   const updates: Partial<typeof mailView.$inferInsert> = { updatedAt: new Date() }
   if (input.value.name !== undefined) updates.name = cleanName(input.value.name)
   if (input.value.icon !== undefined) updates.icon = cleanIcon(input.value.icon, null)
   if (input.value.config !== undefined) {
-    updates.config = normalizeMailViewConfig(input.value.config)
+    const existing = await findMailView(input.bindingId, input.viewId)
+    updates.config = await prepareMailDatabaseSyncConfig({
+      bindingId: input.bindingId,
+      config: input.value.config,
+      previousConfig: existing.config,
+      userId: input.userId,
+      workspaceId: input.workspaceId,
+    })
   }
   const [updated] = await db
     .update(mailView)
@@ -120,20 +133,29 @@ export async function updateMailView(input: {
 
 export async function duplicateMailView(input: {
   bindingId: string
+  userId?: string
   viewId: string
+  workspaceId?: string
 }) {
   const source = await findMailView(input.bindingId, input.viewId)
   return createMailView({
     bindingId: input.bindingId,
+    userId: input.userId,
     value: {
       icon: source.icon,
       name: `${source.name} copy`,
     },
+    workspaceId: input.workspaceId,
   }).then(async (created) =>
     updateMailView({
       bindingId: input.bindingId,
-      value: { config: source.config },
+      value: { config: {
+        ...source.config,
+        databaseSync: { ...source.config.databaseSync, activatedAt: null, enabled: false },
+      } },
       viewId: created.id,
+      userId: input.userId,
+      workspaceId: input.workspaceId,
     }),
   )
 }

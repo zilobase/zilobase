@@ -562,12 +562,14 @@ mailRoutes.post("/views", async (c) => {
   try {
     const view = await createMailView({
       bindingId: owned.bindingId,
+      userId: owned.userId,
       value: {
         ...(body.config !== undefined ? { config: body.config as MailViewConfig } : {}),
         ...(body.icon !== undefined ? { icon: body.icon as string | null } : {}),
         ...(body.name !== undefined ? { name: body.name as string } : {}),
         ...(templateId ? { templateId } : {}),
       },
+      workspaceId: owned.workspaceId,
     })
     return c.json({ view }, 201)
   } catch (error) {
@@ -605,7 +607,9 @@ mailRoutes.post("/views/:viewId/duplicate", async (c) => {
   try {
     const view = await duplicateMailView({
       bindingId: owned.bindingId,
+      userId: owned.userId,
       viewId: c.req.param("viewId"),
+      workspaceId: owned.workspaceId,
     })
     return c.json({ view }, 201)
   } catch (error) {
@@ -628,12 +632,14 @@ mailRoutes.patch("/views/:viewId", async (c) => {
   try {
     const view = await updateMailView({
       bindingId: owned.bindingId,
+      userId: owned.userId,
       value: {
         ...(body.config !== undefined ? { config: body.config as MailViewConfig } : {}),
         ...(body.icon !== undefined ? { icon: body.icon as string | null } : {}),
         ...(body.name !== undefined ? { name: body.name as string } : {}),
       },
       viewId: c.req.param("viewId"),
+      workspaceId: owned.workspaceId,
     })
     return c.json({ view })
   } catch (error) {

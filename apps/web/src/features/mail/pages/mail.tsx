@@ -96,6 +96,7 @@ import { isMutableMailGroup, MailGroupEditor } from "../components/mail-group-ed
 import { formatMailPropertyValue, MailPropertiesPanel, MailThreadPropertyBar } from "../components/mail-properties-panel"
 import { mailHoverActionCatalog, MailHoverActionIcon, MailHoverActionsPanel } from "../components/mail-hover-actions-panel"
 import { MailRowActionDialog } from "../components/mail-row-action-dialog"
+import { MailDatabaseSyncPanel } from "../components/mail-database-sync-panel"
 import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
@@ -576,6 +577,16 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                             online={controller.online}
                           />
                           <MailViewSettingsMenu
+                            databaseEditor={activePersistedView ? (
+                              <MailDatabaseSyncPanel
+                                config={activePersistedView.config}
+                                onChange={(config) => persistedViewsQuery.updateView({ value: { config }, viewId: activePersistedView.id }).then(() => undefined)}
+                                properties={customProperties}
+                                saving={persistedViewsQuery.savingView}
+                                viewName={activePersistedView.name}
+                                workspaceId={connection.workspaceId!}
+                              />
+                            ) : undefined}
                             filterCount={effectiveFilter ? countMailFilterConditions(effectiveFilter) : 0}
                             filterDirty={filterDirty}
                             filterEditor={activePersistedView && effectiveFilter ? (
