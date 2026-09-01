@@ -57,30 +57,26 @@ export class MailDatabase extends Dexie {
   }
 }
 
-export function mailDatabaseName(input: {
+export type MailDatabaseIdentity = {
   apiOrigin: string
-  bindingId?: string
+  bindingId: string
   connectionId: string
   userId: string
-  workspaceId?: string
-}) {
+  workspaceId: string
+}
+
+export function mailDatabaseName(input: MailDatabaseIdentity) {
   const origin = new URL(input.apiOrigin).origin
   const userId = requireIdentifier(input.userId, "user")
-  const workspaceId = requireIdentifier(input.workspaceId ?? "legacy", "workspace")
-  const bindingId = requireIdentifier(input.bindingId ?? input.connectionId, "binding")
+  const workspaceId = requireIdentifier(input.workspaceId, "workspace")
+  const bindingId = requireIdentifier(input.bindingId, "binding")
   return `zilobase:v2:${encodeURIComponent(origin)}:${encodeURIComponent(userId)}:workspace:${encodeURIComponent(workspaceId)}:mail:${encodeURIComponent(bindingId)}`
 }
 
-export async function openMailDatabase(input: {
-  apiOrigin: string
-  bindingId?: string
-  connectionId: string
-  userId: string
-  workspaceId?: string
-}, recoveryAttempt = false): Promise<MailDatabase> {
+export async function openMailDatabase(input: MailDatabaseIdentity, recoveryAttempt = false): Promise<MailDatabase> {
   const name = mailDatabaseName(input)
-  const bindingId = input.bindingId ?? input.connectionId
-  const workspaceId = input.workspaceId ?? "legacy"
+  const bindingId = input.bindingId
+  const workspaceId = input.workspaceId
   try {
     initializeLifecycleChannel()
     let database = openDatabases.get(name)
@@ -448,13 +444,7 @@ async function deleteMailDatabaseWithTimeout(name: string) {
 }
 
 async function destroyOtherConnectionDatabases(
-  input: {
-    apiOrigin: string
-    bindingId?: string
-    connectionId: string
-    userId: string
-    workspaceId?: string
-  },
+  input: MailDatabaseIdentity,
   currentName: string,
 ) {
   const prefix = mailDatabasePrefix(input)

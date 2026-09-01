@@ -31,6 +31,7 @@ import { createImageStorage } from "../../infrastructure/storage/image-storage"
 import type { RuntimeEnv } from "../../shared/config/config"
 import { createGmailGateway, type GmailGateway } from "./gmail-gateway"
 import { normalizeGmailThread } from "./mail-normalize"
+import { recordMailMetric } from "./mail-metrics"
 
 const LEASE_MS = 2 * 60 * 1_000
 const MAX_ATTEMPTS = 8
@@ -124,6 +125,7 @@ export async function getMailDatabaseSyncViewStatus(bindingId: string, viewId: s
 }
 
 export async function drainMailDatabaseSyncOutbox(env: RuntimeEnv, options: { bindingId?: string; limit?: number; workerId?: string } = {}) {
+  const startedAt = Date.now()
   const limit = Math.max(1, Math.min(options.limit ?? 20, 100))
   const workerId = options.workerId ?? `mail-sync:${crypto.randomUUID()}`
   const now = new Date()
@@ -192,6 +194,16 @@ export async function drainMailDatabaseSyncOutbox(env: RuntimeEnv, options: { bi
         }
       }
     }
+  }
+  const count = completed + paused + retried
+  if (count) {
+    await recordMailMetric("database_sync", {
+      code: paused ? "paused" : retried ? "retry" : "complete",
+      ...(options.bindingId ? { connectionId: options.bindingId } : {}),
+      count,
+      durationMs: Date.now() - startedAt,
+      outcome: paused ? "failure" : "success",
+    })
   }
   return { completed, paused, retried }
 }

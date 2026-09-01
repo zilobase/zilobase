@@ -2,20 +2,14 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { test } from "vitest"
 
-test("workspace mail routes are mounted beside flagged legacy routes", async () => {
+test("workspace mail routes are mounted separately from public provider callbacks", async () => {
   const routes = await readFile(
     new URL("../../app/routes.ts", import.meta.url),
     "utf8",
   )
-  const config = await readFile(
-    new URL("../../shared/config/config.ts", import.meta.url),
-    "utf8",
-  )
-
   assert.match(routes, /app\.route\("\/workspaces\/:workspaceId\/mail", mailRoutes\)/)
-  assert.match(routes, /app\.route\("\/mail", mailRoutes\)/)
-  assert.match(config, /isLegacyMailRoutesEnabled/)
-  assert.match(config, /MAIL_LEGACY_ROUTES_ENABLED/)
+  assert.match(routes, /app\.route\("\/mail", mailProviderRoutes\)/)
+  assert.doesNotMatch(routes, /app\.route\("\/mail", mailRoutes\)/)
 })
 
 test("workspace connection resolution checks membership and account ownership", async () => {
@@ -50,7 +44,7 @@ test("disconnect revokes only after the final workspace binding", async () => {
   const routes = await readFile(new URL("./routes.ts", import.meta.url), "utf8")
   const disconnect = routes.slice(
     routes.indexOf('mailRoutes.delete("/connection"'),
-    routes.indexOf('mailRoutes.post("/google/pubsub"'),
+    routes.indexOf('mailProviderRoutes.post("/google/pubsub"'),
   )
 
   assert.match(disconnect, /delete\(gmailWorkspaceConnection\)/)

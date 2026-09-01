@@ -131,3 +131,14 @@ test("custom mail properties are binding-wide and thread values cascade with def
   assert.match(migration, /'text', 'number', 'select', 'multi_select', 'status', 'date', 'person', 'checkbox', 'url', 'files'/)
   assert.doesNotMatch(migration, /workspace_id.*mail_thread_property_value/)
 })
+
+test("workspace rollout removes legacy credentials and requires workspace OAuth state", async () => {
+  const migration = await readFile(
+    new URL("../../../drizzle/0072_workspace_mail_rollout.sql", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(migration, /DELETE FROM "gmail_oauth_attempt" WHERE "workspace_id" IS NULL/)
+  assert.match(migration, /ALTER COLUMN "workspace_id" SET NOT NULL/)
+  assert.match(migration, /DROP TABLE "gmail_connection"/)
+})

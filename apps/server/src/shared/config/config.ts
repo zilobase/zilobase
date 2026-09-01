@@ -4,10 +4,6 @@ export function isMailFeatureEnabled(env: RuntimeEnv) {
   return getStringEnv(env, "MAIL_ENABLED")?.trim().toLowerCase() === "true";
 }
 
-export function isLegacyMailRoutesEnabled(env: RuntimeEnv) {
-  return getStringEnv(env, "MAIL_LEGACY_ROUTES_ENABLED")?.trim().toLowerCase() !== "false";
-}
-
 const DESKTOP_CLIENT_ORIGINS = [
   "tauri://localhost",
   "http://tauri.localhost",

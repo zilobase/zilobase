@@ -18,6 +18,7 @@ import {
 } from "./gmail-gateway"
 import { normalizeGmailThread } from "./mail-normalize"
 import { enqueueMailDatabaseSyncForIndexedThread } from "./mail-database-sync-worker"
+import { recordMailMetric } from "./mail-metrics"
 
 const BACKFILL_PAGE_SIZE = 100
 const MAX_HISTORY_PAGES_PER_ADVANCE = 5
@@ -130,6 +131,7 @@ export async function advancePendingMailIndexes(
   env: RuntimeEnv,
   limit = 5,
 ) {
+  const startedAt = Date.now()
   const accounts = await db
     .select({
       id: gmailAccount.id,
@@ -157,6 +159,14 @@ export async function advancePendingMailIndexes(
       advanced += 1
       failed += 1
     }
+  }
+  if (advanced) {
+    await recordMailMetric("index", {
+      code: failed ? "batch_partial_failure" : "batch_complete",
+      count: advanced,
+      durationMs: Date.now() - startedAt,
+      outcome: failed ? "failure" : "success",
+    })
   }
   return { advanced, failed }
 }

@@ -342,7 +342,7 @@ export function AppSidebar({
       ) : (
         <SidebarContent>
           <div aria-hidden="true" className="h-3 shrink-0" />
-          {activeTab.id === "mail" && isFeatureEnabled("mailOrganization") ? (
+          {activeTab.id === "mail" ? (
             <WorkspaceMailNavigation workspaceId={workspaceId} />
           ) : (
             <>

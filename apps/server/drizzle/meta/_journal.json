@@ -505,6 +505,13 @@
       "when": 1788242400000,
       "tag": "0071_mail_database_sync",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1788246000000,
+      "tag": "0072_workspace_mail_rollout",
+      "breakpoints": true
     }
   ]
 }

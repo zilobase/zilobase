@@ -74,7 +74,6 @@ import {
 import { Input } from "@/shared/ui/input"
 import { Separator } from "@/shared/ui/separator"
 import { useThemeFamily } from "@/shared/providers/theme-family-provider"
-import { isFeatureEnabled } from "@/shared/config/feature-flags"
 import {
   EmbeddedItemPresentationDropdown,
   MainPaneHeaderLeadingControl,
@@ -85,7 +84,6 @@ import {
   PageSidePaneLayout,
   PageSidePaneShell,
 } from "@/features/pages/context"
-import { mailViewIcons, mailViewLabels } from "@/features/sidebar"
 
 import { sanitizeMailHtml } from "../model/mail-html"
 import { applyMailDocumentTheme } from "../model/mail-document-theme"
@@ -118,13 +116,10 @@ const organizationFolderDetails = {
 
 export default function MailPage() {
   const activeWorkspaceId = useActiveWorkspaceId()
-  const organizationEnabled = isFeatureEnabled("mailOrganization")
-  const mailBasePath = mailApiBasePath(
-    organizationEnabled ? activeWorkspaceId : null,
-  )
+  const mailBasePath = mailApiBasePath(activeWorkspaceId)
   const connectionQuery = useQuery({
-    enabled: !organizationEnabled || Boolean(activeWorkspaceId),
-    queryKey: ["mail", "connection", organizationEnabled ? activeWorkspaceId : "legacy"],
+    enabled: Boolean(activeWorkspaceId),
+    queryKey: ["mail", "connection", activeWorkspaceId],
     queryFn: ({ signal }) => apiFetch<MailConnection>(`${mailBasePath}/connection`, { signal }),
     staleTime: 15_000,
   })
@@ -136,7 +131,7 @@ export default function MailPage() {
         error={connectionQuery.error}
         loading={connectionQuery.isLoading}
         onConnected={() => void connectionQuery.refetch()}
-        workspaceId={organizationEnabled ? activeWorkspaceId : null}
+        workspaceId={activeWorkspaceId}
       />
     )
   }
@@ -162,7 +157,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const [composerSeed, setComposerSeed] = useState<MailComposeSeed | null>(() => compose ? {} : null)
   const persistedViewsQuery = useMailViews({
     bindingId: connection.bindingId,
-    enabled: isFeatureEnabled("mailOrganization"),
+    enabled: true,
     workspaceId: connection.workspaceId,
   })
   const persistedViews = persistedViewsQuery.data?.views ?? []
@@ -171,15 +166,14 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const activeSystemFolder = mailSystemFolderIds.includes(view as (typeof mailSystemFolderIds)[number])
     ? view as (typeof mailSystemFolderIds)[number]
     : null
-  const organizationEnabled = isFeatureEnabled("mailOrganization")
   const mailPropertiesQuery = useMailProperties({
     bindingId: connection.bindingId,
-    enabled: organizationEnabled,
+    enabled: true,
     workspaceId: connection.workspaceId,
   })
   const customProperties = mailPropertiesQuery.data?.properties ?? []
   const propertyMembers = mailPropertiesQuery.data?.members ?? []
-  const mailReminders = useMailReminders({ bindingId: connection.bindingId, enabled: organizationEnabled, workspaceId: connection.workspaceId })
+  const mailReminders = useMailReminders({ bindingId: connection.bindingId, enabled: true, workspaceId: connection.workspaceId })
   const [draftFilter, setDraftFilter] = useState<MailFilterExpression | null>(null)
   useEffect(() => {
     setDraftFilter(activePersistedView ? cloneMailFilter(activePersistedView.config.filter) : null)
@@ -195,16 +189,14 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     ? `${indexProgress.status}:${indexProgress.indexedThreadCount}`
     : "none"
   const refetchPersistedViews = persistedViewsQuery.refetch
-  const providerView = organizationEnabled
-    ? providerViewForOrganizationRoute(activePersistedView, activeSystemFolder)
-    : legacyProviderView(view)
+  const providerView = providerViewForOrganizationRoute(activePersistedView, activeSystemFolder)
   useEffect(() => {
     const timer = window.setTimeout(() => setIndexedSearch(query.trim()), 350)
     return () => window.clearTimeout(timer)
   }, [query])
   const indexedMailQuery = useIndexedMailView({
     bindingId: connection.bindingId,
-    enabled: organizationEnabled && Boolean(activePersistedView || activeSystemFolder),
+    enabled: Boolean(activePersistedView || activeSystemFolder),
     filter: activePersistedView && effectiveFilter ? effectiveFilter : undefined,
     routeId: view,
     search: indexedSearch,
@@ -212,7 +204,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   })
   const mailGroupsQuery = useMailGroups({
     bindingId: connection.bindingId,
-    enabled: organizationEnabled && Boolean(activePersistedView?.config.group),
+    enabled: Boolean(activePersistedView?.config.group),
     filter: activePersistedView && effectiveFilter ? effectiveFilter : undefined,
     routeId: view,
     search: indexedSearch,
@@ -222,19 +214,18 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const indexedThreads = indexedMailQuery.data?.pages.flatMap((page) =>
     page.threads.map((indexed) => indexed.thread)) ?? []
   const customValuesByThread = useMemo(() => new Map(indexedItems.map((indexed) => [indexed.thread.id, indexed.customValues])), [indexedItems])
-  const visibleThreads = organizationEnabled ? indexedThreads : []
+  const visibleThreads = indexedThreads
   useEffect(() => {
-    if (!organizationEnabled || !persistedViewsQuery.isSuccess || !inboxView) return
+    if (!persistedViewsQuery.isSuccess || !inboxView) return
     if (activePersistedView || activeSystemFolder) return
     void navigate({
       replace: true,
       search: { compose, view: inboxView.id },
       to: "/mail",
     })
-  }, [activePersistedView, activeSystemFolder, compose, inboxView, navigate, organizationEnabled, persistedViewsQuery.isSuccess])
+  }, [activePersistedView, activeSystemFolder, compose, inboxView, navigate, persistedViewsQuery.isSuccess])
   useEffect(() => {
     if (
-      !organizationEnabled ||
       !indexProgress ||
       indexProgress.status === "ready" ||
       indexProgress.status === "error"
@@ -251,11 +242,11 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [connection.workspaceId, indexProgressKey, organizationEnabled, refetchPersistedViews])
+  }, [connection.workspaceId, indexProgressKey, refetchPersistedViews])
   const controller = useMailController({
     connection,
-    filter: organizationEnabled ? activePersistedView?.config.filter ?? null : null,
-    query: organizationEnabled ? "" : query,
+    filter: activePersistedView?.config.filter ?? null,
+    query: "",
     userId,
     view: providerView,
   })
@@ -264,7 +255,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     connectionId: connection.connectionId!,
     enabled: controller.online && Boolean(controller.database),
     onSynchronize: controller.refresh,
-    workspaceId: connection.workspaceId ?? "legacy",
+    workspaceId: connection.workspaceId!,
   })
   useEffect(() => {
     if (!controller.error) return
@@ -274,7 +265,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     if (!indexedMailQuery.error) return
     toast.error(getApiErrorMessage(indexedMailQuery.error), { id: "mail-index-query-error" })
   }, [indexedMailQuery.error])
-  const displayedThreads = organizationEnabled ? visibleThreads : controller.threads
+  const displayedThreads = visibleThreads
   const selectedThread = displayedThreads.find((thread) => thread.id === selection) ?? null
   const selectedMessages = useLiveQuery(
     () => controller.database && selection
@@ -285,7 +276,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   )
   const selectedPropertiesQuery = useMailThreadProperties({
     bindingId: connection.bindingId,
-    enabled: organizationEnabled,
+    enabled: true,
     threadId: selection,
     workspaceId: connection.workspaceId,
   })
@@ -294,18 +285,14 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     : -1
   const previousId = selectedIndex > 0 ? displayedThreads[selectedIndex - 1]?.id ?? null : null
   const nextId = selectedIndex >= 0 ? displayedThreads[selectedIndex + 1]?.id ?? null : null
-  const ActiveViewIcon = organizationEnabled
-    ? activePersistedView
-      ? persistedViewIcon(activePersistedView)
-      : activeSystemFolder
-        ? organizationFolderDetails[activeSystemFolder].icon
-        : InboxIcon
-    : mailViewIcons[providerView as keyof typeof mailViewIcons]
-  const activeViewLabel = organizationEnabled
-    ? activePersistedView?.name ?? (activeSystemFolder
-      ? organizationFolderDetails[activeSystemFolder].label
-      : "Inbox")
-    : mailViewLabels[providerView as keyof typeof mailViewLabels]
+  const ActiveViewIcon = activePersistedView
+    ? persistedViewIcon(activePersistedView)
+    : activeSystemFolder
+      ? organizationFolderDetails[activeSystemFolder].icon
+      : InboxIcon
+  const activeViewLabel = activePersistedView?.name ?? (activeSystemFolder
+    ? organizationFolderDetails[activeSystemFolder].label
+    : "Inbox")
   const idlePrefetchIds = useMemo(() => displayedThreads.slice(0, 6).map((thread) => thread.id), [displayedThreads])
   const idlePrefetchKey = idlePrefetchIds.join("|")
 
@@ -514,7 +501,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     onPrevious: () => previousId && setSelection(previousId),
     online: controller.online,
     ownEmail: connection.email!,
-    propertyBar: organizationEnabled ? (
+    propertyBar: (
       <MailThreadPropertyBar
         disabled={mailPropertiesQuery.mutating || selectedPropertiesQuery.setting}
         members={propertyMembers}
@@ -522,7 +509,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
         properties={customProperties}
         values={selectedPropertiesQuery.data?.values ?? []}
       />
-    ) : null,
+    ),
     previousDisabled: !previousId,
     thread: selectedThread,
   } satisfies ConversationProps : null
@@ -636,7 +623,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                         />
                       ) : null}
 
-                      {organizationEnabled && indexProgress && indexProgress.status !== "ready" ? (
+                      {indexProgress && indexProgress.status !== "ready" ? (
                         <div aria-live="polite" className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary" role="status">
                           {indexProgress.status === "error"
                             ? "Mail indexing paused. It will retry automatically."
@@ -655,7 +642,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                         </div>
                       ) : null}
 
-                      {(organizationEnabled ? indexedMailQuery.isLoading : !controller.database) ? <MailboxLoading /> : groupedThreads.length ? (
+                      {indexedMailQuery.isLoading ? <MailboxLoading /> : groupedThreads.length ? (
                         <div>
                           {groupedThreads.map(({ count, key, label, mutable, threads }) => (
                             <section
@@ -719,15 +706,15 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                               </div> : null}
                             </section>
                           ))}
-                          {(organizationEnabled ? indexedMailQuery.hasNextPage : controller.hasMore) ? (
+                          {indexedMailQuery.hasNextPage ? (
                             <div className="flex justify-center pt-5">
                               <Button
-                                disabled={!controller.online || (organizationEnabled ? indexedMailQuery.isFetchingNextPage : controller.syncing)}
-                                onClick={() => void (organizationEnabled ? indexedMailQuery.fetchNextPage() : controller.loadMore())}
+                                disabled={!controller.online || indexedMailQuery.isFetchingNextPage}
+                                onClick={() => void indexedMailQuery.fetchNextPage()}
                                 type="button"
                                 variant="outline"
                               >
-                                {(organizationEnabled ? indexedMailQuery.isFetchingNextPage : controller.syncing) ? "Loading…" : "Load more"}
+                                {indexedMailQuery.isFetchingNextPage ? "Loading…" : "Load more"}
                               </Button>
                             </div>
                           ) : null}
@@ -735,7 +722,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                       ) : (
                         <div>
                           <MailEmptyState offline={!controller.online} query={query} />
-                          {organizationEnabled && indexedMailQuery.hasNextPage ? (
+                          {indexedMailQuery.hasNextPage ? (
                             <div className="flex justify-center pt-5">
                               <Button
                                 disabled={!controller.online || indexedMailQuery.isFetchingNextPage}
@@ -1290,12 +1277,6 @@ function providerViewForOrganizationRoute(
   return "inbox"
 }
 
-function legacyProviderView(view: string): MailView {
-  return ["archive", "drafts", "inbox", "sent", "spam", "starred", "trash", "unread"].includes(view)
-    ? view as MailView
-    : "inbox"
-}
-
 function persistedViewIcon(view: MailPersistedView) {
   if (view.templateId === "inbox") return InboxIcon
   if (view.templateId === "starred") return StarIcon
@@ -1338,7 +1319,7 @@ function MailConnectionState({ connection, error, loading, onConnected, workspac
         </h1>
         <p className="max-w-sm text-sm leading-6 text-content-secondary">Read, organize, draft, and send Gmail from Zilobase. Gmail remains authoritative.</p>
       </div>
-      <Button disabled={(!workspaceId && isFeatureEnabled("mailOrganization")) || loading || pending || connection?.providerConfigured === false} onClick={() => void connect()} type="button">
+      <Button disabled={!workspaceId || loading || pending || connection?.providerConfigured === false} onClick={() => void connect()} type="button">
         <GoogleIcon /> {pending ? "Opening Google…" : "Connect Google account"}
       </Button>
       {connection?.providerConfigured === false ? <p className="text-center text-xs text-feedback-danger-text">Gmail is not configured on this Zilobase server.</p> : null}

@@ -5,7 +5,8 @@ export function register({ assert, readSource, test }) {
       readSource("/src/features/sidebar/app-sidebar.tsx"),
     ])
 
-    assert.match(sidebar, /activeTab\.id === "mail" && isFeatureEnabled\("mailOrganization"\)/)
+    assert.match(sidebar, /activeTab\.id === "mail"/)
+    assert.doesNotMatch(sidebar, /mailOrganization/)
     assert.match(navigation, /<SidebarGroupLabel>Views<\/SidebarGroupLabel>/)
     assert.match(navigation, /<SidebarGroupLabel>Mail<\/SidebarGroupLabel>/)
     assert.match(navigation, /mailSystemFolderIds\.map/)

@@ -24,8 +24,10 @@ export function register({ assert, loadModule, test }) {
       await loadModule("/src/features/mail/cache/mail-database.ts")
     const database = await openMailDatabase({
       apiOrigin: "https://api.example.com",
+      bindingId: "binding-transaction",
       connectionId: "gmail-transaction",
       userId: "user-1",
+      workspaceId: "workspace-1",
     })
 
     const message = {
@@ -80,7 +82,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.equal((await database.messages.get("message-1"))?.subject, "Subject")
     assert.deepEqual(await database.syncState.get("primary"), {
-      bindingId: "gmail-transaction",
+      bindingId: "binding-transaction",
       connectionId: "gmail-transaction",
       historyId: "10",
       key: "primary",
@@ -90,7 +92,7 @@ export function register({ assert, loadModule, test }) {
       pageTokens: { inbox: "next" },
       schemaVersion: 3,
       userId: "user-1",
-      workspaceId: "legacy",
+      workspaceId: "workspace-1",
     })
 
     const name = database.name
@@ -103,8 +105,10 @@ export function register({ assert, loadModule, test }) {
     )
     const database = await openMailDatabase({
       apiOrigin: "https://api.example.com",
+      bindingId: "binding-rollback",
       connectionId: "gmail-rollback",
       userId: "user-1",
+      workspaceId: "workspace-1",
     })
     await assert.rejects(database.transaction("rw", database.labels, async () => {
       await database.labels.put({
@@ -125,14 +129,16 @@ export function register({ assert, loadModule, test }) {
     await destroyMailDatabase(database.name)
   })
 
-  test("mail account replacement destroys the prior connection cache", async () => {
+  test("mail account replacement rebuilds the workspace binding cache", async () => {
     const { destroyMailDatabase, openMailDatabase } = await loadModule(
       "/src/features/mail/cache/mail-database.ts",
     )
     const first = await openMailDatabase({
       apiOrigin: "https://replacement.example.com",
+      bindingId: "binding-replacement",
       connectionId: "gmail-old",
       userId: "user-replacement",
+      workspaceId: "workspace-replacement",
     })
     const oldName = first.name
     await first.labels.put({
@@ -149,11 +155,12 @@ export function register({ assert, loadModule, test }) {
     })
     const next = await openMailDatabase({
       apiOrigin: "https://replacement.example.com",
+      bindingId: "binding-replacement",
       connectionId: "gmail-new",
       userId: "user-replacement",
+      workspaceId: "workspace-replacement",
     })
-    const databases = await indexedDB.databases()
-    assert.equal(databases.some((database) => database.name === oldName), false)
+    assert.equal(next.name, oldName)
     assert.equal(await next.labels.get("Label_old"), undefined)
     await destroyMailDatabase(next.name)
   })
@@ -164,8 +171,10 @@ export function register({ assert, loadModule, test }) {
     )
     const identity = {
       apiOrigin: "https://corrupt.example.com",
+      bindingId: "binding-corrupt",
       connectionId: "gmail-corrupt",
       userId: "user-corrupt",
+      workspaceId: "workspace-corrupt",
     }
     const first = await openMailDatabase(identity)
     await first.syncState.update("primary", { schemaVersion: -1 })
@@ -188,8 +197,10 @@ export function register({ assert, loadModule, test }) {
     } = await loadModule("/src/features/mail/cache/mail-database.ts")
     const database = await openMailDatabase({
       apiOrigin: "https://api.example.com",
+      bindingId: "binding-optimistic",
       connectionId: "gmail-optimistic",
       userId: "user-1",
+      workspaceId: "workspace-1",
     })
     await applyMailSyncResponse(database, mutationFixture(), "inbox")
 
@@ -224,8 +235,10 @@ export function register({ assert, loadModule, test }) {
     } = await loadModule("/src/features/mail/cache/mail-database.ts")
     const database = await openMailDatabase({
       apiOrigin: "https://api.example.com",
+      bindingId: "binding-label-delete",
       connectionId: "gmail-label-delete",
       userId: "user-1",
+      workspaceId: "workspace-1",
     })
     const fixture = mutationFixture()
     fixture.labels = [{
@@ -260,8 +273,10 @@ export function register({ assert, loadModule, test }) {
     } = await loadModule("/src/features/mail/cache/mail-database.ts")
     const database = await openMailDatabase({
       apiOrigin: "https://api.example.com",
+      bindingId: "binding-reconciliation",
       connectionId: "gmail-reconciliation",
       userId: "user-1",
+      workspaceId: "workspace-1",
     })
     await queueMailReconciliation(database, {
       messageIds: ["message-1", "message-1"],

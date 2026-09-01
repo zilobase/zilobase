@@ -3,7 +3,6 @@ import { and, eq, gt, isNull } from "drizzle-orm"
 import { db, runWithDbEnv } from "../../infrastructure/database"
 import {
   gmailAccount,
-  gmailConnection,
   gmailOauthAttempt,
   gmailWorkspaceConnection,
 } from "../../infrastructure/database/schema"
@@ -49,7 +48,7 @@ export function gmailProviderConfigured(env: RuntimeEnv) {
 
 export async function beginGmailOauth(
   env: RuntimeEnv,
-  input: { clientKind: OAuthClientKind; userId: string; workspaceId?: string },
+  input: { clientKind: OAuthClientKind; userId: string; workspaceId: string },
 ) {
   const clientId = getRequiredStringEnv(env, "GMAIL_GOOGLE_CLIENT_ID")
   getRequiredStringEnv(env, "GMAIL_GOOGLE_CLIENT_SECRET")
@@ -74,7 +73,7 @@ export async function beginGmailOauth(
     codeVerifierIv: encrypted.iv,
     codeVerifierKeyVersion: encrypted.keyVersion,
     clientKind: input.clientKind,
-    returnPath: input.workspaceId ? `/workspaces/${input.workspaceId}/mail` : "/mail",
+    returnPath: `/workspaces/${input.workspaceId}/mail`,
     expiresAt: new Date(now.getTime() + OAUTH_ATTEMPT_TTL_MS),
     createdAt: now,
     updatedAt: now,
@@ -133,6 +132,7 @@ async function completeGmailOauthWithDatabase(
     )
     .limit(1)
   if (!attempt) throw new GmailOauthError("This Gmail connection request has expired.", 400)
+  if (!attempt.workspaceId) throw new GmailOauthError("This Gmail connection request is no longer supported.", 400)
 
   const consumed = await db
     .update(gmailOauthAttempt)
@@ -246,60 +246,23 @@ async function completeGmailOauthWithDatabase(
       .where(eq(gmailAccount.id, account.id))
   }
 
-  if (attempt.workspaceId) {
-    await db
-      .insert(gmailWorkspaceConnection)
-      .values({
-        id: crypto.randomUUID(),
-        workspaceId: attempt.workspaceId,
-        userId: attempt.userId,
-        gmailAccountId: account.id,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [
-          gmailWorkspaceConnection.workspaceId,
-          gmailWorkspaceConnection.userId,
-        ],
-        set: { gmailAccountId: account.id, updatedAt: now },
-      })
-  } else {
-    await db
-    .insert(gmailConnection)
+  await db
+    .insert(gmailWorkspaceConnection)
     .values({
-      id: account.id,
+      id: crypto.randomUUID(),
+      workspaceId: attempt.workspaceId,
       userId: attempt.userId,
-      googleSubject: identity.subject,
-      email: profile.emailAddress.toLowerCase(),
-      scopes: [...scopes].sort(),
-      refreshTokenCiphertext: encrypted.ciphertext,
-      refreshTokenIv: encrypted.iv,
-      refreshTokenKeyVersion: encrypted.keyVersion,
-      status: "connected",
+      gmailAccountId: account.id,
       createdAt: now,
       updatedAt: now,
     })
     .onConflictDoUpdate({
-      target: gmailConnection.userId,
-      set: {
-        id: account.id,
-        googleSubject: identity.subject,
-        email: profile.emailAddress.toLowerCase(),
-        scopes: [...scopes].sort(),
-        refreshTokenCiphertext: encrypted.ciphertext,
-        refreshTokenIv: encrypted.iv,
-        refreshTokenKeyVersion: encrypted.keyVersion,
-        status: "connected",
-        notificationHistoryId: null,
-        mailboxRevision: 0,
-        watchExpiresAt: null,
-        lastWatchAt: null,
-        lastErrorCode: null,
-        updatedAt: now,
-      },
+      target: [
+        gmailWorkspaceConnection.workspaceId,
+        gmailWorkspaceConnection.userId,
+      ],
+      set: { gmailAccountId: account.id, updatedAt: now },
     })
-  }
   return {
     clientKind: attempt.clientKind as OAuthClientKind,
     connectionId: account.id,
@@ -315,7 +278,7 @@ export function hasRequiredGmailScopes(scopes: ReadonlySet<string>) {
 
 export async function revokeGmailConnection(
   env: RuntimeEnv,
-  connection: typeof gmailAccount.$inferSelect | typeof gmailConnection.$inferSelect,
+  connection: typeof gmailAccount.$inferSelect,
   fetcher: typeof fetch = fetch,
 ) {
   try {

@@ -138,41 +138,6 @@ export const account = pgTable(
   ],
 );
 
-export const gmailConnection = pgTable(
-  "gmail_connection",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    googleSubject: text("google_subject").notNull(),
-    email: text("email").notNull(),
-    scopes: jsonb("scopes").$type<string[]>().notNull().default([]),
-    refreshTokenCiphertext: text("refresh_token_ciphertext").notNull(),
-    refreshTokenIv: text("refresh_token_iv").notNull(),
-    refreshTokenKeyVersion: text("refresh_token_key_version").notNull(),
-    status: text("status").notNull().default("connected"),
-    notificationHistoryId: text("notification_history_id"),
-    mailboxRevision: integer("mailbox_revision").notNull().default(0),
-    watchExpiresAt: timestamp("watch_expires_at", { withTimezone: true }),
-    lastWatchAt: timestamp("last_watch_at", { withTimezone: true }),
-    lastErrorCode: text("last_error_code"),
-    ...timestampColumns(),
-  },
-  (table) => [
-    uniqueIndex("gmail_connection_user_unique").on(table.userId),
-    index("gmail_connection_google_subject_idx").on(table.googleSubject),
-    index("gmail_connection_watch_expiry_idx").on(
-      table.status,
-      table.watchExpiresAt,
-    ),
-    check(
-      "gmail_connection_status_check",
-      sql`${table.status} in ('connected', 'reconnect_required')`,
-    ),
-  ],
-);
-
 export const gmailAccount = pgTable(
   "gmail_account",
   {
@@ -219,7 +184,9 @@ export const gmailOauthAttempt = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    workspaceId: text("workspace_id"),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
     stateHash: text("state_hash").notNull(),
     codeVerifierCiphertext: text("code_verifier_ciphertext").notNull(),
     codeVerifierIv: text("code_verifier_iv").notNull(),

@@ -56,12 +56,14 @@ test("custom label writes validate names, visibility, and sanitized Gmail colors
   assert.equal(parseMailLabelWriteRequest({ color: { backgroundColor: "#123456", textColor: "#ffffff" } }, false), null)
 })
 
-test("mail mutation routes always resolve the authenticated user's connection", async () => {
+test("mail mutation routes always resolve the authenticated workspace binding", async () => {
   const source = await readFile(new URL("./routes.ts", import.meta.url), "utf8")
   for (const route of ["batch-modify", "/modify", "/action", "patch(\"/labels", "delete(\"/labels"]) {
     assert.ok(source.includes(route))
   }
-  assert.match(source, /where\(eq\(gmailConnection\.userId, user\.id\)\)/)
+  assert.match(source, /eq\(gmailWorkspaceConnection\.workspaceId, workspaceId\)/)
+  assert.match(source, /eq\(gmailWorkspaceConnection\.userId, user\.id\)/)
+  assert.match(source, /eq\(gmailAccount\.userId, user\.id\)/)
   assert.doesNotMatch(source, /messages\/:messageId[^\n]*delete/i)
   assert.doesNotMatch(source, /threads\/:threadId[^\n]*delete/i)
 })

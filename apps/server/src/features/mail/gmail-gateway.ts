@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm"
 
 import { db } from "../../infrastructure/database"
-import { gmailAccount, gmailConnection } from "../../infrastructure/database/schema"
+import { gmailAccount } from "../../infrastructure/database/schema"
 import { getRequiredStringEnv, type RuntimeEnv } from "../../shared/config/config"
 import { decryptMailSecret } from "./security/mail-credentials"
 
@@ -69,9 +69,7 @@ export type GmailHistory = {
   messagesDeleted?: Array<{ message?: GmailMessage }>
 }
 
-export type GmailConnectionRow =
-  | typeof gmailAccount.$inferSelect
-  | typeof gmailConnection.$inferSelect
+export type GmailConnectionRow = typeof gmailAccount.$inferSelect
 
 export class GmailApiError extends Error {
   constructor(
@@ -130,10 +128,6 @@ export async function createGmailGateway(
         }
       } catch (error) {
         if (error instanceof GmailApiError && error.code === "authorization_revoked") {
-          await db
-            .update(gmailConnection)
-            .set({ lastErrorCode: "authorization_revoked", status: "reconnect_required", updatedAt: new Date() })
-            .where(eq(gmailConnection.id, connection.id))
           await db
             .update(gmailAccount)
             .set({ lastErrorCode: "authorization_revoked", status: "reconnect_required", updatedAt: new Date() })

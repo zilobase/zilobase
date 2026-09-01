@@ -63,14 +63,14 @@ export function useMailController(input: {
   )
 
   useEffect(() => {
-    if (!input.connection.connectionId) return
+    if (!input.connection.connectionId || !input.connection.bindingId || !input.connection.workspaceId) return
     setDatabase(null)
     const identity = {
       apiOrigin: new URL(toApiUrl("/"), window.location.origin).origin,
-      bindingId: input.connection.bindingId ?? input.connection.connectionId,
+      bindingId: input.connection.bindingId,
       connectionId: input.connection.connectionId,
       userId: input.userId,
-      workspaceId: input.connection.workspaceId ?? "legacy",
+      workspaceId: input.connection.workspaceId,
     }
     let active = true
     void openMailDatabase(identity).then((next) => {

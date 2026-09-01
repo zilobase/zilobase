@@ -9,7 +9,8 @@ export function register({ assert, readSource, test }) {
     assert.match(hook, /\$\{mailBasePath\}\/views/)
     assert.match(hook, /input\.workspaceId, input\.bindingId/)
     assert.match(page, /useMailViews\(\{/)
-    assert.match(page, /enabled: isFeatureEnabled\("mailOrganization"\)/)
+    assert.match(page, /enabled: true/)
+    assert.doesNotMatch(page, /mailOrganization/)
   })
 
   test("Mail advances bounded index work and reports progress", async () => {

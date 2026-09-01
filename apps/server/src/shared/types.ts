@@ -79,7 +79,6 @@ export type AppBindings = {
     GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL?: string;
     GMAIL_PUBSUB_SUBSCRIPTION?: string;
     MAIL_ENABLED?: string;
-    MAIL_LEGACY_ROUTES_ENABLED?: string;
     AI_AGENT_AUDIT_RETENTION_DAYS?: string;
     AI_AGENT_CLEANUP_BATCH_SIZE?: string;
     AI_AGENT_DAILY_USAGE_LIMITS_ENABLED?: string;

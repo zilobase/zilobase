@@ -11,8 +11,15 @@ const checks = {
     "gcloud pubsub subscriptions create",
     "mail/oauth/google/callback",
     "mail/google/pubsub",
+    "advancePendingMailIndexes",
+    "mail.database_sync",
     "Restricted-scope production gate",
     "Staging canary",
+  ],
+  "docs/self-hosting/operations.md": [
+    "Workspace Mail",
+    "drainMailDatabaseSyncOutbox",
+    "mail.index",
   ],
 }
 

@@ -1,6 +1,8 @@
 export type MailMetricEvent =
   | "cache_failure"
   | "cursor_reset"
+  | "database_sync"
+  | "index"
   | "oauth_outcome"
   | "quota_failure"
   | "socket_state"
@@ -11,6 +13,7 @@ export type MailMetricEvent =
 export async function recordMailMetric(event: MailMetricEvent, input: {
   code?: string
   connectionId?: string
+  count?: number
   durationMs?: number
   mode?: "full" | "incremental" | "recovery"
   outcome?: "failure" | "success"
@@ -19,6 +22,7 @@ export async function recordMailMetric(event: MailMetricEvent, input: {
   const metric = {
     ...(safeCode(input.code) ? { code: input.code } : {}),
     ...(input.connectionId ? { connection: await opaqueId(input.connectionId) } : {}),
+    ...(Number.isInteger(input.count) && input.count! >= 0 ? { count: input.count } : {}),
     ...(Number.isFinite(input.durationMs) ? { duration_ms: Math.max(0, Math.round(input.durationMs!)) } : {}),
     event: `mail.${event}`,
     ...(input.mode ? { mode: input.mode } : {}),

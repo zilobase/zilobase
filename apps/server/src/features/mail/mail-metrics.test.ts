@@ -9,6 +9,7 @@ test("mail metrics emit allowlisted non-PII fields and opaque connection IDs", a
     await recordMailMetric("sync", {
       code: "quota_exceeded",
       connectionId: "connection-secret-id",
+      count: 4,
       durationMs: 12.6,
       mode: "incremental",
       outcome: "success",
@@ -20,6 +21,7 @@ test("mail metrics emit allowlisted non-PII fields and opaque connection IDs", a
     assert.deepEqual(JSON.parse(serialized), {
       code: "quota_exceeded",
       connection: "bfaaf5304cdb1f8a",
+      count: 4,
       duration_ms: 13,
       event: "mail.sync",
       mode: "incremental",

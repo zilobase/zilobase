@@ -1,5 +1,3 @@
 export function mailApiBasePath(workspaceId?: string | null) {
-  return workspaceId && workspaceId !== "legacy"
-    ? `/workspaces/${encodeURIComponent(workspaceId)}/mail`
-    : "/mail"
+  return `/workspaces/${encodeURIComponent(workspaceId ?? "_missing_workspace_")}/mail`
 }

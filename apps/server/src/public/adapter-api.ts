@@ -122,6 +122,7 @@ export {
 export { drainNavigationRealtimeOutbox } from "../features/workspaces/navigation-realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";
 export { renewGmailWatches } from "../features/mail/gmail-watch";
+export { advancePendingMailIndexes } from "../features/mail/mail-index";
 export { drainMailDatabaseSyncOutbox } from "../features/mail/mail-database-sync-worker";
 export {
   MembershipService,

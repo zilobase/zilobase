@@ -67,7 +67,7 @@ test("public Gmail OAuth completion establishes its own database context", async
 
 test("successful public Gmail callbacks keep watch setup in database context", async () => {
   const source = await readFile(new URL("./routes.ts", import.meta.url), "utf8")
-  const callback = source.slice(source.indexOf('mailRoutes.get("/oauth/google/callback"'), source.indexOf('mailRoutes.delete("/connection"'))
+  const callback = source.slice(source.indexOf('mailProviderRoutes.get("/oauth/google/callback"'), source.indexOf('mailRoutes.delete("/connection"'))
 
   assert.match(callback, /runWithDbEnv\(c\.env, async \(\) =>/)
   assert.match(callback, /completeGmailOauth[\s\S]*db[\s\S]*initializeGmailWatch/)

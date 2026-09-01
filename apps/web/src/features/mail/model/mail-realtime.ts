@@ -78,9 +78,7 @@ export function useMailRealtime(input: {
       if (stopped || navigator.onLine === false || socket) return
       recordDesktopDiagnostic("mail.socket_state", { status: "started" })
       try {
-        const ticketPath = input.workspaceId === "legacy"
-          ? "/mail/realtime-ticket"
-          : `/workspaces/${encodeURIComponent(input.workspaceId)}/mail/realtime-ticket`
+        const ticketPath = `/workspaces/${encodeURIComponent(input.workspaceId)}/mail/realtime-ticket`
         const ticket = await apiFetch<MailRealtimeTicket>(ticketPath, {
           body: "{}",
           method: "POST",

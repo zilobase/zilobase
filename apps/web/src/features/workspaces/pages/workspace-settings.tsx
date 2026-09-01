@@ -61,7 +61,7 @@ export default function WorkspaceSettingsPage() {
 
       <div className="mx-auto grid w-full max-w-3xl gap-6">
         <WorkspaceDetailsSection workspace={workspace} />
-        {isFeatureEnabled("mail") && isFeatureEnabled("mailOrganization") ? (
+        {isFeatureEnabled("mail") ? (
           <>
             <Separator />
             <WorkspaceMailConnectionSection workspaceId={activeWorkspaceId} />

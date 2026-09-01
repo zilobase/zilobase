@@ -1,7 +1,10 @@
 # Gmail deployment and verification
 
-Zilobase connects one Gmail account per user through a dedicated Google OAuth
-Web application client. Gmail remains authoritative: PostgreSQL stores encrypted
+Zilobase connects one Gmail account per workspace member through a dedicated
+Google OAuth Web application client. The same Google identity can be connected
+to more than one workspace, but views, filters, groups, custom properties,
+hover actions, database sync, realtime rooms, and device caches remain private
+to each workspace binding. Gmail remains authoritative: PostgreSQL stores encrypted
 OAuth credentials and control metadata, while each device stores loaded mail in
 its own mail-only IndexedDB database. Attachment bytes are streamed and are not
 retained by either cache.
@@ -191,14 +194,20 @@ subscription only when push delivery itself must be tested.
 
 ## 6. Operations and recovery
 
-Zilobase renews watches from the Node maintenance loop. Deployment adapters must
-schedule the same exported renewal operation. Alert on these structured non-PII
-events:
+Zilobase renews watches, advances full-mailbox indexes, and drains the database
+sync outbox from the Node maintenance loop. Alternate deployment adapters,
+including Cloudflare scheduled handlers, must invoke the exported
+`renewGmailWatches`, `advancePendingMailIndexes`, and
+`drainMailDatabaseSyncOutbox` operations at least once per minute. These
+operations are bounded and safe to overlap across replicas. Alert on these
+structured non-PII events:
 
 - `mail.watch_health` failures or no successes for 24 hours
 - `mail.webhook_rejection` increases
 - `mail.quota_failure` increases
 - `mail.cursor_reset` increases
+- `mail.index` failures or no progress while a backfill is pending
+- `mail.database_sync` retries or paused jobs
 - sustained `mail.socket_state` failures
 
 Gmail watches expire and must be renewed; a successful watch also sends an
@@ -225,6 +234,8 @@ subjects, addresses, or attachment data in operational evidence.
 Complete every item with a dedicated test mailbox before production rollout:
 
 - [ ] Connect Google on web and confirm the account email and connected state.
+- [ ] Connect different Google identities in two workspaces and confirm neither workspace can read the other's connection, views, properties, or mail.
+- [ ] Reuse one Google identity in two workspaces and confirm each workspace keeps independent views, filters, groups, properties, hover actions, and database-sync settings.
 - [ ] Connect from desktop and confirm the instance-bound return opens Mail.
 - [ ] Complete initial Inbox sync, load more, open a thread, and reload from cache.
 - [ ] Change the mailbox in Gmail and confirm authenticated push triggers incremental sync.
@@ -238,6 +249,8 @@ Complete every item with a dedicated test mailbox before production rollout:
 - [ ] Disconnect and confirm Google revocation is attempted and the mail IndexedDB is removed.
 - [ ] Reconnect, revoke access from the Google account, and confirm Zilobase requests reconnection.
 - [ ] Confirm watch renewal and realtime reconnect metrics contain no mailbox PII.
+- [ ] Confirm Node and alternate-runtime maintenance advance indexing and database-sync jobs.
+- [ ] Enable database sync, verify only post-activation matching threads are created once, update a mapped field, and confirm unmapped database content is preserved.
 
 ## Restricted-scope production gate
 
