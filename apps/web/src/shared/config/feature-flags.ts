@@ -33,6 +33,10 @@ export const appConfig = {
       import.meta.env.VITE_FEATURE_MAIL,
       false,
     ),
+    mailOrganization: readBooleanFeatureFlag(
+      import.meta.env.VITE_FEATURE_MAIL_ORGANIZATION,
+      false,
+    ),
     notionImport: readBooleanFeatureFlag(
       import.meta.env.VITE_FEATURE_NOTION_IMPORT,
       false,
