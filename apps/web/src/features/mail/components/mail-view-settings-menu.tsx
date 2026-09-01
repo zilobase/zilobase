@@ -30,6 +30,7 @@ export function MailViewSettingsMenu({
   filterDirty = false,
   filterEditor,
   groupEditor,
+  hoverActionsEditor,
   propertiesEditor,
   visiblePropertyCount = 0,
 }: {
@@ -37,6 +38,7 @@ export function MailViewSettingsMenu({
   filterDirty?: boolean
   filterEditor?: ReactNode
   groupEditor?: ReactNode
+  hoverActionsEditor?: ReactNode
   propertiesEditor?: ReactNode
   visiblePropertyCount?: number
 }) {
@@ -95,9 +97,7 @@ export function MailViewSettingsMenu({
             <span>Customize hover actions</span>
           </DropDrawerSubTrigger>
           <DropDrawerSubContent className="w-72">
-            <DropDrawerItem disabled>
-              Hover actions are enabled in their organization pass.
-            </DropDrawerItem>
+            {hoverActionsEditor ?? <DropDrawerItem disabled>Hover actions are unavailable for this view.</DropDrawerItem>}
           </DropDrawerSubContent>
         </DropDrawerSub>
       </DropDrawerContent>

@@ -136,6 +136,7 @@ export {
   Funnel as Filter,
   Funnel as FilterIcon,
   Gauge as Gauge,
+  Heart as HeartIcon,
   GearSix as Settings2,
   GearSix as Settings2Icon,
   GearSix as SettingsIcon,

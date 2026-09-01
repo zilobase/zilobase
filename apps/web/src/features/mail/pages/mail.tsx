@@ -11,6 +11,7 @@ import {
   type MailConnection,
   type MailFilterExpression,
   type MailGroupConfig,
+  type MailHoverAction,
   type MailLabelRecord,
   type MailLabelWriteRequest,
   type MailMessageRecord,
@@ -92,6 +93,7 @@ import { MailViewSettingsMenu } from "../components/mail-view-settings-menu"
 import { cloneMailFilter, MailFilterEditor, mailFiltersEqual, MailFilterToolbar } from "../components/mail-filter-editor"
 import { isMutableMailGroup, MailGroupEditor } from "../components/mail-group-editor"
 import { formatMailPropertyValue, MailPropertiesPanel, MailThreadPropertyBar } from "../components/mail-properties-panel"
+import { mailHoverActionCatalog, MailHoverActionIcon, MailHoverActionsPanel } from "../components/mail-hover-actions-panel"
 import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
@@ -438,6 +440,22 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
           : groupKey
     await mailPropertiesQuery.setThreadValue({ propertyId, threadId, value })
   }
+  const runHoverAction = async (thread: MailThreadSummary, action: MailHoverAction) => {
+    if (action.kind === "star") return controller.modifyThread(thread.id, thread.starred ? { removeLabelIds: ["STARRED"] } : { addLabelIds: ["STARRED"] })
+    if (action.kind === "archive") return controller.modifyThread(thread.id, thread.labelIds.includes("INBOX") ? { removeLabelIds: ["INBOX"] } : { addLabelIds: ["INBOX"] })
+    if (action.kind === "bin") return controller.actOnThread(thread.id, thread.labelIds.includes("TRASH") ? "restore" : "trash")
+    if (action.kind === "read_unread") return controller.modifyThread(thread.id, thread.unread ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] })
+    if (action.kind === "spam") return controller.modifyThread(thread.id, { addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] })
+    if (action.kind === "specific_label" && action.labelId) {
+      await controller.modifyThread(thread.id, {
+        addLabelIds: [action.labelId],
+        removeLabelIds: action.effect === "archive" ? ["INBOX"] : undefined,
+      })
+      if (action.effect === "bin") await controller.actOnThread(thread.id, "trash")
+      return
+    }
+    toast.info(`${mailHoverActionCatalog[action.kind].label} execution is available in the advanced actions pass.`)
+  }
   const visibleCustomProperties = activePersistedView
     ? orderedVisibleCustomProperties(activePersistedView, customProperties)
     : customProperties
@@ -532,6 +550,14 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                             groupEditor={activePersistedView ? (
                               <MailGroupEditor customProperties={customProperties} group={activePersistedView.config.group} onChange={(group) => void saveGroup(group)} saving={persistedViewsQuery.savingView} />
                             ) : undefined}
+                            hoverActionsEditor={activePersistedView ? (
+                              <MailHoverActionsPanel
+                                actions={activePersistedView.config.hoverActions}
+                                labels={controller.labels}
+                                onChange={(hoverActions) => void saveViewConfig({ ...activePersistedView.config, hoverActions })}
+                                saving={persistedViewsQuery.savingView}
+                              />
+                            ) : undefined}
                             propertiesEditor={activePersistedView ? (
                               <MailPropertiesPanel
                                 config={activePersistedView.config}
@@ -623,6 +649,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                                     mutating={controller.mutating}
                                     batchSelected={batchSelection.has(thread.id)}
                                     onAction={(action) => controller.actOnThread(thread.id, action)}
+                                    onHoverAction={(action) => runHoverAction(thread, action)}
                                     onModify={(modification) => controller.modifyThread(thread.id, modification)}
                                     onBatchToggle={(checked) => setBatchSelection((current) => {
                                       const next = new Set(current)
@@ -634,6 +661,8 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                                     onPrefetch={() => void controller.prefetchThread(thread.id)}
                                     online={controller.online}
                                     groupDraggable={mutable}
+                                    hoverActions={activePersistedView?.config.hoverActions}
+                                    labels={controller.labels}
                                     customProperties={visibleCustomProperties}
                                     customValues={customValuesByThread.get(thread.id) ?? {}}
                                     propertyMembers={propertyMembers}
@@ -724,14 +753,17 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   )
 }
 
-function MailThreadRow({ batchSelected, customProperties = [], customValues = {}, groupDraggable = false, mutating, onAction, onBatchToggle, onModify, onOpen, onPrefetch, online, propertyMembers = [], selected, thread }: {
+function MailThreadRow({ batchSelected, customProperties = [], customValues = {}, groupDraggable = false, hoverActions, labels = [], mutating, onAction, onBatchToggle, onHoverAction, onModify, onOpen, onPrefetch, online, propertyMembers = [], selected, thread }: {
   batchSelected: boolean
   customProperties?: MailPropertyDefinition[]
   customValues?: Record<string, MailThreadPropertyValue["value"]>
   groupDraggable?: boolean
+  hoverActions?: MailHoverAction[]
+  labels?: MailLabelRecord[]
   mutating: boolean
   onAction: (action: "restore" | "trash") => Promise<void>
   onBatchToggle: (checked: boolean) => void
+  onHoverAction?: (action: MailHoverAction) => Promise<void>
   onModify: (modification: MailModifyRequest) => Promise<void>
   onOpen: () => void
   onPrefetch: () => void
@@ -777,27 +809,30 @@ function MailThreadRow({ batchSelected, customProperties = [], customValues = {}
         </span>
       </button>
       <div className="hidden shrink-0 items-center pr-1 group-hover/mail-row:flex">
-        <MailActionButton
-          disabled={!online || mutating}
-          icon={<StarIcon weight={thread.starred ? "fill" : "regular"} />}
-          label={thread.starred ? "Unstar thread" : "Star thread"}
-          onClick={() => onModify(thread.starred ? { removeLabelIds: ["STARRED"] } : { addLabelIds: ["STARRED"] })}
-        />
-        <MailActionButton
-          disabled={!online || mutating}
-          icon={<MailIcon />}
-          label={thread.unread ? "Mark thread read" : "Mark thread unread"}
-          onClick={() => onModify(thread.unread ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] })}
-        />
-        <MailActionButton
-          disabled={!online || mutating}
-          icon={thread.labelIds.includes("TRASH") ? <ArchiveIcon /> : <TrashIcon />}
-          label={thread.labelIds.includes("TRASH") ? "Restore thread" : "Move thread to trash"}
-          onClick={() => onAction(thread.labelIds.includes("TRASH") ? "restore" : "trash")}
-        />
+        {hoverActions && onHoverAction ? hoverActions.filter((action) => !action.hidden).map((action) => (
+          <MailActionButton
+            disabled={!online || mutating}
+            icon={<MailHoverActionIcon action={action} />}
+            key={action.id}
+            label={hoverActionLabel(action, labels, thread)}
+            onClick={() => onHoverAction(action)}
+          />
+        )) : <>
+          <MailActionButton disabled={!online || mutating} icon={<StarIcon weight={thread.starred ? "fill" : "regular"} />} label={thread.starred ? "Unstar thread" : "Star thread"} onClick={() => onModify(thread.starred ? { removeLabelIds: ["STARRED"] } : { addLabelIds: ["STARRED"] })} />
+          <MailActionButton disabled={!online || mutating} icon={<MailIcon />} label={thread.unread ? "Mark thread read" : "Mark thread unread"} onClick={() => onModify(thread.unread ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] })} />
+          <MailActionButton disabled={!online || mutating} icon={thread.labelIds.includes("TRASH") ? <ArchiveIcon /> : <TrashIcon />} label={thread.labelIds.includes("TRASH") ? "Restore thread" : "Move thread to trash"} onClick={() => onAction(thread.labelIds.includes("TRASH") ? "restore" : "trash")} />
+        </>}
       </div>
     </div>
   )
+}
+
+function hoverActionLabel(action: MailHoverAction, labels: MailLabelRecord[], thread: MailThreadSummary) {
+  if (action.kind === "specific_label") return `Apply ${labels.find((label) => label.id === action.labelId)?.name ?? "label"}`
+  if (action.kind === "star") return thread.starred ? "Unstar thread" : "Star thread"
+  if (action.kind === "read_unread") return thread.unread ? "Mark thread read" : "Mark thread unread"
+  if (action.kind === "bin") return thread.labelIds.includes("TRASH") ? "Restore thread" : "Move thread to bin"
+  return mailHoverActionCatalog[action.kind].label
 }
 
 type ConversationProps = {
