@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm"
+import { and, count, eq } from "drizzle-orm"
 import { Hono, type Context } from "hono"
 import type {
   MailActionRequest,
@@ -10,8 +10,17 @@ import type {
 } from "@zilobase/features/mail"
 
 import { db, runWithDbEnv } from "../../infrastructure/database"
-import { gmailConnection } from "../../infrastructure/database/schema"
-import { getCanonicalWebOrigin, isMailFeatureEnabled } from "../../shared/config/config"
+import {
+  gmailAccount,
+  gmailConnection,
+  gmailWorkspaceConnection,
+  member,
+} from "../../infrastructure/database/schema"
+import {
+  getCanonicalWebOrigin,
+  isLegacyMailRoutesEnabled,
+  isMailFeatureEnabled,
+} from "../../shared/config/config"
 import type { AppBindings } from "../../shared/types"
 import { getZilobaseDiscoveryDocument } from "../instance/service"
 import {
@@ -44,6 +53,14 @@ mailRoutes.use("*", async (c, next) => {
     if (!isMailFeatureEnabled(c.env)) {
       return c.json({ message: "Not found." }, 404)
     }
+    if (
+      !workspaceIdFromContext(c) &&
+      !isLegacyMailRoutesEnabled(c.env) &&
+      !c.req.path.endsWith("/oauth/google/callback") &&
+      !c.req.path.endsWith("/google/pubsub")
+    ) {
+      return c.json({ message: "Not found." }, 404)
+    }
     await next()
   } finally {
     c.header("Cache-Control", "private, no-store, max-age=0")
@@ -56,6 +73,35 @@ mailRoutes.use("*", async (c, next) => {
 mailRoutes.get("/connection", async (c) => {
   const user = c.get("user")
   if (!user) return c.json({ message: "Authentication required." }, 401)
+  const workspaceId = workspaceIdFromContext(c)
+  if (workspaceId) {
+    const membership = await requireWorkspaceMember(c, workspaceId, user.id)
+    if (membership instanceof Response) return membership
+    const [result] = await db
+      .select({ account: gmailAccount, binding: gmailWorkspaceConnection })
+      .from(gmailWorkspaceConnection)
+      .innerJoin(
+        gmailAccount,
+        eq(gmailWorkspaceConnection.gmailAccountId, gmailAccount.id),
+      )
+      .where(and(
+        eq(gmailWorkspaceConnection.workspaceId, workspaceId),
+        eq(gmailWorkspaceConnection.userId, user.id),
+      ))
+      .limit(1)
+    return c.json({
+      accountId: result?.account.id ?? null,
+      bindingId: result?.binding.id ?? null,
+      connectionId: result?.account.id ?? null,
+      email: result?.account.email ?? null,
+      mailboxReady: Boolean(result),
+      mailboxRevision: result?.account.mailboxRevision ?? 0,
+      providerConfigured: gmailProviderConfigured(c.env),
+      status: result?.account.status ?? "disconnected",
+      watchExpiresAt: result?.account.watchExpiresAt?.toISOString() ?? null,
+      workspaceId,
+    })
+  }
   const [connection] = await db
     .select()
     .from(gmailConnection)
@@ -75,6 +121,11 @@ mailRoutes.get("/connection", async (c) => {
 mailRoutes.post("/oauth/start", async (c) => {
   const user = c.get("user")
   if (!user) return c.json({ message: "Authentication required." }, 401)
+  const workspaceId = workspaceIdFromContext(c)
+  if (workspaceId) {
+    const membership = await requireWorkspaceMember(c, workspaceId, user.id)
+    if (membership instanceof Response) return membership
+  }
   if (!gmailProviderConfigured(c.env)) {
     return c.json({ message: "Gmail is not configured on this server." }, 503)
   }
@@ -86,6 +137,7 @@ mailRoutes.post("/oauth/start", async (c) => {
     const authorizationUrl = await beginGmailOauth(c.env, {
       clientKind: body.client,
       userId: user.id,
+      ...(workspaceId ? { workspaceId } : {}),
     })
     await recordMailMetric("oauth_outcome", { outcome: "success" })
     return c.json({
@@ -109,12 +161,14 @@ mailRoutes.get("/oauth/google/callback", async (c) => {
     const result = await runWithDbEnv(c.env, async () => {
       const completed = await completeGmailOauth(c.env, { code, state })
       await recordMailMetric("oauth_outcome", { connectionId: completed.connectionId, outcome: "success" })
-      const [connected] = await db
-        .select()
-        .from(gmailConnection)
-        .where(eq(gmailConnection.id, completed.connectionId))
-        .limit(1)
-      if (connected) {
+      const [connected] = completed.workspaceId
+        ? []
+        : await db
+          .select()
+          .from(gmailConnection)
+          .where(eq(gmailConnection.id, completed.connectionId))
+          .limit(1)
+      if (connected && !completed.workspaceId) {
         await initializeGmailWatch(c.env, connected).catch(async (error) => {
           await db
             .update(gmailConnection)
@@ -146,6 +200,43 @@ mailRoutes.get("/oauth/google/callback", async (c) => {
 mailRoutes.delete("/connection", async (c) => {
   const user = c.get("user")
   if (!user) return c.json({ message: "Authentication required." }, 401)
+  const workspaceId = workspaceIdFromContext(c)
+  if (workspaceId) {
+    const membership = await requireWorkspaceMember(c, workspaceId, user.id)
+    if (membership instanceof Response) return membership
+    const [binding] = await db
+      .select({ account: gmailAccount, binding: gmailWorkspaceConnection })
+      .from(gmailWorkspaceConnection)
+      .innerJoin(
+        gmailAccount,
+        eq(gmailWorkspaceConnection.gmailAccountId, gmailAccount.id),
+      )
+      .where(and(
+        eq(gmailWorkspaceConnection.workspaceId, workspaceId),
+        eq(gmailWorkspaceConnection.userId, user.id),
+      ))
+      .limit(1)
+    if (binding) {
+      await db
+        .delete(gmailWorkspaceConnection)
+        .where(eq(gmailWorkspaceConnection.id, binding.binding.id))
+      const [remaining] = await db
+        .select({ value: count() })
+        .from(gmailWorkspaceConnection)
+        .where(eq(gmailWorkspaceConnection.gmailAccountId, binding.account.id))
+      if (Number(remaining?.value ?? 0) === 0) {
+        try {
+          await (await createGmailGateway(c.env, binding.account)).stop()
+        } catch {
+          // Local disconnect remains authoritative when Gmail is unavailable.
+        }
+        await revokeGmailConnection(c.env, binding.account)
+        clearGmailAccessTokenCache(binding.account.id)
+        await db.delete(gmailAccount).where(eq(gmailAccount.id, binding.account.id))
+      }
+    }
+    return c.json({ success: true })
+  }
   const [connection] = await db
     .select()
     .from(gmailConnection)
@@ -472,6 +563,29 @@ function oauthError(c: Context<AppBindings>, error: unknown) {
 async function requireOwnedConnection(c: Context<AppBindings>) {
   const user = c.get("user")
   if (!user) return c.json({ message: "Authentication required." }, 401)
+  const workspaceId = workspaceIdFromContext(c)
+  if (workspaceId) {
+    const membership = await requireWorkspaceMember(c, workspaceId, user.id)
+    if (membership instanceof Response) return membership
+    const [owned] = await db
+      .select({ connection: gmailAccount })
+      .from(gmailWorkspaceConnection)
+      .innerJoin(
+        gmailAccount,
+        eq(gmailWorkspaceConnection.gmailAccountId, gmailAccount.id),
+      )
+      .where(and(
+        eq(gmailWorkspaceConnection.workspaceId, workspaceId),
+        eq(gmailWorkspaceConnection.userId, user.id),
+        eq(gmailAccount.userId, user.id),
+      ))
+      .limit(1)
+    if (!owned) return c.json({ message: "Connect Gmail to continue." }, 409)
+    if (owned.connection.status !== "connected") {
+      return c.json({ message: "Reconnect Gmail to continue." }, 409)
+    }
+    return { connection: owned.connection, userId: user.id, workspaceId }
+  }
   const [connection] = await db
     .select()
     .from(gmailConnection)
@@ -485,7 +599,7 @@ async function requireOwnedConnection(c: Context<AppBindings>) {
 async function runMailOperation(
   c: Context<AppBindings>,
   userId: string,
-  connection: typeof gmailConnection.$inferSelect,
+  connection: typeof gmailAccount.$inferSelect | typeof gmailConnection.$inferSelect,
   operation: (gateway: Awaited<ReturnType<typeof createGmailGateway>>) => Promise<Response>,
 ) {
   try {
@@ -499,10 +613,11 @@ async function runMailOperation(
     }
     if (error instanceof GmailApiError && error.code === "authorization_revoked") {
       clearGmailAccessTokenCache(connection.id)
-      await db
-        .update(gmailConnection)
-        .set({ lastErrorCode: error.code, status: "reconnect_required", updatedAt: new Date() })
-        .where(eq(gmailConnection.id, connection.id))
+      const update = { lastErrorCode: error.code, status: "reconnect_required", updatedAt: new Date() }
+      await Promise.all([
+        db.update(gmailAccount).set(update).where(eq(gmailAccount.id, connection.id)),
+        db.update(gmailConnection).set(update).where(eq(gmailConnection.id, connection.id)),
+      ])
     }
     const status = error instanceof GmailApiError || error instanceof MailConcurrencyError
       ? error.status
@@ -512,6 +627,29 @@ async function runMailOperation(
       statusCode(status),
     )
   }
+}
+
+function workspaceIdFromContext(c: Context<AppBindings>) {
+  const workspaceId = c.req.param("workspaceId")
+  return workspaceId && /^[A-Za-z0-9_-]{1,128}$/.test(workspaceId)
+    ? workspaceId
+    : null
+}
+
+async function requireWorkspaceMember(
+  c: Context<AppBindings>,
+  workspaceId: string,
+  userId: string,
+) {
+  const [membership] = await db
+    .select({ id: member.id })
+    .from(member)
+    .where(and(
+      eq(member.organizationId, workspaceId),
+      eq(member.userId, userId),
+    ))
+    .limit(1)
+  return membership ?? c.json({ message: "Workspace membership is required." }, 403)
 }
 
 function statusCode(status: number): 400 | 401 | 404 | 409 | 429 | 500 | 502 | 504 {

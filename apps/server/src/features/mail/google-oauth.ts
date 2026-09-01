@@ -2,8 +2,10 @@ import { and, eq, gt, isNull } from "drizzle-orm"
 
 import { db, runWithDbEnv } from "../../infrastructure/database"
 import {
+  gmailAccount,
   gmailConnection,
   gmailOauthAttempt,
+  gmailWorkspaceConnection,
 } from "../../infrastructure/database/schema"
 import {
   getCanonicalApiOrigin,
@@ -47,7 +49,7 @@ export function gmailProviderConfigured(env: RuntimeEnv) {
 
 export async function beginGmailOauth(
   env: RuntimeEnv,
-  input: { clientKind: OAuthClientKind; userId: string },
+  input: { clientKind: OAuthClientKind; userId: string; workspaceId?: string },
 ) {
   const clientId = getRequiredStringEnv(env, "GMAIL_GOOGLE_CLIENT_ID")
   getRequiredStringEnv(env, "GMAIL_GOOGLE_CLIENT_SECRET")
@@ -66,12 +68,13 @@ export async function beginGmailOauth(
   await db.insert(gmailOauthAttempt).values({
     id: attemptId,
     userId: input.userId,
+    workspaceId: input.workspaceId,
     stateHash: await sha256Hex(state),
     codeVerifierCiphertext: encrypted.ciphertext,
     codeVerifierIv: encrypted.iv,
     codeVerifierKeyVersion: encrypted.keyVersion,
     clientKind: input.clientKind,
-    returnPath: "/mail",
+    returnPath: input.workspaceId ? `/workspaces/${input.workspaceId}/mail` : "/mail",
     expiresAt: new Date(now.getTime() + OAUTH_ATTEMPT_TTL_MS),
     createdAt: now,
     updatedAt: now,
@@ -177,15 +180,23 @@ async function completeGmailOauthWithDatabase(
     throw new GmailOauthError("Google returned inconsistent Gmail account details.", 400)
   }
 
-  const connectionId = crypto.randomUUID()
-  const encrypted = await encryptMailSecret(env, tokens.refresh_token, {
+  const [existingAccount] = await db
+    .select({ id: gmailAccount.id })
+    .from(gmailAccount)
+    .where(and(
+      eq(gmailAccount.userId, attempt.userId),
+      eq(gmailAccount.googleSubject, identity.subject),
+    ))
+    .limit(1)
+  const connectionId = existingAccount?.id ?? crypto.randomUUID()
+  let encrypted = await encryptMailSecret(env, tokens.refresh_token, {
     connectionId,
     purpose: "refresh_token",
     userId: attempt.userId,
   })
   const now = new Date()
-  await db
-    .insert(gmailConnection)
+  const [account] = await db
+    .insert(gmailAccount)
     .values({
       id: connectionId,
       userId: attempt.userId,
@@ -200,9 +211,79 @@ async function completeGmailOauthWithDatabase(
       updatedAt: now,
     })
     .onConflictDoUpdate({
+      target: [gmailAccount.userId, gmailAccount.googleSubject],
+      set: {
+        email: profile.emailAddress.toLowerCase(),
+        scopes: [...scopes].sort(),
+        refreshTokenCiphertext: encrypted.ciphertext,
+        refreshTokenIv: encrypted.iv,
+        refreshTokenKeyVersion: encrypted.keyVersion,
+        status: "connected",
+        notificationHistoryId: null,
+        mailboxRevision: 0,
+        watchExpiresAt: null,
+        lastWatchAt: null,
+        lastErrorCode: null,
+        updatedAt: now,
+      },
+    })
+    .returning({ id: gmailAccount.id })
+  if (!account) throw new GmailOauthError("The Gmail account could not be saved.", 500)
+  if (account.id !== connectionId) {
+    encrypted = await encryptMailSecret(env, tokens.refresh_token, {
+      connectionId: account.id,
+      purpose: "refresh_token",
+      userId: attempt.userId,
+    })
+    await db
+      .update(gmailAccount)
+      .set({
+        refreshTokenCiphertext: encrypted.ciphertext,
+        refreshTokenIv: encrypted.iv,
+        refreshTokenKeyVersion: encrypted.keyVersion,
+        updatedAt: now,
+      })
+      .where(eq(gmailAccount.id, account.id))
+  }
+
+  if (attempt.workspaceId) {
+    await db
+      .insert(gmailWorkspaceConnection)
+      .values({
+        id: crypto.randomUUID(),
+        workspaceId: attempt.workspaceId,
+        userId: attempt.userId,
+        gmailAccountId: account.id,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [
+          gmailWorkspaceConnection.workspaceId,
+          gmailWorkspaceConnection.userId,
+        ],
+        set: { gmailAccountId: account.id, updatedAt: now },
+      })
+  } else {
+    await db
+    .insert(gmailConnection)
+    .values({
+      id: account.id,
+      userId: attempt.userId,
+      googleSubject: identity.subject,
+      email: profile.emailAddress.toLowerCase(),
+      scopes: [...scopes].sort(),
+      refreshTokenCiphertext: encrypted.ciphertext,
+      refreshTokenIv: encrypted.iv,
+      refreshTokenKeyVersion: encrypted.keyVersion,
+      status: "connected",
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
       target: gmailConnection.userId,
       set: {
-        id: connectionId,
+        id: account.id,
         googleSubject: identity.subject,
         email: profile.emailAddress.toLowerCase(),
         scopes: [...scopes].sort(),
@@ -218,7 +299,12 @@ async function completeGmailOauthWithDatabase(
         updatedAt: now,
       },
     })
-  return { clientKind: attempt.clientKind as OAuthClientKind, connectionId }
+  }
+  return {
+    clientKind: attempt.clientKind as OAuthClientKind,
+    connectionId: account.id,
+    workspaceId: attempt.workspaceId,
+  }
 }
 
 export function hasRequiredGmailScopes(scopes: ReadonlySet<string>) {
@@ -229,7 +315,7 @@ export function hasRequiredGmailScopes(scopes: ReadonlySet<string>) {
 
 export async function revokeGmailConnection(
   env: RuntimeEnv,
-  connection: typeof gmailConnection.$inferSelect,
+  connection: typeof gmailAccount.$inferSelect | typeof gmailConnection.$inferSelect,
   fetcher: typeof fetch = fetch,
 ) {
   try {

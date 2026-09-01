@@ -38,6 +38,7 @@ export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/metadata", metadataRoutes);
   app.route("/meetings", meetingRoutes);
   app.route("/mail", mailRoutes);
+  app.route("/workspaces/:workspaceId/mail", mailRoutes);
   app.route("/workspaces", workspaceRoutes);
   app.route("/workspaces", teamspaceRoutes);
   app.route("/api/workspace/settings", workspaceSettingsRoutes);

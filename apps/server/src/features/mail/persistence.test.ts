@@ -68,3 +68,24 @@ test("legacy Gmail credentials become unbound reconnect-required accounts", asyn
     /INSERT INTO "gmail_workspace_connection"/,
   )
 })
+
+test("workspace OAuth state and send receipts reference reusable Gmail accounts", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../drizzle/0066_workspace_gmail_oauth.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+
+  assert.match(migration, /gmail_oauth_attempt[\s\S]*workspace_id/)
+  assert.match(migration, /gmail_oauth_attempt_workspace_id_workspace_id_fk/)
+  assert.match(
+    migration,
+    /gmail_send_operation_connection_id_gmail_account_id_fk/,
+  )
+  assert.doesNotMatch(
+    migration,
+    /gmail_send_operation_connection_id_gmail_connection_id_fk" FOREIGN KEY/,
+  )
+})

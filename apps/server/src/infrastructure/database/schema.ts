@@ -218,6 +218,7 @@ export const gmailOauthAttempt = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id"),
     stateHash: text("state_hash").notNull(),
     codeVerifierCiphertext: text("code_verifier_ciphertext").notNull(),
     codeVerifierIv: text("code_verifier_iv").notNull(),
@@ -232,6 +233,10 @@ export const gmailOauthAttempt = pgTable(
     uniqueIndex("gmail_oauth_attempt_state_unique").on(table.stateHash),
     index("gmail_oauth_attempt_user_expiry_idx").on(
       table.userId,
+      table.expiresAt,
+    ),
+    index("gmail_oauth_attempt_workspace_idx").on(
+      table.workspaceId,
       table.expiresAt,
     ),
     check(
@@ -250,7 +255,7 @@ export const gmailSendOperation = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     connectionId: text("connection_id")
       .notNull()
-      .references(() => gmailConnection.id, { onDelete: "cascade" }),
+      .references(() => gmailAccount.id, { onDelete: "cascade" }),
     rfcMessageId: text("rfc_message_id").notNull(),
     status: text("status").notNull().default("pending"),
     gmailMessageId: text("gmail_message_id"),

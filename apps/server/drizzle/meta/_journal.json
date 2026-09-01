@@ -463,6 +463,13 @@
       "when": 1788220800000,
       "tag": "0065_workspace_gmail_connections",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1788224400000,
+      "tag": "0066_workspace_gmail_oauth",
+      "breakpoints": true
     }
   ]
 }
