@@ -201,6 +201,25 @@ function relativeDateRange(value: unknown, now: Date): [number, number] | null {
   if (typeof value !== "string") return null
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const day = 24 * 60 * 60 * 1_000
+  const databaseRelative = /^relative:(past|next|this):(day|week|month|year)$/.exec(value)
+  if (databaseRelative) {
+    const [, direction, unit] = databaseRelative
+    if (direction === "this") {
+      if (unit === "day") return [startToday, startToday + day]
+      if (unit === "week") return [startToday - now.getDay() * day, startToday + (7 - now.getDay()) * day]
+      if (unit === "month") return [new Date(now.getFullYear(), now.getMonth(), 1).getTime(), new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime()]
+      return [new Date(now.getFullYear(), 0, 1).getTime(), new Date(now.getFullYear() + 1, 0, 1).getTime()]
+    }
+    const multiplier = direction === "past" ? -1 : 1
+    const anchor = unit === "day"
+      ? startToday + multiplier * day
+      : unit === "week"
+        ? startToday + multiplier * 7 * day
+        : unit === "month"
+          ? new Date(now.getFullYear(), now.getMonth() + multiplier, now.getDate()).getTime()
+          : new Date(now.getFullYear() + multiplier, now.getMonth(), now.getDate()).getTime()
+    return direction === "past" ? [anchor, startToday + day] : [startToday, anchor + day]
+  }
   switch (value) {
     case "today": return [startToday, startToday + day]
     case "yesterday": return [startToday - day, startToday]

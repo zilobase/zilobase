@@ -16,6 +16,7 @@ import {
   DropDrawerSubTrigger,
   DropDrawerTrigger,
 } from "@/shared/ui/dropdrawer"
+import type { ReactNode } from "react"
 
 const panels = [
   { icon: IntersectSquareIcon, label: "Group", right: undefined, title: "Group" },
@@ -24,7 +25,15 @@ const panels = [
   { icon: DatabaseIcon, label: "Database", right: undefined, title: "Database" },
 ] as const
 
-export function MailViewSettingsMenu() {
+export function MailViewSettingsMenu({
+  filterCount = 0,
+  filterDirty = false,
+  filterEditor,
+}: {
+  filterCount?: number
+  filterDirty?: boolean
+  filterEditor?: ReactNode
+}) {
   return (
     <DropDrawer defaultSubDisplayMode="inline">
       <DropDrawerTrigger asChild>
@@ -51,14 +60,22 @@ export function MailViewSettingsMenu() {
             <DropDrawerSubTrigger>
               <Icon />
               <span>{label}</span>
+              {label === "Filter" && filterDirty ? (
+                <span aria-label="Unsaved filters" className="ml-auto size-1.5 rounded-full bg-feedback-warning" />
+              ) : null}
+              {label === "Filter" && filterCount > 0 ? (
+                <span className={filterDirty ? "text-content-secondary" : "ml-auto text-content-secondary"}>{filterCount}</span>
+              ) : null}
               {right ? (
                 <span className="ml-auto text-content-secondary">{right}</span>
               ) : null}
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-72">
-              <DropDrawerItem disabled>
-                This panel is enabled in its organization pass.
-              </DropDrawerItem>
+              {label === "Filter" && filterEditor ? filterEditor : (
+                <DropDrawerItem disabled>
+                  This panel is enabled in its organization pass.
+                </DropDrawerItem>
+              )}
             </DropDrawerSubContent>
           </DropDrawerSub>
         ))}

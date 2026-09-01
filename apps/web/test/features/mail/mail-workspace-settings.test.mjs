@@ -21,7 +21,7 @@ export function register({ assert, readSource, test }) {
     )
 
     assert.match(page, /useActiveWorkspaceId\(\)/)
-    assert.match(page, /<MailViewSettingsMenu \/>/)
+    assert.match(page, /<MailViewSettingsMenu/)
     assert.doesNotMatch(page, /Disconnecting…|void disconnect\(\)/)
     assert.match(controller, /mailApiBasePath\(input\.connection\.workspaceId\)/)
     assert.match(menu, /DropDrawer/)

@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query"
-import type { MailViewQueryResponse } from "@zilobase/features/mail"
+import type { MailFilterExpression, MailViewQueryResponse } from "@zilobase/features/mail"
 
 import { apiFetch } from "@/features/desktop/network/api"
 
@@ -8,6 +8,7 @@ import { mailApiBasePath } from "./mail-api-path"
 export function useIndexedMailView(input: {
   bindingId: string | null | undefined
   enabled: boolean
+  filter?: MailFilterExpression
   routeId: string
   search: string
   workspaceId: string | null | undefined
@@ -22,6 +23,7 @@ export function useIndexedMailView(input: {
       {
         body: JSON.stringify({
           cursor: pageParam ?? undefined,
+          filter: input.filter,
           limit: 50,
           routeId: input.routeId,
           search: input.search || undefined,
@@ -37,6 +39,7 @@ export function useIndexedMailView(input: {
       input.bindingId,
       input.routeId,
       input.search,
+      input.filter,
     ],
   })
 }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import type { MailFilterExpression } from "./organization"
-import { evaluateMailFilterExpression, type MailFilterRecord } from "./predicate"
+import { evaluateMailFilterCondition, evaluateMailFilterExpression, type MailFilterRecord } from "./predicate"
 
 const record: MailFilterRecord = {
   attachmentCount: 2,
@@ -58,4 +58,13 @@ test("mail predicates implement relative dates, empty custom values, categories,
     evaluateMailFilterExpression(record, filter, new Date(2026, 8, 2, 12)),
     true,
   )
+})
+
+test("mail predicates accept the shared database relative-date editor format", () => {
+  const now = new Date("2026-09-01T12:00:00Z")
+  assert.equal(evaluateMailFilterCondition(
+    { internalDate: new Date("2026-08-28T12:00:00Z").getTime(), labelIds: [] },
+    { id: "relative", operator: "is_relative_to_today", propertyId: "date", type: "condition", values: ["relative:past:week"] },
+    now,
+  ), true)
 })

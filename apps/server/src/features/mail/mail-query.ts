@@ -10,6 +10,7 @@ import {
   type MailSystemFolderId,
   type MailThreadSummary,
   type MailViewQueryResponse,
+  normalizeMailFilterExpression,
 } from "@zilobase/features/mail"
 
 import { db } from "../../infrastructure/database"
@@ -41,6 +42,7 @@ export async function queryIndexedMail(input: {
   bindingId: string
   cursor?: string
   env: RuntimeEnv
+  filter?: MailFilterExpression
   gmailAccountId: string
   limit?: number
   routeId: string
@@ -48,7 +50,10 @@ export async function queryIndexedMail(input: {
 }): Promise<MailViewQueryResponse> {
   const limit = Math.max(1, Math.min(input.limit ?? 50, 100))
   let cursor = input.cursor ? decodeMailQueryCursor(input.cursor) : null
-  const filter = await filterForRoute(input.bindingId, input.routeId)
+  const routeFilter = await filterForRoute(input.bindingId, input.routeId)
+  const filter = input.filter
+    ? normalizeMailFilterExpression(input.filter)
+    : routeFilter
   const index = await getMailIndexProgress(input.gmailAccountId)
   const search = input.search?.trim() ?? ""
   const searchResult = search

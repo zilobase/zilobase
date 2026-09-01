@@ -81,7 +81,9 @@ export async function createMailView(input: {
     .insert(mailView)
     .values({
       bindingId: input.bindingId,
-      config: template?.config ?? normalizeMailViewConfig({}),
+      config: input.value.config
+        ? normalizeMailViewConfig(input.value.config)
+        : template?.config ?? normalizeMailViewConfig({}),
       createdAt: now,
       icon: cleanIcon(input.value.icon, template?.icon ?? "mail"),
       id: crypto.randomUUID(),

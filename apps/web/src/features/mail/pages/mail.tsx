@@ -8,6 +8,7 @@ import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
   mailSystemFolderIds,
   type MailConnection,
+  type MailFilterExpression,
   type MailLabelRecord,
   type MailLabelWriteRequest,
   type MailMessageRecord,
@@ -83,6 +84,7 @@ import { sanitizeMailHtml } from "../model/mail-html"
 import { applyMailDocumentTheme } from "../model/mail-document-theme"
 import { MailComposer } from "../components/mail-composer"
 import { MailViewSettingsMenu } from "../components/mail-view-settings-menu"
+import { cloneMailFilter, MailFilterEditor, mailFiltersEqual, MailFilterToolbar } from "../components/mail-filter-editor"
 import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
@@ -153,6 +155,16 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     ? view as (typeof mailSystemFolderIds)[number]
     : null
   const organizationEnabled = isFeatureEnabled("mailOrganization")
+  const [draftFilter, setDraftFilter] = useState<MailFilterExpression | null>(null)
+  useEffect(() => {
+    setDraftFilter(activePersistedView ? cloneMailFilter(activePersistedView.config.filter) : null)
+  }, [activePersistedView?.id, activePersistedView?.updatedAt])
+  const effectiveFilter = draftFilter ?? activePersistedView?.config.filter ?? null
+  const filterDirty = Boolean(
+    activePersistedView &&
+    effectiveFilter &&
+    !mailFiltersEqual(effectiveFilter, activePersistedView.config.filter),
+  )
   const indexProgress = persistedViewsQuery.data?.index
   const indexProgressKey = indexProgress
     ? `${indexProgress.status}:${indexProgress.indexedThreadCount}`
@@ -168,6 +180,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const indexedMailQuery = useIndexedMailView({
     bindingId: connection.bindingId,
     enabled: organizationEnabled && Boolean(activePersistedView || activeSystemFolder),
+    filter: activePersistedView && effectiveFilter ? effectiveFilter : undefined,
     routeId: view,
     search: indexedSearch,
     workspaceId: connection.workspaceId,
@@ -312,6 +325,32 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const runBatch = (modification: MailModifyRequest) => controller
     .batchModifyThreads([...batchSelection], modification)
     .then(() => setBatchSelection(new Set()))
+  const saveFilters = async () => {
+    if (!activePersistedView || !effectiveFilter) return
+    try {
+      await persistedViewsQuery.updateView({
+        value: { config: { ...activePersistedView.config, filter: effectiveFilter } },
+        viewId: activePersistedView.id,
+      })
+      toast.success("Filters saved")
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    }
+  }
+  const saveFiltersAsNewView = async () => {
+    if (!activePersistedView || !effectiveFilter) return
+    try {
+      const { view: created } = await persistedViewsQuery.createView({
+        config: { ...activePersistedView.config, filter: effectiveFilter },
+        icon: activePersistedView.icon,
+        name: `${activePersistedView.name} filtered`,
+      })
+      await navigate({ search: { compose, view: created.id }, to: "/mail" })
+      toast.success("View created")
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    }
+  }
   const sidePaneOpen = Boolean(selectedThread && presentation === "sidepanel")
   const viewerProps = selectedThread ? {
     labels: controller.labels,
@@ -385,9 +424,28 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                             onUpdate={controller.updateLabel}
                             online={controller.online}
                           />
-                          <MailViewSettingsMenu />
+                          <MailViewSettingsMenu
+                            filterCount={effectiveFilter ? countMailFilterConditions(effectiveFilter) : 0}
+                            filterDirty={filterDirty}
+                            filterEditor={activePersistedView && effectiveFilter ? (
+                              <MailFilterEditor expression={effectiveFilter} labels={controller.labels} onChange={setDraftFilter} />
+                            ) : undefined}
+                          />
                         </div>
                       </div>
+
+                      {activePersistedView && effectiveFilter ? (
+                        <MailFilterToolbar
+                          dirty={filterDirty}
+                          expression={effectiveFilter}
+                          labels={controller.labels}
+                          onChange={setDraftFilter}
+                          onReset={() => setDraftFilter(cloneMailFilter(activePersistedView.config.filter))}
+                          onSave={() => void saveFilters()}
+                          onSaveAsNew={() => void saveFiltersAsNewView()}
+                          saving={persistedViewsQuery.savingView}
+                        />
+                      ) : null}
 
                       {organizationEnabled && indexProgress && indexProgress.status !== "ready" ? (
                         <div aria-live="polite" className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary" role="status">
@@ -1048,6 +1106,13 @@ function MailboxLoading() {
 
 function MailEmptyState({ offline, query }: { offline: boolean; query: string }) {
   return <div className="py-16 text-center text-sm text-content-secondary">{query ? `No ${offline ? "downloaded " : ""}mail matches your search.` : "No mail in this folder."}</div>
+}
+
+function countMailFilterConditions(filter: MailFilterExpression): number {
+  return filter.filters.reduce(
+    (count, node) => count + (node.type === "condition" ? 1 : countMailFilterConditions(node)),
+    0,
+  )
 }
 
 function dateGroup(timestamp: number): (typeof messageGroups)[number] {

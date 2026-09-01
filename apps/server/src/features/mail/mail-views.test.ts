@@ -23,6 +23,7 @@ test("mail view service seeds protected Inbox plus Unread and Starred", async ()
   assert.match(source, /if \(existing\.protected\)/)
   assert.match(source, /Inbox cannot be deleted/)
   assert.match(source, /eq\(mailView\.bindingId, input\.bindingId\)/)
+  assert.match(source, /input\.value\.config[\s\S]*normalizeMailViewConfig/)
 })
 
 test("workspace routes expose view bootstrap and mutation operations", async () => {

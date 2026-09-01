@@ -564,6 +564,7 @@ export type MailViewsBootstrap = {
 }
 
 export type MailViewCreateInput = {
+  config?: MailViewConfig
   icon?: string | null
   name?: string
   templateId?: MailViewTemplateId

@@ -3,6 +3,7 @@ import { Hono, type Context } from "hono"
 import {
   mailSystemFolderIds,
   mailViewTemplateIds,
+  normalizeMailFilterExpression,
   type MailActionRequest,
   type MailBatchModifyRequest,
   type MailLabelWriteRequest,
@@ -336,6 +337,7 @@ mailRoutes.post("/query", async (c) => {
     !body.routeId ||
     body.routeId.length > 200 ||
     (body.cursor !== undefined && typeof body.cursor !== "string") ||
+    (body.filter !== undefined && (!body.filter || typeof body.filter !== "object")) ||
     (body.limit !== undefined && (!Number.isInteger(body.limit) || Number(body.limit) < 1 || Number(body.limit) > 100)) ||
     (body.search !== undefined && (typeof body.search !== "string" || body.search.length > 500))
   ) {
@@ -346,6 +348,7 @@ mailRoutes.post("/query", async (c) => {
       bindingId: owned.bindingId,
       ...(typeof body.cursor === "string" ? { cursor: body.cursor } : {}),
       env: c.env,
+      ...(body.filter !== undefined ? { filter: normalizeMailFilterExpression(body.filter) } : {}),
       gmailAccountId: owned.connection.id,
       ...(typeof body.limit === "number" ? { limit: body.limit } : {}),
       routeId: body.routeId,
@@ -363,7 +366,12 @@ mailRoutes.post("/views", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
   const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
-  if (!body || !optionalMailViewName(body.name) || !optionalMailViewIcon(body.icon)) {
+  if (
+    !body ||
+    !optionalMailViewName(body.name) ||
+    !optionalMailViewIcon(body.icon) ||
+    (body.config !== undefined && (!body.config || typeof body.config !== "object"))
+  ) {
     return c.json({ message: "A valid mail view is required." }, 400)
   }
   const templateId = body.templateId === undefined
@@ -376,6 +384,7 @@ mailRoutes.post("/views", async (c) => {
     const view = await createMailView({
       bindingId: owned.bindingId,
       value: {
+        ...(body.config !== undefined ? { config: body.config as MailViewConfig } : {}),
         ...(body.icon !== undefined ? { icon: body.icon as string | null } : {}),
         ...(body.name !== undefined ? { name: body.name as string } : {}),
         ...(templateId ? { templateId } : {}),

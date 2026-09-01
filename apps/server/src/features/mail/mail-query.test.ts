@@ -31,5 +31,6 @@ test("indexed view queries are binding-scoped, cursor-paged, and intersect full 
   assert.match(source, /gateway\.listMessages\(\{/)
   assert.match(source, /includeSpamTrash: true/)
   assert.match(source, /searchResult\.threadIds\.has\(indexed\.thread\.id\)/)
+  assert.match(source, /input\.filter[\s\S]*normalizeMailFilterExpression/)
   assert.match(source, /index,/)
 })
