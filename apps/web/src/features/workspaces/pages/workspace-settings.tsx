@@ -1,7 +1,11 @@
 import * as React from "react"
 import { useNavigate } from "@tanstack/react-router"
+import { useQuery } from "@tanstack/react-query"
+import { invoke } from "@tauri-apps/api/core"
 import { Trash2Icon, UploadIcon } from "@/shared/components/icons"
 import { toast } from "sonner"
+import { useSession } from "@zilobase/features/auth"
+import type { MailConnection } from "@zilobase/features/mail"
 
 import { SettingsHeader } from "@/features/settings"
 import { isFeatureEnabled } from "@/shared/config/feature-flags"
@@ -26,7 +30,14 @@ import { Input } from "@/shared/ui/input"
 import { Separator } from "@/shared/ui/separator"
 import { Spinner } from "@/shared/ui/spinner"
 import { Textarea } from "@/shared/ui/textarea"
-import { getApiErrorMessage } from "@/features/desktop/network/api"
+import { apiFetch, getApiErrorMessage, toApiUrl } from "@/features/desktop/network/api"
+import { isDesktopApp } from "@/features/desktop/platform"
+import { GoogleIcon } from "@/shared/components/google-icon"
+import {
+  destroyMailDatabase,
+  mailDatabaseName,
+} from "@/features/mail/cache/mail-database"
+import { mailApiBasePath } from "@/features/mail/model/mail-api-path"
 import { useNotionImport } from "@/features/notion-import/index"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
@@ -50,6 +61,12 @@ export default function WorkspaceSettingsPage() {
 
       <div className="mx-auto grid w-full max-w-3xl gap-6">
         <WorkspaceDetailsSection workspace={workspace} />
+        {isFeatureEnabled("mail") && isFeatureEnabled("mailOrganization") ? (
+          <>
+            <Separator />
+            <WorkspaceMailConnectionSection workspaceId={activeWorkspaceId} />
+          </>
+        ) : null}
         {isFeatureEnabled("notionImport") ? (
           <>
             <Separator />
@@ -63,6 +80,157 @@ export default function WorkspaceSettingsPage() {
         />
       </div>
     </main>
+  )
+}
+
+function WorkspaceMailConnectionSection({
+  workspaceId,
+}: {
+  workspaceId: string | null | undefined
+}) {
+  const { data: session } = useSession()
+  const [connecting, setConnecting] = React.useState(false)
+  const [disconnectOpen, setDisconnectOpen] = React.useState(false)
+  const [disconnecting, setDisconnecting] = React.useState(false)
+  const mailBasePath = mailApiBasePath(workspaceId)
+  const connectionQuery = useQuery({
+    enabled: Boolean(workspaceId),
+    queryKey: ["mail", "connection", workspaceId],
+    queryFn: ({ signal }) => apiFetch<MailConnection>(
+      `${mailBasePath}/connection`,
+      { signal },
+    ),
+    staleTime: 15_000,
+  })
+  const connection = connectionQuery.data ?? null
+  const connected = connection?.status === "connected"
+
+  const connect = async () => {
+    if (!workspaceId) return
+    setConnecting(true)
+    try {
+      const result = await apiFetch<{ authorizationUrl: string }>(
+        `${mailBasePath}/oauth/start`,
+        {
+          body: JSON.stringify({ client: isDesktopApp() ? "desktop" : "web" }),
+          method: "POST",
+        },
+      )
+      if (isDesktopApp()) {
+        await invoke("open_mail_authorization_url", {
+          authorizationUrl: result.authorizationUrl,
+        })
+        toast.info("Finish connecting Gmail in your browser.")
+        setConnecting(false)
+      } else {
+        window.location.assign(result.authorizationUrl)
+      }
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+      setConnecting(false)
+    }
+  }
+
+  const disconnect = async () => {
+    if (!workspaceId) return
+    setDisconnecting(true)
+    try {
+      await apiFetch(`${mailBasePath}/connection`, { method: "DELETE" })
+      if (connection?.connectionId && session?.user?.id) {
+        await destroyMailDatabase(mailDatabaseName({
+          apiOrigin: new URL(toApiUrl("/"), window.location.origin).origin,
+          bindingId: connection.bindingId ?? connection.connectionId,
+          connectionId: connection.connectionId,
+          userId: session.user.id,
+          workspaceId,
+        }))
+      }
+      setDisconnectOpen(false)
+      toast.success("Gmail disconnected from this workspace.")
+      await connectionQuery.refetch()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  return (
+    <section className="grid gap-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-1">
+          <h3 className="font-heading text-base leading-snug font-medium">
+            Your mail connection
+          </h3>
+          <p className="text-sm text-content-secondary">
+            {connected
+              ? `${connection.email ?? "Gmail"} is private to you in this workspace.`
+              : "Connect a private Gmail mailbox for this workspace."}
+          </p>
+          {connectionQuery.error ? (
+            <p className="text-xs text-feedback-danger-text">
+              {getApiErrorMessage(connectionQuery.error)}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {connected ? (
+            <Button
+              disabled={disconnecting}
+              onClick={() => setDisconnectOpen(true)}
+              type="button"
+              variant="outline"
+            >
+              Disconnect
+            </Button>
+          ) : null}
+          <Button
+            disabled={
+              !workspaceId ||
+              connecting ||
+              connectionQuery.isLoading ||
+              connection?.providerConfigured === false
+            }
+            onClick={() => void connect()}
+            type="button"
+          >
+            <GoogleIcon />
+            {connecting
+              ? "Opening Google…"
+              : connection?.status === "reconnect_required"
+                ? "Reconnect"
+                : connected
+                  ? "Change account"
+                  : "Connect"}
+          </Button>
+        </div>
+      </div>
+
+      <AlertDialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect Gmail?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the mailbox and its downloaded cache from this
+              workspace. The same Gmail account stays connected in any other
+              workspaces where you use it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disconnecting}>Cancel</AlertDialogCancel>
+            <Button
+              disabled={disconnecting}
+              onClick={() => void disconnect()}
+              type="button"
+              variant="destructive"
+            >
+              {disconnecting ? <Spinner /> : null}
+              {disconnecting ? "Disconnecting…" : "Disconnect Gmail"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </section>
   )
 }
 

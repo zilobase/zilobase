@@ -35,6 +35,7 @@ import {
 } from "../cache/mail-database"
 import { safeMailDownloadFilename } from "./mail-attachment"
 import { loadMailThreadOnce } from "./mail-thread-loader"
+import { mailApiBasePath } from "./mail-api-path"
 
 export function useMailController(input: {
   connection: MailConnection
@@ -42,6 +43,7 @@ export function useMailController(input: {
   userId: string
   view: MailView
 }) {
+  const mailBasePath = mailApiBasePath(input.connection.workspaceId)
   const [database, setDatabase] = useState<MailDatabase | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [mutating, setMutating] = useState(false)
@@ -125,7 +127,7 @@ export function useMailController(input: {
         request.knownMessageIds = messages.map(String)
         request.knownThreadIds = threads.map(String)
       }
-      const response = await apiFetch<MailSyncResponse>("/mail/sync", {
+      const response = await apiFetch<MailSyncResponse>(`${mailBasePath}/sync`, {
         body: JSON.stringify(request),
         method: "POST",
       })
@@ -179,7 +181,7 @@ export function useMailController(input: {
       const cached = await database.messages.where("threadId").equals(threadId).toArray()
       if (!online || (cached.length > 0 && cached.every((message) => message.hasFullBody))) return
       const response = await apiFetch<{ messages: MailMessageRecord[]; thread: MailThreadSummary }>(
-        `/mail/threads/${encodeURIComponent(threadId)}`,
+        `${mailBasePath}/threads/${encodeURIComponent(threadId)}`,
       )
       await upsertFullMailThread(database, response)
     })
@@ -219,7 +221,7 @@ export function useMailController(input: {
 
   const fetchAttachmentBlob = async (messageId: string, attachmentId: string) => {
     const response = await desktopNetworkFetch(
-      toApiUrl(`/mail/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`),
+      toApiUrl(`${mailBasePath}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`),
       { credentials: "include", headers: getApiRequestHeaders() },
     )
     if (!response.ok) throw new Error("The attachment could not be downloaded.")
@@ -233,7 +235,7 @@ export function useMailController(input: {
     try {
       snapshot = await optimisticallyModifyThread(database, threadId, modification)
       const response = await apiFetch<MailThreadMutationResponse>(
-        `/mail/threads/${encodeURIComponent(threadId)}/modify`,
+        `${mailBasePath}/threads/${encodeURIComponent(threadId)}/modify`,
         { body: JSON.stringify(modification), method: "POST" },
       )
       await upsertFullMailThread(database, response)
@@ -255,7 +257,7 @@ export function useMailController(input: {
       for (const threadId of threadIds) {
         snapshots.push(await optimisticallyModifyThread(database, threadId, modification))
       }
-      await apiFetch("/mail/threads/batch-modify", {
+      await apiFetch(`${mailBasePath}/threads/batch-modify`, {
         body: JSON.stringify({ ...modification, ids: threadIds }),
         method: "POST",
       })
@@ -281,7 +283,7 @@ export function useMailController(input: {
     try {
       snapshot = await optimisticallyModifyThread(database, threadId, modification)
       const response = await apiFetch<MailThreadMutationResponse>(
-        `/mail/threads/${encodeURIComponent(threadId)}/action`,
+        `${mailBasePath}/threads/${encodeURIComponent(threadId)}/action`,
         { body: JSON.stringify({ action }), method: "POST" },
       )
       await upsertFullMailThread(database, response)
@@ -301,7 +303,7 @@ export function useMailController(input: {
     try {
       snapshot = await optimisticallyModifyMessage(database, messageId, modification)
       const response = await apiFetch<MailMessageMutationResponse>(
-        `/mail/messages/${encodeURIComponent(messageId)}/modify`,
+        `${mailBasePath}/messages/${encodeURIComponent(messageId)}/modify`,
         { body: JSON.stringify(modification), method: "POST" },
       )
       await reconcileMailMessage(database, response.message)
@@ -324,7 +326,7 @@ export function useMailController(input: {
     try {
       snapshot = await optimisticallyModifyMessage(database, messageId, modification)
       const response = await apiFetch<MailMessageMutationResponse>(
-        `/mail/messages/${encodeURIComponent(messageId)}/action`,
+        `${mailBasePath}/messages/${encodeURIComponent(messageId)}/action`,
         { body: JSON.stringify({ action }), method: "POST" },
       )
       await reconcileMailMessage(database, response.message)
@@ -341,7 +343,7 @@ export function useMailController(input: {
     if (!database || !online) throw new Error("Reconnect to manage Gmail labels.")
     setMutating(true)
     try {
-      const { label } = await apiFetch<{ label: MailLabelRecord }>("/mail/labels", {
+      const { label } = await apiFetch<{ label: MailLabelRecord }>(`${mailBasePath}/labels`, {
         body: JSON.stringify(input),
         method: "POST",
       })
@@ -358,7 +360,7 @@ export function useMailController(input: {
     try {
       await database.labels.put({ ...label, ...input })
       const response = await apiFetch<{ label: MailLabelRecord }>(
-        `/mail/labels/${encodeURIComponent(label.id)}`,
+        `${mailBasePath}/labels/${encodeURIComponent(label.id)}`,
         { body: JSON.stringify(input), method: "PATCH" },
       )
       await database.labels.put(response.label)
@@ -376,7 +378,7 @@ export function useMailController(input: {
     if (!database || !online) throw new Error("Reconnect to manage Gmail labels.")
     setMutating(true)
     try {
-      await apiFetch(`/mail/labels/${encodeURIComponent(labelId)}`, { method: "DELETE" })
+      await apiFetch(`${mailBasePath}/labels/${encodeURIComponent(labelId)}`, { method: "DELETE" })
       await deleteMailLabelFromCache(database, labelId)
     } finally {
       setMutating(false)
@@ -388,7 +390,7 @@ export function useMailController(input: {
     const state = await database.syncState.get("primary")
     for (const threadId of state?.pendingThreadReconciliationIds ?? []) {
       try {
-        const response = await apiFetch<MailThreadMutationResponse>(`/mail/threads/${encodeURIComponent(threadId)}`)
+        const response = await apiFetch<MailThreadMutationResponse>(`${mailBasePath}/threads/${encodeURIComponent(threadId)}`)
         await upsertFullMailThread(database, response)
         await clearMailReconciliation(database, { threadId })
       } catch (reconciliationError) {
@@ -402,7 +404,7 @@ export function useMailController(input: {
     }
     for (const messageId of state?.pendingMessageReconciliationIds ?? []) {
       try {
-        const response = await apiFetch<MailMessageMutationResponse>(`/mail/messages/${encodeURIComponent(messageId)}`)
+        const response = await apiFetch<MailMessageMutationResponse>(`${mailBasePath}/messages/${encodeURIComponent(messageId)}`)
         await reconcileMailMessage(database, response.message)
         await clearMailReconciliation(database, { messageId })
       } catch (reconciliationError) {

@@ -4,6 +4,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router"
 import { invoke } from "@tauri-apps/api/core"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useSession } from "@zilobase/features/auth"
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import type {
   MailConnection,
   MailLabelRecord,
@@ -17,7 +18,7 @@ import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 import { toast } from "sonner"
 import { useTheme } from "next-themes"
 
-import { apiFetch, getApiErrorMessage, toApiUrl } from "@/features/desktop/network/api"
+import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
 import { isDesktopApp } from "@/features/desktop/platform"
 import {
   ArchiveIcon,
@@ -57,6 +58,7 @@ import {
 import { Input } from "@/shared/ui/input"
 import { Separator } from "@/shared/ui/separator"
 import { useThemeFamily } from "@/shared/providers/theme-family-provider"
+import { isFeatureEnabled } from "@/shared/config/feature-flags"
 import {
   EmbeddedItemPresentationDropdown,
   MainPaneHeaderLeadingControl,
@@ -72,17 +74,24 @@ import { mailViewIcons, mailViewLabels } from "@/features/sidebar"
 import { sanitizeMailHtml } from "../model/mail-html"
 import { applyMailDocumentTheme } from "../model/mail-document-theme"
 import { MailComposer } from "../components/mail-composer"
+import { MailViewSettingsMenu } from "../components/mail-view-settings-menu"
 import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
-import { destroyMailDatabase, mailDatabaseName } from "../cache/mail-database"
+import { mailApiBasePath } from "../model/mail-api-path"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
 
 export default function MailPage() {
+  const activeWorkspaceId = useActiveWorkspaceId()
+  const organizationEnabled = isFeatureEnabled("mailOrganization")
+  const mailBasePath = mailApiBasePath(
+    organizationEnabled ? activeWorkspaceId : null,
+  )
   const connectionQuery = useQuery({
-    queryKey: ["mail", "connection"],
-    queryFn: ({ signal }) => apiFetch<MailConnection>("/mail/connection", { signal }),
+    enabled: !organizationEnabled || Boolean(activeWorkspaceId),
+    queryKey: ["mail", "connection", organizationEnabled ? activeWorkspaceId : "legacy"],
+    queryFn: ({ signal }) => apiFetch<MailConnection>(`${mailBasePath}/connection`, { signal }),
     staleTime: 15_000,
   })
 
@@ -93,19 +102,20 @@ export default function MailPage() {
         error={connectionQuery.error}
         loading={connectionQuery.isLoading}
         onConnected={() => void connectionQuery.refetch()}
+        workspaceId={organizationEnabled ? activeWorkspaceId : null}
       />
     )
   }
-  return <ConnectedMailbox connection={connectionQuery.data} onDisconnected={() => void connectionQuery.refetch()} />
+  return <ConnectedMailbox connection={connectionQuery.data} />
 }
 
-function ConnectedMailbox({ connection, onDisconnected }: { connection: MailConnection; onDisconnected: () => void }) {
+function ConnectedMailbox({ connection }: { connection: MailConnection }) {
   const { data: session } = useSession()
   if (!session?.user?.id) return <MailCenteredState><MailboxLoading /></MailCenteredState>
-  return <MailboxContent connection={connection} onDisconnected={onDisconnected} userId={session.user.id} />
+  return <MailboxContent connection={connection} userId={session.user.id} />
 }
 
-function MailboxContent({ connection, onDisconnected, userId }: { connection: MailConnection; onDisconnected: () => void; userId: string }) {
+function MailboxContent({ connection, userId }: { connection: MailConnection; userId: string }) {
   const { compose, view } = useSearch({ from: "/app/mail" })
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
@@ -113,7 +123,6 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
   const [batchSelection, setBatchSelection] = useState<Set<string>>(() => new Set())
   const [presentation, setPresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
   const [composerSeed, setComposerSeed] = useState<MailComposeSeed | null>(() => compose ? {} : null)
-  const [disconnecting, setDisconnecting] = useState(false)
   const controller = useMailController({
     connection,
     query,
@@ -205,26 +214,6 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
   const runBatch = (modification: MailModifyRequest) => controller
     .batchModifyThreads([...batchSelection], modification)
     .then(() => setBatchSelection(new Set()))
-  const disconnect = async () => {
-    if (!window.confirm(`Disconnect ${connection.email ?? "this Gmail account"} and remove its downloaded mail?`)) return
-    setDisconnecting(true)
-    try {
-      await apiFetch("/mail/connection", { method: "DELETE" })
-      await destroyMailDatabase(mailDatabaseName({
-        apiOrigin: new URL(toApiUrl("/"), window.location.origin).origin,
-        bindingId: connection.bindingId ?? connection.connectionId!,
-        connectionId: connection.connectionId!,
-        userId,
-        workspaceId: connection.workspaceId ?? "legacy",
-      }))
-      setSelection(null)
-      setComposerSeed(null)
-      onDisconnected()
-    } catch (error) {
-      toast.error(getApiErrorMessage(error))
-      setDisconnecting(false)
-    }
-  }
   const sidePaneOpen = Boolean(selectedThread && presentation === "sidepanel")
   const viewerProps = selectedThread ? {
     labels: controller.labels,
@@ -298,9 +287,7 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
                             onUpdate={controller.updateLabel}
                             online={controller.online}
                           />
-                          <Button disabled={!controller.online || disconnecting} onClick={() => void disconnect()} size="sm" type="button" variant="ghost">
-                            {disconnecting ? "Disconnecting…" : "Disconnect"}
-                          </Button>
+                          <MailViewSettingsMenu />
                         </div>
                       </div>
 
@@ -398,6 +385,7 @@ function MailboxContent({ connection, onDisconnected, userId }: { connection: Ma
           onSent={async (_response: MailSendResponse) => { await controller.refresh() }}
           online={controller.online}
           seed={composerSeed}
+          workspaceId={connection.workspaceId}
         />
       ) : null}
     </>
@@ -838,11 +826,12 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
   return <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-content-primary">{message.bodyText || message.snippet}</div>
 }
 
-function MailConnectionState({ connection, error, loading, onConnected }: {
+function MailConnectionState({ connection, error, loading, onConnected, workspaceId }: {
   connection: MailConnection | null
   error: unknown
   loading: boolean
   onConnected: () => void
+  workspaceId: string | null | undefined
 }) {
   const [pending, setPending] = useState(false)
   const [connectError, setConnectError] = useState<unknown>(null)
@@ -850,7 +839,7 @@ function MailConnectionState({ connection, error, loading, onConnected }: {
     setPending(true)
     setConnectError(null)
     try {
-      const result = await apiFetch<{ authorizationUrl: string }>("/mail/oauth/start", {
+      const result = await apiFetch<{ authorizationUrl: string }>(`${mailApiBasePath(workspaceId)}/oauth/start`, {
         body: JSON.stringify({ client: isDesktopApp() ? "desktop" : "web" }),
         method: "POST",
       })
@@ -873,7 +862,7 @@ function MailConnectionState({ connection, error, loading, onConnected }: {
         </h1>
         <p className="max-w-sm text-sm leading-6 text-content-secondary">Read, organize, draft, and send Gmail from Zilobase. Gmail remains authoritative.</p>
       </div>
-      <Button disabled={loading || pending || connection?.providerConfigured === false} onClick={() => void connect()} type="button">
+      <Button disabled={(!workspaceId && isFeatureEnabled("mailOrganization")) || loading || pending || connection?.providerConfigured === false} onClick={() => void connect()} type="button">
         <GoogleIcon /> {pending ? "Opening Google…" : "Connect Google account"}
       </Button>
       {connection?.providerConfigured === false ? <p className="text-center text-xs text-feedback-danger-text">Gmail is not configured on this Zilobase server.</p> : null}

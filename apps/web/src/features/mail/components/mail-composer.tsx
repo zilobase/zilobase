@@ -20,15 +20,18 @@ import {
   parseComposerAddresses,
   type MailComposeSeed,
 } from "../model/mail-compose"
+import { mailApiBasePath } from "../model/mail-api-path"
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 
-export function MailComposer({ onClose, onSent, online, seed }: {
+export function MailComposer({ onClose, onSent, online, seed, workspaceId }: {
   onClose: () => void
   onSent: (response: MailSendResponse) => Promise<void> | void
   online: boolean
   seed: MailComposeSeed
+  workspaceId?: string | null
 }) {
+  const mailBasePath = mailApiBasePath(workspaceId)
   const [to, setTo] = useState(() => formatComposerAddresses(seed.to ?? []))
   const [cc, setCc] = useState(() => formatComposerAddresses(seed.cc ?? []))
   const [bcc, setBcc] = useState(() => formatComposerAddresses(seed.bcc ?? []))
@@ -66,7 +69,7 @@ export function MailComposer({ onClose, onSent, online, seed }: {
     if (serialized === lastSaved.current) return draftIdRef.current
     const currentDraftId = draftIdRef.current
     const request = { ...compose, ...(currentDraftId ? { draftId: currentDraftId } : {}) }
-    const pending = apiFetch<MailDraftResponse>(currentDraftId ? `/mail/drafts/${encodeURIComponent(currentDraftId)}` : "/mail/drafts", {
+    const pending = apiFetch<MailDraftResponse>(currentDraftId ? `${mailBasePath}/drafts/${encodeURIComponent(currentDraftId)}` : `${mailBasePath}/drafts`, {
       body: JSON.stringify(request),
       method: currentDraftId ? "PUT" : "POST",
     }).then((response) => {
@@ -97,8 +100,8 @@ export function MailComposer({ onClose, onSent, online, seed }: {
     try {
       const currentDraftId = await saveDraft()
       const response = await apiFetch<MailSendResponse>(currentDraftId
-        ? `/mail/drafts/${encodeURIComponent(currentDraftId)}/send`
-        : "/mail/send", {
+        ? `${mailBasePath}/drafts/${encodeURIComponent(currentDraftId)}/send`
+        : `${mailBasePath}/send`, {
         body: JSON.stringify({ ...compose, ...(currentDraftId ? { draftId: currentDraftId } : {}) }),
         method: "POST",
       })
@@ -115,7 +118,7 @@ export function MailComposer({ onClose, onSent, online, seed }: {
   const discard = async () => {
     if (draftIdRef.current && online) {
       try {
-        await apiFetch(`/mail/drafts/${encodeURIComponent(draftIdRef.current)}`, { method: "DELETE" })
+        await apiFetch(`${mailBasePath}/drafts/${encodeURIComponent(draftIdRef.current)}`, { method: "DELETE" })
       } catch (error) {
         toast.error(getApiErrorMessage(error))
         return
