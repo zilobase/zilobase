@@ -29,10 +29,12 @@ export function MailViewSettingsMenu({
   filterCount = 0,
   filterDirty = false,
   filterEditor,
+  groupEditor,
 }: {
   filterCount?: number
   filterDirty?: boolean
   filterEditor?: ReactNode
+  groupEditor?: ReactNode
 }) {
   return (
     <DropDrawer defaultSubDisplayMode="inline">
@@ -71,7 +73,7 @@ export function MailViewSettingsMenu({
               ) : null}
             </DropDrawerSubTrigger>
             <DropDrawerSubContent className="w-72">
-              {label === "Filter" && filterEditor ? filterEditor : (
+              {label === "Group" && groupEditor ? groupEditor : label === "Filter" && filterEditor ? filterEditor : (
                 <DropDrawerItem disabled>
                   This panel is enabled in its organization pass.
                 </DropDrawerItem>

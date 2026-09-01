@@ -4,6 +4,7 @@ import { test } from "vitest"
 
 import {
   decodeMailQueryCursor,
+  encodeMailGroupCursor,
   encodeMailQueryCursor,
   MailQueryError,
 } from "./mail-query"
@@ -19,6 +20,19 @@ test("mail query cursors are opaque, deterministic, and validated", () => {
     () => decodeMailQueryCursor("not.valid"),
     (error: unknown) => error instanceof MailQueryError && error.status === 400,
   )
+})
+
+test("mail group cursors are opaque and grouping covers mutable and immutable fields", async () => {
+  const cursor = encodeMailGroupCursor("CATEGORY_UPDATES")
+  assert.doesNotMatch(cursor, /CATEGORY|UPDATES/)
+  const source = await readFile(new URL("./mail-query.ts", import.meta.url), "utf8")
+  for (const propertyId of ["date", "starred", "important", "priority", "unread", "from", "email_domain", "labels"]) {
+    assert.ok(source.includes(`case "${propertyId}"`), `missing group ${propertyId}`)
+  }
+  assert.match(source, /queryIndexedMailGroups/)
+  assert.match(source, /counts\.set/)
+  assert.match(source, /groupKeys\(indexed, routeConfig\?\.group/)
+  assert.match(source, /isMutableGroup/)
 })
 
 test("indexed view queries are binding-scoped, cursor-paged, and intersect full Gmail search", async () => {

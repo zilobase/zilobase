@@ -37,7 +37,7 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(mailSource, /justify-between[\s\S]*ActiveViewIcon[\s\S]*text-xl[\s\S]*activeViewLabel[\s\S]*aria-label="Search mail"/)
     assert.match(mailSource, /ActiveViewIcon className="size-5/)
     assert.doesNotMatch(mailSource, /A calm place for conversations/)
-    assert.match(mailSource, /<h3 className="px-2/)
+    assert.match(mailSource, /aria-expanded=\{!collapsedGroups\.has\(key\)\}/)
     assert.doesNotMatch(mailSource, /border-b border-stroke-default pb-2|<PlusIcon \/>[\s\S]*Compose/)
   })
 

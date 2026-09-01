@@ -605,6 +605,20 @@ export type MailIndexedThread = {
   to: MailAddress[]
 }
 
+export type MailQueryGroup = {
+  count: number
+  cursor: string
+  key: string
+  label: string
+  mutable: boolean
+}
+
+export type MailViewGroupsResponse = {
+  group: MailGroupConfig | null
+  groups: MailQueryGroup[]
+  index: MailIndexProgress
+}
+
 export type MailViewQueryResponse = {
   index: MailIndexProgress
   nextCursor: string | null

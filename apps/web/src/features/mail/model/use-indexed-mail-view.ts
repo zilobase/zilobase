@@ -9,6 +9,7 @@ export function useIndexedMailView(input: {
   bindingId: string | null | undefined
   enabled: boolean
   filter?: MailFilterExpression
+  groupKey?: string
   routeId: string
   search: string
   workspaceId: string | null | undefined
@@ -24,6 +25,7 @@ export function useIndexedMailView(input: {
         body: JSON.stringify({
           cursor: pageParam ?? undefined,
           filter: input.filter,
+          groupKey: input.groupKey,
           limit: 50,
           routeId: input.routeId,
           search: input.search || undefined,
@@ -40,6 +42,7 @@ export function useIndexedMailView(input: {
       input.routeId,
       input.search,
       input.filter,
+      input.groupKey,
     ],
   })
 }

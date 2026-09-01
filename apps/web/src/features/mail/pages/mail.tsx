@@ -9,10 +9,12 @@ import {
   mailSystemFolderIds,
   type MailConnection,
   type MailFilterExpression,
+  type MailGroupConfig,
   type MailLabelRecord,
   type MailLabelWriteRequest,
   type MailMessageRecord,
   type MailModifyRequest,
+  type MailQueryGroup,
   type MailSendResponse,
   type MailThreadSummary,
   type MailPersistedView,
@@ -85,12 +87,14 @@ import { applyMailDocumentTheme } from "../model/mail-document-theme"
 import { MailComposer } from "../components/mail-composer"
 import { MailViewSettingsMenu } from "../components/mail-view-settings-menu"
 import { cloneMailFilter, MailFilterEditor, mailFiltersEqual, MailFilterToolbar } from "../components/mail-filter-editor"
+import { isMutableMailGroup, MailGroupEditor } from "../components/mail-group-editor"
 import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
 import { mailApiBasePath } from "../model/mail-api-path"
 import { useMailViews } from "../model/use-mail-views"
 import { useIndexedMailView } from "../model/use-indexed-mail-view"
+import { useMailGroups } from "../model/use-mail-groups"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
 const organizationFolderDetails = {
@@ -141,6 +145,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const [indexedSearch, setIndexedSearch] = useState("")
   const [selection, setSelection] = useState<string | null>(null)
   const [batchSelection, setBatchSelection] = useState<Set<string>>(() => new Set())
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set())
   const [presentation, setPresentation] = useState<EmbeddedItemsOpenAs>("sidepanel")
   const [composerSeed, setComposerSeed] = useState<MailComposeSeed | null>(() => compose ? {} : null)
   const persistedViewsQuery = useMailViews({
@@ -180,6 +185,14 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const indexedMailQuery = useIndexedMailView({
     bindingId: connection.bindingId,
     enabled: organizationEnabled && Boolean(activePersistedView || activeSystemFolder),
+    filter: activePersistedView && effectiveFilter ? effectiveFilter : undefined,
+    routeId: view,
+    search: indexedSearch,
+    workspaceId: connection.workspaceId,
+  })
+  const mailGroupsQuery = useMailGroups({
+    bindingId: connection.bindingId,
+    enabled: organizationEnabled && Boolean(activePersistedView?.config.group),
     filter: activePersistedView && effectiveFilter ? effectiveFilter : undefined,
     routeId: view,
     search: indexedSearch,
@@ -312,6 +325,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   }, [controller.database, controller.online, controller.prefetchThread, controller.syncing, idlePrefetchKey])
 
   useEffect(() => setBatchSelection(new Set()), [view])
+  useEffect(() => setCollapsedGroups(new Set()), [activePersistedView?.config.group?.propertyId, view])
 
   useEffect(() => {
     if (!compose) return
@@ -319,9 +333,15 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     void navigate({ replace: true, search: { compose: undefined, view }, to: "/mail" })
   }, [compose, navigate, view])
 
-  const groupedThreads = useMemo(() => messageGroups
-    .map((group) => ({ group, threads: displayedThreads.filter((thread) => dateGroup(thread.internalDate) === group) }))
-    .filter((entry) => entry.threads.length > 0), [displayedThreads])
+  const groupedThreads = useMemo(
+    () => groupMailThreads(
+      displayedThreads,
+      activePersistedView?.config.group ?? null,
+      controller.labels,
+      mailGroupsQuery.data?.groups ?? [],
+    ),
+    [activePersistedView?.config.group, controller.labels, displayedThreads, mailGroupsQuery.data?.groups],
+  )
   const runBatch = (modification: MailModifyRequest) => controller
     .batchModifyThreads([...batchSelection], modification)
     .then(() => setBatchSelection(new Set()))
@@ -350,6 +370,32 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
     } catch (error) {
       toast.error(getApiErrorMessage(error))
     }
+  }
+  const saveGroup = async (group: MailGroupConfig | null) => {
+    if (!activePersistedView) return
+    try {
+      await persistedViewsQuery.updateView({
+        value: { config: { ...activePersistedView.config, group } },
+        viewId: activePersistedView.id,
+      })
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    }
+  }
+  const moveThreadToGroup = async (threadId: string, groupKey: string) => {
+    const propertyId = activePersistedView?.config.group?.propertyId
+    if (!propertyId || !isMutableMailGroup(propertyId)) return
+    const enabled = groupKey === "true"
+    const modification = propertyId === "starred"
+      ? enabled ? { addLabelIds: ["STARRED"] } : { removeLabelIds: ["STARRED"] }
+      : propertyId === "unread"
+        ? enabled ? { addLabelIds: ["UNREAD"] } : { removeLabelIds: ["UNREAD"] }
+        : propertyId === "important" || propertyId === "priority"
+          ? enabled ? { addLabelIds: ["IMPORTANT"] } : { removeLabelIds: ["IMPORTANT"] }
+          : propertyId === "labels" && groupKey !== "empty"
+            ? { addLabelIds: [groupKey] }
+            : null
+    if (modification) await controller.modifyThread(threadId, modification)
   }
   const sidePaneOpen = Boolean(selectedThread && presentation === "sidepanel")
   const viewerProps = selectedThread ? {
@@ -430,6 +476,9 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                             filterEditor={activePersistedView && effectiveFilter ? (
                               <MailFilterEditor expression={effectiveFilter} labels={controller.labels} onChange={setDraftFilter} />
                             ) : undefined}
+                            groupEditor={activePersistedView ? (
+                              <MailGroupEditor group={activePersistedView.config.group} onChange={(group) => void saveGroup(group)} saving={persistedViewsQuery.savingView} />
+                            ) : undefined}
                           />
                         </div>
                       </div>
@@ -468,12 +517,38 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
 
                       {(organizationEnabled ? indexedMailQuery.isLoading : !controller.database) ? <MailboxLoading /> : groupedThreads.length ? (
                         <div>
-                          {groupedThreads.map(({ group, threads }) => (
-                            <section aria-labelledby={`mail-group-${group}`} className="pt-3" key={group}>
-                              <h3 className="px-2 pb-1.5 text-xs font-semibold text-content-secondary" id={`mail-group-${group}`}>
-                                {group}
-                              </h3>
-                              <div className="border-t border-stroke-default">
+                          {groupedThreads.map(({ count, key, label, mutable, threads }) => (
+                            <section
+                              aria-labelledby={`mail-group-${key}`}
+                              className="pt-3"
+                              key={key}
+                              onDragOver={(event) => {
+                                if (mutable) event.preventDefault()
+                              }}
+                              onDrop={(event) => {
+                                if (!mutable) return
+                                event.preventDefault()
+                                const threadId = event.dataTransfer.getData("application/x-zilobase-mail-thread")
+                                if (threadId) void moveThreadToGroup(threadId, key)
+                              }}
+                            >
+                              <button
+                                aria-expanded={!collapsedGroups.has(key)}
+                                className="flex w-full items-center gap-1.5 px-2 pb-1.5 text-left text-xs font-semibold text-content-secondary"
+                                id={`mail-group-${key}`}
+                                onClick={() => setCollapsedGroups((current) => {
+                                  const next = new Set(current)
+                                  if (next.has(key)) next.delete(key)
+                                  else next.add(key)
+                                  return next
+                                })}
+                                type="button"
+                              >
+                                {collapsedGroups.has(key) ? <ChevronDown className="size-3 -rotate-90" /> : <ChevronDown className="size-3" />}
+                                <span>{label}</span>
+                                <span className="font-normal">{count}</span>
+                              </button>
+                              {!collapsedGroups.has(key) ? <div className="border-t border-stroke-default">
                                 {threads.map((thread) => (
                                   <MailThreadRow
                                     key={thread.id}
@@ -490,11 +565,12 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                                     onOpen={() => setSelection(thread.id)}
                                     onPrefetch={() => void controller.prefetchThread(thread.id)}
                                     online={controller.online}
+                                    groupDraggable={mutable}
                                     selected={selection === thread.id}
                                     thread={thread}
                                   />
                                 ))}
-                              </div>
+                              </div> : null}
                             </section>
                           ))}
                           {(organizationEnabled ? indexedMailQuery.hasNextPage : controller.hasMore) ? (
@@ -577,8 +653,9 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   )
 }
 
-function MailThreadRow({ batchSelected, mutating, onAction, onBatchToggle, onModify, onOpen, onPrefetch, online, selected, thread }: {
+function MailThreadRow({ batchSelected, groupDraggable = false, mutating, onAction, onBatchToggle, onModify, onOpen, onPrefetch, online, selected, thread }: {
   batchSelected: boolean
+  groupDraggable?: boolean
   mutating: boolean
   onAction: (action: "restore" | "trash") => Promise<void>
   onBatchToggle: (checked: boolean) => void
@@ -594,6 +671,12 @@ function MailThreadRow({ batchSelected, mutating, onAction, onBatchToggle, onMod
     <div
       className={`group/mail-row flex h-9 w-full items-center hover:bg-action-neutral-hover ${selected ? "bg-action-neutral-hover text-action-on-neutral" : ""}`}
       data-selected={selected ? "true" : undefined}
+      draggable={groupDraggable}
+      onDragStart={(event) => {
+        if (!groupDraggable) return
+        event.dataTransfer.effectAllowed = "move"
+        event.dataTransfer.setData("application/x-zilobase-mail-thread", thread.id)
+      }}
     >
       <Checkbox aria-label={`Select ${thread.subject}`} checked={batchSelected} className="ml-2 shrink-0" onCheckedChange={(checked) => onBatchToggle(checked === true)} />
       <button className="grid min-w-0 flex-1 grid-cols-[minmax(8rem,0.8fr)_minmax(12rem,2fr)_auto] items-center gap-3 px-2 text-left text-sm" onClick={onOpen} onFocus={onPrefetch} onPointerEnter={onPrefetch} type="button">
@@ -1113,6 +1196,68 @@ function countMailFilterConditions(filter: MailFilterExpression): number {
     (count, node) => count + (node.type === "condition" ? 1 : countMailFilterConditions(node)),
     0,
   )
+}
+
+function groupMailThreads(
+  threads: MailThreadSummary[],
+  group: MailGroupConfig | null,
+  labels: MailLabelRecord[],
+  serverGroups: MailQueryGroup[],
+) {
+  if (!group) return messageGroups
+    .map((label) => ({
+      count: threads.filter((thread) => dateGroup(thread.internalDate) === label).length,
+      key: label.toLowerCase(),
+      label,
+      mutable: false,
+      threads: threads.filter((thread) => dateGroup(thread.internalDate) === label),
+    }))
+    .filter((entry) => entry.threads.length > 0)
+
+  const buckets = new Map<string, MailThreadSummary[]>()
+  for (const thread of threads) {
+    for (const key of clientGroupKeys(thread, group.propertyId)) {
+      buckets.set(key, [...buckets.get(key) ?? [], thread])
+    }
+  }
+  const descriptors = serverGroups.length
+    ? serverGroups
+    : [...buckets.keys()].map((key) => ({
+      count: buckets.get(key)?.length ?? 0,
+      cursor: "",
+      key,
+      label: clientGroupLabel(key, group.propertyId, labels),
+      mutable: isMutableMailGroup(group.propertyId),
+    }))
+  return descriptors
+    .filter((descriptor) => !group.hideEmptyGroups || descriptor.count > 0)
+    .map((descriptor) => ({
+      ...descriptor,
+      label: clientGroupLabel(descriptor.key, group.propertyId, labels, descriptor.label),
+      threads: group.direction === "ascending"
+        ? [...buckets.get(descriptor.key) ?? []].reverse()
+        : buckets.get(descriptor.key) ?? [],
+    }))
+}
+
+function clientGroupKeys(thread: MailThreadSummary, propertyId: string): string[] {
+  if (propertyId === "date" || propertyId === "received_date") return [dateGroup(thread.internalDate).toLowerCase()]
+  if (propertyId === "starred") return [String(thread.starred)]
+  if (propertyId === "unread") return [String(thread.unread)]
+  if (propertyId === "important" || propertyId === "priority") return [String(thread.labelIds.includes("IMPORTANT"))]
+  if (propertyId === "labels") return thread.labelIds.length ? thread.labelIds : ["empty"]
+  const address = thread.participants[0]?.address ?? ""
+  if (propertyId === "from") return [address.toLowerCase() || "empty"]
+  if (propertyId === "email_domain") return [address.split("@")[1]?.toLowerCase() || "empty"]
+  return ["empty"]
+}
+
+function clientGroupLabel(key: string, propertyId: string, labels: MailLabelRecord[], fallback?: string) {
+  if (propertyId === "labels") return labels.find((label) => label.id === key)?.name ?? (key === "empty" ? "No label" : fallback ?? key)
+  if (propertyId === "starred") return key === "true" ? "Starred" : "Not starred"
+  if (propertyId === "unread") return key === "true" ? "Unread" : "Read"
+  if (propertyId === "important" || propertyId === "priority") return key === "true" ? "Important" : "Not important"
+  return fallback ?? (key === "empty" ? "Empty" : key)
 }
 
 function dateGroup(timestamp: number): (typeof messageGroups)[number] {

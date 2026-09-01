@@ -6,10 +6,14 @@ import {
   type MailAddress,
   type MailFilterExpression,
   type MailFilterRecord,
+  type MailGroupConfig,
   type MailIndexedThread,
+  type MailQueryGroup,
   type MailSystemFolderId,
   type MailThreadSummary,
   type MailViewQueryResponse,
+  type MailViewConfig,
+  type MailViewGroupsResponse,
   normalizeMailFilterExpression,
 } from "@zilobase/features/mail"
 
@@ -44,13 +48,15 @@ export async function queryIndexedMail(input: {
   env: RuntimeEnv
   filter?: MailFilterExpression
   gmailAccountId: string
+  groupKey?: string
   limit?: number
   routeId: string
   search?: string
 }): Promise<MailViewQueryResponse> {
   const limit = Math.max(1, Math.min(input.limit ?? 50, 100))
   let cursor = input.cursor ? decodeMailQueryCursor(input.cursor) : null
-  const routeFilter = await filterForRoute(input.bindingId, input.routeId)
+  const routeConfig = await configForRoute(input.bindingId, input.routeId)
+  const routeFilter = routeConfig?.filter ?? mailboxFilter(input.routeId as MailSystemFolderId)
   const filter = input.filter
     ? normalizeMailFilterExpression(input.filter)
     : routeFilter
@@ -88,6 +94,7 @@ export async function queryIndexedMail(input: {
       const indexed = serializeIndexedThread(row)
       if (
         evaluateMailFilterExpression(indexedFilterRecord(indexed), filter) &&
+        (!input.groupKey || groupKeys(indexed, routeConfig?.group ?? null).includes(input.groupKey)) &&
         (!searchResult || searchResult.threadIds.has(indexed.thread.id))
       ) {
         threads.push(indexed)
@@ -108,6 +115,54 @@ export async function queryIndexedMail(input: {
     searchTruncated: searchResult?.truncated ?? false,
     threads,
   }
+}
+
+export async function queryIndexedMailGroups(input: {
+  bindingId: string
+  env: RuntimeEnv
+  filter?: MailFilterExpression
+  gmailAccountId: string
+  routeId: string
+  search?: string
+}): Promise<MailViewGroupsResponse> {
+  const config = await configForRoute(input.bindingId, input.routeId)
+  const index = await getMailIndexProgress(input.gmailAccountId)
+  if (!config?.group) return { group: null, groups: [], index }
+  const filter = input.filter
+    ? normalizeMailFilterExpression(input.filter)
+    : config.filter
+  const search = input.search?.trim() ?? ""
+  const searchResult = search
+    ? await searchGmailThreadIds(input.env, input.gmailAccountId, search)
+    : null
+  const rows = await db
+    .select()
+    .from(mailThreadIndex)
+    .where(eq(mailThreadIndex.gmailAccountId, input.gmailAccountId))
+    .orderBy(desc(mailThreadIndex.internalDate), desc(mailThreadIndex.id))
+  const counts = new Map<string, { count: number; label: string }>()
+  for (const row of rows) {
+    const indexed = serializeIndexedThread(row)
+    if (
+      !evaluateMailFilterExpression(indexedFilterRecord(indexed), filter) ||
+      (searchResult && !searchResult.threadIds.has(indexed.thread.id))
+    ) continue
+    for (const { key, label } of groupEntries(indexed, config.group)) {
+      const current = counts.get(key)
+      counts.set(key, { count: (current?.count ?? 0) + 1, label })
+    }
+  }
+  const mutable = isMutableGroup(config.group.propertyId)
+  const groups: MailQueryGroup[] = [...counts.entries()]
+    .map(([key, value]) => ({
+      count: value.count,
+      cursor: encodeMailGroupCursor(key),
+      key,
+      label: value.label,
+      mutable,
+    }))
+    .sort((left, right) => groupOrder(config.group!, left, right))
+  return { group: config.group, groups, index }
 }
 
 export function encodeMailQueryCursor(cursor: Cursor) {
@@ -134,12 +189,19 @@ export function decodeMailQueryCursor(value: string): Cursor {
   }
 }
 
-async function filterForRoute(
+export function encodeMailGroupCursor(groupKey: string) {
+  return btoa(JSON.stringify({ groupKey }))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/g, "")
+}
+
+async function configForRoute(
   bindingId: string,
   routeId: string,
-): Promise<MailFilterExpression> {
+): Promise<MailViewConfig | null> {
   if (mailSystemFolderIds.includes(routeId as MailSystemFolderId)) {
-    return mailboxFilter(routeId as MailSystemFolderId)
+    return null
   }
   const [view] = await db
     .select({ config: mailView.config })
@@ -147,7 +209,7 @@ async function filterForRoute(
     .where(and(eq(mailView.bindingId, bindingId), eq(mailView.id, routeId)))
     .limit(1)
   if (!view) throw new MailQueryError("Mail view not found.", 404)
-  return normalizeMailViewConfig(view.config).filter
+  return normalizeMailViewConfig(view.config)
 }
 
 function mailboxFilter(folderId: MailSystemFolderId): MailFilterExpression {
@@ -265,4 +327,59 @@ function uniqueAddresses(items: MailAddress[]) {
     seen.add(address)
     return true
   })
+}
+
+function groupKeys(indexed: MailIndexedThread, group: MailGroupConfig | null) {
+  return group ? groupEntries(indexed, group).map(({ key }) => key) : []
+}
+
+function groupEntries(indexed: MailIndexedThread, group: MailGroupConfig): Array<{ key: string; label: string }> {
+  const thread = indexed.thread
+  switch (group.propertyId) {
+    case "date":
+    case "received_date": {
+      const key = dateGroupKey(thread.internalDate)
+      return [{ key, label: key === "today" ? "Today" : key === "yesterday" ? "Yesterday" : "Earlier" }]
+    }
+    case "starred": return [{ key: String(thread.starred), label: thread.starred ? "Starred" : "Not starred" }]
+    case "important":
+    case "priority": return [{ key: String(indexed.important), label: indexed.important ? "Important" : "Not important" }]
+    case "unread": return [{ key: String(thread.unread), label: thread.unread ? "Unread" : "Read" }]
+    case "from": {
+      const sender = indexed.from[0]
+      return [{ key: sender?.address.toLowerCase() ?? "empty", label: sender?.name || sender?.address || "No sender" }]
+    }
+    case "email_domain": {
+      const address = indexed.from[0]?.address ?? ""
+      const domain = address.split("@")[1]?.toLowerCase() || "empty"
+      return [{ key: domain, label: domain === "empty" ? "No domain" : domain }]
+    }
+    case "labels": return thread.labelIds.length
+      ? thread.labelIds.map((label) => ({ key: label, label }))
+      : [{ key: "empty", label: "No label" }]
+    default: return [{ key: "empty", label: "Empty" }]
+  }
+}
+
+function dateGroupKey(timestamp: number) {
+  const date = new Date(timestamp)
+  const today = new Date()
+  if (date.toDateString() === today.toDateString()) return "today"
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  return date.toDateString() === yesterday.toDateString() ? "yesterday" : "earlier"
+}
+
+function isMutableGroup(propertyId: string) {
+  return !["date", "received_date", "from", "email_domain"].includes(propertyId)
+}
+
+function groupOrder(group: MailGroupConfig, left: MailQueryGroup, right: MailQueryGroup) {
+  const dateOrder = ["today", "yesterday", "earlier"]
+  const leftDate = dateOrder.indexOf(left.key)
+  const rightDate = dateOrder.indexOf(right.key)
+  const result = leftDate >= 0 && rightDate >= 0
+    ? leftDate - rightDate
+    : left.label.localeCompare(right.label)
+  return group.direction === "descending" ? result : -result
 }
