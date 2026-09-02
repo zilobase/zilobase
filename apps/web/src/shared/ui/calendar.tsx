@@ -5,12 +5,16 @@ import {
   DayPicker,
   getDefaultClassNames,
   type DayButton,
-  type Locale,
+  type Locale
 } from "react-day-picker"
 
 import { cn } from "@/shared/lib/utils"
 import { Button, buttonVariants } from "@/shared/ui/button"
-import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "@/shared/components/icons"
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronDownIcon
+} from "@/shared/components/icons"
 
 function DateCalendar({
   className,
@@ -41,7 +45,7 @@ function DateCalendar({
       formatters={{
         formatMonthDropdown: (date) =>
           date.toLocaleString(locale?.code, { month: "short" }),
-        ...formatters,
+        ...formatters
       }}
       classNames={{
         root: cn("w-fit", defaultClassNames.root),
@@ -131,7 +135,7 @@ function DateCalendar({
           defaultClassNames.disabled
         ),
         hidden: cn("invisible", defaultClassNames.hidden),
-        ...classNames,
+        ...classNames
       }}
       components={{
         Root: ({ className, rootRef, ...props }) => {
@@ -153,7 +157,10 @@ function DateCalendar({
 
           if (orientation === "right") {
             return (
-              <ChevronRightIcon className={cn("size-4", className)} {...props} />
+              <ChevronRightIcon
+                className={cn("size-4", className)}
+                {...props}
+              />
             )
           }
 
@@ -173,7 +180,7 @@ function DateCalendar({
             </td>
           )
         },
-        ...components,
+        ...components
       }}
       {...props}
     />
@@ -188,6 +195,11 @@ function CalendarDayButton({
   ...props
 }: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }) {
   const defaultClassNames = getDefaultClassNames()
+  const calendarDate = [
+    day.date.getFullYear(),
+    String(day.date.getMonth() + 1).padStart(2, "0"),
+    String(day.date.getDate()).padStart(2, "0")
+  ].join("-")
 
   const ref = React.useRef<HTMLButtonElement>(null)
   React.useEffect(() => {
@@ -199,6 +211,7 @@ function CalendarDayButton({
       ref={ref}
       variant="ghost"
       size="icon"
+      data-calendar-date={calendarDate}
       data-day={day.date.toLocaleDateString(locale?.code)}
       data-selected-single={
         modifiers.selected &&

@@ -453,10 +453,10 @@ function getFilterValueOptionsByField({
     }
 
     if (type === "select" || type === "status" || type === "multi_select") {
-      optionsByField[property.id] = getUniqueFilterOptions([
-        ...getConfiguredPropertyOptionNames(property.property.config),
-        ...getPropertyFilterValues(items, property, propertyValuesByKey),
-      ])
+      optionsByField[property.id] = getFilterChoiceOptions(
+        property.property.config,
+        getPropertyFilterValues(items, property, propertyValuesByKey)
+      )
     }
   }
 
@@ -479,7 +479,7 @@ function getPropertyFilterValues(
   })
 }
 
-function getConfiguredPropertyOptionNames(config: unknown) {
+function getConfiguredPropertyOptions(config: unknown) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return []
   }
@@ -488,11 +488,35 @@ function getConfiguredPropertyOptionNames(config: unknown) {
 
   return Array.isArray(options)
     ? options.flatMap((option) =>
-        option && typeof option === "object" && typeof option.name === "string"
-          ? [option.name]
+        option &&
+        typeof option === "object" &&
+        typeof option.name === "string"
+          ? [{
+              ...(typeof option.color === "string" ? { color: option.color } : {}),
+              label: option.name,
+              value: option.name,
+            }]
           : []
       )
     : []
+}
+
+function getFilterChoiceOptions(config: unknown, values: string[]) {
+  const configuredOptions = getConfiguredPropertyOptions(config)
+  const configuredOptionsByValue = new Map(
+    configuredOptions.map((option) => [
+      option.value.trim().toLocaleLowerCase(),
+      option,
+    ])
+  )
+
+  return getUniqueFilterOptions([
+    ...configuredOptions.map((option) => option.value),
+    ...values,
+  ]).map((option) => ({
+    ...option,
+    ...configuredOptionsByValue.get(option.value.trim().toLocaleLowerCase()),
+  }))
 }
 
 function getUniqueFilterOptions(values: string[]): DatabaseSearchableMenuOption[] {

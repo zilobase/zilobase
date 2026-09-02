@@ -7,6 +7,7 @@ import {
 import { Input } from "@/shared/ui/input"
 
 export type DatabaseSearchableMenuOption = {
+  color?: string
   icon?: ReactNode
   label: string
   searchText?: string
