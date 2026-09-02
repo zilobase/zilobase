@@ -168,6 +168,14 @@ export const automationEntityReferenceSchema = z
   })
   .strict()
 
+export const automationEntityListReferenceSchema = z
+  .object({
+    entityType: z.enum(["option", "page", "user"]),
+    ids: z.array(stableIdSchema).min(1).max(100),
+    type: z.literal("entity_list"),
+  })
+  .strict()
+
 export const automationDateOperandSchema = z
   .object({
     precision: z.enum(["date", "minute", "second"]).optional(),
@@ -199,6 +207,7 @@ export const automationTriggerOperandSchema = z.union([
   z.number().finite(),
   z.string().max(10_000),
   automationEntityReferenceSchema,
+  automationEntityListReferenceSchema,
   automationDateOperandSchema,
   automationDateRangeOperandSchema,
   automationRelativeDateOperandSchema,
@@ -424,9 +433,15 @@ export type AutomationRichTextExpression = z.infer<
 
 export const slackAutomationRichTextExpressionSchema = z.object({
   parts: z.array(z.discriminatedUnion("type", [
-    z.object({ text: z.string().max(20_000), type: z.literal("text") }).strict(),
+    z.object({
+      bold: z.boolean().optional(),
+      italic: z.boolean().optional(),
+      text: z.string().max(20_000),
+      type: z.literal("text"),
+    }).strict(),
     z.object({ type: z.literal("value"), value: automationValueExpressionSchema }).strict(),
     z.object({ id: stableIdSchema, kind: z.enum(["channel", "user"]), type: z.literal("slack_mention") }).strict(),
+    z.object({ kind: z.enum(["channel", "here"]), type: z.literal("slack_broadcast") }).strict(),
     z.object({ label: shortTextSchema, type: z.literal("link"), url: z.string().url().max(2_048) }).strict(),
   ])).min(1).max(1_000),
 }).strict()
@@ -565,7 +580,7 @@ export const databaseAutomationActionSchema = z.discriminatedUnion("type", [
     .object({
       ...actionIdShape,
       dataSourceId: stableIdSchema,
-      operations: z.array(automationPropertyOperationSchema).min(1).max(100),
+      operations: z.array(automationPropertyOperationSchema).max(100),
       type: z.literal("add_page"),
     })
     .strict(),
@@ -780,6 +795,7 @@ export const databaseAutomationDependencyTypeSchema = z.enum([
   "database",
   "view",
   "property",
+  "option",
   "user",
   "group",
   "gmail_connection",
@@ -956,6 +972,30 @@ export const databaseAutomationCatalogSchema = z
     ),
     canManage: z.boolean(),
     dataSourceId: stableIdSchema,
+    dataSources: z.array(
+      z.object({
+        id: stableIdSchema,
+        name: shortTextSchema,
+        properties: z.array(
+          z.object({
+            id: stableIdSchema,
+            icon: z.string().optional(),
+            name: shortTextSchema,
+            options: z.array(
+              z.object({
+                color: z.string().optional(),
+                id: stableIdSchema,
+                name: shortTextSchema,
+              }).strict(),
+            ),
+            operators: z.array(databaseAutomationTriggerOperatorSchema),
+            relatedDataSourceId: stableIdSchema.optional(),
+            type: shortTextSchema,
+            writable: z.boolean(),
+          }).strict(),
+        ),
+      }).strict(),
+    ),
     gmailConnections: z.array(
       z.object({
         email: z.string().email(),
@@ -975,8 +1015,17 @@ export const databaseAutomationCatalogSchema = z
     properties: z.array(
       z.object({
         id: stableIdSchema,
+        icon: z.string().optional(),
         name: shortTextSchema,
+        options: z.array(
+          z.object({
+            color: z.string().optional(),
+            id: stableIdSchema,
+            name: shortTextSchema,
+          }).strict(),
+        ),
         operators: z.array(databaseAutomationTriggerOperatorSchema),
+        relatedDataSourceId: stableIdSchema.optional(),
         type: shortTextSchema,
         writable: z.boolean(),
       }).strict(),

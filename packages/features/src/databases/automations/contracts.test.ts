@@ -56,6 +56,37 @@ test("parses a versioned event automation without changing stable IDs", () => {
   assert.deepEqual(parsed.scope, { type: "data_source" })
 })
 
+test("parses multiple selected trigger entities", () => {
+  const parsed = databaseAutomationDefinitionSchema.parse({
+    ...eventDefinition,
+    trigger: {
+      ...eventDefinition.trigger,
+      clauses: [{
+        id: "clause-options",
+        operand: {
+          entityType: "option",
+          ids: ["status-open", "status-in-progress"],
+          type: "entity_list",
+        },
+        operator: "is",
+        propertyId: "status-property",
+        type: "property_edited",
+      }],
+    },
+  })
+
+  assert.deepEqual(
+    parsed.trigger.kind === "event" && parsed.trigger.clauses[0]?.type === "property_edited"
+      ? parsed.trigger.clauses[0].operand
+      : null,
+    {
+      entityType: "option",
+      ids: ["status-open", "status-in-progress"],
+      type: "entity_list",
+    },
+  )
+})
+
 test("parses a structurally valid recurring automation", () => {
   const parsed = databaseAutomationDefinitionV1Schema.parse({
     actions: [
@@ -83,6 +114,52 @@ test("parses a structurally valid recurring automation", () => {
   })
 
   assert.equal(parsed.trigger.kind, "schedule")
+})
+
+test("add-page actions can create an untitled page without property edits", () => {
+  const parsed = databaseAutomationDefinitionV1Schema.parse({
+    actions: [{
+      dataSourceId: "target-source",
+      id: "add-page",
+      operations: [],
+      type: "add_page",
+    }],
+    definitionVersion: 1,
+    scope: { type: "data_source" },
+    timezone: "UTC",
+    trigger: {
+      clauses: [{ id: "page-added", type: "page_added" }],
+      kind: "event",
+      match: "any",
+    },
+  })
+
+  assert.deepEqual(parsed.actions[0]?.operations, [])
+})
+
+test("parses Notion-compatible Slack formatting and broadcast mentions", () => {
+  const parsed = databaseAutomationDefinitionV1Schema.parse({
+    ...eventDefinition,
+    actions: [{
+      channelId: "channel-1",
+      connectionId: "connection-1",
+      id: "slack-1",
+      message: {
+        parts: [
+          { bold: true, italic: true, text: "Important", type: "text" },
+          { kind: "channel", type: "slack_broadcast" },
+          { kind: "here", type: "slack_broadcast" },
+        ],
+      },
+      type: "send_slack",
+    }],
+  })
+
+  assert.deepEqual(parsed.actions[0]?.message.parts, [
+    { bold: true, italic: true, text: "Important", type: "text" },
+    { kind: "channel", type: "slack_broadcast" },
+    { kind: "here", type: "slack_broadcast" },
+  ])
 })
 
 test("publishes the materialized next schedule occurrence", () => {
@@ -283,6 +360,7 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       actions: [{ available: true, reason: null, type: "edit_trigger_page" }],
       canManage: true,
       dataSourceId: "source-1",
+      dataSources: [{ id: "source-1", name: "Tasks", properties: [] }],
       gmailConnections: [{ email: "ada@example.com", id: "gmail-1", status: "connected" }],
       slackConnections: [{ id: "slack-1", status: "connected", teamId: "team-1", teamName: "Example" }],
       manageUnavailableReason: null,
@@ -290,6 +368,7 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
         {
           id: "status-property",
           name: "Status",
+          options: [{ color: "green", id: "status-open", name: "Open" }],
           operators: ["was_edited", "is"],
           type: "status",
           writable: true,
@@ -391,6 +470,7 @@ test("automation catalogs expose only opaque Gmail connection metadata", () => {
     actions: [{ available: true, reason: null, type: "send_gmail" }],
     canManage: true,
     dataSourceId: "source-1",
+    dataSources: [],
     gmailConnections: [{
       email: "ada@example.com",
       id: "gmail-1",

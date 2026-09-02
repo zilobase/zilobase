@@ -1764,7 +1764,7 @@ export const databaseAutomationDependency = pgTable(
     ),
     check(
       "database_automation_dependency_type_check",
-      sql`${table.dependencyType} in ('data_source', 'database', 'view', 'property', 'user', 'group', 'gmail_connection', 'slack_connection', 'secret')`,
+      sql`${table.dependencyType} in ('data_source', 'database', 'view', 'property', 'option', 'user', 'group', 'gmail_connection', 'slack_connection', 'secret')`,
     ),
   ],
 );
