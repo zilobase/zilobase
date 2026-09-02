@@ -467,7 +467,7 @@ function DropDrawerContent({
       sideOffset={4}
       sticky="always"
       className={cn(
-        "max-h-[min(36rem,var(--radix-dropdown-menu-content-available-height))] max-w-[min(20rem,var(--radix-dropdown-menu-content-available-width))] overflow-x-hidden overflow-y-auto overscroll-contain",
+        "max-h-[min(36rem,calc(100vh-1rem))] max-w-[min(20rem,calc(100vw-1rem))] overflow-x-hidden overflow-y-auto overscroll-contain",
         className,
       )}
       {...props}
@@ -930,7 +930,7 @@ function DropDrawerSubContent({
       data-slot="drop-drawer-sub-content"
       sideOffset={sideOffset}
       className={cn(
-        "max-h-[min(36rem,var(--radix-dropdown-menu-content-available-height))] max-w-[min(20rem,var(--radix-dropdown-menu-content-available-width))] overflow-y-auto overscroll-contain",
+        "max-h-[min(36rem,calc(100vh-1rem))] max-w-[min(20rem,calc(100vw-1rem))] overflow-y-auto overscroll-contain",
         className,
       )}
       {...props}

@@ -210,7 +210,7 @@ export function register({ readSource, assert, loadModule, test }) {
     );
     assert.match(
       dropdrawerContent,
-      /max-h-\[min\(36rem,var\(--radix-dropdown-menu-content-available-height\)\)\] max-w-\[min\(20rem,var\(--radix-dropdown-menu-content-available-width\)\)\]/,
+      /max-h-\[min\(36rem,calc\(100vh-1rem\)\)\] max-w-\[min\(20rem,calc\(100vw-1rem\)\)\]/,
     );
   });
 
