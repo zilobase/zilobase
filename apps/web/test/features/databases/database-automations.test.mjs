@@ -80,4 +80,21 @@ export function register({ assert, readSource, test }) {
     assert.match(manager, /trigger_property/)
     assert.match(manager, /page_creator/)
   })
+
+  test("builder stores webhook headers separately from definitions", async () => {
+    const manager = await readSource(
+      "/src/features/databases/automations/database-automation-manager.tsx",
+    )
+    for (const behavior of [
+      "Send webhook",
+      "Webhook URL",
+      "Webhook selected property",
+      "Webhook payload field",
+      "Webhook header name",
+      "Webhook header value",
+      "Stored secret",
+    ]) assert.match(manager, new RegExp(behavior))
+    assert.match(manager, /useCreateDatabaseAutomationSecret/)
+    assert.doesNotMatch(manager, /headers:.*webhookHeaderValue/)
+  })
 }

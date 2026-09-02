@@ -39,6 +39,7 @@ import { drainDatabaseAutomationEventWindows } from "../../features/databases/au
 import { drainDatabaseAutomationRuns } from "../../features/databases/automations/run-engine";
 import { scanDueDatabaseAutomationSchedules } from "../../features/databases/automations/scheduler";
 import { drainInProductNotificationOutbox } from "../../features/notifications/outbox";
+import { fetchPinnedNodeWebhook } from "./pinned-webhook";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -101,6 +102,7 @@ export function createNodeRuntime({
   const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
   const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
     ...runtimeAdapter,
+    fetchAutomationWebhook: runtimeAdapter.fetchAutomationWebhook ?? fetchPinnedNodeWebhook,
     publishDatabaseMutation: ({ event }) =>
       databaseRealtime.publishMutation(event),
     publishMailNotification: ({ event }) => mailRealtime.publishNotification(event),

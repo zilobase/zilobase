@@ -51,3 +51,22 @@ test("Gmail delivery reuses owned connections, stable receipts, and reconnect ha
   expect(service).toContain('"AUTOMATION_PROTECTED_CONFIGURATION"');
   expect(service).toContain("transfersProtectedOwnership");
 });
+
+test("webhook delivery encrypts headers, pins egress, and reuses stable retry IDs", async () => {
+  const [engine, egress, nodeTransport, service] = await Promise.all([
+    readFile(new URL("./run-engine.ts", import.meta.url), "utf8"),
+    readFile(new URL("./webhook-egress.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../../app/node/pinned-webhook.ts", import.meta.url), "utf8"),
+    readFile(new URL("./service.ts", import.meta.url), "utf8"),
+  ]);
+  expect(engine).toContain("decryptAutomationSecret");
+  expect(engine).toContain('kind: "webhook"');
+  expect(engine).toContain("x-zilobase-delivery-id");
+  expect(engine).toContain('status: "retrying"');
+  expect(egress).toContain("Webhook redirects are not allowed");
+  expect(egress).toContain("MAX_RESPONSE_BYTES = 1024 * 1024");
+  expect(nodeTransport).toContain("hostname: input.pinnedAddress");
+  expect(nodeTransport).toContain("socket.remoteAddress");
+  expect(service).toContain("definitionForDuplicate(source.definition)");
+  expect(service).toContain("? { ...action, headers: [] }");
+});

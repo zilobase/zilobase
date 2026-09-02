@@ -300,4 +300,35 @@ describe("database automation compiler", () => {
       gmailConnectionIds: new Set(["gmail-1"]),
     }).validation.valid).toBe(true);
   });
+
+  it("validates webhook URLs, protected headers, and owned secret references", () => {
+    const webhook = definition({ actions: [{
+      headers: [{ name: "Authorization", secretId: "secret-1" }],
+      id: "webhook-1",
+      payloadFields: [],
+      selectedPropertyIds: ["text"],
+      type: "send_webhook",
+      url: "https://hooks.example.com/automations",
+    }] });
+    expect(compileDatabaseAutomationDefinition(webhook, {
+      ...context,
+      capabilities: { webhooks: true },
+      secretIds: new Set(["secret-1"]),
+    }).validation.valid).toBe(true);
+    const invalid = compileDatabaseAutomationDefinition({
+      ...webhook,
+      actions: [{ ...webhook.actions[0] as any, headers: [{ name: "Host", secretId: "secret-other" }], url: "http://127.0.0.1/hook" }],
+    }, {
+      ...context,
+      capabilities: { webhooks: true },
+      invalidWebhookActionIds: new Set(["webhook-1"]),
+      secretIds: new Set(["secret-1"]),
+    });
+    expect(invalid.validation.errors.map(({ code }) => code)).toEqual(expect.arrayContaining([
+      "invalid_webhook_destination",
+      "invalid_webhook_header",
+      "invalid_webhook_url",
+      "webhook_secret_not_owned",
+    ]));
+  });
 });

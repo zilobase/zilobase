@@ -2,16 +2,19 @@ import { Hono, type Context } from "hono";
 
 import {
   createDatabaseAutomationRequestSchema,
+  createDatabaseAutomationSecretRequestSchema,
   updateDatabaseAutomationRequestSchema,
   validateDatabaseAutomationRequestSchema,
 } from "@zilobase/features/databases/automations";
 
 import type { AppBindings } from "../../../shared/types";
 import { getMembership } from "../../access";
-import { isDatabaseAutomationsFeatureEnabled, isMailFeatureEnabled } from "../../../shared/config/config";
+import { getAutomationWebhookHttpDomains, isAutomationWebhooksEnabled, isDatabaseAutomationsFeatureEnabled, isMailFeatureEnabled } from "../../../shared/config/config";
+import { isSelfHostedRuntime } from "../../../infrastructure/runtime/runtime-adapter";
 import { requireDatabaseRouteUser } from "../route-support";
 import {
   createDatabaseAutomation,
+  createDatabaseAutomationSecret,
   DatabaseAutomationError,
   deleteDatabaseAutomation,
   duplicateDatabaseAutomation,
@@ -62,11 +65,27 @@ databaseAutomationRoutes.post("/:databaseId/automations/validate", async (c) => 
   if (!parsed.success) return invalidBody(c, parsed.error.issues);
 
   return handle(c, () => validateDatabaseAutomation({
+    allowHttpWebhookDomains: webhookHttpDomains(c),
     databaseId: c.req.param("databaseId"),
     dataSourceId: parsed.data.dataSourceId,
     definition: parsed.data.definition,
     gmailEnabled: mailEnabled(c),
+    webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
     userId: user.id,
+  }));
+});
+
+databaseAutomationRoutes.post("/:databaseId/automation-secrets", async (c) => {
+  const user = requireDatabaseRouteUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const parsed = createDatabaseAutomationSecretRequestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return invalidBody(c, parsed.error.issues);
+  return handle(c, () => createDatabaseAutomationSecret({
+    body: parsed.data,
+    databaseId: c.req.param("databaseId"),
+    env: c.env ?? {},
+    userId: user.id,
+    webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
   }));
 });
 
@@ -80,10 +99,12 @@ databaseAutomationRoutes.post("/:databaseId/automations", async (c) => {
 
   return handle(c, async () => {
     const result = await createDatabaseAutomation({
+      allowHttpWebhookDomains: webhookHttpDomains(c),
       body: { ...parsed.data, idempotencyKey: idempotencyKey.value },
       databaseId: c.req.param("databaseId"),
       editionExtension: c.get("editionExtension") ?? undefined,
       gmailEnabled: mailEnabled(c),
+      webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
       userId: user.id,
     });
     return c.json(result.automation, result.created ? 201 : 200);
@@ -133,12 +154,14 @@ databaseAutomationRoutes.patch("/:databaseId/automations/:automationId", async (
   const parsed = updateDatabaseAutomationRequestSchema.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return invalidBody(c, parsed.error.issues);
   return handle(c, () => updateDatabaseAutomation({
+    allowHttpWebhookDomains: webhookHttpDomains(c),
     automationId: c.req.param("automationId"),
     body: parsed.data,
     databaseId: c.req.param("databaseId"),
     editionExtension: c.get("editionExtension") ?? undefined,
     expectedVersion,
     gmailEnabled: mailEnabled(c),
+    webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
     userId: user.id,
   }));
 });
@@ -148,10 +171,12 @@ for (const [path, paused] of [["pause", true], ["resume", false]] as const) {
     const user = requireDatabaseRouteUser(c);
     if (!user) return c.json({ error: "Unauthorized" }, 401);
     return handle(c, () => setDatabaseAutomationPaused({
+      allowHttpWebhookDomains: webhookHttpDomains(c),
       automationId: c.req.param("automationId"),
       databaseId: c.req.param("databaseId"),
       editionExtension: c.get("editionExtension") ?? undefined,
       gmailEnabled: mailEnabled(c),
+      webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
       paused,
       userId: user.id,
     }));
@@ -167,11 +192,13 @@ databaseAutomationRoutes.post("/:databaseId/automations/:automationId/duplicate"
   }
   return handle(c, async () => {
     const result = await duplicateDatabaseAutomation({
+      allowHttpWebhookDomains: webhookHttpDomains(c),
       automationId: c.req.param("automationId"),
       databaseId: c.req.param("databaseId"),
       editionExtension: c.get("editionExtension") ?? undefined,
       idempotencyKey,
       gmailEnabled: mailEnabled(c),
+      webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
       userId: user.id,
     });
     return c.json(result.automation, result.created ? 201 : 200);
@@ -198,12 +225,17 @@ databaseAutomationRoutes.get("/:databaseId/automation-catalog", async (c) => {
     databaseId: c.req.param("databaseId"),
     dataSourceId,
     gmailEnabled: mailEnabled(c),
+    webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
     userId: user.id,
   }));
 });
 
 function mailEnabled(c: Context<AppBindings>) {
   return isMailFeatureEnabled(c.env ?? {});
+}
+
+function webhookHttpDomains(c: Context<AppBindings>) {
+  return isSelfHostedRuntime() ? getAutomationWebhookHttpDomains(c.env ?? {}) : new Set<string>();
 }
 
 async function handle(

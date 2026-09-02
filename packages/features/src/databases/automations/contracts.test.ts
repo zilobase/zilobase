@@ -4,6 +4,7 @@ import test from "node:test"
 import {
   DATABASE_AUTOMATION_LIMITS,
   createDatabaseAutomationRequestSchema,
+  createDatabaseAutomationSecretRequestSchema,
   databaseAutomationCatalogSchema,
   databaseAutomationDefinitionSchema,
   databaseAutomationDefinitionV1Schema,
@@ -381,4 +382,16 @@ test("automation catalogs expose only opaque Gmail connection metadata", () => {
     views: [],
   })
   assert.equal(result.success, false)
+})
+
+test("webhook header values use a write-only secret contract", () => {
+  assert.deepEqual(createDatabaseAutomationSecretRequestSchema.parse({
+    dataSourceId: "source-1",
+    purpose: "webhook_header",
+    value: "Bearer secret",
+  }), {
+    dataSourceId: "source-1",
+    purpose: "webhook_header",
+    value: "Bearer secret",
+  })
 })

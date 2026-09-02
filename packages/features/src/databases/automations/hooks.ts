@@ -123,3 +123,14 @@ export function useValidateDatabaseAutomation(databaseId: string) {
     }),
   })
 }
+
+export function useCreateDatabaseAutomationSecret(databaseId: string, dataSourceId: string) {
+  const { apiFetch } = useZilobaseFeatures()
+  return useMutation({
+    mutationFn: (body: { purpose: "webhook_header"; value: string }) =>
+      apiFetch<{ id: string; purpose: "webhook_header" }>(
+        `/databases/${encoded(databaseId)}/automation-secrets`,
+        { body: JSON.stringify({ ...body, dataSourceId }), method: "POST" },
+      ),
+  })
+}

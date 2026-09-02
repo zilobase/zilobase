@@ -30,11 +30,14 @@ export type AutomationViewMetadata = {
 };
 
 export type DatabaseAutomationCompilationContext = {
+  allowHttpWebhookDomains?: Set<string>;
   capabilities?: Partial<DatabaseAutomationCapabilities>;
   dataSourceIds: Set<string>;
   gmailConnectionIds?: Set<string>;
+  invalidWebhookActionIds?: Set<string>;
   parentDatabaseId: string;
   propertiesByDataSource: Map<string, Map<string, AutomationPropertyMetadata>>;
+  secretIds?: Set<string>;
   sourceDataSourceId: string;
   userIds?: Set<string>;
   views: Map<string, AutomationViewMetadata>;
@@ -281,7 +284,39 @@ export function compileDatabaseAutomationDefinition(
       }
       if (!capabilities.gmail) addError("capability_disabled", "Gmail actions are not enabled", actionPath);
     } else if (action.type === "send_webhook") {
-      action.headers.forEach((header) => addDependency("secret", header.secretId, `actions.${action.id}.headers`));
+      if (definition.trigger.kind === "schedule" && action.selectedPropertyIds.length) {
+        addError("scheduled_trigger_page_unavailable", "Scheduled webhooks cannot include trigger-page properties", [...actionPath, "selectedPropertyIds"]);
+      }
+      if (context.invalidWebhookActionIds?.has(action.id)) {
+        addError("invalid_webhook_destination", "Webhook destination could not be verified as public", [...actionPath, "url"]);
+      }
+      const headerNames = new Set<string>();
+      action.headers.forEach((header, headerIndex) => {
+        addDependency("secret", header.secretId, `actions.${action.id}.headers`);
+        const normalizedName = header.name.trim().toLowerCase();
+        if (!/^[!#$%&'*+.^_`|~0-9a-z-]{1,200}$/.test(normalizedName) || [
+          "connection", "content-length", "content-type", "host", "keep-alive",
+          "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding",
+          "upgrade", "x-zilobase-action-id", "x-zilobase-delivery-id", "x-zilobase-run-id",
+          "x-zilobase-schema-version",
+        ].includes(normalizedName)) {
+          addError("invalid_webhook_header", "Webhook header is reserved or invalid", [...actionPath, "headers", headerIndex, "name"]);
+        }
+        if (headerNames.has(normalizedName)) addError("duplicate_webhook_header", "Webhook header names must be unique", [...actionPath, "headers", headerIndex, "name"]);
+        headerNames.add(normalizedName);
+        if (context.secretIds && !context.secretIds.has(header.secretId)) {
+          addError("webhook_secret_not_owned", "Webhook header secret is unavailable", [...actionPath, "headers", headerIndex, "secretId"]);
+        }
+      });
+      try {
+        const url = new URL(action.url);
+        const httpAllowed = url.protocol === "http:" && context.allowHttpWebhookDomains?.has(url.hostname.toLowerCase());
+        if ((url.protocol !== "https:" && !httpAllowed) || url.username || url.password || url.hash) {
+          addError("invalid_webhook_url", "Webhook URL must be HTTPS without credentials or a fragment", [...actionPath, "url"]);
+        }
+      } catch {
+        addError("invalid_webhook_url", "Webhook URL is invalid", [...actionPath, "url"]);
+      }
       action.selectedPropertyIds.forEach((propertyId, propertyIndex) => {
         const property = sourceProperties.get(propertyId);
         if (!property) addError("property_not_found", "Webhook property was not found", [...actionPath, "selectedPropertyIds", propertyIndex]);

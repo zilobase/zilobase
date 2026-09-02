@@ -975,6 +975,19 @@ export type DatabaseAutomationCatalog = z.infer<
   typeof databaseAutomationCatalogSchema
 >
 
+export const createDatabaseAutomationSecretRequestSchema = z.object({
+  dataSourceId: stableIdSchema,
+  purpose: z.literal("webhook_header"),
+  value: z.string().min(1).max(16_384),
+}).strict()
+export type CreateDatabaseAutomationSecretRequest = z.infer<typeof createDatabaseAutomationSecretRequestSchema>
+
+export const databaseAutomationSecretReferenceSchema = z.object({
+  id: stableIdSchema,
+  purpose: z.literal("webhook_header"),
+}).strict()
+export type DatabaseAutomationSecretReference = z.infer<typeof databaseAutomationSecretReferenceSchema>
+
 export const createDatabaseAutomationRequestSchema = z
   .object({
     dataSourceId: stableIdSchema,

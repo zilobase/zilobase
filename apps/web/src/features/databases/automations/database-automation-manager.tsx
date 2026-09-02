@@ -11,6 +11,7 @@ import type {
 } from "@zilobase/features/databases/automations";
 import {
   useCreateDatabaseAutomation,
+  useCreateDatabaseAutomationSecret,
   useDatabaseAutomation,
   useDatabaseAutomationCatalog,
   useDatabaseAutomationLifecycle,
@@ -80,9 +81,13 @@ type ActionDraft = {
   replyTo: string;
   subject: string;
   to: string;
-  type: "add_page" | "define_variables" | "edit_pages" | "edit_trigger_page" | "send_gmail" | "send_notification";
+  type: "add_page" | "define_variables" | "edit_pages" | "edit_trigger_page" | "send_gmail" | "send_notification" | "send_webhook";
   value: string;
   variableName: string;
+  webhookHeaderName: string;
+  webhookHeaderValue: string;
+  webhookSecretId: string;
+  webhookUrl: string;
 };
 type BuilderDraft = {
   actions: ActionDraft[];
@@ -142,6 +147,7 @@ export function DatabaseAutomationManager({
   const runs = useDatabaseAutomationRuns(databaseId, selectedAutomationId ?? "");
   const run = useDatabaseAutomationRun(databaseId, selectedAutomationId ?? "", selectedRunId ?? "");
   const create = useCreateDatabaseAutomation(databaseId, dataSourceId);
+  const createSecret = useCreateDatabaseAutomationSecret(databaseId, dataSourceId);
   const update = useUpdateDatabaseAutomation(databaseId, selectedAutomationId ?? "");
   const lifecycle = useDatabaseAutomationLifecycle(databaseId, dataSourceId);
   const validate = useValidateDatabaseAutomation(databaseId);
@@ -207,15 +213,29 @@ export function DatabaseAutomationManager({
   };
   const save = async () => {
     if (!definition || !effectiveName) return;
+    let saveDraft = draft;
+    for (const action of saveDraft.actions) {
+      if (action.type !== "send_webhook" || !action.webhookHeaderName.trim() || !action.webhookHeaderValue) continue;
+      const secret = await createSecret.mutateAsync({ purpose: "webhook_header", value: action.webhookHeaderValue });
+      saveDraft = {
+        ...saveDraft,
+        actions: saveDraft.actions.map((candidate) => candidate.id === action.id
+          ? { ...candidate, webhookHeaderValue: "", webhookSecretId: secret.id }
+          : candidate),
+      };
+    }
+    const savedDefinition = buildDefinition(saveDraft, dataSourceId, timezone, catalog.data);
+    if (!savedDefinition) return;
     if (selectedAutomationId && detail.data) {
       await update.mutateAsync({
-        body: { definition, name: effectiveName },
+        body: { definition: savedDefinition, name: effectiveName },
         version: detail.data.version,
       });
     } else {
-      await create.mutateAsync({ definition, name: effectiveName });
+      await create.mutateAsync({ definition: savedDefinition, name: effectiveName });
     }
-    setBaseline(JSON.stringify(draft));
+    setDraft(saveDraft);
+    setBaseline(JSON.stringify(saveDraft));
     setScreen("list");
   };
 
@@ -284,10 +304,10 @@ export function DatabaseAutomationManager({
           </div>
           {screen === "builder" ? (
             <div className="border-t p-3">
-              {(create.error ?? update.error) ? (
+              {(create.error ?? update.error ?? createSecret.error) ? (
                 <p className="mb-2 text-xs text-action-danger-text" role="alert">
-                  {(create.error ?? update.error) instanceof Error
-                    ? (create.error ?? update.error)!.message
+                  {(create.error ?? update.error ?? createSecret.error) instanceof Error
+                    ? (create.error ?? update.error ?? createSecret.error)!.message
                     : "Could not save this automation."}
                 </p>
               ) : null}
@@ -298,10 +318,10 @@ export function DatabaseAutomationManager({
               ) : null}
               <Button
                 className="w-full"
-                disabled={!definition || !effectiveName || validate.data?.valid === false || create.isPending || update.isPending}
+                disabled={!definition || !effectiveName || validate.data?.valid === false || create.isPending || update.isPending || createSecret.isPending}
                 onClick={() => void save()}
               >
-                {create.isPending || update.isPending ? <Loader2 className="animate-spin" /> : <Check />}
+                {create.isPending || update.isPending || createSecret.isPending ? <Loader2 className="animate-spin" /> : <Check />}
                 {selectedAutomationId ? "Save changes" : "Create and activate"}
               </Button>
             </div>
@@ -650,9 +670,20 @@ function ActionCard({ action, catalog, index, onChange, onMove, onRemove, schedu
             type,
           });
         }} value={action.type}>
-          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option><option value="send_notification">Send notification</option>{catalog?.actions.find((item) => item.type === "send_gmail")?.available ? <option value="send_gmail">Send Gmail</option> : null}
+          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option><option value="send_notification">Send notification</option>{catalog?.actions.find((item) => item.type === "send_gmail")?.available ? <option value="send_gmail">Send Gmail</option> : null}{catalog?.actions.find((item) => item.type === "send_webhook")?.available ? <option value="send_webhook">Send webhook</option> : null}
         </select>
-        {action.type === "send_gmail" ? (
+        {action.type === "send_webhook" ? (
+          <>
+            <Input aria-label="Webhook URL" onChange={(event) => onChange({ ...action, webhookUrl: event.target.value })} placeholder="https://example.com/webhook" type="url" value={action.webhookUrl} />
+            <select aria-label="Webhook selected property" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, propertyId: event.target.value })} value={action.propertyId}>
+              <option value="name">Name</option>{catalog?.properties.map((property) => <option key={property.id} value={property.id}>{property.name}</option>)}
+            </select>
+            <Input aria-label="Webhook payload field" onChange={(event) => onChange({ ...action, variableName: event.target.value })} placeholder="Additional field name (optional)" value={action.variableName} />
+            {action.variableName.trim() ? <Input aria-label="Webhook payload value" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Additional field value" value={action.value} /> : null}
+            <Input aria-label="Webhook header name" onChange={(event) => onChange({ ...action, webhookHeaderName: event.target.value, webhookSecretId: event.target.value === action.webhookHeaderName ? action.webhookSecretId : "" })} placeholder="Custom header name (optional)" value={action.webhookHeaderName} />
+            <Input aria-label="Webhook header value" onChange={(event) => onChange({ ...action, webhookHeaderValue: event.target.value })} placeholder={action.webhookSecretId ? "Stored secret — enter to replace" : "Custom header value"} type="password" value={action.webhookHeaderValue} />
+          </>
+        ) : action.type === "send_gmail" ? (
           <>
             <select aria-label="Gmail connection" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, connectionId: event.target.value })} value={action.connectionId}>
               <option value="">Choose Gmail account</option>{catalog?.gmailConnections.filter((connection) => connection.status === "connected").map((connection) => <option key={connection.id} value={connection.id}>{connection.email}</option>)}
@@ -748,7 +779,7 @@ function emptyDraft(): BuilderDraft {
   };
 }
 const newTrigger = (): TriggerDraft => ({ id: crypto.randomUUID(), operand: "", operator: "was_edited", propertyId: "any", type: "page_added" });
-const newAction = (): ActionDraft => ({ bcc: "", cc: "", connectionId: "", displayName: "", id: crypto.randomUUID(), linkTriggerPage: true, mode: "set", propertyId: "name", recipientType: "selected_user", recipientValue: "", replyTo: "", subject: "", to: "", type: "define_variables", value: "true", variableName: "value" });
+const newAction = (): ActionDraft => ({ bcc: "", cc: "", connectionId: "", displayName: "", id: crypto.randomUUID(), linkTriggerPage: true, mode: "set", propertyId: "name", recipientType: "selected_user", recipientValue: "", replyTo: "", subject: "", to: "", type: "define_variables", value: "true", variableName: "value", webhookHeaderName: "", webhookHeaderValue: "", webhookSecretId: "", webhookUrl: "" });
 const newSchedule = (): ScheduleDraft => ({
   customPattern: "daily",
   dayOfMonth: "1",
@@ -809,6 +840,21 @@ function buildDefinition(draft: BuilderDraft, dataSourceId: string, timezone: st
         subject: { parts: [{ text: action.subject, type: "text" }] },
         to,
         type: "send_gmail",
+      };
+    }
+    if (action.type === "send_webhook") {
+      if (!action.webhookUrl.trim() || action.webhookHeaderName.trim() && !action.webhookSecretId && !action.webhookHeaderValue) return null;
+      return {
+        headers: action.webhookHeaderName.trim() && action.webhookSecretId
+          ? [{ name: action.webhookHeaderName.trim(), secretId: action.webhookSecretId }]
+          : [],
+        id: action.id,
+        payloadFields: action.variableName.trim()
+          ? [{ key: action.variableName.trim(), value: { type: "literal", value: parseLiteral(action.value) } }]
+          : [],
+        selectedPropertyIds: [action.propertyId],
+        type: "send_webhook",
+        url: action.webhookUrl.trim(),
       };
     }
     const propertyType = catalog?.properties.find((property) => property.id === action.propertyId)?.type;
@@ -939,6 +985,21 @@ function draftFromDefinition(name: string, definition: DatabaseAutomationDefinit
           to: recipient.to,
           type: action.type,
           value: action.message.parts.map((part) => part.type === "text" ? part.text : "").join(""),
+        }];
+      }
+      if (action.type === "send_webhook") {
+        const header = action.headers[0];
+        const field = action.payloadFields[0];
+        return [{
+          ...newAction(),
+          id: action.id,
+          propertyId: action.selectedPropertyIds[0] ?? "name",
+          type: action.type,
+          value: field?.value.type === "literal" ? String(field.value.value ?? "") : "",
+          variableName: field?.key ?? "",
+          webhookHeaderName: header?.name ?? "",
+          webhookSecretId: header?.secretId ?? "",
+          webhookUrl: action.url,
         }];
       }
       if (

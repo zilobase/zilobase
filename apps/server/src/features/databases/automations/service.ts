@@ -6,6 +6,7 @@ import {
   databaseAutomationDefinitionSchema,
   getNextDatabaseAutomationOccurrence,
   type CreateDatabaseAutomationRequest,
+  type CreateDatabaseAutomationSecretRequest,
   type DatabaseAutomationDefinition,
   type DatabaseAutomationDependency,
   type DatabaseAutomationDetail,
@@ -25,6 +26,7 @@ import {
   databaseProperty,
   databaseView,
   dataSource,
+  automationSecret,
   gmailAccount,
   gmailWorkspaceConnection,
   pageProperty,
@@ -32,6 +34,7 @@ import {
   user,
 } from "../../../infrastructure/database/schema";
 import type { ZilobaseEditionExtension } from "../../../shared/types";
+import type { RuntimeEnv } from "../../../shared/config/config";
 import { requireDataSourceAccess } from "../access/data-source-access";
 import { requireDatabaseAccess } from "../access/database-access";
 import {
@@ -40,6 +43,8 @@ import {
   type AutomationPropertyMetadata,
   type DatabaseAutomationCompilationContext,
 } from "./compiler";
+import { encryptAutomationSecret } from "./secret-crypto";
+import { resolvePublicWebhookTarget } from "./webhook-egress";
 
 type Executor = Database;
 type AutomationRecord = typeof databaseAutomation.$inferSelect;
@@ -98,17 +103,21 @@ export async function getDatabaseAutomation(input: {
 }
 
 export async function validateDatabaseAutomation(input: {
+  allowHttpWebhookDomains?: Set<string>;
   databaseId: string;
   dataSourceId: string;
   definition: unknown;
   gmailEnabled?: boolean;
+  webhooksEnabled?: boolean;
   userId: string;
 }) {
   const management = await requireManagementContext(input);
   const compilationContext = await loadCompilationContext({
+    allowHttpWebhookDomains: input.allowHttpWebhookDomains,
     databaseId: input.databaseId,
     definition: input.definition,
     gmailEnabled: input.gmailEnabled,
+    webhooksEnabled: input.webhooksEnabled,
     management,
     userId: input.userId,
   });
@@ -116,12 +125,14 @@ export async function validateDatabaseAutomation(input: {
 }
 
 export async function createDatabaseAutomation(input: {
+  allowHttpWebhookDomains?: Set<string>;
   body: CreateDatabaseAutomationRequest;
   databaseId: string;
   duplicatedFromId?: string;
   editionExtension?: ZilobaseEditionExtension;
   initialStatus?: "active" | "paused";
   gmailEnabled?: boolean;
+  webhooksEnabled?: boolean;
   userId: string;
 }) {
   const management = await requireManagementContext({
@@ -130,9 +141,11 @@ export async function createDatabaseAutomation(input: {
     userId: input.userId,
   });
   const context = await loadCompilationContext({
+    allowHttpWebhookDomains: input.allowHttpWebhookDomains,
     databaseId: input.databaseId,
     definition: input.body.definition,
     gmailEnabled: input.gmailEnabled,
+    webhooksEnabled: input.webhooksEnabled,
     management,
     userId: input.userId,
   });
@@ -268,12 +281,14 @@ export async function createDatabaseAutomation(input: {
 }
 
 export async function updateDatabaseAutomation(input: {
+  allowHttpWebhookDomains?: Set<string>;
   automationId: string;
   body: UpdateDatabaseAutomationRequest;
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
   expectedVersion: number;
   gmailEnabled?: boolean;
+  webhooksEnabled?: boolean;
   userId: string;
 }) {
   const existing = await getAutomationWithRevision(input.automationId);
@@ -284,9 +299,11 @@ export async function updateDatabaseAutomation(input: {
     userId: input.userId,
   });
   const context = await loadCompilationContext({
+    allowHttpWebhookDomains: input.allowHttpWebhookDomains,
     databaseId: input.databaseId,
     definition: input.body.definition,
     gmailEnabled: input.gmailEnabled,
+    webhooksEnabled: input.webhooksEnabled,
     management,
     userId: input.userId,
   });
@@ -358,10 +375,12 @@ export async function updateDatabaseAutomation(input: {
 }
 
 export async function setDatabaseAutomationPaused(input: {
+  allowHttpWebhookDomains?: Set<string>;
   automationId: string;
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
   gmailEnabled?: boolean;
+  webhooksEnabled?: boolean;
   paused: boolean;
   userId: string;
 }) {
@@ -369,10 +388,12 @@ export async function setDatabaseAutomationPaused(input: {
   const current = toDetail(record.automation, record.revision);
   if (!input.paused) {
     const validation = await validateDatabaseAutomation({
+      allowHttpWebhookDomains: input.allowHttpWebhookDomains,
       databaseId: input.databaseId,
       dataSourceId: current.dataSourceId,
       definition: current.definition,
       gmailEnabled: input.gmailEnabled,
+      webhooksEnabled: input.webhooksEnabled,
       userId: input.userId,
     });
     if (!validation.valid) throw new DatabaseAutomationError(
@@ -409,11 +430,13 @@ export async function setDatabaseAutomationPaused(input: {
 }
 
 export async function duplicateDatabaseAutomation(input: {
+  allowHttpWebhookDomains?: Set<string>;
   automationId: string;
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
   idempotencyKey: string;
   gmailEnabled?: boolean;
+  webhooksEnabled?: boolean;
   userId: string;
 }) {
   const source = await getDatabaseAutomation({
@@ -422,9 +445,10 @@ export async function duplicateDatabaseAutomation(input: {
     userId: input.userId,
   });
   const created = await createDatabaseAutomation({
+    allowHttpWebhookDomains: input.allowHttpWebhookDomains,
     body: {
       dataSourceId: source.dataSourceId,
-      definition: source.definition,
+      definition: definitionForDuplicate(source.definition),
       idempotencyKey: createHash("sha256")
         .update(`duplicate:${source.id}:${input.idempotencyKey}`)
         .digest("hex"),
@@ -435,6 +459,7 @@ export async function duplicateDatabaseAutomation(input: {
     editionExtension: input.editionExtension,
     initialStatus: "paused",
     gmailEnabled: input.gmailEnabled,
+    webhooksEnabled: input.webhooksEnabled,
     userId: input.userId,
   });
   const detail = await getAutomationWithRevision(created.automation.id);
@@ -474,10 +499,49 @@ export async function deleteDatabaseAutomation(input: {
   return { deleted: true, id: automation.id };
 }
 
+export async function createDatabaseAutomationSecret(input: {
+  body: CreateDatabaseAutomationSecretRequest;
+  databaseId: string;
+  env: RuntimeEnv;
+  userId: string;
+  webhooksEnabled: boolean;
+}) {
+  if (!input.webhooksEnabled) {
+    throw new DatabaseAutomationError("Webhook automations are disabled", 403, "AUTOMATION_WEBHOOKS_DISABLED");
+  }
+  const management = await requireManagementContext({
+    databaseId: input.databaseId,
+    dataSourceId: input.body.dataSourceId,
+    userId: input.userId,
+  });
+  const id = crypto.randomUUID();
+  const encrypted = await encryptAutomationSecret(input.env, input.body.value, {
+    ownerUserId: input.userId,
+    purpose: input.body.purpose,
+    secretId: id,
+    workspaceId: management.source.workspaceId,
+  }).catch((error) => {
+    throw new DatabaseAutomationError(
+      error instanceof Error ? error.message : "Automation secret could not be encrypted",
+      400,
+      "AUTOMATION_SECRET_INVALID",
+    );
+  });
+  await db.insert(automationSecret).values({
+    ...encrypted,
+    id,
+    ownerUserId: input.userId,
+    purpose: input.body.purpose,
+    workspaceId: management.source.workspaceId,
+  });
+  return { id, purpose: input.body.purpose } as const;
+}
+
 export async function getDatabaseAutomationCatalog(input: {
   databaseId: string;
   dataSourceId: string;
   gmailEnabled?: boolean;
+  webhooksEnabled?: boolean;
   userId: string;
 }) {
   try {
@@ -506,7 +570,7 @@ export async function getDatabaseAutomationCatalog(input: {
               : "Connect Gmail to use this action",
           type: "send_gmail" as const,
         },
-        { available: false, reason: "Available in the webhook release", type: "send_webhook" as const },
+        { available: input.webhooksEnabled !== false, reason: input.webhooksEnabled === false ? "Webhooks are disabled by the server administrator" : null, type: "send_webhook" as const },
         { available: false, reason: "Available in the Slack release", type: "send_slack" as const },
       ],
       canManage: true,
@@ -638,9 +702,11 @@ async function requireManagementContext(input: {
 }
 
 async function loadCompilationContext(input: {
+  allowHttpWebhookDomains?: Set<string>;
   databaseId: string;
   definition: unknown;
   gmailEnabled?: boolean;
+  webhooksEnabled?: boolean;
   management: Awaited<ReturnType<typeof requireManagementContext>>;
   userId: string;
 }): Promise<DatabaseAutomationCompilationContext> {
@@ -660,6 +726,13 @@ async function loadCompilationContext(input: {
       }
     }
   }
+  const invalidWebhookActionIds = new Set<string>();
+  if (parsed.success && input.webhooksEnabled !== false) {
+    await Promise.all(parsed.data.actions.flatMap((action) => action.type === "send_webhook"
+      ? [resolvePublicWebhookTarget(action.url, { allowHttpDomains: input.allowHttpWebhookDomains })
+          .catch(() => invalidWebhookActionIds.add(action.id))]
+      : []));
+  }
   for (const targetId of targetIds) {
     let target: Awaited<ReturnType<typeof requireDataSourceAccess>>;
     try {
@@ -674,18 +747,22 @@ async function loadCompilationContext(input: {
     }
     if (target.workspaceId !== input.management.source.workspaceId) targetIds.delete(targetId);
   }
-  const [propertiesByDataSource, views, users, gmailConnections] = await Promise.all([
+  const [propertiesByDataSource, views, users, gmailConnections, secrets] = await Promise.all([
     loadProperties([...targetIds]),
     loadViews(input.databaseId, input.management.source.id),
     loadWorkspaceUsers(input.management.source.workspaceId),
     loadOwnedGmailConnections(input.management.source.workspaceId, input.userId),
+    loadOwnedAutomationSecrets(input.management.source.workspaceId, input.userId),
   ]);
   return {
-    capabilities: { gmail: input.gmailEnabled !== false, notifications: true, schedules: true },
+    allowHttpWebhookDomains: input.allowHttpWebhookDomains,
+    capabilities: { gmail: input.gmailEnabled !== false, notifications: true, schedules: true, webhooks: input.webhooksEnabled !== false },
     dataSourceIds: targetIds,
     gmailConnectionIds: new Set(gmailConnections.filter(({ status }) => status === "connected").map(({ id }) => id)),
+    invalidWebhookActionIds,
     parentDatabaseId: input.management.source.parentDatabaseId,
     propertiesByDataSource,
+    secretIds: new Set(secrets.map(({ id }) => id)),
     sourceDataSourceId: input.management.source.id,
     userIds: new Set(users.map(({ id }) => id)),
     views,
@@ -751,6 +828,19 @@ async function loadOwnedGmailConnections(workspaceId: string, userId: string) {
     ));
 }
 
+async function loadOwnedAutomationSecrets(workspaceId: string, userId: string) {
+  return db
+    .select({ id: automationSecret.id })
+    .from(automationSecret)
+    .where(
+      and(
+        eq(automationSecret.workspaceId, workspaceId),
+        eq(automationSecret.ownerUserId, userId),
+        eq(automationSecret.purpose, "webhook_header"),
+      ),
+    );
+}
+
 async function getLifecycleAutomation(input: {
   automationId: string;
   databaseId: string;
@@ -769,6 +859,15 @@ async function getLifecycleAutomation(input: {
 function containsGmailAction(definition: unknown) {
   const parsed = databaseAutomationDefinitionSchema.safeParse(definition);
   return parsed.success && parsed.data.actions.some((action) => action.type === "send_gmail");
+}
+
+function definitionForDuplicate(definition: DatabaseAutomationDefinition): DatabaseAutomationDefinition {
+  return {
+    ...definition,
+    actions: definition.actions.map((action) => action.type === "send_webhook"
+      ? { ...action, headers: [] }
+      : action),
+  };
 }
 
 function assertProtectedDefinitionOwner(

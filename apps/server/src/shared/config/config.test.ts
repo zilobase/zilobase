@@ -15,6 +15,8 @@ import {
   isLocalRequestOrigin,
   isLoopbackHost,
   isMailFeatureEnabled,
+  isAutomationWebhooksEnabled,
+  getAutomationWebhookHttpDomains,
   resolvePublicRequestUrl,
 } from "./config";
 
@@ -22,6 +24,15 @@ test("mail is disabled unless explicitly enabled", () => {
   assert.equal(isMailFeatureEnabled({}), false);
   assert.equal(isMailFeatureEnabled({ MAIL_ENABLED: "false" }), false);
   assert.equal(isMailFeatureEnabled({ MAIL_ENABLED: "TRUE" }), true);
+});
+
+test("automation webhooks and self-hosted HTTP domains are explicit", () => {
+  assert.equal(isAutomationWebhooksEnabled({}), false);
+  assert.equal(isAutomationWebhooksEnabled({ AUTOMATION_WEBHOOKS_ENABLED: "TRUE" }), true);
+  assert.deepEqual(
+    [...getAutomationWebhookHttpDomains({ AUTOMATION_WEBHOOK_HTTP_DOMAINS: " hooks.example.test,local.example.test " })],
+    ["hooks.example.test", "local.example.test"],
+  );
 });
 
 test("public request URLs prefer the local Host over a rewritten production origin", () => {

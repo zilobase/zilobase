@@ -4,6 +4,17 @@ export function isMailFeatureEnabled(env: RuntimeEnv) {
   return getStringEnv(env, "MAIL_ENABLED")?.trim().toLowerCase() === "true";
 }
 
+export function isAutomationWebhooksEnabled(env: RuntimeEnv) {
+  return getStringEnv(env, "AUTOMATION_WEBHOOKS_ENABLED")?.trim().toLowerCase() === "true";
+}
+
+export function getAutomationWebhookHttpDomains(env: RuntimeEnv) {
+  return new Set((getStringEnv(env, "AUTOMATION_WEBHOOK_HTTP_DOMAINS") ?? "")
+    .split(",")
+    .map((domain) => domain.trim().toLowerCase())
+    .filter(Boolean));
+}
+
 export function isDatabaseAutomationsFeatureEnabled(
   env: RuntimeEnv,
   workspaceId: string,

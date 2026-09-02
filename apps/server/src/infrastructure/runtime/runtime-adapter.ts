@@ -19,6 +19,13 @@ export type OutboundEmailMessage = {
 };
 
 export type ServerRuntimeAdapter = {
+  fetchAutomationWebhook?(input: {
+    body: string;
+    headers: Record<string, string>;
+    pinnedAddress: string;
+    timeoutMs: number;
+    url: string;
+  }): Promise<Response>;
   publishInProductNotification?(input: {
     env: RuntimeEnv;
     notificationId: string;
@@ -306,6 +313,28 @@ export function getDatabaseUrl(env: RuntimeEnv) {
 
 export function getRuntimeAdapter() {
   return runtimeAdapterStore.getStore() ?? runtimeAdapter;
+}
+
+export async function fetchAutomationWebhook(input: {
+  body: string;
+  headers: Record<string, string>;
+  pinnedAddress: string;
+  timeoutMs: number;
+  url: string;
+}) {
+  const adapter = getRuntimeAdapter();
+  if (adapter.fetchAutomationWebhook) return adapter.fetchAutomationWebhook(input);
+  if (adapter.selfHosted !== false) {
+    throw new Error("A pinned webhook transport is required for self-hosted automations");
+  }
+  return fetch(input.url, {
+    body: input.body,
+    headers: input.headers,
+    method: "POST",
+    redirect: "manual",
+    signal: AbortSignal.timeout(input.timeoutMs),
+    ...({ cf: { resolveOverride: input.pinnedAddress } } as Record<string, unknown>),
+  });
 }
 
 export function isSelfHostedRuntime() {

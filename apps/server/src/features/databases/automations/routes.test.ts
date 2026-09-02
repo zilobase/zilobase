@@ -5,6 +5,7 @@ import type { AppBindings } from "../../../shared/types";
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
+  createSecret: vi.fn(),
   delete: vi.fn(),
   detail: vi.fn(),
   duplicate: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock("./service", () => {
   }
   return {
     createDatabaseAutomation: mocks.create,
+    createDatabaseAutomationSecret: mocks.createSecret,
     DatabaseAutomationError,
     deleteDatabaseAutomation: mocks.delete,
     duplicateDatabaseAutomation: mocks.duplicate,
@@ -111,6 +113,24 @@ describe("database automation routes", () => {
     );
     expect(response.status).toBe(200);
     expect(mocks.catalog).toHaveBeenCalledWith(expect.objectContaining({ gmailEnabled: true }));
+  });
+
+  it("stores webhook header values through the protected secret route", async () => {
+    mocks.createSecret.mockResolvedValue({ id: "secret-1", purpose: "webhook_header" });
+    const response = await app().request(
+      "/database-1/automation-secrets",
+      {
+        body: JSON.stringify({ dataSourceId: "source-1", purpose: "webhook_header", value: "Bearer secret" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      },
+      { AUTOMATION_WEBHOOKS_ENABLED: "true" },
+    );
+    expect(response.status).toBe(200);
+    expect(mocks.createSecret).toHaveBeenCalledWith(expect.objectContaining({
+      webhooksEnabled: true,
+      body: expect.objectContaining({ value: "Bearer secret" }),
+    }));
   });
 
   it("requires matching creation idempotency keys", async () => {
