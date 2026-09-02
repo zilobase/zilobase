@@ -153,7 +153,9 @@ const factGroupKey = (fact: DatabaseAutomationMutationFact) =>
 export const databaseAutomationFactLockKeys = (
   rows: ReadonlyArray<{ dataSourceId: string; rowId: string }>,
 ) => [
-    ...new Set(rows.map((row) => `${row.dataSourceId}\u0000${row.rowId}`)),
+    ...new Set(
+      rows.map((row) => JSON.stringify([row.dataSourceId, row.rowId])),
+    ),
   ].sort();
 
 export async function lockDatabaseAutomationFactRows(

@@ -18,8 +18,18 @@ test("event windows are fixed at three seconds and lock rows deterministically",
       { dataSourceId: "source-a", rowId: "row-2" },
       { dataSourceId: "source-b", rowId: "row-1" },
     ]),
-    ["source-a\u0000row-2", "source-b\u0000row-1"],
+    ['["source-a","row-2"]', '["source-b","row-1"]'],
   );
+});
+
+test("database-bound lock keys never contain PostgreSQL-invalid NUL bytes", () => {
+  const keys = databaseAutomationFactLockKeys([
+    { dataSourceId: "source\u0000one", rowId: "row-one" },
+    { dataSourceId: "source", rowId: "one\u0000row-one" },
+  ]);
+
+  assert.equal(keys.length, 2);
+  assert.equal(keys.every((key) => !key.includes("\u0000")), true);
 });
 
 const empty = (): DatabaseAutomationEventWindowState => ({
