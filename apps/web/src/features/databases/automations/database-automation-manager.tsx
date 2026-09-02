@@ -57,6 +57,12 @@ import {
   DropDrawerContent,
   DropDrawerTrigger,
 } from "@/shared/ui/dropdrawer";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/shared/ui/popover";
+import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 
 import { DatabaseViewToolbarButton } from "../views/view/database-view-toolbar-button";
@@ -141,6 +147,7 @@ export function DatabaseAutomationManager({
   onOpenChange: (open: boolean) => void;
   timezone: string;
 }) {
+  const isMobile = useIsMobile();
   const [screen, setScreen] = useState<Screen>("list");
   const [selectedAutomationId, setSelectedAutomationId] = useState<string | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -247,98 +254,117 @@ export function DatabaseAutomationManager({
     setScreen("list");
   };
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) onOpenChange(true);
+    else requestClose();
+  };
+  const trigger = (
+    <DatabaseViewToolbarButton
+      aria-label="Open database automations"
+      aria-expanded={open}
+    >
+      <Zap />
+    </DatabaseViewToolbarButton>
+  );
+  const panel = (
+    <>
+      <ManagerHeader
+        onBack={screen === "list" ? undefined : requestBack}
+        onClose={requestClose}
+        title={screenTitle(screen, selectedAutomationId)}
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {screen === "list" ? (
+          <AutomationList
+            data={list.data?.automations ?? []}
+            error={list.isError}
+            loading={list.isLoading}
+            onCreate={startCreate}
+            onEdit={startEdit}
+            onLifecycle={(automationId, action) => lifecycle.mutate({ automationId, action })}
+            onRuns={(automationId) => {
+              setSelectedAutomationId(automationId);
+              setScreen("runs");
+            }}
+          />
+        ) : screen === "builder" ? (
+          <AutomationBuilder
+            catalog={catalog.data}
+            databaseId={databaseId}
+            dataSourceId={dataSourceId}
+            dataSourceName={dataSourceName}
+            draft={draft}
+            generatedName={generatedName}
+            loading={Boolean(selectedAutomationId && detail.isLoading)}
+            onChange={setDraft}
+            onConnectSlack={() => void startSlackOauth.mutateAsync().then(({ authorizationUrl }) => window.open(authorizationUrl, "_blank", "noopener,noreferrer"))}
+          />
+        ) : screen === "runs" ? (
+          <RunList
+            loading={runs.isLoading}
+            onSelect={(runId) => {
+              setSelectedRunId(runId);
+              setScreen("run");
+            }}
+            runs={runs.data?.runs ?? []}
+          />
+        ) : (
+          <RunDetail loading={run.isLoading} run={run.data} />
+        )}
+      </div>
+      {screen === "builder" ? (
+        <div className="border-t p-3">
+          {(create.error ?? update.error ?? createSecret.error) ? (
+            <p className="mb-2 text-xs text-action-danger-text" role="alert">
+              {(create.error ?? update.error ?? createSecret.error) instanceof Error
+                ? (create.error ?? update.error ?? createSecret.error)!.message
+                : "Could not save this automation."}
+            </p>
+          ) : null}
+          {validate.data?.errors[0] ? (
+            <p className="mb-2 text-xs text-action-danger-text" role="alert">
+              {validate.data.errors[0].message}
+            </p>
+          ) : null}
+          <Button
+            className="w-full"
+            disabled={!definition || !effectiveName || validate.data?.valid === false || create.isPending || update.isPending || createSecret.isPending}
+            onClick={() => void save()}
+          >
+            {create.isPending || update.isPending || createSecret.isPending ? <Loader2 className="animate-spin" /> : <Check />}
+            {selectedAutomationId ? "Save changes" : "Create and activate"}
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
     <>
-      <DropDrawer
-        open={open}
-        onOpenChange={(nextOpen) => {
-          if (nextOpen) onOpenChange(true);
-          else requestClose();
-        }}
-      >
-        <DropDrawerTrigger asChild>
-          <DatabaseViewToolbarButton
-            aria-label="Open database automations"
-            aria-expanded={open}
+      {isMobile ? (
+        <DropDrawer open={open} onOpenChange={handleOpenChange}>
+          <DropDrawerTrigger asChild>{trigger}</DropDrawerTrigger>
+          <DropDrawerContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] flex-col overflow-hidden p-0">
+            {panel}
+          </DropDrawerContent>
+        </DropDrawer>
+      ) : (
+        <Popover modal open={open} onOpenChange={handleOpenChange}>
+          <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+          <PopoverContent
+            align="end"
+            avoidCollisions
+            collisionPadding={8}
+            className="flex h-[min(720px,var(--radix-popover-content-available-height))] max-h-(--radix-popover-content-available-height) w-[min(448px,var(--radix-popover-content-available-width))] max-w-(--radix-popover-content-available-width) flex-col gap-0 overflow-hidden p-0"
+            onCloseAutoFocus={(event) => event.preventDefault()}
+            side="left"
+            sideOffset={8}
+            sticky="always"
           >
-            <Zap />
-          </DatabaseViewToolbarButton>
-        </DropDrawerTrigger>
-        <DropDrawerContent
-          align="end"
-          className="flex h-[min(720px,calc(100vh-5rem))] w-[448px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden p-0 max-sm:h-[calc(100dvh-1rem)] max-sm:w-[calc(100vw-1rem)]"
-          onCloseAutoFocus={(event) => event.preventDefault()}
-        >
-          <ManagerHeader
-            onBack={screen === "list" ? undefined : requestBack}
-            onClose={requestClose}
-            title={screenTitle(screen, selectedAutomationId)}
-          />
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            {screen === "list" ? (
-              <AutomationList
-                data={list.data?.automations ?? []}
-                error={list.isError}
-                loading={list.isLoading}
-                onCreate={startCreate}
-                onEdit={startEdit}
-                onLifecycle={(automationId, action) => lifecycle.mutate({ automationId, action })}
-                onRuns={(automationId) => {
-                  setSelectedAutomationId(automationId);
-                  setScreen("runs");
-                }}
-              />
-            ) : screen === "builder" ? (
-              <AutomationBuilder
-                catalog={catalog.data}
-                databaseId={databaseId}
-                dataSourceId={dataSourceId}
-                dataSourceName={dataSourceName}
-                draft={draft}
-                generatedName={generatedName}
-                loading={Boolean(selectedAutomationId && detail.isLoading)}
-                onChange={setDraft}
-                onConnectSlack={() => void startSlackOauth.mutateAsync().then(({ authorizationUrl }) => window.open(authorizationUrl, "_blank", "noopener,noreferrer"))}
-              />
-            ) : screen === "runs" ? (
-              <RunList
-                loading={runs.isLoading}
-                onSelect={(runId) => {
-                  setSelectedRunId(runId);
-                  setScreen("run");
-                }}
-                runs={runs.data?.runs ?? []}
-              />
-            ) : (
-              <RunDetail loading={run.isLoading} run={run.data} />
-            )}
-          </div>
-          {screen === "builder" ? (
-            <div className="border-t p-3">
-              {(create.error ?? update.error ?? createSecret.error) ? (
-                <p className="mb-2 text-xs text-action-danger-text" role="alert">
-                  {(create.error ?? update.error ?? createSecret.error) instanceof Error
-                    ? (create.error ?? update.error ?? createSecret.error)!.message
-                    : "Could not save this automation."}
-                </p>
-              ) : null}
-              {validate.data?.errors[0] ? (
-                <p className="mb-2 text-xs text-action-danger-text" role="alert">
-                  {validate.data.errors[0].message}
-                </p>
-              ) : null}
-              <Button
-                className="w-full"
-                disabled={!definition || !effectiveName || validate.data?.valid === false || create.isPending || update.isPending || createSecret.isPending}
-                onClick={() => void save()}
-              >
-                {create.isPending || update.isPending || createSecret.isPending ? <Loader2 className="animate-spin" /> : <Check />}
-                {selectedAutomationId ? "Save changes" : "Create and activate"}
-              </Button>
-            </div>
-          ) : null}
-        </DropDrawerContent>
-      </DropDrawer>
+            {panel}
+          </PopoverContent>
+        </Popover>
+      )}
       <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
         <AlertDialogContent>
           <AlertDialogHeader>

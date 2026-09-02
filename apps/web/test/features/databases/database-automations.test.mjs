@@ -25,8 +25,23 @@ export function register({ assert, readSource, test }) {
       "Pause",
       "Resume",
     ]) assert.match(manager, new RegExp(behavior.replace("?", "\\?")))
-    assert.match(manager, /w-\[448px\]/)
-    assert.match(manager, /max-sm:h-\[calc\(100dvh-1rem\)\]/)
+    assert.match(manager, /w-\[min\(448px,var\(--radix-popover-content-available-width\)\)\]/)
+    assert.match(manager, /h-\[calc\(100dvh-1rem\)\]/)
+  })
+
+  test("automation manager uses an anchored popover on desktop and a drawer on mobile", async () => {
+    const manager = await readSource(
+      "/src/features/databases/automations/database-automation-manager.tsx",
+    )
+
+    assert.match(manager, /useIsMobile\(\)/)
+    assert.match(manager, /<Popover modal open=\{open\}/)
+    assert.match(manager, /<PopoverContent[\s\S]*?side="left"/)
+    assert.match(manager, /--radix-popover-content-available-height/)
+    assert.match(manager, /--radix-popover-content-available-width/)
+    assert.match(manager, /avoidCollisions/)
+    assert.match(manager, /sticky="always"/)
+    assert.match(manager, /isMobile \? \([\s\S]*?<DropDrawer/)
   })
 
   test("data-source settings launches the shared automation manager", async () => {
