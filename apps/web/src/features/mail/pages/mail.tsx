@@ -8,6 +8,7 @@ import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
   mailSystemFolderIds,
   mailSystemPropertyCatalog,
+  type MailAddress,
   type MailConnection,
   type MailFilterExpression,
   type MailGroupConfig,
@@ -213,6 +214,14 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   const indexedItems = indexedMailQuery.data?.pages.flatMap((page) => page.threads) ?? []
   const indexedThreads = indexedMailQuery.data?.pages.flatMap((page) =>
     page.threads.map((indexed) => indexed.thread)) ?? []
+  const filterSenders = useMemo<MailAddress[]>(() => {
+    const unique = new Map<string, MailAddress>()
+    for (const sender of indexedMailQuery.data?.pages.flatMap((page) => page.threads.flatMap((thread) => thread.from)) ?? []) {
+      const address = sender.address.trim().toLowerCase()
+      if (address && !unique.has(address)) unique.set(address, sender)
+    }
+    return [...unique.values()]
+  }, [indexedMailQuery.data?.pages])
   const customValuesByThread = useMemo(() => new Map(indexedItems.map((indexed) => [indexed.thread.id, indexed.customValues])), [indexedItems])
   const visibleThreads = indexedThreads
   useEffect(() => {
@@ -575,10 +584,10 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                                 workspaceId={connection.workspaceId!}
                               />
                             ) : undefined}
-                            filterCount={effectiveFilter ? countMailFilterConditions(effectiveFilter) : 0}
+                            filterCount={effectiveFilter ? countMailFilterConditions(effectiveFilter, activePersistedView?.templateId === "inbox") : 0}
                             filterDirty={filterDirty}
                             filterEditor={activePersistedView && effectiveFilter ? (
-                              <MailFilterEditor expression={effectiveFilter} labels={controller.labels} members={propertyMembers} onChange={setDraftFilter} properties={customProperties} />
+                              <MailFilterEditor expression={effectiveFilter} hideImplicitInbox={activePersistedView.templateId === "inbox"} labels={controller.labels} members={propertyMembers} onChange={setDraftFilter} properties={customProperties} senders={filterSenders} />
                             ) : undefined}
                             groupEditor={activePersistedView ? (
                               <MailGroupEditor customProperties={customProperties} group={activePersistedView.config.group} onChange={(group) => void saveGroup(group)} saving={persistedViewsQuery.savingView} />
@@ -612,6 +621,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                         <MailFilterToolbar
                           dirty={filterDirty}
                           expression={effectiveFilter}
+                          hideImplicitInbox={activePersistedView.templateId === "inbox"}
                           labels={controller.labels}
                           members={propertyMembers}
                           onChange={setDraftFilter}
@@ -620,6 +630,7 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                           onSaveAsNew={() => void saveFiltersAsNewView()}
                           properties={customProperties}
                           saving={persistedViewsQuery.savingView}
+                          senders={filterSenders}
                         />
                       ) : null}
 
@@ -1353,9 +1364,11 @@ function MailEmptyState({ offline, query }: { offline: boolean; query: string })
   return <div className="py-16 text-center text-sm text-content-secondary">{query ? `No ${offline ? "downloaded " : ""}mail matches your search.` : "No mail in this folder."}</div>
 }
 
-function countMailFilterConditions(filter: MailFilterExpression): number {
+function countMailFilterConditions(filter: MailFilterExpression, hideImplicitInbox = false): number {
   return filter.filters.reduce(
-    (count, node) => count + (node.type === "condition" ? 1 : countMailFilterConditions(node)),
+    (count, node) => count + (node.type === "condition"
+      ? hideImplicitInbox && node.propertyId === "mailbox" && node.operator === "is" && node.values.length === 1 && node.values[0] === "inbox" ? 0 : 1
+      : countMailFilterConditions(node, hideImplicitInbox)),
     0,
   )
 }
@@ -1393,8 +1406,13 @@ function groupMailThreads(
       label: clientGroupLabel(key, group.propertyId, labels, customProperties),
       mutable: isMutableMailGroup(group.propertyId),
     }))
+  const hideEmptyGroups = group.propertyId === "starred" ? false : group.hideEmptyGroups
+
   return descriptors
-    .filter((descriptor) => !group.hideEmptyGroups || descriptor.count > 0)
+    .filter((descriptor) => !hideEmptyGroups || descriptor.count > 0)
+    .sort((left, right) => group.propertyId === "starred"
+      ? Number(right.key === "true") - Number(left.key === "true")
+      : 0)
     .map((descriptor) => ({
       ...descriptor,
       label: clientGroupLabel(descriptor.key, group.propertyId, labels, customProperties, descriptor.label),
@@ -1423,7 +1441,7 @@ function clientGroupKeys(thread: MailThreadSummary, propertyId: string, customVa
 
 function clientGroupLabel(key: string, propertyId: string, labels: MailLabelRecord[], customProperties: MailPropertyDefinition[], fallback?: string) {
   if (propertyId === "labels") return labels.find((label) => label.id === key)?.name ?? (key === "empty" ? "No label" : fallback ?? key)
-  if (propertyId === "starred") return key === "true" ? "Starred" : "Not starred"
+  if (propertyId === "starred") return key === "true" ? "Starred" : "Everything else"
   if (propertyId === "unread") return key === "true" ? "Unread" : "Read"
   if (propertyId === "important" || propertyId === "priority") return key === "true" ? "Important" : "Not important"
   const customProperty = customProperties.find((property) => property.id === propertyId)

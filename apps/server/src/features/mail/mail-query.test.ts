@@ -33,6 +33,8 @@ test("mail group cursors are opaque and grouping covers mutable and immutable fi
   assert.match(source, /counts\.set/)
   assert.match(source, /groupKeys\(indexed, routeConfig\?\.group/)
   assert.match(source, /isMutableGroup/)
+  assert.match(source, /propertyId === "starred"[\s\S]*Number\(right\.key === "true"\)/)
+  assert.match(source, /"Starred" : "Everything else"/)
 })
 
 test("indexed view queries are binding-scoped, cursor-paged, and intersect full Gmail search", async () => {

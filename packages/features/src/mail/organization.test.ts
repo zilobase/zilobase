@@ -66,7 +66,7 @@ test("system and quick filter catalogs include the full mailbox fields", () => {
     "is_read",
     "is_unread",
     "show_sent",
-    "hide_archived",
+    "show_archived",
   ]) {
     assert.equal(quickIds.has(id), true, `missing quick filter ${id}`)
   }
@@ -94,6 +94,7 @@ test("view templates are deterministic and protect only Inbox", () => {
 
 test("filter normalization enforces depth and condition limits", () => {
   const condition = (id: number) => ({
+    ...(id === 0 ? { enabled: false } : {}),
     id: `condition-${id}`,
     operator: "is",
     propertyId: "unread",
@@ -133,6 +134,7 @@ test("filter normalization enforces depth and condition limits", () => {
 
   const normalized = normalizeMailFilterExpression(input)
   assert.equal(normalized.filters.length, maxMailFilterConditions + 1)
+  assert.equal(normalized.filters[0]?.type === "condition" && normalized.filters[0].enabled, false)
   const level2 = normalized.filters.at(-1)
   assert.equal(level2?.type, "group")
   if (level2?.type !== "group") return

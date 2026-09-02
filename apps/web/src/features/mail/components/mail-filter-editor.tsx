@@ -3,7 +3,7 @@ import {
   mailQuickFilterCatalog,
   mailSystemPropertyCatalog,
   maxMailFilterConditions,
-  maxMailFilterDepth,
+  type MailAddress,
   type MailFilterCondition,
   type MailFilterExpression,
   type MailFilterNode,
@@ -15,21 +15,22 @@ import {
 } from "@zilobase/features/mail"
 
 import { DatabaseConditionEditor } from "@/features/databases/views/view/database-condition-editor"
-import { DatabaseSearchableMenuItems, type DatabaseSearchableMenuOption } from "@/features/databases/views/view/database-searchable-menu-items"
+import type { DatabaseSearchableMenuOption } from "@/features/databases/views/view/database-searchable-menu-items"
 import { getDatabaseFilterOperatorLabel, getDatabaseFilterOperatorsForType, type DatabasePropertyFilterOperator } from "@/features/databases/views/model/database-view-config"
-import { ChevronDown, FilterIcon, Plus, Trash2Icon } from "@/shared/components/icons"
+import { ChevronDown, CircleX, FilterIcon, MailIcon, Paperclip, Plus, SearchIcon, UserIcon, XIcon } from "@/shared/components/icons"
 import { Button } from "@/shared/ui/button"
+import { Checkbox } from "@/shared/ui/checkbox"
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerSeparator,
-  DropDrawerSub,
-  DropDrawerSubContent,
-  DropDrawerSubTrigger,
   DropDrawerTrigger,
 } from "@/shared/ui/dropdrawer"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
+import { Input } from "@/shared/ui/input"
+import { Switch } from "@/shared/ui/switch"
+import { cn } from "@/shared/lib/utils"
 
 type PropertyDefinition = {
   id: string
@@ -38,43 +39,64 @@ type PropertyDefinition = {
   valueOptions: DatabaseSearchableMenuOption[]
 }
 
+type MailQuickFilter = (typeof mailQuickFilterCatalog)[number]
+
+const toggleQuickFilterIds = new Set<string>(["has_attachments", "show_archived", "is_unread"])
+const categoryQuickFilterIds = new Set<string>(["show_social", "show_promotions"])
+const primaryMailQuickFilters = mailQuickFilterCatalog
+  .filter((filter) => filter.id !== "no_attachments")
+  .slice(0, 6)
+const primaryDirectPropertyIds = new Set<string>(["from", "attachments", "date", "calendar_event"])
+const hiddenMailFilterPropertyIds = new Set<string>(["mailbox", "email_domain"])
+
 export function MailFilterToolbar({
   dirty,
   expression,
   labels,
   members = [],
   properties: customProperties = [],
+  senders = [],
   onChange,
   onReset,
   onSave,
   onSaveAsNew,
   saving,
+  hideImplicitInbox = false,
 }: {
   dirty: boolean
   expression: MailFilterExpression
   labels: MailLabelRecord[]
   members?: MailPropertyWorkspaceMember[]
   properties?: MailPropertyDefinition[]
+  senders?: MailAddress[]
   onChange: (filter: MailFilterExpression) => void
   onReset: () => void
   onSave: () => void
   onSaveAsNew: () => void
   saving: boolean
+  hideImplicitInbox?: boolean
 }) {
   const properties = useMailFilterProperties(labels, customProperties, members)
-  const conditions = flattenConditions(expression)
+  const conditions = visibleConditions(expression, hideImplicitInbox)
 
   return (
     <div className="mt-3 flex min-w-0 flex-wrap items-center gap-1.5" aria-label="Mail filters">
       {conditions.map((condition) => (
-        <span className="inline-flex h-8 max-w-64 items-center gap-1.5 rounded-md bg-surface-subtle px-2 text-xs text-content-primary" key={condition.id}>
-          {dirty ? <span aria-label="Unsaved filter" className="size-1.5 shrink-0 rounded-full bg-feedback-warning" /> : null}
-          <span className="truncate">{conditionLabel(condition, properties)}</span>
-        </span>
+        <MailFilterPill
+          condition={condition}
+          dirty={dirty}
+          key={condition.id}
+          onChange={(patch) => onChange(updateCondition(expression, condition.id, patch, properties))}
+          onRemove={() => onChange(removeNode(expression, condition.id))}
+          onToggleEnabled={() => onChange(toggleConditionEnabled(expression, condition.id))}
+          properties={properties}
+          senders={senders}
+        />
       ))}
       <MailQuickFilterPicker
         disabled={countConditions(expression) >= maxMailFilterConditions}
-        onSelect={(condition) => onChange(addNode(expression, expression.id, condition))}
+        expression={expression}
+        onChange={onChange}
         properties={properties}
       />
       {dirty ? (
@@ -101,130 +123,518 @@ export function MailFilterToolbar({
   )
 }
 
+function MailFilterPill({
+  condition,
+  dirty,
+  onChange,
+  onRemove,
+  onToggleEnabled,
+  properties,
+  senders,
+}: {
+  condition: MailFilterCondition
+  dirty: boolean
+  onChange: (patch: { operator?: DatabasePropertyFilterOperator; propertyId?: string; values?: string[] }) => void
+  onRemove: () => void
+  onToggleEnabled: () => void
+  properties: PropertyDefinition[]
+  senders: MailAddress[]
+}) {
+  const [open, setOpen] = useState(false)
+
+  const attachmentToggle = condition.propertyId === "attachments" && ["is_not_empty", "is_empty"].includes(condition.operator)
+  const unreadToggle = condition.propertyId === "unread" && condition.operator === "is" && typeof condition.values[0] === "boolean"
+  if (attachmentToggle || unreadToggle) {
+    const label = conditionPillLabel(condition, properties)
+    const enabled = condition.enabled !== false
+    return (
+      <Button
+        aria-label={`${enabled ? "Deactivate" : "Activate"} ${label} filter`}
+        aria-pressed={enabled}
+        className={cn(
+          "relative max-w-64 rounded-full px-3",
+          enabled && "border-action-selected-border bg-action-selected-subtle text-action-selected-text hover:bg-action-selected-subtle",
+        )}
+        onClick={onToggleEnabled}
+        size="lg"
+        type="button"
+        variant="secondary"
+      >
+        {attachmentToggle ? <Paperclip className="size-4" /> : <MailIcon className="size-4" />}
+        <span className="truncate">{label}</span>
+        {dirty ? <span aria-label="Unsaved filter" className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-feedback-warning" /> : null}
+      </Button>
+    )
+  }
+
+  return (
+    <DropDrawer open={open} onOpenChange={setOpen}>
+      <DropDrawerTrigger asChild>
+        <Button
+          className={cn(
+            "relative max-w-64 rounded-full px-3",
+            open && "border-action-selected-border bg-action-selected-subtle text-action-selected-text hover:bg-action-selected-subtle",
+          )}
+          size="lg"
+          type="button"
+          variant="secondary"
+        >
+          <FilterIcon className="size-4" />
+          <span className="truncate">{conditionPillLabel(condition, properties)}</span>
+          <ChevronDown className="size-3.5" />
+          {dirty ? <span aria-label="Unsaved filter" className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-feedback-warning" /> : null}
+        </Button>
+      </DropDrawerTrigger>
+      <DropDrawerContent align="start" className="w-80">
+        <MailFocusedFilterEditor
+          condition={condition}
+          onBack={() => setOpen(false)}
+          onChange={onChange}
+          onRemove={() => {
+            onRemove()
+            setOpen(false)
+          }}
+          properties={properties}
+          senders={senders}
+        />
+      </DropDrawerContent>
+    </DropDrawer>
+  )
+}
+
 export function MailFilterEditor({
   expression,
   labels,
   members = [],
   properties: customProperties = [],
+  senders = [],
   onChange,
+  hideImplicitInbox = false,
 }: {
   expression: MailFilterExpression
   labels: MailLabelRecord[]
   members?: MailPropertyWorkspaceMember[]
   properties?: MailPropertyDefinition[]
+  senders?: MailAddress[]
   onChange: (filter: MailFilterExpression) => void
+  hideImplicitInbox?: boolean
 }) {
   const properties = useMailFilterProperties(labels, customProperties, members)
-  return (
-    <div className="w-80 max-w-[calc(100vw-2rem)] space-y-2 p-1">
-      <MailFilterGroupEditor
-        depth={1}
-        expression={expression}
-        onChange={onChange}
+  const [selectedConditionId, setSelectedConditionId] = useState<string | null>(null)
+  const conditions = visibleConditions(expression, hideImplicitInbox)
+  const selectedCondition = conditions.find((condition) => condition.id === selectedConditionId)
+
+  if (selectedCondition) {
+    return (
+      <MailFocusedFilterEditor
+        condition={selectedCondition}
+        onBack={() => setSelectedConditionId(null)}
+        onChange={(patch) => onChange(updateCondition(expression, selectedCondition.id, patch, properties))}
+        onRemove={() => {
+          onChange(removeNode(expression, selectedCondition.id))
+          setSelectedConditionId(null)
+        }}
         properties={properties}
-        root={expression}
+        senders={senders}
       />
-      {expression.filters.length ? (
-        <Button className="h-8 w-full justify-start gap-2 text-xs" onClick={() => onChange({ ...expression, filters: [] })} type="button" variant="ghost">
-          <Trash2Icon className="size-4" /> Delete filters
-        </Button>
+    )
+  }
+
+  return (
+    <MailFilterPropertyList
+      conditions={conditions}
+      disabled={conditions.length >= maxMailFilterConditions}
+      onCreate={(condition) => {
+        onChange(addNode(expression, expression.id, condition))
+        setSelectedConditionId(condition.id)
+      }}
+      onSelect={setSelectedConditionId}
+      onToggle={(filter) => {
+        onChange(toggleQuickFilter(expression, filter))
+      }}
+      properties={properties}
+    />
+  )
+}
+
+function MailFilterPropertyList({
+  conditions,
+  disabled,
+  onCreate,
+  onSelect,
+  onToggle,
+  properties,
+}: {
+  conditions: MailFilterCondition[]
+  disabled: boolean
+  onCreate: (condition: MailFilterCondition) => void
+  onSelect: (conditionId: string) => void
+  onToggle: (filter: MailQuickFilter) => void
+  properties: PropertyDefinition[]
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [query, setQuery] = useState("")
+  const normalizedQuery = query.trim().toLowerCase()
+  const quickFilters = primaryMailQuickFilters.filter((filter) => filter.label.toLowerCase().includes(normalizedQuery))
+  const additionalProperties = properties.filter((property) =>
+    !primaryDirectPropertyIds.has(property.id) &&
+    property.label.toLowerCase().includes(normalizedQuery))
+  const showMoreFilters = expanded || Boolean(normalizedQuery)
+
+  return (
+    <div className="max-h-[min(34rem,calc(100vh-5rem))] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto p-1">
+      {conditions.length ? (
+        <>
+          <div className="px-2 py-1.5 text-xs font-medium text-content-secondary">Active filters</div>
+          {conditions.map((condition) => (
+            <DropDrawerItem key={condition.id} onSelect={(event) => {
+              event.preventDefault()
+              onSelect(condition.id)
+            }}>
+              <span className="truncate">{conditionLabel(condition, properties)}</span>
+            </DropDrawerItem>
+          ))}
+          <DropDrawerSeparator />
+        </>
+      ) : null}
+      <div className="relative m-1">
+        <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-content-secondary" />
+        <Input aria-label="Filter by" className="h-9 pl-8" onChange={(event) => setQuery(event.target.value)} placeholder="Filter by" value={query} />
+      </div>
+      {quickFilters.map((filter) => {
+        const toggle = isToggleQuickFilter(filter)
+        const toggleAction = toggle || isCategoryQuickFilter(filter)
+        const existing = toggleAction ? toggleCondition(conditions, filter) : undefined
+        const checked = existing ? toggleChecked(existing, filter) : false
+        return (
+          <DropDrawerItem disabled={disabled && !existing} icon={filter.id === "has_attachments"
+            ? <Paperclip className="size-4" />
+            : filter.id === "is_unread" ? <MailIcon className="size-4" />
+            : toggle ? <Switch aria-label={toggleLabel(existing, filter)} checked={checked} tabIndex={-1} /> : undefined} key={filter.id} onSelect={(event) => {
+            event.preventDefault()
+            if (toggleAction) {
+              onToggle(filter)
+              return
+            }
+            onCreate(createQuickFilterCondition(filter))
+          }}>
+            {toggleLabel(existing, filter)}
+          </DropDrawerItem>
+        )
+      })}
+      {showMoreFilters && additionalProperties.length ? <DropDrawerSeparator /> : null}
+      {showMoreFilters ? additionalProperties.map((property) => {
+        const linkedFilter = linkedQuickFilterForProperty(property.id)
+        const existing = linkedFilter ? toggleCondition(conditions, linkedFilter) : undefined
+        return (
+          <DropDrawerItem disabled={disabled && !existing} icon={linkedFilter ? <MailIcon className="size-4" /> : undefined} key={property.id} onSelect={(event) => {
+            event.preventDefault()
+            if (linkedFilter) {
+              onToggle(linkedFilter)
+              return
+            }
+            onCreate(defaultConditionForProperty(property.id, properties))
+          }}>
+            {linkedFilter ? toggleLabel(existing, linkedFilter) : property.label}
+          </DropDrawerItem>
+        )
+      }) : null}
+      {!expanded && !normalizedQuery ? (
+        <DropDrawerItem onSelect={(event) => {
+          event.preventDefault()
+          setExpanded(true)
+        }}><Plus className="size-4" /> More filters</DropDrawerItem>
+      ) : null}
+      {normalizedQuery && !quickFilters.length && !additionalProperties.length ? (
+        <div className="px-3 py-6 text-center text-sm text-content-secondary">No filters found</div>
       ) : null}
     </div>
   )
 }
 
-function MailFilterGroupEditor({
-  depth,
-  expression,
+function MailFocusedFilterEditor({
+  condition,
+  onBack,
   onChange,
+  onRemove,
   properties,
-  root,
+  senders,
 }: {
-  depth: number
-  expression: MailFilterExpression
-  onChange: (filter: MailFilterExpression) => void
+  condition: MailFilterCondition
+  onBack: () => void
+  onChange: (patch: { operator?: DatabasePropertyFilterOperator; propertyId?: string; values?: string[] }) => void
+  onRemove: () => void
   properties: PropertyDefinition[]
-  root: MailFilterExpression
+  senders: MailAddress[]
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const propertyOptions = properties.map(toSearchOption)
-  const atConditionLimit = countConditions(root) >= maxMailFilterConditions
+  if (condition.propertyId === "from") {
+    return <MailFromFilterEditor condition={condition} onBack={onBack} onChange={onChange} onRemove={onRemove} senders={senders} />
+  }
+
+  if (condition.propertyId === "categories") {
+    return (
+      <MailCategoriesFilterEditor
+        condition={condition}
+        onBack={onBack}
+        onChange={onChange}
+        onRemove={onRemove}
+        options={properties.find((property) => property.id === "categories")?.valueOptions ?? []}
+      />
+    )
+  }
 
   return (
-    <div className={depth > 1 ? "rounded-md border border-stroke-default bg-surface-subtle p-2" : "space-y-2"}>
-      <div className="mb-2 flex items-center gap-2 px-1 text-xs text-content-secondary">
-        <span>{depth === 1 ? "Match" : "Group matches"}</span>
-        <Select value={expression.operator} onValueChange={(operator) => onChange(updateGroup(root, expression.id, (group) => ({ ...group, operator: operator as "and" | "or" })))}>
-          <SelectTrigger className="h-7 w-24"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="and">All</SelectItem><SelectItem value="or">Any</SelectItem></SelectContent>
-        </Select>
-        <span>conditions</span>
+    <div className="w-80 max-w-[calc(100vw-2rem)] p-1">
+      <div className="mb-2 flex items-center gap-2 px-2 py-1 text-sm font-medium text-content-primary">
+        <span className="min-w-0 flex-1 truncate">{properties.find((property) => property.id === condition.propertyId)?.label ?? condition.propertyId}</span>
+        <Button aria-label="Back to filter list" onClick={onBack} size="icon" type="button" variant="ghost"><XIcon className="size-4" /></Button>
       </div>
-      <div className="space-y-2">
-        {expression.filters.map((node) => node.type === "group" ? (
-          <div className="relative" key={node.id}>
-            <MailFilterGroupEditor depth={depth + 1} expression={node} onChange={onChange} properties={properties} root={root} />
-            <Button aria-label="Remove filter group" className="absolute right-1 top-1" onClick={() => onChange(removeNode(root, node.id))} size="icon" type="button" variant="ghost"><Trash2Icon className="size-3.5" /></Button>
-          </div>
-        ) : (
-          <DatabaseConditionEditor
-            condition={toDatabaseCondition(node, properties)}
-            fieldOptions={propertyOptions}
-            key={node.id}
-            layout="stacked"
-            onRemove={() => onChange(removeNode(root, node.id))}
-            onUpdate={(patch) => onChange(updateCondition(root, node.id, patch, properties))}
-            valueOptions={properties.find((property) => property.id === node.propertyId)?.valueOptions ?? []}
-          />
-        ))}
-      </div>
-      {!expression.filters.length ? <div className="rounded-md bg-surface-subtle px-3 py-2 text-xs text-content-secondary">No filters yet</div> : null}
-      <div className="mt-2 flex gap-1">
-        <DropDrawer open={pickerOpen} onOpenChange={setPickerOpen}>
-          <DropDrawerTrigger asChild>
-            <Button className="h-8 flex-1 justify-start gap-2 text-xs" disabled={atConditionLimit} type="button" variant="secondary"><Plus className="size-4" /> Add filter</Button>
-          </DropDrawerTrigger>
-          <DropDrawerContent align="start" className="w-72">
-            <DatabaseSearchableMenuItems inputAriaLabel="Add mail filter" inputIcon={<FilterIcon className="size-4" />} inputPlaceholder="Filter by..." onSelect={(propertyId) => {
-              onChange(addNode(root, expression.id, defaultConditionForProperty(propertyId, properties)))
-              setPickerOpen(false)
-            }} open={pickerOpen} options={propertyOptions} pinSearch />
-          </DropDrawerContent>
-        </DropDrawer>
-        {depth < maxMailFilterDepth ? (
-          <Button className="h-8 text-xs" disabled={atConditionLimit} onClick={() => onChange(addNode(root, expression.id, { filters: [], id: crypto.randomUUID(), operator: "and", type: "group" }))} type="button" variant="ghost">Add group</Button>
-        ) : null}
-      </div>
+      <DatabaseConditionEditor
+        condition={toDatabaseCondition(condition, properties)}
+        fieldOptions={properties.map(toSearchOption)}
+        layout="stacked"
+        onUpdate={onChange}
+        valueOptions={properties.find((property) => property.id === condition.propertyId)?.valueOptions ?? []}
+      />
+      <DropDrawerSeparator />
+      <Button className="h-9 w-full justify-start gap-2 px-2 text-sm" onClick={onRemove} type="button" variant="ghost">
+        <CircleX className="size-4" /> Clear filter
+      </Button>
     </div>
   )
 }
 
-function MailQuickFilterPicker({ disabled, onSelect, properties }: { disabled: boolean; onSelect: (condition: MailFilterCondition) => void; properties: PropertyDefinition[] }) {
-  const [open, setOpen] = useState(false)
-  const moreOptions = properties.map(toSearchOption)
+function MailCategoriesFilterEditor({
+  condition,
+  onBack,
+  onChange,
+  onRemove,
+  options,
+}: {
+  condition: MailFilterCondition
+  onBack: () => void
+  onChange: (patch: { operator?: DatabasePropertyFilterOperator; values?: string[] }) => void
+  onRemove: () => void
+  options: DatabaseSearchableMenuOption[]
+}) {
+  const [query, setQuery] = useState("")
+  const selectedValues = condition.values.filter((value): value is string => typeof value === "string" && Boolean(value))
+  const normalizedQuery = query.trim().toLowerCase()
+  const filteredOptions = options.filter((option) => !normalizedQuery || option.label.toLowerCase().includes(normalizedQuery))
+  const operator = ["is_not", "does_not_contain"].includes(condition.operator) ? "does_not_contain" : "contains"
+
   return (
-    <DropDrawer open={open} onOpenChange={setOpen}>
+    <div className="w-80 max-w-[calc(100vw-2rem)] p-1">
+      <div className="flex items-center gap-1 px-2 py-1">
+        <span className="text-sm font-medium text-content-primary">Categories</span>
+        <Select value={operator} onValueChange={(value) => onChange({ operator: value as DatabasePropertyFilterOperator })}>
+          <SelectTrigger className="h-7 w-auto gap-1 border-0 bg-transparent px-1 text-sm text-content-secondary shadow-none"><SelectValue /></SelectTrigger>
+          <SelectContent align="start">
+            <SelectItem value="contains">Contain</SelectItem>
+            <SelectItem value="does_not_contain">Do not contain</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button aria-label="Back to filter list" className="ml-auto" onClick={onBack} size="icon" type="button" variant="ghost"><XIcon className="size-4" /></Button>
+      </div>
+      <div className="relative mx-2 mb-1 mt-1">
+        <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-content-secondary" />
+        <Input
+          aria-label="Search categories"
+          autoFocus
+          className="h-9 pl-8"
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search for one or more Categories"
+          value={query}
+        />
+      </div>
+      <div className="max-h-80 overflow-y-auto py-1">
+        {filteredOptions.length ? filteredOptions.map((option) => {
+          const checked = selectedValues.includes(option.value)
+          return (
+            <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-action-neutral-hover" key={option.value}>
+              <Checkbox checked={checked} onCheckedChange={(nextChecked) => onChange({
+                values: nextChecked === true
+                  ? [...selectedValues, option.value]
+                  : selectedValues.filter((value) => value !== option.value),
+              })} />
+              <span className="rounded bg-surface-subtle px-1.5 py-0.5 text-content-primary">{option.label}</span>
+            </label>
+          )
+        }) : (
+          <div className="px-3 py-6 text-center text-sm text-content-secondary">No categories found</div>
+        )}
+      </div>
+      <DropDrawerSeparator />
+      <Button className="h-9 w-full justify-start gap-2 px-2 text-sm" onClick={onRemove} type="button" variant="ghost">
+        <CircleX className="size-4" /> Clear filter
+      </Button>
+    </div>
+  )
+}
+
+function MailFromFilterEditor({
+  condition,
+  onBack,
+  onChange,
+  onRemove,
+  senders,
+}: {
+  condition: MailFilterCondition
+  onBack: () => void
+  onChange: (patch: { operator?: DatabasePropertyFilterOperator; values?: string[] }) => void
+  onRemove: () => void
+  senders: MailAddress[]
+}) {
+  const [query, setQuery] = useState("")
+  const senderOptions = useMemo(() => {
+    const unique = new Map<string, MailAddress>()
+    for (const sender of senders) {
+      const address = sender.address.trim().toLowerCase()
+      if (address && !unique.has(address)) unique.set(address, sender)
+    }
+    const normalizedQuery = query.trim().toLowerCase()
+    return [...unique.values()]
+      .filter((sender) => !normalizedQuery || `${sender.name ?? ""} ${sender.address}`.toLowerCase().includes(normalizedQuery))
+      .sort((left, right) => (left.name || left.address).localeCompare(right.name || right.address))
+  }, [query, senders])
+  const selectedValues = condition.values.filter((value): value is string => typeof value === "string" && Boolean(value))
+
+  return (
+    <div className="w-80 max-w-[calc(100vw-2rem)] p-1">
+      <div className="flex items-center gap-1 px-2 py-1">
+        <span className="text-sm font-medium text-content-primary">From</span>
+        <Select value={condition.operator} onValueChange={(operator) => onChange({ operator: operator as DatabasePropertyFilterOperator })}>
+          <SelectTrigger className="h-7 w-auto gap-1 border-0 bg-transparent px-1 text-sm text-content-secondary shadow-none"><SelectValue /></SelectTrigger>
+          <SelectContent align="start">
+            <SelectItem value="contains">Contains</SelectItem>
+            <SelectItem value="does_not_contain">Does not contain</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button aria-label="Back to filter list" className="ml-auto" onClick={onBack} size="icon" type="button" variant="ghost"><XIcon className="size-4" /></Button>
+      </div>
+      <div className="relative mx-2 mb-1">
+        <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-content-secondary" />
+        <Input aria-label="Search senders" className="h-9 pl-8" onChange={(event) => setQuery(event.target.value)} placeholder="Search people or emails" value={query} />
+      </div>
+      <div className="max-h-80 overflow-y-auto py-1">
+        {senderOptions.length ? senderOptions.map((sender) => {
+          const checked = selectedValues.includes(sender.address)
+          return (
+            <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md px-2 text-sm hover:bg-action-neutral-hover" key={sender.address.toLowerCase()}>
+              <Checkbox checked={checked} onCheckedChange={(nextChecked) => onChange({
+                values: nextChecked === true
+                  ? [...selectedValues, sender.address]
+                  : selectedValues.filter((value) => value !== sender.address),
+              })} />
+              <span className="grid size-7 shrink-0 place-items-center rounded-full border border-stroke-default bg-surface-subtle text-xs text-content-secondary">
+                {(sender.name || sender.address).slice(0, 1).toUpperCase() || <UserIcon className="size-3.5" />}
+              </span>
+              <span className="min-w-0 truncate text-content-primary">{sender.name || sender.address}</span>
+              {sender.name ? <span className="min-w-0 flex-1 truncate text-content-secondary">{sender.address}</span> : null}
+            </label>
+          )
+        }) : (
+          <div className="px-3 py-6 text-center text-sm text-content-secondary">No senders found</div>
+        )}
+      </div>
+      <DropDrawerSeparator />
+      <Button className="h-9 w-full justify-start gap-2 px-2 text-sm" onClick={onRemove} type="button" variant="ghost">
+        <CircleX className="size-4" /> Clear filter
+      </Button>
+    </div>
+  )
+}
+
+function MailQuickFilterPicker({ disabled, expression, onChange, properties }: {
+  disabled: boolean
+  expression: MailFilterExpression
+  onChange: (filter: MailFilterExpression) => void
+  properties: PropertyDefinition[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [query, setQuery] = useState("")
+  const conditions = flattenConditions(expression)
+  const normalizedQuery = query.trim().toLowerCase()
+  const quickFilters = primaryMailQuickFilters.filter((filter) => filter.label.toLowerCase().includes(normalizedQuery))
+  const additionalProperties = properties.filter((property) =>
+    !primaryDirectPropertyIds.has(property.id) &&
+    property.label.toLowerCase().includes(normalizedQuery))
+  const showMoreFilters = expanded || Boolean(normalizedQuery)
+  return (
+    <DropDrawer open={open} onOpenChange={(nextOpen) => {
+      setOpen(nextOpen)
+      if (!nextOpen) {
+        setExpanded(false)
+        setQuery("")
+      }
+    }}>
       <DropDrawerTrigger asChild>
-        <Button disabled={disabled} size="sm" type="button" variant="secondary"><Plus className="size-4" /> Filter</Button>
+        <Button
+          className={cn(
+            "rounded-full px-3",
+            open && "border-action-selected-border bg-action-selected-subtle text-action-selected-text hover:bg-action-selected-subtle",
+          )}
+          size="lg"
+          type="button"
+          variant="secondary"
+        ><Plus className="size-4" /> Filter</Button>
       </DropDrawerTrigger>
       <DropDrawerContent align="start" className="max-h-[min(34rem,calc(100vh-5rem))] w-72 overflow-y-auto">
-        <div className="px-2 py-1.5 text-xs font-medium text-content-secondary">Filter by</div>
-        {mailQuickFilterCatalog.map((filter) => (
-          <DropDrawerItem key={filter.id} onSelect={() => {
-            onSelect({ id: crypto.randomUUID(), operator: filter.defaultOperator, propertyId: filter.propertyId, type: "condition", values: [...filter.defaultValues] })
-            setOpen(false)
-          }}>{filter.label}</DropDrawerItem>
-        ))}
-        <DropDrawerSeparator />
-        <DropDrawerSub title="More filters">
-          <DropDrawerSubTrigger><FilterIcon className="size-4" /> More filters</DropDrawerSubTrigger>
-          <DropDrawerSubContent className="w-72">
-            <DatabaseSearchableMenuItems inputAriaLabel="Search all mail filters" inputIcon={<FilterIcon className="size-4" />} inputPlaceholder="Filter by..." onSelect={(propertyId) => {
-              onSelect(defaultConditionForProperty(propertyId, properties))
+        <div className="relative m-1">
+          <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-content-secondary" />
+          <Input aria-label="Filter by" autoFocus className="h-9 pl-8" onChange={(event) => setQuery(event.target.value)} placeholder="Filter by" value={query} />
+        </div>
+        {quickFilters.map((filter) => {
+          const toggle = isToggleQuickFilter(filter)
+          const toggleAction = toggle || isCategoryQuickFilter(filter)
+          const existing = toggleAction ? toggleCondition(conditions, filter) : undefined
+          const checked = existing ? toggleChecked(existing, filter) : false
+          return (
+            <DropDrawerItem
+              disabled={disabled && !existing}
+              icon={filter.id === "has_attachments"
+                ? <Paperclip className="size-4" />
+                : filter.id === "is_unread" ? <MailIcon className="size-4" />
+                : toggle ? <Switch aria-label={toggleLabel(existing, filter)} checked={checked} tabIndex={-1} /> : undefined}
+              key={filter.id}
+              onSelect={(event) => {
+                if (toggleAction) {
+                  event.preventDefault()
+                  onChange(toggleQuickFilter(expression, filter))
+                  return
+                }
+                onChange(addNode(expression, expression.id, createQuickFilterCondition(filter)))
+                setOpen(false)
+              }}
+            >{toggleLabel(existing, filter)}</DropDrawerItem>
+          )
+        })}
+        {showMoreFilters && additionalProperties.length ? <DropDrawerSeparator /> : null}
+        {showMoreFilters ? additionalProperties.map((property) => {
+          const linkedFilter = linkedQuickFilterForProperty(property.id)
+          const existing = linkedFilter ? toggleCondition(conditions, linkedFilter) : undefined
+          return (
+            <DropDrawerItem disabled={disabled && !existing} icon={linkedFilter ? <MailIcon className="size-4" /> : undefined} key={property.id} onSelect={(event) => {
+              if (linkedFilter) {
+                event.preventDefault()
+                onChange(toggleQuickFilter(expression, linkedFilter))
+                return
+              }
+              onChange(addNode(expression, expression.id, defaultConditionForProperty(property.id, properties)))
               setOpen(false)
-            }} options={moreOptions} pinSearch />
-          </DropDrawerSubContent>
-        </DropDrawerSub>
+            }}>{linkedFilter ? toggleLabel(existing, linkedFilter) : property.label}</DropDrawerItem>
+          )
+        }) : null}
+        {!expanded && !normalizedQuery ? (
+          <DropDrawerItem onSelect={(event) => {
+            event.preventDefault()
+            setExpanded(true)
+          }}><Plus className="size-4" /> More filters</DropDrawerItem>
+        ) : null}
+        {normalizedQuery && !quickFilters.length && !additionalProperties.length ? (
+          <div className="px-3 py-6 text-center text-sm text-content-secondary">No filters found</div>
+        ) : null}
       </DropDrawerContent>
     </DropDrawer>
   )
@@ -232,7 +642,7 @@ function MailQuickFilterPicker({ disabled, onSelect, properties }: { disabled: b
 
 function useMailFilterProperties(labels: MailLabelRecord[], customProperties: MailPropertyDefinition[], members: MailPropertyWorkspaceMember[]) {
   return useMemo<PropertyDefinition[]>(() => [...mailSystemPropertyCatalog
-    .filter((property) => property.filterable)
+    .filter((property) => property.filterable && !hiddenMailFilterPropertyIds.has(property.id))
     .map((property) => ({
       id: property.id,
       label: property.label,
@@ -258,15 +668,122 @@ function valueOptions(propertyId: string, labels: MailLabelRecord[]): DatabaseSe
 
 function toSearchOption(property: PropertyDefinition): DatabaseSearchableMenuOption { return { label: property.label, value: property.id } }
 function flattenConditions(expression: MailFilterExpression): MailFilterCondition[] { return expression.filters.flatMap((node) => node.type === "condition" ? [node] : flattenConditions(node)) }
+function visibleConditions(expression: MailFilterExpression, hideImplicitInbox: boolean) {
+  return flattenConditions(expression).filter((condition) => !hideImplicitInbox || !isImplicitInboxCondition(condition))
+}
+function isImplicitInboxCondition(condition: MailFilterCondition) {
+  return condition.propertyId === "mailbox" && condition.operator === "is" && condition.values.length === 1 && condition.values[0] === "inbox"
+}
 function countConditions(expression: MailFilterExpression) { return flattenConditions(expression).length }
 function conditionLabel(condition: MailFilterCondition, properties: PropertyDefinition[]) {
   const property = properties.find((item) => item.id === condition.propertyId)
   const value = condition.values.length ? ` ${condition.values.join(", ")}` : ""
   return `${property?.label ?? condition.propertyId} ${getDatabaseFilterOperatorLabel(condition.operator)}${value}`
 }
+function conditionPillLabel(condition: MailFilterCondition, properties: PropertyDefinition[]) {
+  const quickFilter = mailQuickFilterCatalog.find((filter) => conditionMatchesQuickFilter(condition, filter))
+  if (quickFilter) return quickFilter.label
+  const property = properties.find((item) => item.id === condition.propertyId)
+  if (condition.values.length && ["contains", "is"].includes(condition.operator)) {
+    const values = condition.values.map((value) => property?.valueOptions.find((option) => option.value === String(value))?.label ?? String(value)).filter(Boolean)
+    if (values.length) return `${property?.label ?? condition.propertyId}: ${values.join(", ")}`
+  }
+  return conditionLabel(condition, properties)
+}
+function isToggleQuickFilter(filter: MailQuickFilter) {
+  return toggleQuickFilterIds.has(filter.id)
+}
+function isCategoryQuickFilter(filter: MailQuickFilter) {
+  return categoryQuickFilterIds.has(filter.id)
+}
+function linkedQuickFilterForProperty(propertyId: string) {
+  if (propertyId !== "unread") return undefined
+  return mailQuickFilterCatalog.find((filter) => filter.id === "is_unread")
+}
+function toggleCondition(conditions: MailFilterCondition[], filter: MailQuickFilter) {
+  if (filter.id === "has_attachments") {
+    return conditions.find((condition) => condition.propertyId === "attachments" && ["is_not_empty", "is_empty"].includes(condition.operator))
+  }
+  if (filter.id === "is_unread") {
+    return conditions.find((condition) => condition.propertyId === "unread" && condition.operator === "is" && typeof condition.values[0] === "boolean")
+  }
+  if (isCategoryQuickFilter(filter)) {
+    return conditions.find((condition) => condition.propertyId === "categories" && ["is", "contains"].includes(condition.operator))
+  }
+  return conditions.find((condition) => conditionMatchesQuickFilter(condition, filter))
+}
+function toggleChecked(condition: MailFilterCondition, filter: MailQuickFilter) {
+  if (filter.id === "has_attachments") return condition.operator === "is_not_empty"
+  if (filter.id === "is_unread") return condition.values[0] === true
+  return true
+}
+function toggleLabel(_condition: MailFilterCondition | undefined, filter: MailQuickFilter) {
+  if (filter.id === "has_attachments" && _condition) {
+    return _condition.operator === "is_not_empty" ? "No attachments" : "Has attachments"
+  }
+  if (filter.id === "is_unread" && _condition) {
+    return _condition.values[0] === true ? "Is read" : "Is unread"
+  }
+  if (isCategoryQuickFilter(filter) && _condition) {
+    const category = String(filter.defaultValues[0] ?? "")
+    if (_condition.enabled !== false && _condition.values.includes(category)) {
+      return filter.label.replace("Show", "Hide")
+    }
+  }
+  return filter.label
+}
+function toggleQuickFilter(expression: MailFilterExpression, filter: MailQuickFilter) {
+  const existing = toggleCondition(flattenConditions(expression), filter)
+  if (isCategoryQuickFilter(filter)) {
+    const category = String(filter.defaultValues[0] ?? "")
+    if (!existing) {
+      return addNode(expression, expression.id, {
+        ...createQuickFilterCondition(filter),
+        operator: "contains",
+        values: [category],
+      })
+    }
+    const selected = existing.enabled !== false && existing.values.includes(category)
+    const values = selected
+      ? existing.values.filter((value) => value !== category)
+      : [...new Set([...existing.values.map(String), category])]
+    return mapExpression(expression, (node) => node.type === "condition" && node.id === existing.id
+      ? setConditionEnabled({ ...node, operator: "contains", values }, values.length > 0)
+      : node)
+  }
+  if (filter.id === "has_attachments" && existing) {
+    return mapExpression(expression, (node) => node.type === "condition" && node.id === existing.id
+      ? { ...setConditionEnabled(node, true), operator: node.operator === "is_not_empty" ? "is_empty" : "is_not_empty" }
+      : node)
+  }
+  if (filter.id === "is_unread" && existing) {
+    return mapExpression(expression, (node) => node.type === "condition" && node.id === existing.id
+      ? { ...setConditionEnabled(node, true), values: [node.values[0] !== true] }
+      : node)
+  }
+  return existing
+    ? removeNode(expression, existing.id)
+    : addNode(expression, expression.id, createQuickFilterCondition(filter))
+}
+function conditionMatchesQuickFilter(condition: MailFilterCondition, filter: MailQuickFilter) {
+  return condition.propertyId === filter.propertyId &&
+    condition.operator === filter.defaultOperator &&
+    JSON.stringify(condition.values) === JSON.stringify(filter.defaultValues)
+}
+function createQuickFilterCondition(filter: MailQuickFilter): MailFilterCondition {
+  return {
+    id: crypto.randomUUID(),
+    operator: filter.defaultOperator,
+    propertyId: filter.propertyId,
+    type: "condition",
+    values: [...filter.defaultValues],
+  }
+}
 function defaultConditionForProperty(propertyId: string, properties: PropertyDefinition[]): MailFilterCondition {
   const property = properties.find((item) => item.id === propertyId)
-  const operator = (getDatabaseFilterOperatorsForType(property?.propertyType ?? "text")[0]?.value ?? "is") as MailFilterOperator
+  const operator = (propertyId === "categories"
+    ? "contains"
+    : getDatabaseFilterOperatorsForType(property?.propertyType ?? "text")[0]?.value ?? "is") as MailFilterOperator
   return { id: crypto.randomUUID(), operator, propertyId, type: "condition", values: operator === "is_empty" || operator === "is_not_empty" ? [] : [defaultValue(property)] }
 }
 function defaultValue(property: PropertyDefinition | undefined): MailFilterValue {
@@ -290,7 +807,9 @@ function updateCondition(root: MailFilterExpression, id: string, patch: { operat
     if (node.type !== "condition" || node.id !== id) return node
     const propertyId = patch.propertyId ?? node.propertyId
     const property = properties.find((item) => item.id === propertyId)
-    const operator = (patch.propertyId ? getDatabaseFilterOperatorsForType(property?.propertyType ?? "text")[0]?.value : patch.operator) ?? node.operator
+    const operator = (patch.propertyId
+      ? propertyId === "categories" ? "contains" : getDatabaseFilterOperatorsForType(property?.propertyType ?? "text")[0]?.value
+      : patch.operator) ?? node.operator
     const rawValues = patch.propertyId ? [String(defaultValue(property))] : patch.values ?? node.values.map(String)
     const values = rawValues.map((value): MailFilterValue => property?.propertyType === "checkbox" ? value === "true" : property?.propertyType === "number" ? Number(value) : value)
     return { ...node, operator: operator as MailFilterOperator, propertyId, values }
@@ -308,6 +827,17 @@ function updateGroup(root: MailFilterExpression, id: string, update: (group: Mai
 }
 function addNode(root: MailFilterExpression, groupId: string, node: MailFilterNode) { return updateGroup(root, groupId, (group) => ({ ...group, filters: [...group.filters, node] })) }
 function removeNode(root: MailFilterExpression, id: string): MailFilterExpression { return { ...root, filters: root.filters.filter((node) => node.id !== id).map((node) => node.type === "group" ? removeNode(node, id) : node) } }
+function toggleConditionEnabled(root: MailFilterExpression, id: string): MailFilterExpression {
+  return mapExpression(root, (node) => node.type === "condition" && node.id === id
+    ? setConditionEnabled(node, node.enabled === false)
+    : node)
+}
+function setConditionEnabled(condition: MailFilterCondition, enabled: boolean): MailFilterCondition {
+  if (!enabled) return { ...condition, enabled: false }
+  const activeCondition = { ...condition }
+  delete activeCondition.enabled
+  return activeCondition
+}
 
 export function cloneMailFilter(filter: MailFilterExpression): MailFilterExpression {
   return structuredClone(filter)

@@ -15,6 +15,9 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.match(routes, /post\("\/query\/groups"/)
     assert.match(page, /mailGroupsQuery\.data\?\.groups/)
     assert.match(page, /aria-expanded=\{!collapsedGroups\.has\(key\)\}/)
+    assert.match(editor, /group && group\.propertyId !== "starred"/)
+    assert.match(page, /propertyId === "starred"[\s\S]*Number\(right\.key === "true"\)/)
+    assert.match(page, /"Starred" : "Everything else"/)
   })
 
   test("mail group drag updates only mutable Gmail-backed groups", async () => {

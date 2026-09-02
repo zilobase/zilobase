@@ -349,7 +349,7 @@ function groupEntries(indexed: MailIndexedThread, group: MailGroupConfig): Array
       const key = dateGroupKey(thread.internalDate)
       return [{ key, label: key === "today" ? "Today" : key === "yesterday" ? "Yesterday" : "Earlier" }]
     }
-    case "starred": return [{ key: String(thread.starred), label: thread.starred ? "Starred" : "Not starred" }]
+    case "starred": return [{ key: String(thread.starred), label: thread.starred ? "Starred" : "Everything else" }]
     case "important":
     case "priority": return [{ key: String(indexed.important), label: indexed.important ? "Important" : "Not important" }]
     case "unread": return [{ key: String(thread.unread), label: thread.unread ? "Unread" : "Read" }]
@@ -390,6 +390,9 @@ function isMutableGroup(propertyId: string) {
 }
 
 function groupOrder(group: MailGroupConfig, left: MailQueryGroup, right: MailQueryGroup) {
+  if (group.propertyId === "starred") {
+    return Number(right.key === "true") - Number(left.key === "true")
+  }
   const dateOrder = ["today", "yesterday", "earlier"]
   const leftDate = dateOrder.indexOf(left.key)
   const rightDate = dateOrder.indexOf(right.key)
