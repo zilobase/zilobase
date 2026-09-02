@@ -266,8 +266,10 @@ export function DatabaseAutomationManager({
         </DropDrawerTrigger>
         <DropDrawerContent
           align="end"
-          className="flex h-[min(720px,calc(100vh-5rem))] w-[448px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden p-0 max-sm:h-[calc(100dvh-1rem)] max-sm:w-[calc(100vw-1rem)]"
+          className="flex h-[min(720px,var(--radix-dropdown-menu-content-available-height))] max-h-(--radix-dropdown-menu-content-available-height) w-[min(448px,var(--radix-dropdown-menu-content-available-width))] max-w-(--radix-dropdown-menu-content-available-width) flex-col overflow-hidden p-0 max-sm:h-[calc(100dvh-1rem)] max-sm:w-[calc(100vw-1rem)]"
           onCloseAutoFocus={(event) => event.preventDefault()}
+          side="left"
+          sideOffset={8}
         >
           <ManagerHeader
             onBack={screen === "list" ? undefined : requestBack}

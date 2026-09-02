@@ -25,8 +25,26 @@ export function register({ assert, readSource, test }) {
       "Pause",
       "Resume",
     ]) assert.match(manager, new RegExp(behavior.replace("?", "\\?")))
-    assert.match(manager, /w-\[448px\]/)
+    assert.match(manager, /w-\[min\(448px,var\(--radix-dropdown-menu-content-available-width\)\)\]/)
     assert.match(manager, /max-sm:h-\[calc\(100dvh-1rem\)\]/)
+  })
+
+  test("automation manager and nested menus stay anchored inside the viewport", async () => {
+    const [manager, menu] = await Promise.all([
+      readSource("/src/features/databases/automations/database-automation-manager.tsx"),
+      readSource("/src/shared/ui/dropdown-menu.tsx"),
+    ])
+
+    assert.match(manager, /<DropDrawerContent[\s\S]*?side="left"/)
+    assert.match(manager, /--radix-dropdown-menu-content-available-height/)
+    assert.match(manager, /--radix-dropdown-menu-content-available-width/)
+    assert.match(menu, /avoidCollisions = true/)
+    assert.match(menu, /collisionPadding = 8/)
+    assert.match(menu, /sticky = "always"/)
+    assert.match(menu, /data-\[side=top\]/)
+    assert.match(menu, /data-\[side=right\]/)
+    assert.match(menu, /data-\[side=bottom\]/)
+    assert.match(menu, /data-\[side=left\]/)
   })
 
   test("data-source settings launches the shared automation manager", async () => {
