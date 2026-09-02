@@ -18,6 +18,8 @@ import {
   isAutomationWebhooksEnabled,
   isAutomationSlackEnabled,
   getAutomationWebhookHttpDomains,
+  getDatabaseAutomationRetention,
+  isDatabaseAutomationExecutionEnabled,
   resolvePublicRequestUrl,
 } from "./config";
 
@@ -39,6 +41,16 @@ test("automation webhooks and self-hosted HTTP domains are explicit", () => {
 test("automation Slack is disabled unless explicitly enabled", () => {
   assert.equal(isAutomationSlackEnabled({}), false);
   assert.equal(isAutomationSlackEnabled({ AUTOMATION_SLACK_ENABLED: "true" }), true);
+});
+
+test("automation execution kill switch and retention defaults are operator-owned", () => {
+  assert.equal(isDatabaseAutomationExecutionEnabled({}), true);
+  assert.equal(isDatabaseAutomationExecutionEnabled({ DATABASE_AUTOMATIONS_EXECUTION_DISABLED: "TRUE" }), false);
+  assert.deepEqual(getDatabaseAutomationRetention({}), { runSummaryDays: 30, stepDetailDays: 7 });
+  assert.deepEqual(getDatabaseAutomationRetention({
+    DATABASE_AUTOMATION_RUN_RETENTION_DAYS: "999",
+    DATABASE_AUTOMATION_STEP_RETENTION_DAYS: "0",
+  }), { runSummaryDays: 365, stepDetailDays: 1 });
 });
 
 test("public request URLs prefer the local Host over a rewritten production origin", () => {

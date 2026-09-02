@@ -70,9 +70,10 @@ before-value read; a partial unique index is the second concurrency boundary.
 Linked database containers continue to receive independent realtime commits,
 while the source fact is captured once.
 
-The executable audit is
+The executable final audit is
 `apps/server/src/features/databases/automations/mutation-audit.test.ts`. It
 requires every eligible path above to expose a fact and every remaining direct
-write to retain an explicit `automation-origin: system` suppression. Evaluation
-remains absent/disabled; Node maintenance and hosted adapter exports only close
-dark-capture windows and expose aggregate counts/oldest-age metrics.
+write to retain an explicit `automation-origin: system` suppression. Evaluation,
+schedules, and actions now consume the same source facts in hosted and
+self-hosted workers. The execution kill switch leaves capture enabled so an
+operator can inspect aggregate backlog safely before resuming.

@@ -84,7 +84,7 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 | Keyboard operation, focus restoration, labels, announcements, no color-only status | 5 | Accessibility tests and manual audit | implemented |
 | Hosted Cloudflare and self-hosted Node parity | 4, 6–11 | Adapter, restart, and deployment tests | implemented |
 | Metrics, retention, cleanup, quotas, alerts, runbooks, and global kill switch | 3, 11 | Operational acceptance suite | implemented |
-| Hosted canary, self-hosted opt-in, and rollback-safe disabling | 11 | Release checklist | planned |
+| Hosted canary, self-hosted opt-in, and rollback-safe disabling | 11 | Release checklist and operations runbook | planned |
 
 ## Explicit exclusions
 

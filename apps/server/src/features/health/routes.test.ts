@@ -20,6 +20,11 @@ test("root and health probes return the stable service contract", async () => {
   }
 });
 
+test("automation operations health is hidden without its bearer token", async () => {
+  const response = await healthRoutes.request("/health/automations");
+  assert.equal(response.status, 404);
+});
+
 test("ready returns dependency status and a retryable failure", async () => {
   checkReadiness.mockResolvedValueOnce({
     checks: { database: "ok", objectStorage: "ok", realtime: "ok" },

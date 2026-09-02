@@ -18,6 +18,7 @@ import {
   DatabaseAutomationError,
   deleteDatabaseAutomation,
   duplicateDatabaseAutomation,
+  exportDatabaseAutomationAudit,
   getDatabaseAutomation,
   getDatabaseAutomationCatalog,
   listDatabaseAutomations,
@@ -111,6 +112,16 @@ databaseAutomationRoutes.post("/:databaseId/automations", async (c) => {
     });
     return c.json(result.automation, result.created ? 201 : 200);
   }, true);
+});
+
+databaseAutomationRoutes.get("/:databaseId/automations/audit", async (c) => {
+  const user = requireDatabaseRouteUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const dataSourceId = c.req.query("dataSourceId")?.trim();
+  if (!dataSourceId) return c.json({ code: "AUTOMATION_SOURCE_REQUIRED", error: "dataSourceId is required" }, 400);
+  return handle(c, () => exportDatabaseAutomationAudit({
+    databaseId: c.req.param("databaseId"), dataSourceId, userId: user.id,
+  }));
 });
 
 databaseAutomationRoutes.get("/:databaseId/automations/:automationId", async (c) => {

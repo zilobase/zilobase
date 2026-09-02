@@ -1000,6 +1000,31 @@ export const slackAutomationChannelSchema = z.object({
 }).strict()
 export type SlackAutomationChannel = z.infer<typeof slackAutomationChannelSchema>
 
+export const databaseAutomationActionTypeSchema = z.enum([
+  "define_variables", "edit_trigger_page", "add_page", "edit_pages",
+  "send_notification", "send_gmail", "send_webhook", "send_slack",
+])
+
+export const databaseAutomationAuditExportSchema = z.object({
+  automations: z.array(z.object({
+    actionTypes: z.array(databaseAutomationActionTypeSchema),
+    createdAt: z.string().datetime(),
+    deletedAt: z.string().datetime().nullable(),
+    definitionHash: z.string().regex(/^[a-f0-9]{64}$/),
+    dependencyCounts: z.record(z.string(), z.number().int().nonnegative()),
+    id: stableIdSchema,
+    name: shortTextSchema,
+    ownerPresent: z.boolean(),
+    runCounts: z.record(z.string(), z.number().int().nonnegative()),
+    status: databaseAutomationStatusSchema,
+    updatedAt: z.string().datetime(),
+    version: z.number().int().positive(),
+  }).strict()),
+  dataSourceId: stableIdSchema,
+  generatedAt: z.string().datetime(),
+}).strict()
+export type DatabaseAutomationAuditExport = z.infer<typeof databaseAutomationAuditExportSchema>
+
 export const createDatabaseAutomationSecretRequestSchema = z.object({
   dataSourceId: stableIdSchema,
   purpose: z.literal("webhook_header"),

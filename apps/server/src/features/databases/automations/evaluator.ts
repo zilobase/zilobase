@@ -16,7 +16,7 @@ import {
   type DatabaseAutomationDefinition,
 } from "@zilobase/features/databases/automations";
 
-import type { RuntimeEnv } from "../../../shared/config/config";
+import { isDatabaseAutomationExecutionEnabled, type RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import {
   database,
@@ -43,6 +43,7 @@ export async function drainDatabaseAutomationEventWindows(
   env: RuntimeEnv,
   options: { limit?: number; workerId?: string } = {},
 ) {
+  if (!isDatabaseAutomationExecutionEnabled(env)) return { claimed: 0, completed: 0, retried: 0, runsCreated: 0 };
   await promoteClosedDatabaseAutomationEventWindows({ limit: options.limit });
   const now = new Date();
   const workerId = options.workerId ?? `automation-evaluator:${crypto.randomUUID()}`;

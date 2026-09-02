@@ -6,7 +6,7 @@ import {
   type DatabaseAutomationSchedule,
 } from "@zilobase/features/databases/automations";
 
-import type { RuntimeEnv } from "../../../shared/config/config";
+import { isDatabaseAutomationExecutionEnabled, type RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import {
   databaseAutomation,
@@ -41,6 +41,7 @@ export async function scanDueDatabaseAutomationSchedules(
   env: RuntimeEnv,
   options: { limit?: number; now?: Date } = {},
 ) {
+  if (!isDatabaseAutomationExecutionEnabled(env)) return { claimed: 0, runIds: [] as string[] };
   const now = options.now ?? new Date();
   const limit = Math.max(1, Math.min(options.limit ?? 50, 100));
   const result = await db.transaction(async (tx) => {

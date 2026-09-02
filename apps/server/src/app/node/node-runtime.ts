@@ -40,6 +40,7 @@ import { drainDatabaseAutomationRuns } from "../../features/databases/automation
 import { scanDueDatabaseAutomationSchedules } from "../../features/databases/automations/scheduler";
 import { drainInProductNotificationOutbox } from "../../features/notifications/outbox";
 import { fetchPinnedNodeWebhook } from "./pinned-webhook";
+import { cleanupDatabaseAutomationHistory, getDatabaseAutomationOperationalSnapshot } from "../../features/databases/automations/operations";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -188,6 +189,8 @@ function startDatabaseAutomationWorker(env: Record<string, unknown>) {
   const workerId = `node-automations:${process.pid}:${crypto.randomUUID()}`;
   let running = false;
   let nextScheduleScanAt = 0;
+  let nextCleanupAt = 0;
+  let nextMetricsAt = 0;
   const drain = async () => {
     if (running) return;
     running = true;
@@ -198,6 +201,13 @@ function startDatabaseAutomationWorker(env: Record<string, unknown>) {
           await scanDueDatabaseAutomationSchedules(env, { limit: 50, now: new Date(now) });
           nextScheduleScanAt = now + 60_000;
         }
+        if (now >= nextCleanupAt) {
+          const cleanup = await cleanupDatabaseAutomationHistory(env, { now: new Date(now) });
+          if (Object.entries(cleanup).some(([key, value]) => key !== "retention" && typeof value === "number" && value > 0)) {
+            console.info(JSON.stringify({ cleanup, event: "database_automation_retention_cleanup" }));
+          }
+          nextCleanupAt = now + 5 * 60_000;
+        }
         await drainDatabaseAutomationEventWindows(env, {
           limit: 50,
           workerId: `${workerId}:events`,
@@ -207,6 +217,10 @@ function startDatabaseAutomationWorker(env: Record<string, unknown>) {
           workerId: `${workerId}:runs`,
         });
         await drainInProductNotificationOutbox(env, { limit: 100 });
+        if (now >= nextMetricsAt) {
+          console.info(JSON.stringify({ event: "database_automation_operational_snapshot", snapshot: await getDatabaseAutomationOperationalSnapshot({ now: new Date(now) }) }));
+          nextMetricsAt = now + 60_000;
+        }
       });
     } catch (error) {
       console.error(JSON.stringify({

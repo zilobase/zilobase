@@ -6,6 +6,7 @@ import {
   createDatabaseAutomationRequestSchema,
   createDatabaseAutomationSecretRequestSchema,
   databaseAutomationCatalogSchema,
+  databaseAutomationAuditExportSchema,
   databaseAutomationDefinitionSchema,
   databaseAutomationDefinitionV1Schema,
   databaseAutomationDeliverySchema,
@@ -299,6 +300,25 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
     }).canManage,
     true,
   )
+
+  assert.equal(databaseAutomationAuditExportSchema.parse({
+    automations: [{
+      actionTypes: ["send_webhook"],
+      createdAt: "2026-09-02T00:00:00.000Z",
+      definitionHash: "a".repeat(64),
+      deletedAt: null,
+      dependencyCounts: { property: 2, secret: 1 },
+      id: "automation-1",
+      name: "Notify",
+      ownerPresent: true,
+      runCounts: { succeeded: 3 },
+      status: "active",
+      updatedAt: "2026-09-02T00:00:00.000Z",
+      version: 2,
+    }],
+    dataSourceId: "source-1",
+    generatedAt: "2026-09-02T00:00:00.000Z",
+  }).automations[0]?.ownerPresent, true)
 
   assert.equal(
     databaseAutomationMutationFactSchema.parse({

@@ -3,6 +3,7 @@ import {
   and,
   asc,
   eq,
+  gt,
   inArray,
   isNull,
   lte,
@@ -23,7 +24,7 @@ import {
   type FormulaValue,
 } from "@zilobase/features/databases/formula";
 
-import { getAutomationWebhookHttpDomains, isAutomationSlackEnabled, isAutomationWebhooksEnabled, isMailFeatureEnabled, type RuntimeEnv } from "../../../shared/config/config";
+import { getAutomationWebhookHttpDomains, isAutomationSlackEnabled, isAutomationWebhooksEnabled, isDatabaseAutomationExecutionEnabled, isMailFeatureEnabled, type RuntimeEnv } from "../../../shared/config/config";
 import { isSelfHostedRuntime } from "../../../infrastructure/runtime/runtime-adapter";
 import { db } from "../../../infrastructure/database";
 import {
@@ -69,6 +70,28 @@ import { sendPinnedWebhook, validateWebhookHeaderName, WebhookEgressError } from
 import { listSlackChannels, sendSlackMessage, SlackProviderError } from "./slack-provider";
 
 const RUN_LEASE_MS = 2 * 60_000;
+const WORKSPACE_RUN_LIMIT = 10;
+
+export function selectWorkspaceRunClaims(
+  candidates: Array<{ id: string; workspaceId: string }>,
+  running: Array<{ count: number; workspaceId: string }>,
+  limit: number,
+) {
+  const available = new Map<string, number>();
+  for (const { workspaceId } of candidates) {
+    if (!available.has(workspaceId)) {
+      available.set(workspaceId, WORKSPACE_RUN_LIMIT - (running.find((row) => row.workspaceId === workspaceId)?.count ?? 0));
+    }
+  }
+  const selected: string[] = [];
+  for (const row of candidates) {
+    const remaining = available.get(row.workspaceId) ?? 0;
+    if (remaining <= 0 || selected.length >= limit) continue;
+    selected.push(row.id);
+    available.set(row.workspaceId, remaining - 1);
+  }
+  return selected;
+}
 
 type ExecutionContext = Awaited<ReturnType<typeof loadExecutionContext>> & {
   actionOutputs: Record<string, Record<string, unknown>>;
@@ -86,16 +109,25 @@ class AutomationActionError extends Error {
   }
 }
 
+export class AutomationRunCapacityError extends Error {
+  readonly code = "AUTOMATION_WORKSPACE_CAPACITY";
+  constructor() {
+    super("Automation workspace concurrency is currently full");
+    this.name = "AutomationRunCapacityError";
+  }
+}
+
 export async function drainDatabaseAutomationRuns(
   env: RuntimeEnv,
   options: { limit?: number; runId?: string; workerId?: string } = {},
 ) {
+  if (!isDatabaseAutomationExecutionEnabled(env)) return { claimed: 0, failed: 0, succeeded: 0 };
   const now = new Date();
   const workerId = options.workerId ?? `automation-runner:${crypto.randomUUID()}`;
   const limit = Math.max(1, Math.min(options.limit ?? 10, 50));
   const claimed = await db.transaction(async (tx) => {
     const rows = await tx
-      .select({ id: databaseAutomationRun.id })
+      .select({ id: databaseAutomationRun.id, workspaceId: databaseAutomationRun.workspaceId })
       .from(databaseAutomationRun)
       .where(
         and(
@@ -110,10 +142,24 @@ export async function drainDatabaseAutomationRuns(
         ),
       )
       .orderBy(asc(databaseAutomationRun.createdAt))
-      .limit(limit)
+      .limit(250)
       .for("update", { skipLocked: true });
-    if (!rows.length) return [];
-    return tx
+    if (!rows.length) return { claims: [] as Array<{ id: string }>, deferred: false };
+    const workspaceIds = [...new Set(rows.map(({ workspaceId }) => workspaceId))].sort();
+    for (const workspaceId of workspaceIds) {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`database-automation:${workspaceId}`}))`);
+    }
+    const running = await tx.select({
+      count: sql<number>`count(*)::integer`,
+      workspaceId: databaseAutomationRun.workspaceId,
+    }).from(databaseAutomationRun).where(and(
+      inArray(databaseAutomationRun.workspaceId, workspaceIds),
+      eq(databaseAutomationRun.status, "running"),
+      gt(databaseAutomationRun.leaseExpiresAt, now),
+    )).groupBy(databaseAutomationRun.workspaceId);
+    const selected = selectWorkspaceRunClaims(rows, running, limit);
+    if (!selected.length) return { claims: [] as Array<{ id: string }>, deferred: Boolean(options.runId) };
+    const claims = await tx
       .update(databaseAutomationRun)
       .set({
         attempts: sql`${databaseAutomationRun.attempts} + 1`,
@@ -123,18 +169,20 @@ export async function drainDatabaseAutomationRuns(
         status: "running",
         updatedAt: now,
       })
-      .where(inArray(databaseAutomationRun.id, rows.map((row) => row.id)))
+      .where(inArray(databaseAutomationRun.id, selected))
       .returning({ id: databaseAutomationRun.id });
+    return { claims, deferred: false };
   });
+  if (claimed.deferred) throw new AutomationRunCapacityError();
 
   let failed = 0;
   let succeeded = 0;
-  for (const run of claimed) {
+  for (const run of claimed.claims) {
     const result = await executeRun(run.id, workerId, env);
     if (result === "succeeded") succeeded += 1;
     else failed += 1;
   }
-  return { claimed: claimed.length, failed, succeeded };
+  return { claimed: claimed.claims.length, failed, succeeded };
 }
 
 async function executeRun(runId: string, workerId: string, env: RuntimeEnv) {

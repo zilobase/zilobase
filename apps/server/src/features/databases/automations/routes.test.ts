@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppBindings } from "../../../shared/types";
 
 const mocks = vi.hoisted(() => ({
+  audit: vi.fn(),
   create: vi.fn(),
   createSecret: vi.fn(),
   delete: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock("./service", () => {
     DatabaseAutomationError,
     deleteDatabaseAutomation: mocks.delete,
     duplicateDatabaseAutomation: mocks.duplicate,
+    exportDatabaseAutomationAudit: mocks.audit,
     getDatabaseAutomation: mocks.detail,
     getDatabaseAutomationCatalog: mocks.catalog,
     listDatabaseAutomations: mocks.list,

@@ -8,6 +8,9 @@ test("Node maintenance promotes closed dark-capture windows", async () => {
   expect(runtime).toContain("drainDatabaseAutomationRuns(env");
   expect(runtime).toContain("scanDueDatabaseAutomationSchedules(env");
   expect(runtime).toContain("nextScheduleScanAt = now + 60_000");
+  expect(runtime).toContain("cleanupDatabaseAutomationHistory(env");
+  expect(runtime).toContain("nextCleanupAt = now + 5 * 60_000");
+  expect(runtime).toContain("getDatabaseAutomationOperationalSnapshot");
 });
 
 test("hosted adapters can promote windows and read bounded capture metrics", async () => {
@@ -17,4 +20,6 @@ test("hosted adapters can promote windows and read bounded capture metrics", asy
   expect(adapter).toContain("drainDatabaseAutomationEventWindows");
   expect(adapter).toContain("drainDatabaseAutomationRuns");
   expect(adapter).toContain("scanDueDatabaseAutomationSchedules");
+  expect(adapter).toContain("cleanupDatabaseAutomationHistory");
+  expect(adapter).toContain("getDatabaseAutomationOperationalSnapshot");
 });
