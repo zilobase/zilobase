@@ -62,6 +62,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 
@@ -463,6 +470,46 @@ function AutomationList({ data, error, loading, onCreate, onEdit, onLifecycle, o
   );
 }
 
+const emptySelectValue = "__automation_select_empty__";
+
+function AutomationSelect({
+  ariaLabel,
+  className,
+  disabled,
+  onValueChange,
+  options,
+  value,
+}: {
+  ariaLabel: string;
+  className?: string;
+  disabled?: boolean;
+  onValueChange: (value: string) => void;
+  options: Array<{ label: string; value: string }>;
+  value: string;
+}) {
+  return (
+    <Select
+      disabled={disabled}
+      onValueChange={(nextValue) => onValueChange(nextValue === emptySelectValue ? "" : nextValue)}
+      value={value || emptySelectValue}
+    >
+      <SelectTrigger aria-label={ariaLabel} className={cn("w-full min-w-0", className)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent align="start" position="popper">
+        {options.map((option) => (
+          <SelectItem
+            key={option.value || emptySelectValue}
+            value={option.value || emptySelectValue}
+          >
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function AutomationBuilder({ catalog, databaseId, dataSourceId, dataSourceName, draft, generatedName, loading, onChange, onConnectSlack }: {
   catalog?: DatabaseAutomationCatalog;
   databaseId: string;
@@ -486,24 +533,25 @@ function AutomationBuilder({ catalog, databaseId, dataSourceId, dataSourceName, 
       />
       <label className="flex items-center justify-between gap-3 text-sm">
         <span className="font-medium">For pages in</span>
-        <select
-          aria-label="Automation scope"
-          className="h-8 max-w-56 rounded-md border bg-control-background px-2 text-sm"
-          onChange={(event) => patch({ scopeViewId: event.target.value })}
+        <AutomationSelect
+          ariaLabel="Automation scope"
+          className="h-8 max-w-56 text-sm"
+          onValueChange={(scopeViewId) => patch({ scopeViewId })}
+          options={[
+            { label: `${dataSourceName} · Entire data source`, value: "" },
+            ...(catalog?.views.map((view) => ({ label: view.name, value: view.id })) ?? []),
+          ]}
           value={draft.scopeViewId}
-        >
-          <option value="">{dataSourceName} · Entire data source</option>
-          {catalog?.views.map((view) => <option key={view.id} value={view.id}>{view.name}</option>)}
-        </select>
+        />
       </label>
       <section>
         <div className="mb-2 flex items-center justify-between">
           <span className="text-xs font-medium text-content-secondary">Run automation</span>
-          <select
-            aria-label="Automation trigger type"
-            className="h-7 rounded-md border bg-control-background px-2 text-xs"
-            onChange={(event) => {
-              const triggerKind = event.target.value as BuilderDraft["triggerKind"];
+          <AutomationSelect
+            ariaLabel="Automation trigger type"
+            className="w-auto text-xs"
+            onValueChange={(value) => {
+              const triggerKind = value as BuilderDraft["triggerKind"];
               patch({
                 actions: triggerKind === "schedule"
                   ? draft.actions.map((action) => action.type === "edit_trigger_page"
@@ -515,19 +563,28 @@ function AutomationBuilder({ catalog, databaseId, dataSourceId, dataSourceName, 
                 triggerKind,
               });
             }}
+            options={[
+              { label: "When pages change", value: "event" },
+              { label: "On a schedule", value: "schedule" },
+            ]}
             value={draft.triggerKind}
-          >
-            <option value="event">When pages change</option><option value="schedule">On a schedule</option>
-          </select>
+          />
         </div>
         {draft.triggerKind === "schedule" ? (
           <ScheduleEditor onChange={(schedule) => patch({ schedule })} schedule={draft.schedule} />
         ) : (
           <>
             <div className="mb-2 flex justify-end">
-              <select aria-label="Event trigger matching" className="h-7 rounded-md border bg-control-background px-2 text-xs" onChange={(event) => patch({ match: event.target.value as "all" | "any" })} value={draft.match}>
-                <option value="any">Any trigger</option><option value="all">All triggers</option>
-              </select>
+              <AutomationSelect
+                ariaLabel="Event trigger matching"
+                className="w-auto text-xs"
+                onValueChange={(match) => patch({ match: match as "all" | "any" })}
+                options={[
+                  { label: "Any trigger", value: "any" },
+                  { label: "All triggers", value: "all" },
+                ]}
+                value={draft.match}
+              />
             </div>
             <div className="space-y-2">
               {draft.triggers.map((trigger, index) => (
@@ -582,21 +639,38 @@ function TriggerCard({ catalog, index, onChange, onRemove, trigger }: {
     <div className="rounded-lg border p-3">
       <div className="mb-2 flex items-center gap-2"><Zap className="size-4" /><span className="text-sm font-medium">Trigger {index + 1}</span>{onRemove ? <Button aria-label="Remove trigger" className="ml-auto" onClick={onRemove} size="icon" variant="ghost"><X /></Button> : null}</div>
       <div className="grid gap-2">
-        <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...trigger, type: event.target.value as TriggerDraft["type"] })} value={trigger.type}>
-          <option value="page_added">Page added</option><option value="property_edited">Property edited</option>
-        </select>
+        <AutomationSelect
+          ariaLabel={`Trigger ${index + 1} type`}
+          className="h-8 text-sm"
+          onValueChange={(type) => onChange({ ...trigger, type: type as TriggerDraft["type"] })}
+          options={[
+            { label: "Page added", value: "page_added" },
+            { label: "Property edited", value: "property_edited" },
+          ]}
+          value={trigger.type}
+        />
         {trigger.type === "property_edited" ? (
           <>
-            <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => {
-              const nextProperty = catalog?.properties.find((item) => item.id === event.target.value);
-              onChange({ ...trigger, operand: "", operator: nextProperty?.operators[0] ?? "was_edited", propertyId: event.target.value });
-            }} value={trigger.propertyId}>
-              <option value="any">Any property</option>
-              {catalog?.properties.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </select>
-            <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...trigger, operator: event.target.value as DatabaseAutomationTriggerOperator })} value={trigger.operator}>
-              {(trigger.propertyId === "any" ? ["was_edited"] : property?.operators ?? ["was_edited"]).map((operator) => <option key={operator} value={operator}>{humanize(operator)}</option>)}
-            </select>
+            <AutomationSelect
+              ariaLabel={`Trigger ${index + 1} property`}
+              className="h-8 text-sm"
+              onValueChange={(propertyId) => {
+                const nextProperty = catalog?.properties.find((item) => item.id === propertyId);
+                onChange({ ...trigger, operand: "", operator: nextProperty?.operators[0] ?? "was_edited", propertyId });
+              }}
+              options={[
+                { label: "Any property", value: "any" },
+                ...(catalog?.properties.map((item) => ({ label: item.name, value: item.id })) ?? []),
+              ]}
+              value={trigger.propertyId}
+            />
+            <AutomationSelect
+              ariaLabel={`Trigger ${index + 1} operator`}
+              className="h-8 text-sm"
+              onValueChange={(operator) => onChange({ ...trigger, operator: operator as DatabaseAutomationTriggerOperator })}
+              options={(trigger.propertyId === "any" ? ["was_edited"] : property?.operators ?? ["was_edited"]).map((operator) => ({ label: humanize(operator), value: operator }))}
+              value={trigger.operator}
+            />
             {!operandless.has(trigger.operator) ? <Input aria-label="Trigger value" onChange={(event) => onChange({ ...trigger, operand: event.target.value })} placeholder="Value" value={trigger.operand} /> : null}
           </>
         ) : null}
@@ -615,16 +689,35 @@ function ScheduleEditor({ onChange, schedule }: {
     <div className="grid gap-3 rounded-lg border p-3">
       <label className="grid gap-1 text-xs font-medium text-content-secondary">
         Frequency
-        <select aria-label="Schedule frequency" className="h-8 rounded-md border bg-control-background px-2 text-sm text-content-primary" onChange={(event) => patch({ frequency: event.target.value as ScheduleDraft["frequency"] })} value={schedule.frequency}>
-          <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option><option value="custom">Custom</option>
-        </select>
+        <AutomationSelect
+          ariaLabel="Schedule frequency"
+          className="h-8 text-sm text-content-primary"
+          onValueChange={(frequency) => patch({ frequency: frequency as ScheduleDraft["frequency"] })}
+          options={[
+            { label: "Daily", value: "daily" },
+            { label: "Weekly", value: "weekly" },
+            { label: "Monthly", value: "monthly" },
+            { label: "Yearly", value: "yearly" },
+            { label: "Custom", value: "custom" },
+          ]}
+          value={schedule.frequency}
+        />
       </label>
       {schedule.frequency === "custom" ? (
         <label className="grid gap-1 text-xs font-medium text-content-secondary">
           Repeat unit
-          <select aria-label="Custom schedule unit" className="h-8 rounded-md border bg-control-background px-2 text-sm text-content-primary" onChange={(event) => patch({ customPattern: event.target.value as ScheduleDraft["customPattern"] })} value={schedule.customPattern}>
-            <option value="daily">Days</option><option value="weekly">Weeks</option><option value="monthly">Months</option><option value="yearly">Years</option>
-          </select>
+          <AutomationSelect
+            ariaLabel="Custom schedule unit"
+            className="h-8 text-sm text-content-primary"
+            onValueChange={(customPattern) => patch({ customPattern: customPattern as ScheduleDraft["customPattern"] })}
+            options={[
+              { label: "Days", value: "daily" },
+              { label: "Weeks", value: "weekly" },
+              { label: "Months", value: "monthly" },
+              { label: "Years", value: "yearly" },
+            ]}
+            value={schedule.customPattern}
+          />
         </label>
       ) : null}
       <div className="grid grid-cols-2 gap-2">
@@ -657,10 +750,16 @@ function ScheduleEditor({ onChange, schedule }: {
       {pattern === "monthly" || pattern === "yearly" ? (
         <label className="grid gap-1 text-xs font-medium text-content-secondary">
           Day of month
-          <select aria-label="Schedule day of month" className="h-8 rounded-md border bg-control-background px-2 text-sm text-content-primary" onChange={(event) => patch({ dayOfMonth: event.target.value })} value={schedule.dayOfMonth}>
-            {Array.from({ length: 31 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}
-            <option value="last">Last day</option>
-          </select>
+          <AutomationSelect
+            ariaLabel="Schedule day of month"
+            className="h-8 text-sm text-content-primary"
+            onValueChange={(dayOfMonth) => patch({ dayOfMonth })}
+            options={[
+              ...Array.from({ length: 31 }, (_, index) => ({ label: String(index + 1), value: String(index + 1) })),
+              { label: "Last day", value: "last" },
+            ]}
+            value={schedule.dayOfMonth}
+          />
         </label>
       ) : null}
       {pattern === "yearly" ? (
@@ -705,26 +804,46 @@ function ActionCard({ action, catalog, databaseId, dataSourceId, index, onChange
     <div className="rounded-lg border p-3">
       <div className="mb-2 flex items-center gap-1"><Zap className="size-4" /><span className="text-sm font-medium">Action {index + 1}</span><Button aria-label="Move action up" className="ml-auto" disabled={index === 0} onClick={() => onMove(-1)} size="icon" variant="ghost"><ArrowUp /></Button><Button aria-label="Move action down" onClick={() => onMove(1)} size="icon" variant="ghost"><ArrowDown /></Button>{onRemove ? <Button aria-label="Remove action" onClick={onRemove} size="icon" variant="ghost"><X /></Button> : null}</div>
       <div className="grid gap-2">
-        <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => {
-          const type = event.target.value as ActionDraft["type"];
-          onChange({
-            ...action,
-            ...(type === "send_notification" && action.recipientType === "email"
-              ? { recipientType: "selected_user" as const, recipientValue: "" }
-              : {}),
-            type,
-          });
-        }} value={action.type}>
-          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option><option value="send_notification">Send notification</option>{catalog?.actions.find((item) => item.type === "send_gmail")?.available ? <option value="send_gmail">Send Gmail</option> : null}{catalog?.actions.find((item) => item.type === "send_webhook")?.available ? <option value="send_webhook">Send webhook</option> : null}{catalog?.actions.find((item) => item.type === "send_slack")?.available ? <option value="send_slack">Send Slack message</option> : null}
-        </select>
+        <AutomationSelect
+          ariaLabel={`Action ${index + 1} type`}
+          className="h-8 text-sm"
+          onValueChange={(value) => {
+            const type = value as ActionDraft["type"];
+            onChange({
+              ...action,
+              ...(type === "send_notification" && action.recipientType === "email"
+                ? { recipientType: "selected_user" as const, recipientValue: "" }
+                : {}),
+              type,
+            });
+          }}
+          options={[
+            { label: "Define variables", value: "define_variables" },
+            ...(!scheduled ? [{ label: "Edit trigger page", value: "edit_trigger_page" }] : []),
+            { label: "Add page", value: "add_page" },
+            { label: "Edit pages", value: "edit_pages" },
+            { label: "Send notification", value: "send_notification" },
+            ...(catalog?.actions.find((item) => item.type === "send_gmail")?.available ? [{ label: "Send Gmail", value: "send_gmail" }] : []),
+            ...(catalog?.actions.find((item) => item.type === "send_webhook")?.available ? [{ label: "Send webhook", value: "send_webhook" }] : []),
+            ...(catalog?.actions.find((item) => item.type === "send_slack")?.available ? [{ label: "Send Slack message", value: "send_slack" }] : []),
+          ]}
+          value={action.type}
+        />
         {action.type === "send_slack" ? (
           <SlackActionFields action={action} catalog={catalog} dataSourceId={dataSourceId} databaseId={databaseId} onChange={onChange} />
         ) : action.type === "send_webhook" ? (
           <>
             <Input aria-label="Webhook URL" onChange={(event) => onChange({ ...action, webhookUrl: event.target.value })} placeholder="https://example.com/webhook" type="url" value={action.webhookUrl} />
-            <select aria-label="Webhook selected property" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, propertyId: event.target.value })} value={action.propertyId}>
-              <option value="name">Name</option>{catalog?.properties.map((property) => <option key={property.id} value={property.id}>{property.name}</option>)}
-            </select>
+            <AutomationSelect
+              ariaLabel="Webhook selected property"
+              className="h-8 text-sm"
+              onValueChange={(propertyId) => onChange({ ...action, propertyId })}
+              options={[
+                { label: "Name", value: "name" },
+                ...(catalog?.properties.map((property) => ({ label: property.name, value: property.id })) ?? []),
+              ]}
+              value={action.propertyId}
+            />
             <Input aria-label="Webhook payload field" onChange={(event) => onChange({ ...action, variableName: event.target.value })} placeholder="Additional field name (optional)" value={action.variableName} />
             {action.variableName.trim() ? <Input aria-label="Webhook payload value" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Additional field value" value={action.value} /> : null}
             <Input aria-label="Webhook header name" onChange={(event) => onChange({ ...action, webhookHeaderName: event.target.value, webhookSecretId: event.target.value === action.webhookHeaderName ? action.webhookSecretId : "" })} placeholder="Custom header name (optional)" value={action.webhookHeaderName} />
@@ -732,16 +851,56 @@ function ActionCard({ action, catalog, databaseId, dataSourceId, index, onChange
           </>
         ) : action.type === "send_gmail" ? (
           <>
-            <select aria-label="Gmail connection" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, connectionId: event.target.value })} value={action.connectionId}>
-              <option value="">Choose Gmail account</option>{catalog?.gmailConnections.filter((connection) => connection.status === "connected").map((connection) => <option key={connection.id} value={connection.id}>{connection.email}</option>)}
-            </select>
-            <select aria-label="Gmail recipient type" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientType: event.target.value as ActionDraft["recipientType"], recipientValue: "", to: "" })} value={action.recipientType}>
-              <option value="email">Email addresses</option><option value="selected_user">Selected user</option>{!scheduled ? <><option value="trigger_person">Trigger person</option><option value="page_creator">Page creator</option><option value="person_property">Person property</option></> : null}<option value="variable">Variable</option>
-            </select>
+            <AutomationSelect
+              ariaLabel="Gmail connection"
+              className="h-8 text-sm"
+              onValueChange={(connectionId) => onChange({ ...action, connectionId })}
+              options={[
+                { label: "Choose Gmail account", value: "" },
+                ...(catalog?.gmailConnections
+                  .filter((connection) => connection.status === "connected")
+                  .map((connection) => ({ label: connection.email, value: connection.id })) ?? []),
+              ]}
+              value={action.connectionId}
+            />
+            <AutomationSelect
+              ariaLabel="Gmail recipient type"
+              className="h-8 text-sm"
+              onValueChange={(recipientType) => onChange({ ...action, recipientType: recipientType as ActionDraft["recipientType"], recipientValue: "", to: "" })}
+              options={[
+                { label: "Email addresses", value: "email" },
+                { label: "Selected user", value: "selected_user" },
+                ...(!scheduled ? [
+                  { label: "Trigger person", value: "trigger_person" },
+                  { label: "Page creator", value: "page_creator" },
+                  { label: "Person property", value: "person_property" },
+                ] : []),
+                { label: "Variable", value: "variable" },
+              ]}
+              value={action.recipientType}
+            />
             {action.recipientType === "email" ? <Input aria-label="Gmail recipients" onChange={(event) => onChange({ ...action, to: event.target.value })} placeholder="To (emails, comma-separated)" value={action.to} /> : action.recipientType === "selected_user" ? (
-              <select aria-label="Gmail selected user" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} value={action.recipientValue}><option value="">Choose a user</option>{catalog?.users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select>
+              <AutomationSelect
+                ariaLabel="Gmail selected user"
+                className="h-8 text-sm"
+                onValueChange={(recipientValue) => onChange({ ...action, recipientValue })}
+                options={[
+                  { label: "Choose a user", value: "" },
+                  ...(catalog?.users.map((user) => ({ label: user.name, value: user.id })) ?? []),
+                ]}
+                value={action.recipientValue}
+              />
             ) : action.recipientType === "person_property" ? (
-              <select aria-label="Gmail person property" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} value={action.recipientValue}><option value="">Choose a person property</option>{catalog?.properties.filter((property) => property.type === "person").map((property) => <option key={property.id} value={property.id}>{property.name}</option>)}</select>
+              <AutomationSelect
+                ariaLabel="Gmail person property"
+                className="h-8 text-sm"
+                onValueChange={(recipientValue) => onChange({ ...action, recipientValue })}
+                options={[
+                  { label: "Choose a person property", value: "" },
+                  ...(catalog?.properties.filter((property) => property.type === "person").map((property) => ({ label: property.name, value: property.id })) ?? []),
+                ]}
+                value={action.recipientValue}
+              />
             ) : action.recipientType === "variable" ? <Input aria-label="Gmail recipient variable" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} placeholder="Variable name" value={action.recipientValue} /> : null}
             <Input aria-label="Gmail CC recipients" onChange={(event) => onChange({ ...action, cc: event.target.value })} placeholder="CC (optional)" value={action.cc} />
             <Input aria-label="Gmail BCC recipients" onChange={(event) => onChange({ ...action, bcc: event.target.value })} placeholder="BCC (optional)" value={action.bcc} />
@@ -752,17 +911,43 @@ function ActionCard({ action, catalog, databaseId, dataSourceId, index, onChange
           </>
         ) : action.type === "send_notification" ? (
           <>
-            <select aria-label="Notification recipient type" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientType: event.target.value as ActionDraft["recipientType"], recipientValue: "" })} value={action.recipientType}>
-              <option value="selected_user">Selected user</option>{!scheduled ? <><option value="trigger_person">Trigger person</option><option value="page_creator">Page creator</option><option value="person_property">Person property</option></> : null}<option value="variable">Variable</option>
-            </select>
+            <AutomationSelect
+              ariaLabel="Notification recipient type"
+              className="h-8 text-sm"
+              onValueChange={(recipientType) => onChange({ ...action, recipientType: recipientType as ActionDraft["recipientType"], recipientValue: "" })}
+              options={[
+                { label: "Selected user", value: "selected_user" },
+                ...(!scheduled ? [
+                  { label: "Trigger person", value: "trigger_person" },
+                  { label: "Page creator", value: "page_creator" },
+                  { label: "Person property", value: "person_property" },
+                ] : []),
+                { label: "Variable", value: "variable" },
+              ]}
+              value={action.recipientType}
+            />
             {action.recipientType === "selected_user" ? (
-              <select aria-label="Notification recipient" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} value={action.recipientValue}>
-                <option value="">Choose a user</option>{catalog?.users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-              </select>
+              <AutomationSelect
+                ariaLabel="Notification recipient"
+                className="h-8 text-sm"
+                onValueChange={(recipientValue) => onChange({ ...action, recipientValue })}
+                options={[
+                  { label: "Choose a user", value: "" },
+                  ...(catalog?.users.map((user) => ({ label: user.name, value: user.id })) ?? []),
+                ]}
+                value={action.recipientValue}
+              />
             ) : action.recipientType === "person_property" ? (
-              <select aria-label="Notification person property" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} value={action.recipientValue}>
-                <option value="">Choose a person property</option>{catalog?.properties.filter((property) => property.type === "person").map((property) => <option key={property.id} value={property.id}>{property.name}</option>)}
-              </select>
+              <AutomationSelect
+                ariaLabel="Notification person property"
+                className="h-8 text-sm"
+                onValueChange={(recipientValue) => onChange({ ...action, recipientValue })}
+                options={[
+                  { label: "Choose a person property", value: "" },
+                  ...(catalog?.properties.filter((property) => property.type === "person").map((property) => ({ label: property.name, value: property.id })) ?? []),
+                ]}
+                value={action.recipientValue}
+              />
             ) : action.recipientType === "variable" ? <Input aria-label="Notification recipient variable" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} placeholder="Variable name" value={action.recipientValue} /> : null}
             <Input aria-label="Notification message" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Message" value={action.value} />
             {!scheduled ? <label className="flex items-center gap-2 text-sm"><input checked={action.linkTriggerPage} onChange={(event) => onChange({ ...action, linkTriggerPage: event.target.checked })} type="checkbox" />Link to trigger page</label> : null}
@@ -771,20 +956,38 @@ function ActionCard({ action, catalog, databaseId, dataSourceId, index, onChange
           <><Input aria-label="Variable name" onChange={(event) => onChange({ ...action, variableName: event.target.value })} placeholder="Variable name" value={action.variableName} /><Input aria-label="Variable value" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Value" value={action.value} /></>
         ) : (
           <>
-            <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => {
-              const nextType = catalog?.properties.find((property) => property.id === event.target.value)?.type;
-              const nextCollection = ["multi_select", "person", "relation"].includes(nextType ?? "");
-              onChange({
-                ...action,
-                mode: nextCollection || action.mode === "set" || action.mode === "clear" ? action.mode : "set",
-                propertyId: event.target.value,
-              });
-            }} value={action.propertyId}>
-              <option value="name">Name</option>{writable.map((property) => <option key={property.id} value={property.id}>{property.name}</option>)}
-            </select>
-            <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, mode: event.target.value as ActionDraft["mode"] })} value={collection || action.mode === "set" || action.mode === "clear" ? action.mode : "set"}>
-              <option value="set">Set</option>{collection ? <><option value="add">Add</option><option value="remove">Remove</option></> : null}<option value="clear">Clear</option>
-            </select>
+            <AutomationSelect
+              ariaLabel={`Action ${index + 1} property`}
+              className="h-8 text-sm"
+              onValueChange={(propertyId) => {
+                const nextType = catalog?.properties.find((property) => property.id === propertyId)?.type;
+                const nextCollection = ["multi_select", "person", "relation"].includes(nextType ?? "");
+                onChange({
+                  ...action,
+                  mode: nextCollection || action.mode === "set" || action.mode === "clear" ? action.mode : "set",
+                  propertyId,
+                });
+              }}
+              options={[
+                { label: "Name", value: "name" },
+                ...writable.map((property) => ({ label: property.name, value: property.id })),
+              ]}
+              value={action.propertyId}
+            />
+            <AutomationSelect
+              ariaLabel={`Action ${index + 1} operation`}
+              className="h-8 text-sm"
+              onValueChange={(mode) => onChange({ ...action, mode: mode as ActionDraft["mode"] })}
+              options={[
+                { label: "Set", value: "set" },
+                ...(collection ? [
+                  { label: "Add", value: "add" },
+                  { label: "Remove", value: "remove" },
+                ] : []),
+                { label: "Clear", value: "clear" },
+              ]}
+              value={collection || action.mode === "set" || action.mode === "clear" ? action.mode : "set"}
+            />
             {action.mode !== "clear" ? <Input aria-label="Action value" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Value" value={action.value} /> : null}
           </>
         )}
@@ -803,16 +1006,45 @@ function SlackActionFields({ action, catalog, databaseId, dataSourceId, onChange
   const channels = useSlackAutomationChannels(databaseId, dataSourceId, action.connectionId);
   return (
     <>
-      <select aria-label="Slack connection" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, connectionId: event.target.value, slackChannelId: "" })} value={action.connectionId}>
-        <option value="">Choose Slack workspace</option>{catalog?.slackConnections.filter((connection) => connection.status === "connected").map((connection) => <option key={connection.id} value={connection.id}>{connection.teamName}</option>)}
-      </select>
-      <select aria-label="Slack channel" className="h-8 rounded-md border bg-control-background px-2 text-sm" disabled={!action.connectionId || channels.isLoading} onChange={(event) => onChange({ ...action, slackChannelId: event.target.value })} value={action.slackChannelId}>
-        <option value="">{channels.isLoading ? "Loading channels…" : "Choose a channel"}</option>{channels.data?.channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.isPrivate ? "🔒 " : "#"}{channel.name}</option>)}
-      </select>
+      <AutomationSelect
+        ariaLabel="Slack connection"
+        className="h-8 text-sm"
+        onValueChange={(connectionId) => onChange({ ...action, connectionId, slackChannelId: "" })}
+        options={[
+          { label: "Choose Slack workspace", value: "" },
+          ...(catalog?.slackConnections
+            .filter((connection) => connection.status === "connected")
+            .map((connection) => ({ label: connection.teamName, value: connection.id })) ?? []),
+        ]}
+        value={action.connectionId}
+      />
+      <AutomationSelect
+        ariaLabel="Slack channel"
+        className="h-8 text-sm"
+        disabled={!action.connectionId || channels.isLoading}
+        onValueChange={(slackChannelId) => onChange({ ...action, slackChannelId })}
+        options={[
+          { label: channels.isLoading ? "Loading channels…" : "Choose a channel", value: "" },
+          ...(channels.data?.channels.map((channel) => ({
+            label: `${channel.isPrivate ? "🔒 " : "#"}${channel.name}`,
+            value: channel.id,
+          })) ?? []),
+        ]}
+        value={action.slackChannelId}
+      />
       <Input aria-label="Slack message" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Message" value={action.value} />
       <Input aria-label="Slack variable" onChange={(event) => onChange({ ...action, variableName: event.target.value })} placeholder="Append variable (optional)" value={action.variableName} />
       <div className="grid grid-cols-[8rem_1fr] gap-2">
-        <select aria-label="Slack mention type" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, slackMentionKind: event.target.value as "channel" | "user" })} value={action.slackMentionKind}><option value="user">Mention user</option><option value="channel">Mention channel</option></select>
+        <AutomationSelect
+          ariaLabel="Slack mention type"
+          className="h-8 text-sm"
+          onValueChange={(slackMentionKind) => onChange({ ...action, slackMentionKind: slackMentionKind as "channel" | "user" })}
+          options={[
+            { label: "Mention user", value: "user" },
+            { label: "Mention channel", value: "channel" },
+          ]}
+          value={action.slackMentionKind}
+        />
         <Input aria-label="Slack mention ID" onChange={(event) => onChange({ ...action, slackMentionId: event.target.value })} placeholder="Mention ID (optional)" value={action.slackMentionId} />
       </div>
       <div className="grid grid-cols-2 gap-2">

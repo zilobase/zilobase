@@ -65,7 +65,20 @@ export function register({ assert, readSource, test }) {
       "Schedule end date",
       "Last day",
     ]) assert.match(manager, new RegExp(behavior))
-    assert.match(manager, /!scheduled \? <option value="edit_trigger_page"/)
+    assert.match(manager, /!scheduled \? \[\{ label: "Edit trigger page", value: "edit_trigger_page" \}\]/)
+  })
+
+  test("automation builder uses the shared select component for every dropdown", async () => {
+    const manager = await readSource(
+      "/src/features/databases/automations/database-automation-manager.tsx",
+    )
+
+    assert.match(manager, /from "@\/shared\/ui\/select"/)
+    assert.match(manager, /<SelectTrigger/)
+    assert.match(manager, /<SelectContent/)
+    assert.match(manager, /<SelectItem/)
+    assert.doesNotMatch(manager, /<select\b/)
+    assert.doesNotMatch(manager, /<option\b/)
   })
 
   test("builder exposes bounded in-product notification recipients", async () => {
