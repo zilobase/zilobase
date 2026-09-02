@@ -1,4 +1,13 @@
-export function register({ assert, loadModule, test }) {
+export function register({ assert, loadModule, readSource, test }) {
+  test("timeline name cells stay single-line by default", async () => {
+    const sidebar = await readSource(
+      "/src/features/databases/views/timeline/view/database-timeline-sidebar.tsx"
+    )
+
+    assert.match(sidebar, /<DatabaseCellContent wrapContent=\{false\}>/)
+    assert.doesNotMatch(sidebar, /getNameColumnWrapContent/)
+  })
+
   test("timeline view rows keep New page aligned with its grid row", async () => {
     const {
       buildTimelineViewRows,

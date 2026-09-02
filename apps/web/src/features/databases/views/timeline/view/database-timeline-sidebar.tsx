@@ -8,7 +8,6 @@ import {
 
 import { databaseNameColumnDefaultWidth } from "../../../core/database-contracts"
 import { DatabasePageLink } from "../../../interactions/database-page-link"
-import { getNameColumnWrapContent } from "../../model/database-view-config"
 import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config"
 import { DatabaseCellContent } from "../../view/database-cell-content"
 import type { TimelineViewRow } from "../model/database-timeline-rows"
@@ -44,7 +43,6 @@ export function TimelineNameHeaderRow({
 
 export type TimelineSidebarRowCellProps = {
   collapsedGroups: Record<string, boolean>
-  databaseConfig?: unknown
   databaseId: string | null | undefined
   editable: boolean
   groupProperty: DatabasePropertyListItem | null
@@ -63,7 +61,6 @@ export type TimelineSidebarRowCellProps = {
 
 export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
   collapsedGroups,
-  databaseConfig,
   databaseId,
   editable,
   groupProperty,
@@ -76,8 +73,6 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
   showPageIcon,
   viewRow,
 }: TimelineSidebarRowCellProps) {
-  const nameColumnWrapContent = getNameColumnWrapContent(databaseConfig)
-
   if (viewRow.kind === "group-gap") {
     return (
       <div
@@ -171,7 +166,7 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
         data-timeline-row-id={viewRow.item.id}
         onMouseEnter={() => onRowMouseEnter?.(viewRow.item.id)}
       >
-        <DatabaseCellContent wrapContent={nameColumnWrapContent}>
+        <DatabaseCellContent wrapContent={false}>
           <DatabasePageLink
             editable={editable}
             onOpen={onOpenPage}

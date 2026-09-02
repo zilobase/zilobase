@@ -51,7 +51,6 @@ export function DatabaseTimelineView() {
     activeView,
     addDraggedPageRow,
     addDatabaseRow,
-    databaseConfig,
     editable,
     databaseId,
     groupProperty,
@@ -320,7 +319,6 @@ export function DatabaseTimelineView() {
   const sidebarCellProps = useMemo(
     () => ({
       collapsedGroups,
-      databaseConfig,
       databaseId,
       editable,
       groupProperty,
@@ -335,7 +333,6 @@ export function DatabaseTimelineView() {
     [
       addDatabaseRow,
       collapsedGroups,
-      databaseConfig,
       databaseId,
       editable,
       groupProperty,
