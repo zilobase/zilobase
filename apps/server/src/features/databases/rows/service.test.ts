@@ -123,8 +123,12 @@ function transactionRecorder() {
     },
     insert() {
       return {
-        async values(value: unknown) {
+        values(value: unknown) {
           inserts.push(value);
+          return {
+            async onConflictDoNothing() {},
+            async onConflictDoUpdate() {},
+          };
         },
       };
     },
@@ -169,6 +173,7 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
           options: [{ id: "todo", name: "Todo" }],
         },
         id: "status-property",
+        type: "status",
       },
     ],
     [],

@@ -19,6 +19,10 @@ export type OutboundEmailMessage = {
 };
 
 export type ServerRuntimeAdapter = {
+  enqueueDatabaseAutomationRun?(input: {
+    env: RuntimeEnv;
+    runId: string;
+  }): Promise<void>;
   enqueueAiJob?(input: {
     env: RuntimeEnv;
     jobId: string;

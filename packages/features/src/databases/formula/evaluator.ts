@@ -1,4 +1,3 @@
-import type { DatabaseProperty } from "../queries"
 import { getFormulaExpression } from "./config"
 
 import type { DatabaseFormulaPropertyValue, FormulaAst, FormulaRuntimeOptions, FormulaValue, FormulaValueType } from "./types"
@@ -40,11 +39,20 @@ import {
 export type DatabaseFormulaEvaluationContext = FormulaRuntimeOptions & {
   currentPropertyId?: string
   formulaStack?: string[]
-  properties: DatabaseProperty[]
+  properties: DatabaseFormulaProperty[]
   propertyValuesByKey: Record<string, DatabaseFormulaPropertyValue>
   row: DatabaseFormulaRow
   titlePropertyLabel: string
   variables?: Record<string, FormulaValue>
+}
+
+export type DatabaseFormulaProperty = {
+  property: {
+    config?: unknown
+    id: string
+    name: string
+    type: string
+  }
 }
 
 export type DatabaseFormulaRow = {
@@ -616,7 +624,7 @@ function resolveDatabaseFormulaPropertyValue(
 }
 
 function evaluateReferencedFormula(
-  property: DatabaseProperty,
+  property: DatabaseFormulaProperty,
   context: DatabaseFormulaEvaluationContext
 ) {
   const stack = context.formulaStack ?? []

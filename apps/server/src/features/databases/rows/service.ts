@@ -29,7 +29,7 @@ import {
 } from "../automations/event-capture";
 import { fetchDatabaseRowDelta } from "../realtime/delta";
 import { isDatabaseHostPageId } from "../core/host-page";
-import { getStatusDefaultValue } from "../properties/config";
+import { getStatusDefaultValue, validateCellValue } from "../properties/config";
 import {
   incrementDatabaseRowPlacementPositions,
   updateDatabaseRowPlacementPositions,
@@ -42,6 +42,9 @@ export async function createDatabaseRowService(input: {
   databaseId: string;
   env?: RuntimeEnv;
   automationRunId?: string;
+  initialValues?: Array<{ propertyId: string; value: unknown }>;
+  newPageId?: string;
+  newRowId?: string;
   origin?: DatabaseMutationOrigin;
   pageId?: string | null;
   parentRowId?: string | null;
@@ -145,6 +148,9 @@ export async function createDatabaseRowService(input: {
     typeof input.pageId === "string" && input.pageId.length > 0
       ? input.pageId
       : crypto.randomUUID();
+  if (!input.pageId && input.newPageId) {
+    pageId = input.newPageId;
+  }
   let title = input.title;
   let pageMetadata: Record<string, unknown> = {};
 
@@ -197,19 +203,19 @@ export async function createDatabaseRowService(input: {
     );
   }
 
-  const statusProperties = await db
-    .select({ config: pageProperty.config, id: pageProperty.id })
+  const sourceProperties = await db
+    .select({ config: pageProperty.config, id: pageProperty.id, type: pageProperty.type })
     .from(databaseProperty)
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
       and(
         eq(databaseProperty.dataSourceId, existing.id),
-        eq(pageProperty.type, "status"),
         isNull(pageProperty.deletedAt),
       ),
     );
 
-  const defaultStatusValues = statusProperties
+  const defaultStatusValues = sourceProperties
+    .filter((property) => property.type === "status")
     .map((property) => ({
       propertyId: property.id,
       value: getStatusDefaultValue(property.config),
@@ -218,6 +224,26 @@ export async function createDatabaseRowService(input: {
       (property): property is { propertyId: string; value: string } =>
         typeof property.value === "string" && property.value.length > 0,
     );
+  const sourcePropertiesById = new Map(
+    sourceProperties.map((property) => [property.id, property]),
+  );
+  const initialValues = [...new Map(
+    (input.initialValues ?? []).map((value) => [value.propertyId, value]),
+  ).values()];
+  for (const value of initialValues) {
+    const property = sourcePropertiesById.get(value.propertyId);
+    if (!property) {
+      throw new ServiceMutationError("Initial-value property not found", 404);
+    }
+    value.value = normalizeAutomationValue(property.config, value.value);
+    if (
+      value.value === null &&
+      ["multi_select", "person", "relation"].includes(property.type)
+    ) {
+      value.value = [];
+    }
+    validateCellValue(property.type, property.config, value.value);
+  }
 
   const [databaseFavorite] = await db
     .select({ id: favorite.id })
@@ -231,12 +257,12 @@ export async function createDatabaseRowService(input: {
     .limit(1);
   const shouldInheritFavorite = Boolean(databaseFavorite);
 
-  const rowId = crypto.randomUUID();
+  const rowId = input.newRowId ?? crypto.randomUUID();
   let createdAt = "";
 
   const targetChanged = sourceDataSource
     ? (["rows", "properties", "values"] as const)
-    : defaultStatusValues.length > 0
+    : defaultStatusValues.length > 0 || initialValues.length > 0
       ? (["rows", "values"] as const)
       : (["rows"] as const);
   const createTargetRow = async (
@@ -337,9 +363,15 @@ export async function createDatabaseRowService(input: {
         .filter((value) => value.pageId === pageId)
         .map((value) => value.propertyId),
     );
-    const insertedValues = defaultStatusValues
-      .filter((property) => !inheritedValuePropertyIds.has(property.propertyId))
-      .map((property) => ({
+    const valuesToWrite = new Map<string, { propertyId: string; value: unknown }>(
+      defaultStatusValues
+        .filter((property) => !inheritedValuePropertyIds.has(property.propertyId))
+        .map((property) => [property.propertyId, property]),
+    );
+    for (const value of initialValues) {
+      valuesToWrite.set(value.propertyId, value);
+    }
+    const insertedValues = [...valuesToWrite.values()].map((property) => ({
         createdAt: now.toISOString(),
         id: crypto.randomUUID(),
         propertyId: property.propertyId,
@@ -358,7 +390,10 @@ export async function createDatabaseRowService(input: {
           createdAt: now,
           updatedAt: now,
         })),
-      );
+      ).onConflictDoUpdate({
+        target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
+        set: { updatedAt: now, value: sql`excluded.value` },
+      });
     }
 
     if (shouldInheritFavorite) {
@@ -520,4 +555,28 @@ export async function createDatabaseRowService(input: {
     title: title as string,
     updatedAt: createdAt,
   };
+}
+
+function normalizeAutomationValue(config: unknown, value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeAutomationValue(config, item));
+  }
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    (value as { type?: unknown }).type !== "entity"
+  ) {
+    return value;
+  }
+  const id = (value as { id?: unknown }).id;
+  if (typeof id !== "string") return value;
+  const options =
+    config && typeof config === "object" && Array.isArray((config as { options?: unknown }).options)
+      ? (config as { options: unknown[] }).options
+      : [];
+  const option = options.find(
+    (candidate) => candidate && typeof candidate === "object" && (candidate as { id?: unknown }).id === id,
+  ) as { name?: unknown } | undefined;
+  return typeof option?.name === "string" ? option.name : id;
 }

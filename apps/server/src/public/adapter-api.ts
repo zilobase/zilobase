@@ -128,6 +128,8 @@ export {
   getDatabaseAutomationEventCaptureMetrics,
   promoteClosedDatabaseAutomationEventWindows,
 } from "../features/databases/automations/event-capture";
+export { drainDatabaseAutomationEventWindows } from "../features/databases/automations/evaluator";
+export { drainDatabaseAutomationRuns } from "../features/databases/automations/run-engine";
 export {
   MembershipService,
   type GrantMembershipInput,

@@ -35,6 +35,8 @@ import { renewGmailWatches } from "../../features/mail/gmail-watch";
 import { advancePendingMailIndexes } from "../../features/mail/mail-index";
 import { drainMailDatabaseSyncOutbox } from "../../features/mail/mail-database-sync-worker";
 import { promoteClosedDatabaseAutomationEventWindows } from "../../features/databases/automations/event-capture";
+import { drainDatabaseAutomationEventWindows } from "../../features/databases/automations/evaluator";
+import { drainDatabaseAutomationRuns } from "../../features/databases/automations/run-engine";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -104,6 +106,7 @@ export function createNodeRuntime({
   };
   let stopMaintenanceDrainer: (() => void) | null = null;
   let stopAiJobWorker: (() => void) | null = null;
+  let stopDatabaseAutomationWorker: (() => void) | null = null;
 
   setRuntimeAdapter(effectiveRuntimeAdapter);
   assertSelfHostedProductionConfiguration(env);
@@ -135,6 +138,9 @@ export function createNodeRuntime({
       if (!stopAiJobWorker) {
         stopAiJobWorker = startAiJobWorker(env);
       }
+      if (!stopDatabaseAutomationWorker) {
+        stopDatabaseAutomationWorker = startDatabaseAutomationWorker(env);
+      }
 
       await new Promise<void>((resolve, reject) => {
         server.once("error", reject);
@@ -153,6 +159,8 @@ export function createNodeRuntime({
       stopMaintenanceDrainer = null;
       stopAiJobWorker?.();
       stopAiJobWorker = null;
+      stopDatabaseAutomationWorker?.();
+      stopDatabaseAutomationWorker = null;
       await databaseRealtime.destroy();
       await meetingAudio.destroy();
       await mailRealtime.destroy();
@@ -169,6 +177,42 @@ export function createNodeRuntime({
         server.close((error) => (error ? reject(error) : resolve()));
       });
     },
+  };
+}
+
+function startDatabaseAutomationWorker(env: Record<string, unknown>) {
+  const workerId = `node-automations:${process.pid}:${crypto.randomUUID()}`;
+  let running = false;
+  const drain = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await runWithDbEnv(env, async () => {
+        await drainDatabaseAutomationEventWindows(env, {
+          limit: 50,
+          workerId: `${workerId}:events`,
+        });
+        await drainDatabaseAutomationRuns(env, {
+          limit: 10,
+          workerId: `${workerId}:runs`,
+        });
+      });
+    } catch (error) {
+      console.error(JSON.stringify({
+        event: "database_automation_worker_failed",
+        message: error instanceof Error ? error.message : String(error),
+      }));
+    } finally {
+      running = false;
+    }
+  };
+  const startupTimer = setTimeout(() => void drain(), 0);
+  const interval = setInterval(() => void drain(), 1_000);
+  startupTimer.unref();
+  interval.unref();
+  return () => {
+    clearTimeout(startupTimer);
+    clearInterval(interval);
   };
 }
 

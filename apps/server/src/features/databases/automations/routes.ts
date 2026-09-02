@@ -20,6 +20,10 @@ import {
   updateDatabaseAutomation,
   validateDatabaseAutomation,
 } from "./service";
+import {
+  getDatabaseAutomationRun,
+  listDatabaseAutomationRuns,
+} from "./run-history";
 
 export const databaseAutomationRoutes = new Hono<AppBindings>();
 
@@ -75,6 +79,29 @@ databaseAutomationRoutes.get("/:databaseId/automations/:automationId", async (c)
   return handle(c, () => getDatabaseAutomation({
     automationId: c.req.param("automationId"),
     databaseId: c.req.param("databaseId"),
+    userId: user.id,
+  }));
+});
+
+databaseAutomationRoutes.get("/:databaseId/automations/:automationId/runs", async (c) => {
+  const user = requireDatabaseRouteUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const requestedLimit = Number(c.req.query("limit") ?? 50);
+  return handle(c, () => listDatabaseAutomationRuns({
+    automationId: c.req.param("automationId"),
+    databaseId: c.req.param("databaseId"),
+    limit: Number.isFinite(requestedLimit) ? requestedLimit : 50,
+    userId: user.id,
+  }));
+});
+
+databaseAutomationRoutes.get("/:databaseId/automations/:automationId/runs/:runId", async (c) => {
+  const user = requireDatabaseRouteUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  return handle(c, () => getDatabaseAutomationRun({
+    automationId: c.req.param("automationId"),
+    databaseId: c.req.param("databaseId"),
+    runId: c.req.param("runId"),
     userId: user.id,
   }));
 });
