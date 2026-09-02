@@ -71,3 +71,23 @@ test("local servers reflect development origins", async () => {
     "http://192.168.1.4:5173",
   );
 });
+
+test("automation create and update headers pass CORS preflight", async () => {
+  const response = await corsApp().request(
+    "http://localhost:3000/",
+    {
+      headers: {
+        "access-control-request-headers": "content-type,idempotency-key,if-match",
+        "access-control-request-method": "POST",
+        origin: "http://localhost:1420",
+      },
+      method: "OPTIONS",
+    },
+    { CLIENT_URL: "http://localhost:1420" },
+  );
+  const allowedHeaders = response.headers.get("access-control-allow-headers") ?? "";
+
+  assert.equal(response.status, 204);
+  assert.match(allowedHeaders, /idempotency-key/i);
+  assert.match(allowedHeaders, /if-match/i);
+});

@@ -22,6 +22,8 @@ export function createCorsMiddleware(): MiddlewareHandler<AppBindings> {
       "x-mobile-auth-cookie",
       "x-zilobase-workspace-id",
       "x-zilobase-bootstrap-token",
+      "Idempotency-Key",
+      "If-Match",
       "Content-Length",
     ],
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
